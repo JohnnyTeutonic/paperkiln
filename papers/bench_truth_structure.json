@@ -1,5 +1,5 @@
 {
- "_about": "Truth labels for the extractor benchmark's sizes and block structure (papers/bench_score.py), 40 papers = flavor_bench.TRUTH's. Read off each paper's LaTeX (papers/.cache/<id>.tex) on 26 Oct 2026 by four Claude agents that saw only the LaTeX and the protocol below, never an extraction; every quote is verbatim in the source and every number inside its quote (checked by script). configs: every size configuration of the paper's own models the paper states; a field the paper does not state is null. structure: norm_placement (pre, post, sandwich, or per sublayer {attn, ffn} with branch_post = the norm on the sublayer's output inside the residual branch), parallel_block, ffn_gated; null = not stated. A label changes only when the source shows it wrong, never to make an extractor pass.",
+ "_about": "Truth labels for the extractor benchmark's sizes and block structure (papers/bench_score.py), 40 papers = flavor_bench.TRUTH's. Read off each paper's LaTeX (papers/.cache/<id>.tex) on 26 Oct 2026 by four Claude agents that saw only the LaTeX and the protocol below, never an extraction; every quote is verbatim in the source and every number inside its quote (checked by script). configs: every size configuration of the paper's own models the paper states; a field the paper does not state is null. structure: norm_placement (pre, post, sandwich, or per sublayer {attn, ffn} with branch_post = the norm on the sublayer's output inside the residual branch), parallel_block, ffn_gated; null = not stated. A label changes only when the source shows it wrong, never to make an extractor pass. new_fields (27 Oct 2026, one Claude agent under the same rule: LaTeX only, no extraction): qk_norm (per_head, full, unspecified, none, or absent = never mentioned), ssm (mamba1, s4, absent; with d_state, d_conv, expand, dt_rank), new_ops (elementwise or row ops outside the standard set, with each input's role and a learned input's init; category and scored added on merge), token_mixing_ops (listed, not scored), and positional for the 11 papers flavor_bench.TRUTH leaves unlabelled (with T5's rel_buckets and rel_max_distance).",
  "protocol": "Truth labels for the arXiv extractor's benchmark: sizes and block structure, read off the LaTeX.\n\nSource: the paper's LaTeX, cached at\n  C:\\Users\\jonat\\OneDrive\\Documents\\research_portfolio_complete\\microtorch\\papers\\.cache\\<arxiv_id>.tex\nRead ONLY that file for each paper (Grep and Read with offsets; some files are large). Do NOT open anything\nunder microtorch\\papers\\llm_extract_receipts, microtorch\\experiments, microtorch\\papers\\.cache\\llm, or any\n*.extraction.json: the labels must be independent of the extractor being scored. Do not use your own memory\nof the model: a value the LaTeX does not state is null, even if you \"know\" it.\n\nFor each paper, label what the paper states about ITS OWN model(s) (not baselines, not related work, not\nmodels it only compares against, not rejected ablations, not future work).\n\n1. configs: every size configuration of the paper's own models that the paper states (usually a table:\n   one row per model size). For each config give:\n     name            the paper's name for it (e.g. \"7B\", \"BERT-base\", \"125M\")\n     d_model         hidden width\n     n_layers        number of layers (blocks). For encoder-decoder models: layers per stack, and say so in notes.\n     n_heads         attention (query) heads\n     n_kv_heads      key/value heads, ONLY when the paper states grouped-query / multi-query (else null)\n     d_ff            FFN inner width\n     vocab_size      vocabulary size, when stated for the model (a global statement applies to every config)\n     context_length  the model's training context / sequence length, when stated (a global statement applies to every config)\n   Each field: {\"value\": <number>, \"quote\": \"<verbatim span from the LaTeX that contains the number>\"} or null.\n   A quote is ONE contiguous span copied character for character from the .tex (LaTeX commands, &, $ and all),\n   e.g. a table row \"6.7B & 32 & 4096 & 32 & 128\". Numbers as plain integers (4K -> 4096 only if the paper\n   means 4096; \"2048\" stays 2048). If the paper gives head_dim and heads but not d_model, do not compute\n   d_model: null.\n2. structure (each {\"value\": ..., \"quote\": \"<verbatim span>\"} or null when the paper does not state it):\n     norm_placement  \"pre\" (each sublayer's input is normalised: x + f(norm(x))), \"post\" (norm after the\n                     residual add: norm(x + f(x))), \"sandwich\" (norm on the sublayer's input and output),\n                     or \"other:<short description>\" (e.g. different per sublayer). An explicit statement\n                     that the model follows a named model's placement counts only if it names the\n                     placement (\"pre-normalization as in GPT-2\").\n     parallel_block  true when attention and FFN run in parallel on the same input (\"parallel\n                     formulation\", y = x + attn(ln(x)) + mlp(ln(x))), false only when the paper says so\n                     explicitly or its equations/figure show the sequential block; else null.\n     ffn_gated       true when the FFN is a gated linear unit (SwiGLU, GeGLU, ReGLU, GLU, \"gated-GELU\"),\n                     false when the paper states a plain two-matrix FFN (ReLU/GeLU between two linears).\n3. notes: one or two sentences: which model you took as the paper's own, anything ambiguous.\n\nWrite ONE JSON file (UTF-8, valid JSON, no comments): a list of objects\n  {\"arxiv_id\": \"...\", \"model\": \"...\", \"configs\": [...], \"structure\": {\"norm_placement\": ..., \"parallel_block\": ...,\n   \"ffn_gated\": ...}, \"notes\": \"...\"}\nin the order you were given the ids. Before writing, re-check that every quote occurs verbatim in that paper's\n.tex (use Grep with a distinctive fixed substring of the quote) and that each number occurs inside its quote.\n",
  "adjudicated": [
   {
@@ -64,6 +64,24 @@
     "ffn": "branch_post"
    },
    "why": "the labeller's free-text placement, written per sublayer in the scorer's names"
+  },
+  {
+   "arxiv_id": "2109.08668",
+   "field": "new_fields.positional",
+   "now": null,
+   "why": "the labeller's quote (\"T2T uses positional embeddings and subword tokenization, while T5 and Lingvo use relative attention\") describes the codebases Primer is run in, not a position scheme of Primer's own"
+  },
+  {
+   "arxiv_id": "2304.03208",
+   "field": "new_fields.new_ops (the three muP ops)",
+   "now": "not scored",
+   "why": "the muP models are a second family; the paper's main models use the standard parameterisation"
+  },
+  {
+   "arxiv_id": "2309.16609, 2405.04434, 2407.10671",
+   "field": "new_fields.new_ops (LogN, YaRN)",
+   "now": "not scored",
+   "why": "context-extension rescaling at inference or in a length-extension stage, not the trained block"
   }
  ],
  "papers": {
@@ -129,7 +147,45 @@
      "quote": "This consists of two linear transformations with a ReLU activation in between."
     }
    },
-   "notes": "Encoder-decoder; n_layers is per stack (N=6 for encoder and decoder). Vocabulary is task-specific (about 37000 shared BPE for EN-DE, 32000 word-piece for EN-FR), so vocab_size is null; no training context length stated. Table 3 rows (A)-(E) are ablations and the 4-layer d_model=1024 parsing model is a side application; both excluded."
+   "notes": "Encoder-decoder; n_layers is per stack (N=6 for encoder and decoder). Vocabulary is task-specific (about 37000 shared BPE for EN-DE, 32000 word-piece for EN-FR), so vocab_size is null; no training context length stated. Table 3 rows (A)-(E) are ablations and the 4-layer d_model=1024 parsing model is a side application; both excluded.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [
+     {
+      "name": "embedding scale by sqrt(d_model)",
+      "replaces": "embedding output",
+      "formula": "embedding weights multiplied by \\sqrt{d_{model}}",
+      "inputs": [
+       {
+        "meaning": "token embedding (weights shared with pre-softmax projection)",
+        "role": "input",
+        "init": null
+       },
+       {
+        "meaning": "constant sqrt(d_model)",
+        "role": "other",
+        "init": null
+       }
+      ],
+      "quote": "In the embedding layers, we multiply those weights by $\\sqrt{\\dmodel}$.",
+      "category": "embed",
+      "scored": true
+     }
+    ],
+    "token_mixing_ops": [],
+    "notes": "Own model is the Transformer. The 1/sqrt(d_k) scaling is standard scaled dot-product attention, not counted."
+   }
   },
   "1810.04805": {
    "model": "BERT",
@@ -196,7 +252,24 @@
     "parallel_block": null,
     "ffn_gated": null
    },
-   "notes": "BERT-BASE and BERT-LARGE are the paper's models; the model-size ablation table (other L/H/A) is excluded. The paper only says the implementation is almost identical to the original Transformer, so norm placement and block structure are not stated; GELU is stated but not an explicit two-matrix FFN."
+   "notes": "BERT-BASE and BERT-LARGE are the paper's models; the model-size ablation table (other L/H/A) is excluded. The paper only says the implementation is almost identical to the original Transformer, so norm placement and block structure are not stated; GELU is stated but not an explicit two-matrix FFN.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [],
+    "notes": "Own model is BERT; the paper defers the architecture to Vaswani et al. and states only GELU, so nothing outside the standard set."
+   }
   },
   "1901.02860": {
    "model": "Transformer-XL",
@@ -258,7 +331,39 @@
     },
     "ffn_gated": null
    },
-   "notes": "The LaTeX gives no width/head/FFN hyperparameters; only layer counts for the enwik8 models (12L, 18L, 24L). The 784 'attention length during training' is stated after the 18L/24L sentence and is taken as their training context (ambiguous: memory/attention span, not segment length). WT103 Standard/Large, LM1B Base/Large and PTB models are named only by parameter count and are omitted; the 20-layer LM1B ablation model is excluded. Post-norm is shown for the attention sublayer only; the FFN's internal norm is not spelled out."
+   "notes": "The LaTeX gives no width/head/FFN hyperparameters; only layer counts for the enwik8 models (12L, 18L, 24L). The 784 'attention length during training' is stated after the 18L/24L sentence and is taken as their training context (ambiguous: memory/attention span, not segment length). WT103 Standard/Large, LM1B Base/Large and PTB models are named only by parameter count and are omitted; the 20-layer LM1B ablation model is excluded. Post-norm is shown for the attention sublayer only; the FFN's internal norm is not spelled out.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [
+     {
+      "name": "segment-level recurrence with state reuse",
+      "quote": "It consists of a segment-level recurrence mechanism and a novel positional encoding scheme."
+     },
+     {
+      "name": "relative positional attention with global content/position bias vectors u, v",
+      "quote": "\\item Secondly, we introduce a trainable parameter $\\red{u} \\in \\R^{d}$ to replace the query $\\rmU_{i}^\\top \\rmW_q^\\top$ in term $(c)$."
+     }
+    ],
+    "positional": {
+     "value": "relative",
+     "quote": "Hence, as an additional technical contribution, we introduce a simple but more effective relative positional encoding formulation that generalizes to attention lengths longer than the one observed during training.",
+     "rel_buckets": null,
+     "rel_max_distance": null
+    },
+    "notes": "Own model is Transformer-XL. The relative encoding R is a sinusoid matrix injected into the attention score (Transformer-XL scheme), labelled relative. The WikiText-103 setup adopts adaptive softmax and adaptive input representations (a factorised embedding/head, not counted as an elementwise op)."
+   }
   },
   "1906.08237": {
    "model": "XLNet",
@@ -300,7 +405,47 @@
     },
     "ffn_gated": null
    },
-   "notes": "Only XLNet-Large has stated hyperparameters (pretraining table). XLNet-Base(-wikibooks) is used for ablations but its dimensions are stated only in commented-out text, so it is omitted. Vocabulary size not stated (SentencePiece only)."
+   "notes": "Only XLNet-Large has stated hyperparameters (pretraining table). XLNet-Base(-wikibooks) is used for ablations but its dimensions are stated only in commented-out text, so it is omitted. Vocabulary size not stated (SentencePiece only).",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [
+     {
+      "name": "two-stream (content/query) self-attention",
+      "quote": "Here, we provide the implementation details of the two-stream attention with a Transformer-XL backbone."
+     },
+     {
+      "name": "segment recurrence (memory reuse)",
+      "quote": "Now we discuss how to integrate the recurrence mechanism into the proposed permutation setting and enable the model to reuse hidden states from previous segments."
+     },
+     {
+      "name": "relative segment encodings added to attention weights",
+      "quote": "Architecturally, different from BERT that adds an absolute segment embedding to the word embedding at each position, we extend the idea of relative encodings from Transformer-XL to also encode the segments."
+     },
+     {
+      "name": "Transformer-XL relative positional attention",
+      "quote": "We apply relative positional encodings based on the original sequence as discussed earlier, which is straightforward."
+     }
+    ],
+    "positional": {
+     "value": "relative",
+     "quote": "We integrate two important techniques in Transformer-XL, namely the relative positional encoding scheme and the segment recurrence mechanism.",
+     "rel_buckets": null,
+     "rel_max_distance": null
+    },
+    "notes": "Own model is XLNet; positions follow Transformer-XL's relative scheme (named explicitly), so relative rather than inherited."
+   }
   },
   "1907.11692": {
    "model": "RoBERTa",
@@ -367,7 +512,24 @@
     "parallel_block": null,
     "ffn_gated": null
    },
-   "notes": "Configs from the pretraining hyperparameter table (large, base). Vocabulary is stated as '50K' units, recorded as 50000. The paper does not describe norm placement, block structure or FFN form (it defers to the standard Transformer/BERT)."
+   "notes": "Configs from the pretraining hyperparameter table (large, base). Vocabulary is stated as '50K' units, recorded as 50000. The paper does not describe norm placement, block structure or FFN form (it defers to the standard Transformer/BERT).",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [],
+    "notes": "Own model is RoBERTa; architecture is BERT's transformer, described only by L, A, H. Nothing outside the standard set."
+   }
   },
   "1909.08053": {
    "model": "Megatron-LM (GPT-2 and BERT)",
@@ -578,7 +740,30 @@
      "quote": "The first part of the block is a GEMM followed by a GeLU nonlinearity"
     }
    },
-   "notes": "Own models: the trained GPT-2 (355M, 2.5B, 8.3B) and BERT (336M, 1.3B, 3.9B) configurations; the 1.2B and 4.2B rows come from the weak-scaling study table (that table's 2.5B duplicates the trained one, and its 8.3B differs only in using 32 heads, so both are left out). The padded 51,200 vocabulary is stated in the scaling section and applied to all GPT-2 configs. d_ff is never stated. The pre-norm quote describes GPT-2/BERT input-side layer norm; the BERT models use the rearranged layer-norm/residual order of a figure not described further in text."
+   "notes": "Own models: the trained GPT-2 (355M, 2.5B, 8.3B) and BERT (336M, 1.3B, 3.9B) configurations; the 1.2B and 4.2B rows come from the weak-scaling study table (that table's 2.5B duplicates the trained one, and its 8.3B differs only in using 32 heads, so both are left out). The padded 51,200 vocabulary is stated in the scaling section and applied to all GPT-2 configs. d_ff is never stated. The pre-norm quote describes GPT-2/BERT input-side layer norm; the BERT models use the rearranged layer-norm/residual order of a figure not described further in text.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [],
+    "positional": {
+     "value": null,
+     "quote": null,
+     "rel_buckets": null,
+     "rel_max_distance": null
+    },
+    "notes": "Own models are the Megatron GPT-2 (8.3B) and BERT (3.9B) models; GeLU, pre-LayerNorm and a rearranged LayerNorm/residual order for BERT. The paper never states a positional scheme (only 'similar to GPT-2' in general), so positional is null."
+   }
   },
   "1909.11942": {
    "model": "ALBERT",
@@ -677,7 +862,24 @@
     "parallel_block": null,
     "ffn_gated": null
    },
-   "notes": "Configs from the compiled model-setup table (embedding size E=128, parameter sharing). The paper gives heads and FFN only as rules ('the number of attention heads to be $H/64$', 'feed-forward/filter size to be $4H$'), so n_heads and d_ff are null rather than computed; a table with explicit head counts sits in an uncompiled section marked 'DO NOT WRITE HERE' and was not used. A 24-layer ALBERT-xxlarge variant is discussed but the 12-layer one is the reported model."
+   "notes": "Configs from the compiled model-setup table (embedding size E=128, parameter sharing). The paper gives heads and FFN only as rules ('the number of attention heads to be $H/64$', 'feed-forward/filter size to be $4H$'), so n_heads and d_ff are null rather than computed; a table with explicit head counts sits in an uncompiled section marked 'DO NOT WRITE HERE' and was not used. A 24-layer ALBERT-xxlarge variant is discussed but the 12-layer one is the reported model.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [],
+    "notes": "Own model is ALBERT; factorised embedding (E to H projection) and cross-layer parameter sharing are linear/sharing choices, not new ops."
+   }
   },
   "1910.10683": {
    "model": "T5",
@@ -837,7 +1039,41 @@
      "quote": "a dense layer with an output dimensionality of $d_{\\mathrm{ff}} = 3072$ followed by a ReLU nonlinearity and another dense layer"
     }
    },
-   "notes": "Encoder-decoder; n_layers is per stack. 3B and 11B share the d_model/layer sentence. The 32,000 vocabulary ('for all experiments') and 512 maximum sequence length are stated in the baseline setup and applied to all sizes. Layer norm is RMS-style (rescale only, no bias)."
+   "notes": "Encoder-decoder; n_layers is per stack. 3B and 11B share the d_model/layer sentence. The 32,000 vocabulary ('for all experiments') and 512 maximum sequence length are stated in the baseline setup and applied to all sizes. Layer norm is RMS-style (rescale only, no bias).",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [
+     {
+      "name": "T5 relative position bias (learned scalar per head per bucketed offset added to logits)",
+      "quote": "We use a simplified form of position embeddings where each ``embedding'' is simply a scalar that is added to the corresponding logit used for computing the attention weights."
+     }
+    ],
+    "positional": {
+     "value": "t5_bias",
+     "quote": "We use a simplified form of position embeddings where each ``embedding'' is simply a scalar that is added to the corresponding logit used for computing the attention weights.",
+     "rel_buckets": {
+      "value": 32,
+      "quote": "In this work, we use $32$ embeddings for all of our models with ranges that increase in size logarithmically up to an offset of $128$ beyond which we assign all relative positions to the same embedding."
+     },
+     "rel_max_distance": {
+      "value": 128,
+      "quote": "In this work, we use $32$ embeddings for all of our models with ranges that increase in size logarithmically up to an offset of $128$ beyond which we assign all relative positions to the same embedding."
+     }
+    },
+    "notes": "Own model is the T5 encoder-decoder. Its 'simplified layer normalization' (rescale only, no additive bias) is treated as RMSNorm-like, so not counted as a new op; the relative bias is also listed under token mixing."
+   }
   },
   "1910.13461": {
    "model": "BART",
@@ -880,7 +1116,30 @@
     "parallel_block": null,
     "ffn_gated": null
    },
-   "notes": "Encoder-decoder; n_layers is per stack. Heads, FFN width, vocabulary size (GPT-2 BPE, size not given) and context length are not stated. The paper says it uses the standard Transformer with ReLU changed to GeLU, without naming norm placement or spelling out the FFN."
+   "notes": "Encoder-decoder; n_layers is per stack. Heads, FFN width, vocabulary size (GPT-2 BPE, size not given) and context length are not stated. The paper says it uses the standard Transformer with ReLU changed to GeLU, without naming norm placement or spelling out the FFN.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [],
+    "positional": {
+     "value": "learned",
+     "quote": "In the first step, we freeze most of BART parameters and only update the randomly initialized source encoder, the BART positional embeddings, and the self-attention input projection matrix of BART's encoder first layer.",
+     "rel_buckets": null,
+     "rel_max_distance": null
+    },
+    "notes": "Own model is BART (standard seq2seq Transformer with GeLU). The positional scheme is never named; 'learned' is inferred from the positional embeddings being trainable parameters that are updated in fine-tuning. Ambiguous."
+   }
   },
   "2004.05150": {
    "model": "Longformer",
@@ -993,7 +1252,29 @@
     "parallel_block": null,
     "ffn_gated": null
    },
-   "notes": "Three own model families: character-level LMs (small/large; context is the final-phase training length, staged from 2,048 to 23,040), Longformer-base/large continued from RoBERTa checkpoints (dimensions not restated; 4,096 positions), and LED-base/large following BART's layers and widths (16K positions, read as 16384 since BART's 1K is copied 16 times). Pre-layernorm is stated only for the char-LM models; the RoBERTa/BART-initialised models inherit those architectures, which the paper does not describe."
+   "notes": "Three own model families: character-level LMs (small/large; context is the final-phase training length, staged from 2,048 to 23,040), Longformer-base/large continued from RoBERTa checkpoints (dimensions not restated; 4,096 positions), and LED-base/large following BART's layers and widths (16K positions, read as 16384 since BART's 1K is copied 16 times). Pre-layernorm is stated only for the char-LM models; the RoBERTa/BART-initialised models inherit those architectures, which the paper does not describe.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [
+     {
+      "name": "sliding-window (optionally dilated) local attention plus task-motivated global attention",
+      "quote": "\\model's attention mechanism is a combination of a windowed local-context self-attention and an end task motivated global attention that encodes inductive bias about the task."
+     }
+    ],
+    "notes": "Own model is Longformer (RoBERTa-initialised); separate projections for global attention are linear layers."
+   }
   },
   "2005.14165": {
    "model": "GPT-3",
@@ -1183,7 +1464,29 @@
     "parallel_block": null,
     "ffn_gated": null
    },
-   "notes": "The eight GPT-3 sizes from the architecture table. d_ff is only given as a rule (d_ff = 4 * d_model), never as a number, so it is null; no vocabulary size is stated. The 13B row's d_model is 5140 as printed in the table."
+   "notes": "The eight GPT-3 sizes from the architecture table. d_ff is only given as a rule (d_ff = 4 * d_model), never as a number, so it is null; no vocabulary size is stated. The 13B row's d_model is 5140 as printed in the table.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [
+     {
+      "name": "alternating dense and locally banded sparse attention",
+      "quote": "with the exception that we use alternating dense and locally banded sparse attention patterns in the layers of the transformer, similar to the Sparse Transformer \\cite{child2019generating}."
+     }
+    ],
+    "notes": "Own model is GPT-3; otherwise the GPT-2 architecture."
+   }
   },
   "2006.03654": {
    "model": "DeBERTa",
@@ -1263,7 +1566,35 @@
     "parallel_block": null,
     "ffn_gated": null
    },
-   "notes": "Encoder-only; configs from the pre-training hyper-parameter table (the base-ablation column has the same shape as base and is omitted). The 1.5B vocabulary is stated only as '128K' (taken as 128000); large/base use the GPT-2 BPE vocabulary with no size given. No training sequence length is stated (512 is the maximum relative distance k, not the context). Post-LN equations appear only in commented-out LaTeX, so norm placement is null."
+   "notes": "Encoder-only; configs from the pre-training hyper-parameter table (the base-ablation column has the same shape as base and is omitted). The 1.5B vocabulary is stated only as '128K' (taken as 128000); large/base use the GPT-2 BPE vocabulary with no size given. No training sequence length is stated (512 is the maximum relative distance k, not the context). Post-LN equations appear only in commented-out LaTeX, so norm placement is null.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [
+     {
+      "name": "disentangled attention (content-to-content, content-to-position, position-to-content; scaled by 1/sqrt(3d))",
+      "quote": "That is, the attention weight of a word pair can be computed as a sum of four attention scores using disentangled matrices on their contents and positions as"
+     }
+    ],
+    "positional": {
+     "value": "relative",
+     "quote": "Since we use \\emph{relative} position embedding, the position-to-position term does not provide much additional information and is removed from \\eqref{decomposition} in our implementation.",
+     "rel_buckets": null,
+     "rel_max_distance": null
+    },
+    "notes": "Own model is DeBERTa. The enhanced mask decoder adds absolute positions before the output layer during pre-training (absolute embeddings, not a new op). The 1/sqrt(3d) factor belongs to the disentangled attention."
+   }
   },
   "2104.09864": {
    "model": "RoFormer",
@@ -1322,7 +1653,24 @@
     "parallel_block": null,
     "ffn_gated": null
    },
-   "notes": "RoFormer is RoPE dropped into existing architectures; the paper gives no size table. Its MT model (fairseq Transformer-base) and English model (bert-base-uncased) dimensions are given only by reference, so only vocabulary/sequence length are labelled; the Enwik8 PerFormer+RoPE is the one variant with explicit dimensions. The Chinese RoFormer (WoBERT-based) is omitted: no dimensions and a multi-stage sequence length (128 to 1536)."
+   "notes": "RoFormer is RoPE dropped into existing architectures; the paper gives no size table. Its MT model (fairseq Transformer-base) and English model (bert-base-uncased) dimensions are given only by reference, so only vocabulary/sequence length are labelled; the Enwik8 PerFormer+RoPE is the one variant with explicit dimensions. The Chinese RoFormer (WoBERT-based) is omitted: no dimensions and a multi-stage sequence length (128 to 1536).",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [],
+    "notes": "Own model is RoFormer (RoPE); RoPE is in the standard set."
+   }
   },
   "2108.12409": {
    "model": "ALiBi (Train Short, Test Long)",
@@ -1377,7 +1725,24 @@
     "parallel_block": null,
     "ffn_gated": null
    },
-   "notes": "The paper's own models are ALiBi versions of the Baevski & Auli WikiText-103 LM and a 1.3B CC100+RoBERTa LM. Context length is null because each is trained at several lengths (L from 64 to 3072 on WikiText-103; 512/1024 and more for the 1.3B). The Toronto BookCorpus runs reuse the WikiText-103 shape with BERT's '29K' vocabulary and are not listed as a separate size; no vocabulary is stated for the two listed configs."
+   "notes": "The paper's own models are ALiBi versions of the Baevski & Auli WikiText-103 LM and a 1.3B CC100+RoBERTa LM. Context length is null because each is trained at several lengths (L from 64 to 3072 on WikiText-103; 512/1024 and more for the 1.3B). The Toronto BookCorpus runs reuse the WikiText-103 shape with BERT's '29K' vocabulary and are not listed as a separate size; no vocabulary is stated for the two listed configs.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [],
+    "notes": "Own model is the ALiBi language model; ALiBi is in the standard set."
+   }
   },
   "2109.08668": {
    "model": "Primer",
@@ -1454,7 +1819,61 @@
      "quote": "The most effective modification is the improvement from a ReLU activation to a squared ReLU activation in the Transformer's feed forward block."
     }
    },
-   "notes": "Decoder-only Primer at the sizes with explicit dimensions; heads and vocabulary are never stated. The 1.9B dimensions (d_model=2048, d_ff=12288, L=24) are attached in the text to the baseline Transformer, not to Primer, so they are left null. The 27-model scaling grid (L in {6,9,12}, d_model in {384,512,1024}) and the ~35M LM1B search models are not listed. The pre-attention/post-FFN norm placement belongs to full Primer (not Primer-EZ) and the paper calls it helpful only in some cases; squared ReLU is a plain (non-gated) activation, which the paper contrasts with GLU variants."
+   "notes": "Decoder-only Primer at the sizes with explicit dimensions; heads and vocabulary are never stated. The 1.9B dimensions (d_model=2048, d_ff=12288, L=24) are attached in the text to the baseline Transformer, not to Primer, so they are left null. The 27-model scaling grid (L in {6,9,12}, d_model in {384,512,1024}) and the ~35M LM1B search models are not listed. The pre-attention/post-FFN norm placement belongs to full Primer (not Primer-EZ) and the paper calls it helpful only in some cases; squared ReLU is a plain (non-gated) activation, which the paper contrasts with GLU variants.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [
+     {
+      "name": "squared ReLU",
+      "replaces": "FFN activation",
+      "formula": "y = (\\max(x, 0))^2",
+      "inputs": [
+       {
+        "meaning": "FFN hidden pre-activation",
+        "role": "input",
+        "init": null
+       }
+      ],
+      "quote": "The most effective modification is the improvement from a ReLU activation to a squared ReLU activation in the Transformer's feed forward block.",
+      "category": "activation",
+      "scored": true
+     },
+     {
+      "name": "custom layer norm (x(x - mu) variance)",
+      "replaces": "norm",
+      "formula": "layer normalization using x(x - \\mu) instead of (x - \\mu)^2 in the variance term",
+      "inputs": [
+       {
+        "meaning": "sublayer input",
+        "role": "input",
+        "init": null
+       }
+      ],
+      "quote": "\\textit{Custom Normalization}: \\modelname uses a modified version of layer normalization~\\cite{Ba2016LayerN} that uses $x(x - \\mu)$ instead of $(x-\\mu)^2$, but we find this is not always effective.",
+      "category": "norm",
+      "scored": true
+     }
+    ],
+    "token_mixing_ops": [
+     {
+      "name": "multi-DConv-head attention (causal depthwise convolution, width 3, after each Q, K, V projection)",
+      "quote": "\\modelname's improvements can be mostly attributed to two simple modifications: squaring ReLU activations and adding a depthwise convolution layer after each Q, K, and V projection in self-attention."
+     }
+    ],
+    "positional": null,
+    "notes": "Own model is Primer (full) with Primer-EZ as the two-change subset. Custom normalization belongs to full Primer only (Primer-EZ is squared ReLU + MDHA); shared Q/K, the 12X bottleneck, post-softmax spatial gating and the -1.12 multiplier are excluded from Primer by the paper. Positional is AMBIGUOUS: Primer adds no positional scheme; T5/Lingvo runs use 'relative attention' (cited to Shaw et al.), labelled t5_bias by the T5 rule, while the T2T search runs use unnamed 'positional embeddings'."
+   }
   },
   "2112.11446": {
    "model": "Gopher",
@@ -1615,7 +2034,35 @@
     "parallel_block": null,
     "ffn_gated": null
    },
-   "notes": "The six Gopher-family models from the architecture table. d_ff is only stated as a rule (4 * d_model), so null. The paper says it uses RMSNorm in place of LayerNorm in the GPT-2 architecture but never names the placement. The .tex contains the paper body twice; quotes come from the first copy."
+   "notes": "The six Gopher-family models from the architecture table. d_ff is only stated as a rule (4 * d_model), so null. The paper says it uses RMSNorm in place of LayerNorm in the GPT-2 architecture but never names the placement. The .tex contains the paper body twice; quotes come from the first copy.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [
+     {
+      "name": "Transformer-XL relative positional attention",
+      "quote": "and we use the relative positional encoding scheme from \\citet{dai2019transformer} rather than absolute positional encodings."
+     }
+    ],
+    "positional": {
+     "value": "relative",
+     "quote": "and we use the relative positional encoding scheme from \\citet{dai2019transformer} rather than absolute positional encodings.",
+     "rel_buckets": null,
+     "rel_max_distance": null
+    },
+    "notes": "Own model is Gopher; GPT-2 architecture with RMSNorm and Transformer-XL relative positions."
+   }
   },
   "2201.08239": {
    "model": "LaMDA",
@@ -1698,7 +2145,35 @@
      "quote": "and gated-GELU activation as described in Raffel et al.~\\cite{shazeer2020glu}"
     }
    },
-   "notes": "Decoder-only LaMDA pre-trained models (2B, 8B, 137B; hyper-parameter table plus the 137B text). Vocabulary is stated as '32K' (taken as 32000); d_ff is stated only for 137B; no training sequence length is given."
+   "notes": "Decoder-only LaMDA pre-trained models (2B, 8B, 137B; hyper-parameter table plus the 137B text). Vocabulary is stated as '32K' (taken as 32000); d_ff is stated only for 137B; no training sequence length is given.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [
+     {
+      "name": "T5 relative attention bias",
+      "quote": "relative attention as described in T5~\\cite{t5}, and gated-GELU activation as described in Raffel et al.~\\cite{shazeer2020glu}."
+     }
+    ],
+    "positional": {
+     "value": "t5_bias",
+     "quote": "relative attention as described in T5~\\cite{t5}, and gated-GELU activation as described in Raffel et al.~\\cite{shazeer2020glu}.",
+     "rel_buckets": null,
+     "rel_max_distance": null
+    },
+    "notes": "Own model is LaMDA (decoder-only). Gated-GELU is GeGLU (standard). Bucket count and max distance not stated."
+   }
   },
   "2204.02311": {
    "model": "PaLM",
@@ -1802,7 +2277,45 @@
      "quote": "We use SwiGLU activations ($\\textrm{Swish}(xW) \\cdot xV$) for the MLP intermediate activations"
     }
    },
-   "notes": "The three PaLM sizes. Multi-query attention (one shared key/value head) is stated globally. d_ff only as a rule (4 * d_model), so null. Vocabulary is stated as '256k' (taken as 256000). Pre-norm is read off the parallel-block equation."
+   "notes": "The three PaLM sizes. Multi-query attention (one shared key/value head) is stated globally. d_ff only as a rule (4 * d_model), so null. Vocabulary is stated as '256k' (taken as 256000). Pre-norm is read off the parallel-block equation.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [
+     {
+      "name": "output logit scaling by 1/sqrt(n)",
+      "replaces": "final logits",
+      "formula": "logits = (h W_E^T) / \\sqrt{n}, n = embedding size",
+      "inputs": [
+       {
+        "meaning": "pre-softmax output logits (shared input/output embedding)",
+        "role": "input",
+        "init": null
+       },
+       {
+        "meaning": "constant 1/sqrt(n), n = embedding size",
+        "role": "other",
+        "init": null
+       }
+      ],
+      "quote": "Because the input and output embedding layers are shared, we scale the pre-softmax output logits by $1/\\sqrt{n}$, where $n$ is the embedding size.",
+      "category": "final_logits",
+      "scored": true
+     }
+    ],
+    "token_mixing_ops": [],
+    "notes": "Own model is PaLM. Parallel attention/MLP blocks and multi-query attention are structural, not elementwise ops; z-loss is a training loss."
+   }
   },
   "2204.06745": {
    "model": "GPT-NeoX-20B",
@@ -1844,7 +2357,24 @@
     },
     "ffn_gated": null
    },
-   "notes": "Single 20B model. Parallel attention+FF with untied pre-sublayer LayerNorms (the as-trained equation). No d_ff is stated, and the FFN type is stated only indirectly (a 'bias-gelu-fusion' config flag), so ffn_gated is null. The .tex contains two versions of the paper; quotes come from the first."
+   "notes": "Single 20B model. Parallel attention+FF with untied pre-sublayer LayerNorms (the as-trained equation). No d_ff is stated, and the FFN type is stated only indirectly (a 'bias-gelu-fusion' config flag), so ffn_gated is null. The .tex contains two versions of the paper; quotes come from the first.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [],
+    "notes": "Own model is GPT-NeoX-20B; partial rotary (first 25% of dims) is RoPE, parallel attention+FF with untied layer norms is structural."
+   }
   },
   "2205.01068": {
    "model": "OPT",
@@ -2056,7 +2586,24 @@
      "quote": "all models are trained with ReLU activation and a sequence length of 2048"
     }
    },
-   "notes": "The nine uncommented rows of the OPT size table (the text says 'eight' models; a 760M row is commented out and excluded). Vocabulary is the GPT-2 BPE tokenizer with no size stated; no d_ff stated. ffn_gated=false rests on the plain 'ReLU activation' statement."
+   "notes": "The nine uncommented rows of the OPT size table (the text says 'eight' models; a 760M row is commented out and excluded). Vocabulary is the GPT-2 BPE tokenizer with no size stated; no d_ff stated. ffn_gated=false rests on the plain 'ReLU activation' statement.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [],
+    "notes": "Own model is OPT; it largely follows GPT-3, with nothing outside the standard set stated."
+   }
   },
   "2211.05100": {
    "model": "BLOOM",
@@ -2220,7 +2767,24 @@
      "quote": "Activation & \\multicolumn{5}{c|}{\\texttt{GELU}} & \\texttt{GELU}"
     }
    },
-   "notes": "Six BLOOM sizes from the hyperparameter table (BLOOM = 176B); BLOOMZ shares these shapes. No FFN width or norm placement in the LaTeX (architecture is only a figure); ffn_gated=false rests on the stated GELU activation and the paper adopting only ALiBi and embedding LayerNorm as deviations, not an explicit two-matrix statement."
+   "notes": "Six BLOOM sizes from the hyperparameter table (BLOOM = 176B); BLOOMZ shares these shapes. No FFN width or norm placement in the LaTeX (architecture is only a figure); ffn_gated=false rests on the stated GELU activation and the paper adopting only ALiBi and embedding LayerNorm as deviations, not an explicit two-matrix statement.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [],
+    "notes": "Own model is BLOOM; ALiBi and an extra LayerNorm after the embedding are both in the standard set."
+   }
   },
   "2211.09085": {
    "model": "Galactica",
@@ -2359,7 +2923,24 @@
      "quote": "we use GeLU activations for all model sizes"
     }
    },
-   "notes": "Five GAL sizes from the models table. Vocabulary is stated only as '50k' (recorded as 50000, approximate). d_ff and norm placement not stated; ffn_gated=false rests on the stated GeLU activation, not an explicit two-matrix statement."
+   "notes": "Five GAL sizes from the models table. Vocabulary is stated only as '50k' (recorded as 50000, approximate). d_ff and norm placement not stated; ffn_gated=false rests on the stated GeLU activation, not an explicit two-matrix statement.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [],
+    "notes": "Own model is Galactica; GeLU, no biases, learned positional embeddings."
+   }
   },
   "2302.13971": {
    "model": "LLaMA",
@@ -2452,7 +3033,24 @@
      "quote": "We replace the ReLU non-linearity by the SwiGLU activation function"
     }
    },
-   "notes": "Four LLaMA sizes; the table lists them as 6.7B/13.0B/32.5B/65.2B, text names them 7B/13B/33B/65B. d_ff given only as 2/3*4d (no number, so null); vocabulary size and context length not stated in the LaTeX."
+   "notes": "Four LLaMA sizes; the table lists them as 6.7B/13.0B/32.5B/65.2B, text names them 7B/13B/33B/65B. d_ff given only as 2/3*4d (no number, so null); vocabulary size and context length not stated in the LaTeX.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [],
+    "notes": "Own model is LLaMA; pre-RMSNorm, SwiGLU, RoPE."
+   }
   },
   "2304.01373": {
    "model": "Pythia",
@@ -2642,7 +3240,24 @@
     },
     "ffn_gated": null
    },
-   "notes": "Eight Pythia sizes (each trained on the Pile and the deduplicated Pile, same shapes). Vocabulary given only as a tokenizer file (20B-tokenizer.json), so null; d_ff, norm placement and FFN form not stated (only a bias-gelu-fusion config key)."
+   "notes": "Eight Pythia sizes (each trained on the Pile and the deduplicated Pile, same shapes). Vocabulary given only as a tokenizer file (20B-tokenizer.json), so null; d_ff, norm placement and FFN form not stated (only a bias-gelu-fusion config key).",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [],
+    "notes": "Own model is the Pythia suite; dense attention, RoPE, parallel attention/FF, untied embeddings."
+   }
   },
   "2304.03208": {
    "model": "Cerebras-GPT",
@@ -2834,7 +3449,88 @@
      "quote": "ffn = 8 * d_model**2 + 5 * d_model"
     }
    },
-   "notes": "Seven standard-parameterisation sizes; the five muP variants (111M-2.7B) have identical shapes and are not listed separately. The table gives d_head, not head count, so n_heads is null. ffn_gated=false from the parameter-count code (two d x 4d matrices with biases) and the GeLU FLOP comment; norm placement not named beyond 'standard GPT-2 transformer block'."
+   "notes": "Seven standard-parameterisation sizes; the five muP variants (111M-2.7B) have identical shapes and are not listed separately. The table gives d_head, not head count, so n_heads is null. ffn_gated=false from the parameter-count code (two d x 4d matrices with biases) and the GeLU FLOP comment; norm placement not named beyond 'standard GPT-2 transformer block'.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [
+     {
+      "name": "muP embedding output multiplier",
+      "replaces": "embedding output",
+      "formula": "Y_{emb} = m_{emb} \\cdot embed(X)",
+      "inputs": [
+       {
+        "meaning": "sum of token and position embeddings",
+        "role": "input",
+        "init": null
+       },
+       {
+        "meaning": "tunable constant m_emb (10.0 in the tuned values table)",
+        "role": "other",
+        "init": null
+       }
+      ],
+      "quote": "\\textmu P adds a tunable embedding output activation multiplier, $m_{\\text{emb}}$, which is multiplied by the sum of token and position embeddings.",
+      "category": "embed",
+      "scored": false,
+      "not_scored_because": "the muP models are a second family; the paper's main models (Cerebras-GPT) use the standard parameterisation"
+     },
+     {
+      "name": "muP output logit multiplier 1/m_width",
+      "replaces": "final logits",
+      "formula": "logits \\cdot 1/m_{width}, m_{width} = d_{model}/d_{model,base}",
+      "inputs": [
+       {
+        "meaning": "pre-softmax output logits",
+        "role": "input",
+        "init": null
+       },
+       {
+        "meaning": "constant 1/m_width, m_width = d_model / d_model,base (base 256)",
+        "role": "other",
+        "init": null
+       }
+      ],
+      "quote": "the model's output logits activation tensor (pre-softmax) is multiplied by $1/m_{\\text{width}}$ (when using shared embedding and output weights).",
+      "category": "final_logits",
+      "scored": false,
+      "not_scored_because": "the muP models are a second family; the paper's main models (Cerebras-GPT) use the standard parameterisation"
+     },
+     {
+      "name": "muP attention scale 1/d_head",
+      "replaces": "attention logits",
+      "formula": "softmax(Q^T K / d_{head}) V instead of 1/\\sqrt{d_{head}}",
+      "inputs": [
+       {
+        "meaning": "query-key dot products",
+        "role": "input",
+        "init": null
+       },
+       {
+        "meaning": "constant 1/d_head",
+        "role": "other",
+        "init": null
+       }
+      ],
+      "quote": "\\textmu P scales the key-query dot-product activations by $1/d_{\\text{head}}$, rather than using the $1/\\sqrt{d_{\\text{head}}}$ scaling originally proposed in \\cite{transformer2017}.",
+      "category": "attention_logits",
+      "scored": false,
+      "not_scored_because": "the muP models are a second family; the paper's main models (Cerebras-GPT) use the standard parameterisation"
+     }
+    ],
+    "token_mixing_ops": [],
+    "notes": "AMBIGUOUS: the 'main' Cerebras-GPT models use standard parameterisation with no new ops; the three muP ops apply only to the separately trained Cerebras-GPT + muP models (111M to 2.7B), which are part of the paper's own family. Drop them if only the SP models count."
+   }
   },
   "2307.09288": {
    "model": "Llama 2",
@@ -2921,7 +3617,24 @@
      "quote": "use the SwiGLU activation function"
     }
    },
-   "notes": "Four Llama 2 sizes (Llama 2-Chat shares them); no width/depth/head table. Vocabulary stated as '32k' (recorded 32000). n_kv_heads=8 for 34B and 70B combines the table's GQA marks with the appendix's 'GQA variant with 8 KV projections'; 7B and 13B use MHA, so null."
+   "notes": "Four Llama 2 sizes (Llama 2-Chat shares them); no width/depth/head table. Vocabulary stated as '32k' (recorded 32000). n_kv_heads=8 for 34B and 70B combines the table's GQA marks with the appendix's 'GQA variant with 8 KV projections'; 7B and 13B use MHA, so null.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [],
+    "notes": "Own model is Llama 2; Llama 1 architecture plus 4k context and GQA."
+   }
   },
   "2308.12950": {
    "model": "Code Llama",
@@ -2984,7 +3697,24 @@
     "parallel_block": null,
     "ffn_gated": null
    },
-   "notes": "Four sizes (7B/13B/34B/70B; Python and Instruct variants share them), initialised from Llama 2; the paper states no shapes, vocabulary size or block structure. Context is ambiguous: 4096 in the initial code training, 16384 in long-context fine-tuning (recorded 16384; Python/Instruct 70B skipped LCFT)."
+   "notes": "Four sizes (7B/13B/34B/70B; Python and Instruct variants share them), initialised from Llama 2; the paper states no shapes, vocabulary size or block structure. Context is ambiguous: 4096 in the initial code training, 16384 in long-context fine-tuning (recorded 16384; Python/Instruct 70B skipped LCFT).",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [],
+    "notes": "Own model is Code Llama; Llama 2 architecture with RoPE base period raised to 1,000,000 for long context (still RoPE)."
+   }
   },
   "2309.16609": {
    "model": "Qwen",
@@ -3067,7 +3797,51 @@
      "quote": "We have selected SwiGLU~\\citep{noamglu} as our activation function"
     }
    },
-   "notes": "Three base Qwen sizes from the model-size table (Chat/Code/Math variants built on them). Vocabulary is 'approximately 152K' (recorded 152000, approximate). d_ff given only as 8/3 of hidden size (no number, null). Code-Qwen trains to 8192 context, not used here."
+   "notes": "Three base Qwen sizes from the model-size table (Chat/Code/Math variants built on them). Vocabulary is 'approximately 152K' (recorded 152000, approximate). d_ff given only as 8/3 of hidden size (no number, null). Code-Qwen trains to 8192 context, not used here.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [
+     {
+      "name": "LogN attention scaling",
+      "replaces": "attention logits",
+      "formula": "q \\cdot k scaled by a factor depending on log of (context length / training length)",
+      "inputs": [
+       {
+        "meaning": "query-key dot products",
+        "role": "input",
+        "init": null
+       },
+       {
+        "meaning": "factor from ratio of context length to training length (fixed, not learned)",
+        "role": "other",
+        "init": null
+       }
+      ],
+      "quote": "LogN-Scaling rescales the dot product of the query and value by a factor that depends on the ratio of the context length to the training length, ensuring that the entropy of the attention value remains stable as the context length grows.",
+      "category": "attention_logits",
+      "scored": false,
+      "not_scored_because": "inference-time context extension, not the trained block"
+     }
+    ],
+    "token_mixing_ops": [
+     {
+      "name": "window attention (context extension)",
+      "quote": "Window attention restricts the attention to a limited context window, preventing the model from attending to tokens that are too far away."
+     }
+    ],
+    "notes": "Own model is Qwen (base). LogN-Scaling and window attention are training-free, inference-time context-extension mechanisms (with NTK-aware RoPE interpolation); QKV bias, RMSNorm, SwiGLU and RoPE are standard."
+   }
   },
   "2311.16867": {
    "model": "Falcon",
@@ -3168,7 +3942,24 @@
      "quote": "we do not use GLU \\citep{shazeer2020glu} because of the increased memory footprint, and use vanilla GeLU instead"
     }
    },
-   "notes": "Three Falcon sizes from the shape table (n_q taken as n_heads; multiquery for 7B, multigroup for 40B/180B). d_ff not stated. norm_placement 'pre' is inferred (layer norms feed the subsequent linear layer in the parallel block), not named; 40B/180B use two separate layer norms, 7B a single one."
+   "notes": "Three Falcon sizes from the shape table (n_q taken as n_heads; multiquery for 7B, multigroup for 40B/180B). d_ff not stated. norm_placement 'pre' is inferred (layer norms feed the subsequent linear layer in the parallel block), not named; 40B/180B use two separate layer norms, 7B a single one.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [],
+    "notes": "Own model is the Falcon series; multigroup attention, RoPE, GeLU, parallel attention/MLP, no biases; z-loss is a loss."
+   }
   },
   "2401.02385": {
    "model": "TinyLlama",
@@ -3216,7 +4007,24 @@
      "quote": "we follow Llama~\\citep{touvron2023llama,touvron2023llama2} and adopt SwiGLU"
     }
    },
-   "notes": "Single 1.1B configuration (v1.1 variants share it). '4 groups of key-value heads' read as n_kv_heads=4."
+   "notes": "Single 1.1B configuration (v1.1 variants share it). '4 groups of key-value heads' read as n_kv_heads=4.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [],
+    "notes": "Own model is TinyLlama; Llama 2 style (RoPE, pre-RMSNorm, SwiGLU, GQA)."
+   }
   },
   "2401.02954": {
    "model": "DeepSeek LLM",
@@ -3286,7 +4094,24 @@
      "quote": "using SwiGLU~\\citep{shazeer2020glu} as the activation function for the Feed-Forward Network (FFN)"
     }
    },
-   "notes": "DeepSeek LLM 7B and 67B (Table tab:architecture). Only the 67B uses GQA; the 7B row lists 32 KV heads but is stated to be MHA, so n_kv_heads is null for 7B. d_ff is given only as 8/3 d_model (not a number), so null."
+   "notes": "DeepSeek LLM 7B and 67B (Table tab:architecture). Only the 67B uses GQA; the 7B row lists 32 KV heads but is stated to be MHA, so n_kv_heads is null for 7B. d_ff is given only as 8/3 d_model (not a number), so null.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [],
+    "notes": "Own model is DeepSeek LLM; LLaMA micro design (pre-RMSNorm, SwiGLU, RoPE), GQA for 67B."
+   }
   },
   "2401.04088": {
    "model": "Mixtral 8x7B",
@@ -3331,7 +4156,35 @@
      "quote": "For \\mixtral we use the same SwiGLU architecture as the expert function $E_i(x)$"
     }
    },
-   "notes": "Single size, Mixtral 8x7B (8 experts, top-2); hidden_dim 14336 is each expert's FFN width. n_kv_heads=8 is stated only as a table entry (no explicit 'grouped-query' wording); norm placement is deferred to Mistral 7B and not stated."
+   "notes": "Single size, Mixtral 8x7B (8 experts, top-2); hidden_dim 14336 is each expert's FFN width. n_kv_heads=8 is stated only as a table entry (no explicit 'grouped-query' wording); norm placement is deferred to Mistral 7B and not stated.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [
+     {
+      "name": "top-2 sparse mixture-of-experts routing",
+      "quote": "but a simple and performant one is implemented by taking the softmax over the Top-K logits of a linear layer~\\cite{shazeer2017outrageously}."
+     }
+    ],
+    "positional": {
+     "value": "inherited:Mistral 7B",
+     "quote": "\\mixtral is based on a transformer architecture~\\cite{vaswani2017attention} and uses the same modifications as described in \\cite{jiang2023mistral}, with the notable exceptions that \\mixtral supports a fully dense context length of 32k tokens, and the feedforward blocks are replaced by Mixture-of-Expert layers (Section~\\ref{sec:smoe}).",
+     "rel_buckets": null,
+     "rel_max_distance": null
+    },
+    "notes": "Own model is Mixtral 8x7B. No positional scheme is named; it inherits the modifications of the cited Mistral 7B paper (\\cite{jiang2023mistral}). MoE routing listed under token mixing as a routing rule."
+   }
   },
   "2402.00838": {
    "model": "OLMo",
@@ -3409,7 +4262,24 @@
      "quote": "we use the SwiGLU activation function \\citep{Shazeer2020GLUVI} instead of ReLU"
     }
    },
-   "notes": "OLMo-1B and OLMo-7B. The main table gives 7B D as 4086 (typo); the appendix architecture table gives 4096, used here. Vocabulary is 50,280; the embedding matrix is padded to 50,304. 1B FFN width not stated. Norm is non-parametric LayerNorm but its placement is not stated."
+   "notes": "OLMo-1B and OLMo-7B. The main table gives 7B D as 4086 (typo); the appendix architecture table gives 4096, used here. Vocabulary is 50,280; the embedding matrix is padded to 50,304. 1B FFN width not stated. Norm is non-parametric LayerNorm but its placement is not stated.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [],
+    "notes": "Own model is OLMo; non-parametric layer norm, SwiGLU, RoPE, no biases. The only 'QK norm' mentions are draft notes placed after \\end{document} and do not say OLMo uses it, so qk_norm is absent."
+   }
   },
   "2402.14905": {
    "model": "MobileLLM",
@@ -3473,7 +4343,30 @@
      "quote": "Therefore, we use SwiGLU in FFN for the experiments afterward."
     }
    },
-   "notes": "MobileLLM-125M/350M from the appendix architecture table (GQA stated). MobileLLM-LS variants share these widths with adjacent-block weight sharing (2x effective depth) and are not listed separately. The only vocabulary mention (32k) is an illustrative example in the embedding-sharing discussion, and no sequence length is stated, so both are null."
+   "notes": "MobileLLM-125M/350M from the appendix architecture table (GQA stated). MobileLLM-LS variants share these widths with adjacent-block weight sharing (2x effective depth) and are not listed separately. The only vocabulary mention (32k) is an illustrative example in the embedding-sharing discussion, and no sequence length is stated, so both are null.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [],
+    "positional": {
+     "value": null,
+     "quote": null,
+     "rel_buckets": null,
+     "rel_max_distance": null
+    },
+    "notes": "Own model is MobileLLM (SwiGLU, deep-thin, embedding sharing, GQA, block-wise layer sharing). The cached LaTeX never states a positional scheme, so positional is null."
+   }
   },
   "2403.04652": {
    "model": "Yi",
@@ -3559,7 +4452,24 @@
      "quote": "We use SwiGLU~\\citep{swiglu} as Yi's post-attention layer"
     }
    },
-   "notes": "Yi-6B and Yi-34B (Table tab:model_config), plus the depth-upscaled Yi-9B (48 layers, other widths not restated). The 200K long-context variants keep the same sizes. FFN width given only as 8/3 h, so null."
+   "notes": "Yi-6B and Yi-34B (Table tab:model_config), plus the depth-upscaled Yi-9B (48 layers, other widths not restated). The 200K long-context variants keep the same sizes. FFN width given only as 8/3 h, so null.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [],
+    "notes": "Own model is Yi; LLaMA-based with GQA, SwiGLU and RoPE with adjusted base frequency."
+   }
   },
   "2403.08295": {
    "model": "Gemma",
@@ -3635,7 +4545,24 @@
      "quote": "The standard ReLU non-linearity is replaced by the approximated version of the GeGLU activation function."
     }
    },
-   "notes": "Gemma 2B and 7B. 2B uses multi-query attention (1 KV head); 7B is multi-head, so n_kv_heads null. 'Feedforward hidden dims' values are taken as stated (they count both GeGLU input projections)."
+   "notes": "Gemma 2B and 7B. 2B uses multi-query attention (1 KV head); 7B is multi-head, so n_kv_heads null. 'Feedforward hidden dims' values are taken as stated (they count both GeGLU input projections).",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [],
+    "notes": "Own model is Gemma 1; MQA (2B), RoPE, GeGLU, RMSNorm. No embedding scaling or other non-standard op is stated."
+   }
   },
   "2403.17297": {
    "model": "InternLM2",
@@ -3724,7 +4651,24 @@
     "parallel_block": null,
     "ffn_gated": null
    },
-   "notes": "InternLM2 1.8B/7B/20B. The table gives n_kv_heads and n_q_per_head (2/4/6) but not the query-head count, so n_heads is null (not computed). Vocabulary size is described only as a sum of token groups, not stated as a number. Context: ~90% of pre-training at 4096 tokens, then a 32k phase; 32768 recorded. SwiGLU is stated for LLaMA, which InternLM2 says it adheres to; RMSNorm placement not stated."
+   "notes": "InternLM2 1.8B/7B/20B. The table gives n_kv_heads and n_q_per_head (2/4/6) but not the query-head count, so n_heads is null (not computed). Vocabulary size is described only as a sum of token groups, not stated as a number. Context: ~90% of pre-training at 4096 tokens, then a 32k phase; 32768 recorded. SwiGLU is stated for LLaMA, which InternLM2 says it adheres to; RMSNorm placement not stated.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [],
+    "token_mixing_ops": [],
+    "notes": "Own model is InternLM2; LLaMA structure with fused/interleaved Wqkv and GQA."
+   }
   },
   "2405.04434": {
    "model": "DeepSeek-V2",
@@ -3785,7 +4729,79 @@
     "parallel_block": null,
     "ffn_gated": null
    },
-   "notes": "DeepSeek-V2 (236B total / 21B active) and DeepSeek-V2-Lite (15.7B / 2.4B). Attention is MLA, not GQA, so n_kv_heads null. d_ff is each routed/shared expert's intermediate width (the first layer is a dense FFN of unstated width). Vocabulary given only as '100K'; pre-training sequence length 4K, later extended to 128K with YaRN (32K training). Norm and activation deferred to DeepSeek 67B without naming them."
+   "notes": "DeepSeek-V2 (236B total / 21B active) and DeepSeek-V2-Lite (15.7B / 2.4B). Attention is MLA, not GQA, so n_kv_heads null. d_ff is each routed/shared expert's intermediate width (the first layer is a dense FFN of unstated width). Vocabulary given only as '100K'; pre-training sequence length 4K, later extended to 128K with YaRN (32K training). Norm and activation deferred to DeepSeek 67B without naming them.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [
+     {
+      "name": "bottleneck scaling factors",
+      "replaces": "compressed latent vectors and routed-expert intermediate hidden states",
+      "formula": "multiply fixed scaling factors at the width bottlenecks",
+      "inputs": [
+       {
+        "meaning": "compressed KV/query latent vectors, routed-expert intermediate hidden states",
+        "role": "input",
+        "init": null
+       },
+       {
+        "meaning": "additional scaling factor (value not stated)",
+        "role": "other",
+        "init": null
+       }
+      ],
+      "quote": "Therefore, in practice, we employ additional RMS Norm layers after the compressed latent vectors, and multiply additional scaling factors at the width bottlenecks (i.e., the compressed latent vectors and the intermediate hidden states of routed experts) to ensure stable training.",
+      "category": "bottleneck_scale",
+      "scored": true
+     },
+     {
+      "name": "YaRN attention length scaling factor",
+      "replaces": "attention logits",
+      "formula": "\\sqrt{t} = 0.0707 \\ln{s} + 1, with s = 40",
+      "inputs": [
+       {
+        "meaning": "attention logits",
+        "role": "input",
+        "init": null
+       },
+       {
+        "meaning": "YaRN scale s = 40",
+        "role": "other",
+        "init": null
+       }
+      ],
+      "quote": "The factor $\\sqrt{t}$ is computed as $\\sqrt{t} = 0.0707 \\ln{s} + 1$, aiming at minimizing the perplexity.",
+      "category": "attention_logits",
+      "scored": false,
+      "not_scored_because": "context extension (YaRN), not the trained block"
+     }
+    ],
+    "token_mixing_ops": [
+     {
+      "name": "Multi-head Latent Attention (low-rank joint KV compression with decoupled RoPE)",
+      "quote": "For \\dsvii{}, we design an innovative attention mechanism called Multi-head Latent Attention (\\dsattn{})."
+     },
+     {
+      "name": "DeepSeekMoE routing (fine-grained and shared experts, top-K softmax affinity)",
+      "quote": "For FFNs, we employ the \\dsmoe{} architecture~\\citep{deepseekmoe}."
+     },
+     {
+      "name": "device-limited routing",
+      "quote": "We design a device-limited routing mechanism to bound MoE-related communication costs."
+     }
+    ],
+    "notes": "Own model is DeepSeek-V2. The extra RMSNorm on the compressed latent vectors is NOT a q/k norm (it normalises the low-rank latents, not described as normalising queries/keys), so qk_norm is absent. The YaRN factor belongs to the long-context extension stage."
+   }
   },
   "2407.10671": {
    "model": "Qwen2",
@@ -3957,7 +4973,55 @@
      "quote": "we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation"
     }
    },
-   "notes": "Qwen2 dense 0.5B/1.5B/7B/72B and MoE 57B-A14B (Table tab:to_sota); the MoE intermediate size is per expert (64 routed, 8 activated, 8 shared). Context raised from 4,096 to 32,768 in the final pre-training phase; 32768 recorded."
+   "notes": "Qwen2 dense 0.5B/1.5B/7B/72B and MoE 57B-A14B (Table tab:to_sota); the MoE intermediate size is per expert (64 routed, 8 activated, 8 shared). Context raised from 4,096 to 32,768 in the final pre-training phase; 32768 recorded.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [
+     {
+      "name": "YaRN attention rescaling",
+      "replaces": "attention logits",
+      "formula": "attention weights rescaled by the YaRN factor for length extrapolation",
+      "inputs": [
+       {
+        "meaning": "attention logits",
+        "role": "input",
+        "init": null
+       },
+       {
+        "meaning": "YaRN length factor (value not stated)",
+        "role": "other",
+        "init": null
+       }
+      ],
+      "quote": "Moreover, we also employ YARN~\\citep{yarn} to rescale the attention weights for better length extrapolation.",
+      "category": "attention_logits",
+      "scored": false,
+      "not_scored_because": "context extension (YaRN), not the trained block"
+     }
+    ],
+    "token_mixing_ops": [
+     {
+      "name": "Dual Chunk Attention",
+      "quote": "To expand the context window of Qwen2, we implement Dual Chunk Attention (DCA, \\citealp{chunkllama}), which segments long sequences into chunks of manageable lengths."
+     },
+     {
+      "name": "MoE top-k expert routing with shared experts (57B-A14B)",
+      "quote": "Each token is directed to a specific expert $E_i$ for computation based on probabilities assigned by a gated network $G$:"
+     }
+    ],
+    "notes": "Own model is the Qwen2 series (dense models headline; MoE routing applies only to 57B-A14B). GQA, SwiGLU, RoPE, QKV bias and RMSNorm are standard; YaRN/DCA belong to context extension."
+   }
   },
   "2408.00118": {
    "model": "Gemma 2",
@@ -4067,7 +5131,70 @@
      "quote": "Non-linearity & GeGLU & GeGLU & GeGLU \\\\"
     }
    },
-   "notes": "Gemma 2 2B/9B/27B. Attention alternates local sliding-window (4096) and global (8192) layers; context 8192. Feedforward dim taken as stated in the table."
+   "notes": "Gemma 2 2B/9B/27B. Attention alternates local sliding-window (4096) and global (8192) layers; context 8192. Feedforward dim taken as stated in the table.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [
+     {
+      "name": "attention logit soft-capping",
+      "replaces": "attention logits",
+      "formula": "logits \\leftarrow soft\\_cap * \\tanh(logits / soft\\_cap), soft\\_cap = 50.0",
+      "inputs": [
+       {
+        "meaning": "attention logits",
+        "role": "input",
+        "init": null
+       },
+       {
+        "meaning": "soft_cap = 50.0",
+        "role": "other",
+        "init": null
+       }
+      ],
+      "quote": "We set the soft\\_cap parameter to $50.0$ for the self-attention layers and to $30.0$ for the final layer.",
+      "category": "attention_logits",
+      "scored": true
+     },
+     {
+      "name": "final logit soft-capping",
+      "replaces": "final logits",
+      "formula": "logits \\leftarrow soft\\_cap * \\tanh(logits / soft\\_cap), soft\\_cap = 30.0",
+      "inputs": [
+       {
+        "meaning": "final output logits",
+        "role": "input",
+        "init": null
+       },
+       {
+        "meaning": "soft_cap = 30.0",
+        "role": "other",
+        "init": null
+       }
+      ],
+      "quote": "More specifically, we cap the logits with the following function: $$\\text{logits} \\leftarrow \\text{soft\\_cap} * \\tanh(\\text{logits} / \\text{soft\\_cap}).$$",
+      "category": "final_logits",
+      "scored": true
+     }
+    ],
+    "token_mixing_ops": [
+     {
+      "name": "alternating local sliding-window (4096) and global attention",
+      "quote": "We alternate between a local sliding window attention~\\citep{slidingwindow, beltagy2020longformer} and global attention~\\citep{globalattention} in every other layer."
+     }
+    ],
+    "notes": "Own model is Gemma 2. Pre- and post-sublayer RMSNorm is standard RMSNorm. No query pre-attention scaling or embedding scaling is stated in the LaTeX."
+   }
   }
  }
 }

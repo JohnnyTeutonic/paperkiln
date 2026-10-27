@@ -3,18 +3,36 @@
  "title": "RoFormer: Enhanced Transformer with Rotary Position Embedding",
  "fields": {
   "context_length": {
-   "value": 1536,
-   "evidence": "2 & 1536 & 256 & 12.5k & 1.61 & 66.8\\% \\\\ [Table tb:roformer-pretrain]",
+   "value": 512,
+   "evidence": "We train both BERT and RoFormer with batch size 64 and maximum sequence length of 512 for 100k steps. [Sec. 4.2.2 Implementation details]",
    "verdict": "used"
+  },
+  "norm": {
+   "value": "layernorm",
+   "evidence": "we replace the original sinusoidal position encoding of BERT with our RoPE during the pre-training step [Sec. 4.2 Pre-training Language Modeling]",
+   "verdict": "inherited"
+  },
+  "activation": {
+   "value": "gelu",
+   "evidence": "we replace the original sinusoidal position encoding of BERT with our RoPE during the pre-training step [Sec. 4.2 Pre-training Language Modeling]",
+   "verdict": "inherited"
   },
   "positional": {
    "value": "rope",
-   "evidence": "In these experiments, we carried out some modifications on WoBERT \\cite{zhuiyipretrainedmodels} by replacing the absolute position embedding with our proposed RoPE. [Sec. Evaluation on Chinese Data / Implementation]",
+   "evidence": "For RoFormer, we replace the sinusoidal position encoding in the self-attention block of the baseline model with our proposed RoPE and realizes self-attention according to \\Cref{fn:rope-qk}. [Sec. 4.2.2 Implementation details]",
    "verdict": "used"
+  },
+  "residual": {
+   "value": "residual",
+   "evidence": "we replace the original sinusoidal position encoding of BERT with our RoPE during the pre-training step [Sec. 4.2 Pre-training Language Modeling]",
+   "verdict": "unverified",
+   "reasons": [
+    "inherited from bert, whose curated entry has no residual"
+   ]
   },
   "attention": {
    "value": "exact",
-   "evidence": "we replace the sinusoidal position encoding in the self-attention block of the baseline model with our proposed RoPE and realizes self-attention according to \\Cref{fn:rope-qk} [Sec. Pre-training Language Modeling / Implementation details]",
+   "evidence": "For RoFormer, we replace the sinusoidal position encoding in the self-attention block of the baseline model with our proposed RoPE and realizes self-attention according to \\Cref{fn:rope-qk}. [Sec. 4.2.2 Implementation details]",
    "verdict": "used"
   }
  },
@@ -24,29 +42,69 @@
   "n_heads",
   "n_kv_heads",
   "d_ff",
-  "vocab_size",
-  "norm",
-  "activation",
-  "residual"
+  "vocab_size"
  ],
- "unverified": [],
+ "unverified": [
+  {
+   "field": "d_model",
+   "reasons": [
+    "inherited from bert, whose curated entry has no d_model"
+   ]
+  },
+  {
+   "field": "n_layers",
+   "reasons": [
+    "inherited from bert, whose curated entry has no n_layers"
+   ]
+  },
+  {
+   "field": "n_heads",
+   "reasons": [
+    "inherited from bert, whose curated entry has no n_heads"
+   ]
+  },
+  {
+   "field": "n_kv_heads",
+   "reasons": [
+    "inherited from bert, whose curated entry has no n_kv_heads"
+   ]
+  },
+  {
+   "field": "d_ff",
+   "reasons": [
+    "inherited from bert, whose curated entry has no d_ff"
+   ]
+  },
+  {
+   "field": "vocab_size",
+   "reasons": [
+    "inherited from bert, whose curated entry has no vocab_size"
+   ]
+  },
+  {
+   "field": "residual",
+   "reasons": [
+    "inherited from bert, whose curated entry has no residual"
+   ]
+  }
+ ],
  "mentions": {},
  "inherits": {
-  "ancestor": "WoBERT (BERT-style encoder); the English pre-training variant is bert-base-uncased",
-  "evidence": "In these experiments, we carried out some modifications on WoBERT \\cite{zhuiyipretrainedmodels} by replacing the absolute position embedding with our proposed RoPE.",
-  "section": "Sec. Evaluation on Chinese Data / Implementation"
+  "ancestor": "bert",
+  "evidence": "we replace the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+  "section": "Sec. 4.2 Pre-training Language Modeling"
  },
  "variants": [
   {
-   "context_length": 1536
+   "context_length": 512
   }
  ],
  "mechanism_scan": [
   {
    "mechanism": "encoder-decoder or encoder-only model",
-   "where": "llm extraction, UNVERIFIED quote, Sec. Evaluation on Chinese Data / Implementation",
+   "where": "llm extraction, UNVERIFIED quote, Sec. 4.2 Pre-training Language Modeling",
    "blocking": true,
-   "evidence": "In these experiments, we carried out some modifications on WoBERT \\cite{zhuiyipretrainedmodels} by replacing the absolute position embedding with our proposed RoPE."
+   "evidence": "we replace the original sinusoidal position encoding of BERT with our RoPE during the pre-training step"
   }
  ],
  "source": {
@@ -54,151 +112,175 @@
   "sent_sha256": "88bc607c59af65d9afa43426e16362ee17312aff460e9a68b4483c9ea2c014ec",
   "from": "https://arxiv.org/e-print/2104.09864",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
+  "extractor_sha256": "9d5951b0f11c920aaf075abead17d7d4e619d37402d47690ba452de15620e921",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
+  "prompt_sha256": "e6c6c5052b656885910d1539b8c320ba4ecb9262a6079252b852f1ff637b03ef",
   "n_calls": 1,
-  "cost_usd": 0.227348,
+  "cost_usd": 0.316284,
   "request_ids": [
-   "req_011CgFgphmwXQugXSSgFEZJU"
+   "req_011CgRs5Kjk5Ei4zXBwcLEU9"
   ]
  },
  "llm": {
   "output": {
    "title": "RoFormer: Enhanced Transformer with Rotary Position Embedding",
-   "model_name": "RoFormer (Chinese long-text model built on WoBERT with RoPE)",
+   "model_name": "RoFormer (BERT-base with RoPE, English pre-training)",
    "family": {
     "value": "encoder_only",
     "status": "inherited",
-    "quote": "In these experiments, we carried out some modifications on WoBERT \\cite{zhuiyipretrainedmodels} by replacing the absolute position embedding with our proposed RoPE.",
-    "where": "Sec. Evaluation on Chinese Data / Implementation"
+    "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+    "where": "Sec. 4.2 Pre-training Language Modeling"
    },
    "inherits": {
-    "ancestor": "WoBERT (BERT-style encoder); the English pre-training variant is bert-base-uncased",
-    "quote": "In these experiments, we carried out some modifications on WoBERT \\cite{zhuiyipretrainedmodels} by replacing the absolute position embedding with our proposed RoPE.",
-    "where": "Sec. Evaluation on Chinese Data / Implementation"
+    "ancestor": "BERT (bert-base-uncased)",
+    "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+    "where": "Sec. 4.2 Pre-training Language Modeling"
    },
    "configs": [
     {
-     "name": "RoFormer (Chinese)",
+     "name": "base (bert-base-uncased + RoPE)",
      "d_model": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
+      "value": "768",
+      "status": "inherited",
+      "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+      "where": "Sec. 4.2 Pre-training Language Modeling"
      },
      "n_layers": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
+      "value": "12",
+      "status": "inherited",
+      "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+      "where": "Sec. 4.2 Pre-training Language Modeling"
      },
      "n_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
+      "value": "12",
+      "status": "inherited",
+      "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+      "where": "Sec. 4.2 Pre-training Language Modeling"
      },
      "n_kv_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
+      "value": "12",
+      "status": "inherited",
+      "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+      "where": "Sec. 4.2 Pre-training Language Modeling"
      },
      "head_dim": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
+      "value": "64",
+      "status": "inherited",
+      "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+      "where": "Sec. 4.2 Pre-training Language Modeling"
      },
      "d_ff": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
+      "value": "3072",
+      "status": "inherited",
+      "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+      "where": "Sec. 4.2 Pre-training Language Modeling"
      },
      "vocab_size": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
+      "value": "30522",
+      "status": "inherited",
+      "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+      "where": "Sec. 4.2 Pre-training Language Modeling"
      },
      "context_length": {
-      "value": "1536",
+      "value": "512",
       "status": "stated",
-      "quote": "2 & 1536 & 256 & 12.5k & 1.61 & 66.8\\% \\\\",
-      "where": "Table tb:roformer-pretrain"
+      "quote": "We train both BERT and RoFormer with batch size 64 and maximum sequence length  of 512 for 100k steps.",
+      "where": "Sec. 4.2.2 Implementation details"
      }
     }
    ],
-   "primary_config": "RoFormer (Chinese)",
+   "primary_config": "base (bert-base-uncased + RoPE)",
    "flavours": {
     "norm": {
+     "value": "layernorm",
+     "status": "inherited",
+     "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+     "where": "Sec. 4.2 Pre-training Language Modeling"
+    },
+    "norm_placement": {
+     "value": "post",
+     "status": "inherited",
+     "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+     "where": "Sec. 4.2 Pre-training Language Modeling"
+    },
+    "norm_placement_attn": {
      "value": "",
      "status": "not_stated",
      "quote": "",
      "where": ""
     },
-    "norm_placement": {
+    "norm_placement_ffn": {
      "value": "",
      "status": "not_stated",
      "quote": "",
      "where": ""
     },
     "norm_eps": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": ""
+     "value": "1e-12",
+     "status": "inherited",
+     "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+     "where": "Sec. 4.2 Pre-training Language Modeling"
     },
     "activation": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": ""
+     "value": "gelu",
+     "status": "inherited",
+     "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+     "where": "Sec. 4.2 Pre-training Language Modeling"
     },
     "positional": {
      "value": "rope",
      "status": "stated",
-     "quote": "In these experiments, we carried out some modifications on WoBERT \\cite{zhuiyipretrainedmodels} by replacing the absolute position embedding with our proposed RoPE.",
-     "where": "Sec. Evaluation on Chinese Data / Implementation"
+     "quote": "For RoFormer, we replace the sinusoidal position encoding in the self-attention block of the baseline model with our proposed RoPE and realizes self-attention according to \\Cref{fn:rope-qk}.",
+     "where": "Sec. 4.2.2 Implementation details"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "rope_pairing": {
      "value": "interleaved",
      "status": "stated",
      "quote": "\\cos{m\\theta_1}& -\\sin{m\\theta_1}&0&0&\\cdots&0&0\\\\",
-     "where": "eq fn:rope-RMat"
+     "where": "eq:fn:rope-RMat"
     },
     "rope_theta": {
      "value": "10000",
      "status": "stated",
-     "quote": "is the rotary matrix with pre-defined parameters $\\Theta = \\{\\theta_i=10000^{-2(i-1)/d}, i \\in [1, 2, ..., d/2]\\}$",
-     "where": "Sec. General form"
+     "quote": "$\\Theta = \\{\\theta_i=10000^{-2(i-1)/d}, i \\in [1, 2, ..., d/2]\\}$",
+     "where": "Sec. 3.2.2 General form"
     },
     "rope_fraction": {
-     "value": "1.0",
-     "status": "stated",
-     "quote": "we divide the d-dimension space into $d/2$ sub-spaces and combine them in the merit of the linearity of the inner product",
-     "where": "Sec. General form"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "residual": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": ""
+     "value": "residual",
+     "status": "inherited",
+     "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+     "where": "Sec. 4.2 Pre-training Language Modeling"
     },
     "parallel_block": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": ""
+     "value": "false",
+     "status": "inherited",
+     "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+     "where": "Sec. 4.2 Pre-training Language Modeling"
     },
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "we replace the sinusoidal position encoding in the self-attention block of the baseline model with our proposed RoPE and realizes self-attention according to \\Cref{fn:rope-qk}",
-     "where": "Sec. Pre-training Language Modeling / Implementation details"
+     "quote": "For RoFormer, we replace the sinusoidal position encoding in the self-attention block of the baseline model with our proposed RoPE and realizes self-attention according to \\Cref{fn:rope-qk}.",
+     "where": "Sec. 4.2.2 Implementation details"
     },
     "window_size": {
      "value": "",
@@ -213,28 +295,34 @@
      "where": ""
     },
     "qkv_bias": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": ""
+     "value": "true",
+     "status": "inherited",
+     "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+     "where": "Sec. 4.2 Pre-training Language Modeling"
     },
     "mlp_bias": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": ""
+     "value": "true",
+     "status": "inherited",
+     "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+     "where": "Sec. 4.2 Pre-training Language Modeling"
+    },
+    "qk_norm": {
+     "value": "none",
+     "status": "inherited",
+     "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+     "where": "Sec. 4.2 Pre-training Language Modeling"
     },
     "tied_embeddings": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": ""
+     "value": "true",
+     "status": "inherited",
+     "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+     "where": "Sec. 4.2 Pre-training Language Modeling"
     },
     "moe": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": ""
+     "value": "false",
+     "status": "inherited",
+     "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+     "where": "Sec. 4.2 Pre-training Language Modeling"
     },
     "n_experts": {
      "value": "",
@@ -253,35 +341,91 @@
      "status": "not_stated",
      "quote": "",
      "where": ""
+    },
+    "ssm": {
+     "value": "none",
+     "status": "inherited",
+     "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+     "where": "Sec. 4.2 Pre-training Language Modeling"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     }
    },
    "block_ops": [
     {
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding (no absolute position embedding; replaced by RoPE)",
+     "role": "token embedding",
      "inputs": [
       "tokens"
      ],
-     "output": "x",
+     "output": "e",
      "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "embed",
+     "op": "layernorm",
+     "role": "embedding layernorm (BERT)",
+     "inputs": [
+      "e"
+     ],
+     "output": "x",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "1e-12",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
+      }
+     ],
      "new_op": ""
     },
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "query projection W_q",
+     "role": "query projection",
      "inputs": [
       "x"
      ],
      "output": "q",
      "attributes": [
       {
+       "name": "out",
+       "value": "768",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
+      },
+      {
        "name": "bias",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "true",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
       }
      ],
      "new_op": ""
@@ -289,18 +433,25 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "key projection W_k",
+     "role": "key projection",
      "inputs": [
       "x"
      ],
      "output": "k",
      "attributes": [
       {
+       "name": "out",
+       "value": "768",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
+      },
+      {
        "name": "bias",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "true",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
       }
      ],
      "new_op": ""
@@ -308,18 +459,25 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "value projection W_v",
+     "role": "value projection",
      "inputs": [
       "x"
      ],
      "output": "v",
      "attributes": [
       {
+       "name": "out",
+       "value": "768",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
+      },
+      {
        "name": "bias",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "true",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
       }
      ],
      "new_op": ""
@@ -327,25 +485,25 @@
     {
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary position embedding on queries",
+     "role": "rotary embedding on queries",
      "inputs": [
       "q"
      ],
-     "output": "q_rot",
+     "output": "qr",
      "attributes": [
       {
        "name": "rope_heads",
        "value": "all",
        "status": "stated",
        "quote": "f_{\\{q, k\\}}(\\x_m, m) = \\R^d_{\\Theta, m}\\W_{\\{q, k\\}}\\x_m",
-       "where": "eq fn:rope-fqk"
+       "where": "eq:fn:rope-fqk"
       },
       {
        "name": "pairing",
        "value": "interleaved",
        "status": "stated",
        "quote": "\\cos{m\\theta_1}& -\\sin{m\\theta_1}&0&0&\\cdots&0&0\\\\",
-       "where": "eq fn:rope-RMat"
+       "where": "eq:fn:rope-RMat"
       },
       {
        "name": "n_rot",
@@ -358,8 +516,8 @@
        "name": "theta",
        "value": "10000",
        "status": "stated",
-       "quote": "is the rotary matrix with pre-defined parameters $\\Theta = \\{\\theta_i=10000^{-2(i-1)/d}, i \\in [1, 2, ..., d/2]\\}$",
-       "where": "Sec. General form"
+       "quote": "$\\Theta = \\{\\theta_i=10000^{-2(i-1)/d}, i \\in [1, 2, ..., d/2]\\}$",
+       "where": "Sec. 3.2.2 General form"
       }
      ],
      "new_op": ""
@@ -367,25 +525,25 @@
     {
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary position embedding on keys",
+     "role": "rotary embedding on keys",
      "inputs": [
       "k"
      ],
-     "output": "k_rot",
+     "output": "kr",
      "attributes": [
       {
        "name": "rope_heads",
        "value": "all",
        "status": "stated",
        "quote": "f_{\\{q, k\\}}(\\x_m, m) = \\R^d_{\\Theta, m}\\W_{\\{q, k\\}}\\x_m",
-       "where": "eq fn:rope-fqk"
+       "where": "eq:fn:rope-fqk"
       },
       {
        "name": "pairing",
        "value": "interleaved",
        "status": "stated",
        "quote": "\\cos{m\\theta_1}& -\\sin{m\\theta_1}&0&0&\\cdots&0&0\\\\",
-       "where": "eq fn:rope-RMat"
+       "where": "eq:fn:rope-RMat"
       },
       {
        "name": "n_rot",
@@ -398,8 +556,8 @@
        "name": "theta",
        "value": "10000",
        "status": "stated",
-       "quote": "is the rotary matrix with pre-defined parameters $\\Theta = \\{\\theta_i=10000^{-2(i-1)/d}, i \\in [1, 2, ..., d/2]\\}$",
-       "where": "Sec. General form"
+       "quote": "$\\Theta = \\{\\theta_i=10000^{-2(i-1)/d}, i \\in [1, 2, ..., d/2]\\}$",
+       "where": "Sec. 3.2.2 General form"
       }
      ],
      "new_op": ""
@@ -407,55 +565,55 @@
     {
      "subgraph": "block",
      "op": "attention",
-     "role": "softmax self-attention with rotated q/k",
+     "role": "bidirectional multi-head self-attention",
      "inputs": [
-      "q_rot",
-      "k_rot",
+      "qr",
+      "kr",
       "v"
      ],
-     "output": "o",
+     "output": "a",
      "attributes": [
       {
        "name": "heads",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "12",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
       },
       {
        "name": "kv_heads",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "12",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
       },
       {
        "name": "head_dim",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "64",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
       },
       {
        "name": "scale",
-       "value": "1/sqrt(d)",
-       "status": "stated",
-       "quote": "a_{m,n}&=\\frac{\\exp(\\frac{\\q_m^{\\intercal}\\k_n}{\\sqrt{d}})}{\\sum_{j=1}^{N}\\exp(\\frac{\\q_m^{\\intercal}\\k_j}{\\sqrt{d}})}",
-       "where": "eq fn:attn"
+       "value": "1/sqrt(head_dim)",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
       },
       {
        "name": "causal",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "false",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
       },
       {
        "name": "window",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "0",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
       },
       {
        "name": "sinks",
@@ -472,16 +630,23 @@
      "op": "linear",
      "role": "attention output projection",
      "inputs": [
-      "o"
+      "a"
      ],
-     "output": "attn_out",
+     "output": "o",
      "attributes": [
       {
+       "name": "out",
+       "value": "768",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
+      },
+      {
        "name": "bias",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "true",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
       }
      ],
      "new_op": ""
@@ -489,113 +654,363 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "residual add around attention (assumed from Transformer encoder; placement and norms not stated)",
+     "role": "attention residual",
      "inputs": [
       "x",
-      "attn_out"
+      "o"
+     ],
+     "output": "r1",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "post-attention layernorm",
+     "inputs": [
+      "r1"
      ],
      "output": "h",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "1e-12",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "u",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "3072",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
+      },
+      {
+       "name": "bias",
+       "value": "true",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "gelu",
+     "role": "FFN activation",
+     "inputs": [
+      "u"
+     ],
+     "output": "g",
+     "attributes": [
+      {
+       "name": "approx",
+       "value": "none",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "g"
+     ],
+     "output": "f",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "768",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
+      },
+      {
+       "name": "bias",
+       "value": "true",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "h",
+      "f"
+     ],
+     "output": "r2",
      "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "post-FFN layernorm",
+     "inputs": [
+      "r2"
+     ],
+     "output": "x",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "1e-12",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "linear",
+     "role": "MLM transform dense",
+     "inputs": [
+      "x"
+     ],
+     "output": "t",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "768",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
+      },
+      {
+       "name": "bias",
+       "value": "true",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "gelu",
+     "role": "MLM transform activation",
+     "inputs": [
+      "t"
+     ],
+     "output": "tg",
+     "attributes": [
+      {
+       "name": "approx",
+       "value": "none",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "layernorm",
+     "role": "MLM transform layernorm",
+     "inputs": [
+      "tg"
+     ],
+     "output": "tn",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "1e-12",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "linear",
+     "role": "tied MLM output projection",
+     "inputs": [
+      "tn"
+     ],
+     "output": "logits",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "30522",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
+      },
+      {
+       "name": "bias",
+       "value": "true",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
+      },
+      {
+       "name": "tied_to",
+       "value": "token_embd",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling"
+      }
+     ],
      "new_op": ""
     }
    ],
    "new_ops": [],
    "mechanisms_outside_ir": [],
-   "notes": "The headline model is the Chinese RoFormer (WoBERT with its absolute position embedding replaced by RoPE). It is the model used for the long-text benchmark named in the abstract and the Huggingface release. Other settings are not described: the MT encoder-decoder on Transformer-base, the English BERT (bert-base-uncased) replacement, and Performer+RoPE on enwik8 with 12 layers, 768 dimensions and 12 heads. The paper states only the positional mechanism. RoPE uses interleaved adjacent pairs, theta base 10000, and rotates all dimensions. All size fields are left not_stated, as are norm, FFN and activation, biases and the MLM head, because the paper defers to WoBERT/BERT without restating them. The FFN, the norms and the head are therefore omitted from block_ops. context_length 1536 is the longest pre-training stage; stage 1 and the main downstream setting use 512, and a 1024 cut-off is also evaluated. The paper writes theta both as 10000^{-2(i-1)/d} and as 10000^{-2i/d}."
+   "notes": "I describe RoFormer as BERT (bert-base-uncased) with its absolute position encoding replaced by RoPE. This is the English MLM pre-training model, also fine-tuned on GLUE. The paper states only the RoPE details and the 512 max length. All other values are inherited from bert-base-uncased through the sentences saying RoFormer replaces BERT's position encoding. Inherited BERT-only parts not modelled: segment (token-type) embeddings and the BERT pooler. The paper wrongly calls BERT's position encoding sinusoidal; BERT's is learned, but it is replaced by RoPE either way. The Chinese RoFormer (built on WoBERT, used for the CAIL2019 long-text results and the HF release) has the same structure, but its vocab is not stated. Conflict: theta_i is given as 10000^{-2(i-1)/d} in Sec. 3.2.2 and as 10000^{-2i/d} in Sec. 3.3; base 10000 either way. rope_fraction is left not_stated, though the rotation matrix covers all d dims (full rotation). The MT encoder-decoder and Performer linear-attention experiments are side experiments and are not described."
   },
   "verification": {
    "errors": [],
    "warnings": [],
    "inherits": {
-    "ancestor": "WoBERT (BERT-style encoder); the English pre-training variant is bert-base-uncased",
-    "resolved": null,
-    "quote": "In these experiments, we carried out some modifications on WoBERT \\cite{zhuiyipretrainedmodels} by replacing the absolute position embedding with our proposed RoPE.",
-    "where": "Sec. Evaluation on Chinese Data / Implementation",
+    "ancestor": "BERT (bert-base-uncased)",
+    "resolved": "bert",
+    "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+    "where": "Sec. 4.2 Pre-training Language Modeling",
     "quote_found": true
    },
    "family": {
     "value": "encoder_only",
     "status": "inherited",
-    "quote": "In these experiments, we carried out some modifications on WoBERT \\cite{zhuiyipretrainedmodels} by replacing the absolute position embedding with our proposed RoPE.",
-    "where": "Sec. Evaluation on Chinese Data / Implementation",
+    "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+    "where": "Sec. 4.2 Pre-training Language Modeling",
     "reasons": [
-     "inherited, but the ancestor is not in fetch.ANCESTORS (the curated table)"
+     "inherited from bert, whose curated entry has no family"
     ],
     "check": "unverified"
    },
    "configs": [
     {
-     "name": "RoFormer (Chinese)",
+     "name": "base (bert-base-uncased + RoPE)",
      "d_model": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
-      "reasons": [],
-      "check": "not_stated"
+      "value": "768",
+      "status": "inherited",
+      "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+      "where": "Sec. 4.2 Pre-training Language Modeling",
+      "reasons": [
+       "inherited from bert, whose curated entry has no d_model"
+      ],
+      "check": "unverified"
      },
      "n_layers": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
-      "reasons": [],
-      "check": "not_stated"
+      "value": "12",
+      "status": "inherited",
+      "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+      "where": "Sec. 4.2 Pre-training Language Modeling",
+      "reasons": [
+       "inherited from bert, whose curated entry has no n_layers"
+      ],
+      "check": "unverified"
      },
      "n_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
-      "reasons": [],
-      "check": "not_stated"
+      "value": "12",
+      "status": "inherited",
+      "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+      "where": "Sec. 4.2 Pre-training Language Modeling",
+      "reasons": [
+       "inherited from bert, whose curated entry has no n_heads"
+      ],
+      "check": "unverified"
      },
      "n_kv_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
-      "reasons": [],
-      "check": "not_stated"
+      "value": "12",
+      "status": "inherited",
+      "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+      "where": "Sec. 4.2 Pre-training Language Modeling",
+      "reasons": [
+       "inherited from bert, whose curated entry has no n_kv_heads"
+      ],
+      "check": "unverified"
      },
      "head_dim": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
-      "reasons": [],
-      "check": "not_stated"
+      "value": "64",
+      "status": "inherited",
+      "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+      "where": "Sec. 4.2 Pre-training Language Modeling",
+      "reasons": [
+       "inherited from bert, whose curated entry has no head_dim"
+      ],
+      "check": "unverified"
      },
      "d_ff": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
-      "reasons": [],
-      "check": "not_stated"
+      "value": "3072",
+      "status": "inherited",
+      "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+      "where": "Sec. 4.2 Pre-training Language Modeling",
+      "reasons": [
+       "inherited from bert, whose curated entry has no d_ff"
+      ],
+      "check": "unverified"
      },
      "vocab_size": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
-      "reasons": [],
-      "check": "not_stated"
+      "value": "30522",
+      "status": "inherited",
+      "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+      "where": "Sec. 4.2 Pre-training Language Modeling",
+      "reasons": [
+       "inherited from bert, whose curated entry has no vocab_size"
+      ],
+      "check": "unverified"
      },
      "context_length": {
-      "value": "1536",
+      "value": "512",
       "status": "stated",
-      "quote": "2 & 1536 & 256 & 12.5k & 1.61 & 66.8\\% \\\\",
-      "where": "Table tb:roformer-pretrain",
+      "quote": "We train both BERT and RoFormer with batch size 64 and maximum sequence length  of 512 for 100k steps.",
+      "where": "Sec. 4.2.2 Implementation details",
       "reasons": [],
       "check": "verified"
      },
      "consistency": []
     }
    ],
-   "primary_config": "RoFormer (Chinese)",
+   "primary_config": "base (bert-base-uncased + RoPE)",
    "flavours": {
     "norm": {
+     "value": "layernorm",
+     "status": "inherited",
+     "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+     "where": "Sec. 4.2 Pre-training Language Modeling",
+     "reasons": [],
+     "check": "verified"
+    },
+    "norm_placement": {
+     "value": "post",
+     "status": "inherited",
+     "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+     "where": "Sec. 4.2 Pre-training Language Modeling",
+     "reasons": [
+      "inherited from bert, whose curated entry has no norm_placement"
+     ],
+     "check": "unverified"
+    },
+    "norm_placement_attn": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -603,7 +1018,7 @@
      "reasons": [],
      "check": "not_stated"
     },
-    "norm_placement": {
+    "norm_placement_ffn": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -612,35 +1027,54 @@
      "check": "not_stated"
     },
     "norm_eps": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": "",
-     "reasons": [],
-     "check": "not_stated"
+     "value": "1e-12",
+     "status": "inherited",
+     "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+     "where": "Sec. 4.2 Pre-training Language Modeling",
+     "reasons": [
+      "inherited from bert, whose curated entry has no norm_eps"
+     ],
+     "check": "unverified"
     },
     "activation": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": "",
+     "value": "gelu",
+     "status": "inherited",
+     "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+     "where": "Sec. 4.2 Pre-training Language Modeling",
      "reasons": [],
-     "check": "not_stated"
+     "check": "verified"
     },
     "positional": {
      "value": "rope",
      "status": "stated",
-     "quote": "In these experiments, we carried out some modifications on WoBERT \\cite{zhuiyipretrainedmodels} by replacing the absolute position embedding with our proposed RoPE.",
-     "where": "Sec. Evaluation on Chinese Data / Implementation",
+     "quote": "For RoFormer, we replace the sinusoidal position encoding in the self-attention block of the baseline model with our proposed RoPE and realizes self-attention according to \\Cref{fn:rope-qk}.",
+     "where": "Sec. 4.2.2 Implementation details",
      "reasons": [],
      "check": "verified"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "rope_pairing": {
      "value": "interleaved",
      "status": "stated",
      "quote": "\\cos{m\\theta_1}& -\\sin{m\\theta_1}&0&0&\\cdots&0&0\\\\",
-     "where": "eq fn:rope-RMat",
+     "where": "eq:fn:rope-RMat",
      "reasons": [
+      "where names a \\label not in the source ('eq:fn:rope-RMat'); kept as a note",
       "the quote does not name interleaved (looked for /interleav|adjacent|pair/)"
      ],
      "check": "unverified"
@@ -648,42 +1082,44 @@
     "rope_theta": {
      "value": "10000",
      "status": "stated",
-     "quote": "is the rotary matrix with pre-defined parameters $\\Theta = \\{\\theta_i=10000^{-2(i-1)/d}, i \\in [1, 2, ..., d/2]\\}$",
-     "where": "Sec. General form",
+     "quote": "$\\Theta = \\{\\theta_i=10000^{-2(i-1)/d}, i \\in [1, 2, ..., d/2]\\}$",
+     "where": "Sec. 3.2.2 General form",
      "reasons": [],
      "check": "verified"
     },
     "rope_fraction": {
-     "value": "1.0",
-     "status": "stated",
-     "quote": "we divide the d-dimension space into $d/2$ sub-spaces and combine them in the merit of the linearity of the inner product",
-     "where": "Sec. General form",
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "residual": {
+     "value": "residual",
+     "status": "inherited",
+     "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+     "where": "Sec. 4.2 Pre-training Language Modeling",
      "reasons": [
-      "1.0 does not occur in its quote"
+      "inherited from bert, whose curated entry has no residual"
      ],
      "check": "unverified"
     },
-    "residual": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": "",
-     "reasons": [],
-     "check": "not_stated"
-    },
     "parallel_block": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": "",
-     "reasons": [],
-     "check": "not_stated"
+     "value": "false",
+     "status": "inherited",
+     "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+     "where": "Sec. 4.2 Pre-training Language Modeling",
+     "reasons": [
+      "inherited from bert, whose curated entry has no parallel_block"
+     ],
+     "check": "unverified"
     },
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "we replace the sinusoidal position encoding in the self-attention block of the baseline model with our proposed RoPE and realizes self-attention according to \\Cref{fn:rope-qk}",
-     "where": "Sec. Pre-training Language Modeling / Implementation details",
+     "quote": "For RoFormer, we replace the sinusoidal position encoding in the self-attention block of the baseline model with our proposed RoPE and realizes self-attention according to \\Cref{fn:rope-qk}.",
+     "where": "Sec. 4.2.2 Implementation details",
      "reasons": [],
      "check": "quote_only"
     },
@@ -704,36 +1140,54 @@
      "check": "not_stated"
     },
     "qkv_bias": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": "",
-     "reasons": [],
-     "check": "not_stated"
+     "value": "true",
+     "status": "inherited",
+     "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+     "where": "Sec. 4.2 Pre-training Language Modeling",
+     "reasons": [
+      "inherited from bert, whose curated entry has no qkv_bias"
+     ],
+     "check": "unverified"
     },
     "mlp_bias": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": "",
-     "reasons": [],
-     "check": "not_stated"
+     "value": "true",
+     "status": "inherited",
+     "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+     "where": "Sec. 4.2 Pre-training Language Modeling",
+     "reasons": [
+      "inherited from bert, whose curated entry has no mlp_bias"
+     ],
+     "check": "unverified"
+    },
+    "qk_norm": {
+     "value": "none",
+     "status": "inherited",
+     "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+     "where": "Sec. 4.2 Pre-training Language Modeling",
+     "reasons": [
+      "inherited from bert, whose curated entry has no qk_norm"
+     ],
+     "check": "unverified"
     },
     "tied_embeddings": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": "",
-     "reasons": [],
-     "check": "not_stated"
+     "value": "true",
+     "status": "inherited",
+     "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+     "where": "Sec. 4.2 Pre-training Language Modeling",
+     "reasons": [
+      "inherited from bert, whose curated entry has no tied_embeddings"
+     ],
+     "check": "unverified"
     },
     "moe": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": "",
-     "reasons": [],
-     "check": "not_stated"
+     "value": "false",
+     "status": "inherited",
+     "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+     "where": "Sec. 4.2 Pre-training Language Modeling",
+     "reasons": [
+      "inherited from bert, whose curated entry has no moe"
+     ],
+     "check": "unverified"
     },
     "n_experts": {
      "value": "",
@@ -758,6 +1212,48 @@
      "where": "",
      "reasons": [],
      "check": "not_stated"
+    },
+    "ssm": {
+     "value": "none",
+     "status": "inherited",
+     "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+     "where": "Sec. 4.2 Pre-training Language Modeling",
+     "reasons": [
+      "inherited from bert, whose curated entry has no ssm"
+     ],
+     "check": "unverified"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     }
    },
    "new_ops": [],
@@ -766,34 +1262,36 @@
      "i": 0,
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding (no absolute position embedding; replaced by RoPE)",
+     "role": "token embedding",
      "inputs": [
       "tokens"
      ],
-     "output": "x",
+     "output": "e",
      "new_op": "",
      "attributes": [],
      "errors": []
     },
     {
      "i": 1,
-     "subgraph": "block",
-     "op": "linear",
-     "role": "query projection W_q",
+     "subgraph": "embed",
+     "op": "layernorm",
+     "role": "embedding layernorm (BERT)",
      "inputs": [
-      "x"
+      "e"
      ],
-     "output": "q",
+     "output": "x",
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "bias"
+       "value": "1e-12",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no eps"
+       ],
+       "check": "unverified",
+       "name": "eps"
       }
      ],
      "errors": []
@@ -802,20 +1300,33 @@
      "i": 2,
      "subgraph": "block",
      "op": "linear",
-     "role": "key projection W_k",
+     "role": "query projection",
      "inputs": [
       "x"
      ],
-     "output": "k",
+     "output": "q",
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
+       "value": "768",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no out"
+       ],
+       "check": "unverified",
+       "name": "out"
+      },
+      {
+       "value": "true",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no bias"
+       ],
+       "check": "unverified",
        "name": "bias"
       }
      ],
@@ -825,20 +1336,33 @@
      "i": 3,
      "subgraph": "block",
      "op": "linear",
-     "role": "value projection W_v",
+     "role": "key projection",
      "inputs": [
       "x"
      ],
-     "output": "v",
+     "output": "k",
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
+       "value": "768",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no out"
+       ],
+       "check": "unverified",
+       "name": "out"
+      },
+      {
+       "value": "true",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no bias"
+       ],
+       "check": "unverified",
        "name": "bias"
       }
      ],
@@ -847,49 +1371,35 @@
     {
      "i": 4,
      "subgraph": "block",
-     "op": "rope",
-     "role": "rotary position embedding on queries",
+     "op": "linear",
+     "role": "value projection",
      "inputs": [
-      "q"
+      "x"
      ],
-     "output": "q_rot",
+     "output": "v",
      "new_op": "",
      "attributes": [
       {
-       "value": "all",
-       "status": "stated",
-       "quote": "f_{\\{q, k\\}}(\\x_m, m) = \\R^d_{\\Theta, m}\\W_{\\{q, k\\}}\\x_m",
-       "where": "eq fn:rope-fqk",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "rope_heads"
+       "value": "768",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no out"
+       ],
+       "check": "unverified",
+       "name": "out"
       },
       {
-       "value": "interleaved",
-       "status": "stated",
-       "quote": "\\cos{m\\theta_1}& -\\sin{m\\theta_1}&0&0&\\cdots&0&0\\\\",
-       "where": "eq fn:rope-RMat",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "pairing"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "n_rot"
-      },
-      {
-       "value": "10000",
-       "status": "stated",
-       "quote": "is the rotary matrix with pre-defined parameters $\\Theta = \\{\\theta_i=10000^{-2(i-1)/d}, i \\in [1, 2, ..., d/2]\\}$",
-       "where": "Sec. General form",
-       "reasons": [],
-       "check": "verified",
-       "name": "theta"
+       "value": "true",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
       }
      ],
      "errors": []
@@ -898,19 +1408,21 @@
      "i": 5,
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary position embedding on keys",
+     "role": "rotary embedding on queries",
      "inputs": [
-      "k"
+      "q"
      ],
-     "output": "k_rot",
+     "output": "qr",
      "new_op": "",
      "attributes": [
       {
        "value": "all",
        "status": "stated",
        "quote": "f_{\\{q, k\\}}(\\x_m, m) = \\R^d_{\\Theta, m}\\W_{\\{q, k\\}}\\x_m",
-       "where": "eq fn:rope-fqk",
-       "reasons": [],
+       "where": "eq:fn:rope-fqk",
+       "reasons": [
+        "where names a \\label not in the source ('eq:fn:rope-fqk'); kept as a note"
+       ],
        "check": "quote_only",
        "name": "rope_heads"
       },
@@ -918,8 +1430,10 @@
        "value": "interleaved",
        "status": "stated",
        "quote": "\\cos{m\\theta_1}& -\\sin{m\\theta_1}&0&0&\\cdots&0&0\\\\",
-       "where": "eq fn:rope-RMat",
-       "reasons": [],
+       "where": "eq:fn:rope-RMat",
+       "reasons": [
+        "where names a \\label not in the source ('eq:fn:rope-RMat'); kept as a note"
+       ],
        "check": "quote_only",
        "name": "pairing"
       },
@@ -935,8 +1449,8 @@
       {
        "value": "10000",
        "status": "stated",
-       "quote": "is the rotary matrix with pre-defined parameters $\\Theta = \\{\\theta_i=10000^{-2(i-1)/d}, i \\in [1, 2, ..., d/2]\\}$",
-       "where": "Sec. General form",
+       "quote": "$\\Theta = \\{\\theta_i=10000^{-2(i-1)/d}, i \\in [1, 2, ..., d/2]\\}$",
+       "where": "Sec. 3.2.2 General form",
        "reasons": [],
        "check": "verified",
        "name": "theta"
@@ -947,68 +1461,134 @@
     {
      "i": 6,
      "subgraph": "block",
-     "op": "attention",
-     "role": "softmax self-attention with rotated q/k",
+     "op": "rope",
+     "role": "rotary embedding on keys",
      "inputs": [
-      "q_rot",
-      "k_rot",
-      "v"
+      "k"
      ],
-     "output": "o",
+     "output": "kr",
      "new_op": "",
      "attributes": [
       {
+       "value": "all",
+       "status": "stated",
+       "quote": "f_{\\{q, k\\}}(\\x_m, m) = \\R^d_{\\Theta, m}\\W_{\\{q, k\\}}\\x_m",
+       "where": "eq:fn:rope-fqk",
+       "reasons": [
+        "where names a \\label not in the source ('eq:fn:rope-fqk'); kept as a note"
+       ],
+       "check": "quote_only",
+       "name": "rope_heads"
+      },
+      {
+       "value": "interleaved",
+       "status": "stated",
+       "quote": "\\cos{m\\theta_1}& -\\sin{m\\theta_1}&0&0&\\cdots&0&0\\\\",
+       "where": "eq:fn:rope-RMat",
+       "reasons": [
+        "where names a \\label not in the source ('eq:fn:rope-RMat'); kept as a note"
+       ],
+       "check": "quote_only",
+       "name": "pairing"
+      },
+      {
        "value": "",
        "status": "not_stated",
        "quote": "",
        "where": "",
        "reasons": [],
        "check": "not_stated",
+       "name": "n_rot"
+      },
+      {
+       "value": "10000",
+       "status": "stated",
+       "quote": "$\\Theta = \\{\\theta_i=10000^{-2(i-1)/d}, i \\in [1, 2, ..., d/2]\\}$",
+       "where": "Sec. 3.2.2 General form",
+       "reasons": [],
+       "check": "verified",
+       "name": "theta"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 7,
+     "subgraph": "block",
+     "op": "attention",
+     "role": "bidirectional multi-head self-attention",
+     "inputs": [
+      "qr",
+      "kr",
+      "v"
+     ],
+     "output": "a",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "12",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no heads"
+       ],
+       "check": "unverified",
        "name": "heads"
       },
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
+       "value": "12",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no kv_heads"
+       ],
+       "check": "unverified",
        "name": "kv_heads"
       },
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
+       "value": "64",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no head_dim"
+       ],
+       "check": "unverified",
        "name": "head_dim"
       },
       {
-       "value": "1/sqrt(d)",
-       "status": "stated",
-       "quote": "a_{m,n}&=\\frac{\\exp(\\frac{\\q_m^{\\intercal}\\k_n}{\\sqrt{d}})}{\\sum_{j=1}^{N}\\exp(\\frac{\\q_m^{\\intercal}\\k_j}{\\sqrt{d}})}",
-       "where": "eq fn:attn",
-       "reasons": [],
-       "check": "verified",
+       "value": "1/sqrt(head_dim)",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no scale"
+       ],
+       "check": "unverified",
        "name": "scale"
       },
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
+       "value": "false",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no causal"
+       ],
+       "check": "unverified",
        "name": "causal"
       },
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
+       "value": "0",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no window"
+       ],
+       "check": "unverified",
        "name": "window"
       },
       {
@@ -1024,75 +1604,653 @@
      "errors": []
     },
     {
-     "i": 7,
+     "i": 8,
      "subgraph": "block",
      "op": "linear",
      "role": "attention output projection",
      "inputs": [
-      "o"
+      "a"
      ],
-     "output": "attn_out",
+     "output": "o",
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
+       "value": "768",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no out"
+       ],
+       "check": "unverified",
+       "name": "out"
+      },
+      {
+       "value": "true",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no bias"
+       ],
+       "check": "unverified",
        "name": "bias"
       }
      ],
      "errors": []
     },
     {
-     "i": 8,
+     "i": 9,
      "subgraph": "block",
      "op": "add",
-     "role": "residual add around attention (assumed from Transformer encoder; placement and norms not stated)",
+     "role": "attention residual",
      "inputs": [
       "x",
-      "attn_out"
+      "o"
+     ],
+     "output": "r1",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 10,
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "post-attention layernorm",
+     "inputs": [
+      "r1"
      ],
      "output": "h",
      "new_op": "",
+     "attributes": [
+      {
+       "value": "1e-12",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no eps"
+       ],
+       "check": "unverified",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 11,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "u",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "3072",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no out"
+       ],
+       "check": "unverified",
+       "name": "out"
+      },
+      {
+       "value": "true",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 12,
+     "subgraph": "block",
+     "op": "gelu",
+     "role": "FFN activation",
+     "inputs": [
+      "u"
+     ],
+     "output": "g",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "none",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no approx"
+       ],
+       "check": "unverified",
+       "name": "approx"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 13,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "g"
+     ],
+     "output": "f",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "768",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no out"
+       ],
+       "check": "unverified",
+       "name": "out"
+      },
+      {
+       "value": "true",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 14,
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "h",
+      "f"
+     ],
+     "output": "r2",
+     "new_op": "",
      "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 15,
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "post-FFN layernorm",
+     "inputs": [
+      "r2"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "1e-12",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no eps"
+       ],
+       "check": "unverified",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 16,
+     "subgraph": "head",
+     "op": "linear",
+     "role": "MLM transform dense",
+     "inputs": [
+      "x"
+     ],
+     "output": "t",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "768",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no out"
+       ],
+       "check": "unverified",
+       "name": "out"
+      },
+      {
+       "value": "true",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 17,
+     "subgraph": "head",
+     "op": "gelu",
+     "role": "MLM transform activation",
+     "inputs": [
+      "t"
+     ],
+     "output": "tg",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "none",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no approx"
+       ],
+       "check": "unverified",
+       "name": "approx"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 18,
+     "subgraph": "head",
+     "op": "layernorm",
+     "role": "MLM transform layernorm",
+     "inputs": [
+      "tg"
+     ],
+     "output": "tn",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "1e-12",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no eps"
+       ],
+       "check": "unverified",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 19,
+     "subgraph": "head",
+     "op": "linear",
+     "role": "tied MLM output projection",
+     "inputs": [
+      "tn"
+     ],
+     "output": "logits",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "30522",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no out"
+       ],
+       "check": "unverified",
+       "name": "out"
+      },
+      {
+       "value": "true",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      },
+      {
+       "value": "token_embd",
+       "status": "inherited",
+       "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step",
+       "where": "Sec. 4.2 Pre-training Language Modeling",
+       "reasons": [
+        "inherited from bert, whose curated entry has no tied_to"
+       ],
+       "check": "unverified",
+       "name": "tied_to"
+      }
+     ],
      "errors": []
     }
    ],
    "mechanisms_outside_ir": [],
    "summary": {
     "counts": {
-     "verified": 6,
+     "verified": 7,
      "quote_only": 5,
-     "unverified": 3,
-     "not_stated": 34
+     "unverified": 48,
+     "not_stated": 17
     },
     "unverified": [
      {
       "field": "family",
       "reasons": [
-       "inherited, but the ancestor is not in fetch.ANCESTORS (the curated table)"
+       "inherited from bert, whose curated entry has no family"
+      ]
+     },
+     {
+      "field": "configs[base (bert-base-uncased + RoPE)].d_model",
+      "reasons": [
+       "inherited from bert, whose curated entry has no d_model"
+      ]
+     },
+     {
+      "field": "configs[base (bert-base-uncased + RoPE)].n_layers",
+      "reasons": [
+       "inherited from bert, whose curated entry has no n_layers"
+      ]
+     },
+     {
+      "field": "configs[base (bert-base-uncased + RoPE)].n_heads",
+      "reasons": [
+       "inherited from bert, whose curated entry has no n_heads"
+      ]
+     },
+     {
+      "field": "configs[base (bert-base-uncased + RoPE)].n_kv_heads",
+      "reasons": [
+       "inherited from bert, whose curated entry has no n_kv_heads"
+      ]
+     },
+     {
+      "field": "configs[base (bert-base-uncased + RoPE)].head_dim",
+      "reasons": [
+       "inherited from bert, whose curated entry has no head_dim"
+      ]
+     },
+     {
+      "field": "configs[base (bert-base-uncased + RoPE)].d_ff",
+      "reasons": [
+       "inherited from bert, whose curated entry has no d_ff"
+      ]
+     },
+     {
+      "field": "configs[base (bert-base-uncased + RoPE)].vocab_size",
+      "reasons": [
+       "inherited from bert, whose curated entry has no vocab_size"
+      ]
+     },
+     {
+      "field": "flavours.norm_placement",
+      "reasons": [
+       "inherited from bert, whose curated entry has no norm_placement"
+      ]
+     },
+     {
+      "field": "flavours.norm_eps",
+      "reasons": [
+       "inherited from bert, whose curated entry has no norm_eps"
       ]
      },
      {
       "field": "flavours.rope_pairing",
       "reasons": [
+       "where names a \\label not in the source ('eq:fn:rope-RMat'); kept as a note",
        "the quote does not name interleaved (looked for /interleav|adjacent|pair/)"
       ]
      },
      {
-      "field": "flavours.rope_fraction",
+      "field": "flavours.residual",
       "reasons": [
-       "1.0 does not occur in its quote"
+       "inherited from bert, whose curated entry has no residual"
+      ]
+     },
+     {
+      "field": "flavours.parallel_block",
+      "reasons": [
+       "inherited from bert, whose curated entry has no parallel_block"
+      ]
+     },
+     {
+      "field": "flavours.qkv_bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no qkv_bias"
+      ]
+     },
+     {
+      "field": "flavours.mlp_bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no mlp_bias"
+      ]
+     },
+     {
+      "field": "flavours.qk_norm",
+      "reasons": [
+       "inherited from bert, whose curated entry has no qk_norm"
+      ]
+     },
+     {
+      "field": "flavours.tied_embeddings",
+      "reasons": [
+       "inherited from bert, whose curated entry has no tied_embeddings"
+      ]
+     },
+     {
+      "field": "flavours.moe",
+      "reasons": [
+       "inherited from bert, whose curated entry has no moe"
+      ]
+     },
+     {
+      "field": "flavours.ssm",
+      "reasons": [
+       "inherited from bert, whose curated entry has no ssm"
+      ]
+     },
+     {
+      "field": "block_ops[1].eps",
+      "reasons": [
+       "inherited from bert, whose curated entry has no eps"
+      ]
+     },
+     {
+      "field": "block_ops[2].out",
+      "reasons": [
+       "inherited from bert, whose curated entry has no out"
+      ]
+     },
+     {
+      "field": "block_ops[2].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[3].out",
+      "reasons": [
+       "inherited from bert, whose curated entry has no out"
+      ]
+     },
+     {
+      "field": "block_ops[3].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[4].out",
+      "reasons": [
+       "inherited from bert, whose curated entry has no out"
+      ]
+     },
+     {
+      "field": "block_ops[4].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[7].heads",
+      "reasons": [
+       "inherited from bert, whose curated entry has no heads"
+      ]
+     },
+     {
+      "field": "block_ops[7].kv_heads",
+      "reasons": [
+       "inherited from bert, whose curated entry has no kv_heads"
+      ]
+     },
+     {
+      "field": "block_ops[7].head_dim",
+      "reasons": [
+       "inherited from bert, whose curated entry has no head_dim"
+      ]
+     },
+     {
+      "field": "block_ops[7].scale",
+      "reasons": [
+       "inherited from bert, whose curated entry has no scale"
+      ]
+     },
+     {
+      "field": "block_ops[7].causal",
+      "reasons": [
+       "inherited from bert, whose curated entry has no causal"
+      ]
+     },
+     {
+      "field": "block_ops[7].window",
+      "reasons": [
+       "inherited from bert, whose curated entry has no window"
+      ]
+     },
+     {
+      "field": "block_ops[8].out",
+      "reasons": [
+       "inherited from bert, whose curated entry has no out"
+      ]
+     },
+     {
+      "field": "block_ops[8].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[10].eps",
+      "reasons": [
+       "inherited from bert, whose curated entry has no eps"
+      ]
+     },
+     {
+      "field": "block_ops[11].out",
+      "reasons": [
+       "inherited from bert, whose curated entry has no out"
+      ]
+     },
+     {
+      "field": "block_ops[11].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[12].approx",
+      "reasons": [
+       "inherited from bert, whose curated entry has no approx"
+      ]
+     },
+     {
+      "field": "block_ops[13].out",
+      "reasons": [
+       "inherited from bert, whose curated entry has no out"
+      ]
+     },
+     {
+      "field": "block_ops[13].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[15].eps",
+      "reasons": [
+       "inherited from bert, whose curated entry has no eps"
+      ]
+     },
+     {
+      "field": "block_ops[16].out",
+      "reasons": [
+       "inherited from bert, whose curated entry has no out"
+      ]
+     },
+     {
+      "field": "block_ops[16].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[17].approx",
+      "reasons": [
+       "inherited from bert, whose curated entry has no approx"
+      ]
+     },
+     {
+      "field": "block_ops[18].eps",
+      "reasons": [
+       "inherited from bert, whose curated entry has no eps"
+      ]
+     },
+     {
+      "field": "block_ops[19].out",
+      "reasons": [
+       "inherited from bert, whose curated entry has no out"
+      ]
+     },
+     {
+      "field": "block_ops[19].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[19].tied_to",
+      "reasons": [
+       "inherited from bert, whose curated entry has no tied_to"
       ]
      }
     ],
     "new_op_errors": [],
     "node_errors": [],
     "n_new_ops": 0,
-    "n_block_ops": 9
+    "n_block_ops": 20
    }
   }
  }

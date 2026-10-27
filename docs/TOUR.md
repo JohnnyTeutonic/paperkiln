@@ -466,7 +466,7 @@ can consume a run.
 | **Flex family (paper-faithful)** | ✅ | Any depth; d_ff, LayerNorm/RMSNorm, GELU/ReLU/SwiGLU or any `expr:<e>` activation, learned/sinusoidal all spec-real; bitwise equivalence pin at defaults (`test_flex`, 6 receipts) |
 | **Runtime-defined ops (`expr`)** | ✅ | A closed elementwise grammar with row reductions, parsed at runtime into differentiable primitives (`include/microtorch/expr.hpp`); finite-difference gradcheck per expression; exported as an IR `expr` node that ember.cpp runs; C++ vs the numpy reference (`spec/tools/ir_expr.py`) within 1.19e-7 ([below](#the-ir-one-graph-any-architecture)) |
 | **Third-party GGUFs → IR** | ✅ | `spec/tools/gguf_ir.py` builds the IR for llama.cpp GGUFs of qwen2, qwen3, gemma3, gpt2, gptneox, mamba and windowed llama/mistral; `spec/tools/ir_numpy.py` runs it; gated against HF transformers (GPT-2 124M, Pythia-160m 40/40 greedy; Gemma 3 and Mistral sliding window on random tiny models); ember.cpp builds the same IR in C++ |
-| **LLM extractor** | ✅ | `papers/llm_extract.py`: one Claude call per paper, IR op graph + `expr` for new ops + a verified quote per value; 40-paper bench 82 correct / 9 abstain / 1 wrong (rule-based: 72 / 20 / 0); feeds `tools/arxiv_to_chat.py` (paper → trained model → chat) |
+| **LLM extractor** | ✅ | `papers/llm_extract.py`: one Claude call per paper, IR op graph + `expr` for new ops + a verified quote per value; 40-paper bench: flavours 81 correct / 11 abstain / 0 wrong (rule-based: 73 / 19 / 0), sizes 569 / 2 / 71; feeds `tools/arxiv_to_chat.py` (paper → trained model → chat) |
 | **From-paper flow** | ✅ | Drag an arXiv link → scored extraction (rule-based: grouped AUROC 0.905, no wrong assertion in 92 verdicts on the 40-paper bench) → editable spec → ▶ train → artifact downloads → chat |
 | **Atlas experiment engine** | ✅ | `mtsweep` (grid/PB12/fold-over PB12f, linked factors, aliasing advisories, resumable, OMP-aware) + `atlas_analyze` (main effects + two-way interactions, seed-based SEs); Stages 2–3 findings published |
 | **Atlas viewer** | ✅ | `studio/atlas.html` (+ `/atlas` in serve mode): in-page effects, clickable interaction heatmap, seed spreads — client math pinned to the Python analyser on real Stage 3 rows |
@@ -683,14 +683,17 @@ the build by name, so `tools/arxiv_to_chat.py` refuses rather than approximates.
 tokens, cost and request id go to `papers/llm_extract_receipts/ledger.jsonl`, and `--budget-usd`
 refuses a call before it is sent if its worst case would pass the cap.
 
-**Measured** on the same 40-paper truth set as the rule-based scorer (22 Oct 2026, $18 for the
-40): 82 correct, 9 abstain, 1 wrong, against 72 / 20 / 0. The prompt asks for the headline model
+**Measured** on the same 40-paper truth set as the rule-based scorer (the 26 Oct prompt, run on
+27 Oct 2026, $18.08; `papers/bench_score.py` against labels read off the LaTeX): flavours 81
+correct, 11 abstain, 0 wrong, against 73 / 19 / 0; sizes 569 correct, 2 wrong, 71 abstain, against
+136 / 8 / 498; the block graph 91 / 2 / 2. The per-sublayer norm placement is right on all 17
+labelled papers, T5's relative bias comes back with its 32 buckets and distance 128, and no paper
+gets a q/k norm, an SSM or a learned input it does not have. The prompt asks for the headline model
 when a paper trains models for different settings (Longformer's pretrained model, not its
-character-level language model). The wrong verdict is Primer's norm: the paper says Primer "uses
-a modified version of layer normalization that uses $x(x - \mu)$ instead of $(x-\mu)^2$, but we
-find this is not always effective", and the extractor quoted it and wrote it as an `expr`, where
-the truth set records the RMSNorm of the T5 baseline Primer was searched from. A new op blocks the
-build, so no wrong model trains from it. Receipts: `papers/llm_extract_receipts/`.
+character-level language model). Primer's norm is its own: the paper says Primer "uses a modified
+version of layer normalization that uses $x(x - \mu)$ instead of $(x-\mu)^2$", and the extractor
+writes it as an `expr`. A new op blocks the build until the chain wires it. Receipts:
+`papers/llm_extract_receipts/`.
 
 **Relevance gate.** Before any extraction, `python papers/llm_extract.py gate <ids...>` (and the
 first stage of `tools/arxiv_to_chat.py`) makes one small Claude call on the paper's title and

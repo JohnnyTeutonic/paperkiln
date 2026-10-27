@@ -54,10 +54,10 @@
   },
   "residual": {
    "value": "residual",
-   "evidence": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama. [Sec. 1 Introduction]",
+   "evidence": "our model is based on the decoder-only Transformer~\\citep{vaswani2017transformer}. [Sec. 2.2 Architecture]",
    "verdict": "unverified",
    "reasons": [
-    "inherited from llama, whose curated entry has no residual"
+    "the quote does not name residual (looked for /residual|skip/)"
    ]
   },
   "attention": {
@@ -71,7 +71,7 @@
   {
    "field": "residual",
    "reasons": [
-    "inherited from llama, whose curated entry has no residual"
+    "the quote does not name residual (looked for /residual|skip/)"
    ]
   }
  ],
@@ -105,20 +105,20 @@
   "sent_sha256": "bbd6c53a3c4bc43f1837a59ee34b892408f70f0a3f9c3a288112e875f3ecbaa5",
   "from": "https://arxiv.org/e-print/2401.02385",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
+  "extractor_sha256": "9d5951b0f11c920aaf075abead17d7d4e619d37402d47690ba452de15620e921",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
+  "prompt_sha256": "e6c6c5052b656885910d1539b8c320ba4ecb9262a6079252b852f1ff637b03ef",
   "n_calls": 1,
-  "cost_usd": 0.225748,
+  "cost_usd": 0.198704,
   "request_ids": [
-   "req_011CgFiTERJFt41Kuoz1uQiP"
+   "req_011CgRtWRZ3jAQeg9gUZQhPb"
   ]
  },
  "llm": {
   "output": {
    "title": "TinyLlama: An Open-Source Small Language Model",
-   "model_name": "TinyLlama (1.1B; v1.0 and v1.1 share the same architecture)",
+   "model_name": "TinyLlama",
    "family": {
     "value": "decoder_only",
     "status": "stated",
@@ -132,7 +132,7 @@
    },
    "configs": [
     {
-     "name": "TinyLlama-1.1B",
+     "name": "1.1B",
      "d_model": {
       "value": "2048",
       "status": "stated",
@@ -183,7 +183,7 @@
      }
     }
    ],
-   "primary_config": "TinyLlama-1.1B",
+   "primary_config": "1.1B",
    "flavours": {
     "norm": {
      "value": "rmsnorm",
@@ -197,11 +197,23 @@
      "quote": "we adopt pre-norm, i.e., normalize the inputs of each sub-layer in Transformer,",
      "where": "Sec. 2.2 Pre-norm and RMSNorm"
     },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
     "norm_eps": {
-     "value": "1e-5",
-     "status": "inherited",
-     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-     "where": "Sec. 1 Introduction"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "activation": {
      "value": "swiglu",
@@ -215,6 +227,18 @@
      "quote": "We use Rotary Positional Embedding (RoPE)~\\citep{su2021roformer} to inject positional information into our model.",
      "where": "Sec. 2.2 Positional embedding"
     },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
     "rope_pairing": {
      "value": "",
      "status": "not_stated",
@@ -222,10 +246,10 @@
      "where": ""
     },
     "rope_theta": {
-     "value": "10000",
-     "status": "inherited",
-     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-     "where": "Sec. 1 Introduction"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "rope_fraction": {
      "value": "",
@@ -235,15 +259,15 @@
     },
     "residual": {
      "value": "residual",
-     "status": "inherited",
-     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-     "where": "Sec. 1 Introduction"
+     "status": "stated",
+     "quote": "our model is based on the decoder-only Transformer~\\citep{vaswani2017transformer}.",
+     "where": "Sec. 2.2 Architecture"
     },
     "parallel_block": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-     "where": "Sec. 1 Introduction"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "attention": {
      "value": "exact",
@@ -264,28 +288,34 @@
      "where": ""
     },
     "qkv_bias": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-     "where": "Sec. 1 Introduction"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "mlp_bias": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-     "where": "Sec. 1 Introduction"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "tied_embeddings": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-     "where": "Sec. 1 Introduction"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "moe": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-     "where": "Sec. 1 Introduction"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "n_experts": {
      "value": "",
@@ -300,6 +330,36 @@
      "where": ""
     },
     "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -344,10 +404,10 @@
      "attributes": [
       {
        "name": "eps",
-       "value": "1e-5",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -370,10 +430,10 @@
       },
       {
        "name": "bias",
-       "value": "false",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -396,10 +456,10 @@
       },
       {
        "name": "bias",
-       "value": "false",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -422,10 +482,10 @@
       },
       {
        "name": "bias",
-       "value": "false",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -462,10 +522,10 @@
       },
       {
        "name": "theta",
-       "value": "10000",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -502,10 +562,10 @@
       },
       {
        "name": "theta",
-       "value": "10000",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -558,10 +618,10 @@
       },
       {
        "name": "window",
-       "value": "0",
-       "status": "stated",
-       "quote": "we use grouped-query attention~\\citep{DBLP:journals/corr/abs-2305-13245} in our model.",
-       "where": "Sec. 2.2 Grouped-query Attention"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       },
       {
        "name": "sinks",
@@ -591,10 +651,10 @@
       },
       {
        "name": "bias",
-       "value": "false",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -602,7 +662,7 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "attention residual",
+     "role": "attention residual add",
      "inputs": [
       "x",
       "o"
@@ -622,10 +682,10 @@
      "attributes": [
       {
        "name": "eps",
-       "value": "1e-5",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -648,10 +708,10 @@
       },
       {
        "name": "bias",
-       "value": "false",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -674,10 +734,10 @@
       },
       {
        "name": "bias",
-       "value": "false",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -723,10 +783,10 @@
       },
       {
        "name": "bias",
-       "value": "false",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -734,7 +794,7 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "FFN residual",
+     "role": "FFN residual add",
      "inputs": [
       "x1",
       "f"
@@ -746,7 +806,7 @@
     {
      "subgraph": "head",
      "op": "rmsnorm",
-     "role": "final norm",
+     "role": "final norm (Llama 2 architecture; not described in this paper)",
      "inputs": [
       "x"
      ],
@@ -754,10 +814,10 @@
      "attributes": [
       {
        "name": "eps",
-       "value": "1e-5",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -765,7 +825,7 @@
     {
      "subgraph": "head",
      "op": "linear",
-     "role": "LM head (untied)",
+     "role": "LM head",
      "inputs": [
       "hf"
      ],
@@ -780,10 +840,17 @@
       },
       {
        "name": "bias",
-       "value": "false",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "tied_to",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -791,7 +858,7 @@
    ],
    "new_ops": [],
    "mechanisms_outside_ir": [],
-   "notes": "Describes the single 1.1B TinyLlama architecture. v1.0 and v1.1 (and the v1.1 Math&Code and Chinese variants) differ only in training data and schedule. Values marked inherited rely on the explicit statement that the model follows the Llama 2 architecture: no biases, untied head, RoPE theta 10000, RMSNorm eps 1e-5, standard residual, non-parallel block, no MoE. head_dim and the K/V projection widths are derivable (64 and 512) but are not stated, so they are left not_stated. RoPE pairing is also not stated."
+   "notes": "The architecture is shared by TinyLlama v1.0 and v1.1 and all v1.1 variants, which differ only in training data and schedule. The paper declares that it follows Llama 2's architecture but does not restate several values, so these are left not_stated: head_dim (2048/32 would be a derivation), k/v projection widths, norm eps, rope theta and pairing, biases, and tied embeddings. The final norm before the LM head is included from the Llama 2 inheritance sentence; this paper does not describe it."
   },
   "verification": {
    "errors": [],
@@ -813,7 +880,7 @@
    },
    "configs": [
     {
-     "name": "TinyLlama-1.1B",
+     "name": "1.1B",
      "d_model": {
       "value": "2048",
       "status": "stated",
@@ -894,7 +961,7 @@
      ]
     }
    ],
-   "primary_config": "TinyLlama-1.1B",
+   "primary_config": "1.1B",
    "flavours": {
     "norm": {
      "value": "rmsnorm",
@@ -912,15 +979,29 @@
      "reasons": [],
      "check": "quote_only"
     },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
     "norm_eps": {
-     "value": "1e-5",
-     "status": "inherited",
-     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-     "where": "Sec. 1 Introduction",
-     "reasons": [
-      "inherited from llama, whose curated entry has no norm_eps"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "activation": {
      "value": "swiglu",
@@ -938,6 +1019,22 @@
      "reasons": [],
      "check": "verified"
     },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
     "rope_pairing": {
      "value": "",
      "status": "not_stated",
@@ -947,14 +1044,12 @@
      "check": "not_stated"
     },
     "rope_theta": {
-     "value": "10000",
-     "status": "inherited",
-     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-     "where": "Sec. 1 Introduction",
-     "reasons": [
-      "inherited from llama, whose curated entry has no rope_theta"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "rope_fraction": {
      "value": "",
@@ -966,23 +1061,21 @@
     },
     "residual": {
      "value": "residual",
-     "status": "inherited",
-     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-     "where": "Sec. 1 Introduction",
+     "status": "stated",
+     "quote": "our model is based on the decoder-only Transformer~\\citep{vaswani2017transformer}.",
+     "where": "Sec. 2.2 Architecture",
      "reasons": [
-      "inherited from llama, whose curated entry has no residual"
+      "the quote does not name residual (looked for /residual|skip/)"
      ],
      "check": "unverified"
     },
     "parallel_block": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-     "where": "Sec. 1 Introduction",
-     "reasons": [
-      "inherited from llama, whose curated entry has no parallel_block"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "attention": {
      "value": "exact",
@@ -1009,44 +1102,44 @@
      "check": "not_stated"
     },
     "qkv_bias": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-     "where": "Sec. 1 Introduction",
-     "reasons": [
-      "inherited from llama, whose curated entry has no qkv_bias"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "mlp_bias": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-     "where": "Sec. 1 Introduction",
-     "reasons": [
-      "inherited from llama, whose curated entry has no mlp_bias"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "tied_embeddings": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-     "where": "Sec. 1 Introduction",
-     "reasons": [
-      "inherited from llama, whose curated entry has no tied_embeddings"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "moe": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-     "where": "Sec. 1 Introduction",
-     "reasons": [
-      "inherited from llama, whose curated entry has no moe"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "n_experts": {
      "value": "",
@@ -1065,6 +1158,46 @@
      "check": "not_stated"
     },
     "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -1119,14 +1252,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "1e-5",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction",
-       "reasons": [
-        "inherited from llama, whose curated entry has no eps"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "eps"
       }
      ],
@@ -1153,14 +1284,12 @@
        "name": "out"
       },
       {
-       "value": "false",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction",
-       "reasons": [
-        "inherited from llama, whose curated entry has no bias"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "bias"
       }
      ],
@@ -1187,14 +1316,12 @@
        "name": "out"
       },
       {
-       "value": "false",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction",
-       "reasons": [
-        "inherited from llama, whose curated entry has no bias"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "bias"
       }
      ],
@@ -1221,14 +1348,12 @@
        "name": "out"
       },
       {
-       "value": "false",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction",
-       "reasons": [
-        "inherited from llama, whose curated entry has no bias"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "bias"
       }
      ],
@@ -1273,14 +1398,12 @@
        "name": "n_rot"
       },
       {
-       "value": "10000",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction",
-       "reasons": [
-        "inherited from llama, whose curated entry has no theta"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "theta"
       }
      ],
@@ -1325,14 +1448,12 @@
        "name": "n_rot"
       },
       {
-       "value": "10000",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction",
-       "reasons": [
-        "inherited from llama, whose curated entry has no theta"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "theta"
       }
      ],
@@ -1397,14 +1518,12 @@
        "name": "causal"
       },
       {
-       "value": "0",
-       "status": "stated",
-       "quote": "we use grouped-query attention~\\citep{DBLP:journals/corr/abs-2305-13245} in our model.",
-       "where": "Sec. 2.2 Grouped-query Attention",
-       "reasons": [
-        "0 does not occur in its quote"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "window"
       },
       {
@@ -1440,14 +1559,12 @@
        "name": "out"
       },
       {
-       "value": "false",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction",
-       "reasons": [
-        "inherited from llama, whose curated entry has no bias"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "bias"
       }
      ],
@@ -1457,7 +1574,7 @@
      "i": 9,
      "subgraph": "block",
      "op": "add",
-     "role": "attention residual",
+     "role": "attention residual add",
      "inputs": [
       "x",
       "o"
@@ -1479,14 +1596,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "1e-5",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction",
-       "reasons": [
-        "inherited from llama, whose curated entry has no eps"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "eps"
       }
      ],
@@ -1513,14 +1628,12 @@
        "name": "out"
       },
       {
-       "value": "false",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction",
-       "reasons": [
-        "inherited from llama, whose curated entry has no bias"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "bias"
       }
      ],
@@ -1547,14 +1660,12 @@
        "name": "out"
       },
       {
-       "value": "false",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction",
-       "reasons": [
-        "inherited from llama, whose curated entry has no bias"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "bias"
       }
      ],
@@ -1608,14 +1719,12 @@
        "name": "out"
       },
       {
-       "value": "false",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction",
-       "reasons": [
-        "inherited from llama, whose curated entry has no bias"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "bias"
       }
      ],
@@ -1625,7 +1734,7 @@
      "i": 16,
      "subgraph": "block",
      "op": "add",
-     "role": "FFN residual",
+     "role": "FFN residual add",
      "inputs": [
       "x1",
       "f"
@@ -1639,7 +1748,7 @@
      "i": 17,
      "subgraph": "head",
      "op": "rmsnorm",
-     "role": "final norm",
+     "role": "final norm (Llama 2 architecture; not described in this paper)",
      "inputs": [
       "x"
      ],
@@ -1647,14 +1756,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "1e-5",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction",
-       "reasons": [
-        "inherited from llama, whose curated entry has no eps"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "eps"
       }
      ],
@@ -1664,7 +1771,7 @@
      "i": 18,
      "subgraph": "head",
      "op": "linear",
-     "role": "LM head (untied)",
+     "role": "LM head",
      "inputs": [
       "hf"
      ],
@@ -1681,15 +1788,22 @@
        "name": "out"
       },
       {
-       "value": "false",
-       "status": "inherited",
-       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
-       "where": "Sec. 1 Introduction",
-       "reasons": [
-        "inherited from llama, whose curated entry has no bias"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "bias"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "tied_to"
       }
      ],
      "errors": []
@@ -1700,140 +1814,14 @@
     "counts": {
      "verified": 20,
      "quote_only": 6,
-     "unverified": 22,
-     "not_stated": 17
+     "unverified": 1,
+     "not_stated": 49
     },
     "unverified": [
      {
-      "field": "flavours.norm_eps",
-      "reasons": [
-       "inherited from llama, whose curated entry has no norm_eps"
-      ]
-     },
-     {
-      "field": "flavours.rope_theta",
-      "reasons": [
-       "inherited from llama, whose curated entry has no rope_theta"
-      ]
-     },
-     {
       "field": "flavours.residual",
       "reasons": [
-       "inherited from llama, whose curated entry has no residual"
-      ]
-     },
-     {
-      "field": "flavours.parallel_block",
-      "reasons": [
-       "inherited from llama, whose curated entry has no parallel_block"
-      ]
-     },
-     {
-      "field": "flavours.qkv_bias",
-      "reasons": [
-       "inherited from llama, whose curated entry has no qkv_bias"
-      ]
-     },
-     {
-      "field": "flavours.mlp_bias",
-      "reasons": [
-       "inherited from llama, whose curated entry has no mlp_bias"
-      ]
-     },
-     {
-      "field": "flavours.tied_embeddings",
-      "reasons": [
-       "inherited from llama, whose curated entry has no tied_embeddings"
-      ]
-     },
-     {
-      "field": "flavours.moe",
-      "reasons": [
-       "inherited from llama, whose curated entry has no moe"
-      ]
-     },
-     {
-      "field": "block_ops[1].eps",
-      "reasons": [
-       "inherited from llama, whose curated entry has no eps"
-      ]
-     },
-     {
-      "field": "block_ops[2].bias",
-      "reasons": [
-       "inherited from llama, whose curated entry has no bias"
-      ]
-     },
-     {
-      "field": "block_ops[3].bias",
-      "reasons": [
-       "inherited from llama, whose curated entry has no bias"
-      ]
-     },
-     {
-      "field": "block_ops[4].bias",
-      "reasons": [
-       "inherited from llama, whose curated entry has no bias"
-      ]
-     },
-     {
-      "field": "block_ops[5].theta",
-      "reasons": [
-       "inherited from llama, whose curated entry has no theta"
-      ]
-     },
-     {
-      "field": "block_ops[6].theta",
-      "reasons": [
-       "inherited from llama, whose curated entry has no theta"
-      ]
-     },
-     {
-      "field": "block_ops[7].window",
-      "reasons": [
-       "0 does not occur in its quote"
-      ]
-     },
-     {
-      "field": "block_ops[8].bias",
-      "reasons": [
-       "inherited from llama, whose curated entry has no bias"
-      ]
-     },
-     {
-      "field": "block_ops[10].eps",
-      "reasons": [
-       "inherited from llama, whose curated entry has no eps"
-      ]
-     },
-     {
-      "field": "block_ops[11].bias",
-      "reasons": [
-       "inherited from llama, whose curated entry has no bias"
-      ]
-     },
-     {
-      "field": "block_ops[12].bias",
-      "reasons": [
-       "inherited from llama, whose curated entry has no bias"
-      ]
-     },
-     {
-      "field": "block_ops[15].bias",
-      "reasons": [
-       "inherited from llama, whose curated entry has no bias"
-      ]
-     },
-     {
-      "field": "block_ops[17].eps",
-      "reasons": [
-       "inherited from llama, whose curated entry has no eps"
-      ]
-     },
-     {
-      "field": "block_ops[18].bias",
-      "reasons": [
-       "inherited from llama, whose curated entry has no bias"
+       "the quote does not name residual (looked for /residual|skip/)"
       ]
      }
     ],

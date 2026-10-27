@@ -34,27 +34,27 @@
   },
   "context_length": {
    "value": 32768,
-   "evidence": "we augmented the context length from 4,096 tokens to 32,768 tokens during the concluding phase of pre-training. [Sec. Long-context Training]",
+   "evidence": "we augmented the context length from 4,096 tokens to 32,768 tokens during the concluding phase of pre-training [Sec. Long-context Training]",
    "verdict": "used"
   },
   "norm": {
    "value": "rmsnorm",
-   "evidence": "RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability [Sec. Qwen2 Dense Model]",
+   "evidence": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability. [Sec. Qwen2 Dense Model]",
    "verdict": "used"
   },
   "activation": {
    "value": "swiglu",
-   "evidence": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation [Sec. Qwen2 Dense Model]",
+   "evidence": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability. [Sec. Qwen2 Dense Model]",
    "verdict": "used"
   },
   "positional": {
    "value": "rope",
-   "evidence": "Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding [Sec. Qwen2 Dense Model]",
+   "evidence": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability. [Sec. Qwen2 Dense Model]",
    "verdict": "used"
   },
   "residual": {
    "value": "residual",
-   "evidence": "RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability [Sec. Qwen2 Dense Model]",
+   "evidence": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability. [Sec. Qwen2 Dense Model]",
    "verdict": "unverified",
    "reasons": [
     "the quote does not name residual (looked for /residual|skip/)"
@@ -78,7 +78,7 @@
  "mentions": {},
  "inherits": {
   "ancestor": "Qwen",
-  "evidence": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation",
+  "evidence": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
   "section": "Sec. Qwen2 Dense Model"
  },
  "variants": [
@@ -117,15 +117,6 @@
    "d_ff": 29568,
    "vocab_size": 151646,
    "context_length": 32768
-  },
-  {
-   "d_model": 3584,
-   "n_layers": 28,
-   "n_heads": 28,
-   "n_kv_heads": 4,
-   "d_ff": 2560,
-   "vocab_size": 151646,
-   "context_length": 32768
   }
  ],
  "mechanism_scan": [
@@ -136,28 +127,22 @@
    "evidence": "\\# KV Heads & 2 & 2 & 4 & 8 & 4"
   },
   {
-   "mechanism": "Dual Chunk Attention (DCA) for long-context extension; identical to standard attention within one chunk",
+   "mechanism": "Dual Chunk Attention for long-context extrapolation (identical to standard attention within one chunk)",
    "where": "llm extraction, verified quote, Sec. Qwen2 Dense Model",
    "blocking": true,
    "evidence": "To expand the context window of Qwen2, we implement Dual Chunk Attention (DCA, \\citealp{chunkllama}), which segments long sequences into chunks of manageable lengths."
   },
   {
-   "mechanism": "YARN rescaling of attention for length extrapolation (used beyond 32K, up to 131072 tokens)",
+   "mechanism": "YARN rescaling of attention/RoPE for length extrapolation beyond 32K",
    "where": "llm extraction, verified quote, Sec. Qwen2 Dense Model",
    "blocking": true,
    "evidence": "Moreover, we also employ YARN~\\citep{yarn} to rescale the attention weights for better length extrapolation."
   },
   {
-   "mechanism": "MoE variant Qwen2-57B-A14B: fine-grained experts, 64 routed experts with 8 activated plus 8 shared experts, gate p = softmax(G(x)), y = sum over top-k of p_i E_i(x) (raw full-softmax weights); shared experts not representable in moe_ffn",
+   "mechanism": "Qwen2-57B-A14B MoE variant: fine-grained experts (64 routed, 8 activated, 8 shared, expert intermediate size 2560) replacing the FFN; upcycled from Qwen2-7B",
    "where": "llm extraction, verified quote, Sec. Qwen2 Mixture-of-experts Model",
    "blocking": true,
-   "evidence": "Each token is directed to a specific expert $E_i$ for computation based on probabilities assigned by a gated network $G$:"
-  },
-  {
-   "mechanism": "Embedding matrix padded beyond the vocabulary for distributed training; padded size not stated",
-   "where": "llm extraction, verified quote, Sec. Tokenizer",
-   "blocking": true,
-   "evidence": "It should be noted that, owing to considerations in distributed training, the effective size for the embeddings is larger."
+   "evidence": "As a substitute for the original FFN, the MoE FFN consists of $n$ individual FFNs, each serving as an expert."
   }
  ],
  "source": {
@@ -165,20 +150,20 @@
   "sent_sha256": "77e5c569cec1724dc1a3792c0e76576ae8aeca821c11a09b9172aae6db0ff677",
   "from": "https://arxiv.org/e-print/2407.10671",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
+  "extractor_sha256": "9d5951b0f11c920aaf075abead17d7d4e619d37402d47690ba452de15620e921",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
+  "prompt_sha256": "e6c6c5052b656885910d1539b8c320ba4ecb9262a6079252b852f1ff637b03ef",
   "n_calls": 1,
-  "cost_usd": 0.41436,
+  "cost_usd": 0.434436,
   "request_ids": [
-   "req_011CgFjB62CBVJ7gaAeiNpPH"
+   "req_011CgRuFvyKMNtrk21WyX7Wq"
   ]
  },
  "llm": {
   "output": {
    "title": "Qwen2 Technical Report",
-   "model_name": "Qwen2",
+   "model_name": "Qwen2 (dense: 0.5B, 1.5B, 7B, 72B)",
    "family": {
     "value": "decoder_only",
     "status": "stated",
@@ -187,7 +172,7 @@
    },
    "inherits": {
     "ancestor": "Qwen",
-    "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation",
+    "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
     "where": "Sec. Qwen2 Dense Model"
    },
    "configs": [
@@ -238,7 +223,7 @@
      "context_length": {
       "value": "32768",
       "status": "stated",
-      "quote": "we augmented the context length from 4,096 tokens to 32,768 tokens during the concluding phase of pre-training.",
+      "quote": "we augmented the context length from 4,096 tokens to 32,768 tokens during the concluding phase of pre-training",
       "where": "Sec. Long-context Training"
      }
     },
@@ -289,7 +274,7 @@
      "context_length": {
       "value": "32768",
       "status": "stated",
-      "quote": "we augmented the context length from 4,096 tokens to 32,768 tokens during the concluding phase of pre-training.",
+      "quote": "we augmented the context length from 4,096 tokens to 32,768 tokens during the concluding phase of pre-training",
       "where": "Sec. Long-context Training"
      }
     },
@@ -340,7 +325,7 @@
      "context_length": {
       "value": "32768",
       "status": "stated",
-      "quote": "we augmented the context length from 4,096 tokens to 32,768 tokens during the concluding phase of pre-training.",
+      "quote": "we augmented the context length from 4,096 tokens to 32,768 tokens during the concluding phase of pre-training",
       "where": "Sec. Long-context Training"
      }
     },
@@ -391,58 +376,7 @@
      "context_length": {
       "value": "32768",
       "status": "stated",
-      "quote": "we augmented the context length from 4,096 tokens to 32,768 tokens during the concluding phase of pre-training.",
-      "where": "Sec. Long-context Training"
-     }
-    },
-    {
-     "name": "57B-A14B",
-     "d_model": {
-      "value": "3584",
-      "status": "stated",
-      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584",
-      "where": "Table tab:to_sota"
-     },
-     "n_layers": {
-      "value": "28",
-      "status": "stated",
-      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28",
-      "where": "Table tab:to_sota"
-     },
-     "n_heads": {
-      "value": "28",
-      "status": "stated",
-      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28",
-      "where": "Table tab:to_sota"
-     },
-     "n_kv_heads": {
-      "value": "4",
-      "status": "stated",
-      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4",
-      "where": "Table tab:to_sota"
-     },
-     "head_dim": {
-      "value": "128",
-      "status": "stated",
-      "quote": "Head Size & 64 & 128 & 128 & 128 & 128",
-      "where": "Table tab:to_sota"
-     },
-     "d_ff": {
-      "value": "2560",
-      "status": "stated",
-      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560",
-      "where": "Table tab:to_sota"
-     },
-     "vocab_size": {
-      "value": "151646",
-      "status": "stated",
-      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646",
-      "where": "Table tab:to_sota"
-     },
-     "context_length": {
-      "value": "32768",
-      "status": "stated",
-      "quote": "we augmented the context length from 4,096 tokens to 32,768 tokens during the concluding phase of pre-training.",
+      "quote": "we augmented the context length from 4,096 tokens to 32,768 tokens during the concluding phase of pre-training",
       "where": "Sec. Long-context Training"
      }
     }
@@ -452,14 +386,26 @@
     "norm": {
      "value": "rmsnorm",
      "status": "stated",
-     "quote": "RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability",
+     "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
      "where": "Sec. Qwen2 Dense Model"
     },
     "norm_placement": {
      "value": "pre",
      "status": "stated",
-     "quote": "RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability",
+     "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
      "where": "Sec. Qwen2 Dense Model"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "norm_eps": {
      "value": "",
@@ -470,14 +416,26 @@
     "activation": {
      "value": "swiglu",
      "status": "stated",
-     "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation",
+     "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
      "where": "Sec. Qwen2 Dense Model"
     },
     "positional": {
      "value": "rope",
      "status": "stated",
-     "quote": "Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding",
+     "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
      "where": "Sec. Qwen2 Dense Model"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "rope_pairing": {
      "value": "",
@@ -500,7 +458,7 @@
     "residual": {
      "value": "residual",
      "status": "stated",
-     "quote": "RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability",
+     "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
      "where": "Sec. Qwen2 Dense Model"
     },
     "parallel_block": {
@@ -530,10 +488,16 @@
     "qkv_bias": {
      "value": "true",
      "status": "stated",
-     "quote": "QKV bias~\\citep{qkv_bias} for attention",
+     "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
      "where": "Sec. Qwen2 Dense Model"
     },
     "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qk_norm": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -548,8 +512,8 @@
     "moe": {
      "value": "false",
      "status": "stated",
-     "quote": "The architecture of the Qwen2 dense models comprises multiple Transformer layers, each equipped with causal attention mechanisms and feed-forward neural networks (FFNs).",
-     "where": "Sec. Qwen2 Dense Model"
+     "quote": "Specifically, this series encompasses dense language models of 4 scales and a Mixture-of-Experts (MoE) model.",
+     "where": "Sec. Model Architecture"
     },
     "n_experts": {
      "value": "",
@@ -568,18 +532,63 @@
      "status": "not_stated",
      "quote": "",
      "where": ""
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     }
    },
    "block_ops": [
     {
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding (token_embd)",
+     "role": "token embedding",
      "inputs": [
       "tokens"
      ],
      "output": "x",
-     "attributes": [],
+     "attributes": [
+      {
+       "name": "vocab",
+       "value": "151646",
+       "status": "stated",
+       "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646",
+       "where": "Table tab:to_sota"
+      },
+      {
+       "name": "d",
+       "value": "896",
+       "status": "stated",
+       "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584",
+       "where": "Table tab:to_sota"
+      }
+     ],
      "new_op": ""
     },
     {
@@ -611,10 +620,17 @@
      "output": "q",
      "attributes": [
       {
+       "name": "out",
+       "value": "896",
+       "status": "stated",
+       "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584",
+       "where": "Table tab:to_sota"
+      },
+      {
        "name": "bias",
        "value": "true",
        "status": "stated",
-       "quote": "QKV bias~\\citep{qkv_bias} for attention",
+       "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
        "where": "Sec. Qwen2 Dense Model"
       }
      ],
@@ -630,10 +646,17 @@
      "output": "k",
      "attributes": [
       {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
        "name": "bias",
        "value": "true",
        "status": "stated",
-       "quote": "QKV bias~\\citep{qkv_bias} for attention",
+       "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
        "where": "Sec. Qwen2 Dense Model"
       }
      ],
@@ -649,10 +672,17 @@
      "output": "v",
      "attributes": [
       {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
        "name": "bias",
        "value": "true",
        "status": "stated",
-       "quote": "QKV bias~\\citep{qkv_bias} for attention",
+       "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
        "where": "Sec. Qwen2 Dense Model"
       }
      ],
@@ -661,20 +691,13 @@
     {
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary embedding on q",
+     "role": "rotary embedding on q and k",
      "inputs": [
       "q",
-      "pos"
+      "k"
      ],
-     "output": "q_r",
+     "output": "qk_rot",
      "attributes": [
-      {
-       "name": "theta",
-       "value": "1000000",
-       "status": "stated",
-       "quote": "we modified the base frequency of RoPE from 10,000 to 1,000,000 to optimize performance in long-context scenarios",
-       "where": "Sec. Long-context Training"
-      },
       {
        "name": "pairing",
        "value": "",
@@ -688,40 +711,13 @@
        "status": "not_stated",
        "quote": "",
        "where": ""
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "rope",
-     "role": "rotary embedding on k",
-     "inputs": [
-      "k",
-      "pos"
-     ],
-     "output": "k_r",
-     "attributes": [
+      },
       {
        "name": "theta",
        "value": "1000000",
        "status": "stated",
        "quote": "we modified the base frequency of RoPE from 10,000 to 1,000,000 to optimize performance in long-context scenarios",
        "where": "Sec. Long-context Training"
-      },
-      {
-       "name": "pairing",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
-      {
-       "name": "n_rot",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
       }
      ],
      "new_op": ""
@@ -729,10 +725,9 @@
     {
      "subgraph": "block",
      "op": "attention",
-     "role": "causal grouped-query self-attention",
+     "role": "grouped-query causal self-attention",
      "inputs": [
-      "q_r",
-      "k_r",
+      "qk_rot",
       "v"
      ],
      "output": "a",
@@ -759,13 +754,6 @@
        "where": "Table tab:to_sota"
       },
       {
-       "name": "causal",
-       "value": "true",
-       "status": "stated",
-       "quote": "featuring self-attention with causal masks~\\citep{transformer}",
-       "where": "Sec. Model Architecture"
-      },
-      {
        "name": "scale",
        "value": "",
        "status": "not_stated",
@@ -773,7 +761,21 @@
        "where": ""
       },
       {
+       "name": "causal",
+       "value": "true",
+       "status": "stated",
+       "quote": "The Qwen2 series fundamentally constitute large language models based on the Transformer architecture, featuring self-attention with causal masks~\\citep{transformer}.",
+       "where": "Sec. Model Architecture"
+      },
+      {
        "name": "window",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "sinks",
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -791,6 +793,13 @@
      ],
      "output": "o",
      "attributes": [
+      {
+       "name": "out",
+       "value": "896",
+       "status": "stated",
+       "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584",
+       "where": "Table tab:to_sota"
+      },
       {
        "name": "bias",
        "value": "",
@@ -948,7 +957,7 @@
     {
      "subgraph": "head",
      "op": "linear",
-     "role": "LM head (tied to token embedding for 0.5B)",
+     "role": "output head (tied to token embedding for 0.5B)",
      "inputs": [
       "x"
      ],
@@ -982,27 +991,22 @@
    "new_ops": [],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Dual Chunk Attention (DCA) for long-context extension; identical to standard attention within one chunk",
+     "mechanism": "Dual Chunk Attention for long-context extrapolation (identical to standard attention within one chunk)",
      "quote": "To expand the context window of Qwen2, we implement Dual Chunk Attention (DCA, \\citealp{chunkllama}), which segments long sequences into chunks of manageable lengths.",
      "where": "Sec. Qwen2 Dense Model"
     },
     {
-     "mechanism": "YARN rescaling of attention for length extrapolation (used beyond 32K, up to 131072 tokens)",
+     "mechanism": "YARN rescaling of attention/RoPE for length extrapolation beyond 32K",
      "quote": "Moreover, we also employ YARN~\\citep{yarn} to rescale the attention weights for better length extrapolation.",
      "where": "Sec. Qwen2 Dense Model"
     },
     {
-     "mechanism": "MoE variant Qwen2-57B-A14B: fine-grained experts, 64 routed experts with 8 activated plus 8 shared experts, gate p = softmax(G(x)), y = sum over top-k of p_i E_i(x) (raw full-softmax weights); shared experts not representable in moe_ffn",
-     "quote": "Each token is directed to a specific expert $E_i$ for computation based on probabilities assigned by a gated network $G$:",
+     "mechanism": "Qwen2-57B-A14B MoE variant: fine-grained experts (64 routed, 8 activated, 8 shared, expert intermediate size 2560) replacing the FFN; upcycled from Qwen2-7B",
+     "quote": "As a substitute for the original FFN, the MoE FFN consists of $n$ individual FFNs, each serving as an expert.",
      "where": "Sec. Qwen2 Mixture-of-experts Model"
-    },
-    {
-     "mechanism": "Embedding matrix padded beyond the vocabulary for distributed training; padded size not stated",
-     "quote": "It should be noted that, owing to considerations in distributed training, the effective size for the embeddings is larger.",
-     "where": "Sec. Tokenizer"
     }
    ],
-   "notes": "Described the dense Qwen2 architecture with block_ops instantiated for the smallest config (0.5B). Embedding tying is per config: true for 0.5B and 1.5B, false for 7B, 72B and 57B-A14B. For 57B-A14B, d_ff is the per-expert intermediate size; its MoE structure is listed under mechanisms. Context length 32768 is the final pre-training length; YARN+DCA extend it to 131072. RoPE theta 1000000 is the final value; it was 10000 before long-context training. Left not_stated: norm eps, RoPE pairing and fraction, the o-projection and MLP biases, attention scale, and the q/k/v output widths (only derivable as heads x head_dim). The paper does not mention a final norm before the LM head, so none is included."
+   "notes": "Described the dense Qwen2 architecture, which the 0.5B, 1.5B, 7B and 72B models share. The primary config is the smallest one (0.5B); the flagship is 72B. Tied embeddings hold only for 0.5B and 1.5B; 7B and 72B are untied (Table tab:to_sota). The MoE model 57B-A14B is left out of configs because its FFN is an MoE with shared plus routed experts; it is summarised under mechanisms_outside_ir. K and V projection widths are not stated directly: they follow as kv_heads*head_dim (128 for 0.5B). The paper notes that the effective embedding size is larger than the 151646-token vocabulary because of distributed training. Context length is the 32768 used at the end of pre-training; 131072 is reached only with YARN+DCA. Not stated and therefore not given: norm eps, RoPE pairing, MLP and output-projection bias, and a final norm before the head (omitted from the IR because it is not mentioned). Residual is taken from the stated pre-normalization."
   },
   "verification": {
    "errors": [],
@@ -1010,7 +1014,7 @@
    "inherits": {
     "ancestor": "Qwen",
     "resolved": null,
-    "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation",
+    "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
     "where": "Sec. Qwen2 Dense Model",
     "quote_found": true
    },
@@ -1084,7 +1088,7 @@
      "context_length": {
       "value": "32768",
       "status": "stated",
-      "quote": "we augmented the context length from 4,096 tokens to 32,768 tokens during the concluding phase of pre-training.",
+      "quote": "we augmented the context length from 4,096 tokens to 32,768 tokens during the concluding phase of pre-training",
       "where": "Sec. Long-context Training",
       "reasons": [],
       "check": "verified"
@@ -1169,7 +1173,7 @@
      "context_length": {
       "value": "32768",
       "status": "stated",
-      "quote": "we augmented the context length from 4,096 tokens to 32,768 tokens during the concluding phase of pre-training.",
+      "quote": "we augmented the context length from 4,096 tokens to 32,768 tokens during the concluding phase of pre-training",
       "where": "Sec. Long-context Training",
       "reasons": [],
       "check": "verified"
@@ -1254,7 +1258,7 @@
      "context_length": {
       "value": "32768",
       "status": "stated",
-      "quote": "we augmented the context length from 4,096 tokens to 32,768 tokens during the concluding phase of pre-training.",
+      "quote": "we augmented the context length from 4,096 tokens to 32,768 tokens during the concluding phase of pre-training",
       "where": "Sec. Long-context Training",
       "reasons": [],
       "check": "verified"
@@ -1339,92 +1343,7 @@
      "context_length": {
       "value": "32768",
       "status": "stated",
-      "quote": "we augmented the context length from 4,096 tokens to 32,768 tokens during the concluding phase of pre-training.",
-      "where": "Sec. Long-context Training",
-      "reasons": [],
-      "check": "verified"
-     },
-     "consistency": [
-      {
-       "check": "n_heads divides d_model (head_dim unstated)",
-       "ok": true
-      },
-      {
-       "check": "n_kv_heads divides n_heads",
-       "ok": true
-      },
-      {
-       "check": "n_kv_heads <= n_heads",
-       "ok": true
-      },
-      {
-       "check": "head_dim * n_heads == d_model",
-       "ok": true
-      }
-     ]
-    },
-    {
-     "name": "57B-A14B",
-     "d_model": {
-      "value": "3584",
-      "status": "stated",
-      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584",
-      "where": "Table tab:to_sota",
-      "reasons": [],
-      "check": "verified"
-     },
-     "n_layers": {
-      "value": "28",
-      "status": "stated",
-      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28",
-      "where": "Table tab:to_sota",
-      "reasons": [],
-      "check": "verified"
-     },
-     "n_heads": {
-      "value": "28",
-      "status": "stated",
-      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28",
-      "where": "Table tab:to_sota",
-      "reasons": [],
-      "check": "verified"
-     },
-     "n_kv_heads": {
-      "value": "4",
-      "status": "stated",
-      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4",
-      "where": "Table tab:to_sota",
-      "reasons": [],
-      "check": "verified"
-     },
-     "head_dim": {
-      "value": "128",
-      "status": "stated",
-      "quote": "Head Size & 64 & 128 & 128 & 128 & 128",
-      "where": "Table tab:to_sota",
-      "reasons": [],
-      "check": "verified"
-     },
-     "d_ff": {
-      "value": "2560",
-      "status": "stated",
-      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560",
-      "where": "Table tab:to_sota",
-      "reasons": [],
-      "check": "verified"
-     },
-     "vocab_size": {
-      "value": "151646",
-      "status": "stated",
-      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646",
-      "where": "Table tab:to_sota",
-      "reasons": [],
-      "check": "verified"
-     },
-     "context_length": {
-      "value": "32768",
-      "status": "stated",
-      "quote": "we augmented the context length from 4,096 tokens to 32,768 tokens during the concluding phase of pre-training.",
+      "quote": "we augmented the context length from 4,096 tokens to 32,768 tokens during the concluding phase of pre-training",
       "where": "Sec. Long-context Training",
       "reasons": [],
       "check": "verified"
@@ -1454,7 +1373,7 @@
     "norm": {
      "value": "rmsnorm",
      "status": "stated",
-     "quote": "RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability",
+     "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
      "where": "Sec. Qwen2 Dense Model",
      "reasons": [],
      "check": "verified"
@@ -1462,10 +1381,26 @@
     "norm_placement": {
      "value": "pre",
      "status": "stated",
-     "quote": "RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability",
+     "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
      "where": "Sec. Qwen2 Dense Model",
      "reasons": [],
      "check": "quote_only"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "norm_eps": {
      "value": "",
@@ -1478,7 +1413,7 @@
     "activation": {
      "value": "swiglu",
      "status": "stated",
-     "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation",
+     "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
      "where": "Sec. Qwen2 Dense Model",
      "reasons": [],
      "check": "verified"
@@ -1486,10 +1421,26 @@
     "positional": {
      "value": "rope",
      "status": "stated",
-     "quote": "Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding",
+     "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
      "where": "Sec. Qwen2 Dense Model",
      "reasons": [],
      "check": "verified"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "rope_pairing": {
      "value": "",
@@ -1518,7 +1469,7 @@
     "residual": {
      "value": "residual",
      "status": "stated",
-     "quote": "RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability",
+     "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
      "where": "Sec. Qwen2 Dense Model",
      "reasons": [
       "the quote does not name residual (looked for /residual|skip/)"
@@ -1560,12 +1511,20 @@
     "qkv_bias": {
      "value": "true",
      "status": "stated",
-     "quote": "QKV bias~\\citep{qkv_bias} for attention",
+     "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
      "where": "Sec. Qwen2 Dense Model",
      "reasons": [],
      "check": "quote_only"
     },
     "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qk_norm": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -1584,8 +1543,8 @@
     "moe": {
      "value": "false",
      "status": "stated",
-     "quote": "The architecture of the Qwen2 dense models comprises multiple Transformer layers, each equipped with causal attention mechanisms and feed-forward neural networks (FFNs).",
-     "where": "Sec. Qwen2 Dense Model",
+     "quote": "Specifically, this series encompasses dense language models of 4 scales and a Mixture-of-Experts (MoE) model.",
+     "where": "Sec. Model Architecture",
      "reasons": [],
      "check": "quote_only"
     },
@@ -1612,6 +1571,46 @@
      "where": "",
      "reasons": [],
      "check": "not_stated"
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     }
    },
    "new_ops": [],
@@ -1620,13 +1619,32 @@
      "i": 0,
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding (token_embd)",
+     "role": "token embedding",
      "inputs": [
       "tokens"
      ],
      "output": "x",
      "new_op": "",
-     "attributes": [],
+     "attributes": [
+      {
+       "value": "151646",
+       "status": "stated",
+       "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646",
+       "where": "Table tab:to_sota",
+       "reasons": [],
+       "check": "verified",
+       "name": "vocab"
+      },
+      {
+       "value": "896",
+       "status": "stated",
+       "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584",
+       "where": "Table tab:to_sota",
+       "reasons": [],
+       "check": "verified",
+       "name": "d"
+      }
+     ],
      "errors": []
     },
     {
@@ -1664,9 +1682,18 @@
      "new_op": "",
      "attributes": [
       {
+       "value": "896",
+       "status": "stated",
+       "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584",
+       "where": "Table tab:to_sota",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
        "value": "true",
        "status": "stated",
-       "quote": "QKV bias~\\citep{qkv_bias} for attention",
+       "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
        "where": "Sec. Qwen2 Dense Model",
        "reasons": [],
        "check": "quote_only",
@@ -1687,9 +1714,18 @@
      "new_op": "",
      "attributes": [
       {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
        "value": "true",
        "status": "stated",
-       "quote": "QKV bias~\\citep{qkv_bias} for attention",
+       "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
        "where": "Sec. Qwen2 Dense Model",
        "reasons": [],
        "check": "quote_only",
@@ -1710,9 +1746,18 @@
      "new_op": "",
      "attributes": [
       {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
        "value": "true",
        "status": "stated",
-       "quote": "QKV bias~\\citep{qkv_bias} for attention",
+       "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
        "where": "Sec. Qwen2 Dense Model",
        "reasons": [],
        "check": "quote_only",
@@ -1725,23 +1770,14 @@
      "i": 5,
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary embedding on q",
+     "role": "rotary embedding on q and k",
      "inputs": [
       "q",
-      "pos"
+      "k"
      ],
-     "output": "q_r",
+     "output": "qk_rot",
      "new_op": "",
      "attributes": [
-      {
-       "value": "1000000",
-       "status": "stated",
-       "quote": "we modified the base frequency of RoPE from 10,000 to 1,000,000 to optimize performance in long-context scenarios",
-       "where": "Sec. Long-context Training",
-       "reasons": [],
-       "check": "verified",
-       "name": "theta"
-      },
       {
        "value": "",
        "status": "not_stated",
@@ -1759,6 +1795,15 @@
        "reasons": [],
        "check": "not_stated",
        "name": "n_rot"
+      },
+      {
+       "value": "1000000",
+       "status": "stated",
+       "quote": "we modified the base frequency of RoPE from 10,000 to 1,000,000 to optimize performance in long-context scenarios",
+       "where": "Sec. Long-context Training",
+       "reasons": [],
+       "check": "verified",
+       "name": "theta"
       }
      ],
      "errors": []
@@ -1766,53 +1811,10 @@
     {
      "i": 6,
      "subgraph": "block",
-     "op": "rope",
-     "role": "rotary embedding on k",
-     "inputs": [
-      "k",
-      "pos"
-     ],
-     "output": "k_r",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "1000000",
-       "status": "stated",
-       "quote": "we modified the base frequency of RoPE from 10,000 to 1,000,000 to optimize performance in long-context scenarios",
-       "where": "Sec. Long-context Training",
-       "reasons": [],
-       "check": "verified",
-       "name": "theta"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "pairing"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "n_rot"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 7,
-     "subgraph": "block",
      "op": "attention",
-     "role": "causal grouped-query self-attention",
+     "role": "grouped-query causal self-attention",
      "inputs": [
-      "q_r",
-      "k_r",
+      "qk_rot",
       "v"
      ],
      "output": "a",
@@ -1846,9 +1848,18 @@
        "name": "head_dim"
       },
       {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "scale"
+      },
+      {
        "value": "true",
        "status": "stated",
-       "quote": "featuring self-attention with causal masks~\\citep{transformer}",
+       "quote": "The Qwen2 series fundamentally constitute large language models based on the Transformer architecture, featuring self-attention with causal masks~\\citep{transformer}.",
        "where": "Sec. Model Architecture",
        "reasons": [],
        "check": "quote_only",
@@ -1861,7 +1872,7 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "scale"
+       "name": "window"
       },
       {
        "value": "",
@@ -1870,13 +1881,13 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "window"
+       "name": "sinks"
       }
      ],
      "errors": []
     },
     {
-     "i": 8,
+     "i": 7,
      "subgraph": "block",
      "op": "linear",
      "role": "attention output projection",
@@ -1886,6 +1897,15 @@
      "output": "o",
      "new_op": "",
      "attributes": [
+      {
+       "value": "896",
+       "status": "stated",
+       "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584",
+       "where": "Table tab:to_sota",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -1899,7 +1919,7 @@
      "errors": []
     },
     {
-     "i": 9,
+     "i": 8,
      "subgraph": "block",
      "op": "add",
      "role": "attention residual",
@@ -1913,7 +1933,7 @@
      "errors": []
     },
     {
-     "i": 10,
+     "i": 9,
      "subgraph": "block",
      "op": "rmsnorm",
      "role": "pre-FFN norm",
@@ -1936,7 +1956,7 @@
      "errors": []
     },
     {
-     "i": 11,
+     "i": 10,
      "subgraph": "block",
      "op": "linear",
      "role": "FFN gate projection",
@@ -1968,7 +1988,7 @@
      "errors": []
     },
     {
-     "i": 12,
+     "i": 11,
      "subgraph": "block",
      "op": "linear",
      "role": "FFN up projection",
@@ -2000,7 +2020,7 @@
      "errors": []
     },
     {
-     "i": 13,
+     "i": 12,
      "subgraph": "block",
      "op": "silu",
      "role": "SwiGLU gate activation",
@@ -2013,7 +2033,7 @@
      "errors": []
     },
     {
-     "i": 14,
+     "i": 13,
      "subgraph": "block",
      "op": "mul",
      "role": "SwiGLU gating",
@@ -2027,7 +2047,7 @@
      "errors": []
     },
     {
-     "i": 15,
+     "i": 14,
      "subgraph": "block",
      "op": "linear",
      "role": "FFN down projection",
@@ -2059,7 +2079,7 @@
      "errors": []
     },
     {
-     "i": 16,
+     "i": 15,
      "subgraph": "block",
      "op": "add",
      "role": "FFN residual",
@@ -2073,10 +2093,10 @@
      "errors": []
     },
     {
-     "i": 17,
+     "i": 16,
      "subgraph": "head",
      "op": "linear",
-     "role": "LM head (tied to token embedding for 0.5B)",
+     "role": "output head (tied to token embedding for 0.5B)",
      "inputs": [
       "x"
      ],
@@ -2116,36 +2136,30 @@
    ],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Dual Chunk Attention (DCA) for long-context extension; identical to standard attention within one chunk",
+     "mechanism": "Dual Chunk Attention for long-context extrapolation (identical to standard attention within one chunk)",
      "quote": "To expand the context window of Qwen2, we implement Dual Chunk Attention (DCA, \\citealp{chunkllama}), which segments long sequences into chunks of manageable lengths.",
      "where": "Sec. Qwen2 Dense Model",
      "check": "verified"
     },
     {
-     "mechanism": "YARN rescaling of attention for length extrapolation (used beyond 32K, up to 131072 tokens)",
+     "mechanism": "YARN rescaling of attention/RoPE for length extrapolation beyond 32K",
      "quote": "Moreover, we also employ YARN~\\citep{yarn} to rescale the attention weights for better length extrapolation.",
      "where": "Sec. Qwen2 Dense Model",
      "check": "verified"
     },
     {
-     "mechanism": "MoE variant Qwen2-57B-A14B: fine-grained experts, 64 routed experts with 8 activated plus 8 shared experts, gate p = softmax(G(x)), y = sum over top-k of p_i E_i(x) (raw full-softmax weights); shared experts not representable in moe_ffn",
-     "quote": "Each token is directed to a specific expert $E_i$ for computation based on probabilities assigned by a gated network $G$:",
+     "mechanism": "Qwen2-57B-A14B MoE variant: fine-grained experts (64 routed, 8 activated, 8 shared, expert intermediate size 2560) replacing the FFN; upcycled from Qwen2-7B",
+     "quote": "As a substitute for the original FFN, the MoE FFN consists of $n$ individual FFNs, each serving as an expert.",
      "where": "Sec. Qwen2 Mixture-of-experts Model",
-     "check": "verified"
-    },
-    {
-     "mechanism": "Embedding matrix padded beyond the vocabulary for distributed training; padded size not stated",
-     "quote": "It should be noted that, owing to considerations in distributed training, the effective size for the embeddings is larger.",
-     "where": "Sec. Tokenizer",
      "check": "verified"
     }
    ],
    "summary": {
     "counts": {
-     "verified": 53,
+     "verified": 48,
      "quote_only": 11,
      "unverified": 1,
-     "not_stated": 23
+     "not_stated": 34
     },
     "unverified": [
      {
@@ -2158,7 +2172,7 @@
     "new_op_errors": [],
     "node_errors": [],
     "n_new_ops": 0,
-    "n_block_ops": 18
+    "n_block_ops": 17
    }
   }
  }

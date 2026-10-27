@@ -111,3 +111,102 @@ def test_truth_file_quotes_occur_in_the_sources():
             if e:
                 assert V.quote_found(e["quote"]), (pid, k)
     assert checked > 500
+
+
+def _rep(flavours=None, new_ops=None):
+    fl = {k: {"value": "", "check": "not_stated"} for k in L.FLAVOUR_FIELDS}
+    for k, v in (flavours or {}).items():
+        fl[k] = {"value": v, "check": "verified"}
+    return {"flavours": fl, "new_ops": new_ops or []}
+
+
+def _op(name, replaces, roles, kind="expr", inits=None):
+    inits = inits or {}
+    return {"name": name, "kind": kind, "replaces": replaces, "check": "verified",
+            "inputs": [{"name": "xabc"[i], "role": r, "init": {"value": inits.get(i, "")},
+                        "init_check": "verified" if i in inits else "not_stated"} for i, r in enumerate(roles)]}
+
+
+def test_new_fields_scored_against_their_labels():
+    truth = {"structure": {"norm_placement": {"value": {"attn": "pre", "ffn": "branch_post"}}},
+             "new_fields": {"qk_norm": {"value": "absent"}, "ssm": {"value": "absent"},
+                            "positional": {"value": "t5_bias", "rel_buckets": {"value": 32},
+                                           "rel_max_distance": {"value": 128}},
+                            "new_ops": [{"name": "sq", "category": "activation", "scored": True,
+                                         "inputs": [{"role": "input"}]},
+                                        {"name": "ln", "category": "norm", "scored": True,
+                                         "inputs": [{"role": "input"}]},
+                                        {"name": "mup", "category": "embed", "scored": False,
+                                         "inputs": [{"role": "input"}]}]}}
+    rep = _rep({"norm_placement": "other:per sublayer", "norm_placement_attn": "pre",
+                "norm_placement_ffn": "branch_post", "qk_norm": "per_head", "positional": "t5_bias",
+                "rel_buckets": "32"},
+               [_op("squared_relu", "FFN activation", ["input"]),
+                _op("primer_norm", "layer normalization", ["input", "learned_vector", "learned_vector"]),
+                _op("temp", "attention temperature", ["input", "learned_scalar"], inits={1: "1.0"})])
+    rows = {(r["field"], r.get("op")): r["score"] for r in B.score_new_fields("x", rep, {}, truth)}
+    assert rows[("placement_field.attn", None)] == "correct"
+    assert rows[("placement_field.ffn", None)] == "correct"
+    assert rows[("qk_norm", None)] == "WRONG"  # asserted where the paper never mentions one
+    assert rows[("ssm", None)] == "correct"
+    assert rows[("positional_ext", None)] == "correct"
+    assert rows[("rel_buckets", None)] == "correct"
+    assert rows[("rel_max_distance", None)] == "abstain"
+    assert rows[("new_op_inputs", "sq")] == "correct"
+    assert rows[("new_op_inputs", "ln")] == "correct"  # a norm's gain and bias are allowed
+    assert ("new_op_inputs", "mup") not in rows  # not scored
+    assert rows[("learned_inputs", None)] == "WRONG"  # the learned temperature no label has
+
+
+def test_new_op_roles_wrong_or_unstated():
+    truth = {"new_fields": {"new_ops": [{"name": "cap", "category": "final_logits", "scored": True,
+                                         "inputs": [{"role": "input"}, {"role": "other"}]}]}}
+    for roles, verdict in ((["input", "learned_scalar"], "WRONG"), ([None], "abstain"), (["input"], "correct")):
+        rep = _rep(new_ops=[_op("final_logit_softcap", "final logits", roles)])
+        r = [x for x in B.score_new_fields("x", rep, {}, truth) if x["field"] == "new_op_inputs"]
+        assert r[0]["score"] == verdict, roles
+    rep = _rep(new_ops=[_op("final_logit_softcap", "final logits", ["input"], kind="needs_new_primitive")])
+    assert [x["score"] for x in B.score_new_fields("x", rep, {}, truth) if x["field"] == "new_op_inputs"] == ["WRONG"]
+
+
+def test_new_field_label_quotes_occur_in_the_sources():
+    truth = json.loads(open(B.TRUTH_FILE, encoding="utf-8").read())
+    checked = 0
+
+    def walk(V, pid, x):
+        nonlocal checked
+        if isinstance(x, dict):
+            q = x.get("quote")
+            if isinstance(q, str) and q:
+                assert V.quote_found(q), (pid, q[:60])
+                if isinstance(x.get("value"), (int, float)) and not isinstance(x.get("value"), bool):
+                    assert L.number_in_quote(float(x["value"]), q), (pid, q[:60])
+                checked += 1
+            for v in x.values():
+                walk(V, pid, v)
+        elif isinstance(x, list):
+            for v in x:
+                walk(V, pid, v)
+
+    for pid, p in truth["papers"].items():
+        assert "new_fields" in p, pid
+        path = os.path.join(HERE, ".cache", f"{pid}.tex")
+        if not os.path.exists(path):
+            pytest.skip("the benchmark's LaTeX cache is not on this machine")
+        walk(L.Verifier(L.prepare_source(open(path, encoding="utf-8", errors="replace").read())), pid, p["new_fields"])
+    assert checked >= 40
+
+
+def test_affine_node_and_attention_primitive_count_as_the_op():
+    truth = {"new_fields": {"new_ops": [
+        {"name": "embed scale", "category": "embed", "scored": True, "inputs": [{"role": "input"}, {"role": "other"}]},
+        {"name": "attn cap", "category": "attention_logits", "scored": True,
+         "inputs": [{"role": "input"}, {"role": "other"}]}]}}
+    out = {"block_ops": [n("embedding", ["tok"], "e", sub="embed"),
+                         n("affine", ["e"], "x", sub="embed", attrs=[("scale", "22.627417"), ("shift", "0")])]}
+    rep = _rep(new_ops=[_op("softcapped_attention", "attention", [], kind="needs_new_primitive")])
+    rows = {r["op"]: r["score"] for r in B.score_new_fields("x", rep, out, truth) if r["field"] == "new_op_inputs"}
+    assert rows == {"embed scale": "correct", "attn cap": "correct"}
+    rows = {r["op"]: r["score"] for r in B.score_new_fields("x", _rep(), {"block_ops": []}, truth)
+            if r["field"] == "new_op_inputs"}
+    assert rows == {"embed scale": "abstain", "attn cap": "abstain"}

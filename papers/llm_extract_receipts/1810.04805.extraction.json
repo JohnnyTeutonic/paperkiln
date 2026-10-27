@@ -4,37 +4,37 @@
  "fields": {
   "d_model": {
    "value": 768,
-   "evidence": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M) [Sec. 3 BERT, Model Architecture]",
+   "evidence": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M) [Sec. BERT, Model Architecture]",
    "verdict": "used"
   },
   "n_layers": {
    "value": 12,
-   "evidence": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M) [Sec. 3 BERT, Model Architecture]",
+   "evidence": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M) [Sec. BERT, Model Architecture]",
    "verdict": "used"
   },
   "n_heads": {
    "value": 12,
-   "evidence": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M) [Sec. 3 BERT, Model Architecture]",
+   "evidence": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M) [Sec. BERT, Model Architecture]",
    "verdict": "used"
   },
   "d_ff": {
    "value": 3072,
-   "evidence": "In all cases we set the feed-forward/filter size to be $4H$, i.e., 3072 for the $H=768$ and 4096 for the $H=1024$. [Sec. 3 BERT, Model Architecture (footnote)]",
+   "evidence": "In all cases we set the feed-forward/filter size to be $4H$, i.e., 3072 for the $H=768$ and 4096 for the $H=1024$. [Sec. BERT, Model Architecture (footnote)]",
    "verdict": "used"
   },
   "vocab_size": {
    "value": 30000,
-   "evidence": "We use WordPiece embeddings \\cite{wu-etal:2016:_googl} with a 30,000 token vocabulary. [Sec. 3 Input/Output Representations]",
+   "evidence": "We use WordPiece embeddings \\cite{wu-etal:2016:_googl} with a 30,000 token vocabulary. [Sec. BERT, Input/Output Representations]",
    "verdict": "used"
   },
   "context_length": {
    "value": 512,
-   "evidence": "Then, we train the rest 10\\% of the steps of sequence of 512 to learn the positional embeddings. [Appendix A.2 Pre-training Procedure]",
+   "evidence": "They are sampled such that the combined length is $\\le$ 512 tokens. [Appendix, Pre-training Procedure]",
    "verdict": "used"
   },
   "norm": {
    "value": "layernorm",
-   "evidence": "Because the use of Transformers has become common and our implementation is almost identical to the original, we will omit an exhaustive background description of the model architecture [Sec. 3 BERT, Model Architecture]",
+   "evidence": "Because the use of Transformers has become common and our implementation is almost identical to the original, we will omit an exhaustive background description of the model architecture [Sec. BERT, Model Architecture]",
    "verdict": "unverified",
    "reasons": [
     "the inheritance quote does not name the ancestor"
@@ -42,17 +42,17 @@
   },
   "activation": {
    "value": "gelu",
-   "evidence": "We use a {\\tt gelu} activation \\cite{hendrycks:2016} rather than the standard {\\tt relu}, following OpenAI GPT. [Appendix A.2 Pre-training Procedure]",
+   "evidence": "We use a {\\tt gelu} activation \\cite{hendrycks:2016} rather than the standard {\\tt relu}, following OpenAI GPT. [Appendix, Pre-training Procedure]",
    "verdict": "used"
   },
   "positional": {
    "value": "learned",
-   "evidence": "Then, we train the rest 10\\% of the steps of sequence of 512 to learn the positional embeddings. [Appendix A.2 Pre-training Procedure]",
+   "evidence": "Then, we train the rest 10\\% of the steps of sequence of 512 to learn the positional embeddings. [Appendix, Pre-training Procedure]",
    "verdict": "used"
   },
   "residual": {
    "value": "residual",
-   "evidence": "Because the use of Transformers has become common and our implementation is almost identical to the original, we will omit an exhaustive background description of the model architecture [Sec. 3 BERT, Model Architecture]",
+   "evidence": "Because the use of Transformers has become common and our implementation is almost identical to the original, we will omit an exhaustive background description of the model architecture [Sec. BERT, Model Architecture]",
    "verdict": "unverified",
    "reasons": [
     "inherited from transformer, whose curated entry has no residual",
@@ -61,7 +61,7 @@
   },
   "attention": {
    "value": "other:full bidirectional (non-causal) softmax self-attention",
-   "evidence": "Critically, however, the BERT Transformer uses bidirectional self-attention, while the GPT Transformer uses constrained self-attention where every token can only attend to context to its left. [Sec. 3 BERT, Model Architecture]",
+   "evidence": "Critically, however, the BERT Transformer uses bidirectional self-attention, while the GPT Transformer uses constrained self-attention where every token can only attend to context to its left. [Sec. BERT, Model Architecture]",
    "verdict": "used"
   }
  },
@@ -87,7 +87,7 @@
  "inherits": {
   "ancestor": "transformer",
   "evidence": "Because the use of Transformers has become common and our implementation is almost identical to the original, we will omit an exhaustive background description of the model architecture",
-  "section": "Sec. 3 BERT, Model Architecture"
+  "section": "Sec. BERT, Model Architecture"
  },
  "variants": [
   {
@@ -110,19 +110,19 @@
  "mechanism_scan": [
   {
    "mechanism": "encoder-decoder or encoder-only model",
-   "where": "llm extraction, verified quote, Sec. 3 BERT, Model Architecture",
+   "where": "llm extraction, verified quote, Sec. BERT, Model Architecture",
    "blocking": true,
    "evidence": "BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in \\citet{vaswani-etal:2017:_atten} and released in the {\\tt tensor2tensor} library."
   },
   {
-   "mechanism": "Next sentence prediction binary classifier on the final [CLS] hidden vector C (second pre-training head)",
-   "where": "llm extraction, verified quote, Sec. 3.1 Task #2: Next Sentence Prediction",
+   "mechanism": "Next sentence prediction head on the final [CLS] hidden vector C (binary classifier), trained jointly with MLM",
+   "where": "llm extraction, verified quote, Sec. Pre-training BERT, Task #2",
    "blocking": true,
    "evidence": "As we show in Figure~\\ref{fig:bert_overall}, $C$ is used for  next sentence prediction (NSP)."
   },
   {
-   "mechanism": "Task-specific fine-tuning output layers (classification weights W on C; start/end vectors for SQuAD)",
-   "where": "llm extraction, verified quote, Sec. 4.1 GLUE",
+   "mechanism": "Task-specific fine-tuning output layers (classification on C, span start/end vectors S and E)",
+   "where": "llm extraction, verified quote, Sec. Experiments, GLUE",
    "blocking": true,
    "evidence": "The only new parameters introduced during fine-tuning are  classification layer weights $W \\in \\mathbb{R}^{K \\times H}$, where $K$ is the number of labels."
   }
@@ -132,14 +132,14 @@
   "sent_sha256": "1d4df3e11df0159455a812424ae3007e1ee4a3a432b79b4899ea3c9e469e39ea",
   "from": "https://arxiv.org/e-print/1810.04805",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
+  "extractor_sha256": "9d5951b0f11c920aaf075abead17d7d4e619d37402d47690ba452de15620e921",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
+  "prompt_sha256": "e6c6c5052b656885910d1539b8c320ba4ecb9262a6079252b852f1ff637b03ef",
   "n_calls": 1,
-  "cost_usd": 0.26948,
+  "cost_usd": 0.283336,
   "request_ids": [
-   "req_011CgFfoeBEyA1rN27sJvzE2"
+   "req_011CgRr41n73urtHrH5dJPJg"
   ]
  },
  "llm": {
@@ -150,12 +150,12 @@
     "value": "encoder_only",
     "status": "stated",
     "quote": "BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in \\citet{vaswani-etal:2017:_atten} and released in the {\\tt tensor2tensor} library.",
-    "where": "Sec. 3 BERT, Model Architecture"
+    "where": "Sec. BERT, Model Architecture"
    },
    "inherits": {
     "ancestor": "Transformer (Vaswani et al., 2017)",
     "quote": "Because the use of Transformers has become common and our implementation is almost identical to the original, we will omit an exhaustive background description of the model architecture",
-    "where": "Sec. 3 BERT, Model Architecture"
+    "where": "Sec. BERT, Model Architecture"
    },
    "configs": [
     {
@@ -164,19 +164,19 @@
       "value": "768",
       "status": "stated",
       "quote": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M)",
-      "where": "Sec. 3 BERT, Model Architecture"
+      "where": "Sec. BERT, Model Architecture"
      },
      "n_layers": {
       "value": "12",
       "status": "stated",
       "quote": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M)",
-      "where": "Sec. 3 BERT, Model Architecture"
+      "where": "Sec. BERT, Model Architecture"
      },
      "n_heads": {
       "value": "12",
       "status": "stated",
       "quote": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M)",
-      "where": "Sec. 3 BERT, Model Architecture"
+      "where": "Sec. BERT, Model Architecture"
      },
      "n_kv_heads": {
       "value": "",
@@ -194,19 +194,19 @@
       "value": "3072",
       "status": "stated",
       "quote": "In all cases we set the feed-forward/filter size to be $4H$, i.e., 3072 for the $H=768$ and 4096 for the $H=1024$.",
-      "where": "Sec. 3 BERT, Model Architecture (footnote)"
+      "where": "Sec. BERT, Model Architecture (footnote)"
      },
      "vocab_size": {
       "value": "30000",
       "status": "stated",
       "quote": "We use WordPiece embeddings \\cite{wu-etal:2016:_googl} with a 30,000 token vocabulary.",
-      "where": "Sec. 3 Input/Output Representations"
+      "where": "Sec. BERT, Input/Output Representations"
      },
      "context_length": {
       "value": "512",
       "status": "stated",
-      "quote": "Then, we train\nthe rest 10\\% of the steps of sequence of 512 to learn the positional embeddings.",
-      "where": "Appendix A.2 Pre-training Procedure"
+      "quote": "They are sampled such that the combined length is $\\le$ 512 tokens.",
+      "where": "Appendix, Pre-training Procedure"
      }
     },
     {
@@ -215,19 +215,19 @@
       "value": "1024",
       "status": "stated",
       "quote": "{\\bf \\bertlarge} (L=24, H=1024, A=16, Total Parameters=340M)",
-      "where": "Sec. 3 BERT, Model Architecture"
+      "where": "Sec. BERT, Model Architecture"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
       "quote": "{\\bf \\bertlarge} (L=24, H=1024, A=16, Total Parameters=340M)",
-      "where": "Sec. 3 BERT, Model Architecture"
+      "where": "Sec. BERT, Model Architecture"
      },
      "n_heads": {
       "value": "16",
       "status": "stated",
       "quote": "{\\bf \\bertlarge} (L=24, H=1024, A=16, Total Parameters=340M)",
-      "where": "Sec. 3 BERT, Model Architecture"
+      "where": "Sec. BERT, Model Architecture"
      },
      "n_kv_heads": {
       "value": "",
@@ -245,19 +245,19 @@
       "value": "4096",
       "status": "stated",
       "quote": "In all cases we set the feed-forward/filter size to be $4H$, i.e., 3072 for the $H=768$ and 4096 for the $H=1024$.",
-      "where": "Sec. 3 BERT, Model Architecture (footnote)"
+      "where": "Sec. BERT, Model Architecture (footnote)"
      },
      "vocab_size": {
       "value": "30000",
       "status": "stated",
       "quote": "We use WordPiece embeddings \\cite{wu-etal:2016:_googl} with a 30,000 token vocabulary.",
-      "where": "Sec. 3 Input/Output Representations"
+      "where": "Sec. BERT, Input/Output Representations"
      },
      "context_length": {
       "value": "512",
       "status": "stated",
-      "quote": "Then, we train\nthe rest 10\\% of the steps of sequence of 512 to learn the positional embeddings.",
-      "where": "Appendix A.2 Pre-training Procedure"
+      "quote": "They are sampled such that the combined length is $\\le$ 512 tokens.",
+      "where": "Appendix, Pre-training Procedure"
      }
     }
    ],
@@ -267,13 +267,25 @@
      "value": "layernorm",
      "status": "inherited",
      "quote": "Because the use of Transformers has become common and our implementation is almost identical to the original, we will omit an exhaustive background description of the model architecture",
-     "where": "Sec. 3 BERT, Model Architecture"
+     "where": "Sec. BERT, Model Architecture"
     },
     "norm_placement": {
      "value": "post",
      "status": "inherited",
      "quote": "Because the use of Transformers has become common and our implementation is almost identical to the original, we will omit an exhaustive background description of the model architecture",
-     "where": "Sec. 3 BERT, Model Architecture"
+     "where": "Sec. BERT, Model Architecture"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "norm_eps": {
      "value": "",
@@ -285,13 +297,25 @@
      "value": "gelu",
      "status": "stated",
      "quote": "We use a {\\tt gelu} activation \\cite{hendrycks:2016} rather than the standard {\\tt relu}, following OpenAI GPT.",
-     "where": "Appendix A.2 Pre-training Procedure"
+     "where": "Appendix, Pre-training Procedure"
     },
     "positional": {
      "value": "learned",
      "status": "stated",
      "quote": "Then, we train\nthe rest 10\\% of the steps of sequence of 512 to learn the positional embeddings.",
-     "where": "Appendix A.2 Pre-training Procedure"
+     "where": "Appendix, Pre-training Procedure"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "rope_pairing": {
      "value": "",
@@ -315,7 +339,7 @@
      "value": "residual",
      "status": "inherited",
      "quote": "Because the use of Transformers has become common and our implementation is almost identical to the original, we will omit an exhaustive background description of the model architecture",
-     "where": "Sec. 3 BERT, Model Architecture"
+     "where": "Sec. BERT, Model Architecture"
     },
     "parallel_block": {
      "value": "",
@@ -327,7 +351,7 @@
      "value": "other:full bidirectional (non-causal) softmax self-attention",
      "status": "stated",
      "quote": "Critically, however, the BERT Transformer uses bidirectional self-attention, while the GPT Transformer uses constrained self-attention where every token can only attend to context to its left.",
-     "where": "Sec. 3 BERT, Model Architecture"
+     "where": "Sec. BERT, Model Architecture"
     },
     "window_size": {
      "value": "",
@@ -348,6 +372,12 @@
      "where": ""
     },
     "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qk_norm": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -382,6 +412,36 @@
      "status": "not_stated",
      "quote": "",
      "where": ""
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     }
    },
    "block_ops": [
@@ -392,14 +452,14 @@
      "inputs": [
       "tokens"
      ],
-     "output": "tok",
+     "output": "e_tok",
      "attributes": [
       {
        "name": "vocab",
        "value": "30000",
        "status": "stated",
        "quote": "We use WordPiece embeddings \\cite{wu-etal:2016:_googl} with a 30,000 token vocabulary.",
-       "where": "Sec. 3 Input/Output Representations"
+       "where": "Sec. BERT, Input/Output Representations"
       }
      ],
      "new_op": ""
@@ -407,18 +467,18 @@
     {
      "subgraph": "embed",
      "op": "embedding",
-     "role": "segment (sentence A/B) embedding",
+     "role": "segment (A/B) embedding",
      "inputs": [
       "segment_ids"
      ],
-     "output": "seg",
+     "output": "e_seg",
      "attributes": [
       {
        "name": "vocab",
        "value": "2",
        "status": "stated",
        "quote": "Second, we add a learned embedding to every token indicating whether it belongs to sentence {\\tt A} or sentence {\\tt B}.",
-       "where": "Sec. 3 Input/Output Representations"
+       "where": "Sec. BERT, Input/Output Representations"
       }
      ],
      "new_op": ""
@@ -426,19 +486,19 @@
     {
      "subgraph": "embed",
      "op": "add",
-     "role": "token + segment",
+     "role": "sum token and segment embeddings",
      "inputs": [
-      "tok",
-      "seg"
+      "e_tok",
+      "e_seg"
      ],
-     "output": "e1",
+     "output": "e_ts",
      "attributes": [
       {
        "name": "sum",
-       "value": "true",
+       "value": "token+segment+position",
        "status": "stated",
        "quote": "For a given token, its input representation is constructed by summing the corresponding token, segment, and position embeddings.",
-       "where": "Sec. 3 Input/Output Representations"
+       "where": "Sec. BERT, Input/Output Representations"
       }
      ],
      "new_op": ""
@@ -448,7 +508,7 @@
      "op": "pos_embedding",
      "role": "learned absolute position embedding added",
      "inputs": [
-      "e1",
+      "e_ts",
       "pos"
      ],
      "output": "x",
@@ -458,7 +518,7 @@
        "value": "512",
        "status": "stated",
        "quote": "Then, we train\nthe rest 10\\% of the steps of sequence of 512 to learn the positional embeddings.",
-       "where": "Appendix A.2 Pre-training Procedure"
+       "where": "Appendix, Pre-training Procedure"
       }
      ],
      "new_op": ""
@@ -472,6 +532,13 @@
      ],
      "output": "q",
      "attributes": [
+      {
+       "name": "out",
+       "value": "768",
+       "status": "stated",
+       "quote": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M)",
+       "where": "Sec. BERT, Model Architecture"
+      },
       {
        "name": "bias",
        "value": "",
@@ -492,6 +559,13 @@
      "output": "k",
      "attributes": [
       {
+       "name": "out",
+       "value": "768",
+       "status": "stated",
+       "quote": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M)",
+       "where": "Sec. BERT, Model Architecture"
+      },
+      {
        "name": "bias",
        "value": "",
        "status": "not_stated",
@@ -510,6 +584,13 @@
      ],
      "output": "v",
      "attributes": [
+      {
+       "name": "out",
+       "value": "768",
+       "status": "stated",
+       "quote": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M)",
+       "where": "Sec. BERT, Model Architecture"
+      },
       {
        "name": "bias",
        "value": "",
@@ -536,7 +617,7 @@
        "value": "12",
        "status": "stated",
        "quote": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M)",
-       "where": "Sec. 3 BERT, Model Architecture"
+       "where": "Sec. BERT, Model Architecture"
       },
       {
        "name": "kv_heads",
@@ -564,7 +645,7 @@
        "value": "false",
        "status": "stated",
        "quote": "Critically, however, the BERT Transformer uses bidirectional self-attention, while the GPT Transformer uses constrained self-attention where every token can only attend to context to its left.",
-       "where": "Sec. 3 BERT, Model Architecture"
+       "where": "Sec. BERT, Model Architecture"
       },
       {
        "name": "window",
@@ -590,8 +671,15 @@
      "inputs": [
       "a"
      ],
-     "output": "ao",
+     "output": "o",
      "attributes": [
+      {
+       "name": "out",
+       "value": "768",
+       "status": "stated",
+       "quote": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M)",
+       "where": "Sec. BERT, Model Architecture"
+      },
       {
        "name": "bias",
        "value": "",
@@ -608,7 +696,7 @@
      "role": "attention residual",
      "inputs": [
       "x",
-      "ao"
+      "o"
      ],
      "output": "r1",
      "attributes": [],
@@ -617,7 +705,7 @@
     {
      "subgraph": "block",
      "op": "layernorm",
-     "role": "post-attention layer norm",
+     "role": "post-attention layernorm (inherited from Transformer)",
      "inputs": [
       "r1"
      ],
@@ -647,7 +735,7 @@
        "value": "3072",
        "status": "stated",
        "quote": "In all cases we set the feed-forward/filter size to be $4H$, i.e., 3072 for the $H=768$ and 4096 for the $H=1024$.",
-       "where": "Sec. 3 BERT, Model Architecture (footnote)"
+       "where": "Sec. BERT, Model Architecture (footnote)"
       },
       {
        "name": "bias",
@@ -688,6 +776,13 @@
      "output": "f",
      "attributes": [
       {
+       "name": "out",
+       "value": "768",
+       "status": "stated",
+       "quote": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M)",
+       "where": "Sec. BERT, Model Architecture"
+      },
+      {
        "name": "bias",
        "value": "",
        "status": "not_stated",
@@ -712,7 +807,7 @@
     {
      "subgraph": "block",
      "op": "layernorm",
-     "role": "post-FFN layer norm",
+     "role": "post-FFN layernorm (inherited from Transformer)",
      "inputs": [
       "r2"
      ],
@@ -731,7 +826,7 @@
     {
      "subgraph": "head",
      "op": "linear",
-     "role": "masked LM output over vocabulary",
+     "role": "masked LM output softmax over vocabulary",
      "inputs": [
       "x"
      ],
@@ -742,7 +837,7 @@
        "value": "30000",
        "status": "stated",
        "quote": "In this case, the final hidden vectors corresponding to the mask tokens are fed into an output softmax over the vocabulary, as in a standard LM.",
-       "where": "Sec. 3.1 Task #1: Masked LM"
+       "where": "Sec. Pre-training BERT, Task #1"
       },
       {
        "name": "bias",
@@ -765,17 +860,17 @@
    "new_ops": [],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Next sentence prediction binary classifier on the final [CLS] hidden vector C (second pre-training head)",
+     "mechanism": "Next sentence prediction head on the final [CLS] hidden vector C (binary classifier), trained jointly with MLM",
      "quote": "As we show in Figure~\\ref{fig:bert_overall}, $C$ is used for  next sentence prediction (NSP).",
-     "where": "Sec. 3.1 Task #2: Next Sentence Prediction"
+     "where": "Sec. Pre-training BERT, Task #2"
     },
     {
-     "mechanism": "Task-specific fine-tuning output layers (classification weights W on C; start/end vectors for SQuAD)",
+     "mechanism": "Task-specific fine-tuning output layers (classification on C, span start/end vectors S and E)",
      "quote": "The only new parameters introduced during fine-tuning are  classification layer weights $W \\in \\mathbb{R}^{K \\times H}$, where $K$ is the number of labels.",
-     "where": "Sec. 4.1 GLUE"
+     "where": "Sec. Experiments, GLUE"
     }
    ],
-   "notes": "I describe BERT-BASE as the primary config; BERT-LARGE is also listed. Attention heads in block_ops use BASE values (16 for LARGE), as does the FFN width (4096 for LARGE). The block structure (post-LN LayerNorm, residuals) is marked inherited from the Transformer of Vaswani et al., based on the 'almost identical to the original' sentence; the paper does not restate it. The paper says 'gelu' but not whether it is the exact or tanh form, so the gelu op's approx is not_stated. Left not_stated: head_dim (64 is implied by H/A but never written), n_kv_heads, LayerNorm eps, biases, an embedding LayerNorm or dropout placement in the architecture, and tying of the output layer. The size-ablation models in Table 6 are ablations, not the paper's model configs."
+   "notes": "Described BERT-BASE (primary) and BERT-LARGE. Norm type/post placement/residual marked inherited from the explicit statement that the implementation is almost identical to the original Transformer of Vaswani et al. (post-LN). head_dim not stated (only H and A given). GELU form (erf vs tanh), biases, embedding layernorm, tied MLM output weights, and the MLM head's extra transform are not stated in the paper and left not_stated. Attention is bidirectional (non-causal), so the flavour uses an other: value."
   },
   "verification": {
    "errors": [],
@@ -784,14 +879,14 @@
     "ancestor": "Transformer (Vaswani et al., 2017)",
     "resolved": "transformer",
     "quote": "Because the use of Transformers has become common and our implementation is almost identical to the original, we will omit an exhaustive background description of the model architecture",
-    "where": "Sec. 3 BERT, Model Architecture",
+    "where": "Sec. BERT, Model Architecture",
     "quote_found": true
    },
    "family": {
     "value": "encoder_only",
     "status": "stated",
     "quote": "BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in \\citet{vaswani-etal:2017:_atten} and released in the {\\tt tensor2tensor} library.",
-    "where": "Sec. 3 BERT, Model Architecture",
+    "where": "Sec. BERT, Model Architecture",
     "reasons": [],
     "check": "verified"
    },
@@ -802,7 +897,7 @@
       "value": "768",
       "status": "stated",
       "quote": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M)",
-      "where": "Sec. 3 BERT, Model Architecture",
+      "where": "Sec. BERT, Model Architecture",
       "reasons": [],
       "check": "verified"
      },
@@ -810,7 +905,7 @@
       "value": "12",
       "status": "stated",
       "quote": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M)",
-      "where": "Sec. 3 BERT, Model Architecture",
+      "where": "Sec. BERT, Model Architecture",
       "reasons": [],
       "check": "verified"
      },
@@ -818,7 +913,7 @@
       "value": "12",
       "status": "stated",
       "quote": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M)",
-      "where": "Sec. 3 BERT, Model Architecture",
+      "where": "Sec. BERT, Model Architecture",
       "reasons": [],
       "check": "verified"
      },
@@ -842,7 +937,7 @@
       "value": "3072",
       "status": "stated",
       "quote": "In all cases we set the feed-forward/filter size to be $4H$, i.e., 3072 for the $H=768$ and 4096 for the $H=1024$.",
-      "where": "Sec. 3 BERT, Model Architecture (footnote)",
+      "where": "Sec. BERT, Model Architecture (footnote)",
       "reasons": [],
       "check": "verified"
      },
@@ -850,15 +945,15 @@
       "value": "30000",
       "status": "stated",
       "quote": "We use WordPiece embeddings \\cite{wu-etal:2016:_googl} with a 30,000 token vocabulary.",
-      "where": "Sec. 3 Input/Output Representations",
+      "where": "Sec. BERT, Input/Output Representations",
       "reasons": [],
       "check": "verified"
      },
      "context_length": {
       "value": "512",
       "status": "stated",
-      "quote": "Then, we train\nthe rest 10\\% of the steps of sequence of 512 to learn the positional embeddings.",
-      "where": "Appendix A.2 Pre-training Procedure",
+      "quote": "They are sampled such that the combined length is $\\le$ 512 tokens.",
+      "where": "Appendix, Pre-training Procedure",
       "reasons": [],
       "check": "verified"
      },
@@ -875,7 +970,7 @@
       "value": "1024",
       "status": "stated",
       "quote": "{\\bf \\bertlarge} (L=24, H=1024, A=16, Total Parameters=340M)",
-      "where": "Sec. 3 BERT, Model Architecture",
+      "where": "Sec. BERT, Model Architecture",
       "reasons": [],
       "check": "verified"
      },
@@ -883,7 +978,7 @@
       "value": "24",
       "status": "stated",
       "quote": "{\\bf \\bertlarge} (L=24, H=1024, A=16, Total Parameters=340M)",
-      "where": "Sec. 3 BERT, Model Architecture",
+      "where": "Sec. BERT, Model Architecture",
       "reasons": [],
       "check": "verified"
      },
@@ -891,7 +986,7 @@
       "value": "16",
       "status": "stated",
       "quote": "{\\bf \\bertlarge} (L=24, H=1024, A=16, Total Parameters=340M)",
-      "where": "Sec. 3 BERT, Model Architecture",
+      "where": "Sec. BERT, Model Architecture",
       "reasons": [],
       "check": "verified"
      },
@@ -915,7 +1010,7 @@
       "value": "4096",
       "status": "stated",
       "quote": "In all cases we set the feed-forward/filter size to be $4H$, i.e., 3072 for the $H=768$ and 4096 for the $H=1024$.",
-      "where": "Sec. 3 BERT, Model Architecture (footnote)",
+      "where": "Sec. BERT, Model Architecture (footnote)",
       "reasons": [],
       "check": "verified"
      },
@@ -923,15 +1018,15 @@
       "value": "30000",
       "status": "stated",
       "quote": "We use WordPiece embeddings \\cite{wu-etal:2016:_googl} with a 30,000 token vocabulary.",
-      "where": "Sec. 3 Input/Output Representations",
+      "where": "Sec. BERT, Input/Output Representations",
       "reasons": [],
       "check": "verified"
      },
      "context_length": {
       "value": "512",
       "status": "stated",
-      "quote": "Then, we train\nthe rest 10\\% of the steps of sequence of 512 to learn the positional embeddings.",
-      "where": "Appendix A.2 Pre-training Procedure",
+      "quote": "They are sampled such that the combined length is $\\le$ 512 tokens.",
+      "where": "Appendix, Pre-training Procedure",
       "reasons": [],
       "check": "verified"
      },
@@ -949,7 +1044,7 @@
      "value": "layernorm",
      "status": "inherited",
      "quote": "Because the use of Transformers has become common and our implementation is almost identical to the original, we will omit an exhaustive background description of the model architecture",
-     "where": "Sec. 3 BERT, Model Architecture",
+     "where": "Sec. BERT, Model Architecture",
      "reasons": [
       "the inheritance quote does not name the ancestor"
      ],
@@ -959,12 +1054,28 @@
      "value": "post",
      "status": "inherited",
      "quote": "Because the use of Transformers has become common and our implementation is almost identical to the original, we will omit an exhaustive background description of the model architecture",
-     "where": "Sec. 3 BERT, Model Architecture",
+     "where": "Sec. BERT, Model Architecture",
      "reasons": [
       "inherited from transformer, whose curated entry has no norm_placement",
       "the inheritance quote does not name the ancestor"
      ],
      "check": "unverified"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "norm_eps": {
      "value": "",
@@ -978,7 +1089,7 @@
      "value": "gelu",
      "status": "stated",
      "quote": "We use a {\\tt gelu} activation \\cite{hendrycks:2016} rather than the standard {\\tt relu}, following OpenAI GPT.",
-     "where": "Appendix A.2 Pre-training Procedure",
+     "where": "Appendix, Pre-training Procedure",
      "reasons": [],
      "check": "verified"
     },
@@ -986,9 +1097,25 @@
      "value": "learned",
      "status": "stated",
      "quote": "Then, we train\nthe rest 10\\% of the steps of sequence of 512 to learn the positional embeddings.",
-     "where": "Appendix A.2 Pre-training Procedure",
+     "where": "Appendix, Pre-training Procedure",
      "reasons": [],
      "check": "verified"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "rope_pairing": {
      "value": "",
@@ -1018,7 +1145,7 @@
      "value": "residual",
      "status": "inherited",
      "quote": "Because the use of Transformers has become common and our implementation is almost identical to the original, we will omit an exhaustive background description of the model architecture",
-     "where": "Sec. 3 BERT, Model Architecture",
+     "where": "Sec. BERT, Model Architecture",
      "reasons": [
       "inherited from transformer, whose curated entry has no residual",
       "the inheritance quote does not name the ancestor"
@@ -1037,7 +1164,7 @@
      "value": "other:full bidirectional (non-causal) softmax self-attention",
      "status": "stated",
      "quote": "Critically, however, the BERT Transformer uses bidirectional self-attention, while the GPT Transformer uses constrained self-attention where every token can only attend to context to its left.",
-     "where": "Sec. 3 BERT, Model Architecture",
+     "where": "Sec. BERT, Model Architecture",
      "reasons": [],
      "check": "quote_only"
     },
@@ -1066,6 +1193,14 @@
      "check": "not_stated"
     },
     "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qk_norm": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -1112,6 +1247,46 @@
      "where": "",
      "reasons": [],
      "check": "not_stated"
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     }
    },
    "new_ops": [],
@@ -1124,14 +1299,14 @@
      "inputs": [
       "tokens"
      ],
-     "output": "tok",
+     "output": "e_tok",
      "new_op": "",
      "attributes": [
       {
        "value": "30000",
        "status": "stated",
        "quote": "We use WordPiece embeddings \\cite{wu-etal:2016:_googl} with a 30,000 token vocabulary.",
-       "where": "Sec. 3 Input/Output Representations",
+       "where": "Sec. BERT, Input/Output Representations",
        "reasons": [],
        "check": "verified",
        "name": "vocab"
@@ -1143,18 +1318,18 @@
      "i": 1,
      "subgraph": "embed",
      "op": "embedding",
-     "role": "segment (sentence A/B) embedding",
+     "role": "segment (A/B) embedding",
      "inputs": [
       "segment_ids"
      ],
-     "output": "seg",
+     "output": "e_seg",
      "new_op": "",
      "attributes": [
       {
        "value": "2",
        "status": "stated",
        "quote": "Second, we add a learned embedding to every token indicating whether it belongs to sentence {\\tt A} or sentence {\\tt B}.",
-       "where": "Sec. 3 Input/Output Representations",
+       "where": "Sec. BERT, Input/Output Representations",
        "reasons": [
         "2 does not occur in its quote"
        ],
@@ -1168,19 +1343,19 @@
      "i": 2,
      "subgraph": "embed",
      "op": "add",
-     "role": "token + segment",
+     "role": "sum token and segment embeddings",
      "inputs": [
-      "tok",
-      "seg"
+      "e_tok",
+      "e_seg"
      ],
-     "output": "e1",
+     "output": "e_ts",
      "new_op": "",
      "attributes": [
       {
-       "value": "true",
+       "value": "token+segment+position",
        "status": "stated",
        "quote": "For a given token, its input representation is constructed by summing the corresponding token, segment, and position embeddings.",
-       "where": "Sec. 3 Input/Output Representations",
+       "where": "Sec. BERT, Input/Output Representations",
        "reasons": [],
        "check": "quote_only",
        "name": "sum"
@@ -1194,7 +1369,7 @@
      "op": "pos_embedding",
      "role": "learned absolute position embedding added",
      "inputs": [
-      "e1",
+      "e_ts",
       "pos"
      ],
      "output": "x",
@@ -1204,7 +1379,7 @@
        "value": "512",
        "status": "stated",
        "quote": "Then, we train\nthe rest 10\\% of the steps of sequence of 512 to learn the positional embeddings.",
-       "where": "Appendix A.2 Pre-training Procedure",
+       "where": "Appendix, Pre-training Procedure",
        "reasons": [],
        "check": "verified",
        "name": "max_positions"
@@ -1223,6 +1398,15 @@
      "output": "q",
      "new_op": "",
      "attributes": [
+      {
+       "value": "768",
+       "status": "stated",
+       "quote": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M)",
+       "where": "Sec. BERT, Model Architecture",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -1247,6 +1431,15 @@
      "new_op": "",
      "attributes": [
       {
+       "value": "768",
+       "status": "stated",
+       "quote": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M)",
+       "where": "Sec. BERT, Model Architecture",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -1269,6 +1462,15 @@
      "output": "v",
      "new_op": "",
      "attributes": [
+      {
+       "value": "768",
+       "status": "stated",
+       "quote": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M)",
+       "where": "Sec. BERT, Model Architecture",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -1298,7 +1500,7 @@
        "value": "12",
        "status": "stated",
        "quote": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M)",
-       "where": "Sec. 3 BERT, Model Architecture",
+       "where": "Sec. BERT, Model Architecture",
        "reasons": [],
        "check": "verified",
        "name": "heads"
@@ -1334,7 +1536,7 @@
        "value": "false",
        "status": "stated",
        "quote": "Critically, however, the BERT Transformer uses bidirectional self-attention, while the GPT Transformer uses constrained self-attention where every token can only attend to context to its left.",
-       "where": "Sec. 3 BERT, Model Architecture",
+       "where": "Sec. BERT, Model Architecture",
        "reasons": [],
        "check": "quote_only",
        "name": "causal"
@@ -1368,9 +1570,18 @@
      "inputs": [
       "a"
      ],
-     "output": "ao",
+     "output": "o",
      "new_op": "",
      "attributes": [
+      {
+       "value": "768",
+       "status": "stated",
+       "quote": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M)",
+       "where": "Sec. BERT, Model Architecture",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -1390,7 +1601,7 @@
      "role": "attention residual",
      "inputs": [
       "x",
-      "ao"
+      "o"
      ],
      "output": "r1",
      "new_op": "",
@@ -1401,7 +1612,7 @@
      "i": 10,
      "subgraph": "block",
      "op": "layernorm",
-     "role": "post-attention layer norm",
+     "role": "post-attention layernorm (inherited from Transformer)",
      "inputs": [
       "r1"
      ],
@@ -1435,7 +1646,7 @@
        "value": "3072",
        "status": "stated",
        "quote": "In all cases we set the feed-forward/filter size to be $4H$, i.e., 3072 for the $H=768$ and 4096 for the $H=1024$.",
-       "where": "Sec. 3 BERT, Model Architecture (footnote)",
+       "where": "Sec. BERT, Model Architecture (footnote)",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -1487,6 +1698,15 @@
      "new_op": "",
      "attributes": [
       {
+       "value": "768",
+       "status": "stated",
+       "quote": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M)",
+       "where": "Sec. BERT, Model Architecture",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -1516,7 +1736,7 @@
      "i": 15,
      "subgraph": "block",
      "op": "layernorm",
-     "role": "post-FFN layer norm",
+     "role": "post-FFN layernorm (inherited from Transformer)",
      "inputs": [
       "r2"
      ],
@@ -1539,7 +1759,7 @@
      "i": 16,
      "subgraph": "head",
      "op": "linear",
-     "role": "masked LM output over vocabulary",
+     "role": "masked LM output softmax over vocabulary",
      "inputs": [
       "x"
      ],
@@ -1550,7 +1770,7 @@
        "value": "30000",
        "status": "stated",
        "quote": "In this case, the final hidden vectors corresponding to the mask tokens are fed into an output softmax over the vocabulary, as in a standard LM.",
-       "where": "Sec. 3.1 Task #1: Masked LM",
+       "where": "Sec. Pre-training BERT, Task #1",
        "reasons": [
         "30000 does not occur in its quote"
        ],
@@ -1581,24 +1801,24 @@
    ],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Next sentence prediction binary classifier on the final [CLS] hidden vector C (second pre-training head)",
+     "mechanism": "Next sentence prediction head on the final [CLS] hidden vector C (binary classifier), trained jointly with MLM",
      "quote": "As we show in Figure~\\ref{fig:bert_overall}, $C$ is used for  next sentence prediction (NSP).",
-     "where": "Sec. 3.1 Task #2: Next Sentence Prediction",
+     "where": "Sec. Pre-training BERT, Task #2",
      "check": "verified"
     },
     {
-     "mechanism": "Task-specific fine-tuning output layers (classification weights W on C; start/end vectors for SQuAD)",
+     "mechanism": "Task-specific fine-tuning output layers (classification on C, span start/end vectors S and E)",
      "quote": "The only new parameters introduced during fine-tuning are  classification layer weights $W \\in \\mathbb{R}^{K \\times H}$, where $K$ is the number of labels.",
-     "where": "Sec. 4.1 GLUE",
+     "where": "Sec. Experiments, GLUE",
      "check": "verified"
     }
    ],
    "summary": {
     "counts": {
-     "verified": 19,
+     "verified": 24,
      "quote_only": 3,
      "unverified": 5,
-     "not_stated": 34
+     "not_stated": 44
     },
     "unverified": [
      {

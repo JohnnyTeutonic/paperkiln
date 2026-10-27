@@ -4,27 +4,22 @@
  "fields": {
   "d_model": {
    "value": 1024,
-   "evidence": "Hidden size & 1024 & 768 \\\\ [Table pretraining_hyperparams]",
+   "evidence": "Hidden size & 1024 & 768 [Table pretraining_hyperparams]",
    "verdict": "used"
   },
   "n_layers": {
    "value": 24,
-   "evidence": "Number of Layers & 24 & 12 \\\\ [Table pretraining_hyperparams]",
+   "evidence": "Number of Layers & 24 & 12 [Table pretraining_hyperparams]",
    "verdict": "used"
   },
   "n_heads": {
    "value": 16,
-   "evidence": "Attention heads & 16 & 12 \\\\ [Table pretraining_hyperparams]",
+   "evidence": "Attention heads & 16 & 12 [Table pretraining_hyperparams]",
    "verdict": "used"
   },
   "d_ff": {
    "value": 4096,
-   "evidence": "FFN inner hidden size & 4096 & 3072 \\\\ [Table pretraining_hyperparams]",
-   "verdict": "used"
-  },
-  "vocab_size": {
-   "value": 50000,
-   "evidence": "we instead consider training BERT with a larger byte-level BPE vocabulary containing 50K subword units, without any additional preprocessing or tokenization of the input. [Sec. 4.4 Text Encoding]",
+   "evidence": "FFN inner hidden size & 4096 & 3072 [Table pretraining_hyperparams]",
    "verdict": "used"
   },
   "context_length": {
@@ -34,7 +29,7 @@
   },
   "norm": {
    "value": "layernorm",
-   "evidence": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{} [Sec. 5.1 GLUE Results]",
+   "evidence": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters). [Sec. 5 RoBERTa]",
    "verdict": "unverified",
    "reasons": [
     "the inheritance quote does not name the ancestor"
@@ -42,12 +37,15 @@
   },
   "activation": {
    "value": "gelu",
-   "evidence": "BERT trains with a dropout of 0.1 on all layers and attention weights, and a GELU activation function~\\cite{hendrycks2016gelu}. [Sec. 2.4 Optimization]",
-   "verdict": "used"
+   "evidence": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters). [Sec. 5 RoBERTa]",
+   "verdict": "unverified",
+   "reasons": [
+    "the inheritance quote does not name the ancestor"
+   ]
   },
   "positional": {
    "value": "learned",
-   "evidence": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{} [Sec. 5.1 GLUE Results]",
+   "evidence": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters). [Sec. 5 RoBERTa]",
    "verdict": "unverified",
    "reasons": [
     "the inheritance quote does not name the ancestor"
@@ -55,7 +53,7 @@
   },
   "residual": {
    "value": "residual",
-   "evidence": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{} [Sec. 5.1 GLUE Results]",
+   "evidence": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters). [Sec. 5 RoBERTa]",
    "verdict": "unverified",
    "reasons": [
     "inherited from bert, whose curated entry has no residual",
@@ -64,7 +62,7 @@
   },
   "attention": {
    "value": "exact",
-   "evidence": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{} [Sec. 5.1 GLUE Results]",
+   "evidence": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters). [Sec. 5 RoBERTa]",
    "verdict": "unverified",
    "reasons": [
     "inherited from bert, whose curated entry has no attention",
@@ -73,7 +71,8 @@
   }
  },
  "unresolved": [
-  "n_kv_heads"
+  "n_kv_heads",
+  "vocab_size"
  ],
  "unverified": [
   {
@@ -85,6 +84,12 @@
   },
   {
    "field": "norm",
+   "reasons": [
+    "the inheritance quote does not name the ancestor"
+   ]
+  },
+  {
+   "field": "activation",
    "reasons": [
     "the inheritance quote does not name the ancestor"
    ]
@@ -113,8 +118,8 @@
  "mentions": {},
  "inherits": {
   "ancestor": "bert",
-  "evidence": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-  "section": "Sec. 5.1 GLUE Results"
+  "evidence": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+  "section": "Sec. 5 RoBERTa"
  },
  "variants": [
   {
@@ -122,7 +127,6 @@
    "n_layers": 24,
    "n_heads": 16,
    "d_ff": 4096,
-   "vocab_size": 50000,
    "context_length": 512
   },
   {
@@ -130,16 +134,21 @@
    "n_layers": 12,
    "n_heads": 12,
    "d_ff": 3072,
-   "vocab_size": 50000,
    "context_length": 512
   }
  ],
  "mechanism_scan": [
   {
    "mechanism": "encoder-decoder or encoder-only model",
-   "where": "llm extraction, UNVERIFIED quote, Sec. 5.1 GLUE Results",
+   "where": "llm extraction, UNVERIFIED quote, Sec. 5 RoBERTa",
    "blocking": true,
-   "evidence": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}"
+   "evidence": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters)."
+  },
+  {
+   "mechanism": "Task-specific fine-tuning head for RACE: [CLS] representations of four question-answer-passage sequences are passed through a fully-connected layer (fine-tuning only, not part of the pretrained network)",
+   "where": "llm extraction, verified quote, Sec. 5.3 RACE Results",
+   "blocking": true,
+   "evidence": "We then encode each of these four sequences and pass the resulting \\emph{[CLS]} representations through a fully-connected layer, which is used to predict the correct answer."
   }
  ],
  "source": {
@@ -147,30 +156,30 @@
   "sent_sha256": "08ca5dbcfea1feffd9e325143abbd6ce761adb9669995c80d5b216dbc03f12c7",
   "from": "https://arxiv.org/e-print/1907.11692",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
+  "extractor_sha256": "9d5951b0f11c920aaf075abead17d7d4e619d37402d47690ba452de15620e921",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
+  "prompt_sha256": "e6c6c5052b656885910d1539b8c320ba4ecb9262a6079252b852f1ff637b03ef",
   "n_calls": 1,
-  "cost_usd": 0.272308,
+  "cost_usd": 0.306804,
   "request_ids": [
-   "req_011CgFg2EJRRfzmr1p6ShKLy"
+   "req_011CgRrHZpno28c2znYmLk3i"
   ]
  },
  "llm": {
   "output": {
    "title": "RoBERTa: A Robustly Optimized BERT Pretraining Approach",
-   "model_name": "RoBERTa",
+   "model_name": "RoBERTa (RoBERTa-large, 500K steps, all data)",
    "family": {
     "value": "encoder_only",
     "status": "inherited",
-    "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-    "where": "Sec. 5.1 GLUE Results"
+    "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+    "where": "Sec. 5 RoBERTa"
    },
    "inherits": {
-    "ancestor": "BERT_LARGE (Devlin et al., 2018)",
-    "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-    "where": "Sec. 5.1 GLUE Results"
+    "ancestor": "BERT-large (Devlin et al. 2018); the base configuration follows BERT-base",
+    "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+    "where": "Sec. 5 RoBERTa"
    },
    "configs": [
     {
@@ -178,44 +187,44 @@
      "d_model": {
       "value": "1024",
       "status": "stated",
-      "quote": "Hidden size & 1024 & 768 \\\\",
+      "quote": "Hidden size & 1024 & 768",
       "where": "Table pretraining_hyperparams"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "Number of Layers & 24 & 12 \\\\",
+      "quote": "Number of Layers & 24 & 12",
       "where": "Table pretraining_hyperparams"
      },
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "Attention heads & 16 & 12 \\\\",
+      "quote": "Attention heads & 16 & 12",
       "where": "Table pretraining_hyperparams"
      },
      "n_kv_heads": {
       "value": "16",
       "status": "inherited",
-      "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-      "where": "Sec. 5.1 GLUE Results"
+      "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+      "where": "Sec. 5 RoBERTa"
      },
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "Attention head size & 64 & 64 \\\\",
+      "quote": "Attention head size & 64 & 64",
       "where": "Table pretraining_hyperparams"
      },
      "d_ff": {
       "value": "4096",
       "status": "stated",
-      "quote": "FFN inner hidden size & 4096 & 3072 \\\\",
+      "quote": "FFN inner hidden size & 4096 & 3072",
       "where": "Table pretraining_hyperparams"
      },
      "vocab_size": {
-      "value": "50000",
-      "status": "stated",
-      "quote": "we instead consider training BERT with a larger byte-level BPE vocabulary containing 50K subword units, without any additional preprocessing or tokenization of the input.",
-      "where": "Sec. 4.4 Text Encoding"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
      },
      "context_length": {
       "value": "512",
@@ -229,19 +238,19 @@
      "d_model": {
       "value": "768",
       "status": "stated",
-      "quote": "Hidden size & 1024 & 768 \\\\",
+      "quote": "Hidden size & 1024 & 768",
       "where": "Table pretraining_hyperparams"
      },
      "n_layers": {
       "value": "12",
       "status": "stated",
-      "quote": "Number of Layers & 24 & 12 \\\\",
+      "quote": "Number of Layers & 24 & 12",
       "where": "Table pretraining_hyperparams"
      },
      "n_heads": {
       "value": "12",
       "status": "stated",
-      "quote": "Attention heads & 16 & 12 \\\\",
+      "quote": "Attention heads & 16 & 12",
       "where": "Table pretraining_hyperparams"
      },
      "n_kv_heads": {
@@ -253,20 +262,20 @@
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "Attention head size & 64 & 64 \\\\",
+      "quote": "Attention head size & 64 & 64",
       "where": "Table pretraining_hyperparams"
      },
      "d_ff": {
       "value": "3072",
       "status": "stated",
-      "quote": "FFN inner hidden size & 4096 & 3072 \\\\",
+      "quote": "FFN inner hidden size & 4096 & 3072",
       "where": "Table pretraining_hyperparams"
      },
      "vocab_size": {
-      "value": "50000",
-      "status": "stated",
-      "quote": "we instead consider training BERT with a larger byte-level BPE vocabulary containing 50K subword units, without any additional preprocessing or tokenization of the input.",
-      "where": "Sec. 4.4 Text Encoding"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
      },
      "context_length": {
       "value": "512",
@@ -281,14 +290,26 @@
     "norm": {
      "value": "layernorm",
      "status": "inherited",
-     "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-     "where": "Sec. 5.1 GLUE Results"
+     "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+     "where": "Sec. 5 RoBERTa"
     },
     "norm_placement": {
      "value": "post",
      "status": "inherited",
-     "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-     "where": "Sec. 5.1 GLUE Results"
+     "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+     "where": "Sec. 5 RoBERTa"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "norm_eps": {
      "value": "",
@@ -298,15 +319,27 @@
     },
     "activation": {
      "value": "gelu",
-     "status": "stated",
-     "quote": "BERT trains with a dropout of 0.1 on all layers and attention weights, and a GELU activation function~\\cite{hendrycks2016gelu}.",
-     "where": "Sec. 2.4 Optimization"
+     "status": "inherited",
+     "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+     "where": "Sec. 5 RoBERTa"
     },
     "positional": {
      "value": "learned",
      "status": "inherited",
-     "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-     "where": "Sec. 5.1 GLUE Results"
+     "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+     "where": "Sec. 5 RoBERTa"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "rope_pairing": {
      "value": "",
@@ -329,20 +362,20 @@
     "residual": {
      "value": "residual",
      "status": "inherited",
-     "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-     "where": "Sec. 5.1 GLUE Results"
+     "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+     "where": "Sec. 5 RoBERTa"
     },
     "parallel_block": {
      "value": "false",
      "status": "inherited",
-     "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-     "where": "Sec. 5.1 GLUE Results"
+     "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+     "where": "Sec. 5 RoBERTa"
     },
     "attention": {
      "value": "exact",
      "status": "inherited",
-     "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-     "where": "Sec. 5.1 GLUE Results"
+     "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+     "where": "Sec. 5 RoBERTa"
     },
     "window_size": {
      "value": "",
@@ -359,26 +392,32 @@
     "qkv_bias": {
      "value": "true",
      "status": "inherited",
-     "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-     "where": "Sec. 5.1 GLUE Results"
+     "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+     "where": "Sec. 5 RoBERTa"
     },
     "mlp_bias": {
      "value": "true",
      "status": "inherited",
-     "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-     "where": "Sec. 5.1 GLUE Results"
+     "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+     "where": "Sec. 5 RoBERTa"
+    },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "tied_embeddings": {
      "value": "true",
      "status": "inherited",
-     "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-     "where": "Sec. 5.1 GLUE Results"
+     "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+     "where": "Sec. 5 RoBERTa"
     },
     "moe": {
      "value": "false",
      "status": "inherited",
-     "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-     "where": "Sec. 5.1 GLUE Results"
+     "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+     "where": "Sec. 5 RoBERTa"
     },
     "n_experts": {
      "value": "",
@@ -397,38 +436,91 @@
      "status": "not_stated",
      "quote": "",
      "where": ""
+    },
+    "ssm": {
+     "value": "none",
+     "status": "inherited",
+     "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+     "where": "Sec. 5 RoBERTa"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     }
    },
    "block_ops": [
     {
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding",
+     "role": "token embedding (byte-level BPE)",
      "inputs": [
       "tokens"
      ],
      "output": "e",
-     "attributes": [],
+     "attributes": [
+      {
+       "name": "d",
+       "value": "1024",
+       "status": "stated",
+       "quote": "Hidden size & 1024 & 768",
+       "where": "Table pretraining_hyperparams"
+      },
+      {
+       "name": "vocab",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
      "new_op": ""
     },
     {
      "subgraph": "embed",
      "op": "pos_embedding",
-     "role": "learned absolute position embedding (inherited from BERT)",
+     "role": "learned absolute position embedding",
      "inputs": [
       "e",
       "pos"
      ],
-     "output": "x0",
-     "attributes": [],
+     "output": "ep",
+     "attributes": [
+      {
+       "name": "max_positions",
+       "value": "512",
+       "status": "stated",
+       "quote": "We pretrain with sequences of at most $T=512$ tokens.",
+       "where": "Sec. 3.1 Implementation"
+      }
+     ],
      "new_op": ""
     },
     {
      "subgraph": "embed",
      "op": "layernorm",
-     "role": "embedding layernorm (inherited from BERT)",
+     "role": "embedding layernorm (BERT)",
      "inputs": [
-      "x0"
+      "ep"
      ],
      "output": "x",
      "attributes": [
@@ -455,15 +547,15 @@
        "name": "out",
        "value": "1024",
        "status": "stated",
-       "quote": "Hidden size & 1024 & 768 \\\\",
+       "quote": "Hidden size & 1024 & 768",
        "where": "Table pretraining_hyperparams"
       },
       {
        "name": "bias",
        "value": "true",
        "status": "inherited",
-       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-       "where": "Sec. 5.1 GLUE Results"
+       "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+       "where": "Sec. 5 RoBERTa"
       }
      ],
      "new_op": ""
@@ -481,15 +573,15 @@
        "name": "out",
        "value": "1024",
        "status": "stated",
-       "quote": "Hidden size & 1024 & 768 \\\\",
+       "quote": "Hidden size & 1024 & 768",
        "where": "Table pretraining_hyperparams"
       },
       {
        "name": "bias",
        "value": "true",
        "status": "inherited",
-       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-       "where": "Sec. 5.1 GLUE Results"
+       "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+       "where": "Sec. 5 RoBERTa"
       }
      ],
      "new_op": ""
@@ -507,15 +599,15 @@
        "name": "out",
        "value": "1024",
        "status": "stated",
-       "quote": "Hidden size & 1024 & 768 \\\\",
+       "quote": "Hidden size & 1024 & 768",
        "where": "Table pretraining_hyperparams"
       },
       {
        "name": "bias",
        "value": "true",
        "status": "inherited",
-       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-       "where": "Sec. 5.1 GLUE Results"
+       "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+       "where": "Sec. 5 RoBERTa"
       }
      ],
      "new_op": ""
@@ -535,43 +627,50 @@
        "name": "heads",
        "value": "16",
        "status": "stated",
-       "quote": "Attention heads & 16 & 12 \\\\",
+       "quote": "Attention heads & 16 & 12",
        "where": "Table pretraining_hyperparams"
       },
       {
        "name": "kv_heads",
        "value": "16",
        "status": "inherited",
-       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-       "where": "Sec. 5.1 GLUE Results"
+       "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+       "where": "Sec. 5 RoBERTa"
       },
       {
        "name": "head_dim",
        "value": "64",
        "status": "stated",
-       "quote": "Attention head size & 64 & 64 \\\\",
+       "quote": "Attention head size & 64 & 64",
        "where": "Table pretraining_hyperparams"
       },
       {
        "name": "scale",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "0.125",
+       "status": "inherited",
+       "quote": "BERT uses the now ubiquitous transformer architecture \\cite{vaswani2017attention}, which we will not review in detail.",
+       "where": "Sec. 2.2 Architecture"
       },
       {
        "name": "causal",
        "value": "false",
        "status": "inherited",
-       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-       "where": "Sec. 5.1 GLUE Results"
+       "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+       "where": "Sec. 5 RoBERTa"
       },
       {
        "name": "window",
        "value": "0",
        "status": "inherited",
-       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-       "where": "Sec. 5.1 GLUE Results"
+       "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+       "where": "Sec. 5 RoBERTa"
+      },
+      {
+       "name": "sinks",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -589,15 +688,15 @@
        "name": "out",
        "value": "1024",
        "status": "stated",
-       "quote": "Hidden size & 1024 & 768 \\\\",
+       "quote": "Hidden size & 1024 & 768",
        "where": "Table pretraining_hyperparams"
       },
       {
        "name": "bias",
        "value": "true",
        "status": "inherited",
-       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-       "where": "Sec. 5.1 GLUE Results"
+       "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+       "where": "Sec. 5 RoBERTa"
       }
      ],
      "new_op": ""
@@ -646,15 +745,15 @@
        "name": "out",
        "value": "4096",
        "status": "stated",
-       "quote": "FFN inner hidden size & 4096 & 3072 \\\\",
+       "quote": "FFN inner hidden size & 4096 & 3072",
        "where": "Table pretraining_hyperparams"
       },
       {
        "name": "bias",
        "value": "true",
        "status": "inherited",
-       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-       "where": "Sec. 5.1 GLUE Results"
+       "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+       "where": "Sec. 5 RoBERTa"
       }
      ],
      "new_op": ""
@@ -691,15 +790,15 @@
        "name": "out",
        "value": "1024",
        "status": "stated",
-       "quote": "Hidden size & 1024 & 768 \\\\",
+       "quote": "Hidden size & 1024 & 768",
        "where": "Table pretraining_hyperparams"
       },
       {
        "name": "bias",
        "value": "true",
        "status": "inherited",
-       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-       "where": "Sec. 5.1 GLUE Results"
+       "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+       "where": "Sec. 5 RoBERTa"
       }
      ],
      "new_op": ""
@@ -738,7 +837,7 @@
     {
      "subgraph": "head",
      "op": "linear",
-     "role": "MLM head dense transform (inherited from BERT)",
+     "role": "MLM head dense transform",
      "inputs": [
       "x"
      ],
@@ -747,15 +846,15 @@
       {
        "name": "out",
        "value": "1024",
-       "status": "stated",
-       "quote": "Hidden size & 1024 & 768 \\\\",
-       "where": "Table pretraining_hyperparams"
+       "status": "inherited",
+       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}, yet consistently outperforms both \\bertlarge{} and \\xlnetlarge{}.",
+       "where": "Sec. 5.1 GLUE Results"
       },
       {
        "name": "bias",
        "value": "true",
        "status": "inherited",
-       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
+       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}, yet consistently outperforms both \\bertlarge{} and \\xlnetlarge{}.",
        "where": "Sec. 5.1 GLUE Results"
       }
      ],
@@ -802,31 +901,24 @@
     {
      "subgraph": "head",
      "op": "linear",
-     "role": "MLM output projection to vocabulary, tied to token embedding",
+     "role": "tied MLM output projection to vocabulary",
      "inputs": [
       "tn"
      ],
      "output": "logits",
      "attributes": [
       {
-       "name": "out",
-       "value": "50000",
-       "status": "stated",
-       "quote": "we instead consider training BERT with a larger byte-level BPE vocabulary containing 50K subword units, without any additional preprocessing or tokenization of the input.",
-       "where": "Sec. 4.4 Text Encoding"
+       "name": "tied_to",
+       "value": "token_embd",
+       "status": "inherited",
+       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}, yet consistently outperforms both \\bertlarge{} and \\xlnetlarge{}.",
+       "where": "Sec. 5.1 GLUE Results"
       },
       {
        "name": "bias",
        "value": "true",
        "status": "inherited",
-       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-       "where": "Sec. 5.1 GLUE Results"
-      },
-      {
-       "name": "tied_to",
-       "value": "token_embd",
-       "status": "inherited",
-       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
+       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}, yet consistently outperforms both \\bertlarge{} and \\xlnetlarge{}.",
        "where": "Sec. 5.1 GLUE Results"
       }
      ],
@@ -834,24 +926,30 @@
     }
    ],
    "new_ops": [],
-   "mechanisms_outside_ir": [],
-   "notes": "Headline model is RoBERTa-large (500K steps, 160GB). The IR attributes in block_ops use the large sizes. The architecture is explicitly inherited from BERT_LARGE/BERT_BASE, so norm, placement, learned positions, biases, tying and the MLM head come from the BERT ancestor. The paper does not restate them. Attention is bidirectional (causal=false), not causal. GELU is stated only via the BERT background section, and the paper does not say whether it is the exact or tanh form. Vocabulary is given only as approximately '50K' (the exact count, e.g. 50265, is not stated), so 50000 is approximate. LayerNorm eps and attention scale are not stated. Segment/token-type embeddings are not discussed. n_kv_heads equals n_heads by inheritance (standard MHA)."
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Task-specific fine-tuning head for RACE: [CLS] representations of four question-answer-passage sequences are passed through a fully-connected layer (fine-tuning only, not part of the pretrained network)",
+     "quote": "We then encode each of these four sequences and pass the resulting \\emph{[CLS]} representations through a fully-connected layer, which is used to predict the correct answer.",
+     "where": "Sec. 5.3 RACE Results"
+    }
+   ],
+   "notes": "RoBERTa is a training recipe. Its architecture is declared identical to BERT-large, and the base configuration follows BERT-base. The headline model is RoBERTa-large (500K steps, 160GB); RoBERTa-base is also listed from the pretraining hyperparameter table. Block ops show the large sizes.\n\nThese structural choices are marked inherited from BERT and are not restated in this paper: post-LN layernorm, learned absolute positions, GELU, biases, tied MLM head, embedding layernorm, and the MLM head's dense+GELU+LN.\n\nLeft not_stated:\n- Vocab size: the paper only says the byte-level BPE has approximately \"50K subword units\", so it is not an exact size.\n- LayerNorm eps.\n- GELU exact vs tanh form.\n\nSegment/token-type embeddings are not discussed for RoBERTa and are omitted. NSP is removed, so there is no NSP head. The context length of 512 is the pretraining maximum sequence length."
   },
   "verification": {
    "errors": [],
    "warnings": [],
    "inherits": {
-    "ancestor": "BERT_LARGE (Devlin et al., 2018)",
+    "ancestor": "BERT-large (Devlin et al. 2018); the base configuration follows BERT-base",
     "resolved": "bert",
-    "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-    "where": "Sec. 5.1 GLUE Results",
+    "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+    "where": "Sec. 5 RoBERTa",
     "quote_found": true
    },
    "family": {
     "value": "encoder_only",
     "status": "inherited",
-    "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-    "where": "Sec. 5.1 GLUE Results",
+    "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+    "where": "Sec. 5 RoBERTa",
     "reasons": [
      "inherited from bert, whose curated entry has no family",
      "the inheritance quote does not name the ancestor"
@@ -864,7 +962,7 @@
      "d_model": {
       "value": "1024",
       "status": "stated",
-      "quote": "Hidden size & 1024 & 768 \\\\",
+      "quote": "Hidden size & 1024 & 768",
       "where": "Table pretraining_hyperparams",
       "reasons": [],
       "check": "verified"
@@ -872,7 +970,7 @@
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "Number of Layers & 24 & 12 \\\\",
+      "quote": "Number of Layers & 24 & 12",
       "where": "Table pretraining_hyperparams",
       "reasons": [],
       "check": "verified"
@@ -880,7 +978,7 @@
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "Attention heads & 16 & 12 \\\\",
+      "quote": "Attention heads & 16 & 12",
       "where": "Table pretraining_hyperparams",
       "reasons": [],
       "check": "verified"
@@ -888,8 +986,8 @@
      "n_kv_heads": {
       "value": "16",
       "status": "inherited",
-      "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-      "where": "Sec. 5.1 GLUE Results",
+      "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+      "where": "Sec. 5 RoBERTa",
       "reasons": [
        "inherited from bert, whose curated entry has no n_kv_heads",
        "the inheritance quote does not name the ancestor"
@@ -899,7 +997,7 @@
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "Attention head size & 64 & 64 \\\\",
+      "quote": "Attention head size & 64 & 64",
       "where": "Table pretraining_hyperparams",
       "reasons": [],
       "check": "verified"
@@ -907,18 +1005,18 @@
      "d_ff": {
       "value": "4096",
       "status": "stated",
-      "quote": "FFN inner hidden size & 4096 & 3072 \\\\",
+      "quote": "FFN inner hidden size & 4096 & 3072",
       "where": "Table pretraining_hyperparams",
       "reasons": [],
       "check": "verified"
      },
      "vocab_size": {
-      "value": "50000",
-      "status": "stated",
-      "quote": "we instead consider training BERT with a larger byte-level BPE vocabulary containing 50K subword units, without any additional preprocessing or tokenization of the input.",
-      "where": "Sec. 4.4 Text Encoding",
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
       "reasons": [],
-      "check": "verified"
+      "check": "not_stated"
      },
      "context_length": {
       "value": "512",
@@ -944,7 +1042,7 @@
      "d_model": {
       "value": "768",
       "status": "stated",
-      "quote": "Hidden size & 1024 & 768 \\\\",
+      "quote": "Hidden size & 1024 & 768",
       "where": "Table pretraining_hyperparams",
       "reasons": [],
       "check": "verified"
@@ -952,7 +1050,7 @@
      "n_layers": {
       "value": "12",
       "status": "stated",
-      "quote": "Number of Layers & 24 & 12 \\\\",
+      "quote": "Number of Layers & 24 & 12",
       "where": "Table pretraining_hyperparams",
       "reasons": [],
       "check": "verified"
@@ -960,7 +1058,7 @@
      "n_heads": {
       "value": "12",
       "status": "stated",
-      "quote": "Attention heads & 16 & 12 \\\\",
+      "quote": "Attention heads & 16 & 12",
       "where": "Table pretraining_hyperparams",
       "reasons": [],
       "check": "verified"
@@ -979,7 +1077,7 @@
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "Attention head size & 64 & 64 \\\\",
+      "quote": "Attention head size & 64 & 64",
       "where": "Table pretraining_hyperparams",
       "reasons": [],
       "check": "verified"
@@ -987,18 +1085,18 @@
      "d_ff": {
       "value": "3072",
       "status": "stated",
-      "quote": "FFN inner hidden size & 4096 & 3072 \\\\",
+      "quote": "FFN inner hidden size & 4096 & 3072",
       "where": "Table pretraining_hyperparams",
       "reasons": [],
       "check": "verified"
      },
      "vocab_size": {
-      "value": "50000",
-      "status": "stated",
-      "quote": "we instead consider training BERT with a larger byte-level BPE vocabulary containing 50K subword units, without any additional preprocessing or tokenization of the input.",
-      "where": "Sec. 4.4 Text Encoding",
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
       "reasons": [],
-      "check": "verified"
+      "check": "not_stated"
      },
      "context_length": {
       "value": "512",
@@ -1025,8 +1123,8 @@
     "norm": {
      "value": "layernorm",
      "status": "inherited",
-     "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-     "where": "Sec. 5.1 GLUE Results",
+     "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+     "where": "Sec. 5 RoBERTa",
      "reasons": [
       "the inheritance quote does not name the ancestor"
      ],
@@ -1035,13 +1133,29 @@
     "norm_placement": {
      "value": "post",
      "status": "inherited",
-     "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-     "where": "Sec. 5.1 GLUE Results",
+     "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+     "where": "Sec. 5 RoBERTa",
      "reasons": [
       "inherited from bert, whose curated entry has no norm_placement",
       "the inheritance quote does not name the ancestor"
      ],
      "check": "unverified"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "norm_eps": {
      "value": "",
@@ -1053,21 +1167,39 @@
     },
     "activation": {
      "value": "gelu",
-     "status": "stated",
-     "quote": "BERT trains with a dropout of 0.1 on all layers and attention weights, and a GELU activation function~\\cite{hendrycks2016gelu}.",
-     "where": "Sec. 2.4 Optimization",
-     "reasons": [],
-     "check": "verified"
-    },
-    "positional": {
-     "value": "learned",
      "status": "inherited",
-     "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-     "where": "Sec. 5.1 GLUE Results",
+     "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+     "where": "Sec. 5 RoBERTa",
      "reasons": [
       "the inheritance quote does not name the ancestor"
      ],
      "check": "unverified"
+    },
+    "positional": {
+     "value": "learned",
+     "status": "inherited",
+     "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+     "where": "Sec. 5 RoBERTa",
+     "reasons": [
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "rope_pairing": {
      "value": "",
@@ -1096,8 +1228,8 @@
     "residual": {
      "value": "residual",
      "status": "inherited",
-     "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-     "where": "Sec. 5.1 GLUE Results",
+     "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+     "where": "Sec. 5 RoBERTa",
      "reasons": [
       "inherited from bert, whose curated entry has no residual",
       "the inheritance quote does not name the ancestor"
@@ -1107,8 +1239,8 @@
     "parallel_block": {
      "value": "false",
      "status": "inherited",
-     "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-     "where": "Sec. 5.1 GLUE Results",
+     "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+     "where": "Sec. 5 RoBERTa",
      "reasons": [
       "inherited from bert, whose curated entry has no parallel_block",
       "the inheritance quote does not name the ancestor"
@@ -1118,8 +1250,8 @@
     "attention": {
      "value": "exact",
      "status": "inherited",
-     "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-     "where": "Sec. 5.1 GLUE Results",
+     "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+     "where": "Sec. 5 RoBERTa",
      "reasons": [
       "inherited from bert, whose curated entry has no attention",
       "the inheritance quote does not name the ancestor"
@@ -1145,8 +1277,8 @@
     "qkv_bias": {
      "value": "true",
      "status": "inherited",
-     "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-     "where": "Sec. 5.1 GLUE Results",
+     "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+     "where": "Sec. 5 RoBERTa",
      "reasons": [
       "inherited from bert, whose curated entry has no qkv_bias",
       "the inheritance quote does not name the ancestor"
@@ -1156,19 +1288,27 @@
     "mlp_bias": {
      "value": "true",
      "status": "inherited",
-     "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-     "where": "Sec. 5.1 GLUE Results",
+     "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+     "where": "Sec. 5 RoBERTa",
      "reasons": [
       "inherited from bert, whose curated entry has no mlp_bias",
       "the inheritance quote does not name the ancestor"
      ],
      "check": "unverified"
     },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
     "tied_embeddings": {
      "value": "true",
      "status": "inherited",
-     "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-     "where": "Sec. 5.1 GLUE Results",
+     "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+     "where": "Sec. 5 RoBERTa",
      "reasons": [
       "inherited from bert, whose curated entry has no tied_embeddings",
       "the inheritance quote does not name the ancestor"
@@ -1178,8 +1318,8 @@
     "moe": {
      "value": "false",
      "status": "inherited",
-     "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-     "where": "Sec. 5.1 GLUE Results",
+     "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+     "where": "Sec. 5 RoBERTa",
      "reasons": [
       "inherited from bert, whose curated entry has no moe",
       "the inheritance quote does not name the ancestor"
@@ -1209,6 +1349,49 @@
      "where": "",
      "reasons": [],
      "check": "not_stated"
+    },
+    "ssm": {
+     "value": "none",
+     "status": "inherited",
+     "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+     "where": "Sec. 5 RoBERTa",
+     "reasons": [
+      "inherited from bert, whose curated entry has no ssm",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     }
    },
    "new_ops": [],
@@ -1217,36 +1400,65 @@
      "i": 0,
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding",
+     "role": "token embedding (byte-level BPE)",
      "inputs": [
       "tokens"
      ],
      "output": "e",
      "new_op": "",
-     "attributes": [],
+     "attributes": [
+      {
+       "value": "1024",
+       "status": "stated",
+       "quote": "Hidden size & 1024 & 768",
+       "where": "Table pretraining_hyperparams",
+       "reasons": [],
+       "check": "verified",
+       "name": "d"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "vocab"
+      }
+     ],
      "errors": []
     },
     {
      "i": 1,
      "subgraph": "embed",
      "op": "pos_embedding",
-     "role": "learned absolute position embedding (inherited from BERT)",
+     "role": "learned absolute position embedding",
      "inputs": [
       "e",
       "pos"
      ],
-     "output": "x0",
+     "output": "ep",
      "new_op": "",
-     "attributes": [],
+     "attributes": [
+      {
+       "value": "512",
+       "status": "stated",
+       "quote": "We pretrain with sequences of at most $T=512$ tokens.",
+       "where": "Sec. 3.1 Implementation",
+       "reasons": [],
+       "check": "verified",
+       "name": "max_positions"
+      }
+     ],
      "errors": []
     },
     {
      "i": 2,
      "subgraph": "embed",
      "op": "layernorm",
-     "role": "embedding layernorm (inherited from BERT)",
+     "role": "embedding layernorm (BERT)",
      "inputs": [
-      "x0"
+      "ep"
      ],
      "output": "x",
      "new_op": "",
@@ -1277,7 +1489,7 @@
       {
        "value": "1024",
        "status": "stated",
-       "quote": "Hidden size & 1024 & 768 \\\\",
+       "quote": "Hidden size & 1024 & 768",
        "where": "Table pretraining_hyperparams",
        "reasons": [],
        "check": "verified",
@@ -1286,8 +1498,8 @@
       {
        "value": "true",
        "status": "inherited",
-       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-       "where": "Sec. 5.1 GLUE Results",
+       "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+       "where": "Sec. 5 RoBERTa",
        "reasons": [
         "inherited from bert, whose curated entry has no bias",
         "the inheritance quote does not name the ancestor"
@@ -1312,7 +1524,7 @@
       {
        "value": "1024",
        "status": "stated",
-       "quote": "Hidden size & 1024 & 768 \\\\",
+       "quote": "Hidden size & 1024 & 768",
        "where": "Table pretraining_hyperparams",
        "reasons": [],
        "check": "verified",
@@ -1321,8 +1533,8 @@
       {
        "value": "true",
        "status": "inherited",
-       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-       "where": "Sec. 5.1 GLUE Results",
+       "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+       "where": "Sec. 5 RoBERTa",
        "reasons": [
         "inherited from bert, whose curated entry has no bias",
         "the inheritance quote does not name the ancestor"
@@ -1347,7 +1559,7 @@
       {
        "value": "1024",
        "status": "stated",
-       "quote": "Hidden size & 1024 & 768 \\\\",
+       "quote": "Hidden size & 1024 & 768",
        "where": "Table pretraining_hyperparams",
        "reasons": [],
        "check": "verified",
@@ -1356,8 +1568,8 @@
       {
        "value": "true",
        "status": "inherited",
-       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-       "where": "Sec. 5.1 GLUE Results",
+       "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+       "where": "Sec. 5 RoBERTa",
        "reasons": [
         "inherited from bert, whose curated entry has no bias",
         "the inheritance quote does not name the ancestor"
@@ -1384,7 +1596,7 @@
       {
        "value": "16",
        "status": "stated",
-       "quote": "Attention heads & 16 & 12 \\\\",
+       "quote": "Attention heads & 16 & 12",
        "where": "Table pretraining_hyperparams",
        "reasons": [],
        "check": "verified",
@@ -1393,8 +1605,8 @@
       {
        "value": "16",
        "status": "inherited",
-       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-       "where": "Sec. 5.1 GLUE Results",
+       "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+       "where": "Sec. 5 RoBERTa",
        "reasons": [
         "inherited from bert, whose curated entry has no kv_heads",
         "the inheritance quote does not name the ancestor"
@@ -1405,26 +1617,28 @@
       {
        "value": "64",
        "status": "stated",
-       "quote": "Attention head size & 64 & 64 \\\\",
+       "quote": "Attention head size & 64 & 64",
        "where": "Table pretraining_hyperparams",
        "reasons": [],
        "check": "verified",
        "name": "head_dim"
       },
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
+       "value": "0.125",
+       "status": "inherited",
+       "quote": "BERT uses the now ubiquitous transformer architecture \\cite{vaswani2017attention}, which we will not review in detail.",
+       "where": "Sec. 2.2 Architecture",
+       "reasons": [
+        "inherited from bert, whose curated entry has no scale"
+       ],
+       "check": "unverified",
        "name": "scale"
       },
       {
        "value": "false",
        "status": "inherited",
-       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-       "where": "Sec. 5.1 GLUE Results",
+       "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+       "where": "Sec. 5 RoBERTa",
        "reasons": [
         "inherited from bert, whose curated entry has no causal",
         "the inheritance quote does not name the ancestor"
@@ -1435,14 +1649,23 @@
       {
        "value": "0",
        "status": "inherited",
-       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-       "where": "Sec. 5.1 GLUE Results",
+       "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+       "where": "Sec. 5 RoBERTa",
        "reasons": [
         "inherited from bert, whose curated entry has no window",
         "the inheritance quote does not name the ancestor"
        ],
        "check": "unverified",
        "name": "window"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "sinks"
       }
      ],
      "errors": []
@@ -1461,7 +1684,7 @@
       {
        "value": "1024",
        "status": "stated",
-       "quote": "Hidden size & 1024 & 768 \\\\",
+       "quote": "Hidden size & 1024 & 768",
        "where": "Table pretraining_hyperparams",
        "reasons": [],
        "check": "verified",
@@ -1470,8 +1693,8 @@
       {
        "value": "true",
        "status": "inherited",
-       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-       "where": "Sec. 5.1 GLUE Results",
+       "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+       "where": "Sec. 5 RoBERTa",
        "reasons": [
         "inherited from bert, whose curated entry has no bias",
         "the inheritance quote does not name the ancestor"
@@ -1533,7 +1756,7 @@
       {
        "value": "4096",
        "status": "stated",
-       "quote": "FFN inner hidden size & 4096 & 3072 \\\\",
+       "quote": "FFN inner hidden size & 4096 & 3072",
        "where": "Table pretraining_hyperparams",
        "reasons": [],
        "check": "verified",
@@ -1542,8 +1765,8 @@
       {
        "value": "true",
        "status": "inherited",
-       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-       "where": "Sec. 5.1 GLUE Results",
+       "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+       "where": "Sec. 5 RoBERTa",
        "reasons": [
         "inherited from bert, whose curated entry has no bias",
         "the inheritance quote does not name the ancestor"
@@ -1591,7 +1814,7 @@
       {
        "value": "1024",
        "status": "stated",
-       "quote": "Hidden size & 1024 & 768 \\\\",
+       "quote": "Hidden size & 1024 & 768",
        "where": "Table pretraining_hyperparams",
        "reasons": [],
        "check": "verified",
@@ -1600,8 +1823,8 @@
       {
        "value": "true",
        "status": "inherited",
-       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-       "where": "Sec. 5.1 GLUE Results",
+       "quote": "we begin by training \\ourmodel{} following the \\bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).",
+       "where": "Sec. 5 RoBERTa",
        "reasons": [
         "inherited from bert, whose curated entry has no bias",
         "the inheritance quote does not name the ancestor"
@@ -1653,7 +1876,7 @@
      "i": 15,
      "subgraph": "head",
      "op": "linear",
-     "role": "MLM head dense transform (inherited from BERT)",
+     "role": "MLM head dense transform",
      "inputs": [
       "x"
      ],
@@ -1662,17 +1885,20 @@
      "attributes": [
       {
        "value": "1024",
-       "status": "stated",
-       "quote": "Hidden size & 1024 & 768 \\\\",
-       "where": "Table pretraining_hyperparams",
-       "reasons": [],
-       "check": "verified",
+       "status": "inherited",
+       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}, yet consistently outperforms both \\bertlarge{} and \\xlnetlarge{}.",
+       "where": "Sec. 5.1 GLUE Results",
+       "reasons": [
+        "inherited from bert, whose curated entry has no out",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
        "name": "out"
       },
       {
        "value": "true",
        "status": "inherited",
-       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
+       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}, yet consistently outperforms both \\bertlarge{} and \\xlnetlarge{}.",
        "where": "Sec. 5.1 GLUE Results",
        "reasons": [
         "inherited from bert, whose curated entry has no bias",
@@ -1734,7 +1960,7 @@
      "i": 18,
      "subgraph": "head",
      "op": "linear",
-     "role": "MLM output projection to vocabulary, tied to token embedding",
+     "role": "tied MLM output projection to vocabulary",
      "inputs": [
       "tn"
      ],
@@ -1742,30 +1968,9 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "50000",
-       "status": "stated",
-       "quote": "we instead consider training BERT with a larger byte-level BPE vocabulary containing 50K subword units, without any additional preprocessing or tokenization of the input.",
-       "where": "Sec. 4.4 Text Encoding",
-       "reasons": [],
-       "check": "verified",
-       "name": "out"
-      },
-      {
-       "value": "true",
-       "status": "inherited",
-       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
-       "where": "Sec. 5.1 GLUE Results",
-       "reasons": [
-        "inherited from bert, whose curated entry has no bias",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "bias"
-      },
-      {
        "value": "token_embd",
        "status": "inherited",
-       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}",
+       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}, yet consistently outperforms both \\bertlarge{} and \\xlnetlarge{}.",
        "where": "Sec. 5.1 GLUE Results",
        "reasons": [
         "inherited from bert, whose curated entry has no tied_to",
@@ -1773,18 +1978,37 @@
        ],
        "check": "unverified",
        "name": "tied_to"
+      },
+      {
+       "value": "true",
+       "status": "inherited",
+       "quote": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}, yet consistently outperforms both \\bertlarge{} and \\xlnetlarge{}.",
+       "where": "Sec. 5.1 GLUE Results",
+       "reasons": [
+        "inherited from bert, whose curated entry has no bias",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "bias"
       }
      ],
      "errors": []
     }
    ],
-   "mechanisms_outside_ir": [],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Task-specific fine-tuning head for RACE: [CLS] representations of four question-answer-passage sequences are passed through a fully-connected layer (fine-tuning only, not part of the pretrained network)",
+     "quote": "We then encode each of these four sequences and pass the resulting \\emph{[CLS]} representations through a fully-connected layer, which is used to predict the correct answer.",
+     "where": "Sec. 5.3 RACE Results",
+     "check": "verified"
+    }
+   ],
    "summary": {
     "counts": {
-     "verified": 25,
+     "verified": 22,
      "quote_only": 0,
-     "unverified": 25,
-     "not_stated": 16
+     "unverified": 29,
+     "not_stated": 28
     },
     "unverified": [
      {
@@ -1818,6 +2042,12 @@
       "field": "flavours.norm_placement",
       "reasons": [
        "inherited from bert, whose curated entry has no norm_placement",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.activation",
+      "reasons": [
        "the inheritance quote does not name the ancestor"
       ]
      },
@@ -1877,6 +2107,13 @@
       ]
      },
      {
+      "field": "flavours.ssm",
+      "reasons": [
+       "inherited from bert, whose curated entry has no ssm",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
       "field": "block_ops[3].bias",
       "reasons": [
        "inherited from bert, whose curated entry has no bias",
@@ -1902,6 +2139,12 @@
       "reasons": [
        "inherited from bert, whose curated entry has no kv_heads",
        "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[6].scale",
+      "reasons": [
+       "inherited from bert, whose curated entry has no scale"
       ]
      },
      {
@@ -1940,14 +2183,14 @@
       ]
      },
      {
-      "field": "block_ops[15].bias",
+      "field": "block_ops[15].out",
       "reasons": [
-       "inherited from bert, whose curated entry has no bias",
+       "inherited from bert, whose curated entry has no out",
        "the inheritance quote does not name the ancestor"
       ]
      },
      {
-      "field": "block_ops[18].bias",
+      "field": "block_ops[15].bias",
       "reasons": [
        "inherited from bert, whose curated entry has no bias",
        "the inheritance quote does not name the ancestor"
@@ -1957,6 +2200,13 @@
       "field": "block_ops[18].tied_to",
       "reasons": [
        "inherited from bert, whose curated entry has no tied_to",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[18].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias",
        "the inheritance quote does not name the ancestor"
       ]
      }

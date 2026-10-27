@@ -3,76 +3,54 @@
  "title": "Galactica: A Large Language Model for Science",
  "fields": {
   "d_model": {
-   "value": 10240,
-   "evidence": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128 & 2.0M & $0.7 \\times 10^{-5}$ & 1.125B [Table: Details of the models trained]",
+   "value": 768,
+   "evidence": "GAL 125M & 125M & 12 & 768 & 12 & 64 & 0.5M [Table models-trained]",
    "verdict": "used"
   },
   "n_layers": {
-   "value": 96,
-   "evidence": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128 & 2.0M & $0.7 \\times 10^{-5}$ & 1.125B [Table: Details of the models trained]",
+   "value": 12,
+   "evidence": "GAL 125M & 125M & 12 & 768 & 12 & 64 & 0.5M [Table models-trained]",
    "verdict": "used"
   },
   "n_heads": {
-   "value": 80,
-   "evidence": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128 & 2.0M & $0.7 \\times 10^{-5}$ & 1.125B [Table: Details of the models trained]",
+   "value": 12,
+   "evidence": "GAL 125M & 125M & 12 & 768 & 12 & 64 & 0.5M [Table models-trained]",
    "verdict": "used"
   },
   "vocab_size": {
    "value": 50000,
-   "evidence": "we construct a vocabulary of 50k tokens using BPE~\\citep{BPE} [Sec. 4.1 Architecture]",
+   "evidence": "we construct a vocabulary of 50k tokens using BPE~\\citep{BPE} [Sec. Method / Architecture]",
    "verdict": "used"
   },
   "context_length": {
    "value": 2048,
-   "evidence": "we use a 2048 length context window for all model sizes [Sec. 4.1 Architecture]",
-   "verdict": "used"
-  },
-  "norm": {
-   "value": "layernorm",
-   "evidence": "following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM} [Sec. 4.1 Architecture]",
+   "evidence": "we use a 2048 length context window for all model sizes [Sec. Method / Architecture]",
    "verdict": "used"
   },
   "activation": {
    "value": "gelu",
-   "evidence": "\\textbf{GeLU Activation} - we use GeLU activations for all model sizes~\\citep{GeLU}. [Sec. 4.1 Architecture]",
+   "evidence": "\\textbf{GeLU Activation} - we use GeLU activations for all model sizes~\\citep{GeLU}. [Sec. Method / Architecture]",
    "verdict": "used"
   },
   "positional": {
    "value": "learned",
-   "evidence": "\\textbf{Learned Positional Embeddings} - we use learned positional embeddings for the model. [Sec. 4.1 Architecture]",
-   "verdict": "used"
-  },
-  "residual": {
-   "value": "residual",
-   "evidence": "Galactica uses a Transformer architecture in a decoder-only setup~\\citep{VaswaniSPUJGKP17} [Sec. 4.1 Architecture]",
-   "verdict": "unverified",
-   "reasons": [
-    "inherited from transformer, whose curated entry has no residual"
-   ]
-  },
-  "attention": {
-   "value": "exact",
-   "evidence": "Galactica uses a Transformer architecture in a decoder-only setup~\\citep{VaswaniSPUJGKP17} [Sec. 4.1 Architecture]",
+   "evidence": "\\textbf{Learned Positional Embeddings} - we use learned positional embeddings for the model. [Sec. Method / Architecture]",
    "verdict": "used"
   }
  },
  "unresolved": [
   "n_kv_heads",
-  "d_ff"
+  "d_ff",
+  "norm",
+  "residual",
+  "attention"
  ],
- "unverified": [
-  {
-   "field": "residual",
-   "reasons": [
-    "inherited from transformer, whose curated entry has no residual"
-   ]
-  }
- ],
+ "unverified": [],
  "mentions": {},
  "inherits": {
   "ancestor": "transformer",
   "evidence": "Galactica uses a Transformer architecture in a decoder-only setup~\\citep{VaswaniSPUJGKP17}, with the following modifications:",
-  "section": "Sec. 4.1 Architecture"
+  "section": "Sec. Method / Architecture"
  },
  "variants": [
   {
@@ -117,14 +95,14 @@
   "sent_sha256": "dbcd969421608c87909a23ec942283016b0e6eabeeb8967fc521e4b9362f76f3",
   "from": "https://arxiv.org/e-print/2211.09085",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
+  "extractor_sha256": "9d5951b0f11c920aaf075abead17d7d4e619d37402d47690ba452de15620e921",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
+  "prompt_sha256": "e6c6c5052b656885910d1539b8c320ba4ecb9262a6079252b852f1ff637b03ef",
   "n_calls": 1,
-  "cost_usd": 1.071639,
+  "cost_usd": 0.92592,
   "request_ids": [
-   "req_011CgFhdWMtv1t5AoLGe4H4G"
+   "req_011CgRspBeX7HMjwDSeuNBiY"
   ]
  },
  "llm": {
@@ -135,12 +113,12 @@
     "value": "decoder_only",
     "status": "stated",
     "quote": "Galactica uses a Transformer architecture in a decoder-only setup~\\citep{VaswaniSPUJGKP17}, with the following modifications:",
-    "where": "Sec. 4.1 Architecture"
+    "where": "Sec. Method / Architecture"
    },
    "inherits": {
     "ancestor": "Transformer (Vaswani et al., 2017)",
     "quote": "Galactica uses a Transformer architecture in a decoder-only setup~\\citep{VaswaniSPUJGKP17}, with the following modifications:",
-    "where": "Sec. 4.1 Architecture"
+    "where": "Sec. Method / Architecture"
    },
    "configs": [
     {
@@ -148,20 +126,20 @@
      "d_model": {
       "value": "768",
       "status": "stated",
-      "quote": "GAL 125M & 125M & 12 & 768 & 12 & 64 & 0.5M & $6 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained"
+      "quote": "GAL 125M & 125M & 12 & 768 & 12 & 64 & 0.5M",
+      "where": "Table models-trained"
      },
      "n_layers": {
       "value": "12",
       "status": "stated",
-      "quote": "GAL 125M & 125M & 12 & 768 & 12 & 64 & 0.5M & $6 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained"
+      "quote": "GAL 125M & 125M & 12 & 768 & 12 & 64 & 0.5M",
+      "where": "Table models-trained"
      },
      "n_heads": {
       "value": "12",
       "status": "stated",
-      "quote": "GAL 125M & 125M & 12 & 768 & 12 & 64 & 0.5M & $6 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained"
+      "quote": "GAL 125M & 125M & 12 & 768 & 12 & 64 & 0.5M",
+      "where": "Table models-trained"
      },
      "n_kv_heads": {
       "value": "",
@@ -172,8 +150,8 @@
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "GAL 125M & 125M & 12 & 768 & 12 & 64 & 0.5M & $6 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained"
+      "quote": "GAL 125M & 125M & 12 & 768 & 12 & 64 & 0.5M",
+      "where": "Table models-trained"
      },
      "d_ff": {
       "value": "",
@@ -185,13 +163,13 @@
       "value": "50000",
       "status": "stated",
       "quote": "we construct a vocabulary of 50k tokens using BPE~\\citep{BPE}",
-      "where": "Sec. 4.1 Architecture"
+      "where": "Sec. Method / Architecture"
      },
      "context_length": {
       "value": "2048",
       "status": "stated",
       "quote": "we use a 2048 length context window for all model sizes",
-      "where": "Sec. 4.1 Architecture"
+      "where": "Sec. Method / Architecture"
      }
     },
     {
@@ -199,20 +177,20 @@
      "d_model": {
       "value": "2048",
       "status": "stated",
-      "quote": "GAL 1.3B & 1.3B & 24 & 2,048 & 32 & 64 & 1.0M & $2 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained"
+      "quote": "GAL 1.3B & 1.3B & 24 & 2,048 & 32 & 64 & 1.0M",
+      "where": "Table models-trained"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "GAL 1.3B & 1.3B & 24 & 2,048 & 32 & 64 & 1.0M & $2 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained"
+      "quote": "GAL 1.3B & 1.3B & 24 & 2,048 & 32 & 64 & 1.0M",
+      "where": "Table models-trained"
      },
      "n_heads": {
       "value": "32",
       "status": "stated",
-      "quote": "GAL 1.3B & 1.3B & 24 & 2,048 & 32 & 64 & 1.0M & $2 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained"
+      "quote": "GAL 1.3B & 1.3B & 24 & 2,048 & 32 & 64 & 1.0M",
+      "where": "Table models-trained"
      },
      "n_kv_heads": {
       "value": "",
@@ -223,8 +201,8 @@
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "GAL 1.3B & 1.3B & 24 & 2,048 & 32 & 64 & 1.0M & $2 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained"
+      "quote": "GAL 1.3B & 1.3B & 24 & 2,048 & 32 & 64 & 1.0M",
+      "where": "Table models-trained"
      },
      "d_ff": {
       "value": "",
@@ -236,13 +214,13 @@
       "value": "50000",
       "status": "stated",
       "quote": "we construct a vocabulary of 50k tokens using BPE~\\citep{BPE}",
-      "where": "Sec. 4.1 Architecture"
+      "where": "Sec. Method / Architecture"
      },
      "context_length": {
       "value": "2048",
       "status": "stated",
       "quote": "we use a 2048 length context window for all model sizes",
-      "where": "Sec. 4.1 Architecture"
+      "where": "Sec. Method / Architecture"
      }
     },
     {
@@ -250,20 +228,20 @@
      "d_model": {
       "value": "4096",
       "status": "stated",
-      "quote": "GAL 6.7B & 6.7B & 32 & 4,096 & 32 & 128 & 2.0M & $1.2 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained"
+      "quote": "GAL 6.7B & 6.7B & 32 & 4,096 & 32 & 128 & 2.0M",
+      "where": "Table models-trained"
      },
      "n_layers": {
       "value": "32",
       "status": "stated",
-      "quote": "GAL 6.7B & 6.7B & 32 & 4,096 & 32 & 128 & 2.0M & $1.2 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained"
+      "quote": "GAL 6.7B & 6.7B & 32 & 4,096 & 32 & 128 & 2.0M",
+      "where": "Table models-trained"
      },
      "n_heads": {
       "value": "32",
       "status": "stated",
-      "quote": "GAL 6.7B & 6.7B & 32 & 4,096 & 32 & 128 & 2.0M & $1.2 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained"
+      "quote": "GAL 6.7B & 6.7B & 32 & 4,096 & 32 & 128 & 2.0M",
+      "where": "Table models-trained"
      },
      "n_kv_heads": {
       "value": "",
@@ -274,8 +252,8 @@
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "GAL 6.7B & 6.7B & 32 & 4,096 & 32 & 128 & 2.0M & $1.2 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained"
+      "quote": "GAL 6.7B & 6.7B & 32 & 4,096 & 32 & 128 & 2.0M",
+      "where": "Table models-trained"
      },
      "d_ff": {
       "value": "",
@@ -287,13 +265,13 @@
       "value": "50000",
       "status": "stated",
       "quote": "we construct a vocabulary of 50k tokens using BPE~\\citep{BPE}",
-      "where": "Sec. 4.1 Architecture"
+      "where": "Sec. Method / Architecture"
      },
      "context_length": {
       "value": "2048",
       "status": "stated",
       "quote": "we use a 2048 length context window for all model sizes",
-      "where": "Sec. 4.1 Architecture"
+      "where": "Sec. Method / Architecture"
      }
     },
     {
@@ -301,20 +279,20 @@
      "d_model": {
       "value": "7168",
       "status": "stated",
-      "quote": "GAL 30B & 30.0B & 48 & 7,168 & 56 & 128 & 2.0M & $1 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained"
+      "quote": "GAL 30B & 30.0B & 48 & 7,168 & 56 & 128 & 2.0M",
+      "where": "Table models-trained"
      },
      "n_layers": {
       "value": "48",
       "status": "stated",
-      "quote": "GAL 30B & 30.0B & 48 & 7,168 & 56 & 128 & 2.0M & $1 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained"
+      "quote": "GAL 30B & 30.0B & 48 & 7,168 & 56 & 128 & 2.0M",
+      "where": "Table models-trained"
      },
      "n_heads": {
       "value": "56",
       "status": "stated",
-      "quote": "GAL 30B & 30.0B & 48 & 7,168 & 56 & 128 & 2.0M & $1 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained"
+      "quote": "GAL 30B & 30.0B & 48 & 7,168 & 56 & 128 & 2.0M",
+      "where": "Table models-trained"
      },
      "n_kv_heads": {
       "value": "",
@@ -325,8 +303,8 @@
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "GAL 30B & 30.0B & 48 & 7,168 & 56 & 128 & 2.0M & $1 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained"
+      "quote": "GAL 30B & 30.0B & 48 & 7,168 & 56 & 128 & 2.0M",
+      "where": "Table models-trained"
      },
      "d_ff": {
       "value": "",
@@ -338,13 +316,13 @@
       "value": "50000",
       "status": "stated",
       "quote": "we construct a vocabulary of 50k tokens using BPE~\\citep{BPE}",
-      "where": "Sec. 4.1 Architecture"
+      "where": "Sec. Method / Architecture"
      },
      "context_length": {
       "value": "2048",
       "status": "stated",
       "quote": "we use a 2048 length context window for all model sizes",
-      "where": "Sec. 4.1 Architecture"
+      "where": "Sec. Method / Architecture"
      }
     },
     {
@@ -352,20 +330,20 @@
      "d_model": {
       "value": "10240",
       "status": "stated",
-      "quote": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128 & 2.0M & $0.7 \\times 10^{-5}$ & 1.125B",
-      "where": "Table: Details of the models trained"
+      "quote": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128 & 2.0M",
+      "where": "Table models-trained"
      },
      "n_layers": {
       "value": "96",
       "status": "stated",
-      "quote": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128 & 2.0M & $0.7 \\times 10^{-5}$ & 1.125B",
-      "where": "Table: Details of the models trained"
+      "quote": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128 & 2.0M",
+      "where": "Table models-trained"
      },
      "n_heads": {
       "value": "80",
       "status": "stated",
-      "quote": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128 & 2.0M & $0.7 \\times 10^{-5}$ & 1.125B",
-      "where": "Table: Details of the models trained"
+      "quote": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128 & 2.0M",
+      "where": "Table models-trained"
      },
      "n_kv_heads": {
       "value": "",
@@ -376,8 +354,8 @@
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128 & 2.0M & $0.7 \\times 10^{-5}$ & 1.125B",
-      "where": "Table: Details of the models trained"
+      "quote": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128 & 2.0M",
+      "where": "Table models-trained"
      },
      "d_ff": {
       "value": "",
@@ -389,25 +367,37 @@
       "value": "50000",
       "status": "stated",
       "quote": "we construct a vocabulary of 50k tokens using BPE~\\citep{BPE}",
-      "where": "Sec. 4.1 Architecture"
+      "where": "Sec. Method / Architecture"
      },
      "context_length": {
       "value": "2048",
       "status": "stated",
       "quote": "we use a 2048 length context window for all model sizes",
-      "where": "Sec. 4.1 Architecture"
+      "where": "Sec. Method / Architecture"
      }
     }
    ],
-   "primary_config": "GAL 120B",
+   "primary_config": "GAL 125M",
    "flavours": {
     "norm": {
-     "value": "layernorm",
-     "status": "stated",
-     "quote": "following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}",
-     "where": "Sec. 4.1 Architecture"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "norm_placement": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_ffn": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -423,13 +413,25 @@
      "value": "gelu",
      "status": "stated",
      "quote": "\\textbf{GeLU Activation} - we use GeLU activations for all model sizes~\\citep{GeLU}.",
-     "where": "Sec. 4.1 Architecture"
+     "where": "Sec. Method / Architecture"
     },
     "positional": {
      "value": "learned",
      "status": "stated",
      "quote": "\\textbf{Learned Positional Embeddings} - we use learned positional embeddings for the model.",
-     "where": "Sec. 4.1 Architecture"
+     "where": "Sec. Method / Architecture"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "rope_pairing": {
      "value": "",
@@ -450,10 +452,10 @@
      "where": ""
     },
     "residual": {
-     "value": "residual",
-     "status": "inherited",
-     "quote": "Galactica uses a Transformer architecture in a decoder-only setup~\\citep{VaswaniSPUJGKP17}",
-     "where": "Sec. 4.1 Architecture"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "parallel_block": {
      "value": "",
@@ -463,9 +465,9 @@
     },
     "attention": {
      "value": "exact",
-     "status": "stated",
-     "quote": "Galactica uses a Transformer architecture in a decoder-only setup~\\citep{VaswaniSPUJGKP17}",
-     "where": "Sec. 4.1 Architecture"
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "window_size": {
      "value": "",
@@ -482,14 +484,20 @@
     "qkv_bias": {
      "value": "false",
      "status": "stated",
-     "quote": "following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}",
-     "where": "Sec. 4.1 Architecture"
+     "quote": "\\textbf{No Biases} - following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}.",
+     "where": "Sec. Method / Architecture"
     },
     "mlp_bias": {
      "value": "false",
      "status": "stated",
-     "quote": "following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}",
-     "where": "Sec. 4.1 Architecture"
+     "quote": "\\textbf{No Biases} - following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}.",
+     "where": "Sec. Method / Architecture"
+    },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "tied_embeddings": {
      "value": "",
@@ -516,6 +524,36 @@
      "where": ""
     },
     "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -537,7 +575,7 @@
        "value": "50000",
        "status": "stated",
        "quote": "we construct a vocabulary of 50k tokens using BPE~\\citep{BPE}",
-       "where": "Sec. 4.1 Architecture"
+       "where": "Sec. Method / Architecture"
       }
      ],
      "new_op": ""
@@ -553,128 +591,30 @@
      "output": "x",
      "attributes": [
       {
-       "name": "type",
+       "name": "positional",
        "value": "learned",
        "status": "stated",
-       "quote": "we use learned positional embeddings for the model",
-       "where": "Sec. 4.1 Architecture"
+       "quote": "\\textbf{Learned Positional Embeddings} - we use learned positional embeddings for the model.",
+       "where": "Sec. Method / Architecture"
       }
      ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "layernorm",
-     "role": "attention input norm",
-     "inputs": [
-      "x"
-     ],
-     "output": "h",
-     "attributes": [
-      {
-       "name": "bias",
-       "value": "false",
-       "status": "stated",
-       "quote": "following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}",
-       "where": "Sec. 4.1 Architecture"
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "linear",
-     "role": "qkv projection",
-     "inputs": [
-      "h"
-     ],
-     "output": "qkv",
-     "attributes": [
-      {
-       "name": "bias",
-       "value": "false",
-       "status": "stated",
-       "quote": "following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}",
-       "where": "Sec. 4.1 Architecture"
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "split",
-     "role": "split into q,k,v",
-     "inputs": [
-      "qkv"
-     ],
-     "output": "q,k,v",
-     "attributes": [],
      "new_op": ""
     },
     {
      "subgraph": "block",
      "op": "attention",
-     "role": "multi-head causal self-attention",
+     "role": "self-attention",
      "inputs": [
-      "q",
-      "k",
-      "v"
+      "x"
      ],
-     "output": "a",
+     "output": "attn_out",
      "attributes": [
-      {
-       "name": "heads",
-       "value": "80",
-       "status": "stated",
-       "quote": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128 & 2.0M & $0.7 \\times 10^{-5}$ & 1.125B",
-       "where": "Table: Details of the models trained"
-      },
-      {
-       "name": "head_dim",
-       "value": "128",
-       "status": "stated",
-       "quote": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128 & 2.0M & $0.7 \\times 10^{-5}$ & 1.125B",
-       "where": "Table: Details of the models trained"
-      },
       {
        "name": "causal",
        "value": "true",
        "status": "stated",
-       "quote": "Galactica uses a Transformer architecture in a decoder-only setup~\\citep{VaswaniSPUJGKP17}",
-       "where": "Sec. 4.1 Architecture"
-      },
-      {
-       "name": "window",
-       "value": "0",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
-      {
-       "name": "scale",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "linear",
-     "role": "attention output projection",
-     "inputs": [
-      "a"
-     ],
-     "output": "ao",
-     "attributes": [
-      {
-       "name": "bias",
-       "value": "false",
-       "status": "stated",
-       "quote": "following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}",
-       "where": "Sec. 4.1 Architecture"
+       "quote": "Galactica uses a Transformer architecture in a decoder-only setup~\\citep{VaswaniSPUJGKP17}, with the following modifications:",
+       "where": "Sec. Method / Architecture"
       }
      ],
      "new_op": ""
@@ -682,59 +622,13 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "attention residual add",
+     "role": "residual add",
      "inputs": [
       "x",
-      "ao"
+      "attn_out"
      ],
      "output": "x",
-     "attributes": [
-      {
-       "name": "type",
-       "value": "residual",
-       "status": "inherited",
-       "quote": "Galactica uses a Transformer architecture in a decoder-only setup~\\citep{VaswaniSPUJGKP17}",
-       "where": "Sec. 4.1 Architecture"
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "layernorm",
-     "role": "FFN input norm",
-     "inputs": [
-      "x"
-     ],
-     "output": "h2",
-     "attributes": [
-      {
-       "name": "bias",
-       "value": "false",
-       "status": "stated",
-       "quote": "following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}",
-       "where": "Sec. 4.1 Architecture"
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "linear",
-     "role": "FFN up projection",
-     "inputs": [
-      "h2"
-     ],
-     "output": "u",
-     "attributes": [
-      {
-       "name": "bias",
-       "value": "false",
-       "status": "stated",
-       "quote": "following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}",
-       "where": "Sec. 4.1 Architecture"
-      }
-     ],
+     "attributes": [],
      "new_op": ""
     },
     {
@@ -742,35 +636,16 @@
      "op": "gelu",
      "role": "FFN activation",
      "inputs": [
-      "u"
+      "ffn_mid"
      ],
-     "output": "g",
+     "output": "ffn_act",
      "attributes": [
       {
        "name": "approx",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "linear",
-     "role": "FFN down projection",
-     "inputs": [
-      "g"
-     ],
-     "output": "d",
-     "attributes": [
-      {
-       "name": "bias",
-       "value": "false",
+       "value": "none",
        "status": "stated",
-       "quote": "following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}",
-       "where": "Sec. 4.1 Architecture"
+       "quote": "\\textbf{GeLU Activation} - we use GeLU activations for all model sizes~\\citep{GeLU}.",
+       "where": "Sec. Method / Architecture"
       }
      ],
      "new_op": ""
@@ -778,27 +653,19 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "FFN residual add",
+     "role": "residual add",
      "inputs": [
       "x",
-      "d"
+      "ffn_out"
      ],
      "output": "x",
-     "attributes": [
-      {
-       "name": "type",
-       "value": "residual",
-       "status": "inherited",
-       "quote": "Galactica uses a Transformer architecture in a decoder-only setup~\\citep{VaswaniSPUJGKP17}",
-       "where": "Sec. 4.1 Architecture"
-      }
-     ],
+     "attributes": [],
      "new_op": ""
     },
     {
      "subgraph": "head",
      "op": "linear",
-     "role": "output projection to vocab logits",
+     "role": "output projection",
      "inputs": [
       "x"
      ],
@@ -808,15 +675,8 @@
        "name": "bias",
        "value": "false",
        "status": "stated",
-       "quote": "following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}",
-       "where": "Sec. 4.1 Architecture"
-      },
-      {
-       "name": "tied_to",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "quote": "\\textbf{No Biases} - following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}.",
+       "where": "Sec. Method / Architecture"
       }
      ],
      "new_op": ""
@@ -824,7 +684,7 @@
    ],
    "new_ops": [],
    "mechanisms_outside_ir": [],
-   "notes": "Galactica is a decoder-only Transformer following Vaswani et al. with modifications (GeLU, learned positional embeddings, no biases, 2048 context, 50k BPE vocab). Five sizes are reported in the models table (125M, 1.3B, 6.7B, 30B, 120B); I set primary_config to GAL 120B since the title/abstract single it out as the headline, open-sourced model. All size fields come from that table except d_ff, which is not stated. Norm is LayerNorm but explicitly WITHOUT bias ('no biases in any ... layer norms'); the schema's 'layernorm' option assumes learned weight and bias, so this is an imperfect match (bias omitted). norm_placement (pre/post), norm_eps, rope fields, scale, tied embeddings, parallel_block, and MoE are not stated. Residual and causal attention are taken as inherited from the declared Transformer decoder-only architecture. Dropout p=0.1 is a training detail, not represented in the IR. The block_ops order shown is a standard decoder block; exact pre/post norm placement is not stated by the paper."
+   "notes": "Galactica is a decoder-only Transformer with GeLU activations, learned absolute positional embeddings, no biases in dense kernels or layer norms, 2048 context, 50k BPE vocab. The paper reports five sizes (125M to 120B); I described the smallest (GAL 125M) as primary_config, with all sizes in configs. Norm type/placement/eps, FFN width (d_ff), residual details, and tied embeddings are not stated. Block ops are reconstructed from the generic decoder-only Transformer description; precise norm placement around sublayers is not given in the source."
   },
   "verification": {
    "errors": [],
@@ -833,14 +693,14 @@
     "ancestor": "Transformer (Vaswani et al., 2017)",
     "resolved": "transformer",
     "quote": "Galactica uses a Transformer architecture in a decoder-only setup~\\citep{VaswaniSPUJGKP17}, with the following modifications:",
-    "where": "Sec. 4.1 Architecture",
+    "where": "Sec. Method / Architecture",
     "quote_found": true
    },
    "family": {
     "value": "decoder_only",
     "status": "stated",
     "quote": "Galactica uses a Transformer architecture in a decoder-only setup~\\citep{VaswaniSPUJGKP17}, with the following modifications:",
-    "where": "Sec. 4.1 Architecture",
+    "where": "Sec. Method / Architecture",
     "reasons": [],
     "check": "quote_only"
    },
@@ -850,24 +710,24 @@
      "d_model": {
       "value": "768",
       "status": "stated",
-      "quote": "GAL 125M & 125M & 12 & 768 & 12 & 64 & 0.5M & $6 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained",
+      "quote": "GAL 125M & 125M & 12 & 768 & 12 & 64 & 0.5M",
+      "where": "Table models-trained",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "12",
       "status": "stated",
-      "quote": "GAL 125M & 125M & 12 & 768 & 12 & 64 & 0.5M & $6 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained",
+      "quote": "GAL 125M & 125M & 12 & 768 & 12 & 64 & 0.5M",
+      "where": "Table models-trained",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "12",
       "status": "stated",
-      "quote": "GAL 125M & 125M & 12 & 768 & 12 & 64 & 0.5M & $6 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained",
+      "quote": "GAL 125M & 125M & 12 & 768 & 12 & 64 & 0.5M",
+      "where": "Table models-trained",
       "reasons": [],
       "check": "verified"
      },
@@ -882,8 +742,8 @@
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "GAL 125M & 125M & 12 & 768 & 12 & 64 & 0.5M & $6 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained",
+      "quote": "GAL 125M & 125M & 12 & 768 & 12 & 64 & 0.5M",
+      "where": "Table models-trained",
       "reasons": [],
       "check": "verified"
      },
@@ -899,7 +759,7 @@
       "value": "50000",
       "status": "stated",
       "quote": "we construct a vocabulary of 50k tokens using BPE~\\citep{BPE}",
-      "where": "Sec. 4.1 Architecture",
+      "where": "Sec. Method / Architecture",
       "reasons": [],
       "check": "verified"
      },
@@ -907,7 +767,7 @@
       "value": "2048",
       "status": "stated",
       "quote": "we use a 2048 length context window for all model sizes",
-      "where": "Sec. 4.1 Architecture",
+      "where": "Sec. Method / Architecture",
       "reasons": [],
       "check": "verified"
      },
@@ -927,24 +787,24 @@
      "d_model": {
       "value": "2048",
       "status": "stated",
-      "quote": "GAL 1.3B & 1.3B & 24 & 2,048 & 32 & 64 & 1.0M & $2 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained",
+      "quote": "GAL 1.3B & 1.3B & 24 & 2,048 & 32 & 64 & 1.0M",
+      "where": "Table models-trained",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "GAL 1.3B & 1.3B & 24 & 2,048 & 32 & 64 & 1.0M & $2 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained",
+      "quote": "GAL 1.3B & 1.3B & 24 & 2,048 & 32 & 64 & 1.0M",
+      "where": "Table models-trained",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "32",
       "status": "stated",
-      "quote": "GAL 1.3B & 1.3B & 24 & 2,048 & 32 & 64 & 1.0M & $2 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained",
+      "quote": "GAL 1.3B & 1.3B & 24 & 2,048 & 32 & 64 & 1.0M",
+      "where": "Table models-trained",
       "reasons": [],
       "check": "verified"
      },
@@ -959,8 +819,8 @@
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "GAL 1.3B & 1.3B & 24 & 2,048 & 32 & 64 & 1.0M & $2 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained",
+      "quote": "GAL 1.3B & 1.3B & 24 & 2,048 & 32 & 64 & 1.0M",
+      "where": "Table models-trained",
       "reasons": [],
       "check": "verified"
      },
@@ -976,7 +836,7 @@
       "value": "50000",
       "status": "stated",
       "quote": "we construct a vocabulary of 50k tokens using BPE~\\citep{BPE}",
-      "where": "Sec. 4.1 Architecture",
+      "where": "Sec. Method / Architecture",
       "reasons": [],
       "check": "verified"
      },
@@ -984,7 +844,7 @@
       "value": "2048",
       "status": "stated",
       "quote": "we use a 2048 length context window for all model sizes",
-      "where": "Sec. 4.1 Architecture",
+      "where": "Sec. Method / Architecture",
       "reasons": [],
       "check": "verified"
      },
@@ -1004,24 +864,24 @@
      "d_model": {
       "value": "4096",
       "status": "stated",
-      "quote": "GAL 6.7B & 6.7B & 32 & 4,096 & 32 & 128 & 2.0M & $1.2 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained",
+      "quote": "GAL 6.7B & 6.7B & 32 & 4,096 & 32 & 128 & 2.0M",
+      "where": "Table models-trained",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "32",
       "status": "stated",
-      "quote": "GAL 6.7B & 6.7B & 32 & 4,096 & 32 & 128 & 2.0M & $1.2 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained",
+      "quote": "GAL 6.7B & 6.7B & 32 & 4,096 & 32 & 128 & 2.0M",
+      "where": "Table models-trained",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "32",
       "status": "stated",
-      "quote": "GAL 6.7B & 6.7B & 32 & 4,096 & 32 & 128 & 2.0M & $1.2 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained",
+      "quote": "GAL 6.7B & 6.7B & 32 & 4,096 & 32 & 128 & 2.0M",
+      "where": "Table models-trained",
       "reasons": [],
       "check": "verified"
      },
@@ -1036,8 +896,8 @@
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "GAL 6.7B & 6.7B & 32 & 4,096 & 32 & 128 & 2.0M & $1.2 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained",
+      "quote": "GAL 6.7B & 6.7B & 32 & 4,096 & 32 & 128 & 2.0M",
+      "where": "Table models-trained",
       "reasons": [],
       "check": "verified"
      },
@@ -1053,7 +913,7 @@
       "value": "50000",
       "status": "stated",
       "quote": "we construct a vocabulary of 50k tokens using BPE~\\citep{BPE}",
-      "where": "Sec. 4.1 Architecture",
+      "where": "Sec. Method / Architecture",
       "reasons": [],
       "check": "verified"
      },
@@ -1061,7 +921,7 @@
       "value": "2048",
       "status": "stated",
       "quote": "we use a 2048 length context window for all model sizes",
-      "where": "Sec. 4.1 Architecture",
+      "where": "Sec. Method / Architecture",
       "reasons": [],
       "check": "verified"
      },
@@ -1081,24 +941,24 @@
      "d_model": {
       "value": "7168",
       "status": "stated",
-      "quote": "GAL 30B & 30.0B & 48 & 7,168 & 56 & 128 & 2.0M & $1 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained",
+      "quote": "GAL 30B & 30.0B & 48 & 7,168 & 56 & 128 & 2.0M",
+      "where": "Table models-trained",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "48",
       "status": "stated",
-      "quote": "GAL 30B & 30.0B & 48 & 7,168 & 56 & 128 & 2.0M & $1 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained",
+      "quote": "GAL 30B & 30.0B & 48 & 7,168 & 56 & 128 & 2.0M",
+      "where": "Table models-trained",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "56",
       "status": "stated",
-      "quote": "GAL 30B & 30.0B & 48 & 7,168 & 56 & 128 & 2.0M & $1 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained",
+      "quote": "GAL 30B & 30.0B & 48 & 7,168 & 56 & 128 & 2.0M",
+      "where": "Table models-trained",
       "reasons": [],
       "check": "verified"
      },
@@ -1113,8 +973,8 @@
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "GAL 30B & 30.0B & 48 & 7,168 & 56 & 128 & 2.0M & $1 \\times 10^{-4}$ & 375M",
-      "where": "Table: Details of the models trained",
+      "quote": "GAL 30B & 30.0B & 48 & 7,168 & 56 & 128 & 2.0M",
+      "where": "Table models-trained",
       "reasons": [],
       "check": "verified"
      },
@@ -1130,7 +990,7 @@
       "value": "50000",
       "status": "stated",
       "quote": "we construct a vocabulary of 50k tokens using BPE~\\citep{BPE}",
-      "where": "Sec. 4.1 Architecture",
+      "where": "Sec. Method / Architecture",
       "reasons": [],
       "check": "verified"
      },
@@ -1138,7 +998,7 @@
       "value": "2048",
       "status": "stated",
       "quote": "we use a 2048 length context window for all model sizes",
-      "where": "Sec. 4.1 Architecture",
+      "where": "Sec. Method / Architecture",
       "reasons": [],
       "check": "verified"
      },
@@ -1158,24 +1018,24 @@
      "d_model": {
       "value": "10240",
       "status": "stated",
-      "quote": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128 & 2.0M & $0.7 \\times 10^{-5}$ & 1.125B",
-      "where": "Table: Details of the models trained",
+      "quote": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128 & 2.0M",
+      "where": "Table models-trained",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "96",
       "status": "stated",
-      "quote": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128 & 2.0M & $0.7 \\times 10^{-5}$ & 1.125B",
-      "where": "Table: Details of the models trained",
+      "quote": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128 & 2.0M",
+      "where": "Table models-trained",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "80",
       "status": "stated",
-      "quote": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128 & 2.0M & $0.7 \\times 10^{-5}$ & 1.125B",
-      "where": "Table: Details of the models trained",
+      "quote": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128 & 2.0M",
+      "where": "Table models-trained",
       "reasons": [],
       "check": "verified"
      },
@@ -1190,8 +1050,8 @@
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128 & 2.0M & $0.7 \\times 10^{-5}$ & 1.125B",
-      "where": "Table: Details of the models trained",
+      "quote": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128 & 2.0M",
+      "where": "Table models-trained",
       "reasons": [],
       "check": "verified"
      },
@@ -1207,7 +1067,7 @@
       "value": "50000",
       "status": "stated",
       "quote": "we construct a vocabulary of 50k tokens using BPE~\\citep{BPE}",
-      "where": "Sec. 4.1 Architecture",
+      "where": "Sec. Method / Architecture",
       "reasons": [],
       "check": "verified"
      },
@@ -1215,7 +1075,7 @@
       "value": "2048",
       "status": "stated",
       "quote": "we use a 2048 length context window for all model sizes",
-      "where": "Sec. 4.1 Architecture",
+      "where": "Sec. Method / Architecture",
       "reasons": [],
       "check": "verified"
      },
@@ -1231,17 +1091,33 @@
      ]
     }
    ],
-   "primary_config": "GAL 120B",
+   "primary_config": "GAL 125M",
    "flavours": {
     "norm": {
-     "value": "layernorm",
-     "status": "stated",
-     "quote": "following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}",
-     "where": "Sec. 4.1 Architecture",
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
      "reasons": [],
-     "check": "verified"
+     "check": "not_stated"
     },
     "norm_placement": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_ffn": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -1261,7 +1137,7 @@
      "value": "gelu",
      "status": "stated",
      "quote": "\\textbf{GeLU Activation} - we use GeLU activations for all model sizes~\\citep{GeLU}.",
-     "where": "Sec. 4.1 Architecture",
+     "where": "Sec. Method / Architecture",
      "reasons": [],
      "check": "verified"
     },
@@ -1269,9 +1145,25 @@
      "value": "learned",
      "status": "stated",
      "quote": "\\textbf{Learned Positional Embeddings} - we use learned positional embeddings for the model.",
-     "where": "Sec. 4.1 Architecture",
+     "where": "Sec. Method / Architecture",
      "reasons": [],
      "check": "verified"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "rope_pairing": {
      "value": "",
@@ -1298,14 +1190,12 @@
      "check": "not_stated"
     },
     "residual": {
-     "value": "residual",
-     "status": "inherited",
-     "quote": "Galactica uses a Transformer architecture in a decoder-only setup~\\citep{VaswaniSPUJGKP17}",
-     "where": "Sec. 4.1 Architecture",
-     "reasons": [
-      "inherited from transformer, whose curated entry has no residual"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "parallel_block": {
      "value": "",
@@ -1317,11 +1207,13 @@
     },
     "attention": {
      "value": "exact",
-     "status": "stated",
-     "quote": "Galactica uses a Transformer architecture in a decoder-only setup~\\citep{VaswaniSPUJGKP17}",
-     "where": "Sec. 4.1 Architecture",
-     "reasons": [],
-     "check": "quote_only"
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [
+      "not_stated carries a value or quote (ignored)"
+     ],
+     "check": "not_stated"
     },
     "window_size": {
      "value": "",
@@ -1342,18 +1234,26 @@
     "qkv_bias": {
      "value": "false",
      "status": "stated",
-     "quote": "following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}",
-     "where": "Sec. 4.1 Architecture",
+     "quote": "\\textbf{No Biases} - following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}.",
+     "where": "Sec. Method / Architecture",
      "reasons": [],
      "check": "quote_only"
     },
     "mlp_bias": {
      "value": "false",
      "status": "stated",
-     "quote": "following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}",
-     "where": "Sec. 4.1 Architecture",
+     "quote": "\\textbf{No Biases} - following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}.",
+     "where": "Sec. Method / Architecture",
      "reasons": [],
      "check": "quote_only"
+    },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "tied_embeddings": {
      "value": "",
@@ -1388,6 +1288,46 @@
      "check": "not_stated"
     },
     "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -1413,7 +1353,7 @@
        "value": "50000",
        "status": "stated",
        "quote": "we construct a vocabulary of 50k tokens using BPE~\\citep{BPE}",
-       "where": "Sec. 4.1 Architecture",
+       "where": "Sec. Method / Architecture",
        "reasons": [],
        "check": "verified",
        "name": "vocab"
@@ -1436,11 +1376,11 @@
       {
        "value": "learned",
        "status": "stated",
-       "quote": "we use learned positional embeddings for the model",
-       "where": "Sec. 4.1 Architecture",
+       "quote": "\\textbf{Learned Positional Embeddings} - we use learned positional embeddings for the model.",
+       "where": "Sec. Method / Architecture",
        "reasons": [],
        "check": "quote_only",
-       "name": "type"
+       "name": "positional"
       }
      ],
      "errors": []
@@ -1448,22 +1388,22 @@
     {
      "i": 2,
      "subgraph": "block",
-     "op": "layernorm",
-     "role": "attention input norm",
+     "op": "attention",
+     "role": "self-attention",
      "inputs": [
       "x"
      ],
-     "output": "h",
+     "output": "attn_out",
      "new_op": "",
      "attributes": [
       {
-       "value": "false",
+       "value": "true",
        "status": "stated",
-       "quote": "following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}",
-       "where": "Sec. 4.1 Architecture",
+       "quote": "Galactica uses a Transformer architecture in a decoder-only setup~\\citep{VaswaniSPUJGKP17}, with the following modifications:",
+       "where": "Sec. Method / Architecture",
        "reasons": [],
        "check": "quote_only",
-       "name": "bias"
+       "name": "causal"
       }
      ],
      "errors": []
@@ -1471,274 +1411,59 @@
     {
      "i": 3,
      "subgraph": "block",
-     "op": "linear",
-     "role": "qkv projection",
+     "op": "add",
+     "role": "residual add",
      "inputs": [
-      "h"
+      "x",
+      "attn_out"
      ],
-     "output": "qkv",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "false",
-       "status": "stated",
-       "quote": "following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}",
-       "where": "Sec. 4.1 Architecture",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "bias"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 4,
-     "subgraph": "block",
-     "op": "split",
-     "role": "split into q,k,v",
-     "inputs": [
-      "qkv"
-     ],
-     "output": "q,k,v",
+     "output": "x",
      "new_op": "",
      "attributes": [],
      "errors": []
     },
     {
-     "i": 5,
-     "subgraph": "block",
-     "op": "attention",
-     "role": "multi-head causal self-attention",
-     "inputs": [
-      "q",
-      "k",
-      "v"
-     ],
-     "output": "a",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "80",
-       "status": "stated",
-       "quote": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128 & 2.0M & $0.7 \\times 10^{-5}$ & 1.125B",
-       "where": "Table: Details of the models trained",
-       "reasons": [],
-       "check": "verified",
-       "name": "heads"
-      },
-      {
-       "value": "128",
-       "status": "stated",
-       "quote": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128 & 2.0M & $0.7 \\times 10^{-5}$ & 1.125B",
-       "where": "Table: Details of the models trained",
-       "reasons": [],
-       "check": "verified",
-       "name": "head_dim"
-      },
-      {
-       "value": "true",
-       "status": "stated",
-       "quote": "Galactica uses a Transformer architecture in a decoder-only setup~\\citep{VaswaniSPUJGKP17}",
-       "where": "Sec. 4.1 Architecture",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "causal"
-      },
-      {
-       "value": "0",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [
-        "not_stated carries a value or quote (ignored)"
-       ],
-       "check": "not_stated",
-       "name": "window"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "scale"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 6,
-     "subgraph": "block",
-     "op": "linear",
-     "role": "attention output projection",
-     "inputs": [
-      "a"
-     ],
-     "output": "ao",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "false",
-       "status": "stated",
-       "quote": "following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}",
-       "where": "Sec. 4.1 Architecture",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "bias"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 7,
-     "subgraph": "block",
-     "op": "add",
-     "role": "attention residual add",
-     "inputs": [
-      "x",
-      "ao"
-     ],
-     "output": "x",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "residual",
-       "status": "inherited",
-       "quote": "Galactica uses a Transformer architecture in a decoder-only setup~\\citep{VaswaniSPUJGKP17}",
-       "where": "Sec. 4.1 Architecture",
-       "reasons": [
-        "inherited from transformer, whose curated entry has no type"
-       ],
-       "check": "unverified",
-       "name": "type"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 8,
-     "subgraph": "block",
-     "op": "layernorm",
-     "role": "FFN input norm",
-     "inputs": [
-      "x"
-     ],
-     "output": "h2",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "false",
-       "status": "stated",
-       "quote": "following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}",
-       "where": "Sec. 4.1 Architecture",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "bias"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 9,
-     "subgraph": "block",
-     "op": "linear",
-     "role": "FFN up projection",
-     "inputs": [
-      "h2"
-     ],
-     "output": "u",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "false",
-       "status": "stated",
-       "quote": "following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}",
-       "where": "Sec. 4.1 Architecture",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "bias"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 10,
+     "i": 4,
      "subgraph": "block",
      "op": "gelu",
      "role": "FFN activation",
      "inputs": [
-      "u"
+      "ffn_mid"
      ],
-     "output": "g",
+     "output": "ffn_act",
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
+       "value": "none",
+       "status": "stated",
+       "quote": "\\textbf{GeLU Activation} - we use GeLU activations for all model sizes~\\citep{GeLU}.",
+       "where": "Sec. Method / Architecture",
        "reasons": [],
-       "check": "not_stated",
+       "check": "quote_only",
        "name": "approx"
       }
      ],
      "errors": []
     },
     {
-     "i": 11,
-     "subgraph": "block",
-     "op": "linear",
-     "role": "FFN down projection",
-     "inputs": [
-      "g"
-     ],
-     "output": "d",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "false",
-       "status": "stated",
-       "quote": "following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}",
-       "where": "Sec. 4.1 Architecture",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "bias"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 12,
+     "i": 5,
      "subgraph": "block",
      "op": "add",
-     "role": "FFN residual add",
+     "role": "residual add",
      "inputs": [
       "x",
-      "d"
+      "ffn_out"
      ],
      "output": "x",
      "new_op": "",
-     "attributes": [
-      {
-       "value": "residual",
-       "status": "inherited",
-       "quote": "Galactica uses a Transformer architecture in a decoder-only setup~\\citep{VaswaniSPUJGKP17}",
-       "where": "Sec. 4.1 Architecture",
-       "reasons": [
-        "inherited from transformer, whose curated entry has no type"
-       ],
-       "check": "unverified",
-       "name": "type"
-      }
-     ],
+     "attributes": [],
      "errors": []
     },
     {
-     "i": 13,
+     "i": 6,
      "subgraph": "head",
      "op": "linear",
-     "role": "output projection to vocab logits",
+     "role": "output projection",
      "inputs": [
       "x"
      ],
@@ -1748,20 +1473,11 @@
       {
        "value": "false",
        "status": "stated",
-       "quote": "following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}",
-       "where": "Sec. 4.1 Architecture",
+       "quote": "\\textbf{No Biases} - following PaLM, we do not use biases in any of the dense kernels or layer norms~\\citep{PaLM}.",
+       "where": "Sec. Method / Architecture",
        "reasons": [],
        "check": "quote_only",
        "name": "bias"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "tied_to"
       }
      ],
      "errors": []
@@ -1770,35 +1486,16 @@
    "mechanisms_outside_ir": [],
    "summary": {
     "counts": {
-     "verified": 36,
-     "quote_only": 13,
-     "unverified": 3,
-     "not_stated": 27
+     "verified": 33,
+     "quote_only": 7,
+     "unverified": 0,
+     "not_stated": 36
     },
-    "unverified": [
-     {
-      "field": "flavours.residual",
-      "reasons": [
-       "inherited from transformer, whose curated entry has no residual"
-      ]
-     },
-     {
-      "field": "block_ops[7].type",
-      "reasons": [
-       "inherited from transformer, whose curated entry has no type"
-      ]
-     },
-     {
-      "field": "block_ops[12].type",
-      "reasons": [
-       "inherited from transformer, whose curated entry has no type"
-      ]
-     }
-    ],
+    "unverified": [],
     "new_op_errors": [],
     "node_errors": [],
     "n_new_ops": 0,
-    "n_block_ops": 14
+    "n_block_ops": 7
    }
   }
  }

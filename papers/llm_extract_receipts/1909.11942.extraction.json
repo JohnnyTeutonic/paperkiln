@@ -3,23 +3,23 @@
  "title": "ALBERT: A Lite BERT for Self-supervised Learning of Language Representations",
  "fields": {
   "d_model": {
-   "value": 4096,
-   "evidence": "&xxlarge &235M &12 & 4096 & 128 & True [Table model_architecture]",
+   "value": 768,
+   "evidence": "&base &12M &12 & 768 & 12 & 128 & True [Table: The architectures of the primary models reported in this paper]",
    "verdict": "used"
   },
   "n_layers": {
    "value": 12,
-   "evidence": "&xxlarge &235M &12 & 4096 & 128 & True [Table model_architecture]",
+   "evidence": "&base &12M &12 & 768 & 12 & 128 & True [Table: The architectures of the primary models reported in this paper]",
    "verdict": "used"
   },
   "n_heads": {
-   "value": 64,
-   "evidence": "&xxlarge &233M &12 & 4096 & 64 & 128 & True [Table model_architecture (ALBERT section)]",
+   "value": 12,
+   "evidence": "&base &12M &12 & 768 & 12 & 128 & True [Table: The architectures of the primary models reported in this paper]",
    "verdict": "used"
   },
   "vocab_size": {
    "value": 30000,
-   "evidence": "Like \\bert, we use a vocabulary size of 30,000 [Sec. Experimental Setup]",
+   "evidence": "all the experiments in this paper use a vocabulary size $V$ of 30,000. [Sec. Model architecture choices, footnote]",
    "verdict": "used"
   },
   "context_length": {
@@ -29,12 +29,12 @@
   },
   "activation": {
    "value": "gelu",
-   "evidence": "it uses a transformer encoder~\\citep{vaswani2017attention} with GELU nonlinearities~\\citep{hendrycks2016gelus} [Sec. Model architecture choices]",
+   "evidence": "it uses a transformer encoder~\\citep{vaswani2017attention} with GELU nonlinearities [Sec. Model architecture choices]",
    "verdict": "used"
   },
   "attention": {
-   "value": "other:bidirectional full softmax self-attention (transformer encoder)",
-   "evidence": "it uses a transformer encoder~\\citep{vaswani2017attention} [Sec. Model architecture choices]",
+   "value": "other:full bidirectional softmax self-attention (transformer encoder)",
+   "evidence": "The backbone of the ALBERT architecture is similar to BERT in that it uses a transformer encoder [Sec. Model architecture choices]",
    "verdict": "used"
   }
  },
@@ -49,14 +49,14 @@
   {
    "field": "d_ff",
    "reasons": [
-    "16384 does not occur in its quote"
+    "3072 does not occur in its quote"
    ]
   }
  ],
  "mentions": {},
  "inherits": {
   "ancestor": "bert",
-  "evidence": "The backbone of the ALBERT architecture is similar to BERT in that it uses a transformer encoder~\\citep{vaswani2017attention} with GELU nonlinearities~\\citep{hendrycks2016gelus}.",
+  "evidence": "The backbone of the ALBERT architecture is similar to BERT in that it uses a transformer encoder",
   "section": "Sec. Model architecture choices"
  },
  "variants": [
@@ -94,19 +94,25 @@
    "mechanism": "encoder-decoder or encoder-only model",
    "where": "llm extraction, verified quote, Sec. Model architecture choices",
    "blocking": true,
-   "evidence": "The backbone of the ALBERT architecture is similar to BERT in that it uses a transformer encoder~\\citep{vaswani2017attention} with GELU nonlinearities~\\citep{hendrycks2016gelus}."
+   "evidence": "The backbone of the ALBERT architecture is similar to BERT in that it uses a transformer encoder"
   },
   {
-   "mechanism": "All parameters shared across layers (one block's weights reused for all L layers)",
-   "where": "llm extraction, verified quote, Sec. Cross-layer parameter sharing",
+   "mechanism": "Cross-layer parameter sharing: all block parameters are shared across all L layers",
+   "where": "llm extraction, verified quote, Sec. Model architecture choices",
    "blocking": true,
-   "evidence": "The default decision for ALBERT is to share all parameters across layers. All our experiments use this default decision unless otherwise specified."
+   "evidence": "The default decision for ALBERT is to share all parameters across layers."
   },
   {
-   "mechanism": "Sentence-order prediction (SOP) classification head/loss alongside MLM",
-   "where": "llm extraction, verified quote, Sec. Inter-sentence coherence loss",
+   "mechanism": "Sentence-order prediction (SOP) classification head trained jointly with MLM; classifier structure not described",
+   "where": "llm extraction, verified quote, Sec. Model architecture choices",
    "blocking": true,
-   "evidence": "That is, for ALBERT, we use a sentence-order prediction (SOP) loss, which avoids topic prediction and instead focuses on modeling inter-sentence coherence."
+   "evidence": "for ALBERT, we use a sentence-order prediction (SOP) loss, which avoids topic prediction and instead focuses on modeling inter-sentence coherence."
+  },
+  {
+   "mechanism": "Dropout removed for the final model",
+   "where": "llm extraction, verified quote, Sec. Additional training data and dropout effects",
+   "blocking": true,
+   "evidence": "As a result, we decide to remove dropout to further increase our model capacity."
   }
  ],
  "source": {
@@ -114,14 +120,14 @@
   "sent_sha256": "58cbc45304cc80569a93c668a47ffcdeece76531913a942d917786398031a6a1",
   "from": "https://arxiv.org/e-print/1909.11942",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
+  "extractor_sha256": "9d5951b0f11c920aaf075abead17d7d4e619d37402d47690ba452de15620e921",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
+  "prompt_sha256": "e6c6c5052b656885910d1539b8c320ba4ecb9262a6079252b852f1ff637b03ef",
   "n_calls": 1,
-  "cost_usd": 0.300748,
+  "cost_usd": 0.343724,
   "request_ids": [
-   "req_011CgFgBMfvjpYnncwFvupPh"
+   "req_011CgRrSwqNTe86hWa7FzmWk"
   ]
  },
  "llm": {
@@ -131,34 +137,34 @@
    "family": {
     "value": "encoder_only",
     "status": "stated",
-    "quote": "The backbone of the ALBERT architecture is similar to BERT in that it uses a transformer encoder~\\citep{vaswani2017attention} with GELU nonlinearities~\\citep{hendrycks2016gelus}.",
+    "quote": "The backbone of the ALBERT architecture is similar to BERT in that it uses a transformer encoder",
     "where": "Sec. Model architecture choices"
    },
    "inherits": {
     "ancestor": "BERT",
-    "quote": "The backbone of the ALBERT architecture is similar to BERT in that it uses a transformer encoder~\\citep{vaswani2017attention} with GELU nonlinearities~\\citep{hendrycks2016gelus}.",
+    "quote": "The backbone of the ALBERT architecture is similar to BERT in that it uses a transformer encoder",
     "where": "Sec. Model architecture choices"
    },
    "configs": [
     {
-     "name": "base",
+     "name": "ALBERT-base",
      "d_model": {
       "value": "768",
       "status": "stated",
-      "quote": "&base\t    &12M     &12 & 768  & 128  & True",
-      "where": "Table model_architecture"
+      "quote": "&base\t        &12M     &12 & 768  & 12 & 128 & True",
+      "where": "Table: The architectures of the primary models reported in this paper"
      },
      "n_layers": {
       "value": "12",
       "status": "stated",
-      "quote": "&base\t    &12M     &12 & 768  & 128  & True",
-      "where": "Table model_architecture"
+      "quote": "&base\t        &12M     &12 & 768  & 12 & 128 & True",
+      "where": "Table: The architectures of the primary models reported in this paper"
      },
      "n_heads": {
       "value": "12",
       "status": "stated",
       "quote": "&base\t        &12M     &12 & 768  & 12 & 128 & True",
-      "where": "Table model_architecture (ALBERT section)"
+      "where": "Table: The architectures of the primary models reported in this paper"
      },
      "n_kv_heads": {
       "value": "",
@@ -175,14 +181,14 @@
      "d_ff": {
       "value": "3072",
       "status": "stated",
-      "quote": "we set the feed-forward/filter size to be $4H$",
+      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$",
       "where": "Sec. Model architecture choices"
      },
      "vocab_size": {
       "value": "30000",
       "status": "stated",
-      "quote": "Like \\bert, we use a vocabulary size of 30,000",
-      "where": "Sec. Experimental Setup"
+      "quote": "all the experiments in this paper use a vocabulary size $V$ of 30,000.",
+      "where": "Sec. Model architecture choices, footnote"
      },
      "context_length": {
       "value": "512",
@@ -192,24 +198,24 @@
      }
     },
     {
-     "name": "large",
+     "name": "ALBERT-large",
      "d_model": {
       "value": "1024",
       "status": "stated",
-      "quote": "&large\t    &18M\t &24 & 1024 & 128  & True",
-      "where": "Table model_architecture"
+      "quote": "&large\t        &18M\t &24 & 1024 & 16 & 128 & True",
+      "where": "Table: The architectures of the primary models reported in this paper"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "&large\t    &18M\t &24 & 1024 & 128  & True",
-      "where": "Table model_architecture"
+      "quote": "&large\t        &18M\t &24 & 1024 & 16 & 128 & True",
+      "where": "Table: The architectures of the primary models reported in this paper"
      },
      "n_heads": {
       "value": "16",
       "status": "stated",
       "quote": "&large\t        &18M\t &24 & 1024 & 16 & 128 & True",
-      "where": "Table model_architecture (ALBERT section)"
+      "where": "Table: The architectures of the primary models reported in this paper"
      },
      "n_kv_heads": {
       "value": "",
@@ -226,14 +232,14 @@
      "d_ff": {
       "value": "4096",
       "status": "stated",
-      "quote": "we set the feed-forward/filter size to be $4H$",
+      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$",
       "where": "Sec. Model architecture choices"
      },
      "vocab_size": {
       "value": "30000",
       "status": "stated",
-      "quote": "Like \\bert, we use a vocabulary size of 30,000",
-      "where": "Sec. Experimental Setup"
+      "quote": "all the experiments in this paper use a vocabulary size $V$ of 30,000.",
+      "where": "Sec. Model architecture choices, footnote"
      },
      "context_length": {
       "value": "512",
@@ -243,24 +249,24 @@
      }
     },
     {
-     "name": "xlarge",
+     "name": "ALBERT-xlarge",
      "d_model": {
       "value": "2048",
       "status": "stated",
-      "quote": "&xlarge\t&60M\t &24 & 2048 & 128  & True",
-      "where": "Table model_architecture"
+      "quote": "&xlarge\t&59M\t &24 & 2048 & 32 & 128 & True",
+      "where": "Table: The architectures of the primary models reported in this paper"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "&xlarge\t&60M\t &24 & 2048 & 128  & True",
-      "where": "Table model_architecture"
+      "quote": "&xlarge\t&59M\t &24 & 2048 & 32 & 128 & True",
+      "where": "Table: The architectures of the primary models reported in this paper"
      },
      "n_heads": {
       "value": "32",
       "status": "stated",
       "quote": "&xlarge\t&59M\t &24 & 2048 & 32 & 128 & True",
-      "where": "Table model_architecture (ALBERT section)"
+      "where": "Table: The architectures of the primary models reported in this paper"
      },
      "n_kv_heads": {
       "value": "",
@@ -277,14 +283,14 @@
      "d_ff": {
       "value": "8192",
       "status": "stated",
-      "quote": "we set the feed-forward/filter size to be $4H$",
+      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$",
       "where": "Sec. Model architecture choices"
      },
      "vocab_size": {
       "value": "30000",
       "status": "stated",
-      "quote": "Like \\bert, we use a vocabulary size of 30,000",
-      "where": "Sec. Experimental Setup"
+      "quote": "all the experiments in this paper use a vocabulary size $V$ of 30,000.",
+      "where": "Sec. Model architecture choices, footnote"
      },
      "context_length": {
       "value": "512",
@@ -294,24 +300,24 @@
      }
     },
     {
-     "name": "xxlarge",
+     "name": "ALBERT-xxlarge",
      "d_model": {
       "value": "4096",
       "status": "stated",
-      "quote": "&xxlarge\t&235M\t &12 & 4096 & 128  & True",
-      "where": "Table model_architecture"
+      "quote": "&xxlarge\t&233M\t &12 & 4096 & 64 & 128 & True",
+      "where": "Table: The architectures of the primary models reported in this paper"
      },
      "n_layers": {
       "value": "12",
       "status": "stated",
-      "quote": "&xxlarge\t&235M\t &12 & 4096 & 128  & True",
-      "where": "Table model_architecture"
+      "quote": "&xxlarge\t&233M\t &12 & 4096 & 64 & 128 & True",
+      "where": "Table: The architectures of the primary models reported in this paper"
      },
      "n_heads": {
       "value": "64",
       "status": "stated",
       "quote": "&xxlarge\t&233M\t &12 & 4096 & 64 & 128 & True",
-      "where": "Table model_architecture (ALBERT section)"
+      "where": "Table: The architectures of the primary models reported in this paper"
      },
      "n_kv_heads": {
       "value": "",
@@ -328,14 +334,14 @@
      "d_ff": {
       "value": "16384",
       "status": "stated",
-      "quote": "we set the feed-forward/filter size to be $4H$",
+      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$",
       "where": "Sec. Model architecture choices"
      },
      "vocab_size": {
       "value": "30000",
       "status": "stated",
-      "quote": "Like \\bert, we use a vocabulary size of 30,000",
-      "where": "Sec. Experimental Setup"
+      "quote": "all the experiments in this paper use a vocabulary size $V$ of 30,000.",
+      "where": "Sec. Model architecture choices, footnote"
      },
      "context_length": {
       "value": "512",
@@ -345,7 +351,7 @@
      }
     }
    ],
-   "primary_config": "xxlarge",
+   "primary_config": "ALBERT-base",
    "flavours": {
     "norm": {
      "value": "",
@@ -354,6 +360,18 @@
      "where": ""
     },
     "norm_placement": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_ffn": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -368,10 +386,22 @@
     "activation": {
      "value": "gelu",
      "status": "stated",
-     "quote": "it uses a transformer encoder~\\citep{vaswani2017attention} with GELU nonlinearities~\\citep{hendrycks2016gelus}",
+     "quote": "it uses a transformer encoder~\\citep{vaswani2017attention} with GELU nonlinearities",
      "where": "Sec. Model architecture choices"
     },
     "positional": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -408,9 +438,9 @@
      "where": ""
     },
     "attention": {
-     "value": "other:bidirectional full softmax self-attention (transformer encoder)",
+     "value": "other:full bidirectional softmax self-attention (transformer encoder)",
      "status": "stated",
-     "quote": "it uses a transformer encoder~\\citep{vaswani2017attention}",
+     "quote": "The backbone of the ALBERT architecture is similar to BERT in that it uses a transformer encoder",
      "where": "Sec. Model architecture choices"
     },
     "window_size": {
@@ -432,6 +462,12 @@
      "where": ""
     },
     "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qk_norm": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -466,23 +502,60 @@
      "status": "not_stated",
      "quote": "",
      "where": ""
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     }
    },
    "block_ops": [
     {
      "subgraph": "embed",
      "op": "embedding",
-     "role": "factorized token embedding of size E",
+     "role": "factorized token embedding, size E=128",
      "inputs": [
       "tokens"
      ],
      "output": "e",
      "attributes": [
       {
-       "name": "dim",
+       "name": "vocab",
+       "value": "30000",
+       "status": "stated",
+       "quote": "all the experiments in this paper use a vocabulary size $V$ of 30,000.",
+       "where": "Sec. Model architecture choices, footnote"
+      },
+      {
+       "name": "d",
        "value": "128",
        "status": "stated",
-       "quote": "Based on these results, we use an embedding size $E=128$ in all future settings",
+       "quote": "we use an embedding size $E=128$ in all future settings",
        "where": "Sec. Factorized Embedding Parameterization"
       }
      ],
@@ -499,9 +572,9 @@
      "attributes": [
       {
        "name": "out",
-       "value": "4096",
+       "value": "768",
        "status": "stated",
-       "quote": "we first project them into a lower dimensional embedding space of size $E$, and then project it to the hidden space",
+       "quote": "we first project them into a lower dimensional embedding space of size $E$, and then project it to the hidden space.",
        "where": "Sec. Model architecture choices"
       },
       {
@@ -525,10 +598,10 @@
      "attributes": [
       {
        "name": "out",
-       "value": "4096",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "768",
+       "status": "stated",
+       "quote": "&base\t        &12M     &12 & 768  & 12 & 128 & True",
+       "where": "Table: The architectures of the primary models reported in this paper"
       },
       {
        "name": "bias",
@@ -551,10 +624,10 @@
      "attributes": [
       {
        "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "768",
+       "status": "stated",
+       "quote": "&base\t        &12M     &12 & 768  & 12 & 128 & True",
+       "where": "Table: The architectures of the primary models reported in this paper"
       },
       {
        "name": "bias",
@@ -577,10 +650,10 @@
      "attributes": [
       {
        "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "768",
+       "status": "stated",
+       "quote": "&base\t        &12M     &12 & 768  & 12 & 128 & True",
+       "where": "Table: The architectures of the primary models reported in this paper"
       },
       {
        "name": "bias",
@@ -605,17 +678,10 @@
      "attributes": [
       {
        "name": "heads",
-       "value": "64",
+       "value": "12",
        "status": "stated",
-       "quote": "&xxlarge\t&233M\t &12 & 4096 & 64 & 128 & True",
-       "where": "Table model_architecture (ALBERT section)"
-      },
-      {
-       "name": "head_dim",
-       "value": "64",
-       "status": "stated",
-       "quote": "the number of attention heads to be $H/64$",
-       "where": "Sec. Model architecture choices"
+       "quote": "&base\t        &12M     &12 & 768  & 12 & 128 & True",
+       "where": "Table: The architectures of the primary models reported in this paper"
       },
       {
        "name": "kv_heads",
@@ -623,6 +689,13 @@
        "status": "not_stated",
        "quote": "",
        "where": ""
+      },
+      {
+       "name": "head_dim",
+       "value": "64",
+       "status": "stated",
+       "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$",
+       "where": "Sec. Model architecture choices"
       },
       {
        "name": "scale",
@@ -633,13 +706,20 @@
       },
       {
        "name": "causal",
+       "value": "false",
+       "status": "stated",
+       "quote": "The backbone of the ALBERT architecture is similar to BERT in that it uses a transformer encoder",
+       "where": "Sec. Model architecture choices"
+      },
+      {
+       "name": "window",
        "value": "",
        "status": "not_stated",
        "quote": "",
        "where": ""
       },
       {
-       "name": "window",
+       "name": "sinks",
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -659,10 +739,10 @@
      "attributes": [
       {
        "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "768",
+       "status": "stated",
+       "quote": "&base\t        &12M     &12 & 768  & 12 & 128 & True",
+       "where": "Table: The architectures of the primary models reported in this paper"
       },
       {
        "name": "bias",
@@ -677,7 +757,7 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "attention residual",
+     "role": "attention residual add (assumed transformer residual; norm placement not stated)",
      "inputs": [
       "x",
       "o"
@@ -689,7 +769,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN up projection (4H)",
+     "role": "FFN up projection to 4H",
      "inputs": [
       "h"
      ],
@@ -697,9 +777,9 @@
      "attributes": [
       {
        "name": "out",
-       "value": "16384",
+       "value": "3072",
        "status": "stated",
-       "quote": "we set the feed-forward/filter size to be $4H$",
+       "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$",
        "where": "Sec. Model architecture choices"
       },
       {
@@ -742,10 +822,10 @@
      "attributes": [
       {
        "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "768",
+       "status": "stated",
+       "quote": "&base\t        &12M     &12 & 768  & 12 & 128 & True",
+       "where": "Table: The architectures of the primary models reported in this paper"
       },
       {
        "name": "bias",
@@ -760,7 +840,7 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "FFN residual",
+     "role": "FFN residual add",
      "inputs": [
       "h",
       "f"
@@ -772,7 +852,7 @@
     {
      "subgraph": "head",
      "op": "linear",
-     "role": "MLM output over vocabulary",
+     "role": "MLM output over vocabulary (head structure not described)",
      "inputs": [
       "x"
      ],
@@ -782,18 +862,18 @@
        "name": "out",
        "value": "30000",
        "status": "stated",
-       "quote": "Like \\bert, we use a vocabulary size of 30,000",
-       "where": "Sec. Experimental Setup"
+       "quote": "all the experiments in this paper use a vocabulary size $V$ of 30,000.",
+       "where": "Sec. Model architecture choices, footnote"
       },
       {
-       "name": "tied_to",
+       "name": "bias",
        "value": "",
        "status": "not_stated",
        "quote": "",
        "where": ""
       },
       {
-       "name": "bias",
+       "name": "tied_to",
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -806,17 +886,22 @@
    "new_ops": [],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "All parameters shared across layers (one block's weights reused for all L layers)",
-     "quote": "The default decision for ALBERT is to share all parameters across layers. All our experiments use this default decision unless otherwise specified.",
-     "where": "Sec. Cross-layer parameter sharing"
+     "mechanism": "Cross-layer parameter sharing: all block parameters are shared across all L layers",
+     "quote": "The default decision for ALBERT is to share all parameters across layers.",
+     "where": "Sec. Model architecture choices"
     },
     {
-     "mechanism": "Sentence-order prediction (SOP) classification head/loss alongside MLM",
-     "quote": "That is, for ALBERT, we use a sentence-order prediction (SOP) loss, which avoids topic prediction and instead focuses on modeling inter-sentence coherence.",
-     "where": "Sec. Inter-sentence coherence loss"
+     "mechanism": "Sentence-order prediction (SOP) classification head trained jointly with MLM; classifier structure not described",
+     "quote": "for ALBERT, we use a sentence-order prediction (SOP) loss, which avoids topic prediction and instead focuses on modeling inter-sentence coherence.",
+     "where": "Sec. Model architecture choices"
+    },
+    {
+     "mechanism": "Dropout removed for the final model",
+     "quote": "As a result, we decide to remove dropout to further increase our model capacity.",
+     "where": "Sec. Additional training data and dropout effects"
     }
    ],
-   "notes": "Described the headline single model ALBERT-xxlarge (12 layers, H=4096, 64 heads, E=128, all-shared, no dropout); all four ALBERT configs listed. Two tables share the label table:model_architecture (xxlarge 235M vs 233M, xlarge 60M vs 59M); heads taken from the table that lists them. d_ff and head_dim derive from the stated 4H and H/64 rules. Layer norm type and placement, positional embeddings, segment embeddings, biases, MLM head structure and tying, and attention causality are not stated in the paper; norm ops are omitted from block_ops for that reason, although BERT-style blocks have them. Residual adds follow the generic transformer encoder but are not explicitly described."
+   "notes": "Described the all-shared, E=128 ALBERT. The headline model is ALBERT-xxlarge (12 layers, H=4096, 64 heads), trained with MLM+SOP and no dropout. primary_config is base because it is the smallest configuration reported. block_ops use base sizes. Heads come from the table that lists Heads; they are consistent with the H/64 rule. d_ff is computed from the stated 4H rule. head_dim 64 is implied by heads = H/64. The paper only says ALBERT is 'similar to BERT', which is not an explicit inheritance, so I did not inherit anything. Left not_stated: norm type and placement, positional embeddings, biases, GELU approximation, embedding tying, segment embeddings and head structure. No norm ops appear in block_ops because the paper never describes them. Parameter counts differ slightly between the two tables (59M/60M; 233M/235M). The ensembles also use 24-layer xxlarge."
   },
   "verification": {
    "errors": [],
@@ -824,34 +909,34 @@
    "inherits": {
     "ancestor": "BERT",
     "resolved": "bert",
-    "quote": "The backbone of the ALBERT architecture is similar to BERT in that it uses a transformer encoder~\\citep{vaswani2017attention} with GELU nonlinearities~\\citep{hendrycks2016gelus}.",
+    "quote": "The backbone of the ALBERT architecture is similar to BERT in that it uses a transformer encoder",
     "where": "Sec. Model architecture choices",
     "quote_found": true
    },
    "family": {
     "value": "encoder_only",
     "status": "stated",
-    "quote": "The backbone of the ALBERT architecture is similar to BERT in that it uses a transformer encoder~\\citep{vaswani2017attention} with GELU nonlinearities~\\citep{hendrycks2016gelus}.",
+    "quote": "The backbone of the ALBERT architecture is similar to BERT in that it uses a transformer encoder",
     "where": "Sec. Model architecture choices",
     "reasons": [],
     "check": "verified"
    },
    "configs": [
     {
-     "name": "base",
+     "name": "ALBERT-base",
      "d_model": {
       "value": "768",
       "status": "stated",
-      "quote": "&base\t    &12M     &12 & 768  & 128  & True",
-      "where": "Table model_architecture",
+      "quote": "&base\t        &12M     &12 & 768  & 12 & 128 & True",
+      "where": "Table: The architectures of the primary models reported in this paper",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "12",
       "status": "stated",
-      "quote": "&base\t    &12M     &12 & 768  & 128  & True",
-      "where": "Table model_architecture",
+      "quote": "&base\t        &12M     &12 & 768  & 12 & 128 & True",
+      "where": "Table: The architectures of the primary models reported in this paper",
       "reasons": [],
       "check": "verified"
      },
@@ -859,7 +944,7 @@
       "value": "12",
       "status": "stated",
       "quote": "&base\t        &12M     &12 & 768  & 12 & 128 & True",
-      "where": "Table model_architecture (ALBERT section)",
+      "where": "Table: The architectures of the primary models reported in this paper",
       "reasons": [],
       "check": "verified"
      },
@@ -882,7 +967,7 @@
      "d_ff": {
       "value": "3072",
       "status": "stated",
-      "quote": "we set the feed-forward/filter size to be $4H$",
+      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$",
       "where": "Sec. Model architecture choices",
       "reasons": [
        "3072 does not occur in its quote"
@@ -892,8 +977,8 @@
      "vocab_size": {
       "value": "30000",
       "status": "stated",
-      "quote": "Like \\bert, we use a vocabulary size of 30,000",
-      "where": "Sec. Experimental Setup",
+      "quote": "all the experiments in this paper use a vocabulary size $V$ of 30,000.",
+      "where": "Sec. Model architecture choices, footnote",
       "reasons": [],
       "check": "verified"
      },
@@ -917,20 +1002,20 @@
      ]
     },
     {
-     "name": "large",
+     "name": "ALBERT-large",
      "d_model": {
       "value": "1024",
       "status": "stated",
-      "quote": "&large\t    &18M\t &24 & 1024 & 128  & True",
-      "where": "Table model_architecture",
+      "quote": "&large\t        &18M\t &24 & 1024 & 16 & 128 & True",
+      "where": "Table: The architectures of the primary models reported in this paper",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "&large\t    &18M\t &24 & 1024 & 128  & True",
-      "where": "Table model_architecture",
+      "quote": "&large\t        &18M\t &24 & 1024 & 16 & 128 & True",
+      "where": "Table: The architectures of the primary models reported in this paper",
       "reasons": [],
       "check": "verified"
      },
@@ -938,7 +1023,7 @@
       "value": "16",
       "status": "stated",
       "quote": "&large\t        &18M\t &24 & 1024 & 16 & 128 & True",
-      "where": "Table model_architecture (ALBERT section)",
+      "where": "Table: The architectures of the primary models reported in this paper",
       "reasons": [],
       "check": "verified"
      },
@@ -961,7 +1046,7 @@
      "d_ff": {
       "value": "4096",
       "status": "stated",
-      "quote": "we set the feed-forward/filter size to be $4H$",
+      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$",
       "where": "Sec. Model architecture choices",
       "reasons": [
        "4096 does not occur in its quote"
@@ -971,8 +1056,8 @@
      "vocab_size": {
       "value": "30000",
       "status": "stated",
-      "quote": "Like \\bert, we use a vocabulary size of 30,000",
-      "where": "Sec. Experimental Setup",
+      "quote": "all the experiments in this paper use a vocabulary size $V$ of 30,000.",
+      "where": "Sec. Model architecture choices, footnote",
       "reasons": [],
       "check": "verified"
      },
@@ -996,20 +1081,20 @@
      ]
     },
     {
-     "name": "xlarge",
+     "name": "ALBERT-xlarge",
      "d_model": {
       "value": "2048",
       "status": "stated",
-      "quote": "&xlarge\t&60M\t &24 & 2048 & 128  & True",
-      "where": "Table model_architecture",
+      "quote": "&xlarge\t&59M\t &24 & 2048 & 32 & 128 & True",
+      "where": "Table: The architectures of the primary models reported in this paper",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "&xlarge\t&60M\t &24 & 2048 & 128  & True",
-      "where": "Table model_architecture",
+      "quote": "&xlarge\t&59M\t &24 & 2048 & 32 & 128 & True",
+      "where": "Table: The architectures of the primary models reported in this paper",
       "reasons": [],
       "check": "verified"
      },
@@ -1017,7 +1102,7 @@
       "value": "32",
       "status": "stated",
       "quote": "&xlarge\t&59M\t &24 & 2048 & 32 & 128 & True",
-      "where": "Table model_architecture (ALBERT section)",
+      "where": "Table: The architectures of the primary models reported in this paper",
       "reasons": [],
       "check": "verified"
      },
@@ -1040,7 +1125,7 @@
      "d_ff": {
       "value": "8192",
       "status": "stated",
-      "quote": "we set the feed-forward/filter size to be $4H$",
+      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$",
       "where": "Sec. Model architecture choices",
       "reasons": [
        "8192 does not occur in its quote"
@@ -1050,8 +1135,8 @@
      "vocab_size": {
       "value": "30000",
       "status": "stated",
-      "quote": "Like \\bert, we use a vocabulary size of 30,000",
-      "where": "Sec. Experimental Setup",
+      "quote": "all the experiments in this paper use a vocabulary size $V$ of 30,000.",
+      "where": "Sec. Model architecture choices, footnote",
       "reasons": [],
       "check": "verified"
      },
@@ -1075,20 +1160,20 @@
      ]
     },
     {
-     "name": "xxlarge",
+     "name": "ALBERT-xxlarge",
      "d_model": {
       "value": "4096",
       "status": "stated",
-      "quote": "&xxlarge\t&235M\t &12 & 4096 & 128  & True",
-      "where": "Table model_architecture",
+      "quote": "&xxlarge\t&233M\t &12 & 4096 & 64 & 128 & True",
+      "where": "Table: The architectures of the primary models reported in this paper",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "12",
       "status": "stated",
-      "quote": "&xxlarge\t&235M\t &12 & 4096 & 128  & True",
-      "where": "Table model_architecture",
+      "quote": "&xxlarge\t&233M\t &12 & 4096 & 64 & 128 & True",
+      "where": "Table: The architectures of the primary models reported in this paper",
       "reasons": [],
       "check": "verified"
      },
@@ -1096,7 +1181,7 @@
       "value": "64",
       "status": "stated",
       "quote": "&xxlarge\t&233M\t &12 & 4096 & 64 & 128 & True",
-      "where": "Table model_architecture (ALBERT section)",
+      "where": "Table: The architectures of the primary models reported in this paper",
       "reasons": [],
       "check": "verified"
      },
@@ -1119,7 +1204,7 @@
      "d_ff": {
       "value": "16384",
       "status": "stated",
-      "quote": "we set the feed-forward/filter size to be $4H$",
+      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$",
       "where": "Sec. Model architecture choices",
       "reasons": [
        "16384 does not occur in its quote"
@@ -1129,8 +1214,8 @@
      "vocab_size": {
       "value": "30000",
       "status": "stated",
-      "quote": "Like \\bert, we use a vocabulary size of 30,000",
-      "where": "Sec. Experimental Setup",
+      "quote": "all the experiments in this paper use a vocabulary size $V$ of 30,000.",
+      "where": "Sec. Model architecture choices, footnote",
       "reasons": [],
       "check": "verified"
      },
@@ -1154,7 +1239,7 @@
      ]
     }
    ],
-   "primary_config": "xxlarge",
+   "primary_config": "ALBERT-base",
    "flavours": {
     "norm": {
      "value": "",
@@ -1165,6 +1250,22 @@
      "check": "not_stated"
     },
     "norm_placement": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_ffn": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -1183,12 +1284,28 @@
     "activation": {
      "value": "gelu",
      "status": "stated",
-     "quote": "it uses a transformer encoder~\\citep{vaswani2017attention} with GELU nonlinearities~\\citep{hendrycks2016gelus}",
+     "quote": "it uses a transformer encoder~\\citep{vaswani2017attention} with GELU nonlinearities",
      "where": "Sec. Model architecture choices",
      "reasons": [],
      "check": "verified"
     },
     "positional": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -1237,9 +1354,9 @@
      "check": "not_stated"
     },
     "attention": {
-     "value": "other:bidirectional full softmax self-attention (transformer encoder)",
+     "value": "other:full bidirectional softmax self-attention (transformer encoder)",
      "status": "stated",
-     "quote": "it uses a transformer encoder~\\citep{vaswani2017attention}",
+     "quote": "The backbone of the ALBERT architecture is similar to BERT in that it uses a transformer encoder",
      "where": "Sec. Model architecture choices",
      "reasons": [],
      "check": "quote_only"
@@ -1269,6 +1386,14 @@
      "check": "not_stated"
     },
     "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qk_norm": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -1315,6 +1440,46 @@
      "where": "",
      "reasons": [],
      "check": "not_stated"
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     }
    },
    "new_ops": [],
@@ -1323,7 +1488,7 @@
      "i": 0,
      "subgraph": "embed",
      "op": "embedding",
-     "role": "factorized token embedding of size E",
+     "role": "factorized token embedding, size E=128",
      "inputs": [
       "tokens"
      ],
@@ -1331,13 +1496,22 @@
      "new_op": "",
      "attributes": [
       {
+       "value": "30000",
+       "status": "stated",
+       "quote": "all the experiments in this paper use a vocabulary size $V$ of 30,000.",
+       "where": "Sec. Model architecture choices, footnote",
+       "reasons": [],
+       "check": "verified",
+       "name": "vocab"
+      },
+      {
        "value": "128",
        "status": "stated",
-       "quote": "Based on these results, we use an embedding size $E=128$ in all future settings",
+       "quote": "we use an embedding size $E=128$ in all future settings",
        "where": "Sec. Factorized Embedding Parameterization",
        "reasons": [],
        "check": "verified",
-       "name": "dim"
+       "name": "d"
       }
      ],
      "errors": []
@@ -1354,12 +1528,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "4096",
+       "value": "768",
        "status": "stated",
-       "quote": "we first project them into a lower dimensional embedding space of size $E$, and then project it to the hidden space",
+       "quote": "we first project them into a lower dimensional embedding space of size $E$, and then project it to the hidden space.",
        "where": "Sec. Model architecture choices",
        "reasons": [
-        "4096 does not occur in its quote"
+        "768 does not occur in its quote"
        ],
        "check": "unverified",
        "name": "out"
@@ -1388,14 +1562,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "4096",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [
-        "not_stated carries a value or quote (ignored)"
-       ],
-       "check": "not_stated",
+       "value": "768",
+       "status": "stated",
+       "quote": "&base\t        &12M     &12 & 768  & 12 & 128 & True",
+       "where": "Table: The architectures of the primary models reported in this paper",
+       "reasons": [],
+       "check": "verified",
        "name": "out"
       },
       {
@@ -1422,12 +1594,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
+       "value": "768",
+       "status": "stated",
+       "quote": "&base\t        &12M     &12 & 768  & 12 & 128 & True",
+       "where": "Table: The architectures of the primary models reported in this paper",
        "reasons": [],
-       "check": "not_stated",
+       "check": "verified",
        "name": "out"
       },
       {
@@ -1454,12 +1626,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
+       "value": "768",
+       "status": "stated",
+       "quote": "&base\t        &12M     &12 & 768  & 12 & 128 & True",
+       "where": "Table: The architectures of the primary models reported in this paper",
        "reasons": [],
-       "check": "not_stated",
+       "check": "verified",
        "name": "out"
       },
       {
@@ -1488,18 +1660,27 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "64",
+       "value": "12",
        "status": "stated",
-       "quote": "&xxlarge\t&233M\t &12 & 4096 & 64 & 128 & True",
-       "where": "Table model_architecture (ALBERT section)",
+       "quote": "&base\t        &12M     &12 & 768  & 12 & 128 & True",
+       "where": "Table: The architectures of the primary models reported in this paper",
        "reasons": [],
        "check": "verified",
        "name": "heads"
       },
       {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "kv_heads"
+      },
+      {
        "value": "64",
        "status": "stated",
-       "quote": "the number of attention heads to be $H/64$",
+       "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$",
        "where": "Sec. Model architecture choices",
        "reasons": [],
        "check": "verified",
@@ -1512,24 +1693,15 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "kv_heads"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
        "name": "scale"
       },
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
+       "value": "false",
+       "status": "stated",
+       "quote": "The backbone of the ALBERT architecture is similar to BERT in that it uses a transformer encoder",
+       "where": "Sec. Model architecture choices",
        "reasons": [],
-       "check": "not_stated",
+       "check": "quote_only",
        "name": "causal"
       },
       {
@@ -1540,6 +1712,15 @@
        "reasons": [],
        "check": "not_stated",
        "name": "window"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "sinks"
       }
      ],
      "errors": []
@@ -1556,12 +1737,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
+       "value": "768",
+       "status": "stated",
+       "quote": "&base\t        &12M     &12 & 768  & 12 & 128 & True",
+       "where": "Table: The architectures of the primary models reported in this paper",
        "reasons": [],
-       "check": "not_stated",
+       "check": "verified",
        "name": "out"
       },
       {
@@ -1580,7 +1761,7 @@
      "i": 7,
      "subgraph": "block",
      "op": "add",
-     "role": "attention residual",
+     "role": "attention residual add (assumed transformer residual; norm placement not stated)",
      "inputs": [
       "x",
       "o"
@@ -1594,7 +1775,7 @@
      "i": 8,
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN up projection (4H)",
+     "role": "FFN up projection to 4H",
      "inputs": [
       "h"
      ],
@@ -1602,12 +1783,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "16384",
+       "value": "3072",
        "status": "stated",
-       "quote": "we set the feed-forward/filter size to be $4H$",
+       "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$",
        "where": "Sec. Model architecture choices",
        "reasons": [
-        "16384 does not occur in its quote"
+        "3072 does not occur in its quote"
        ],
        "check": "unverified",
        "name": "out"
@@ -1659,12 +1840,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
+       "value": "768",
+       "status": "stated",
+       "quote": "&base\t        &12M     &12 & 768  & 12 & 128 & True",
+       "where": "Table: The architectures of the primary models reported in this paper",
        "reasons": [],
-       "check": "not_stated",
+       "check": "verified",
        "name": "out"
       },
       {
@@ -1683,7 +1864,7 @@
      "i": 11,
      "subgraph": "block",
      "op": "add",
-     "role": "FFN residual",
+     "role": "FFN residual add",
      "inputs": [
       "h",
       "f"
@@ -1697,7 +1878,7 @@
      "i": 12,
      "subgraph": "head",
      "op": "linear",
-     "role": "MLM output over vocabulary",
+     "role": "MLM output over vocabulary (head structure not described)",
      "inputs": [
       "x"
      ],
@@ -1707,8 +1888,8 @@
       {
        "value": "30000",
        "status": "stated",
-       "quote": "Like \\bert, we use a vocabulary size of 30,000",
-       "where": "Sec. Experimental Setup",
+       "quote": "all the experiments in this paper use a vocabulary size $V$ of 30,000.",
+       "where": "Sec. Model architecture choices, footnote",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -1720,7 +1901,7 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "tied_to"
+       "name": "bias"
       },
       {
        "value": "",
@@ -1729,7 +1910,7 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "bias"
+       "name": "tied_to"
       }
      ],
      "errors": []
@@ -1737,46 +1918,52 @@
    ],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "All parameters shared across layers (one block's weights reused for all L layers)",
-     "quote": "The default decision for ALBERT is to share all parameters across layers. All our experiments use this default decision unless otherwise specified.",
-     "where": "Sec. Cross-layer parameter sharing",
+     "mechanism": "Cross-layer parameter sharing: all block parameters are shared across all L layers",
+     "quote": "The default decision for ALBERT is to share all parameters across layers.",
+     "where": "Sec. Model architecture choices",
      "check": "verified"
     },
     {
-     "mechanism": "Sentence-order prediction (SOP) classification head/loss alongside MLM",
-     "quote": "That is, for ALBERT, we use a sentence-order prediction (SOP) loss, which avoids topic prediction and instead focuses on modeling inter-sentence coherence.",
-     "where": "Sec. Inter-sentence coherence loss",
+     "mechanism": "Sentence-order prediction (SOP) classification head trained jointly with MLM; classifier structure not described",
+     "quote": "for ALBERT, we use a sentence-order prediction (SOP) loss, which avoids topic prediction and instead focuses on modeling inter-sentence coherence.",
+     "where": "Sec. Model architecture choices",
+     "check": "verified"
+    },
+    {
+     "mechanism": "Dropout removed for the final model",
+     "quote": "As a result, we decide to remove dropout to further increase our model capacity.",
+     "where": "Sec. Additional training data and dropout effects",
      "check": "verified"
     }
    ],
    "summary": {
     "counts": {
-     "verified": 30,
-     "quote_only": 1,
+     "verified": 36,
+     "quote_only": 2,
      "unverified": 6,
-     "not_stated": 41
+     "not_stated": 46
     },
     "unverified": [
      {
-      "field": "configs[base].d_ff",
+      "field": "configs[ALBERT-base].d_ff",
       "reasons": [
        "3072 does not occur in its quote"
       ]
      },
      {
-      "field": "configs[large].d_ff",
+      "field": "configs[ALBERT-large].d_ff",
       "reasons": [
        "4096 does not occur in its quote"
       ]
      },
      {
-      "field": "configs[xlarge].d_ff",
+      "field": "configs[ALBERT-xlarge].d_ff",
       "reasons": [
        "8192 does not occur in its quote"
       ]
      },
      {
-      "field": "configs[xxlarge].d_ff",
+      "field": "configs[ALBERT-xxlarge].d_ff",
       "reasons": [
        "16384 does not occur in its quote"
       ]
@@ -1784,13 +1971,13 @@
      {
       "field": "block_ops[1].out",
       "reasons": [
-       "4096 does not occur in its quote"
+       "768 does not occur in its quote"
       ]
      },
      {
       "field": "block_ops[8].out",
       "reasons": [
-       "16384 does not occur in its quote"
+       "3072 does not occur in its quote"
       ]
      }
     ],

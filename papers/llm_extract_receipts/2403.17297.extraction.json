@@ -90,27 +90,20 @@
    "context_length": 32000
   }
  ],
- "mechanism_scan": [
-  {
-   "mechanism": "Fused Wqkv weight stored with per-head interleaving of Wq/Wk/Wv (affects how the fused matrix is split into q,k,v)",
-   "where": "llm extraction, verified quote, Sec. 2.2 Model Structure",
-   "blocking": true,
-   "evidence": "Rather than stacking the $W_k$, $W_q$, and $W_v$ matrices in a straightforward manner, we adopt an interleaving approach for each head's $W_k$, $W_q$, and $W_v$"
-  }
- ],
+ "mechanism_scan": [],
  "source": {
   "tex_sha256": "c59a475e7ea107365fea55b84786905ad7496d819e392e40f8bb00b56920b59c",
   "sent_sha256": "a52b97ff74c3c9028b8f812f4f047103009daf268ea3f265a8744af02ff0d33c",
   "from": "https://arxiv.org/e-print/2403.17297",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
+  "extractor_sha256": "9d5951b0f11c920aaf075abead17d7d4e619d37402d47690ba452de15620e921",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
+  "prompt_sha256": "e6c6c5052b656885910d1539b8c320ba4ecb9262a6079252b852f1ff637b03ef",
   "n_calls": 1,
-  "cost_usd": 0.423332,
+  "cost_usd": 0.443588,
   "request_ids": [
-   "req_011CgFiwziqkJLHsHKhoHrUc"
+   "req_011CgRtzh2WFHmmzDtNhxcuL"
   ]
  },
  "llm": {
@@ -297,6 +290,18 @@
      "quote": "we opt to adhere to the structural design principles of LLaMA",
      "where": "Sec. 2.2 Model Structure"
     },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
     "norm_eps": {
      "value": "",
      "status": "not_stated",
@@ -314,6 +319,18 @@
      "status": "stated",
      "quote": "we adjusted the Rotary Positional Embedding (RoPE) base from 50,000 to 1,000,000",
      "where": "Sec. 3.3.2 Long Context Training"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "rope_pairing": {
      "value": "",
@@ -375,6 +392,12 @@
      "quote": "",
      "where": ""
     },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
     "tied_embeddings": {
      "value": "",
      "status": "not_stated",
@@ -404,6 +427,36 @@
      "status": "not_stated",
      "quote": "",
      "where": ""
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     }
    },
    "block_ops": [
@@ -421,7 +474,7 @@
     {
      "subgraph": "block",
      "op": "rmsnorm",
-     "role": "pre-attention norm",
+     "role": "attention pre-norm",
      "inputs": [
       "x"
      ],
@@ -440,25 +493,25 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "fused Wqkv projection (per-head interleaved layout)",
+     "role": "fused Wqkv projection",
      "inputs": [
       "h"
      ],
      "output": "qkv",
      "attributes": [
       {
-       "name": "fused",
-       "value": "true",
-       "status": "stated",
-       "quote": "we consolidate the $W_k$, $W_q$, and $W_v$ matrices, which has resulted in a training acceleration of over 5\\% during the pre-training phase",
-       "where": "Sec. 2.2 Model Structure"
-      },
-      {
        "name": "bias",
        "value": "",
        "status": "not_stated",
        "quote": "",
        "where": ""
+      },
+      {
+       "name": "fused",
+       "value": "true",
+       "status": "stated",
+       "quote": "In pursuit of enhancing efficiency, we consolidate the $W_k$, $W_q$, and $W_v$ matrices",
+       "where": "Sec. 2.2 Model Structure"
       }
      ],
      "new_op": ""
@@ -466,18 +519,18 @@
     {
      "subgraph": "block",
      "op": "split",
-     "role": "split fused qkv into q, k, v",
+     "role": "split fused qkv into q, k, v (per-head interleaved layout)",
      "inputs": [
       "qkv"
      ],
      "output": "q,k,v",
      "attributes": [
       {
-       "name": "layout",
-       "value": "interleaved per head",
-       "status": "stated",
-       "quote": "we adopt an interleaving approach for each head's $W_k$, $W_q$, and $W_v$",
-       "where": "Sec. 2.2 Model Structure"
+       "name": "sizes",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -485,11 +538,12 @@
     {
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary on q",
+     "role": "rotary position embedding on q and k",
      "inputs": [
-      "q"
+      "q",
+      "k"
      ],
-     "output": "q_r",
+     "output": "q_r,k_r",
      "attributes": [
       {
        "name": "theta",
@@ -504,28 +558,9 @@
        "status": "not_stated",
        "quote": "",
        "where": ""
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "rope",
-     "role": "rotary on k",
-     "inputs": [
-      "k"
-     ],
-     "output": "k_r",
-     "attributes": [
-      {
-       "name": "theta",
-       "value": "1000000",
-       "status": "stated",
-       "quote": "we adjusted the Rotary Positional Embedding (RoPE) base from 50,000 to 1,000,000",
-       "where": "Sec. 3.3.2 Long Context Training"
       },
       {
-       "name": "pairing",
+       "name": "n_rot",
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -537,7 +572,7 @@
     {
      "subgraph": "block",
      "op": "attention",
-     "role": "causal grouped-query attention",
+     "role": "grouped-query causal self-attention",
      "inputs": [
       "q_r",
       "k_r",
@@ -546,18 +581,18 @@
      "output": "a",
      "attributes": [
       {
-       "name": "kv_heads",
-       "value": "8",
-       "status": "stated",
-       "quote": "1.8B &  24&  2048&  8&  2& 3e-4 & 4M",
-       "where": "Table: Hyper-parameters for InternLM2 models"
-      },
-      {
        "name": "heads",
        "value": "",
        "status": "not_stated",
        "quote": "",
        "where": ""
+      },
+      {
+       "name": "kv_heads",
+       "value": "8",
+       "status": "stated",
+       "quote": "1.8B &  24&  2048&  8&  2& 3e-4 & 4M",
+       "where": "Table: Hyper-parameters for InternLM2 models"
       },
       {
        "name": "head_dim",
@@ -572,6 +607,13 @@
        "status": "inherited",
        "quote": "we opt to adhere to the structural design principles of LLaMA",
        "where": "Sec. 2.2 Model Structure"
+      },
+      {
+       "name": "window",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -610,7 +652,7 @@
     {
      "subgraph": "block",
      "op": "rmsnorm",
-     "role": "pre-FFN norm",
+     "role": "FFN pre-norm",
      "inputs": [
       "x1"
      ],
@@ -641,6 +683,13 @@
        "status": "not_stated",
        "quote": "",
        "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -656,6 +705,13 @@
      "attributes": [
       {
        "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -695,7 +751,15 @@
       "m"
      ],
      "output": "f",
-     "attributes": [],
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
      "new_op": ""
     },
     {
@@ -739,6 +803,13 @@
      "output": "logits",
      "attributes": [
       {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
        "name": "tied_to",
        "value": "",
        "status": "not_stated",
@@ -750,14 +821,8 @@
     }
    ],
    "new_ops": [],
-   "mechanisms_outside_ir": [
-    {
-     "mechanism": "Fused Wqkv weight stored with per-head interleaving of Wq/Wk/Wv (affects how the fused matrix is split into q,k,v)",
-     "quote": "Rather than stacking the $W_k$, $W_q$, and $W_v$ matrices in a straightforward manner, we adopt an interleaving approach for each head's $W_k$, $W_q$, and $W_v$",
-     "where": "Sec. 2.2 Model Structure"
-    }
-   ],
-   "notes": "Described the InternLM2 base architecture (LLaMA-style; sizes 1.8B/7B/20B from the hyper-parameter table). The paper states it adheres to LLaMA's structural design, so RMSNorm, pre-norm, SwiGLU and residual are marked inherited. Query heads are not given directly: the table gives n_kv_heads=8 and n_q_per_head=2/4/6, which implies 16/32/48 heads and head_dim 128, but these are derived values and are left not_stated. The vocabulary is described as 60,004+32,397+147 tokens (=92,548, a multiple of 256), but no total is written, so it is not_stated. d_ff, norm eps, rope pairing, biases and embedding tying are not stated. RoPE base is 50,000 during 4k pretraining and 1,000,000 after long-context training; the final value is reported. Context length is 32,000 as stated (4096 in the first phase)."
+   "mechanisms_outside_ir": [],
+   "notes": "Describes the InternLM2 base/chat architecture (1.8B, 7B, 20B). RMSNorm, SwiGLU, pre-norm, residual and decoder-only are taken from the explicit 'adhere to the structural design principles of LLaMA' sentence. The paper names RMSNorm and SwiGLU only while describing LLaMA. n_heads is left not_stated: the table gives n_kv_heads and n_q_per_head instead, which imply 16, 32 and 48 query heads. head_dim, d_ff, norm eps, biases, tying and RoPE pairing are not stated. On vocabulary, the paper gives 60,004 + 32,397 + 147 tokens and says the size is a multiple of 256, but these figures do not reconcile, so vocab_size is left not_stated. RoPE base is 50,000 during 4k training and 1,000,000 after long-context training; the final value is reported. Context length: the paper writes 32,000 tokens / 32k, with the first phase at 4096, and there is 200k extrapolation at inference. The fused Wqkv uses a per-head interleaved weight layout (a weight-layout detail for tensor parallelism)."
   },
   "verification": {
    "errors": [],
@@ -1005,6 +1070,22 @@
      ],
      "check": "unverified"
     },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
     "norm_eps": {
      "value": "",
      "status": "not_stated",
@@ -1028,6 +1109,22 @@
      "where": "Sec. 3.3.2 Long Context Training",
      "reasons": [],
      "check": "verified"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "rope_pairing": {
      "value": "",
@@ -1111,6 +1208,14 @@
      "reasons": [],
      "check": "not_stated"
     },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
     "tied_embeddings": {
      "value": "",
      "status": "not_stated",
@@ -1150,6 +1255,46 @@
      "where": "",
      "reasons": [],
      "check": "not_stated"
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     }
    },
    "new_ops": [],
@@ -1171,7 +1316,7 @@
      "i": 1,
      "subgraph": "block",
      "op": "rmsnorm",
-     "role": "pre-attention norm",
+     "role": "attention pre-norm",
      "inputs": [
       "x"
      ],
@@ -1194,22 +1339,13 @@
      "i": 2,
      "subgraph": "block",
      "op": "linear",
-     "role": "fused Wqkv projection (per-head interleaved layout)",
+     "role": "fused Wqkv projection",
      "inputs": [
       "h"
      ],
      "output": "qkv",
      "new_op": "",
      "attributes": [
-      {
-       "value": "true",
-       "status": "stated",
-       "quote": "we consolidate the $W_k$, $W_q$, and $W_v$ matrices, which has resulted in a training acceleration of over 5\\% during the pre-training phase",
-       "where": "Sec. 2.2 Model Structure",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "fused"
-      },
       {
        "value": "",
        "status": "not_stated",
@@ -1218,6 +1354,15 @@
        "reasons": [],
        "check": "not_stated",
        "name": "bias"
+      },
+      {
+       "value": "true",
+       "status": "stated",
+       "quote": "In pursuit of enhancing efficiency, we consolidate the $W_k$, $W_q$, and $W_v$ matrices",
+       "where": "Sec. 2.2 Model Structure",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "fused"
       }
      ],
      "errors": []
@@ -1226,7 +1371,7 @@
      "i": 3,
      "subgraph": "block",
      "op": "split",
-     "role": "split fused qkv into q, k, v",
+     "role": "split fused qkv into q, k, v (per-head interleaved layout)",
      "inputs": [
       "qkv"
      ],
@@ -1234,13 +1379,13 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "interleaved per head",
-       "status": "stated",
-       "quote": "we adopt an interleaving approach for each head's $W_k$, $W_q$, and $W_v$",
-       "where": "Sec. 2.2 Model Structure",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
        "reasons": [],
-       "check": "quote_only",
-       "name": "layout"
+       "check": "not_stated",
+       "name": "sizes"
       }
      ],
      "errors": []
@@ -1249,11 +1394,12 @@
      "i": 4,
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary on q",
+     "role": "rotary position embedding on q and k",
      "inputs": [
-      "q"
+      "q",
+      "k"
      ],
-     "output": "q_r",
+     "output": "q_r,k_r",
      "new_op": "",
      "attributes": [
       {
@@ -1273,6 +1419,15 @@
        "reasons": [],
        "check": "not_stated",
        "name": "pairing"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "n_rot"
       }
      ],
      "errors": []
@@ -1280,40 +1435,8 @@
     {
      "i": 5,
      "subgraph": "block",
-     "op": "rope",
-     "role": "rotary on k",
-     "inputs": [
-      "k"
-     ],
-     "output": "k_r",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "1000000",
-       "status": "stated",
-       "quote": "we adjusted the Rotary Positional Embedding (RoPE) base from 50,000 to 1,000,000",
-       "where": "Sec. 3.3.2 Long Context Training",
-       "reasons": [],
-       "check": "verified",
-       "name": "theta"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "pairing"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 6,
-     "subgraph": "block",
      "op": "attention",
-     "role": "causal grouped-query attention",
+     "role": "grouped-query causal self-attention",
      "inputs": [
       "q_r",
       "k_r",
@@ -1323,15 +1446,6 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "8",
-       "status": "stated",
-       "quote": "1.8B &  24&  2048&  8&  2& 3e-4 & 4M",
-       "where": "Table: Hyper-parameters for InternLM2 models",
-       "reasons": [],
-       "check": "verified",
-       "name": "kv_heads"
-      },
-      {
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -1339,6 +1453,15 @@
        "reasons": [],
        "check": "not_stated",
        "name": "heads"
+      },
+      {
+       "value": "8",
+       "status": "stated",
+       "quote": "1.8B &  24&  2048&  8&  2& 3e-4 & 4M",
+       "where": "Table: Hyper-parameters for InternLM2 models",
+       "reasons": [],
+       "check": "verified",
+       "name": "kv_heads"
       },
       {
        "value": "",
@@ -1359,12 +1482,21 @@
        ],
        "check": "unverified",
        "name": "causal"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "window"
       }
      ],
      "errors": []
     },
     {
-     "i": 7,
+     "i": 6,
      "subgraph": "block",
      "op": "linear",
      "role": "attention output projection",
@@ -1387,7 +1519,7 @@
      "errors": []
     },
     {
-     "i": 8,
+     "i": 7,
      "subgraph": "block",
      "op": "add",
      "role": "attention residual",
@@ -1401,10 +1533,10 @@
      "errors": []
     },
     {
-     "i": 9,
+     "i": 8,
      "subgraph": "block",
      "op": "rmsnorm",
-     "role": "pre-FFN norm",
+     "role": "FFN pre-norm",
      "inputs": [
       "x1"
      ],
@@ -1424,7 +1556,7 @@
      "errors": []
     },
     {
-     "i": 10,
+     "i": 9,
      "subgraph": "block",
      "op": "linear",
      "role": "FFN gate projection",
@@ -1442,12 +1574,21 @@
        "reasons": [],
        "check": "not_stated",
        "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
       }
      ],
      "errors": []
     },
     {
-     "i": 11,
+     "i": 10,
      "subgraph": "block",
      "op": "linear",
      "role": "FFN up projection",
@@ -1465,12 +1606,21 @@
        "reasons": [],
        "check": "not_stated",
        "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
       }
      ],
      "errors": []
     },
     {
-     "i": 12,
+     "i": 11,
      "subgraph": "block",
      "op": "silu",
      "role": "SwiGLU gate activation",
@@ -1483,7 +1633,7 @@
      "errors": []
     },
     {
-     "i": 13,
+     "i": 12,
      "subgraph": "block",
      "op": "mul",
      "role": "SwiGLU gating",
@@ -1497,7 +1647,7 @@
      "errors": []
     },
     {
-     "i": 14,
+     "i": 13,
      "subgraph": "block",
      "op": "linear",
      "role": "FFN down projection",
@@ -1506,11 +1656,21 @@
      ],
      "output": "f",
      "new_op": "",
-     "attributes": [],
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
      "errors": []
     },
     {
-     "i": 15,
+     "i": 14,
      "subgraph": "block",
      "op": "add",
      "role": "FFN residual",
@@ -1524,7 +1684,7 @@
      "errors": []
     },
     {
-     "i": 16,
+     "i": 15,
      "subgraph": "head",
      "op": "rmsnorm",
      "role": "final norm",
@@ -1547,7 +1707,7 @@
      "errors": []
     },
     {
-     "i": 17,
+     "i": 16,
      "subgraph": "head",
      "op": "linear",
      "role": "LM head",
@@ -1564,26 +1724,28 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
+       "name": "bias"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "tied_to"
       }
      ],
      "errors": []
     }
    ],
-   "mechanisms_outside_ir": [
-    {
-     "mechanism": "Fused Wqkv weight stored with per-head interleaving of Wq/Wk/Wv (affects how the fused matrix is split into q,k,v)",
-     "quote": "Rather than stacking the $W_k$, $W_q$, and $W_v$ matrices in a straightforward manner, we adopt an interleaving approach for each head's $W_k$, $W_q$, and $W_v$",
-     "where": "Sec. 2.2 Model Structure",
-     "check": "verified"
-    }
-   ],
+   "mechanisms_outside_ir": [],
    "summary": {
     "counts": {
-     "verified": 19,
-     "quote_only": 3,
+     "verified": 18,
+     "quote_only": 2,
      "unverified": 4,
-     "not_stated": 37
+     "not_stated": 53
     },
     "unverified": [
      {
@@ -1605,7 +1767,7 @@
       ]
      },
      {
-      "field": "block_ops[6].causal",
+      "field": "block_ops[5].causal",
       "reasons": [
        "inherited from llama, whose curated entry has no causal"
       ]
@@ -1614,7 +1776,7 @@
     "new_op_errors": [],
     "node_errors": [],
     "n_new_ops": 0,
-    "n_block_ops": 18
+    "n_block_ops": 17
    }
   }
  }

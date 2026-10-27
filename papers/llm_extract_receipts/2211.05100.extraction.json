@@ -3,18 +3,18 @@
  "title": "BLOOM: A 176B-Parameter Open-Access Multilingual Language Model",
  "fields": {
   "d_model": {
-   "value": 14336,
-   "evidence": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336 \\\\ [Table table:hp]",
+   "value": 1024,
+   "evidence": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336 [Table table:hp]",
    "verdict": "used"
   },
   "n_layers": {
-   "value": 70,
-   "evidence": "Layers & 24 & 24 & 24 & 30 & 30 & 70 \\\\ [Table table:hp]",
+   "value": 24,
+   "evidence": "Layers & 24 & 24 & 24 & 30 & 30 & 70 [Table table:hp]",
    "verdict": "used"
   },
   "n_heads": {
-   "value": 112,
-   "evidence": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112 \\\\ [Table table:hp]",
+   "value": 16,
+   "evidence": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112 [Table table:hp]",
    "verdict": "used"
   },
   "vocab_size": {
@@ -29,7 +29,7 @@
   },
   "norm": {
    "value": "layernorm",
-   "evidence": "First, we used an optimized kernel to perform LayerNorm, as well as kernels to fuse various combinations of the scaling, masking, and softmax operations. [Sec. Fused CUDA Kernels]",
+   "evidence": "First, we used an optimized kernel to perform LayerNorm [Sec. Fused CUDA Kernels]",
    "verdict": "used"
   },
   "activation": {
@@ -44,7 +44,7 @@
   },
   "attention": {
    "value": "exact",
-   "evidence": "We first review our design methodology, then motivate our choice of training a causal decoder-only model. [Sec. Model Architecture]",
+   "evidence": "then motivate our choice of training a causal decoder-only model [Sec. Model Architecture]",
    "verdict": "used"
   }
  },
@@ -102,10 +102,10 @@
  ],
  "mechanism_scan": [
   {
-   "mechanism": "new op alibi_attention (needs a new primitive: Causal softmax attention whose pre-softmax scores get a per-head linear distance penalty -m_h*(i-j) (query i, key j), wi)",
-   "where": "llm extraction, verified quote, Sec. Modeling Details, ALiBi Positional Embeddings",
+   "mechanism": "ALiBi attention bias with per-head slopes 2^(-8i/n), i = 1..n heads, added to attention scores (the attention op has no attribute for it)",
+   "where": "llm extraction, verified quote, Figure fig:architecture_diagram caption",
    "blocking": true,
-   "evidence": "Instead of adding positional information to the embedding layer, ALiBi directly attenuates the attention scores based on how far away the keys and queries are \\citep{press2021train}."
+   "evidence": "The $k_{head}$ slope parameters for ALIBI are taken as $2^\\frac{-8i}{n}$ with $n$ the number of heads and $i \\in {1, 2, ..., n}$."
   }
  ],
  "source": {
@@ -113,14 +113,14 @@
   "sent_sha256": "557548f9d3f1cb74bc2744497a0aa58967ffbf7f2ecc3c84c09d69c5912c8fdd",
   "from": "https://arxiv.org/e-print/2211.05100",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
+  "extractor_sha256": "9d5951b0f11c920aaf075abead17d7d4e619d37402d47690ba452de15620e921",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
+  "prompt_sha256": "e6c6c5052b656885910d1539b8c320ba4ecb9262a6079252b852f1ff637b03ef",
   "n_calls": 1,
-  "cost_usd": 0.541912,
+  "cost_usd": 0.523728,
   "request_ids": [
-   "req_011CgFhXKNCZPFV6A6AiETmD"
+   "req_011CgRsigZRLZ2iWCFpSPhdQ"
   ]
  },
  "llm": {
@@ -144,19 +144,19 @@
      "d_model": {
       "value": "1024",
       "status": "stated",
-      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336 \\\\",
+      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336",
       "where": "Table table:hp"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70 \\\\",
+      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70",
       "where": "Table table:hp"
      },
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112 \\\\",
+      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112",
       "where": "Table table:hp"
      },
      "n_kv_heads": {
@@ -195,19 +195,19 @@
      "d_model": {
       "value": "1536",
       "status": "stated",
-      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336 \\\\",
+      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336",
       "where": "Table table:hp"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70 \\\\",
+      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70",
       "where": "Table table:hp"
      },
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112 \\\\",
+      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112",
       "where": "Table table:hp"
      },
      "n_kv_heads": {
@@ -246,19 +246,19 @@
      "d_model": {
       "value": "2048",
       "status": "stated",
-      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336 \\\\",
+      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336",
       "where": "Table table:hp"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70 \\\\",
+      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70",
       "where": "Table table:hp"
      },
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112 \\\\",
+      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112",
       "where": "Table table:hp"
      },
      "n_kv_heads": {
@@ -297,19 +297,19 @@
      "d_model": {
       "value": "2560",
       "status": "stated",
-      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336 \\\\",
+      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336",
       "where": "Table table:hp"
      },
      "n_layers": {
       "value": "30",
       "status": "stated",
-      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70 \\\\",
+      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70",
       "where": "Table table:hp"
      },
      "n_heads": {
       "value": "32",
       "status": "stated",
-      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112 \\\\",
+      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112",
       "where": "Table table:hp"
      },
      "n_kv_heads": {
@@ -348,19 +348,19 @@
      "d_model": {
       "value": "4096",
       "status": "stated",
-      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336 \\\\",
+      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336",
       "where": "Table table:hp"
      },
      "n_layers": {
       "value": "30",
       "status": "stated",
-      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70 \\\\",
+      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70",
       "where": "Table table:hp"
      },
      "n_heads": {
       "value": "32",
       "status": "stated",
-      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112 \\\\",
+      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112",
       "where": "Table table:hp"
      },
      "n_kv_heads": {
@@ -399,19 +399,19 @@
      "d_model": {
       "value": "14336",
       "status": "stated",
-      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336 \\\\",
+      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336",
       "where": "Table table:hp"
      },
      "n_layers": {
       "value": "70",
       "status": "stated",
-      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70 \\\\",
+      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70",
       "where": "Table table:hp"
      },
      "n_heads": {
       "value": "112",
       "status": "stated",
-      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112 \\\\",
+      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112",
       "where": "Table table:hp"
      },
      "n_kv_heads": {
@@ -446,15 +446,27 @@
      }
     }
    ],
-   "primary_config": "BLOOM (176B)",
+   "primary_config": "BLOOM-560M",
    "flavours": {
     "norm": {
      "value": "layernorm",
      "status": "stated",
-     "quote": "First, we used an optimized kernel to perform LayerNorm, as well as kernels to fuse various combinations of the scaling, masking, and softmax operations.",
+     "quote": "First, we used an optimized kernel to perform LayerNorm",
      "where": "Sec. Fused CUDA Kernels"
     },
     "norm_placement": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_ffn": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -477,6 +489,18 @@
      "status": "stated",
      "quote": "Position emb. & \\multicolumn{5}{c|}{\\texttt{Alibi}} & \\texttt{Alibi}",
      "where": "Table table:hp"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "rope_pairing": {
      "value": "",
@@ -511,7 +535,7 @@
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "We first review our design methodology, then motivate our choice of training a causal decoder-only model.",
+     "quote": "then motivate our choice of training a causal decoder-only model",
      "where": "Sec. Model Architecture"
     },
     "window_size": {
@@ -538,6 +562,12 @@
      "quote": "The addition of a bias term is also fused with the GeLU activation using the JIT functionality of PyTorch.",
      "where": "Sec. Fused CUDA Kernels"
     },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
     "tied_embeddings": {
      "value": "true",
      "status": "stated",
@@ -547,8 +577,8 @@
     "moe": {
      "value": "false",
      "status": "stated",
-     "quote": "We did not consider mixture-of-experts (MoE) \\citep{shazeer2017}, due to a lack of widely used GPU-based codebases suitable for training them at scale.",
-     "where": "Sec. Design Methodology, Out-of-scope Architectures"
+     "quote": "We did not consider mixture-of-experts (MoE) \\citep{shazeer2017}",
+     "where": "Sec. Out-of-scope Architectures"
     },
     "n_experts": {
      "value": "",
@@ -563,6 +593,36 @@
      "where": ""
     },
     "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "ssm": {
+     "value": "none",
+     "status": "stated",
+     "quote": "Similarly, we also did not consider state-space models \\citep{gu2020hippo}.",
+     "where": "Sec. Out-of-scope Architectures"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -583,15 +643,8 @@
        "name": "vocab",
        "value": "250680",
        "status": "stated",
-       "quote": "We used a final size of 250,680~vocabulary items with 200 tokens reserved for possible future applications",
+       "quote": "We used a final size of 250,680~vocabulary items",
        "where": "Sec. Tokenization, Vocabulary Size"
-      },
-      {
-       "name": "d",
-       "value": "14336",
-       "status": "stated",
-       "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336 \\\\",
-       "where": "Table table:hp"
       }
      ],
      "new_op": ""
@@ -599,25 +652,25 @@
     {
      "subgraph": "embed",
      "op": "layernorm",
-     "role": "embedding LayerNorm",
+     "role": "embedding LayerNorm after the embedding layer",
      "inputs": [
       "e"
      ],
      "output": "x",
      "attributes": [
       {
+       "name": "position",
+       "value": "after embedding",
+       "status": "stated",
+       "quote": "we train BLOOM with an additional layer normalization after the first embedding layer to avoid training instabilities.",
+       "where": "Sec. Modeling Details, Embedding LayerNorm"
+      },
+      {
        "name": "eps",
        "value": "",
        "status": "not_stated",
        "quote": "",
        "where": ""
-      },
-      {
-       "name": "present",
-       "value": "true",
-       "status": "stated",
-       "quote": "we train BLOOM with an additional layer normalization after the first embedding layer to avoid training instabilities",
-       "where": "Sec. Modeling Details, Embedding LayerNorm"
       }
      ],
      "new_op": ""
@@ -625,7 +678,7 @@
     {
      "subgraph": "block",
      "op": "layernorm",
-     "role": "attention input norm (placement not stated in text)",
+     "role": "attention-sublayer norm (placement not stated in paper)",
      "inputs": [
       "x"
      ],
@@ -644,7 +697,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "fused qkv projection",
+     "role": "fused QKV projection",
      "inputs": [
       "h1"
      ],
@@ -688,8 +741,8 @@
     },
     {
      "subgraph": "block",
-     "op": "unsupported",
-     "role": "causal multi-head attention with ALiBi bias",
+     "op": "attention",
+     "role": "causal self-attention with ALiBi bias",
      "inputs": [
       "q",
       "k",
@@ -699,9 +752,9 @@
      "attributes": [
       {
        "name": "heads",
-       "value": "112",
+       "value": "16",
        "status": "stated",
-       "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112 \\\\",
+       "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112",
        "where": "Table table:hp"
       },
       {
@@ -729,7 +782,7 @@
        "name": "causal",
        "value": "true",
        "status": "stated",
-       "quote": "We first review our design methodology, then motivate our choice of training a causal decoder-only model.",
+       "quote": "then motivate our choice of training a causal decoder-only model",
        "where": "Sec. Model Architecture"
       },
       {
@@ -747,7 +800,7 @@
        "where": ""
       }
      ],
-     "new_op": "alibi_attention"
+     "new_op": ""
     },
     {
      "subgraph": "block",
@@ -760,9 +813,9 @@
      "attributes": [
       {
        "name": "out",
-       "value": "14336",
+       "value": "1024",
        "status": "stated",
-       "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336 \\\\",
+       "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336",
        "where": "Table table:hp"
       },
       {
@@ -778,7 +831,7 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "attention residual (not stated in text)",
+     "role": "attention residual add",
      "inputs": [
       "x",
       "o"
@@ -790,7 +843,7 @@
     {
      "subgraph": "block",
      "op": "layernorm",
-     "role": "FFN input norm (placement not stated in text)",
+     "role": "FFN-sublayer norm (placement not stated in paper)",
      "inputs": [
       "x2"
      ],
@@ -862,9 +915,9 @@
      "attributes": [
       {
        "name": "out",
-       "value": "14336",
+       "value": "1024",
        "status": "stated",
-       "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336 \\\\",
+       "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336",
        "where": "Table table:hp"
       },
       {
@@ -880,7 +933,7 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "FFN residual (not stated in text)",
+     "role": "FFN residual add",
      "inputs": [
       "x2",
       "f"
@@ -891,37 +944,18 @@
     },
     {
      "subgraph": "head",
-     "op": "layernorm",
-     "role": "final norm (not stated in text)",
+     "op": "linear",
+     "role": "tied output head (LM logits)",
      "inputs": [
       "x"
-     ],
-     "output": "hf",
-     "attributes": [
-      {
-       "name": "eps",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "head",
-     "op": "linear",
-     "role": "tied output head",
-     "inputs": [
-      "hf"
      ],
      "output": "logits",
      "attributes": [
       {
-       "name": "out",
-       "value": "250680",
+       "name": "tied_to",
+       "value": "token_embd",
        "status": "stated",
-       "quote": "Vocab size & \\multicolumn{5}{c|}{250,680} & 250,680",
+       "quote": "Tied emb. & \\multicolumn{5}{c|}{\\texttt{True}} & \\texttt{True}",
        "where": "Table table:hp"
       },
       {
@@ -930,45 +964,20 @@
        "status": "not_stated",
        "quote": "",
        "where": ""
-      },
-      {
-       "name": "tied_to",
-       "value": "token_embd",
-       "status": "stated",
-       "quote": "Tied emb. & \\multicolumn{5}{c|}{\\texttt{True}} & \\texttt{True}",
-       "where": "Table table:hp"
       }
      ],
      "new_op": ""
     }
    ],
-   "new_ops": [
+   "new_ops": [],
+   "mechanisms_outside_ir": [
     {
-     "name": "alibi_attention",
-     "kind": "needs_new_primitive",
-     "expr": "",
-     "inputs": [
-      {
-       "name": "q",
-       "meaning": "queries [T, heads*head_dim]"
-      },
-      {
-       "name": "k",
-       "meaning": "keys [T, heads*head_dim]"
-      },
-      {
-       "name": "v",
-       "meaning": "values [T, heads*head_dim]"
-      }
-     ],
-     "replaces": "positional embedding / standard causal attention",
-     "reason": "Causal softmax attention whose pre-softmax scores get a per-head linear distance penalty -m_h*(i-j) (query i, key j), with head slopes m_h = 2^(-8h/n), n = number of heads, h in 1..n (figure caption). The IR attention op has no ALiBi bias attribute; this needs an attention primitive that adds a [heads, T, T] distance bias before the softmax.",
-     "quote": "Instead of adding positional information to the embedding layer, ALiBi directly attenuates the attention scores based on how far away the keys and queries are \\citep{press2021train}.",
-     "where": "Sec. Modeling Details, ALiBi Positional Embeddings"
+     "mechanism": "ALiBi attention bias with per-head slopes 2^(-8i/n), i = 1..n heads, added to attention scores (the attention op has no attribute for it)",
+     "quote": "The $k_{head}$ slope parameters for ALIBI are taken as $2^\\frac{-8i}{n}$ with $n$ the number of heads and $i \\in {1, 2, ..., n}$.",
+     "where": "Figure fig:architecture_diagram caption"
     }
    ],
-   "mechanisms_outside_ir": [],
-   "notes": "Described the headline BLOOM 176B; the five smaller sizes are listed under configs. The text does not give the block wiring (pre/post norm, residual adds, final norm), which appears only in the architecture figure that is not readable from the LaTeX. The block above is a standard skeleton, and norm_placement and residual are not_stated. d_ff, head_dim, n_kv_heads, qkv bias and norm eps are not stated. GELU is listed without saying whether it is the exact or the tanh form, so the gelu approx attribute is not_stated. ALiBi slopes come from the Figure architecture_diagram caption. The embedding LayerNorm is an explicit deviation stated in the text. The smaller models were trained in float16 and the 176B in bfloat16."
+   "notes": "Six sizes from Table table:hp, which share every flavour. The headline model is BLOOM 176B (last config). primary_config is the smallest, BLOOM-560M. The block's attention head count and output widths are given for 560M. Not stated in the text: norm placement, whether there is a final LayerNorm before the head, norm eps, d_ff, head_dim, kv heads, QKV bias, and the GELU form. The block is drawn as pre-LN for ordering only; the paper's text does not state the placement (it appears only in the architecture figure). Activation is reported as 'gelu' from the table's 'GELU'; whether this is the exact or the tanh form is not stated. 'Exact' attention is inferred from the causal decoder-only description with no windowing mentioned. Residual connections are standard Transformer practice but are not stated, so residual is left not_stated. The final pretrained 176B ran in bfloat16; the smaller models ran in float16."
   },
   "verification": {
    "errors": [],
@@ -988,7 +997,7 @@
      "d_model": {
       "value": "1024",
       "status": "stated",
-      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336 \\\\",
+      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336",
       "where": "Table table:hp",
       "reasons": [],
       "check": "verified"
@@ -996,7 +1005,7 @@
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70 \\\\",
+      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70",
       "where": "Table table:hp",
       "reasons": [],
       "check": "verified"
@@ -1004,7 +1013,7 @@
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112 \\\\",
+      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112",
       "where": "Table table:hp",
       "reasons": [],
       "check": "verified"
@@ -1061,7 +1070,7 @@
      "d_model": {
       "value": "1536",
       "status": "stated",
-      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336 \\\\",
+      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336",
       "where": "Table table:hp",
       "reasons": [],
       "check": "verified"
@@ -1069,7 +1078,7 @@
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70 \\\\",
+      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70",
       "where": "Table table:hp",
       "reasons": [],
       "check": "verified"
@@ -1077,7 +1086,7 @@
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112 \\\\",
+      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112",
       "where": "Table table:hp",
       "reasons": [],
       "check": "verified"
@@ -1134,7 +1143,7 @@
      "d_model": {
       "value": "2048",
       "status": "stated",
-      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336 \\\\",
+      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336",
       "where": "Table table:hp",
       "reasons": [],
       "check": "verified"
@@ -1142,7 +1151,7 @@
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70 \\\\",
+      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70",
       "where": "Table table:hp",
       "reasons": [],
       "check": "verified"
@@ -1150,7 +1159,7 @@
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112 \\\\",
+      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112",
       "where": "Table table:hp",
       "reasons": [],
       "check": "verified"
@@ -1207,7 +1216,7 @@
      "d_model": {
       "value": "2560",
       "status": "stated",
-      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336 \\\\",
+      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336",
       "where": "Table table:hp",
       "reasons": [],
       "check": "verified"
@@ -1215,7 +1224,7 @@
      "n_layers": {
       "value": "30",
       "status": "stated",
-      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70 \\\\",
+      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70",
       "where": "Table table:hp",
       "reasons": [],
       "check": "verified"
@@ -1223,7 +1232,7 @@
      "n_heads": {
       "value": "32",
       "status": "stated",
-      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112 \\\\",
+      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112",
       "where": "Table table:hp",
       "reasons": [],
       "check": "verified"
@@ -1280,7 +1289,7 @@
      "d_model": {
       "value": "4096",
       "status": "stated",
-      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336 \\\\",
+      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336",
       "where": "Table table:hp",
       "reasons": [],
       "check": "verified"
@@ -1288,7 +1297,7 @@
      "n_layers": {
       "value": "30",
       "status": "stated",
-      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70 \\\\",
+      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70",
       "where": "Table table:hp",
       "reasons": [],
       "check": "verified"
@@ -1296,7 +1305,7 @@
      "n_heads": {
       "value": "32",
       "status": "stated",
-      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112 \\\\",
+      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112",
       "where": "Table table:hp",
       "reasons": [],
       "check": "verified"
@@ -1353,7 +1362,7 @@
      "d_model": {
       "value": "14336",
       "status": "stated",
-      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336 \\\\",
+      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336",
       "where": "Table table:hp",
       "reasons": [],
       "check": "verified"
@@ -1361,7 +1370,7 @@
      "n_layers": {
       "value": "70",
       "status": "stated",
-      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70 \\\\",
+      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70",
       "where": "Table table:hp",
       "reasons": [],
       "check": "verified"
@@ -1369,7 +1378,7 @@
      "n_heads": {
       "value": "112",
       "status": "stated",
-      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112 \\\\",
+      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112",
       "where": "Table table:hp",
       "reasons": [],
       "check": "verified"
@@ -1422,17 +1431,33 @@
      ]
     }
    ],
-   "primary_config": "BLOOM (176B)",
+   "primary_config": "BLOOM-560M",
    "flavours": {
     "norm": {
      "value": "layernorm",
      "status": "stated",
-     "quote": "First, we used an optimized kernel to perform LayerNorm, as well as kernels to fuse various combinations of the scaling, masking, and softmax operations.",
+     "quote": "First, we used an optimized kernel to perform LayerNorm",
      "where": "Sec. Fused CUDA Kernels",
      "reasons": [],
      "check": "verified"
     },
     "norm_placement": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_ffn": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -1463,6 +1488,22 @@
      "where": "Table table:hp",
      "reasons": [],
      "check": "verified"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "rope_pairing": {
      "value": "",
@@ -1507,7 +1548,7 @@
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "We first review our design methodology, then motivate our choice of training a causal decoder-only model.",
+     "quote": "then motivate our choice of training a causal decoder-only model",
      "where": "Sec. Model Architecture",
      "reasons": [],
      "check": "quote_only"
@@ -1544,6 +1585,14 @@
      "reasons": [],
      "check": "quote_only"
     },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
     "tied_embeddings": {
      "value": "true",
      "status": "stated",
@@ -1555,8 +1604,8 @@
     "moe": {
      "value": "false",
      "status": "stated",
-     "quote": "We did not consider mixture-of-experts (MoE) \\citep{shazeer2017}, due to a lack of widely used GPU-based codebases suitable for training them at scale.",
-     "where": "Sec. Design Methodology, Out-of-scope Architectures",
+     "quote": "We did not consider mixture-of-experts (MoE) \\citep{shazeer2017}",
+     "where": "Sec. Out-of-scope Architectures",
      "reasons": [],
      "check": "quote_only"
     },
@@ -1583,35 +1632,49 @@
      "where": "",
      "reasons": [],
      "check": "not_stated"
+    },
+    "ssm": {
+     "value": "none",
+     "status": "stated",
+     "quote": "Similarly, we also did not consider state-space models \\citep{gu2020hippo}.",
+     "where": "Sec. Out-of-scope Architectures",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     }
    },
-   "new_ops": [
-    {
-     "name": "alibi_attention",
-     "kind": "needs_new_primitive",
-     "replaces": "positional embedding / standard causal attention",
-     "reason": "Causal softmax attention whose pre-softmax scores get a per-head linear distance penalty -m_h*(i-j) (query i, key j), with head slopes m_h = 2^(-8h/n), n = number of heads, h in 1..n (figure caption). The IR attention op has no ALiBi bias attribute; this needs an attention primitive that adds a [heads, T, T] distance bias before the softmax.",
-     "quote": "Instead of adding positional information to the embedding layer, ALiBi directly attenuates the attention scores based on how far away the keys and queries are \\citep{press2021train}.",
-     "where": "Sec. Modeling Details, ALiBi Positional Embeddings",
-     "inputs": [
-      {
-       "name": "q",
-       "meaning": "queries [T, heads*head_dim]"
-      },
-      {
-       "name": "k",
-       "meaning": "keys [T, heads*head_dim]"
-      },
-      {
-       "name": "v",
-       "meaning": "values [T, heads*head_dim]"
-      }
-     ],
-     "errors": [],
-     "quote_found": true,
-     "check": "verified"
-    }
-   ],
+   "new_ops": [],
    "block_ops": [
     {
      "i": 0,
@@ -1627,20 +1690,11 @@
       {
        "value": "250680",
        "status": "stated",
-       "quote": "We used a final size of 250,680~vocabulary items with 200 tokens reserved for possible future applications",
+       "quote": "We used a final size of 250,680~vocabulary items",
        "where": "Sec. Tokenization, Vocabulary Size",
        "reasons": [],
        "check": "verified",
        "name": "vocab"
-      },
-      {
-       "value": "14336",
-       "status": "stated",
-       "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336 \\\\",
-       "where": "Table table:hp",
-       "reasons": [],
-       "check": "verified",
-       "name": "d"
       }
      ],
      "errors": []
@@ -1649,13 +1703,22 @@
      "i": 1,
      "subgraph": "embed",
      "op": "layernorm",
-     "role": "embedding LayerNorm",
+     "role": "embedding LayerNorm after the embedding layer",
      "inputs": [
       "e"
      ],
      "output": "x",
      "new_op": "",
      "attributes": [
+      {
+       "value": "after embedding",
+       "status": "stated",
+       "quote": "we train BLOOM with an additional layer normalization after the first embedding layer to avoid training instabilities.",
+       "where": "Sec. Modeling Details, Embedding LayerNorm",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "position"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -1664,15 +1727,6 @@
        "reasons": [],
        "check": "not_stated",
        "name": "eps"
-      },
-      {
-       "value": "true",
-       "status": "stated",
-       "quote": "we train BLOOM with an additional layer normalization after the first embedding layer to avoid training instabilities",
-       "where": "Sec. Modeling Details, Embedding LayerNorm",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "present"
       }
      ],
      "errors": []
@@ -1681,7 +1735,7 @@
      "i": 2,
      "subgraph": "block",
      "op": "layernorm",
-     "role": "attention input norm (placement not stated in text)",
+     "role": "attention-sublayer norm (placement not stated in paper)",
      "inputs": [
       "x"
      ],
@@ -1704,7 +1758,7 @@
      "i": 3,
      "subgraph": "block",
      "op": "linear",
-     "role": "fused qkv projection",
+     "role": "fused QKV projection",
      "inputs": [
       "h1"
      ],
@@ -1758,20 +1812,20 @@
     {
      "i": 5,
      "subgraph": "block",
-     "op": "unsupported",
-     "role": "causal multi-head attention with ALiBi bias",
+     "op": "attention",
+     "role": "causal self-attention with ALiBi bias",
      "inputs": [
       "q",
       "k",
       "v"
      ],
      "output": "a",
-     "new_op": "alibi_attention",
+     "new_op": "",
      "attributes": [
       {
-       "value": "112",
+       "value": "16",
        "status": "stated",
-       "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112 \\\\",
+       "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112",
        "where": "Table table:hp",
        "reasons": [],
        "check": "verified",
@@ -1807,7 +1861,7 @@
       {
        "value": "true",
        "status": "stated",
-       "quote": "We first review our design methodology, then motivate our choice of training a causal decoder-only model.",
+       "quote": "then motivate our choice of training a causal decoder-only model",
        "where": "Sec. Model Architecture",
        "reasons": [],
        "check": "quote_only",
@@ -1846,9 +1900,9 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "14336",
+       "value": "1024",
        "status": "stated",
-       "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336 \\\\",
+       "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336",
        "where": "Table table:hp",
        "reasons": [],
        "check": "verified",
@@ -1870,7 +1924,7 @@
      "i": 7,
      "subgraph": "block",
      "op": "add",
-     "role": "attention residual (not stated in text)",
+     "role": "attention residual add",
      "inputs": [
       "x",
       "o"
@@ -1884,7 +1938,7 @@
      "i": 8,
      "subgraph": "block",
      "op": "layernorm",
-     "role": "FFN input norm (placement not stated in text)",
+     "role": "FFN-sublayer norm (placement not stated in paper)",
      "inputs": [
       "x2"
      ],
@@ -1970,9 +2024,9 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "14336",
+       "value": "1024",
        "status": "stated",
-       "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336 \\\\",
+       "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336",
        "where": "Table table:hp",
        "reasons": [],
        "check": "verified",
@@ -1994,7 +2048,7 @@
      "i": 12,
      "subgraph": "block",
      "op": "add",
-     "role": "FFN residual (not stated in text)",
+     "role": "FFN residual add",
      "inputs": [
       "x2",
       "f"
@@ -2007,45 +2061,22 @@
     {
      "i": 13,
      "subgraph": "head",
-     "op": "layernorm",
-     "role": "final norm (not stated in text)",
+     "op": "linear",
+     "role": "tied output head (LM logits)",
      "inputs": [
       "x"
-     ],
-     "output": "hf",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "eps"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 14,
-     "subgraph": "head",
-     "op": "linear",
-     "role": "tied output head",
-     "inputs": [
-      "hf"
      ],
      "output": "logits",
      "new_op": "",
      "attributes": [
       {
-       "value": "250680",
+       "value": "token_embd",
        "status": "stated",
-       "quote": "Vocab size & \\multicolumn{5}{c|}{250,680} & 250,680",
+       "quote": "Tied emb. & \\multicolumn{5}{c|}{\\texttt{True}} & \\texttt{True}",
        "where": "Table table:hp",
        "reasons": [],
-       "check": "verified",
-       "name": "out"
+       "check": "quote_only",
+       "name": "tied_to"
       },
       {
        "value": "",
@@ -2055,33 +2086,31 @@
        "reasons": [],
        "check": "not_stated",
        "name": "bias"
-      },
-      {
-       "value": "token_embd",
-       "status": "stated",
-       "quote": "Tied emb. & \\multicolumn{5}{c|}{\\texttt{True}} & \\texttt{True}",
-       "where": "Table table:hp",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "tied_to"
       }
      ],
      "errors": []
     }
    ],
-   "mechanisms_outside_ir": [],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "ALiBi attention bias with per-head slopes 2^(-8i/n), i = 1..n heads, added to attention scores (the attention op has no attribute for it)",
+     "quote": "The $k_{head}$ slope parameters for ALIBI are taken as $2^\\frac{-8i}{n}$ with $n$ the number of heads and $i \\in {1, 2, ..., n}$.",
+     "where": "Figure fig:architecture_diagram caption",
+     "check": "verified"
+    }
+   ],
    "summary": {
     "counts": {
-     "verified": 39,
-     "quote_only": 9,
+     "verified": 37,
+     "quote_only": 10,
      "unverified": 0,
-     "not_stated": 48
+     "not_stated": 56
     },
     "unverified": [],
     "new_op_errors": [],
     "node_errors": [],
-    "n_new_ops": 1,
-    "n_block_ops": 15
+    "n_new_ops": 0,
+    "n_block_ops": 14
    }
   }
  }

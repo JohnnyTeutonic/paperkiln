@@ -7,6 +7,25 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **The extractor bench under the 26 Oct prompt** (27 Oct; prompt e6c6c505, claude-opus-5-5 at effort high;
+  tag bench3, $18.08 for 39 calls, Primer a cache hit from 26 Oct; Galactica fell back to claude-opus-4-8 as
+  on 22 Oct; receipts `papers/llm_extract_receipts/2026-10-27_bench3.json`, `..._bench_scores.json`).
+  - Flavours 81 correct / 11 abstain / 0 wrong (22 Oct prompt: 83 / 9 / 0): RoBERTa's GELU is inherited
+    through a quote that names BERT-large by the paper's `\bertlarge{}` macro, which fails the ancestor
+    check; GPT-NeoX's activation came back as "other:gelu (exact vs tanh form not stated)".
+  - Sizes 569 / 2 / 71, 53 unlabelled (580 / 0 / 62, 44): Qwen2's MoE 57B-A14B left out of the configs (7
+    abstain); RoBERTa's vocabulary not stated (2); DeepSeek-V2's context read as the extended 128K and the
+    Lite's table entry 32K, where the labels have the 4K pre-training length (2 wrong). Block graph 91 / 2 / 2,
+    unchanged.
+  - The new fields, labelled blind off the LaTeX on 27 Oct (`new_fields` in `bench_truth_structure.json`;
+    3 adjudications): per-sublayer placement 17 / 0 / 0 per sublayer (16 / 0 / 1: Primer's pre attention
+    and branch_post FFN now stated); qk_norm and ssm 40 / 0 / 0 (no paper of the 40 has either, so these
+    count false assertions only); positions outside the old lattice 5 / 0 / 2 (3 / 1 / 3: LaMDA's T5 bias,
+    was relative); T5's 32 buckets and distance 128 right; new-op input roles 6 / 0 / 1 (squared ReLU,
+    Primer's norm, Gemma 2's final soft cap, its attention soft cap as a primitive, the Transformer's and
+    PaLM's scales as affine nodes); no learned input or gate a paper lacks (40 / 0 / 0).
+  - `bench_score.py` scores these fields and prints them beside a baseline (`--baseline`); tests 10/10.
+
 - **pk-bench2 at home** (27 Oct; `experiments/benchmarks_2026-10-26/RESULTS.md`; one RunPod L4 on 26 Oct at
   5e00cd40, $0.87).
   - HellaSwag for every model now scores each item by its own requests. The pk-bench runs are re-aggregated

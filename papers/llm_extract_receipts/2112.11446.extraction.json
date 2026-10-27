@@ -4,17 +4,17 @@
  "fields": {
   "d_model": {
    "value": 16384,
-   "evidence": "\\gopher 280B & 80 & 128 & 128 & 16,384 [Table 1 (tab:arch)]",
+   "evidence": "\\gopher 280B & 80 & 128 & 128 & 16,384 [Table tab:arch]",
    "verdict": "used"
   },
   "n_layers": {
    "value": 80,
-   "evidence": "\\gopher 280B & 80 & 128 & 128 & 16,384 [Table 1 (tab:arch)]",
+   "evidence": "\\gopher 280B & 80 & 128 & 128 & 16,384 [Table tab:arch]",
    "verdict": "used"
   },
   "n_heads": {
    "value": 128,
-   "evidence": "\\gopher 280B & 80 & 128 & 128 & 16,384 [Table 1 (tab:arch)]",
+   "evidence": "\\gopher 280B & 80 & 128 & 128 & 16,384 [Table tab:arch]",
    "verdict": "used"
   },
   "vocab_size": {
@@ -55,9 +55,13 @@
    ]
   },
   "attention": {
-   "value": "new_primitive:transformer_xl_relative_attention",
-   "evidence": "we use the relative positional encoding scheme from \\citet{dai2019transformer} rather than absolute positional encodings. [Sec. 3.1 Models]",
-   "verdict": "used"
+   "value": "exact",
+   "evidence": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications [Sec. 3.1 Models]",
+   "verdict": "unverified",
+   "reasons": [
+    "inherited from gpt-2, whose curated entry has no attention",
+    "the inheritance quote does not name the ancestor"
+   ]
   }
  },
  "unresolved": [
@@ -88,6 +92,13 @@
    "field": "residual",
    "reasons": [
     "inherited from gpt-2, whose curated entry has no residual",
+    "the inheritance quote does not name the ancestor"
+   ]
+  },
+  {
+   "field": "attention",
+   "reasons": [
+    "inherited from gpt-2, whose curated entry has no attention",
     "the inheritance quote does not name the ancestor"
    ]
   }
@@ -144,16 +155,22 @@
  ],
  "mechanism_scan": [
   {
-   "mechanism": "new op transformer_xl_relative_attention (needs a new primitive: Causal softmax attention whose logits add Transformer-XL relative-position terms: per-head query against projected sinus)",
+   "mechanism": "new op transformer_xl_relative_attention (needs a new primitive: Transformer-XL relative attention adds position-dependent terms to the attention logits for each query/key pair. These c)",
    "where": "llm extraction, verified quote, Sec. 3.1 Models",
    "blocking": true,
    "evidence": "we use the relative positional encoding scheme from \\citet{dai2019transformer} rather than absolute positional encodings."
   },
   {
-   "mechanism": "Clamping of maximum relative time position to 2048 when evaluating on longer contexts",
-   "where": "llm extraction, verified quote, App. Scaling Context Length",
+   "mechanism": "Clamping of the maximum relative time position to 2048 so the model can be evaluated on contexts longer than the training length",
+   "where": "llm extraction, verified quote, Appendix: Scaling Context Length",
    "blocking": true,
    "evidence": "However we can clamp the maximum time position to $2048$ and extend the context length"
+  },
+  {
+   "mechanism": "Attention softmax computed in fp32 under bfloat16 training",
+   "where": "llm extraction, verified quote, Appendix: Lower-Precision Training with bfloat16",
+   "blocking": true,
+   "evidence": "In all configurations, we use \\texttt{fp32} for computing the attention softmax and the softmax cross-entropy in the loss."
   }
  ],
  "source": {
@@ -161,14 +178,14 @@
   "sent_sha256": "ab5fdca41c72b6ebc99113cf4eaf31fe541784587832a20bdfe35f804ecbe510",
   "from": "https://arxiv.org/e-print/2112.11446",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
+  "extractor_sha256": "9d5951b0f11c920aaf075abead17d7d4e619d37402d47690ba452de15620e921",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
+  "prompt_sha256": "e6c6c5052b656885910d1539b8c320ba4ecb9262a6079252b852f1ff637b03ef",
   "n_calls": 1,
-  "cost_usd": 1.297716,
+  "cost_usd": 1.314632,
   "request_ids": [
-   "req_011CgFh5QGPu9Vwy8vWQyQM6"
+   "req_011CgRsG5fDrdvcnR2q6Hwcu"
   ]
  },
  "llm": {
@@ -193,19 +210,19 @@
       "value": "512",
       "status": "stated",
       "quote": "44M & 8 & 16 & 32 & 512",
-      "where": "Table 1 (tab:arch)"
+      "where": "Table tab:arch"
      },
      "n_layers": {
       "value": "8",
       "status": "stated",
       "quote": "44M & 8 & 16 & 32 & 512",
-      "where": "Table 1 (tab:arch)"
+      "where": "Table tab:arch"
      },
      "n_heads": {
       "value": "16",
       "status": "stated",
       "quote": "44M & 8 & 16 & 32 & 512",
-      "where": "Table 1 (tab:arch)"
+      "where": "Table tab:arch"
      },
      "n_kv_heads": {
       "value": "16",
@@ -217,13 +234,13 @@
       "value": "32",
       "status": "stated",
       "quote": "44M & 8 & 16 & 32 & 512",
-      "where": "Table 1 (tab:arch)"
+      "where": "Table tab:arch"
      },
      "d_ff": {
       "value": "2048",
       "status": "stated",
       "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
-      "where": "Table 1 caption (tab:arch)"
+      "where": "Table tab:arch caption"
      },
      "vocab_size": {
       "value": "32000",
@@ -244,19 +261,19 @@
       "value": "768",
       "status": "stated",
       "quote": "117M & 12 &  12 & 64 & 768",
-      "where": "Table 1 (tab:arch)"
+      "where": "Table tab:arch"
      },
      "n_layers": {
       "value": "12",
       "status": "stated",
       "quote": "117M & 12 &  12 & 64 & 768",
-      "where": "Table 1 (tab:arch)"
+      "where": "Table tab:arch"
      },
      "n_heads": {
       "value": "12",
       "status": "stated",
       "quote": "117M & 12 &  12 & 64 & 768",
-      "where": "Table 1 (tab:arch)"
+      "where": "Table tab:arch"
      },
      "n_kv_heads": {
       "value": "12",
@@ -268,13 +285,13 @@
       "value": "64",
       "status": "stated",
       "quote": "117M & 12 &  12 & 64 & 768",
-      "where": "Table 1 (tab:arch)"
+      "where": "Table tab:arch"
      },
      "d_ff": {
       "value": "3072",
       "status": "stated",
       "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
-      "where": "Table 1 caption (tab:arch)"
+      "where": "Table tab:arch caption"
      },
      "vocab_size": {
       "value": "32000",
@@ -295,19 +312,19 @@
       "value": "1536",
       "status": "stated",
       "quote": "417M & 12 & 12 & 128 & 1,536",
-      "where": "Table 1 (tab:arch)"
+      "where": "Table tab:arch"
      },
      "n_layers": {
       "value": "12",
       "status": "stated",
       "quote": "417M & 12 & 12 & 128 & 1,536",
-      "where": "Table 1 (tab:arch)"
+      "where": "Table tab:arch"
      },
      "n_heads": {
       "value": "12",
       "status": "stated",
       "quote": "417M & 12 & 12 & 128 & 1,536",
-      "where": "Table 1 (tab:arch)"
+      "where": "Table tab:arch"
      },
      "n_kv_heads": {
       "value": "12",
@@ -319,13 +336,13 @@
       "value": "128",
       "status": "stated",
       "quote": "417M & 12 & 12 & 128 & 1,536",
-      "where": "Table 1 (tab:arch)"
+      "where": "Table tab:arch"
      },
      "d_ff": {
       "value": "6144",
       "status": "stated",
       "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
-      "where": "Table 1 caption (tab:arch)"
+      "where": "Table tab:arch caption"
      },
      "vocab_size": {
       "value": "32000",
@@ -346,19 +363,19 @@
       "value": "2048",
       "status": "stated",
       "quote": "1.4B & 24 & 16 & 128 & 2,048",
-      "where": "Table 1 (tab:arch)"
+      "where": "Table tab:arch"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
       "quote": "1.4B & 24 & 16 & 128 & 2,048",
-      "where": "Table 1 (tab:arch)"
+      "where": "Table tab:arch"
      },
      "n_heads": {
       "value": "16",
       "status": "stated",
       "quote": "1.4B & 24 & 16 & 128 & 2,048",
-      "where": "Table 1 (tab:arch)"
+      "where": "Table tab:arch"
      },
      "n_kv_heads": {
       "value": "16",
@@ -370,13 +387,13 @@
       "value": "128",
       "status": "stated",
       "quote": "1.4B & 24 & 16 & 128 & 2,048",
-      "where": "Table 1 (tab:arch)"
+      "where": "Table tab:arch"
      },
      "d_ff": {
       "value": "8192",
       "status": "stated",
       "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
-      "where": "Table 1 caption (tab:arch)"
+      "where": "Table tab:arch caption"
      },
      "vocab_size": {
       "value": "32000",
@@ -397,19 +414,19 @@
       "value": "4096",
       "status": "stated",
       "quote": "7.1B & 32 & 32 & 128 & 4,096",
-      "where": "Table 1 (tab:arch)"
+      "where": "Table tab:arch"
      },
      "n_layers": {
       "value": "32",
       "status": "stated",
       "quote": "7.1B & 32 & 32 & 128 & 4,096",
-      "where": "Table 1 (tab:arch)"
+      "where": "Table tab:arch"
      },
      "n_heads": {
       "value": "32",
       "status": "stated",
       "quote": "7.1B & 32 & 32 & 128 & 4,096",
-      "where": "Table 1 (tab:arch)"
+      "where": "Table tab:arch"
      },
      "n_kv_heads": {
       "value": "32",
@@ -421,13 +438,13 @@
       "value": "128",
       "status": "stated",
       "quote": "7.1B & 32 & 32 & 128 & 4,096",
-      "where": "Table 1 (tab:arch)"
+      "where": "Table tab:arch"
      },
      "d_ff": {
       "value": "16384",
       "status": "stated",
       "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
-      "where": "Table 1 caption (tab:arch)"
+      "where": "Table tab:arch caption"
      },
      "vocab_size": {
       "value": "32000",
@@ -448,19 +465,19 @@
       "value": "16384",
       "status": "stated",
       "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
-      "where": "Table 1 (tab:arch)"
+      "where": "Table tab:arch"
      },
      "n_layers": {
       "value": "80",
       "status": "stated",
       "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
-      "where": "Table 1 (tab:arch)"
+      "where": "Table tab:arch"
      },
      "n_heads": {
       "value": "128",
       "status": "stated",
       "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
-      "where": "Table 1 (tab:arch)"
+      "where": "Table tab:arch"
      },
      "n_kv_heads": {
       "value": "128",
@@ -472,13 +489,13 @@
       "value": "128",
       "status": "stated",
       "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
-      "where": "Table 1 (tab:arch)"
+      "where": "Table tab:arch"
      },
      "d_ff": {
       "value": "65536",
       "status": "stated",
       "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
-      "where": "Table 1 caption (tab:arch)"
+      "where": "Table tab:arch caption"
      },
      "vocab_size": {
       "value": "32000",
@@ -508,6 +525,18 @@
      "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
      "where": "Sec. 3.1 Models"
     },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
     "norm_eps": {
      "value": "",
      "status": "not_stated",
@@ -515,7 +544,7 @@
      "where": ""
     },
     "activation": {
-     "value": "gelu_tanh",
+     "value": "gelu",
      "status": "inherited",
      "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
      "where": "Sec. 3.1 Models"
@@ -525,6 +554,18 @@
      "status": "stated",
      "quote": "we use the relative positional encoding scheme from \\citet{dai2019transformer} rather than absolute positional encodings.",
      "where": "Sec. 3.1 Models"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "rope_pairing": {
      "value": "",
@@ -557,9 +598,9 @@
      "where": "Sec. 3.1 Models"
     },
     "attention": {
-     "value": "new_op:transformer_xl_relative_attention",
-     "status": "stated",
-     "quote": "we use the relative positional encoding scheme from \\citet{dai2019transformer} rather than absolute positional encodings.",
+     "value": "exact",
+     "status": "inherited",
+     "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
      "where": "Sec. 3.1 Models"
     },
     "window_size": {
@@ -581,6 +622,12 @@
      "where": ""
     },
     "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qk_norm": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -615,13 +662,43 @@
      "status": "not_stated",
      "quote": "",
      "where": ""
+    },
+    "ssm": {
+     "value": "none",
+     "status": "inherited",
+     "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+     "where": "Sec. 3.1 Models"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     }
    },
    "block_ops": [
     {
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding (token_embd), vocab 32000",
+     "role": "token embedding",
      "inputs": [
       "tokens"
      ],
@@ -639,7 +716,7 @@
        "value": "16384",
        "status": "stated",
        "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
-       "where": "Table 1 (tab:arch)"
+       "where": "Table tab:arch"
       }
      ],
      "new_op": ""
@@ -677,7 +754,7 @@
        "value": "16384",
        "status": "stated",
        "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
-       "where": "Table 1 (tab:arch)"
+       "where": "Table tab:arch"
       },
       {
        "name": "bias",
@@ -703,7 +780,7 @@
        "value": "16384",
        "status": "stated",
        "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
-       "where": "Table 1 (tab:arch)"
+       "where": "Table tab:arch"
       },
       {
        "name": "bias",
@@ -729,7 +806,7 @@
        "value": "16384",
        "status": "stated",
        "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
-       "where": "Table 1 (tab:arch)"
+       "where": "Table tab:arch"
       },
       {
        "name": "bias",
@@ -757,14 +834,14 @@
        "value": "128",
        "status": "stated",
        "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
-       "where": "Table 1 (tab:arch)"
+       "where": "Table tab:arch"
       },
       {
        "name": "head_dim",
        "value": "128",
        "status": "stated",
        "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
-       "where": "Table 1 (tab:arch)"
+       "where": "Table tab:arch"
       },
       {
        "name": "causal",
@@ -772,6 +849,13 @@
        "status": "stated",
        "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
        "where": "Sec. 3.1 Models"
+      },
+      {
+       "name": "scale",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": "transformer_xl_relative_attention"
@@ -790,7 +874,7 @@
        "value": "16384",
        "status": "stated",
        "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
-       "where": "Table 1 (tab:arch)"
+       "where": "Table tab:arch"
       },
       {
        "name": "bias",
@@ -810,7 +894,7 @@
       "x",
       "o"
      ],
-     "output": "x2",
+     "output": "x1",
      "attributes": [],
      "new_op": ""
     },
@@ -819,7 +903,7 @@
      "op": "rmsnorm",
      "role": "pre-FFN norm",
      "inputs": [
-      "x2"
+      "x1"
      ],
      "output": "h2",
      "attributes": [
@@ -836,7 +920,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN up projection (4 x d_model)",
+     "role": "FFN up projection",
      "inputs": [
       "h2"
      ],
@@ -847,7 +931,7 @@
        "value": "65536",
        "status": "stated",
        "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
-       "where": "Table 1 caption (tab:arch)"
+       "where": "Table tab:arch caption"
       },
       {
        "name": "bias",
@@ -862,7 +946,7 @@
     {
      "subgraph": "block",
      "op": "gelu",
-     "role": "FFN activation (inherited from GPT-2)",
+     "role": "FFN activation",
      "inputs": [
       "u"
      ],
@@ -870,10 +954,10 @@
      "attributes": [
       {
        "name": "approx",
-       "value": "tanh",
-       "status": "inherited",
-       "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
-       "where": "Sec. 3.1 Models"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -892,7 +976,7 @@
        "value": "16384",
        "status": "stated",
        "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
-       "where": "Table 1 (tab:arch)"
+       "where": "Table tab:arch"
       },
       {
        "name": "bias",
@@ -909,7 +993,7 @@
      "op": "add",
      "role": "FFN residual",
      "inputs": [
-      "x2",
+      "x1",
       "f"
      ],
      "output": "x",
@@ -919,7 +1003,7 @@
     {
      "subgraph": "head",
      "op": "rmsnorm",
-     "role": "final norm (GPT-2 final norm, RMSNorm per modification)",
+     "role": "final norm (GPT-2 style final norm, with RMSNorm substituted)",
      "inputs": [
       "x"
      ],
@@ -974,34 +1058,26 @@
      "name": "transformer_xl_relative_attention",
      "kind": "needs_new_primitive",
      "expr": "",
-     "inputs": [
-      {
-       "name": "q",
-       "meaning": "query projection [T, heads*head_dim]"
-      },
-      {
-       "name": "k",
-       "meaning": "key projection [T, heads*head_dim]"
-      },
-      {
-       "name": "v",
-       "meaning": "value projection [T, heads*head_dim]"
-      }
-     ],
-     "replaces": "attention + absolute positional encoding",
-     "reason": "Causal softmax attention whose logits add Transformer-XL relative-position terms: per-head query against projected sinusoidal relative-distance embeddings plus learned global content/position bias vectors, computed with a relative shift over [heads, T, T]; relative distances clamped at 2048 at evaluation. The IR attention op has no relative-position logit term, so a new attention primitive is needed.",
+     "inputs": [],
+     "replaces": "absolute positional encoding + standard causal attention",
+     "reason": "Transformer-XL relative attention adds position-dependent terms to the attention logits for each query/key pair. These come from relative-distance embeddings projected per head, plus learned global content and position bias vectors. The relative distance is clamped at 2048. A new attention primitive is needed that computes a [T,T] per-head logit term from relative offsets. The paper gives no details of the embedding form, the bias vectors or the projections beyond the citation.",
      "quote": "we use the relative positional encoding scheme from \\citet{dai2019transformer} rather than absolute positional encodings.",
      "where": "Sec. 3.1 Models"
     }
    ],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Clamping of maximum relative time position to 2048 when evaluating on longer contexts",
+     "mechanism": "Clamping of the maximum relative time position to 2048 so the model can be evaluated on contexts longer than the training length",
      "quote": "However we can clamp the maximum time position to $2048$ and extend the context length",
-     "where": "App. Scaling Context Length"
+     "where": "Appendix: Scaling Context Length"
+    },
+    {
+     "mechanism": "Attention softmax computed in fp32 under bfloat16 training",
+     "quote": "In all configurations, we use \\texttt{fp32} for computing the attention softmax and the softmax cross-entropy in the loss.",
+     "where": "Appendix: Lower-Precision Training with bfloat16"
     }
    ],
-   "notes": "Described the headline Gopher 280B; all six family sizes from Table 1 listed. The paper inherits from GPT-2 except for RMSNorm and Transformer-XL relative positions. Pre-norm, GELU (tanh), residuals, tied embeddings, no MoE and full MHA (kv heads = heads) are marked inherited from GPT-2. d_ff is computed from the stated rule 'always 4 x d_model'; the numeric value itself does not appear in the source. The fine-tuning appendix says bias-only tuning had to 'Introduce attention biases', which suggests the attention projections have no bias, against GPT-2. Because of that conflict, qkv/mlp bias are left not_stated. Norm eps is not stated."
+   "notes": "Described the headline Gopher 280B; all six family configs are listed. The architecture is GPT-2 with RMSNorm in place of LayerNorm and Transformer-XL relative positions in place of absolute ones. The following are marked inherited from GPT-2 via the inheritance sentence, not restated in the paper: pre-norm placement, GELU activation (GELU form not specified, so approx is left not_stated), sequential residual blocks, dense causal attention, tied output embedding, final norm, and n_kv_heads = n_heads. d_ff is derived from the stated rule 4×d_model; the quoted caption does not contain the numeric values. The Bias-only fine-tuning text 'Introduce attention biases' hints that the pretrained model may lack attention biases, but this is not explicit, so qkv_bias is left not_stated. The norm eps and the details of the relative encoding are not given."
   },
   "verification": {
    "errors": [],
@@ -1028,7 +1104,7 @@
       "value": "512",
       "status": "stated",
       "quote": "44M & 8 & 16 & 32 & 512",
-      "where": "Table 1 (tab:arch)",
+      "where": "Table tab:arch",
       "reasons": [],
       "check": "verified"
      },
@@ -1036,7 +1112,7 @@
       "value": "8",
       "status": "stated",
       "quote": "44M & 8 & 16 & 32 & 512",
-      "where": "Table 1 (tab:arch)",
+      "where": "Table tab:arch",
       "reasons": [],
       "check": "verified"
      },
@@ -1044,7 +1120,7 @@
       "value": "16",
       "status": "stated",
       "quote": "44M & 8 & 16 & 32 & 512",
-      "where": "Table 1 (tab:arch)",
+      "where": "Table tab:arch",
       "reasons": [],
       "check": "verified"
      },
@@ -1063,7 +1139,7 @@
       "value": "32",
       "status": "stated",
       "quote": "44M & 8 & 16 & 32 & 512",
-      "where": "Table 1 (tab:arch)",
+      "where": "Table tab:arch",
       "reasons": [],
       "check": "verified"
      },
@@ -1071,7 +1147,7 @@
       "value": "2048",
       "status": "stated",
       "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
-      "where": "Table 1 caption (tab:arch)",
+      "where": "Table tab:arch caption",
       "reasons": [
        "2048 does not occur in its quote"
       ],
@@ -1110,7 +1186,7 @@
       "value": "768",
       "status": "stated",
       "quote": "117M & 12 &  12 & 64 & 768",
-      "where": "Table 1 (tab:arch)",
+      "where": "Table tab:arch",
       "reasons": [],
       "check": "verified"
      },
@@ -1118,7 +1194,7 @@
       "value": "12",
       "status": "stated",
       "quote": "117M & 12 &  12 & 64 & 768",
-      "where": "Table 1 (tab:arch)",
+      "where": "Table tab:arch",
       "reasons": [],
       "check": "verified"
      },
@@ -1126,7 +1202,7 @@
       "value": "12",
       "status": "stated",
       "quote": "117M & 12 &  12 & 64 & 768",
-      "where": "Table 1 (tab:arch)",
+      "where": "Table tab:arch",
       "reasons": [],
       "check": "verified"
      },
@@ -1145,7 +1221,7 @@
       "value": "64",
       "status": "stated",
       "quote": "117M & 12 &  12 & 64 & 768",
-      "where": "Table 1 (tab:arch)",
+      "where": "Table tab:arch",
       "reasons": [],
       "check": "verified"
      },
@@ -1153,7 +1229,7 @@
       "value": "3072",
       "status": "stated",
       "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
-      "where": "Table 1 caption (tab:arch)",
+      "where": "Table tab:arch caption",
       "reasons": [
        "3072 does not occur in its quote"
       ],
@@ -1192,7 +1268,7 @@
       "value": "1536",
       "status": "stated",
       "quote": "417M & 12 & 12 & 128 & 1,536",
-      "where": "Table 1 (tab:arch)",
+      "where": "Table tab:arch",
       "reasons": [],
       "check": "verified"
      },
@@ -1200,7 +1276,7 @@
       "value": "12",
       "status": "stated",
       "quote": "417M & 12 & 12 & 128 & 1,536",
-      "where": "Table 1 (tab:arch)",
+      "where": "Table tab:arch",
       "reasons": [],
       "check": "verified"
      },
@@ -1208,7 +1284,7 @@
       "value": "12",
       "status": "stated",
       "quote": "417M & 12 & 12 & 128 & 1,536",
-      "where": "Table 1 (tab:arch)",
+      "where": "Table tab:arch",
       "reasons": [],
       "check": "verified"
      },
@@ -1227,7 +1303,7 @@
       "value": "128",
       "status": "stated",
       "quote": "417M & 12 & 12 & 128 & 1,536",
-      "where": "Table 1 (tab:arch)",
+      "where": "Table tab:arch",
       "reasons": [],
       "check": "verified"
      },
@@ -1235,7 +1311,7 @@
       "value": "6144",
       "status": "stated",
       "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
-      "where": "Table 1 caption (tab:arch)",
+      "where": "Table tab:arch caption",
       "reasons": [
        "6144 does not occur in its quote"
       ],
@@ -1274,7 +1350,7 @@
       "value": "2048",
       "status": "stated",
       "quote": "1.4B & 24 & 16 & 128 & 2,048",
-      "where": "Table 1 (tab:arch)",
+      "where": "Table tab:arch",
       "reasons": [],
       "check": "verified"
      },
@@ -1282,7 +1358,7 @@
       "value": "24",
       "status": "stated",
       "quote": "1.4B & 24 & 16 & 128 & 2,048",
-      "where": "Table 1 (tab:arch)",
+      "where": "Table tab:arch",
       "reasons": [],
       "check": "verified"
      },
@@ -1290,7 +1366,7 @@
       "value": "16",
       "status": "stated",
       "quote": "1.4B & 24 & 16 & 128 & 2,048",
-      "where": "Table 1 (tab:arch)",
+      "where": "Table tab:arch",
       "reasons": [],
       "check": "verified"
      },
@@ -1309,7 +1385,7 @@
       "value": "128",
       "status": "stated",
       "quote": "1.4B & 24 & 16 & 128 & 2,048",
-      "where": "Table 1 (tab:arch)",
+      "where": "Table tab:arch",
       "reasons": [],
       "check": "verified"
      },
@@ -1317,7 +1393,7 @@
       "value": "8192",
       "status": "stated",
       "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
-      "where": "Table 1 caption (tab:arch)",
+      "where": "Table tab:arch caption",
       "reasons": [
        "8192 does not occur in its quote"
       ],
@@ -1356,7 +1432,7 @@
       "value": "4096",
       "status": "stated",
       "quote": "7.1B & 32 & 32 & 128 & 4,096",
-      "where": "Table 1 (tab:arch)",
+      "where": "Table tab:arch",
       "reasons": [],
       "check": "verified"
      },
@@ -1364,7 +1440,7 @@
       "value": "32",
       "status": "stated",
       "quote": "7.1B & 32 & 32 & 128 & 4,096",
-      "where": "Table 1 (tab:arch)",
+      "where": "Table tab:arch",
       "reasons": [],
       "check": "verified"
      },
@@ -1372,7 +1448,7 @@
       "value": "32",
       "status": "stated",
       "quote": "7.1B & 32 & 32 & 128 & 4,096",
-      "where": "Table 1 (tab:arch)",
+      "where": "Table tab:arch",
       "reasons": [],
       "check": "verified"
      },
@@ -1391,7 +1467,7 @@
       "value": "128",
       "status": "stated",
       "quote": "7.1B & 32 & 32 & 128 & 4,096",
-      "where": "Table 1 (tab:arch)",
+      "where": "Table tab:arch",
       "reasons": [],
       "check": "verified"
      },
@@ -1399,7 +1475,7 @@
       "value": "16384",
       "status": "stated",
       "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
-      "where": "Table 1 caption (tab:arch)",
+      "where": "Table tab:arch caption",
       "reasons": [
        "16384 does not occur in its quote"
       ],
@@ -1438,7 +1514,7 @@
       "value": "16384",
       "status": "stated",
       "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
-      "where": "Table 1 (tab:arch)",
+      "where": "Table tab:arch",
       "reasons": [],
       "check": "verified"
      },
@@ -1446,7 +1522,7 @@
       "value": "80",
       "status": "stated",
       "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
-      "where": "Table 1 (tab:arch)",
+      "where": "Table tab:arch",
       "reasons": [],
       "check": "verified"
      },
@@ -1454,7 +1530,7 @@
       "value": "128",
       "status": "stated",
       "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
-      "where": "Table 1 (tab:arch)",
+      "where": "Table tab:arch",
       "reasons": [],
       "check": "verified"
      },
@@ -1473,7 +1549,7 @@
       "value": "128",
       "status": "stated",
       "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
-      "where": "Table 1 (tab:arch)",
+      "where": "Table tab:arch",
       "reasons": [],
       "check": "verified"
      },
@@ -1481,7 +1557,7 @@
       "value": "65536",
       "status": "stated",
       "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
-      "where": "Table 1 caption (tab:arch)",
+      "where": "Table tab:arch caption",
       "reasons": [
        "65536 does not occur in its quote"
       ],
@@ -1536,6 +1612,22 @@
      ],
      "check": "unverified"
     },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
     "norm_eps": {
      "value": "",
      "status": "not_stated",
@@ -1545,7 +1637,7 @@
      "check": "not_stated"
     },
     "activation": {
-     "value": "gelu_tanh",
+     "value": "gelu",
      "status": "inherited",
      "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
      "where": "Sec. 3.1 Models",
@@ -1561,6 +1653,22 @@
      "where": "Sec. 3.1 Models",
      "reasons": [],
      "check": "verified"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "rope_pairing": {
      "value": "",
@@ -1609,12 +1717,15 @@
      "check": "unverified"
     },
     "attention": {
-     "value": "new_op:transformer_xl_relative_attention",
-     "status": "stated",
-     "quote": "we use the relative positional encoding scheme from \\citet{dai2019transformer} rather than absolute positional encodings.",
+     "value": "exact",
+     "status": "inherited",
+     "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
      "where": "Sec. 3.1 Models",
-     "reasons": [],
-     "check": "quote_only"
+     "reasons": [
+      "inherited from gpt-2, whose curated entry has no attention",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
     },
     "window_size": {
      "value": "",
@@ -1641,6 +1752,14 @@
      "check": "not_stated"
     },
     "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qk_norm": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -1693,30 +1812,60 @@
      "where": "",
      "reasons": [],
      "check": "not_stated"
+    },
+    "ssm": {
+     "value": "none",
+     "status": "inherited",
+     "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+     "where": "Sec. 3.1 Models",
+     "reasons": [
+      "inherited from gpt-2, whose curated entry has no ssm",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     }
    },
    "new_ops": [
     {
      "name": "transformer_xl_relative_attention",
      "kind": "needs_new_primitive",
-     "replaces": "attention + absolute positional encoding",
-     "reason": "Causal softmax attention whose logits add Transformer-XL relative-position terms: per-head query against projected sinusoidal relative-distance embeddings plus learned global content/position bias vectors, computed with a relative shift over [heads, T, T]; relative distances clamped at 2048 at evaluation. The IR attention op has no relative-position logit term, so a new attention primitive is needed.",
+     "replaces": "absolute positional encoding + standard causal attention",
+     "reason": "Transformer-XL relative attention adds position-dependent terms to the attention logits for each query/key pair. These come from relative-distance embeddings projected per head, plus learned global content and position bias vectors. The relative distance is clamped at 2048. A new attention primitive is needed that computes a [T,T] per-head logit term from relative offsets. The paper gives no details of the embedding form, the bias vectors or the projections beyond the citation.",
      "quote": "we use the relative positional encoding scheme from \\citet{dai2019transformer} rather than absolute positional encodings.",
      "where": "Sec. 3.1 Models",
-     "inputs": [
-      {
-       "name": "q",
-       "meaning": "query projection [T, heads*head_dim]"
-      },
-      {
-       "name": "k",
-       "meaning": "key projection [T, heads*head_dim]"
-      },
-      {
-       "name": "v",
-       "meaning": "value projection [T, heads*head_dim]"
-      }
-     ],
+     "inputs": [],
      "errors": [],
      "quote_found": true,
      "check": "verified"
@@ -1727,7 +1876,7 @@
      "i": 0,
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding (token_embd), vocab 32000",
+     "role": "token embedding",
      "inputs": [
       "tokens"
      ],
@@ -1747,7 +1896,7 @@
        "value": "16384",
        "status": "stated",
        "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
-       "where": "Table 1 (tab:arch)",
+       "where": "Table tab:arch",
        "reasons": [],
        "check": "verified",
        "name": "d"
@@ -1793,7 +1942,7 @@
        "value": "16384",
        "status": "stated",
        "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
-       "where": "Table 1 (tab:arch)",
+       "where": "Table tab:arch",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -1825,7 +1974,7 @@
        "value": "16384",
        "status": "stated",
        "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
-       "where": "Table 1 (tab:arch)",
+       "where": "Table tab:arch",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -1857,7 +2006,7 @@
        "value": "16384",
        "status": "stated",
        "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
-       "where": "Table 1 (tab:arch)",
+       "where": "Table tab:arch",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -1891,7 +2040,7 @@
        "value": "128",
        "status": "stated",
        "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
-       "where": "Table 1 (tab:arch)",
+       "where": "Table tab:arch",
        "reasons": [],
        "check": "verified",
        "name": "heads"
@@ -1900,7 +2049,7 @@
        "value": "128",
        "status": "stated",
        "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
-       "where": "Table 1 (tab:arch)",
+       "where": "Table tab:arch",
        "reasons": [],
        "check": "verified",
        "name": "head_dim"
@@ -1913,6 +2062,15 @@
        "reasons": [],
        "check": "quote_only",
        "name": "causal"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "scale"
       }
      ],
      "errors": []
@@ -1932,7 +2090,7 @@
        "value": "16384",
        "status": "stated",
        "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
-       "where": "Table 1 (tab:arch)",
+       "where": "Table tab:arch",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -1958,7 +2116,7 @@
       "x",
       "o"
      ],
-     "output": "x2",
+     "output": "x1",
      "new_op": "",
      "attributes": [],
      "errors": []
@@ -1969,7 +2127,7 @@
      "op": "rmsnorm",
      "role": "pre-FFN norm",
      "inputs": [
-      "x2"
+      "x1"
      ],
      "output": "h2",
      "new_op": "",
@@ -1990,7 +2148,7 @@
      "i": 9,
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN up projection (4 x d_model)",
+     "role": "FFN up projection",
      "inputs": [
       "h2"
      ],
@@ -2001,7 +2159,7 @@
        "value": "65536",
        "status": "stated",
        "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
-       "where": "Table 1 caption (tab:arch)",
+       "where": "Table tab:arch caption",
        "reasons": [
         "65536 does not occur in its quote"
        ],
@@ -2024,7 +2182,7 @@
      "i": 10,
      "subgraph": "block",
      "op": "gelu",
-     "role": "FFN activation (inherited from GPT-2)",
+     "role": "FFN activation",
      "inputs": [
       "u"
      ],
@@ -2032,15 +2190,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "tanh",
-       "status": "inherited",
-       "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
-       "where": "Sec. 3.1 Models",
-       "reasons": [
-        "inherited from gpt-2, whose curated entry has no approx",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "approx"
       }
      ],
@@ -2061,7 +2216,7 @@
        "value": "16384",
        "status": "stated",
        "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
-       "where": "Table 1 (tab:arch)",
+       "where": "Table tab:arch",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -2084,7 +2239,7 @@
      "op": "add",
      "role": "FFN residual",
      "inputs": [
-      "x2",
+      "x1",
       "f"
      ],
      "output": "x",
@@ -2096,7 +2251,7 @@
      "i": 13,
      "subgraph": "head",
      "op": "rmsnorm",
-     "role": "final norm (GPT-2 final norm, RMSNorm per modification)",
+     "role": "final norm (GPT-2 style final norm, with RMSNorm substituted)",
      "inputs": [
       "x"
      ],
@@ -2162,18 +2317,24 @@
    ],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Clamping of maximum relative time position to 2048 when evaluating on longer contexts",
+     "mechanism": "Clamping of the maximum relative time position to 2048 so the model can be evaluated on contexts longer than the training length",
      "quote": "However we can clamp the maximum time position to $2048$ and extend the context length",
-     "where": "App. Scaling Context Length",
+     "where": "Appendix: Scaling Context Length",
+     "check": "verified"
+    },
+    {
+     "mechanism": "Attention softmax computed in fp32 under bfloat16 training",
+     "quote": "In all configurations, we use \\texttt{fp32} for computing the attention softmax and the softmax cross-entropy in the loss.",
+     "where": "Appendix: Lower-Precision Training with bfloat16",
      "check": "verified"
     }
    ],
    "summary": {
     "counts": {
      "verified": 48,
-     "quote_only": 3,
-     "unverified": 21,
-     "not_stated": 21
+     "quote_only": 2,
+     "unverified": 22,
+     "not_stated": 32
     },
     "unverified": [
      {
@@ -2282,6 +2443,13 @@
       ]
      },
      {
+      "field": "flavours.attention",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no attention",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
       "field": "flavours.tied_embeddings",
       "reasons": [
        "inherited from gpt-2, whose curated entry has no tied_embeddings",
@@ -2296,16 +2464,16 @@
       ]
      },
      {
-      "field": "block_ops[9].out",
+      "field": "flavours.ssm",
       "reasons": [
-       "65536 does not occur in its quote"
+       "inherited from gpt-2, whose curated entry has no ssm",
+       "the inheritance quote does not name the ancestor"
       ]
      },
      {
-      "field": "block_ops[10].approx",
+      "field": "block_ops[9].out",
       "reasons": [
-       "inherited from gpt-2, whose curated entry has no approx",
-       "the inheritance quote does not name the ancestor"
+       "65536 does not occur in its quote"
       ]
      },
      {

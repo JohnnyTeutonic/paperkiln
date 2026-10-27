@@ -9,7 +9,7 @@
   },
   "norm": {
    "value": "rmsnorm",
-   "evidence": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset [Sec. 2.1]",
+   "evidence": "All \\model models are initialized with \\llamavtwo model weights [Sec. 2.1]",
    "verdict": "unverified",
    "reasons": [
     "the inheritance quote does not name the ancestor"
@@ -17,7 +17,7 @@
   },
   "activation": {
    "value": "swiglu",
-   "evidence": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset [Sec. 2.1]",
+   "evidence": "All \\model models are initialized with \\llamavtwo model weights [Sec. 2.1]",
    "verdict": "unverified",
    "reasons": [
     "the inheritance quote does not name the ancestor"
@@ -30,7 +30,7 @@
   },
   "residual": {
    "value": "residual",
-   "evidence": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset [Sec. 2.1]",
+   "evidence": "All \\model models are initialized with \\llamavtwo model weights [Sec. 2.1]",
    "verdict": "unverified",
    "reasons": [
     "inherited from llama, whose curated entry has no residual",
@@ -39,7 +39,7 @@
   },
   "attention": {
    "value": "exact",
-   "evidence": "In our work, we do not rely on hand-crafted sparsity patterns such as those proposed for code input by~\\citet{guo2023longcoder} [Sec. Related work (Long sequences in LLMs)]",
+   "evidence": "In our work, we do not rely on hand-crafted sparsity patterns such as those proposed for code input by~\\citet{guo2023longcoder} [Sec. Related work]",
    "verdict": "used"
   }
  },
@@ -110,13 +110,10 @@
  "mentions": {},
  "inherits": {
   "ancestor": "llama",
-  "evidence": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+  "evidence": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset (see \\Cref{sec:dataset} for more details), except \\model~70B which was trained on 1T tokens.",
   "section": "Sec. 2.1 The Code Llama models family"
  },
  "variants": [
-  {
-   "context_length": 16384
-  },
   {
    "context_length": 16384
   },
@@ -129,7 +126,7 @@
  ],
  "mechanism_scan": [
   {
-   "mechanism": "Tokenizer extended with four special infilling (FIM) tokens for 7B/13B/70B models; exact vocab size not stated",
+   "mechanism": "Tokenizer extended with four special infilling tokens (prefix/middle/suffix/end) for the 7B, 13B and 70B infilling models; the embedding and output matrices grow accordingly.",
    "where": "llm extraction, verified quote, Sec. 2.3 Infilling",
    "blocking": true,
    "evidence": "We extend \\llamavtwo's tokenizer with four special tokens that mark the beginning of the prefix, the middle part or the suffix, and the end of the infilling span."
@@ -140,29 +137,29 @@
   "sent_sha256": "2adadcb93b32d59d4e9e477aea749e9614d08e75b7e739e45b0dc9e3c5c92325",
   "from": "https://arxiv.org/e-print/2308.12950",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
+  "extractor_sha256": "9d5951b0f11c920aaf075abead17d7d4e619d37402d47690ba452de15620e921",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
+  "prompt_sha256": "e6c6c5052b656885910d1539b8c320ba4ecb9262a6079252b852f1ff637b03ef",
   "n_calls": 1,
-  "cost_usd": 0.543344,
+  "cost_usd": 0.51966,
   "request_ids": [
-   "req_011CgFiBQNdeQZYHxDxQBKdc"
+   "req_011CgRtFbgqJFvFCRsExzJ7a"
   ]
  },
  "llm": {
   "output": {
    "title": "Code Llama: Open Foundation Models for Code",
-   "model_name": "Code Llama",
+   "model_name": "Code Llama (base)",
    "family": {
     "value": "decoder_only",
     "status": "stated",
     "quote": "\\model and its variants are autoregressive language models using optimized transformer architectures.",
-    "where": "Table: Model card (Model Architecture)"
+    "where": "Table: Model card for \\model"
    },
    "inherits": {
     "ancestor": "Llama 2",
-    "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+    "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset (see \\Cref{sec:dataset} for more details), except \\model~70B which was trained on 1T tokens.",
     "where": "Sec. 2.1 The Code Llama models family"
    },
    "configs": [
@@ -171,37 +168,37 @@
      "d_model": {
       "value": "4096",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1"
      },
      "n_layers": {
       "value": "32",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1"
      },
      "n_heads": {
       "value": "32",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1"
      },
      "n_kv_heads": {
       "value": "32",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1"
      },
      "head_dim": {
       "value": "128",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1"
      },
      "d_ff": {
       "value": "11008",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1"
      },
      "vocab_size": {
@@ -222,37 +219,37 @@
      "d_model": {
       "value": "5120",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1"
      },
      "n_layers": {
       "value": "40",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1"
      },
      "n_heads": {
       "value": "40",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1"
      },
      "n_kv_heads": {
       "value": "40",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1"
      },
      "head_dim": {
       "value": "128",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1"
      },
      "d_ff": {
       "value": "13824",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1"
      },
      "vocab_size": {
@@ -273,37 +270,37 @@
      "d_model": {
       "value": "8192",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1"
      },
      "n_layers": {
       "value": "48",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1"
      },
      "n_heads": {
       "value": "64",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1"
      },
      "n_kv_heads": {
       "value": "8",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1"
      },
      "head_dim": {
       "value": "128",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1"
      },
      "d_ff": {
       "value": "22016",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1"
      },
      "vocab_size": {
@@ -324,37 +321,37 @@
      "d_model": {
       "value": "8192",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1"
      },
      "n_layers": {
       "value": "80",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1"
      },
      "n_heads": {
       "value": "64",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1"
      },
      "n_kv_heads": {
       "value": "8",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1"
      },
      "head_dim": {
       "value": "128",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1"
      },
      "d_ff": {
       "value": "28672",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1"
      },
      "vocab_size": {
@@ -364,10 +361,10 @@
       "where": ""
      },
      "context_length": {
-      "value": "16384",
-      "status": "stated",
-      "quote": "For long context fine-tuning (LCFT), we use a learning rate of $2e^{-5}$, a sequence length of 16,384, and reset RoPE frequencies with a base value of $\\theta=10^6$.",
-      "where": "Sec. 2.6 Training details"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
      }
     }
    ],
@@ -376,25 +373,37 @@
     "norm": {
      "value": "rmsnorm",
      "status": "inherited",
-     "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
      "where": "Sec. 2.1"
     },
     "norm_placement": {
      "value": "pre",
      "status": "inherited",
-     "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
      "where": "Sec. 2.1"
     },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
     "norm_eps": {
-     "value": "1e-5",
-     "status": "inherited",
-     "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
-     "where": "Sec. 2.1"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "activation": {
      "value": "swiglu",
      "status": "inherited",
-     "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
      "where": "Sec. 2.1"
     },
     "positional": {
@@ -402,6 +411,18 @@
      "status": "stated",
      "quote": "we confirm the importance of modifying the rotation frequencies of the rotary position embedding used in the \\llamavtwo foundation models \\citep{su2021roformer}.",
      "where": "Sec. 2.4 Long context fine-tuning"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "rope_pairing": {
      "value": "interleaved",
@@ -424,20 +445,20 @@
     "residual": {
      "value": "residual",
      "status": "inherited",
-     "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
      "where": "Sec. 2.1"
     },
     "parallel_block": {
      "value": "false",
      "status": "inherited",
-     "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
      "where": "Sec. 2.1"
     },
     "attention": {
      "value": "exact",
      "status": "stated",
      "quote": "In our work, we do not rely on hand-crafted sparsity patterns such as those proposed for code input by~\\citet{guo2023longcoder}",
-     "where": "Sec. Related work (Long sequences in LLMs)"
+     "where": "Sec. Related work"
     },
     "window_size": {
      "value": "",
@@ -454,26 +475,32 @@
     "qkv_bias": {
      "value": "false",
      "status": "inherited",
-     "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
      "where": "Sec. 2.1"
     },
     "mlp_bias": {
      "value": "false",
      "status": "inherited",
-     "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
      "where": "Sec. 2.1"
+    },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "tied_embeddings": {
      "value": "false",
      "status": "inherited",
-     "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
      "where": "Sec. 2.1"
     },
     "moe": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
-     "where": "Sec. 2.1"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "n_experts": {
      "value": "",
@@ -488,6 +515,36 @@
      "where": ""
     },
     "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -517,10 +574,10 @@
      "attributes": [
       {
        "name": "eps",
-       "value": "1e-5",
-       "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
-       "where": "Sec. 2.1"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -538,7 +595,7 @@
        "name": "bias",
        "value": "false",
        "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
        "where": "Sec. 2.1"
       }
      ],
@@ -557,7 +614,7 @@
        "name": "bias",
        "value": "false",
        "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
        "where": "Sec. 2.1"
       }
      ],
@@ -576,7 +633,7 @@
        "name": "bias",
        "value": "false",
        "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
        "where": "Sec. 2.1"
       }
      ],
@@ -587,17 +644,16 @@
      "op": "rope",
      "role": "rotary embedding on queries",
      "inputs": [
-      "q",
-      "pos"
+      "q"
      ],
      "output": "q_r",
      "attributes": [
       {
-       "name": "rope_heads",
-       "value": "all",
+       "name": "theta",
+       "value": "1000000",
        "status": "stated",
-       "quote": "the query and key vectors $\\mathbf{x}_n$ at position $n$ are subject to a linear transformation $\\mathbf{R}^d_{\\Theta,n} \\mathbf{x}_n$",
-       "where": "Sec. 2.4"
+       "quote": "we increase the base period $\\theta$ from 10,000 to 1,000,000 for fine-tuning.",
+       "where": "Sec. 2.4 Long context fine-tuning"
       },
       {
        "name": "pairing",
@@ -607,11 +663,11 @@
        "where": "Sec. 2.4"
       },
       {
-       "name": "theta",
-       "value": "1000000",
-       "status": "stated",
-       "quote": "we increase the base period $\\theta$ from 10,000 to 1,000,000 for fine-tuning.",
-       "where": "Sec. 2.4"
+       "name": "rope_heads",
+       "value": "all",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -621,30 +677,22 @@
      "op": "rope",
      "role": "rotary embedding on keys",
      "inputs": [
-      "k",
-      "pos"
+      "k"
      ],
      "output": "k_r",
      "attributes": [
       {
-       "name": "rope_heads",
-       "value": "all",
+       "name": "theta",
+       "value": "1000000",
        "status": "stated",
-       "quote": "the query and key vectors $\\mathbf{x}_n$ at position $n$ are subject to a linear transformation $\\mathbf{R}^d_{\\Theta,n} \\mathbf{x}_n$",
-       "where": "Sec. 2.4"
+       "quote": "we increase the base period $\\theta$ from 10,000 to 1,000,000 for fine-tuning.",
+       "where": "Sec. 2.4 Long context fine-tuning"
       },
       {
        "name": "pairing",
        "value": "interleaved",
        "status": "stated",
        "quote": "where $\\mathbf{R}^d_{\\Theta,n}$ is a block diagonal matrix with entries of the form",
-       "where": "Sec. 2.4"
-      },
-      {
-       "name": "theta",
-       "value": "1000000",
-       "status": "stated",
-       "quote": "we increase the base period $\\theta$ from 10,000 to 1,000,000 for fine-tuning.",
        "where": "Sec. 2.4"
       }
      ],
@@ -662,27 +710,6 @@
      "output": "a",
      "attributes": [
       {
-       "name": "heads",
-       "value": "32",
-       "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
-       "where": "Sec. 2.1"
-      },
-      {
-       "name": "kv_heads",
-       "value": "32",
-       "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
-       "where": "Sec. 2.1"
-      },
-      {
-       "name": "head_dim",
-       "value": "128",
-       "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
-       "where": "Sec. 2.1"
-      },
-      {
        "name": "causal",
        "value": "true",
        "status": "stated",
@@ -692,9 +719,9 @@
       {
        "name": "window",
        "value": "0",
-       "status": "stated",
-       "quote": "In our work, we do not rely on hand-crafted sparsity patterns such as those proposed for code input by~\\citet{guo2023longcoder}",
-       "where": "Sec. Related work"
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -712,7 +739,7 @@
        "name": "bias",
        "value": "false",
        "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
        "where": "Sec. 2.1"
       }
      ],
@@ -741,10 +768,10 @@
      "attributes": [
       {
        "name": "eps",
-       "value": "1e-5",
-       "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
-       "where": "Sec. 2.1"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -759,17 +786,10 @@
      "output": "g",
      "attributes": [
       {
-       "name": "out",
-       "value": "11008",
-       "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
-       "where": "Sec. 2.1"
-      },
-      {
        "name": "bias",
        "value": "false",
        "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
        "where": "Sec. 2.1"
       }
      ],
@@ -785,17 +805,10 @@
      "output": "u",
      "attributes": [
       {
-       "name": "out",
-       "value": "11008",
-       "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
-       "where": "Sec. 2.1"
-      },
-      {
        "name": "bias",
        "value": "false",
        "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
        "where": "Sec. 2.1"
       }
      ],
@@ -804,7 +817,7 @@
     {
      "subgraph": "block",
      "op": "silu",
-     "role": "SwiGLU gate activation",
+     "role": "SwiGLU activation",
      "inputs": [
       "g"
      ],
@@ -815,7 +828,7 @@
     {
      "subgraph": "block",
      "op": "mul",
-     "role": "SwiGLU gating",
+     "role": "gating",
      "inputs": [
       "gs",
       "u"
@@ -837,7 +850,7 @@
        "name": "bias",
        "value": "false",
        "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
        "where": "Sec. 2.1"
       }
      ],
@@ -866,10 +879,10 @@
      "attributes": [
       {
        "name": "eps",
-       "value": "1e-5",
-       "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
-       "where": "Sec. 2.1"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -887,7 +900,7 @@
        "name": "bias",
        "value": "false",
        "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
        "where": "Sec. 2.1"
       }
      ],
@@ -897,12 +910,12 @@
    "new_ops": [],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Tokenizer extended with four special infilling (FIM) tokens for 7B/13B/70B models; exact vocab size not stated",
+     "mechanism": "Tokenizer extended with four special infilling tokens (prefix/middle/suffix/end) for the 7B, 13B and 70B infilling models; the embedding and output matrices grow accordingly.",
      "quote": "We extend \\llamavtwo's tokenizer with four special tokens that mark the beginning of the prefix, the middle part or the suffix, and the end of the infilling span.",
      "where": "Sec. 2.3 Infilling"
     }
    ],
-   "notes": "Base Code Llama (with LCFT) is described; block attributes use the 7B config. The paper restates no layer dimensions, norm, activation, bias or tying choices; these are marked inherited from Llama 2 on the strength of the sentence saying all models are initialized from Llama 2 weights, which requires an identical architecture. The inherited values (7B 4096/32/32/32/11008; 13B 5120/40/40/40/13824; 34B 8192/48/64 heads/8 kv/22016; 70B 8192/80/64 heads/8 kv/28672; RMSNorm eps 1e-5; SwiGLU) come from the Llama 2 ancestor and are not in this paper. Vocab size is left not_stated: the paper uses the Llama 2 tokenizer plus 4 FIM tokens but gives no number. RoPE theta 1e6 and the 16384 sequence length are stated for the LCFT stage, which applies to all released base models. Pairing is read as interleaved from the paper's 2x2 block-diagonal rotation formula."
+   "notes": "I describe the base Code Llama model; the paper presents it as a Llama 2 fine-tune. The paper restates no architectural sizes or flavours. Values marked inherited come from Llama 2, under the declaration that the models are initialized with Llama 2 weights. Those values (sizes, RMSNorm, pre-norm, SwiGLU, no biases, untied head) are Llama 2's published architecture and are not printed anywhere in this paper. vocab_size is left not_stated: the tokenizer is Llama 2's plus 4 special tokens for the infilling models, but the base vocabulary size is never given. norm_eps is not stated. The context of 16384 is the LCFT sequence length; the initial code training used 4096. rope_theta is the post-LCFT value of 1e6, raised from Llama 2's 1e4. The RoPE pairing is read from the block-diagonal 2x2 matrix formula, i.e. adjacent pairs."
   },
   "verification": {
    "errors": [],
@@ -910,7 +923,7 @@
    "inherits": {
     "ancestor": "Llama 2",
     "resolved": "llama",
-    "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+    "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset (see \\Cref{sec:dataset} for more details), except \\model~70B which was trained on 1T tokens.",
     "where": "Sec. 2.1 The Code Llama models family",
     "quote_found": true
    },
@@ -918,7 +931,7 @@
     "value": "decoder_only",
     "status": "stated",
     "quote": "\\model and its variants are autoregressive language models using optimized transformer architectures.",
-    "where": "Table: Model card (Model Architecture)",
+    "where": "Table: Model card for \\model",
     "reasons": [],
     "check": "quote_only"
    },
@@ -928,7 +941,7 @@
      "d_model": {
       "value": "4096",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1",
       "reasons": [
        "inherited from llama, whose curated entry has no d_model",
@@ -939,7 +952,7 @@
      "n_layers": {
       "value": "32",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1",
       "reasons": [
        "inherited from llama, whose curated entry has no n_layers",
@@ -950,7 +963,7 @@
      "n_heads": {
       "value": "32",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1",
       "reasons": [
        "inherited from llama, whose curated entry has no n_heads",
@@ -961,7 +974,7 @@
      "n_kv_heads": {
       "value": "32",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1",
       "reasons": [
        "inherited from llama, whose curated entry has no n_kv_heads",
@@ -972,7 +985,7 @@
      "head_dim": {
       "value": "128",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1",
       "reasons": [
        "inherited from llama, whose curated entry has no head_dim",
@@ -983,7 +996,7 @@
      "d_ff": {
       "value": "11008",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1",
       "reasons": [
        "inherited from llama, whose curated entry has no d_ff",
@@ -1014,7 +1027,7 @@
      "d_model": {
       "value": "5120",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1",
       "reasons": [
        "inherited from llama, whose curated entry has no d_model",
@@ -1025,7 +1038,7 @@
      "n_layers": {
       "value": "40",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1",
       "reasons": [
        "inherited from llama, whose curated entry has no n_layers",
@@ -1036,7 +1049,7 @@
      "n_heads": {
       "value": "40",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1",
       "reasons": [
        "inherited from llama, whose curated entry has no n_heads",
@@ -1047,7 +1060,7 @@
      "n_kv_heads": {
       "value": "40",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1",
       "reasons": [
        "inherited from llama, whose curated entry has no n_kv_heads",
@@ -1058,7 +1071,7 @@
      "head_dim": {
       "value": "128",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1",
       "reasons": [
        "inherited from llama, whose curated entry has no head_dim",
@@ -1069,7 +1082,7 @@
      "d_ff": {
       "value": "13824",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1",
       "reasons": [
        "inherited from llama, whose curated entry has no d_ff",
@@ -1100,7 +1113,7 @@
      "d_model": {
       "value": "8192",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1",
       "reasons": [
        "inherited from llama, whose curated entry has no d_model",
@@ -1111,7 +1124,7 @@
      "n_layers": {
       "value": "48",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1",
       "reasons": [
        "inherited from llama, whose curated entry has no n_layers",
@@ -1122,7 +1135,7 @@
      "n_heads": {
       "value": "64",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1",
       "reasons": [
        "inherited from llama, whose curated entry has no n_heads",
@@ -1133,7 +1146,7 @@
      "n_kv_heads": {
       "value": "8",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1",
       "reasons": [
        "inherited from llama, whose curated entry has no n_kv_heads",
@@ -1144,7 +1157,7 @@
      "head_dim": {
       "value": "128",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1",
       "reasons": [
        "inherited from llama, whose curated entry has no head_dim",
@@ -1155,7 +1168,7 @@
      "d_ff": {
       "value": "22016",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1",
       "reasons": [
        "inherited from llama, whose curated entry has no d_ff",
@@ -1186,7 +1199,7 @@
      "d_model": {
       "value": "8192",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1",
       "reasons": [
        "inherited from llama, whose curated entry has no d_model",
@@ -1197,7 +1210,7 @@
      "n_layers": {
       "value": "80",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1",
       "reasons": [
        "inherited from llama, whose curated entry has no n_layers",
@@ -1208,7 +1221,7 @@
      "n_heads": {
       "value": "64",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1",
       "reasons": [
        "inherited from llama, whose curated entry has no n_heads",
@@ -1219,7 +1232,7 @@
      "n_kv_heads": {
       "value": "8",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1",
       "reasons": [
        "inherited from llama, whose curated entry has no n_kv_heads",
@@ -1230,7 +1243,7 @@
      "head_dim": {
       "value": "128",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1",
       "reasons": [
        "inherited from llama, whose curated entry has no head_dim",
@@ -1241,7 +1254,7 @@
      "d_ff": {
       "value": "28672",
       "status": "inherited",
-      "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
       "where": "Sec. 2.1",
       "reasons": [
        "inherited from llama, whose curated entry has no d_ff",
@@ -1258,12 +1271,12 @@
       "check": "not_stated"
      },
      "context_length": {
-      "value": "16384",
-      "status": "stated",
-      "quote": "For long context fine-tuning (LCFT), we use a learning rate of $2e^{-5}$, a sequence length of 16,384, and reset RoPE frequencies with a base value of $\\theta=10^6$.",
-      "where": "Sec. 2.6 Training details",
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
       "reasons": [],
-      "check": "verified"
+      "check": "not_stated"
      },
      "consistency": []
     }
@@ -1273,7 +1286,7 @@
     "norm": {
      "value": "rmsnorm",
      "status": "inherited",
-     "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
      "where": "Sec. 2.1",
      "reasons": [
       "the inheritance quote does not name the ancestor"
@@ -1283,7 +1296,7 @@
     "norm_placement": {
      "value": "pre",
      "status": "inherited",
-     "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
      "where": "Sec. 2.1",
      "reasons": [
       "inherited from llama, whose curated entry has no norm_placement",
@@ -1291,21 +1304,34 @@
      ],
      "check": "unverified"
     },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
     "norm_eps": {
-     "value": "1e-5",
-     "status": "inherited",
-     "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
-     "where": "Sec. 2.1",
-     "reasons": [
-      "inherited from llama, whose curated entry has no norm_eps",
-      "the inheritance quote does not name the ancestor"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "activation": {
      "value": "swiglu",
      "status": "inherited",
-     "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
      "where": "Sec. 2.1",
      "reasons": [
       "the inheritance quote does not name the ancestor"
@@ -1319,6 +1345,22 @@
      "where": "Sec. 2.4 Long context fine-tuning",
      "reasons": [],
      "check": "verified"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "rope_pairing": {
      "value": "interleaved",
@@ -1349,7 +1391,7 @@
     "residual": {
      "value": "residual",
      "status": "inherited",
-     "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
      "where": "Sec. 2.1",
      "reasons": [
       "inherited from llama, whose curated entry has no residual",
@@ -1360,7 +1402,7 @@
     "parallel_block": {
      "value": "false",
      "status": "inherited",
-     "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
      "where": "Sec. 2.1",
      "reasons": [
       "inherited from llama, whose curated entry has no parallel_block",
@@ -1372,7 +1414,7 @@
      "value": "exact",
      "status": "stated",
      "quote": "In our work, we do not rely on hand-crafted sparsity patterns such as those proposed for code input by~\\citet{guo2023longcoder}",
-     "where": "Sec. Related work (Long sequences in LLMs)",
+     "where": "Sec. Related work",
      "reasons": [],
      "check": "quote_only"
     },
@@ -1395,7 +1437,7 @@
     "qkv_bias": {
      "value": "false",
      "status": "inherited",
-     "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
      "where": "Sec. 2.1",
      "reasons": [
       "inherited from llama, whose curated entry has no qkv_bias",
@@ -1406,7 +1448,7 @@
     "mlp_bias": {
      "value": "false",
      "status": "inherited",
-     "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
      "where": "Sec. 2.1",
      "reasons": [
       "inherited from llama, whose curated entry has no mlp_bias",
@@ -1414,10 +1456,18 @@
      ],
      "check": "unverified"
     },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
     "tied_embeddings": {
      "value": "false",
      "status": "inherited",
-     "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
      "where": "Sec. 2.1",
      "reasons": [
       "inherited from llama, whose curated entry has no tied_embeddings",
@@ -1426,15 +1476,12 @@
      "check": "unverified"
     },
     "moe": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
-     "where": "Sec. 2.1",
-     "reasons": [
-      "inherited from llama, whose curated entry has no moe",
-      "the inheritance quote does not name the ancestor"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "n_experts": {
      "value": "",
@@ -1453,6 +1500,46 @@
      "check": "not_stated"
     },
     "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -1488,15 +1575,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "1e-5",
-       "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
-       "where": "Sec. 2.1",
-       "reasons": [
-        "inherited from llama, whose curated entry has no eps",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "eps"
       }
      ],
@@ -1516,7 +1600,7 @@
       {
        "value": "false",
        "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
        "where": "Sec. 2.1",
        "reasons": [
         "inherited from llama, whose curated entry has no bias",
@@ -1542,7 +1626,7 @@
       {
        "value": "false",
        "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
        "where": "Sec. 2.1",
        "reasons": [
         "inherited from llama, whose curated entry has no bias",
@@ -1568,7 +1652,7 @@
       {
        "value": "false",
        "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
        "where": "Sec. 2.1",
        "reasons": [
         "inherited from llama, whose curated entry has no bias",
@@ -1586,20 +1670,19 @@
      "op": "rope",
      "role": "rotary embedding on queries",
      "inputs": [
-      "q",
-      "pos"
+      "q"
      ],
      "output": "q_r",
      "new_op": "",
      "attributes": [
       {
-       "value": "all",
+       "value": "1000000",
        "status": "stated",
-       "quote": "the query and key vectors $\\mathbf{x}_n$ at position $n$ are subject to a linear transformation $\\mathbf{R}^d_{\\Theta,n} \\mathbf{x}_n$",
-       "where": "Sec. 2.4",
+       "quote": "we increase the base period $\\theta$ from 10,000 to 1,000,000 for fine-tuning.",
+       "where": "Sec. 2.4 Long context fine-tuning",
        "reasons": [],
-       "check": "quote_only",
-       "name": "rope_heads"
+       "check": "verified",
+       "name": "theta"
       },
       {
        "value": "interleaved",
@@ -1611,13 +1694,15 @@
        "name": "pairing"
       },
       {
-       "value": "1000000",
-       "status": "stated",
-       "quote": "we increase the base period $\\theta$ from 10,000 to 1,000,000 for fine-tuning.",
-       "where": "Sec. 2.4",
-       "reasons": [],
-       "check": "verified",
-       "name": "theta"
+       "value": "all",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [
+        "not_stated carries a value or quote (ignored)"
+       ],
+       "check": "not_stated",
+       "name": "rope_heads"
       }
      ],
      "errors": []
@@ -1628,20 +1713,19 @@
      "op": "rope",
      "role": "rotary embedding on keys",
      "inputs": [
-      "k",
-      "pos"
+      "k"
      ],
      "output": "k_r",
      "new_op": "",
      "attributes": [
       {
-       "value": "all",
+       "value": "1000000",
        "status": "stated",
-       "quote": "the query and key vectors $\\mathbf{x}_n$ at position $n$ are subject to a linear transformation $\\mathbf{R}^d_{\\Theta,n} \\mathbf{x}_n$",
-       "where": "Sec. 2.4",
+       "quote": "we increase the base period $\\theta$ from 10,000 to 1,000,000 for fine-tuning.",
+       "where": "Sec. 2.4 Long context fine-tuning",
        "reasons": [],
-       "check": "quote_only",
-       "name": "rope_heads"
+       "check": "verified",
+       "name": "theta"
       },
       {
        "value": "interleaved",
@@ -1651,15 +1735,6 @@
        "reasons": [],
        "check": "quote_only",
        "name": "pairing"
-      },
-      {
-       "value": "1000000",
-       "status": "stated",
-       "quote": "we increase the base period $\\theta$ from 10,000 to 1,000,000 for fine-tuning.",
-       "where": "Sec. 2.4",
-       "reasons": [],
-       "check": "verified",
-       "name": "theta"
       }
      ],
      "errors": []
@@ -1678,42 +1753,6 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "32",
-       "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
-       "where": "Sec. 2.1",
-       "reasons": [
-        "inherited from llama, whose curated entry has no heads",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "heads"
-      },
-      {
-       "value": "32",
-       "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
-       "where": "Sec. 2.1",
-       "reasons": [
-        "inherited from llama, whose curated entry has no kv_heads",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "kv_heads"
-      },
-      {
-       "value": "128",
-       "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
-       "where": "Sec. 2.1",
-       "reasons": [
-        "inherited from llama, whose curated entry has no head_dim",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "head_dim"
-      },
-      {
        "value": "true",
        "status": "stated",
        "quote": "\\model and its variants are autoregressive language models using optimized transformer architectures.",
@@ -1724,13 +1763,13 @@
       },
       {
        "value": "0",
-       "status": "stated",
-       "quote": "In our work, we do not rely on hand-crafted sparsity patterns such as those proposed for code input by~\\citet{guo2023longcoder}",
-       "where": "Sec. Related work",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
        "reasons": [
-        "0 does not occur in its quote"
+        "not_stated carries a value or quote (ignored)"
        ],
-       "check": "unverified",
+       "check": "not_stated",
        "name": "window"
       }
      ],
@@ -1750,7 +1789,7 @@
       {
        "value": "false",
        "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
        "where": "Sec. 2.1",
        "reasons": [
         "inherited from llama, whose curated entry has no bias",
@@ -1788,15 +1827,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "1e-5",
-       "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
-       "where": "Sec. 2.1",
-       "reasons": [
-        "inherited from llama, whose curated entry has no eps",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "eps"
       }
      ],
@@ -1814,21 +1850,9 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "11008",
-       "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
-       "where": "Sec. 2.1",
-       "reasons": [
-        "inherited from llama, whose curated entry has no out",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "out"
-      },
-      {
        "value": "false",
        "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
        "where": "Sec. 2.1",
        "reasons": [
         "inherited from llama, whose curated entry has no bias",
@@ -1852,21 +1876,9 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "11008",
-       "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
-       "where": "Sec. 2.1",
-       "reasons": [
-        "inherited from llama, whose curated entry has no out",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "out"
-      },
-      {
        "value": "false",
        "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
        "where": "Sec. 2.1",
        "reasons": [
         "inherited from llama, whose curated entry has no bias",
@@ -1882,7 +1894,7 @@
      "i": 13,
      "subgraph": "block",
      "op": "silu",
-     "role": "SwiGLU gate activation",
+     "role": "SwiGLU activation",
      "inputs": [
       "g"
      ],
@@ -1895,7 +1907,7 @@
      "i": 14,
      "subgraph": "block",
      "op": "mul",
-     "role": "SwiGLU gating",
+     "role": "gating",
      "inputs": [
       "gs",
       "u"
@@ -1919,7 +1931,7 @@
       {
        "value": "false",
        "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
        "where": "Sec. 2.1",
        "reasons": [
         "inherited from llama, whose curated entry has no bias",
@@ -1957,15 +1969,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "1e-5",
-       "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
-       "where": "Sec. 2.1",
-       "reasons": [
-        "inherited from llama, whose curated entry has no eps",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "eps"
       }
      ],
@@ -1985,7 +1994,7 @@
       {
        "value": "false",
        "status": "inherited",
-       "quote": "All \\model models are initialized with \\llamavtwo model weights and trained on 500B tokens from a code-heavy dataset",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
        "where": "Sec. 2.1",
        "reasons": [
         "inherited from llama, whose curated entry has no bias",
@@ -2000,7 +2009,7 @@
    ],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Tokenizer extended with four special infilling (FIM) tokens for 7B/13B/70B models; exact vocab size not stated",
+     "mechanism": "Tokenizer extended with four special infilling tokens (prefix/middle/suffix/end) for the 7B, 13B and 70B infilling models; the embedding and output matrices grow accordingly.",
      "quote": "We extend \\llamavtwo's tokenizer with four special tokens that mark the beginning of the prefix, the middle part or the suffix, and the end of the infilling span.",
      "where": "Sec. 2.3 Infilling",
      "check": "verified"
@@ -2008,10 +2017,10 @@
    ],
    "summary": {
     "counts": {
-     "verified": 8,
-     "quote_only": 7,
-     "unverified": 52,
-     "not_stated": 10
+     "verified": 7,
+     "quote_only": 5,
+     "unverified": 41,
+     "not_stated": 28
     },
     "unverified": [
      {
@@ -2196,13 +2205,6 @@
       ]
      },
      {
-      "field": "flavours.norm_eps",
-      "reasons": [
-       "inherited from llama, whose curated entry has no norm_eps",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
       "field": "flavours.activation",
       "reasons": [
        "the inheritance quote does not name the ancestor"
@@ -2250,20 +2252,6 @@
       ]
      },
      {
-      "field": "flavours.moe",
-      "reasons": [
-       "inherited from llama, whose curated entry has no moe",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[1].eps",
-      "reasons": [
-       "inherited from llama, whose curated entry has no eps",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
       "field": "block_ops[2].bias",
       "reasons": [
        "inherited from llama, whose curated entry has no bias",
@@ -2285,33 +2273,6 @@
       ]
      },
      {
-      "field": "block_ops[7].heads",
-      "reasons": [
-       "inherited from llama, whose curated entry has no heads",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[7].kv_heads",
-      "reasons": [
-       "inherited from llama, whose curated entry has no kv_heads",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[7].head_dim",
-      "reasons": [
-       "inherited from llama, whose curated entry has no head_dim",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[7].window",
-      "reasons": [
-       "0 does not occur in its quote"
-      ]
-     },
-     {
       "field": "block_ops[8].bias",
       "reasons": [
        "inherited from llama, whose curated entry has no bias",
@@ -2319,30 +2280,9 @@
       ]
      },
      {
-      "field": "block_ops[10].eps",
-      "reasons": [
-       "inherited from llama, whose curated entry has no eps",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[11].out",
-      "reasons": [
-       "inherited from llama, whose curated entry has no out",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
       "field": "block_ops[11].bias",
       "reasons": [
        "inherited from llama, whose curated entry has no bias",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[12].out",
-      "reasons": [
-       "inherited from llama, whose curated entry has no out",
        "the inheritance quote does not name the ancestor"
       ]
      },
@@ -2357,13 +2297,6 @@
       "field": "block_ops[15].bias",
       "reasons": [
        "inherited from llama, whose curated entry has no bias",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[17].eps",
-      "reasons": [
-       "inherited from llama, whose curated entry has no eps",
        "the inheritance quote does not name the ancestor"
       ]
      },

@@ -39,17 +39,17 @@
   },
   "norm": {
    "value": "rmsnorm",
-   "evidence": "We normalize the input of each transformer sub-layer, the attention layer and the feedforward layer, with RMSNorm~\\citep{rmsnorm} to stabilize the training. [Sec. Model Architecture (RMSNorm)]",
+   "evidence": "We normalize the input of each transformer sub-layer, the attention layer and the feedforward layer, with RMSNorm~\\citep{rmsnorm} to stabilize the training. [Sec. Model Architecture]",
    "verdict": "used"
   },
   "activation": {
    "value": "geglu",
-   "evidence": "The standard ReLU non-linearity is replaced by the approximated version of the GeGLU activation function. [Sec. Model Architecture (GeGLU Activations)]",
+   "evidence": "The standard ReLU non-linearity is replaced by the approximated version of the GeGLU activation function. [Sec. Model Architecture]",
    "verdict": "used"
   },
   "positional": {
    "value": "rope",
-   "evidence": "Rather than using absolute positional embeddings, we use rotary positional embeddings in each layer [Sec. Model Architecture (RoPE Embeddings)]",
+   "evidence": "Rather than using absolute positional embeddings, we use rotary positional embeddings in each layer [Sec. Model Architecture]",
    "verdict": "used"
   },
   "residual": {
@@ -57,13 +57,16 @@
    "evidence": "The Gemma model architecture is based on the transformer decoder \\citep{DBLP:journals/corr/VaswaniSPUJGKP17}. [Sec. Model Architecture]",
    "verdict": "unverified",
    "reasons": [
-    "the quote does not name residual (looked for /residual|skip/)"
+    "inherited from transformer, whose curated entry has no residual"
    ]
   },
   "attention": {
    "value": "exact",
-   "evidence": "Notably, the 7B model uses multi-head attention while the 2B checkpoints use multi-query attention (with $num\\_kv\\_heads = 1$) [Sec. Model Architecture (Multi-Query Attention)]",
-   "verdict": "used"
+   "evidence": "The Gemma model architecture is based on the transformer decoder \\citep{DBLP:journals/corr/VaswaniSPUJGKP17}. [Sec. Model Architecture]",
+   "verdict": "unverified",
+   "reasons": [
+    "inherited from transformer, whose curated entry has no attention"
+   ]
   }
  },
  "unresolved": [],
@@ -71,12 +74,22 @@
   {
    "field": "residual",
    "reasons": [
-    "the quote does not name residual (looked for /residual|skip/)"
+    "inherited from transformer, whose curated entry has no residual"
+   ]
+  },
+  {
+   "field": "attention",
+   "reasons": [
+    "inherited from transformer, whose curated entry has no attention"
    ]
   }
  ],
  "mentions": {},
- "inherits": null,
+ "inherits": {
+  "ancestor": "transformer",
+  "evidence": "The Gemma model architecture is based on the transformer decoder \\citep{DBLP:journals/corr/VaswaniSPUJGKP17}.",
+  "section": "Sec. Model Architecture"
+ },
  "variants": [
   {
    "d_model": 2048,
@@ -110,14 +123,14 @@
   "sent_sha256": "f81adbb6a2934751e3fd123a956d61e3738508daf1e8a13bf41dcb388cc0c4f3",
   "from": "https://arxiv.org/e-print/2403.08295",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
+  "extractor_sha256": "9d5951b0f11c920aaf075abead17d7d4e619d37402d47690ba452de15620e921",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
+  "prompt_sha256": "e6c6c5052b656885910d1539b8c320ba4ecb9262a6079252b852f1ff637b03ef",
   "n_calls": 1,
-  "cost_usd": 0.250552,
+  "cost_usd": 0.236008,
   "request_ids": [
-   "req_011CgFisQdNibLSEfKgXQzyn"
+   "req_011CgRtvqXs1myKbD1uiwvqW"
   ]
  },
  "llm": {
@@ -127,13 +140,13 @@
    "family": {
     "value": "decoder_only",
     "status": "stated",
-    "quote": "The Gemma model architecture is based on the transformer decoder \\citep{DBLP:journals/corr/VaswaniSPUJGKP17}.",
+    "quote": "The Gemma model architecture is based on the transformer decoder",
     "where": "Sec. Model Architecture"
    },
    "inherits": {
-    "ancestor": "",
-    "quote": "",
-    "where": ""
+    "ancestor": "Transformer decoder (Vaswani et al., 2017)",
+    "quote": "The Gemma model architecture is based on the transformer decoder \\citep{DBLP:journals/corr/VaswaniSPUJGKP17}.",
+    "where": "Sec. Model Architecture"
    },
    "configs": [
     {
@@ -245,13 +258,25 @@
      "value": "rmsnorm",
      "status": "stated",
      "quote": "We normalize the input of each transformer sub-layer, the attention layer and the feedforward layer, with RMSNorm~\\citep{rmsnorm} to stabilize the training.",
-     "where": "Sec. Model Architecture (RMSNorm)"
+     "where": "Sec. Model Architecture"
     },
     "norm_placement": {
      "value": "pre",
      "status": "stated",
      "quote": "We normalize the input of each transformer sub-layer, the attention layer and the feedforward layer, with RMSNorm~\\citep{rmsnorm} to stabilize the training.",
-     "where": "Sec. Model Architecture (RMSNorm)"
+     "where": "Sec. Model Architecture"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "norm_eps": {
      "value": "",
@@ -263,13 +288,25 @@
      "value": "geglu",
      "status": "stated",
      "quote": "The standard ReLU non-linearity is replaced by the approximated version of the GeGLU activation function.",
-     "where": "Sec. Model Architecture (GeGLU Activations)"
+     "where": "Sec. Model Architecture"
     },
     "positional": {
      "value": "rope",
      "status": "stated",
      "quote": "Rather than using absolute positional embeddings, we use rotary positional embeddings in each layer",
-     "where": "Sec. Model Architecture (RoPE Embeddings)"
+     "where": "Sec. Model Architecture"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "rope_pairing": {
      "value": "",
@@ -291,7 +328,7 @@
     },
     "residual": {
      "value": "residual",
-     "status": "stated",
+     "status": "inherited",
      "quote": "The Gemma model architecture is based on the transformer decoder \\citep{DBLP:journals/corr/VaswaniSPUJGKP17}.",
      "where": "Sec. Model Architecture"
     },
@@ -303,9 +340,9 @@
     },
     "attention": {
      "value": "exact",
-     "status": "stated",
-     "quote": "Notably, the 7B model uses multi-head attention while the 2B checkpoints use multi-query attention (with $num\\_kv\\_heads = 1$)",
-     "where": "Sec. Model Architecture (Multi-Query Attention)"
+     "status": "inherited",
+     "quote": "The Gemma model architecture is based on the transformer decoder \\citep{DBLP:journals/corr/VaswaniSPUJGKP17}.",
+     "where": "Sec. Model Architecture"
     },
     "window_size": {
      "value": "",
@@ -331,11 +368,17 @@
      "quote": "",
      "where": ""
     },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
     "tied_embeddings": {
      "value": "true",
      "status": "stated",
-     "quote": "we also share embeddings across our inputs and outputs to reduce model size.",
-     "where": "Sec. Model Architecture (RoPE Embeddings)"
+     "quote": "we also share embeddings across our inputs and outputs to reduce model size",
+     "where": "Sec. Model Architecture"
     },
     "moe": {
      "value": "",
@@ -360,13 +403,43 @@
      "status": "not_stated",
      "quote": "",
      "where": ""
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     }
    },
    "block_ops": [
     {
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding (token_embd), shared with output head",
+     "role": "token embedding",
      "inputs": [
       "tokens"
      ],
@@ -419,10 +492,10 @@
      "attributes": [
       {
        "name": "out",
-       "value": "2048",
-       "status": "stated",
-       "quote": "\\textit{d}\\_{model} & 2048 & 3072",
-       "where": "Table tab:model_params"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       },
       {
        "name": "bias",
@@ -437,7 +510,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "key projection (single KV head, MQA)",
+     "role": "key projection",
      "inputs": [
       "h"
      ],
@@ -445,10 +518,10 @@
      "attributes": [
       {
        "name": "out",
-       "value": "256",
-       "status": "stated",
-       "quote": "Head size & 256 & 256",
-       "where": "Table tab:model_params"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       },
       {
        "name": "bias",
@@ -463,7 +536,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "value projection (single KV head, MQA)",
+     "role": "value projection",
      "inputs": [
       "h"
      ],
@@ -471,10 +544,10 @@
      "attributes": [
       {
        "name": "out",
-       "value": "256",
-       "status": "stated",
-       "quote": "Head size & 256 & 256",
-       "where": "Table tab:model_params"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       },
       {
        "name": "bias",
@@ -500,7 +573,7 @@
        "value": "all",
        "status": "stated",
        "quote": "we use rotary positional embeddings in each layer",
-       "where": "Sec. Model Architecture (RoPE Embeddings)"
+       "where": "Sec. Model Architecture"
       },
       {
        "name": "pairing",
@@ -540,7 +613,7 @@
        "value": "all",
        "status": "stated",
        "quote": "we use rotary positional embeddings in each layer",
-       "where": "Sec. Model Architecture (RoPE Embeddings)"
+       "where": "Sec. Model Architecture"
       },
       {
        "name": "pairing",
@@ -569,7 +642,7 @@
     {
      "subgraph": "block",
      "op": "attention",
-     "role": "causal multi-query self-attention",
+     "role": "multi-query causal self-attention (2B)",
      "inputs": [
       "q_r",
       "k_r",
@@ -588,8 +661,8 @@
        "name": "kv_heads",
        "value": "1",
        "status": "stated",
-       "quote": "Num KV heads & 1 & 16",
-       "where": "Table tab:model_params"
+       "quote": "the 2B checkpoints use multi-query attention (with $num\\_kv\\_heads = 1$)",
+       "where": "Sec. Model Architecture"
       },
       {
        "name": "head_dim",
@@ -608,7 +681,7 @@
       {
        "name": "causal",
        "value": "true",
-       "status": "stated",
+       "status": "inherited",
        "quote": "The Gemma model architecture is based on the transformer decoder \\citep{DBLP:journals/corr/VaswaniSPUJGKP17}.",
        "where": "Sec. Model Architecture"
       },
@@ -697,10 +770,10 @@
      "attributes": [
       {
        "name": "out",
-       "value": "32768",
-       "status": "stated",
-       "quote": "Feedforward hidden dims & 32768 & 49152",
-       "where": "Table tab:model_params"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       },
       {
        "name": "bias",
@@ -723,10 +796,10 @@
      "attributes": [
       {
        "name": "out",
-       "value": "32768",
-       "status": "stated",
-       "quote": "Feedforward hidden dims & 32768 & 49152",
-       "where": "Table tab:model_params"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       },
       {
        "name": "bias",
@@ -741,7 +814,7 @@
     {
      "subgraph": "block",
      "op": "gelu",
-     "role": "approximated GELU on gate (GeGLU)",
+     "role": "approximate GELU on gate (GeGLU)",
      "inputs": [
       "g"
      ],
@@ -752,7 +825,7 @@
        "value": "tanh",
        "status": "stated",
        "quote": "The standard ReLU non-linearity is replaced by the approximated version of the GeGLU activation function.",
-       "where": "Sec. Model Architecture (GeGLU Activations)"
+       "where": "Sec. Model Architecture"
       }
      ],
      "new_op": ""
@@ -809,29 +882,10 @@
     },
     {
      "subgraph": "head",
-     "op": "rmsnorm",
-     "role": "final norm (not described in text; implied by the non-embedding parameter count)",
+     "op": "linear",
+     "role": "tied output head",
      "inputs": [
       "x"
-     ],
-     "output": "hf",
-     "attributes": [
-      {
-       "name": "eps",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "head",
-     "op": "linear",
-     "role": "output head tied to token embedding",
-     "inputs": [
-      "hf"
      ],
      "output": "logits",
      "attributes": [
@@ -843,18 +897,18 @@
        "where": "Table tab:model_params"
       },
       {
-       "name": "tied_to",
-       "value": "token_embd",
-       "status": "stated",
-       "quote": "we also share embeddings across our inputs and outputs to reduce model size.",
-       "where": "Sec. Model Architecture (RoPE Embeddings)"
-      },
-      {
        "name": "bias",
        "value": "",
        "status": "not_stated",
        "quote": "",
        "where": ""
+      },
+      {
+       "name": "tied_to",
+       "value": "token_embd",
+       "status": "stated",
+       "quote": "we also share embeddings across our inputs and outputs to reduce model size",
+       "where": "Sec. Model Architecture"
       }
      ],
      "new_op": ""
@@ -862,16 +916,22 @@
    ],
    "new_ops": [],
    "mechanisms_outside_ir": [],
-   "notes": "The block is described for the 2B config: MQA with 1 KV head. The 7B uses MHA with 16 KV heads, and its q/o width is 4096. Conflict to resolve before building: Table 1 gives 'Feedforward hidden dims' as 32768 (2B) and 49152 (7B). The paper's own non-embedding parameter counts (Table 2: 1,981,884,416 and 7,751,248,896) match exactly only if each GeGLU branch (gate, up) is 16384 / 24576 wide, plus two RMSNorms per layer and a final norm. So the table's figure appears to be gate+up combined; per-branch width is likely half the stated value. I report the table value as stated; do not build per-branch width 32768 without resolving this. Not stated: norm eps, RoPE theta/pairing/fraction, biases, attention scale, embedding scaling, parallel block. MoE is not mentioned (dense, per parameter counts) and is left not_stated. Both sizes are presented as headline models; 2B is primary as the smallest."
+   "notes": "Block ops describe the 2B config (MQA, kv_heads=1); the 7B uses full multi-head attention (16 heads, 16 KV heads). The table's 'Feedforward hidden dims' (32768 / 49152) is reported as stated in configs, but the paper does not say whether this is the width of each of the gate/up projections or their combined width. The per-projection FFN width is therefore left not_stated in block_ops. Not stated in the paper and left not_stated: norm eps, RoPE theta and pairing, all biases, attention scale, a final norm before the head (none is described, so the head has no norm node), and any embedding scaling. Residual connections and causal exact attention are taken as inherited from the transformer decoder the paper cites as its base."
   },
   "verification": {
    "errors": [],
    "warnings": [],
-   "inherits": null,
+   "inherits": {
+    "ancestor": "Transformer decoder (Vaswani et al., 2017)",
+    "resolved": "transformer",
+    "quote": "The Gemma model architecture is based on the transformer decoder \\citep{DBLP:journals/corr/VaswaniSPUJGKP17}.",
+    "where": "Sec. Model Architecture",
+    "quote_found": true
+   },
    "family": {
     "value": "decoder_only",
     "status": "stated",
-    "quote": "The Gemma model architecture is based on the transformer decoder \\citep{DBLP:journals/corr/VaswaniSPUJGKP17}.",
+    "quote": "The Gemma model architecture is based on the transformer decoder",
     "where": "Sec. Model Architecture",
     "reasons": [],
     "check": "quote_only"
@@ -1054,7 +1114,7 @@
      "value": "rmsnorm",
      "status": "stated",
      "quote": "We normalize the input of each transformer sub-layer, the attention layer and the feedforward layer, with RMSNorm~\\citep{rmsnorm} to stabilize the training.",
-     "where": "Sec. Model Architecture (RMSNorm)",
+     "where": "Sec. Model Architecture",
      "reasons": [],
      "check": "verified"
     },
@@ -1062,9 +1122,25 @@
      "value": "pre",
      "status": "stated",
      "quote": "We normalize the input of each transformer sub-layer, the attention layer and the feedforward layer, with RMSNorm~\\citep{rmsnorm} to stabilize the training.",
-     "where": "Sec. Model Architecture (RMSNorm)",
+     "where": "Sec. Model Architecture",
      "reasons": [],
      "check": "quote_only"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "norm_eps": {
      "value": "",
@@ -1078,7 +1154,7 @@
      "value": "geglu",
      "status": "stated",
      "quote": "The standard ReLU non-linearity is replaced by the approximated version of the GeGLU activation function.",
-     "where": "Sec. Model Architecture (GeGLU Activations)",
+     "where": "Sec. Model Architecture",
      "reasons": [],
      "check": "verified"
     },
@@ -1086,9 +1162,25 @@
      "value": "rope",
      "status": "stated",
      "quote": "Rather than using absolute positional embeddings, we use rotary positional embeddings in each layer",
-     "where": "Sec. Model Architecture (RoPE Embeddings)",
+     "where": "Sec. Model Architecture",
      "reasons": [],
      "check": "verified"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "rope_pairing": {
      "value": "",
@@ -1116,11 +1208,11 @@
     },
     "residual": {
      "value": "residual",
-     "status": "stated",
+     "status": "inherited",
      "quote": "The Gemma model architecture is based on the transformer decoder \\citep{DBLP:journals/corr/VaswaniSPUJGKP17}.",
      "where": "Sec. Model Architecture",
      "reasons": [
-      "the quote does not name residual (looked for /residual|skip/)"
+      "inherited from transformer, whose curated entry has no residual"
      ],
      "check": "unverified"
     },
@@ -1134,11 +1226,13 @@
     },
     "attention": {
      "value": "exact",
-     "status": "stated",
-     "quote": "Notably, the 7B model uses multi-head attention while the 2B checkpoints use multi-query attention (with $num\\_kv\\_heads = 1$)",
-     "where": "Sec. Model Architecture (Multi-Query Attention)",
-     "reasons": [],
-     "check": "quote_only"
+     "status": "inherited",
+     "quote": "The Gemma model architecture is based on the transformer decoder \\citep{DBLP:journals/corr/VaswaniSPUJGKP17}.",
+     "where": "Sec. Model Architecture",
+     "reasons": [
+      "inherited from transformer, whose curated entry has no attention"
+     ],
+     "check": "unverified"
     },
     "window_size": {
      "value": "",
@@ -1172,11 +1266,19 @@
      "reasons": [],
      "check": "not_stated"
     },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
     "tied_embeddings": {
      "value": "true",
      "status": "stated",
-     "quote": "we also share embeddings across our inputs and outputs to reduce model size.",
-     "where": "Sec. Model Architecture (RoPE Embeddings)",
+     "quote": "we also share embeddings across our inputs and outputs to reduce model size",
+     "where": "Sec. Model Architecture",
      "reasons": [],
      "check": "quote_only"
     },
@@ -1211,6 +1313,46 @@
      "where": "",
      "reasons": [],
      "check": "not_stated"
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     }
    },
    "new_ops": [],
@@ -1219,7 +1361,7 @@
      "i": 0,
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding (token_embd), shared with output head",
+     "role": "token embedding",
      "inputs": [
       "tokens"
      ],
@@ -1282,12 +1424,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "2048",
-       "status": "stated",
-       "quote": "\\textit{d}\\_{model} & 2048 & 3072",
-       "where": "Table tab:model_params",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
        "reasons": [],
-       "check": "verified",
+       "check": "not_stated",
        "name": "out"
       },
       {
@@ -1306,7 +1448,7 @@
      "i": 3,
      "subgraph": "block",
      "op": "linear",
-     "role": "key projection (single KV head, MQA)",
+     "role": "key projection",
      "inputs": [
       "h"
      ],
@@ -1314,12 +1456,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "256",
-       "status": "stated",
-       "quote": "Head size & 256 & 256",
-       "where": "Table tab:model_params",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
        "reasons": [],
-       "check": "verified",
+       "check": "not_stated",
        "name": "out"
       },
       {
@@ -1338,7 +1480,7 @@
      "i": 4,
      "subgraph": "block",
      "op": "linear",
-     "role": "value projection (single KV head, MQA)",
+     "role": "value projection",
      "inputs": [
       "h"
      ],
@@ -1346,12 +1488,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "256",
-       "status": "stated",
-       "quote": "Head size & 256 & 256",
-       "where": "Table tab:model_params",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
        "reasons": [],
-       "check": "verified",
+       "check": "not_stated",
        "name": "out"
       },
       {
@@ -1381,7 +1523,7 @@
        "value": "all",
        "status": "stated",
        "quote": "we use rotary positional embeddings in each layer",
-       "where": "Sec. Model Architecture (RoPE Embeddings)",
+       "where": "Sec. Model Architecture",
        "reasons": [],
        "check": "quote_only",
        "name": "rope_heads"
@@ -1431,7 +1573,7 @@
        "value": "all",
        "status": "stated",
        "quote": "we use rotary positional embeddings in each layer",
-       "where": "Sec. Model Architecture (RoPE Embeddings)",
+       "where": "Sec. Model Architecture",
        "reasons": [],
        "check": "quote_only",
        "name": "rope_heads"
@@ -1470,7 +1612,7 @@
      "i": 7,
      "subgraph": "block",
      "op": "attention",
-     "role": "causal multi-query self-attention",
+     "role": "multi-query causal self-attention (2B)",
      "inputs": [
       "q_r",
       "k_r",
@@ -1491,8 +1633,8 @@
       {
        "value": "1",
        "status": "stated",
-       "quote": "Num KV heads & 1 & 16",
-       "where": "Table tab:model_params",
+       "quote": "the 2B checkpoints use multi-query attention (with $num\\_kv\\_heads = 1$)",
+       "where": "Sec. Model Architecture",
        "reasons": [],
        "check": "verified",
        "name": "kv_heads"
@@ -1517,11 +1659,13 @@
       },
       {
        "value": "true",
-       "status": "stated",
+       "status": "inherited",
        "quote": "The Gemma model architecture is based on the transformer decoder \\citep{DBLP:journals/corr/VaswaniSPUJGKP17}.",
        "where": "Sec. Model Architecture",
-       "reasons": [],
-       "check": "quote_only",
+       "reasons": [
+        "inherited from transformer, whose curated entry has no causal"
+       ],
+       "check": "unverified",
        "name": "causal"
       },
       {
@@ -1626,12 +1770,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "32768",
-       "status": "stated",
-       "quote": "Feedforward hidden dims & 32768 & 49152",
-       "where": "Table tab:model_params",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
        "reasons": [],
-       "check": "verified",
+       "check": "not_stated",
        "name": "out"
       },
       {
@@ -1658,12 +1802,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "32768",
-       "status": "stated",
-       "quote": "Feedforward hidden dims & 32768 & 49152",
-       "where": "Table tab:model_params",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
        "reasons": [],
-       "check": "verified",
+       "check": "not_stated",
        "name": "out"
       },
       {
@@ -1682,7 +1826,7 @@
      "i": 13,
      "subgraph": "block",
      "op": "gelu",
-     "role": "approximated GELU on gate (GeGLU)",
+     "role": "approximate GELU on gate (GeGLU)",
      "inputs": [
       "g"
      ],
@@ -1693,7 +1837,7 @@
        "value": "tanh",
        "status": "stated",
        "quote": "The standard ReLU non-linearity is replaced by the approximated version of the GeGLU activation function.",
-       "where": "Sec. Model Architecture (GeGLU Activations)",
+       "where": "Sec. Model Architecture",
        "reasons": [],
        "check": "quote_only",
        "name": "approx"
@@ -1764,33 +1908,10 @@
     {
      "i": 17,
      "subgraph": "head",
-     "op": "rmsnorm",
-     "role": "final norm (not described in text; implied by the non-embedding parameter count)",
+     "op": "linear",
+     "role": "tied output head",
      "inputs": [
       "x"
-     ],
-     "output": "hf",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "eps"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 18,
-     "subgraph": "head",
-     "op": "linear",
-     "role": "output head tied to token embedding",
-     "inputs": [
-      "hf"
      ],
      "output": "logits",
      "new_op": "",
@@ -1805,15 +1926,6 @@
        "name": "out"
       },
       {
-       "value": "token_embd",
-       "status": "stated",
-       "quote": "we also share embeddings across our inputs and outputs to reduce model size.",
-       "where": "Sec. Model Architecture (RoPE Embeddings)",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "tied_to"
-      },
-      {
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -1821,6 +1933,15 @@
        "reasons": [],
        "check": "not_stated",
        "name": "bias"
+      },
+      {
+       "value": "token_embd",
+       "status": "stated",
+       "quote": "we also share embeddings across our inputs and outputs to reduce model size",
+       "where": "Sec. Model Architecture",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "tied_to"
       }
      ],
      "errors": []
@@ -1829,23 +1950,35 @@
    "mechanisms_outside_ir": [],
    "summary": {
     "counts": {
-     "verified": 32,
-     "quote_only": 9,
-     "unverified": 1,
-     "not_stated": 33
+     "verified": 27,
+     "quote_only": 7,
+     "unverified": 3,
+     "not_stated": 47
     },
     "unverified": [
      {
       "field": "flavours.residual",
       "reasons": [
-       "the quote does not name residual (looked for /residual|skip/)"
+       "inherited from transformer, whose curated entry has no residual"
+      ]
+     },
+     {
+      "field": "flavours.attention",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no attention"
+      ]
+     },
+     {
+      "field": "block_ops[7].causal",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no causal"
       ]
      }
     ],
     "new_op_errors": [],
     "node_errors": [],
     "n_new_ops": 0,
-    "n_block_ops": 19
+    "n_block_ops": 18
    }
   }
  }

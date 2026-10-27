@@ -4,32 +4,32 @@
  "fields": {
   "d_model": {
    "value": 4096,
-   "evidence": "Dimension & 4096 & 4096 & 4096 & 4544 & 4096 [Table tab:llm_arch_adamw]",
+   "evidence": "Dimension & 4096 & 4096 & 4096 & 4544 & 4096 [Table tab:llm_arch_adamw (Appendix A)]",
    "verdict": "used"
   },
   "n_layers": {
    "value": 32,
-   "evidence": "7B & 32 & 4086 & 32 & 2.46T [Table tab:model_size_and_optimizer]",
+   "evidence": "Num layers & 32 & 32 & 32 & 32 & 32 [Table tab:llm_arch_adamw (Appendix A)]",
    "verdict": "used"
   },
   "n_heads": {
    "value": 32,
-   "evidence": "Num heads & 32 & 32 & 32 & 71 & 16 [Table tab:llm_arch_adamw]",
+   "evidence": "Num heads & 32 & 32 & 32 & 71 & 16 [Table tab:llm_arch_adamw (Appendix A)]",
    "verdict": "used"
   },
   "d_ff": {
    "value": 11008,
-   "evidence": "following LLaMA the activation hidden size is approximately $\\frac{8}{3}d$, but increased to the closest multiple of 128 (e.g. 11,008 for our 7B model) to improve throughput. [Sec. 2.1 OLMo Model and Architecture]",
+   "evidence": "but increased to the closest multiple of 128 (e.g. 11,008 for our 7B model) to improve throughput. [Sec. 2.1 OLMo Model and Architecture]",
    "verdict": "used"
   },
   "vocab_size": {
    "value": 50304,
-   "evidence": "However, to maximize training throughput we increase the size of the corresponding embedding matrix in our model to 50,304 [Sec. 2.1 OLMo Model and Architecture]",
+   "evidence": "we increase the size of the corresponding embedding matrix in our model to 50,304 [Sec. 2.1 OLMo Model and Architecture]",
    "verdict": "used"
   },
   "context_length": {
    "value": 2048,
-   "evidence": "Sequence length & 2048 & 4096 & 2048 & 2048 & 2048 [Table tab:llm_arch_adamw]",
+   "evidence": "Sequence length & 2048 & 4096 & 2048 & 2048 & 2048 [Table tab:llm_arch_adamw (Appendix A)]",
    "verdict": "used"
   },
   "norm": {
@@ -44,12 +44,12 @@
   },
   "positional": {
    "value": "rope",
-   "evidence": "we replace absolute positional embeddings with rotary positional embeddings (RoPE; \\citealp{Su2021RoFormerET}) [Sec. 2.1 OLMo Model and Architecture]",
+   "evidence": "we replace absolute positional embeddings with rotary positional embeddings (RoPE; \\citealp{Su2021RoFormerET}). [Sec. 2.1 OLMo Model and Architecture]",
    "verdict": "used"
   },
   "residual": {
    "value": "residual",
-   "evidence": "We adopt a decoder-only transformer architecture based on \\cite{vaswani2017attention}, [Sec. 2.1 OLMo Model and Architecture]",
+   "evidence": "We adopt a decoder-only transformer architecture based on \\cite{vaswani2017attention} [Sec. 2.1 OLMo Model and Architecture]",
    "verdict": "unverified",
    "reasons": [
     "inherited from transformer, whose curated entry has no residual"
@@ -57,7 +57,7 @@
   },
   "attention": {
    "value": "exact",
-   "evidence": "Attention variant & full & GQA & full & MQA & MQA [Table tab:llm_arch_adamw]",
+   "evidence": "Attention variant & full & GQA & full & MQA & MQA [Table tab:llm_arch_adamw (Appendix A)]",
    "verdict": "used"
   }
  },
@@ -75,7 +75,7 @@
  "mentions": {},
  "inherits": {
   "ancestor": "transformer",
-  "evidence": "We adopt a decoder-only transformer architecture based on \\cite{vaswani2017attention},",
+  "evidence": "We adopt a decoder-only transformer architecture based on \\cite{vaswani2017attention}",
   "section": "Sec. 2.1 OLMo Model and Architecture"
  },
  "variants": [
@@ -108,14 +108,14 @@
   "sent_sha256": "cf6bdc3a0add408dc19317f9c752fa0cd882debc08afc925aec47808e5c5680d",
   "from": "https://arxiv.org/e-print/2402.00838",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
+  "extractor_sha256": "9d5951b0f11c920aaf075abead17d7d4e619d37402d47690ba452de15620e921",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
+  "prompt_sha256": "e6c6c5052b656885910d1539b8c320ba4ecb9262a6079252b852f1ff637b03ef",
   "n_calls": 1,
-  "cost_usd": 0.381988,
+  "cost_usd": 0.400444,
   "request_ids": [
-   "req_011CgFie8QSX8Z6RefKKecrN"
+   "req_011CgRtgkXbZ7cKrb6PskTCT"
   ]
  },
  "llm": {
@@ -125,12 +125,12 @@
    "family": {
     "value": "decoder_only",
     "status": "stated",
-    "quote": "We adopt a decoder-only transformer architecture based on \\cite{vaswani2017attention},",
+    "quote": "We adopt a decoder-only transformer architecture based on \\cite{vaswani2017attention}",
     "where": "Sec. 2.1 OLMo Model and Architecture"
    },
    "inherits": {
     "ancestor": "Transformer (Vaswani et al., 2017)",
-    "quote": "We adopt a decoder-only transformer architecture based on \\cite{vaswani2017attention},",
+    "quote": "We adopt a decoder-only transformer architecture based on \\cite{vaswani2017attention}",
     "where": "Sec. 2.1 OLMo Model and Architecture"
    },
    "configs": [
@@ -139,20 +139,20 @@
      "d_model": {
       "value": "2048",
       "status": "stated",
-      "quote": "1B & 16 & 2048 & 16 & 2T",
-      "where": "Table tab:model_size_and_optimizer"
+      "quote": "1B & 16 & 2048 & 16 & 2T & \\texttt{4.0E-4} & 2000 steps & yes & $\\sim$4M",
+      "where": "Table 1 (tab:model_size_and_optimizer)"
      },
      "n_layers": {
       "value": "16",
       "status": "stated",
-      "quote": "1B & 16 & 2048 & 16 & 2T",
-      "where": "Table tab:model_size_and_optimizer"
+      "quote": "1B & 16 & 2048 & 16 & 2T & \\texttt{4.0E-4} & 2000 steps & yes & $\\sim$4M",
+      "where": "Table 1 (tab:model_size_and_optimizer)"
      },
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "1B & 16 & 2048 & 16 & 2T",
-      "where": "Table tab:model_size_and_optimizer"
+      "quote": "1B & 16 & 2048 & 16 & 2T & \\texttt{4.0E-4} & 2000 steps & yes & $\\sim$4M",
+      "where": "Table 1 (tab:model_size_and_optimizer)"
      },
      "n_kv_heads": {
       "value": "",
@@ -175,7 +175,7 @@
      "vocab_size": {
       "value": "50304",
       "status": "stated",
-      "quote": "However, to maximize training throughput we increase the size of the corresponding embedding matrix in our model to 50,304",
+      "quote": "we increase the size of the corresponding embedding matrix in our model to 50,304",
       "where": "Sec. 2.1 OLMo Model and Architecture"
      },
      "context_length": {
@@ -191,19 +191,19 @@
       "value": "4096",
       "status": "stated",
       "quote": "Dimension & 4096 & 4096 & 4096 & 4544 & 4096",
-      "where": "Table tab:llm_arch_adamw"
+      "where": "Table tab:llm_arch_adamw (Appendix A)"
      },
      "n_layers": {
       "value": "32",
       "status": "stated",
-      "quote": "7B & 32 & 4086 & 32 & 2.46T",
-      "where": "Table tab:model_size_and_optimizer"
+      "quote": "Num layers & 32 & 32 & 32 & 32 & 32",
+      "where": "Table tab:llm_arch_adamw (Appendix A)"
      },
      "n_heads": {
       "value": "32",
       "status": "stated",
       "quote": "Num heads & 32 & 32 & 32 & 71 & 16",
-      "where": "Table tab:llm_arch_adamw"
+      "where": "Table tab:llm_arch_adamw (Appendix A)"
      },
      "n_kv_heads": {
       "value": "",
@@ -220,20 +220,20 @@
      "d_ff": {
       "value": "11008",
       "status": "stated",
-      "quote": "following LLaMA the activation hidden size is approximately $\\frac{8}{3}d$, but increased to the closest multiple of 128 (e.g. 11,008 for our 7B model) to improve throughput.",
+      "quote": "but increased to the closest multiple of 128 (e.g. 11,008 for our 7B model) to improve throughput.",
       "where": "Sec. 2.1 OLMo Model and Architecture"
      },
      "vocab_size": {
       "value": "50304",
       "status": "stated",
-      "quote": "However, to maximize training throughput we increase the size of the corresponding embedding matrix in our model to 50,304",
+      "quote": "we increase the size of the corresponding embedding matrix in our model to 50,304",
       "where": "Sec. 2.1 OLMo Model and Architecture"
      },
      "context_length": {
       "value": "2048",
       "status": "stated",
       "quote": "Sequence length & 2048 & 4096 & 2048 & 2048 & 2048",
-      "where": "Table tab:llm_arch_adamw"
+      "where": "Table tab:llm_arch_adamw (Appendix A)"
      }
     }
    ],
@@ -246,6 +246,18 @@
      "where": "Sec. 2.1 OLMo Model and Architecture"
     },
     "norm_placement": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_ffn": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -266,8 +278,20 @@
     "positional": {
      "value": "rope",
      "status": "stated",
-     "quote": "we replace absolute positional embeddings with rotary positional embeddings (RoPE; \\citealp{Su2021RoFormerET})",
+     "quote": "we replace absolute positional embeddings with rotary positional embeddings (RoPE; \\citealp{Su2021RoFormerET}).",
      "where": "Sec. 2.1 OLMo Model and Architecture"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "rope_pairing": {
      "value": "",
@@ -290,20 +314,20 @@
     "residual": {
      "value": "residual",
      "status": "inherited",
-     "quote": "We adopt a decoder-only transformer architecture based on \\cite{vaswani2017attention},",
+     "quote": "We adopt a decoder-only transformer architecture based on \\cite{vaswani2017attention}",
      "where": "Sec. 2.1 OLMo Model and Architecture"
     },
     "parallel_block": {
      "value": "false",
      "status": "stated",
      "quote": "Block type & sequential & sequential & sequential & parallel & parallel",
-     "where": "Table tab:llm_arch_adamw"
+     "where": "Table tab:llm_arch_adamw (Appendix A)"
     },
     "attention": {
      "value": "exact",
      "status": "stated",
      "quote": "Attention variant & full & GQA & full & MQA & MQA",
-     "where": "Table tab:llm_arch_adamw"
+     "where": "Table tab:llm_arch_adamw (Appendix A)"
     },
     "window_size": {
      "value": "",
@@ -329,11 +353,17 @@
      "quote": "we exclude all bias terms from our architecture in order to improve training stability.",
      "where": "Sec. 2.1 OLMo Model and Architecture"
     },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
     "tied_embeddings": {
      "value": "false",
      "status": "stated",
      "quote": "Weight tying & no & no & no & no & yes",
-     "where": "Table tab:llm_arch_adamw"
+     "where": "Table tab:llm_arch_adamw (Appendix A)"
     },
     "moe": {
      "value": "",
@@ -358,13 +388,43 @@
      "status": "not_stated",
      "quote": "",
      "where": ""
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     }
    },
    "block_ops": [
     {
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding",
+     "role": "token embedding (no absolute positional embedding)",
      "inputs": [
       "tokens"
      ],
@@ -374,7 +434,7 @@
        "name": "vocab",
        "value": "50304",
        "status": "stated",
-       "quote": "However, to maximize training throughput we increase the size of the corresponding embedding matrix in our model to 50,304",
+       "quote": "we increase the size of the corresponding embedding matrix in our model to 50,304",
        "where": "Sec. 2.1 OLMo Model and Architecture"
       },
       {
@@ -382,7 +442,7 @@
        "value": "4096",
        "status": "stated",
        "quote": "Dimension & 4096 & 4096 & 4096 & 4544 & 4096",
-       "where": "Table tab:llm_arch_adamw"
+       "where": "Table tab:llm_arch_adamw (Appendix A)"
       }
      ],
      "new_op": ""
@@ -390,7 +450,7 @@
     {
      "subgraph": "block",
      "op": "expr",
-     "role": "attention input norm (non-parametric layer norm)",
+     "role": "non-parametric layer norm before attention (placement not stated)",
      "inputs": [
       "x"
      ],
@@ -408,18 +468,18 @@
      "output": "q",
      "attributes": [
       {
-       "name": "out",
-       "value": "4096",
-       "status": "stated",
-       "quote": "Dimension & 4096 & 4096 & 4096 & 4544 & 4096",
-       "where": "Table tab:llm_arch_adamw"
-      },
-      {
        "name": "bias",
        "value": "false",
        "status": "stated",
        "quote": "we exclude all bias terms from our architecture in order to improve training stability.",
        "where": "Sec. 2.1 OLMo Model and Architecture"
+      },
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -434,18 +494,18 @@
      "output": "k",
      "attributes": [
       {
-       "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
-      {
        "name": "bias",
        "value": "false",
        "status": "stated",
        "quote": "we exclude all bias terms from our architecture in order to improve training stability.",
        "where": "Sec. 2.1 OLMo Model and Architecture"
+      },
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -460,18 +520,18 @@
      "output": "v",
      "attributes": [
       {
-       "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
-      {
        "name": "bias",
        "value": "false",
        "status": "stated",
        "quote": "we exclude all bias terms from our architecture in order to improve training stability.",
        "where": "Sec. 2.1 OLMo Model and Architecture"
+      },
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -479,19 +539,18 @@
     {
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary embedding on q",
+     "role": "rotary embedding on queries",
      "inputs": [
-      "q",
-      "pos"
+      "q"
      ],
      "output": "q_r",
      "attributes": [
       {
        "name": "rope_heads",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "all",
+       "status": "stated",
+       "quote": "we replace absolute positional embeddings with rotary positional embeddings (RoPE; \\citealp{Su2021RoFormerET}).",
+       "where": "Sec. 2.1 OLMo Model and Architecture"
       },
       {
        "name": "pairing",
@@ -520,19 +579,18 @@
     {
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary embedding on k",
+     "role": "rotary embedding on keys",
      "inputs": [
-      "k",
-      "pos"
+      "k"
      ],
      "output": "k_r",
      "attributes": [
       {
        "name": "rope_heads",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "all",
+       "status": "stated",
+       "quote": "we replace absolute positional embeddings with rotary positional embeddings (RoPE; \\citealp{Su2021RoFormerET}).",
+       "where": "Sec. 2.1 OLMo Model and Architecture"
       },
       {
        "name": "pairing",
@@ -561,20 +619,20 @@
     {
      "subgraph": "block",
      "op": "attention",
-     "role": "causal self-attention",
+     "role": "full causal multi-head self-attention",
      "inputs": [
       "q_r",
       "k_r",
       "v"
      ],
-     "output": "att",
+     "output": "a",
      "attributes": [
       {
        "name": "heads",
        "value": "32",
        "status": "stated",
        "quote": "Num heads & 32 & 32 & 32 & 71 & 16",
-       "where": "Table tab:llm_arch_adamw"
+       "where": "Table tab:llm_arch_adamw (Appendix A)"
       },
       {
        "name": "kv_heads",
@@ -601,7 +659,7 @@
        "name": "causal",
        "value": "true",
        "status": "stated",
-       "quote": "We adopt a decoder-only transformer architecture based on \\cite{vaswani2017attention},",
+       "quote": "We adopt a decoder-only transformer architecture based on \\cite{vaswani2017attention}",
        "where": "Sec. 2.1 OLMo Model and Architecture"
       },
       {
@@ -609,7 +667,7 @@
        "value": "0",
        "status": "stated",
        "quote": "Attention variant & full & GQA & full & MQA & MQA",
-       "where": "Table tab:llm_arch_adamw"
+       "where": "Table tab:llm_arch_adamw (Appendix A)"
       },
       {
        "name": "sinks",
@@ -626,23 +684,23 @@
      "op": "linear",
      "role": "attention output projection",
      "inputs": [
-      "att"
+      "a"
      ],
      "output": "o",
      "attributes": [
-      {
-       "name": "out",
-       "value": "4096",
-       "status": "stated",
-       "quote": "Dimension & 4096 & 4096 & 4096 & 4544 & 4096",
-       "where": "Table tab:llm_arch_adamw"
-      },
       {
        "name": "bias",
        "value": "false",
        "status": "stated",
        "quote": "we exclude all bias terms from our architecture in order to improve training stability.",
        "where": "Sec. 2.1 OLMo Model and Architecture"
+      },
+      {
+       "name": "out",
+       "value": "4096",
+       "status": "stated",
+       "quote": "Dimension & 4096 & 4096 & 4096 & 4544 & 4096",
+       "where": "Table tab:llm_arch_adamw (Appendix A)"
       }
      ],
      "new_op": ""
@@ -650,7 +708,7 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "attention residual add",
+     "role": "attention residual",
      "inputs": [
       "x",
       "o"
@@ -662,7 +720,7 @@
     {
      "subgraph": "block",
      "op": "expr",
-     "role": "FFN input norm (non-parametric layer norm)",
+     "role": "non-parametric layer norm before FFN (placement not stated)",
      "inputs": [
       "x1"
      ],
@@ -673,7 +731,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN gate projection",
+     "role": "SwiGLU gate projection",
      "inputs": [
       "h2"
      ],
@@ -683,7 +741,7 @@
        "name": "out",
        "value": "11008",
        "status": "stated",
-       "quote": "following LLaMA the activation hidden size is approximately $\\frac{8}{3}d$, but increased to the closest multiple of 128 (e.g. 11,008 for our 7B model) to improve throughput.",
+       "quote": "but increased to the closest multiple of 128 (e.g. 11,008 for our 7B model) to improve throughput.",
        "where": "Sec. 2.1 OLMo Model and Architecture"
       },
       {
@@ -699,7 +757,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN up projection",
+     "role": "SwiGLU up projection",
      "inputs": [
       "h2"
      ],
@@ -709,7 +767,7 @@
        "name": "out",
        "value": "11008",
        "status": "stated",
-       "quote": "following LLaMA the activation hidden size is approximately $\\frac{8}{3}d$, but increased to the closest multiple of 128 (e.g. 11,008 for our 7B model) to improve throughput.",
+       "quote": "but increased to the closest multiple of 128 (e.g. 11,008 for our 7B model) to improve throughput.",
        "where": "Sec. 2.1 OLMo Model and Architecture"
       },
       {
@@ -729,7 +787,7 @@
      "inputs": [
       "g"
      ],
-     "output": "g_act",
+     "output": "gs",
      "attributes": [],
      "new_op": ""
     },
@@ -738,7 +796,7 @@
      "op": "mul",
      "role": "SwiGLU gating",
      "inputs": [
-      "g_act",
+      "gs",
       "u"
      ],
      "output": "m",
@@ -759,7 +817,7 @@
        "value": "4096",
        "status": "stated",
        "quote": "Dimension & 4096 & 4096 & 4096 & 4544 & 4096",
-       "where": "Table tab:llm_arch_adamw"
+       "where": "Table tab:llm_arch_adamw (Appendix A)"
       },
       {
        "name": "bias",
@@ -774,7 +832,7 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "FFN residual add",
+     "role": "FFN residual",
      "inputs": [
       "x1",
       "f"
@@ -786,7 +844,7 @@
     {
      "subgraph": "head",
      "op": "expr",
-     "role": "final norm (non-parametric layer norm; presence not stated)",
+     "role": "final non-parametric layer norm (not explicitly stated)",
      "inputs": [
       "x"
      ],
@@ -797,7 +855,7 @@
     {
      "subgraph": "head",
      "op": "linear",
-     "role": "untied LM head",
+     "role": "untied output projection to vocabulary",
      "inputs": [
       "hf"
      ],
@@ -807,7 +865,7 @@
        "name": "out",
        "value": "50304",
        "status": "stated",
-       "quote": "However, to maximize training throughput we increase the size of the corresponding embedding matrix in our model to 50,304",
+       "quote": "we increase the size of the corresponding embedding matrix in our model to 50,304",
        "where": "Sec. 2.1 OLMo Model and Architecture"
       },
       {
@@ -819,10 +877,10 @@
       },
       {
        "name": "tied_to",
-       "value": "",
+       "value": "none",
        "status": "stated",
        "quote": "Weight tying & no & no & no & no & yes",
-       "where": "Table tab:llm_arch_adamw"
+       "where": "Table tab:llm_arch_adamw (Appendix A)"
       }
      ],
      "new_op": ""
@@ -836,21 +894,35 @@
      "inputs": [
       {
        "name": "x",
-       "meaning": "the row to normalise"
+       "meaning": "the row (token hidden state) being normalised",
+       "role": "input",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       }
       },
       {
        "name": "a",
-       "meaning": "the epsilon constant (its value is not stated in the paper)"
+       "meaning": "the layer norm epsilon constant (value not stated)",
+       "role": "other",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       }
       }
      ],
-     "replaces": "layer norm (parametric layer norm without learned gain and bias)",
-     "reason": "",
+     "replaces": "layer norm (without learned gain and bias)",
+     "reason": "Layer norm with no affine transformation; the IR layernorm op carries learned weight and bias.",
      "quote": "We use the non-parametric formulation of layer norm \\citep{Ba2016LayerNorm} in which there is no affine transformation within the norm, i.e., no ``adaptive gain\" (or bias).",
      "where": "Sec. 2.1 OLMo Model and Architecture"
     }
    ],
    "mechanisms_outside_ir": [],
-   "notes": "This describes OLMo-7B, the headline model. The 1B config differs: it ties weights (\"1B ... yes\" in Table 1), and its d_ff is not stated.\n\nConflicts and choices:\n- d_model for 7B is 4086 in Table 1 but 4096 in the appendix Table tab:llm_arch_adamw. I used 4096; 4086 is likely a typo.\n- Vocabulary: the tokenizer has 50,280 entries, but the embedding matrix is padded to 50,304. 50304 is used for vocab_size.\n- The 1.0E-5 epsilon in the paper is the AdamW epsilon, not the norm eps, so norm_eps is left not_stated.\n\nValues left not_stated:\n- n_kv_heads and head_dim. Attention is \"full\" (not GQA/MQA), which implies kv_heads = 32, but no number is stated.\n- Norm placement (pre vs post). The block_ops order (pre-norm, plus a final norm in the head) is an assumption for buildability; the paper does not state placement or a final norm.\n- RoPE pairing, theta and rotated fraction.\n- MoE: not mentioned; the model is evidently dense.\n\nResidual is marked inherited from the vanilla Transformer via the \"based on\" sentence."
+   "notes": "Described the headline OLMo-7B (primary config 7B, which the paper singles out in its architecture comparison table); 1B also listed. Table 1 gives 7B hidden dimension as 4086, a typo conflicting with the appendix table's 4096; used 4096. Weight tying differs: 1B uses tied embeddings ('yes' in Table 1), 7B does not; flavours reflect 7B. Norm placement, norm eps, RoPE pairing/theta, kv heads (attention is 'full', i.e. not GQA/MQA, but no number given), head_dim, and the 1B d_ff are not stated. Pre-norm ordering and final norm in block_ops are a structural placeholder, not stated in the paper. The tokenizer vocabulary is 50,280; the embedding matrix is padded to 50,304. The paper mentions QK norm only in unfinished draft notes, so qk_norm is left not_stated. Residual is inherited from the Vaswani transformer base."
   },
   "verification": {
    "errors": [],
@@ -858,14 +930,14 @@
    "inherits": {
     "ancestor": "Transformer (Vaswani et al., 2017)",
     "resolved": "transformer",
-    "quote": "We adopt a decoder-only transformer architecture based on \\cite{vaswani2017attention},",
+    "quote": "We adopt a decoder-only transformer architecture based on \\cite{vaswani2017attention}",
     "where": "Sec. 2.1 OLMo Model and Architecture",
     "quote_found": true
    },
    "family": {
     "value": "decoder_only",
     "status": "stated",
-    "quote": "We adopt a decoder-only transformer architecture based on \\cite{vaswani2017attention},",
+    "quote": "We adopt a decoder-only transformer architecture based on \\cite{vaswani2017attention}",
     "where": "Sec. 2.1 OLMo Model and Architecture",
     "reasons": [],
     "check": "quote_only"
@@ -876,24 +948,24 @@
      "d_model": {
       "value": "2048",
       "status": "stated",
-      "quote": "1B & 16 & 2048 & 16 & 2T",
-      "where": "Table tab:model_size_and_optimizer",
+      "quote": "1B & 16 & 2048 & 16 & 2T & \\texttt{4.0E-4} & 2000 steps & yes & $\\sim$4M",
+      "where": "Table 1 (tab:model_size_and_optimizer)",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "16",
       "status": "stated",
-      "quote": "1B & 16 & 2048 & 16 & 2T",
-      "where": "Table tab:model_size_and_optimizer",
+      "quote": "1B & 16 & 2048 & 16 & 2T & \\texttt{4.0E-4} & 2000 steps & yes & $\\sim$4M",
+      "where": "Table 1 (tab:model_size_and_optimizer)",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "1B & 16 & 2048 & 16 & 2T",
-      "where": "Table tab:model_size_and_optimizer",
+      "quote": "1B & 16 & 2048 & 16 & 2T & \\texttt{4.0E-4} & 2000 steps & yes & $\\sim$4M",
+      "where": "Table 1 (tab:model_size_and_optimizer)",
       "reasons": [],
       "check": "verified"
      },
@@ -924,7 +996,7 @@
      "vocab_size": {
       "value": "50304",
       "status": "stated",
-      "quote": "However, to maximize training throughput we increase the size of the corresponding embedding matrix in our model to 50,304",
+      "quote": "we increase the size of the corresponding embedding matrix in our model to 50,304",
       "where": "Sec. 2.1 OLMo Model and Architecture",
       "reasons": [],
       "check": "verified"
@@ -950,15 +1022,15 @@
       "value": "4096",
       "status": "stated",
       "quote": "Dimension & 4096 & 4096 & 4096 & 4544 & 4096",
-      "where": "Table tab:llm_arch_adamw",
+      "where": "Table tab:llm_arch_adamw (Appendix A)",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "32",
       "status": "stated",
-      "quote": "7B & 32 & 4086 & 32 & 2.46T",
-      "where": "Table tab:model_size_and_optimizer",
+      "quote": "Num layers & 32 & 32 & 32 & 32 & 32",
+      "where": "Table tab:llm_arch_adamw (Appendix A)",
       "reasons": [],
       "check": "verified"
      },
@@ -966,7 +1038,7 @@
       "value": "32",
       "status": "stated",
       "quote": "Num heads & 32 & 32 & 32 & 71 & 16",
-      "where": "Table tab:llm_arch_adamw",
+      "where": "Table tab:llm_arch_adamw (Appendix A)",
       "reasons": [],
       "check": "verified"
      },
@@ -989,7 +1061,7 @@
      "d_ff": {
       "value": "11008",
       "status": "stated",
-      "quote": "following LLaMA the activation hidden size is approximately $\\frac{8}{3}d$, but increased to the closest multiple of 128 (e.g. 11,008 for our 7B model) to improve throughput.",
+      "quote": "but increased to the closest multiple of 128 (e.g. 11,008 for our 7B model) to improve throughput.",
       "where": "Sec. 2.1 OLMo Model and Architecture",
       "reasons": [],
       "check": "verified"
@@ -997,7 +1069,7 @@
      "vocab_size": {
       "value": "50304",
       "status": "stated",
-      "quote": "However, to maximize training throughput we increase the size of the corresponding embedding matrix in our model to 50,304",
+      "quote": "we increase the size of the corresponding embedding matrix in our model to 50,304",
       "where": "Sec. 2.1 OLMo Model and Architecture",
       "reasons": [],
       "check": "verified"
@@ -1006,7 +1078,7 @@
       "value": "2048",
       "status": "stated",
       "quote": "Sequence length & 2048 & 4096 & 2048 & 2048 & 2048",
-      "where": "Table tab:llm_arch_adamw",
+      "where": "Table tab:llm_arch_adamw (Appendix A)",
       "reasons": [],
       "check": "verified"
      },
@@ -1036,6 +1108,22 @@
      "reasons": [],
      "check": "not_stated"
     },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
     "norm_eps": {
      "value": "",
      "status": "not_stated",
@@ -1055,10 +1143,26 @@
     "positional": {
      "value": "rope",
      "status": "stated",
-     "quote": "we replace absolute positional embeddings with rotary positional embeddings (RoPE; \\citealp{Su2021RoFormerET})",
+     "quote": "we replace absolute positional embeddings with rotary positional embeddings (RoPE; \\citealp{Su2021RoFormerET}).",
      "where": "Sec. 2.1 OLMo Model and Architecture",
      "reasons": [],
      "check": "verified"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "rope_pairing": {
      "value": "",
@@ -1087,7 +1191,7 @@
     "residual": {
      "value": "residual",
      "status": "inherited",
-     "quote": "We adopt a decoder-only transformer architecture based on \\cite{vaswani2017attention},",
+     "quote": "We adopt a decoder-only transformer architecture based on \\cite{vaswani2017attention}",
      "where": "Sec. 2.1 OLMo Model and Architecture",
      "reasons": [
       "inherited from transformer, whose curated entry has no residual"
@@ -1098,7 +1202,7 @@
      "value": "false",
      "status": "stated",
      "quote": "Block type & sequential & sequential & sequential & parallel & parallel",
-     "where": "Table tab:llm_arch_adamw",
+     "where": "Table tab:llm_arch_adamw (Appendix A)",
      "reasons": [],
      "check": "quote_only"
     },
@@ -1106,7 +1210,7 @@
      "value": "exact",
      "status": "stated",
      "quote": "Attention variant & full & GQA & full & MQA & MQA",
-     "where": "Table tab:llm_arch_adamw",
+     "where": "Table tab:llm_arch_adamw (Appendix A)",
      "reasons": [],
      "check": "quote_only"
     },
@@ -1142,11 +1246,19 @@
      "reasons": [],
      "check": "quote_only"
     },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
     "tied_embeddings": {
      "value": "false",
      "status": "stated",
      "quote": "Weight tying & no & no & no & no & yes",
-     "where": "Table tab:llm_arch_adamw",
+     "where": "Table tab:llm_arch_adamw (Appendix A)",
      "reasons": [],
      "check": "quote_only"
     },
@@ -1181,24 +1293,80 @@
      "where": "",
      "reasons": [],
      "check": "not_stated"
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     }
    },
    "new_ops": [
     {
      "name": "nonparametric_layernorm",
      "kind": "expr",
-     "replaces": "layer norm (parametric layer norm without learned gain and bias)",
-     "reason": "",
+     "replaces": "layer norm (without learned gain and bias)",
+     "reason": "Layer norm with no affine transformation; the IR layernorm op carries learned weight and bias.",
      "quote": "We use the non-parametric formulation of layer norm \\citep{Ba2016LayerNorm} in which there is no affine transformation within the norm, i.e., no ``adaptive gain\" (or bias).",
      "where": "Sec. 2.1 OLMo Model and Architecture",
      "inputs": [
       {
        "name": "x",
-       "meaning": "the row to normalise"
+       "meaning": "the row (token hidden state) being normalised",
+       "role": "input",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       },
+       "init_check": "not_stated"
       },
       {
        "name": "a",
-       "meaning": "the epsilon constant (its value is not stated in the paper)"
+       "meaning": "the layer norm epsilon constant (value not stated)",
+       "role": "other",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       },
+       "init_check": "not_stated"
       }
      ],
      "errors": [],
@@ -1243,7 +1411,7 @@
      "i": 0,
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding",
+     "role": "token embedding (no absolute positional embedding)",
      "inputs": [
       "tokens"
      ],
@@ -1253,7 +1421,7 @@
       {
        "value": "50304",
        "status": "stated",
-       "quote": "However, to maximize training throughput we increase the size of the corresponding embedding matrix in our model to 50,304",
+       "quote": "we increase the size of the corresponding embedding matrix in our model to 50,304",
        "where": "Sec. 2.1 OLMo Model and Architecture",
        "reasons": [],
        "check": "verified",
@@ -1263,7 +1431,7 @@
        "value": "4096",
        "status": "stated",
        "quote": "Dimension & 4096 & 4096 & 4096 & 4544 & 4096",
-       "where": "Table tab:llm_arch_adamw",
+       "where": "Table tab:llm_arch_adamw (Appendix A)",
        "reasons": [],
        "check": "verified",
        "name": "d"
@@ -1275,7 +1443,7 @@
      "i": 1,
      "subgraph": "block",
      "op": "expr",
-     "role": "attention input norm (non-parametric layer norm)",
+     "role": "non-parametric layer norm before attention (placement not stated)",
      "inputs": [
       "x"
      ],
@@ -1296,15 +1464,6 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "4096",
-       "status": "stated",
-       "quote": "Dimension & 4096 & 4096 & 4096 & 4544 & 4096",
-       "where": "Table tab:llm_arch_adamw",
-       "reasons": [],
-       "check": "verified",
-       "name": "out"
-      },
-      {
        "value": "false",
        "status": "stated",
        "quote": "we exclude all bias terms from our architecture in order to improve training stability.",
@@ -1312,6 +1471,15 @@
        "reasons": [],
        "check": "quote_only",
        "name": "bias"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
       }
      ],
      "errors": []
@@ -1328,15 +1496,6 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "out"
-      },
-      {
        "value": "false",
        "status": "stated",
        "quote": "we exclude all bias terms from our architecture in order to improve training stability.",
@@ -1344,6 +1503,15 @@
        "reasons": [],
        "check": "quote_only",
        "name": "bias"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
       }
      ],
      "errors": []
@@ -1360,15 +1528,6 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "out"
-      },
-      {
        "value": "false",
        "status": "stated",
        "quote": "we exclude all bias terms from our architecture in order to improve training stability.",
@@ -1376,6 +1535,15 @@
        "reasons": [],
        "check": "quote_only",
        "name": "bias"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
       }
      ],
      "errors": []
@@ -1384,21 +1552,20 @@
      "i": 5,
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary embedding on q",
+     "role": "rotary embedding on queries",
      "inputs": [
-      "q",
-      "pos"
+      "q"
      ],
      "output": "q_r",
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
+       "value": "all",
+       "status": "stated",
+       "quote": "we replace absolute positional embeddings with rotary positional embeddings (RoPE; \\citealp{Su2021RoFormerET}).",
+       "where": "Sec. 2.1 OLMo Model and Architecture",
        "reasons": [],
-       "check": "not_stated",
+       "check": "quote_only",
        "name": "rope_heads"
       },
       {
@@ -1435,21 +1602,20 @@
      "i": 6,
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary embedding on k",
+     "role": "rotary embedding on keys",
      "inputs": [
-      "k",
-      "pos"
+      "k"
      ],
      "output": "k_r",
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
+       "value": "all",
+       "status": "stated",
+       "quote": "we replace absolute positional embeddings with rotary positional embeddings (RoPE; \\citealp{Su2021RoFormerET}).",
+       "where": "Sec. 2.1 OLMo Model and Architecture",
        "reasons": [],
-       "check": "not_stated",
+       "check": "quote_only",
        "name": "rope_heads"
       },
       {
@@ -1486,20 +1652,20 @@
      "i": 7,
      "subgraph": "block",
      "op": "attention",
-     "role": "causal self-attention",
+     "role": "full causal multi-head self-attention",
      "inputs": [
       "q_r",
       "k_r",
       "v"
      ],
-     "output": "att",
+     "output": "a",
      "new_op": "",
      "attributes": [
       {
        "value": "32",
        "status": "stated",
        "quote": "Num heads & 32 & 32 & 32 & 71 & 16",
-       "where": "Table tab:llm_arch_adamw",
+       "where": "Table tab:llm_arch_adamw (Appendix A)",
        "reasons": [],
        "check": "verified",
        "name": "heads"
@@ -1534,7 +1700,7 @@
       {
        "value": "true",
        "status": "stated",
-       "quote": "We adopt a decoder-only transformer architecture based on \\cite{vaswani2017attention},",
+       "quote": "We adopt a decoder-only transformer architecture based on \\cite{vaswani2017attention}",
        "where": "Sec. 2.1 OLMo Model and Architecture",
        "reasons": [],
        "check": "quote_only",
@@ -1544,7 +1710,7 @@
        "value": "0",
        "status": "stated",
        "quote": "Attention variant & full & GQA & full & MQA & MQA",
-       "where": "Table tab:llm_arch_adamw",
+       "where": "Table tab:llm_arch_adamw (Appendix A)",
        "reasons": [
         "0 does not occur in its quote"
        ],
@@ -1569,20 +1735,11 @@
      "op": "linear",
      "role": "attention output projection",
      "inputs": [
-      "att"
+      "a"
      ],
      "output": "o",
      "new_op": "",
      "attributes": [
-      {
-       "value": "4096",
-       "status": "stated",
-       "quote": "Dimension & 4096 & 4096 & 4096 & 4544 & 4096",
-       "where": "Table tab:llm_arch_adamw",
-       "reasons": [],
-       "check": "verified",
-       "name": "out"
-      },
       {
        "value": "false",
        "status": "stated",
@@ -1591,6 +1748,15 @@
        "reasons": [],
        "check": "quote_only",
        "name": "bias"
+      },
+      {
+       "value": "4096",
+       "status": "stated",
+       "quote": "Dimension & 4096 & 4096 & 4096 & 4544 & 4096",
+       "where": "Table tab:llm_arch_adamw (Appendix A)",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
       }
      ],
      "errors": []
@@ -1599,7 +1765,7 @@
      "i": 9,
      "subgraph": "block",
      "op": "add",
-     "role": "attention residual add",
+     "role": "attention residual",
      "inputs": [
       "x",
       "o"
@@ -1613,7 +1779,7 @@
      "i": 10,
      "subgraph": "block",
      "op": "expr",
-     "role": "FFN input norm (non-parametric layer norm)",
+     "role": "non-parametric layer norm before FFN (placement not stated)",
      "inputs": [
       "x1"
      ],
@@ -1626,7 +1792,7 @@
      "i": 11,
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN gate projection",
+     "role": "SwiGLU gate projection",
      "inputs": [
       "h2"
      ],
@@ -1636,7 +1802,7 @@
       {
        "value": "11008",
        "status": "stated",
-       "quote": "following LLaMA the activation hidden size is approximately $\\frac{8}{3}d$, but increased to the closest multiple of 128 (e.g. 11,008 for our 7B model) to improve throughput.",
+       "quote": "but increased to the closest multiple of 128 (e.g. 11,008 for our 7B model) to improve throughput.",
        "where": "Sec. 2.1 OLMo Model and Architecture",
        "reasons": [],
        "check": "verified",
@@ -1658,7 +1824,7 @@
      "i": 12,
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN up projection",
+     "role": "SwiGLU up projection",
      "inputs": [
       "h2"
      ],
@@ -1668,7 +1834,7 @@
       {
        "value": "11008",
        "status": "stated",
-       "quote": "following LLaMA the activation hidden size is approximately $\\frac{8}{3}d$, but increased to the closest multiple of 128 (e.g. 11,008 for our 7B model) to improve throughput.",
+       "quote": "but increased to the closest multiple of 128 (e.g. 11,008 for our 7B model) to improve throughput.",
        "where": "Sec. 2.1 OLMo Model and Architecture",
        "reasons": [],
        "check": "verified",
@@ -1694,7 +1860,7 @@
      "inputs": [
       "g"
      ],
-     "output": "g_act",
+     "output": "gs",
      "new_op": "",
      "attributes": [],
      "errors": []
@@ -1705,7 +1871,7 @@
      "op": "mul",
      "role": "SwiGLU gating",
      "inputs": [
-      "g_act",
+      "gs",
       "u"
      ],
      "output": "m",
@@ -1728,7 +1894,7 @@
        "value": "4096",
        "status": "stated",
        "quote": "Dimension & 4096 & 4096 & 4096 & 4544 & 4096",
-       "where": "Table tab:llm_arch_adamw",
+       "where": "Table tab:llm_arch_adamw (Appendix A)",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -1749,7 +1915,7 @@
      "i": 16,
      "subgraph": "block",
      "op": "add",
-     "role": "FFN residual add",
+     "role": "FFN residual",
      "inputs": [
       "x1",
       "f"
@@ -1763,7 +1929,7 @@
      "i": 17,
      "subgraph": "head",
      "op": "expr",
-     "role": "final norm (non-parametric layer norm; presence not stated)",
+     "role": "final non-parametric layer norm (not explicitly stated)",
      "inputs": [
       "x"
      ],
@@ -1776,7 +1942,7 @@
      "i": 18,
      "subgraph": "head",
      "op": "linear",
-     "role": "untied LM head",
+     "role": "untied output projection to vocabulary",
      "inputs": [
       "hf"
      ],
@@ -1786,7 +1952,7 @@
       {
        "value": "50304",
        "status": "stated",
-       "quote": "However, to maximize training throughput we increase the size of the corresponding embedding matrix in our model to 50,304",
+       "quote": "we increase the size of the corresponding embedding matrix in our model to 50,304",
        "where": "Sec. 2.1 OLMo Model and Architecture",
        "reasons": [],
        "check": "verified",
@@ -1802,14 +1968,12 @@
        "name": "bias"
       },
       {
-       "value": "",
+       "value": "none",
        "status": "stated",
        "quote": "Weight tying & no & no & no & no & yes",
-       "where": "Table tab:llm_arch_adamw",
-       "reasons": [
-        "status stated with an empty value"
-       ],
-       "check": "unverified",
+       "where": "Table tab:llm_arch_adamw (Appendix A)",
+       "reasons": [],
+       "check": "quote_only",
        "name": "tied_to"
       }
      ],
@@ -1819,10 +1983,10 @@
    "mechanisms_outside_ir": [],
    "summary": {
     "counts": {
-     "verified": 23,
-     "quote_only": 15,
-     "unverified": 3,
-     "not_stated": 30
+     "verified": 22,
+     "quote_only": 18,
+     "unverified": 2,
+     "not_stated": 39
     },
     "unverified": [
      {
@@ -1835,12 +1999,6 @@
       "field": "block_ops[7].window",
       "reasons": [
        "0 does not occur in its quote"
-      ]
-     },
-     {
-      "field": "block_ops[18].tied_to",
-      "reasons": [
-       "status stated with an empty value"
       ]
      }
     ],

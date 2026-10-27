@@ -2,13 +2,28 @@
  "arxiv_id": "2109.08668",
  "title": "Primer: Searching for Efficient Transformers for Language Modeling",
  "fields": {
+  "d_model": {
+   "value": 768,
+   "evidence": "each decoder is 110M parameters ($d_{model}=768$, $d_{ff}=3072$, $L=12$) [Sec. Primer Transferability to Other Codebases, Datasets, and Model Types]",
+   "verdict": "used"
+  },
+  "n_layers": {
+   "value": 12,
+   "evidence": "each decoder is 110M parameters ($d_{model}=768$, $d_{ff}=3072$, $L=12$) [Sec. Primer Transferability to Other Codebases, Datasets, and Model Types]",
+   "verdict": "used"
+  },
+  "d_ff": {
+   "value": 3072,
+   "evidence": "each decoder is 110M parameters ($d_{model}=768$, $d_{ff}=3072$, $L=12$) [Sec. Primer Transferability to Other Codebases, Datasets, and Model Types]",
+   "verdict": "used"
+  },
   "context_length": {
-   "value": 64,
-   "evidence": "LM1B language modeling with sequence length 64, $\\sim$35M model parameters [Sec. Search Task Comparison]",
+   "value": 512,
+   "evidence": "the sequence lengths are a longer 512 [Sec. Primer Transferability to Other Codebases, Datasets, and Model Types]",
    "verdict": "used"
   },
   "norm": {
-   "value": "expr:((((x-rowmean(x))/sqrt(abs(rowmean((x*(x-rowmean(x)))))))+a)*b)",
+   "value": "expr:((((x-rowmean(x))/sqrt(abs(rowmean(((x-rowmean(x))*x)))))*g)+b)",
    "evidence": "\\modelname uses a modified version of layer normalization~\\cite{Ba2016LayerN} that uses $x(x - \\mu)$ instead of $(x-\\mu)^2$, but we find this is not always effective. [Sec. Primer, Other Modifications]",
    "verdict": "used"
   },
@@ -19,35 +34,39 @@
   },
   "positional": {
    "value": "relative",
-   "evidence": "T2T uses positional embeddings and subword tokenization, while T5 and Lingvo use relative attention~\\cite{Shaw2018SelfAttentionWR} and SentencePieces~\\cite{Kudo2018SentencePieceAS}. [Appendix Full Training Details]",
+   "evidence": "T2T uses positional embeddings and subword tokenization, while T5 and Lingvo use relative attention~\\cite{Shaw2018SelfAttentionWR} and SentencePieces~\\cite{Kudo2018SentencePieceAS}. [Full Training Details]",
    "verdict": "used"
   },
   "residual": {
    "value": "residual",
-   "evidence": "Residual connection subprograms. This change is essentially a functional no-op. [Figure fig:subprogram8_diff]",
-   "verdict": "used"
+   "evidence": "(35) ADD In0: 0 In1: 34 Dim: 768 C: -1.12 [Fig. fig:primer-program]",
+   "verdict": "unverified",
+   "reasons": [
+    "the quote does not name residual (looked for /residual|skip/)"
+   ]
   },
   "attention": {
    "value": "exact",
-   "evidence": "adding a depthwise convolution layer after each Q, K, and V projection in self-attention [Abstract]",
+   "evidence": "each program defines the stackable decoder block of an \\emph{auto-regressive language model} [Sec. Search Space and Search Method]",
    "verdict": "used"
   }
  },
  "unresolved": [
-  "d_model",
-  "n_layers",
   "n_heads",
   "n_kv_heads",
-  "d_ff",
   "vocab_size"
  ],
- "unverified": [],
+ "unverified": [
+  {
+   "field": "residual",
+   "reasons": [
+    "the quote does not name residual (looked for /residual|skip/)"
+   ]
+  }
+ ],
  "mentions": {},
  "inherits": null,
  "variants": [
-  {
-   "context_length": 64
-  },
   {
    "d_model": 768,
    "n_layers": 12,
@@ -61,6 +80,9 @@
    "context_length": 512
   },
   {
+   "d_model": 2048,
+   "n_layers": 24,
+   "d_ff": 12288,
    "context_length": 1024
   }
  ],
@@ -72,22 +94,22 @@
    "evidence": "The most effective modification is the improvement from a ReLU activation to a squared ReLU activation in the Transformer's feed forward block."
   },
   {
-   "mechanism": "new op primer_norm = ((((x-rowmean(x))/sqrt(abs(rowmean((x*(x-rowmean(x)))))))+a)*b) (expr)",
+   "mechanism": "new op primer_layernorm = ((((x-rowmean(x))/sqrt(abs(rowmean(((x-rowmean(x))*x)))))*g)+b) (expr)",
    "where": "llm extraction, verified quote, Sec. Primer, Other Modifications",
    "blocking": true,
    "evidence": "\\modelname uses a modified version of layer normalization~\\cite{Ba2016LayerN} that uses $x(x - \\mu)$ instead of $(x-\\mu)^2$, but we find this is not always effective."
   },
   {
-   "mechanism": "new op causal_depthwise_conv3 (needs a new primitive: Requires a causal depthwise 1D convolution over the time axis with kernel width 3: per channel learned weights [3, width)",
-   "where": "llm extraction, verified quote, Sec. Primer, MDHA",
-   "blocking": true,
-   "evidence": "Another effective modification is adding 3x1 depthwise convolutions after each of the multi-head projections for query $Q$, key $K$ and value $V$ in self-attention."
-  },
-  {
-   "mechanism": "T5/Lingvo relative attention position scheme (used for the headline T5 and one-shot runs); details not given",
-   "where": "llm extraction, verified quote, Appendix Full Training Details",
+   "mechanism": "Relative position attention (Shaw et al.) from the T5/Lingvo codebases used for the main results; details (buckets, distance) not given",
+   "where": "llm extraction, verified quote, Full Training Details",
    "blocking": true,
    "evidence": "T2T uses positional embeddings and subword tokenization, while T5 and Lingvo use relative attention~\\cite{Shaw2018SelfAttentionWR} and SentencePieces~\\cite{Kudo2018SentencePieceAS}."
+  },
+  {
+   "mechanism": "Shared Q and K depthwise representation (Q = K W) is part of the discovered Primer but was removed for the 1.9B one-shot model; not included in block_ops",
+   "where": "llm extraction, verified quote, Sec. Primer, Other Modifications",
+   "blocking": true,
+   "evidence": "\\modelname shares some weight matrices for $Q$ and $K$. $K$ is created using the previously described MDHA projection and $Q=KW$ for learnable weight matrix $W \\in \\mathbb{R}^{d \\times d}$."
   }
  ],
  "source": {
@@ -95,14 +117,14 @@
   "sent_sha256": "5152466fa08637c000c3beb76eb9351ab91c5295cff7ce37252a5c2e6e4997a9",
   "from": "https://arxiv.org/e-print/2109.08668",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
+  "extractor_sha256": "9d5951b0f11c920aaf075abead17d7d4e619d37402d47690ba452de15620e921",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
+  "prompt_sha256": "e6c6c5052b656885910d1539b8c320ba4ecb9262a6079252b852f1ff637b03ef",
   "n_calls": 1,
-  "cost_usd": 0.42636,
+  "cost_usd": 0.0,
   "request_ids": [
-   "req_011CgFgxEVLRBPpqkGASZHRk"
+   "req_011CgPL2GfVmD6vA12x1gqQ3"
   ]
  },
  "llm": {
@@ -112,8 +134,8 @@
    "family": {
     "value": "decoder_only",
     "status": "stated",
-    "quote": "Second, we focus primarily on decoder-only models, while encoder-based sequence models are still widely used",
-    "where": "Conclusion, Limitations"
+    "quote": "We focus on decoder-only auto-regressive language modeling (LM), because of its  generality and success",
+    "where": "Introduction"
    },
    "inherits": {
     "ancestor": "",
@@ -122,69 +144,18 @@
    },
    "configs": [
     {
-     "name": "LM1B-35M (search task)",
-     "d_model": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
-     },
-     "n_layers": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
-     },
-     "n_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
-     },
-     "n_kv_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
-     },
-     "head_dim": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
-     },
-     "d_ff": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
-     },
-     "vocab_size": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
-     },
-     "context_length": {
-      "value": "64",
-      "status": "stated",
-      "quote": "LM1B language modeling with sequence length 64, $\\sim$35M model parameters",
-      "where": "Sec. Search Task Comparison"
-     }
-    },
-    {
-     "name": "T5-C4-110M",
+     "name": "Primer-110M (T5, C4/PG19)",
      "d_model": {
       "value": "768",
       "status": "stated",
       "quote": "each decoder is 110M parameters ($d_{model}=768$, $d_{ff}=3072$, $L=12$)",
-      "where": "Sec. Primer Transferability to Other Codebases"
+      "where": "Sec. Primer Transferability to Other Codebases, Datasets, and Model Types"
      },
      "n_layers": {
       "value": "12",
       "status": "stated",
       "quote": "each decoder is 110M parameters ($d_{model}=768$, $d_{ff}=3072$, $L=12$)",
-      "where": "Sec. Primer Transferability to Other Codebases"
+      "where": "Sec. Primer Transferability to Other Codebases, Datasets, and Model Types"
      },
      "n_heads": {
       "value": "",
@@ -208,7 +179,7 @@
       "value": "3072",
       "status": "stated",
       "quote": "each decoder is 110M parameters ($d_{model}=768$, $d_{ff}=3072$, $L=12$)",
-      "where": "Sec. Primer Transferability to Other Codebases"
+      "where": "Sec. Primer Transferability to Other Codebases, Datasets, and Model Types"
      },
      "vocab_size": {
       "value": "",
@@ -219,12 +190,12 @@
      "context_length": {
       "value": "512",
       "status": "stated",
-      "quote": "For C4 and PG19, we use the T5 default of a max sequence length of 512.",
-      "where": "Appendix Full Training Details"
+      "quote": "the sequence lengths are a longer 512",
+      "where": "Sec. Primer Transferability to Other Codebases, Datasets, and Model Types"
      }
     },
     {
-     "name": "T5-C4-537M",
+     "name": "Primer-537M (full T5 regime)",
      "d_model": {
       "value": "1024",
       "status": "stated",
@@ -271,22 +242,22 @@
       "value": "512",
       "status": "stated",
       "quote": "For C4 and PG19, we use the T5 default of a max sequence length of 512.",
-      "where": "Appendix Full Training Details"
+      "where": "Full Training Details"
      }
     },
     {
-     "name": "Lingvo-1.9B (one-shot)",
+     "name": "Primer-1.9B (one-shot, Lingvo)",
      "d_model": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
+      "value": "2048",
+      "status": "stated",
+      "quote": "a baseline 1.9B parameter Transformer ($d_{model}=2048$, $d_{ff}=12288$, $L=24$)",
+      "where": "Sec. Primer Transferability to Downstream One-Shot Tasks"
      },
      "n_layers": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
+      "value": "24",
+      "status": "stated",
+      "quote": "a baseline 1.9B parameter Transformer ($d_{model}=2048$, $d_{ff}=12288$, $L=24$)",
+      "where": "Sec. Primer Transferability to Downstream One-Shot Tasks"
      },
      "n_heads": {
       "value": "",
@@ -307,10 +278,10 @@
       "where": ""
      },
      "d_ff": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
+      "value": "12288",
+      "status": "stated",
+      "quote": "a baseline 1.9B parameter Transformer ($d_{model}=2048$, $d_{ff}=12288$, $L=24$)",
+      "where": "Sec. Primer Transferability to Downstream One-Shot Tasks"
      },
      "vocab_size": {
       "value": "",
@@ -322,20 +293,32 @@
       "value": "1024",
       "status": "stated",
       "quote": "For one-shot pretraining, we use a max sequence length of 1024.",
-      "where": "Appendix Full Training Details"
+      "where": "Full Training Details"
      }
     }
    ],
-   "primary_config": "LM1B-35M (search task)",
+   "primary_config": "Primer-110M (T5, C4/PG19)",
    "flavours": {
     "norm": {
-     "value": "new_op:primer_norm",
+     "value": "new_op:primer_layernorm",
      "status": "stated",
      "quote": "\\modelname uses a modified version of layer normalization~\\cite{Ba2016LayerN} that uses $x(x - \\mu)$ instead of $(x-\\mu)^2$, but we find this is not always effective.",
      "where": "Sec. Primer, Other Modifications"
     },
     "norm_placement": {
-     "value": "other:norm before self-attention (pre), and norm applied to the FFN output inside the residual branch (no norm before FFN)",
+     "value": "other:norm before attention (pre), norm after FFN output inside the branch",
+     "status": "stated",
+     "quote": "\\modelname uses normalization before self-attention but applies the second normalization \\textit{after} the feed forward transformation.",
+     "where": "Sec. Primer, Other Modifications"
+    },
+    "norm_placement_attn": {
+     "value": "pre",
+     "status": "stated",
+     "quote": "\\modelname uses normalization before self-attention but applies the second normalization \\textit{after} the feed forward transformation.",
+     "where": "Sec. Primer, Other Modifications"
+    },
+    "norm_placement_ffn": {
+     "value": "branch_post",
      "status": "stated",
      "quote": "\\modelname uses normalization before self-attention but applies the second normalization \\textit{after} the feed forward transformation.",
      "where": "Sec. Primer, Other Modifications"
@@ -356,7 +339,19 @@
      "value": "relative",
      "status": "stated",
      "quote": "T2T uses positional embeddings and subword tokenization, while T5 and Lingvo use relative attention~\\cite{Shaw2018SelfAttentionWR} and SentencePieces~\\cite{Kudo2018SentencePieceAS}.",
-     "where": "Appendix Full Training Details"
+     "where": "Full Training Details"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "rope_pairing": {
      "value": "",
@@ -379,8 +374,8 @@
     "residual": {
      "value": "residual",
      "status": "stated",
-     "quote": "Residual connection subprograms. This change is essentially a functional no-op.",
-     "where": "Figure fig:subprogram8_diff"
+     "quote": "(35) ADD                    In0: 0    In1: 34   Dim: 768    C: -1.12",
+     "where": "Fig. fig:primer-program"
     },
     "parallel_block": {
      "value": "",
@@ -391,8 +386,8 @@
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "adding a depthwise convolution layer after each Q, K, and V projection in self-attention",
-     "where": "Abstract"
+     "quote": "each program defines the stackable decoder block of an \\emph{auto-regressive language model}",
+     "where": "Sec. Search Space and Search Method"
     },
     "window_size": {
      "value": "",
@@ -413,6 +408,12 @@
      "where": ""
     },
     "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qk_norm": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -447,6 +448,36 @@
      "status": "not_stated",
      "quote": "",
      "where": ""
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     }
    },
    "block_ops": [
@@ -458,44 +489,29 @@
       "tokens"
      ],
      "output": "x",
-     "attributes": [
-      {
-       "name": "vocab",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      }
-     ],
+     "attributes": [],
      "new_op": ""
     },
     {
      "subgraph": "block",
      "op": "expr",
-     "role": "pre-attention custom normalization",
+     "role": "pre-attention custom layer norm",
      "inputs": [
       "x"
      ],
-     "output": "xn",
+     "output": "h",
      "attributes": [],
-     "new_op": "primer_norm"
+     "new_op": "primer_layernorm"
     },
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "query multi-head projection",
+     "role": "query projection",
      "inputs": [
-      "xn"
+      "h"
      ],
      "output": "q0",
      "attributes": [
-      {
-       "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
       {
        "name": "bias",
        "value": "",
@@ -508,38 +524,19 @@
     },
     {
      "subgraph": "block",
-     "op": "unsupported",
-     "role": "MDHA causal 3x1 depthwise conv on Q",
+     "op": "conv1d_causal",
+     "role": "MDHA depthwise conv on Q",
      "inputs": [
       "q0"
      ],
      "output": "q",
      "attributes": [
       {
-       "name": "width",
+       "name": "kernel",
        "value": "3",
        "status": "stated",
        "quote": "Another effective modification is adding 3x1 depthwise convolutions after each of the multi-head projections for query $Q$, key $K$ and value $V$ in self-attention.",
-       "where": "Sec. Primer, MDHA"
-      }
-     ],
-     "new_op": "causal_depthwise_conv3"
-    },
-    {
-     "subgraph": "block",
-     "op": "linear",
-     "role": "key multi-head projection",
-     "inputs": [
-      "xn"
-     ],
-     "output": "k0",
-     "attributes": [
-      {
-       "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "where": "Sec. Primer, Multi-DConv-Head Attention (MDHA)"
       },
       {
        "name": "bias",
@@ -553,38 +550,38 @@
     },
     {
      "subgraph": "block",
-     "op": "unsupported",
-     "role": "MDHA causal 3x1 depthwise conv on K",
+     "op": "linear",
+     "role": "key projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "k0",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "conv1d_causal",
+     "role": "MDHA depthwise conv on K",
      "inputs": [
       "k0"
      ],
      "output": "k",
      "attributes": [
       {
-       "name": "width",
+       "name": "kernel",
        "value": "3",
        "status": "stated",
        "quote": "Another effective modification is adding 3x1 depthwise convolutions after each of the multi-head projections for query $Q$, key $K$ and value $V$ in self-attention.",
-       "where": "Sec. Primer, MDHA"
-      }
-     ],
-     "new_op": "causal_depthwise_conv3"
-    },
-    {
-     "subgraph": "block",
-     "op": "linear",
-     "role": "value multi-head projection",
-     "inputs": [
-      "xn"
-     ],
-     "output": "v0",
-     "attributes": [
-      {
-       "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "where": "Sec. Primer, Multi-DConv-Head Attention (MDHA)"
       },
       {
        "name": "bias",
@@ -598,22 +595,48 @@
     },
     {
      "subgraph": "block",
-     "op": "unsupported",
-     "role": "MDHA causal 3x1 depthwise conv on V",
+     "op": "linear",
+     "role": "value projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "v0",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "conv1d_causal",
+     "role": "MDHA depthwise conv on V",
      "inputs": [
       "v0"
      ],
      "output": "v",
      "attributes": [
       {
-       "name": "width",
+       "name": "kernel",
        "value": "3",
        "status": "stated",
        "quote": "Another effective modification is adding 3x1 depthwise convolutions after each of the multi-head projections for query $Q$, key $K$ and value $V$ in self-attention.",
-       "where": "Sec. Primer, MDHA"
+       "where": "Sec. Primer, Multi-DConv-Head Attention (MDHA)"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
-     "new_op": "causal_depthwise_conv3"
+     "new_op": ""
     },
     {
      "subgraph": "block",
@@ -624,7 +647,7 @@
       "k",
       "v"
      ],
-     "output": "a",
+     "output": "att",
      "attributes": [
       {
        "name": "heads",
@@ -658,8 +681,8 @@
        "name": "causal",
        "value": "true",
        "status": "stated",
-       "quote": "Each position should only get information from previous positions, otherwise the model will be degenerate when the targets are not provided.",
-       "where": "Appendix Constructing TensorFlow Graphs, Causal Masking"
+       "quote": "mask=\"causal\")",
+       "where": "Fig. fig:efficientseq_lite_model"
       },
       {
        "name": "window",
@@ -683,17 +706,10 @@
      "op": "linear",
      "role": "attention output projection",
      "inputs": [
-      "a"
+      "att"
      ],
-     "output": "ao",
+     "output": "a",
      "attributes": [
-      {
-       "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
       {
        "name": "bias",
        "value": "",
@@ -710,18 +726,18 @@
      "role": "attention residual",
      "inputs": [
       "x",
-      "ao"
+      "a"
      ],
-     "output": "h",
+     "output": "x1",
      "attributes": [],
      "new_op": ""
     },
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN up projection (d_ff)",
+     "role": "FFN up projection (input not normalized)",
      "inputs": [
-      "h"
+      "x1"
      ],
      "output": "u",
      "attributes": [
@@ -749,7 +765,7 @@
      "inputs": [
       "u"
      ],
-     "output": "s",
+     "output": "u2",
      "attributes": [],
      "new_op": "squared_relu"
     },
@@ -758,17 +774,10 @@
      "op": "linear",
      "role": "FFN down projection",
      "inputs": [
-      "s"
+      "u2"
      ],
      "output": "f",
      "attributes": [
-      {
-       "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
       {
        "name": "bias",
        "value": "",
@@ -782,20 +791,20 @@
     {
      "subgraph": "block",
      "op": "expr",
-     "role": "normalization after feed forward",
+     "role": "post-FFN custom layer norm inside branch",
      "inputs": [
       "f"
      ],
      "output": "fn",
      "attributes": [],
-     "new_op": "primer_norm"
+     "new_op": "primer_layernorm"
     },
     {
      "subgraph": "block",
      "op": "add",
      "role": "FFN residual",
      "inputs": [
-      "h",
+      "x1",
       "fn"
      ],
      "output": "x_out",
@@ -805,19 +814,12 @@
     {
      "subgraph": "head",
      "op": "linear",
-     "role": "output logits",
+     "role": "output projection to vocabulary",
      "inputs": [
       "x_out"
      ],
      "output": "logits",
      "attributes": [
-      {
-       "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
       {
        "name": "bias",
        "value": "",
@@ -844,7 +846,14 @@
      "inputs": [
       {
        "name": "x",
-       "meaning": "the FFN up-projection output"
+       "meaning": "the FFN up-projection output",
+       "role": "input",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       }
       }
      ],
      "replaces": "FFN activation",
@@ -853,52 +862,63 @@
      "where": "Sec. Primer, Squared ReLU"
     },
     {
-     "name": "primer_norm",
+     "name": "primer_layernorm",
      "kind": "expr",
-     "expr": "((x - rowmean(x)) / sqrt(abs(rowmean(x * (x - rowmean(x))))) + a) * b",
+     "expr": "(x - rowmean(x)) / sqrt(abs(rowmean((x - rowmean(x)) * x))) * g + b",
      "inputs": [
       {
        "name": "x",
-       "meaning": "the row to normalize"
+       "meaning": "the row being normalized",
+       "role": "input",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       }
       },
       {
-       "name": "a",
-       "meaning": "learned per-channel vector (SCALE: x+tf.Variable())"
+       "name": "g",
+       "meaning": "learned per-channel gain",
+       "role": "learned_vector",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       }
       },
       {
        "name": "b",
-       "meaning": "learned per-channel vector (SHIFT: x*tf.Variable())"
+       "meaning": "learned per-channel bias",
+       "role": "learned_vector",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       }
       }
      ],
      "replaces": "layer normalization",
      "reason": "",
      "quote": "\\modelname uses a modified version of layer normalization~\\cite{Ba2016LayerN} that uses $x(x - \\mu)$ instead of $(x-\\mu)^2$, but we find this is not always effective.",
      "where": "Sec. Primer, Other Modifications"
-    },
-    {
-     "name": "causal_depthwise_conv3",
-     "kind": "needs_new_primitive",
-     "expr": "",
-     "inputs": [
-      {
-       "name": "x",
-       "meaning": "output of a Q, K or V multi-head projection, [T, width]"
-      }
-     ],
-     "replaces": "none (inserted after Q/K/V projections)",
-     "reason": "Requires a causal depthwise 1D convolution over the time axis with kernel width 3: per channel learned weights [3, width], output[t] = sum_{j=0..2} w[j] * x[t-j] (inputs shifted by kernel width - 1 so only past positions are seen). Mixes tokens, so not expressible as an elementwise/row expr.",
-     "quote": "Another effective modification is adding 3x1 depthwise convolutions after each of the multi-head projections for query $Q$, key $K$ and value $V$ in self-attention.",
-     "where": "Sec. Primer, MDHA"
     }
    ],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "T5/Lingvo relative attention position scheme (used for the headline T5 and one-shot runs); details not given",
+     "mechanism": "Relative position attention (Shaw et al.) from the T5/Lingvo codebases used for the main results; details (buckets, distance) not given",
      "quote": "T2T uses positional embeddings and subword tokenization, while T5 and Lingvo use relative attention~\\cite{Shaw2018SelfAttentionWR} and SentencePieces~\\cite{Kudo2018SentencePieceAS}.",
-     "where": "Appendix Full Training Details"
+     "where": "Full Training Details"
+    },
+    {
+     "mechanism": "Shared Q and K depthwise representation (Q = K W) is part of the discovered Primer but was removed for the 1.9B one-shot model; not included in block_ops",
+     "quote": "\\modelname shares some weight matrices for $Q$ and $K$. $K$ is created using the previously described MDHA projection and $Q=KW$ for learnable weight matrix $W \\in \\mathbb{R}^{d \\times d}$.",
+     "where": "Sec. Primer, Other Modifications"
     }
    ],
-   "notes": "Described full Primer (custom norm, pre-attention norm plus norm on the FFN output, MDHA, squared ReLU). Shared Q/K representation (Q=KW) is omitted because the paper says it hurts and drops it for the 1.9B one-shot model. 12X bottleneck, post-softmax spatial gating and extraneous mods are excluded per the paper. Residual doubling in the program is treated as a no-op. Primer-EZ is plain Transformer + MDHA + squared ReLU. For the 1.9B config, d_model=2048, d_ff=12288, L=24 are stated only for the baseline Transformer, so they are left not_stated for Primer. Head counts, vocab, eps and biases are not stated. In primer_norm the SCALE/SHIFT order follows the primitives table literally; the program's MAX constant (-0.57) differs from a plain ReLU, but the paper describes the activation as squared ReLU."
+   "notes": "Described full Primer as used in the 1.9B one-shot experiment (without shared QK). The 1.9B sizes are stated for the baseline Transformer, and Primer is compared 'at 1.9B parameters', so I assumed the same sizes. The 12X bottleneck projection, post-softmax spatial gating and extraneous modifications (e.g. multiplication by -1.12, duplicated residual adds in the program listing) are excluded per the paper. Norm affine order follows standard gain*x+bias. The appendix table swaps the SCALE/SHIFT labels, which I treated as ambiguous. Head counts, vocab, biases, eps, tying and final norm are not stated. Primer-EZ is the simpler recommended variant: a vanilla Transformer plus MDHA and squared ReLU."
   },
   "verification": {
    "errors": [],
@@ -907,87 +927,19 @@
    "family": {
     "value": "decoder_only",
     "status": "stated",
-    "quote": "Second, we focus primarily on decoder-only models, while encoder-based sequence models are still widely used",
-    "where": "Conclusion, Limitations",
+    "quote": "We focus on decoder-only auto-regressive language modeling (LM), because of its  generality and success",
+    "where": "Introduction",
     "reasons": [],
     "check": "quote_only"
    },
    "configs": [
     {
-     "name": "LM1B-35M (search task)",
-     "d_model": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
-      "reasons": [],
-      "check": "not_stated"
-     },
-     "n_layers": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
-      "reasons": [],
-      "check": "not_stated"
-     },
-     "n_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
-      "reasons": [],
-      "check": "not_stated"
-     },
-     "n_kv_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
-      "reasons": [],
-      "check": "not_stated"
-     },
-     "head_dim": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
-      "reasons": [],
-      "check": "not_stated"
-     },
-     "d_ff": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
-      "reasons": [],
-      "check": "not_stated"
-     },
-     "vocab_size": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
-      "reasons": [],
-      "check": "not_stated"
-     },
-     "context_length": {
-      "value": "64",
-      "status": "stated",
-      "quote": "LM1B language modeling with sequence length 64, $\\sim$35M model parameters",
-      "where": "Sec. Search Task Comparison",
-      "reasons": [],
-      "check": "verified"
-     },
-     "consistency": []
-    },
-    {
-     "name": "T5-C4-110M",
+     "name": "Primer-110M (T5, C4/PG19)",
      "d_model": {
       "value": "768",
       "status": "stated",
       "quote": "each decoder is 110M parameters ($d_{model}=768$, $d_{ff}=3072$, $L=12$)",
-      "where": "Sec. Primer Transferability to Other Codebases",
+      "where": "Sec. Primer Transferability to Other Codebases, Datasets, and Model Types",
       "reasons": [],
       "check": "verified"
      },
@@ -995,7 +947,7 @@
       "value": "12",
       "status": "stated",
       "quote": "each decoder is 110M parameters ($d_{model}=768$, $d_{ff}=3072$, $L=12$)",
-      "where": "Sec. Primer Transferability to Other Codebases",
+      "where": "Sec. Primer Transferability to Other Codebases, Datasets, and Model Types",
       "reasons": [],
       "check": "verified"
      },
@@ -1027,7 +979,7 @@
       "value": "3072",
       "status": "stated",
       "quote": "each decoder is 110M parameters ($d_{model}=768$, $d_{ff}=3072$, $L=12$)",
-      "where": "Sec. Primer Transferability to Other Codebases",
+      "where": "Sec. Primer Transferability to Other Codebases, Datasets, and Model Types",
       "reasons": [],
       "check": "verified"
      },
@@ -1042,15 +994,15 @@
      "context_length": {
       "value": "512",
       "status": "stated",
-      "quote": "For C4 and PG19, we use the T5 default of a max sequence length of 512.",
-      "where": "Appendix Full Training Details",
+      "quote": "the sequence lengths are a longer 512",
+      "where": "Sec. Primer Transferability to Other Codebases, Datasets, and Model Types",
       "reasons": [],
       "check": "verified"
      },
      "consistency": []
     },
     {
-     "name": "T5-C4-537M",
+     "name": "Primer-537M (full T5 regime)",
      "d_model": {
       "value": "1024",
       "status": "stated",
@@ -1111,29 +1063,29 @@
       "value": "512",
       "status": "stated",
       "quote": "For C4 and PG19, we use the T5 default of a max sequence length of 512.",
-      "where": "Appendix Full Training Details",
+      "where": "Full Training Details",
       "reasons": [],
       "check": "verified"
      },
      "consistency": []
     },
     {
-     "name": "Lingvo-1.9B (one-shot)",
+     "name": "Primer-1.9B (one-shot, Lingvo)",
      "d_model": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
+      "value": "2048",
+      "status": "stated",
+      "quote": "a baseline 1.9B parameter Transformer ($d_{model}=2048$, $d_{ff}=12288$, $L=24$)",
+      "where": "Sec. Primer Transferability to Downstream One-Shot Tasks",
       "reasons": [],
-      "check": "not_stated"
+      "check": "verified"
      },
      "n_layers": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
+      "value": "24",
+      "status": "stated",
+      "quote": "a baseline 1.9B parameter Transformer ($d_{model}=2048$, $d_{ff}=12288$, $L=24$)",
+      "where": "Sec. Primer Transferability to Downstream One-Shot Tasks",
       "reasons": [],
-      "check": "not_stated"
+      "check": "verified"
      },
      "n_heads": {
       "value": "",
@@ -1160,12 +1112,12 @@
       "check": "not_stated"
      },
      "d_ff": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
+      "value": "12288",
+      "status": "stated",
+      "quote": "a baseline 1.9B parameter Transformer ($d_{model}=2048$, $d_{ff}=12288$, $L=24$)",
+      "where": "Sec. Primer Transferability to Downstream One-Shot Tasks",
       "reasons": [],
-      "check": "not_stated"
+      "check": "verified"
      },
      "vocab_size": {
       "value": "",
@@ -1179,17 +1131,17 @@
       "value": "1024",
       "status": "stated",
       "quote": "For one-shot pretraining, we use a max sequence length of 1024.",
-      "where": "Appendix Full Training Details",
+      "where": "Full Training Details",
       "reasons": [],
       "check": "verified"
      },
      "consistency": []
     }
    ],
-   "primary_config": "LM1B-35M (search task)",
+   "primary_config": "Primer-110M (T5, C4/PG19)",
    "flavours": {
     "norm": {
-     "value": "new_op:primer_norm",
+     "value": "new_op:primer_layernorm",
      "status": "stated",
      "quote": "\\modelname uses a modified version of layer normalization~\\cite{Ba2016LayerN} that uses $x(x - \\mu)$ instead of $(x-\\mu)^2$, but we find this is not always effective.",
      "where": "Sec. Primer, Other Modifications",
@@ -1197,7 +1149,23 @@
      "check": "quote_only"
     },
     "norm_placement": {
-     "value": "other:norm before self-attention (pre), and norm applied to the FFN output inside the residual branch (no norm before FFN)",
+     "value": "other:norm before attention (pre), norm after FFN output inside the branch",
+     "status": "stated",
+     "quote": "\\modelname uses normalization before self-attention but applies the second normalization \\textit{after} the feed forward transformation.",
+     "where": "Sec. Primer, Other Modifications",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "norm_placement_attn": {
+     "value": "pre",
+     "status": "stated",
+     "quote": "\\modelname uses normalization before self-attention but applies the second normalization \\textit{after} the feed forward transformation.",
+     "where": "Sec. Primer, Other Modifications",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "norm_placement_ffn": {
+     "value": "branch_post",
      "status": "stated",
      "quote": "\\modelname uses normalization before self-attention but applies the second normalization \\textit{after} the feed forward transformation.",
      "where": "Sec. Primer, Other Modifications",
@@ -1224,9 +1192,25 @@
      "value": "relative",
      "status": "stated",
      "quote": "T2T uses positional embeddings and subword tokenization, while T5 and Lingvo use relative attention~\\cite{Shaw2018SelfAttentionWR} and SentencePieces~\\cite{Kudo2018SentencePieceAS}.",
-     "where": "Appendix Full Training Details",
+     "where": "Full Training Details",
      "reasons": [],
      "check": "verified"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "rope_pairing": {
      "value": "",
@@ -1255,10 +1239,12 @@
     "residual": {
      "value": "residual",
      "status": "stated",
-     "quote": "Residual connection subprograms. This change is essentially a functional no-op.",
-     "where": "Figure fig:subprogram8_diff",
-     "reasons": [],
-     "check": "verified"
+     "quote": "(35) ADD                    In0: 0    In1: 34   Dim: 768    C: -1.12",
+     "where": "Fig. fig:primer-program",
+     "reasons": [
+      "the quote does not name residual (looked for /residual|skip/)"
+     ],
+     "check": "unverified"
     },
     "parallel_block": {
      "value": "",
@@ -1271,8 +1257,8 @@
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "adding a depthwise convolution layer after each Q, K, and V projection in self-attention",
-     "where": "Abstract",
+     "quote": "each program defines the stackable decoder block of an \\emph{auto-regressive language model}",
+     "where": "Sec. Search Space and Search Method",
      "reasons": [],
      "check": "quote_only"
     },
@@ -1301,6 +1287,14 @@
      "check": "not_stated"
     },
     "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qk_norm": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -1347,6 +1341,46 @@
      "where": "",
      "reasons": [],
      "check": "not_stated"
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     }
    },
    "new_ops": [
@@ -1360,7 +1394,15 @@
      "inputs": [
       {
        "name": "x",
-       "meaning": "the FFN up-projection output"
+       "meaning": "the FFN up-projection output",
+       "role": "input",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       },
+       "init_check": "not_stated"
       }
      ],
      "errors": [],
@@ -1393,7 +1435,7 @@
      "check": "verified"
     },
     {
-     "name": "primer_norm",
+     "name": "primer_layernorm",
      "kind": "expr",
      "replaces": "layer normalization",
      "reason": "",
@@ -1402,25 +1444,49 @@
      "inputs": [
       {
        "name": "x",
-       "meaning": "the row to normalize"
+       "meaning": "the row being normalized",
+       "role": "input",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       },
+       "init_check": "not_stated"
       },
       {
-       "name": "a",
-       "meaning": "learned per-channel vector (SCALE: x+tf.Variable())"
+       "name": "g",
+       "meaning": "learned per-channel gain",
+       "role": "learned_vector",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       },
+       "init_check": "not_stated"
       },
       {
        "name": "b",
-       "meaning": "learned per-channel vector (SHIFT: x*tf.Variable())"
+       "meaning": "learned per-channel bias",
+       "role": "learned_vector",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       },
+       "init_check": "not_stated"
       }
      ],
      "errors": [],
      "quote_found": true,
      "expr_check": {
-      "expr": "((x - rowmean(x)) / sqrt(abs(rowmean(x * (x - rowmean(x))))) + a) * b",
+      "expr": "(x - rowmean(x)) / sqrt(abs(rowmean((x - rowmean(x)) * x))) * g + b",
       "ok": true,
       "errors": [],
       "warnings": [],
-      "canonical": "((((x-rowmean(x))/sqrt(abs(rowmean((x*(x-rowmean(x)))))))+a)*b)",
+      "canonical": "((((x-rowmean(x))/sqrt(abs(rowmean(((x-rowmean(x))*x)))))*g)+b)",
       "samples": {
        "inputs": {
         "x": [
@@ -1430,12 +1496,12 @@
          0.5,
          2.0
         ],
-        "a": [
-         1.5,
+        "g": [
          0.75,
          0.0,
          -0.75,
-         -1.5
+         -1.5,
+         1.5
         ],
         "b": [
          0.75,
@@ -1446,31 +1512,14 @@
         ]
        },
        "output": [
-        -0.025447483271055615,
+        -0.4004474832710556,
         0.0,
-        -0.0,
-        0.5497762583644722,
-        0.05089496654211123
+        -0.75,
+        -2.075223741635528,
+        3.8008949665421112
        ]
       }
      },
-     "check": "verified"
-    },
-    {
-     "name": "causal_depthwise_conv3",
-     "kind": "needs_new_primitive",
-     "replaces": "none (inserted after Q/K/V projections)",
-     "reason": "Requires a causal depthwise 1D convolution over the time axis with kernel width 3: per channel learned weights [3, width], output[t] = sum_{j=0..2} w[j] * x[t-j] (inputs shifted by kernel width - 1 so only past positions are seen). Mixes tokens, so not expressible as an elementwise/row expr.",
-     "quote": "Another effective modification is adding 3x1 depthwise convolutions after each of the multi-head projections for query $Q$, key $K$ and value $V$ in self-attention.",
-     "where": "Sec. Primer, MDHA",
-     "inputs": [
-      {
-       "name": "x",
-       "meaning": "output of a Q, K or V multi-head projection, [T, width]"
-      }
-     ],
-     "errors": [],
-     "quote_found": true,
      "check": "verified"
     }
    ],
@@ -1485,29 +1534,19 @@
      ],
      "output": "x",
      "new_op": "",
-     "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "vocab"
-      }
-     ],
+     "attributes": [],
      "errors": []
     },
     {
      "i": 1,
      "subgraph": "block",
      "op": "expr",
-     "role": "pre-attention custom normalization",
+     "role": "pre-attention custom layer norm",
      "inputs": [
       "x"
      ],
-     "output": "xn",
-     "new_op": "primer_norm",
+     "output": "h",
+     "new_op": "primer_layernorm",
      "attributes": [],
      "errors": []
     },
@@ -1515,22 +1554,13 @@
      "i": 2,
      "subgraph": "block",
      "op": "linear",
-     "role": "query multi-head projection",
+     "role": "query projection",
      "inputs": [
-      "xn"
+      "h"
      ],
      "output": "q0",
      "new_op": "",
      "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "out"
-      },
       {
        "value": "",
        "status": "not_stated",
@@ -1546,22 +1576,31 @@
     {
      "i": 3,
      "subgraph": "block",
-     "op": "unsupported",
-     "role": "MDHA causal 3x1 depthwise conv on Q",
+     "op": "conv1d_causal",
+     "role": "MDHA depthwise conv on Q",
      "inputs": [
       "q0"
      ],
      "output": "q",
-     "new_op": "causal_depthwise_conv3",
+     "new_op": "",
      "attributes": [
       {
        "value": "3",
        "status": "stated",
        "quote": "Another effective modification is adding 3x1 depthwise convolutions after each of the multi-head projections for query $Q$, key $K$ and value $V$ in self-attention.",
-       "where": "Sec. Primer, MDHA",
+       "where": "Sec. Primer, Multi-DConv-Head Attention (MDHA)",
        "reasons": [],
        "check": "verified",
-       "name": "width"
+       "name": "kernel"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
       }
      ],
      "errors": []
@@ -1570,22 +1609,13 @@
      "i": 4,
      "subgraph": "block",
      "op": "linear",
-     "role": "key multi-head projection",
+     "role": "key projection",
      "inputs": [
-      "xn"
+      "h"
      ],
      "output": "k0",
      "new_op": "",
      "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "out"
-      },
       {
        "value": "",
        "status": "not_stated",
@@ -1601,22 +1631,31 @@
     {
      "i": 5,
      "subgraph": "block",
-     "op": "unsupported",
-     "role": "MDHA causal 3x1 depthwise conv on K",
+     "op": "conv1d_causal",
+     "role": "MDHA depthwise conv on K",
      "inputs": [
       "k0"
      ],
      "output": "k",
-     "new_op": "causal_depthwise_conv3",
+     "new_op": "",
      "attributes": [
       {
        "value": "3",
        "status": "stated",
        "quote": "Another effective modification is adding 3x1 depthwise convolutions after each of the multi-head projections for query $Q$, key $K$ and value $V$ in self-attention.",
-       "where": "Sec. Primer, MDHA",
+       "where": "Sec. Primer, Multi-DConv-Head Attention (MDHA)",
        "reasons": [],
        "check": "verified",
-       "name": "width"
+       "name": "kernel"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
       }
      ],
      "errors": []
@@ -1625,22 +1664,13 @@
      "i": 6,
      "subgraph": "block",
      "op": "linear",
-     "role": "value multi-head projection",
+     "role": "value projection",
      "inputs": [
-      "xn"
+      "h"
      ],
      "output": "v0",
      "new_op": "",
      "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "out"
-      },
       {
        "value": "",
        "status": "not_stated",
@@ -1656,22 +1686,31 @@
     {
      "i": 7,
      "subgraph": "block",
-     "op": "unsupported",
-     "role": "MDHA causal 3x1 depthwise conv on V",
+     "op": "conv1d_causal",
+     "role": "MDHA depthwise conv on V",
      "inputs": [
       "v0"
      ],
      "output": "v",
-     "new_op": "causal_depthwise_conv3",
+     "new_op": "",
      "attributes": [
       {
        "value": "3",
        "status": "stated",
        "quote": "Another effective modification is adding 3x1 depthwise convolutions after each of the multi-head projections for query $Q$, key $K$ and value $V$ in self-attention.",
-       "where": "Sec. Primer, MDHA",
+       "where": "Sec. Primer, Multi-DConv-Head Attention (MDHA)",
        "reasons": [],
        "check": "verified",
-       "name": "width"
+       "name": "kernel"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
       }
      ],
      "errors": []
@@ -1686,7 +1725,7 @@
       "k",
       "v"
      ],
-     "output": "a",
+     "output": "att",
      "new_op": "",
      "attributes": [
       {
@@ -1728,8 +1767,8 @@
       {
        "value": "true",
        "status": "stated",
-       "quote": "Each position should only get information from previous positions, otherwise the model will be degenerate when the targets are not provided.",
-       "where": "Appendix Constructing TensorFlow Graphs, Causal Masking",
+       "quote": "mask=\"causal\")",
+       "where": "Fig. fig:efficientseq_lite_model",
        "reasons": [],
        "check": "quote_only",
        "name": "causal"
@@ -1761,20 +1800,11 @@
      "op": "linear",
      "role": "attention output projection",
      "inputs": [
-      "a"
+      "att"
      ],
-     "output": "ao",
+     "output": "a",
      "new_op": "",
      "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "out"
-      },
       {
        "value": "",
        "status": "not_stated",
@@ -1794,9 +1824,9 @@
      "role": "attention residual",
      "inputs": [
       "x",
-      "ao"
+      "a"
      ],
-     "output": "h",
+     "output": "x1",
      "new_op": "",
      "attributes": [],
      "errors": []
@@ -1805,9 +1835,9 @@
      "i": 11,
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN up projection (d_ff)",
+     "role": "FFN up projection (input not normalized)",
      "inputs": [
-      "h"
+      "x1"
      ],
      "output": "u",
      "new_op": "",
@@ -1841,7 +1871,7 @@
      "inputs": [
       "u"
      ],
-     "output": "s",
+     "output": "u2",
      "new_op": "squared_relu",
      "attributes": [],
      "errors": []
@@ -1852,20 +1882,11 @@
      "op": "linear",
      "role": "FFN down projection",
      "inputs": [
-      "s"
+      "u2"
      ],
      "output": "f",
      "new_op": "",
      "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "out"
-      },
       {
        "value": "",
        "status": "not_stated",
@@ -1882,12 +1903,12 @@
      "i": 14,
      "subgraph": "block",
      "op": "expr",
-     "role": "normalization after feed forward",
+     "role": "post-FFN custom layer norm inside branch",
      "inputs": [
       "f"
      ],
      "output": "fn",
-     "new_op": "primer_norm",
+     "new_op": "primer_layernorm",
      "attributes": [],
      "errors": []
     },
@@ -1897,7 +1918,7 @@
      "op": "add",
      "role": "FFN residual",
      "inputs": [
-      "h",
+      "x1",
       "fn"
      ],
      "output": "x_out",
@@ -1909,22 +1930,13 @@
      "i": 16,
      "subgraph": "head",
      "op": "linear",
-     "role": "output logits",
+     "role": "output projection to vocabulary",
      "inputs": [
       "x_out"
      ],
      "output": "logits",
      "new_op": "",
      "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "out"
-      },
       {
        "value": "",
        "status": "not_stated",
@@ -1949,23 +1961,36 @@
    ],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "T5/Lingvo relative attention position scheme (used for the headline T5 and one-shot runs); details not given",
+     "mechanism": "Relative position attention (Shaw et al.) from the T5/Lingvo codebases used for the main results; details (buckets, distance) not given",
      "quote": "T2T uses positional embeddings and subword tokenization, while T5 and Lingvo use relative attention~\\cite{Shaw2018SelfAttentionWR} and SentencePieces~\\cite{Kudo2018SentencePieceAS}.",
-     "where": "Appendix Full Training Details",
+     "where": "Full Training Details",
+     "check": "verified"
+    },
+    {
+     "mechanism": "Shared Q and K depthwise representation (Q = K W) is part of the discovered Primer but was removed for the 1.9B one-shot model; not included in block_ops",
+     "quote": "\\modelname shares some weight matrices for $Q$ and $K$. $K$ is created using the previously described MDHA projection and $Q=KW$ for learnable weight matrix $W \\in \\mathbb{R}^{d \\times d}$.",
+     "where": "Sec. Primer, Other Modifications",
      "check": "verified"
     }
    ],
    "summary": {
     "counts": {
-     "verified": 15,
-     "quote_only": 6,
-     "unverified": 0,
-     "not_stated": 58
+     "verified": 16,
+     "quote_only": 8,
+     "unverified": 1,
+     "not_stated": 52
     },
-    "unverified": [],
+    "unverified": [
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "the quote does not name residual (looked for /residual|skip/)"
+      ]
+     }
+    ],
     "new_op_errors": [],
     "node_errors": [],
-    "n_new_ops": 3,
+    "n_new_ops": 2,
     "n_block_ops": 17
    }
   }

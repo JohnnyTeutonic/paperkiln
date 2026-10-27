@@ -4,7 +4,7 @@
  "fields": {
   "context_length": {
    "value": 4096,
-   "evidence": "The resulting model can process sequences up to 4,096 tokens long (8 times longer than BERT) [Sec. 5 Pretraining and Finetuning]",
+   "evidence": "To support longer documents, we add extra position embeddings to support up to position 4,096. [Sec. 5 Position Embeddings]",
    "verdict": "used"
   },
   "norm": {
@@ -31,8 +31,8 @@
    ]
   },
   "attention": {
-   "value": "new_primitive:longformer_attention",
-   "evidence": "Given a fixed window size $w$, each token attends to $\\frac{1}{2}w$ tokens on each side (Fig.~\\ref{fig:attnb}). [Sec. 3.1 Attention Pattern]",
+   "value": "swa",
+   "evidence": "We use sliding window attention with window size of 512, therefore using the same amount of computation as RoBERTa. [Sec. 5 Attention Pattern]",
    "verdict": "used"
   },
   "window_size": {
@@ -112,22 +112,22 @@
    "mechanism": "encoder-decoder or encoder-only model",
    "where": "llm extraction, verified quote, Sec. 1 Introduction",
    "blocking": true,
-   "evidence": "We finally introduce a variant of Longformer which instead of an encoder-only Transformer architecture, it follows an encoder-decoder architecture"
+   "evidence": "We finally introduce a variant of Longformer which instead of an encoder-only Transformer architecture, it follows an encoder-decoder architecture similar to the original Transformer model"
   },
   {
-   "mechanism": "new op longformer_attention (needs a new primitive: Needs a banded (non-causal) multi-head attention primitive in which each token attends to w/2 tokens on each side (w=512)",
+   "mechanism": "Task-specific symmetric global attention on pre-selected tokens (e.g. [CLS], question tokens). It uses a separate set of projections Q_g, K_g, V_g, initialised as copies of Q_s, K_s, V_s, and is combined with the sliding-window attention during finetuning.",
    "where": "llm extraction, verified quote, Sec. 3.1 Linear Projections for Global Attention",
    "blocking": true,
    "evidence": "We use two sets of projections, $Q_s$, $K_s$, $V_s$ to compute attention scores of sliding window attention, and  $Q_g$, $K_g$, $V_g$ to  compute attention scores for the global attention."
   },
   {
-   "mechanism": "Task-specific selection of global-attention tokens ([CLS] for classification, question tokens for QA); global attention is symmetric",
+   "mechanism": "Global attention is symmetric: a global token attends to all tokens, and all tokens attend to it.",
    "where": "llm extraction, verified quote, Sec. 3.1 Global Attention",
    "blocking": true,
    "evidence": "Importantly, we make this attention operation symmetric: that is, a token\nwith a global attention attends to all tokens across the sequence, and all tokens in the sequence attend to it."
   },
   {
-   "mechanism": "New position embeddings initialized by copying RoBERTa's 512 position embeddings repeatedly",
+   "mechanism": "The 4096-position embedding table is initialised by repeatedly copying RoBERTa's 512 learned position embeddings.",
    "where": "llm extraction, verified quote, Sec. 5 Position Embeddings",
    "blocking": true,
    "evidence": "we initialize them by copying the 512 position\nembeddings from RoBERTa multiple times"
@@ -138,24 +138,24 @@
   "sent_sha256": "ec4e3f79c15e3e616f7a8c96ad47b8eddd21e0d1398f50e1c6b4768b74701abe",
   "from": "https://arxiv.org/e-print/2004.05150",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
+  "extractor_sha256": "9d5951b0f11c920aaf075abead17d7d4e619d37402d47690ba452de15620e921",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
+  "prompt_sha256": "e6c6c5052b656885910d1539b8c320ba4ecb9262a6079252b852f1ff637b03ef",
   "n_calls": 1,
-  "cost_usd": 0.350944,
+  "cost_usd": 0.3869,
   "request_ids": [
-   "req_011CgFgU7BX41QcJGyJFc9pq"
+   "req_011CgRrjs5qiwZRVfAhTCA4T"
   ]
  },
  "llm": {
   "output": {
    "title": "Longformer: The Long-Document Transformer",
-   "model_name": "Longformer (pretrained, continued from RoBERTa; base and large)",
+   "model_name": "Longformer (pretrained, MLM continued from RoBERTa): Longformer-base / Longformer-large",
    "family": {
     "value": "encoder_only",
     "status": "stated",
-    "quote": "We finally introduce a variant of Longformer which instead of an encoder-only Transformer architecture, it follows an encoder-decoder architecture",
+    "quote": "We finally introduce a variant of Longformer which instead of an encoder-only Transformer architecture, it follows an encoder-decoder architecture similar to the original Transformer model",
     "where": "Sec. 1 Introduction"
    },
    "inherits": {
@@ -165,7 +165,7 @@
    },
    "configs": [
     {
-     "name": "base",
+     "name": "Longformer-base",
      "d_model": {
       "value": "768",
       "status": "inherited",
@@ -211,12 +211,12 @@
      "context_length": {
       "value": "4096",
       "status": "stated",
-      "quote": "The resulting model can process sequences up to 4,096 tokens long (8 times longer than BERT)",
-      "where": "Sec. 5 Pretraining and Finetuning"
+      "quote": "To support longer documents, we add extra position embeddings to support up to position 4,096.",
+      "where": "Sec. 5 Position Embeddings"
      }
     },
     {
-     "name": "large",
+     "name": "Longformer-large",
      "d_model": {
       "value": "1024",
       "status": "inherited",
@@ -262,12 +262,12 @@
      "context_length": {
       "value": "4096",
       "status": "stated",
-      "quote": "The resulting model can process sequences up to 4,096 tokens long (8 times longer than BERT)",
-      "where": "Sec. 5 Pretraining and Finetuning"
+      "quote": "To support longer documents, we add extra position embeddings to support up to position 4,096.",
+      "where": "Sec. 5 Position Embeddings"
      }
     }
    ],
-   "primary_config": "base",
+   "primary_config": "Longformer-base",
    "flavours": {
     "norm": {
      "value": "layernorm",
@@ -280,6 +280,18 @@
      "status": "inherited",
      "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
      "where": "Sec. 5 Pretraining and Finetuning"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "norm_eps": {
      "value": "1e-5",
@@ -296,8 +308,20 @@
     "positional": {
      "value": "learned",
      "status": "stated",
-     "quote": "RoBERTa uses learned absolute position embeddings with the maximum\nposition being 512. To support longer documents, we add extra position embeddings to support up to position 4,096.",
+     "quote": "RoBERTa uses learned absolute position embeddings with the maximum position being 512. To support longer documents, we add extra position embeddings to support up to position 4,096.",
      "where": "Sec. 5 Position Embeddings"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "rope_pairing": {
      "value": "",
@@ -330,10 +354,10 @@
      "where": "Sec. 5 Pretraining and Finetuning"
     },
     "attention": {
-     "value": "new_op:longformer_attention",
+     "value": "swa",
      "status": "stated",
-     "quote": "Given a fixed window size $w$, each token attends to $\\frac{1}{2}w$ tokens on each side (Fig.~\\ref{fig:attnb}).",
-     "where": "Sec. 3.1 Attention Pattern"
+     "quote": "We use sliding window attention with window size of 512, therefore using the same amount of computation as RoBERTa.",
+     "where": "Sec. 5 Attention Pattern"
     },
     "window_size": {
      "value": "512",
@@ -355,6 +379,12 @@
     },
     "mlp_bias": {
      "value": "true",
+     "status": "inherited",
+     "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+     "where": "Sec. 5 Pretraining and Finetuning"
+    },
+    "qk_norm": {
+     "value": "none",
      "status": "inherited",
      "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
      "where": "Sec. 5 Pretraining and Finetuning"
@@ -388,6 +418,36 @@
      "status": "not_stated",
      "quote": "",
      "where": ""
+    },
+    "ssm": {
+     "value": "none",
+     "status": "inherited",
+     "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+     "where": "Sec. 5 Pretraining and Finetuning"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     }
    },
    "block_ops": [
@@ -399,18 +459,26 @@
       "tokens"
      ],
      "output": "e",
-     "attributes": [],
+     "attributes": [
+      {
+       "name": "vocab",
+       "value": "50265",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning"
+      }
+     ],
      "new_op": ""
     },
     {
      "subgraph": "embed",
      "op": "pos_embedding",
-     "role": "learned absolute position table extended to 4096 positions",
+     "role": "learned absolute position embedding extended to 4096 positions (copy-initialised from RoBERTa's 512)",
      "inputs": [
       "e",
       "pos"
      ],
-     "output": "p",
+     "output": "x0",
      "attributes": [
       {
        "name": "max_positions",
@@ -424,20 +492,8 @@
     },
     {
      "subgraph": "embed",
-     "op": "add",
-     "role": "token + position embedding",
-     "inputs": [
-      "e",
-      "p"
-     ],
-     "output": "x0",
-     "attributes": [],
-     "new_op": ""
-    },
-    {
-     "subgraph": "embed",
      "op": "layernorm",
-     "role": "embedding layernorm (RoBERTa)",
+     "role": "embedding layernorm",
      "inputs": [
       "x0"
      ],
@@ -456,12 +512,19 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "sliding-window query projection Q_s",
+     "role": "query projection Q_s",
      "inputs": [
       "x"
      ],
-     "output": "qs",
+     "output": "q",
      "attributes": [
+      {
+       "name": "out",
+       "value": "768",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning"
+      },
       {
        "name": "bias",
        "value": "true",
@@ -475,12 +538,19 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "sliding-window key projection K_s",
+     "role": "key projection K_s",
      "inputs": [
       "x"
      ],
-     "output": "ks",
+     "output": "k",
      "attributes": [
+      {
+       "name": "out",
+       "value": "768",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning"
+      },
       {
        "name": "bias",
        "value": "true",
@@ -494,12 +564,19 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "sliding-window value projection V_s",
+     "role": "value projection V_s",
      "inputs": [
       "x"
      ],
-     "output": "vs",
+     "output": "v",
      "attributes": [
+      {
+       "name": "out",
+       "value": "768",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning"
+      },
       {
        "name": "bias",
        "value": "true",
@@ -512,68 +589,24 @@
     },
     {
      "subgraph": "block",
-     "op": "linear",
-     "role": "global query projection Q_g (initialized from Q_s)",
+     "op": "attention",
+     "role": "bidirectional sliding-window self-attention (w/2 tokens on each side)",
      "inputs": [
-      "x"
-     ],
-     "output": "qg",
-     "attributes": [],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "linear",
-     "role": "global key projection K_g (initialized from K_s)",
-     "inputs": [
-      "x"
-     ],
-     "output": "kg",
-     "attributes": [],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "linear",
-     "role": "global value projection V_g (initialized from V_s)",
-     "inputs": [
-      "x"
-     ],
-     "output": "vg",
-     "attributes": [],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "unsupported",
-     "role": "bidirectional sliding-window attention (w/2 each side) plus symmetric global attention on selected tokens",
-     "inputs": [
-      "qs",
-      "ks",
-      "vs",
-      "qg",
-      "kg",
-      "vg",
-      "global_mask"
+      "q",
+      "k",
+      "v"
      ],
      "output": "a",
      "attributes": [
       {
-       "name": "window",
-       "value": "512",
-       "status": "stated",
-       "quote": "We use sliding window attention with window size of 512, therefore using the same amount of computation as RoBERTa.",
-       "where": "Sec. 5 Attention Pattern"
-      },
-      {
-       "name": "causal",
-       "value": "false",
-       "status": "stated",
-       "quote": "Given a fixed window size $w$, each token attends to $\\frac{1}{2}w$ tokens on each side (Fig.~\\ref{fig:attnb}).",
-       "where": "Sec. 3.1 Attention Pattern"
-      },
-      {
        "name": "heads",
+       "value": "12",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning"
+      },
+      {
+       "name": "kv_heads",
        "value": "12",
        "status": "inherited",
        "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
@@ -592,9 +625,30 @@
        "status": "inherited",
        "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
        "where": "Sec. 5 Pretraining and Finetuning"
+      },
+      {
+       "name": "causal",
+       "value": "false",
+       "status": "stated",
+       "quote": "Given a fixed window size $w$, each token attends to $\\frac{1}{2}w$ tokens on each side (Fig.~\\ref{fig:attnb}).",
+       "where": "Sec. 3.1 Attention Pattern"
+      },
+      {
+       "name": "window",
+       "value": "512",
+       "status": "stated",
+       "quote": "We use sliding window attention with window size of 512, therefore using the same amount of computation as RoBERTa.",
+       "where": "Sec. 5 Attention Pattern"
+      },
+      {
+       "name": "sinks",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
-     "new_op": "longformer_attention"
+     "new_op": ""
     },
     {
      "subgraph": "block",
@@ -605,6 +659,13 @@
      ],
      "output": "o",
      "attributes": [
+      {
+       "name": "out",
+       "value": "768",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning"
+      },
       {
        "name": "bias",
        "value": "true",
@@ -701,6 +762,13 @@
      "output": "f",
      "attributes": [
       {
+       "name": "out",
+       "value": "768",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning"
+      },
+      {
        "name": "bias",
        "value": "true",
        "status": "inherited",
@@ -725,7 +793,7 @@
     {
      "subgraph": "block",
      "op": "layernorm",
-     "role": "post-FFN layernorm",
+     "role": "post-FFN layernorm (block output)",
      "inputs": [
       "r2"
      ],
@@ -748,8 +816,23 @@
      "inputs": [
       "x"
      ],
-     "output": "hd",
-     "attributes": [],
+     "output": "d",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "768",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning"
+      },
+      {
+       "name": "bias",
+       "value": "true",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning"
+      }
+     ],
      "new_op": ""
     },
     {
@@ -757,10 +840,18 @@
      "op": "gelu",
      "role": "MLM head activation",
      "inputs": [
-      "hd"
+      "d"
      ],
-     "output": "hg",
-     "attributes": [],
+     "output": "dg",
+     "attributes": [
+      {
+       "name": "approx",
+       "value": "none",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning"
+      }
+     ],
      "new_op": ""
     },
     {
@@ -768,10 +859,18 @@
      "op": "layernorm",
      "role": "MLM head layernorm",
      "inputs": [
-      "hg"
+      "dg"
      ],
-     "output": "hn",
-     "attributes": [],
+     "output": "dn",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "1e-5",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning"
+      }
+     ],
      "new_op": ""
     },
     {
@@ -779,10 +878,24 @@
      "op": "linear",
      "role": "MLM output projection to vocabulary",
      "inputs": [
-      "hn"
+      "dn"
      ],
      "output": "logits",
      "attributes": [
+      {
+       "name": "out",
+       "value": "50265",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning"
+      },
+      {
+       "name": "bias",
+       "value": "true",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning"
+      },
       {
        "name": "tied_to",
        "value": "token_embd",
@@ -794,60 +907,25 @@
      "new_op": ""
     }
    ],
-   "new_ops": [
-    {
-     "name": "longformer_attention",
-     "kind": "needs_new_primitive",
-     "expr": "",
-     "inputs": [
-      {
-       "name": "x",
-       "meaning": "sliding-window queries Q_s"
-      },
-      {
-       "name": "a",
-       "meaning": "sliding-window keys K_s"
-      },
-      {
-       "name": "b",
-       "meaning": "sliding-window values V_s"
-      },
-      {
-       "name": "c",
-       "meaning": "global queries Q_g"
-      },
-      {
-       "name": "d",
-       "meaning": "global keys K_g"
-      },
-      {
-       "name": "e",
-       "meaning": "global values V_g"
-      },
-      {
-       "name": "f",
-       "meaning": "per-token global-attention mask (task-selected tokens)"
-      }
-     ],
-     "replaces": "full self-attention",
-     "reason": "Needs a banded (non-causal) multi-head attention primitive in which each token attends to w/2 tokens on each side (w=512), combined with symmetric global attention: tokens flagged by a per-token mask attend to all tokens and are attended to by all tokens, using a separate set of Q_g/K_g/V_g projections. The IR attention op has no bidirectional band nor per-token global mask with separate projections.",
-     "quote": "We use two sets of projections, $Q_s$, $K_s$, $V_s$ to compute attention scores of sliding window attention, and  $Q_g$, $K_g$, $V_g$ to  compute attention scores for the global attention.",
-     "where": "Sec. 3.1 Linear Projections for Global Attention"
-    }
-   ],
+   "new_ops": [],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Task-specific selection of global-attention tokens ([CLS] for classification, question tokens for QA); global attention is symmetric",
+     "mechanism": "Task-specific symmetric global attention on pre-selected tokens (e.g. [CLS], question tokens). It uses a separate set of projections Q_g, K_g, V_g, initialised as copies of Q_s, K_s, V_s, and is combined with the sliding-window attention during finetuning.",
+     "quote": "We use two sets of projections, $Q_s$, $K_s$, $V_s$ to compute attention scores of sliding window attention, and  $Q_g$, $K_g$, $V_g$ to  compute attention scores for the global attention.",
+     "where": "Sec. 3.1 Linear Projections for Global Attention"
+    },
+    {
+     "mechanism": "Global attention is symmetric: a global token attends to all tokens, and all tokens attend to it.",
      "quote": "Importantly, we make this attention operation symmetric: that is, a token\nwith a global attention attends to all tokens across the sequence, and all tokens in the sequence attend to it.",
      "where": "Sec. 3.1 Global Attention"
     },
     {
-     "mechanism": "New position embeddings initialized by copying RoBERTa's 512 position embeddings repeatedly",
+     "mechanism": "The 4096-position embedding table is initialised by repeatedly copying RoBERTa's 512 learned position embeddings.",
      "quote": "we initialize them by copying the 512 position\nembeddings from RoBERTa multiple times",
      "where": "Sec. 5 Position Embeddings"
     }
    ],
-   "notes": "Described the headline pretrained Longformer (MLM, continued from RoBERTa; base and large, 4096 tokens). Architecture sizes, norm, activation, biases and tying are inherited from RoBERTa through the explicit 'continue pretraining from the RoBERTa released checkpoint, while only making the minimal changes' statement; the d_ff values are RoBERTa's. Pretraining uses sliding-window attention only (w=512, bidirectional, 256 per side). Global attention with separate projections is added in finetuning. Not described: the char-LM models (Transformer-XL code, relative sinusoidal positions, pre-LN, dilated windows; 12 or 30 layers, 512 hidden, 8 heads) and LED (BART-based encoder-decoder, 16K positions, encoder window 1024). Both are separate settings or variants."
+   "notes": "Described the headline pretrained Longformer, an encoder-only model whose MLM pretraining continues from the RoBERTa checkpoint. Base and large sizes are given. Sizes, norm type and placement, eps, GELU, biases and tied head are marked inherited from RoBERTa via the continue-pretraining sentence; the paper itself does not restate them. RoBERTa's single-type token_type embedding is omitted from the embed subgraph. Window 512 is the total bidirectional window (256 per side); no dilation in this setting, since dilation hurt with RoBERTa weights. Global attention is task-specific and absent in MLM pretraining, so it is listed outside the IR. Not described here: the char-LM variant (Transformer-XL based; 12 or 30 layers, 512 hidden, 8 heads, pre-LN, relative sinusoidal positions, causal dilated windows) and LED (an encoder-decoder initialised from BART)."
   },
   "verification": {
    "errors": [],
@@ -862,14 +940,14 @@
    "family": {
     "value": "encoder_only",
     "status": "stated",
-    "quote": "We finally introduce a variant of Longformer which instead of an encoder-only Transformer architecture, it follows an encoder-decoder architecture",
+    "quote": "We finally introduce a variant of Longformer which instead of an encoder-only Transformer architecture, it follows an encoder-decoder architecture similar to the original Transformer model",
     "where": "Sec. 1 Introduction",
     "reasons": [],
     "check": "verified"
    },
    "configs": [
     {
-     "name": "base",
+     "name": "Longformer-base",
      "d_model": {
       "value": "768",
       "status": "inherited",
@@ -943,15 +1021,15 @@
      "context_length": {
       "value": "4096",
       "status": "stated",
-      "quote": "The resulting model can process sequences up to 4,096 tokens long (8 times longer than BERT)",
-      "where": "Sec. 5 Pretraining and Finetuning",
+      "quote": "To support longer documents, we add extra position embeddings to support up to position 4,096.",
+      "where": "Sec. 5 Position Embeddings",
       "reasons": [],
       "check": "verified"
      },
      "consistency": []
     },
     {
-     "name": "large",
+     "name": "Longformer-large",
      "d_model": {
       "value": "1024",
       "status": "inherited",
@@ -1025,15 +1103,15 @@
      "context_length": {
       "value": "4096",
       "status": "stated",
-      "quote": "The resulting model can process sequences up to 4,096 tokens long (8 times longer than BERT)",
-      "where": "Sec. 5 Pretraining and Finetuning",
+      "quote": "To support longer documents, we add extra position embeddings to support up to position 4,096.",
+      "where": "Sec. 5 Position Embeddings",
       "reasons": [],
       "check": "verified"
      },
      "consistency": []
     }
    ],
-   "primary_config": "base",
+   "primary_config": "Longformer-base",
    "flavours": {
     "norm": {
      "value": "layernorm",
@@ -1052,6 +1130,22 @@
       "inherited from bert, whose curated entry has no norm_placement"
      ],
      "check": "unverified"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "norm_eps": {
      "value": "1e-5",
@@ -1074,10 +1168,26 @@
     "positional": {
      "value": "learned",
      "status": "stated",
-     "quote": "RoBERTa uses learned absolute position embeddings with the maximum\nposition being 512. To support longer documents, we add extra position embeddings to support up to position 4,096.",
+     "quote": "RoBERTa uses learned absolute position embeddings with the maximum position being 512. To support longer documents, we add extra position embeddings to support up to position 4,096.",
      "where": "Sec. 5 Position Embeddings",
      "reasons": [],
      "check": "verified"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "rope_pairing": {
      "value": "",
@@ -1124,12 +1234,12 @@
      "check": "unverified"
     },
     "attention": {
-     "value": "new_op:longformer_attention",
+     "value": "swa",
      "status": "stated",
-     "quote": "Given a fixed window size $w$, each token attends to $\\frac{1}{2}w$ tokens on each side (Fig.~\\ref{fig:attnb}).",
-     "where": "Sec. 3.1 Attention Pattern",
+     "quote": "We use sliding window attention with window size of 512, therefore using the same amount of computation as RoBERTa.",
+     "where": "Sec. 5 Attention Pattern",
      "reasons": [],
-     "check": "quote_only"
+     "check": "verified"
     },
     "window_size": {
      "value": "512",
@@ -1164,6 +1274,16 @@
      "where": "Sec. 5 Pretraining and Finetuning",
      "reasons": [
       "inherited from bert, whose curated entry has no mlp_bias"
+     ],
+     "check": "unverified"
+    },
+    "qk_norm": {
+     "value": "none",
+     "status": "inherited",
+     "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+     "where": "Sec. 5 Pretraining and Finetuning",
+     "reasons": [
+      "inherited from bert, whose curated entry has no qk_norm"
      ],
      "check": "unverified"
     },
@@ -1210,51 +1330,51 @@
      "where": "",
      "reasons": [],
      "check": "not_stated"
+    },
+    "ssm": {
+     "value": "none",
+     "status": "inherited",
+     "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+     "where": "Sec. 5 Pretraining and Finetuning",
+     "reasons": [
+      "inherited from bert, whose curated entry has no ssm"
+     ],
+     "check": "unverified"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     }
    },
-   "new_ops": [
-    {
-     "name": "longformer_attention",
-     "kind": "needs_new_primitive",
-     "replaces": "full self-attention",
-     "reason": "Needs a banded (non-causal) multi-head attention primitive in which each token attends to w/2 tokens on each side (w=512), combined with symmetric global attention: tokens flagged by a per-token mask attend to all tokens and are attended to by all tokens, using a separate set of Q_g/K_g/V_g projections. The IR attention op has no bidirectional band nor per-token global mask with separate projections.",
-     "quote": "We use two sets of projections, $Q_s$, $K_s$, $V_s$ to compute attention scores of sliding window attention, and  $Q_g$, $K_g$, $V_g$ to  compute attention scores for the global attention.",
-     "where": "Sec. 3.1 Linear Projections for Global Attention",
-     "inputs": [
-      {
-       "name": "x",
-       "meaning": "sliding-window queries Q_s"
-      },
-      {
-       "name": "a",
-       "meaning": "sliding-window keys K_s"
-      },
-      {
-       "name": "b",
-       "meaning": "sliding-window values V_s"
-      },
-      {
-       "name": "c",
-       "meaning": "global queries Q_g"
-      },
-      {
-       "name": "d",
-       "meaning": "global keys K_g"
-      },
-      {
-       "name": "e",
-       "meaning": "global values V_g"
-      },
-      {
-       "name": "f",
-       "meaning": "per-token global-attention mask (task-selected tokens)"
-      }
-     ],
-     "errors": [],
-     "quote_found": true,
-     "check": "verified"
-    }
-   ],
+   "new_ops": [],
    "block_ops": [
     {
      "i": 0,
@@ -1266,19 +1386,31 @@
      ],
      "output": "e",
      "new_op": "",
-     "attributes": [],
+     "attributes": [
+      {
+       "value": "50265",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning",
+       "reasons": [
+        "inherited from bert, whose curated entry has no vocab"
+       ],
+       "check": "unverified",
+       "name": "vocab"
+      }
+     ],
      "errors": []
     },
     {
      "i": 1,
      "subgraph": "embed",
      "op": "pos_embedding",
-     "role": "learned absolute position table extended to 4096 positions",
+     "role": "learned absolute position embedding extended to 4096 positions (copy-initialised from RoBERTa's 512)",
      "inputs": [
       "e",
       "pos"
      ],
-     "output": "p",
+     "output": "x0",
      "new_op": "",
      "attributes": [
       {
@@ -1296,22 +1428,8 @@
     {
      "i": 2,
      "subgraph": "embed",
-     "op": "add",
-     "role": "token + position embedding",
-     "inputs": [
-      "e",
-      "p"
-     ],
-     "output": "x0",
-     "new_op": "",
-     "attributes": [],
-     "errors": []
-    },
-    {
-     "i": 3,
-     "subgraph": "embed",
      "op": "layernorm",
-     "role": "embedding layernorm (RoBERTa)",
+     "role": "embedding layernorm",
      "inputs": [
       "x0"
      ],
@@ -1333,16 +1451,63 @@
      "errors": []
     },
     {
-     "i": 4,
+     "i": 3,
      "subgraph": "block",
      "op": "linear",
-     "role": "sliding-window query projection Q_s",
+     "role": "query projection Q_s",
      "inputs": [
       "x"
      ],
-     "output": "qs",
+     "output": "q",
      "new_op": "",
      "attributes": [
+      {
+       "value": "768",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning",
+       "reasons": [
+        "inherited from bert, whose curated entry has no out"
+       ],
+       "check": "unverified",
+       "name": "out"
+      },
+      {
+       "value": "true",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning",
+       "reasons": [
+        "inherited from bert, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 4,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection K_s",
+     "inputs": [
+      "x"
+     ],
+     "output": "k",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "768",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning",
+       "reasons": [
+        "inherited from bert, whose curated entry has no out"
+       ],
+       "check": "unverified",
+       "name": "out"
+      },
       {
        "value": "true",
        "status": "inherited",
@@ -1361,13 +1526,24 @@
      "i": 5,
      "subgraph": "block",
      "op": "linear",
-     "role": "sliding-window key projection K_s",
+     "role": "value projection V_s",
      "inputs": [
       "x"
      ],
-     "output": "ks",
+     "output": "v",
      "new_op": "",
      "attributes": [
+      {
+       "value": "768",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning",
+       "reasons": [
+        "inherited from bert, whose curated entry has no out"
+       ],
+       "check": "unverified",
+       "name": "out"
+      },
       {
        "value": "true",
        "status": "inherited",
@@ -1385,102 +1561,16 @@
     {
      "i": 6,
      "subgraph": "block",
-     "op": "linear",
-     "role": "sliding-window value projection V_s",
+     "op": "attention",
+     "role": "bidirectional sliding-window self-attention (w/2 tokens on each side)",
      "inputs": [
-      "x"
-     ],
-     "output": "vs",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "true",
-       "status": "inherited",
-       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
-       "where": "Sec. 5 Pretraining and Finetuning",
-       "reasons": [
-        "inherited from bert, whose curated entry has no bias"
-       ],
-       "check": "unverified",
-       "name": "bias"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 7,
-     "subgraph": "block",
-     "op": "linear",
-     "role": "global query projection Q_g (initialized from Q_s)",
-     "inputs": [
-      "x"
-     ],
-     "output": "qg",
-     "new_op": "",
-     "attributes": [],
-     "errors": []
-    },
-    {
-     "i": 8,
-     "subgraph": "block",
-     "op": "linear",
-     "role": "global key projection K_g (initialized from K_s)",
-     "inputs": [
-      "x"
-     ],
-     "output": "kg",
-     "new_op": "",
-     "attributes": [],
-     "errors": []
-    },
-    {
-     "i": 9,
-     "subgraph": "block",
-     "op": "linear",
-     "role": "global value projection V_g (initialized from V_s)",
-     "inputs": [
-      "x"
-     ],
-     "output": "vg",
-     "new_op": "",
-     "attributes": [],
-     "errors": []
-    },
-    {
-     "i": 10,
-     "subgraph": "block",
-     "op": "unsupported",
-     "role": "bidirectional sliding-window attention (w/2 each side) plus symmetric global attention on selected tokens",
-     "inputs": [
-      "qs",
-      "ks",
-      "vs",
-      "qg",
-      "kg",
-      "vg",
-      "global_mask"
+      "q",
+      "k",
+      "v"
      ],
      "output": "a",
-     "new_op": "longformer_attention",
+     "new_op": "",
      "attributes": [
-      {
-       "value": "512",
-       "status": "stated",
-       "quote": "We use sliding window attention with window size of 512, therefore using the same amount of computation as RoBERTa.",
-       "where": "Sec. 5 Attention Pattern",
-       "reasons": [],
-       "check": "verified",
-       "name": "window"
-      },
-      {
-       "value": "false",
-       "status": "stated",
-       "quote": "Given a fixed window size $w$, each token attends to $\\frac{1}{2}w$ tokens on each side (Fig.~\\ref{fig:attnb}).",
-       "where": "Sec. 3.1 Attention Pattern",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "causal"
-      },
       {
        "value": "12",
        "status": "inherited",
@@ -1491,6 +1581,17 @@
        ],
        "check": "unverified",
        "name": "heads"
+      },
+      {
+       "value": "12",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning",
+       "reasons": [
+        "inherited from bert, whose curated entry has no kv_heads"
+       ],
+       "check": "unverified",
+       "name": "kv_heads"
       },
       {
        "value": "64",
@@ -1513,12 +1614,39 @@
        ],
        "check": "unverified",
        "name": "scale"
+      },
+      {
+       "value": "false",
+       "status": "stated",
+       "quote": "Given a fixed window size $w$, each token attends to $\\frac{1}{2}w$ tokens on each side (Fig.~\\ref{fig:attnb}).",
+       "where": "Sec. 3.1 Attention Pattern",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "causal"
+      },
+      {
+       "value": "512",
+       "status": "stated",
+       "quote": "We use sliding window attention with window size of 512, therefore using the same amount of computation as RoBERTa.",
+       "where": "Sec. 5 Attention Pattern",
+       "reasons": [],
+       "check": "verified",
+       "name": "window"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "sinks"
       }
      ],
      "errors": []
     },
     {
-     "i": 11,
+     "i": 7,
      "subgraph": "block",
      "op": "linear",
      "role": "attention output projection",
@@ -1528,6 +1656,17 @@
      "output": "o",
      "new_op": "",
      "attributes": [
+      {
+       "value": "768",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning",
+       "reasons": [
+        "inherited from bert, whose curated entry has no out"
+       ],
+       "check": "unverified",
+       "name": "out"
+      },
       {
        "value": "true",
        "status": "inherited",
@@ -1543,7 +1682,7 @@
      "errors": []
     },
     {
-     "i": 12,
+     "i": 8,
      "subgraph": "block",
      "op": "add",
      "role": "attention residual",
@@ -1557,7 +1696,7 @@
      "errors": []
     },
     {
-     "i": 13,
+     "i": 9,
      "subgraph": "block",
      "op": "layernorm",
      "role": "post-attention layernorm",
@@ -1582,7 +1721,7 @@
      "errors": []
     },
     {
-     "i": 14,
+     "i": 10,
      "subgraph": "block",
      "op": "linear",
      "role": "FFN up projection",
@@ -1618,7 +1757,7 @@
      "errors": []
     },
     {
-     "i": 15,
+     "i": 11,
      "subgraph": "block",
      "op": "gelu",
      "role": "FFN activation",
@@ -1643,7 +1782,7 @@
      "errors": []
     },
     {
-     "i": 16,
+     "i": 12,
      "subgraph": "block",
      "op": "linear",
      "role": "FFN down projection",
@@ -1653,6 +1792,17 @@
      "output": "f",
      "new_op": "",
      "attributes": [
+      {
+       "value": "768",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning",
+       "reasons": [
+        "inherited from bert, whose curated entry has no out"
+       ],
+       "check": "unverified",
+       "name": "out"
+      },
       {
        "value": "true",
        "status": "inherited",
@@ -1668,7 +1818,7 @@
      "errors": []
     },
     {
-     "i": 17,
+     "i": 13,
      "subgraph": "block",
      "op": "add",
      "role": "FFN residual",
@@ -1682,10 +1832,10 @@
      "errors": []
     },
     {
-     "i": 18,
+     "i": 14,
      "subgraph": "block",
      "op": "layernorm",
-     "role": "post-FFN layernorm",
+     "role": "post-FFN layernorm (block output)",
      "inputs": [
       "r2"
      ],
@@ -1707,55 +1857,124 @@
      "errors": []
     },
     {
-     "i": 19,
+     "i": 15,
      "subgraph": "head",
      "op": "linear",
      "role": "MLM head dense",
      "inputs": [
       "x"
      ],
-     "output": "hd",
+     "output": "d",
      "new_op": "",
-     "attributes": [],
+     "attributes": [
+      {
+       "value": "768",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning",
+       "reasons": [
+        "inherited from bert, whose curated entry has no out"
+       ],
+       "check": "unverified",
+       "name": "out"
+      },
+      {
+       "value": "true",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning",
+       "reasons": [
+        "inherited from bert, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
      "errors": []
     },
     {
-     "i": 20,
+     "i": 16,
      "subgraph": "head",
      "op": "gelu",
      "role": "MLM head activation",
      "inputs": [
-      "hd"
+      "d"
      ],
-     "output": "hg",
+     "output": "dg",
      "new_op": "",
-     "attributes": [],
+     "attributes": [
+      {
+       "value": "none",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning",
+       "reasons": [
+        "inherited from bert, whose curated entry has no approx"
+       ],
+       "check": "unverified",
+       "name": "approx"
+      }
+     ],
      "errors": []
     },
     {
-     "i": 21,
+     "i": 17,
      "subgraph": "head",
      "op": "layernorm",
      "role": "MLM head layernorm",
      "inputs": [
-      "hg"
+      "dg"
      ],
-     "output": "hn",
+     "output": "dn",
      "new_op": "",
-     "attributes": [],
+     "attributes": [
+      {
+       "value": "1e-5",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning",
+       "reasons": [
+        "inherited from bert, whose curated entry has no eps"
+       ],
+       "check": "unverified",
+       "name": "eps"
+      }
+     ],
      "errors": []
     },
     {
-     "i": 22,
+     "i": 18,
      "subgraph": "head",
      "op": "linear",
      "role": "MLM output projection to vocabulary",
      "inputs": [
-      "hn"
+      "dn"
      ],
      "output": "logits",
      "new_op": "",
      "attributes": [
+      {
+       "value": "50265",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning",
+       "reasons": [
+        "inherited from bert, whose curated entry has no out"
+       ],
+       "check": "unverified",
+       "name": "out"
+      },
+      {
+       "value": "true",
+       "status": "inherited",
+       "quote": "Since MLM pretraining is expensive, we continue pretraining from the RoBERTa~\\cite{roberta} released checkpoint, while only making the minimal changes necessary to support \\model's attention mechanism.",
+       "where": "Sec. 5 Pretraining and Finetuning",
+       "reasons": [
+        "inherited from bert, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      },
       {
        "value": "token_embd",
        "status": "inherited",
@@ -1773,13 +1992,19 @@
    ],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Task-specific selection of global-attention tokens ([CLS] for classification, question tokens for QA); global attention is symmetric",
+     "mechanism": "Task-specific symmetric global attention on pre-selected tokens (e.g. [CLS], question tokens). It uses a separate set of projections Q_g, K_g, V_g, initialised as copies of Q_s, K_s, V_s, and is combined with the sliding-window attention during finetuning.",
+     "quote": "We use two sets of projections, $Q_s$, $K_s$, $V_s$ to compute attention scores of sliding window attention, and  $Q_g$, $K_g$, $V_g$ to  compute attention scores for the global attention.",
+     "where": "Sec. 3.1 Linear Projections for Global Attention",
+     "check": "verified"
+    },
+    {
+     "mechanism": "Global attention is symmetric: a global token attends to all tokens, and all tokens attend to it.",
      "quote": "Importantly, we make this attention operation symmetric: that is, a token\nwith a global attention attends to all tokens across the sequence, and all tokens in the sequence attend to it.",
      "where": "Sec. 3.1 Global Attention",
      "check": "verified"
     },
     {
-     "mechanism": "New position embeddings initialized by copying RoBERTa's 512 position embeddings repeatedly",
+     "mechanism": "The 4096-position embedding table is initialised by repeatedly copying RoBERTa's 512 learned position embeddings.",
      "quote": "we initialize them by copying the 512 position\nembeddings from RoBERTa multiple times",
      "where": "Sec. 5 Position Embeddings",
      "check": "verified"
@@ -1787,92 +2012,92 @@
    ],
    "summary": {
     "counts": {
-     "verified": 9,
-     "quote_only": 2,
-     "unverified": 37,
-     "not_stated": 7
+     "verified": 10,
+     "quote_only": 1,
+     "unverified": 52,
+     "not_stated": 16
     },
     "unverified": [
      {
-      "field": "configs[base].d_model",
+      "field": "configs[Longformer-base].d_model",
       "reasons": [
        "inherited from bert, whose curated entry has no d_model"
       ]
      },
      {
-      "field": "configs[base].n_layers",
+      "field": "configs[Longformer-base].n_layers",
       "reasons": [
        "inherited from bert, whose curated entry has no n_layers"
       ]
      },
      {
-      "field": "configs[base].n_heads",
+      "field": "configs[Longformer-base].n_heads",
       "reasons": [
        "inherited from bert, whose curated entry has no n_heads"
       ]
      },
      {
-      "field": "configs[base].n_kv_heads",
+      "field": "configs[Longformer-base].n_kv_heads",
       "reasons": [
        "inherited from bert, whose curated entry has no n_kv_heads"
       ]
      },
      {
-      "field": "configs[base].head_dim",
+      "field": "configs[Longformer-base].head_dim",
       "reasons": [
        "inherited from bert, whose curated entry has no head_dim"
       ]
      },
      {
-      "field": "configs[base].d_ff",
+      "field": "configs[Longformer-base].d_ff",
       "reasons": [
        "inherited from bert, whose curated entry has no d_ff"
       ]
      },
      {
-      "field": "configs[base].vocab_size",
+      "field": "configs[Longformer-base].vocab_size",
       "reasons": [
        "inherited from bert, whose curated entry has no vocab_size"
       ]
      },
      {
-      "field": "configs[large].d_model",
+      "field": "configs[Longformer-large].d_model",
       "reasons": [
        "inherited from bert, whose curated entry has no d_model"
       ]
      },
      {
-      "field": "configs[large].n_layers",
+      "field": "configs[Longformer-large].n_layers",
       "reasons": [
        "inherited from bert, whose curated entry has no n_layers"
       ]
      },
      {
-      "field": "configs[large].n_heads",
+      "field": "configs[Longformer-large].n_heads",
       "reasons": [
        "inherited from bert, whose curated entry has no n_heads"
       ]
      },
      {
-      "field": "configs[large].n_kv_heads",
+      "field": "configs[Longformer-large].n_kv_heads",
       "reasons": [
        "inherited from bert, whose curated entry has no n_kv_heads"
       ]
      },
      {
-      "field": "configs[large].head_dim",
+      "field": "configs[Longformer-large].head_dim",
       "reasons": [
        "inherited from bert, whose curated entry has no head_dim"
       ]
      },
      {
-      "field": "configs[large].d_ff",
+      "field": "configs[Longformer-large].d_ff",
       "reasons": [
        "inherited from bert, whose curated entry has no d_ff"
       ]
      },
      {
-      "field": "configs[large].vocab_size",
+      "field": "configs[Longformer-large].vocab_size",
       "reasons": [
        "inherited from bert, whose curated entry has no vocab_size"
       ]
@@ -1914,6 +2139,12 @@
       ]
      },
      {
+      "field": "flavours.qk_norm",
+      "reasons": [
+       "inherited from bert, whose curated entry has no qk_norm"
+      ]
+     },
+     {
       "field": "flavours.tied_embeddings",
       "reasons": [
        "inherited from bert, whose curated entry has no tied_embeddings"
@@ -1926,9 +2157,39 @@
       ]
      },
      {
-      "field": "block_ops[3].eps",
+      "field": "flavours.ssm",
+      "reasons": [
+       "inherited from bert, whose curated entry has no ssm"
+      ]
+     },
+     {
+      "field": "block_ops[0].vocab",
+      "reasons": [
+       "inherited from bert, whose curated entry has no vocab"
+      ]
+     },
+     {
+      "field": "block_ops[2].eps",
       "reasons": [
        "inherited from bert, whose curated entry has no eps"
+      ]
+     },
+     {
+      "field": "block_ops[3].out",
+      "reasons": [
+       "inherited from bert, whose curated entry has no out"
+      ]
+     },
+     {
+      "field": "block_ops[3].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[4].out",
+      "reasons": [
+       "inherited from bert, whose curated entry has no out"
       ]
      },
      {
@@ -1938,79 +2199,133 @@
       ]
      },
      {
+      "field": "block_ops[5].out",
+      "reasons": [
+       "inherited from bert, whose curated entry has no out"
+      ]
+     },
+     {
       "field": "block_ops[5].bias",
       "reasons": [
        "inherited from bert, whose curated entry has no bias"
       ]
      },
      {
-      "field": "block_ops[6].bias",
-      "reasons": [
-       "inherited from bert, whose curated entry has no bias"
-      ]
-     },
-     {
-      "field": "block_ops[10].heads",
+      "field": "block_ops[6].heads",
       "reasons": [
        "inherited from bert, whose curated entry has no heads"
       ]
      },
      {
-      "field": "block_ops[10].head_dim",
+      "field": "block_ops[6].kv_heads",
+      "reasons": [
+       "inherited from bert, whose curated entry has no kv_heads"
+      ]
+     },
+     {
+      "field": "block_ops[6].head_dim",
       "reasons": [
        "inherited from bert, whose curated entry has no head_dim"
       ]
      },
      {
-      "field": "block_ops[10].scale",
+      "field": "block_ops[6].scale",
       "reasons": [
        "inherited from bert, whose curated entry has no scale"
       ]
      },
      {
-      "field": "block_ops[11].bias",
-      "reasons": [
-       "inherited from bert, whose curated entry has no bias"
-      ]
-     },
-     {
-      "field": "block_ops[13].eps",
-      "reasons": [
-       "inherited from bert, whose curated entry has no eps"
-      ]
-     },
-     {
-      "field": "block_ops[14].out",
+      "field": "block_ops[7].out",
       "reasons": [
        "inherited from bert, whose curated entry has no out"
       ]
      },
      {
-      "field": "block_ops[14].bias",
+      "field": "block_ops[7].bias",
       "reasons": [
        "inherited from bert, whose curated entry has no bias"
       ]
      },
      {
-      "field": "block_ops[15].approx",
-      "reasons": [
-       "inherited from bert, whose curated entry has no approx"
-      ]
-     },
-     {
-      "field": "block_ops[16].bias",
-      "reasons": [
-       "inherited from bert, whose curated entry has no bias"
-      ]
-     },
-     {
-      "field": "block_ops[18].eps",
+      "field": "block_ops[9].eps",
       "reasons": [
        "inherited from bert, whose curated entry has no eps"
       ]
      },
      {
-      "field": "block_ops[22].tied_to",
+      "field": "block_ops[10].out",
+      "reasons": [
+       "inherited from bert, whose curated entry has no out"
+      ]
+     },
+     {
+      "field": "block_ops[10].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[11].approx",
+      "reasons": [
+       "inherited from bert, whose curated entry has no approx"
+      ]
+     },
+     {
+      "field": "block_ops[12].out",
+      "reasons": [
+       "inherited from bert, whose curated entry has no out"
+      ]
+     },
+     {
+      "field": "block_ops[12].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[14].eps",
+      "reasons": [
+       "inherited from bert, whose curated entry has no eps"
+      ]
+     },
+     {
+      "field": "block_ops[15].out",
+      "reasons": [
+       "inherited from bert, whose curated entry has no out"
+      ]
+     },
+     {
+      "field": "block_ops[15].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[16].approx",
+      "reasons": [
+       "inherited from bert, whose curated entry has no approx"
+      ]
+     },
+     {
+      "field": "block_ops[17].eps",
+      "reasons": [
+       "inherited from bert, whose curated entry has no eps"
+      ]
+     },
+     {
+      "field": "block_ops[18].out",
+      "reasons": [
+       "inherited from bert, whose curated entry has no out"
+      ]
+     },
+     {
+      "field": "block_ops[18].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[18].tied_to",
       "reasons": [
        "inherited from bert, whose curated entry has no tied_to"
       ]
@@ -2018,8 +2333,8 @@
     ],
     "new_op_errors": [],
     "node_errors": [],
-    "n_new_ops": 1,
-    "n_block_ops": 23
+    "n_new_ops": 0,
+    "n_block_ops": 19
    }
   }
  }

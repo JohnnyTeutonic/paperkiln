@@ -9,7 +9,7 @@
   },
   "context_length": {
    "value": 4096,
-   "evidence": "We expand the context window for \\cinnamon from 2048 tokens to 4096 tokens. [Appendix A.2.1 Context Length]",
+   "evidence": "We expand the context window for \\cinnamon from 2048 tokens to 4096 tokens. [Sec. A.2.1 Context Length]",
    "verdict": "used"
   },
   "norm": {
@@ -29,7 +29,7 @@
   },
   "residual": {
    "value": "residual",
-   "evidence": "We use the standard transformer architecture [Sec. 2.2 Training Details]",
+   "evidence": "We use the standard transformer architecture \\citep{vaswani2017attention} [Sec. 2.2 Training Details]",
    "verdict": "unverified",
    "reasons": [
     "the quote does not name residual (looked for /residual|skip/)"
@@ -37,7 +37,7 @@
   },
   "attention": {
    "value": "exact",
-   "evidence": "used grouped-query attention (GQA) to improve inference scalability for our larger models [Sec. 2 Pretraining]",
+   "evidence": "We use the standard transformer architecture \\citep{vaswani2017attention} [Sec. 2.2 Training Details]",
    "verdict": "used"
   }
  },
@@ -72,10 +72,12 @@
    "context_length": 4096
   },
   {
+   "n_kv_heads": 8,
    "vocab_size": 32000,
    "context_length": 4096
   },
   {
+   "n_kv_heads": 8,
    "vocab_size": 32000,
    "context_length": 4096
   }
@@ -86,14 +88,14 @@
   "sent_sha256": "c81a9e7b0215409404b4c0285bee966a2777bb35c9e63db28037f145af18fa16",
   "from": "https://arxiv.org/e-print/2307.09288",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
+  "extractor_sha256": "9d5951b0f11c920aaf075abead17d7d4e619d37402d47690ba452de15620e921",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
+  "prompt_sha256": "e6c6c5052b656885910d1539b8c320ba4ecb9262a6079252b852f1ff637b03ef",
   "n_calls": 1,
-  "cost_usd": 0.606376,
+  "cost_usd": 0.633192,
   "request_ids": [
-   "req_011CgFi73My8H4BpePjFTNAf"
+   "req_011CgRtArPUamNQ5BmdKjPUy"
   ]
  },
  "llm": {
@@ -160,7 +162,7 @@
       "value": "4096",
       "status": "stated",
       "quote": "We expand the context window for \\cinnamon from 2048 tokens to 4096 tokens.",
-      "where": "Appendix A.2.1 Context Length"
+      "where": "Sec. A.2.1 Context Length"
      }
     },
     {
@@ -211,7 +213,7 @@
       "value": "4096",
       "status": "stated",
       "quote": "We expand the context window for \\cinnamon from 2048 tokens to 4096 tokens.",
-      "where": "Appendix A.2.1 Context Length"
+      "where": "Sec. A.2.1 Context Length"
      }
     },
     {
@@ -235,10 +237,10 @@
       "where": ""
      },
      "n_kv_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
+      "value": "8",
+      "status": "stated",
+      "quote": "Either the original multi-query format with a single KV projection \\citep[MQA,~][]{shazeer2019mq} or a grouped-query attention variant with 8 KV projections \\citep[GQA,~][]{gqa2023} can be used.",
+      "where": "Sec. A.2.1 Grouped-Query Attention"
      },
      "head_dim": {
       "value": "",
@@ -262,7 +264,7 @@
       "value": "4096",
       "status": "stated",
       "quote": "We expand the context window for \\cinnamon from 2048 tokens to 4096 tokens.",
-      "where": "Appendix A.2.1 Context Length"
+      "where": "Sec. A.2.1 Context Length"
      }
     },
     {
@@ -286,10 +288,10 @@
       "where": ""
      },
      "n_kv_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
+      "value": "8",
+      "status": "stated",
+      "quote": "Either the original multi-query format with a single KV projection \\citep[MQA,~][]{shazeer2019mq} or a grouped-query attention variant with 8 KV projections \\citep[GQA,~][]{gqa2023} can be used.",
+      "where": "Sec. A.2.1 Grouped-Query Attention"
      },
      "head_dim": {
       "value": "",
@@ -313,7 +315,7 @@
       "value": "4096",
       "status": "stated",
       "quote": "We expand the context window for \\cinnamon from 2048 tokens to 4096 tokens.",
-      "where": "Appendix A.2.1 Context Length"
+      "where": "Sec. A.2.1 Context Length"
      }
     }
    ],
@@ -330,6 +332,18 @@
      "status": "stated",
      "quote": "apply pre-normalization using RMSNorm \\citep{zhang2019root}",
      "where": "Sec. 2.2 Training Details"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "norm_eps": {
      "value": "",
@@ -348,6 +362,18 @@
      "status": "stated",
      "quote": "rotary positional embeddings (RoPE, \\citealt{su2022roformer})",
      "where": "Sec. 2.2 Training Details"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "rope_pairing": {
      "value": "",
@@ -370,7 +396,7 @@
     "residual": {
      "value": "residual",
      "status": "stated",
-     "quote": "We use the standard transformer architecture",
+     "quote": "We use the standard transformer architecture\n\\citep{vaswani2017attention}",
      "where": "Sec. 2.2 Training Details"
     },
     "parallel_block": {
@@ -382,8 +408,8 @@
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "used grouped-query attention (GQA) to improve inference scalability for our larger models",
-     "where": "Sec. 2 Pretraining"
+     "quote": "We use the standard transformer architecture\n\\citep{vaswani2017attention}",
+     "where": "Sec. 2.2 Training Details"
     },
     "window_size": {
      "value": "",
@@ -409,6 +435,12 @@
      "quote": "",
      "where": ""
     },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
     "tied_embeddings": {
      "value": "",
      "status": "not_stated",
@@ -416,10 +448,10 @@
      "where": ""
     },
     "moe": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": ""
+     "value": "false",
+     "status": "stated",
+     "quote": "We use the standard transformer architecture\n\\citep{vaswani2017attention}",
+     "where": "Sec. 2.2 Training Details"
     },
     "n_experts": {
      "value": "",
@@ -434,6 +466,36 @@
      "where": ""
     },
     "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "ssm": {
+     "value": "none",
+     "status": "stated",
+     "quote": "We use the standard transformer architecture\n\\citep{vaswani2017attention}",
+     "where": "Sec. 2.2 Training Details"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -489,24 +551,12 @@
      "output": "q",
      "attributes": [
       {
-       "name": "bias",
+       "name": "out",
        "value": "",
        "status": "not_stated",
        "quote": "",
        "where": ""
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "linear",
-     "role": "key projection (shared across head groups under GQA for 34B/70B)",
-     "inputs": [
-      "h"
-     ],
-     "output": "k",
-     "attributes": [
+      },
       {
        "name": "bias",
        "value": "",
@@ -520,12 +570,45 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "value projection (shared across head groups under GQA for 34B/70B)",
+     "role": "key projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "k",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection",
      "inputs": [
       "h"
      ],
      "output": "v",
      "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
       {
        "name": "bias",
        "value": "",
@@ -539,7 +622,7 @@
     {
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary embedding on queries",
+     "role": "rotary embedding on q",
      "inputs": [
       "q"
      ],
@@ -579,7 +662,7 @@
     {
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary embedding on keys",
+     "role": "rotary embedding on k",
      "inputs": [
       "k"
      ],
@@ -659,8 +742,8 @@
        "name": "causal",
        "value": "true",
        "status": "stated",
-       "quote": "\\cinnamon is an auto-regressive language model that uses an optimized transformer architecture.",
-       "where": "Table: Model card for Llama 2"
+       "quote": "using an optimized auto-regressive transformer",
+       "where": "Sec. 2 Pretraining"
       },
       {
        "name": "window",
@@ -688,6 +771,13 @@
      ],
      "output": "o",
      "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
       {
        "name": "bias",
        "value": "",
@@ -814,6 +904,13 @@
      "output": "f",
      "attributes": [
       {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
        "name": "bias",
        "value": "",
        "status": "not_stated",
@@ -831,8 +928,27 @@
       "x1",
       "f"
      ],
-     "output": "x",
+     "output": "x_out",
      "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "rmsnorm",
+     "role": "final norm (not stated in paper)",
+     "inputs": [
+      "x_out"
+     ],
+     "output": "hf",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
      "new_op": ""
     },
     {
@@ -840,7 +956,7 @@
      "op": "linear",
      "role": "next-token prediction head",
      "inputs": [
-      "x"
+      "hf"
      ],
      "output": "logits",
      "attributes": [
@@ -871,7 +987,7 @@
    ],
    "new_ops": [],
    "mechanisms_outside_ir": [],
-   "notes": "Described the pretrained Llama 2 base model, which Llama 2-Chat fine-tunes without architectural change. Configs are 7B/13B/34B/70B; 34B is reported but not released. The paper gives no d_model, n_layers, n_heads, head_dim or d_ff for any size, so these are not_stated. The paper inherits the architecture from Llama 1 but does not restate those values, and the sizes differ from Llama 1 (34B/70B are new), so no size values are given as inherited. GQA is used only for 34B and 70B; 7B/13B use MHA. The ablation mentions 'a grouped-query attention variant with 8 KV projections', but this is in an ablation on a 30B model, so kv_heads is left not_stated. RMSNorm eps, RoPE theta/pairing, biases and tied embeddings are not stated. A final norm before the head is not described in the paper and is omitted from the IR; a builder should check it against the released code. The reward model replaces the LM head with a scalar regression head; that is not the headline model."
+   "notes": "Described the pretrained Llama 2 base family (7B, 13B, 34B, 70B); Llama 2-Chat shares the architecture. 34B and 70B use GQA ('for the 34B and 70B \\cinnamon models we chose to use GQA instead of MQA'); the 8-KV-projection count comes from the GQA description in the same appendix section. 7B/13B use MHA, but their head counts are not stated. This paper does not give d_model, n_layers, n_heads, head_dim, d_ff, the norm eps or the RoPE theta. The architecture is said to follow Llama 1 ('most of'), but those sizes are not restated, so they are left not_stated. The eps 1e-5 in the paper is the AdamW eps, not a norm eps. Vocab is written as '32k' and recorded as 32000. A final RMSNorm in the head is assumed structurally and is not stated. Biases and weight tying are not stated."
   },
   "verification": {
    "errors": [],
@@ -954,7 +1070,7 @@
       "value": "4096",
       "status": "stated",
       "quote": "We expand the context window for \\cinnamon from 2048 tokens to 4096 tokens.",
-      "where": "Appendix A.2.1 Context Length",
+      "where": "Sec. A.2.1 Context Length",
       "reasons": [],
       "check": "verified"
      },
@@ -1022,7 +1138,7 @@
       "value": "4096",
       "status": "stated",
       "quote": "We expand the context window for \\cinnamon from 2048 tokens to 4096 tokens.",
-      "where": "Appendix A.2.1 Context Length",
+      "where": "Sec. A.2.1 Context Length",
       "reasons": [],
       "check": "verified"
      },
@@ -1055,12 +1171,12 @@
       "check": "not_stated"
      },
      "n_kv_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
+      "value": "8",
+      "status": "stated",
+      "quote": "Either the original multi-query format with a single KV projection \\citep[MQA,~][]{shazeer2019mq} or a grouped-query attention variant with 8 KV projections \\citep[GQA,~][]{gqa2023} can be used.",
+      "where": "Sec. A.2.1 Grouped-Query Attention",
       "reasons": [],
-      "check": "not_stated"
+      "check": "verified"
      },
      "head_dim": {
       "value": "",
@@ -1090,7 +1206,7 @@
       "value": "4096",
       "status": "stated",
       "quote": "We expand the context window for \\cinnamon from 2048 tokens to 4096 tokens.",
-      "where": "Appendix A.2.1 Context Length",
+      "where": "Sec. A.2.1 Context Length",
       "reasons": [],
       "check": "verified"
      },
@@ -1123,12 +1239,12 @@
       "check": "not_stated"
      },
      "n_kv_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
+      "value": "8",
+      "status": "stated",
+      "quote": "Either the original multi-query format with a single KV projection \\citep[MQA,~][]{shazeer2019mq} or a grouped-query attention variant with 8 KV projections \\citep[GQA,~][]{gqa2023} can be used.",
+      "where": "Sec. A.2.1 Grouped-Query Attention",
       "reasons": [],
-      "check": "not_stated"
+      "check": "verified"
      },
      "head_dim": {
       "value": "",
@@ -1158,7 +1274,7 @@
       "value": "4096",
       "status": "stated",
       "quote": "We expand the context window for \\cinnamon from 2048 tokens to 4096 tokens.",
-      "where": "Appendix A.2.1 Context Length",
+      "where": "Sec. A.2.1 Context Length",
       "reasons": [],
       "check": "verified"
      },
@@ -1183,6 +1299,22 @@
      "reasons": [],
      "check": "quote_only"
     },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
     "norm_eps": {
      "value": "",
      "status": "not_stated",
@@ -1206,6 +1338,22 @@
      "where": "Sec. 2.2 Training Details",
      "reasons": [],
      "check": "verified"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "rope_pairing": {
      "value": "",
@@ -1234,7 +1382,7 @@
     "residual": {
      "value": "residual",
      "status": "stated",
-     "quote": "We use the standard transformer architecture",
+     "quote": "We use the standard transformer architecture\n\\citep{vaswani2017attention}",
      "where": "Sec. 2.2 Training Details",
      "reasons": [
       "the quote does not name residual (looked for /residual|skip/)"
@@ -1252,8 +1400,8 @@
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "used grouped-query attention (GQA) to improve inference scalability for our larger models",
-     "where": "Sec. 2 Pretraining",
+     "quote": "We use the standard transformer architecture\n\\citep{vaswani2017attention}",
+     "where": "Sec. 2.2 Training Details",
      "reasons": [],
      "check": "quote_only"
     },
@@ -1289,6 +1437,14 @@
      "reasons": [],
      "check": "not_stated"
     },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
     "tied_embeddings": {
      "value": "",
      "status": "not_stated",
@@ -1298,12 +1454,12 @@
      "check": "not_stated"
     },
     "moe": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": "",
+     "value": "false",
+     "status": "stated",
+     "quote": "We use the standard transformer architecture\n\\citep{vaswani2017attention}",
+     "where": "Sec. 2.2 Training Details",
      "reasons": [],
-     "check": "not_stated"
+     "check": "quote_only"
     },
     "n_experts": {
      "value": "",
@@ -1322,6 +1478,46 @@
      "check": "not_stated"
     },
     "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "ssm": {
+     "value": "none",
+     "status": "stated",
+     "quote": "We use the standard transformer architecture\n\\citep{vaswani2017attention}",
+     "where": "Sec. 2.2 Training Details",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -1396,6 +1592,15 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "bias"
       }
      ],
@@ -1405,13 +1610,22 @@
      "i": 3,
      "subgraph": "block",
      "op": "linear",
-     "role": "key projection (shared across head groups under GQA for 34B/70B)",
+     "role": "key projection",
      "inputs": [
       "h"
      ],
      "output": "k",
      "new_op": "",
      "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -1428,13 +1642,22 @@
      "i": 4,
      "subgraph": "block",
      "op": "linear",
-     "role": "value projection (shared across head groups under GQA for 34B/70B)",
+     "role": "value projection",
      "inputs": [
       "h"
      ],
      "output": "v",
      "new_op": "",
      "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -1451,7 +1674,7 @@
      "i": 5,
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary embedding on queries",
+     "role": "rotary embedding on q",
      "inputs": [
       "q"
      ],
@@ -1501,7 +1724,7 @@
      "i": 6,
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary embedding on keys",
+     "role": "rotary embedding on k",
      "inputs": [
       "k"
      ],
@@ -1599,8 +1822,8 @@
       {
        "value": "true",
        "status": "stated",
-       "quote": "\\cinnamon is an auto-regressive language model that uses an optimized transformer architecture.",
-       "where": "Table: Model card for Llama 2",
+       "quote": "using an optimized auto-regressive transformer",
+       "where": "Sec. 2 Pretraining",
        "reasons": [],
        "check": "quote_only",
        "name": "causal"
@@ -1637,6 +1860,15 @@
      "output": "o",
      "new_op": "",
      "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -1795,6 +2027,15 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "bias"
       }
      ],
@@ -1809,7 +2050,7 @@
       "x1",
       "f"
      ],
-     "output": "x",
+     "output": "x_out",
      "new_op": "",
      "attributes": [],
      "errors": []
@@ -1817,10 +2058,33 @@
     {
      "i": 17,
      "subgraph": "head",
+     "op": "rmsnorm",
+     "role": "final norm (not stated in paper)",
+     "inputs": [
+      "x_out"
+     ],
+     "output": "hf",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 18,
+     "subgraph": "head",
      "op": "linear",
      "role": "next-token prediction head",
      "inputs": [
-      "x"
+      "hf"
      ],
      "output": "logits",
      "new_op": "",
@@ -1859,10 +2123,10 @@
    "mechanisms_outside_ir": [],
    "summary": {
     "counts": {
-     "verified": 13,
-     "quote_only": 6,
+     "verified": 15,
+     "quote_only": 8,
      "unverified": 1,
-     "not_stated": 63
+     "not_stated": 75
     },
     "unverified": [
      {
@@ -1875,7 +2139,7 @@
     "new_op_errors": [],
     "node_errors": [],
     "n_new_ops": 0,
-    "n_block_ops": 18
+    "n_block_ops": 19
    }
   }
  }

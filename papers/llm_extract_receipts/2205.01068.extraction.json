@@ -3,18 +3,18 @@
  "title": "OPT: Open Pre-trained Transformer Language Models",
  "fields": {
   "d_model": {
-   "value": 12288,
-   "evidence": "175B & 96 & 96 & 12288 & $1.2e{-4}$ & 2M [Table: Model architecture details]",
+   "value": 768,
+   "evidence": "125M & 12 & 12 & 768 [Table model_sizes]",
    "verdict": "used"
   },
   "n_layers": {
-   "value": 96,
-   "evidence": "175B & 96 & 96 & 12288 & $1.2e{-4}$ & 2M [Table: Model architecture details]",
+   "value": 12,
+   "evidence": "125M & 12 & 12 & 768 [Table model_sizes]",
    "verdict": "used"
   },
   "n_heads": {
-   "value": 96,
-   "evidence": "175B & 96 & 96 & 12288 & $1.2e{-4}$ & 2M [Table: Model architecture details]",
+   "value": 12,
+   "evidence": "125M & 12 & 12 & 768 [Table model_sizes]",
    "verdict": "used"
   },
   "context_length": {
@@ -106,20 +106,20 @@
   "sent_sha256": "abba6e0e2165c606e620ea0e2b07d216e522854c106b7a7dc75146560d437cd2",
   "from": "https://arxiv.org/e-print/2205.01068",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
+  "extractor_sha256": "9d5951b0f11c920aaf075abead17d7d4e619d37402d47690ba452de15620e921",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
+  "prompt_sha256": "e6c6c5052b656885910d1539b8c320ba4ecb9262a6079252b852f1ff637b03ef",
   "n_calls": 1,
-  "cost_usd": 0.276336,
+  "cost_usd": 0.277512,
   "request_ids": [
-   "req_011CgFhTHdeRaVZUBuXc8bzS"
+   "req_011CgRsedwHykNDq3jYZqjbj"
   ]
  },
  "llm": {
   "output": {
    "title": "OPT: Open Pre-trained Transformer Language Models",
-   "model_name": "OPT",
+   "model_name": "OPT (headline OPT-175B; suite 125M-175B)",
    "family": {
     "value": "decoder_only",
     "status": "stated",
@@ -137,20 +137,20 @@
      "d_model": {
       "value": "768",
       "status": "stated",
-      "quote": "125M    & 12 & 12 & 768   & $6.0e{-4}$ & 0.5M",
-      "where": "Table: Model architecture details"
+      "quote": "125M    & 12 & 12 & 768",
+      "where": "Table model_sizes"
      },
      "n_layers": {
       "value": "12",
       "status": "stated",
-      "quote": "125M    & 12 & 12 & 768   & $6.0e{-4}$ & 0.5M",
-      "where": "Table: Model architecture details"
+      "quote": "125M    & 12 & 12 & 768",
+      "where": "Table model_sizes"
      },
      "n_heads": {
       "value": "12",
       "status": "stated",
-      "quote": "125M    & 12 & 12 & 768   & $6.0e{-4}$ & 0.5M",
-      "where": "Table: Model architecture details"
+      "quote": "125M    & 12 & 12 & 768",
+      "where": "Table model_sizes"
      },
      "n_kv_heads": {
       "value": "",
@@ -188,20 +188,20 @@
      "d_model": {
       "value": "1024",
       "status": "stated",
-      "quote": "350M    & 24 & 16 & 1024  & $3.0e{-4}$ & 0.5M",
-      "where": "Table: Model architecture details"
+      "quote": "350M    & 24 & 16 & 1024",
+      "where": "Table model_sizes"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "350M    & 24 & 16 & 1024  & $3.0e{-4}$ & 0.5M",
-      "where": "Table: Model architecture details"
+      "quote": "350M    & 24 & 16 & 1024",
+      "where": "Table model_sizes"
      },
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "350M    & 24 & 16 & 1024  & $3.0e{-4}$ & 0.5M",
-      "where": "Table: Model architecture details"
+      "quote": "350M    & 24 & 16 & 1024",
+      "where": "Table model_sizes"
      },
      "n_kv_heads": {
       "value": "",
@@ -239,20 +239,20 @@
      "d_model": {
       "value": "2048",
       "status": "stated",
-      "quote": "1.3B    & 24 & 32 & 2048  & $2.0e{-4}$ & 1M",
-      "where": "Table: Model architecture details"
+      "quote": "1.3B    & 24 & 32 & 2048",
+      "where": "Table model_sizes"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "1.3B    & 24 & 32 & 2048  & $2.0e{-4}$ & 1M",
-      "where": "Table: Model architecture details"
+      "quote": "1.3B    & 24 & 32 & 2048",
+      "where": "Table model_sizes"
      },
      "n_heads": {
       "value": "32",
       "status": "stated",
-      "quote": "1.3B    & 24 & 32 & 2048  & $2.0e{-4}$ & 1M",
-      "where": "Table: Model architecture details"
+      "quote": "1.3B    & 24 & 32 & 2048",
+      "where": "Table model_sizes"
      },
      "n_kv_heads": {
       "value": "",
@@ -290,20 +290,20 @@
      "d_model": {
       "value": "2560",
       "status": "stated",
-      "quote": "2.7B    & 32 & 32 & 2560  & $1.6e{-4}$ & 1M",
-      "where": "Table: Model architecture details"
+      "quote": "2.7B    & 32 & 32 & 2560",
+      "where": "Table model_sizes"
      },
      "n_layers": {
       "value": "32",
       "status": "stated",
-      "quote": "2.7B    & 32 & 32 & 2560  & $1.6e{-4}$ & 1M",
-      "where": "Table: Model architecture details"
+      "quote": "2.7B    & 32 & 32 & 2560",
+      "where": "Table model_sizes"
      },
      "n_heads": {
       "value": "32",
       "status": "stated",
-      "quote": "2.7B    & 32 & 32 & 2560  & $1.6e{-4}$ & 1M",
-      "where": "Table: Model architecture details"
+      "quote": "2.7B    & 32 & 32 & 2560",
+      "where": "Table model_sizes"
      },
      "n_kv_heads": {
       "value": "",
@@ -341,20 +341,20 @@
      "d_model": {
       "value": "4096",
       "status": "stated",
-      "quote": "6.7B    & 32 & 32 & 4096  & $1.2e{-4}$ & 2M",
-      "where": "Table: Model architecture details"
+      "quote": "6.7B    & 32 & 32 & 4096",
+      "where": "Table model_sizes"
      },
      "n_layers": {
       "value": "32",
       "status": "stated",
-      "quote": "6.7B    & 32 & 32 & 4096  & $1.2e{-4}$ & 2M",
-      "where": "Table: Model architecture details"
+      "quote": "6.7B    & 32 & 32 & 4096",
+      "where": "Table model_sizes"
      },
      "n_heads": {
       "value": "32",
       "status": "stated",
-      "quote": "6.7B    & 32 & 32 & 4096  & $1.2e{-4}$ & 2M",
-      "where": "Table: Model architecture details"
+      "quote": "6.7B    & 32 & 32 & 4096",
+      "where": "Table model_sizes"
      },
      "n_kv_heads": {
       "value": "",
@@ -392,20 +392,20 @@
      "d_model": {
       "value": "5120",
       "status": "stated",
-      "quote": "13B     & 40 & 40 & 5120  & $1.0e{-4}$ & 4M",
-      "where": "Table: Model architecture details"
+      "quote": "13B     & 40 & 40 & 5120",
+      "where": "Table model_sizes"
      },
      "n_layers": {
       "value": "40",
       "status": "stated",
-      "quote": "13B     & 40 & 40 & 5120  & $1.0e{-4}$ & 4M",
-      "where": "Table: Model architecture details"
+      "quote": "13B     & 40 & 40 & 5120",
+      "where": "Table model_sizes"
      },
      "n_heads": {
       "value": "40",
       "status": "stated",
-      "quote": "13B     & 40 & 40 & 5120  & $1.0e{-4}$ & 4M",
-      "where": "Table: Model architecture details"
+      "quote": "13B     & 40 & 40 & 5120",
+      "where": "Table model_sizes"
      },
      "n_kv_heads": {
       "value": "",
@@ -443,20 +443,20 @@
      "d_model": {
       "value": "7168",
       "status": "stated",
-      "quote": "30B     & 48 & 56 & 7168  & $1.0e{-4}$ & 4M",
-      "where": "Table: Model architecture details"
+      "quote": "30B     & 48 & 56 & 7168",
+      "where": "Table model_sizes"
      },
      "n_layers": {
       "value": "48",
       "status": "stated",
-      "quote": "30B     & 48 & 56 & 7168  & $1.0e{-4}$ & 4M",
-      "where": "Table: Model architecture details"
+      "quote": "30B     & 48 & 56 & 7168",
+      "where": "Table model_sizes"
      },
      "n_heads": {
       "value": "56",
       "status": "stated",
-      "quote": "30B     & 48 & 56 & 7168  & $1.0e{-4}$ & 4M",
-      "where": "Table: Model architecture details"
+      "quote": "30B     & 48 & 56 & 7168",
+      "where": "Table model_sizes"
      },
      "n_kv_heads": {
       "value": "",
@@ -494,20 +494,20 @@
      "d_model": {
       "value": "9216",
       "status": "stated",
-      "quote": "66B     & 64 & 72 & 9216  & $0.8e{-4}$ & 2M",
-      "where": "Table: Model architecture details"
+      "quote": "66B     & 64 & 72 & 9216",
+      "where": "Table model_sizes"
      },
      "n_layers": {
       "value": "64",
       "status": "stated",
-      "quote": "66B     & 64 & 72 & 9216  & $0.8e{-4}$ & 2M",
-      "where": "Table: Model architecture details"
+      "quote": "66B     & 64 & 72 & 9216",
+      "where": "Table model_sizes"
      },
      "n_heads": {
       "value": "72",
       "status": "stated",
-      "quote": "66B     & 64 & 72 & 9216  & $0.8e{-4}$ & 2M",
-      "where": "Table: Model architecture details"
+      "quote": "66B     & 64 & 72 & 9216",
+      "where": "Table model_sizes"
      },
      "n_kv_heads": {
       "value": "",
@@ -545,20 +545,20 @@
      "d_model": {
       "value": "12288",
       "status": "stated",
-      "quote": "175B    & 96 & 96 & 12288 & $1.2e{-4}$ & 2M",
-      "where": "Table: Model architecture details"
+      "quote": "175B    & 96 & 96 & 12288",
+      "where": "Table model_sizes"
      },
      "n_layers": {
       "value": "96",
       "status": "stated",
-      "quote": "175B    & 96 & 96 & 12288 & $1.2e{-4}$ & 2M",
-      "where": "Table: Model architecture details"
+      "quote": "175B    & 96 & 96 & 12288",
+      "where": "Table model_sizes"
      },
      "n_heads": {
       "value": "96",
       "status": "stated",
-      "quote": "175B    & 96 & 96 & 12288 & $1.2e{-4}$ & 2M",
-      "where": "Table: Model architecture details"
+      "quote": "175B    & 96 & 96 & 12288",
+      "where": "Table model_sizes"
      },
      "n_kv_heads": {
       "value": "",
@@ -592,7 +592,7 @@
      }
     }
    ],
-   "primary_config": "175B",
+   "primary_config": "125M",
    "flavours": {
     "norm": {
      "value": "",
@@ -601,6 +601,18 @@
      "where": ""
     },
     "norm_placement": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_ffn": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -619,6 +631,18 @@
      "where": "Sec. Training Setup"
     },
     "positional": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -684,6 +708,12 @@
      "quote": "",
      "where": ""
     },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
     "tied_embeddings": {
      "value": "",
      "status": "not_stated",
@@ -713,6 +743,36 @@
      "status": "not_stated",
      "quote": "",
      "where": ""
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     }
    },
    "block_ops": [
@@ -734,10 +794,55 @@
       },
       {
        "name": "d",
-       "value": "12288",
+       "value": "768",
        "status": "stated",
-       "quote": "175B    & 96 & 96 & 12288 & $1.2e{-4}$ & 2M",
-       "where": "Table: Model architecture details"
+       "quote": "125M    & 12 & 12 & 768",
+       "where": "Table model_sizes"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "fused qkv projection",
+     "inputs": [
+      "x"
+     ],
+     "output": "qkv",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "split",
+     "role": "split q, k, v",
+     "inputs": [
+      "qkv"
+     ],
+     "output": "q,k,v",
+     "attributes": [
+      {
+       "name": "sizes",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -745,18 +850,20 @@
     {
      "subgraph": "block",
      "op": "attention",
-     "role": "causal multi-head self-attention",
+     "role": "causal self-attention",
      "inputs": [
-      "x"
+      "q",
+      "k",
+      "v"
      ],
      "output": "a",
      "attributes": [
       {
        "name": "heads",
-       "value": "96",
+       "value": "12",
        "status": "stated",
-       "quote": "175B    & 96 & 96 & 12288 & $1.2e{-4}$ & 2M",
-       "where": "Table: Model architecture details"
+       "quote": "125M    & 12 & 12 & 768",
+       "where": "Table model_sizes"
       },
       {
        "name": "kv_heads",
@@ -781,10 +888,10 @@
       },
       {
        "name": "causal",
-       "value": "true",
-       "status": "stated",
-       "quote": "a suite of decoder-only pre-trained transformers ranging from 125M to 175B parameters",
-       "where": "Abstract"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       },
       {
        "name": "window",
@@ -805,11 +912,37 @@
     },
     {
      "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "768",
+       "status": "stated",
+       "quote": "125M    & 12 & 12 & 768",
+       "where": "Table model_sizes"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
      "op": "add",
-     "role": "attention residual",
+     "role": "attention residual add (placement of norms not stated)",
      "inputs": [
       "x",
-      "a"
+      "o"
      ],
      "output": "h",
      "attributes": [],
@@ -863,10 +996,10 @@
      "attributes": [
       {
        "name": "out",
-       "value": "12288",
+       "value": "768",
        "status": "stated",
-       "quote": "175B    & 96 & 96 & 12288 & $1.2e{-4}$ & 2M",
-       "where": "Table: Model architecture details"
+       "quote": "125M    & 12 & 12 & 768",
+       "where": "Table model_sizes"
       },
       {
        "name": "bias",
@@ -881,7 +1014,7 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "FFN residual",
+     "role": "FFN residual add",
      "inputs": [
       "h",
       "f"
@@ -893,7 +1026,7 @@
     {
      "subgraph": "head",
      "op": "linear",
-     "role": "output projection to vocabulary",
+     "role": "LM head to vocabulary",
      "inputs": [
       "x"
      ],
@@ -926,7 +1059,7 @@
    ],
    "new_ops": [],
    "mechanisms_outside_ir": [],
-   "notes": "Headline model OPT-175B is chosen as primary_config, since the paper singles it out; all nine sizes in Table 'Model architecture details' are listed. The text says 'eight Transformer language models', but the table lists nine rows.\n\nThe paper only says the models 'largely follow' GPT-3. That is too vague to inherit specific values, partly because GPT-3 used alternating sparse attention, so no values are marked inherited. The following are left not_stated and should not be filled in from memory:\n- norm type, placement and eps\n- positional encoding\n- d_ff, head_dim and vocab size; the GPT-2 BPE tokenizer is named but its size is not given\n- weight tying\n- which linears carry biases\n\nThe paper says 'All bias terms are initialized as 0', which implies biases exist, but it does not say where. Normalisation ops are omitted from block_ops because the paper never describes them, and the residual adds are shown in their basic form. The metaseq code is cited as the source of truth for details the paper omits."
+   "notes": "The headline model is OPT-175B. All nine sizes in Table model_sizes are listed (the text says 'eight'), and 125M is the primary config. The paper states only the layer count, head count, d_model, ReLU activation, the 2048 sequence length and the GPT-2 BPE tokenizer (vocab size not given). It says the models 'largely follow' GPT-3, but because the inheritance is hedged and GPT-3 includes components OPT may not share (e.g. sparse attention layers), no values were marked inherited. Norm type and placement, positional scheme, d_ff, biases, tying and head_dim are all not_stated, which is why the block has no norm or positional ops. 'All bias terms are initialized as 0' implies that biases exist, but not which layers have them. The paper defers to the metaseq code for unstated details."
   },
   "verification": {
    "errors": [],
@@ -952,24 +1085,24 @@
      "d_model": {
       "value": "768",
       "status": "stated",
-      "quote": "125M    & 12 & 12 & 768   & $6.0e{-4}$ & 0.5M",
-      "where": "Table: Model architecture details",
+      "quote": "125M    & 12 & 12 & 768",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "12",
       "status": "stated",
-      "quote": "125M    & 12 & 12 & 768   & $6.0e{-4}$ & 0.5M",
-      "where": "Table: Model architecture details",
+      "quote": "125M    & 12 & 12 & 768",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "12",
       "status": "stated",
-      "quote": "125M    & 12 & 12 & 768   & $6.0e{-4}$ & 0.5M",
-      "where": "Table: Model architecture details",
+      "quote": "125M    & 12 & 12 & 768",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
@@ -1025,24 +1158,24 @@
      "d_model": {
       "value": "1024",
       "status": "stated",
-      "quote": "350M    & 24 & 16 & 1024  & $3.0e{-4}$ & 0.5M",
-      "where": "Table: Model architecture details",
+      "quote": "350M    & 24 & 16 & 1024",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "350M    & 24 & 16 & 1024  & $3.0e{-4}$ & 0.5M",
-      "where": "Table: Model architecture details",
+      "quote": "350M    & 24 & 16 & 1024",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "350M    & 24 & 16 & 1024  & $3.0e{-4}$ & 0.5M",
-      "where": "Table: Model architecture details",
+      "quote": "350M    & 24 & 16 & 1024",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
@@ -1098,24 +1231,24 @@
      "d_model": {
       "value": "2048",
       "status": "stated",
-      "quote": "1.3B    & 24 & 32 & 2048  & $2.0e{-4}$ & 1M",
-      "where": "Table: Model architecture details",
+      "quote": "1.3B    & 24 & 32 & 2048",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "1.3B    & 24 & 32 & 2048  & $2.0e{-4}$ & 1M",
-      "where": "Table: Model architecture details",
+      "quote": "1.3B    & 24 & 32 & 2048",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "32",
       "status": "stated",
-      "quote": "1.3B    & 24 & 32 & 2048  & $2.0e{-4}$ & 1M",
-      "where": "Table: Model architecture details",
+      "quote": "1.3B    & 24 & 32 & 2048",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
@@ -1171,24 +1304,24 @@
      "d_model": {
       "value": "2560",
       "status": "stated",
-      "quote": "2.7B    & 32 & 32 & 2560  & $1.6e{-4}$ & 1M",
-      "where": "Table: Model architecture details",
+      "quote": "2.7B    & 32 & 32 & 2560",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "32",
       "status": "stated",
-      "quote": "2.7B    & 32 & 32 & 2560  & $1.6e{-4}$ & 1M",
-      "where": "Table: Model architecture details",
+      "quote": "2.7B    & 32 & 32 & 2560",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "32",
       "status": "stated",
-      "quote": "2.7B    & 32 & 32 & 2560  & $1.6e{-4}$ & 1M",
-      "where": "Table: Model architecture details",
+      "quote": "2.7B    & 32 & 32 & 2560",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
@@ -1244,24 +1377,24 @@
      "d_model": {
       "value": "4096",
       "status": "stated",
-      "quote": "6.7B    & 32 & 32 & 4096  & $1.2e{-4}$ & 2M",
-      "where": "Table: Model architecture details",
+      "quote": "6.7B    & 32 & 32 & 4096",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "32",
       "status": "stated",
-      "quote": "6.7B    & 32 & 32 & 4096  & $1.2e{-4}$ & 2M",
-      "where": "Table: Model architecture details",
+      "quote": "6.7B    & 32 & 32 & 4096",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "32",
       "status": "stated",
-      "quote": "6.7B    & 32 & 32 & 4096  & $1.2e{-4}$ & 2M",
-      "where": "Table: Model architecture details",
+      "quote": "6.7B    & 32 & 32 & 4096",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
@@ -1317,24 +1450,24 @@
      "d_model": {
       "value": "5120",
       "status": "stated",
-      "quote": "13B     & 40 & 40 & 5120  & $1.0e{-4}$ & 4M",
-      "where": "Table: Model architecture details",
+      "quote": "13B     & 40 & 40 & 5120",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "40",
       "status": "stated",
-      "quote": "13B     & 40 & 40 & 5120  & $1.0e{-4}$ & 4M",
-      "where": "Table: Model architecture details",
+      "quote": "13B     & 40 & 40 & 5120",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "40",
       "status": "stated",
-      "quote": "13B     & 40 & 40 & 5120  & $1.0e{-4}$ & 4M",
-      "where": "Table: Model architecture details",
+      "quote": "13B     & 40 & 40 & 5120",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
@@ -1390,24 +1523,24 @@
      "d_model": {
       "value": "7168",
       "status": "stated",
-      "quote": "30B     & 48 & 56 & 7168  & $1.0e{-4}$ & 4M",
-      "where": "Table: Model architecture details",
+      "quote": "30B     & 48 & 56 & 7168",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "48",
       "status": "stated",
-      "quote": "30B     & 48 & 56 & 7168  & $1.0e{-4}$ & 4M",
-      "where": "Table: Model architecture details",
+      "quote": "30B     & 48 & 56 & 7168",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "56",
       "status": "stated",
-      "quote": "30B     & 48 & 56 & 7168  & $1.0e{-4}$ & 4M",
-      "where": "Table: Model architecture details",
+      "quote": "30B     & 48 & 56 & 7168",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
@@ -1463,24 +1596,24 @@
      "d_model": {
       "value": "9216",
       "status": "stated",
-      "quote": "66B     & 64 & 72 & 9216  & $0.8e{-4}$ & 2M",
-      "where": "Table: Model architecture details",
+      "quote": "66B     & 64 & 72 & 9216",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "64",
       "status": "stated",
-      "quote": "66B     & 64 & 72 & 9216  & $0.8e{-4}$ & 2M",
-      "where": "Table: Model architecture details",
+      "quote": "66B     & 64 & 72 & 9216",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "72",
       "status": "stated",
-      "quote": "66B     & 64 & 72 & 9216  & $0.8e{-4}$ & 2M",
-      "where": "Table: Model architecture details",
+      "quote": "66B     & 64 & 72 & 9216",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
@@ -1536,24 +1669,24 @@
      "d_model": {
       "value": "12288",
       "status": "stated",
-      "quote": "175B    & 96 & 96 & 12288 & $1.2e{-4}$ & 2M",
-      "where": "Table: Model architecture details",
+      "quote": "175B    & 96 & 96 & 12288",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "96",
       "status": "stated",
-      "quote": "175B    & 96 & 96 & 12288 & $1.2e{-4}$ & 2M",
-      "where": "Table: Model architecture details",
+      "quote": "175B    & 96 & 96 & 12288",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "96",
       "status": "stated",
-      "quote": "175B    & 96 & 96 & 12288 & $1.2e{-4}$ & 2M",
-      "where": "Table: Model architecture details",
+      "quote": "175B    & 96 & 96 & 12288",
+      "where": "Table model_sizes",
       "reasons": [],
       "check": "verified"
      },
@@ -1605,7 +1738,7 @@
      ]
     }
    ],
-   "primary_config": "175B",
+   "primary_config": "125M",
    "flavours": {
     "norm": {
      "value": "",
@@ -1616,6 +1749,22 @@
      "check": "not_stated"
     },
     "norm_placement": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_ffn": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -1640,6 +1789,22 @@
      "check": "verified"
     },
     "positional": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -1727,6 +1892,14 @@
      "reasons": [],
      "check": "not_stated"
     },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
     "tied_embeddings": {
      "value": "",
      "status": "not_stated",
@@ -1766,6 +1939,46 @@
      "where": "",
      "reasons": [],
      "check": "not_stated"
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     }
    },
    "new_ops": [],
@@ -1791,10 +2004,10 @@
        "name": "vocab"
       },
       {
-       "value": "12288",
+       "value": "768",
        "status": "stated",
-       "quote": "175B    & 96 & 96 & 12288 & $1.2e{-4}$ & 2M",
-       "where": "Table: Model architecture details",
+       "quote": "125M    & 12 & 12 & 768",
+       "where": "Table model_sizes",
        "reasons": [],
        "check": "verified",
        "name": "d"
@@ -1805,19 +2018,76 @@
     {
      "i": 1,
      "subgraph": "block",
-     "op": "attention",
-     "role": "causal multi-head self-attention",
+     "op": "linear",
+     "role": "fused qkv projection",
      "inputs": [
       "x"
+     ],
+     "output": "qkv",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 2,
+     "subgraph": "block",
+     "op": "split",
+     "role": "split q, k, v",
+     "inputs": [
+      "qkv"
+     ],
+     "output": "q,k,v",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "sizes"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 3,
+     "subgraph": "block",
+     "op": "attention",
+     "role": "causal self-attention",
+     "inputs": [
+      "q",
+      "k",
+      "v"
      ],
      "output": "a",
      "new_op": "",
      "attributes": [
       {
-       "value": "96",
+       "value": "12",
        "status": "stated",
-       "quote": "175B    & 96 & 96 & 12288 & $1.2e{-4}$ & 2M",
-       "where": "Table: Model architecture details",
+       "quote": "125M    & 12 & 12 & 768",
+       "where": "Table model_sizes",
        "reasons": [],
        "check": "verified",
        "name": "heads"
@@ -1850,12 +2120,12 @@
        "name": "scale"
       },
       {
-       "value": "true",
-       "status": "stated",
-       "quote": "a suite of decoder-only pre-trained transformers ranging from 125M to 175B parameters",
-       "where": "Abstract",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
        "reasons": [],
-       "check": "quote_only",
+       "check": "not_stated",
        "name": "causal"
       },
       {
@@ -1880,13 +2150,45 @@
      "errors": []
     },
     {
-     "i": 2,
+     "i": 4,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "768",
+       "status": "stated",
+       "quote": "125M    & 12 & 12 & 768",
+       "where": "Table model_sizes",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 5,
      "subgraph": "block",
      "op": "add",
-     "role": "attention residual",
+     "role": "attention residual add (placement of norms not stated)",
      "inputs": [
       "x",
-      "a"
+      "o"
      ],
      "output": "h",
      "new_op": "",
@@ -1894,7 +2196,7 @@
      "errors": []
     },
     {
-     "i": 3,
+     "i": 6,
      "subgraph": "block",
      "op": "linear",
      "role": "FFN up projection",
@@ -1926,7 +2228,7 @@
      "errors": []
     },
     {
-     "i": 4,
+     "i": 7,
      "subgraph": "block",
      "op": "relu",
      "role": "FFN activation",
@@ -1939,7 +2241,7 @@
      "errors": []
     },
     {
-     "i": 5,
+     "i": 8,
      "subgraph": "block",
      "op": "linear",
      "role": "FFN down projection",
@@ -1950,10 +2252,10 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "12288",
+       "value": "768",
        "status": "stated",
-       "quote": "175B    & 96 & 96 & 12288 & $1.2e{-4}$ & 2M",
-       "where": "Table: Model architecture details",
+       "quote": "125M    & 12 & 12 & 768",
+       "where": "Table model_sizes",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -1971,10 +2273,10 @@
      "errors": []
     },
     {
-     "i": 6,
+     "i": 9,
      "subgraph": "block",
      "op": "add",
-     "role": "FFN residual",
+     "role": "FFN residual add",
      "inputs": [
       "h",
       "f"
@@ -1985,10 +2287,10 @@
      "errors": []
     },
     {
-     "i": 7,
+     "i": 10,
      "subgraph": "head",
      "op": "linear",
-     "role": "output projection to vocabulary",
+     "role": "LM head to vocabulary",
      "inputs": [
       "x"
      ],
@@ -2029,16 +2331,16 @@
    "mechanisms_outside_ir": [],
    "summary": {
     "counts": {
-     "verified": 40,
-     "quote_only": 2,
+     "verified": 41,
+     "quote_only": 1,
      "unverified": 0,
-     "not_stated": 67
+     "not_stated": 82
     },
     "unverified": [],
     "new_op_errors": [],
     "node_errors": [],
     "n_new_ops": 0,
-    "n_block_ops": 8
+    "n_block_ops": 11
    }
   }
  }

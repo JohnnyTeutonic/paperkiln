@@ -29,12 +29,12 @@
   },
   "positional": {
    "value": "alibi",
-   "evidence": "ALiBi does not add positional embeddings to word embeddings; instead, it biases query-key attention scores with a penalty that is proportional to their distance. [Abstract]",
+   "evidence": "When using ALiBi, we do not add position embeddings at any point in the network. [Sec. 3 Attention with Linear Biases (ALiBi)]",
    "verdict": "used"
   },
   "attention": {
-   "value": "new_primitive:alibi_attention",
-   "evidence": "\\text{softmax}(\\mathbf{q}_i \\mathbf{K}^\\top + m \\cdot [-(i-1), ..., -2, -1, 0]), [Sec. 3 Attention with Linear Biases (ALiBi)]",
+   "value": "exact",
+   "evidence": "query $\\mathbf{q}_i$ attends only to keys $1$ to $i$ [Sec. 3 Implementation]",
    "verdict": "used"
   }
  },
@@ -49,7 +49,7 @@
  "mentions": {},
  "inherits": {
   "ancestor": "Baevski & Auli adaptive-input transformer LM (WikiText-103 setting only)",
-  "evidence": "We first develop our method on the WikiText-103 corpus~\\citep{pointer}, replacing the sinusoidal position embeddings in the language model of~\\cite{baevski} with \\al.",
+  "evidence": "replacing the sinusoidal position embeddings in the language model of~\\cite{baevski} with \\al.",
   "section": "Sec. 4.1 Results on WikiText-103 and Toronto BookCorpus"
  },
  "variants": [
@@ -69,10 +69,10 @@
  ],
  "mechanism_scan": [
   {
-   "mechanism": "new op alibi_attention (needs a new primitive: Causal multi-head softmax attention whose scores q_i.k_j receive an additive, non-learned per-head bias -m_h*(i-j) (appl)",
+   "mechanism": "ALiBi: static, non-learned per-head bias m*(j-i) added to query-key scores (not multiplied by the sqrt(d_k) scale); slopes form the geometric sequence starting at 2^(-8/n) with ratio 2^(-8/n) for n heads",
    "where": "llm extraction, verified quote, Sec. 3 Attention with Linear Biases (ALiBi)",
    "blocking": true,
-   "evidence": "\\text{softmax}(\\mathbf{q}_i \\mathbf{K}^\\top + m \\cdot [-(i-1), ..., -2, -1, 0]),"
+   "evidence": "In general, for $n$ heads, our set of slopes is the geometric sequence that starts at\n$2^{\\frac{-8}{n}}$\nand uses that same value as its ratio."
   }
  ],
  "source": {
@@ -80,14 +80,14 @@
   "sent_sha256": "4e7f049d85f5bf5d1b72475227b945011da10bfb5f61965608abd190b8be9f89",
   "from": "https://arxiv.org/e-print/2108.12409",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
+  "extractor_sha256": "9d5951b0f11c920aaf075abead17d7d4e619d37402d47690ba452de15620e921",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
+  "prompt_sha256": "e6c6c5052b656885910d1539b8c320ba4ecb9262a6079252b852f1ff637b03ef",
   "n_calls": 1,
-  "cost_usd": 0.293948,
+  "cost_usd": 0.348984,
   "request_ids": [
-   "req_011CgFgtm4kBM13vvjxCicKi"
+   "req_011CgRsB2X4Zgch89D7nPMRk"
   ]
  },
  "llm": {
@@ -102,7 +102,7 @@
    },
    "inherits": {
     "ancestor": "Baevski & Auli adaptive-input transformer LM (WikiText-103 setting only)",
-    "quote": "We first develop our method on the WikiText-103 corpus~\\citep{pointer}, replacing the sinusoidal position embeddings in the language model of~\\cite{baevski} with \\al.",
+    "quote": "replacing the sinusoidal position embeddings in the language model of~\\cite{baevski} with \\al.",
     "where": "Sec. 4.1 Results on WikiText-103 and Toronto BookCorpus"
    },
    "configs": [
@@ -158,7 +158,7 @@
      }
     },
     {
-     "name": "1.3B (CC100+RoBERTa)",
+     "name": "1.3B",
      "d_model": {
       "value": "2048",
       "status": "stated",
@@ -209,7 +209,7 @@
      }
     }
    ],
-   "primary_config": "1.3B (CC100+RoBERTa)",
+   "primary_config": "1.3B",
    "flavours": {
     "norm": {
      "value": "",
@@ -218,6 +218,18 @@
      "where": ""
     },
     "norm_placement": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_ffn": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -238,8 +250,20 @@
     "positional": {
      "value": "alibi",
      "status": "stated",
-     "quote": "ALiBi does not add positional embeddings to word embeddings;  instead, it biases query-key attention scores with a penalty that is proportional to their distance.",
-     "where": "Abstract"
+     "quote": "When using ALiBi, we do not add position embeddings at any point in the network.",
+     "where": "Sec. 3 Attention with Linear Biases (ALiBi)"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "rope_pairing": {
      "value": "",
@@ -272,10 +296,10 @@
      "where": ""
     },
     "attention": {
-     "value": "new_op:alibi_attention",
+     "value": "exact",
      "status": "stated",
-     "quote": "\\text{softmax}(\\mathbf{q}_i \\mathbf{K}^\\top + m \\cdot [-(i-1), ..., -2, -1, 0]),",
-     "where": "Sec. 3 Attention with Linear Biases (ALiBi)"
+     "quote": "query $\\mathbf{q}_i$ attends only to keys $1$ to $i$",
+     "where": "Sec. 3 Implementation"
     },
     "window_size": {
      "value": "",
@@ -296,6 +320,12 @@
      "where": ""
     },
     "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qk_norm": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -330,6 +360,36 @@
      "status": "not_stated",
      "quote": "",
      "where": ""
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     }
    },
    "block_ops": [
@@ -354,6 +414,13 @@
      "output": "q",
      "attributes": [
       {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
        "name": "bias",
        "value": "",
        "status": "not_stated",
@@ -372,6 +439,13 @@
      ],
      "output": "k",
      "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
       {
        "name": "bias",
        "value": "",
@@ -392,6 +466,13 @@
      "output": "v",
      "attributes": [
       {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
        "name": "bias",
        "value": "",
        "status": "not_stated",
@@ -403,8 +484,8 @@
     },
     {
      "subgraph": "block",
-     "op": "unsupported",
-     "role": "causal softmax attention with ALiBi linear distance bias",
+     "op": "attention",
+     "role": "causal multi-head attention with ALiBi linear bias added to query-key scores (positional=alibi)",
      "inputs": [
       "q",
       "k",
@@ -416,22 +497,22 @@
        "name": "heads",
        "value": "16",
        "status": "stated",
-       "quote": "Our models for this dataset have 25 transformer layers with 16 heads and a dimension of 2048",
+       "quote": "Our models for this dataset have 25 transformer layers with 16 heads and a dimension of 2048, with an 8192 hidden dimension of the feedforward sublayers.",
        "where": "Sec. 4.2 Results on the CC100+RoBERTa Corpus"
       },
       {
-       "name": "causal",
-       "value": "true",
-       "status": "stated",
-       "quote": "this is done using a ``causal mask'' that ensures each position's prediction is influenced only by tokens to its left.",
-       "where": "Sec. 2.1 Background and Experimental Setup"
+       "name": "kv_heads",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       },
       {
-       "name": "slopes",
-       "value": "geometric sequence starting at 2^(-8/n) with ratio 2^(-8/n)",
-       "status": "stated",
-       "quote": "In general, for $n$ heads, our set of slopes is the geometric sequence that starts at\n$2^{\\frac{-8}{n}}$\nand uses that same value as its ratio.",
-       "where": "Sec. 3 Attention with Linear Biases (ALiBi)"
+       "name": "head_dim",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       },
       {
        "name": "scale",
@@ -439,9 +520,30 @@
        "status": "not_stated",
        "quote": "",
        "where": ""
+      },
+      {
+       "name": "causal",
+       "value": "true",
+       "status": "stated",
+       "quote": "query $\\mathbf{q}_i$ attends only to keys $1$ to $i$",
+       "where": "Sec. 3 Implementation"
+      },
+      {
+       "name": "window",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "sinks",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
-     "new_op": "alibi_attention"
+     "new_op": ""
     },
     {
      "subgraph": "block",
@@ -451,37 +553,143 @@
       "a"
      ],
      "output": "o",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "2048",
+       "status": "stated",
+       "quote": "Our models for this dataset have 25 transformer layers with 16 heads and a dimension of 2048, with an 8192 hidden dimension of the feedforward sublayers.",
+       "where": "Sec. 4.2 Results on the CC100+RoBERTa Corpus"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual (assumed transformer layer)",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "h",
      "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection (activation not stated)",
+     "inputs": [
+      "h"
+     ],
+     "output": "u",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "8192",
+       "status": "stated",
+       "quote": "Our models for this dataset have 25 transformer layers with 16 heads and a dimension of 2048, with an 8192 hidden dimension of the feedforward sublayers.",
+       "where": "Sec. 4.2 Results on the CC100+RoBERTa Corpus"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "u"
+     ],
+     "output": "f",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "2048",
+       "status": "stated",
+       "quote": "Our models for this dataset have 25 transformer layers with 16 heads and a dimension of 2048, with an 8192 hidden dimension of the feedforward sublayers.",
+       "where": "Sec. 4.2 Results on the CC100+RoBERTa Corpus"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual (assumed transformer layer)",
+     "inputs": [
+      "h",
+      "f"
+     ],
+     "output": "x",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "linear",
+     "role": "output softmax projection to vocabulary",
+     "inputs": [
+      "x"
+     ],
+     "output": "logits",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "tied_to",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
      "new_op": ""
     }
    ],
-   "new_ops": [
+   "new_ops": [],
+   "mechanisms_outside_ir": [
     {
-     "name": "alibi_attention",
-     "kind": "needs_new_primitive",
-     "expr": "",
-     "inputs": [
-      {
-       "name": "x",
-       "meaning": "queries"
-      },
-      {
-       "name": "a",
-       "meaning": "keys"
-      },
-      {
-       "name": "b",
-       "meaning": "values"
-      }
-     ],
-     "replaces": "attention with positional embeddings",
-     "reason": "Causal multi-head softmax attention whose scores q_i.k_j receive an additive, non-learned per-head bias -m_h*(i-j) (applied after the sqrt(d_k) scaling, not multiplied by it), with head slopes m_h = (2^(-8/n))^h for h=1..n. Needs an attention primitive with a per-head linear distance bias [heads, T, T].",
-     "quote": "\\text{softmax}(\\mathbf{q}_i \\mathbf{K}^\\top + m \\cdot [-(i-1), ..., -2, -1, 0]),",
+     "mechanism": "ALiBi: static, non-learned per-head bias m*(j-i) added to query-key scores (not multiplied by the sqrt(d_k) scale); slopes form the geometric sequence starting at 2^(-8/n) with ratio 2^(-8/n) for n heads",
+     "quote": "In general, for $n$ heads, our set of slopes is the geometric sequence that starts at\n$2^{\\frac{-8}{n}}$\nand uses that same value as its ratio.",
      "where": "Sec. 3 Attention with Linear Biases (ALiBi)"
     }
    ],
-   "mechanisms_outside_ir": [],
-   "notes": "Headline model is the 1.3B CC100+RoBERTa ALiBi model (trained at L=1024 per abstract; also L=512, 2048 variants). The WikiText-103 config is the Baevski & Auli model with ALiBi, trained at L from 64 to 3072, so its context length is left not_stated. The paper does not state the norm type or placement, the FFN activation, the residual structure, biases, vocab or head_dim for either model, so the block lists only the attention part. The norm, residual adds and FFN are omitted rather than guessed. Tied embeddings are stated only for the Baevski WikiText model and the books model, which conflicts with adaptive input/softmax, so this is not_stated for the 1.3B model."
+   "notes": "Headline model: the 1.3B ALiBi LM (25 layers, d=2048, 16 heads, FFN 8192) named in the abstract. It was trained on CC100+RoBERTa with L=512, 1024 and 2048; 1024 is the length given in the abstract. The WikiText-103 config is the Baevski & Auli model with sinusoidal embeddings replaced by ALiBi. For that config the paper says it ties the word embedding and softmax matrices, but this is not stated for the 1.3B model, so tied_embeddings is left not_stated. Its training length varies from 64 to 3072, so context_length is not_stated. The Books setting uses a 29K BPE vocab with tied embeddings. Left not_stated because the paper does not give them: norm type and placement, FFN activation, biases, vocab size, head_dim, and the attention scale. A footnote implies the standard sqrt(d_k) scaling is used but gives no value. The norm and activation ops are therefore omitted from block_ops, and the residual adds are the standard transformer assumption, not stated. The ALiBi bias is carried by positional=alibi and described in mechanisms_outside_ir, because the attention op has no bias attribute."
   },
   "verification": {
    "errors": [],
@@ -489,7 +697,7 @@
    "inherits": {
     "ancestor": "Baevski & Auli adaptive-input transformer LM (WikiText-103 setting only)",
     "resolved": null,
-    "quote": "We first develop our method on the WikiText-103 corpus~\\citep{pointer}, replacing the sinusoidal position embeddings in the language model of~\\cite{baevski} with \\al.",
+    "quote": "replacing the sinusoidal position embeddings in the language model of~\\cite{baevski} with \\al.",
     "where": "Sec. 4.1 Results on WikiText-103 and Toronto BookCorpus",
     "quote_found": true
    },
@@ -576,7 +784,7 @@
      ]
     },
     {
-     "name": "1.3B (CC100+RoBERTa)",
+     "name": "1.3B",
      "d_model": {
       "value": "2048",
       "status": "stated",
@@ -649,7 +857,7 @@
      ]
     }
    ],
-   "primary_config": "1.3B (CC100+RoBERTa)",
+   "primary_config": "1.3B",
    "flavours": {
     "norm": {
      "value": "",
@@ -660,6 +868,22 @@
      "check": "not_stated"
     },
     "norm_placement": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_ffn": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -686,10 +910,26 @@
     "positional": {
      "value": "alibi",
      "status": "stated",
-     "quote": "ALiBi does not add positional embeddings to word embeddings;  instead, it biases query-key attention scores with a penalty that is proportional to their distance.",
-     "where": "Abstract",
+     "quote": "When using ALiBi, we do not add position embeddings at any point in the network.",
+     "where": "Sec. 3 Attention with Linear Biases (ALiBi)",
      "reasons": [],
      "check": "verified"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "rope_pairing": {
      "value": "",
@@ -732,10 +972,10 @@
      "check": "not_stated"
     },
     "attention": {
-     "value": "new_op:alibi_attention",
+     "value": "exact",
      "status": "stated",
-     "quote": "\\text{softmax}(\\mathbf{q}_i \\mathbf{K}^\\top + m \\cdot [-(i-1), ..., -2, -1, 0]),",
-     "where": "Sec. 3 Attention with Linear Biases (ALiBi)",
+     "quote": "query $\\mathbf{q}_i$ attends only to keys $1$ to $i$",
+     "where": "Sec. 3 Implementation",
      "reasons": [],
      "check": "quote_only"
     },
@@ -764,6 +1004,14 @@
      "check": "not_stated"
     },
     "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qk_norm": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -810,35 +1058,49 @@
      "where": "",
      "reasons": [],
      "check": "not_stated"
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     }
    },
-   "new_ops": [
-    {
-     "name": "alibi_attention",
-     "kind": "needs_new_primitive",
-     "replaces": "attention with positional embeddings",
-     "reason": "Causal multi-head softmax attention whose scores q_i.k_j receive an additive, non-learned per-head bias -m_h*(i-j) (applied after the sqrt(d_k) scaling, not multiplied by it), with head slopes m_h = (2^(-8/n))^h for h=1..n. Needs an attention primitive with a per-head linear distance bias [heads, T, T].",
-     "quote": "\\text{softmax}(\\mathbf{q}_i \\mathbf{K}^\\top + m \\cdot [-(i-1), ..., -2, -1, 0]),",
-     "where": "Sec. 3 Attention with Linear Biases (ALiBi)",
-     "inputs": [
-      {
-       "name": "x",
-       "meaning": "queries"
-      },
-      {
-       "name": "a",
-       "meaning": "keys"
-      },
-      {
-       "name": "b",
-       "meaning": "values"
-      }
-     ],
-     "errors": [],
-     "quote_found": true,
-     "check": "verified"
-    }
-   ],
+   "new_ops": [],
    "block_ops": [
     {
      "i": 0,
@@ -871,6 +1133,15 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "bias"
       }
      ],
@@ -887,6 +1158,15 @@
      "output": "k",
      "new_op": "",
      "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -917,6 +1197,15 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "bias"
       }
      ],
@@ -925,42 +1214,42 @@
     {
      "i": 4,
      "subgraph": "block",
-     "op": "unsupported",
-     "role": "causal softmax attention with ALiBi linear distance bias",
+     "op": "attention",
+     "role": "causal multi-head attention with ALiBi linear bias added to query-key scores (positional=alibi)",
      "inputs": [
       "q",
       "k",
       "v"
      ],
      "output": "a",
-     "new_op": "alibi_attention",
+     "new_op": "",
      "attributes": [
       {
        "value": "16",
        "status": "stated",
-       "quote": "Our models for this dataset have 25 transformer layers with 16 heads and a dimension of 2048",
+       "quote": "Our models for this dataset have 25 transformer layers with 16 heads and a dimension of 2048, with an 8192 hidden dimension of the feedforward sublayers.",
        "where": "Sec. 4.2 Results on the CC100+RoBERTa Corpus",
        "reasons": [],
        "check": "verified",
        "name": "heads"
       },
       {
-       "value": "true",
-       "status": "stated",
-       "quote": "this is done using a ``causal mask'' that ensures each position's prediction is influenced only by tokens to its left.",
-       "where": "Sec. 2.1 Background and Experimental Setup",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
        "reasons": [],
-       "check": "quote_only",
-       "name": "causal"
+       "check": "not_stated",
+       "name": "kv_heads"
       },
       {
-       "value": "geometric sequence starting at 2^(-8/n) with ratio 2^(-8/n)",
-       "status": "stated",
-       "quote": "In general, for $n$ heads, our set of slopes is the geometric sequence that starts at\n$2^{\\frac{-8}{n}}$\nand uses that same value as its ratio.",
-       "where": "Sec. 3 Attention with Linear Biases (ALiBi)",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
        "reasons": [],
-       "check": "quote_only",
-       "name": "slopes"
+       "check": "not_stated",
+       "name": "head_dim"
       },
       {
        "value": "",
@@ -970,6 +1259,33 @@
        "reasons": [],
        "check": "not_stated",
        "name": "scale"
+      },
+      {
+       "value": "true",
+       "status": "stated",
+       "quote": "query $\\mathbf{q}_i$ attends only to keys $1$ to $i$",
+       "where": "Sec. 3 Implementation",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "causal"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "window"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "sinks"
       }
      ],
      "errors": []
@@ -984,23 +1300,182 @@
      ],
      "output": "o",
      "new_op": "",
+     "attributes": [
+      {
+       "value": "2048",
+       "status": "stated",
+       "quote": "Our models for this dataset have 25 transformer layers with 16 heads and a dimension of 2048, with an 8192 hidden dimension of the feedforward sublayers.",
+       "where": "Sec. 4.2 Results on the CC100+RoBERTa Corpus",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 6,
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual (assumed transformer layer)",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "h",
+     "new_op": "",
      "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 7,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection (activation not stated)",
+     "inputs": [
+      "h"
+     ],
+     "output": "u",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "8192",
+       "status": "stated",
+       "quote": "Our models for this dataset have 25 transformer layers with 16 heads and a dimension of 2048, with an 8192 hidden dimension of the feedforward sublayers.",
+       "where": "Sec. 4.2 Results on the CC100+RoBERTa Corpus",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 8,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "u"
+     ],
+     "output": "f",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "2048",
+       "status": "stated",
+       "quote": "Our models for this dataset have 25 transformer layers with 16 heads and a dimension of 2048, with an 8192 hidden dimension of the feedforward sublayers.",
+       "where": "Sec. 4.2 Results on the CC100+RoBERTa Corpus",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 9,
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual (assumed transformer layer)",
+     "inputs": [
+      "h",
+      "f"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 10,
+     "subgraph": "head",
+     "op": "linear",
+     "role": "output softmax projection to vocabulary",
+     "inputs": [
+      "x"
+     ],
+     "output": "logits",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "tied_to"
+      }
+     ],
      "errors": []
     }
    ],
-   "mechanisms_outside_ir": [],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "ALiBi: static, non-learned per-head bias m*(j-i) added to query-key scores (not multiplied by the sqrt(d_k) scale); slopes form the geometric sequence starting at 2^(-8/n) with ratio 2^(-8/n) for n heads",
+     "quote": "In general, for $n$ heads, our set of slopes is the geometric sequence that starts at\n$2^{\\frac{-8}{n}}$\nand uses that same value as its ratio.",
+     "where": "Sec. 3 Attention with Linear Biases (ALiBi)",
+     "check": "verified"
+    }
+   ],
    "summary": {
     "counts": {
-     "verified": 11,
-     "quote_only": 4,
+     "verified": 14,
+     "quote_only": 3,
      "unverified": 0,
-     "not_stated": 29
+     "not_stated": 52
     },
     "unverified": [],
     "new_op_errors": [],
     "node_errors": [],
-    "n_new_ops": 1,
-    "n_block_ops": 6
+    "n_new_ops": 0,
+    "n_block_ops": 11
    }
   }
  }

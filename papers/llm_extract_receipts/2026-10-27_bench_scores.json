@@ -1,0 +1,8960 @@
+{
+ "truth": "papers\\bench_truth_structure.json",
+ "summary": {
+  "flavours": {
+   "llm": {
+    "correct": 81,
+    "abstain": 11
+   },
+   "rule": {
+    "correct": 73,
+    "abstain": 19
+   }
+  },
+  "sizes": {
+   "llm": {
+    "correct": 569,
+    "WRONG": 2,
+    "abstain": 71,
+    "unlabelled": 53
+   },
+   "rule": {
+    "correct": 136,
+    "WRONG": 8,
+    "abstain": 498,
+    "unlabelled": 226
+   }
+  },
+  "graph": {
+   "placement.attn": {
+    "correct": 17
+   },
+   "placement.ffn": {
+    "correct": 16,
+    "abstain": 1
+   },
+   "parallel_block": {
+    "correct": 10,
+    "abstain": 1
+   },
+   "ffn_gated": {
+    "correct": 23
+   },
+   "abs_position": {
+    "correct": 7,
+    "WRONG": 2
+   },
+   "rope_node": {
+    "correct": 18
+   }
+  },
+  "graph_all": {
+   "correct": 91,
+   "abstain": 2,
+   "WRONG": 2
+  },
+  "new_fields": {
+   "placement_field.attn": {
+    "correct": 17
+   },
+   "placement_field.ffn": {
+    "correct": 17
+   },
+   "qk_norm": {
+    "correct": 40
+   },
+   "ssm": {
+    "correct": 40
+   },
+   "new_op_inputs": {
+    "correct": 6,
+    "abstain": 1
+   },
+   "learned_inputs": {
+    "correct": 40
+   },
+   "positional_ext": {
+    "correct": 5,
+    "abstain": 2
+   },
+   "rel_buckets": {
+    "correct": 1
+   },
+   "rel_max_distance": {
+    "correct": 1
+   }
+  }
+ },
+ "papers": [
+  {
+   "arxiv_id": "1706.03762",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "relu",
+     "rule": "relu",
+     "rule_score": "correct",
+     "llm": "relu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "sinusoidal",
+     "rule": "sinusoidal",
+     "rule_score": "correct",
+     "llm": "sinusoidal",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 8,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 4
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 4,
+     "WRONG": 0,
+     "abstain": 4,
+     "unlabelled": 1
+    },
+    "misses": [
+     {
+      "config": "big",
+      "field": "d_model",
+      "truth": 1024,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "big",
+      "field": "n_layers",
+      "truth": 6,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "big",
+      "field": "n_heads",
+      "truth": 16,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "big",
+      "field": "d_ff",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "graph": {
+    "derived": {
+     "attn": "post",
+     "ffn": "post",
+     "parallel": false,
+     "gated": false,
+     "rope": false,
+     "abs_pos": true
+    },
+    "rows": [
+     {
+      "field": "placement.attn",
+      "truth": "post",
+      "got": "post",
+      "score": "correct"
+     },
+     {
+      "field": "placement.ffn",
+      "truth": "post",
+      "got": "post",
+      "score": "correct"
+     },
+     {
+      "field": "parallel_block",
+      "truth": false,
+      "got": false,
+      "score": "correct"
+     },
+     {
+      "field": "ffn_gated",
+      "truth": false,
+      "got": false,
+      "score": "correct"
+     },
+     {
+      "field": "abs_position",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "placement_field.attn",
+     "truth": "post",
+     "got": "post",
+     "score": "correct"
+    },
+    {
+     "field": "placement_field.ffn",
+     "truth": "post",
+     "got": "post",
+     "score": "correct"
+    },
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": "none",
+     "score": "correct"
+    },
+    {
+     "field": "new_op_inputs",
+     "truth": [
+      "input"
+     ],
+     "got": [
+      "input"
+     ],
+     "score": "correct",
+     "op": "embedding scale by sqrt(d_model)",
+     "matched": "affine node",
+     "attributes": [
+      [
+       "scale",
+       "22.627417"
+      ],
+      [
+       "shift",
+       "0"
+      ]
+     ]
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "1810.04805",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": null,
+     "llm_score": "abstain",
+     "llm_check": "unverified"
+    },
+    {
+     "field": "activation",
+     "truth": "gelu",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "gelu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "learned",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "learned",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 12,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 0
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 0,
+     "WRONG": 0,
+     "abstain": 12,
+     "unlabelled": 4
+    },
+    "misses": [
+     {
+      "config": "BERT-BASE",
+      "field": "d_model",
+      "truth": 768,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BERT-BASE",
+      "field": "n_layers",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BERT-BASE",
+      "field": "n_heads",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BERT-BASE",
+      "field": "d_ff",
+      "truth": 3072,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BERT-BASE",
+      "field": "vocab_size",
+      "truth": 30000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BERT-BASE",
+      "field": "context_length",
+      "truth": 512,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BERT-LARGE",
+      "field": "d_model",
+      "truth": 1024,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BERT-LARGE",
+      "field": "n_layers",
+      "truth": 24,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BERT-LARGE",
+      "field": "n_heads",
+      "truth": 16,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BERT-LARGE",
+      "field": "d_ff",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BERT-LARGE",
+      "field": "vocab_size",
+      "truth": 30000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BERT-LARGE",
+      "field": "context_length",
+      "truth": 512,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": [
+     "fields"
+    ]
+   },
+   "graph": {
+    "derived": {
+     "attn": "post",
+     "ffn": "post",
+     "parallel": false,
+     "gated": false,
+     "rope": false,
+     "abs_pos": true
+    },
+    "rows": [
+     {
+      "field": "abs_position",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "1901.02860",
+   "flavours": [
+    {
+     "field": "positional",
+     "truth": null,
+     "rule": null,
+     "rule_score": "correct",
+     "llm": "relative",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 3,
+     "WRONG": 0,
+     "abstain": 2,
+     "unlabelled": 2
+    },
+    "misses": [
+     {
+      "config": "18L Transformer-XL",
+      "field": "context_length",
+      "truth": 784,
+      "got": null,
+      "score": "abstain",
+      "matched": "enwik8-18L"
+     },
+     {
+      "config": "24L Transformer-XL",
+      "field": "context_length",
+      "truth": 784,
+      "got": null,
+      "score": "abstain",
+      "matched": "enwik8-24L"
+     }
+    ],
+    "unmatched_extracted": [
+     "WikiText-103-Large"
+    ]
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 0,
+     "WRONG": 0,
+     "abstain": 5,
+     "unlabelled": 1
+    },
+    "misses": [
+     {
+      "config": "12L Transformer-XL",
+      "field": "n_layers",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "18L Transformer-XL",
+      "field": "n_layers",
+      "truth": 18,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "18L Transformer-XL",
+      "field": "context_length",
+      "truth": 784,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "24L Transformer-XL",
+      "field": "n_layers",
+      "truth": 24,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "24L Transformer-XL",
+      "field": "context_length",
+      "truth": 784,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": [
+     "fields"
+    ]
+   },
+   "graph": {
+    "derived": {
+     "attn": "post",
+     "ffn": null,
+     "parallel": null,
+     "gated": null,
+     "rope": false,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "placement.attn",
+      "truth": "post",
+      "got": "post",
+      "score": "correct"
+     },
+     {
+      "field": "placement.ffn",
+      "truth": "post",
+      "got": null,
+      "score": "abstain"
+     },
+     {
+      "field": "parallel_block",
+      "truth": false,
+      "got": null,
+      "score": "abstain"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "placement_field.attn",
+     "truth": "post",
+     "got": "post",
+     "score": "correct"
+    },
+    {
+     "field": "placement_field.ffn",
+     "truth": "post",
+     "got": "post",
+     "score": "correct"
+    },
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "positional_ext",
+     "truth": "relative",
+     "got": "relative",
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "1906.08237",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": null,
+     "rule": null,
+     "rule_score": "correct",
+     "llm": "relative",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 5,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 2
+    },
+    "misses": [],
+    "unmatched_extracted": [
+     "XLNet-Base"
+    ]
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 4,
+     "WRONG": 0,
+     "abstain": 1,
+     "unlabelled": 0
+    },
+    "misses": [
+     {
+      "config": "XLNet-Large",
+      "field": "d_ff",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "graph": {
+    "derived": {
+     "attn": "post",
+     "ffn": "post",
+     "parallel": false,
+     "gated": false,
+     "rope": false,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "placement.attn",
+      "truth": "post",
+      "got": "post",
+      "score": "correct"
+     },
+     {
+      "field": "placement.ffn",
+      "truth": "post",
+      "got": "post",
+      "score": "correct"
+     },
+     {
+      "field": "parallel_block",
+      "truth": false,
+      "got": false,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "placement_field.attn",
+     "truth": "post",
+     "got": "post",
+     "score": "correct"
+    },
+    {
+     "field": "placement_field.ffn",
+     "truth": "post",
+     "got": "post",
+     "score": "correct"
+    },
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "positional_ext",
+     "truth": "relative",
+     "got": "relative",
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "1907.11692",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": null,
+     "llm_score": "abstain",
+     "llm_check": "unverified"
+    },
+    {
+     "field": "activation",
+     "truth": "gelu",
+     "rule": "gelu",
+     "rule_score": "correct",
+     "llm": null,
+     "llm_score": "abstain",
+     "llm_check": "unverified"
+    },
+    {
+     "field": "positional",
+     "truth": "learned",
+     "rule": "learned",
+     "rule_score": "correct",
+     "llm": null,
+     "llm_score": "abstain",
+     "llm_check": "unverified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 10,
+     "WRONG": 0,
+     "abstain": 2,
+     "unlabelled": 0
+    },
+    "misses": [
+     {
+      "config": "RoBERTa-large",
+      "field": "vocab_size",
+      "truth": 50000,
+      "got": null,
+      "score": "abstain",
+      "matched": "RoBERTa-large"
+     },
+     {
+      "config": "RoBERTa-base",
+      "field": "vocab_size",
+      "truth": 50000,
+      "got": null,
+      "score": "abstain",
+      "matched": "RoBERTa-base"
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 3,
+     "WRONG": 0,
+     "abstain": 9,
+     "unlabelled": 0
+    },
+    "misses": [
+     {
+      "config": "RoBERTa-large",
+      "field": "d_ff",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     },
+     {
+      "config": "RoBERTa-large",
+      "field": "vocab_size",
+      "truth": 50000,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     },
+     {
+      "config": "RoBERTa-large",
+      "field": "context_length",
+      "truth": 512,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     },
+     {
+      "config": "RoBERTa-base",
+      "field": "d_model",
+      "truth": 768,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "RoBERTa-base",
+      "field": "n_layers",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "RoBERTa-base",
+      "field": "n_heads",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "RoBERTa-base",
+      "field": "d_ff",
+      "truth": 3072,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "RoBERTa-base",
+      "field": "vocab_size",
+      "truth": 50000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "RoBERTa-base",
+      "field": "context_length",
+      "truth": 512,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "graph": {
+    "derived": {
+     "attn": "post",
+     "ffn": "post",
+     "parallel": false,
+     "gated": false,
+     "rope": false,
+     "abs_pos": true
+    },
+    "rows": [
+     {
+      "field": "abs_position",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "1909.08053",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "gelu",
+     "rule": "gelu",
+     "rule_score": "correct",
+     "llm": "gelu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 15,
+     "WRONG": 0,
+     "abstain": 22,
+     "unlabelled": 0
+    },
+    "misses": [
+     {
+      "config": "GPT-2 1.2B (scaling study)",
+      "field": "d_model",
+      "truth": 1536,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-2 1.2B (scaling study)",
+      "field": "n_layers",
+      "truth": 40,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-2 1.2B (scaling study)",
+      "field": "n_heads",
+      "truth": 16,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-2 1.2B (scaling study)",
+      "field": "vocab_size",
+      "truth": 51200,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-2 1.2B (scaling study)",
+      "field": "context_length",
+      "truth": 1024,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-2 4.2B (scaling study)",
+      "field": "d_model",
+      "truth": 2304,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-2 4.2B (scaling study)",
+      "field": "n_layers",
+      "truth": 64,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-2 4.2B (scaling study)",
+      "field": "n_heads",
+      "truth": 24,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-2 4.2B (scaling study)",
+      "field": "vocab_size",
+      "truth": 51200,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-2 4.2B (scaling study)",
+      "field": "context_length",
+      "truth": 1024,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Megatron-336M (BERT)",
+      "field": "d_model",
+      "truth": 1024,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Megatron-336M (BERT)",
+      "field": "n_layers",
+      "truth": 24,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Megatron-336M (BERT)",
+      "field": "n_heads",
+      "truth": 16,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Megatron-336M (BERT)",
+      "field": "vocab_size",
+      "truth": 30522,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Megatron-1.3B (BERT)",
+      "field": "d_model",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Megatron-1.3B (BERT)",
+      "field": "n_layers",
+      "truth": 24,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Megatron-1.3B (BERT)",
+      "field": "n_heads",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Megatron-1.3B (BERT)",
+      "field": "vocab_size",
+      "truth": 30522,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Megatron-3.9B (BERT)",
+      "field": "d_model",
+      "truth": 2560,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Megatron-3.9B (BERT)",
+      "field": "n_layers",
+      "truth": 48,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Megatron-3.9B (BERT)",
+      "field": "n_heads",
+      "truth": 40,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Megatron-3.9B (BERT)",
+      "field": "vocab_size",
+      "truth": 30522,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 16,
+     "WRONG": 0,
+     "abstain": 21,
+     "unlabelled": 4
+    },
+    "misses": [
+     {
+      "config": "GPT-2 355M",
+      "field": "n_heads",
+      "truth": 16,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 4"
+     },
+     {
+      "config": "GPT-2 355M",
+      "field": "vocab_size",
+      "truth": 51200,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 4"
+     },
+     {
+      "config": "GPT-2 355M",
+      "field": "context_length",
+      "truth": 1024,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 4"
+     },
+     {
+      "config": "GPT-2 2.5B",
+      "field": "d_model",
+      "truth": 1920,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 1"
+     },
+     {
+      "config": "GPT-2 2.5B",
+      "field": "vocab_size",
+      "truth": 51200,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 1"
+     },
+     {
+      "config": "GPT-2 2.5B",
+      "field": "context_length",
+      "truth": 1024,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 1"
+     },
+     {
+      "config": "GPT-2 8.3B",
+      "field": "n_heads",
+      "truth": 24,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 6"
+     },
+     {
+      "config": "GPT-2 8.3B",
+      "field": "vocab_size",
+      "truth": 51200,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 6"
+     },
+     {
+      "config": "GPT-2 8.3B",
+      "field": "context_length",
+      "truth": 1024,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 6"
+     },
+     {
+      "config": "GPT-2 1.2B (scaling study)",
+      "field": "d_model",
+      "truth": 1536,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 0"
+     },
+     {
+      "config": "GPT-2 1.2B (scaling study)",
+      "field": "vocab_size",
+      "truth": 51200,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 0"
+     },
+     {
+      "config": "GPT-2 1.2B (scaling study)",
+      "field": "context_length",
+      "truth": 1024,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 0"
+     },
+     {
+      "config": "GPT-2 4.2B (scaling study)",
+      "field": "d_model",
+      "truth": 2304,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 2"
+     },
+     {
+      "config": "GPT-2 4.2B (scaling study)",
+      "field": "vocab_size",
+      "truth": 51200,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 2"
+     },
+     {
+      "config": "GPT-2 4.2B (scaling study)",
+      "field": "context_length",
+      "truth": 1024,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 2"
+     },
+     {
+      "config": "Megatron-336M (BERT)",
+      "field": "n_heads",
+      "truth": 16,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 7"
+     },
+     {
+      "config": "Megatron-336M (BERT)",
+      "field": "vocab_size",
+      "truth": 30522,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 7"
+     },
+     {
+      "config": "Megatron-1.3B (BERT)",
+      "field": "n_heads",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 8"
+     },
+     {
+      "config": "Megatron-1.3B (BERT)",
+      "field": "vocab_size",
+      "truth": 30522,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 8"
+     },
+     {
+      "config": "Megatron-3.9B (BERT)",
+      "field": "n_heads",
+      "truth": 40,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 9"
+     },
+     {
+      "config": "Megatron-3.9B (BERT)",
+      "field": "vocab_size",
+      "truth": 30522,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 9"
+     }
+    ],
+    "unmatched_extracted": [
+     "variant 3",
+     "variant 5"
+    ]
+   },
+   "graph": {
+    "derived": {
+     "attn": "pre",
+     "ffn": "pre",
+     "parallel": false,
+     "gated": false,
+     "rope": false,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "placement.attn",
+      "truth": "pre",
+      "got": "pre",
+      "score": "correct"
+     },
+     {
+      "field": "placement.ffn",
+      "truth": "pre",
+      "got": "pre",
+      "score": "correct"
+     },
+     {
+      "field": "parallel_block",
+      "truth": false,
+      "got": false,
+      "score": "correct"
+     },
+     {
+      "field": "ffn_gated",
+      "truth": false,
+      "got": false,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "placement_field.attn",
+     "truth": "pre",
+     "got": "pre",
+     "score": "correct"
+    },
+    {
+     "field": "placement_field.ffn",
+     "truth": "pre",
+     "got": "pre",
+     "score": "correct"
+    },
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "1909.11942",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": null,
+     "llm_score": "abstain",
+     "llm_check": "not_stated"
+    },
+    {
+     "field": "activation",
+     "truth": "gelu",
+     "rule": "gelu",
+     "rule_score": "correct",
+     "llm": "gelu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "learned",
+     "rule": "learned",
+     "rule_score": "correct",
+     "llm": null,
+     "llm_score": "abstain",
+     "llm_check": "not_stated"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 16,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 4
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 2,
+     "WRONG": 2,
+     "abstain": 12,
+     "unlabelled": 29
+    },
+    "misses": [
+     {
+      "config": "ALBERT-base",
+      "field": "d_model",
+      "truth": 768,
+      "got": 12.0,
+      "score": "WRONG",
+      "matched": "variant 2"
+     },
+     {
+      "config": "ALBERT-base",
+      "field": "vocab_size",
+      "truth": 30000,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 2"
+     },
+     {
+      "config": "ALBERT-base",
+      "field": "context_length",
+      "truth": 512,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 2"
+     },
+     {
+      "config": "ALBERT-large",
+      "field": "d_model",
+      "truth": 1024,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "ALBERT-large",
+      "field": "n_layers",
+      "truth": 24,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "ALBERT-large",
+      "field": "vocab_size",
+      "truth": 30000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "ALBERT-large",
+      "field": "context_length",
+      "truth": 512,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "ALBERT-xlarge",
+      "field": "d_model",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "ALBERT-xlarge",
+      "field": "n_layers",
+      "truth": 24,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "ALBERT-xlarge",
+      "field": "vocab_size",
+      "truth": 30000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "ALBERT-xlarge",
+      "field": "context_length",
+      "truth": 512,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "ALBERT-xxlarge",
+      "field": "d_model",
+      "truth": 4096,
+      "got": 12.0,
+      "score": "WRONG",
+      "matched": "variant 9"
+     },
+     {
+      "config": "ALBERT-xxlarge",
+      "field": "vocab_size",
+      "truth": 30000,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 9"
+     },
+     {
+      "config": "ALBERT-xxlarge",
+      "field": "context_length",
+      "truth": 512,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 9"
+     }
+    ],
+    "unmatched_extracted": [
+     "variant 0",
+     "variant 1",
+     "variant 3",
+     "variant 4",
+     "variant 5",
+     "variant 6",
+     "variant 7",
+     "variant 8",
+     "variant 10",
+     "variant 11",
+     "variant 12"
+    ]
+   },
+   "graph": {
+    "derived": {
+     "attn": "none",
+     "ffn": "none",
+     "parallel": false,
+     "gated": false,
+     "rope": false,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "abs_position",
+      "truth": true,
+      "got": false,
+      "score": "WRONG"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "1910.10683",
+   "flavours": [
+    {
+     "field": "activation",
+     "truth": "relu",
+     "rule": "relu",
+     "rule_score": "correct",
+     "llm": "relu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 30,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 0
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 3,
+     "WRONG": 1,
+     "abstain": 26,
+     "unlabelled": 0
+    },
+    "misses": [
+     {
+      "config": "Small",
+      "field": "d_model",
+      "truth": 512,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Small",
+      "field": "n_layers",
+      "truth": 6,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Small",
+      "field": "n_heads",
+      "truth": 8,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Small",
+      "field": "d_ff",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Small",
+      "field": "vocab_size",
+      "truth": 32000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Small",
+      "field": "context_length",
+      "truth": 512,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Base",
+      "field": "n_layers",
+      "truth": 12,
+      "got": 2.0,
+      "score": "WRONG",
+      "matched": "fields"
+     },
+     {
+      "config": "Base",
+      "field": "n_heads",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     },
+     {
+      "config": "Base",
+      "field": "vocab_size",
+      "truth": 32000,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     },
+     {
+      "config": "Large",
+      "field": "d_model",
+      "truth": 1024,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Large",
+      "field": "n_layers",
+      "truth": 24,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Large",
+      "field": "n_heads",
+      "truth": 16,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Large",
+      "field": "d_ff",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Large",
+      "field": "vocab_size",
+      "truth": 32000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Large",
+      "field": "context_length",
+      "truth": 512,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "3B",
+      "field": "d_model",
+      "truth": 1024,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "3B",
+      "field": "n_layers",
+      "truth": 24,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "3B",
+      "field": "n_heads",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "3B",
+      "field": "d_ff",
+      "truth": 16384,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "3B",
+      "field": "vocab_size",
+      "truth": 32000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "3B",
+      "field": "context_length",
+      "truth": 512,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "11B",
+      "field": "d_model",
+      "truth": 1024,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "11B",
+      "field": "n_layers",
+      "truth": 24,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "11B",
+      "field": "n_heads",
+      "truth": 128,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "11B",
+      "field": "d_ff",
+      "truth": 65536,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "11B",
+      "field": "vocab_size",
+      "truth": 32000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "11B",
+      "field": "context_length",
+      "truth": 512,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "graph": {
+    "derived": {
+     "attn": "pre",
+     "ffn": "pre",
+     "parallel": false,
+     "gated": false,
+     "rope": false,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "placement.attn",
+      "truth": "pre",
+      "got": "pre",
+      "score": "correct"
+     },
+     {
+      "field": "placement.ffn",
+      "truth": "pre",
+      "got": "pre",
+      "score": "correct"
+     },
+     {
+      "field": "parallel_block",
+      "truth": false,
+      "got": false,
+      "score": "correct"
+     },
+     {
+      "field": "ffn_gated",
+      "truth": false,
+      "got": false,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "placement_field.attn",
+     "truth": "pre",
+     "got": "pre",
+     "score": "correct"
+    },
+    {
+     "field": "placement_field.ffn",
+     "truth": "pre",
+     "got": "pre",
+     "score": "correct"
+    },
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": "none",
+     "score": "correct"
+    },
+    {
+     "field": "positional_ext",
+     "truth": "t5_bias",
+     "got": null,
+     "score": "abstain"
+    },
+    {
+     "field": "rel_buckets",
+     "truth": 32.0,
+     "got": 32.0,
+     "score": "correct"
+    },
+    {
+     "field": "rel_max_distance",
+     "truth": 128.0,
+     "got": 128.0,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "1910.13461",
+   "flavours": [
+    {
+     "field": "activation",
+     "truth": "gelu",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "gelu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 4,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 0
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 2,
+     "WRONG": 0,
+     "abstain": 2,
+     "unlabelled": 0
+    },
+    "misses": [
+     {
+      "config": "BART-large",
+      "field": "d_model",
+      "truth": 1024,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BART-large",
+      "field": "n_layers",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "graph": {
+    "derived": {
+     "attn": "post",
+     "ffn": "post",
+     "parallel": false,
+     "gated": false,
+     "rope": false,
+     "abs_pos": true
+    },
+    "rows": []
+   },
+   "new_fields": [
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "positional_ext",
+     "truth": "learned",
+     "got": null,
+     "score": "abstain"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2004.05150",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "gelu",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "gelu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "learned",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "learned",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 0,
+     "WRONG": 0,
+     "abstain": 14,
+     "unlabelled": 2
+    },
+    "misses": [
+     {
+      "config": "char-LM small",
+      "field": "d_model",
+      "truth": 512,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "char-LM small",
+      "field": "n_layers",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "char-LM small",
+      "field": "n_heads",
+      "truth": 8,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "char-LM small",
+      "field": "context_length",
+      "truth": 23040,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "char-LM large",
+      "field": "d_model",
+      "truth": 512,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "char-LM large",
+      "field": "n_layers",
+      "truth": 30,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "char-LM large",
+      "field": "n_heads",
+      "truth": 8,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "char-LM large",
+      "field": "context_length",
+      "truth": 23040,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Longformer-base",
+      "field": "context_length",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Longformer-large",
+      "field": "context_length",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "LED-base",
+      "field": "n_layers",
+      "truth": 6,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "LED-base",
+      "field": "context_length",
+      "truth": 16384,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "LED-large",
+      "field": "n_layers",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "LED-large",
+      "field": "context_length",
+      "truth": 16384,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": [
+     "Longformer-base",
+     "Longformer-large"
+    ]
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 0,
+     "WRONG": 0,
+     "abstain": 14,
+     "unlabelled": 3
+    },
+    "misses": [
+     {
+      "config": "char-LM small",
+      "field": "d_model",
+      "truth": 512,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "char-LM small",
+      "field": "n_layers",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "char-LM small",
+      "field": "n_heads",
+      "truth": 8,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "char-LM small",
+      "field": "context_length",
+      "truth": 23040,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "char-LM large",
+      "field": "d_model",
+      "truth": 512,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "char-LM large",
+      "field": "n_layers",
+      "truth": 30,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "char-LM large",
+      "field": "n_heads",
+      "truth": 8,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "char-LM large",
+      "field": "context_length",
+      "truth": 23040,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Longformer-base",
+      "field": "context_length",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Longformer-large",
+      "field": "context_length",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "LED-base",
+      "field": "n_layers",
+      "truth": 6,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "LED-base",
+      "field": "context_length",
+      "truth": 16384,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "LED-large",
+      "field": "n_layers",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "LED-large",
+      "field": "context_length",
+      "truth": 16384,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": [
+     "fields"
+    ]
+   },
+   "graph": {
+    "derived": {
+     "attn": "post",
+     "ffn": "post",
+     "parallel": false,
+     "gated": false,
+     "rope": false,
+     "abs_pos": true
+    },
+    "rows": [
+     {
+      "field": "abs_position",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2005.14165",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "learned",
+     "rule": "learned",
+     "rule_score": "correct",
+     "llm": "learned",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 32,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 0
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 0,
+     "WRONG": 0,
+     "abstain": 32,
+     "unlabelled": 2
+    },
+    "misses": [
+     {
+      "config": "GPT-3 Small",
+      "field": "d_model",
+      "truth": 768,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 Small",
+      "field": "n_layers",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 Small",
+      "field": "n_heads",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 Small",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 Medium",
+      "field": "d_model",
+      "truth": 1024,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 Medium",
+      "field": "n_layers",
+      "truth": 24,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 Medium",
+      "field": "n_heads",
+      "truth": 16,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 Medium",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 Large",
+      "field": "d_model",
+      "truth": 1536,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 Large",
+      "field": "n_layers",
+      "truth": 24,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 Large",
+      "field": "n_heads",
+      "truth": 16,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 Large",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 XL",
+      "field": "d_model",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 XL",
+      "field": "n_layers",
+      "truth": 24,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 XL",
+      "field": "n_heads",
+      "truth": 24,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 XL",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 2.7B",
+      "field": "d_model",
+      "truth": 2560,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 2.7B",
+      "field": "n_layers",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 2.7B",
+      "field": "n_heads",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 2.7B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 6.7B",
+      "field": "d_model",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 6.7B",
+      "field": "n_layers",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 6.7B",
+      "field": "n_heads",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 6.7B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 13B",
+      "field": "d_model",
+      "truth": 5140,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 13B",
+      "field": "n_layers",
+      "truth": 40,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 13B",
+      "field": "n_heads",
+      "truth": 40,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 13B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 175B",
+      "field": "d_model",
+      "truth": 12288,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 175B",
+      "field": "n_layers",
+      "truth": 96,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 175B",
+      "field": "n_heads",
+      "truth": 96,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GPT-3 175B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": [
+     "fields"
+    ]
+   },
+   "graph": {
+    "derived": {
+     "attn": "pre",
+     "ffn": "pre",
+     "parallel": false,
+     "gated": false,
+     "rope": false,
+     "abs_pos": true
+    },
+    "rows": [
+     {
+      "field": "placement.attn",
+      "truth": "pre",
+      "got": "pre",
+      "score": "correct"
+     },
+     {
+      "field": "placement.ffn",
+      "truth": "pre",
+      "got": "pre",
+      "score": "correct"
+     },
+     {
+      "field": "abs_position",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "placement_field.attn",
+     "truth": "pre",
+     "got": "pre",
+     "score": "correct"
+    },
+    {
+     "field": "placement_field.ffn",
+     "truth": "pre",
+     "got": "pre",
+     "score": "correct"
+    },
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2006.03654",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "gelu",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "gelu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": null,
+     "rule": null,
+     "rule_score": "correct",
+     "llm": "relative",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 12,
+     "WRONG": 0,
+     "abstain": 1,
+     "unlabelled": 0
+    },
+    "misses": [
+     {
+      "config": "DeBERTa-1.5B",
+      "field": "vocab_size",
+      "truth": 128000,
+      "got": null,
+      "score": "abstain",
+      "matched": "DeBERTa_1.5B"
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 2,
+     "WRONG": 1,
+     "abstain": 10,
+     "unlabelled": 0
+    },
+    "misses": [
+     {
+      "config": "DeBERTa-1.5B",
+      "field": "d_model",
+      "truth": 1536,
+      "got": 1024.0,
+      "score": "WRONG",
+      "matched": "fields"
+     },
+     {
+      "config": "DeBERTa-1.5B",
+      "field": "d_ff",
+      "truth": 6144,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     },
+     {
+      "config": "DeBERTa-1.5B",
+      "field": "vocab_size",
+      "truth": 128000,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     },
+     {
+      "config": "DeBERTa-large",
+      "field": "d_model",
+      "truth": 1024,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "DeBERTa-large",
+      "field": "n_layers",
+      "truth": 24,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "DeBERTa-large",
+      "field": "n_heads",
+      "truth": 16,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "DeBERTa-large",
+      "field": "d_ff",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "DeBERTa-base",
+      "field": "d_model",
+      "truth": 768,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "DeBERTa-base",
+      "field": "n_layers",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "DeBERTa-base",
+      "field": "n_heads",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "DeBERTa-base",
+      "field": "d_ff",
+      "truth": 3072,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "graph": {
+    "derived": {
+     "attn": "post",
+     "ffn": "post",
+     "parallel": false,
+     "gated": false,
+     "rope": false,
+     "abs_pos": false
+    },
+    "rows": []
+   },
+   "new_fields": [
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "positional_ext",
+     "truth": "relative",
+     "got": "relative",
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2104.09864",
+   "flavours": [
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 0,
+     "WRONG": 0,
+     "abstain": 6,
+     "unlabelled": 1
+    },
+    "misses": [
+     {
+      "config": "RoFormer (WMT14 En-De, Transformer-base with RoPE)",
+      "field": "vocab_size",
+      "truth": 37000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "RoFormer (BERT-base with RoPE, English pre-training)",
+      "field": "context_length",
+      "truth": 512,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "PerFormer + RoPE (Enwik8)",
+      "field": "d_model",
+      "truth": 768,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "PerFormer + RoPE (Enwik8)",
+      "field": "n_layers",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "PerFormer + RoPE (Enwik8)",
+      "field": "n_heads",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "PerFormer + RoPE (Enwik8)",
+      "field": "context_length",
+      "truth": 1024,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": [
+     "base (bert-base-uncased + RoPE)"
+    ]
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 0,
+     "WRONG": 0,
+     "abstain": 6,
+     "unlabelled": 2
+    },
+    "misses": [
+     {
+      "config": "RoFormer (WMT14 En-De, Transformer-base with RoPE)",
+      "field": "vocab_size",
+      "truth": 37000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "RoFormer (BERT-base with RoPE, English pre-training)",
+      "field": "context_length",
+      "truth": 512,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "PerFormer + RoPE (Enwik8)",
+      "field": "d_model",
+      "truth": 768,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "PerFormer + RoPE (Enwik8)",
+      "field": "n_layers",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "PerFormer + RoPE (Enwik8)",
+      "field": "n_heads",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "PerFormer + RoPE (Enwik8)",
+      "field": "context_length",
+      "truth": 1024,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": [
+     "fields"
+    ]
+   },
+   "graph": {
+    "derived": {
+     "attn": "post",
+     "ffn": "post",
+     "parallel": false,
+     "gated": false,
+     "rope": true,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "rope_node",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2108.12409",
+   "flavours": [
+    {
+     "field": "positional",
+     "truth": "alibi",
+     "rule": "alibi",
+     "rule_score": "correct",
+     "llm": "alibi",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 8,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 1
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 3,
+     "WRONG": 0,
+     "abstain": 5,
+     "unlabelled": 1
+    },
+    "misses": [
+     {
+      "config": "247M (WikiText-103, Baevski & Auli architecture with ALiBi)",
+      "field": "n_heads",
+      "truth": 8,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     },
+     {
+      "config": "1.3B (CC100+RoBERTa)",
+      "field": "d_model",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1.3B (CC100+RoBERTa)",
+      "field": "n_layers",
+      "truth": 25,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1.3B (CC100+RoBERTa)",
+      "field": "n_heads",
+      "truth": 16,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1.3B (CC100+RoBERTa)",
+      "field": "d_ff",
+      "truth": 8192,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "graph": {
+    "derived": {
+     "attn": "none",
+     "ffn": null,
+     "parallel": null,
+     "gated": null,
+     "rope": false,
+     "abs_pos": true
+    },
+    "rows": []
+   },
+   "new_fields": [
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2109.08668",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": null,
+     "rule": null,
+     "rule_score": "correct",
+     "llm": "new_op:primer_layernorm",
+     "llm_score": "correct",
+     "llm_check": "quote_only"
+    },
+    {
+     "field": "activation",
+     "truth": null,
+     "rule": null,
+     "rule_score": "correct",
+     "llm": "new_op:squared_relu",
+     "llm_score": "correct",
+     "llm_check": "quote_only"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 8,
+     "WRONG": 0,
+     "abstain": 1,
+     "unlabelled": 4
+    },
+    "misses": [
+     {
+      "config": "Primer 1.9B (one-shot, Lingvo)",
+      "field": "context_length",
+      "truth": 1024,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": [
+     "Primer-1.9B (one-shot, Lingvo)"
+    ]
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 3,
+     "WRONG": 1,
+     "abstain": 5,
+     "unlabelled": 0
+    },
+    "misses": [
+     {
+      "config": "Primer 110M (T5, C4/PG19)",
+      "field": "context_length",
+      "truth": 512,
+      "got": 64.0,
+      "score": "WRONG",
+      "matched": "fields"
+     },
+     {
+      "config": "Primer 537M (full T5 regime)",
+      "field": "d_model",
+      "truth": 1024,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Primer 537M (full T5 regime)",
+      "field": "n_layers",
+      "truth": 24,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Primer 537M (full T5 regime)",
+      "field": "d_ff",
+      "truth": 8192,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Primer 537M (full T5 regime)",
+      "field": "context_length",
+      "truth": 512,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Primer 1.9B (one-shot, Lingvo)",
+      "field": "context_length",
+      "truth": 1024,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "graph": {
+    "derived": {
+     "attn": "pre",
+     "ffn": "branch_post",
+     "parallel": false,
+     "gated": false,
+     "rope": false,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "placement.attn",
+      "truth": "pre",
+      "got": "pre",
+      "score": "correct"
+     },
+     {
+      "field": "placement.ffn",
+      "truth": "branch_post",
+      "got": "branch_post",
+      "score": "correct"
+     },
+     {
+      "field": "ffn_gated",
+      "truth": false,
+      "got": false,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "placement_field.attn",
+     "truth": "pre",
+     "got": "pre",
+     "score": "correct"
+    },
+    {
+     "field": "placement_field.ffn",
+     "truth": "branch_post",
+     "got": "branch_post",
+     "score": "correct"
+    },
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "new_op_inputs",
+     "truth": [
+      "input"
+     ],
+     "got": [
+      "input"
+     ],
+     "score": "correct",
+     "op": "squared ReLU",
+     "matched": "squared_relu",
+     "kind": "expr",
+     "check": "verified",
+     "expr": "(relu(x)^2)"
+    },
+    {
+     "field": "new_op_inputs",
+     "truth": [
+      "input"
+     ],
+     "got": [
+      "input",
+      "learned_vector",
+      "learned_vector"
+     ],
+     "score": "correct",
+     "op": "custom layer norm (x(x - mu) variance)",
+     "matched": "primer_layernorm",
+     "kind": "expr",
+     "check": "verified",
+     "expr": "((((x-rowmean(x))/sqrt(abs(rowmean(((x-rowmean(x))*x)))))*g)+b)"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2112.11446",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "rmsnorm",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "rmsnorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": null,
+     "rule": null,
+     "rule_score": "correct",
+     "llm": "relative",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 30,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 0
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 0,
+     "WRONG": 0,
+     "abstain": 30,
+     "unlabelled": 3
+    },
+    "misses": [
+     {
+      "config": "44M",
+      "field": "d_model",
+      "truth": 512,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "44M",
+      "field": "n_layers",
+      "truth": 8,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "44M",
+      "field": "n_heads",
+      "truth": 16,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "44M",
+      "field": "vocab_size",
+      "truth": 32000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "44M",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "117M",
+      "field": "d_model",
+      "truth": 768,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "117M",
+      "field": "n_layers",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "117M",
+      "field": "n_heads",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "117M",
+      "field": "vocab_size",
+      "truth": 32000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "117M",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "417M",
+      "field": "d_model",
+      "truth": 1536,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "417M",
+      "field": "n_layers",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "417M",
+      "field": "n_heads",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "417M",
+      "field": "vocab_size",
+      "truth": 32000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "417M",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1.4B",
+      "field": "d_model",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1.4B",
+      "field": "n_layers",
+      "truth": 24,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1.4B",
+      "field": "n_heads",
+      "truth": 16,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1.4B",
+      "field": "vocab_size",
+      "truth": 32000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1.4B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7.1B",
+      "field": "d_model",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7.1B",
+      "field": "n_layers",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7.1B",
+      "field": "n_heads",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7.1B",
+      "field": "vocab_size",
+      "truth": 32000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7.1B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Gopher 280B",
+      "field": "d_model",
+      "truth": 16384,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Gopher 280B",
+      "field": "n_layers",
+      "truth": 80,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Gopher 280B",
+      "field": "n_heads",
+      "truth": 128,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Gopher 280B",
+      "field": "vocab_size",
+      "truth": 32000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Gopher 280B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": [
+     "fields"
+    ]
+   },
+   "graph": {
+    "derived": {
+     "attn": "pre",
+     "ffn": "pre",
+     "parallel": false,
+     "gated": false,
+     "rope": false,
+     "abs_pos": false
+    },
+    "rows": []
+   },
+   "new_fields": [
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "positional_ext",
+     "truth": "relative",
+     "got": "relative",
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2201.08239",
+   "flavours": [
+    {
+     "field": "activation",
+     "truth": "geglu",
+     "rule": "geglu",
+     "rule_score": "correct",
+     "llm": "geglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": null,
+     "rule": null,
+     "rule_score": "correct",
+     "llm": "t5_bias",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 13,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 0
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 6,
+     "WRONG": 0,
+     "abstain": 7,
+     "unlabelled": 0
+    },
+    "misses": [
+     {
+      "config": "2B",
+      "field": "d_model",
+      "truth": 2560,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 0"
+     },
+     {
+      "config": "2B",
+      "field": "vocab_size",
+      "truth": 32000,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 0"
+     },
+     {
+      "config": "8B",
+      "field": "d_model",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 1"
+     },
+     {
+      "config": "8B",
+      "field": "vocab_size",
+      "truth": 32000,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 1"
+     },
+     {
+      "config": "137B",
+      "field": "d_model",
+      "truth": 8192,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 2"
+     },
+     {
+      "config": "137B",
+      "field": "d_ff",
+      "truth": 65536,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 2"
+     },
+     {
+      "config": "137B",
+      "field": "vocab_size",
+      "truth": 32000,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 2"
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "graph": {
+    "derived": {
+     "attn": "none",
+     "ffn": "none",
+     "parallel": false,
+     "gated": true,
+     "rope": false,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "ffn_gated",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "positional_ext",
+     "truth": "t5_bias",
+     "got": "t5_bias",
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2204.02311",
+   "flavours": [
+    {
+     "field": "activation",
+     "truth": "swiglu",
+     "rule": "swiglu",
+     "rule_score": "correct",
+     "llm": "swiglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 18,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 0
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 0,
+     "WRONG": 0,
+     "abstain": 18,
+     "unlabelled": 1
+    },
+    "misses": [
+     {
+      "config": "PaLM 8B",
+      "field": "d_model",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "PaLM 8B",
+      "field": "n_layers",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "PaLM 8B",
+      "field": "n_heads",
+      "truth": 16,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "PaLM 8B",
+      "field": "n_kv_heads",
+      "truth": 1,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "PaLM 8B",
+      "field": "vocab_size",
+      "truth": 256000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "PaLM 8B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "PaLM 62B",
+      "field": "d_model",
+      "truth": 8192,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "PaLM 62B",
+      "field": "n_layers",
+      "truth": 64,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "PaLM 62B",
+      "field": "n_heads",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "PaLM 62B",
+      "field": "n_kv_heads",
+      "truth": 1,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "PaLM 62B",
+      "field": "vocab_size",
+      "truth": 256000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "PaLM 62B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "PaLM 540B",
+      "field": "d_model",
+      "truth": 18432,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "PaLM 540B",
+      "field": "n_layers",
+      "truth": 118,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "PaLM 540B",
+      "field": "n_heads",
+      "truth": 48,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "PaLM 540B",
+      "field": "n_kv_heads",
+      "truth": 1,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "PaLM 540B",
+      "field": "vocab_size",
+      "truth": 256000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "PaLM 540B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": [
+     "fields"
+    ]
+   },
+   "graph": {
+    "derived": {
+     "attn": "pre",
+     "ffn": "pre",
+     "parallel": true,
+     "gated": true,
+     "rope": true,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "placement.attn",
+      "truth": "pre",
+      "got": "pre",
+      "score": "correct"
+     },
+     {
+      "field": "placement.ffn",
+      "truth": "pre",
+      "got": "pre",
+      "score": "correct"
+     },
+     {
+      "field": "parallel_block",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     },
+     {
+      "field": "ffn_gated",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     },
+     {
+      "field": "rope_node",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "placement_field.attn",
+     "truth": "pre",
+     "got": "pre",
+     "score": "correct"
+    },
+    {
+     "field": "placement_field.ffn",
+     "truth": "pre",
+     "got": "pre",
+     "score": "correct"
+    },
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": "none",
+     "score": "correct"
+    },
+    {
+     "field": "new_op_inputs",
+     "truth": [
+      "input"
+     ],
+     "got": [
+      "input"
+     ],
+     "score": "correct",
+     "op": "output logit scaling by 1/sqrt(n)",
+     "matched": "affine node",
+     "attributes": [
+      [
+       "scale",
+       "1/sqrt(d_model)"
+      ],
+      [
+       "shift",
+       "0"
+      ]
+     ]
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2204.06745",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "gelu",
+     "rule": "gelu",
+     "rule_score": "correct",
+     "llm": "other:gelu (exact vs tanh form not stated)",
+     "llm_score": "abstain",
+     "llm_check": "quote_only"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 5,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 0
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 2,
+     "WRONG": 0,
+     "abstain": 3,
+     "unlabelled": 0
+    },
+    "misses": [
+     {
+      "config": "GPT-NeoX-20B",
+      "field": "d_model",
+      "truth": 6144,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 0"
+     },
+     {
+      "config": "GPT-NeoX-20B",
+      "field": "vocab_size",
+      "truth": 50257,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 0"
+     },
+     {
+      "config": "GPT-NeoX-20B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 0"
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "graph": {
+    "derived": {
+     "attn": "pre",
+     "ffn": "pre",
+     "parallel": true,
+     "gated": false,
+     "rope": true,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "placement.attn",
+      "truth": "pre",
+      "got": "pre",
+      "score": "correct"
+     },
+     {
+      "field": "placement.ffn",
+      "truth": "pre",
+      "got": "pre",
+      "score": "correct"
+     },
+     {
+      "field": "parallel_block",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     },
+     {
+      "field": "rope_node",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "placement_field.attn",
+     "truth": "pre",
+     "got": "pre",
+     "score": "correct"
+    },
+    {
+     "field": "placement_field.ffn",
+     "truth": "pre",
+     "got": "pre",
+     "score": "correct"
+    },
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2205.01068",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": null,
+     "llm_score": "abstain",
+     "llm_check": "not_stated"
+    },
+    {
+     "field": "activation",
+     "truth": "relu",
+     "rule": "relu",
+     "rule_score": "correct",
+     "llm": "relu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "learned",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": null,
+     "llm_score": "abstain",
+     "llm_check": "not_stated"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 36,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 0
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 0,
+     "WRONG": 0,
+     "abstain": 36,
+     "unlabelled": 1
+    },
+    "misses": [
+     {
+      "config": "125M",
+      "field": "d_model",
+      "truth": 768,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "125M",
+      "field": "n_layers",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "125M",
+      "field": "n_heads",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "125M",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "350M",
+      "field": "d_model",
+      "truth": 1024,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "350M",
+      "field": "n_layers",
+      "truth": 24,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "350M",
+      "field": "n_heads",
+      "truth": 16,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "350M",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1.3B",
+      "field": "d_model",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1.3B",
+      "field": "n_layers",
+      "truth": 24,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1.3B",
+      "field": "n_heads",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1.3B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "2.7B",
+      "field": "d_model",
+      "truth": 2560,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "2.7B",
+      "field": "n_layers",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "2.7B",
+      "field": "n_heads",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "2.7B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "6.7B",
+      "field": "d_model",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "6.7B",
+      "field": "n_layers",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "6.7B",
+      "field": "n_heads",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "6.7B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "13B",
+      "field": "d_model",
+      "truth": 5120,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "13B",
+      "field": "n_layers",
+      "truth": 40,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "13B",
+      "field": "n_heads",
+      "truth": 40,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "13B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "30B",
+      "field": "d_model",
+      "truth": 7168,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "30B",
+      "field": "n_layers",
+      "truth": 48,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "30B",
+      "field": "n_heads",
+      "truth": 56,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "30B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "66B",
+      "field": "d_model",
+      "truth": 9216,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "66B",
+      "field": "n_layers",
+      "truth": 64,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "66B",
+      "field": "n_heads",
+      "truth": 72,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "66B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "175B",
+      "field": "d_model",
+      "truth": 12288,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "175B",
+      "field": "n_layers",
+      "truth": 96,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "175B",
+      "field": "n_heads",
+      "truth": 96,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "175B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": [
+     "fields"
+    ]
+   },
+   "graph": {
+    "derived": {
+     "attn": "none",
+     "ffn": "none",
+     "parallel": false,
+     "gated": false,
+     "rope": false,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "ffn_gated",
+      "truth": false,
+      "got": false,
+      "score": "correct"
+     },
+     {
+      "field": "abs_position",
+      "truth": true,
+      "got": false,
+      "score": "WRONG"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2211.05100",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "gelu",
+     "rule": "gelu",
+     "rule_score": "correct",
+     "llm": "gelu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "alibi",
+     "rule": "alibi",
+     "rule_score": "correct",
+     "llm": "alibi",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 30,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 0
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 2,
+     "WRONG": 1,
+     "abstain": 27,
+     "unlabelled": 0
+    },
+    "misses": [
+     {
+      "config": "BLOOM-560M",
+      "field": "d_model",
+      "truth": 1024,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     },
+     {
+      "config": "BLOOM-560M",
+      "field": "vocab_size",
+      "truth": 250680,
+      "got": 250000.0,
+      "score": "WRONG",
+      "matched": "fields"
+     },
+     {
+      "config": "BLOOM-560M",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     },
+     {
+      "config": "BLOOM-1.1B",
+      "field": "d_model",
+      "truth": 1536,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BLOOM-1.1B",
+      "field": "n_layers",
+      "truth": 24,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BLOOM-1.1B",
+      "field": "n_heads",
+      "truth": 16,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BLOOM-1.1B",
+      "field": "vocab_size",
+      "truth": 250680,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BLOOM-1.1B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BLOOM-1.7B",
+      "field": "d_model",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BLOOM-1.7B",
+      "field": "n_layers",
+      "truth": 24,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BLOOM-1.7B",
+      "field": "n_heads",
+      "truth": 16,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BLOOM-1.7B",
+      "field": "vocab_size",
+      "truth": 250680,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BLOOM-1.7B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BLOOM-3B",
+      "field": "d_model",
+      "truth": 2560,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BLOOM-3B",
+      "field": "n_layers",
+      "truth": 30,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BLOOM-3B",
+      "field": "n_heads",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BLOOM-3B",
+      "field": "vocab_size",
+      "truth": 250680,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BLOOM-3B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BLOOM-7.1B",
+      "field": "d_model",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BLOOM-7.1B",
+      "field": "n_layers",
+      "truth": 30,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BLOOM-7.1B",
+      "field": "n_heads",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BLOOM-7.1B",
+      "field": "vocab_size",
+      "truth": 250680,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BLOOM-7.1B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BLOOM",
+      "field": "d_model",
+      "truth": 14336,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BLOOM",
+      "field": "n_layers",
+      "truth": 70,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BLOOM",
+      "field": "n_heads",
+      "truth": 112,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BLOOM",
+      "field": "vocab_size",
+      "truth": 250680,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "BLOOM",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "graph": {
+    "derived": {
+     "attn": "pre",
+     "ffn": "pre",
+     "parallel": false,
+     "gated": false,
+     "rope": false,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "ffn_gated",
+      "truth": false,
+      "got": false,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": "none",
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2211.09085",
+   "flavours": [
+    {
+     "field": "activation",
+     "truth": "gelu",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "gelu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "learned",
+     "rule": "learned",
+     "rule_score": "correct",
+     "llm": "learned",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 25,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 0
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 0,
+     "WRONG": 0,
+     "abstain": 25,
+     "unlabelled": 1
+    },
+    "misses": [
+     {
+      "config": "GAL 125M",
+      "field": "d_model",
+      "truth": 768,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GAL 125M",
+      "field": "n_layers",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GAL 125M",
+      "field": "n_heads",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GAL 125M",
+      "field": "vocab_size",
+      "truth": 50000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GAL 125M",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GAL 1.3B",
+      "field": "d_model",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GAL 1.3B",
+      "field": "n_layers",
+      "truth": 24,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GAL 1.3B",
+      "field": "n_heads",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GAL 1.3B",
+      "field": "vocab_size",
+      "truth": 50000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GAL 1.3B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GAL 6.7B",
+      "field": "d_model",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GAL 6.7B",
+      "field": "n_layers",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GAL 6.7B",
+      "field": "n_heads",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GAL 6.7B",
+      "field": "vocab_size",
+      "truth": 50000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GAL 6.7B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GAL 30B",
+      "field": "d_model",
+      "truth": 7168,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GAL 30B",
+      "field": "n_layers",
+      "truth": 48,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GAL 30B",
+      "field": "n_heads",
+      "truth": 56,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GAL 30B",
+      "field": "vocab_size",
+      "truth": 50000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GAL 30B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GAL 120B",
+      "field": "d_model",
+      "truth": 10240,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GAL 120B",
+      "field": "n_layers",
+      "truth": 96,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GAL 120B",
+      "field": "n_heads",
+      "truth": 80,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GAL 120B",
+      "field": "vocab_size",
+      "truth": 50000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "GAL 120B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": [
+     "fields"
+    ]
+   },
+   "graph": {
+    "derived": {
+     "attn": "none",
+     "ffn": "none",
+     "parallel": true,
+     "gated": false,
+     "rope": false,
+     "abs_pos": true
+    },
+    "rows": [
+     {
+      "field": "ffn_gated",
+      "truth": false,
+      "got": false,
+      "score": "correct"
+     },
+     {
+      "field": "abs_position",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2302.13971",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "rmsnorm",
+     "rule": "rmsnorm",
+     "rule_score": "correct",
+     "llm": "rmsnorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "swiglu",
+     "rule": "swiglu",
+     "rule_score": "correct",
+     "llm": "swiglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 12,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 0
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 12,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 0
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "graph": {
+    "derived": {
+     "attn": "pre",
+     "ffn": "pre",
+     "parallel": false,
+     "gated": true,
+     "rope": true,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "placement.attn",
+      "truth": "pre",
+      "got": "pre",
+      "score": "correct"
+     },
+     {
+      "field": "placement.ffn",
+      "truth": "pre",
+      "got": "pre",
+      "score": "correct"
+     },
+     {
+      "field": "ffn_gated",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     },
+     {
+      "field": "rope_node",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "placement_field.attn",
+     "truth": "pre",
+     "got": "pre",
+     "score": "correct"
+    },
+    {
+     "field": "placement_field.ffn",
+     "truth": "pre",
+     "got": "pre",
+     "score": "correct"
+    },
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2304.01373",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 32,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 0
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 16,
+     "WRONG": 0,
+     "abstain": 16,
+     "unlabelled": 0
+    },
+    "misses": [
+     {
+      "config": "70M",
+      "field": "d_model",
+      "truth": 512,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 0"
+     },
+     {
+      "config": "70M",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 0"
+     },
+     {
+      "config": "160M",
+      "field": "d_model",
+      "truth": 768,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 1"
+     },
+     {
+      "config": "160M",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 1"
+     },
+     {
+      "config": "410M",
+      "field": "d_model",
+      "truth": 1024,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 2"
+     },
+     {
+      "config": "410M",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 2"
+     },
+     {
+      "config": "1.0B",
+      "field": "d_model",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 3"
+     },
+     {
+      "config": "1.0B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 3"
+     },
+     {
+      "config": "1.4B",
+      "field": "d_model",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 4"
+     },
+     {
+      "config": "1.4B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 4"
+     },
+     {
+      "config": "2.8B",
+      "field": "d_model",
+      "truth": 2560,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 5"
+     },
+     {
+      "config": "2.8B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 5"
+     },
+     {
+      "config": "6.9B",
+      "field": "d_model",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 6"
+     },
+     {
+      "config": "6.9B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 6"
+     },
+     {
+      "config": "12B",
+      "field": "d_model",
+      "truth": 5120,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 7"
+     },
+     {
+      "config": "12B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 7"
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "graph": {
+    "derived": {
+     "attn": "pre",
+     "ffn": "pre",
+     "parallel": true,
+     "gated": false,
+     "rope": true,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "parallel_block",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     },
+     {
+      "field": "rope_node",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2304.03208",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "gelu",
+     "rule": "gelu",
+     "rule_score": "correct",
+     "llm": "gelu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "learned",
+     "rule": "learned",
+     "rule_score": "correct",
+     "llm": "learned",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 35,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 0
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 2,
+     "WRONG": 0,
+     "abstain": 33,
+     "unlabelled": 0
+    },
+    "misses": [
+     {
+      "config": "111M",
+      "field": "d_model",
+      "truth": 768,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "111M",
+      "field": "n_layers",
+      "truth": 10,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "111M",
+      "field": "d_ff",
+      "truth": 3072,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "111M",
+      "field": "vocab_size",
+      "truth": 50257,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "111M",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "256M",
+      "field": "d_model",
+      "truth": 1088,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "256M",
+      "field": "n_layers",
+      "truth": 14,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "256M",
+      "field": "d_ff",
+      "truth": 4352,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "256M",
+      "field": "vocab_size",
+      "truth": 50257,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "256M",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "590M",
+      "field": "d_model",
+      "truth": 1536,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "590M",
+      "field": "n_layers",
+      "truth": 18,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "590M",
+      "field": "d_ff",
+      "truth": 6144,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "590M",
+      "field": "vocab_size",
+      "truth": 50257,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "590M",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1.3B",
+      "field": "n_layers",
+      "truth": 24,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     },
+     {
+      "config": "1.3B",
+      "field": "d_ff",
+      "truth": 8192,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     },
+     {
+      "config": "1.3B",
+      "field": "vocab_size",
+      "truth": 50257,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     },
+     {
+      "config": "2.7B",
+      "field": "d_model",
+      "truth": 2560,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "2.7B",
+      "field": "n_layers",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "2.7B",
+      "field": "d_ff",
+      "truth": 10240,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "2.7B",
+      "field": "vocab_size",
+      "truth": 50257,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "2.7B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "6.7B",
+      "field": "d_model",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "6.7B",
+      "field": "n_layers",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "6.7B",
+      "field": "d_ff",
+      "truth": 16384,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "6.7B",
+      "field": "vocab_size",
+      "truth": 50257,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "6.7B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "13B",
+      "field": "d_model",
+      "truth": 5120,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "13B",
+      "field": "n_layers",
+      "truth": 40,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "13B",
+      "field": "d_ff",
+      "truth": 20480,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "13B",
+      "field": "vocab_size",
+      "truth": 50257,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "13B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "graph": {
+    "derived": {
+     "attn": "pre",
+     "ffn": "pre",
+     "parallel": false,
+     "gated": false,
+     "rope": false,
+     "abs_pos": true
+    },
+    "rows": [
+     {
+      "field": "parallel_block",
+      "truth": false,
+      "got": false,
+      "score": "correct"
+     },
+     {
+      "field": "ffn_gated",
+      "truth": false,
+      "got": false,
+      "score": "correct"
+     },
+     {
+      "field": "abs_position",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2307.09288",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "rmsnorm",
+     "rule": "rmsnorm",
+     "rule_score": "correct",
+     "llm": "rmsnorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "swiglu",
+     "rule": "swiglu",
+     "rule_score": "correct",
+     "llm": "swiglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 0,
+     "WRONG": 0,
+     "abstain": 10,
+     "unlabelled": 10
+    },
+    "misses": [
+     {
+      "config": "7B",
+      "field": "vocab_size",
+      "truth": 32000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7B",
+      "field": "context_length",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "13B",
+      "field": "vocab_size",
+      "truth": 32000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "13B",
+      "field": "context_length",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "34B",
+      "field": "n_kv_heads",
+      "truth": 8,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "34B",
+      "field": "vocab_size",
+      "truth": 32000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "34B",
+      "field": "context_length",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "70B",
+      "field": "n_kv_heads",
+      "truth": 8,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "70B",
+      "field": "vocab_size",
+      "truth": 32000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "70B",
+      "field": "context_length",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": [
+     "7B",
+     "13B",
+     "34B",
+     "70B"
+    ]
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 0,
+     "WRONG": 0,
+     "abstain": 10,
+     "unlabelled": 3
+    },
+    "misses": [
+     {
+      "config": "7B",
+      "field": "vocab_size",
+      "truth": 32000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7B",
+      "field": "context_length",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "13B",
+      "field": "vocab_size",
+      "truth": 32000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "13B",
+      "field": "context_length",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "34B",
+      "field": "n_kv_heads",
+      "truth": 8,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "34B",
+      "field": "vocab_size",
+      "truth": 32000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "34B",
+      "field": "context_length",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "70B",
+      "field": "n_kv_heads",
+      "truth": 8,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "70B",
+      "field": "vocab_size",
+      "truth": 32000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "70B",
+      "field": "context_length",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": [
+     "fields"
+    ]
+   },
+   "graph": {
+    "derived": {
+     "attn": "pre",
+     "ffn": "pre",
+     "parallel": false,
+     "gated": true,
+     "rope": true,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "placement.attn",
+      "truth": "pre",
+      "got": "pre",
+      "score": "correct"
+     },
+     {
+      "field": "placement.ffn",
+      "truth": "pre",
+      "got": "pre",
+      "score": "correct"
+     },
+     {
+      "field": "ffn_gated",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     },
+     {
+      "field": "rope_node",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "placement_field.attn",
+     "truth": "pre",
+     "got": "pre",
+     "score": "correct"
+    },
+    {
+     "field": "placement_field.ffn",
+     "truth": "pre",
+     "got": "pre",
+     "score": "correct"
+    },
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": "none",
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2308.12950",
+   "flavours": [
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 0,
+     "WRONG": 0,
+     "abstain": 4,
+     "unlabelled": 3
+    },
+    "misses": [
+     {
+      "config": "7B",
+      "field": "context_length",
+      "truth": 16384,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "13B",
+      "field": "context_length",
+      "truth": 16384,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "34B",
+      "field": "context_length",
+      "truth": 16384,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "70B",
+      "field": "context_length",
+      "truth": 16384,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": [
+     "7B",
+     "13B",
+     "34B",
+     "70B"
+    ]
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 0,
+     "WRONG": 0,
+     "abstain": 4,
+     "unlabelled": 2
+    },
+    "misses": [
+     {
+      "config": "7B",
+      "field": "context_length",
+      "truth": 16384,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "13B",
+      "field": "context_length",
+      "truth": 16384,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "34B",
+      "field": "context_length",
+      "truth": 16384,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "70B",
+      "field": "context_length",
+      "truth": 16384,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": [
+     "fields"
+    ]
+   },
+   "graph": {
+    "derived": {
+     "attn": "pre",
+     "ffn": "pre",
+     "parallel": false,
+     "gated": true,
+     "rope": true,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "rope_node",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2309.16609",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "rmsnorm",
+     "rule": "rmsnorm",
+     "rule_score": "correct",
+     "llm": "rmsnorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "swiglu",
+     "rule": "gated-glu",
+     "rule_score": "correct",
+     "llm": "swiglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 12,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 0
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 9,
+     "WRONG": 0,
+     "abstain": 3,
+     "unlabelled": 0
+    },
+    "misses": [
+     {
+      "config": "1.8B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 0"
+     },
+     {
+      "config": "7B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 1"
+     },
+     {
+      "config": "14B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 2"
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "graph": {
+    "derived": {
+     "attn": "pre",
+     "ffn": "pre",
+     "parallel": false,
+     "gated": true,
+     "rope": true,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "placement.attn",
+      "truth": "pre",
+      "got": "pre",
+      "score": "correct"
+     },
+     {
+      "field": "placement.ffn",
+      "truth": "pre",
+      "got": "pre",
+      "score": "correct"
+     },
+     {
+      "field": "ffn_gated",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     },
+     {
+      "field": "rope_node",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "placement_field.attn",
+     "truth": "pre",
+     "got": "pre",
+     "score": "correct"
+    },
+    {
+     "field": "placement_field.ffn",
+     "truth": "pre",
+     "got": "pre",
+     "score": "correct"
+    },
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2311.16867",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "gelu",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "gelu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 18,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 0
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 4,
+     "WRONG": 0,
+     "abstain": 14,
+     "unlabelled": 0
+    },
+    "misses": [
+     {
+      "config": "Falcon-7B",
+      "field": "n_heads",
+      "truth": 71,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     },
+     {
+      "config": "Falcon-7B",
+      "field": "n_kv_heads",
+      "truth": 1,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     },
+     {
+      "config": "Falcon-40B",
+      "field": "d_model",
+      "truth": 8192,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Falcon-40B",
+      "field": "n_layers",
+      "truth": 60,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Falcon-40B",
+      "field": "n_heads",
+      "truth": 128,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Falcon-40B",
+      "field": "n_kv_heads",
+      "truth": 8,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Falcon-40B",
+      "field": "vocab_size",
+      "truth": 65024,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Falcon-40B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Falcon-180B",
+      "field": "d_model",
+      "truth": 14848,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Falcon-180B",
+      "field": "n_layers",
+      "truth": 80,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Falcon-180B",
+      "field": "n_heads",
+      "truth": 232,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Falcon-180B",
+      "field": "n_kv_heads",
+      "truth": 8,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Falcon-180B",
+      "field": "vocab_size",
+      "truth": 65024,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Falcon-180B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "graph": {
+    "derived": {
+     "attn": "pre",
+     "ffn": "pre",
+     "parallel": true,
+     "gated": false,
+     "rope": true,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "parallel_block",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     },
+     {
+      "field": "ffn_gated",
+      "truth": false,
+      "got": false,
+      "score": "correct"
+     },
+     {
+      "field": "rope_node",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": "none",
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2401.02385",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "rmsnorm",
+     "rule": "rmsnorm",
+     "rule_score": "correct",
+     "llm": "rmsnorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "swiglu",
+     "rule": "swiglu",
+     "rule_score": "correct",
+     "llm": "swiglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 7,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 0
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 3,
+     "WRONG": 0,
+     "abstain": 4,
+     "unlabelled": 0
+    },
+    "misses": [
+     {
+      "config": "TinyLlama-1.1B",
+      "field": "d_model",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 0"
+     },
+     {
+      "config": "TinyLlama-1.1B",
+      "field": "n_kv_heads",
+      "truth": 4,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 0"
+     },
+     {
+      "config": "TinyLlama-1.1B",
+      "field": "d_ff",
+      "truth": 5632,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 0"
+     },
+     {
+      "config": "TinyLlama-1.1B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 0"
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "graph": {
+    "derived": {
+     "attn": "pre",
+     "ffn": "pre",
+     "parallel": false,
+     "gated": true,
+     "rope": true,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "placement.attn",
+      "truth": "pre",
+      "got": "pre",
+      "score": "correct"
+     },
+     {
+      "field": "placement.ffn",
+      "truth": "pre",
+      "got": "pre",
+      "score": "correct"
+     },
+     {
+      "field": "ffn_gated",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     },
+     {
+      "field": "rope_node",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "placement_field.attn",
+     "truth": "pre",
+     "got": "pre",
+     "score": "correct"
+    },
+    {
+     "field": "placement_field.ffn",
+     "truth": "pre",
+     "got": "pre",
+     "score": "correct"
+    },
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2401.02954",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "rmsnorm",
+     "rule": "rmsnorm",
+     "rule_score": "correct",
+     "llm": "rmsnorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "swiglu",
+     "rule": "swiglu",
+     "rule_score": "correct",
+     "llm": "swiglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 11,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 1
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 1,
+     "WRONG": 0,
+     "abstain": 10,
+     "unlabelled": 0
+    },
+    "misses": [
+     {
+      "config": "7B",
+      "field": "d_model",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7B",
+      "field": "n_layers",
+      "truth": 30,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7B",
+      "field": "n_heads",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7B",
+      "field": "vocab_size",
+      "truth": 102400,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7B",
+      "field": "context_length",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "67B",
+      "field": "d_model",
+      "truth": 8192,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     },
+     {
+      "config": "67B",
+      "field": "n_heads",
+      "truth": 64,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     },
+     {
+      "config": "67B",
+      "field": "n_kv_heads",
+      "truth": 8,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     },
+     {
+      "config": "67B",
+      "field": "vocab_size",
+      "truth": 102400,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     },
+     {
+      "config": "67B",
+      "field": "context_length",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "graph": {
+    "derived": {
+     "attn": "pre",
+     "ffn": "pre",
+     "parallel": false,
+     "gated": true,
+     "rope": true,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "placement.attn",
+      "truth": "pre",
+      "got": "pre",
+      "score": "correct"
+     },
+     {
+      "field": "placement.ffn",
+      "truth": "pre",
+      "got": "pre",
+      "score": "correct"
+     },
+     {
+      "field": "ffn_gated",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     },
+     {
+      "field": "rope_node",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "placement_field.attn",
+     "truth": "pre",
+     "got": "pre",
+     "score": "correct"
+    },
+    {
+     "field": "placement_field.ffn",
+     "truth": "pre",
+     "got": "pre",
+     "score": "correct"
+    },
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2401.04088",
+   "flavours": [
+    {
+     "field": "activation",
+     "truth": "swiglu",
+     "rule": "swiglu",
+     "rule_score": "correct",
+     "llm": "swiglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 7,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 0
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 0,
+     "WRONG": 0,
+     "abstain": 7,
+     "unlabelled": 1
+    },
+    "misses": [
+     {
+      "config": "Mixtral 8x7B",
+      "field": "d_model",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Mixtral 8x7B",
+      "field": "n_layers",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Mixtral 8x7B",
+      "field": "n_heads",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Mixtral 8x7B",
+      "field": "n_kv_heads",
+      "truth": 8,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Mixtral 8x7B",
+      "field": "d_ff",
+      "truth": 14336,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Mixtral 8x7B",
+      "field": "vocab_size",
+      "truth": 32000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "Mixtral 8x7B",
+      "field": "context_length",
+      "truth": 32768,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": [
+     "fields"
+    ]
+   },
+   "graph": {
+    "derived": {
+     "attn": "none",
+     "ffn": "none",
+     "parallel": false,
+     "gated": true,
+     "rope": false,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "ffn_gated",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2402.00838",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "swiglu",
+     "rule": "swiglu",
+     "rule_score": "correct",
+     "llm": "swiglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 11,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 0
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 5,
+     "WRONG": 0,
+     "abstain": 6,
+     "unlabelled": 0
+    },
+    "misses": [
+     {
+      "config": "1B",
+      "field": "d_model",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1B",
+      "field": "n_layers",
+      "truth": 16,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1B",
+      "field": "n_heads",
+      "truth": 16,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1B",
+      "field": "vocab_size",
+      "truth": 50280,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1B",
+      "field": "context_length",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7B",
+      "field": "d_ff",
+      "truth": 11008,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "graph": {
+    "derived": {
+     "attn": "none",
+     "ffn": "none",
+     "parallel": false,
+     "gated": true,
+     "rope": true,
+     "abs_pos": true
+    },
+    "rows": [
+     {
+      "field": "parallel_block",
+      "truth": false,
+      "got": false,
+      "score": "correct"
+     },
+     {
+      "field": "ffn_gated",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     },
+     {
+      "field": "rope_node",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2402.14905",
+   "flavours": [
+    {
+     "field": "activation",
+     "truth": "swiglu",
+     "rule": "swiglu",
+     "rule_score": "correct",
+     "llm": "swiglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 10,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 15
+    },
+    "misses": [],
+    "unmatched_extracted": [
+     "MobileLLM-600M",
+     "MobileLLM-1B",
+     "MobileLLM-1.5B"
+    ]
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 6,
+     "WRONG": 0,
+     "abstain": 4,
+     "unlabelled": 164
+    },
+    "misses": [
+     {
+      "config": "MobileLLM-125M",
+      "field": "d_model",
+      "truth": 576,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 0"
+     },
+     {
+      "config": "MobileLLM-125M",
+      "field": "d_ff",
+      "truth": 1536,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 0"
+     },
+     {
+      "config": "MobileLLM-350M",
+      "field": "d_model",
+      "truth": 960,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 1"
+     },
+     {
+      "config": "MobileLLM-350M",
+      "field": "d_ff",
+      "truth": 2560,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 1"
+     }
+    ],
+    "unmatched_extracted": [
+     "variant 2",
+     "variant 3",
+     "variant 4",
+     "variant 5",
+     "variant 6",
+     "variant 7",
+     "variant 8",
+     "variant 9",
+     "variant 10",
+     "variant 11",
+     "variant 12",
+     "variant 13",
+     "variant 14",
+     "variant 15",
+     "variant 16",
+     "variant 17",
+     "variant 18",
+     "variant 19",
+     "variant 20",
+     "variant 21",
+     "variant 22",
+     "variant 23",
+     "variant 24",
+     "variant 25",
+     "variant 26",
+     "variant 27",
+     "variant 28",
+     "variant 29",
+     "variant 30",
+     "variant 31",
+     "variant 32",
+     "variant 33",
+     "variant 34",
+     "variant 35",
+     "variant 36",
+     "variant 37",
+     "variant 38",
+     "variant 39",
+     "variant 40",
+     "variant 41",
+     "variant 42",
+     "variant 43",
+     "variant 44",
+     "variant 45",
+     "variant 46",
+     "variant 47",
+     "variant 48",
+     "variant 49",
+     "variant 50",
+     "variant 51",
+     "variant 52",
+     "variant 53",
+     "variant 54",
+     "variant 55",
+     "variant 56",
+     "variant 57",
+     "variant 58",
+     "variant 59",
+     "variant 60",
+     "variant 61",
+     "variant 62",
+     "variant 63",
+     "variant 64",
+     "variant 65",
+     "variant 66",
+     "variant 67",
+     "variant 68",
+     "variant 69",
+     "variant 70",
+     "variant 71",
+     "variant 72"
+    ]
+   },
+   "graph": {
+    "derived": {
+     "attn": "none",
+     "ffn": "none",
+     "parallel": false,
+     "gated": true,
+     "rope": false,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "ffn_gated",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2403.04652",
+   "flavours": [
+    {
+     "field": "activation",
+     "truth": "swiglu",
+     "rule": "swiglu",
+     "rule_score": "correct",
+     "llm": "swiglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 12,
+     "WRONG": 0,
+     "abstain": 2,
+     "unlabelled": 0
+    },
+    "misses": [
+     {
+      "config": "9B",
+      "field": "n_layers",
+      "truth": 48,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "9B",
+      "field": "vocab_size",
+      "truth": 64000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 6,
+     "WRONG": 0,
+     "abstain": 8,
+     "unlabelled": 0
+    },
+    "misses": [
+     {
+      "config": "6B",
+      "field": "n_heads",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 0"
+     },
+     {
+      "config": "6B",
+      "field": "vocab_size",
+      "truth": 64000,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 0"
+     },
+     {
+      "config": "6B",
+      "field": "context_length",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 0"
+     },
+     {
+      "config": "34B",
+      "field": "n_heads",
+      "truth": 56,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 1"
+     },
+     {
+      "config": "34B",
+      "field": "vocab_size",
+      "truth": 64000,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 1"
+     },
+     {
+      "config": "34B",
+      "field": "context_length",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": "variant 1"
+     },
+     {
+      "config": "9B",
+      "field": "n_layers",
+      "truth": 48,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "9B",
+      "field": "vocab_size",
+      "truth": 64000,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "graph": {
+    "derived": {
+     "attn": "pre",
+     "ffn": "pre",
+     "parallel": false,
+     "gated": true,
+     "rope": true,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "ffn_gated",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     },
+     {
+      "field": "rope_node",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2403.08295",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "rmsnorm",
+     "rule": "rmsnorm",
+     "rule_score": "correct",
+     "llm": "rmsnorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "geglu",
+     "rule": "geglu",
+     "rule_score": "correct",
+     "llm": "geglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 13,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 1
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 5,
+     "WRONG": 0,
+     "abstain": 8,
+     "unlabelled": 0
+    },
+    "misses": [
+     {
+      "config": "2B",
+      "field": "d_model",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     },
+     {
+      "config": "2B",
+      "field": "d_ff",
+      "truth": 32768,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     },
+     {
+      "config": "7B",
+      "field": "d_model",
+      "truth": 3072,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7B",
+      "field": "n_layers",
+      "truth": 28,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7B",
+      "field": "n_heads",
+      "truth": 16,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7B",
+      "field": "d_ff",
+      "truth": 49152,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7B",
+      "field": "vocab_size",
+      "truth": 256128,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7B",
+      "field": "context_length",
+      "truth": 8192,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "graph": {
+    "derived": {
+     "attn": "pre",
+     "ffn": "pre",
+     "parallel": false,
+     "gated": true,
+     "rope": true,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "placement.attn",
+      "truth": "pre",
+      "got": "pre",
+      "score": "correct"
+     },
+     {
+      "field": "placement.ffn",
+      "truth": "pre",
+      "got": "pre",
+      "score": "correct"
+     },
+     {
+      "field": "ffn_gated",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     },
+     {
+      "field": "rope_node",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "placement_field.attn",
+     "truth": "pre",
+     "got": "pre",
+     "score": "correct"
+    },
+    {
+     "field": "placement_field.ffn",
+     "truth": "pre",
+     "got": "pre",
+     "score": "correct"
+    },
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2403.17297",
+   "flavours": [
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 12,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 0
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 0,
+     "WRONG": 0,
+     "abstain": 12,
+     "unlabelled": 2
+    },
+    "misses": [
+     {
+      "config": "1.8B",
+      "field": "d_model",
+      "truth": 2048,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1.8B",
+      "field": "n_layers",
+      "truth": 24,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1.8B",
+      "field": "n_kv_heads",
+      "truth": 8,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1.8B",
+      "field": "context_length",
+      "truth": 32768,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7B",
+      "field": "d_model",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7B",
+      "field": "n_layers",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7B",
+      "field": "n_kv_heads",
+      "truth": 8,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7B",
+      "field": "context_length",
+      "truth": 32768,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "20B",
+      "field": "d_model",
+      "truth": 6144,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "20B",
+      "field": "n_layers",
+      "truth": 48,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "20B",
+      "field": "n_kv_heads",
+      "truth": 8,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "20B",
+      "field": "context_length",
+      "truth": 32768,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": [
+     "fields"
+    ]
+   },
+   "graph": {
+    "derived": {
+     "attn": "pre",
+     "ffn": "pre",
+     "parallel": false,
+     "gated": true,
+     "rope": true,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "rope_node",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2405.04434",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "rmsnorm",
+     "rule": "rmsnorm",
+     "rule_score": "correct",
+     "llm": null,
+     "llm_score": "abstain",
+     "llm_check": "unverified"
+    },
+    {
+     "field": "activation",
+     "truth": "swiglu",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": null,
+     "llm_score": "abstain",
+     "llm_check": "unverified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 8,
+     "WRONG": 2,
+     "abstain": 0,
+     "unlabelled": 3
+    },
+    "misses": [
+     {
+      "config": "DeepSeek-V2",
+      "field": "context_length",
+      "truth": 4096,
+      "got": 131072.0,
+      "score": "WRONG",
+      "matched": "DeepSeek-V2"
+     },
+     {
+      "config": "DeepSeek-V2-Lite",
+      "field": "context_length",
+      "truth": 4096,
+      "got": 32768.0,
+      "score": "WRONG",
+      "matched": "DeepSeek-V2-Lite"
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 3,
+     "WRONG": 1,
+     "abstain": 6,
+     "unlabelled": 1
+    },
+    "misses": [
+     {
+      "config": "DeepSeek-V2",
+      "field": "d_model",
+      "truth": 5120,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "DeepSeek-V2",
+      "field": "n_layers",
+      "truth": 60,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "DeepSeek-V2",
+      "field": "n_heads",
+      "truth": 128,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "DeepSeek-V2",
+      "field": "d_ff",
+      "truth": 1536,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "DeepSeek-V2",
+      "field": "context_length",
+      "truth": 4096,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "DeepSeek-V2-Lite",
+      "field": "d_ff",
+      "truth": 1408,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     },
+     {
+      "config": "DeepSeek-V2-Lite",
+      "field": "context_length",
+      "truth": 4096,
+      "got": 128000.0,
+      "score": "WRONG",
+      "matched": "fields"
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "graph": {
+    "derived": {
+     "attn": "pre",
+     "ffn": "pre",
+     "parallel": false,
+     "gated": true,
+     "rope": true,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "rope_node",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "new_op_inputs",
+     "truth": [
+      "input"
+     ],
+     "got": null,
+     "score": "abstain",
+     "op": "bottleneck scaling factors"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2407.10671",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "rmsnorm",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "rmsnorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "swiglu",
+     "rule": "swiglu",
+     "rule_score": "correct",
+     "llm": "swiglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 28,
+     "WRONG": 0,
+     "abstain": 7,
+     "unlabelled": 0
+    },
+    "misses": [
+     {
+      "config": "57B-A14B",
+      "field": "d_model",
+      "truth": 3584,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "57B-A14B",
+      "field": "n_layers",
+      "truth": 28,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "57B-A14B",
+      "field": "n_heads",
+      "truth": 28,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "57B-A14B",
+      "field": "n_kv_heads",
+      "truth": 4,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "57B-A14B",
+      "field": "d_ff",
+      "truth": 2560,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "57B-A14B",
+      "field": "vocab_size",
+      "truth": 151646,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "57B-A14B",
+      "field": "context_length",
+      "truth": 32768,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 7,
+     "WRONG": 0,
+     "abstain": 28,
+     "unlabelled": 0
+    },
+    "misses": [
+     {
+      "config": "1.5B",
+      "field": "d_model",
+      "truth": 1536,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1.5B",
+      "field": "n_layers",
+      "truth": 28,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1.5B",
+      "field": "n_heads",
+      "truth": 12,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1.5B",
+      "field": "n_kv_heads",
+      "truth": 2,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1.5B",
+      "field": "d_ff",
+      "truth": 8960,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1.5B",
+      "field": "vocab_size",
+      "truth": 151646,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "1.5B",
+      "field": "context_length",
+      "truth": 32768,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7B",
+      "field": "d_model",
+      "truth": 3584,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7B",
+      "field": "n_layers",
+      "truth": 28,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7B",
+      "field": "n_heads",
+      "truth": 28,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7B",
+      "field": "n_kv_heads",
+      "truth": 4,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7B",
+      "field": "d_ff",
+      "truth": 18944,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7B",
+      "field": "vocab_size",
+      "truth": 151646,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "7B",
+      "field": "context_length",
+      "truth": 32768,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "72B",
+      "field": "d_model",
+      "truth": 8192,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "72B",
+      "field": "n_layers",
+      "truth": 80,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "72B",
+      "field": "n_heads",
+      "truth": 64,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "72B",
+      "field": "n_kv_heads",
+      "truth": 8,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "72B",
+      "field": "d_ff",
+      "truth": 29568,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "72B",
+      "field": "vocab_size",
+      "truth": 151646,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "72B",
+      "field": "context_length",
+      "truth": 32768,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "57B-A14B",
+      "field": "d_model",
+      "truth": 3584,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "57B-A14B",
+      "field": "n_layers",
+      "truth": 28,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "57B-A14B",
+      "field": "n_heads",
+      "truth": 28,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "57B-A14B",
+      "field": "n_kv_heads",
+      "truth": 4,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "57B-A14B",
+      "field": "d_ff",
+      "truth": 2560,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "57B-A14B",
+      "field": "vocab_size",
+      "truth": 151646,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "57B-A14B",
+      "field": "context_length",
+      "truth": 32768,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "graph": {
+    "derived": {
+     "attn": "pre",
+     "ffn": "pre",
+     "parallel": false,
+     "gated": true,
+     "rope": true,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "placement.attn",
+      "truth": "pre",
+      "got": "pre",
+      "score": "correct"
+     },
+     {
+      "field": "placement.ffn",
+      "truth": "pre",
+      "got": "pre",
+      "score": "correct"
+     },
+     {
+      "field": "ffn_gated",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     },
+     {
+      "field": "rope_node",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "placement_field.attn",
+     "truth": "pre",
+     "got": "pre",
+     "score": "correct"
+    },
+    {
+     "field": "placement_field.ffn",
+     "truth": "pre",
+     "got": "pre",
+     "score": "correct"
+    },
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2408.00118",
+   "flavours": [
+    {
+     "field": "norm",
+     "truth": "rmsnorm",
+     "rule": "rmsnorm",
+     "rule_score": "correct",
+     "llm": "rmsnorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "geglu",
+     "rule": "geglu",
+     "rule_score": "correct",
+     "llm": "geglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "sizes_llm": {
+    "tally": {
+     "correct": 21,
+     "WRONG": 0,
+     "abstain": 0,
+     "unlabelled": 0
+    },
+    "misses": [],
+    "unmatched_extracted": []
+   },
+   "sizes_rule": {
+    "tally": {
+     "correct": 5,
+     "WRONG": 1,
+     "abstain": 15,
+     "unlabelled": 0
+    },
+    "misses": [
+     {
+      "config": "2B",
+      "field": "d_model",
+      "truth": 2304,
+      "got": 18432.0,
+      "score": "WRONG",
+      "matched": "fields"
+     },
+     {
+      "config": "2B",
+      "field": "d_ff",
+      "truth": 18432,
+      "got": null,
+      "score": "abstain",
+      "matched": "fields"
+     },
+     {
+      "config": "9B",
+      "field": "d_model",
+      "truth": 3584,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "9B",
+      "field": "n_layers",
+      "truth": 42,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "9B",
+      "field": "n_heads",
+      "truth": 16,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "9B",
+      "field": "n_kv_heads",
+      "truth": 8,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "9B",
+      "field": "d_ff",
+      "truth": 28672,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "9B",
+      "field": "vocab_size",
+      "truth": 256128,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "9B",
+      "field": "context_length",
+      "truth": 8192,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "27B",
+      "field": "d_model",
+      "truth": 4608,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "27B",
+      "field": "n_layers",
+      "truth": 46,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "27B",
+      "field": "n_heads",
+      "truth": 32,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "27B",
+      "field": "n_kv_heads",
+      "truth": 16,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "27B",
+      "field": "d_ff",
+      "truth": 73728,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "27B",
+      "field": "vocab_size",
+      "truth": 256128,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     },
+     {
+      "config": "27B",
+      "field": "context_length",
+      "truth": 8192,
+      "got": null,
+      "score": "abstain",
+      "matched": null
+     }
+    ],
+    "unmatched_extracted": []
+   },
+   "graph": {
+    "derived": {
+     "attn": "sandwich",
+     "ffn": "sandwich",
+     "parallel": false,
+     "gated": true,
+     "rope": true,
+     "abs_pos": false
+    },
+    "rows": [
+     {
+      "field": "placement.attn",
+      "truth": "sandwich",
+      "got": "sandwich",
+      "score": "correct"
+     },
+     {
+      "field": "placement.ffn",
+      "truth": "sandwich",
+      "got": "sandwich",
+      "score": "correct"
+     },
+     {
+      "field": "ffn_gated",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     },
+     {
+      "field": "rope_node",
+      "truth": true,
+      "got": true,
+      "score": "correct"
+     }
+    ]
+   },
+   "new_fields": [
+    {
+     "field": "placement_field.attn",
+     "truth": "sandwich",
+     "got": "sandwich",
+     "score": "correct"
+    },
+    {
+     "field": "placement_field.ffn",
+     "truth": "sandwich",
+     "got": "sandwich",
+     "score": "correct"
+    },
+    {
+     "field": "qk_norm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "ssm",
+     "truth": "absent",
+     "got": null,
+     "score": "correct"
+    },
+    {
+     "field": "new_op_inputs",
+     "truth": [
+      "input"
+     ],
+     "got": [
+      "input"
+     ],
+     "score": "correct",
+     "op": "attention logit soft-capping",
+     "matched": "softcapped_attention",
+     "kind": "needs_new_primitive",
+     "check": "verified",
+     "expr": null
+    },
+    {
+     "field": "new_op_inputs",
+     "truth": [
+      "input"
+     ],
+     "got": [
+      "input"
+     ],
+     "score": "correct",
+     "op": "final logit soft-capping",
+     "matched": "final_logit_softcap",
+     "kind": "expr",
+     "check": "verified",
+     "expr": "(30*tanh((x/30)))"
+    },
+    {
+     "field": "learned_inputs",
+     "truth": [],
+     "got": [],
+     "score": "correct"
+    }
+   ]
+  }
+ ],
+ "missing": [],
+ "scorer": "papers/bench_score.py"
+}

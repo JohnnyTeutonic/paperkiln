@@ -22,6 +22,26 @@ flavor_bench.TRUTH:
              node in the block / an absolute position table in the embed. Scored against the structure
              labels and flavor_bench.TRUTH's positional; abstain when the reply has no block graph or
              the sublayer cannot be found.
+  new fields the 26 Oct prompt's fields, against each paper's new_fields labels (27 Oct; a reply made
+             before them reads them as not_stated):
+               placement_field.attn / .ffn  the flavours' per-sublayer placement (norm_placement_attn
+                   / _ffn, else norm_placement), against the structure label;
+               qk_norm, ssm  against per_head / full / unspecified / mamba1 / s4, or "absent" (the paper
+                   never mentions one): then nothing asserted (or none) is correct, any assertion WRONG
+                   (for ssm also an asserted d_state, d_conv, expand or dt_rank);
+               positional_ext, rel_buckets, rel_max_distance  the 11 papers flavor_bench.TRUTH leaves
+                   unlabelled (relative, t5_bias, learned; T5's bucket count and distance);
+               new_op_inputs  each scored label op (an elementwise or row op outside the standard set),
+                   matched to the reply's new op of the same category (activation, norm, embed,
+                   final_logits, attention_logits, bottleneck_scale: by its name, what it replaces and
+                   its block node's role): abstain when none is found, WRONG when the match is not an
+                   expr or its inputs' roles differ from the label's (one input; a learned scalar or a
+                   gate the label lacks; learned vectors only as a norm's gain and bias). An input times
+                   constants may instead be the IR's affine node (embed or head); an op on the attention
+                   logits is a needs_new_primitive (the attention node has no slot for it);
+               learned_inputs  per paper, the learned or gate inputs the reply's new ops assert beyond
+                   the labels' (with any verified init): correct when there are none.
+  --baseline OLD.json prints every field's tallies against an earlier --out file.
 
 LOCAL_LLM_STACK.md section 11 item 4.2.
 """
@@ -298,6 +318,151 @@ def rule_configs(arch_json: dict) -> list[dict]:
 
 
 # --------------------------------------------------------------------------
+# the 26 Oct prompt's fields
+
+PLACEMENTS = {"pre", "post", "sandwich", "branch_post", "none"}
+
+
+def _asserted(r: dict | None):
+    """A flavour's value when the verifier lets it be asserted, else None."""
+    return (r or {}).get("value") if (r or {}).get("check") in ASSERTED else None
+
+
+def op_category(text: str) -> str | None:
+    t = text.lower()
+    if "posit" in t:
+        return None
+    if ("attn" in t or "attention" in t) and any(w in t for w in ("logit", "cap", "score")):
+        return "attention_logits"
+    if "logit" in t:
+        return "final_logits"
+    if "bottleneck" in t or "latent" in t:
+        return "bottleneck_scale"
+    if "embed" in t:
+        return "embed"
+    if "norm" in t:
+        return "norm"
+    if "activation" in t or "relu" in t or "ffn" in t or "feed" in t:
+        return "activation"
+    return None
+
+
+def _roles_ok(op: dict, category: str, truth_roles: list[str]) -> tuple[bool, list]:
+    got = [i.get("role") for i in op.get("inputs") or []]
+    want_learned = sorted(r for r in truth_roles if r in ("gate", "learned_scalar", "learned_vector"))
+    got_learned = sorted(r for r in got if r in ("gate", "learned_scalar", "learned_vector")
+                         and not (category == "norm" and r == "learned_vector" and "learned_vector" not in want_learned))
+    return got.count("input") == truth_roles.count("input") and got_learned == want_learned, got
+
+
+def score_new_fields(pid: str, rep: dict, output: dict, truth: dict) -> list[dict]:
+    rows = []
+    nf = truth.get("new_fields") or {}
+    fl = rep["flavours"]
+
+    def row(field, t, got, verdict=None, **extra):
+        v = verdict or ("abstain" if got is None else "correct" if got == t else "WRONG")
+        rows.append(dict({"field": field, "truth": t, "got": got, "score": v}, **extra))
+
+    # per-sublayer placement from the flavours
+    place = truth_placement(((truth.get("structure") or {}).get("norm_placement") or {}).get("value"))
+    if place:
+        whole = _asserted(fl.get("norm_placement"))
+        for sub in ("attn", "ffn"):
+            got = _asserted(fl.get(f"norm_placement_{sub}"))
+            if got not in PLACEMENTS:
+                got = whole if whole in PLACEMENTS else None
+            row(f"placement_field.{sub}", place[sub], got)
+
+    # qk_norm and ssm: a label, or "absent" (nothing may be asserted)
+    for field, sizes in (("qk_norm", ()), ("ssm", ("d_state", "d_conv", "expand", "dt_rank"))):
+        t = (nf.get(field) or {}).get("value")
+        if t is None:
+            continue
+        got = _asserted(fl.get(field))
+        asserted_sizes = {s: _asserted(fl.get(s)) for s in sizes if _asserted(fl.get(s)) is not None}
+        if t == "absent":
+            bad = (got not in (None, "none")) or bool(asserted_sizes)
+            row(field, t, got if not asserted_sizes else {"value": got, **asserted_sizes},
+                "WRONG" if bad else "correct")
+        else:
+            row(field, t, got)
+            for s in sizes:
+                ts = (nf[field].get(s) or {}).get("value")
+                if ts is not None:
+                    gs = asserted_sizes.get(s)
+                    row(f"ssm.{s}", ts, gs, None if gs is None else "correct" if str(gs) == str(ts) or
+                        L.parse_number(str(gs)) == float(ts) else "WRONG")
+
+    # positional for the papers the flavour truth leaves unlabelled
+    pos = nf.get("positional")
+    if pos and pos.get("value") in ("relative", "t5_bias", "learned", "sinusoidal", "rope", "alibi"):
+        got = _asserted(fl.get("positional"))
+        if got is not None and str(got).startswith("other:"):
+            got = None  # outside the lattice: never built, an abstention (as llm_extract.compare)
+        row("positional_ext", pos["value"], got)
+        for f in ("rel_buckets", "rel_max_distance"):
+            tv = (pos.get(f) or {}).get("value")
+            if tv is not None:
+                gv = _asserted(fl.get(f))
+                gv = None if gv is None else L.parse_number(str(gv))
+                row(f, float(tv), gv)
+
+    # new ops: input roles, matched by category
+    ops = rep.get("new_ops") or []
+    role_of = {}
+    for n in output.get("block_ops") or []:
+        if n.get("new_op"):
+            role_of.setdefault(n["new_op"], " ".join(filter(None, [n.get("role"), n.get("subgraph")])))
+    cat = {o["name"]: op_category(" ".join([o.get("name", ""), o.get("replaces", ""), role_of.get(o["name"], "")]))
+           for o in ops}
+    used = set()
+    for t in nf.get("new_ops") or []:
+        if not t.get("scored"):
+            continue
+        cands = [o for o in ops if cat[o["name"]] == t["category"] and o["name"] not in used]
+        cands.sort(key=lambda o: (o.get("kind") != "expr", o.get("check") != "verified"))
+        truth_roles = [i["role"] for i in t["inputs"] if i["role"] != "other"]
+        if not cands:
+            # An input times constants is the IR's own affine node, not a new op: in the embed for an
+            # embedding scale, in the head for a logit scale.
+            sub = {"embed": "embed", "final_logits": "head"}.get(t["category"])
+            aff = [n for n in output.get("block_ops") or [] if n.get("op") == "affine" and n.get("subgraph") == sub]
+            if sub and truth_roles == ["input"] and aff:
+                row("new_op_inputs", truth_roles, ["input"], "correct", op=t["name"], matched="affine node",
+                    attributes=[(x.get("name"), x.get("value")) for x in aff[0].get("attributes") or []])
+            else:
+                row("new_op_inputs", truth_roles, None, op=t["name"])
+            continue
+        o = cands[0]
+        used.add(o["name"])
+        ok, got = _roles_ok(o, t["category"], truth_roles)
+        good = o.get("kind") == "expr" and o.get("check") == "verified" and ok
+        if t["category"] == "attention_logits" and o.get("kind") == "needs_new_primitive":
+            # The attention node has no slot for an op on its [heads, T, T] logits, so an op there is a
+            # new primitive by the prompt's rule, not an expr.
+            good, got = o.get("check") == "verified", ["input"]
+        # A reply made before roles existed (22 Oct) gives none: the field reads as not stated.
+        unstated = o.get("kind") == "expr" and not any(got)
+        row("new_op_inputs", truth_roles, got, "abstain" if unstated else "correct" if good else "WRONG",
+            op=t["name"], matched=o["name"],
+            kind=o.get("kind"), check=o.get("check"), expr=(o.get("expr_check") or {}).get("canonical"))
+
+    # learned or gate inputs no label has
+    want = {i["role"] for t in nf.get("new_ops") or [] for i in t["inputs"]}
+    extra = []
+    for o in ops:
+        for i in o.get("inputs") or []:
+            r = i.get("role")
+            if r in ("gate", "learned_scalar", "learned_vector") and r not in want \
+                    and not (cat[o["name"]] == "norm" and r == "learned_vector"):
+                extra.append({"op": o["name"], "input": i.get("name"), "role": r,
+                              "init": (i.get("init") or {}).get("value") if i.get("init_check") == "verified" else None})
+    row("learned_inputs", [], extra, "WRONG" if extra else "correct")
+    return rows
+
+
+# --------------------------------------------------------------------------
 # driver
 
 def score_paper(pid: str, truth: dict, ext: dict, tex: str) -> dict:
@@ -314,7 +479,8 @@ def score_paper(pid: str, truth: dict, ext: dict, tex: str) -> dict:
             "flavours": L.compare(pid, tex, rep)["rows"],
             "sizes_llm": score_sizes(truth["configs"], llm_configs(rep)),
             "sizes_rule": score_sizes(truth["configs"], rule_configs(rule)),
-            "graph": {"derived": g, "rows": score_graph(g, truth.get("structure") or {}, positional)}}
+            "graph": {"derived": g, "rows": score_graph(g, truth.get("structure") or {}, positional)},
+            "new_fields": score_new_fields(pid, rep, output, truth)}
 
 
 def tally_rows(rows, key="score"):
@@ -346,13 +512,34 @@ def summarise(papers: list[dict]) -> dict:
     for v in graph.values():
         for k, n in v.items():
             graph_all[k] = graph_all.get(k, 0) + n
-    return {"flavours": flav, "sizes": sizes, "graph": graph, "graph_all": graph_all}
+    new = {}
+    for p in papers:
+        for r in p.get("new_fields") or []:
+            new.setdefault(r["field"], {}).setdefault(r["score"], 0)
+            new[r["field"]][r["score"]] += 1
+    return {"flavours": flav, "sizes": sizes, "graph": graph, "graph_all": graph_all, "new_fields": new}
+
+
+def print_baseline(old: dict, new: dict) -> None:
+    """Each field's tallies, the baseline's beside this run's."""
+    def fmt(t):
+        return " / ".join(f"{t.get(k, 0)}" for k in ("correct", "WRONG", "abstain")) + (
+            f" (+{t['unlabelled']} unlabelled)" if t.get("unlabelled") else "")
+    print()
+    print("against the baseline (correct / WRONG / abstain)")
+    print(f"  {'flavours (llm)':24} {fmt(old['flavours']['llm']):24} -> {fmt(new['flavours']['llm'])}")
+    print(f"  {'sizes (llm)':24} {fmt(old['sizes']['llm']):24} -> {fmt(new['sizes']['llm'])}")
+    print(f"  {'graph (all)':24} {fmt(old['graph_all']):24} -> {fmt(new['graph_all'])}")
+    for sec in ("graph", "new_fields"):
+        for f in sorted(set(old.get(sec, {})) | set(new.get(sec, {}))):
+            print(f"  {sec + '.' + f:24} {fmt(old.get(sec, {}).get(f, {})):24} -> {fmt(new.get(sec, {}).get(f, {}))}")
 
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--receipts", default=str(L.RECEIPTS))
     ap.add_argument("--out")
+    ap.add_argument("--baseline", help="an earlier --out file: print each field's tallies beside it")
     ap.add_argument("ids", nargs="*")
     a = ap.parse_args(argv)
     truth = json.loads(TRUTH_FILE.read_text(encoding="utf-8"))["papers"]
@@ -372,6 +559,15 @@ def main(argv=None) -> int:
     print(f"graph     {s['graph_all']}")
     for f, t in sorted(s["graph"].items()):
         print(f"  {f:16} {t}")
+    print("new fields")
+    for f, t in sorted(s["new_fields"].items()):
+        print(f"  {f:22} {t}")
+    for p in papers:
+        bad = [r for r in p["new_fields"] if r["score"] != "correct"]
+        if bad:
+            print(f"  {p['arxiv_id']}: {[(r['field'], r.get('op'), r['truth'], r['got'], r['score']) for r in bad]}")
+    if a.baseline:
+        print_baseline(json.loads(pathlib.Path(a.baseline).read_text(encoding="utf-8"))["summary"], s)
     for p in papers:
         bad = [r for r in p["graph"]["rows"] if r["score"] != "correct"]
         wrong = [m for m in p["sizes_llm"]["misses"] if m["score"] == "WRONG"]

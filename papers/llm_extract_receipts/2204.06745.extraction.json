@@ -24,17 +24,17 @@
   },
   "context_length": {
    "value": 2048,
-   "evidence": "seq-length & 2048 [Table: full configuration details (tab:config)]",
+   "evidence": "seq-length & 2048 [Table: full configuration details (app:hparam)]",
    "verdict": "used"
   },
   "norm": {
    "value": "layernorm",
-   "evidence": "norm & layernorm [Table: full configuration details (tab:config)]",
+   "evidence": "norm & layernorm [Table: full configuration details (app:hparam)]",
    "verdict": "used"
   },
   "activation": {
-   "value": "gelu",
-   "evidence": "bias-gelu-fusion & True [Table: full configuration details (tab:config)]",
+   "value": "other:gelu (exact vs tanh form not stated)",
+   "evidence": "bias-gelu-fusion & True [Table: full configuration details (app:hparam)]",
    "verdict": "used"
   },
   "positional": {
@@ -44,7 +44,7 @@
   },
   "residual": {
    "value": "residual",
-   "evidence": "x + \\Attn(\\LN_1(x)) + \\FF(\\LN_2(x)) [Sec. 2.1.2 Parallel Attention + FF Layers]",
+   "evidence": "our codebase unties the layer norms: \\[x + \\Attn(\\LN_1(x)) + \\FF(\\LN_2(x)).\\] [Sec. 2.1.2 Parallel Attention + FF Layers]",
    "verdict": "unverified",
    "reasons": [
     "the quote does not name residual (looked for /residual|skip/)"
@@ -64,7 +64,8 @@
   {
    "field": "d_ff",
    "reasons": [
-    "inherited from gpt-3, whose curated entry has no d_ff"
+    "inherited from gpt-3, whose curated entry has no d_ff",
+    "the inheritance quote does not name the ancestor"
    ]
   },
   {
@@ -77,7 +78,7 @@
  "mentions": {},
  "inherits": {
   "ancestor": "gpt-3",
-  "evidence": "Although our architecture is largely similar to GPT-3, there are some notable differences. In this section we give a high-level overview of those differences, but ask the reader to refer to \\cite{brown2020language} for full details of the model architecture.",
+  "evidence": "In this section we give a high-level overview of those differences, but ask the reader to refer to \\cite{brown2020language} for full details of the model architecture.",
   "section": "Sec. 2.1 Model Architecture"
  },
  "variants": [
@@ -102,14 +103,14 @@
   "sent_sha256": "b10816ec4da890ac1236ae4d8a8e36023ca26e3956b1fada9491ddd9d2142d90",
   "from": "https://arxiv.org/e-print/2204.06745",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
+  "extractor_sha256": "9d5951b0f11c920aaf075abead17d7d4e619d37402d47690ba452de15620e921",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
+  "prompt_sha256": "e6c6c5052b656885910d1539b8c320ba4ecb9262a6079252b852f1ff637b03ef",
   "n_calls": 1,
-  "cost_usd": 1.392172,
+  "cost_usd": 1.399148,
   "request_ids": [
-   "req_011CgFhM9ijqXJh3ZgZjdprF"
+   "req_011CgRsYqrEKpT1swfQHys9u"
   ]
  },
  "llm": {
@@ -119,12 +120,12 @@
    "family": {
     "value": "decoder_only",
     "status": "stated",
-    "quote": "is an autoregressive transformer decoder model whose architecture largely follows that of GPT-3",
+    "quote": "\\model{} is an autoregressive transformer decoder model whose architecture largely follows that of GPT-3 \\citep{brown2020language}, with a few notable deviations described below.",
     "where": "Sec. 2 Model Design and Implementation"
    },
    "inherits": {
     "ancestor": "GPT-3",
-    "quote": "Although our architecture is largely similar to GPT-3, there are some notable differences. In this section we give a high-level overview of those differences, but ask the reader to refer to \\cite{brown2020language} for full details of the model architecture.",
+    "quote": "In this section we give a high-level overview of those differences, but ask the reader to refer to \\cite{brown2020language} for full details of the model architecture.",
     "where": "Sec. 2.1 Model Architecture"
    },
    "configs": [
@@ -163,7 +164,7 @@
      "d_ff": {
       "value": "24576",
       "status": "inherited",
-      "quote": "Although our architecture is largely similar to GPT-3, there are some notable differences. In this section we give a high-level overview of those differences, but ask the reader to refer to \\cite{brown2020language} for full details of the model architecture.",
+      "quote": "In this section we give a high-level overview of those differences, but ask the reader to refer to \\cite{brown2020language} for full details of the model architecture.",
       "where": "Sec. 2.1 Model Architecture"
      },
      "vocab_size": {
@@ -176,7 +177,7 @@
       "value": "2048",
       "status": "stated",
       "quote": "seq-length & 2048",
-      "where": "Table: full configuration details (tab:config)"
+      "where": "Table: full configuration details (app:hparam)"
      }
     }
    ],
@@ -186,13 +187,25 @@
      "value": "layernorm",
      "status": "stated",
      "quote": "norm & layernorm",
-     "where": "Table: full configuration details (tab:config)"
+     "where": "Table: full configuration details (app:hparam)"
     },
     "norm_placement": {
      "value": "pre",
      "status": "stated",
-     "quote": "x + \\Attn(\\LN_1(x)) + \\FF(\\LN_2(x))",
+     "quote": "our codebase unties the layer norms: \\[x + \\Attn(\\LN_1(x)) + \\FF(\\LN_2(x)).\\]",
      "where": "Sec. 2.1.2 Parallel Attention + FF Layers"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "norm_eps": {
      "value": "",
@@ -201,16 +214,28 @@
      "where": ""
     },
     "activation": {
-     "value": "gelu",
+     "value": "other:gelu (exact vs tanh form not stated)",
      "status": "stated",
      "quote": "bias-gelu-fusion & True",
-     "where": "Table: full configuration details (tab:config)"
+     "where": "Table: full configuration details (app:hparam)"
     },
     "positional": {
      "value": "rope",
      "status": "stated",
      "quote": "We use rotary embeddings \\citep{su2021roformer} instead of the learned positional embeddings used in GPT models",
      "where": "Sec. 2.1.1 Rotary Positional Embeddings"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "rope_pairing": {
      "value": "",
@@ -221,19 +246,19 @@
     "rope_theta": {
      "value": "10000",
      "status": "stated",
-     "quote": "\\theta_i = 10000^{-2i/d}",
+     "quote": "$\\Theta = \\{\\theta_i = 10000^{-2i/d}",
      "where": "Sec. 2.1.1 Rotary Positional Embeddings"
     },
     "rope_fraction": {
      "value": "0.25",
      "status": "stated",
      "quote": "rotary-pct & 0.25",
-     "where": "Table: full configuration details (tab:config)"
+     "where": "Table: full configuration details (app:hparam)"
     },
     "residual": {
      "value": "residual",
      "status": "stated",
-     "quote": "x + \\Attn(\\LN_1(x)) + \\FF(\\LN_2(x))",
+     "quote": "our codebase unties the layer norms: \\[x + \\Attn(\\LN_1(x)) + \\FF(\\LN_2(x)).\\]",
      "where": "Sec. 2.1.2 Parallel Attention + FF Layers"
     },
     "parallel_block": {
@@ -272,17 +297,23 @@
      "quote": "",
      "where": ""
     },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
     "tied_embeddings": {
      "value": "false",
      "status": "stated",
      "quote": "no-weight-tying & True",
-     "where": "Table: full configuration details (tab:config)"
+     "where": "Table: full configuration details (app:hparam)"
     },
     "moe": {
-     "value": "false",
-     "status": "stated",
-     "quote": "It is, to the best of our knowledge, the largest dense autoregressive model that has publicly available weights at the time of submission.",
-     "where": "Abstract"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "n_experts": {
      "value": "",
@@ -297,6 +328,36 @@
      "where": ""
     },
     "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -324,8 +385,8 @@
        "name": "d",
        "value": "6144",
        "status": "stated",
-       "quote": "Our model has 44 layers, a hidden dimension size of 6144, and 64 heads.",
-       "where": "Sec. 2 Model Design and Implementation"
+       "quote": "hidden-size & 6144",
+       "where": "Table: full configuration details (app:hparam)"
       }
      ],
      "new_op": ""
@@ -333,7 +394,7 @@
     {
      "subgraph": "block",
      "op": "layernorm",
-     "role": "LN_1 for attention branch",
+     "role": "LN_1 (attention input norm)",
      "inputs": [
       "x"
      ],
@@ -352,7 +413,7 @@
     {
      "subgraph": "block",
      "op": "layernorm",
-     "role": "LN_2 for FF branch (untied from LN_1)",
+     "role": "LN_2 (FFN input norm, untied from LN_1)",
      "inputs": [
       "x"
      ],
@@ -381,8 +442,8 @@
        "name": "out",
        "value": "6144",
        "status": "stated",
-       "quote": "Our model has 44 layers, a hidden dimension size of 6144, and 64 heads.",
-       "where": "Sec. 2 Model Design and Implementation"
+       "quote": "hidden-size & 6144",
+       "where": "Table: full configuration details (app:hparam)"
       },
       {
        "name": "bias",
@@ -407,8 +468,8 @@
        "name": "out",
        "value": "6144",
        "status": "stated",
-       "quote": "Our model has 44 layers, a hidden dimension size of 6144, and 64 heads.",
-       "where": "Sec. 2 Model Design and Implementation"
+       "quote": "hidden-size & 6144",
+       "where": "Table: full configuration details (app:hparam)"
       },
       {
        "name": "bias",
@@ -433,8 +494,8 @@
        "name": "out",
        "value": "6144",
        "status": "stated",
-       "quote": "Our model has 44 layers, a hidden dimension size of 6144, and 64 heads.",
-       "where": "Sec. 2 Model Design and Implementation"
+       "quote": "hidden-size & 6144",
+       "where": "Table: full configuration details (app:hparam)"
       },
       {
        "name": "bias",
@@ -451,8 +512,7 @@
      "op": "rope",
      "role": "partial rotary on queries",
      "inputs": [
-      "q",
-      "pos"
+      "q"
      ],
      "output": "q_r",
      "attributes": [
@@ -460,7 +520,7 @@
        "name": "rope_heads",
        "value": "all",
        "status": "stated",
-       "quote": "We use rotary embeddings \\citep{su2021roformer} instead of the learned positional embeddings used in GPT models",
+       "quote": "we follow \\citet{gpt-j} and instead apply it only to the first $25\\%$ of embedding vector dimensions",
        "where": "Sec. 2.1.1 Rotary Positional Embeddings"
       },
       {
@@ -481,7 +541,7 @@
        "name": "theta",
        "value": "10000",
        "status": "stated",
-       "quote": "\\theta_i = 10000^{-2i/d}",
+       "quote": "$\\Theta = \\{\\theta_i = 10000^{-2i/d}",
        "where": "Sec. 2.1.1 Rotary Positional Embeddings"
       }
      ],
@@ -492,8 +552,7 @@
      "op": "rope",
      "role": "partial rotary on keys",
      "inputs": [
-      "k",
-      "pos"
+      "k"
      ],
      "output": "k_r",
      "attributes": [
@@ -501,7 +560,7 @@
        "name": "rope_heads",
        "value": "all",
        "status": "stated",
-       "quote": "We use rotary embeddings \\citep{su2021roformer} instead of the learned positional embeddings used in GPT models",
+       "quote": "we follow \\citet{gpt-j} and instead apply it only to the first $25\\%$ of embedding vector dimensions",
        "where": "Sec. 2.1.1 Rotary Positional Embeddings"
       },
       {
@@ -522,7 +581,7 @@
        "name": "theta",
        "value": "10000",
        "status": "stated",
-       "quote": "\\theta_i = 10000^{-2i/d}",
+       "quote": "$\\Theta = \\{\\theta_i = 10000^{-2i/d}",
        "where": "Sec. 2.1.1 Rotary Positional Embeddings"
       }
      ],
@@ -531,7 +590,7 @@
     {
      "subgraph": "block",
      "op": "attention",
-     "role": "causal multi-head self-attention",
+     "role": "causal multi-head self-attention (dense)",
      "inputs": [
       "q_r",
       "k_r",
@@ -543,8 +602,8 @@
        "name": "heads",
        "value": "64",
        "status": "stated",
-       "quote": "Our model has 44 layers, a hidden dimension size of 6144, and 64 heads.",
-       "where": "Sec. 2 Model Design and Implementation"
+       "quote": "num-attention-heads & 64",
+       "where": "Table: full configuration details (app:hparam)"
       },
       {
        "name": "kv_heads",
@@ -562,16 +621,16 @@
       },
       {
        "name": "scale",
-       "value": "1/sqrt(d)",
-       "status": "stated",
-       "quote": "\\frac{1}{\\sqrt{d}}",
-       "where": "Sec. 2.1.1 Rotary Positional Embeddings"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       },
       {
        "name": "causal",
        "value": "true",
        "status": "stated",
-       "quote": "is an autoregressive transformer decoder model whose architecture largely follows that of GPT-3",
+       "quote": "\\model{} is an autoregressive transformer decoder model",
        "where": "Sec. 2 Model Design and Implementation"
       },
       {
@@ -604,8 +663,8 @@
        "name": "out",
        "value": "6144",
        "status": "stated",
-       "quote": "Our model has 44 layers, a hidden dimension size of 6144, and 64 heads.",
-       "where": "Sec. 2 Model Design and Implementation"
+       "quote": "hidden-size & 6144",
+       "where": "Table: full configuration details (app:hparam)"
       },
       {
        "name": "bias",
@@ -620,7 +679,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "FF up projection",
+     "role": "FFN up projection",
      "inputs": [
       "h2"
      ],
@@ -630,7 +689,7 @@
        "name": "out",
        "value": "24576",
        "status": "inherited",
-       "quote": "Although our architecture is largely similar to GPT-3, there are some notable differences. In this section we give a high-level overview of those differences, but ask the reader to refer to \\cite{brown2020language} for full details of the model architecture.",
+       "quote": "In this section we give a high-level overview of those differences, but ask the reader to refer to \\cite{brown2020language} for full details of the model architecture.",
        "where": "Sec. 2.1 Model Architecture"
       },
       {
@@ -646,7 +705,7 @@
     {
      "subgraph": "block",
      "op": "gelu",
-     "role": "FF activation",
+     "role": "FFN activation",
      "inputs": [
       "u"
      ],
@@ -665,18 +724,18 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "FF down projection",
+     "role": "FFN down projection",
      "inputs": [
       "g"
      ],
-     "output": "ff_out",
+     "output": "ffn_out",
      "attributes": [
       {
        "name": "out",
        "value": "6144",
        "status": "stated",
-       "quote": "Our model has 44 layers, a hidden dimension size of 6144, and 64 heads.",
-       "where": "Sec. 2 Model Design and Implementation"
+       "quote": "hidden-size & 6144",
+       "where": "Table: full configuration details (app:hparam)"
       },
       {
        "name": "bias",
@@ -703,10 +762,10 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "residual add of parallel FF branch",
+     "role": "add FFN branch (parallel block: x + Attn(LN_1(x)) + FF(LN_2(x)))",
      "inputs": [
       "r1",
-      "ff_out"
+      "ffn_out"
      ],
      "output": "x",
      "attributes": [],
@@ -715,7 +774,7 @@
     {
      "subgraph": "head",
      "op": "layernorm",
-     "role": "final layer norm (GPT-3/GPT-2 lineage, not restated)",
+     "role": "final norm (assumed GPT-3 style; not described in paper)",
      "inputs": [
       "x"
      ],
@@ -734,7 +793,7 @@
     {
      "subgraph": "head",
      "op": "linear",
-     "role": "untied output projection to vocabulary",
+     "role": "untied LM head",
      "inputs": [
       "hf"
      ],
@@ -759,7 +818,7 @@
        "value": "none",
        "status": "stated",
        "quote": "no-weight-tying & True",
-       "where": "Table: full configuration details (tab:config)"
+       "where": "Table: full configuration details (app:hparam)"
       }
      ],
      "new_op": ""
@@ -767,7 +826,7 @@
    ],
    "new_ops": [],
    "mechanisms_outside_ir": [],
-   "notes": "Describes the single 20B configuration, using the camera-ready text (an earlier draft is also included in the source and agrees). The block is parallel: x + Attn(LN_1(x)) + FF(LN_2(x)), with untied layer norms, which the paper reports was an oversight. d_ff is inherited as 4*d_model from GPT-3 through the 'refer to GPT-3 for full details' sentence. head_dim (6144/64=96) and n_rot (0.25*96=24) can be derived but are not stated, so both are left not_stated. The GELU form (erf vs tanh) is not specified; the only evidence is bias-gelu-fusion. Rope pairing is not stated: the equation gives a block-diagonal 2D rotation without saying how dimensions are paired. LN eps, biases and the kv-head count are not stated. The final LN is included from the GPT lineage, but this paper does not restate it."
+   "notes": "Described the single released GPT-NeoX-20B model. Parallel attention+FFN block with two untied pre-LayerNorms (as actually trained, not the intended tied version). head_dim (96 = 6144/64) and n_rot (24 = 25% of 96) are derivable but not stated, so they are left not_stated. d_ff marked inherited from GPT-3 (4*d_model) via the paper's explicit reference to Brown et al. for full architecture details. The GELU form (exact vs tanh) is not stated; only the 'bias-gelu-fusion' config key indicates GELU. The RoPE pairing is not stated: the formal block-diagonal description suggests adjacent pairs, but the implementation is not described. QKV/MLP biases, norm eps, and the attention scale are not stated. The final LayerNorm in the head is assumed from the GPT-3 lineage and is not described in the paper. MoE is not discussed for the model itself; it is left not_stated."
   },
   "verification": {
    "errors": [],
@@ -775,14 +834,14 @@
    "inherits": {
     "ancestor": "GPT-3",
     "resolved": "gpt-3",
-    "quote": "Although our architecture is largely similar to GPT-3, there are some notable differences. In this section we give a high-level overview of those differences, but ask the reader to refer to \\cite{brown2020language} for full details of the model architecture.",
+    "quote": "In this section we give a high-level overview of those differences, but ask the reader to refer to \\cite{brown2020language} for full details of the model architecture.",
     "where": "Sec. 2.1 Model Architecture",
     "quote_found": true
    },
    "family": {
     "value": "decoder_only",
     "status": "stated",
-    "quote": "is an autoregressive transformer decoder model whose architecture largely follows that of GPT-3",
+    "quote": "\\model{} is an autoregressive transformer decoder model whose architecture largely follows that of GPT-3 \\citep{brown2020language}, with a few notable deviations described below.",
     "where": "Sec. 2 Model Design and Implementation",
     "reasons": [],
     "check": "quote_only"
@@ -833,10 +892,11 @@
      "d_ff": {
       "value": "24576",
       "status": "inherited",
-      "quote": "Although our architecture is largely similar to GPT-3, there are some notable differences. In this section we give a high-level overview of those differences, but ask the reader to refer to \\cite{brown2020language} for full details of the model architecture.",
+      "quote": "In this section we give a high-level overview of those differences, but ask the reader to refer to \\cite{brown2020language} for full details of the model architecture.",
       "where": "Sec. 2.1 Model Architecture",
       "reasons": [
-       "inherited from gpt-3, whose curated entry has no d_ff"
+       "inherited from gpt-3, whose curated entry has no d_ff",
+       "the inheritance quote does not name the ancestor"
       ],
       "check": "unverified"
      },
@@ -852,7 +912,7 @@
       "value": "2048",
       "status": "stated",
       "quote": "seq-length & 2048",
-      "where": "Table: full configuration details (tab:config)",
+      "where": "Table: full configuration details (app:hparam)",
       "reasons": [],
       "check": "verified"
      },
@@ -870,17 +930,33 @@
      "value": "layernorm",
      "status": "stated",
      "quote": "norm & layernorm",
-     "where": "Table: full configuration details (tab:config)",
+     "where": "Table: full configuration details (app:hparam)",
      "reasons": [],
      "check": "verified"
     },
     "norm_placement": {
      "value": "pre",
      "status": "stated",
-     "quote": "x + \\Attn(\\LN_1(x)) + \\FF(\\LN_2(x))",
+     "quote": "our codebase unties the layer norms: \\[x + \\Attn(\\LN_1(x)) + \\FF(\\LN_2(x)).\\]",
      "where": "Sec. 2.1.2 Parallel Attention + FF Layers",
      "reasons": [],
      "check": "quote_only"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "norm_eps": {
      "value": "",
@@ -891,12 +967,12 @@
      "check": "not_stated"
     },
     "activation": {
-     "value": "gelu",
+     "value": "other:gelu (exact vs tanh form not stated)",
      "status": "stated",
      "quote": "bias-gelu-fusion & True",
-     "where": "Table: full configuration details (tab:config)",
+     "where": "Table: full configuration details (app:hparam)",
      "reasons": [],
-     "check": "verified"
+     "check": "quote_only"
     },
     "positional": {
      "value": "rope",
@@ -905,6 +981,22 @@
      "where": "Sec. 2.1.1 Rotary Positional Embeddings",
      "reasons": [],
      "check": "verified"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "rope_pairing": {
      "value": "",
@@ -917,7 +1009,7 @@
     "rope_theta": {
      "value": "10000",
      "status": "stated",
-     "quote": "\\theta_i = 10000^{-2i/d}",
+     "quote": "$\\Theta = \\{\\theta_i = 10000^{-2i/d}",
      "where": "Sec. 2.1.1 Rotary Positional Embeddings",
      "reasons": [],
      "check": "verified"
@@ -926,14 +1018,14 @@
      "value": "0.25",
      "status": "stated",
      "quote": "rotary-pct & 0.25",
-     "where": "Table: full configuration details (tab:config)",
+     "where": "Table: full configuration details (app:hparam)",
      "reasons": [],
      "check": "verified"
     },
     "residual": {
      "value": "residual",
      "status": "stated",
-     "quote": "x + \\Attn(\\LN_1(x)) + \\FF(\\LN_2(x))",
+     "quote": "our codebase unties the layer norms: \\[x + \\Attn(\\LN_1(x)) + \\FF(\\LN_2(x)).\\]",
      "where": "Sec. 2.1.2 Parallel Attention + FF Layers",
      "reasons": [
       "the quote does not name residual (looked for /residual|skip/)"
@@ -988,21 +1080,29 @@
      "reasons": [],
      "check": "not_stated"
     },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
     "tied_embeddings": {
      "value": "false",
      "status": "stated",
      "quote": "no-weight-tying & True",
-     "where": "Table: full configuration details (tab:config)",
+     "where": "Table: full configuration details (app:hparam)",
      "reasons": [],
      "check": "quote_only"
     },
     "moe": {
-     "value": "false",
-     "status": "stated",
-     "quote": "It is, to the best of our knowledge, the largest dense autoregressive model that has publicly available weights at the time of submission.",
-     "where": "Abstract",
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
      "reasons": [],
-     "check": "quote_only"
+     "check": "not_stated"
     },
     "n_experts": {
      "value": "",
@@ -1021,6 +1121,46 @@
      "check": "not_stated"
     },
     "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
      "value": "",
      "status": "not_stated",
      "quote": "",
@@ -1054,8 +1194,8 @@
       {
        "value": "6144",
        "status": "stated",
-       "quote": "Our model has 44 layers, a hidden dimension size of 6144, and 64 heads.",
-       "where": "Sec. 2 Model Design and Implementation",
+       "quote": "hidden-size & 6144",
+       "where": "Table: full configuration details (app:hparam)",
        "reasons": [],
        "check": "verified",
        "name": "d"
@@ -1067,7 +1207,7 @@
      "i": 1,
      "subgraph": "block",
      "op": "layernorm",
-     "role": "LN_1 for attention branch",
+     "role": "LN_1 (attention input norm)",
      "inputs": [
       "x"
      ],
@@ -1090,7 +1230,7 @@
      "i": 2,
      "subgraph": "block",
      "op": "layernorm",
-     "role": "LN_2 for FF branch (untied from LN_1)",
+     "role": "LN_2 (FFN input norm, untied from LN_1)",
      "inputs": [
       "x"
      ],
@@ -1123,8 +1263,8 @@
       {
        "value": "6144",
        "status": "stated",
-       "quote": "Our model has 44 layers, a hidden dimension size of 6144, and 64 heads.",
-       "where": "Sec. 2 Model Design and Implementation",
+       "quote": "hidden-size & 6144",
+       "where": "Table: full configuration details (app:hparam)",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -1155,8 +1295,8 @@
       {
        "value": "6144",
        "status": "stated",
-       "quote": "Our model has 44 layers, a hidden dimension size of 6144, and 64 heads.",
-       "where": "Sec. 2 Model Design and Implementation",
+       "quote": "hidden-size & 6144",
+       "where": "Table: full configuration details (app:hparam)",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -1187,8 +1327,8 @@
       {
        "value": "6144",
        "status": "stated",
-       "quote": "Our model has 44 layers, a hidden dimension size of 6144, and 64 heads.",
-       "where": "Sec. 2 Model Design and Implementation",
+       "quote": "hidden-size & 6144",
+       "where": "Table: full configuration details (app:hparam)",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -1211,8 +1351,7 @@
      "op": "rope",
      "role": "partial rotary on queries",
      "inputs": [
-      "q",
-      "pos"
+      "q"
      ],
      "output": "q_r",
      "new_op": "",
@@ -1220,7 +1359,7 @@
       {
        "value": "all",
        "status": "stated",
-       "quote": "We use rotary embeddings \\citep{su2021roformer} instead of the learned positional embeddings used in GPT models",
+       "quote": "we follow \\citet{gpt-j} and instead apply it only to the first $25\\%$ of embedding vector dimensions",
        "where": "Sec. 2.1.1 Rotary Positional Embeddings",
        "reasons": [],
        "check": "quote_only",
@@ -1247,7 +1386,7 @@
       {
        "value": "10000",
        "status": "stated",
-       "quote": "\\theta_i = 10000^{-2i/d}",
+       "quote": "$\\Theta = \\{\\theta_i = 10000^{-2i/d}",
        "where": "Sec. 2.1.1 Rotary Positional Embeddings",
        "reasons": [],
        "check": "verified",
@@ -1262,8 +1401,7 @@
      "op": "rope",
      "role": "partial rotary on keys",
      "inputs": [
-      "k",
-      "pos"
+      "k"
      ],
      "output": "k_r",
      "new_op": "",
@@ -1271,7 +1409,7 @@
       {
        "value": "all",
        "status": "stated",
-       "quote": "We use rotary embeddings \\citep{su2021roformer} instead of the learned positional embeddings used in GPT models",
+       "quote": "we follow \\citet{gpt-j} and instead apply it only to the first $25\\%$ of embedding vector dimensions",
        "where": "Sec. 2.1.1 Rotary Positional Embeddings",
        "reasons": [],
        "check": "quote_only",
@@ -1298,7 +1436,7 @@
       {
        "value": "10000",
        "status": "stated",
-       "quote": "\\theta_i = 10000^{-2i/d}",
+       "quote": "$\\Theta = \\{\\theta_i = 10000^{-2i/d}",
        "where": "Sec. 2.1.1 Rotary Positional Embeddings",
        "reasons": [],
        "check": "verified",
@@ -1311,7 +1449,7 @@
      "i": 8,
      "subgraph": "block",
      "op": "attention",
-     "role": "causal multi-head self-attention",
+     "role": "causal multi-head self-attention (dense)",
      "inputs": [
       "q_r",
       "k_r",
@@ -1323,8 +1461,8 @@
       {
        "value": "64",
        "status": "stated",
-       "quote": "Our model has 44 layers, a hidden dimension size of 6144, and 64 heads.",
-       "where": "Sec. 2 Model Design and Implementation",
+       "quote": "num-attention-heads & 64",
+       "where": "Table: full configuration details (app:hparam)",
        "reasons": [],
        "check": "verified",
        "name": "heads"
@@ -1348,18 +1486,18 @@
        "name": "head_dim"
       },
       {
-       "value": "1/sqrt(d)",
-       "status": "stated",
-       "quote": "\\frac{1}{\\sqrt{d}}",
-       "where": "Sec. 2.1.1 Rotary Positional Embeddings",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
        "reasons": [],
-       "check": "verified",
+       "check": "not_stated",
        "name": "scale"
       },
       {
        "value": "true",
        "status": "stated",
-       "quote": "is an autoregressive transformer decoder model whose architecture largely follows that of GPT-3",
+       "quote": "\\model{} is an autoregressive transformer decoder model",
        "where": "Sec. 2 Model Design and Implementation",
        "reasons": [],
        "check": "quote_only",
@@ -1402,8 +1540,8 @@
       {
        "value": "6144",
        "status": "stated",
-       "quote": "Our model has 44 layers, a hidden dimension size of 6144, and 64 heads.",
-       "where": "Sec. 2 Model Design and Implementation",
+       "quote": "hidden-size & 6144",
+       "where": "Table: full configuration details (app:hparam)",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -1424,7 +1562,7 @@
      "i": 10,
      "subgraph": "block",
      "op": "linear",
-     "role": "FF up projection",
+     "role": "FFN up projection",
      "inputs": [
       "h2"
      ],
@@ -1434,10 +1572,11 @@
       {
        "value": "24576",
        "status": "inherited",
-       "quote": "Although our architecture is largely similar to GPT-3, there are some notable differences. In this section we give a high-level overview of those differences, but ask the reader to refer to \\cite{brown2020language} for full details of the model architecture.",
+       "quote": "In this section we give a high-level overview of those differences, but ask the reader to refer to \\cite{brown2020language} for full details of the model architecture.",
        "where": "Sec. 2.1 Model Architecture",
        "reasons": [
-        "inherited from gpt-3, whose curated entry has no out"
+        "inherited from gpt-3, whose curated entry has no out",
+        "the inheritance quote does not name the ancestor"
        ],
        "check": "unverified",
        "name": "out"
@@ -1458,7 +1597,7 @@
      "i": 11,
      "subgraph": "block",
      "op": "gelu",
-     "role": "FF activation",
+     "role": "FFN activation",
      "inputs": [
       "u"
      ],
@@ -1481,18 +1620,18 @@
      "i": 12,
      "subgraph": "block",
      "op": "linear",
-     "role": "FF down projection",
+     "role": "FFN down projection",
      "inputs": [
       "g"
      ],
-     "output": "ff_out",
+     "output": "ffn_out",
      "new_op": "",
      "attributes": [
       {
        "value": "6144",
        "status": "stated",
-       "quote": "Our model has 44 layers, a hidden dimension size of 6144, and 64 heads.",
-       "where": "Sec. 2 Model Design and Implementation",
+       "quote": "hidden-size & 6144",
+       "where": "Table: full configuration details (app:hparam)",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -1527,10 +1666,10 @@
      "i": 14,
      "subgraph": "block",
      "op": "add",
-     "role": "residual add of parallel FF branch",
+     "role": "add FFN branch (parallel block: x + Attn(LN_1(x)) + FF(LN_2(x)))",
      "inputs": [
       "r1",
-      "ff_out"
+      "ffn_out"
      ],
      "output": "x",
      "new_op": "",
@@ -1541,7 +1680,7 @@
      "i": 15,
      "subgraph": "head",
      "op": "layernorm",
-     "role": "final layer norm (GPT-3/GPT-2 lineage, not restated)",
+     "role": "final norm (assumed GPT-3 style; not described in paper)",
      "inputs": [
       "x"
      ],
@@ -1564,7 +1703,7 @@
      "i": 16,
      "subgraph": "head",
      "op": "linear",
-     "role": "untied output projection to vocabulary",
+     "role": "untied LM head",
      "inputs": [
       "hf"
      ],
@@ -1593,7 +1732,7 @@
        "value": "none",
        "status": "stated",
        "quote": "no-weight-tying & True",
-       "where": "Table: full configuration details (tab:config)",
+       "where": "Table: full configuration details (app:hparam)",
        "reasons": [],
        "check": "quote_only",
        "name": "tied_to"
@@ -1605,16 +1744,17 @@
    "mechanisms_outside_ir": [],
    "summary": {
     "counts": {
-     "verified": 22,
+     "verified": 20,
      "quote_only": 10,
      "unverified": 4,
-     "not_stated": 29
+     "not_stated": 41
     },
     "unverified": [
      {
       "field": "configs[20B].d_ff",
       "reasons": [
-       "inherited from gpt-3, whose curated entry has no d_ff"
+       "inherited from gpt-3, whose curated entry has no d_ff",
+       "the inheritance quote does not name the ancestor"
       ]
      },
      {
@@ -1632,7 +1772,8 @@
      {
       "field": "block_ops[10].out",
       "reasons": [
-       "inherited from gpt-3, whose curated entry has no out"
+       "inherited from gpt-3, whose curated entry has no out",
+       "the inheritance quote does not name the ancestor"
       ]
      }
     ],

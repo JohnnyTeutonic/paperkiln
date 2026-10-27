@@ -4,27 +4,27 @@
  "fields": {
   "d_model": {
    "value": 4096,
-   "evidence": "\\ournameshort{}~8B & $32$ & $16$ & $4096$ [Table model-hyperparams]",
+   "evidence": "\\ournameshort{}~8B & $32$ & $16$ & $4096$ & $8.63$ & $256$ $\\rightarrow$ $512$ [Table: model-hyperparams]",
    "verdict": "used"
   },
   "n_layers": {
    "value": 32,
-   "evidence": "\\ournameshort{}~8B & $32$ & $16$ & $4096$ [Table model-hyperparams]",
+   "evidence": "\\ournameshort{}~8B & $32$ & $16$ & $4096$ & $8.63$ & $256$ $\\rightarrow$ $512$ [Table: model-hyperparams]",
    "verdict": "used"
   },
   "n_heads": {
    "value": 16,
-   "evidence": "\\ournameshort{}~8B & $32$ & $16$ & $4096$ [Table model-hyperparams]",
+   "evidence": "\\ournameshort{}~8B & $32$ & $16$ & $4096$ & $8.63$ & $256$ $\\rightarrow$ $512$ [Table: model-hyperparams]",
    "verdict": "used"
   },
   "n_kv_heads": {
    "value": 1,
-   "evidence": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$ [Sec. 2 Multi-Query Attention]",
+   "evidence": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$, but ``query'' is still projected to shape $[k, h]$. [Sec. 2 Model Architecture, Multi-Query Attention]",
    "verdict": "used"
   },
   "vocab_size": {
    "value": 256000,
-   "evidence": "We use a SentencePiece \\citep{kudo2018sentencepiece} vocabulary with 256k tokens [Sec. 2 Vocabulary]",
+   "evidence": "We use a SentencePiece \\citep{kudo2018sentencepiece} vocabulary with 256k tokens [Sec. 2 Model Architecture, Vocabulary]",
    "verdict": "used"
   },
   "context_length": {
@@ -33,23 +33,23 @@
    "verdict": "used"
   },
   "norm": {
-   "value": "other:layernorm with learned scale and no bias",
-   "evidence": "No biases were used in any of the dense kernels or layer norms. [Sec. 2 No Biases]",
+   "value": "other:layernorm without bias (learned scale only)",
+   "evidence": "No biases were used in any of the dense kernels or layer norms. [Sec. 2 Model Architecture, No Biases]",
    "verdict": "used"
   },
   "activation": {
    "value": "swiglu",
-   "evidence": "We use SwiGLU activations ($\\textrm{Swish}(xW) \\cdot xV$) for the MLP intermediate activations [Sec. 2 SwiGLU Activation]",
+   "evidence": "We use SwiGLU activations ($\\textrm{Swish}(xW) \\cdot xV$) for the MLP intermediate activations [Sec. 2 Model Architecture, SwiGLU Activation]",
    "verdict": "used"
   },
   "positional": {
    "value": "rope",
-   "evidence": "We use RoPE embeddings \\citep{su2021} rather than absolute or relative position embeddings [Sec. 2 RoPE Embeddings]",
+   "evidence": "We use RoPE embeddings \\citep{su2021} rather than absolute or relative position embeddings [Sec. 2 Model Architecture, RoPE Embeddings]",
    "verdict": "used"
   },
   "residual": {
    "value": "residual",
-   "evidence": "\\[y = x + \\textrm{MLP}(\\textrm{LayerNorm}(x)) + \\textrm{Attention}(\\textrm{LayerNorm}(x))\\] [Sec. 2 Parallel Layers]",
+   "evidence": "y = x + \\textrm{MLP}(\\textrm{LayerNorm}(x)) + \\textrm{Attention}(\\textrm{LayerNorm}(x)) [Sec. 2 Model Architecture, Parallel Layers]",
    "verdict": "unverified",
    "reasons": [
     "the quote does not name residual (looked for /residual|skip/)"
@@ -57,7 +57,7 @@
   },
   "attention": {
    "value": "exact",
-   "evidence": "a dense, decoder-only, full-attention Transformer model, which is trained to perform autoregressive language modeling [Sec. Conclusion]",
+   "evidence": "a dense, decoder-only, full-attention Transformer model [Sec. Conclusion]",
    "verdict": "used"
   }
  },
@@ -79,11 +79,7 @@
   }
  ],
  "mentions": {},
- "inherits": {
-  "ancestor": "transformer",
-  "evidence": "uses a standard Transformer model architecture \\citep{vaswani2017} in a decoder-only setup",
-  "section": "Sec. 2 Model Architecture"
- },
+ "inherits": null,
  "variants": [
   {
    "d_model": 4096,
@@ -113,15 +109,15 @@
  "mechanism_scan": [
   {
    "mechanism": "parallel attention and FFN sublayers",
-   "where": "llm extraction, verified quote, Sec. 2 Parallel Layers",
+   "where": "llm extraction, verified quote, Sec. 2 Model Architecture, Parallel Layers",
    "blocking": true,
    "evidence": "We use a ``parallel'' formulation in each Transformer block~\\citep{gpt-j}, rather than the standard ``serialized'' formulation."
   },
   {
    "mechanism": "grouped or multi-query attention",
-   "where": "llm extraction, verified quote, Sec. 2 Multi-Query Attention",
+   "where": "llm extraction, verified quote, Sec. 2 Model Architecture, Multi-Query Attention",
    "blocking": true,
-   "evidence": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$"
+   "evidence": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$, but ``query'' is still projected to shape $[k, h]$."
   }
  ],
  "source": {
@@ -129,14 +125,14 @@
   "sent_sha256": "5e925d61ff24025b899be5b49becd2042a437d6da57996c616e870d563df79bf",
   "from": "https://arxiv.org/e-print/2204.02311",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
+  "extractor_sha256": "9d5951b0f11c920aaf075abead17d7d4e619d37402d47690ba452de15620e921",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
+  "prompt_sha256": "e6c6c5052b656885910d1539b8c320ba4ecb9262a6079252b852f1ff637b03ef",
   "n_calls": 1,
-  "cost_usd": 0.658812,
+  "cost_usd": 0.688608,
   "request_ids": [
-   "req_011CgFhFVp3UwjzgsbHnbEGU"
+   "req_011CgRsTAj8FjzwCRxVXfy1K"
   ]
  },
  "llm": {
@@ -150,9 +146,9 @@
     "where": "Sec. 2 Model Architecture"
    },
    "inherits": {
-    "ancestor": "Transformer (Vaswani et al., 2017)",
-    "quote": "uses a standard Transformer model architecture \\citep{vaswani2017} in a decoder-only setup",
-    "where": "Sec. 2 Model Architecture"
+    "ancestor": "",
+    "quote": "",
+    "where": ""
    },
    "configs": [
     {
@@ -160,44 +156,44 @@
      "d_model": {
       "value": "4096",
       "status": "stated",
-      "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$",
-      "where": "Table model-hyperparams"
+      "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$ & $8.63$ & $256$ $\\rightarrow$ $512$",
+      "where": "Table: model-hyperparams"
      },
      "n_layers": {
       "value": "32",
       "status": "stated",
-      "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$",
-      "where": "Table model-hyperparams"
+      "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$ & $8.63$ & $256$ $\\rightarrow$ $512$",
+      "where": "Table: model-hyperparams"
      },
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$",
-      "where": "Table model-hyperparams"
+      "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$ & $8.63$ & $256$ $\\rightarrow$ $512$",
+      "where": "Table: model-hyperparams"
      },
      "n_kv_heads": {
       "value": "1",
       "status": "stated",
-      "quote": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$",
-      "where": "Sec. 2 Multi-Query Attention"
+      "quote": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$, but ``query'' is still projected to shape $[k, h]$.",
+      "where": "Sec. 2 Model Architecture, Multi-Query Attention"
      },
      "head_dim": {
       "value": "256",
       "status": "stated",
-      "quote": "attention head size is always 256",
-      "where": "Table model-hyperparams caption"
+      "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$ and attention head size is always 256.",
+      "where": "Table: model-hyperparams caption"
      },
      "d_ff": {
       "value": "16384",
       "status": "stated",
-      "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$",
-      "where": "Table model-hyperparams caption"
+      "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$ and attention head size is always 256.",
+      "where": "Table: model-hyperparams caption"
      },
      "vocab_size": {
       "value": "256000",
       "status": "stated",
       "quote": "We use a SentencePiece \\citep{kudo2018sentencepiece} vocabulary with 256k tokens",
-      "where": "Sec. 2 Vocabulary"
+      "where": "Sec. 2 Model Architecture, Vocabulary"
      },
      "context_length": {
       "value": "2048",
@@ -211,44 +207,44 @@
      "d_model": {
       "value": "8192",
       "status": "stated",
-      "quote": "\\ournameshort{}~62B & $64$ & $32$  & $8192$",
-      "where": "Table model-hyperparams"
+      "quote": "\\ournameshort{}~62B & $64$ & $32$  & $8192$ & $62.50$ & $512$ $\\rightarrow$ $1024$",
+      "where": "Table: model-hyperparams"
      },
      "n_layers": {
       "value": "64",
       "status": "stated",
-      "quote": "\\ournameshort{}~62B & $64$ & $32$  & $8192$",
-      "where": "Table model-hyperparams"
+      "quote": "\\ournameshort{}~62B & $64$ & $32$  & $8192$ & $62.50$ & $512$ $\\rightarrow$ $1024$",
+      "where": "Table: model-hyperparams"
      },
      "n_heads": {
       "value": "32",
       "status": "stated",
-      "quote": "\\ournameshort{}~62B & $64$ & $32$  & $8192$",
-      "where": "Table model-hyperparams"
+      "quote": "\\ournameshort{}~62B & $64$ & $32$  & $8192$ & $62.50$ & $512$ $\\rightarrow$ $1024$",
+      "where": "Table: model-hyperparams"
      },
      "n_kv_heads": {
       "value": "1",
       "status": "stated",
-      "quote": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$",
-      "where": "Sec. 2 Multi-Query Attention"
+      "quote": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$, but ``query'' is still projected to shape $[k, h]$.",
+      "where": "Sec. 2 Model Architecture, Multi-Query Attention"
      },
      "head_dim": {
       "value": "256",
       "status": "stated",
-      "quote": "attention head size is always 256",
-      "where": "Table model-hyperparams caption"
+      "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$ and attention head size is always 256.",
+      "where": "Table: model-hyperparams caption"
      },
      "d_ff": {
       "value": "32768",
       "status": "stated",
-      "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$",
-      "where": "Table model-hyperparams caption"
+      "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$ and attention head size is always 256.",
+      "where": "Table: model-hyperparams caption"
      },
      "vocab_size": {
       "value": "256000",
       "status": "stated",
       "quote": "We use a SentencePiece \\citep{kudo2018sentencepiece} vocabulary with 256k tokens",
-      "where": "Sec. 2 Vocabulary"
+      "where": "Sec. 2 Model Architecture, Vocabulary"
      },
      "context_length": {
       "value": "2048",
@@ -262,44 +258,44 @@
      "d_model": {
       "value": "18432",
       "status": "stated",
-      "quote": "\\ournameshort{}~540B & $118$ & $48$ & $18432$",
-      "where": "Table model-hyperparams"
+      "quote": "\\ournameshort{}~540B & $118$ & $48$ & $18432$ & $540.35$",
+      "where": "Table: model-hyperparams"
      },
      "n_layers": {
       "value": "118",
       "status": "stated",
-      "quote": "\\ournameshort{}~540B & $118$ & $48$ & $18432$",
-      "where": "Table model-hyperparams"
+      "quote": "\\ournameshort{}~540B & $118$ & $48$ & $18432$ & $540.35$",
+      "where": "Table: model-hyperparams"
      },
      "n_heads": {
       "value": "48",
       "status": "stated",
-      "quote": "\\ournameshort{}~540B & $118$ & $48$ & $18432$",
-      "where": "Table model-hyperparams"
+      "quote": "\\ournameshort{}~540B & $118$ & $48$ & $18432$ & $540.35$",
+      "where": "Table: model-hyperparams"
      },
      "n_kv_heads": {
       "value": "1",
       "status": "stated",
-      "quote": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$",
-      "where": "Sec. 2 Multi-Query Attention"
+      "quote": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$, but ``query'' is still projected to shape $[k, h]$.",
+      "where": "Sec. 2 Model Architecture, Multi-Query Attention"
      },
      "head_dim": {
       "value": "256",
       "status": "stated",
-      "quote": "attention head size is always 256",
-      "where": "Table model-hyperparams caption"
+      "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$ and attention head size is always 256.",
+      "where": "Table: model-hyperparams caption"
      },
      "d_ff": {
       "value": "73728",
       "status": "stated",
-      "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$",
-      "where": "Table model-hyperparams caption"
+      "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$ and attention head size is always 256.",
+      "where": "Table: model-hyperparams caption"
      },
      "vocab_size": {
       "value": "256000",
       "status": "stated",
       "quote": "We use a SentencePiece \\citep{kudo2018sentencepiece} vocabulary with 256k tokens",
-      "where": "Sec. 2 Vocabulary"
+      "where": "Sec. 2 Model Architecture, Vocabulary"
      },
      "context_length": {
       "value": "2048",
@@ -312,16 +308,28 @@
    "primary_config": "PaLM 8B",
    "flavours": {
     "norm": {
-     "value": "other:layernorm with learned scale and no bias",
+     "value": "other:layernorm without bias (learned scale only)",
      "status": "stated",
      "quote": "No biases were used in any of the dense kernels or layer norms.",
-     "where": "Sec. 2 No Biases"
+     "where": "Sec. 2 Model Architecture, No Biases"
     },
     "norm_placement": {
      "value": "pre",
      "status": "stated",
-     "quote": "\\[y = x + \\textrm{MLP}(\\textrm{LayerNorm}(x)) + \\textrm{Attention}(\\textrm{LayerNorm}(x))\\]",
-     "where": "Sec. 2 Parallel Layers"
+     "quote": "y = x + \\textrm{MLP}(\\textrm{LayerNorm}(x)) + \\textrm{Attention}(\\textrm{LayerNorm}(x))",
+     "where": "Sec. 2 Model Architecture, Parallel Layers"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "norm_eps": {
      "value": "",
@@ -333,13 +341,25 @@
      "value": "swiglu",
      "status": "stated",
      "quote": "We use SwiGLU activations ($\\textrm{Swish}(xW) \\cdot xV$) for the MLP intermediate activations",
-     "where": "Sec. 2 SwiGLU Activation"
+     "where": "Sec. 2 Model Architecture, SwiGLU Activation"
     },
     "positional": {
      "value": "rope",
      "status": "stated",
      "quote": "We use RoPE embeddings \\citep{su2021} rather than absolute or relative position embeddings",
-     "where": "Sec. 2 RoPE Embeddings"
+     "where": "Sec. 2 Model Architecture, RoPE Embeddings"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "rope_pairing": {
      "value": "",
@@ -362,19 +382,19 @@
     "residual": {
      "value": "residual",
      "status": "stated",
-     "quote": "\\[y = x + \\textrm{MLP}(\\textrm{LayerNorm}(x)) + \\textrm{Attention}(\\textrm{LayerNorm}(x))\\]",
-     "where": "Sec. 2 Parallel Layers"
+     "quote": "y = x + \\textrm{MLP}(\\textrm{LayerNorm}(x)) + \\textrm{Attention}(\\textrm{LayerNorm}(x))",
+     "where": "Sec. 2 Model Architecture, Parallel Layers"
     },
     "parallel_block": {
      "value": "true",
      "status": "stated",
      "quote": "We use a ``parallel'' formulation in each Transformer block~\\citep{gpt-j}, rather than the standard ``serialized'' formulation.",
-     "where": "Sec. 2 Parallel Layers"
+     "where": "Sec. 2 Model Architecture, Parallel Layers"
     },
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "a dense, decoder-only, full-attention Transformer model, which is trained to perform autoregressive language modeling",
+     "quote": "a dense, decoder-only, full-attention Transformer model",
      "where": "Sec. Conclusion"
     },
     "window_size": {
@@ -393,25 +413,31 @@
      "value": "false",
      "status": "stated",
      "quote": "No biases were used in any of the dense kernels or layer norms.",
-     "where": "Sec. 2 No Biases"
+     "where": "Sec. 2 Model Architecture, No Biases"
     },
     "mlp_bias": {
      "value": "false",
      "status": "stated",
      "quote": "No biases were used in any of the dense kernels or layer norms.",
-     "where": "Sec. 2 No Biases"
+     "where": "Sec. 2 Model Architecture, No Biases"
+    },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "tied_embeddings": {
      "value": "true",
      "status": "stated",
      "quote": "We share the input and output embedding matrices",
-     "where": "Sec. 2 Shared Input-Output Embeddings"
+     "where": "Sec. 2 Model Architecture, Shared Input-Output Embeddings"
     },
     "moe": {
      "value": "false",
      "status": "stated",
-     "quote": "we trained a $540$-billion parameter, densely activated, Transformer language model",
-     "where": "Abstract"
+     "quote": "a dense, decoder-only, full-attention Transformer model",
+     "where": "Sec. Conclusion"
     },
     "n_experts": {
      "value": "",
@@ -430,13 +456,43 @@
      "status": "not_stated",
      "quote": "",
      "where": ""
+    },
+    "ssm": {
+     "value": "none",
+     "status": "stated",
+     "quote": "a dense, decoder-only, full-attention Transformer model",
+     "where": "Sec. Conclusion"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     }
    },
    "block_ops": [
     {
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding (shared with output head, no norm/scale on embeddings)",
+     "role": "token embedding (shared with output head)",
      "inputs": [
       "tokens"
      ],
@@ -447,7 +503,7 @@
     {
      "subgraph": "block",
      "op": "layernorm",
-     "role": "single pre-norm shared by attention and MLP branches (scale only, no bias)",
+     "role": "pre-norm shared input to parallel attention and MLP (no bias)",
      "inputs": [
       "x"
      ],
@@ -465,7 +521,7 @@
        "value": "false",
        "status": "stated",
        "quote": "No biases were used in any of the dense kernels or layer norms.",
-       "where": "Sec. 2 No Biases"
+       "where": "Sec. 2 Model Architecture, No Biases"
       }
      ],
      "new_op": ""
@@ -483,15 +539,15 @@
        "name": "out",
        "value": "4096",
        "status": "stated",
-       "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$",
-       "where": "Table model-hyperparams"
+       "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$ & $8.63$ & $256$ $\\rightarrow$ $512$",
+       "where": "Table: model-hyperparams"
       },
       {
        "name": "bias",
        "value": "false",
        "status": "stated",
        "quote": "No biases were used in any of the dense kernels or layer norms.",
-       "where": "Sec. 2 No Biases"
+       "where": "Sec. 2 Model Architecture, No Biases"
       }
      ],
      "new_op": ""
@@ -499,7 +555,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "shared key projection (multi-query, one head)",
+     "role": "single shared key projection (multi-query)",
      "inputs": [
       "h"
      ],
@@ -509,15 +565,15 @@
        "name": "out",
        "value": "256",
        "status": "stated",
-       "quote": "attention head size is always 256",
-       "where": "Table model-hyperparams caption"
+       "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$ and attention head size is always 256.",
+       "where": "Table: model-hyperparams caption"
       },
       {
        "name": "bias",
        "value": "false",
        "status": "stated",
        "quote": "No biases were used in any of the dense kernels or layer norms.",
-       "where": "Sec. 2 No Biases"
+       "where": "Sec. 2 Model Architecture, No Biases"
       }
      ],
      "new_op": ""
@@ -525,7 +581,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "shared value projection (multi-query, one head)",
+     "role": "single shared value projection (multi-query)",
      "inputs": [
       "h"
      ],
@@ -535,15 +591,15 @@
        "name": "out",
        "value": "256",
        "status": "stated",
-       "quote": "attention head size is always 256",
-       "where": "Table model-hyperparams caption"
+       "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$ and attention head size is always 256.",
+       "where": "Table: model-hyperparams caption"
       },
       {
        "name": "bias",
        "value": "false",
        "status": "stated",
        "quote": "No biases were used in any of the dense kernels or layer norms.",
-       "where": "Sec. 2 No Biases"
+       "where": "Sec. 2 Model Architecture, No Biases"
       }
      ],
      "new_op": ""
@@ -560,9 +616,9 @@
       {
        "name": "rope_heads",
        "value": "all",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "status": "stated",
+       "quote": "We use RoPE embeddings \\citep{su2021} rather than absolute or relative position embeddings",
+       "where": "Sec. 2 Model Architecture, RoPE Embeddings"
       },
       {
        "name": "pairing",
@@ -600,9 +656,9 @@
       {
        "name": "rope_heads",
        "value": "all",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "status": "stated",
+       "quote": "We use RoPE embeddings \\citep{su2021} rather than absolute or relative position embeddings",
+       "where": "Sec. 2 Model Architecture, RoPE Embeddings"
       },
       {
        "name": "pairing",
@@ -631,7 +687,7 @@
     {
      "subgraph": "block",
      "op": "attention",
-     "role": "causal multi-query attention",
+     "role": "causal multi-query self-attention",
      "inputs": [
       "q_r",
       "k_r",
@@ -643,22 +699,22 @@
        "name": "heads",
        "value": "16",
        "status": "stated",
-       "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$",
-       "where": "Table model-hyperparams"
+       "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$ & $8.63$ & $256$ $\\rightarrow$ $512$",
+       "where": "Table: model-hyperparams"
       },
       {
        "name": "kv_heads",
        "value": "1",
        "status": "stated",
-       "quote": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$",
-       "where": "Sec. 2 Multi-Query Attention"
+       "quote": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$, but ``query'' is still projected to shape $[k, h]$.",
+       "where": "Sec. 2 Model Architecture, Multi-Query Attention"
       },
       {
        "name": "head_dim",
        "value": "256",
        "status": "stated",
-       "quote": "attention head size is always 256",
-       "where": "Table model-hyperparams caption"
+       "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$ and attention head size is always 256.",
+       "where": "Table: model-hyperparams caption"
       },
       {
        "name": "scale",
@@ -698,21 +754,21 @@
      "inputs": [
       "a"
      ],
-     "output": "attn_out",
+     "output": "a_o",
      "attributes": [
       {
        "name": "out",
        "value": "4096",
        "status": "stated",
-       "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$",
-       "where": "Table model-hyperparams"
+       "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$ & $8.63$ & $256$ $\\rightarrow$ $512$",
+       "where": "Table: model-hyperparams"
       },
       {
        "name": "bias",
        "value": "false",
        "status": "stated",
        "quote": "No biases were used in any of the dense kernels or layer norms.",
-       "where": "Sec. 2 No Biases"
+       "where": "Sec. 2 Model Architecture, No Biases"
       }
      ],
      "new_op": ""
@@ -720,7 +776,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "SwiGLU gate projection xW",
+     "role": "SwiGLU gate projection (W), reads same normed input h (parallel block)",
      "inputs": [
       "h"
      ],
@@ -730,15 +786,15 @@
        "name": "out",
        "value": "16384",
        "status": "stated",
-       "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$",
-       "where": "Table model-hyperparams caption"
+       "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$ and attention head size is always 256.",
+       "where": "Table: model-hyperparams caption"
       },
       {
        "name": "bias",
        "value": "false",
        "status": "stated",
        "quote": "No biases were used in any of the dense kernels or layer norms.",
-       "where": "Sec. 2 No Biases"
+       "where": "Sec. 2 Model Architecture, No Biases"
       }
      ],
      "new_op": ""
@@ -746,7 +802,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "SwiGLU up projection xV",
+     "role": "SwiGLU up projection (V)",
      "inputs": [
       "h"
      ],
@@ -756,15 +812,15 @@
        "name": "out",
        "value": "16384",
        "status": "stated",
-       "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$",
-       "where": "Table model-hyperparams caption"
+       "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$ and attention head size is always 256.",
+       "where": "Table: model-hyperparams caption"
       },
       {
        "name": "bias",
        "value": "false",
        "status": "stated",
        "quote": "No biases were used in any of the dense kernels or layer norms.",
-       "where": "Sec. 2 No Biases"
+       "where": "Sec. 2 Model Architecture, No Biases"
       }
      ],
      "new_op": ""
@@ -799,21 +855,21 @@
      "inputs": [
       "m"
      ],
-     "output": "mlp_out",
+     "output": "m_o",
      "attributes": [
       {
        "name": "out",
        "value": "4096",
        "status": "stated",
-       "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$",
-       "where": "Table model-hyperparams"
+       "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$ & $8.63$ & $256$ $\\rightarrow$ $512$",
+       "where": "Table: model-hyperparams"
       },
       {
        "name": "bias",
        "value": "false",
        "status": "stated",
        "quote": "No biases were used in any of the dense kernels or layer norms.",
-       "where": "Sec. 2 No Biases"
+       "where": "Sec. 2 Model Architecture, No Biases"
       }
      ],
      "new_op": ""
@@ -824,7 +880,7 @@
      "role": "residual add of attention branch",
      "inputs": [
       "x",
-      "attn_out"
+      "a_o"
      ],
      "output": "x1",
      "attributes": [],
@@ -833,10 +889,10 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "residual add of parallel MLP branch",
+     "role": "residual add of MLP branch (parallel formulation)",
      "inputs": [
       "x1",
-      "mlp_out"
+      "m_o"
      ],
      "output": "x",
      "attributes": [],
@@ -845,7 +901,7 @@
     {
      "subgraph": "head",
      "op": "linear",
-     "role": "output logits with tied embedding",
+     "role": "output logits, tied to input embedding",
      "inputs": [
       "x"
      ],
@@ -856,14 +912,14 @@
        "value": "token_embd",
        "status": "stated",
        "quote": "We share the input and output embedding matrices",
-       "where": "Sec. 2 Shared Input-Output Embeddings"
+       "where": "Sec. 2 Model Architecture, Shared Input-Output Embeddings"
       },
       {
        "name": "bias",
        "value": "false",
        "status": "stated",
        "quote": "No biases were used in any of the dense kernels or layer norms.",
-       "where": "Sec. 2 No Biases"
+       "where": "Sec. 2 Model Architecture, No Biases"
       }
      ],
      "new_op": ""
@@ -871,7 +927,7 @@
     {
      "subgraph": "head",
      "op": "affine",
-     "role": "scale pre-softmax logits by 1/sqrt(d_model)",
+     "role": "scale pre-softmax logits by 1/sqrt(embedding size)",
      "inputs": [
       "logits_raw"
      ],
@@ -879,10 +935,10 @@
      "attributes": [
       {
        "name": "scale",
-       "value": "1/sqrt(n)",
+       "value": "1/sqrt(d_model)",
        "status": "stated",
        "quote": "Because the input and output embedding layers are shared, we scale the pre-softmax output logits by $1/\\sqrt{n}$, where $n$ is the embedding size.",
-       "where": "Sec. 5 Weight initialization"
+       "where": "Sec. 5 Training Setup, Weight initialization"
       },
       {
        "name": "shift",
@@ -897,18 +953,12 @@
    ],
    "new_ops": [],
    "mechanisms_outside_ir": [],
-   "notes": "Paper's own model family PaLM 8B/62B/540B (headline 540B); block_ops attribute sizes use 8B. d_ff values derived from the stated rule d_ff = 4 x d_model (number not written literally). Vocab '256k' given as 256000; exact count not stated. Norm is LayerNorm without bias (scale only), mapped to other:. A single shared pre-LayerNorm is implied by the parallel formula LayerNorm(x) feeding both branches. A final LayerNorm before the head is not stated and is omitted. RoPE theta, pairing and fraction, attention scale and norm eps are not stated. For 540B, n_heads x head_dim (12288) differs from d_model (18432), as the table states head size is always 256."
+   "notes": "Described the PaLM family (8B, 62B, 540B; identical architecture); block_ops sizes use the 8B config. d_ff values are derived from the stated rule d_ff = 4 x d_model, so the quoted rule does not contain the number itself. Layer norm has a learned scale but no bias. The parallel formula writes LayerNorm(x) for both branches; whether the two branches share one norm's parameters is not stated, and I modelled one shared norm. A final norm before the head is not stated, so none is included. RoPE pairing and theta, norm eps and the attention scale are not stated. 540B: 48 heads x 256 = 12288 is not equal to d_model 18432, consistent with the stated fixed head size."
   },
   "verification": {
    "errors": [],
    "warnings": [],
-   "inherits": {
-    "ancestor": "Transformer (Vaswani et al., 2017)",
-    "resolved": "transformer",
-    "quote": "uses a standard Transformer model architecture \\citep{vaswani2017} in a decoder-only setup",
-    "where": "Sec. 2 Model Architecture",
-    "quote_found": true
-   },
+   "inherits": null,
    "family": {
     "value": "decoder_only",
     "status": "stated",
@@ -923,48 +973,48 @@
      "d_model": {
       "value": "4096",
       "status": "stated",
-      "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$",
-      "where": "Table model-hyperparams",
+      "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$ & $8.63$ & $256$ $\\rightarrow$ $512$",
+      "where": "Table: model-hyperparams",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "32",
       "status": "stated",
-      "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$",
-      "where": "Table model-hyperparams",
+      "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$ & $8.63$ & $256$ $\\rightarrow$ $512$",
+      "where": "Table: model-hyperparams",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$",
-      "where": "Table model-hyperparams",
+      "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$ & $8.63$ & $256$ $\\rightarrow$ $512$",
+      "where": "Table: model-hyperparams",
       "reasons": [],
       "check": "verified"
      },
      "n_kv_heads": {
       "value": "1",
       "status": "stated",
-      "quote": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$",
-      "where": "Sec. 2 Multi-Query Attention",
+      "quote": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$, but ``query'' is still projected to shape $[k, h]$.",
+      "where": "Sec. 2 Model Architecture, Multi-Query Attention",
       "reasons": [],
       "check": "verified"
      },
      "head_dim": {
       "value": "256",
       "status": "stated",
-      "quote": "attention head size is always 256",
-      "where": "Table model-hyperparams caption",
+      "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$ and attention head size is always 256.",
+      "where": "Table: model-hyperparams caption",
       "reasons": [],
       "check": "verified"
      },
      "d_ff": {
       "value": "16384",
       "status": "stated",
-      "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$",
-      "where": "Table model-hyperparams caption",
+      "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$ and attention head size is always 256.",
+      "where": "Table: model-hyperparams caption",
       "reasons": [
        "16384 does not occur in its quote"
       ],
@@ -974,7 +1024,7 @@
       "value": "256000",
       "status": "stated",
       "quote": "We use a SentencePiece \\citep{kudo2018sentencepiece} vocabulary with 256k tokens",
-      "where": "Sec. 2 Vocabulary",
+      "where": "Sec. 2 Model Architecture, Vocabulary",
       "reasons": [],
       "check": "verified"
      },
@@ -1010,48 +1060,48 @@
      "d_model": {
       "value": "8192",
       "status": "stated",
-      "quote": "\\ournameshort{}~62B & $64$ & $32$  & $8192$",
-      "where": "Table model-hyperparams",
+      "quote": "\\ournameshort{}~62B & $64$ & $32$  & $8192$ & $62.50$ & $512$ $\\rightarrow$ $1024$",
+      "where": "Table: model-hyperparams",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "64",
       "status": "stated",
-      "quote": "\\ournameshort{}~62B & $64$ & $32$  & $8192$",
-      "where": "Table model-hyperparams",
+      "quote": "\\ournameshort{}~62B & $64$ & $32$  & $8192$ & $62.50$ & $512$ $\\rightarrow$ $1024$",
+      "where": "Table: model-hyperparams",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "32",
       "status": "stated",
-      "quote": "\\ournameshort{}~62B & $64$ & $32$  & $8192$",
-      "where": "Table model-hyperparams",
+      "quote": "\\ournameshort{}~62B & $64$ & $32$  & $8192$ & $62.50$ & $512$ $\\rightarrow$ $1024$",
+      "where": "Table: model-hyperparams",
       "reasons": [],
       "check": "verified"
      },
      "n_kv_heads": {
       "value": "1",
       "status": "stated",
-      "quote": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$",
-      "where": "Sec. 2 Multi-Query Attention",
+      "quote": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$, but ``query'' is still projected to shape $[k, h]$.",
+      "where": "Sec. 2 Model Architecture, Multi-Query Attention",
       "reasons": [],
       "check": "verified"
      },
      "head_dim": {
       "value": "256",
       "status": "stated",
-      "quote": "attention head size is always 256",
-      "where": "Table model-hyperparams caption",
+      "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$ and attention head size is always 256.",
+      "where": "Table: model-hyperparams caption",
       "reasons": [],
       "check": "verified"
      },
      "d_ff": {
       "value": "32768",
       "status": "stated",
-      "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$",
-      "where": "Table model-hyperparams caption",
+      "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$ and attention head size is always 256.",
+      "where": "Table: model-hyperparams caption",
       "reasons": [
        "32768 does not occur in its quote"
       ],
@@ -1061,7 +1111,7 @@
       "value": "256000",
       "status": "stated",
       "quote": "We use a SentencePiece \\citep{kudo2018sentencepiece} vocabulary with 256k tokens",
-      "where": "Sec. 2 Vocabulary",
+      "where": "Sec. 2 Model Architecture, Vocabulary",
       "reasons": [],
       "check": "verified"
      },
@@ -1097,48 +1147,48 @@
      "d_model": {
       "value": "18432",
       "status": "stated",
-      "quote": "\\ournameshort{}~540B & $118$ & $48$ & $18432$",
-      "where": "Table model-hyperparams",
+      "quote": "\\ournameshort{}~540B & $118$ & $48$ & $18432$ & $540.35$",
+      "where": "Table: model-hyperparams",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "118",
       "status": "stated",
-      "quote": "\\ournameshort{}~540B & $118$ & $48$ & $18432$",
-      "where": "Table model-hyperparams",
+      "quote": "\\ournameshort{}~540B & $118$ & $48$ & $18432$ & $540.35$",
+      "where": "Table: model-hyperparams",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "48",
       "status": "stated",
-      "quote": "\\ournameshort{}~540B & $118$ & $48$ & $18432$",
-      "where": "Table model-hyperparams",
+      "quote": "\\ournameshort{}~540B & $118$ & $48$ & $18432$ & $540.35$",
+      "where": "Table: model-hyperparams",
       "reasons": [],
       "check": "verified"
      },
      "n_kv_heads": {
       "value": "1",
       "status": "stated",
-      "quote": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$",
-      "where": "Sec. 2 Multi-Query Attention",
+      "quote": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$, but ``query'' is still projected to shape $[k, h]$.",
+      "where": "Sec. 2 Model Architecture, Multi-Query Attention",
       "reasons": [],
       "check": "verified"
      },
      "head_dim": {
       "value": "256",
       "status": "stated",
-      "quote": "attention head size is always 256",
-      "where": "Table model-hyperparams caption",
+      "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$ and attention head size is always 256.",
+      "where": "Table: model-hyperparams caption",
       "reasons": [],
       "check": "verified"
      },
      "d_ff": {
       "value": "73728",
       "status": "stated",
-      "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$",
-      "where": "Table model-hyperparams caption",
+      "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$ and attention head size is always 256.",
+      "where": "Table: model-hyperparams caption",
       "reasons": [
        "73728 does not occur in its quote"
       ],
@@ -1148,7 +1198,7 @@
       "value": "256000",
       "status": "stated",
       "quote": "We use a SentencePiece \\citep{kudo2018sentencepiece} vocabulary with 256k tokens",
-      "where": "Sec. 2 Vocabulary",
+      "where": "Sec. 2 Model Architecture, Vocabulary",
       "reasons": [],
       "check": "verified"
      },
@@ -1183,20 +1233,36 @@
    "primary_config": "PaLM 8B",
    "flavours": {
     "norm": {
-     "value": "other:layernorm with learned scale and no bias",
+     "value": "other:layernorm without bias (learned scale only)",
      "status": "stated",
      "quote": "No biases were used in any of the dense kernels or layer norms.",
-     "where": "Sec. 2 No Biases",
+     "where": "Sec. 2 Model Architecture, No Biases",
      "reasons": [],
      "check": "quote_only"
     },
     "norm_placement": {
      "value": "pre",
      "status": "stated",
-     "quote": "\\[y = x + \\textrm{MLP}(\\textrm{LayerNorm}(x)) + \\textrm{Attention}(\\textrm{LayerNorm}(x))\\]",
-     "where": "Sec. 2 Parallel Layers",
+     "quote": "y = x + \\textrm{MLP}(\\textrm{LayerNorm}(x)) + \\textrm{Attention}(\\textrm{LayerNorm}(x))",
+     "where": "Sec. 2 Model Architecture, Parallel Layers",
      "reasons": [],
      "check": "quote_only"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "norm_eps": {
      "value": "",
@@ -1210,7 +1276,7 @@
      "value": "swiglu",
      "status": "stated",
      "quote": "We use SwiGLU activations ($\\textrm{Swish}(xW) \\cdot xV$) for the MLP intermediate activations",
-     "where": "Sec. 2 SwiGLU Activation",
+     "where": "Sec. 2 Model Architecture, SwiGLU Activation",
      "reasons": [],
      "check": "verified"
     },
@@ -1218,9 +1284,25 @@
      "value": "rope",
      "status": "stated",
      "quote": "We use RoPE embeddings \\citep{su2021} rather than absolute or relative position embeddings",
-     "where": "Sec. 2 RoPE Embeddings",
+     "where": "Sec. 2 Model Architecture, RoPE Embeddings",
      "reasons": [],
      "check": "verified"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "rope_pairing": {
      "value": "",
@@ -1249,8 +1331,8 @@
     "residual": {
      "value": "residual",
      "status": "stated",
-     "quote": "\\[y = x + \\textrm{MLP}(\\textrm{LayerNorm}(x)) + \\textrm{Attention}(\\textrm{LayerNorm}(x))\\]",
-     "where": "Sec. 2 Parallel Layers",
+     "quote": "y = x + \\textrm{MLP}(\\textrm{LayerNorm}(x)) + \\textrm{Attention}(\\textrm{LayerNorm}(x))",
+     "where": "Sec. 2 Model Architecture, Parallel Layers",
      "reasons": [
       "the quote does not name residual (looked for /residual|skip/)"
      ],
@@ -1260,14 +1342,14 @@
      "value": "true",
      "status": "stated",
      "quote": "We use a ``parallel'' formulation in each Transformer block~\\citep{gpt-j}, rather than the standard ``serialized'' formulation.",
-     "where": "Sec. 2 Parallel Layers",
+     "where": "Sec. 2 Model Architecture, Parallel Layers",
      "reasons": [],
      "check": "quote_only"
     },
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "a dense, decoder-only, full-attention Transformer model, which is trained to perform autoregressive language modeling",
+     "quote": "a dense, decoder-only, full-attention Transformer model",
      "where": "Sec. Conclusion",
      "reasons": [],
      "check": "quote_only"
@@ -1292,7 +1374,7 @@
      "value": "false",
      "status": "stated",
      "quote": "No biases were used in any of the dense kernels or layer norms.",
-     "where": "Sec. 2 No Biases",
+     "where": "Sec. 2 Model Architecture, No Biases",
      "reasons": [],
      "check": "quote_only"
     },
@@ -1300,23 +1382,31 @@
      "value": "false",
      "status": "stated",
      "quote": "No biases were used in any of the dense kernels or layer norms.",
-     "where": "Sec. 2 No Biases",
+     "where": "Sec. 2 Model Architecture, No Biases",
      "reasons": [],
      "check": "quote_only"
+    },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "tied_embeddings": {
      "value": "true",
      "status": "stated",
      "quote": "We share the input and output embedding matrices",
-     "where": "Sec. 2 Shared Input-Output Embeddings",
+     "where": "Sec. 2 Model Architecture, Shared Input-Output Embeddings",
      "reasons": [],
      "check": "quote_only"
     },
     "moe": {
      "value": "false",
      "status": "stated",
-     "quote": "we trained a $540$-billion parameter, densely activated, Transformer language model",
-     "where": "Abstract",
+     "quote": "a dense, decoder-only, full-attention Transformer model",
+     "where": "Sec. Conclusion",
      "reasons": [],
      "check": "quote_only"
     },
@@ -1343,6 +1433,46 @@
      "where": "",
      "reasons": [],
      "check": "not_stated"
+    },
+    "ssm": {
+     "value": "none",
+     "status": "stated",
+     "quote": "a dense, decoder-only, full-attention Transformer model",
+     "where": "Sec. Conclusion",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     }
    },
    "new_ops": [],
@@ -1351,7 +1481,7 @@
      "i": 0,
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding (shared with output head, no norm/scale on embeddings)",
+     "role": "token embedding (shared with output head)",
      "inputs": [
       "tokens"
      ],
@@ -1364,7 +1494,7 @@
      "i": 1,
      "subgraph": "block",
      "op": "layernorm",
-     "role": "single pre-norm shared by attention and MLP branches (scale only, no bias)",
+     "role": "pre-norm shared input to parallel attention and MLP (no bias)",
      "inputs": [
       "x"
      ],
@@ -1384,7 +1514,7 @@
        "value": "false",
        "status": "stated",
        "quote": "No biases were used in any of the dense kernels or layer norms.",
-       "where": "Sec. 2 No Biases",
+       "where": "Sec. 2 Model Architecture, No Biases",
        "reasons": [],
        "check": "quote_only",
        "name": "bias"
@@ -1406,8 +1536,8 @@
       {
        "value": "4096",
        "status": "stated",
-       "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$",
-       "where": "Table model-hyperparams",
+       "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$ & $8.63$ & $256$ $\\rightarrow$ $512$",
+       "where": "Table: model-hyperparams",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -1416,7 +1546,7 @@
        "value": "false",
        "status": "stated",
        "quote": "No biases were used in any of the dense kernels or layer norms.",
-       "where": "Sec. 2 No Biases",
+       "where": "Sec. 2 Model Architecture, No Biases",
        "reasons": [],
        "check": "quote_only",
        "name": "bias"
@@ -1428,7 +1558,7 @@
      "i": 3,
      "subgraph": "block",
      "op": "linear",
-     "role": "shared key projection (multi-query, one head)",
+     "role": "single shared key projection (multi-query)",
      "inputs": [
       "h"
      ],
@@ -1438,8 +1568,8 @@
       {
        "value": "256",
        "status": "stated",
-       "quote": "attention head size is always 256",
-       "where": "Table model-hyperparams caption",
+       "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$ and attention head size is always 256.",
+       "where": "Table: model-hyperparams caption",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -1448,7 +1578,7 @@
        "value": "false",
        "status": "stated",
        "quote": "No biases were used in any of the dense kernels or layer norms.",
-       "where": "Sec. 2 No Biases",
+       "where": "Sec. 2 Model Architecture, No Biases",
        "reasons": [],
        "check": "quote_only",
        "name": "bias"
@@ -1460,7 +1590,7 @@
      "i": 4,
      "subgraph": "block",
      "op": "linear",
-     "role": "shared value projection (multi-query, one head)",
+     "role": "single shared value projection (multi-query)",
      "inputs": [
       "h"
      ],
@@ -1470,8 +1600,8 @@
       {
        "value": "256",
        "status": "stated",
-       "quote": "attention head size is always 256",
-       "where": "Table model-hyperparams caption",
+       "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$ and attention head size is always 256.",
+       "where": "Table: model-hyperparams caption",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -1480,7 +1610,7 @@
        "value": "false",
        "status": "stated",
        "quote": "No biases were used in any of the dense kernels or layer norms.",
-       "where": "Sec. 2 No Biases",
+       "where": "Sec. 2 Model Architecture, No Biases",
        "reasons": [],
        "check": "quote_only",
        "name": "bias"
@@ -1501,13 +1631,11 @@
      "attributes": [
       {
        "value": "all",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [
-        "not_stated carries a value or quote (ignored)"
-       ],
-       "check": "not_stated",
+       "status": "stated",
+       "quote": "We use RoPE embeddings \\citep{su2021} rather than absolute or relative position embeddings",
+       "where": "Sec. 2 Model Architecture, RoPE Embeddings",
+       "reasons": [],
+       "check": "quote_only",
        "name": "rope_heads"
       },
       {
@@ -1553,13 +1681,11 @@
      "attributes": [
       {
        "value": "all",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [
-        "not_stated carries a value or quote (ignored)"
-       ],
-       "check": "not_stated",
+       "status": "stated",
+       "quote": "We use RoPE embeddings \\citep{su2021} rather than absolute or relative position embeddings",
+       "where": "Sec. 2 Model Architecture, RoPE Embeddings",
+       "reasons": [],
+       "check": "quote_only",
        "name": "rope_heads"
       },
       {
@@ -1596,7 +1722,7 @@
      "i": 7,
      "subgraph": "block",
      "op": "attention",
-     "role": "causal multi-query attention",
+     "role": "causal multi-query self-attention",
      "inputs": [
       "q_r",
       "k_r",
@@ -1608,8 +1734,8 @@
       {
        "value": "16",
        "status": "stated",
-       "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$",
-       "where": "Table model-hyperparams",
+       "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$ & $8.63$ & $256$ $\\rightarrow$ $512$",
+       "where": "Table: model-hyperparams",
        "reasons": [],
        "check": "verified",
        "name": "heads"
@@ -1617,8 +1743,8 @@
       {
        "value": "1",
        "status": "stated",
-       "quote": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$",
-       "where": "Sec. 2 Multi-Query Attention",
+       "quote": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$, but ``query'' is still projected to shape $[k, h]$.",
+       "where": "Sec. 2 Model Architecture, Multi-Query Attention",
        "reasons": [],
        "check": "verified",
        "name": "kv_heads"
@@ -1626,8 +1752,8 @@
       {
        "value": "256",
        "status": "stated",
-       "quote": "attention head size is always 256",
-       "where": "Table model-hyperparams caption",
+       "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$ and attention head size is always 256.",
+       "where": "Table: model-hyperparams caption",
        "reasons": [],
        "check": "verified",
        "name": "head_dim"
@@ -1681,14 +1807,14 @@
      "inputs": [
       "a"
      ],
-     "output": "attn_out",
+     "output": "a_o",
      "new_op": "",
      "attributes": [
       {
        "value": "4096",
        "status": "stated",
-       "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$",
-       "where": "Table model-hyperparams",
+       "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$ & $8.63$ & $256$ $\\rightarrow$ $512$",
+       "where": "Table: model-hyperparams",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -1697,7 +1823,7 @@
        "value": "false",
        "status": "stated",
        "quote": "No biases were used in any of the dense kernels or layer norms.",
-       "where": "Sec. 2 No Biases",
+       "where": "Sec. 2 Model Architecture, No Biases",
        "reasons": [],
        "check": "quote_only",
        "name": "bias"
@@ -1709,7 +1835,7 @@
      "i": 9,
      "subgraph": "block",
      "op": "linear",
-     "role": "SwiGLU gate projection xW",
+     "role": "SwiGLU gate projection (W), reads same normed input h (parallel block)",
      "inputs": [
       "h"
      ],
@@ -1719,8 +1845,8 @@
       {
        "value": "16384",
        "status": "stated",
-       "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$",
-       "where": "Table model-hyperparams caption",
+       "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$ and attention head size is always 256.",
+       "where": "Table: model-hyperparams caption",
        "reasons": [
         "16384 does not occur in its quote"
        ],
@@ -1731,7 +1857,7 @@
        "value": "false",
        "status": "stated",
        "quote": "No biases were used in any of the dense kernels or layer norms.",
-       "where": "Sec. 2 No Biases",
+       "where": "Sec. 2 Model Architecture, No Biases",
        "reasons": [],
        "check": "quote_only",
        "name": "bias"
@@ -1743,7 +1869,7 @@
      "i": 10,
      "subgraph": "block",
      "op": "linear",
-     "role": "SwiGLU up projection xV",
+     "role": "SwiGLU up projection (V)",
      "inputs": [
       "h"
      ],
@@ -1753,8 +1879,8 @@
       {
        "value": "16384",
        "status": "stated",
-       "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$",
-       "where": "Table model-hyperparams caption",
+       "quote": "The feed-forward size $d_\\textrm{ff}$ is always $4 \\times d_\\textrm{model}$ and attention head size is always 256.",
+       "where": "Table: model-hyperparams caption",
        "reasons": [
         "16384 does not occur in its quote"
        ],
@@ -1765,7 +1891,7 @@
        "value": "false",
        "status": "stated",
        "quote": "No biases were used in any of the dense kernels or layer norms.",
-       "where": "Sec. 2 No Biases",
+       "where": "Sec. 2 Model Architecture, No Biases",
        "reasons": [],
        "check": "quote_only",
        "name": "bias"
@@ -1808,14 +1934,14 @@
      "inputs": [
       "m"
      ],
-     "output": "mlp_out",
+     "output": "m_o",
      "new_op": "",
      "attributes": [
       {
        "value": "4096",
        "status": "stated",
-       "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$",
-       "where": "Table model-hyperparams",
+       "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$ & $8.63$ & $256$ $\\rightarrow$ $512$",
+       "where": "Table: model-hyperparams",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -1824,7 +1950,7 @@
        "value": "false",
        "status": "stated",
        "quote": "No biases were used in any of the dense kernels or layer norms.",
-       "where": "Sec. 2 No Biases",
+       "where": "Sec. 2 Model Architecture, No Biases",
        "reasons": [],
        "check": "quote_only",
        "name": "bias"
@@ -1839,7 +1965,7 @@
      "role": "residual add of attention branch",
      "inputs": [
       "x",
-      "attn_out"
+      "a_o"
      ],
      "output": "x1",
      "new_op": "",
@@ -1850,10 +1976,10 @@
      "i": 15,
      "subgraph": "block",
      "op": "add",
-     "role": "residual add of parallel MLP branch",
+     "role": "residual add of MLP branch (parallel formulation)",
      "inputs": [
       "x1",
-      "mlp_out"
+      "m_o"
      ],
      "output": "x",
      "new_op": "",
@@ -1864,7 +1990,7 @@
      "i": 16,
      "subgraph": "head",
      "op": "linear",
-     "role": "output logits with tied embedding",
+     "role": "output logits, tied to input embedding",
      "inputs": [
       "x"
      ],
@@ -1875,7 +2001,7 @@
        "value": "token_embd",
        "status": "stated",
        "quote": "We share the input and output embedding matrices",
-       "where": "Sec. 2 Shared Input-Output Embeddings",
+       "where": "Sec. 2 Model Architecture, Shared Input-Output Embeddings",
        "reasons": [],
        "check": "quote_only",
        "name": "tied_to"
@@ -1884,7 +2010,7 @@
        "value": "false",
        "status": "stated",
        "quote": "No biases were used in any of the dense kernels or layer norms.",
-       "where": "Sec. 2 No Biases",
+       "where": "Sec. 2 Model Architecture, No Biases",
        "reasons": [],
        "check": "quote_only",
        "name": "bias"
@@ -1896,7 +2022,7 @@
      "i": 17,
      "subgraph": "head",
      "op": "affine",
-     "role": "scale pre-softmax logits by 1/sqrt(d_model)",
+     "role": "scale pre-softmax logits by 1/sqrt(embedding size)",
      "inputs": [
       "logits_raw"
      ],
@@ -1904,10 +2030,10 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "1/sqrt(n)",
+       "value": "1/sqrt(d_model)",
        "status": "stated",
        "quote": "Because the input and output embedding layers are shared, we scale the pre-softmax output logits by $1/\\sqrt{n}$, where $n$ is the embedding size.",
-       "where": "Sec. 5 Weight initialization",
+       "where": "Sec. 5 Training Setup, Weight initialization",
        "reasons": [],
        "check": "verified",
        "name": "scale"
@@ -1931,9 +2057,9 @@
    "summary": {
     "counts": {
      "verified": 32,
-     "quote_only": 20,
+     "quote_only": 23,
      "unverified": 7,
-     "not_stated": 21
+     "not_stated": 28
     },
     "unverified": [
      {

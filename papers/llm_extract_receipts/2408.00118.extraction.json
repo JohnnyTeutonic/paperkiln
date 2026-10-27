@@ -4,32 +4,32 @@
  "fields": {
   "d_model": {
    "value": 2304,
-   "evidence": "\\textit{d}\\_{model} & 2304 & 3584 & 4608 \\\\ [Table tab:model_params]",
+   "evidence": "\\textit{d}\\_{model} & 2304 & 3584 & 4608 [Table tab:model_params]",
    "verdict": "used"
   },
   "n_layers": {
    "value": 26,
-   "evidence": "Layers & 26 & 42 & 46 \\\\ [Table tab:model_params]",
+   "evidence": "Layers & 26 & 42 & 46 [Table tab:model_params]",
    "verdict": "used"
   },
   "n_heads": {
    "value": 8,
-   "evidence": "Num heads & 8 & 16 & 32 \\\\ [Table tab:model_params]",
+   "evidence": "Num heads & 8 & 16 & 32 [Table tab:model_params]",
    "verdict": "used"
   },
   "n_kv_heads": {
    "value": 4,
-   "evidence": "Num KV heads & 4 & 8 & 16 \\\\ [Table tab:model_params]",
+   "evidence": "Num KV heads & 4 & 8 & 16 [Table tab:model_params]",
    "verdict": "used"
   },
   "d_ff": {
    "value": 18432,
-   "evidence": "Feedforward dim & 18432 & 28672 & 73728 \\\\ [Table tab:model_params]",
+   "evidence": "Feedforward dim & 18432 & 28672 & 73728 [Table tab:model_params]",
    "verdict": "used"
   },
   "vocab_size": {
    "value": 256128,
-   "evidence": "Vocab size & 256128 & 256128 & 256128 \\\\ [Table tab:model_params]",
+   "evidence": "Vocab size & 256128 & 256128 & 256128 [Table tab:model_params]",
    "verdict": "used"
   },
   "context_length": {
@@ -54,14 +54,14 @@
   },
   "residual": {
    "value": "residual",
-   "evidence": "the Gemma 2 models are based on a decoder-only transformer architecture~\\citep{DBLP:journals/corr/VaswaniSPUJGKP17} [Sec. Model Architecture]",
+   "evidence": "the Gemma 2 models are based on a decoder-only transformer architecture [Sec. Model Architecture]",
    "verdict": "unverified",
    "reasons": [
     "the quote does not name residual (looked for /residual|skip/)"
    ]
   },
   "attention": {
-   "value": "swa",
+   "value": "other:alternating local sliding-window (4096) and global (8192 span) attention every other layer, with tanh logit soft-capping (50)",
    "evidence": "We alternate between a local sliding window attention~\\citep{slidingwindow, beltagy2020longformer} and global attention~\\citep{globalattention} in every other layer. [Sec. Model Architecture]",
    "verdict": "used"
   },
@@ -116,22 +116,22 @@
    "mechanism": "grouped or multi-query attention",
    "where": "llm extraction, verified quote, Table tab:model_params",
    "blocking": true,
-   "evidence": "Num KV heads & 4 & 8 & 16 \\\\"
+   "evidence": "Num KV heads & 4 & 8 & 16"
   },
   {
    "mechanism": "new op final_logit_softcap = (30*tanh((x/30))) (expr)",
-   "where": "llm extraction, verified quote, Sec. Model Architecture",
+   "where": "llm extraction, verified quote, Sec. Model Architecture, Logit soft-capping",
    "blocking": true,
-   "evidence": "We set the soft\\_cap parameter to $50.0$ for the self-attention layers and to $30.0$ for the final layer."
+   "evidence": "$$\\text{logits} \\leftarrow \\text{soft\\_cap} * \\tanh(\\text{logits} / \\text{soft\\_cap}).$$"
   },
   {
-   "mechanism": "Attention logit soft-capping inside every attention layer: the pre-softmax scores are replaced by 50*tanh(scores/50). The IR attention op has no hook for transforming its scores.",
-   "where": "llm extraction, verified quote, Sec. Model Architecture",
+   "mechanism": "new op softcapped_attention (needs a new primitive: Needs a GQA causal attention primitive that applies 50*tanh(s/50) to the [heads, T, T] pre-softmax logit matrix before t)",
+   "where": "llm extraction, verified quote, Sec. Model Architecture, Logit soft-capping",
    "blocking": true,
-   "evidence": "$$\\text{logits} \\leftarrow \\text{soft\\_cap} * \\tanh(\\text{logits} / \\text{soft\\_cap}).$$\nWe set the soft\\_cap parameter to $50.0$ for the self-attention layers and to $30.0$ for the final layer."
+   "evidence": "We cap logits~\\citep{bello2016combinatorial} in each attention layer and the final layer such that the value of the logits stays between $-\\text{soft\\_cap}$ and $+\\text{soft\\_cap}$."
   },
   {
-   "mechanism": "Layer-alternating attention type: local sliding window (4096) and global attention (8192 span) alternate every other layer, so blocks are not identical.",
+   "mechanism": "Per-layer alternation of local sliding-window (4096) and global (8192 span) attention. The block is not identical across layers. Which parity starts with local attention is not stated.",
    "where": "llm extraction, verified quote, Sec. Model Architecture",
    "blocking": true,
    "evidence": "We alternate between a local sliding window attention~\\citep{slidingwindow, beltagy2020longformer} and global attention~\\citep{globalattention} in every other layer."
@@ -142,14 +142,14 @@
   "sent_sha256": "7ee16bb98434111201c143c6d31c5b076d1a55cfb2db998bb98adb729a89a975",
   "from": "https://arxiv.org/e-print/2408.00118",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
+  "extractor_sha256": "9d5951b0f11c920aaf075abead17d7d4e619d37402d47690ba452de15620e921",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
+  "prompt_sha256": "e6c6c5052b656885910d1539b8c320ba4ecb9262a6079252b852f1ff637b03ef",
   "n_calls": 1,
-  "cost_usd": 0.298252,
+  "cost_usd": 0.319088,
   "request_ids": [
-   "req_011CgFjHeg8qUyzfph58qtpU"
+   "req_011CgRuNycGCfjziU7coLsvq"
   ]
  },
  "llm": {
@@ -173,43 +173,43 @@
      "d_model": {
       "value": "2304",
       "status": "stated",
-      "quote": "\\textit{d}\\_{model} & 2304 & 3584 & 4608 \\\\",
+      "quote": "\\textit{d}\\_{model} & 2304 & 3584 & 4608",
       "where": "Table tab:model_params"
      },
      "n_layers": {
       "value": "26",
       "status": "stated",
-      "quote": "Layers & 26 & 42 & 46  \\\\",
+      "quote": "Layers & 26 & 42 & 46",
       "where": "Table tab:model_params"
      },
      "n_heads": {
       "value": "8",
       "status": "stated",
-      "quote": "Num heads & 8 & 16 & 32 \\\\",
+      "quote": "Num heads & 8 & 16 & 32",
       "where": "Table tab:model_params"
      },
      "n_kv_heads": {
       "value": "4",
       "status": "stated",
-      "quote": "Num KV heads & 4 & 8 & 16  \\\\",
+      "quote": "Num KV heads & 4 & 8 & 16",
       "where": "Table tab:model_params"
      },
      "head_dim": {
       "value": "256",
       "status": "stated",
-      "quote": "Head size & 256 & 256 & 128  \\\\",
+      "quote": "Head size & 256 & 256 & 128",
       "where": "Table tab:model_params"
      },
      "d_ff": {
       "value": "18432",
       "status": "stated",
-      "quote": "Feedforward dim & 18432 & 28672 & 73728  \\\\",
+      "quote": "Feedforward dim & 18432 & 28672 & 73728",
       "where": "Table tab:model_params"
      },
      "vocab_size": {
       "value": "256128",
       "status": "stated",
-      "quote": "Vocab size & 256128 & 256128 & 256128 \\\\",
+      "quote": "Vocab size & 256128 & 256128 & 256128",
       "where": "Table tab:model_params"
      },
      "context_length": {
@@ -224,43 +224,43 @@
      "d_model": {
       "value": "3584",
       "status": "stated",
-      "quote": "\\textit{d}\\_{model} & 2304 & 3584 & 4608 \\\\",
+      "quote": "\\textit{d}\\_{model} & 2304 & 3584 & 4608",
       "where": "Table tab:model_params"
      },
      "n_layers": {
       "value": "42",
       "status": "stated",
-      "quote": "Layers & 26 & 42 & 46  \\\\",
+      "quote": "Layers & 26 & 42 & 46",
       "where": "Table tab:model_params"
      },
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "Num heads & 8 & 16 & 32 \\\\",
+      "quote": "Num heads & 8 & 16 & 32",
       "where": "Table tab:model_params"
      },
      "n_kv_heads": {
       "value": "8",
       "status": "stated",
-      "quote": "Num KV heads & 4 & 8 & 16  \\\\",
+      "quote": "Num KV heads & 4 & 8 & 16",
       "where": "Table tab:model_params"
      },
      "head_dim": {
       "value": "256",
       "status": "stated",
-      "quote": "Head size & 256 & 256 & 128  \\\\",
+      "quote": "Head size & 256 & 256 & 128",
       "where": "Table tab:model_params"
      },
      "d_ff": {
       "value": "28672",
       "status": "stated",
-      "quote": "Feedforward dim & 18432 & 28672 & 73728  \\\\",
+      "quote": "Feedforward dim & 18432 & 28672 & 73728",
       "where": "Table tab:model_params"
      },
      "vocab_size": {
       "value": "256128",
       "status": "stated",
-      "quote": "Vocab size & 256128 & 256128 & 256128 \\\\",
+      "quote": "Vocab size & 256128 & 256128 & 256128",
       "where": "Table tab:model_params"
      },
      "context_length": {
@@ -275,43 +275,43 @@
      "d_model": {
       "value": "4608",
       "status": "stated",
-      "quote": "\\textit{d}\\_{model} & 2304 & 3584 & 4608 \\\\",
+      "quote": "\\textit{d}\\_{model} & 2304 & 3584 & 4608",
       "where": "Table tab:model_params"
      },
      "n_layers": {
       "value": "46",
       "status": "stated",
-      "quote": "Layers & 26 & 42 & 46  \\\\",
+      "quote": "Layers & 26 & 42 & 46",
       "where": "Table tab:model_params"
      },
      "n_heads": {
       "value": "32",
       "status": "stated",
-      "quote": "Num heads & 8 & 16 & 32 \\\\",
+      "quote": "Num heads & 8 & 16 & 32",
       "where": "Table tab:model_params"
      },
      "n_kv_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "Num KV heads & 4 & 8 & 16  \\\\",
+      "quote": "Num KV heads & 4 & 8 & 16",
       "where": "Table tab:model_params"
      },
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "Head size & 256 & 256 & 128  \\\\",
+      "quote": "Head size & 256 & 256 & 128",
       "where": "Table tab:model_params"
      },
      "d_ff": {
       "value": "73728",
       "status": "stated",
-      "quote": "Feedforward dim & 18432 & 28672 & 73728  \\\\",
+      "quote": "Feedforward dim & 18432 & 28672 & 73728",
       "where": "Table tab:model_params"
      },
      "vocab_size": {
       "value": "256128",
       "status": "stated",
-      "quote": "Vocab size & 256128 & 256128 & 256128 \\\\",
+      "quote": "Vocab size & 256128 & 256128 & 256128",
       "where": "Table tab:model_params"
      },
      "context_length": {
@@ -336,6 +336,18 @@
      "quote": "we use RMSNorm~\\citep{rmsnorm} to normalize the input and output of each transformer sub-layer, the attention layer, and the feedforward layer.",
      "where": "Sec. Model Architecture"
     },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
     "norm_eps": {
      "value": "",
      "status": "not_stated",
@@ -353,6 +365,18 @@
      "status": "stated",
      "quote": "the use of Rotary Position Embeddings (RoPE)~\\citep{rope}",
      "where": "Sec. Model Architecture"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "rope_pairing": {
      "value": "",
@@ -375,7 +399,7 @@
     "residual": {
      "value": "residual",
      "status": "stated",
-     "quote": "the Gemma 2 models are based on a decoder-only transformer architecture~\\citep{DBLP:journals/corr/VaswaniSPUJGKP17}",
+     "quote": "the Gemma 2 models are based on a decoder-only transformer architecture",
      "where": "Sec. Model Architecture"
     },
     "parallel_block": {
@@ -385,7 +409,7 @@
      "where": ""
     },
     "attention": {
-     "value": "swa",
+     "value": "other:alternating local sliding-window (4096) and global (8192 span) attention every other layer, with tanh logit soft-capping (50)",
      "status": "stated",
      "quote": "We alternate between a local sliding window attention~\\citep{slidingwindow, beltagy2020longformer} and global attention~\\citep{globalattention} in every other layer.",
      "where": "Sec. Model Architecture"
@@ -414,10 +438,16 @@
      "quote": "",
      "where": ""
     },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
     "tied_embeddings": {
      "value": "true",
      "status": "stated",
-     "quote": "Tied embedding & yes& yes & yes\\\\",
+     "quote": "Tied embedding & yes& yes & yes",
      "where": "Table tab:model_params"
     },
     "moe": {
@@ -443,6 +473,36 @@
      "status": "not_stated",
      "quote": "",
      "where": ""
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     }
    },
    "block_ops": [
@@ -459,14 +519,14 @@
        "name": "vocab",
        "value": "256128",
        "status": "stated",
-       "quote": "Vocab size & 256128 & 256128 & 256128 \\\\",
+       "quote": "Vocab size & 256128 & 256128 & 256128",
        "where": "Table tab:model_params"
       },
       {
        "name": "d",
        "value": "2304",
        "status": "stated",
-       "quote": "\\textit{d}\\_{model} & 2304 & 3584 & 4608 \\\\",
+       "quote": "\\textit{d}\\_{model} & 2304 & 3584 & 4608",
        "where": "Table tab:model_params"
       }
      ],
@@ -479,7 +539,7 @@
      "inputs": [
       "x"
      ],
-     "output": "h",
+     "output": "h1",
      "attributes": [
       {
        "name": "eps",
@@ -496,10 +556,17 @@
      "op": "linear",
      "role": "query projection",
      "inputs": [
-      "h"
+      "h1"
      ],
      "output": "q",
      "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
       {
        "name": "bias",
        "value": "",
@@ -515,10 +582,17 @@
      "op": "linear",
      "role": "key projection",
      "inputs": [
-      "h"
+      "h1"
      ],
      "output": "k",
      "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
       {
        "name": "bias",
        "value": "",
@@ -534,10 +608,17 @@
      "op": "linear",
      "role": "value projection",
      "inputs": [
-      "h"
+      "h1"
      ],
      "output": "v",
      "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
       {
        "name": "bias",
        "value": "",
@@ -558,6 +639,13 @@
      "output": "q_r",
      "attributes": [
       {
+       "name": "rope_heads",
+       "value": "all",
+       "status": "stated",
+       "quote": "the use of Rotary Position Embeddings (RoPE)~\\citep{rope}",
+       "where": "Sec. Model Architecture"
+      },
+      {
        "name": "pairing",
        "value": "",
        "status": "not_stated",
@@ -565,14 +653,14 @@
        "where": ""
       },
       {
-       "name": "theta",
+       "name": "n_rot",
        "value": "",
        "status": "not_stated",
        "quote": "",
        "where": ""
       },
       {
-       "name": "n_rot",
+       "name": "theta",
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -591,14 +679,14 @@
      "output": "k_r",
      "attributes": [
       {
-       "name": "pairing",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "name": "rope_heads",
+       "value": "all",
+       "status": "stated",
+       "quote": "the use of Rotary Position Embeddings (RoPE)~\\citep{rope}",
+       "where": "Sec. Model Architecture"
       },
       {
-       "name": "theta",
+       "name": "pairing",
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -610,14 +698,21 @@
        "status": "not_stated",
        "quote": "",
        "where": ""
+      },
+      {
+       "name": "theta",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
     },
     {
      "subgraph": "block",
-     "op": "attention",
-     "role": "GQA self-attention (local sliding-window in alternating layers, global in the others)",
+     "op": "unsupported",
+     "role": "GQA attention with tanh logit soft-capping; sliding window 4096 on alternate layers, global span 8192 otherwise",
      "inputs": [
       "q_r",
       "k_r",
@@ -629,21 +724,21 @@
        "name": "heads",
        "value": "8",
        "status": "stated",
-       "quote": "Num heads & 8 & 16 & 32 \\\\",
+       "quote": "Num heads & 8 & 16 & 32",
        "where": "Table tab:model_params"
       },
       {
        "name": "kv_heads",
        "value": "4",
        "status": "stated",
-       "quote": "Num KV heads & 4 & 8 & 16  \\\\",
+       "quote": "Num KV heads & 4 & 8 & 16",
        "where": "Table tab:model_params"
       },
       {
        "name": "head_dim",
        "value": "256",
        "status": "stated",
-       "quote": "Head size & 256 & 256 & 128  \\\\",
+       "quote": "Head size & 256 & 256 & 128",
        "where": "Table tab:model_params"
       },
       {
@@ -664,18 +759,18 @@
        "name": "window",
        "value": "4096",
        "status": "stated",
-       "quote": "The sliding window size of local attention layers is set to 4096 tokens, while the span of the global attention layers is set to 8192 tokens.",
-       "where": "Sec. Model Architecture"
+       "quote": "Sliding window & 4096 & 4096 & 4096",
+       "where": "Table tab:model_params"
       },
       {
-       "name": "sinks",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "name": "soft_cap",
+       "value": "50.0",
+       "status": "stated",
+       "quote": "We set the soft\\_cap parameter to $50.0$ for the self-attention layers and to $30.0$ for the final layer.",
+       "where": "Sec. Model Architecture"
       }
      ],
-     "new_op": ""
+     "new_op": "softcapped_attention"
     },
     {
      "subgraph": "block",
@@ -686,6 +781,13 @@
      ],
      "output": "o",
      "attributes": [
+      {
+       "name": "out",
+       "value": "2304",
+       "status": "stated",
+       "quote": "\\textit{d}\\_{model} & 2304 & 3584 & 4608",
+       "where": "Table tab:model_params"
+      },
       {
        "name": "bias",
        "value": "",
@@ -723,7 +825,7 @@
       "x",
       "o_n"
      ],
-     "output": "x1",
+     "output": "x2",
      "attributes": [],
      "new_op": ""
     },
@@ -732,7 +834,7 @@
      "op": "rmsnorm",
      "role": "pre-FFN norm",
      "inputs": [
-      "x1"
+      "x2"
      ],
      "output": "h2",
      "attributes": [
@@ -756,6 +858,13 @@
      "output": "g",
      "attributes": [
       {
+       "name": "out",
+       "value": "18432",
+       "status": "stated",
+       "quote": "Feedforward dim & 18432 & 28672 & 73728",
+       "where": "Table tab:model_params"
+      },
+      {
        "name": "bias",
        "value": "",
        "status": "not_stated",
@@ -774,6 +883,13 @@
      ],
      "output": "u",
      "attributes": [
+      {
+       "name": "out",
+       "value": "18432",
+       "status": "stated",
+       "quote": "Feedforward dim & 18432 & 28672 & 73728",
+       "where": "Table tab:model_params"
+      },
       {
        "name": "bias",
        "value": "",
@@ -795,10 +911,10 @@
      "attributes": [
       {
        "name": "approx",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "tanh",
+       "status": "stated",
+       "quote": "the approximated GeGLU non-linearity~\\citep{geglu}",
+       "where": "Sec. Model Architecture"
       }
      ],
      "new_op": ""
@@ -806,7 +922,7 @@
     {
      "subgraph": "block",
      "op": "mul",
-     "role": "GeGLU gating",
+     "role": "gating",
      "inputs": [
       "g_act",
       "u"
@@ -824,6 +940,13 @@
      ],
      "output": "f",
      "attributes": [
+      {
+       "name": "out",
+       "value": "2304",
+       "status": "stated",
+       "quote": "\\textit{d}\\_{model} & 2304 & 3584 & 4608",
+       "where": "Table tab:model_params"
+      },
       {
        "name": "bias",
        "value": "",
@@ -858,27 +981,34 @@
      "op": "add",
      "role": "FFN residual",
      "inputs": [
-      "x1",
+      "x2",
       "f_n"
      ],
-     "output": "x_out",
+     "output": "x",
      "attributes": [],
      "new_op": ""
     },
     {
      "subgraph": "head",
      "op": "linear",
-     "role": "tied output projection",
+     "role": "tied output head",
      "inputs": [
       "x"
      ],
-     "output": "logits_raw",
+     "output": "logits",
      "attributes": [
+      {
+       "name": "out",
+       "value": "256128",
+       "status": "stated",
+       "quote": "Vocab size & 256128 & 256128 & 256128",
+       "where": "Table tab:model_params"
+      },
       {
        "name": "tied_to",
        "value": "token_embd",
        "status": "stated",
-       "quote": "Tied embedding & yes& yes & yes\\\\",
+       "quote": "Tied embedding & yes& yes & yes",
        "where": "Table tab:model_params"
       },
       {
@@ -896,10 +1026,18 @@
      "op": "expr",
      "role": "final logit soft-capping",
      "inputs": [
-      "logits_raw"
+      "logits"
      ],
-     "output": "logits",
-     "attributes": [],
+     "output": "logits_capped",
+     "attributes": [
+      {
+       "name": "soft_cap",
+       "value": "30.0",
+       "status": "stated",
+       "quote": "We set the soft\\_cap parameter to $50.0$ for the self-attention layers and to $30.0$ for the final layer.",
+       "where": "Sec. Model Architecture"
+      }
+     ],
      "new_op": "final_logit_softcap"
     }
    ],
@@ -911,28 +1049,40 @@
      "inputs": [
       {
        "name": "x",
-       "meaning": "the output logits before capping"
+       "meaning": "the output-head logits",
+       "role": "input",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       }
       }
      ],
-     "replaces": "none (added after the output projection)",
-     "reason": "",
-     "quote": "We set the soft\\_cap parameter to $50.0$ for the self-attention layers and to $30.0$ for the final layer.",
-     "where": "Sec. Model Architecture"
+     "replaces": "raw final logits",
+     "reason": "Soft-caps the final-layer logits to (-30, 30).",
+     "quote": "$$\\text{logits} \\leftarrow \\text{soft\\_cap} * \\tanh(\\text{logits} / \\text{soft\\_cap}).$$",
+     "where": "Sec. Model Architecture, Logit soft-capping"
+    },
+    {
+     "name": "softcapped_attention",
+     "kind": "needs_new_primitive",
+     "expr": "",
+     "inputs": [],
+     "replaces": "attention",
+     "reason": "Needs a GQA causal attention primitive that applies 50*tanh(s/50) to the [heads, T, T] pre-softmax logit matrix before the softmax. Its window must also switch between 4096-token sliding-window layers and global (8192) layers on alternating layers. The standard attention op exposes neither the logit cap nor a per-layer window schedule.",
+     "quote": "We cap logits~\\citep{bello2016combinatorial} in each attention layer and the final layer such that the value of the logits stays between $-\\text{soft\\_cap}$ and $+\\text{soft\\_cap}$.",
+     "where": "Sec. Model Architecture, Logit soft-capping"
     }
    ],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Attention logit soft-capping inside every attention layer: the pre-softmax scores are replaced by 50*tanh(scores/50). The IR attention op has no hook for transforming its scores.",
-     "quote": "$$\\text{logits} \\leftarrow \\text{soft\\_cap} * \\tanh(\\text{logits} / \\text{soft\\_cap}).$$\nWe set the soft\\_cap parameter to $50.0$ for the self-attention layers and to $30.0$ for the final layer.",
-     "where": "Sec. Model Architecture"
-    },
-    {
-     "mechanism": "Layer-alternating attention type: local sliding window (4096) and global attention (8192 span) alternate every other layer, so blocks are not identical.",
+     "mechanism": "Per-layer alternation of local sliding-window (4096) and global (8192 span) attention. The block is not identical across layers. Which parity starts with local attention is not stated.",
      "quote": "We alternate between a local sliding window attention~\\citep{slidingwindow, beltagy2020longformer} and global attention~\\citep{globalattention} in every other layer.",
      "where": "Sec. Model Architecture"
     }
    ],
-   "notes": "All three released sizes are described; primary is 2B, and the block attributes use 2B values. The attention op shows the local layers (window 4096). Global layers use window 0 within the 8192 context, and the paper does not say which layer parity is local. The table's 'Feedforward dim' is reported as stated (18432 for 2B). It may count the gate and up projections together; the paper does not clarify. 'Approximated GeGLU' does not name the approximation, so gelu approx is left not_stated. Left not_stated: RMSNorm eps, RoPE theta/pairing/fraction, attention scale, biases, embedding scaling, and whether there is a final norm before the head (none is described, so none is included). The residual adds rest on the cited Vaswani transformer architecture. The MHA, wide and smaller-window variants are ablations and are not described."
+   "notes": "The block is described with 2B dimensions; 9B and 27B use the same structure with the sizes given in Table 1. The 2B and 9B models are trained by distillation and the 27B from scratch; this does not change the architecture. Feedforward dim is reported exactly as in Table 1 (18432 for 2B) and is used for both the gate and up projections; the paper does not say whether this counts the gate and up projections combined. q/k/v projection widths are not stated explicitly; they follow from heads x head size. Not stated, so left not_stated: norm eps, RoPE theta and pairing, attention scale, biases, any final norm before the head (omitted from the head), and any embedding scaling. Residual connections and causality are taken from the 'decoder-only transformer' statement. Table 1's 'Global att. span 8192' is the span of the non-windowed layers."
   },
   "verification": {
    "errors": [],
@@ -952,7 +1102,7 @@
      "d_model": {
       "value": "2304",
       "status": "stated",
-      "quote": "\\textit{d}\\_{model} & 2304 & 3584 & 4608 \\\\",
+      "quote": "\\textit{d}\\_{model} & 2304 & 3584 & 4608",
       "where": "Table tab:model_params",
       "reasons": [],
       "check": "verified"
@@ -960,7 +1110,7 @@
      "n_layers": {
       "value": "26",
       "status": "stated",
-      "quote": "Layers & 26 & 42 & 46  \\\\",
+      "quote": "Layers & 26 & 42 & 46",
       "where": "Table tab:model_params",
       "reasons": [],
       "check": "verified"
@@ -968,7 +1118,7 @@
      "n_heads": {
       "value": "8",
       "status": "stated",
-      "quote": "Num heads & 8 & 16 & 32 \\\\",
+      "quote": "Num heads & 8 & 16 & 32",
       "where": "Table tab:model_params",
       "reasons": [],
       "check": "verified"
@@ -976,7 +1126,7 @@
      "n_kv_heads": {
       "value": "4",
       "status": "stated",
-      "quote": "Num KV heads & 4 & 8 & 16  \\\\",
+      "quote": "Num KV heads & 4 & 8 & 16",
       "where": "Table tab:model_params",
       "reasons": [],
       "check": "verified"
@@ -984,7 +1134,7 @@
      "head_dim": {
       "value": "256",
       "status": "stated",
-      "quote": "Head size & 256 & 256 & 128  \\\\",
+      "quote": "Head size & 256 & 256 & 128",
       "where": "Table tab:model_params",
       "reasons": [],
       "check": "verified"
@@ -992,7 +1142,7 @@
      "d_ff": {
       "value": "18432",
       "status": "stated",
-      "quote": "Feedforward dim & 18432 & 28672 & 73728  \\\\",
+      "quote": "Feedforward dim & 18432 & 28672 & 73728",
       "where": "Table tab:model_params",
       "reasons": [],
       "check": "verified"
@@ -1000,7 +1150,7 @@
      "vocab_size": {
       "value": "256128",
       "status": "stated",
-      "quote": "Vocab size & 256128 & 256128 & 256128 \\\\",
+      "quote": "Vocab size & 256128 & 256128 & 256128",
       "where": "Table tab:model_params",
       "reasons": [],
       "check": "verified"
@@ -1037,7 +1187,7 @@
      "d_model": {
       "value": "3584",
       "status": "stated",
-      "quote": "\\textit{d}\\_{model} & 2304 & 3584 & 4608 \\\\",
+      "quote": "\\textit{d}\\_{model} & 2304 & 3584 & 4608",
       "where": "Table tab:model_params",
       "reasons": [],
       "check": "verified"
@@ -1045,7 +1195,7 @@
      "n_layers": {
       "value": "42",
       "status": "stated",
-      "quote": "Layers & 26 & 42 & 46  \\\\",
+      "quote": "Layers & 26 & 42 & 46",
       "where": "Table tab:model_params",
       "reasons": [],
       "check": "verified"
@@ -1053,7 +1203,7 @@
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "Num heads & 8 & 16 & 32 \\\\",
+      "quote": "Num heads & 8 & 16 & 32",
       "where": "Table tab:model_params",
       "reasons": [],
       "check": "verified"
@@ -1061,7 +1211,7 @@
      "n_kv_heads": {
       "value": "8",
       "status": "stated",
-      "quote": "Num KV heads & 4 & 8 & 16  \\\\",
+      "quote": "Num KV heads & 4 & 8 & 16",
       "where": "Table tab:model_params",
       "reasons": [],
       "check": "verified"
@@ -1069,7 +1219,7 @@
      "head_dim": {
       "value": "256",
       "status": "stated",
-      "quote": "Head size & 256 & 256 & 128  \\\\",
+      "quote": "Head size & 256 & 256 & 128",
       "where": "Table tab:model_params",
       "reasons": [],
       "check": "verified"
@@ -1077,7 +1227,7 @@
      "d_ff": {
       "value": "28672",
       "status": "stated",
-      "quote": "Feedforward dim & 18432 & 28672 & 73728  \\\\",
+      "quote": "Feedforward dim & 18432 & 28672 & 73728",
       "where": "Table tab:model_params",
       "reasons": [],
       "check": "verified"
@@ -1085,7 +1235,7 @@
      "vocab_size": {
       "value": "256128",
       "status": "stated",
-      "quote": "Vocab size & 256128 & 256128 & 256128 \\\\",
+      "quote": "Vocab size & 256128 & 256128 & 256128",
       "where": "Table tab:model_params",
       "reasons": [],
       "check": "verified"
@@ -1122,7 +1272,7 @@
      "d_model": {
       "value": "4608",
       "status": "stated",
-      "quote": "\\textit{d}\\_{model} & 2304 & 3584 & 4608 \\\\",
+      "quote": "\\textit{d}\\_{model} & 2304 & 3584 & 4608",
       "where": "Table tab:model_params",
       "reasons": [],
       "check": "verified"
@@ -1130,7 +1280,7 @@
      "n_layers": {
       "value": "46",
       "status": "stated",
-      "quote": "Layers & 26 & 42 & 46  \\\\",
+      "quote": "Layers & 26 & 42 & 46",
       "where": "Table tab:model_params",
       "reasons": [],
       "check": "verified"
@@ -1138,7 +1288,7 @@
      "n_heads": {
       "value": "32",
       "status": "stated",
-      "quote": "Num heads & 8 & 16 & 32 \\\\",
+      "quote": "Num heads & 8 & 16 & 32",
       "where": "Table tab:model_params",
       "reasons": [],
       "check": "verified"
@@ -1146,7 +1296,7 @@
      "n_kv_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "Num KV heads & 4 & 8 & 16  \\\\",
+      "quote": "Num KV heads & 4 & 8 & 16",
       "where": "Table tab:model_params",
       "reasons": [],
       "check": "verified"
@@ -1154,7 +1304,7 @@
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "Head size & 256 & 256 & 128  \\\\",
+      "quote": "Head size & 256 & 256 & 128",
       "where": "Table tab:model_params",
       "reasons": [],
       "check": "verified"
@@ -1162,7 +1312,7 @@
      "d_ff": {
       "value": "73728",
       "status": "stated",
-      "quote": "Feedforward dim & 18432 & 28672 & 73728  \\\\",
+      "quote": "Feedforward dim & 18432 & 28672 & 73728",
       "where": "Table tab:model_params",
       "reasons": [],
       "check": "verified"
@@ -1170,7 +1320,7 @@
      "vocab_size": {
       "value": "256128",
       "status": "stated",
-      "quote": "Vocab size & 256128 & 256128 & 256128 \\\\",
+      "quote": "Vocab size & 256128 & 256128 & 256128",
       "where": "Table tab:model_params",
       "reasons": [],
       "check": "verified"
@@ -1221,6 +1371,22 @@
      "reasons": [],
      "check": "quote_only"
     },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
     "norm_eps": {
      "value": "",
      "status": "not_stated",
@@ -1244,6 +1410,22 @@
      "where": "Sec. Model Architecture",
      "reasons": [],
      "check": "verified"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "rope_pairing": {
      "value": "",
@@ -1272,7 +1454,7 @@
     "residual": {
      "value": "residual",
      "status": "stated",
-     "quote": "the Gemma 2 models are based on a decoder-only transformer architecture~\\citep{DBLP:journals/corr/VaswaniSPUJGKP17}",
+     "quote": "the Gemma 2 models are based on a decoder-only transformer architecture",
      "where": "Sec. Model Architecture",
      "reasons": [
       "the quote does not name residual (looked for /residual|skip/)"
@@ -1288,12 +1470,12 @@
      "check": "not_stated"
     },
     "attention": {
-     "value": "swa",
+     "value": "other:alternating local sliding-window (4096) and global (8192 span) attention every other layer, with tanh logit soft-capping (50)",
      "status": "stated",
      "quote": "We alternate between a local sliding window attention~\\citep{slidingwindow, beltagy2020longformer} and global attention~\\citep{globalattention} in every other layer.",
      "where": "Sec. Model Architecture",
      "reasons": [],
-     "check": "verified"
+     "check": "quote_only"
     },
     "window_size": {
      "value": "4096",
@@ -1327,10 +1509,18 @@
      "reasons": [],
      "check": "not_stated"
     },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
     "tied_embeddings": {
      "value": "true",
      "status": "stated",
-     "quote": "Tied embedding & yes& yes & yes\\\\",
+     "quote": "Tied embedding & yes& yes & yes",
      "where": "Table tab:model_params",
      "reasons": [],
      "check": "quote_only"
@@ -1366,20 +1556,68 @@
      "where": "",
      "reasons": [],
      "check": "not_stated"
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     }
    },
    "new_ops": [
     {
      "name": "final_logit_softcap",
      "kind": "expr",
-     "replaces": "none (added after the output projection)",
-     "reason": "",
-     "quote": "We set the soft\\_cap parameter to $50.0$ for the self-attention layers and to $30.0$ for the final layer.",
-     "where": "Sec. Model Architecture",
+     "replaces": "raw final logits",
+     "reason": "Soft-caps the final-layer logits to (-30, 30).",
+     "quote": "$$\\text{logits} \\leftarrow \\text{soft\\_cap} * \\tanh(\\text{logits} / \\text{soft\\_cap}).$$",
+     "where": "Sec. Model Architecture, Logit soft-capping",
      "inputs": [
       {
        "name": "x",
-       "meaning": "the output logits before capping"
+       "meaning": "the output-head logits",
+       "role": "input",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       },
+       "init_check": "not_stated"
       }
      ],
      "errors": [],
@@ -1410,6 +1648,18 @@
       }
      },
      "check": "verified"
+    },
+    {
+     "name": "softcapped_attention",
+     "kind": "needs_new_primitive",
+     "replaces": "attention",
+     "reason": "Needs a GQA causal attention primitive that applies 50*tanh(s/50) to the [heads, T, T] pre-softmax logit matrix before the softmax. Its window must also switch between 4096-token sliding-window layers and global (8192) layers on alternating layers. The standard attention op exposes neither the logit cap nor a per-layer window schedule.",
+     "quote": "We cap logits~\\citep{bello2016combinatorial} in each attention layer and the final layer such that the value of the logits stays between $-\\text{soft\\_cap}$ and $+\\text{soft\\_cap}$.",
+     "where": "Sec. Model Architecture, Logit soft-capping",
+     "inputs": [],
+     "errors": [],
+     "quote_found": true,
+     "check": "verified"
     }
    ],
    "block_ops": [
@@ -1427,7 +1677,7 @@
       {
        "value": "256128",
        "status": "stated",
-       "quote": "Vocab size & 256128 & 256128 & 256128 \\\\",
+       "quote": "Vocab size & 256128 & 256128 & 256128",
        "where": "Table tab:model_params",
        "reasons": [],
        "check": "verified",
@@ -1436,7 +1686,7 @@
       {
        "value": "2304",
        "status": "stated",
-       "quote": "\\textit{d}\\_{model} & 2304 & 3584 & 4608 \\\\",
+       "quote": "\\textit{d}\\_{model} & 2304 & 3584 & 4608",
        "where": "Table tab:model_params",
        "reasons": [],
        "check": "verified",
@@ -1453,7 +1703,7 @@
      "inputs": [
       "x"
      ],
-     "output": "h",
+     "output": "h1",
      "new_op": "",
      "attributes": [
       {
@@ -1474,11 +1724,20 @@
      "op": "linear",
      "role": "query projection",
      "inputs": [
-      "h"
+      "h1"
      ],
      "output": "q",
      "new_op": "",
      "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -1497,11 +1756,20 @@
      "op": "linear",
      "role": "key projection",
      "inputs": [
-      "h"
+      "h1"
      ],
      "output": "k",
      "new_op": "",
      "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -1520,11 +1788,20 @@
      "op": "linear",
      "role": "value projection",
      "inputs": [
-      "h"
+      "h1"
      ],
      "output": "v",
      "new_op": "",
      "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -1549,6 +1826,15 @@
      "new_op": "",
      "attributes": [
       {
+       "value": "all",
+       "status": "stated",
+       "quote": "the use of Rotary Position Embeddings (RoPE)~\\citep{rope}",
+       "where": "Sec. Model Architecture",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "rope_heads"
+      },
+      {
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -1564,7 +1850,7 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "theta"
+       "name": "n_rot"
       },
       {
        "value": "",
@@ -1573,7 +1859,7 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "n_rot"
+       "name": "theta"
       }
      ],
      "errors": []
@@ -1590,6 +1876,15 @@
      "new_op": "",
      "attributes": [
       {
+       "value": "all",
+       "status": "stated",
+       "quote": "the use of Rotary Position Embeddings (RoPE)~\\citep{rope}",
+       "where": "Sec. Model Architecture",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "rope_heads"
+      },
+      {
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -1605,7 +1900,7 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "theta"
+       "name": "n_rot"
       },
       {
        "value": "",
@@ -1614,7 +1909,7 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "n_rot"
+       "name": "theta"
       }
      ],
      "errors": []
@@ -1622,20 +1917,20 @@
     {
      "i": 7,
      "subgraph": "block",
-     "op": "attention",
-     "role": "GQA self-attention (local sliding-window in alternating layers, global in the others)",
+     "op": "unsupported",
+     "role": "GQA attention with tanh logit soft-capping; sliding window 4096 on alternate layers, global span 8192 otherwise",
      "inputs": [
       "q_r",
       "k_r",
       "v"
      ],
      "output": "a",
-     "new_op": "",
+     "new_op": "softcapped_attention",
      "attributes": [
       {
        "value": "8",
        "status": "stated",
-       "quote": "Num heads & 8 & 16 & 32 \\\\",
+       "quote": "Num heads & 8 & 16 & 32",
        "where": "Table tab:model_params",
        "reasons": [],
        "check": "verified",
@@ -1644,7 +1939,7 @@
       {
        "value": "4",
        "status": "stated",
-       "quote": "Num KV heads & 4 & 8 & 16  \\\\",
+       "quote": "Num KV heads & 4 & 8 & 16",
        "where": "Table tab:model_params",
        "reasons": [],
        "check": "verified",
@@ -1653,7 +1948,7 @@
       {
        "value": "256",
        "status": "stated",
-       "quote": "Head size & 256 & 256 & 128  \\\\",
+       "quote": "Head size & 256 & 256 & 128",
        "where": "Table tab:model_params",
        "reasons": [],
        "check": "verified",
@@ -1680,20 +1975,20 @@
       {
        "value": "4096",
        "status": "stated",
-       "quote": "The sliding window size of local attention layers is set to 4096 tokens, while the span of the global attention layers is set to 8192 tokens.",
-       "where": "Sec. Model Architecture",
+       "quote": "Sliding window & 4096 & 4096 & 4096",
+       "where": "Table tab:model_params",
        "reasons": [],
        "check": "verified",
        "name": "window"
       },
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
+       "value": "50.0",
+       "status": "stated",
+       "quote": "We set the soft\\_cap parameter to $50.0$ for the self-attention layers and to $30.0$ for the final layer.",
+       "where": "Sec. Model Architecture",
        "reasons": [],
-       "check": "not_stated",
-       "name": "sinks"
+       "check": "verified",
+       "name": "soft_cap"
       }
      ],
      "errors": []
@@ -1709,6 +2004,15 @@
      "output": "o",
      "new_op": "",
      "attributes": [
+      {
+       "value": "2304",
+       "status": "stated",
+       "quote": "\\textit{d}\\_{model} & 2304 & 3584 & 4608",
+       "where": "Table tab:model_params",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -1753,7 +2057,7 @@
       "x",
       "o_n"
      ],
-     "output": "x1",
+     "output": "x2",
      "new_op": "",
      "attributes": [],
      "errors": []
@@ -1764,7 +2068,7 @@
      "op": "rmsnorm",
      "role": "pre-FFN norm",
      "inputs": [
-      "x1"
+      "x2"
      ],
      "output": "h2",
      "new_op": "",
@@ -1793,6 +2097,15 @@
      "new_op": "",
      "attributes": [
       {
+       "value": "18432",
+       "status": "stated",
+       "quote": "Feedforward dim & 18432 & 28672 & 73728",
+       "where": "Table tab:model_params",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -1815,6 +2128,15 @@
      "output": "u",
      "new_op": "",
      "attributes": [
+      {
+       "value": "18432",
+       "status": "stated",
+       "quote": "Feedforward dim & 18432 & 28672 & 73728",
+       "where": "Table tab:model_params",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -1839,12 +2161,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
+       "value": "tanh",
+       "status": "stated",
+       "quote": "the approximated GeGLU non-linearity~\\citep{geglu}",
+       "where": "Sec. Model Architecture",
        "reasons": [],
-       "check": "not_stated",
+       "check": "quote_only",
        "name": "approx"
       }
      ],
@@ -1854,7 +2176,7 @@
      "i": 15,
      "subgraph": "block",
      "op": "mul",
-     "role": "GeGLU gating",
+     "role": "gating",
      "inputs": [
       "g_act",
       "u"
@@ -1875,6 +2197,15 @@
      "output": "f",
      "new_op": "",
      "attributes": [
+      {
+       "value": "2304",
+       "status": "stated",
+       "quote": "\\textit{d}\\_{model} & 2304 & 3584 & 4608",
+       "where": "Table tab:model_params",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -1916,10 +2247,10 @@
      "op": "add",
      "role": "FFN residual",
      "inputs": [
-      "x1",
+      "x2",
       "f_n"
      ],
-     "output": "x_out",
+     "output": "x",
      "new_op": "",
      "attributes": [],
      "errors": []
@@ -1928,17 +2259,26 @@
      "i": 19,
      "subgraph": "head",
      "op": "linear",
-     "role": "tied output projection",
+     "role": "tied output head",
      "inputs": [
       "x"
      ],
-     "output": "logits_raw",
+     "output": "logits",
      "new_op": "",
      "attributes": [
       {
+       "value": "256128",
+       "status": "stated",
+       "quote": "Vocab size & 256128 & 256128 & 256128",
+       "where": "Table tab:model_params",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
        "value": "token_embd",
        "status": "stated",
-       "quote": "Tied embedding & yes& yes & yes\\\\",
+       "quote": "Tied embedding & yes& yes & yes",
        "where": "Table tab:model_params",
        "reasons": [],
        "check": "quote_only",
@@ -1962,23 +2302,27 @@
      "op": "expr",
      "role": "final logit soft-capping",
      "inputs": [
-      "logits_raw"
+      "logits"
      ],
-     "output": "logits",
+     "output": "logits_capped",
      "new_op": "final_logit_softcap",
-     "attributes": [],
+     "attributes": [
+      {
+       "value": "30.0",
+       "status": "stated",
+       "quote": "We set the soft\\_cap parameter to $50.0$ for the self-attention layers and to $30.0$ for the final layer.",
+       "where": "Sec. Model Architecture",
+       "reasons": [],
+       "check": "verified",
+       "name": "soft_cap"
+      }
+     ],
      "errors": []
     }
    ],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Attention logit soft-capping inside every attention layer: the pre-softmax scores are replaced by 50*tanh(scores/50). The IR attention op has no hook for transforming its scores.",
-     "quote": "$$\\text{logits} \\leftarrow \\text{soft\\_cap} * \\tanh(\\text{logits} / \\text{soft\\_cap}).$$\nWe set the soft\\_cap parameter to $50.0$ for the self-attention layers and to $30.0$ for the final layer.",
-     "where": "Sec. Model Architecture",
-     "check": "verified"
-    },
-    {
-     "mechanism": "Layer-alternating attention type: local sliding window (4096) and global attention (8192 span) alternate every other layer, so blocks are not identical.",
+     "mechanism": "Per-layer alternation of local sliding-window (4096) and global (8192 span) attention. The block is not identical across layers. Which parity starts with local attention is not stated.",
      "quote": "We alternate between a local sliding window attention~\\citep{slidingwindow, beltagy2020longformer} and global attention~\\citep{globalattention} in every other layer.",
      "where": "Sec. Model Architecture",
      "check": "verified"
@@ -1986,10 +2330,10 @@
    ],
    "summary": {
     "counts": {
-     "verified": 35,
-     "quote_only": 5,
+     "verified": 41,
+     "quote_only": 9,
      "unverified": 1,
-     "not_stated": 33
+     "not_stated": 44
     },
     "unverified": [
      {
@@ -2001,7 +2345,7 @@
     ],
     "new_op_errors": [],
     "node_errors": [],
-    "n_new_ops": 1,
+    "n_new_ops": 2,
     "n_block_ops": 21
    }
   }
