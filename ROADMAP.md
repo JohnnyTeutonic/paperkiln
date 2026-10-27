@@ -18,14 +18,8 @@ where one of those documents carries a plan, this file wins.*
    - The Claude-judge pilot on pk_sft_v1, prepared, launch on Jonathan's go: candidates on a RunPod
      L4 (`tools/colab_chat/pref_pilot_v1.json`), then `experiments/chat_general/judge_pilot.sh`
      (200 prompts, $100 cap) at home; then the full ~3,000 prompts and DPO + NLL.
-2. **Conversation schema follow-ups** (LOCAL_LLM_STACK.md section 3 point 3; LOCAL_LLM_WORK.md D3):
-   instruction placement, measurable on a v2 model, and v2 (a reserved control-token block
-   appended to the vocabulary) when Jonathan decides. His
-   three decisions sit behind one constant each: v1's system mode (`SYSTEM_MODE_V1` /
-   `kSystemModeV1`, fold or none), the default loss policy (`DEFAULT_SFT_TURNS` /
-   `kDefaultSftTurns`), and when v2 is built.
-3. **Engine:** BF16 mixed precision and a fused attention backward (opt-in; building).
-4. **Colab runner: a re-provisioned driver pushes stale checkpoints over
+2. **Engine:** BF16 mixed precision and a fused attention backward (opt-in; building).
+3. **Colab runner: a re-provisioned driver pushes stale checkpoints over
    finished runs** (`tools/colab_transfer_runner.py`). In Study 3 it
    overwrote four M25 event logs at step ~2900; the runs were re-run
    (execution clarification 1). Fix: never relay a checkpoint into a run
