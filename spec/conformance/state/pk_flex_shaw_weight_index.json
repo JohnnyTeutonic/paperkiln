@@ -1,0 +1,264 @@
+{
+ "model": "models/pk_flex_shaw",
+ "evict": null,
+ "class": "ROUNDING",
+ "tol": 1e-05,
+ "steps": [
+  {
+   "method": "forward",
+   "ids": [
+    5,
+    10,
+    11,
+    9
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    4
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    1
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    1
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    4
+   ]
+  }
+ ],
+ "expect": [
+  {
+   "len": 4,
+   "logits": {
+    "shape": [
+     4,
+     15
+    ],
+    "f32": "bb84a480bc9e8148bee9d2dbbe86b272bc8b4b80be955e703fc97cb6be272ac8be2ea398bf06da65be37ba21bda469c7be8c2ae6be80d6313e60b168bb61b2403d35cd4f3f92cb7b3f9b6399be65c5eb3d4594a2beca108abea7ca67bedecb2cbd47b07dbe730fd7be968acbbdfa250dbe3c7cb93e4ef241bd8a589c3e50917c3f8e51ba3f99e5f0be016a053c9fd8b4be8d9d8ebec0ec00befca102bdd87d8bbe84343bbeab3584be57c8bebe754bf63e5a0b2cbc8df0a0bf36244ebe8a77a3be98fc753eabbfb63e8704f3bd16db2a3f9f5dcc3fa335103db468f8beae704fbe54f511be8b8434be83a104bda414f1"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      4
+     ],
+     [
+      4
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 5,
+   "logits": {
+    "shape": [
+     1,
+     15
+    ],
+    "f32": "bd5c8880bd7b1e10bef266b0be87f1b2bc6be21ebea64cee3fc96d0fbde59939bdf15d6bbf06bf6dbe764b7cbe0797e3be9c6c18be9193e43ea890a0"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      5
+     ],
+     [
+      5
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 6,
+   "logits": {
+    "shape": [
+     1,
+     15
+    ],
+    "f32": "3ecdcd9e3eba8842be1147bebe98486fbe89d5cf3e294598bee08603becc60d3be82864ebf112a6a3f85814e3f7e2baa3f9050753f89dc40bf6eb5b0"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      6
+     ],
+     [
+      6
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 7,
+   "logits": {
+    "shape": [
+     1,
+     15
+    ],
+    "f32": "3ecdd21d3eb86455be126d0abe99f428be8a2e613e32a43bbee566e7becadaa6be81e0a3bf0e9cc93f85bcf53f7e29ef3f905d393f89d631bf6f78d9"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      7
+     ],
+     [
+      7
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 8,
+   "logits": {
+    "shape": [
+     1,
+     15
+    ],
+    "f32": "bd43b730bd7bc9aabef812dcbe8e4573bc430d8cbe9fbd9d3fc98c3ebde458dcbdf0c99dbf0689aabe6a8635bdfd393abe992d2bbe8e73353e9f38cf"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      8
+     ],
+     [
+      8
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7
+      ]
+     ]
+    ]
+   }
+  }
+ ],
+ "ir": "accept/pk_flex_shaw_weight_index.ir.json"
+}

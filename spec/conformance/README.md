@@ -16,7 +16,7 @@ The cases every engine that runs keramos IR documents should pass. The normative
 | `digest/` | `vectors.json` | the IR digest (IR_SPEC 3.10): RFC 8785 serialisations and sha256 of numbers, strings, member names and every suite model's document, and texts that have no digest |
 | `quant/` | `blocks.json` | stored blocks of every GGUF storage type and their f32 values (IR_SPEC 4.7), bit for bit on every backend |
 | `grad/` | `recurrence.json`, `attention.json` | gradients of recurrence nodes (IR_SPEC 6.10.5) and of attention with `relative_kv` (5.15) against central differences in float64 |
-| `chat/` | `render.json` | chat template records and conversations: the rendered text or the refusal (IR_SPEC 8.1.3) |
+| `chat/` | `render.json`, `parse_reply.json` | chat template records and conversations (v1 and `paperkiln/2`): the rendered text or the refusal (IR_SPEC 8.1.3, 8.1.6); generated replies split into content and tool calls (8.1.6) |
 | `recurrence/` | rewritten documents | suite models with their hand-written recurrent ops written as recurrences (IR_SPEC 6.10.6); the traces `state/<model>_recurrence.json` run them in place of each file's own document and expect the original document's values |
 
 `manifest.json` lists every case with its kind and profile. Models whose names start with `pk_` were
@@ -45,7 +45,7 @@ report) and `close`: that covers the model cases, the refusals and the acceptanc
 null checks a document alone). The state traces then need the
 `kv_rows`, `kv_positions`, `depth` and `recurrent` reports and `truncate`, `snapshot` and `restore`;
 the op cases need `run_node`. The digest vectors need `digest`, the stored blocks `dequantize`, and
-the gradient cases (for engines that train) `run_node_grad`, and the chat cases `render_chat`. Reply `{"id": n, "skip": "..."}` to
+the gradient cases (for engines that train) `run_node_grad`, and the chat cases `render_chat` and `parse_reply`. Reply `{"id": n, "skip": "..."}` to
 anything not built yet.
 
 ## Regenerating

@@ -1,0 +1,86 @@
+{
+ "model": "models/pk_mor",
+ "evict": null,
+ "class": "ROUNDING",
+ "tol": 1e-05,
+ "steps": [
+  {
+   "method": "forward",
+   "ids": [
+    9,
+    5,
+    12,
+    3,
+    13,
+    13,
+    8,
+    1,
+    10,
+    1,
+    4,
+    2,
+    10,
+    7
+   ]
+  },
+  {
+   "method": "truncate",
+   "n": 8
+  },
+  {
+   "method": "forward",
+   "ids": [
+    6,
+    6,
+    10
+   ]
+  }
+ ],
+ "expect": [
+  {
+   "len": 14,
+   "logits": {
+    "shape": [
+     14,
+     15
+    ],
+    "f32": "bdfcd6793e07d2a1bf4b7bd9bf1f79f1bedc25d1becf4493bd92e5883f8ef1f33fb9db273f8f3f18bf665e1fbf5ecb5dbf572d35bf80e2d13f94c57fbee78066bf8dda46befa5fa3becca1e03f128f6f3f63e3023fce2f2f3d8936423cbbe6a13f87f2e7bef4f288bee690f4bf03b953bf10c93ebf4243c63e3c14b1beb55d993fb7fb2e3fae445e3f2d28fd3ef0f4dabef518f7bf0ea1ccbf1bfc36bfaa80393f16e9703ebc950f3ee8aabd3eea5134bf3a213abe07a7a8bf8cb7ea3ed507303ed524ac3fa687e63fbf991d3f6b8c68be92fb4fbe9b1f82be88a544bec09e73bed79a7cbeca6f69befa677ebf7aea263e1d1f81be9d13033fb9f9003faf52ff3f2952c03ee4ca9dbf0037a9bf207157bf34a5c4bfb35d493f28624b3edb2db33f01309f3f0cdf1ebf4014903e1c314bbe9a93553fb9e4353faf464e3f276ea63ee1303cbf014ce5bf2029d1bf344844bfb372c73f29516a3edc65963f01f9133f0d7417bf3ecd4fbe91313b3f9c308ebf42b560bf1af54fbf83b30abf57ba77bf3c70f73f2152ca3f5359dfbcbc153dbe8e4ef2bed5ac0abe99bed2bea854544002761c3dba8dd33f1d4fbe3f022b7a3ed3d5e2bee88eeabf14034fbf2ed19fbf536a7dbf8b90c5bf7641583f8839183f8e0d153f847a693f9c1f3ebf0b279c3e28752abee74b823fb8a9bd3fad8aa03f457fe73f0eff94becc117abf0db363bf19a99abfa4a0b83f0c42733ea0660f3ec9d09b3ed1c68cbf4c275a3dc9c5143f11fddf3f0520ad3ed74573bede15febf122068bf26e63dbf527419bf8b0ed7bf6b3ace3f87ee043f8e24f93f83f7b33f9baa16bf179f33bed521c3bf97c9d7bed7659abec4eed13f38b4013f73e0983fd05bef3d388940bbf5047b3f8040c9bf00d5a6beee9b1ebf088223bf0e5bc8bf4c287d3e48e63dbf9824fd3f41d7e53f18459e3fb9d0313fa5bf4a3f104266be511116be34172fbeaf8d45bead0e71beb49a6ebea59c75bed1115bbf8a26243e09e3b5be9829a73fb6a6593fad4f193f241eae3ee95947bf0027dcbf10b4e5bf1d56bdbfaf9a463f1e09c23eb9061e3ee90ab63ef0b15cbf28645dbe8db8443fa9a7a1bf405904bf1c56c4bf896c72bf63fddbbf4ac15e3f06c3e03f2c90ebbe11968cbe3226bfbe9d0791be416de7be3f76ca400154d6"
+   },
+   "depth": [
+    1,
+    3,
+    3,
+    3,
+    3,
+    3,
+    1,
+    2,
+    3,
+    2,
+    3,
+    3,
+    3,
+    1
+   ]
+  },
+  {
+   "len": 8
+  },
+  {
+   "len": 11,
+   "logits": {
+    "shape": [
+     3,
+     15
+    ],
+    "f32": "bea3a512bed11926bf88d3aebf6c2792be7b0413be3feacb3f664d093f45ab5e3f61a0f7400035fabf42fb8ebf140163bf2916a0bf36abe0bcb0e29fbe974f76bed0bb35bf85bb3dbf66557abe842b41be521c703f5f67f33f4626613f63238d3fffe58fbf3e26afbf0f56e1bf247aabbf342eeebd34362d3e23295ebee21d033fb6401f3fac52e63f44a99a3f1344c4bece2d54bf07bda2bf10d7fabfa562243f0508843e8fe4173ebc44c23ebda50cbf410a8f"
+   },
+   "depth": [
+    1,
+    1,
+    3
+   ]
+  }
+ ],
+ "ir": "accept/pk_mor_window.ir.json"
+}

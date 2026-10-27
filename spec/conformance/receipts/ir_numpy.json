@@ -1,13 +1,13 @@
 {
  "spec": {
   "repository": "keramos",
-  "tag": "v1.3.5",
-  "commit": "c4696bf5578688585f6b00593eb9272daa8c5e3a"
+  "tag": "v1.4.1",
+  "commit": "a29ce6f596e2e79c6fca52e6382c962cb5f7011e"
  },
  "engine": {
   "name": "numpy reference (tools/ir_numpy.py)",
   "environment": "CPython 3.13.14, numpy 2.3.5, Windows 11 x86-64 (the generating environment, IR_SPEC 4.6)",
-  "run": "python tools/ir_conformance.py --adapter ir_numpy, in a clean clone of keramos at v1.3.5 (c4696bf5), 2026-10-27"
+  "run": "python tools/ir_conformance.py --adapter ir_numpy, in a clean clone of keramos at v1.4.1 (a29ce6f5), 2026-10-27; skips: the 11 gradient cases (its own finite differences)"
  },
  "adapter": {
   "engine": "ir_numpy",
@@ -23,43 +23,43 @@
   ]
  },
  "counts": {
-  "PASS": 429,
+  "PASS": 456,
   "FAIL": 0,
-  "SKIP": 8,
+  "SKIP": 11,
   "XFAIL": 0,
   "XPASS": 0
  },
  "by_kind": {
   "model": {
-   "PASS": 25,
+   "PASS": 27,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
    "XPASS": 0
   },
   "trace": {
-   "PASS": 74,
+   "PASS": 81,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
    "XPASS": 0
   },
   "op": {
-   "PASS": 62,
+   "PASS": 68,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
    "XPASS": 0
   },
   "refuse": {
-   "PASS": 98,
+   "PASS": 105,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
    "XPASS": 0
   },
   "digest": {
-   "PASS": 88,
+   "PASS": 90,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
@@ -75,12 +75,12 @@
   "grad": {
    "PASS": 0,
    "FAIL": 0,
-   "SKIP": 8,
+   "SKIP": 11,
    "XFAIL": 0,
    "XPASS": 0
   },
   "accept": {
-   "PASS": 40,
+   "PASS": 43,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
@@ -127,6 +127,36 @@
   },
   {
    "id": "trace/pk_flex_highway_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "model/pk_flex_mdha",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 0.00e+00; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_flex_mdha_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "trace/pk_flex_mdha_snapshot",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "5 steps"
+  },
+  {
+   "id": "model/pk_flex_shaw",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 0.00e+00; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_flex_shaw_decode",
    "kind": "trace",
    "verdict": "PASS",
    "detail": "6 steps"
@@ -691,6 +721,42 @@
   },
   {
    "id": "op/attention/position_bias_grouped_query",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "a worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/attention/relative_kv",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "a worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/attention/relative_kv_per_head",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "a worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/attention/relative_kv_keys_only",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "a worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/attention/relative_kv_window_sinks",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "a worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/attention/relative_kv_grouped_query",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "a worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/attention/relative_kv_distance_zero",
    "kind": "op",
    "verdict": "PASS",
    "detail": "a worst 0.00e+00 of max(1, |ref|)"
@@ -1356,6 +1422,48 @@
    "detail": "refused (IR_SPEC 3.7 (rule 25))"
   },
   {
+   "id": "refuse/relative_kv_distance_negative",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 5.15 (rule 40))"
+  },
+  {
+   "id": "refuse/relative_kv_without_key",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 5.15 (rule 40))"
+  },
+  {
+   "id": "refuse/relative_kv_unknown_field",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 5.15 (rule 40))"
+  },
+  {
+   "id": "refuse/relative_kv_key_shape",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 5.15 (rule 40))"
+  },
+  {
+   "id": "refuse/relative_kv_value_shape",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 5.15 (rule 40))"
+  },
+  {
+   "id": "refuse/relative_kv_with_position_bias",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 5.15 (rule 40))"
+  },
+  {
+   "id": "refuse/relative_kv_per_layer",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 3.8 (rule 6))"
+  },
+  {
    "id": "refuse/duplicate_member_top",
    "kind": "refuse",
    "verdict": "PASS",
@@ -1740,6 +1848,18 @@
    "detail": "sha256 equal; canonical equal"
   },
   {
+   "id": "digest/vectors/document_pk_flex_mdha",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_flex_shaw",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
    "id": "digest/vectors/document_pk_flex_t5",
    "kind": "digest",
    "verdict": "PASS",
@@ -2076,6 +2196,24 @@
    "detail": "the reference has no backward: the gradient cases are its finite differences"
   },
   {
+   "id": "grad/attention/relative_kv",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "the reference has no backward: the gradient cases are its finite differences"
+  },
+  {
+   "id": "grad/attention/relative_kv_per_head_grouped_query",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "the reference has no backward: the gradient cases are its finite differences"
+  },
+  {
+   "id": "grad/attention/relative_kv_keys_only",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "the reference has no backward: the gradient cases are its finite differences"
+  },
+  {
    "id": "trace/pk_kimi_recurrence",
    "kind": "trace",
    "verdict": "PASS",
@@ -2112,6 +2250,12 @@
    "detail": "3 steps"
   },
   {
+   "id": "trace/pk_flex_mdha_truncate",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
+  },
+  {
    "id": "trace/pk_gpt2_swa_rewind_window",
    "kind": "trace",
    "verdict": "PASS",
@@ -2143,6 +2287,18 @@
   },
   {
    "id": "trace/pk_flex_highway_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/pk_flex_mdha_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/pk_flex_shaw_chunks",
    "kind": "trace",
    "verdict": "PASS",
    "detail": "4 steps"
@@ -2286,6 +2442,12 @@
    "detail": "5 steps"
   },
   {
+   "id": "trace/pk_flex_shaw_weight_index",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "5 steps"
+  },
+  {
    "id": "accept/documents/model_pk_attnres",
    "kind": "accept",
    "verdict": "PASS",
@@ -2299,6 +2461,18 @@
   },
   {
    "id": "accept/documents/model_pk_flex_highway",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_flex_mdha",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_flex_shaw",
    "kind": "accept",
    "verdict": "PASS",
    "detail": "accepted"
@@ -2521,6 +2695,12 @@
   },
   {
    "id": "accept/documents/untagged_application_queries",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/relative_kv_weight_index",
    "kind": "accept",
    "verdict": "PASS",
    "detail": "accepted"

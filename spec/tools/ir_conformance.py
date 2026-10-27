@@ -223,8 +223,13 @@ class Adapter:
         """{value or tensor name: gradient} of sum(out * out_grad) for one node (IR_SPEC 6.10.5)."""
         raise NotImplementedError
 
-    def render_chat(self, record, messages, generation_prompt=False, thinking=None):
-        """{"text": the rendered conversation} or {"refused": message} (IR_SPEC 8.1.3)."""
+    def render_chat(self, record, messages, generation_prompt=False, thinking=None, tools=None):
+        """{"text": the rendered conversation} or {"refused": message} (IR_SPEC 8.1.3, 8.1.6); tools: the
+        conversation's tool definitions, or None (not sent)."""
+        raise NotImplementedError
+
+    def parse_reply(self, tokens, ids, call_id):
+        """{"parsed": True, "content", "tool_calls"} or {"parsed": False} (IR_SPEC 8.1.6, v1.4.2)."""
         raise NotImplementedError
 
     def score(self, model_dir, prompt, cont, kv_cache=False, evict=False, kv_step=0):
@@ -333,12 +338,17 @@ class NumpyAdapter(Adapter):
     def run_node_grad(self, node, inputs, weights, out_grad):
         raise NotImplementedError("the reference has no backward: the gradient cases are its finite differences")
 
-    def render_chat(self, record, messages, generation_prompt=False, thinking=None):
+    def render_chat(self, record, messages, generation_prompt=False, thinking=None, tools=None):
         import ir_chat
         try:
-            return {"text": ir_chat.render(record, messages, generation_prompt, thinking)}
+            return {"text": ir_chat.render(record, messages, generation_prompt, thinking, tools)}
         except ir_chat.ChatError as e:
             return {"refused": str(e)}
+
+    def parse_reply(self, tokens, ids, call_id):
+        import ir_chat
+        r = ir_chat.parse_reply(ids, call_id, lambda part: "".join(tokens[str(i)] for i in part))
+        return {"parsed": False} if r is None else {"parsed": True, **r}
 
     def run_node(self, node, inputs, weights, state):
         env = {}
@@ -427,9 +437,14 @@ class CmdAdapter(Adapter):
     def dequantize(self, type_name, n, raw):
         return self._call("dequantize", {"type": type_name, "n": n, "bytes": raw.hex()})["values"]
 
-    def render_chat(self, record, messages, generation_prompt=False, thinking=None):
-        return self._call("render_chat", {"record": record, "messages": messages,
-                                          "generation_prompt": generation_prompt, "thinking": thinking})
+    def render_chat(self, record, messages, generation_prompt=False, thinking=None, tools=None):
+        params = {"record": record, "messages": messages, "generation_prompt": generation_prompt, "thinking": thinking}
+        if tools is not None:  # sent only when the case has them (an engine written before v1.4.2 never sees it)
+            params["tools"] = tools
+        return self._call("render_chat", params)
+
+    def parse_reply(self, tokens, ids, call_id):
+        return self._call("parse_reply", {"tokens": tokens, "ids": ids, "call_id": call_id})
 
     def run_node_grad(self, node, inputs, weights, out_grad):
         return self._call("run_node_grad", {"node": node, "inputs": _encode_tensors(inputs),
@@ -725,8 +740,16 @@ def run_accept_case(adapter, c):
 
 def run_chat_case(adapter, c, records):
     """IR_SPEC 8.1.3: the rendered text of a conversation under a template record, or a refusal."""
+    if "ids" in c:  # chat/parse_reply.json (8.1.6): the reply split at the call token
+        res = adapter.parse_reply(c["tokens"], c["ids"], c["call_id"])
+        if c["expect"] is None:
+            return res.get("parsed") is False, ("not parsed" if res.get("parsed") is False
+                                                else f"parsed {res!r}, expected no parse")
+        got = {"content": res.get("content"), "tool_calls": res.get("tool_calls")} if res.get("parsed") else None
+        return got == c["expect"], "content and calls equal" if got == c["expect"] else f"{got!r} != {c['expect']!r}"
     rec = records[c["record"]] if isinstance(c["record"], str) else c["record"]
-    res = adapter.render_chat(rec, c["messages"], c.get("generation_prompt", False), c.get("thinking"))
+    res = adapter.render_chat(rec, c["messages"], c.get("generation_prompt", False), c.get("thinking"),
+                              c.get("tools"))
     if c.get("refused"):
         return "refused" in res, ("refused" if "refused" in res
                                   else f"rendered {res.get('text')!r}, expected a refusal")
@@ -777,7 +800,7 @@ def run_suite(adapter, only=None, out_json=None):
                 elif c["kind"] == "accept":
                     ok, msg = run_accept_case(adapter, x)
                 elif c["kind"] == "chat":
-                    ok, msg = run_chat_case(adapter, x, case["records"])
+                    ok, msg = run_chat_case(adapter, x, case.get("records", {}))
                 else:
                     ok, msg = run_refuse_case(adapter, x, c["file"])
                 verdict = "PASS" if ok else "FAIL"

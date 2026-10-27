@@ -27,7 +27,8 @@ impl Json {
     pub fn get(&self, key: &str) -> Option<&Json> {
         match self {
             // a duplicate member name: the last one holds (as ECMAScript's JSON.parse and Python's
-            // json do; IR_SPEC does not say, FINDINGS.md)
+            // json do); a document read is refused for one (rule 35), while the container rules that
+            // read an embedded document keep the last (IR_SPEC 3.2, revision 1.3.1)
             Json::Obj(m) => m.iter().rev().find(|(k, _)| k == key).map(|(_, v)| v),
             _ => None,
         }

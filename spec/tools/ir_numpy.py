@@ -361,7 +361,12 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None, states=None):
             outs = []
             # Hidden keys: j > p, and, with a window, keys that are neither a
             # sink (j < sinks) nor among the last `window` (j >= p - window + 1).
-            p, j = np.arange(T)[:, None], np.arange(T)[None, :]
+            # p and j are positions (IR_SPEC 5.15), never rows: under depth_route a step runs
+            # on its active rows, whose positions skip the tokens that exited (Q16, v1.4.2).
+            # Outside it pos is 0 .. T-1, the rows.
+            ps = np.asarray(env["pos"], dtype=np.int64) if "pos" in env else np.arange(T)
+            assert ps.shape == (T,)
+            p, j = ps[:, None], ps[None, :]
             mask = j > p
             m = nd.get("mask", "causal")
             if m == "turn_state":
@@ -382,7 +387,6 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None, states=None):
                 _width(tab.ndim == 2 and tab.shape[1] == H and tab.shape[0] > int(bk.max()), "5.15",
                        f"position_bias {pb['weight']} has shape {list(tab.shape)}, not [B, heads {H}] with B > "
                        f"every bucket")
-                ps = np.asarray(env["pos"], dtype=np.int64) if "pos" in env else np.arange(T)
                 b_of = bk[np.clip(ps[:, None] - ps[None, :], 0, len(bk) - 1)]
             rkv = nd.get("relative_kv")
             if rkv:  # IR_SPEC 5.15 (revision 1.4): Shaw's vectors by n = min(p - j, K), p and j the rows' positions
@@ -393,7 +397,6 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None, states=None):
                     _width(t is None or (t.ndim == 2 and t.shape[0] == K + 1 and t.shape[1] in (hd, H * hd)),
                            "5.15", f"relative_kv {nm} has shape {list(t.shape) if t is not None else None}, not "
                                    f"[max_distance + 1 = {K + 1}, head_dim {hd} or heads * head_dim {H * hd}]")
-                ps = np.asarray(env["pos"], dtype=np.int64) if "pos" in env else np.arange(T)
                 n_of = np.clip(ps[:, None] - ps[None, :], 0, K)
             for h in range(H):
                 kh = h // (H // KV)

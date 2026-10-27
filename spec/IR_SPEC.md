@@ -2,7 +2,7 @@
 
 *Normative specification of the keramos IR: a versioned JSON graph of a language model that an
 engine interprets, rather than recognising a fixed architecture. IR version 1, specification revision
-1.4 (27 October 2026; v1.4.0).*
+1.4 (28 October 2026; v1.4.2).*
 
 The format's GGUF keys keep their `paperkiln.` prefix (`paperkiln.ir`, `paperkiln.ir_version`,
 `paperkiln.ir_sha256` and the rest), as does the architecture label "paperkiln" (rule 38): they are
@@ -49,6 +49,7 @@ not semantics: when the header and this document differ, this document holds.
 - Appendix A. The `-ffast-math` audit
 - Appendix B. Changelog
 - Appendix C. Engine capabilities
+- Appendix D. The third-party graphs
 
 ## 0. Status
 
@@ -71,7 +72,10 @@ optional attribute of `attention` (section 5.15, rule 39). Revision 1.4 adds the
 under the workspace's path for new primitives (`LOCAL_LLM_STACK.md` section 5.4): Shaw-style relative key and
 value vectors, an optional attribute of `attention` (section 5.15, rule 40), with gradient cases for engines
 that train (section 11.2); it states Primer's multi-dconv-head attention as `conv1d_causal` on the fused
-projection beside a kv slot, with no new op (sections 6.9 and 9.2). The IR documents
+projection beside a kv slot, with no new op (sections 6.9 and 9.2). Its patch v1.4.2 states what a second
+pass of the clean-room implementation found the text left to the tools (rule 38's graphs, Appendix D),
+settles windows under Mixture-of-Recursions (Q16: positions, section 5.15) and states the chat profile's
+schema v2, `paperkiln/2`, as built (section 8.1.6). The IR documents
 that paperkiln commits before 5349ee19 exported carry `"ir_version": 0` and are version 1 documents
 (section 2.1); later exports carry 1 (section 2.3).
 
@@ -98,8 +102,9 @@ question that review settled, with its answer, and the questions still open.
 ### 1.2 Normative language
 
 Statements in sections 2 to 8, 10 and 11 are normative unless marked *informative*. "Is refused"
-means a consumer must reject the document at load, naming the rule (section 10). Section 9 and the
-appendices are informative.
+means a consumer must reject the document at load, naming the rule (section 10). Section 9 and
+Appendices A to C are informative. Appendix D is normative where section 3.1 cites it: for rule 38, and
+for an engine that builds the document of a GGUF without one.
 
 ## 2. Versioning, profiles and change control
 
@@ -198,20 +203,24 @@ and records its commit.
   (section 3.10): 64 lowercase hex digits. It is optional; a file whose digest key is not the digest
   of its embedded document is refused (rule 30). paperkiln's exporters write it.
 - **The architecture** (revision 1.3). `general.architecture` of a file with an embedded document is
-  `"paperkiln"` or an architecture of section 9.3, and it is one of section 9.3's only when the
-  embedded document is that architecture's graph: the document section 9.3's builder
-  (`tools/gguf_ir.py`, whose graphs are normative for this purpose only) builds from the same file's
-  metadata and tensor shapes, up to the names of values and slots, `_` members, the informative keys
-  (`family_hint`, `tokenizer`, `inputs`, `outputs`, `modes`, `ir_version`) and attributes
-  (`attention.softmax`, `moe_ffn.routing`), optional attributes written at their defaults (section
-  3.5), the order of the two operands of `add` and of `mul`, the spelling of numbers (each the f32 it
-  rounds to) and whether a `linear` reaches the tensor it reads through `tied_to` (section 5.3). Names
-  of values are compared by the write that makes each value: every write is a new value, and a read
-  names the latest write before it in the order embed, the block's nodes once, head; so a value the
-  block carries from one application to the next (the stream `x`) is named, where the block reads it
-  before writing it, by the write that application 0 reads (the embed's), in both documents alike.
-  `rmsnorm.group` is compared as written, absent against absent (its default, the row width, would need
-  the widths section 10.1.1 does not infer). Every
+  the string `"paperkiln"` or one of the eight architectures of section 9.3, `"llama"`, `"mistral"`,
+  `"qwen2"`, `"qwen3"`, `"gpt2"`, `"gptneox"`, `"gemma3"` and `"mamba"` (a file with an embedded document
+  and no `general.architecture` key is refused), and it is one of the eight only when the embedded
+  document is that architecture's graph: the document Appendix D builds from the same file's metadata
+  and tensor names (normative for this purpose; `tools/gguf_ir.py` implements it), up to the names of
+  values and slots, `_` members, the informative keys (`family_hint`, `tokenizer`, `inputs`, `outputs`,
+  `modes`, `ir_version`) and attributes (`attention.softmax`, `moe_ffn.routing`), optional attributes
+  written at their defaults (section 3.5), the order of the two operands of `add` and of `mul`, the
+  spelling of numbers (each the f32 it rounds to) and whether a `linear` reaches the tensor it reads
+  through `tied_to` (section 5.3). Names of values are compared by the write that makes each value:
+  every write is a new value, and a read names the latest write before it in the order embed, the
+  block's nodes once, head; so a value the block carries from one application to the next (the stream
+  `x`) is named, where the block reads it before writing it, by the write that application 0 reads (the
+  embed's), in both documents alike. `rmsnorm.group` is compared as written, absent against absent (its
+  default, the row width, would need the widths section 10.1.1 does not infer). Nothing else is
+  ignored: the nodes of each section and the slots of `block.state` are compared in order (two
+  independent nodes written the other way round differ), and a `per_layer` object is never equal to a
+  number, even when every entry is that number. Appendix D.7 states the comparison step by step. Every
   other file has the architecture `"paperkiln"`, whatever tensors it shares with a llama.cpp
   architecture. No llama.cpp release builds a graph for `"paperkiln"`, so a program that builds its
   graph from the architecture and its metadata and never reads the document (llama.cpp and the front
@@ -238,13 +247,17 @@ and records its commit.
   uint32 key `general.alignment`, or 32 when it is absent. The tensor data section starts at the first
   multiple of the alignment at or after the end of the tensor infos, and a tensor's offset counts
   from the start of that section (each a multiple of the alignment). A tensor's values are section
-  4.7's for its type.
+  4.7's for its type. A tensor's ne is its stored dimension list, the dimension count included: a rule
+  that states an ne (rules 26, 28, 39 and 40) compares the list as stored, so a stored ne {w} is not
+  ne {w, 1}. An exporter writes every dimension of such a tensor, those of size 1 included (paperkiln's
+  do), even where ggml's `ggml_n_dims` would count fewer.
 - **A GGUF without `paperkiln.ir`** (a third-party file) holds no document. Building one from its
   `general.architecture` and metadata is a capability (section 10.3): an engine may refuse such a
   file at load, naming the capability. What an engine that builds one runs is the built document, as
-  it would run any document; `tools/gguf_ir.py` is the reference builder (informative: section 9.3
-  lists the graphs, and the conformance suite tests none, since every suite model embeds its
-  document).
+  it would run any document. The document it builds is Appendix D's for the file's architecture
+  (`tools/gguf_ir.py` is the reference builder; section 9.3 summarises the graphs). The conformance
+  suite tests the graphs through rule 38: every `tp_` model embeds the document Appendix D builds from
+  its own metadata, and rule 38's refusal cases embed documents it does not.
 
 ### 3.2 Top-level keys
 
@@ -323,7 +336,7 @@ residuals a list value, section 9.2); the head writes `logits`.
 - **Optional attributes and their defaults:** `linear.bias` and `scale.bias` null; `linear.tied_to`
   none; `embedding.state_weight` none; `rmsnorm.group` the row width and `rmsnorm.weight_offset` 0;
   `rope.kv_heads` = heads, `rope.n_rot` = head_dim and `rope.freq_scale` 1; `attention.mask`
-  `"causal"` and `attention.position_bias` none; `depth_attend.eps` 1e-5; `conv1d_causal.bias` none; `selective_scan.d` none and
+  `"causal"`, `attention.position_bias` none and `attention.relative_kv` none; `depth_attend.eps` 1e-5; `conv1d_causal.bias` none; `selective_scan.d` none and
   `selective_scan.dt_softplus` true; a kv slot's `dtype` `"f32"`, `evict` and `kv_rows` absent.
 - **Numbers.** A float attribute (`eps`, `theta`, `scale`, `shift`, `freq_scale`, `den_floor`,
   `weight_offset`, ...) is the JSON number's binary64 value (its nearest double, as JSON readers
@@ -345,8 +358,9 @@ GGUF tensor and never state.
 
 ### 3.7 Tensors and names
 
-- `weight` (and `bias`, `router`, `experts`, `state_weight`, the `weight` of `attention.position_bias`
-  and the tensor attributes of `ssm_scan`, `conv1d_causal` and `selective_scan`) name GGUF tensors.
+- `weight` (and `bias`, `router`, `experts`, `state_weight`, the `weight` of `attention.position_bias`,
+  the `key` and `value` of `attention.relative_kv` and the tensor attributes of `ssm_scan`,
+  `conv1d_causal` and `selective_scan`) name GGUF tensors; `"{i}"` in any of them follows the rule below.
 - Layout: a matrix is [out, in] row-major, as GGUF and llama.cpp store it (ggml `ne0` = in).
 - Storage: each tensor's storage type is its GGUF type (f32, f16, q8_0, ...), and its values are the
   f32 values section 4.7 defines for that type. Engines compute in `model.dtype`.
@@ -713,6 +727,17 @@ Attributes `heads`, `kv_heads`, `head_dim`, `scale`, `causal`, `window` (0 = unb
   (the sink range is cut at the window's start when they meet). paperkiln sums sinks first, then the
   window, each in ascending j (the reference order, section 4.4). window >= p + 1 with sinks 0 is
   plain causal attention.
+- **Windows under Mixture-of-Recursions** (v1.4.2, Q16). p and j are positions, never row indices,
+  under `depth_route` too: a recursion step runs on its active rows at their absolute positions
+  (section 7.4(b)), and its kv slot holds the rows of the tokens active at that application (section
+  7.5). A key of that slot at position j is visible from a query at position p by the rule above, the
+  window and sinks counted in positions; the rows of tokens that exited are absent, never replaced by
+  earlier rows, so a query sees the sinks and the positions p - window + 1 .. p that the application
+  holds, which may be fewer than `window` rows. The window's reach in the text is therefore the same at
+  every depth. Counting the window in active rows (the last `window` rows the application holds)
+  computes another function: on the suite's `pk_mor` under window 3 and sinks 1 the two readings'
+  logits are 1.0e-2 of max(1, max |ref|) apart over 14 ids, against the ROUNDING tolerance 1e-5 (traces
+  `pk_mor_window` and `pk_mor_window_rewind`, acceptance case `mor_window`).
 - **Decode.** A query at position p reads the k/v rows of positions 0 .. sinks-1 and of the last
   `window` positions, p - window + 1 .. p, its own row included. So after a call ending at position p
   the slot needs the rows of the sinks and of positions p - window + 2 .. p (window - 1 of them), and
@@ -744,8 +769,8 @@ Attributes `heads`, `kv_heads`, `head_dim`, `scale`, `causal`, `window` (0 = unb
   (v1.3.1) p and j are the positions of the step's active rows (section 7.4), as everywhere: the
   distance is never counted in rows, and the reference computes it so (no case yet; ember refuses the
   combination by name, a capability refusal, section 10.3). Refused (rule 39):
-  `buckets` empty or holding an integer below 0, or W not of ne {heads, B} with B greater than every
-  bucket.
+  `buckets` empty or holding an integer below 0, any member other than `weight`, `buckets` and `_`
+  members (prose, section 3.2), or W not of ne {heads, B} with B greater than every bucket.
 - **Relative key and value vectors** (`relative_kv`, optional; revision 1.4; Shaw, Uszkoreit and Vaswani
   2018, arXiv 1803.02155, eqs. 3 and 4 with the clipping of their section 3.3; paperkiln's
   `ops::shaw_attention`). `{"key": RK, "value": RV, "max_distance": K}`: K an integer >= 0; RK names a
@@ -769,7 +794,8 @@ Attributes `heads`, `kv_heads`, `head_dim`, `scale`, `causal`, `window` (0 = unb
   layer is one name, a set per layer (Shaw's) names it with `{i}`. The vectors depend on p - j alone, so
   decode needs nothing beyond the kv slot's rows and their positions, and prefill and decode agree as they
   do without it. Under `depth_route` p and j are positions, as for `position_bias`. Refused (rule 40):
-  `key` missing, `max_distance` not an integer >= 0, `value` neither a name nor null, any other member;
+  `key` missing, `max_distance` not an integer >= 0, `value` neither a name nor null, any member other
+  than `key`, `value`, `max_distance` and `_` members (prose, section 3.2);
   a tensor not of ne {head_dim or heads * head_dim, K + 1} in an application that reads it; `relative_kv`
   and `position_bias` on one node (revision 1.4 defines each alone).
 - `softmax` (a string) is an informative attribute that paperkiln's exporter writes ("max-shifted,
@@ -1117,7 +1143,11 @@ those n tokens would leave. Per slot:
   windowed cache, a cut to 10) and `tp_mistral_hd16_rewind_window` (window 4 on every layer: 14
   tokens, a cut to 7).
 - **kv with kv_rows active:** keep the rows whose positions are < n, per application, with each
-  application's written-rows mask truncated with them (section 7.5).
+  application's written-rows mask truncated with them (section 7.5). With a window too (v1.4.2, Q16),
+  the window's rule above holds per application, over the rows that application holds: when every row
+  it holds at positions max(sinks, n - window + 1) .. n - 1, and at the sinks below n, is still held, it
+  keeps its rows of positions < n; otherwise the engine re-prefills (or restores a snapshot taken at n)
+  or refuses the truncate (trace `pk_mor_window_rewind`: 14 tokens, a cut to 8, 3 new ids).
 - **recurrent:** a recurrence cannot drop tokens. Prefix reuse keeps a snapshot of the slot's
   tensors taken after the prefix's last token; rewinding means restoring a snapshot or running again
   from the start. A snapshot is the slot's tensors, nothing else. A recurrence's slot is such a slot
@@ -1298,7 +1328,8 @@ A key of the block itself, not of a node: `{"per_layer": [m_0, ..., m_{L-1}]}`, 
 integers m_i >= 0.
 
 - Application i of the block reads every tensor name it holds (`weight`, `bias`, `router`,
-  `experts`, ssm_scan's `a b c d`, ...) with `"{i}"` replaced by m_i, i.e. `blk.{m_i}.*`, so several
+  `experts`, ssm_scan's `a b c d`, `position_bias`'s weight, `relative_kv`'s key and value, ...) with
+  `"{i}"` replaced by m_i, i.e. `blk.{m_i}.*`, so several
   applications share one stored layer's tensors (tied-block recursion: prelude layers, a shared block
   applied R times, coda layers; paperkiln family_hint `llama_recursive`).
 - Everything else per application stays indexed by i: each application has its own instance of
@@ -1322,7 +1353,8 @@ integers m_i >= 0.
 - The key belongs to the ops that name tensors, as `ir.schema.json` lists it: `embedding`,
   `pos_embedding`, `linear`, `scale`, `rmsnorm`, `layernorm`, `moe_ffn`, `depth_attend`, `ssm_scan`,
   `conv1d_causal`, `selective_scan` and `recurrence`. On any other op it is an attribute the op does
-  not define (rule 4). Its one value is `"application"` (rule 5).
+  not define (rule 4). Its one value is `"application"` (rule 5). `attention` is not among them, so the
+  names of `position_bias` and `relative_kv` always read m_i.
 - It governs every tensor name of the node that holds `{i}` (`weight`, `bias`, `router`, `experts`,
   ssm_scan's `a b c d`, a recurrence's `weights`), and only that node: the tag on one node moves no
   other node's names. It is structural (section 3.8), so it holds in every application.
@@ -1426,7 +1458,9 @@ So each application keeps its own compact cache: after L tokens, application i's
 slot holds #{t < L : s_i = -1 or n_t > s_i} rows, those tokens' rows in ascending position, and an
 application of step k holds only the rows of tokens whose depth exceeds k. The queries of
 application i are the active rows at i, and each attends to the rows application i holds at
-positions <= its own (the prefix's rows and the current call's earlier active rows).
+positions <= its own (the prefix's rows and the current call's earlier active rows). A window and
+sinks on the slot and its attention node narrow that set by positions, as section 5.15 states (Q16):
+never to the last `window` rows the application holds.
 
 ### 7.6 kv_from (reserved)
 
@@ -1477,11 +1511,17 @@ bool?}], "uri", ...}`.
 
 - At most one system message, and only first. After it, user and assistant alternate, starting with
   the user.
+- Every message has a `role` and a string `content` (a message without one is refused; an assistant
+  message with tool calls whose text is empty has `""`). A `tool_calls` member (even null) under a
+  record without `tool`, or on a message that is not an assistant message, is refused, as is a
+  `tool_call_id` on a message that is not a tool message, under any record. Other members are ignored.
 - A training conversation ends on an assistant message; a prompt conversation ends on a user message.
 - An instruction example is a conversation with one exchange.
 - `loss` (assistant messages only) overrides the loss policy for that message; `false` keeps the reply
   as context only.
-- The `tool` role is reserved: it is refused until a template version defines it.
+- The `tool` role, an assistant message's `tool_calls` and a conversation's `tools` (tool definitions)
+  are refused under every record without the field `tool`; `paperkiln/2` defines them, with the
+  structure section 8.1.6 states.
 - Every pinned `corpus/data/<id>/dialogues.jsonl` of paperkiln is already in this form, so nothing is
   converted and no hash changes. paperkiln's v1 fetchers drop or strip system messages
   (`_common.normalise_dialogue`), and that rule stays in every v1 corpus.
@@ -1518,13 +1558,25 @@ The GGUF string key `paperkiln.chat_template` holds the record as JSON.
   is not trimmed), `system` (`fold` with `join`, `turn` with `open`/`close`, or `none`),
   `user` and `assistant` `{open, close}`, `generation_prompt`, optional `generation_prompt_nothink`,
   `stop` `{eos, turn}`, `past_assistant` (`keep` or `strip_think`), optional `default_system`, and
-  `reserved`. Third-party records add `markers`, `match` and `architectures`.
+  `reserved`. `paperkiln/2` adds `tool`, `tool_call` and `tools` (section 8.1.6). Third-party records
+  add `markers`, `match` and `architectures`.
 - **Rendering:** a conversation renders as bos, then each message as open + content + close, then
   the generation prompt when a reply is wanted. The system message renders by its mode: `turn` as
   its own open + content + close; `fold` as no turn of its own, its text plus `join` opening the
   first user message's content; `none` refuses it. A record's `default_system` stands in when the
   conversation has no system message. Content holding a `reserved` string is refused, in
-  both languages and by `parse` alike, so no text can forge a turn. `<unk>` is ordinary text. A field
+  both languages and by `parse` alike, so no text can forge a turn: the check reads each content as
+  rendered, after `trim` and before `strip_think` (so a reserved string inside stripped reasoning is
+  still refused). Under `trim` the system text of mode `turn` is trimmed like any message,
+  `default_system` included (only `fold` keeps it untrimmed). `generation_prompt_nothink` replaces the
+  generation prompt only when the request says `thinking: false` and the record has it; otherwise the
+  plain `generation_prompt` is rendered.
+- **Required fields:** `name`, `version`, `user`, `assistant`, `generation_prompt` and `stop`; the others
+  may be absent (`bos` "", `content` `raw`, `system` mode `none`, `past_assistant` `keep`, `reserved`
+  none). `user`, `assistant` and `tool` hold `open` and `close` only, `tool_call` `open` and `join`,
+  `tools` `join` and `sep`, and another member in them is refused; the members of `system` other than
+  `mode`, `open`, `close` and `join`, and of `stop` other than `eos` and `turn`, carry nothing a renderer
+  reads and are not refused. `<unk>` is ordinary text. A field
   or field value the renderer does not implement, a conversation that breaks section 8.1.1's structure
   and a reserved role are refused, never rendered. `tools/ir_chat.py` is the reference renderer; the
   suite's chat cases (`conformance/chat/render.json`, the adapter method `render_chat`, section 11.3)
@@ -1560,7 +1612,7 @@ The GGUF string key `paperkiln.chat_template` holds the record as JSON.
 `resolve()`, the same in every engine:
 
 1. a declared `paperkiln.chat_template`; a field value the engine does not implement is refused by
-   name, never guessed;
+   name, never guessed (`paperkiln/2` resolves by this step only, section 8.1.6);
 2. ids 0-3 with exactly the v1 specials' texts gives `paperkiln/1` (the 8k `bpe` and the 16k
    `llama3_bpe` vocabularies both qualify, tested), so every file exported before the declaration
    resolves to v1 and is never rewritten;
@@ -1585,15 +1637,110 @@ marker (GGUF has no key for a second stop set). Word-level vocabularies write no
 
 State tokens are defined over `paperkiln/1` only (section 8.2).
 
-#### 8.1.6 v2
+#### 8.1.6 v2: system and tool turns (`paperkiln/2`)
 
-v2 (designed, not built) gives the system role its own token: a reserved block of 8 control tokens
-appended to an existing vocabulary (`<|system|>`, `<|tool|>`, `<|tool_result|>`, 5 spares).
+`paperkiln/2` (v1.4.2, as built in paperkiln 22f8fe6d) gives the system message a turn of its own behind
+its own token, and adds tool calls, tool results and tool definitions. The tiny-chat programme and every
+file without the declaration stay `paperkiln/1`.
 
-- Merges and text ids are unchanged, so every `.ids` corpus stays valid.
-- Bases gain embedding and head rows (mean-of-rows initialisation), and state ids shift.
-- It needs this specification to pin system rows under eviction. It is built when a model is to
-  train on system prompts; the tiny-chat programme stays v1.
+- **Declaration.** The record is always declared (`paperkiln.chat_template`, `"name": "paperkiln",
+  "version": 2`) and never inferred: a file without the key and with the v1 specials resolves to
+  `paperkiln/1` (section 8.1.4, step 2), so every v1 file behaves as before. Engines act on the record's
+  fields (`tool`, `tool_call`, `tools`), not on its version. A file that declares it has no state tokens
+  (section 8.2, rule 28).
+- **The record**, member for member:
+
+      {"name": "paperkiln", "version": 2, "bos": "", "content": "raw",
+       "system": {"mode": "turn", "open": "<|system|>", "close": ""},
+       "user": {"open": "<|user|>", "close": ""},
+       "assistant": {"open": "<|assistant|>", "close": "<|endoftext|>"},
+       "tool": {"open": "<|tool|>", "close": ""},
+       "tool_call": {"open": "<|tool_call|>", "join": "\n"},
+       "tools": {"join": "\n\n", "sep": "\n"},
+       "generation_prompt": "<|assistant|>",
+       "stop": {"eos": ["<|endoftext|>"],
+                "turn": ["<|user|>", "<|assistant|>", "<|system|>", "<|tool|>"]},
+       "past_assistant": "keep",
+       "reserved": ["<|endoftext|>", "<|user|>", "<|assistant|>", "<|system|>", "<|tool_call|>",
+                    "<|tool|>", "<|spare_3|>", "<|spare_4|>", "<|spare_5|>", "<|spare_6|>",
+                    "<|spare_7|>"]}
+
+  (`"\n"` is one newline, as in JSON.) `<|tool_call|>` is not a stop: a reply goes on after a call
+  token until a stop.
+- **The three fields.** `tool` is `{open, close}`, a tool result's turn; `tool_call` is `{open, join}`, a
+  call inside an assistant turn; `tools` is `{join, sep}`, the definitions inside the system turn. A
+  record holding any other member in them, `tool` without `tool_call` or the reverse, `tools` without
+  them, or `tool` with a system mode other than `turn` is refused by name (section 8.1.4, step 1).
+  Under a record without `tool`, tool messages, `tool_calls` and a non-empty `tools` are refused (an
+  empty `tools` list is no definitions under any record); under one without `tools`, a non-empty
+  `tools` is refused.
+- **Tokens.** paperkiln's 16k Llama 3-scheme vocabulary plus 8 control tokens (GGUF token type 3) at
+  ids 16384 .. 16391, in this order: `<|system|>`, `<|tool_call|>`, `<|tool|>`, `<|spare_3|>` ..
+  `<|spare_7|>`; 16,392 tokens, the merges and every text id unchanged, so every `.ids` corpus stays
+  valid. They parse out of text by their type, as the v1 specials do. A model gains their rows with each
+  new embedding row the mean of the old rows (the head is tied). A consumer refuses a file whose
+  declared record has `tool` unless each of its `reserved` strings is a single token of the vocabulary
+  of type 3 (control) (paperkiln's `check_control_tokens`). The 8k `bpe` vocabularies stay v1.
+- **Structure** (under a record with `tool`, in place of section 8.1.1's alternation). Roles `system`,
+  `user`, `assistant` and `tool`. At most one system message, and only first; then a user message;
+  after a user message, an assistant message; an assistant message with k > 0 tool calls is followed by
+  exactly k tool messages, the answers to its calls in order, then an assistant message; an assistant
+  message without calls is followed by a user message. A prompt conversation (a reply wanted) ends on a
+  user message or on the tool message that answers an assistant message's last call; a training
+  conversation ends on an assistant message, with or without calls.
+  - `tool_calls`, on assistant messages only: absent or `null` (no calls), or a non-empty list of
+    `{"id"?, "type"?, "function": {"name", "arguments"?}}`, where `type`, when present, is
+    `"function"`; `id`, when present, a string; `name` a non-empty string without "\n"; `arguments` a
+    string, `""` when absent, rendered verbatim (it is the call's text, not parsed). Other members of a
+    call are ignored.
+  - `tool_call_id`, on tool messages only: when present, the id of the call the message answers, a
+    call without an id counting as id null; so a string `tool_call_id` against a call without an id is
+    refused, and a null one is accepted only there. It is checked, never rendered.
+  - `loss` stays on assistant messages only. Rendering accepts empty contents; a stored conversation
+    has non-empty content everywhere except an assistant message with calls.
+- **Rendering** (section 8.1.3's, with these additions). The system turn is `system.open` + its content
+  + `system.close` (`<|system|>S`, no close). With tool definitions, that content is the system text,
+  then `tools.join` ("\n\n"), then the definitions' texts joined by `tools.sep` ("\n"); with no system
+  message, or an empty one, it is the definitions alone, and the system turn is rendered for them. An
+  assistant message renders as `assistant.open` + content, then for each call `tool_call.open` + name +
+  `tool_call.join` + arguments, then `assistant.close`. A tool message renders as `tool.open` + content +
+  `tool.close` (`<|tool|>R`: no close, and no id or name, as results follow call order). A content, a
+  call's name or arguments, or a definition's text that holds a `reserved` string is refused. A
+  conversation of user and assistant messages only renders exactly as under `paperkiln/1`.
+- **A definition's text.** Each definition is a JSON object (anything else is refused), written as
+  Python's `json.dumps(d, ensure_ascii=False)`, which is HF transformers' Jinja `tojson` (paperkiln's C++
+  `detail::dump_py` writes the same): no whitespace except one space after each `,` and each `:`; members
+  in the order received; `true`, `false`, `null`; an integer in decimal (`-0` as `0`); a string in double
+  quotes, with `"` and `\` written `\"` and `\\`, U+0008, U+0009, U+000A, U+000C and U+000D written `\b`,
+  `\t`, `\n`, `\f` and `\r`, every other code point below U+0020 as `\u` and four lowercase hex digits,
+  and every other code point as itself (U+007F and non-ASCII text included). A definition holding a
+  number written with a fraction or an exponent (`1.5`, `1.0`, `1e3`) is refused: two serialisers may
+  write it differently.
+- **Reply parsing** (`parse_reply`). A generated reply, its ids without the stop, is split at every id of
+  `tool_call.open`'s control token, never on text, and each part is decoded (the tokenizer's decoding of
+  the part's ids). Part 0 is the content. Every later part must hold `tool_call.join` ("\n") after at
+  least one character: the name is the text before its first "\n", the arguments the rest (empty, or
+  holding further newlines). The calls get the ids `call_0`, `call_1`, ... in order and the type
+  `"function"`. When any later part does not parse (no "\n", or an empty name), the reply has no calls:
+  the engine returns the whole decoded reply as the content, the call tokens decoded as their text.
+  Ordinary BPE pieces that spell `<|tool_call|>` are content, as is a spare or a non-stop marker, which
+  decodes as its text.
+- **Loss** (section 8.1.2). Trained: an assistant message's content, its call pieces (the call tokens,
+  names, joins and arguments) and its close. Never trained: the system turn (system text and
+  definitions), user text, tool results and role markers. `train.sft_loss` applies per assistant message
+  (`each`: one row per reply, cut after it); a row keeps the longest prefix of whole exchanges that fits
+  T + 1, an exchange being a user message and every message up to the next user message. An engine that
+  drops history for its context drops the oldest whole exchange and keeps the system turn.
+- **Export** (section 8.1.5). The GGUF carries the record, its `tokenizer.chat_template` (the Jinja of the
+  record, with `tools`, `tool_calls` and tool messages rendered as the record renders them, under HF's
+  `tojson`) and the 16,392 tokens with their types; the Modelfile renders the turns, and its tool
+  definitions and call arguments go through Ollama's Go JSON, so their text there is not the record's.
+- **Gates.** The v1 parts of paperkiln's `tests/chat_template_cases.json` byte-identical (32 cases,
+  records, Jinja, Modelfile, resolutions); 42 v2 conversations (18 rendered, 24 refused) and 12
+  reply-parsing cases, C++ = Python, which are also this suite's (section 11.2); the v2 Jinja equal to
+  the record on 1,000 random conversations; paperkiln's v2 SFT rows equal to an independent
+  construction; ember against `mtstudio chat` 40/40 on every field over 40 v2 prompts (ember b49eb5c,
+  `LOCAL_LLM_STACK.md` section 10, 27 October 2026).
 
 #### 8.1.7 Gates
 
@@ -1608,7 +1755,8 @@ appended to an existing vocabulary (`<|system|>`, `<|tool|>`, `<|tool_result|>`,
   - the generated Jinja equals the record under jinja2;
   - third-party records equal HF's templates;
   - the hand-written cases in paperkiln's `tests/chat_template_cases.json` pass in both languages;
-    the same 32 cases are the conformance suite's chat cases, so any engine can show them.
+    the same cases are the conformance suite's chat cases (74 conversations, 32 of them v1, and 12
+    reply-parsing cases), so any engine can show them.
 
 ### 8.2 The state-token template contract
 
@@ -1773,12 +1921,12 @@ A tensor that is the same thing as a gpt2 tensor keeps llama.cpp's gpt2 name: `t
 ### 9.3 Third-party families
 
 An engine that has the capability (section 3.1) builds the document of a llama.cpp GGUF without
-`paperkiln.ir` from `general.architecture` and its metadata, as `tools/gguf_ir.py` does (the
-reference builder; its docstring has each graph; `tools/ir_numpy.py` runs it). family_hint =
-general.architecture; llama.cpp's tensor names. The graphs below describe that builder; they are not
-normative, except that section 3.1 reads them as what a file's architecture means (rule 38: a file
-with an embedded document names one of these architectures only when its document is the graph the
-builder makes from the file), and an engine without the capability refuses such a file.
+`paperkiln.ir` from `general.architecture` and its metadata: the graph Appendix D states (normative
+there, for this and for rule 38; `tools/gguf_ir.py` is the reference builder and `tools/ir_numpy.py`
+runs it). family_hint = general.architecture; llama.cpp's tensor names. The summaries below are
+informative: a file with an embedded document names one of these architectures only when its
+document is the graph Appendix D builds from the file (rule 38), and an engine without the capability
+refuses a file without a document.
 
 - **llama, mistral**: pre-RMSNorm, interleaved RoPE, grouped-query attention, SwiGLU;
   `<arch>.attention.sliding_window` w sets window w, sinks 0 (HF Mistral's mask). llama.cpp has no
@@ -1851,10 +1999,11 @@ Document (section 3):
     (5.14); `attention.heads` is not a multiple of `kv_heads`, or window or sinks is negative (5.15);
     `moe_ffn.top_k` is not in 1 .. n_experts (5.16); `conv1d_causal` has channels < 1 or kernel < 2
     (6.6).
-39. `attention.position_bias` is not `{weight, buckets}` with `buckets` a non-empty list of integers
-    >= 0; or (container) its weight's tensor is not of ne {heads, B} with B greater than every bucket,
+39. `attention.position_bias` is not `{weight, buckets}` (with `_` members allowed, and no other) with
+    `buckets` a non-empty list of integers >= 0; or (container) its weight's tensor is not of ne {heads, B} with B greater than every bucket,
     in an application that reads it (5.15).
-40. `attention.relative_kv` is not `{key, max_distance}` with an optional `value`, `key` a name,
+40. `attention.relative_kv` is not `{key, max_distance}` with an optional `value` (with `_` members
+    allowed, and no other), `key` a name,
     `value` a name or null and `max_distance` an integer >= 0; or the node also carries
     `position_bias`; or (container) its key's or value's tensor is not of ne {head_dim or heads *
     head_dim, max_distance + 1} in an application that reads it (5.15).
@@ -1914,11 +2063,12 @@ Container (a GGUF with `paperkiln.ir`, sections 3.1, 6.8, 7, 8.2):
     sidecars).
 30. `paperkiln.ir_sha256` is present but not a string equal to the digest of the embedded document,
     or the embedded document has no digest (3.10).
-38. `general.architecture` is neither `"paperkiln"` nor an architecture of section 9.3; or it is one of
-    section 9.3's and the embedded document is not the graph section 9.3's builder makes from the
-    file's metadata and tensor shapes, up to what section 3.1 lists; or the metadata builds no graph
-    (3.1). Checked on the embedded document always, also when another is read in place of it, and
-    never on the document read in place.
+38. `general.architecture` is absent, or neither `"paperkiln"` nor one of `"llama"`, `"mistral"`,
+    `"qwen2"`, `"qwen3"`, `"gpt2"`, `"gptneox"`, `"gemma3"` and `"mamba"`; or it is one of those eight and
+    the embedded document is not the graph Appendix D builds from the file's metadata and tensor names,
+    compared as Appendix D.7 states; or the metadata builds no graph (3.1, Appendix D). Checked on the
+    embedded document always, also when another is read in place of it, and never on the document read
+    in place.
 
 Recurrence (section 6.10; `tools/ir_recurrence.py` reports these as "IR_SPEC 6.10 (rule N)"):
 31. `index` is not a map of names to positive integers; `inputs` does not declare each value of `in`
@@ -1997,7 +2147,8 @@ kind, profile, class and tolerance:
   rewritten document in place of its model's own, every worked document of `examples/`), so a
   validator that refuses everything fails the suite.
 - `chat/render.json`: chat template records and conversations with their rendered text or refusal
-  (section 8.1.3).
+  (sections 8.1.3 and 8.1.6); `chat/parse_reply.json`: generated replies split into content and tool
+  calls (section 8.1.6).
 - `digest/vectors.json`: digest vectors (section 3.10).
 - `quant/blocks.json`: stored blocks of every storage type with their f32 values (section 4.7).
 - `grad/recurrence.json`: gradient cases of recurrence nodes (section 6.10.5); `grad/attention.json`
@@ -2070,9 +2221,14 @@ digit order (1.0 is `3f800000`). Integer arrays are plain JSON lists.
   or with `ir` in its place, or `ir` alone when there is no `gguf` (the document rules only); it passes
   when it accepts.
 - **chat** (`chat/render.json`): `{"records": {id: record}, "cases": [{"name", "record": id or a record,
-  "messages", "generation_prompt", "thinking"?, "expect": str} | {..., "refused": true}]}`: the
-  rendering of section 8.1.3, or a refusal. The conversations and records are paperkiln's
+  "messages", "generation_prompt", "thinking"?, "tools"?, "expect": str} | {..., "refused": true}]}`:
+  the rendering of sections 8.1.3 and 8.1.6, or a refusal; `tools`, when present, is the conversation's
+  list of tool definitions. The conversations and records are paperkiln's
   `tests/chat_template_cases.json` (gate G5); the expected texts come from `tools/ir_chat.py`.
+- **reply parsing** (`chat/parse_reply.json`, kind `chat`): `{"cases": [{"name", "tokens": {id: text},
+  "ids", "call_id", "expect": {"content", "tool_calls"} | null}]}`: the `parse_reply` of section 8.1.6
+  over a toy vocabulary (`tokens` gives each id's decoded text; `call_id` is the call token's id);
+  `expect` null where a part does not parse. From the same paperkiln file.
 
 ### 11.3 The adapter contract
 
@@ -2136,7 +2292,8 @@ session owns the ids it has seen, so it can re-prefill after a rewind (section 6
 | `run_node_grad` | `{"node", "inputs", "weights", "out_grad"}` | `{"grads": {name: tensor}}` |
 | `digest` | `{"text": str, "prose": bool}` | `{"sha256", "canonical"?}` or `{"refused": str}` |
 | `dequantize` | `{"type": str, "n": int, "bytes": hex}` | `{"values": tensor [n]}` |
-| `render_chat` | `{"record": object, "messages": [...], "generation_prompt": bool, "thinking": bool or null}` | `{"text": str}` or `{"refused": str}` |
+| `render_chat` | `{"record": object, "messages": [...], "generation_prompt": bool, "thinking": bool or null, "tools"?: [...]}` | `{"text": str}` or `{"refused": str}` |
+| `parse_reply` | `{"tokens": {id: str}, "ids": [...], "call_id": int}` | `{"parsed": true, "content": str, "tool_calls": [...]}` or `{"parsed": false}` |
 
 - `ir` (optional) is a document that replaces the file's embedded one (ember's `EMBER_IR`).
 - `evict`: null runs the document as declared; false keeps every kv row even where the document
@@ -2183,8 +2340,14 @@ session owns the ids it has seen, so it can re-prefill after a rewind (section 6
   elements of the storage type stored as the bytes (section 4.7).
 - `render_chat` (optional, the chat profile): the text a conversation renders to under a template
   record (section 8.1.3), with the generation prompt when `generation_prompt` is true and, when
-  `thinking` is false, the record's `generation_prompt_nothink`; `refused` where section 8.1 refuses
-  (an unimplemented field or value, a conversation of the wrong structure, a reserved role or text).
+  `thinking` is false, the record's `generation_prompt_nothink`, and with `tools` (sent only when the
+  case has them) as the conversation's tool definitions; `refused` where section 8.1 refuses (an
+  unimplemented field or value, a conversation of the wrong structure, a reserved role or text, a
+  definition that is not portable).
+- `parse_reply` (optional, the chat profile, v1.4.2): the split of section 8.1.6 of the reply `ids`, each
+  part decoded by concatenating its ids' texts from `tokens` (keys are the ids as decimal strings);
+  `parsed` false where a part does not parse (the engine would then return the whole reply as content).
+  `tool_calls` is a list of `{"id", "type": "function", "function": {"name", "arguments"}}`.
 
 **Expectations the suite checks.**
 - Logits within the case's class and tolerance; greedy ids and depth traces identical. An EXACT case
@@ -2205,7 +2368,8 @@ session owns the ids it has seen, so it can re-prefill after a rewind (section 6
   and the token-by-token decode of the same ids in the same engine where section 4.5's condition
   holds, otherwise within ROUNDING.
 - Digest vectors: the sha256 equal (and the canonical form, when reported); a refused text refused.
-- Acceptance: `check` accepts. Chat: the rendered text equal, or a refusal where the case refuses.
+- Acceptance: `check` accepts. Chat: the rendered text equal, or a refusal where the case refuses;
+  reply parsing: `content` and `tool_calls` equal, or `parsed` false where `expect` is null.
 - Dequantisation: bit for bit on every backend (section 4.7).
 - Gradients: per tensor |a - b| <= tol * max(1, max|ref|), tol the case's (1e-4).
 
@@ -2429,11 +2593,8 @@ extractor's proposal of T5's bias (paperkiln, 26 October 2026). Each with the an
 
 ### 12.5 Open
 
-- **Q16. Windows under Mixture-of-Recursions.** Section 5.15 defines a window over positions, while
-  the reference runs a recursion step's attention over its active rows with the window counted in
-  rows (`tools/ir_numpy.py`, `_routed_blocks`). No stored document combines `depth_route` with a
-  windowed slot, and ember refuses the combination; the text and the reference must agree before one
-  is written. A question raised after revision 1.3 takes the number Q17.
+None. Q16 is settled in v1.4.2 (section 12.6). A question raised after revision 1.3 takes the number
+Q17.
 
 ### 12.6 Settled in revision 1.4
 
@@ -2460,6 +2621,59 @@ The first primitive drafted under the workspace's path for new primitives (`LOCA
   does. Cases: model `pk_flex_mdha` (K 3, RoPE, squared ReLU) with decode, snapshot, truncate and chunks
   traces. The clean-room engine, written from revision 1.2's text and unchanged since, passes all of them
   and the acceptance case: the wiring needed no new text.
+- **N3. relative_kv's names under weight_index** (ember's question on 1.4.0; v1.4.1). Section 3.7 listed
+  the tensor names without `relative_kv`'s, so whether its `{i}` follows `weight_index` was stated only by
+  7.1's "every tensor name it holds". Stated in 3.7, 7.1 and 7.2 as the reference, ember and the validator
+  already behave: m_i, never the application (attention carries no `tensor_index`). Case: the trace
+  `pk_flex_shaw_weight_index` and the acceptance case `relative_kv_weight_index`, pk_flex_shaw's file under
+  its document with `weight_index` [1, 0], whose logits are 1.4e-1 of max(1, max |ref|) from the unpermuted document's over 8 ids (the argmax agrees everywhere), against the ROUNDING tolerance 1e-5.
+- **Q16. Windows under Mixture-of-Recursions** (v1.4.2). Section 5.15 defined a window over positions,
+  while the reference counted it in a recursion step's active rows (`tools/ir_numpy.py` built the mask
+  from row indices 0 .. T-1 of the step's rows). Settled as positions, the text's reading: the reference
+  was brought into line with it (a patch, section 2.6: no stored document combines `depth_route` with a
+  window, so no value moves). The evidence: section 7.4(b) and 7.5 place every active row at its absolute
+  position, and `position_bias` and `relative_kv` under `depth_route` were already settled as positions
+  (v1.3.1, revision 1.4), so a rows reading would make the window the one attribute that counts rows;
+  a window is a span of text, and in rows its reach would grow with depth as tokens exit; section 6.9's
+  rewind rule is stated in positions; and ember keeps each application's row positions under
+  `kv_rows: active` (its compact caches report `kv_positions`) and already masks `turn_state` by
+  positions, so the positions reading needs no state an engine lacks. Stated in sections 5.15, 6.9 and
+  7.5. Cases: the traces `pk_mor_window` (a prefill of 4, a call of 3, then token-by-token decode to 14
+  ids) and `pk_mor_window_rewind` (14 ids, a cut to 8, 3 new ids), and the acceptance case `mor_window`:
+  `pk_mor`'s file under its document with window 3 and sinks 1 on the slot and the attention node
+  (`accept/pk_mor_window.ir.json`), 1.0e-2 of max(1, max |ref|) from the rows reading over the trace's 14
+  ids. ember refuses `depth_route` with a windowed slot (a capability refusal, section 10.3), so its
+  traces skip until it runs the combination.
+- **The clean-room engine's revision 1.3 and 1.4 pass** (v1.4.2; `cleanroom/FINDINGS.md`, R1 to R7). The
+  Rust engine, written from revision 1.2's text, was brought to revision 1.4 from the text alone:
+  `position_bias`, `relative_kv` and rule 38's labels needed no reading beyond the text, and their 20
+  expected failures pass. Its findings, each settled by stating what the reference and the validator do:
+  R1, rule 38 named `tools/gguf_ir.py`'s graphs as normative, so an engine that may not read the tools
+  could not apply it: Appendix D now states every graph (metadata, defaults, the graph when an optional
+  tensor is absent, when the metadata builds none) and D.7 the comparison; R2, the allowed labels are
+  written as strings (3.1, rule 38); R3, node order, slot order and `per_layer` against a number are
+  differences (3.1); R4, a file with an embedded document and no `general.architecture` is refused (rule
+  38); R5, ne is compared as stored, its dimension count included (3.1); R6, `position_bias` and
+  `relative_kv` allow `_` members and no others (5.15, rules 39 and 40); R7, 3.5 lists `relative_kv`'s
+  default. The engine then implemented rule 38 from Appendix D alone, the chat profile from sections
+  8.1 and 11.3 (`render_chat`, `parse_reply`) and Q16 (which needed no code: its steps already ran at
+  their positions). That second pass found ten readings the text left open, P1 to P10, each settled
+  as the reference behaves: the metadata keys' types and which zero values build no graph (D.1); a
+  tied name tested as written (D.7); the 27B scale's d / H a binary64 quotient (D.5); experts on the
+  label "llama" only (D.3); a record's required fields and which of its objects refuse other members
+  (8.1.3); a message's required string content (8.1.1); `thinking: false` without
+  `generation_prompt_nothink`, `trim` under a system turn, and the reserved check before `strip_think`
+  (8.1.3). Its receipt at v1.4.2 has no expected failure.
+- **Schema v2 of the chat profile** (v1.4.2). Section 8.1.6 held the design from before the build;
+  paperkiln built `paperkiln/2` (22f8fe6d: `tools/chat_template.py` and the C++ twin
+  `include/microtorch/chat_template.hpp`, which ember vendors from b49eb5c), and section 8.1.6 now states
+  the record as built: its fields, tokens, rendering, structure, reply parsing, loss, export and
+  resolution, with the reference renderer `tools/ir_chat.py` extended to it. A patch (section 2.6): the
+  chat record is data beside the document, not part of it, and no document, schema entry or expected value
+  moves; an engine without v2 refuses the record's new fields by name (section 8.1.4, step 1), so no file
+  that resolved before resolves differently. Cases: the 42 v2 conversations of paperkiln's
+  `tests/chat_template_cases.json` (18 rendered, 24 refused) in `chat/render.json` beside the 32 v1 cases,
+  and its 12 reply-parsing cases in `chat/parse_reply.json` (adapter method `parse_reply`, section 11.3).
 
 ## Appendix A. The `-ffast-math` audit
 
@@ -2552,6 +2766,29 @@ equal to dc29b5e6 bit for bit) and the pinned commits of the RunPod campaigns ar
 
 ## Appendix B. Changelog
 
+- **v1.4.2** (tag, 28 October 2026; section 2.6). Three statements of what the reference and the
+  implementations already do, none moving a valid document's meaning, the schema or an existing expected
+  value (section 12.6). (1) Q16 settled: a window under `depth_route` counts positions (sections 5.15,
+  6.9, 7.5); the reference, which counted a step's active rows, brought into line with the text (no
+  stored document combined the two). (2) The clean-room engine's revision 1.3 and 1.4 pass
+  (`cleanroom/FINDINGS.md`): Appendix D states the third-party graphs and rule 38's comparison, which 3.1
+  had left to `tools/gguf_ir.py`; rule 38's labels as strings and a missing label refused; ne compared
+  as stored; `_` members in `position_bias` and `relative_kv`; `relative_kv`'s default in 3.5; and the
+  ten readings of its second pass, P1 to P10 (D.1, D.3, D.5, D.7, 8.1.1, 8.1.3). `cleanroom/rust`: the
+  engine at revision 1.4, with rule 38 from Appendix D and the chat methods (`arch.rs`, `chat.rs`). (3) The
+  chat profile's schema v2, `paperkiln/2`, as built in paperkiln 22f8fe6d (section 8.1.6, with 8.1.1,
+  8.1.3, 8.1.4 and 8.1.7); `tools/ir_chat.py` renders it and parses replies; the adapter's `render_chat`
+  takes `tools` and the new optional method `parse_reply` splits a reply (section 11.3). New cases, no
+  existing case or value changes: traces `pk_mor_window` and `pk_mor_window_rewind`, acceptance case
+  `mor_window` (`accept/pk_mor_window.ir.json`), 42 v2 conversations in `chat/render.json` (18 rendered,
+  24 refused) and the 12 cases of `chat/parse_reply.json`: 524 cases; regenerated in the named
+  environment (section 4.6). `expected_fail.json`: the clean-room engine's entries removed.
+- **v1.4.1** (tag, 27 October 2026; section 2.6). `relative_kv`'s `key` and `value` named among the tensor
+  names of section 3.7, of 7.1's `weight_index` and of 7.2's reach (ember's question; section 12.6 N3), as
+  the reference already reads them. New cases, no existing case or value changes: the trace
+  `pk_flex_shaw_weight_index` and the acceptance case `relative_kv_weight_index` (pk_flex_shaw under
+  `weight_index` [1, 0], `accept/pk_flex_shaw_weight_index.ir.json`): 467 cases; regenerated in the named
+  environment (section 4.6). `expected_fail.json`: the clean-room engine's two new cases.
 - **v1.4.0** (tag, 27 October 2026; revision 1.4). Shaw-style relative key and value vectors, an optional
   attribute of `attention` (section 5.15, rule 40; section 12.6 N1), and Primer's multi-dconv-head
   attention stated as `conv1d_causal` wiring beside a kv slot (sections 6.9, 9.2; 12.6 N2). Schema:
@@ -2697,7 +2934,7 @@ the engine has agreed to close, the specification already states the intended be
 | Engine and path | Profiles | Class met | Matrix products | Refuses (valid documents it does not run) |
 |---|---|---|---|---|
 | numpy reference (`tools/ir_numpy.py`) | core, state, recursion, chat, thirdparty, recurrence | the reference (prefill only: no cache; no backward) | float32 numpy (BLAS order) | none |
-| clean-room Rust engine (`cleanroom/rust`, `kcr`; informative: a third implementation written from this text alone, not a product) | core, state, recursion, thirdparty, recurrence | EXACT where this document says so (CPU) | scalar f32, ascending | GGUFs without a document (section 3.1), sidecars, `run_node_grad` |
+| clean-room Rust engine (`cleanroom/rust`, `kcr`; informative: a third implementation written from this text alone, not a product; revision 1.4 at v1.4.2, rule 38 from Appendix D) | core, state, recursion, chat, thirdparty, recurrence | EXACT where this document says so (CPU) | scalar f32, ascending | GGUFs without a document (section 3.1; it builds Appendix D's graphs only to check rule 38), sidecars, `run_node_grad` |
 | llama.cpp b6000 (`adapters/llamacpp/`; informative: reads no document, builds its graph from `general.architecture` and its metadata) | none; the files whose architecture is one of its graphs (rule 38) | ROUNDING on the CPU path except: f32 GELU through an fp16 table (outside tol 1e-5); f16 attention under flash attention whatever the cache type; tanh GELU on gptneox, whose models use exact GELU; no window on llama | ggml CPU | "paperkiln" (every IR-only file) and "mistral" (no such architecture); a rewind into a window is safe only with `swa_full` or llama-server's guard (section 6.9) |
 | Hugging Face transformers 5.20.2 (`adapters/hf/`; informative: reads no document, runs HF checkpoints exported from the suite's GGUFs) | none; the files whose architecture is one of its model classes | ROUNDING on CPU in float32 (sdpa and eager); Mistral and Gemma 3 windows and Gemma 3's per-layer RoPE as specified; Mamba wrong on a multi-id forward over a cache (its finding 1) | torch CPU | "paperkiln"; windowed and recurrent rewinds are refused by `Cache.crop`, so its adapter re-prefills (section 6.9); through its own GGUF reader, Gemma 3's RoPE scaling and attention scale are lost and llama-architecture MoE files do not load |
 | ONNX Runtime GenAI 0.18.0, onnxruntime 1.31.1, CPU (`adapters/ortgenai/`; informative: reads no document; each GGUF exported to an HF checkpoint and built by its model builder, `-p fp32 -e cpu`) | none; the files whose architecture its builder takes (llama, qwen3, mistral, gemma3; its own GGUF loader for llama and mistral) | ROUNDING on CPU in float32 where it runs: Llama and Qwen3 at head_dim 16 on the stock build, Gemma 3 once its finding 3 is fixed, the GGUF loader included; Mistral's window dropped (since 0.15.2) | onnxruntime CPU (MLAS) | "paperkiln"; Mixtral, GPT-2, GPT-NeoX and Mamba (no builder); on CPU its GroupQueryAttention refuses head_size % 16 != 0 with fused rotary (head_size % 8 != 0 without), which the builder does not check; Gemma 3 does not build under 0.18.0 (KeyError 'rope_type'), and 0.15.2 builds it with its sliding layers' RoPE scaled by the global factor; `rewind_to` exact, into a window included (`adapters/ortgenai/FINDINGS.txt`) |
@@ -2712,10 +2949,18 @@ the engine has agreed to close, the specification already states the intended be
 **Revision 1.4 in the engines.** The numpy reference computes `relative_kv`. paperkiln's mtstudio runs
 it through `ops::shaw_attention`, the op it trains with, in its `ir_eval` (op and gradient cases) and in
 `pk_flex_shaw`'s model case; its window-and-sinks case is a skip, as for `position_bias`. The clean-room
-engine (revision 1.2) runs `pk_flex_mdha` and fails the `relative_kv` cases, which `expected_fail.json` lists.
+engine ran `pk_flex_mdha` from revision 1.2's text; at v1.4.2, brought to revision 1.4 from the text alone,
+it passes every case but the 11 gradient ones (section 12.6).
 llama.cpp, transformers and ONNX Runtime GenAI read no document: the two new models are architecture
 "paperkiln" (rule 38) and the other new cases need a document or a single node, so each of the 28 is a skip
-for them by construction; their v1.3.5 receipts stand. ember writes its own receipt.
+for them by construction; their v1.3.5 receipts stand. ember's CPU interpreter (757e36b, written from
+section 5.15's text) passes 413, fails 0 and skips 52 at v1.4.0: every new case but the three gradient
+ones (at v1.4.1, ember b49eb5c, 415, 0 and 52 with the two `weight_index` cases), with `relative_kv` in the stated order and `pk_flex_mdha` as written at ec3201b. Its CUDA builds
+run `pk_flex_mdha` on the device and serve `relative_kv` on the CPU; WebAssembly is bit-equal to the CPU
+and WebGPU (a software adapter) has a `relative_kv` kernel. On the arXiv chain's model from Shaw et al.
+(1803.02155; flex d 64, 2 layers, per-head tables, max_distance 16) ember's replies equal mtstudio's
+42/42 and its logits are within 5.1e-7 of the numpy reference (ember
+`experiments/d2_primitives_2026-10-27`).
 
 **ember's tuned-path selection.** ember selects its tuned llama path by structural match (ember
 f2727c3): the node list against the canonical llama graph, with `family_hint` "llama" only as a
@@ -2752,11 +2997,15 @@ and 8 reductions, and serves larger expressions on the CPU); `attention.position
 `depth_route` (ember runs it on the CPU interpreter otherwise, from 1ab6a252).
 
 **tensor_index** (section 7.2). The numpy reference and the clean-room engine pass every case of
-section 7.2 at v1.3.5; ember's CPU interpreter (from aa50a61, which binds a tagged node's names by
-application on every path and refuses the key nowhere at load) passed the model case and its traces
-at v1.3.4, before the six cases v1.3.5 adds; paperkiln's mtstudio exports it for llama_attnres
-under fixed recursion and scores its own models (the model case). ember's CUDA, WebAssembly and
-WebGPU paths are not yet gated on a model that carries it.
+section 7.2 at v1.3.5, as does ember's CPU interpreter (from aa50a61, which binds a tagged node's
+names by application on every path and refuses the key nowhere at load; receipt at v1.3.5, 388 pass,
+0 fail, 49 skip); paperkiln's mtstudio exports it for llama_attnres under fixed recursion and scores
+its own models (the model case). On paperkiln's gate model ar_rec (llama_attnres under 1 + [2] x 2 + 1
+recursion, weight_index [0, 1, 2, 1, 2, 3], F32 and Q8_0), at ember ec3201b, the CPU interpreter is
+within 2.7e-7 of the numpy reference, WebAssembly is bit-equal to the CPU, CUDA is within 2.1e-7 of
+the CPU and WebGPU on a software adapter is within 1.5e-6, each with greedy 40/40; on every path the
+untagged document computes its own function, 2.1e-2 from the tagged reading (ember
+`experiments/tensor_index_gate_2026-10-27`).
 
 **ember's conformance.** At ember 39dcce9 its adapter passes keramos v1.1.2 (as v1.1.1) with 230 pass, 0
 fail and 54 skip, the skips being the single-op fixtures of ops other than `recurrence` (its `run_node` runs
@@ -2773,3 +3022,227 @@ comparison of its load-time verdicts with `tools/ir_validate.py` finds no disagr
 
 **paperkiln gaps:** its numpy reference keeps the double
 RoPE table (Q3).
+
+## Appendix D. The third-party graphs
+
+*Normative for rule 38 (section 3.1) and for an engine that builds the document of a GGUF without
+`paperkiln.ir` (a capability, section 3.1); v1.4.2. `tools/gguf_ir.py` implements it, `tools/ir_validate.py`
+applies D.7, and section 9.3 summarises the graphs. Each graph follows llama.cpp b6000's graph of the
+architecture, or the model's own Hugging Face semantics where section 9.3 says llama.cpp approximates.*
+
+### D.1 Reading the file
+
+- arch is the string `general.architecture`; D.3 to D.6 give a graph for `"llama"`, `"mistral"`,
+  `"qwen2"`, `"qwen3"`, `"gpt2"`, `"gptneox"`, `"gemma3"` and `"mamba"`, and no other value builds one.
+- K(key) is the value of the metadata key `<arch>.<key>` (for a Mistral file, `mistral.embedding_length`
+  and so on). Where a key is written "K(key), default v", an absent key reads v; every other key read
+  is required, and a file without it builds no graph, as does a key of the wrong type. Types: a count
+  or size (block_count, embedding_length, head counts, key_length, context_length, dimension_count,
+  sliding_window, expert counts, the ssm sizes) is any GGUF integer type; an epsilon, `rope.freq_base`
+  and `rope.scaling.factor` any GGUF integer or float type; `rope.scaling.type` and
+  `general.architecture` strings; a truth value (`use_parallel_residual`, `ssm.dt_b_c_rms`) a bool or a
+  number, true when it holds true or a non-zero number. A head count H of 0 builds no graph (d / H has
+  no value); any other zero or negative count builds a graph, which the document rules refuse wherever
+  it is embedded (`block.repeat` and the sizes are positive integers), so rule 38 needs no case of its
+  own for it.
+- "The file has T" tests a tensor name. The vocabulary size V is the number of entries of
+  `tokenizer.ggml.tokens` when that key is present with at least one entry, else ne[1] of
+  `token_embd.weight` (a file with neither builds no graph).
+- Every number a graph writes into an attribute is computed in binary64 from the metadata values (an
+  f32 key's value is exact in binary64) and rounded to f32 once, as section 3.5 reads any attribute: the
+  attention scale 1/sqrt(hd) is the f32 nearest to the binary64 quotient of 1 and the binary64 square
+  root.
+- Common values (D.3 to D.5): d = K(embedding_length), L = K(block_count), H = K(attention.head_count),
+  KV = K(attention.head_count_kv), default H, hd = K(attention.key_length), default the integer part of
+  d / H, ctx = K(context_length).
+- **No RoPE scaling** (where D.3 to D.5 require it): K(rope.scaling.type) is absent or `"none"`, and the
+  file has no `rope_freqs.weight`; otherwise the file builds no graph.
+
+### D.2 Notation
+
+A graph is the document
+
+    {"ir_version": 1, "family_hint": arch,
+     "model": {"vocab": V, "d": d, "n_layers": L, "ctx": ctx, "dtype": "f32"},
+     "embed": {"nodes": E}, "block": {"repeat": L, "state": S, "nodes": N}, "head": {"nodes": HD}}
+
+with the informative keys `tokenizer`, `inputs`, `outputs` and `modes` (section 3.2), which rule 38
+ignores; the block has no other key. Nodes are written `op(in, ...) -> out {attributes}`: the node
+`{"op": op, "in": [in, ...], attributes, "out": out}`, `out` a list where two names are given in
+brackets. A node has exactly the attributes shown (rule 38's comparison fills absent optional attributes
+with their defaults, D.7). B stands for the prefix `blk.{i}.`. Shorthands:
+
+- `RMS(x, W) -> y` is `rmsnorm(x) -> y {weight: W, eps: eps}`; `RMSg(x, W) -> y` adds `group: hd`.
+- `LN(x, P) -> y` is `layernorm(x) -> y {weight: P.weight, bias: P.bias, eps: eps}`.
+- `LIN(x, W) -> y` is `linear(x) -> y {weight: W, bias: null}`; `LIN(x, W, C) -> y` has `bias: C`.
+- `HEAD` is `LIN(h, output.weight) -> logits`, with `tied_to: "token_embd.weight"` added when the file
+  has no `output.weight`.
+- `ROPE(theta, pairing, n_rot)` is `rope(q, k, pos) -> [q, k] {heads: H, kv_heads: KV, head_dim: hd,
+  n_rot: n_rot, theta: theta, rope_heads: "all", pairing: pairing}`, with `freq_scale` only where shown.
+- `ATT(scale, w)` is `attention(q, k, v) -> a {state: "kv", heads: H, kv_heads: KV, head_dim: hd,
+  causal: true, scale: scale, window: w, sinks: 0}` (`tools/gguf_ir.py` also writes the informative
+  `softmax`).
+- `KV(w)` is the slot `{"name": "kv", "kind": "kv", "heads": H, "kv_heads": KV, "head_dim": hd,
+  "max_len": ctx, "window": w, "sinks": 0, "dtype": "f32"}`.
+- `E0` is `[embedding(tokens) -> x {weight: token_embd.weight}]`.
+
+### D.3 llama, mistral, qwen2, qwen3
+
+eps = K(attention.layer_norm_rms_epsilon); theta = K(rope.freq_base), default 10000; n_rot =
+K(rope.dimension_count), default hd; no RoPE scaling. pairing is `"neox"` for qwen2 and qwen3 and
+`"interleaved"` for llama and mistral. w = K(attention.sliding_window), default 0, for llama and mistral;
+w = 0 for qwen2 and qwen3. The projections carry biases when the file has `blk.0.attn_q.bias` (then q, k
+and v read `B attn_q.bias`, `B attn_k.bias` and `B attn_v.bias`), and the graph has q/k norms when the
+file has `blk.0.attn_q_norm.weight`, whatever the architecture.
+
+    E  = E0
+    S  = [KV(w)]
+    N  = RMS(x, B attn_norm.weight) -> h
+         LIN(h, B attn_q.weight[, B attn_q.bias]) -> q
+         LIN(h, B attn_k.weight[, B attn_k.bias]) -> k
+         LIN(h, B attn_v.weight[, B attn_v.bias]) -> v
+         [RMSg(q, B attn_q_norm.weight) -> q;  RMSg(k, B attn_k_norm.weight) -> k]   (q/k norms only)
+         ROPE(theta, pairing, n_rot)
+         ATT(1/sqrt(hd), w)
+         LIN(a, B attn_output.weight) -> o
+         add(x, o) -> x
+         RMS(x, B ffn_norm.weight) -> h2
+         FFN
+         add(x, f) -> x
+    HD = RMS(x, output_norm.weight) -> h;  HEAD
+
+FFN is, for a file labelled `"llama"` (not mistral, qwen2 or qwen3) with K(expert_count) present and
+non-zero and the tensor
+`blk.0.ffn_gate_inp.weight` (Mixtral's layout),
+
+    moe_ffn(h2) -> f {router: B ffn_gate_inp.weight,
+                      experts: {"gate": B ffn_gate_exps.weight, "up": B ffn_up_exps.weight,
+                                "down": B ffn_down_exps.weight},
+                      n_experts: K(expert_count), top_k: K(expert_used_count),
+                      gate_norm: "renorm", activation: "silu"}
+
+and otherwise (every other file of the four architectures)
+
+    LIN(h2, B ffn_gate.weight) -> g;  LIN(h2, B ffn_up.weight) -> u;  silu(g) -> g;  mul(g, u) -> gu
+    LIN(gu, B ffn_down.weight) -> f
+
+### D.4 gpt2, gptneox
+
+eps = K(attention.layer_norm_epsilon). For gptneox: no RoPE scaling, theta = K(rope.freq_base), default
+10000, n_rot = K(rope.dimension_count), default hd, and P = K(use_parallel_residual), default true. gpt2
+reads no RoPE key.
+
+    E  = E0 + [pos_embedding(x, pos) -> x {weight: position_embd.weight}]     (gpt2)
+    E  = E0                                                                    (gptneox)
+    S  = [KV(0)]
+    N  = LN(x, B attn_norm) -> h
+         LIN(h, B attn_qkv.weight, B attn_qkv.bias) -> qkv
+         split(qkv) -> [q, k, v] {sizes: [H hd, KV hd, KV hd]}
+         ROPE(theta, "neox", n_rot)                                            (gptneox only)
+         ATT(1/sqrt(hd), 0)
+         LIN(a, B attn_output.weight, B attn_output.bias) -> o
+         then, for gptneox with P true:  F;  add(f, x) -> x;  add(x, o) -> x
+         and otherwise:                  add(x, o) -> x;  F;  add(x, f) -> x
+    HD = LN(x, output_norm) -> h;  HEAD                                        (gpt2)
+    HD = LN(x, output_norm) -> h;  LIN(h, output.weight) -> logits             (gptneox: never tied)
+
+with F = `LN(x, B ffn_norm) -> h2; LIN(h2, B ffn_up.weight, B ffn_up.bias) -> u; gelu(u) -> u {approx:
+A}; LIN(u, B ffn_down.weight, B ffn_down.bias) -> f`, A `"tanh"` for gpt2 and `"none"` for gptneox. In
+the parallel form F reads the block's input x, before the attention output is added.
+
+### D.5 gemma3
+
+eps = K(attention.layer_norm_rms_epsilon); n_rot = K(rope.dimension_count), default hd; the file has no
+`rope_freqs.weight`, and K(rope.scaling.type) is absent, `"none"` or `"linear"` (any other value builds no
+graph); c = K(rope.scaling.factor), default 1 (0 reads 1), when the type is `"linear"`, else 1. sw =
+K(attention.sliding_window), required, and g = K(rope.freq_base), required when some application is
+global (L > 5). Application i is local when i mod
+6 < 5 and global otherwise. Per-layer values, always written as `{"per_layer": [L entries]}` objects,
+even when every entry is equal:
+
+- windows: sw for a local application, 0 for a global one;
+- thetas: 10000 local, g global;
+- freq_scales, only when c != 1: 1 local, 1/c global (with c = 1 the rope node has no `freq_scale`).
+
+scale = 1/sqrt(d / H) when L = 62 (the 27B model; d / H is the binary64 quotient, not its integer part),
+else 1/sqrt(hd).
+
+    E  = E0 + [affine(x) -> x {scale: sqrt(d), shift: 0}]
+    S  = [KV(windows)]
+    N  = RMS(x, B attn_norm.weight) -> h
+         LIN(h, B attn_q.weight) -> q;  LIN(h, B attn_k.weight) -> k;  LIN(h, B attn_v.weight) -> v
+         RMSg(q, B attn_q_norm.weight) -> q;  RMSg(k, B attn_k_norm.weight) -> k
+         ROPE(thetas, "neox", n_rot), with freq_scale: freq_scales when c != 1
+         ATT(scale, windows)
+         LIN(a, B attn_output.weight) -> o
+         RMS(o, B post_attention_norm.weight) -> o
+         add(x, o) -> x
+         RMS(x, B ffn_norm.weight) -> h2
+         LIN(h2, B ffn_gate.weight) -> g;  LIN(h2, B ffn_up.weight) -> u
+         gelu(g) -> g {approx: "tanh"};  mul(g, u) -> gu
+         LIN(gu, B ffn_down.weight) -> f
+         RMS(f, B post_ffw_norm.weight) -> f
+         add(x, f) -> x
+    HD = RMS(x, output_norm.weight) -> h;  HEAD
+
+### D.6 mamba (Mamba-1)
+
+kc = K(ssm.conv_kernel), di = K(ssm.inner_size), ns = K(ssm.state_size), r = K(ssm.time_step_rank), eps =
+K(attention.layer_norm_rms_epsilon), L = K(block_count), d = K(embedding_length); ctx = K(context_length)
+when present and non-zero, else 1048576. The file builds no graph when it lacks `blk.0.ssm_dt.weight` or
+`blk.0.ssm_d`, has `blk.0.ssm_dt_norm.weight`, or K(ssm.dt_b_c_rms) is true (Falcon-Mamba). H, KV and hd
+are not read.
+
+    E  = E0
+    S  = [{"name": "conv", "kind": "recurrent", "op": "conv1d_causal", "dtype": "f32",
+           "tensors": [{"name": "x", "shape": [kc - 1, di], "init": 0}]},
+          {"name": "ssm", "kind": "recurrent", "op": "selective_scan", "dtype": "f32",
+           "tensors": [{"name": "s", "shape": [di, ns], "init": 0}]}]
+    N  = RMS(x, B attn_norm.weight) -> h
+         LIN(h, B ssm_in.weight) -> xz
+         split(xz) -> [xs, z] {sizes: [di, di]}
+         conv1d_causal(xs) -> xs {state: "conv", weight: B ssm_conv1d.weight, bias: B ssm_conv1d.bias,
+                                  channels: di, kernel: kc}
+         silu(xs) -> xs
+         LIN(xs, B ssm_x.weight) -> xdb
+         split(xdb) -> [dt, bm, cm] {sizes: [r, ns, ns]}
+         LIN(dt, B ssm_dt.weight, B ssm_dt.bias) -> dt
+         selective_scan(xs, dt, bm, cm) -> y {state: "ssm", a: B ssm_a, d: B ssm_d, channels: di,
+                                              d_state: ns, dt_softplus: true}
+         silu(z) -> z
+         mul(y, z) -> y
+         LIN(y, B ssm_out.weight) -> o
+         add(x, o) -> x
+    HD = RMS(x, output_norm.weight) -> h;  HEAD
+
+### D.7 The comparison
+
+Rule 38 compares the file's embedded document with the graph built from the same file, each first
+brought to a normal form; the file passes when the two normal forms are equal. The normal form of a
+document, given the file's tensor names:
+
+1. Remove every `_` member at any depth; keep only the top-level keys `model`, `embed`, `block` and
+   `head` (so `ir_version`, `family_hint`, `tokenizer`, `inputs`, `outputs` and `modes` are not compared);
+   remove `attention.softmax` and `moe_ffn.routing`.
+2. Fill each optional attribute of section 3.5 that a node lacks with its default, except
+   `rmsnorm.group`: `linear.bias` and `linear.tied_to` null, `scale.bias` null, `rope.freq_scale` 1,
+   `rope.kv_heads` the node's `heads`, `rope.n_rot` its `head_dim`, `attention.mask` `"causal"`,
+   `rmsnorm.weight_offset` 0, `depth_attend.eps` 1e-5, `conv1d_causal.bias` null, `selective_scan.d` null
+   and `selective_scan.dt_softplus` true; a kv slot without `dtype` gets `"f32"`. Attributes whose default
+   is "none" (`position_bias`, `relative_kv`, `state_weight`) stay absent.
+3. A `linear` with a non-null `tied_to`: when the file has no tensor named by its `weight`, `weight`
+   becomes the `tied_to` name; then `tied_to` becomes null. The name is tested as written, `{i}`
+   included (Appendix D ties only the head's linear, whose names hold no `{i}`).
+4. Each slot of `block.state` is named by its index (the k-th slot `slotk`), and every `state` attribute
+   follows its slot.
+5. Values are named by their writes: walking the embed's nodes, the block's nodes once and the head's
+   nodes in order, each name in a node's `out` is a new value (numbered in that order), and each name in
+   its `in` is the latest write of that name before the node (`tokens` and `pos` are themselves; a name
+   with no earlier write is "unwritten" with its name). The inputs of `add` and of `mul` are compared as
+   an unordered pair.
+6. Every number (integer or not, outside names) is the f32 it rounds to (section 3.5), so 5 and 5.0 are
+   equal; true, false, null and strings are themselves; a `per_layer` object is an object, never equal to
+   a number.
+
+Two normal forms are equal when they have the same members with equal values, lists (nodes, slots,
+inputs, sizes, `per_layer` entries) of the same length equal in order.

@@ -871,6 +871,11 @@ fn attention(ctx: &Ctx, node: &Json, env: &mut Env, slots: &mut Slots) -> Result
     if ctx.rows.pos.len() != t_n {
         return Err("attention: rows and positions differ".into());
     }
+    let pbias = position_bias(ctx, node, heads)?;
+    let rkv = relative_kv(ctx, node, heads, hd)?;
+    if pbias.is_some() && rkv.is_some() {
+        return Err("attention: relative_kv and position_bias on one node (IR_SPEC 5.15, rule 40)".into());
+    }
     let slot = node.get("state").and_then(|s| s.as_str()).ok_or("attention: no state")?.to_string();
     let max_len = ctx.model.slot(&slot).and_then(|s| at(s, "max_len", a)).and_then(|v| v.as_i64());
     let inst = slots.kv.entry((slot, a)).or_default();
@@ -925,7 +930,19 @@ fn attention(ctx: &Ctx, node: &Json, env: &mut Env, slots: &mut Slots) -> Result
             scores.clear();
             let mut m = f32::NEG_INFINITY;
             for &r in &vis {
-                let s = dot(qh, &inst.k[r][g * hd..(g + 1) * hd]) * scale;
+                // p - j: positions, never rows (IR_SPEC 5.15, also under depth_route)
+                let dist = p - inst.pos[r];
+                let qk = dot(qh, &inst.k[r][g * hd..(g + 1) * hd]);
+                // Shaw (1.4): ((q . k) + (q . rk[n])) * scale, each step rounded
+                let s = match &rkv {
+                    Some(rel) => (qk + dot(qh, rel.key_row(dist, h))) * scale,
+                    None => qk * scale,
+                };
+                // T5 (1.3): s rounded, then s + W[b(p - j), h], rounded
+                let s = match &pbias {
+                    Some(pb) => s + pb.bias(dist, h),
+                    None => s,
+                };
                 if s > m {
                     m = s;
                 }
@@ -944,7 +961,114 @@ fn attention(ctx: &Ctx, node: &Json, env: &mut Env, slots: &mut Slots) -> Result
                     out[e] += wgt * vr[e];
                 }
             }
+            // Shaw (1.4): out = (sum of a v_j) + (sum of a rv[n]), the second sum from +0 in ascending j
+            if let Some(rv) = rkv.as_ref().filter(|rel| rel.value.is_some()) {
+                let mut acc = vec![0.0f32; hd];
+                for (n, &r) in vis.iter().enumerate() {
+                    let wgt = scores[n] / z;
+                    let rvr = rv.value_row(p - inst.pos[r], h);
+                    for e in 0..hd {
+                        acc[e] += wgt * rvr[e];
+                    }
+                }
+                for e in 0..hd {
+                    out[e] += acc[e];
+                }
+            }
         }
     }
     put(env, node, Tensor::mat(t_n, heads * hd, y))
+}
+
+/// T5's relative position bias (IR_SPEC 5.15, revision 1.3): W [B, heads] (ne {heads, B}) and the buckets.
+struct PosBias<'a> {
+    w: &'a Tensor,
+    heads: usize,
+    buckets: Vec<usize>,
+}
+
+impl PosBias<'_> {
+    /// W[b(n), h], b(n) = buckets[min(n, D - 1)]
+    fn bias(&self, n: usize, h: usize) -> f32 {
+        let b = self.buckets[n.min(self.buckets.len() - 1)];
+        self.w.data[b * self.heads + h]
+    }
+}
+
+fn position_bias<'a>(ctx: &Ctx<'a>, node: &Json, heads: usize) -> Result<Option<PosBias<'a>>, String> {
+    let pb = match node.get("position_bias") {
+        None => return Ok(None),
+        Some(x) => x,
+    };
+    let wn = pb.get("weight").and_then(|x| x.as_str()).ok_or("attention: position_bias has no weight (rule 39)")?;
+    let w = ctx.model.w(&ctx.model.tname(node, wn, ctx.app))?;
+    let buckets: Vec<usize> = match pb.get("buckets").and_then(|b| b.as_arr()) {
+        Some(a) if !a.is_empty() => a
+            .iter()
+            .map(|x| x.as_i64().filter(|v| *v >= 0).map(|v| v as usize))
+            .collect::<Option<Vec<usize>>>()
+            .ok_or("attention: position_bias.buckets holds a value that is not an integer >= 0 (rule 39)")?,
+        _ => return Err("attention: position_bias.buckets is not a non-empty list (rule 39)".into()),
+    };
+    let rows = if w.shape.len() == 2 { w.shape[0] } else { 0 };
+    if w.shape.len() != 2 || w.shape[1] != heads || buckets.iter().any(|&b| b >= rows) {
+        return Err(format!("attention: position_bias table {:?} is not [B, heads = {}] with B above every bucket (rule 39)", w.shape, heads));
+    }
+    Ok(Some(PosBias { w, heads, buckets }))
+}
+
+/// Shaw's relative key and value vectors (IR_SPEC 5.15, revision 1.4): tables [K + 1, w], w = head_dim
+/// (shared by the heads) or heads * head_dim (head h at columns h * head_dim ...).
+struct RelKv<'a> {
+    key: &'a Tensor,
+    value: Option<&'a Tensor>,
+    k: usize,
+    hd: usize,
+}
+
+impl RelKv<'_> {
+    fn row<'b>(t: &'b Tensor, n: usize, h: usize, k: usize, hd: usize) -> &'b [f32] {
+        let w = t.cols();
+        let off = if w == hd { 0 } else { h * hd };
+        let r = n.min(k) * w + off;
+        &t.data[r..r + hd]
+    }
+    fn key_row(&self, dist: usize, h: usize) -> &[f32] {
+        RelKv::row(self.key, dist, h, self.k, self.hd)
+    }
+    fn value_row(&self, dist: usize, h: usize) -> &[f32] {
+        RelKv::row(self.value.expect("value table"), dist, h, self.k, self.hd)
+    }
+}
+
+fn relative_kv<'a>(ctx: &Ctx<'a>, node: &Json, heads: usize, hd: usize) -> Result<Option<RelKv<'a>>, String> {
+    let rel = match node.get("relative_kv") {
+        None => return Ok(None),
+        Some(x) => x,
+    };
+    let k = rel
+        .get("max_distance")
+        .and_then(|x| x.as_i64())
+        .filter(|v| *v >= 0)
+        .ok_or("attention: relative_kv.max_distance is not an integer >= 0 (rule 40)")? as usize;
+    let table = |key: &str| -> Result<Option<&'a Tensor>, String> {
+        match rel.get(key) {
+            None | Some(Json::Null) => Ok(None),
+            Some(Json::Str(n)) => {
+                let t = ctx.model.w(&ctx.model.tname(node, n, ctx.app))?;
+                let ok = t.shape.len() == 2 && t.shape[0] == k + 1 && (t.shape[1] == hd || t.shape[1] == heads * hd);
+                if !ok {
+                    return Err(format!(
+                        "attention: relative_kv.{} {:?} is not [max_distance + 1 = {}, head_dim {} or heads * head_dim {}] (rule 40)",
+                        key, t.shape, k + 1, hd, heads * hd
+                    ));
+                }
+                Ok(Some(t))
+            }
+            Some(_) => Err(format!("attention: relative_kv.{} is neither a name nor null (rule 40)", key)),
+        }
+    };
+    let key = table("key")?.ok_or("attention: relative_kv has no key (rule 40)")?;
+    let value = table("value")?;
+    Ok(Some(RelKv { key, value, k, hd }))
 }

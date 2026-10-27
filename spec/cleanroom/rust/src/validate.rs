@@ -7,9 +7,9 @@ use crate::model::{at, ins, is_per_layer, op, outs, STATEFUL};
 use crate::recurrence::Rec;
 use crate::schema::Schema;
 
-const NODE_STRUCTURAL: [&str; 24] = [
-    "op", "in", "out", "state", "tensor_index", "sizes", "expr", "index", "inputs", "weights", "init", "let", "update", "readout",
-    "weight", "bias", "router", "experts", "state_weight", "tied_to", "a", "b", "c", "d",
+const NODE_STRUCTURAL: [&str; 26] = [
+    "op", "in", "out", "state", "tensor_index", "sizes", "expr", "position_bias", "relative_kv", "index", "inputs", "weights", "init",
+    "let", "update", "readout", "weight", "bias", "router", "experts", "state_weight", "tied_to", "a", "b", "c", "d",
 ];
 const SLOT_STRUCTURAL: [&str; 7] = ["name", "kind", "op", "dtype", "tensors", "evict", "kv_rows"];
 const TENSOR_KEYS: [&str; 10] = ["weight", "bias", "router", "state_weight", "tied_to", "a", "b", "c", "d", "experts"];
@@ -60,6 +60,16 @@ fn tensor_names(node: &Json) -> Vec<(String, String)> {
             _ => {}
         }
     }
+    // IR_SPEC 3.7 (1.3, 1.4): position_bias's weight, relative_kv's key and value
+    for (attr, keys) in [("position_bias", &["weight"][..]), ("relative_kv", &["key", "value"][..])] {
+        if let Some(a) = node.get(attr) {
+            for k in keys {
+                if let Some(Json::Str(s)) = a.get(k) {
+                    v.push((format!("{}.{}", attr, k), s.clone()));
+                }
+            }
+        }
+    }
     if op(node) == "recurrence" {
         if let Some(Json::Obj(m)) = node.get("weights") {
             for (dk, dv) in m {
@@ -92,6 +102,12 @@ pub fn validate(doc_raw: &Json, file: Option<&Gguf>) -> Report {
     let mut v = V { errors: Vec::new(), warnings: Vec::new() };
     let schema = Schema::load();
     for e in schema.validate(doc_raw) {
+        // IR_SPEC 10.1 rule 1: a position bias and relative vectors are rules 39 and 40 (their own checks
+        // below restate the schema's structure for them), so the schema's findings inside them are not rule 1
+        let path = e.split(": ").next().unwrap_or("");
+        if path.contains(".position_bias") || path.contains(".relative_kv") {
+            continue;
+        }
         v.e("1", "10.1", e);
     }
     if !matches!(doc_raw, Json::Obj(_)) {
@@ -274,6 +290,10 @@ fn semantic(doc: &Json, v: &mut V) {
                 if sw.as_str().map(|s| s.contains("{i}")).unwrap_or(false) {
                     v.e("17", "6.8.1", format!("{}: state_weight holds {{i}}", where_));
                 }
+            }
+            // rules 39 and 40 (IR_SPEC 5.15; revisions 1.3 and 1.4): the attributes' structure
+            if o == "attention" {
+                structure_39_40(n, &where_, v);
             }
             // rule 19
             if n.get("tensor_index").is_some() && !(in_block && has_wi) {
@@ -636,6 +656,48 @@ fn semantic(doc: &Json, v: &mut V) {
     }
 }
 
+/// Rules 39 and 40 on the document (IR_SPEC 5.15, 10.1): `position_bias` is {weight, buckets}, buckets a
+/// non-empty list of integers >= 0; `relative_kv` is {key, max_distance} with an optional `value`, key a
+/// name, value a name or null, max_distance an integer >= 0, no other member; not both on one node. A
+/// `per_layer` value of either is rule 6 (structural, 3.8) and is not judged here. `_` members are prose.
+fn structure_39_40(n: &Json, where_: &str, v: &mut V) {
+    let name = |x: Option<&Json>| matches!(x, Some(Json::Str(s)) if !s.is_empty());
+    let extra = |x: &Json, allowed: &[&str]| -> Vec<String> {
+        match x {
+            Json::Obj(m) => m.iter().map(|(k, _)| k.clone()).filter(|k| !k.starts_with('_') && !allowed.contains(&k.as_str())).collect(),
+            _ => vec![],
+        }
+    };
+    if let Some(pb) = n.get("position_bias") {
+        if !is_per_layer(pb) {
+            let buckets_ok = match pb.get("buckets") {
+                Some(Json::Arr(a)) => !a.is_empty() && a.iter().all(|x| matches!(x, Json::Num(_)) && x.as_i64().map(|b| b >= 0).unwrap_or(false)),
+                _ => false,
+            };
+            let others = extra(pb, &["weight", "buckets"]);
+            if !matches!(pb, Json::Obj(_)) || !name(pb.get("weight")) || !buckets_ok || !others.is_empty() {
+                v.e("39", "5.15", format!("{}: position_bias {} is not {{weight, buckets}} with buckets a non-empty list of integers >= 0", where_, crate::json::to_string(pb)));
+            }
+        }
+    }
+    if let Some(rk) = n.get("relative_kv") {
+        if !is_per_layer(rk) {
+            let kd_ok = matches!(rk.get("max_distance"), Some(Json::Num(_))) && rk.get("max_distance").and_then(|x| x.as_i64()).map(|k| k >= 0).unwrap_or(false);
+            let value_ok = match rk.get("value") {
+                None | Some(Json::Null) => true,
+                x => name(x),
+            };
+            let others = extra(rk, &["key", "value", "max_distance"]);
+            if !matches!(rk, Json::Obj(_)) || !name(rk.get("key")) || !kd_ok || !value_ok || !others.is_empty() {
+                v.e("40", "5.15", format!("{}: relative_kv {} is not {{key, max_distance}} with an optional value (a name or null), max_distance an integer >= 0", where_, crate::json::to_string(rk)));
+            }
+        }
+        if n.get("position_bias").is_some() {
+            v.e("40", "5.15", format!("{}: relative_kv and position_bias on one node", where_));
+        }
+    }
+}
+
 /// Rule 36 (IR_SPEC 3.5, 7.4; revision 1.2): every value a node reads is written before it (embed, the
 /// block as application 0, head); the embed writes x and the head logits; under depth_route the block's
 /// other nodes read x, pos and values of the same application, and the head x and the embed's values.
@@ -684,7 +746,69 @@ fn file_arch(g: &Gguf) -> String {
     g.get_str("general.architecture").unwrap_or_default()
 }
 
+/// A 2-D ne {ne0, ne1}, compared as stored with the dimension count included (IR_SPEC 3.1, v1.4.2):
+/// a stored ne {w} is not ne {w, 1}.
+fn ne2(ne: &[u64]) -> Option<(u64, u64)> {
+    if ne.len() != 2 {
+        return None;
+    }
+    Some((ne[0], ne[1]))
+}
+
+/// Rule 38 (IR_SPEC 3.1, 10.1, Appendix D; v1.4.2). The label is "paperkiln" or one of Appendix D's eight
+/// architectures (an absent general.architecture is refused); for the eight, the embedded document must
+/// equal, in D.7's normal form, the graph D.1 to D.6 build from the file's metadata and tensor names, and
+/// metadata that builds no graph is refused. Judged on the embedded document always, also when another
+/// is read in place of it, and never on the document read in place.
+fn rule_38(g: &Gguf, v: &mut V) {
+    let text = match g.get_str("paperkiln.ir") {
+        Some(t) => t,
+        None => return,
+    };
+    let arch = match g.get("general.architecture") {
+        None => {
+            v.e("38", "3.1", "a file with an embedded document has no general.architecture".into());
+            return;
+        }
+        Some(a) => match a.as_str() {
+            Some(s) => s,
+            None => {
+                v.e("38", "3.1", "general.architecture is not a string".into());
+                return;
+            }
+        },
+    };
+    if arch == "paperkiln" {
+        return;
+    }
+    if !crate::arch::ARCHS.contains(&arch.as_str()) {
+        v.e("38", "3.1", format!("general.architecture {:?} is neither \"paperkiln\" nor one of Appendix D's eight", arch));
+        return;
+    }
+    let graph = match crate::arch::build(g) {
+        Ok(d) => d,
+        Err(e) => {
+            v.e("38", "D.1", format!("general.architecture {:?}: the metadata builds no graph ({})", arch, e));
+            return;
+        }
+    };
+    let emb = match crate::json::parse_value(&text) {
+        Ok(d) => d,
+        Err(e) => {
+            v.e("38", "3.1", format!("the embedded document does not parse ({}), so it is not {:?}'s graph", e, arch));
+            return;
+        }
+    };
+    let has = |n: &str| g.info(n).is_some();
+    let a = crate::arch::normal_form(&emb, &has);
+    let b = crate::arch::normal_form(&graph, &has);
+    if let Some(d) = crate::arch::first_diff(&a, &b, "$") {
+        v.e("38", "D.7", format!("general.architecture {:?}, but the embedded document is not the graph Appendix D builds from the file: {}", arch, d));
+    }
+}
+
 fn container(doc: &Json, g: &Gguf, v: &mut V) {
+    rule_38(g, v);
     // rule 24 and 30: against the document embedded in the file
     if let Some(text) = g.get_str("paperkiln.ir") {
         let emb = crate::json::parse_value(&text);
@@ -794,6 +918,42 @@ fn container(doc: &Json, g: &Gguf, v: &mut V) {
     }
     for n in nodes(doc, "head") {
         check_node(n, None, &mut lists, v);
+    }
+    // rules 39 and 40, container (IR_SPEC 5.15): each table's ne, in every application that reads it
+    for a in 0..l {
+        for n in &blk {
+            if op(n) != "attention" {
+                continue;
+            }
+            let gi = |k: &str| at(n, k, a).and_then(|x| x.as_i64()).unwrap_or(0).max(0) as u64;
+            let (heads, hd) = (gi("heads"), gi("head_dim"));
+            if let Some(pb) = n.get("position_bias").filter(|x| !is_per_layer(x)) {
+                if let Some(info) = pb.get("weight").and_then(|x| x.as_str()).and_then(|w| g.info(&resolve(n, w, a))) {
+                    let maxb = pb.get("buckets").and_then(|b| b.as_arr()).map(|b| b.iter().filter_map(|x| x.as_i64()).max().unwrap_or(0)).unwrap_or(0);
+                    let ne = ne2(&info.ne);
+                    if !(ne.is_some() && ne.unwrap().0 == heads && ne.unwrap().1 as i64 > maxb) {
+                        v.e("39", "5.15", format!("position_bias table {} has ne {:?}, not {{heads = {}, B}} with B > {} (application {})", resolve(n, pb.get("weight").and_then(|x| x.as_str()).unwrap_or(""), a), info.ne, heads, maxb, a));
+                    }
+                }
+            }
+            if let Some(rk) = n.get("relative_kv").filter(|x| !is_per_layer(x)) {
+                let kd = rk.get("max_distance").and_then(|x| x.as_i64()).unwrap_or(-1);
+                for key in ["key", "value"] {
+                    if let Some(tn) = rk.get(key).and_then(|x| x.as_str()) {
+                        let full = resolve(n, tn, a);
+                        if let Some(info) = g.info(&full) {
+                            let ok = match ne2(&info.ne) {
+                                Some((w, rows)) => (w == hd || w == heads * hd) && rows as i64 == kd + 1,
+                                None => false,
+                            };
+                            if !ok {
+                                v.e("40", "5.15", format!("relative_kv.{} {} has ne {:?}, not {{{} or {}, max_distance + 1 = {}}} (application {})", key, full, info.ne, hd, heads * hd, kd + 1, a));
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
     let d = doc.get("model").and_then(|m| m.get("d")).and_then(|x| x.as_i64()).unwrap_or(0) as u64;
     // rule 26

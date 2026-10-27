@@ -174,6 +174,16 @@
    "name": "untagged_application_queries",
    "gguf": "models/pk_llama_attnres_rec/pk_llama_attnres_rec.gguf",
    "ir": "accept/pk_llama_attnres_rec_untagged.ir.json"
+  },
+  {
+   "name": "relative_kv_weight_index",
+   "gguf": "models/pk_flex_shaw/pk_flex_shaw.gguf",
+   "ir": "accept/pk_flex_shaw_weight_index.ir.json"
+  },
+  {
+   "name": "mor_window",
+   "gguf": "models/pk_mor/pk_mor.gguf",
+   "ir": "accept/pk_mor_window.ir.json"
   }
  ]
 }

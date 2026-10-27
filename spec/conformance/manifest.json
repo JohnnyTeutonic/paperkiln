@@ -1745,18 +1745,46 @@
    "profile": "state"
   },
   {
+   "id": "trace/pk_flex_shaw_weight_index",
+   "kind": "trace",
+   "file": "state/pk_flex_shaw_weight_index.json",
+   "model": "models/pk_flex_shaw",
+   "profile": "state"
+  },
+  {
+   "id": "trace/pk_mor_window",
+   "kind": "trace",
+   "file": "state/pk_mor_window.json",
+   "model": "models/pk_mor",
+   "profile": "state"
+  },
+  {
+   "id": "trace/pk_mor_window_rewind",
+   "kind": "trace",
+   "file": "state/pk_mor_window_rewind.json",
+   "model": "models/pk_mor",
+   "profile": "state"
+  },
+  {
    "id": "accept/documents",
    "kind": "accept",
    "file": "accept/documents.json",
    "profile": "core",
-   "n": 42
+   "n": 44
   },
   {
    "id": "chat/render",
    "kind": "chat",
    "file": "chat/render.json",
    "profile": "chat",
-   "n": 32
+   "n": 74
+  },
+  {
+   "id": "chat/parse_reply",
+   "kind": "chat",
+   "file": "chat/parse_reply.json",
+   "profile": "chat",
+   "n": 12
   }
  ]
 }

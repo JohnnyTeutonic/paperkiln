@@ -1,8 +1,8 @@
 [package]
 name = "keramos-cleanroom"
-version = "0.1.0"
+version = "0.3.0"
 edition = "2021"
-description = "A clean-room implementation of the keramos IR (version 1, revision 1.1) from its specification text"
+description = "A clean-room implementation of the keramos IR (version 1, revision 1.4) from its specification text"
 publish = false
 
 [[bin]]

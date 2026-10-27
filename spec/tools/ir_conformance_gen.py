@@ -1058,6 +1058,16 @@ def accept_cases():
         json.dumps(untagged_document(), indent=1) + "\n", encoding="utf-8")
     cases.append({"name": "untagged_application_queries", "gguf": f"models/{UNTAGGED}/{UNTAGGED}.gguf",
                   "ir": f"accept/{UNTAGGED}_untagged.ir.json"})
+    # v1.4.1 (3.7, 7.1): pk_flex_shaw under weight_index [1, 0]; relative_kv's names read stored layer m_i.
+    (SUITE / "accept" / f"{PERMUTED}_weight_index.ir.json").write_text(
+        json.dumps(permuted_document(), indent=1) + "\n", encoding="utf-8")
+    cases.append({"name": "relative_kv_weight_index", "gguf": f"models/{PERMUTED}/{PERMUTED}.gguf",
+                  "ir": f"accept/{PERMUTED}_weight_index.ir.json"})
+    # v1.4.2 (5.15, 7.5; Q16): pk_mor under window 3, sinks 1: a window under depth_route counts positions.
+    (SUITE / "accept" / f"{MOR_WINDOW}_window.ir.json").write_text(
+        json.dumps(mor_window_document(), indent=1) + "\n", encoding="utf-8")
+    cases.append({"name": "mor_window", "gguf": f"models/{MOR_WINDOW}/{MOR_WINDOW}.gguf",
+                  "ir": f"accept/{MOR_WINDOW}_window.ir.json"})
     for c in cases:
         errs = ir_validate.check_errors(SUITE / c["gguf"] if "gguf" in c else None,
                                         SUITE / c["ir"] if "ir" in c else None)
@@ -1069,23 +1079,53 @@ def accept_cases():
 
 
 def chat_cases():
-    """IR_SPEC 8.1.3: chat/render.json's conversations and records (paperkiln's tests/chat_template_cases.json,
-    the hand-written cases of gate G5), each case's expected text or refusal from tools/ir_chat.py."""
+    """IR_SPEC 8.1.3 and 8.1.6: chat/render.json's conversations and records (paperkiln's
+    tests/chat_template_cases.json, the hand-written cases of gate G5: 32 v1 cases, and from v1.4.2 the 42 of
+    paperkiln/2, paperkiln 22f8fe6d), each case's expected text or refusal from tools/ir_chat.py. A case whose
+    file already states a verdict (paperkiln's, when it was imported) must get the same one here."""
     import ir_chat
     src = json.loads((SUITE / "chat" / "render.json").read_text(encoding="utf-8"))
     cases = []
     for c in src["cases"]:
+        was = c.get("expect", True if c.get("refused") else None)
         c = {k: v for k, v in c.items() if k not in ("expect", "refused")}
         rec = src["records"][c["record"]] if isinstance(c["record"], str) else c["record"]
         try:
-            c["expect"] = ir_chat.render(rec, c["messages"], c.get("generation_prompt", False), c.get("thinking"))
+            c["expect"] = ir_chat.render(rec, c["messages"], c.get("generation_prompt", False), c.get("thinking"),
+                                         c.get("tools"))
         except ir_chat.ChatError:
             c["refused"] = True
+        if was is not None and was != c.get("expect", True):
+            raise SystemExit(f"chat case {c['name']}: tools/ir_chat.py gives {c.get('expect', 'a refusal')!r}, the "
+                             f"file states {was!r}")
         cases.append(c)
-    return {"_comment": "spec/IR_SPEC.md section 8.1.3: render_chat(record, messages, generation_prompt, thinking) "
-                        "gives expect, or refuses where refused is true. A case's record is a key of records or a "
-                        "record itself. Inputs: paperkiln's tests/chat_template_cases.json (gate G5).",
+    return {"_comment": "spec/IR_SPEC.md sections 8.1.3 and 8.1.6: render_chat(record, messages, generation_prompt, "
+                        "thinking, tools) gives expect, or refuses where refused is true. A case's record is a key of "
+                        "records or a record itself; tools, when present, is the conversation's tool definitions. "
+                        "Inputs: paperkiln's tests/chat_template_cases.json (gate G5).",
             "records": src["records"], "cases": cases}
+
+
+def parse_reply_cases():
+    """IR_SPEC 8.1.6 (v1.4.2): chat/parse_reply.json, paperkiln's 12 parse_reply cases (tests/chat_template_cases.json
+    at 22f8fe6d): a reply's ids over a toy vocabulary (tokens: id -> text), split on call_id. expect from
+    tools/ir_chat.py, null where a part does not parse; a stated verdict must be reproduced."""
+    import ir_chat
+    src = json.loads((SUITE / "chat" / "parse_reply.json").read_text(encoding="utf-8"))
+    cases = []
+    for c in src["cases"]:
+        def dec(ids, tok=c["tokens"]):
+            return "".join(tok[str(i)] for i in ids)
+        got = ir_chat.parse_reply(c["ids"], c["call_id"], dec)
+        if "expect" in c and c["expect"] != got:
+            raise SystemExit(f"parse_reply case {c['name']}: tools/ir_chat.py gives {got!r}, the file states "
+                             f"{c['expect']!r}")
+        cases.append(dict(c, expect=got))
+    return {"_comment": "spec/IR_SPEC.md section 8.1.6: parse_reply(tokens, ids, call_id) splits the reply's ids at "
+                        "every call_id and decodes each part by concatenating its ids' texts from tokens; expect is "
+                        "{content, tool_calls}, or null where a later part is not name + newline + arguments with a "
+                        "non-empty name (the engine then returns the whole reply as content). Inputs: paperkiln's "
+                        "tests/chat_template_cases.json (parse_reply).", "cases": cases}
 
 
 def extra_traces():
@@ -1130,6 +1170,72 @@ def untagged_document():
     for n in doc["block"]["nodes"]:
         n.pop("tensor_index", None)
     return doc
+
+
+PERMUTED = "pk_flex_shaw"
+
+
+def permuted_document():
+    """v1.4.1 (3.7, 7.1): pk_flex_shaw's document with weight_index [1, 0]: application 0 reads stored layer 1's
+    tensors and application 1 layer 0's, relative_kv's key and value among them (the file has architecture
+    paperkiln and block_count 2, so the document is valid). An engine that binds relative_kv's names to the
+    application index instead of m_i computes another function."""
+    doc = copy.deepcopy(load_model(SUITE / "models" / PERMUTED)[0])
+    doc["block"]["weight_index"] = {"per_layer": [1, 0]}
+    return doc
+
+
+def permuted_traces():
+    """v1.4.1: the trace of the permuted document over pk_flex_shaw's file (a prefill of 4, then token-by-token
+    decode). Draws from a stream of its own."""
+    doc, W, meta, _ = load_model(SUITE / "models" / PERMUTED)
+    alt = permuted_document()
+    rng = np.random.default_rng(sum(map(ord, PERMUTED)) + 1600)
+    V = doc["model"]["vocab"]
+    ids = [int(x) for x in rng.integers(1, V, 8)]
+    case = trace_case(PERMUTED, alt, W, [{"method": "forward", "ids": ids[:4]}]
+                      + [{"method": "forward", "ids": [t]} for t in ids[4:]])
+    case["ir"] = f"accept/{PERMUTED}_weight_index.ir.json"
+    return [(f"{PERMUTED}_weight_index", case)]
+
+
+MOR_WINDOW = "pk_mor"
+
+
+def mor_window_document():
+    """v1.4.2 (5.15, 7.5; Q16): pk_mor's document with window 3 and sinks 1 on its kv slot and attention, every
+    application. Under depth_route a step's queries and keys are its active rows at their absolute positions, and
+    the window counts positions, never rows: a key at position j is visible from a query at p iff j <= p and
+    (j < 1 or j >= p - 2), among the rows the application holds. An engine that counts the window in the active
+    rows computes another function."""
+    doc = copy.deepcopy(load_model(SUITE / "models" / MOR_WINDOW)[0])
+    for s in doc["block"]["state"]:
+        if s["kind"] == "kv":
+            s["window"], s["sinks"] = 3, 1
+    for n in doc["block"]["nodes"]:
+        if n["op"] == "attention":
+            n["window"], n["sinks"] = 3, 1
+    return doc
+
+
+def mor_window_traces():
+    """v1.4.2 (Q16): the windowed document over pk_mor's file: a prefill of 4, a call of 3, then token-by-token
+    decode to 14 ids (prefill = decode under the window); and a rewind into the window (14 ids, a cut to 8, 3 new
+    ids: the state of a fresh run over the first 8, 6.9). Each draws from a stream of its own."""
+    doc, W, meta, _ = load_model(SUITE / "models" / MOR_WINDOW)
+    alt = mor_window_document()
+    V = doc["model"]["vocab"]
+    rng = np.random.default_rng(sum(map(ord, MOR_WINDOW)) + 1700)
+    ids = [int(x) for x in rng.integers(1, V, 14)]
+    dec = trace_case(MOR_WINDOW, alt, W, [{"method": "forward", "ids": ids[:4]}, {"method": "forward", "ids": ids[4:7]}]
+                     + [{"method": "forward", "ids": [t]} for t in ids[7:]])
+    rng = np.random.default_rng(sum(map(ord, MOR_WINDOW)) + 1800)
+    ids = [int(x) for x in rng.integers(1, V, 14)]
+    rew = trace_case(MOR_WINDOW, alt, W, [{"method": "forward", "ids": ids}, {"method": "truncate", "n": 8},
+                                         {"method": "forward", "ids": [int(x) for x in rng.integers(1, V, 3)]}])
+    for c in (dec, rew):
+        c["ir"] = f"accept/{MOR_WINDOW}_window.ir.json"
+    return [(f"{MOR_WINDOW}_window", dec), (f"{MOR_WINDOW}_window_rewind", rew)]
 
 
 def untagged_traces():
@@ -1230,7 +1336,8 @@ def regenerate():
         (SUITE / f).write_text(json.dumps(case, indent=1) + "\n", encoding="utf-8")
         manifest.append({"id": f"trace/{name}_recurrence", "kind": "trace", "file": f, "model": f"models/{name}",
                          "profile": "recurrence"})
-    for name, case in extra_traces() + window_traces() + chunk_traces() + untagged_traces():
+    for name, case in (extra_traces() + window_traces() + chunk_traces() + untagged_traces() + permuted_traces()
+                       + mor_window_traces()):
         f = f"state/{name}.json"
         (SUITE / f).write_text(json.dumps(case, indent=1) + "\n", encoding="utf-8")
         manifest.append({"id": f"trace/{name}", "kind": "trace", "file": f, "model": case["model"],
@@ -1244,6 +1351,11 @@ def regenerate():
     (SUITE / "chat" / "render.json").write_text(json.dumps(cc, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     manifest.append({"id": "chat/render", "kind": "chat", "file": "chat/render.json", "profile": "chat",
                      "n": len(cc["cases"])})
+    pc = parse_reply_cases()
+    (SUITE / "chat" / "parse_reply.json").write_text(json.dumps(pc, indent=1, ensure_ascii=False) + "\n",
+                                                     encoding="utf-8")
+    manifest.append({"id": "chat/parse_reply", "kind": "chat", "file": "chat/parse_reply.json", "profile": "chat",
+                     "n": len(pc["cases"])})
     (SUITE / "manifest.json").write_text(json.dumps({
         "_comment": "spec/IR_SPEC.md section 11: the conformance suite's cases. Generated by tools/ir_conformance.py "
                     "--regenerate from the models in models/ (expected values: tools/ir_numpy.py).",

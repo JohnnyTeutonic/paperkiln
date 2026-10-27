@@ -5,6 +5,8 @@
 //!     kcr check FILE.gguf [DOC]    validate a file (and a document in place of its own)
 //!     kcr digest FILE              the digest of a JSON document
 
+mod arch;
+mod chat;
 mod digest;
 mod expr;
 mod gguf;
@@ -28,9 +30,11 @@ use std::io::{BufRead, Write};
 use tensor::{tensor_from_json, tensor_to_json, Tensor};
 
 const ENGINE: &str = "keramos-cleanroom (Rust)";
-const PROFILES: [&str; 5] = ["core", "state", "recursion", "thirdparty", "recurrence"];
-const METHODS: [&str; 11] =
-    ["hello", "check", "open", "forward", "truncate", "snapshot", "restore", "close", "run_node", "digest", "dequantize"];
+const PROFILES: [&str; 6] = ["core", "state", "recursion", "chat", "thirdparty", "recurrence"];
+const METHODS: [&str; 13] = [
+    "hello", "check", "open", "forward", "truncate", "snapshot", "restore", "close", "run_node", "digest", "dequantize", "render_chat",
+    "parse_reply",
+];
 
 struct Loaded {
     model: Model,
@@ -223,7 +227,7 @@ impl Engine {
         Ok(match method {
             "hello" => Reply::Result(Json::obj(vec![
                 ("engine", Json::str(ENGINE)),
-                ("version", Json::str(concat!("0.1.0 (IR versions 0 and 1; spec revision 1.2, keramos v1.2.0)"))),
+                ("version", Json::str(concat!("0.3.0 (IR versions 0 and 1; spec revision 1.4, keramos v1.4.2 text)"))),
                 ("backend", Json::str("cpu")),
                 ("exact", Json::Bool(true)),
                 ("profiles", Json::Arr(PROFILES.iter().map(|s| Json::str(s)).collect())),
@@ -318,6 +322,11 @@ impl Engine {
                 Reply::Result(Json::Obj(vec![]))
             }
             "run_node" => run_node(p)?,
+            "render_chat" => match chat::render(p) {
+                Ok(t) => Reply::Result(Json::obj(vec![("text", Json::Str(t))])),
+                Err(r) => Reply::Result(Json::obj(vec![("refused", Json::Str(r))])),
+            },
+            "parse_reply" => Reply::Result(chat::parse_reply(p)?),
             "run_node_grad" => Reply::Skip("gradients are not implemented (this engine does not train)".into()),
             "digest" => {
                 let text = p_str(p, "text").ok_or("no text")?;

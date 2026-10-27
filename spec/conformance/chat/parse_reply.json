@@ -1,0 +1,355 @@
+{
+ "_comment": "spec/IR_SPEC.md section 8.1.6: parse_reply(tokens, ids, call_id) splits the reply's ids at every call_id and decodes each part by concatenating its ids' texts from tokens; expect is {content, tool_calls}, or null where a later part is not name + newline + arguments with a non-empty name (the engine then returns the whole reply as content). Inputs: paperkiln's tests/chat_template_cases.json (parse_reply).",
+ "cases": [
+  {
+   "name": "no call",
+   "tokens": {
+    "1": "Let me ",
+    "2": "check.",
+    "3": "get_weather",
+    "4": "\n",
+    "5": "{\"city\": \"Paris\"}",
+    "6": "<|tool_call|>",
+    "7": "get_time",
+    "8": "{}",
+    "9": "<|tool_call|>",
+    "10": "x\ny"
+   },
+   "ids": [
+    1,
+    2
+   ],
+   "call_id": 9,
+   "expect": {
+    "content": "Let me check.",
+    "tool_calls": []
+   }
+  },
+  {
+   "name": "content then a call",
+   "tokens": {
+    "1": "Let me ",
+    "2": "check.",
+    "3": "get_weather",
+    "4": "\n",
+    "5": "{\"city\": \"Paris\"}",
+    "6": "<|tool_call|>",
+    "7": "get_time",
+    "8": "{}",
+    "9": "<|tool_call|>",
+    "10": "x\ny"
+   },
+   "ids": [
+    1,
+    2,
+    9,
+    3,
+    4,
+    5
+   ],
+   "call_id": 9,
+   "expect": {
+    "content": "Let me check.",
+    "tool_calls": [
+     {
+      "id": "call_0",
+      "type": "function",
+      "function": {
+       "name": "get_weather",
+       "arguments": "{\"city\": \"Paris\"}"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a call alone",
+   "tokens": {
+    "1": "Let me ",
+    "2": "check.",
+    "3": "get_weather",
+    "4": "\n",
+    "5": "{\"city\": \"Paris\"}",
+    "6": "<|tool_call|>",
+    "7": "get_time",
+    "8": "{}",
+    "9": "<|tool_call|>",
+    "10": "x\ny"
+   },
+   "ids": [
+    9,
+    3,
+    4,
+    5
+   ],
+   "call_id": 9,
+   "expect": {
+    "content": "",
+    "tool_calls": [
+     {
+      "id": "call_0",
+      "type": "function",
+      "function": {
+       "name": "get_weather",
+       "arguments": "{\"city\": \"Paris\"}"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "two calls",
+   "tokens": {
+    "1": "Let me ",
+    "2": "check.",
+    "3": "get_weather",
+    "4": "\n",
+    "5": "{\"city\": \"Paris\"}",
+    "6": "<|tool_call|>",
+    "7": "get_time",
+    "8": "{}",
+    "9": "<|tool_call|>",
+    "10": "x\ny"
+   },
+   "ids": [
+    9,
+    3,
+    4,
+    5,
+    9,
+    7,
+    4,
+    8
+   ],
+   "call_id": 9,
+   "expect": {
+    "content": "",
+    "tool_calls": [
+     {
+      "id": "call_0",
+      "type": "function",
+      "function": {
+       "name": "get_weather",
+       "arguments": "{\"city\": \"Paris\"}"
+      }
+     },
+     {
+      "id": "call_1",
+      "type": "function",
+      "function": {
+       "name": "get_time",
+       "arguments": "{}"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "empty arguments",
+   "tokens": {
+    "1": "Let me ",
+    "2": "check.",
+    "3": "get_weather",
+    "4": "\n",
+    "5": "{\"city\": \"Paris\"}",
+    "6": "<|tool_call|>",
+    "7": "get_time",
+    "8": "{}",
+    "9": "<|tool_call|>",
+    "10": "x\ny"
+   },
+   "ids": [
+    9,
+    7,
+    4
+   ],
+   "call_id": 9,
+   "expect": {
+    "content": "",
+    "tool_calls": [
+     {
+      "id": "call_0",
+      "type": "function",
+      "function": {
+       "name": "get_time",
+       "arguments": ""
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "arguments holding a newline",
+   "tokens": {
+    "1": "Let me ",
+    "2": "check.",
+    "3": "get_weather",
+    "4": "\n",
+    "5": "{\"city\": \"Paris\"}",
+    "6": "<|tool_call|>",
+    "7": "get_time",
+    "8": "{}",
+    "9": "<|tool_call|>",
+    "10": "x\ny"
+   },
+   "ids": [
+    9,
+    7,
+    4,
+    10
+   ],
+   "call_id": 9,
+   "expect": {
+    "content": "",
+    "tool_calls": [
+     {
+      "id": "call_0",
+      "type": "function",
+      "function": {
+       "name": "get_time",
+       "arguments": "x\ny"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "the call's text as BPE pieces is content",
+   "tokens": {
+    "1": "Let me ",
+    "2": "check.",
+    "3": "get_weather",
+    "4": "\n",
+    "5": "{\"city\": \"Paris\"}",
+    "6": "<|tool_call|>",
+    "7": "get_time",
+    "8": "{}",
+    "9": "<|tool_call|>",
+    "10": "x\ny"
+   },
+   "ids": [
+    1,
+    6,
+    3,
+    4,
+    5
+   ],
+   "call_id": 9,
+   "expect": {
+    "content": "Let me <|tool_call|>get_weather\n{\"city\": \"Paris\"}",
+    "tool_calls": []
+   }
+  },
+  {
+   "name": "a call without a newline",
+   "tokens": {
+    "1": "Let me ",
+    "2": "check.",
+    "3": "get_weather",
+    "4": "\n",
+    "5": "{\"city\": \"Paris\"}",
+    "6": "<|tool_call|>",
+    "7": "get_time",
+    "8": "{}",
+    "9": "<|tool_call|>",
+    "10": "x\ny"
+   },
+   "ids": [
+    9,
+    3,
+    5
+   ],
+   "call_id": 9,
+   "expect": null
+  },
+  {
+   "name": "an empty name",
+   "tokens": {
+    "1": "Let me ",
+    "2": "check.",
+    "3": "get_weather",
+    "4": "\n",
+    "5": "{\"city\": \"Paris\"}",
+    "6": "<|tool_call|>",
+    "7": "get_time",
+    "8": "{}",
+    "9": "<|tool_call|>",
+    "10": "x\ny"
+   },
+   "ids": [
+    9,
+    4,
+    5
+   ],
+   "call_id": 9,
+   "expect": null
+  },
+  {
+   "name": "an empty call",
+   "tokens": {
+    "1": "Let me ",
+    "2": "check.",
+    "3": "get_weather",
+    "4": "\n",
+    "5": "{\"city\": \"Paris\"}",
+    "6": "<|tool_call|>",
+    "7": "get_time",
+    "8": "{}",
+    "9": "<|tool_call|>",
+    "10": "x\ny"
+   },
+   "ids": [
+    1,
+    9
+   ],
+   "call_id": 9,
+   "expect": null
+  },
+  {
+   "name": "one good call and one bad",
+   "tokens": {
+    "1": "Let me ",
+    "2": "check.",
+    "3": "get_weather",
+    "4": "\n",
+    "5": "{\"city\": \"Paris\"}",
+    "6": "<|tool_call|>",
+    "7": "get_time",
+    "8": "{}",
+    "9": "<|tool_call|>",
+    "10": "x\ny"
+   },
+   "ids": [
+    9,
+    3,
+    4,
+    5,
+    9,
+    7
+   ],
+   "call_id": 9,
+   "expect": null
+  },
+  {
+   "name": "no ids",
+   "tokens": {
+    "1": "Let me ",
+    "2": "check.",
+    "3": "get_weather",
+    "4": "\n",
+    "5": "{\"city\": \"Paris\"}",
+    "6": "<|tool_call|>",
+    "7": "get_time",
+    "8": "{}",
+    "9": "<|tool_call|>",
+    "10": "x\ny"
+   },
+   "ids": [],
+   "call_id": 9,
+   "expect": {
+    "content": "",
+    "tool_calls": []
+   }
+  }
+ ]
+}

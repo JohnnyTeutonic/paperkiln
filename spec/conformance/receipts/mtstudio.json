@@ -1,13 +1,13 @@
 {
  "spec": {
   "repository": "keramos",
-  "tag": "v1.3.5",
-  "commit": "c4696bf5578688585f6b00593eb9272daa8c5e3a"
+  "tag": "v1.4.1",
+  "commit": "a29ce6f596e2e79c6fca52e6382c962cb5f7011e"
  },
  "engine": {
-  "name": "paperkiln mtstudio, CPU, with ir_eval (recurrence nodes and the thirdparty single ops, their gradients, the digest) and expr_eval",
-  "environment": "ext4 clone of paperkiln b9d5ce06 (keramos v1.3.5 vendored at spec/), Release, GCC 13.3, vendored transformer_core, -ffp-contract=off, built in WSL (~/d4_build); runner under CPython 3.12.3, numpy 2.3.3",
-  "run": "MTSTUDIO_BIN=build/mtstudio python3 tools/ir_conformance_mtstudio.py, spec/ equal to v1.3.5 (c4696bf5), 2026-10-27. pk_llama_attnres_rec (tensor_index) through mtstudio score: log-probs within 1.28e-7, greedy 4/4. The six cases of v1.3.5 (section 7.2's trace, acceptance and four refusals on pk_llama_attnres_rec) skip (mtstudio runs its own models: no document loading, refusals or substituted documents); the v1.3.4 models (tp_*_hd16) skip but for their digest vectors; no earlier verdict moves"
+  "name": "paperkiln mtstudio, CPU, with ir_eval (recurrence nodes, attention with relative_kv and the thirdparty single ops, their gradients, the digest) and expr_eval",
+  "environment": "ext4 clone of paperkiln 43e32a05 (branch d2), Release, GCC 13.3, -ffp-contract=off, built in WSL (~/d2_build); runner under CPython 3.12.3, numpy 2.3.3",
+  "run": "the mtstudio adapter (tools/ir_conformance_mtstudio.py) with the runner of a clean clone of keramos at v1.4.1 (a29ce6f5), 2026-10-27. New at 1.4.0: pk_flex_shaw and pk_flex_mdha through mtstudio score; the relative_kv op cases and gradient cases through ops::shaw_attention (window and sinks: skip, as for position_bias); their traces, refusals and acceptance cases skip (mtstudio runs its own models); no earlier verdict moves; v1.4.1's trace and acceptance case of pk_flex_shaw under weight_index skip (a substituted document)"
  },
  "adapter": {
   "engine": "mtstudio",
@@ -22,15 +22,15 @@
   ]
  },
  "counts": {
-  "PASS": 146,
+  "PASS": 158,
   "FAIL": 0,
-  "SKIP": 291,
+  "SKIP": 309,
   "XFAIL": 0,
   "XPASS": 0
  },
  "by_kind": {
   "model": {
-   "PASS": 17,
+   "PASS": 19,
    "FAIL": 0,
    "SKIP": 8,
    "XFAIL": 0,
@@ -39,26 +39,26 @@
   "trace": {
    "PASS": 6,
    "FAIL": 0,
-   "SKIP": 68,
+   "SKIP": 75,
    "XFAIL": 0,
    "XPASS": 0
   },
   "op": {
-   "PASS": 27,
+   "PASS": 32,
    "FAIL": 0,
-   "SKIP": 35,
+   "SKIP": 36,
    "XFAIL": 0,
    "XPASS": 0
   },
   "refuse": {
    "PASS": 0,
    "FAIL": 0,
-   "SKIP": 98,
+   "SKIP": 105,
    "XFAIL": 0,
    "XPASS": 0
   },
   "digest": {
-   "PASS": 88,
+   "PASS": 90,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
@@ -72,7 +72,7 @@
    "XPASS": 0
   },
   "grad": {
-   "PASS": 8,
+   "PASS": 11,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
@@ -81,7 +81,7 @@
   "accept": {
    "PASS": 0,
    "FAIL": 0,
-   "SKIP": 40,
+   "SKIP": 43,
    "XFAIL": 0,
    "XPASS": 0
   },
@@ -126,6 +126,36 @@
   },
   {
    "id": "trace/pk_flex_highway_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "model/pk_flex_mdha",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 1.38e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_flex_mdha_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "trace/pk_flex_mdha_snapshot",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "model/pk_flex_shaw",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 1.39e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_flex_shaw_decode",
    "kind": "trace",
    "verdict": "SKIP",
    "detail": "not implemented"
@@ -693,6 +723,42 @@
    "kind": "op",
    "verdict": "PASS",
    "detail": "a worst 1.10e-07 of max(1, |ref|)"
+  },
+  {
+   "id": "op/attention/relative_kv",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "a worst 7.38e-08 of max(1, |ref|)"
+  },
+  {
+   "id": "op/attention/relative_kv_per_head",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "a worst 4.19e-08 of max(1, |ref|)"
+  },
+  {
+   "id": "op/attention/relative_kv_keys_only",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "a worst 1.27e-07 of max(1, |ref|)"
+  },
+  {
+   "id": "op/attention/relative_kv_window_sinks",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "ir_eval: attention other than plain causal (the llama block's)"
+  },
+  {
+   "id": "op/attention/relative_kv_grouped_query",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "a worst 1.14e-07 of max(1, |ref|)"
+  },
+  {
+   "id": "op/attention/relative_kv_distance_zero",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "a worst 1.19e-07 of max(1, |ref|)"
   },
   {
    "id": "op/moe_ffn/renorm",
@@ -1355,6 +1421,48 @@
    "detail": "not implemented"
   },
   {
+   "id": "refuse/relative_kv_distance_negative",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/relative_kv_without_key",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/relative_kv_unknown_field",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/relative_kv_key_shape",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/relative_kv_value_shape",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/relative_kv_with_position_bias",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/relative_kv_per_layer",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
    "id": "refuse/duplicate_member_top",
    "kind": "refuse",
    "verdict": "SKIP",
@@ -1739,6 +1847,18 @@
    "detail": "sha256 equal; canonical equal"
   },
   {
+   "id": "digest/vectors/document_pk_flex_mdha",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_flex_shaw",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
    "id": "digest/vectors/document_pk_flex_t5",
    "kind": "digest",
    "verdict": "PASS",
@@ -2075,6 +2195,24 @@
    "detail": "dx worst 3.23e-08 of max(1, |ref|); dW worst 3.96e-08 of max(1, |ref|)"
   },
   {
+   "id": "grad/attention/relative_kv",
+   "kind": "grad",
+   "verdict": "PASS",
+   "detail": "dq worst 1.19e-07 of max(1, |ref|); dk worst 1.42e-07 of max(1, |ref|); dv worst 6.61e-08 of max(1, |ref|); drk worst 1.49e-07 of max(1, |ref|); drv worst 1.31e-07 of max(1, |ref|)"
+  },
+  {
+   "id": "grad/attention/relative_kv_per_head_grouped_query",
+   "kind": "grad",
+   "verdict": "PASS",
+   "detail": "dq worst 9.62e-08 of max(1, |ref|); dk worst 1.19e-07 of max(1, |ref|); dv worst 8.38e-08 of max(1, |ref|); drk worst 1.76e-07 of max(1, |ref|); drv worst 5.73e-08 of max(1, |ref|)"
+  },
+  {
+   "id": "grad/attention/relative_kv_keys_only",
+   "kind": "grad",
+   "verdict": "PASS",
+   "detail": "dq worst 1.49e-07 of max(1, |ref|); dk worst 1.19e-07 of max(1, |ref|); dv worst 8.76e-08 of max(1, |ref|); drk worst 1.19e-07 of max(1, |ref|)"
+  },
+  {
    "id": "trace/pk_kimi_recurrence",
    "kind": "trace",
    "verdict": "SKIP",
@@ -2111,6 +2249,12 @@
    "detail": "not implemented"
   },
   {
+   "id": "trace/pk_flex_mdha_truncate",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
    "id": "trace/pk_gpt2_swa_rewind_window",
    "kind": "trace",
    "verdict": "SKIP",
@@ -2142,6 +2286,18 @@
   },
   {
    "id": "trace/pk_flex_highway_chunks",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "trace/pk_flex_mdha_chunks",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "trace/pk_flex_shaw_chunks",
    "kind": "trace",
    "verdict": "SKIP",
    "detail": "not implemented"
@@ -2285,6 +2441,12 @@
    "detail": "not implemented"
   },
   {
+   "id": "trace/pk_flex_shaw_weight_index",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
    "id": "accept/documents/model_pk_attnres",
    "kind": "accept",
    "verdict": "SKIP",
@@ -2298,6 +2460,18 @@
   },
   {
    "id": "accept/documents/model_pk_flex_highway",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/model_pk_flex_mdha",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/model_pk_flex_shaw",
    "kind": "accept",
    "verdict": "SKIP",
    "detail": "not implemented"
@@ -2520,6 +2694,12 @@
   },
   {
    "id": "accept/documents/untagged_application_queries",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/relative_kv_weight_index",
    "kind": "accept",
    "verdict": "SKIP",
    "detail": "not implemented"
