@@ -176,9 +176,10 @@ def test_thirdparty_single_ops_match_numpy():
         seen[key] = counts
         assert counts["FAIL"] == 0, (key, counts)
     passed = sum(c["PASS"] for c in seen.values())
-    # rope 4 (interleaved, neox, neox_partial, grouped_query), rmsnorm 2 (row, group), attention 2 (causal,
-    # grouped_query), conv1d 1, selective_scan 1; skipped: freq_scale, weight_offset, a window (not trained here).
-    assert passed == 10, seen
+    # rope 4 (interleaved, neox, neox_partial, grouped_query), rmsnorm 2 (row, group), attention 4 (causal,
+    # grouped_query, position_bias, position_bias_grouped_query: T5's bias through ops::relpos_attention since
+    # e8f66a10), conv1d 1, selective_scan 1; skipped: freq_scale, weight_offset, windows (not trained here).
+    assert passed == 12, seen
 
 
 @needs_bin
