@@ -875,6 +875,9 @@ def main(argv=None):
                     help="amendment 3: write the floor pilot's verdict (ART/pilot) to OUT and do nothing else")
     ap.add_argument("--mor-choice", default=MOR_CHOICE,
                     help="A4.4: the MoR block's lr_choice_mor.json (its dropped cells)")
+    ap.add_argument("--size-depth-choice", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "size",
+                                                                "depth_choice.json"),
+                    help="amendment 6: the size arm's depth (size/depth_choice.json)")
     ap.add_argument("--rec-decision", default=None, metavar="OUT",
                     help="A3.3: write the R8 rule's decision (ART/e1_rec, R2 and R4) to OUT and do nothing else")
     a = ap.parse_args(argv)
@@ -914,6 +917,14 @@ def main(argv=None):
     x5 = analyze_x5.x5(a.art, a.partial)
     if x5 is not None:
         res["E1_x5_20m"] = x5
+    import importlib.util  # amendment 6: the size arm (its own module, size/analyze_size.py; it loads this one)
+    _p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "size", "analyze_size.py")
+    _sp = importlib.util.spec_from_file_location("analyze_size", _p)
+    analyze_size = importlib.util.module_from_spec(_sp)
+    _sp.loader.exec_module(analyze_size)
+    size = analyze_size.e1_150m(a.art, a.partial, a.size_depth_choice)
+    if size is not None:
+        res["E1_150m"] = size
     # Early ranking (amendment 1): read only for complete blocks unless --partial.
     g5, g1, g60 = load_rungs(a.art, "e5"), load_rungs(a.art, "e1"), load_rungs(a.art, "e1_60m")
     for (cell, seed, step), s in list(g5.items()):  # E1's L8 cell is E5's dE1 cell: the same runs

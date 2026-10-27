@@ -157,6 +157,20 @@ def isoplot(art, ss150, seeds):
             "extrapolation": all(ss150[r]["panels"]["fineweb"] < min(fx) for r in seeds)}
 
 
+DEPTH_CHOICE = os.path.join(HERE, "depth_choice.json")
+
+
+def e1_150m(art, partial=False, depth_choice=DEPTH_CHOICE):
+    """analyze.py's E1_150m block (A6.8): None until the depth is chosen and a 150M post summary is home."""
+    if not depth_choice or not os.path.exists(depth_choice):
+        return None
+    with open(depth_choice, encoding="utf-8") as f:
+        depth = json.load(f)["depth"]
+    if not load_size(art, "150m", depth):
+        return None
+    return size_block(art, depth, partial)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--art", required=True)

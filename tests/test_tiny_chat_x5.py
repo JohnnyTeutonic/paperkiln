@@ -14,7 +14,9 @@ ROOT = Path(__file__).resolve().parents[1]
 EXP = ROOT / "experiments" / "tiny_chat_2026-10"
 sys.path.insert(0, str(EXP))
 sys.path.insert(0, str(ROOT / "tools" / "colab_chat"))
+sys.path.insert(0, str(EXP / "x5"))
 import analyze_x5 as ax  # noqa: E402
+import bitid  # noqa: E402
 import tiny_chat_run as tcr  # noqa: E402
 
 FAMS = [("recall", 432), ("correction", 216), ("topic", 180), ("knowledge", 60), ("instruction", 144)]
@@ -199,6 +201,53 @@ def test_bitid(tmp_path, bump, ok):
     assert r["steps_compared"] == 10 and r["evals_compared"] == [5, 10] and r["spec_equal_but_steps"]
     if not ok:
         assert r["differences"][0] == {"step": 7, "field": "loss", "replay": 9.78 - 7e-3 + 1e-7, "e1": 9.78 - 7e-3}
+    assert r["receipt"].startswith("amendment 5:") and "model_event" not in r
+
+
+def _set_model(run_dir, extra):
+    """Rewrite the model event of a _run_dir folder with fields added (None removes a field)."""
+    p = run_dir / "events.jsonl"
+    ev = [json.loads(x) for x in p.read_text().splitlines()]
+    for e in ev:
+        if e["event"] == "model":
+            for k, v in extra.items():
+                if v is None:
+                    e.pop(k, None)
+                else:
+                    e[k] = v
+    p.write_text("".join(json.dumps(e) + "\n" for e in ev))
+
+
+@pytest.mark.parametrize("extra,ok", [
+    ({"final_norm": True, "norm_placement": "pre"}, True),       # c6365b88's fields at their fixed values
+    ({"final_norm": True}, True),
+    ({"final_norm": False, "norm_placement": "pre"}, False),     # not the fixed value
+    ({"norm_placement": {"attn": "post", "ffn": "pre"}}, False),
+    ({"window": 64}, False),                                     # not a field a later commit added
+    ({"d": 384}, False),                                         # a shared field that differs
+    ({"params": None}, False),                                   # a field in E1's event alone
+])
+def test_bitid_model_event_rule(tmp_path, extra, ok):
+    """Jonathan's ruling, 27 Oct 2026 (PREREGISTRATION.md A6.7): the model events agree on the fields both commits
+    log; a field only the replay logs passes only when bitid.LOGGED_LATER lists it at its fixed value."""
+    e1 = _run_dir(tmp_path, "pt_e1_60m_L32_r2", 40, 40)
+    rep = _run_dir(tmp_path, "replay_e1_60m_L32_r2", 10, 10)
+    _set_model(rep, extra)
+    out = tmp_path / "bitid.json"
+    p = subprocess.run([sys.executable, str(EXP / "x5" / "bitid.py"), "--replay", str(rep), "--e1", str(e1),
+                        "--commit", "abc", "--e1-commit", "a90ec0e2", "--out", str(out)], capture_output=True, text=True)
+    r = json.loads(out.read_text())
+    assert (p.returncode == 0) is ok and r["ok"] is ok and r["model_event_equal"] is ok
+    assert r["receipt"].startswith("amendment 6:") and r["n_differences"] == 0
+    m = r["model_event"]
+    if "params" in extra:
+        assert m["e1_only"] == {"params": 25078080}
+    elif "d" in extra:
+        assert m["shared_differences"] == {"d": {"replay": 384, "e1": 320}}
+    else:
+        assert set(m["replay_only"]) == set(extra)
+        assert all(v["ok"] is (k in bitid.LOGGED_LATER and v["value"] == bitid.LOGGED_LATER[k])
+                   for k, v in m["replay_only"].items())
 
 
 COLAB = ROOT / "tools" / "colab_chat"

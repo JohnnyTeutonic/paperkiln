@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Amendment 6 (PROPOSED, not yet registered): the size arm on Carry-5 at 150M non-embedding parameters.
-Writes the arm's specs and its Stage 0 jobs files, prints the shape and budget tables, and applies the
-depth rule once E1 at 60M is home. Deterministic: rerunning it rewrites the same files. It imports
+"""Amendment 6 (registered 26 Oct 2026): the size arm on Carry-5 at 150M non-embedding parameters.
+Writes the arm's specs, its Stage 0 jobs files and, once the depth is chosen, its runs' jobs files; prints the
+shape and budget tables and A6.7's launch check; applies the depth rule once E1 at 60M is home. Deterministic: rerunning it rewrites the same files. It imports
 make_jobs.py (this folder's parent) as a library and writes none of make_jobs.py's files.
 
     python experiments/tiny_chat_2026-10/size/make_size_jobs.py            # write specs + Stage 0 files, print tables
@@ -12,6 +12,8 @@ make_jobs.py (this folder's parent) as a library and writes none of make_jobs.py
 Writes
   experiments/tiny_chat_2026-10/size/specs/shape_150m_L<4|8|16|32>.json   one pretraining spec per candidate depth
   tools/colab_chat/tiny_chat_s0_150m_L<4|8|16|32>.json                   Stage 0, one file (one L4) per depth
+  tools/colab_chat/tiny_chat_e1_150m_r<1|2|3>.json                       the runs at L*, one file (one L4) per
+                                                                         seed, once size/depth_choice.json exists
 
 Stage 0 per depth, one GPU job at a time: the CUDA gate (every leg of tools/colab_cuda_validate.sh, on that
 machine's GPU), the gate (design final, the floor pilot's PASS), the 35% data job, a 300-step probe alone on
@@ -66,6 +68,12 @@ PEAK_LIMIT_MIB = 19_500  # A6.2: a probe above this leaves too little of the L4 
 USD_PER_L4_H = 0.59
 TIE_Y = 0.01             # A6.1: depths within 1 point of the best mean Y are tied
 CAP_MARGIN = 1.3         # a runner's --max-usd over its estimate
+# A6.7's registered estimates for the three runs at each depth (L4 VM-hours), and the launch bound over them
+RUNS_EST_REGISTERED = {4: 36.2, 8: 36.0, 16: 39.5, 32: 45.9}
+RUNS_BOUND = 1.5
+TAG = "e1_150m"
+CUDA_GATE_HOME = REL + "/stage0/cuda_gate_{sid}.json"   # L*'s Stage 0 cuda_gate.json, copied home and committed
+BITID = f"{REL}/plain_bitid.json"
 
 
 def batching(L):
@@ -121,11 +129,12 @@ def home_probes():
 PROBES = home_probes()
 
 
-def tok_per_s(sid, s):
-    """The probe's rate once home; until then the planning rate, the lower of two extrapolations from
+def tok_per_s(sid, s, planning=False):
+    """The probe's rate once home (unless planning: Stage 0's files keep the plan they launched with); until then
+    the planning rate, the lower of two extrapolations from
     Stage 0's probes: the fit through all nine (time per token in FLOPs and layers) and 60M's probe at the
     same depth scaled by training FLOPs per token."""
-    if sid in PROBES:
+    if sid in PROBES and not planning:
         return PROBES[sid]["tok_per_s_steady"]
     f = mj.flops_per_token(s)
     a, b, c = FIT
@@ -135,8 +144,8 @@ def tok_per_s(sid, s):
     return min(fit, ratio)
 
 
-def hours(sid, s, steps):
-    return steps * mj.TOKENS_PER_STEP / tok_per_s(sid, s) / 3600
+def hours(sid, s, steps, planning=False):
+    return steps * mj.TOKENS_PER_STEP / tok_per_s(sid, s, planning) / 3600
 
 
 def run_hours(sid, s):
@@ -194,7 +203,7 @@ def stage0_doc(sid, s, replay=False):
                          "--steps", str(mj.PROBE_STEPS), *pre],
                  "outputs": ["summary.json"]})
     prev = f"probe_{sid}"   # a probe that fails (memory) holds the screens back: they would fail the same way
-    est = mj.CUDA_GATE_H + mj.DATA_H + hours(sid, s, mj.PROBE_STEPS)
+    est = mj.CUDA_GATE_H + mj.DATA_H + hours(sid, s, mj.PROBE_STEPS, planning=True)
     if replay:   # independent of this depth's probe and screens, so neither outcome holds the other back
         jobs.append({"name": REPLAY["job"], "model_name": f"tc_e1_60m_L32_r{REPLAY['seed']}", "after": after,
                      "spec": replay_spec()})
@@ -204,7 +213,7 @@ def stage0_doc(sid, s, replay=False):
                      "cmd": ["python3", mj.RUN, "screen", "--out", "{out}", "--spec", spec_path(sid), "--corpus", corpus,
                              "--lr", repr(lr), "--steps", str(mj.SCREEN_STEPS), "--seed", str(mj.SCREEN_SEED), *pre],
                      "outputs": ["summary.json"]})
-        est += IN_RUN * hours(sid, s, mj.SCREEN_STEPS)
+        est += IN_RUN * hours(sid, s, mj.SCREEN_STEPS, planning=True)
     rep = (f" Also the plain replay {REPLAY['job']}: E1 at 60M's pt_e1_60m_L32_r{REPLAY['seed']} spec at this commit "
            f"for its first {REPLAY['steps']} steps (the warmup), compared at home step by step with its log at "
            f"{REPLAY['commit'][:8]} by {EXP_REL}/x5/bitid.py into {REL}/plain_bitid.json.") if replay else ""
@@ -276,6 +285,118 @@ def cap(h):
     return int(math.ceil(h * USD_PER_L4_H * CAP_MARGIN))
 
 
+# ---------------------------------------------------------------- the runs at L* (A6.2, A6.7, A6.8)
+def runs_name(seed):
+    return f"tiny_chat_{TAG}_r{seed}.json"
+
+
+def runs_doc(seed, sid, s, lr):
+    """One seed's machine (A5.10's pattern): its CUDA gate, the gate (design final, the floor pilot's PASS, L*'s home
+    CUDA gate and the plain replay's receipt, every pretraining lr equal to lr_choice_150m.json's), the 35% data job,
+    the pretraining run, its four rung jobs in the light slot and the post job, whose SFT takes the shape spec's
+    micro-batching (post --sft-batching spec) and which brings home the per-item records, the replies and the SFT
+    model for the pick at home."""
+    L = s["layers"]
+    cell = f"L{L}"
+    name = runs_name(seed)
+    pt = f"pt_{TAG}_{cell}_r{seed}"
+    model = f"tc_{TAG}_{cell}_r{seed}"
+    share = mj.E1_SHARE
+    gate = {"name": "gate", "cmd": ["python3", mj.RUN, "gate", "--out", "{out}", "--jobs", f"tools/colab_chat/{name}",
+                                    "--choice", CHOICE, "--design", f"{EXP_REL}/design.json", *PRE_GATE,
+                                    "--need-cuda-gate", CUDA_GATE_HOME.format(sid=sid), "--need-ok", BITID],
+            "outputs": ["gate.json"]}
+    cuda = {"name": "cuda_gate", "cmd": ["python3", mj.RUN, "cuda_gate", "--out", "{out}"],
+            "outputs": ["cuda_gate.json", "cuda_gate.log"]}
+    jobs = [cuda, mj.data_job([share]), gate,
+            {"name": pt, "model_name": model, "after": ["data", "gate", "cuda_gate"], "relay_every_steps": 2500,
+             "snapshot_steps": mj.rung_steps(), "spec": pt_spec(sid, s, lr, seed)}]
+    for st in mj.rung_steps():
+        jobs.append({"name": f"rung_{TAG}_{cell}_r{seed}_s{st}", "after": "data", "light": True,
+                     "rung_of": {"job": pt, "step": st}, "env": {"MICROTORCH_POOL_MB": mj.LIGHT_POOL_MB},
+                     "cmd": ["python3", mj.RUN, "rung", "--out", "{out}", "--spec", spec_path(sid),
+                             "--weights", f"{mj.C}/{pt}/rung_{st}/model.safetensors", "--pt-dir", f"{mj.C}/{pt}",
+                             "--step", str(st), "--drop-snapshot", "--job", pt, "--cell", cell, "--seed", str(seed),
+                             "--share", str(share), *mj.PANELS, *mj.ITEMS],
+                     "outputs": ["rung.json"]})
+    jobs.append({"name": f"post_{TAG}_{cell}_r{seed}", "after": pt, "init_job": pt,
+                 "cmd": ["python3", mj.RUN, "post", "--out", "{out}", "--spec", spec_path(sid),
+                         "--pt-weights", f"{mj.C}/{pt}/{model}.safetensors", "--pt-dir", f"{mj.C}/{pt}",
+                         "--sft-template", f"{EXP_REL}/specs/sft.json", "--seed", str(seed), "--cell", cell,
+                         "--share", str(share), *mj.PANELS, *mj.ITEMS, *mj.POST_GEN, "--sft-batching", "spec"],
+                 "outputs": ["summary.json", *mj.x5_post_outputs(cell, seed)]})
+    est = mj.CUDA_GATE_H + mj.DATA_H + run_hours(sid, s)
+    pick = (f"python {mj.RUN} pick --out ART/{TAG}/pick_{TAG}_{cell} "
+            + " ".join(f"--run ART/{TAG}_r{r}/post_{TAG}_{cell}_r{r}" for r in mj.SEEDS))
+    b, a = batching(L)
+    doc = {"_comment": f"tiny-chat size arm, seed {seed} at {sid} ({EXP_REL}/PREREGISTRATION.md amendment 6): the CUDA "
+                       f"gate on this machine's GPU, the gate (design final, the floor pilot's PASS, "
+                       f"{CUDA_GATE_HOME.format(sid=sid)} passed, {BITID} ok, the pretraining lr equal to {CHOICE}'s; "
+                       f"here {lr:g}), the {share}% data job, {mj.STEPS} steps x {mj.TOKENS_PER_STEP} tokens at batch "
+                       f"{b} x accum {a}, rungs at {mj.rung_steps()} in the light slot (cache capped at "
+                       f"{mj.LIGHT_POOL_MB} MB), and the post job (SFT at the same micro-batching, panels, Carry-5 with "
+                       f"ember generation, base-model Carry-5), which brings home its per-item records, replies and SFT "
+                       f"model. One GPU job at a time. Estimated {est:.1f} L4 VM-hours. The pick runs at home once all "
+                       f"three seeds are home: {pick}. Upload vocab_llama3_bpe.gguf with the runner's --upload."
+                       + mj.GEN_NOTE + mj.DESIGN_NOTE,
+           "max_parallel": mj.GPU_JOBS_PER_VM, "max_parallel_light": 1, "jobs": jobs}
+    return name, doc, est
+
+
+def depth_chosen():
+    p = os.path.join(ROOT, DEPTH_CHOICE)
+    if not os.path.exists(p):
+        return None
+    with open(p, encoding="utf-8") as f:
+        return json.load(f)["depth"]
+
+
+def lr_chosen(sid):
+    p = os.path.join(ROOT, CHOICE)
+    if not os.path.exists(p):
+        return None
+    with open(p, encoding="utf-8") as f:
+        return json.load(f)["lr"].get(sid)
+
+
+def write_runs():
+    """The runs' three files at L*, once size/depth_choice.json exists; at the PROVISIONAL rate (the gate refuses)
+    until lr_choice_150m.json holds L*'s rate."""
+    L = depth_chosen()
+    if L is None:
+        print(f"no {DEPTH_CHOICE} yet: the runs' jobs files wait for the depth rule")
+        return 0
+    sid = f"{SIZE}_L{L}"
+    lr = lr_chosen(sid)
+    for seed in mj.SEEDS:
+        name, doc, _ = runs_doc(seed, sid, shapes()[sid], lr if lr is not None else mj.PROVISIONAL_LR)
+        mj.write(os.path.join(COLAB, name), doc)
+    print(f"wrote tools/colab_chat/tiny_chat_{TAG}_r*.json at {sid}, "
+          + (f"lr {lr:g} ({CHOICE})" if lr is not None else
+             f"PROVISIONAL lr {mj.PROVISIONAL_LR:g}: the gate refuses until {CHOICE} holds {sid}"))
+    return 0
+
+
+def launch_check(L):
+    """A6.7 (e) and (f) from L*'s probe once home: the peak at or under PEAK_LIMIT_MIB, and the three runs' total at
+    the probe's rate at most RUNS_BOUND times the registered estimate. None until the probe is home."""
+    sid = f"{SIZE}_L{L}"
+    if sid not in PROBES:
+        return None
+    s = shapes()[sid]
+    peak = PROBES[sid].get("peak_gpu_mem_mib")
+    tot = 3 * (mj.CUDA_GATE_H + mj.DATA_H + run_hours(sid, s))
+    bound = RUNS_BOUND * RUNS_EST_REGISTERED[L]
+    return {"shape": sid, "probe_tok_per_s": PROBES[sid]["tok_per_s_steady"], "peak_gpu_mem_mib": peak,
+            "peak_ok": peak is not None and peak <= PEAK_LIMIT_MIB, "runs_vm_hours": round(tot, 1),
+            "bound_vm_hours": round(bound, 1), "budget_ok": tot <= bound}
+
+
+def launch_line(c):
+    return (f"A6.7 (e)/(f) at {c['shape']}: peak {c['peak_gpu_mem_mib']} MiB ({'ok' if c['peak_ok'] else 'OVER'} "
+            f"{PEAK_LIMIT_MIB}), runs {c['runs_vm_hours']} VM-hours ({'ok' if c['budget_ok'] else 'OVER'} the bound "
+            f"{c['bound_vm_hours']})")
+
 # ---------------------------------------------------------------- A6.1: the depth rule, at home
 def load_60m(art):
     """E1 at 60M's post summaries from ART/e1_60m and its per-cell split folders (implementation note of 25 Oct)."""
@@ -325,6 +446,10 @@ def main(argv=None):
         print(json.dumps(r, indent=1))
         return 0
     print(tables())
+    for L in DEPTHS:
+        c = launch_check(L)
+        if c:
+            print(launch_line(c))
     if a.tables:
         return 0
     os.makedirs(SPECS, exist_ok=True)
@@ -333,7 +458,7 @@ def main(argv=None):
         name, doc, _ = stage0_doc(sid, s, replay=(s["layers"] == 4))
         mj.write(os.path.join(COLAB, name), doc)
     print("\nwrote size/specs/shape_150m_L*.json and tools/colab_chat/tiny_chat_s0_150m_L*.json")
-    return 0
+    return write_runs()
 
 
 if __name__ == "__main__":
