@@ -54,10 +54,11 @@ SESOI = 0.03
 LAPTOP_VOCAB = "C:/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf"
 VM_VOCAB = "/content/chat/upload/vocab_llama3_bpe.gguf"
 VOCABS = (LAPTOP_VOCAB, "/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf", VM_VOCAB)
-# ember for Carry-12 generation (PREREGISTRATION_DRAFT.md section 2: fe01b35 or later, EMBER_DETERMINISTIC=1):
-# 7526469 on main, the first with valid UTF-8 on every text path (a 48-token reply cut inside a character no
-# longer returns HTTP 500).
-EMBER_COMMIT = "7526469695ee3f07f2b5d6e60568cd3e09529c84"
+# ember for Carry-12 generation (PREREGISTRATION_DRAFT.md section 2, the main session's pin of 27 Oct 2026, with
+# EMBER_DETERMINISTIC=1): ec3201b on main, 7526469's valid UTF-8 on every text path plus the tiled split-K decode
+# attention (1.69-1.70x end to end at 60M on Carry-12 contexts; ids 360/360 against 7526469; its deterministic
+# logits differ from 7526469's by the new fixed reduction order, EMBER_DECODE_ATTN=split reproduces them).
+EMBER_COMMIT = "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a"
 
 
 def sha256(path):
