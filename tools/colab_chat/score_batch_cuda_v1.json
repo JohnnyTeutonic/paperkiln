@@ -1,0 +1,9 @@
+{
+  "_comment": "The CUDA gate again after tests/test_score_batch.cpp ran its host legs on the device (28 Oct 2026, pk-fused-head v2 at ad42a088: legs 1-4 took MICROTORCH_DEVICE=cuda, where the written-through GEMMs are cuBLAS's and M-dependent, so leg 1's bit-for-bit check failed at 1.2e-7 and leg 5 never ran). Now legs 1-4 run on the host in every build and leg 5 (packed scoring in a step window: tiled GEMM bit for bit against each sequence packed alone, written-through forward() to rounding; again under cuBLAS) on the GPU. One RunPod L4, every leg of tools/colab_cuda_validate.sh. Brings home cuda_gate.json.",
+  "max_parallel": 1,
+  "jobs": [
+    {"name": "cuda_gate",
+     "cmd": ["python3", "tools/colab_chat/tiny_chat_run.py", "cuda_gate", "--out", "{out}"],
+     "outputs": ["cuda_gate.json", "cuda_gate.log"]}
+  ]
+}

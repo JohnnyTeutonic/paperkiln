@@ -320,11 +320,14 @@ void leg5_device() {
 }  // namespace
 
 int main() {
-    device::set_from_env();
+    // Legs 1-4 are host legs on every build (the device's write-through GEMMs are cuBLAS's, M-dependent);
+    // the environment's device (MICROTORCH_DEVICE=cuda) is taken for leg 5 only.
+    device::set(device::Device::CPU);
     leg1();
     leg2();
     leg3();
     leg4();
+    device::set_from_env();
     leg5_device();
     std::printf("test_score_batch: all checks passed\n");
     return 0;
