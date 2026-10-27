@@ -1,23 +1,27 @@
 #!/usr/bin/env bash
 # Conversation schema v2's measurement on the VM (experiments/chat_general/RESULTS.md, "Conversation schema v2"):
 # IF-tiny with the placement set (tools/iftiny_eval.py --placement) and, with --tools, the tool-call set
-# (tools/chat_v2_eval.py tools), generated greedily by `mtstudio chat --kv-cache` on the CPU (paperkiln's own
-# engine: it serves paperkiln/2 models before ember does).
+# (tools/chat_v2_eval.py tools), generated greedily by ember's CUDA server (ember b49eb5c, the first ember with
+# paperkiln/2; EMBER_GEMM_TF32=0, EMBER_DETERMINISTIC=1), with `mtstudio score` re-scoring every reply that
+# ended on a stop token (--parity). `mtstudio chat` generated at about 17 s a prompt on the pod (27 Oct 2026,
+# pk-chat-v2's first launch), ten hours a model, so ember generates and mtstudio checks.
 #
-#   bash tools/colab_chat/chat_v2_eval_vm.sh OUT TAG SPEC [--tools]
-#   bash tools/colab_chat/chat_v2_eval_vm.sh OUT TAG --stage UPLOAD_NAME VOCAB_UPLOAD [--tools]
+#   bash tools/colab_chat/chat_v2_eval_vm.sh OUT TAG SPEC [--tools] [--parity]
+#   bash tools/colab_chat/chat_v2_eval_vm.sh OUT TAG --stage UPLOAD_NAME VOCAB_UPLOAD [--tools] [--parity]
 #
 # --stage links /content/chat/upload/UPLOAD_NAME.safetensors as /content/eval/TAG/<name>.safetensors under
-# experiments/chat_general/specs/TAG.spec.json with data.vocab the upload VOCAB_UPLOAD (pk_sft_v1, uploaded).
-# Writes OUT/eval_TAG.tar.gz (iftiny/TAG, tools/TAG_*); resumable (both harnesses append and skip done items).
+# experiments/chat_general/specs/TAG.spec.json with data.vocab the upload VOCAB_UPLOAD, and exports its F32
+# GGUF there with mtstudio (pk_sft_v1, uploaded). Writes OUT/eval_TAG.tar.gz; resumable.
 set -euo pipefail
 OUT=$1
 TAG=$2
 shift 2
 REPO=/content/pk
 MT=$REPO/build_cuda/mtstudio
+EMBER_COMMIT=b49eb5c16852e1120d10db82b9616f05c754b8c2
 cd "$REPO"
-mkdir -p "$OUT"
+W="$OUT/ember"
+mkdir -p "$W"
 if [ "${1:-}" = "--stage" ]; then
   UP=$2
   VOC=$3
@@ -36,18 +40,32 @@ json.dump(s, open(f"{d}/spec.json", "w"), indent=1)
 print(f"{d}/spec.json")
 PY
 )
+  G=$(python3 -c 'import json, os, sys; s = json.load(open(sys.argv[1])); print(os.path.join(s["out_dir"], s["name"] + ".gguf"))' "$SPEC")
+  if [ ! -f "$G" ]; then
+    "$MT" export "$SPEC" --from "$(dirname "$G")/$(basename "$G" .gguf).safetensors" --formats gguf > "$W/export_$TAG.log" 2>&1
+  fi
 else
   SPEC=$1
   shift
 fi
-export OMP_NUM_THREADS=${EVAL_THREADS:-4}
-python3 tools/iftiny_eval.py run --gen mtstudio --mtstudio "$MT" --model "$TAG=$SPEC" --placement \
-  --out "$OUT/iftiny" --port 8095 > "$OUT/iftiny_$TAG.log" 2>&1
-PARTS="iftiny/$TAG"
-if [ "${1:-}" = "--tools" ]; then
-  python3 tools/chat_v2_eval.py tools --mtstudio "$MT" --model "$TAG=$SPEC" --out "$OUT/tools" --port 8096 \
-    > "$OUT/tools_$TAG.log" 2>&1
-  PARTS="$PARTS tools"
+TOOLS=0
+PARITY=""
+for a in "$@"; do
+  case "$a" in
+    --tools) TOOLS=1 ;;
+    --parity) PARITY="--mtstudio $MT" ;;
+  esac
+done
+python3 tools/colab_chat/ensure_ember_vm.py "$W/ember_build.json" "$W/ember_build.log" "$EMBER_COMMIT"
+BIN=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["bin"])' "$W/ember_build.json")
+export EMBER_GPU_LAYERS=-1 EMBER_GEMM_TF32=0 EMBER_DETERMINISTIC=1
+python3 tools/iftiny_eval.py run --gen ember --ember-bin "$BIN" --model "$TAG=$SPEC" --placement \
+  --out "$W/iftiny" --port 8095 $PARITY > "$W/iftiny_$TAG.log" 2>&1
+PARTS="ember/iftiny/$TAG ember/iftiny_$TAG.log ember/ember_build.json"
+if [ "$TOOLS" = 1 ]; then
+  python3 tools/chat_v2_eval.py tools --gen ember --ember-bin "$BIN" --model "$TAG=$SPEC" --out "$W/tools" \
+    --port 8096 > "$W/tools_$TAG.log" 2>&1
+  PARTS="$PARTS ember/tools ember/tools_$TAG.log"
 fi
-tar czf "$OUT/eval_$TAG.tar.gz.tmp" -C "$OUT" $PARTS "iftiny_$TAG.log"
+tar czf "$OUT/eval_$TAG.tar.gz.tmp" -C "$OUT" $PARTS
 mv "$OUT/eval_$TAG.tar.gz.tmp" "$OUT/eval_$TAG.tar.gz"

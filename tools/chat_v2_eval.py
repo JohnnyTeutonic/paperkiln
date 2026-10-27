@@ -2,7 +2,7 @@
 """Conversation schema v2's evaluation sets and the tool-call evaluation (LOCAL_LLM_STACK.md section 3, point 3g).
 
     python tools/chat_v2_eval.py sets --glaive-unused DIR/glaive_unused.jsonl --out-dir corpus/eval
-    python tools/chat_v2_eval.py tools --mtstudio BIN --model tag=spec.json --out DIR [--port 8096] [--max-new 96]
+    python tools/chat_v2_eval.py tools (--mtstudio BIN | --gen ember --ember-bin BIN) --model tag=spec.json --out DIR
 
 `sets` writes two frozen files from glaive-function-calling-v2 rows the v2 mix did not draw
 (tools/chat_v2_data.py's glaive_unused.jsonl; Apache-2.0) and hand-written system prompts:
@@ -13,7 +13,7 @@
 - chat_v2_prompts_v1.jsonl: the 40 v2 prompts of the greedy parity gate (ember vs mtstudio): 10 system +
   user, 10 system + history, 10 tool requests ending on a user message, 10 ending on a tool result.
 
-`tools` serves a v2 model with `mtstudio chat --kv-cache`, sends tool_calls_v1 greedily and scores: a call
+`tools` serves a v2 model (`mtstudio chat --kv-cache`, or ember's server with --gen ember), sends tool_calls_v1 greedily and scores: a call
 made (the reply parses to at least one call), the gold function's name, arguments that parse as JSON, and
 arguments equal to the gold's as JSON values; on the no-call items, a call made is a false call.
 """
@@ -153,8 +153,8 @@ def cmd_tools(a):
     path = os.path.join(a.out, f"{tag}_tool_calls.jsonl")
     done = {json.loads(x)["id"] for x in open(path, encoding="utf-8")} if os.path.exists(path) else set()
     _, gguf, _ = carry5_eval.model_paths(spec)
-    ns = argparse.Namespace(chat_url=None, port=a.port, gen="mtstudio", out=a.out, mtstudio=a.mtstudio,
-                            no_kv_cache=False)
+    ns = argparse.Namespace(chat_url=None, port=a.port, gen=a.gen, out=a.out, mtstudio=a.mtstudio,
+                            ember_bin=a.ember_bin, gpu_layers=-1, no_kv_cache=False)
     srv = carry5_eval.ChatServer(ns, spec, gguf)
     t0 = time.time()
     try:
@@ -209,7 +209,9 @@ def main(argv=None):
     s.add_argument("--glaive-unused", required=True)
     s.add_argument("--out-dir", required=True)
     t = sub.add_parser("tools")
-    t.add_argument("--mtstudio", required=True)
+    t.add_argument("--gen", choices=("mtstudio", "ember"), default="mtstudio")
+    t.add_argument("--mtstudio")
+    t.add_argument("--ember-bin")
     t.add_argument("--model", required=True)
     t.add_argument("--items", default=os.path.join(os.path.dirname(HERE), "corpus", "eval", "tool_calls_v1.jsonl"))
     t.add_argument("--out", required=True)

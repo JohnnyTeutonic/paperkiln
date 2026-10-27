@@ -277,6 +277,11 @@ numbers are reported as they come.
   the turn-distance set (1,344 conversations: instr_user vs instr_system at d = 0, 1, 2, 4, 84 per cell).
 - **Generation.** Greedy, 64 new tokens, `mtstudio chat --kv-cache` on the pod's CPU; every server prompt
   checked against the model's own template rendered at home (`prompt_check`).
+  *Amendment (27 Oct 2026, 20:15, before any result was read):* `mtstudio chat` generated at about 17 s a
+  prompt on the pod (200 of pk_sft_v1's 2,158 prompts in 59 minutes), ten hours a model. Generation moves to
+  ember's CUDA server at b49eb5c (the first ember with paperkiln/2; `EMBER_GEMM_TF32=0`,
+  `EMBER_DETERMINISTIC=1`), as for IF-tiny on 26 Oct, and `mtstudio score` re-scores every pk_sft_v2 reply
+  that ends on a stop token (its argmax must equal the reply at every position). Nothing else changes.
 - **Quantities.** Per model: compliance (micro over items, macro over families) per condition; system
   minus user as a paired difference over the 574 items with a normal-approximation 95% interval and the
   discordant counts; system minus bare and user minus bare; per family. Turn distance: system minus user
