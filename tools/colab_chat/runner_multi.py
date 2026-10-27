@@ -402,17 +402,31 @@ def fetch_final(st, name, model_name):
         log(f"{name}: final outputs downloaded")
 
 
+def output_files(name, outputs):
+    """What fetch_outputs brings home for a data job: its declared outputs and its log."""
+    return [*outputs, f"../{name}_train.log"]
+
+
+def outputs_landed(js, name, outputs):
+    """True when every file of output_files() is recorded as downloaded in the job's state."""
+    return set(output_files(name, outputs)) <= set(js.get("fetched") or [])
+
+
 def fetch_outputs(st, name, outputs, best_effort=False):
     """A data job's declared outputs, paths relative to /content/chat/<name>/,
     plus its log: ONE file per call (per tick), so a gigabyte of outputs never
     holds up the checkpoint relays (21 Oct 2026: a 26-minute download blocked
-    them and a reclaim lost an hour of training). The job counts as home when
-    every file has arrived. best_effort (a failed job): all at once, misses ignored."""
+    them and a reclaim lost an hour of training). The job counts as home, and
+    FINISHED, in the call whose download completes the set (28 Oct 2026: it used to
+    wait for the next tick's call, and a VM lost in between left a job whose files
+    were all home unmarked, so the replacement VM ran it again: post_e1_rec_MC7_r2,
+    1.5 L4-hours on each of two relaunches). best_effort (a failed job): all at once,
+    misses ignored; its status stays as the VM reported it."""
     art = os.path.join(ART, name)
     os.makedirs(art, exist_ok=True)
     js = st.job(name)
     got = set(js.get("fetched", []))
-    for f in [*outputs, f"../{name}_train.log"]:
+    for f in output_files(name, outputs):
         if f in got:
             continue
         # Outputs keep their relative paths (several sources write report.json).
@@ -421,14 +435,44 @@ def fetch_outputs(st, name, outputs, best_effort=False):
         rc = download_file(f"/content/chat/{name}/{f}", dst)
         if rc == 0:
             js.setdefault("fetched", []).append(f)
+            got.add(f)
             st.save()
             log(f"{name}: {f} downloaded")
         if not best_effort and not T.whole_files:  # RunPod's rsync is fast: all of them now, no idle pod ticks
-            return
-    if best_effort or len(js.get("fetched", [])) == len(outputs) + 1:
+            break
+    if best_effort or outputs_landed(js, name, outputs):
         js["home"] = True
+        if not best_effort:
+            js["status"] = "FINISHED"
         st.save()
         log(f"{name}: outputs downloaded")
+
+
+def adopt_home(st, jobs):
+    """On adopting a state dir (runner start, every launch's prepare): a data job whose outputs are all
+    recorded as downloaded is home and FINISHED, whatever status the last VM reported, so prepare() marks
+    it FINISHED on the VM instead of running it again (state written before the fix above could hold
+    such a job unmarked). A FAILED job keeps its status (its dependants must still see the failure); the
+    files are checked on disk too, so a state entry alone never marks a job home. Returns the names."""
+    done = []
+    for j in jobs:
+        n = j["name"]
+        js = st.d["jobs"].get(n)
+        if "cmd" not in j or not js or js.get("home") or js.get("status") == "FAILED":
+            continue
+        outs = j.get("outputs", [])
+        if not outputs_landed(js, n, outs):
+            continue
+        art = os.path.join(ART, n)
+        if not all(os.path.exists(os.path.join(art, os.path.basename(f) if f.startswith("../") else f))
+                   for f in output_files(n, outs)):
+            continue
+        js["home"], js["status"] = True, "FINISHED"
+        done.append(n)
+    if done:
+        st.save()
+        log(f"outputs already home, marked FINISHED (not run again): {done}")
+    return done
 
 
 # ---------------------------------------------------------------- rung snapshots
@@ -802,6 +846,7 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
     """Inputs, relayed checkpoints and the boot onto a session that is up but
     not yet booted. Retried every tick until it succeeds (st.d["booted"]), so
     a failed upload never leaves a provisioned VM idle."""
+    adopt_home(st, jobs)  # files home but state unmarked: FINISHED below, not run again
     dirs = ["/content/chat/upload"] + [f"/content/chat/upload/{j['name']}" for j in jobs]
     rc, out = exec_py(f"import os\nfor d in {dirs!r}: os.makedirs(d, exist_ok=True)\nprint('DIRS_OK')\n")
     if "DIRS_OK" not in out:
@@ -1019,6 +1064,7 @@ def main():
         except (OSError, ValueError):
             pass
     st = State()
+    adopt_home(st, jobs)
     has_rungs = any(j.get("rung_of") for j in jobs)
     if has_rungs:
         try:
