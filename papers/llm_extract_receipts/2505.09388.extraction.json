@@ -1,0 +1,2719 @@
+{
+ "arxiv_id": "2505.09388",
+ "title": "Qwen3 Technical Report",
+ "fields": {
+  "n_layers": {
+   "value": 94,
+   "evidence": "Qwen3-235B-A22B & 94 & 64 / 4 &128 / 8 & 128K [Table tab:arch-moe]",
+   "verdict": "used"
+  },
+  "n_heads": {
+   "value": 64,
+   "evidence": "Qwen3-235B-A22B & 94 & 64 / 4 &128 / 8 & 128K [Table tab:arch-moe]",
+   "verdict": "used"
+  },
+  "n_kv_heads": {
+   "value": 4,
+   "evidence": "Qwen3-235B-A22B & 94 & 64 / 4 &128 / 8 & 128K [Table tab:arch-moe]",
+   "verdict": "used"
+  },
+  "vocab_size": {
+   "value": 151669,
+   "evidence": "with a vocabulary size of 151,669 [Sec. Architecture]",
+   "verdict": "used"
+  },
+  "context_length": {
+   "value": 131072,
+   "evidence": "Qwen3-235B-A22B & 94 & 64 / 4 &128 / 8 & 128K [Table tab:arch-moe]",
+   "verdict": "used"
+  },
+  "norm": {
+   "value": "rmsnorm",
+   "evidence": "and RMSNorm~\\citep{rmsnorm} with pre-normalization [Sec. Architecture]",
+   "verdict": "used"
+  },
+  "activation": {
+   "value": "swiglu",
+   "evidence": "including using Grouped Query Attention (GQA, \\citealp{gqa}), SwiGLU~\\citep{glu} [Sec. Architecture]",
+   "verdict": "used"
+  },
+  "positional": {
+   "value": "rope",
+   "evidence": "Rotary Positional Embeddings (RoPE, \\citealp{rope}) [Sec. Architecture]",
+   "verdict": "used"
+  },
+  "residual": {
+   "value": "residual",
+   "evidence": "and RMSNorm~\\citep{rmsnorm} with pre-normalization [Sec. Architecture]",
+   "verdict": "unverified",
+   "reasons": [
+    "the quote does not name residual (looked for /residual|skip/)"
+   ]
+  },
+  "attention": {
+   "value": "exact",
+   "evidence": "including using Grouped Query Attention (GQA, \\citealp{gqa}) [Sec. Architecture]",
+   "verdict": "used"
+  }
+ },
+ "unresolved": [
+  "d_model",
+  "d_ff"
+ ],
+ "unverified": [
+  {
+   "field": "residual",
+   "reasons": [
+    "the quote does not name residual (looked for /residual|skip/)"
+   ]
+  }
+ ],
+ "mentions": {},
+ "inherits": {
+  "ancestor": "Qwen2.5",
+  "evidence": "The architecture of the Qwen3 dense models is similar to Qwen2.5~\\citep{qwen2.5}",
+  "section": "Sec. Architecture"
+ },
+ "variants": [
+  {
+   "n_layers": 28,
+   "n_heads": 16,
+   "n_kv_heads": 8,
+   "vocab_size": 151669,
+   "context_length": 32768
+  },
+  {
+   "n_layers": 28,
+   "n_heads": 16,
+   "n_kv_heads": 8,
+   "vocab_size": 151669,
+   "context_length": 32768
+  },
+  {
+   "n_layers": 36,
+   "n_heads": 32,
+   "n_kv_heads": 8,
+   "vocab_size": 151669,
+   "context_length": 131072
+  },
+  {
+   "n_layers": 36,
+   "n_heads": 32,
+   "n_kv_heads": 8,
+   "vocab_size": 151669,
+   "context_length": 131072
+  },
+  {
+   "n_layers": 40,
+   "n_heads": 40,
+   "n_kv_heads": 8,
+   "vocab_size": 151669,
+   "context_length": 131072
+  },
+  {
+   "n_layers": 64,
+   "n_heads": 64,
+   "n_kv_heads": 8,
+   "vocab_size": 151669,
+   "context_length": 131072
+  },
+  {
+   "n_layers": 48,
+   "n_heads": 32,
+   "n_kv_heads": 4,
+   "vocab_size": 151669,
+   "context_length": 131072
+  },
+  {
+   "n_layers": 94,
+   "n_heads": 64,
+   "n_kv_heads": 4,
+   "vocab_size": 151669,
+   "context_length": 131072
+  }
+ ],
+ "mechanism_scan": [
+  {
+   "mechanism": "mixture of experts",
+   "where": "llm extraction, verified quote, Sec. Architecture",
+   "blocking": true,
+   "evidence": "The Qwen3 MoE models have 128 total experts with 8 activated experts per token."
+  },
+  {
+   "mechanism": "grouped or multi-query attention",
+   "where": "llm extraction, verified quote, Table tab:arch-moe",
+   "blocking": true,
+   "evidence": "Qwen3-235B-A22B & 94 & 64 / 4 &128 / 8 & 128K"
+  },
+  {
+   "mechanism": "Fine-grained expert segmentation in the MoE layers",
+   "where": "llm extraction, verified quote, Sec. Architecture",
+   "blocking": true,
+   "evidence": "We follow Qwen2.5-MoE~\\citep{qwen2.5} and implement fine-grained expert segmentation~\\citep{deepseekmoe}."
+  },
+  {
+   "mechanism": "No shared experts in the MoE layers",
+   "where": "llm extraction, verified quote, Sec. Architecture",
+   "blocking": true,
+   "evidence": "Unlike Qwen2.5-MoE, the Qwen3-MoE design excludes shared experts."
+  },
+  {
+   "mechanism": "Global-batch load balancing auxiliary loss (training-time)",
+   "where": "llm extraction, verified quote, Sec. Architecture",
+   "blocking": true,
+   "evidence": "we adopt the global-batch load balancing loss~\\citep{global_balance} to encourage expert specialization"
+  },
+  {
+   "mechanism": "YARN and Dual Chunk Attention for inference-time context extension",
+   "where": "llm extraction, verified quote, Sec. Pre-training Stage",
+   "blocking": true,
+   "evidence": "we introduce YARN \\citep{yarn} and Dual Chunk Attention~(DCA, \\citealp{chunkllama}) to achieve a four-fold increase in sequence length capacity during inference"
+  }
+ ],
+ "source": {
+  "tex_sha256": "422ad38d3f67b615db1ace88d65ef05c9c381025c581164363427e06feb22270",
+  "sent_sha256": "e6037aa08aac4b51f75daad818f19ee6dced0663aa7d86dbfb7f621285c3c7e4",
+  "from": "https://arxiv.org/e-print/2505.09388",
+  "extractor": "papers/llm_extract.py",
+  "extractor_sha256": "9dc4f304205a2b85751dd5cd694a21509253cba08c7cb072e5bd2dcc1a9359af",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "prompt_sha256": "e6c6c5052b656885910d1539b8c320ba4ecb9262a6079252b852f1ff637b03ef",
+  "n_calls": 1,
+  "cost_usd": 0.0,
+  "request_ids": [
+   "req_011CgPLK7eVGTL54J1M1EW31"
+  ]
+ },
+ "llm": {
+  "output": {
+   "title": "Qwen3 Technical Report",
+   "model_name": "Qwen3-235B-A22B (flagship of the Qwen3 series)",
+   "family": {
+    "value": "decoder_only",
+    "status": "not_stated",
+    "quote": "",
+    "where": ""
+   },
+   "inherits": {
+    "ancestor": "Qwen2.5",
+    "quote": "The architecture of the Qwen3 dense models is similar to Qwen2.5~\\citep{qwen2.5}",
+    "where": "Sec. Architecture"
+   },
+   "configs": [
+    {
+     "name": "Qwen3-0.6B",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_layers": {
+      "value": "28",
+      "status": "stated",
+      "quote": "Qwen3-0.6B  & 28 & 16 / 8 & Yes & 32K",
+      "where": "Table tab:arch-dense"
+     },
+     "n_heads": {
+      "value": "16",
+      "status": "stated",
+      "quote": "Qwen3-0.6B  & 28 & 16 / 8 & Yes & 32K",
+      "where": "Table tab:arch-dense"
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "Qwen3-0.6B  & 28 & 16 / 8 & Yes & 32K",
+      "where": "Table tab:arch-dense"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "151669",
+      "status": "stated",
+      "quote": "with a vocabulary size of 151,669",
+      "where": "Sec. Architecture"
+     },
+     "context_length": {
+      "value": "32768",
+      "status": "stated",
+      "quote": "Qwen3-0.6B  & 28 & 16 / 8 & Yes & 32K",
+      "where": "Table tab:arch-dense"
+     }
+    },
+    {
+     "name": "Qwen3-1.7B",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_layers": {
+      "value": "28",
+      "status": "stated",
+      "quote": "Qwen3-1.7B  & 28 & 16 / 8 & Yes & 32K",
+      "where": "Table tab:arch-dense"
+     },
+     "n_heads": {
+      "value": "16",
+      "status": "stated",
+      "quote": "Qwen3-1.7B  & 28 & 16 / 8 & Yes & 32K",
+      "where": "Table tab:arch-dense"
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "Qwen3-1.7B  & 28 & 16 / 8 & Yes & 32K",
+      "where": "Table tab:arch-dense"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "151669",
+      "status": "stated",
+      "quote": "with a vocabulary size of 151,669",
+      "where": "Sec. Architecture"
+     },
+     "context_length": {
+      "value": "32768",
+      "status": "stated",
+      "quote": "Qwen3-1.7B  & 28 & 16 / 8 & Yes & 32K",
+      "where": "Table tab:arch-dense"
+     }
+    },
+    {
+     "name": "Qwen3-4B",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_layers": {
+      "value": "36",
+      "status": "stated",
+      "quote": "Qwen3-4B  & 36 & 32 / 8 & Yes & 128K",
+      "where": "Table tab:arch-dense"
+     },
+     "n_heads": {
+      "value": "32",
+      "status": "stated",
+      "quote": "Qwen3-4B  & 36 & 32 / 8 & Yes & 128K",
+      "where": "Table tab:arch-dense"
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "Qwen3-4B  & 36 & 32 / 8 & Yes & 128K",
+      "where": "Table tab:arch-dense"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "151669",
+      "status": "stated",
+      "quote": "with a vocabulary size of 151,669",
+      "where": "Sec. Architecture"
+     },
+     "context_length": {
+      "value": "131072",
+      "status": "stated",
+      "quote": "Qwen3-4B  & 36 & 32 / 8 & Yes & 128K",
+      "where": "Table tab:arch-dense"
+     }
+    },
+    {
+     "name": "Qwen3-8B",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_layers": {
+      "value": "36",
+      "status": "stated",
+      "quote": "Qwen3-8B  & 36 & 32 / 8 & No & 128K",
+      "where": "Table tab:arch-dense"
+     },
+     "n_heads": {
+      "value": "32",
+      "status": "stated",
+      "quote": "Qwen3-8B  & 36 & 32 / 8 & No & 128K",
+      "where": "Table tab:arch-dense"
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "Qwen3-8B  & 36 & 32 / 8 & No & 128K",
+      "where": "Table tab:arch-dense"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "151669",
+      "status": "stated",
+      "quote": "with a vocabulary size of 151,669",
+      "where": "Sec. Architecture"
+     },
+     "context_length": {
+      "value": "131072",
+      "status": "stated",
+      "quote": "Qwen3-8B  & 36 & 32 / 8 & No & 128K",
+      "where": "Table tab:arch-dense"
+     }
+    },
+    {
+     "name": "Qwen3-14B",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_layers": {
+      "value": "40",
+      "status": "stated",
+      "quote": "Qwen3-14B & 40 & 40 / 8 & No & 128K",
+      "where": "Table tab:arch-dense"
+     },
+     "n_heads": {
+      "value": "40",
+      "status": "stated",
+      "quote": "Qwen3-14B & 40 & 40 / 8 & No & 128K",
+      "where": "Table tab:arch-dense"
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "Qwen3-14B & 40 & 40 / 8 & No & 128K",
+      "where": "Table tab:arch-dense"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "151669",
+      "status": "stated",
+      "quote": "with a vocabulary size of 151,669",
+      "where": "Sec. Architecture"
+     },
+     "context_length": {
+      "value": "131072",
+      "status": "stated",
+      "quote": "Qwen3-14B & 40 & 40 / 8 & No & 128K",
+      "where": "Table tab:arch-dense"
+     }
+    },
+    {
+     "name": "Qwen3-32B",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_layers": {
+      "value": "64",
+      "status": "stated",
+      "quote": "Qwen3-32B & 64 & 64 / 8 & No & 128K",
+      "where": "Table tab:arch-dense"
+     },
+     "n_heads": {
+      "value": "64",
+      "status": "stated",
+      "quote": "Qwen3-32B & 64 & 64 / 8 & No & 128K",
+      "where": "Table tab:arch-dense"
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "Qwen3-32B & 64 & 64 / 8 & No & 128K",
+      "where": "Table tab:arch-dense"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "151669",
+      "status": "stated",
+      "quote": "with a vocabulary size of 151,669",
+      "where": "Sec. Architecture"
+     },
+     "context_length": {
+      "value": "131072",
+      "status": "stated",
+      "quote": "Qwen3-32B & 64 & 64 / 8 & No & 128K",
+      "where": "Table tab:arch-dense"
+     }
+    },
+    {
+     "name": "Qwen3-30B-A3B",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_layers": {
+      "value": "48",
+      "status": "stated",
+      "quote": "Qwen3-30B-A3B  & 48 & 32 / 4 &128 / 8  & 128K",
+      "where": "Table tab:arch-moe"
+     },
+     "n_heads": {
+      "value": "32",
+      "status": "stated",
+      "quote": "Qwen3-30B-A3B  & 48 & 32 / 4 &128 / 8  & 128K",
+      "where": "Table tab:arch-moe"
+     },
+     "n_kv_heads": {
+      "value": "4",
+      "status": "stated",
+      "quote": "Qwen3-30B-A3B  & 48 & 32 / 4 &128 / 8  & 128K",
+      "where": "Table tab:arch-moe"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "151669",
+      "status": "stated",
+      "quote": "with a vocabulary size of 151,669",
+      "where": "Sec. Architecture"
+     },
+     "context_length": {
+      "value": "131072",
+      "status": "stated",
+      "quote": "Qwen3-30B-A3B  & 48 & 32 / 4 &128 / 8  & 128K",
+      "where": "Table tab:arch-moe"
+     }
+    },
+    {
+     "name": "Qwen3-235B-A22B",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_layers": {
+      "value": "94",
+      "status": "stated",
+      "quote": "Qwen3-235B-A22B  & 94 & 64 / 4 &128 / 8  & 128K",
+      "where": "Table tab:arch-moe"
+     },
+     "n_heads": {
+      "value": "64",
+      "status": "stated",
+      "quote": "Qwen3-235B-A22B  & 94 & 64 / 4 &128 / 8  & 128K",
+      "where": "Table tab:arch-moe"
+     },
+     "n_kv_heads": {
+      "value": "4",
+      "status": "stated",
+      "quote": "Qwen3-235B-A22B  & 94 & 64 / 4 &128 / 8  & 128K",
+      "where": "Table tab:arch-moe"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "151669",
+      "status": "stated",
+      "quote": "with a vocabulary size of 151,669",
+      "where": "Sec. Architecture"
+     },
+     "context_length": {
+      "value": "131072",
+      "status": "stated",
+      "quote": "Qwen3-235B-A22B  & 94 & 64 / 4 &128 / 8  & 128K",
+      "where": "Table tab:arch-moe"
+     }
+    }
+   ],
+   "primary_config": "Qwen3-235B-A22B",
+   "flavours": {
+    "norm": {
+     "value": "rmsnorm",
+     "status": "stated",
+     "quote": "and RMSNorm~\\citep{rmsnorm} with pre-normalization",
+     "where": "Sec. Architecture"
+    },
+    "norm_placement": {
+     "value": "pre",
+     "status": "stated",
+     "quote": "and RMSNorm~\\citep{rmsnorm} with pre-normalization",
+     "where": "Sec. Architecture"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "activation": {
+     "value": "swiglu",
+     "status": "stated",
+     "quote": "including using Grouped Query Attention (GQA, \\citealp{gqa}), SwiGLU~\\citep{glu}",
+     "where": "Sec. Architecture"
+    },
+    "positional": {
+     "value": "rope",
+     "status": "stated",
+     "quote": "Rotary Positional Embeddings (RoPE, \\citealp{rope})",
+     "where": "Sec. Architecture"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_theta": {
+     "value": "1000000",
+     "status": "stated",
+     "quote": "we increase the base frequency of RoPE from 10,000 to 1,000,000 using the ABF technique",
+     "where": "Sec. Pre-training Stage"
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "residual": {
+     "value": "residual",
+     "status": "stated",
+     "quote": "and RMSNorm~\\citep{rmsnorm} with pre-normalization",
+     "where": "Sec. Architecture"
+    },
+    "parallel_block": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "including using Grouped Query Attention (GQA, \\citealp{gqa})",
+     "where": "Sec. Architecture"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qkv_bias": {
+     "value": "false",
+     "status": "stated",
+     "quote": "we remove QKV-bias used in Qwen2~\\citep{qwen2}",
+     "where": "Sec. Architecture"
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qk_norm": {
+     "value": "unspecified",
+     "status": "stated",
+     "quote": "introduce QK-Norm~\\citep{pmlr-v202-dehghani23a} to the attention mechanism to ensure stable training for Qwen3",
+     "where": "Sec. Architecture"
+    },
+    "tied_embeddings": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe": {
+     "value": "true",
+     "status": "stated",
+     "quote": "The Qwen3 MoE models have 128 total experts with 8 activated experts per token.",
+     "where": "Sec. Architecture"
+    },
+    "n_experts": {
+     "value": "128",
+     "status": "stated",
+     "quote": "The Qwen3 MoE models have 128 total experts with 8 activated experts per token.",
+     "where": "Sec. Architecture"
+    },
+    "top_k": {
+     "value": "8",
+     "status": "stated",
+     "quote": "The Qwen3 MoE models have 128 total experts with 8 activated experts per token.",
+     "where": "Sec. Architecture"
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    }
+   },
+   "block_ops": [
+    {
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "attributes": [
+      {
+       "name": "vocab",
+       "value": "151669",
+       "status": "stated",
+       "quote": "with a vocabulary size of 151,669",
+       "where": "Sec. Architecture"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-attention norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "h",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "query projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "q",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "stated",
+       "quote": "we remove QKV-bias used in Qwen2~\\citep{qwen2}",
+       "where": "Sec. Architecture"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "k",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "stated",
+       "quote": "we remove QKV-bias used in Qwen2~\\citep{qwen2}",
+       "where": "Sec. Architecture"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "v",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "stated",
+       "quote": "we remove QKV-bias used in Qwen2~\\citep{qwen2}",
+       "where": "Sec. Architecture"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "QK-Norm on queries",
+     "inputs": [
+      "q"
+     ],
+     "output": "qn",
+     "attributes": [
+      {
+       "name": "group",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "QK-Norm on keys",
+     "inputs": [
+      "k"
+     ],
+     "output": "kn",
+     "attributes": [
+      {
+       "name": "group",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on queries",
+     "inputs": [
+      "qn",
+      "pos"
+     ],
+     "output": "qr",
+     "attributes": [
+      {
+       "name": "theta",
+       "value": "1000000",
+       "status": "stated",
+       "quote": "we increase the base frequency of RoPE from 10,000 to 1,000,000 using the ABF technique",
+       "where": "Sec. Pre-training Stage"
+      },
+      {
+       "name": "pairing",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "n_rot",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on keys",
+     "inputs": [
+      "kn",
+      "pos"
+     ],
+     "output": "kr",
+     "attributes": [
+      {
+       "name": "theta",
+       "value": "1000000",
+       "status": "stated",
+       "quote": "we increase the base frequency of RoPE from 10,000 to 1,000,000 using the ABF technique",
+       "where": "Sec. Pre-training Stage"
+      },
+      {
+       "name": "pairing",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "n_rot",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "attention",
+     "role": "grouped-query causal self-attention",
+     "inputs": [
+      "qr",
+      "kr",
+      "v"
+     ],
+     "output": "a",
+     "attributes": [
+      {
+       "name": "heads",
+       "value": "64",
+       "status": "stated",
+       "quote": "Qwen3-235B-A22B  & 94 & 64 / 4 &128 / 8  & 128K",
+       "where": "Table tab:arch-moe"
+      },
+      {
+       "name": "kv_heads",
+       "value": "4",
+       "status": "stated",
+       "quote": "Qwen3-235B-A22B  & 94 & 64 / 4 &128 / 8  & 128K",
+       "where": "Table tab:arch-moe"
+      },
+      {
+       "name": "head_dim",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "scale",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "causal",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "window",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "sinks",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "x1",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-FFN norm",
+     "inputs": [
+      "x1"
+     ],
+     "output": "h2",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "moe_ffn",
+     "role": "fine-grained MoE FFN without shared experts",
+     "inputs": [
+      "h2"
+     ],
+     "output": "f",
+     "attributes": [
+      {
+       "name": "n_experts",
+       "value": "128",
+       "status": "stated",
+       "quote": "The Qwen3 MoE models have 128 total experts with 8 activated experts per token.",
+       "where": "Sec. Architecture"
+      },
+      {
+       "name": "top_k",
+       "value": "8",
+       "status": "stated",
+       "quote": "The Qwen3 MoE models have 128 total experts with 8 activated experts per token.",
+       "where": "Sec. Architecture"
+      },
+      {
+       "name": "gate_norm",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "activation",
+       "value": "swiglu",
+       "status": "stated",
+       "quote": "including using Grouped Query Attention (GQA, \\citealp{gqa}), SwiGLU~\\citep{glu}",
+       "where": "Sec. Architecture"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "x1",
+      "f"
+     ],
+     "output": "x_out",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "rmsnorm",
+     "role": "final norm",
+     "inputs": [
+      "x_out"
+     ],
+     "output": "hf",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "linear",
+     "role": "LM head",
+     "inputs": [
+      "hf"
+     ],
+     "output": "logits",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "151669",
+       "status": "stated",
+       "quote": "with a vocabulary size of 151,669",
+       "where": "Sec. Architecture"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "tied_to",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    }
+   ],
+   "new_ops": [],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Fine-grained expert segmentation in the MoE layers",
+     "quote": "We follow Qwen2.5-MoE~\\citep{qwen2.5} and implement fine-grained expert segmentation~\\citep{deepseekmoe}.",
+     "where": "Sec. Architecture"
+    },
+    {
+     "mechanism": "No shared experts in the MoE layers",
+     "quote": "Unlike Qwen2.5-MoE, the Qwen3-MoE design excludes shared experts.",
+     "where": "Sec. Architecture"
+    },
+    {
+     "mechanism": "Global-batch load balancing auxiliary loss (training-time)",
+     "quote": "we adopt the global-batch load balancing loss~\\citep{global_balance} to encourage expert specialization",
+     "where": "Sec. Architecture"
+    },
+    {
+     "mechanism": "YARN and Dual Chunk Attention for inference-time context extension",
+     "quote": "we introduce YARN \\citep{yarn} and Dual Chunk Attention~(DCA, \\citealp{chunkllama}) to achieve a four-fold increase in sequence length capacity during inference",
+     "where": "Sec. Pre-training Stage"
+    }
+   ],
+   "notes": "I described the flagship Qwen3-235B-A22B, a decoder-only MoE, and listed all 8 stated configs. The six dense configs replace moe_ffn with a dense SwiGLU FFN. Tied embeddings are stated only for the dense models (0.6B, 1.7B and 4B yes; 8B, 14B and 32B no), so for the flagship they are not stated. Family is not stated explicitly: decoder-only is implied but is unquoted, so I marked it not_stated. Context lengths are given in the tables as 32K and 128K; I converted them to 32768 and 131072. The paper calls the architecture 'similar to Qwen2.5', which is not an explicit inheritance, so no values are marked inherited. Not stated in the paper: d_model, head_dim, d_ff, norm eps, the RoPE pairing, the QK-norm granularity and the MoE gate normalisation."
+  },
+  "verification": {
+   "errors": [],
+   "warnings": [],
+   "inherits": {
+    "ancestor": "Qwen2.5",
+    "resolved": null,
+    "quote": "The architecture of the Qwen3 dense models is similar to Qwen2.5~\\citep{qwen2.5}",
+    "where": "Sec. Architecture",
+    "quote_found": true
+   },
+   "family": {
+    "value": "decoder_only",
+    "status": "not_stated",
+    "quote": "",
+    "where": "",
+    "reasons": [
+     "not_stated carries a value or quote (ignored)"
+    ],
+    "check": "not_stated"
+   },
+   "configs": [
+    {
+     "name": "Qwen3-0.6B",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_layers": {
+      "value": "28",
+      "status": "stated",
+      "quote": "Qwen3-0.6B  & 28 & 16 / 8 & Yes & 32K",
+      "where": "Table tab:arch-dense",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "16",
+      "status": "stated",
+      "quote": "Qwen3-0.6B  & 28 & 16 / 8 & Yes & 32K",
+      "where": "Table tab:arch-dense",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "Qwen3-0.6B  & 28 & 16 / 8 & Yes & 32K",
+      "where": "Table tab:arch-dense",
+      "reasons": [],
+      "check": "verified"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "151669",
+      "status": "stated",
+      "quote": "with a vocabulary size of 151,669",
+      "where": "Sec. Architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "32768",
+      "status": "stated",
+      "quote": "Qwen3-0.6B  & 28 & 16 / 8 & Yes & 32K",
+      "where": "Table tab:arch-dense",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_kv_heads divides n_heads",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads <= n_heads",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "Qwen3-1.7B",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_layers": {
+      "value": "28",
+      "status": "stated",
+      "quote": "Qwen3-1.7B  & 28 & 16 / 8 & Yes & 32K",
+      "where": "Table tab:arch-dense",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "16",
+      "status": "stated",
+      "quote": "Qwen3-1.7B  & 28 & 16 / 8 & Yes & 32K",
+      "where": "Table tab:arch-dense",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "Qwen3-1.7B  & 28 & 16 / 8 & Yes & 32K",
+      "where": "Table tab:arch-dense",
+      "reasons": [],
+      "check": "verified"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "151669",
+      "status": "stated",
+      "quote": "with a vocabulary size of 151,669",
+      "where": "Sec. Architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "32768",
+      "status": "stated",
+      "quote": "Qwen3-1.7B  & 28 & 16 / 8 & Yes & 32K",
+      "where": "Table tab:arch-dense",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_kv_heads divides n_heads",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads <= n_heads",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "Qwen3-4B",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_layers": {
+      "value": "36",
+      "status": "stated",
+      "quote": "Qwen3-4B  & 36 & 32 / 8 & Yes & 128K",
+      "where": "Table tab:arch-dense",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "32",
+      "status": "stated",
+      "quote": "Qwen3-4B  & 36 & 32 / 8 & Yes & 128K",
+      "where": "Table tab:arch-dense",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "Qwen3-4B  & 36 & 32 / 8 & Yes & 128K",
+      "where": "Table tab:arch-dense",
+      "reasons": [],
+      "check": "verified"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "151669",
+      "status": "stated",
+      "quote": "with a vocabulary size of 151,669",
+      "where": "Sec. Architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "131072",
+      "status": "stated",
+      "quote": "Qwen3-4B  & 36 & 32 / 8 & Yes & 128K",
+      "where": "Table tab:arch-dense",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_kv_heads divides n_heads",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads <= n_heads",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "Qwen3-8B",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_layers": {
+      "value": "36",
+      "status": "stated",
+      "quote": "Qwen3-8B  & 36 & 32 / 8 & No & 128K",
+      "where": "Table tab:arch-dense",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "32",
+      "status": "stated",
+      "quote": "Qwen3-8B  & 36 & 32 / 8 & No & 128K",
+      "where": "Table tab:arch-dense",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "Qwen3-8B  & 36 & 32 / 8 & No & 128K",
+      "where": "Table tab:arch-dense",
+      "reasons": [],
+      "check": "verified"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "151669",
+      "status": "stated",
+      "quote": "with a vocabulary size of 151,669",
+      "where": "Sec. Architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "131072",
+      "status": "stated",
+      "quote": "Qwen3-8B  & 36 & 32 / 8 & No & 128K",
+      "where": "Table tab:arch-dense",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_kv_heads divides n_heads",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads <= n_heads",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "Qwen3-14B",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_layers": {
+      "value": "40",
+      "status": "stated",
+      "quote": "Qwen3-14B & 40 & 40 / 8 & No & 128K",
+      "where": "Table tab:arch-dense",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "40",
+      "status": "stated",
+      "quote": "Qwen3-14B & 40 & 40 / 8 & No & 128K",
+      "where": "Table tab:arch-dense",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "Qwen3-14B & 40 & 40 / 8 & No & 128K",
+      "where": "Table tab:arch-dense",
+      "reasons": [],
+      "check": "verified"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "151669",
+      "status": "stated",
+      "quote": "with a vocabulary size of 151,669",
+      "where": "Sec. Architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "131072",
+      "status": "stated",
+      "quote": "Qwen3-14B & 40 & 40 / 8 & No & 128K",
+      "where": "Table tab:arch-dense",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_kv_heads divides n_heads",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads <= n_heads",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "Qwen3-32B",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_layers": {
+      "value": "64",
+      "status": "stated",
+      "quote": "Qwen3-32B & 64 & 64 / 8 & No & 128K",
+      "where": "Table tab:arch-dense",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "64",
+      "status": "stated",
+      "quote": "Qwen3-32B & 64 & 64 / 8 & No & 128K",
+      "where": "Table tab:arch-dense",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "Qwen3-32B & 64 & 64 / 8 & No & 128K",
+      "where": "Table tab:arch-dense",
+      "reasons": [],
+      "check": "verified"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "151669",
+      "status": "stated",
+      "quote": "with a vocabulary size of 151,669",
+      "where": "Sec. Architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "131072",
+      "status": "stated",
+      "quote": "Qwen3-32B & 64 & 64 / 8 & No & 128K",
+      "where": "Table tab:arch-dense",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_kv_heads divides n_heads",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads <= n_heads",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "Qwen3-30B-A3B",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_layers": {
+      "value": "48",
+      "status": "stated",
+      "quote": "Qwen3-30B-A3B  & 48 & 32 / 4 &128 / 8  & 128K",
+      "where": "Table tab:arch-moe",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "32",
+      "status": "stated",
+      "quote": "Qwen3-30B-A3B  & 48 & 32 / 4 &128 / 8  & 128K",
+      "where": "Table tab:arch-moe",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "4",
+      "status": "stated",
+      "quote": "Qwen3-30B-A3B  & 48 & 32 / 4 &128 / 8  & 128K",
+      "where": "Table tab:arch-moe",
+      "reasons": [],
+      "check": "verified"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "151669",
+      "status": "stated",
+      "quote": "with a vocabulary size of 151,669",
+      "where": "Sec. Architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "131072",
+      "status": "stated",
+      "quote": "Qwen3-30B-A3B  & 48 & 32 / 4 &128 / 8  & 128K",
+      "where": "Table tab:arch-moe",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_kv_heads divides n_heads",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads <= n_heads",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "Qwen3-235B-A22B",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_layers": {
+      "value": "94",
+      "status": "stated",
+      "quote": "Qwen3-235B-A22B  & 94 & 64 / 4 &128 / 8  & 128K",
+      "where": "Table tab:arch-moe",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "64",
+      "status": "stated",
+      "quote": "Qwen3-235B-A22B  & 94 & 64 / 4 &128 / 8  & 128K",
+      "where": "Table tab:arch-moe",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "4",
+      "status": "stated",
+      "quote": "Qwen3-235B-A22B  & 94 & 64 / 4 &128 / 8  & 128K",
+      "where": "Table tab:arch-moe",
+      "reasons": [],
+      "check": "verified"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "151669",
+      "status": "stated",
+      "quote": "with a vocabulary size of 151,669",
+      "where": "Sec. Architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "131072",
+      "status": "stated",
+      "quote": "Qwen3-235B-A22B  & 94 & 64 / 4 &128 / 8  & 128K",
+      "where": "Table tab:arch-moe",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_kv_heads divides n_heads",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads <= n_heads",
+       "ok": true
+      }
+     ]
+    }
+   ],
+   "primary_config": "Qwen3-235B-A22B",
+   "flavours": {
+    "norm": {
+     "value": "rmsnorm",
+     "status": "stated",
+     "quote": "and RMSNorm~\\citep{rmsnorm} with pre-normalization",
+     "where": "Sec. Architecture",
+     "reasons": [],
+     "check": "verified"
+    },
+    "norm_placement": {
+     "value": "pre",
+     "status": "stated",
+     "quote": "and RMSNorm~\\citep{rmsnorm} with pre-normalization",
+     "where": "Sec. Architecture",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "activation": {
+     "value": "swiglu",
+     "status": "stated",
+     "quote": "including using Grouped Query Attention (GQA, \\citealp{gqa}), SwiGLU~\\citep{glu}",
+     "where": "Sec. Architecture",
+     "reasons": [],
+     "check": "verified"
+    },
+    "positional": {
+     "value": "rope",
+     "status": "stated",
+     "quote": "Rotary Positional Embeddings (RoPE, \\citealp{rope})",
+     "where": "Sec. Architecture",
+     "reasons": [],
+     "check": "verified"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_theta": {
+     "value": "1000000",
+     "status": "stated",
+     "quote": "we increase the base frequency of RoPE from 10,000 to 1,000,000 using the ABF technique",
+     "where": "Sec. Pre-training Stage",
+     "reasons": [],
+     "check": "verified"
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "residual": {
+     "value": "residual",
+     "status": "stated",
+     "quote": "and RMSNorm~\\citep{rmsnorm} with pre-normalization",
+     "where": "Sec. Architecture",
+     "reasons": [
+      "the quote does not name residual (looked for /residual|skip/)"
+     ],
+     "check": "unverified"
+    },
+    "parallel_block": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "including using Grouped Query Attention (GQA, \\citealp{gqa})",
+     "where": "Sec. Architecture",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qkv_bias": {
+     "value": "false",
+     "status": "stated",
+     "quote": "we remove QKV-bias used in Qwen2~\\citep{qwen2}",
+     "where": "Sec. Architecture",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qk_norm": {
+     "value": "unspecified",
+     "status": "stated",
+     "quote": "introduce QK-Norm~\\citep{pmlr-v202-dehghani23a} to the attention mechanism to ensure stable training for Qwen3",
+     "where": "Sec. Architecture",
+     "reasons": [],
+     "check": "verified"
+    },
+    "tied_embeddings": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe": {
+     "value": "true",
+     "status": "stated",
+     "quote": "The Qwen3 MoE models have 128 total experts with 8 activated experts per token.",
+     "where": "Sec. Architecture",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "n_experts": {
+     "value": "128",
+     "status": "stated",
+     "quote": "The Qwen3 MoE models have 128 total experts with 8 activated experts per token.",
+     "where": "Sec. Architecture",
+     "reasons": [],
+     "check": "verified"
+    },
+    "top_k": {
+     "value": "8",
+     "status": "stated",
+     "quote": "The Qwen3 MoE models have 128 total experts with 8 activated experts per token.",
+     "where": "Sec. Architecture",
+     "reasons": [],
+     "check": "verified"
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    }
+   },
+   "new_ops": [],
+   "block_ops": [
+    {
+     "i": 0,
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "151669",
+       "status": "stated",
+       "quote": "with a vocabulary size of 151,669",
+       "where": "Sec. Architecture",
+       "reasons": [],
+       "check": "verified",
+       "name": "vocab"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 1,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-attention norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "h",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 2,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "query projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "q",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "false",
+       "status": "stated",
+       "quote": "we remove QKV-bias used in Qwen2~\\citep{qwen2}",
+       "where": "Sec. Architecture",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 3,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "k",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "false",
+       "status": "stated",
+       "quote": "we remove QKV-bias used in Qwen2~\\citep{qwen2}",
+       "where": "Sec. Architecture",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 4,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "v",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "false",
+       "status": "stated",
+       "quote": "we remove QKV-bias used in Qwen2~\\citep{qwen2}",
+       "where": "Sec. Architecture",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 5,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "QK-Norm on queries",
+     "inputs": [
+      "q"
+     ],
+     "output": "qn",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "group"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 6,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "QK-Norm on keys",
+     "inputs": [
+      "k"
+     ],
+     "output": "kn",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "group"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 7,
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on queries",
+     "inputs": [
+      "qn",
+      "pos"
+     ],
+     "output": "qr",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "1000000",
+       "status": "stated",
+       "quote": "we increase the base frequency of RoPE from 10,000 to 1,000,000 using the ABF technique",
+       "where": "Sec. Pre-training Stage",
+       "reasons": [],
+       "check": "verified",
+       "name": "theta"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "pairing"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "n_rot"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 8,
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on keys",
+     "inputs": [
+      "kn",
+      "pos"
+     ],
+     "output": "kr",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "1000000",
+       "status": "stated",
+       "quote": "we increase the base frequency of RoPE from 10,000 to 1,000,000 using the ABF technique",
+       "where": "Sec. Pre-training Stage",
+       "reasons": [],
+       "check": "verified",
+       "name": "theta"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "pairing"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "n_rot"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 9,
+     "subgraph": "block",
+     "op": "attention",
+     "role": "grouped-query causal self-attention",
+     "inputs": [
+      "qr",
+      "kr",
+      "v"
+     ],
+     "output": "a",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "64",
+       "status": "stated",
+       "quote": "Qwen3-235B-A22B  & 94 & 64 / 4 &128 / 8  & 128K",
+       "where": "Table tab:arch-moe",
+       "reasons": [],
+       "check": "verified",
+       "name": "heads"
+      },
+      {
+       "value": "4",
+       "status": "stated",
+       "quote": "Qwen3-235B-A22B  & 94 & 64 / 4 &128 / 8  & 128K",
+       "where": "Table tab:arch-moe",
+       "reasons": [],
+       "check": "verified",
+       "name": "kv_heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "head_dim"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "scale"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "causal"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "window"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "sinks"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 10,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 11,
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "x1",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 12,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-FFN norm",
+     "inputs": [
+      "x1"
+     ],
+     "output": "h2",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 13,
+     "subgraph": "block",
+     "op": "moe_ffn",
+     "role": "fine-grained MoE FFN without shared experts",
+     "inputs": [
+      "h2"
+     ],
+     "output": "f",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "128",
+       "status": "stated",
+       "quote": "The Qwen3 MoE models have 128 total experts with 8 activated experts per token.",
+       "where": "Sec. Architecture",
+       "reasons": [],
+       "check": "verified",
+       "name": "n_experts"
+      },
+      {
+       "value": "8",
+       "status": "stated",
+       "quote": "The Qwen3 MoE models have 128 total experts with 8 activated experts per token.",
+       "where": "Sec. Architecture",
+       "reasons": [],
+       "check": "verified",
+       "name": "top_k"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "gate_norm"
+      },
+      {
+       "value": "swiglu",
+       "status": "stated",
+       "quote": "including using Grouped Query Attention (GQA, \\citealp{gqa}), SwiGLU~\\citep{glu}",
+       "where": "Sec. Architecture",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "activation"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 14,
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "x1",
+      "f"
+     ],
+     "output": "x_out",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 15,
+     "subgraph": "head",
+     "op": "rmsnorm",
+     "role": "final norm",
+     "inputs": [
+      "x_out"
+     ],
+     "output": "hf",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 16,
+     "subgraph": "head",
+     "op": "linear",
+     "role": "LM head",
+     "inputs": [
+      "hf"
+     ],
+     "output": "logits",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "151669",
+       "status": "stated",
+       "quote": "with a vocabulary size of 151,669",
+       "where": "Sec. Architecture",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "tied_to"
+      }
+     ],
+     "errors": []
+    }
+   ],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Fine-grained expert segmentation in the MoE layers",
+     "quote": "We follow Qwen2.5-MoE~\\citep{qwen2.5} and implement fine-grained expert segmentation~\\citep{deepseekmoe}.",
+     "where": "Sec. Architecture",
+     "check": "verified"
+    },
+    {
+     "mechanism": "No shared experts in the MoE layers",
+     "quote": "Unlike Qwen2.5-MoE, the Qwen3-MoE design excludes shared experts.",
+     "where": "Sec. Architecture",
+     "check": "verified"
+    },
+    {
+     "mechanism": "Global-batch load balancing auxiliary loss (training-time)",
+     "quote": "we adopt the global-batch load balancing loss~\\citep{global_balance} to encourage expert specialization",
+     "where": "Sec. Architecture",
+     "check": "verified"
+    },
+    {
+     "mechanism": "YARN and Dual Chunk Attention for inference-time context extension",
+     "quote": "we introduce YARN \\citep{yarn} and Dual Chunk Attention~(DCA, \\citealp{chunkllama}) to achieve a four-fold increase in sequence length capacity during inference",
+     "where": "Sec. Pre-training Stage",
+     "check": "verified"
+    }
+   ],
+   "summary": {
+    "counts": {
+     "verified": 55,
+     "quote_only": 8,
+     "unverified": 1,
+     "not_stated": 63
+    },
+    "unverified": [
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "the quote does not name residual (looked for /residual|skip/)"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 17
+   }
+  }
+ }
+}

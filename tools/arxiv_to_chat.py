@@ -73,9 +73,23 @@ when its output already exists, so a run restarts where it stopped:
             unstated is Shaw's (keys and values). Primer's multi-dconv-head
             attention (conv1d_causal after each of the q, k and v
             projections, one stated kernel, no bias) builds flex with
-            qkv_conv. Any other structural op in the block graph that no
-            family wires there (a conv1d_causal elsewhere, a moe_ffn, ...)
-            refuses by name.
+            qkv_conv. Since 28 Oct 2026 (LOCAL_LLM_WORK E3): a q/k norm
+            per head or over the whole width builds on flex (custom.qk_norm;
+            per head also on llama), a stated RoPE base on flex too; a
+            mixture of experts with stated n_experts, top_k and renormalised
+            gates on the llama family (arch.moe; raw gates refuse: no served
+            engine reproduces them); a constant affine on the embedding or the
+            logits (a scale as a number or a formula in d_model, evaluated at
+            this run's width) and an expr on the logits (Gemma 2's final soft
+            cap) on flex (custom.embed, custom.logits). Mamba's optional inner
+            norm refuses by rule (--assert ssm_inner_norm=none builds without
+            it); --waive TEXT reports a blocking mechanism the operator says
+            is not part of the network (a training loss, an inference-time
+            extension) instead of refusing it. Any other structural op in the
+            block graph that no family wires there (a conv1d_causal
+            elsewhere, ...) refuses by name.
+            --reverify re-verifies a cached LLM --extraction with today's
+            verifier against the same LaTeX (its sha256 must match).
   pretrain  mtstudio run, objective lm on --corpus -> pretrain/
   sft       mtstudio run, objective sft on --sft-examples (the first
             --sft-limit examples that fit T; longer ones are dropped and
@@ -171,11 +185,13 @@ SPEC_KEY = {"norm": "norm", "activation": "activation", "positional": "position"
 # as arch.custom.activation_inputs / norm_inputs. Anything else an expr
 # replaces (an attention score, a routing rule) is refused: no family here
 # builds it.
-EXPR_SLOTS = {"activation": 1, "norm": 1, "embed": 1}
-# What each input role is in flex's activation_inputs / norm_inputs.
+EXPR_SLOTS = {"activation": 1, "norm": 1, "embed": 1, "logits": 1}
+# What each input role is in flex's activation_inputs / norm_inputs. The logits expr (flex logits_expr, 28 Oct
+# 2026: Gemma 2's final soft cap, PaLM's logit scale) reads the logits alone.
 ROLE_KINDS = {"activation": {"input": "up", "gate": "gate", "learned_scalar": "scalar", "learned_vector": "channel"},
               "norm": {"input": "row", "learned_scalar": "scalar", "learned_vector": "channel"},
-              "embed": {"input": "row", "learned_scalar": "scalar", "learned_vector": "channel"}}
+              "embed": {"input": "row", "learned_scalar": "scalar", "learned_vector": "channel"},
+              "logits": {"input": "row"}}
 # The flex family's norm placements (parity::FlexConfig place_attn / place_ffn); the llama family is pre-norm.
 FLEX_PLACEMENTS = ("pre", "post", "sandwich", "branch_post", "none")
 FLEX_NORM_PLACEMENT = "pre"
@@ -186,6 +202,8 @@ GRAPH_ONLY_OPS = {"conv1d_causal", "selective_scan", "ssm_scan", "linear_attenti
 # Where a hosted expr is probed (spec/tools/ir_expr.py, f32): every value finite.
 EXPR_PROBE = (-20.0, 20.0, 0.25)
 NEW_OP_CUE = re.compile(r"^new op (\S+) ")
+# A norm node of the block graph on the queries or keys (its role, e.g. "QK-Norm on queries").
+QK_ROLE = re.compile(r"\bq(?:uer(?:y|ies))?\b|\bk(?:eys?)?\b|\bQK", re.IGNORECASE)
 
 
 class Refused(Exception):
@@ -290,6 +308,26 @@ def stage_gate(a, run, manifest):
     return g
 
 
+def reverify(ext, tex_path=None):
+    """A cached LLM extraction re-verified by today's verifier (papers/llm_extract.py verify, to_extraction)
+    against the same LaTeX: its sha256 must equal the one the extraction recorded. The reply is unchanged; the
+    checks, the mechanism scan and the fields are recomputed, and source.reverified records the verifier."""
+    import llm_extract as lx
+    llm = ext.get("llm") or {}
+    if "output" not in llm:
+        raise SystemExit("--reverify needs an LLM extraction (papers/llm_extract.py) with its raw reply")
+    tex = (open(tex_path, encoding="utf-8", errors="replace").read() if tex_path else
+           lx.get_tex(ext["arxiv_id"], offline=True))
+    src = dict(ext.get("source") or {})
+    if src.get("tex_sha256") and lx.sha256_text(tex) != src["tex_sha256"]:
+        raise SystemExit(f"--reverify: the LaTeX's sha256 is not the extraction's ({src['tex_sha256'][:12]})")
+    sent = lx.prepare_source(tex)
+    out = lx.to_extraction(ext["arxiv_id"], llm["output"], lx.verify(llm["output"], sent), src)
+    out["source"]["reverified"] = {"verifier": "papers/llm_extract.py",
+                                   "verifier_sha256": sha256(lx.__file__), "sent_sha256": lx.sha256_text(sent)}
+    return out
+
+
 def stage_extract(a, run):
     out = os.path.join(run, "extraction.json")
     if os.path.exists(out):
@@ -298,6 +336,8 @@ def stage_extract(a, run):
         ext = read_json(a.extraction)
         if ext.get("arxiv_id") != a.arxiv_id:
             raise SystemExit(f"--extraction is for arXiv:{ext.get('arxiv_id')}, not {a.arxiv_id}")
+        if getattr(a, "reverify", False):
+            ext = reverify(ext, a.tex)
         ext.setdefault("source", {})["cached_from"] = os.path.abspath(a.extraction)
         write_json(out, ext)
         return ext
@@ -328,10 +368,11 @@ def stage_extract(a, run):
 
 # Beyond the flavours: the operator may settle a q/k norm's width, Mamba-1's sizes and T5's bucket count and
 # maximum distance when the paper leaves them out.
-ASSERTABLE = {**{k: None for k in LEGAL}, "qk_norm": ("per_head", "none"), "d_state": int, "d_conv": int,
+ASSERTABLE = {**{k: None for k in LEGAL}, "qk_norm": ("per_head", "full", "none"), "d_state": int, "d_conv": int,
               "expand": int, "dt_rank": int, "rel_buckets": int, "rel_max_distance": int,
               "rel_per_head": ("true", "false"), "rel_values": ("true", "false"), "qkv_conv": int,
-              "family": ("decoder_only",)}
+              "family": ("decoder_only",), "moe_gate_norm": ("renorm", "raw"), "n_experts": int, "top_k": int,
+              "ssm_inner_norm": ("none",)}
 
 
 def parse_asserts(items):
@@ -716,6 +757,153 @@ def split_norm(expr, inputs, roles):
     return lx.expr_canonical(sub(core)), [(roles[names.index(n)], inputs[names.index(n)]) for n in keep], form
 
 
+def head_logits(nodes):
+    """The names the head's output linear writes (the logits), from an extraction's block graph."""
+    return {n.get("output") for n in nodes if n.get("subgraph") == "head" and n.get("op") == "linear"}
+
+
+def on_logits(nodes, new_op):
+    """Whether a new op's block node sits in the head on the output linear's logits."""
+    logits = head_logits(nodes)
+    return any(n.get("new_op") == new_op and n.get("subgraph") == "head" and
+               any(i in logits for i in n.get("inputs") or []) for n in nodes)
+
+
+def moe_config(llm_all, asserts, refusals, report):
+    """A mixture-of-experts FFN (the extraction's moe = true, or a moe_ffn node in its block graph) as the llama
+    family's arch.moe (include/microtorch/moe.hpp: E SwiGLU experts, the top k of a softmax router, renormalised
+    over the k as Mixtral's G(x) = Softmax(TopK(x W_g)), or the full softmax's raw entries as Switch's; keramos
+    runs llama MoE (pk_moe), ember serves it). n_experts and top_k are the paper's (stated, verified) or the
+    operator's; the gate's normalisation must be stated or asserted, and only renorm is served (llama.cpp's MoE
+    renormalises, and mtstudio exports no GGUF for raw). Returns (the arch.moe dict or None, whether the paper
+    has an MoE at all); problems go to refusals."""
+    import llm_extract as lx
+    ok = ("verified", "quote_only")
+    fl = llm_all.get("flavours") or {}
+    nodes = [n for n in llm_all.get("block_ops") or [] if n.get("op") == "moe_ffn"]
+    m = fl.get("moe") or {}
+    if not ((m.get("check") in ok and (m.get("value") or "") == "true") or nodes):
+        return None, False
+    attrs = {}
+    for n in nodes:
+        for a in n.get("attributes") or []:
+            attrs.setdefault(a.get("name"), a)
+    n_ref = len(refusals)
+
+    def value(key, attr):
+        if key in asserts:
+            report.append(("ASSERTED", f"{key} = {asserts[key]} (by the operator, --assert)"))
+            return str(asserts[key])
+        for r in (fl.get(key) or {}, attrs.get(attr) or {}):
+            v = (r.get("value") or "").strip()
+            if r.get("check") in ok and v:
+                report.append(("MATCHED", f"{key} = {v} (“{' '.join((r.get('quote') or '').split())[:120]}”)"))
+                return v
+        return None
+
+    sizes = {}
+    for key, attr, what in (("n_experts", "n_experts", "the number of experts"),
+                            ("top_k", "top_k", "the experts each token is routed to")):
+        v = value(key, attr)
+        n = None if v is None else lx.parse_number(v)
+        if v is None:
+            refusals.append(f"mixture of experts, but {key} ({what}) is unresolved: the paper does not state it; "
+                            f"assert it with --assert {key}=N if you know it")
+        elif n is None or n != int(n) or n < 1:
+            refusals.append(f"{key} = {v} is not a positive integer")
+        else:
+            sizes[key] = int(n)
+    if len(sizes) == 2 and sizes["top_k"] > sizes["n_experts"]:
+        refusals.append(f"top_k = {sizes['top_k']} exceeds n_experts = {sizes['n_experts']}")
+    gate = value("moe_gate_norm", "gate_norm")
+    if gate is None:
+        refusals.append("mixture of experts, but the paper does not state whether the top-k gates are renormalised "
+                        "over the k (Mixtral's Softmax(TopK(.))) or kept as the full softmax's entries (Switch's); "
+                        "assert it with --assert moe_gate_norm=renorm|raw if you know it")
+    elif gate == "raw":
+        refusals.append("moe_gate_norm = raw (the full softmax's top-k entries): paperkiln trains it, but no engine "
+                        "here serves it (llama.cpp's MoE renormalises the top-k gates, so mtstudio exports no GGUF "
+                        "for it), and the chain ends in a served model")
+    elif gate != "renorm":
+        refusals.append(f"moe_gate_norm = {gate}: not a gate normalisation the chain knows (renorm, raw)")
+    act = ((attrs.get("activation") or {}).get("value") or "").strip().lower()
+    if act and act not in ("swiglu", "silu"):
+        refusals.append(f"the experts' activation is {act}: the llama family's experts are SwiGLU FFNs")
+    if len(refusals) > n_ref:
+        return None, True
+    report.append(("MATCHED", f"moe = {sizes['n_experts']} SwiGLU experts, top {sizes['top_k']}, gates renormalised "
+                              "over the k (the llama family's arch.moe; include/microtorch/moe.hpp)"))
+    report.append(("NOTED", "the router's load-balance and z-loss terms are training objectives, not the network: "
+                            "paperkiln's defaults (aux_loss 0.01, z_loss 0.001), not the paper's"))
+    return {"experts": sizes["n_experts"], "top_k": sizes["top_k"], "gate": "renorm"}, True
+
+
+def affine_slots(llm_all, size, refusals, report):
+    """The block graph's affine nodes (x * scale + shift, constants), which the flavours do not carry: on the
+    embedding (the Transformer's sqrt(d_model)) as flex's embed expr, on the head's logits (PaLM's 1/sqrt(n)) as
+    its logits expr; anywhere else refused. A scale stated as a formula in d_model (papers/llm_extract.py
+    width_formula, verified) is evaluated at this run's width; a number must be verified; an unstated shift (or a
+    shift of 0) is none. Returns ({slot: expr}, before_positions: the embed affine feeds an add in the embed
+    subgraph, i.e. it scales the token embedding before an additive position table)."""
+    import llm_extract as lx
+    ok = ("verified", "quote_only")
+    nodes = llm_all.get("block_ops") or []
+    logits = head_logits(nodes)
+    out, before_pos = {}, False
+    for n in nodes:
+        if n.get("op") != "affine":
+            continue
+        sub, role = n.get("subgraph"), n.get("role") or "no role"
+        attrs = {a.get("name"): a for a in n.get("attributes") or []}
+        slot = ("embed" if sub == "embed" else
+                "logits" if sub == "head" and any(i in logits for i in n.get("inputs") or []) else None)
+        if slot is None:
+            refusals.append(f"affine ({role}, {sub} subgraph): no family here hosts a constant affine there (flex "
+                            "takes one on the embedding or on the logits)")
+            continue
+        sc = attrs.get("scale") or {}
+        sv, chk = (sc.get("value") or "").strip(), sc.get("check")
+        if not sv or chk == "not_stated":
+            refusals.append(f"affine ({role}): its scale is not stated")
+            continue
+        if chk not in ok:
+            refusals.append(f"affine ({role}): scale {sv} is unverified ({'; '.join(sc.get('reasons') or [])})")
+            continue
+        if lx.width_formula(sv) is not None:
+            s = lx.width_formula_value(sv, size["d"])
+            how = f"{sv} at this run's d = {size['d']}: {s:.9g}"
+        else:
+            s = lx.parse_number(sv)
+            how = sv
+        if s is None or not math.isfinite(s):
+            refusals.append(f"affine ({role}): scale {sv} is neither a number nor a formula in d_model")
+            continue
+        sh = attrs.get("shift") or {}
+        tv = (sh.get("value") or "").strip()
+        t = lx.parse_number(tv) if tv else 0.0
+        if tv and t != 0.0 and sh.get("check") not in ok:
+            refusals.append(f"affine ({role}): shift {tv} is unverified")
+            continue
+        if t is None:
+            refusals.append(f"affine ({role}): shift {tv} is not a number")
+            continue
+        if slot in out:
+            refusals.append(f"two affines on the {slot}: flex hosts one expr there")
+            continue
+        expr = f"x*({s:.9g})" if s < 0 else f"x*{s:.9g}"
+        if t:
+            expr += f"-{-t:.9g}" if t < 0 else f"+{t:.9g}"
+        out[slot] = expr
+        if slot == "embed":
+            outs = {n.get("output")}
+            before_pos = any(m.get("subgraph") == "embed" and m.get("op") == "add" and
+                             outs & set(m.get("inputs") or []) for m in nodes)
+        report.append(("MATCHED", f"{slot} = expr:{expr}: the paper's affine ({role}), scale {how}"
+                                  + (f", shift {t:g}" if t else ", no shift") + " (flex "
+                                  + ("embed expr" if slot == "embed" else "logits expr") + ")"))
+    return out, before_pos
+
+
 def judge_new_ops(ext, size=None):
     """The new operations of an LLM extraction (papers/llm_extract.py), each
     hosted or refused. Returns (hosted {flavour: expr}, refusals, report,
@@ -786,6 +974,8 @@ def judge_new_ops(ext, size=None):
         users = sorted(k for k, r in flav.items() if (r.get("value") or "") == f"new_op:{name}")
         if not users and slots_of(name) == {"embed"}:
             users = ["embed"]  # an expr on the embed output (DyT's learned scalar after the embedding)
+        if not users and on_logits(nodes, name):
+            users = ["logits"]  # an expr on the head's logits (Gemma 2's final soft cap)
         slot = [k for k in users if k in EXPR_SLOTS]
         if not users or users != slot or len(slot) != 1:
             refusals.append(f"new op {name} = {chk['canonical']} (expr, replaces "
@@ -813,7 +1003,7 @@ def judge_new_ops(ext, size=None):
             refusals.append(f"new op {name} = {chk['canonical']} reads {len(inputs)} inputs ({meanings}): the flex "
                             f"{k} hosts an expr over {allowed}, so this form is not built")
             continue
-        if k != "embed" and flav[k].get("check") not in ("verified", "quote_only"):
+        if k not in ("embed", "logits") and flav[k].get("check") not in ("verified", "quote_only"):
             continue  # the flavour's own verdict refuses it, by name, below
         spec_inputs, values, init_notes = [], [], []
         for (r, i), kd in zip(core_inputs, kinds):
@@ -910,9 +1100,13 @@ def ancestor_fill(ext):
     return filled
 
 
-def build_spec(ext, size, asserts=None, skip_scan=False):
+def build_spec(ext, size, asserts=None, skip_scan=False, waive=()):
     """Extraction -> (arch dict for an mtstudio spec, report). Raises Refused
-    with every reason found. size: d, layers, heads, d_ff, T."""
+    with every reason found. size: d, layers, heads, d_ff, T. waive: texts; a
+    blocking mechanism-scan entry whose mechanism contains one (any case) is
+    the operator's statement that it is not part of the network to build
+    (a training loss, an inference-time context extension, a stated absence),
+    reported WAIVED instead of refused (--waive)."""
     asserts = asserts or {}
     report, refusals = [], []
     fields = dict(ext.get("fields", {}))
@@ -924,11 +1118,19 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
     hosted, op_refusals, op_report, op_names, op_replaces, op_inputs = judge_new_ops(ext, size)
     refusals += op_refusals
     report += op_report
-    llm_out = (ext.get("llm") or {}).get("output") or {}
-    llm_flav = llm_out.get("flavours") or {}
     llm_all = (ext.get("llm") or {}).get("verification") or {}
     llm_ver = llm_all.get("flavours") or {}
     ok_checks = ("verified", "quote_only")
+    # Constant affines on the embedding or the logits (the Transformer's sqrt(d_model), PaLM's 1/sqrt(n)), as
+    # flex's embed / logits expr; and a mixture of experts as the llama family's arch.moe.
+    aff, aff_before_pos = affine_slots(llm_all, size, refusals, report)
+    for slot, e in aff.items():
+        if slot in hosted:
+            refusals.append(f"an affine and a new op both on the {slot}: flex hosts one expr there")
+        else:
+            hosted[slot] = e
+    moe, moe_stated = moe_config(llm_all, asserts, refusals, report)
+    qk_mode = ""
 
     # Norm placement per sublayer: a stated (verified or quoted) placement the flex family builds
     # (parity::FlexConfig place_attn / place_ffn); the per-sublayer fields win over the shared one.
@@ -995,11 +1197,33 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
                                        "--assert family=decoder_only: the paper's encoder and cross-attention are "
                                        "not built)"))
             continue
+        if h["blocking"] and h.get("mechanism") == "mixture of experts" and moe_stated:
+            if moe:
+                report.append(("NOTED", f"{h['mechanism']}: {h['where']} (built as arch.moe, above)"))
+            continue  # built, or refused by name above (moe_config)
+        if h["blocking"] and mamba1 and re.search(r"norm", f"{h.get('mechanism', '')} {h.get('evidence', '')}",
+                                                  re.IGNORECASE):
+            # Mamba's "optional normalization layer (we choose LayerNorm) ... in a similar location" to RetNet's:
+            # the paper states neither its place in the block nor which of its models use it, so the chain
+            # refuses it by rule; the operator may build the block without it.
+            if asserts.get("ssm_inner_norm") == "none":
+                report.append(("ASSERTED", f"{h['mechanism']}: {h['where']} (not built: --assert ssm_inner_norm=none, "
+                                           "the operator's statement that the model has no inner norm)"))
+            else:
+                refusals.append(f"a norm inside the state-space block ({h['where']}: \u201c{h['evidence']}\u201d): the "
+                                "paper states neither its place in the block nor which of its models use it, so it "
+                                "cannot be built as the paper's (refused by rule); --assert ssm_inner_norm=none "
+                                "builds the block without it, on the operator's word")
+            continue
         if h["blocking"] and h.get("mechanism") == "grouped or multi-query attention" and gqa:
             # The extracted n_kv_heads builds it (below); without the field it still refuses.
             report.append(("NOTED", f"{h['mechanism']}: {h['where']}, {h['evidence']} (built from n_kv_heads)"))
             continue
-        if h["blocking"]:
+        hit = next((w for w in waive if w.lower() in (h.get("mechanism") or "").lower()), None)
+        if h["blocking"] and hit:
+            report.append(("WAIVED", f"{h['mechanism']} ({h['where']}): not built, by the operator (--waive "
+                                     f"{hit!r}: not part of the network)"))
+        elif h["blocking"]:
             refusals.append(f"mechanism outside the extractor's lattice: {h['mechanism']} ({h['where']}: "
                             f"\u201c{h['evidence']}\u201d); no family here builds it, and training the "
                             "extracted flavours alone would silently approximate the paper")
@@ -1015,7 +1239,8 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
     for n in llm_all.get("block_ops") or []:
         op = n.get("op")
         if op not in GRAPH_ONLY_OPS or (mamba1 and op in ("conv1d_causal", "selective_scan")) or \
-                (op == "unsupported" and n.get("new_op") in op_names) or n.get("i") in mdha_nodes:
+                (op == "unsupported" and n.get("new_op") in op_names) or n.get("i") in mdha_nodes or \
+                (op == "moe_ffn" and moe_stated):
             continue
         key = (op, n.get("role", ""))
         if key in seen_ops:
@@ -1058,15 +1283,16 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
             continue
         v, verdict = str(f["value"]), f.get("verdict")
         default = {"residual": "residual", "attention": "exact"}.get(k)
-        if verdict == "unverified" and default and v == default and \
-                (llm_flav.get(k) or {}).get("status") == "inherited":
-            # The paper does not state it (the reply marks it inherited, and
-            # the curated table has no entry to check it against): the
-            # default rule for an unstated residual / attention applies, as
-            # when the field is absent. A departure (highway, swa) inherited
-            # without a check still refuses below.
+        if verdict == "unverified" and default and v == default:
+            # The value an unstated residual / attention takes anyway, with
+            # a quote that does not establish it (the reply marks it
+            # inherited and the curated table has no entry, or its quote
+            # does not name it, as Qwen3's "with pre-normalization" for
+            # residual): the default rule applies, as when the field is
+            # absent. A departure (highway, swa) without a check still
+            # refuses below.
             flav[k] = v
-            report.append(("DEFAULT", f"{k} = {v}: not stated by the paper (the extraction marks it inherited, "
+            report.append(("DEFAULT", f"{k} = {v}: not established by the paper (the extraction's value is "
                                       f"unverified: {'; '.join(f.get('reasons') or [])}); "
                                       + ("a highway or plain stream" if k == "residual" else
                                          "windowed, linear or sparse attention") + " would be a stated departure"))
@@ -1115,24 +1341,49 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
             llama_only.append((f"n_kv_heads = {kv_heads} of n_heads = {q_heads} (grouped/multi-query attention)",
                                "kv_heads", ("kv", q_heads, kv_heads)))
 
-    # Q/K norm (the llama family's per-head RMSNorm on q and k, arch.custom.qk_norm): per_head builds it;
-    # full width and an unstated width refuse (llama's is per head), unless the operator settles it.
+    # Q/K norm: an RMSNorm on q and k before RoPE. per_head builds on the llama family (Qwen3's) or on flex;
+    # full (the whole q and k rows, OLMo 2's) on flex (parity::FlexConfig qk_norm); an unstated width refuses
+    # unless the operator settles it. Its kind is RMSNorm: a LayerNorm on q and k in the paper's block graph
+    # refuses (the IR's layernorm has no per-head group).
     r = llm_ver.get("qk_norm") or {}
     qk = asserts.get("qk_norm") or ((r.get("value") or "").strip() if r.get("check") in ok_checks else "")
+    if qk in ("per_head", "full"):
+        qk_nodes = [n for n in llm_all.get("block_ops") or [] if n.get("subgraph") == "block" and
+                    n.get("op") in ("layernorm", "rmsnorm", "expr") and
+                    (QK_ROLE.search(n.get("role") or "") or set(n.get("inputs") or []) & {"q", "k"})]
+        kinds = {n.get("op") for n in qk_nodes}
+        if kinds - {"rmsnorm"}:
+            refusals.append(f"qk_norm = {qk}: the paper's block graph normalises q and k with {sorted(kinds)}; the q/k "
+                            "norm here is an RMSNorm (the IR's rmsnorm, with group for per head), so it is not built")
+            qk = ""
+        else:
+            report.append(("MATCHED" if kinds else "DEFAULT", "the q/k norm's kind: RMSNorm (" + (
+                "the block graph's" if kinds else "not stated by the paper; the kind Qwen3, Gemma 3 and OLMo 2 use, "
+                                                 "as the IR's rmsnorm node") + ")"))
     if qk:
         where = (f"qk_norm = {qk} (by the operator, --assert)" if "qk_norm" in asserts else
                  f"qk_norm = {qk} ({r.get('where') or 'no location'})")
         if qk == "per_head":
-            llama_only.append((where, "qk_norm", True))
+            qk_mode = "per_head"
+            report.append(("MATCHED", f"{where}: an RMSNorm on each head's queries and keys"))
         elif qk == "full":
-            refusals.append(f"{where}: the queries and keys normalised over their whole width; the llama "
-                            "family's q/k norm is per head, so nothing here builds it")
+            qk_mode = "full"
+            report.append(("MATCHED", f"{where}: an RMSNorm over the whole query and key rows (the flex family)"))
         elif qk == "unspecified":
             refusals.append(f"{where}: the paper normalises the queries and keys but does not say over which "
                             "width; the llama family builds a per-head norm: settle it with --assert "
                             "qk_norm=per_head if that is the paper's")
         elif qk != "none":
             refusals.append(f"{where}: not a q/k norm the chain knows (per_head, full, unspecified, none)")
+
+    if aff_before_pos and "embed" in aff and flav.get("positional") in ("learned", "sinusoidal"):
+        refusals.append(f"embed = expr:{aff['embed']}: the paper scales the token embedding before adding its "
+                        f"{flav['positional']} position table, and flex's embed expr acts after the table is added")
+    if moe and not (flav.get("positional") == "rope" and all(flav.get(k, want) == want for k, want in (
+            ("norm", "rmsnorm"), ("activation", "swiglu"), ("residual", "residual"), ("attention", "exact")))
+            and not non_pre and not aff and qk_mode != "full"):
+        refusals.append("mixture of experts: only the llama family builds one (rmsnorm, swiglu experts, rope, exact "
+                        "attention, residual stream, pre-norm); this paper's other flavours make it flex")
 
     family, custom = None, {}
     # RoPE with the llama block's flavours (rmsnorm, swiglu, residual stream,
@@ -1143,9 +1394,9 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
     # FlexConfig).
     llama_block = all(flav.get(k, want) == want for k, want in (
         ("norm", "rmsnorm"), ("activation", "swiglu"), ("residual", "residual"), ("attention", "exact"))) \
-        and not non_pre and "embed" not in hosted and not mdha_k
+        and not non_pre and "embed" not in hosted and "logits" not in hosted and not mdha_k and qk_mode != "full"
     if flav.get("positional") == "rope":
-        # flex rotates every head with interleaved pairs and theta 10000; the llama family takes a stated theta,
+        # flex rotates every head with interleaved pairs and a stated theta (else 10000); the llama family takes a theta,
         # NEOX pairs and a partial rotary fraction (arch.custom.rope_theta, rope_pairing, rope_dims).
         for k, ok, key in (("rope_theta", lambda v: float(v) == 10000.0, "rope_theta"),
                            ("rope_pairing", lambda v: v == "interleaved", "rope_pairing"),
@@ -1170,6 +1421,8 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
     if flav.get("positional") == "rope" and llama_block:
         family = "llama"
         custom["position"] = "rope"
+        if qk_mode == "per_head":
+            custom["qk_norm"] = True
         hd = size["d"] // size["heads"] if size["heads"] else 0
         for why, key, val in llama_only:
             if key == "kv_heads":
@@ -1195,10 +1448,17 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
                 custom[key] = val
                 report.append(("MATCHED", f"{why}: {key} = {val} (the llama family)"))
     else:
+        # A stated RoPE base builds on flex too (parity::FlexConfig rope_theta, the IR rope node's theta); the
+        # other rope and attention options are the llama family's.
+        flex_theta = [(why, val) for why, key, val in llama_only if key == "rope_theta"]
+        llama_only = [x for x in llama_only if x[1] != "rope_theta"]
         if llama_only:
             raise Refused([f"{why}: only the llama family builds it (rmsnorm, swiglu, rope, exact attention, "
                            "residual stream); this paper's flavours make it flex" for why, _, _ in llama_only])
         family = "flex"
+        for why, val in flex_theta:
+            custom["rope_theta"] = val
+            report.append(("MATCHED", f"{why}: rope_theta = {val:g} on the flex family"))
         for k in ("norm", "activation", "positional", "residual", "attention"):
             custom[SPEC_KEY[k]] = flav[k]
         if t5:
@@ -1218,6 +1478,12 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
                                       "revision 1.4)"))
         if mdha_k:
             custom["qkv_conv"] = mdha_k
+        if qk_mode:
+            custom["qk_norm"] = qk_mode
+        if "logits" in hosted:
+            custom["logits"] = "expr:" + hosted["logits"]
+            report.append(("MATCHED", f"logits = expr:{hosted['logits']} on the head's logits (parity::FlexConfig "
+                                      "logits_expr)"))
         for k, ins in op_inputs.items():
             if k != "embed" and custom.get(SPEC_KEY[k]) == "expr:" + hosted[k]:
                 custom[f"{k}_inputs"] = ins
@@ -1235,8 +1501,9 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
                                       "unless both sublayers are post-norm"))
         if flav.get("positional") == "rope":
             report.append(("MATCHED", "position = rope on the flex family (the paper's other flavours are not the "
-                                      "llama block's): every head rotated, interleaved pairs, theta 10000, as "
-                                      "the llama block and the IR rope node"))
+                                      "llama block's): every head rotated, interleaved pairs, theta "
+                                      f"{custom.get('rope_theta', 10000.0):g}, as the llama block and the IR rope "
+                                      "node"))
 
     T = size["T"]
     custom.update({"d": size["d"], "layers": size["layers"], "heads": size["heads"]})
@@ -1267,6 +1534,8 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
                        f"sinks = {custom['sinks']}" + ("" if sf else " (the paper names no sink tokens; "
                                                                      "mtstudio's own default is 1)")))
     arch = {"custom": custom}
+    if family == "llama" and moe:
+        arch["moe"] = moe
     if family == "llama":
         arch["rope_heads"] = "all"
         report.append(("MATCHED", "rope_heads = all (GGUF engines rotate every head; contract point 2)"))
@@ -1312,7 +1581,7 @@ def stage_spec(a, run, ext, manifest):
         return rep["name"], rep["family"]
     size = {"d": a.d, "layers": a.layers, "heads": a.heads, "d_ff": a.d_ff, "T": a.T}
     try:
-        family, arch, report = build_spec(ext, size, parse_asserts(a.assert_), a.skip_mechanism_scan)
+        family, arch, report = build_spec(ext, size, parse_asserts(a.assert_), a.skip_mechanism_scan, a.waive)
     except Refused as r:
         reasons = r.args[0]
         write_json(os.path.join(run, "refusal.json"), {"arxiv_id": a.arxiv_id, "title": ext.get("title"),
@@ -1673,10 +1942,16 @@ def main(argv=None):
     src = ap.add_argument_group("extraction source (default: fetch from arXiv)")
     src.add_argument("--extraction", help="cached extraction.json (offline)")
     src.add_argument("--tex", help="local LaTeX source")
+    src.add_argument("--reverify", action="store_true",
+                     help="re-verify a cached LLM --extraction's reply with today's verifier against its LaTeX "
+                          "(--tex, else papers/.cache/<id>.tex; its sha256 must match)")
     sp = ap.add_argument_group("spec")
     sp.add_argument("--assert", dest="assert_", action="append", metavar="FIELD=VALUE",
                     help="operator assertion of a flavour the paper leaves unresolved (recorded)")
     sp.add_argument("--skip-mechanism-scan", action="store_true")
+    sp.add_argument("--waive", action="append", default=[], metavar="TEXT",
+                    help="a blocking mechanism whose name contains TEXT is not part of the network (a training "
+                         "loss, an inference-time extension, a stated absence): reported WAIVED, not refused")
     sp.add_argument("--d", type=int, default=128)
     sp.add_argument("--layers", type=int, default=2)
     sp.add_argument("--heads", type=int, default=4)

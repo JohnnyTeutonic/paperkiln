@@ -823,3 +823,91 @@ def test_env_key_loaded_by_name_only(tmp_path, monkeypatch, capsys):
     with pytest.raises(SystemExit, match="not found") as e:
         L.load_env_key(g)
     assert "nope" not in str(e.value)
+
+
+# --------------------------------------------------------------------------
+# the bench's verifier gaps (LOCAL_LLM_WORK E3, 28 Oct 2026)
+
+E3_TEX = r"""
+\newcommand{\bertlarge}{BERT$_{\textsc{large}}$}
+\newcommand*{\ourmodel}{RoBERTa\xspace}
+\def\dmodel{d_{\text{model}}}
+\newcommand{\withargs}[1]{X#1}
+\section{Model}
+We use a simplified form of position embeddings where each ``embedding'' is simply a scalar that is added to the corresponding logit used for computing the attention weights.
+we freeze most of BART parameters and only update the randomly initialized source encoder, the BART positional embeddings, and the self-attention input projection matrix.
+we begin by training \ourmodel{} following the \bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters).
+bias-gelu-fusion & True
+In the embedding layers, we multiply those weights by $\sqrt{\dmodel}$.
+Because the input and output embedding layers are shared, we scale the pre-softmax output logits by $1/\sqrt{n}$, where $n$ is the embedding size.
+the output of each sub-layer is $\mathrm{LayerNorm}(x + \mathrm{Sublayer}(x))$
+"""
+
+
+def test_position_cues_t5_wording_and_a_learned_table():
+    out = base_output()
+    q_t5 = "each ``embedding'' is simply a scalar that is added to the corresponding logit used for computing"
+    out["flavours"]["positional"] = ev("t5_bias", "stated", q_t5, "")
+    assert L.verify(out, src(E3_TEX))["flavours"]["positional"]["check"] == "verified"
+    out["flavours"]["positional"] = ev("learned", "stated", "the BART positional embeddings, and the", "")
+    assert L.verify(out, src(E3_TEX))["flavours"]["positional"]["check"] == "verified"
+    # the cue still has to be there: a scalar added to the logit is not a learned table's quote
+    out["flavours"]["positional"] = ev("alibi", "stated", q_t5, "")
+    assert L.verify(out, src(E3_TEX))["flavours"]["positional"]["check"] == "unverified"
+
+
+def test_latex_macros_expand_for_the_ancestor_check():
+    m = L.latex_macros(E3_TEX)
+    assert m["bertlarge"] == r"BERT$_{\textsc{large}}$" and m["ourmodel"] == r"RoBERTa\xspace"
+    assert m["dmodel"] == r"d_{\text{model}}" and "withargs" not in m  # macros with arguments are left out
+    assert L.expand_macros(r"the \bertlarge{} architecture", m) == r"the BERT$_{\textsc{large}}$ architecture"
+    q = r"we begin by training \ourmodel{} following the \bertlarge{} architecture ($L=24$, $H=1024$, $A=16$, 355M parameters)."
+    out = base_output(inherits={"ancestor": "BERT-large", "quote": q, "where": "Sec. 5"})
+    for k, v in (("norm", "layernorm"), ("activation", "gelu"), ("positional", "learned")):
+        out["flavours"][k] = ev(v, "inherited", q, "Sec. 5")
+    rep = L.verify(out, src(E3_TEX))
+    assert rep["inherits"]["resolved"] == "bert"
+    assert all(rep["flavours"][k]["check"] == "verified" for k in ("norm", "activation", "positional")), rep["flavours"]
+
+
+def test_gelu_of_unstated_form_is_gelu():
+    out = base_output()
+    out["flavours"]["activation"] = ev("other:gelu (exact vs tanh form not stated)", "stated", "bias-gelu-fusion & True", "")
+    r = L.verify(out, src(E3_TEX))["flavours"]["activation"]
+    assert r["value"] == "gelu" and r["check"] == "verified" and r["gelu_form"] == "unstated"
+    assert L.LATTICE["activation"][r["value"]] == "gelu"
+    # an other: GELU variant that is a different function stays out of the lattice
+    for v in ("other:gelu with a learned slope", "other:gelu_tanh form not stated"):
+        out["flavours"]["activation"] = ev(v, "stated", "bias-gelu-fusion & True", "")
+        assert L.verify(out, src(E3_TEX))["flavours"]["activation"]["value"] == v
+
+
+def test_width_formulas_in_affine_attributes():
+    assert L.width_formula_value("1/sqrt(d_model)", 64) == 0.125
+    assert L.width_formula_value("sqrt(d_model)", 512) == pytest.approx(22.627417)
+    assert L.width_formula("1/sqrt(n)") is None and L.width_formula("exp(d_model)") is None
+    assert L.width_formula("22.6") is None
+    q_e = r"In the embedding layers, we multiply those weights by $\sqrt{\dmodel}$."
+    q_l = r"we scale the pre-softmax output logits by $1/\sqrt{n}$, where $n$ is the embedding size."
+    out = base_output(block_ops=[
+        node("affine", "embedding scale", ["e"], "es", [("scale", ("sqrt(d_model)", "stated", q_e, ""))], subgraph="embed"),
+        node("affine", "logit scale", ["l"], "y", [("scale", ("1/sqrt(d_model)", "stated", q_l, ""))], subgraph="head"),
+        node("affine", "bad", ["l"], "y", [("scale", ("2/sqrt(d_model)", "stated", q_l, ""))], subgraph="head"),
+        node("affine", "one size", ["e"], "es", [("scale", ("22.627417", "stated", q_e, ""))], subgraph="embed")])
+    rep = L.verify(out, src(E3_TEX))
+    checks = [n["attributes"][0]["check"] for n in rep["block_ops"]]
+    assert checks == ["verified", "verified", "unverified", "unverified"]
+    assert "do not occur in its quote" in rep["block_ops"][2]["attributes"][0]["reasons"][0]
+    ok, why = L.width_formula_check("sqrt(d_model)", "we multiply by 22.6")
+    assert not ok and "square root" in why
+
+
+def test_empty_mechanism_entries_are_dropped_and_residual_equations_name_a_residual():
+    out = base_output(mechanisms_outside_ir=[{"mechanism": "", "quote": "", "where": ""},
+                                             {"mechanism": "memory tokens", "quote": "bias-gelu-fusion & True",
+                                              "where": ""}])
+    rep = L.verify(out, src(E3_TEX))
+    assert [m["mechanism"] for m in rep["mechanisms_outside_ir"]] == ["memory tokens"]
+    assert any("empty mechanisms_outside_ir" in w for w in rep["warnings"])
+    out["flavours"]["residual"] = ev("residual", "stated", r"$\mathrm{LayerNorm}(x + \mathrm{Sublayer}(x))$", "")
+    assert L.verify(out, src(E3_TEX))["flavours"]["residual"]["check"] == "verified"

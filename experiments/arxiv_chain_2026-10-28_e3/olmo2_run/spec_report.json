@@ -1,0 +1,66 @@
+{
+ "name": "arxiv_2501_00656",
+ "family": "flex",
+ "report": [
+  [
+   "MATCHED",
+   "norm placement, attention sublayer: norm_placement = branch_post (Sec. 2.1 Model Architecture)"
+  ],
+  [
+   "MATCHED",
+   "norm placement, FFN sublayer: norm_placement = branch_post (Sec. 2.1 Model Architecture)"
+  ],
+  [
+   "NOTED",
+   "qkv_bias = false (stated, quote_only): not a knob; flex's projections carry biases, the llama family's do not"
+  ],
+  [
+   "NOTED",
+   "mlp_bias = false (stated, quote_only): not a knob; flex's projections carry biases, the llama family's do not"
+  ],
+  [
+   "MATCHED",
+   "norm = rmsnorm (used: \u201cWe use the RMSNorm \\citep{RMSNorm} variant of LayerNorm \\citep{Ba2016LayerNorm} without a bias term to normalize activat\u201d)"
+  ],
+  [
+   "MATCHED",
+   "activation = swiglu (used: \u201cWe use the SwiGLU activation function \\citep{Shazeer2020GLUVI} [Sec. 2.1 Model Architecture]\u201d)"
+  ],
+  [
+   "MATCHED",
+   "positional = rope (used: \u201cWe replace absolute positional embeddings with rotary positional embeddings (RoPE; \\citealp{Su2021RoFormerET}). [Sec. 2.\u201d)"
+  ],
+  [
+   "MATCHED",
+   "residual = residual (used: \u201c\\pmb{h} := \\pmb{x} + \\text{RMSNorm}(\\text{Attention}(\\pmb{x})) [Sec. 3.3.2 Reordered norm and QK-norm]\u201d)"
+  ],
+  [
+   "MATCHED",
+   "attention = exact (used: \u201ca family of dense autoregressive language models at 7B, 13B and 32B scales [Abstract]\u201d)"
+  ],
+  [
+   "MATCHED",
+   "the q/k norm's kind: RMSNorm (the block graph's)"
+  ],
+  [
+   "MATCHED",
+   "qk_norm = full (by the operator, --assert): an RMSNorm over the whole query and key rows (the flex family)"
+  ],
+  [
+   "MATCHED",
+   "rope_theta = 500000 (Sec. 2.1 Model Architecture): rope_theta = 500000 on the flex family"
+  ],
+  [
+   "MATCHED",
+   "norm_placement = \"branch_post\" on the flex family (parity::FlexConfig place_attn / place_ffn); the norm before the head stays unless both sublayers are post-norm"
+  ],
+  [
+   "MATCHED",
+   "position = rope on the flex family (the paper's other flavours are not the llama block's): every head rotated, interleaved pairs, theta 10000, as the llama block and the IR rope node"
+  ],
+  [
+   "SIZED",
+   "d=64 layers=2 heads=4 T=64 chosen for this run (paper: {'d_model': 4096, 'n_layers': 32, 'n_heads': 32, 'd_ff': 11008, 'context_length': 4096}); the mechanism is the paper's"
+  ]
+ ]
+}

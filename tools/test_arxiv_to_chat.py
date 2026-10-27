@@ -338,11 +338,15 @@ def test_llm_expr_activation_with_rope_is_flex():
     assert fam == "flex" and arch["custom"] == {"norm": "rmsnorm", "activation": "expr:(relu(x)^2)",
                                                 "position": "rope", "residual": "residual",
                                                 "attention": "exact", "d": 64, "layers": 2, "heads": 2}
-    # A stated rope variant the families here do not rotate with refuses.
+    # A stated RoPE base builds on flex as well (28 Oct 2026); a rope variant flex does not rotate with refuses.
     ext = llm_ext("relu(x)^2", stated={"norm": "rmsnorm", "positional": "rope"})
     ext["llm"]["verification"]["flavours"]["rope_theta"] = {"value": "500000", "check": "verified",
                                                            "status": "stated", "where": "Sec. 3"}
-    with pytest.raises(A.Refused, match="rope_theta = 500000"):
+    fam, arch, _ = A.build_spec(ext, SIZE)
+    assert fam == "flex" and arch["custom"]["rope_theta"] == 500000.0
+    ext["llm"]["verification"]["flavours"]["rope_pairing"] = {"value": "neox", "check": "verified",
+                                                             "status": "stated", "where": "Sec. 3"}
+    with pytest.raises(A.Refused, match="rope_pairing = neox.*only the llama family builds it"):
         A.build_spec(ext, SIZE)
     # A stated post-norm builds on flex (both sublayers); a placement flex does not build refuses.
     ext = llm_ext("relu(x)^2", stated={"norm": "rmsnorm", "positional": "rope"})
@@ -797,13 +801,125 @@ def test_qk_norm_builds_on_llama():
         A.build_spec(qk_ext("unspecified"), SIZE)
     fam, arch, rep = A.build_spec(qk_ext("unspecified"), SIZE, A.parse_asserts(["qk_norm=per_head"]))
     assert arch["custom"]["qk_norm"] is True and any("by the operator" in d for _, d in rep)
-    with pytest.raises(A.Refused, match="whole width"):
-        A.build_spec(qk_ext("full"), SIZE)
+    # Over the whole width (OLMo 2's): the flex family's q/k norm, even with the llama block's flavours.
+    fam, arch, rep = A.build_spec(qk_ext("full"), SIZE)
+    assert fam == "flex" and arch["custom"]["qk_norm"] == "full" and arch["custom"]["position"] == "rope"
+    assert any(b == "DEFAULT" and "RMSNorm" in d for b, d in rep)  # its kind is not stated here
+    # OLMo 2's RoPE base with it: flex takes a stated theta too.
+    ext = qk_ext("full")
+    ext["llm"]["verification"]["flavours"]["rope_theta"] = {"value": "500000", "check": "verified", "where": "Sec. 2"}
+    fam, arch, _ = A.build_spec(ext, SIZE)
+    assert fam == "flex" and arch["custom"]["rope_theta"] == 500000.0
     fam, arch, _ = A.build_spec(qk_ext("none"), SIZE)
     assert "qk_norm" not in arch["custom"]
-    # On flex (learned positions here) only the llama family builds it.
-    with pytest.raises(A.Refused, match="qk_norm = per_head.*only the llama family builds it"):
-        A.build_spec(qk_ext("per_head", positional="learned"), SIZE)
+    # Per head on a flex model (learned positions here): flex's own per-head q/k norm.
+    fam, arch, _ = A.build_spec(qk_ext("per_head", positional="learned"), SIZE)
+    assert fam == "flex" and arch["custom"]["qk_norm"] == "per_head"
+    # A LayerNorm on q and k in the block graph is not the RMSNorm built here.
+    ext = qk_ext("full")
+    ext["llm"]["verification"]["block_ops"] = [{"i": 0, "subgraph": "block", "op": "layernorm", "role": "QK-norm on queries",
+                                                "inputs": ["q"], "output": "q"}]
+    with pytest.raises(A.Refused, match=r"normalises q and k with \['layernorm'\]"):
+        A.build_spec(ext, SIZE)
+
+
+def moe_ext(gate="renorm", **flavours):
+    ext = qk_ext("none")
+    fl = ext["llm"]["verification"]["flavours"]
+    fl["moe"] = {"value": "true", "check": "quote_only", "quote": "the MoE layer replaces the FFN"}
+    for k, v in {"n_experts": "8", "top_k": "2", "moe_gate_norm": gate, **flavours}.items():
+        fl[k] = {"value": v, "check": "verified" if v else "not_stated", "quote": f"{k} {v}"}
+    ext["llm"]["verification"]["block_ops"] = [{"i": 0, "subgraph": "block", "op": "moe_ffn", "role": "MoE FFN",
+                                                "inputs": ["h"], "output": "f",
+                                                "attributes": [{"name": "activation", "value": "swiglu",
+                                                                "check": "quote_only"}]}]
+    ext["mechanism_scan"] = [{"mechanism": "mixture of experts", "where": "llm extraction, verified quote",
+                              "blocking": True, "evidence": "the MoE layer replaces the FFN"},
+                             {"mechanism": "Global-batch load balancing auxiliary loss (training-time)",
+                              "where": "llm extraction", "blocking": True, "evidence": "load balancing loss"}]
+    return ext
+
+
+def test_moe_builds_on_llama():
+    # Mixtral's shape: 8 SwiGLU experts, top 2, Softmax(TopK(.)) = renormalised.
+    with pytest.raises(A.Refused) as r:
+        A.build_spec(moe_ext(), SIZE)
+    assert len(r.value.args[0]) == 1 and "load balancing" in r.value.args[0][0]  # the MoE itself is built
+    fam, arch, rep = A.build_spec(moe_ext(), SIZE, waive=("load balancing",))
+    assert fam == "llama" and arch["moe"] == {"experts": 8, "top_k": 2, "gate": "renorm"}
+    assert any(b == "WAIVED" and "load balancing" in d for b, d in rep)
+    assert any(b == "NOTED" and "aux_loss" in d for b, d in rep)
+    # The gate's normalisation unstated: refused until asserted; raw: refused (no served engine reproduces it).
+    with pytest.raises(A.Refused, match="--assert moe_gate_norm=renorm"):
+        A.build_spec(moe_ext(gate=""), SIZE, waive=("load",))
+    fam, arch, _ = A.build_spec(moe_ext(gate=""), SIZE, A.parse_asserts(["moe_gate_norm=renorm"]), waive=("load",))
+    assert arch["moe"]["gate"] == "renorm"
+    with pytest.raises(A.Refused, match="moe_gate_norm = raw.*renormalises"):
+        A.build_spec(moe_ext(gate="raw"), SIZE, waive=("load",))
+    with pytest.raises(A.Refused, match="top_k = 9 exceeds n_experts = 8"):
+        A.build_spec(moe_ext(top_k="9"), SIZE, waive=("load",))
+    # Not the llama block's flavours: refused by name, not trained as a dense flex model.
+    with pytest.raises(A.Refused, match="mixture of experts: only the llama family"):
+        A.build_spec(moe_ext(), SIZE, A.parse_asserts(["norm=layernorm"]), waive=("load",))
+
+
+def affine_ext(sub, inputs, scale, scale_check="verified", positional="rope"):
+    ext = qk_ext("none", positional=positional)
+    ext["llm"]["verification"]["block_ops"] = [
+        {"i": 0, "subgraph": "embed", "op": "embedding", "role": "tokens", "inputs": ["tokens"], "output": "e"},
+        {"i": 1, "subgraph": "head", "op": "linear", "role": "output head", "inputs": ["x"], "output": "logits_raw"},
+        {"i": 2, "subgraph": sub, "op": "affine", "role": "scale", "inputs": inputs, "output": "y",
+         "attributes": [{"name": "scale", "value": scale, "check": scale_check, "reasons": ["why"]},
+                        {"name": "shift", "value": "", "check": "not_stated"}]}]
+    return ext
+
+
+def test_affine_scales_build_as_flex_exprs():
+    # PaLM's logit scale 1/sqrt(d_model), evaluated at this run's width (SIZE d = 64): 0.125.
+    fam, arch, rep = A.build_spec(affine_ext("head", ["logits_raw"], "1/sqrt(d_model)"), SIZE)
+    assert fam == "flex" and arch["custom"]["logits"] == "expr:x*0.125"
+    assert any("1/sqrt(d_model) at this run's d = 64" in d for _, d in rep)
+    # The Transformer's sqrt(d_model) on the token embedding: the embed expr.
+    fam, arch, _ = A.build_spec(affine_ext("embed", ["e"], "sqrt(d_model)"), SIZE)
+    assert arch["custom"]["embed"] == "expr:x*8"
+    fam, arch, _ = A.build_spec(affine_ext("embed", ["e"], "2.5"), SIZE)
+    assert arch["custom"]["embed"] == "expr:x*2.5"
+    # An unverified scale (the number of one size, not in its quote) and an affine inside the block: refused.
+    with pytest.raises(A.Refused, match="scale 22.627417 is unverified"):
+        A.build_spec(affine_ext("embed", ["e"], "22.627417", "unverified"), SIZE)
+    with pytest.raises(A.Refused, match="no family here hosts a constant affine there"):
+        A.build_spec(affine_ext("block", ["h"], "2"), SIZE)
+    # Before an additive position table: flex's embed expr acts after the table, so refused.
+    ext = affine_ext("embed", ["e"], "sqrt(d_model)", positional="sinusoidal")
+    ext["llm"]["verification"]["block_ops"].append({"i": 3, "subgraph": "embed", "op": "add", "role": "add positions",
+                                                    "inputs": ["y", "pe"], "output": "x"})
+    with pytest.raises(A.Refused, match="before adding its sinusoidal position table"):
+        A.build_spec(ext, SIZE)
+
+
+def test_logits_new_op_builds_as_the_logits_expr():
+    # Gemma 2's final soft cap: an expr new op on the head's logits, no flavour uses it.
+    ext = affine_ext("head", ["logits_raw"], "1")
+    ver = ext["llm"]["verification"]
+    ver["block_ops"][2] = {"i": 2, "subgraph": "head", "op": "expr", "role": "final logit soft-capping",
+                           "inputs": ["logits_raw"], "output": "logits", "new_op": "softcap"}
+    ver["new_ops"] = [{"name": "softcap", "kind": "expr", "check": "verified", "errors": [], "replaces": "final logits",
+                       "quote": "soft_cap 30", "inputs": [{"name": "x", "role": "input"}],
+                       "expr_check": {"ok": True, "expr": "30*tanh(x/30)", "canonical": "(30*tanh((x/30)))"}}]
+    fam, arch, rep = A.build_spec(ext, SIZE)
+    assert fam == "flex" and arch["custom"]["logits"] == "expr:(30*tanh((x/30)))"
+
+
+def test_residual_default_with_an_unverified_quote():
+    # Qwen3's reply states residual with a quote that does not name it: the default rule, not a refusal.
+    ext = qk_ext("none")
+    ext["fields"]["residual"] = {"value": "residual", "verdict": "unverified", "evidence": "pre-normalization",
+                                 "reasons": ["the quote does not name residual"]}
+    fam, arch, rep = A.build_spec(ext, SIZE)
+    assert fam == "llama" and any(b == "DEFAULT" and "residual = residual" in d for b, d in rep)
+    ext["fields"]["residual"]["value"] = "highway"  # a departure without a check still refuses
+    with pytest.raises(A.Refused, match="residual = highway has verdict 'unverified'"):
+        A.build_spec(ext, SIZE)
 
 
 def mamba_ext(**sizes):
@@ -836,6 +952,19 @@ def test_mamba1_builds_from_its_sizes():
         A.build_spec(ext, SIZE)
     with pytest.raises(SystemExit, match="positive integer"):
         A.parse_asserts(["d_conv=four"])
+
+
+def test_mamba_inner_norm_refused_by_rule():
+    # "we additionally use an optional normalization layer (we choose LayerNorm), motivated by RetNet's usage of
+    # a normalization layer in a similar location": no place in the block, no statement of which models use it.
+    ext = mamba_ext(d_state=16, d_conv=4, expand=2)
+    ext["mechanism_scan"].append({"mechanism": "Optional LayerNorm inside the Mamba block (location not specified)",
+                                  "where": "llm extraction, verified quote", "blocking": True,
+                                  "evidence": "we additionally use an optional normalization layer"})
+    with pytest.raises(A.Refused, match="states neither its place in the block nor which of its models use it"):
+        A.build_spec(ext, SIZE)
+    fam, arch, rep = A.build_spec(ext, SIZE, A.parse_asserts(["ssm_inner_norm=none"]))
+    assert fam == "mamba" and any(b == "ASSERTED" and "ssm_inner_norm=none" in d for b, d in rep)
 
 
 # --------------------------------------------------------------------------

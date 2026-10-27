@@ -608,6 +608,15 @@ struct FlexConfig {
     // RoPE and the heads (0 = none). No bias (Primer's tf.nn.depthwise_conv2d). Exported as a
     // conv1d_causal node over 3d channels with its recurrent slot (IR_SPEC 6.6).
     size_t qkv_conv = 0;
+    // A q/k norm (QK-norm; Henry et al. 2020, Dehghani et al. 2023): an RMSNorm on the queries and on the keys
+    // after the projection (and MDHA's convolution), before RoPE. "per_head": each head's dk columns on their
+    // own, one weight [dk] for q and one for k (Qwen3's; the IR's rmsnorm with group dk); "full": the whole
+    // d-wide q and k rows, weights [d] (OLMo 2's; the IR's rmsnorm without group); "" none. No new IR op: the
+    // thirdparty profile's rmsnorm node after the split (keramos IR_SPEC 5.6).
+    std::string qk_norm;
+    // An expr on the logits after the output head, over the logits alone (PaLM's 1/sqrt(d) scale, Gemma 2's
+    // final soft cap): "" none, else "expr:<e>". Exported as an expr node after the head's linear.
+    std::string logits_expr;
     // What is wrong with this configuration, or "" (mtstudio and the tests refuse with it).
     std::string problem() const;
 };
@@ -660,6 +669,9 @@ inline std::string FlexConfig::problem() const {
     }
     if (pos == "shaw_relative" && attention != "exact") return "position shaw_relative needs exact attention";
     if (qkv_conv == 1) return "qkv_conv must be 0 (none) or a width >= 2";
+    if (!qk_norm.empty() && qk_norm != "per_head" && qk_norm != "full")
+        return "qk_norm must be per_head, full or none, got " + qk_norm;
+    if (!logits_expr.empty() && logits_expr.rfind("expr:", 0) != 0) return "logits must be expr:<e>";
     return "";
 }
 
@@ -814,6 +826,11 @@ public:
             rel_k = reg("attn.rel_k.weight", table(s + 301));
             if (c.rel_values) rel_v = reg("attn.rel_v.weight", table(s + 302));
         }
+        if (!c.qk_norm.empty()) {  // ones, as every RMSNorm gain here
+            const size_t w = c.qk_norm == "per_head" ? c.d / c.n_heads : c.d;
+            q_norm_w = reg("attn.q_norm.weight", Matrix(1, w, 1.0f));
+            k_norm_w = reg("attn.k_norm.weight", Matrix(1, w, 1.0f));
+        }
     }
 
     // Sublayer combine per FlexConfig::residual. Highway's identity uses
@@ -836,7 +853,7 @@ public:
     // vectors, ops::shaw_attention per head. With MDHA, the depthwise causal convolution on the fused
     // projection first (before RoPE), each sequence of seq_len rows from zero history.
     Var attend(const Var& n, size_t seq_len, const FlexRelPos* rel = nullptr) const {
-        if (!rope_ && !rel && !rel_k && !qkv_conv_w)
+        if (!rope_ && !rel && !rel_k && !qkv_conv_w && !q_norm_w)
             return attn ? attn->forward(n, seq_len) : swa_attn->forward(n, seq_len);
         const nn::Linear& c_attn = attn ? *attn->c_attn : *swa_attn->c_attn;
         const nn::Linear& c_proj = attn ? *attn->c_proj : *swa_attn->c_proj;
@@ -844,6 +861,12 @@ public:
         const size_t rows = n->data.rows(), sl = seq_len == 0 ? rows : seq_len;
         Var qkv = c_attn.forward(n);
         if (qkv_conv_w) qkv = ops::conv1d_causal(qkv, qkv_conv_w, nullptr, seq_len);
+        if (q_norm_w) {  // the q/k norm: per head (group dk) or over the whole row, before RoPE
+            const size_t g = q_norm_w->data.cols();
+            auto qk = [&](const Var& t, const Var& w) { return g == d ? ops::rmsnorm(t, w) : ops::rmsnorm_group(t, w, g); };
+            qkv = ops::concat_cols({qk(ops::slice_cols(qkv, 0, d), q_norm_w), qk(ops::slice_cols(qkv, d, 2 * d), k_norm_w),
+                                    ops::slice_cols(qkv, 2 * d, 3 * d)});
+        }
         if (rope_) {
             std::vector<int> pos(rows);
             for (size_t i = 0; i < rows; ++i) pos[i] = static_cast<int>(i % sl);
@@ -913,6 +936,7 @@ public:
     std::vector<Var> act_params;                 // activation_inputs' learned scalars and channels
     std::shared_ptr<nn::Linear> gate_a, gate_m;  // highway only
     Var qkv_conv_w;                              // qkv_conv (MDHA): [3d, K]
+    Var q_norm_w, k_norm_w;                      // qk_norm: [1, dk] per head or [1, d] full (null otherwise)
     Var rel_k, rel_v;                            // shaw_relative: [K + 1, W] each (rel_v null: keys only)
     size_t shaw_k_ = 0;                          // its clipping distance K
     std::shared_ptr<const Expr> act_expr;        // act "expr:<e>", parsed once
@@ -963,6 +987,8 @@ public:
             }
         }
         head = mod<nn::Linear>("head", c.d, c.vocab, false, seed + 99);
+        if (!c.logits_expr.empty())
+            logits_expr = std::make_shared<const Expr>(Expr::parse(c.logits_expr.substr(5), 1));
         if (!c.embed_expr.empty()) {
             embed_expr = std::make_shared<const Expr>(
                 Expr::parse(c.embed_expr.substr(5), std::max<size_t>(1, c.embed_inputs.size())));
@@ -1004,7 +1030,8 @@ public:
         FlexRelPos rel{rel_bias, &rel_buckets};
         for (auto& b : blocks) h = b->forward(h, seq_len, rel_bias ? &rel : nullptr);
         const Var n = fn.on() ? flex_norm_forward(fn, h, norm_expr.get(), cfg.norm_inputs) : h;
-        return head->forward(n);
+        const Var logits = head->forward(n);
+        return logits_expr ? ops::expr({logits}, *logits_expr) : logits;
     }
 
     // GPT-2 export: only the GPT-2 flavour (the equivalence pin's config at
@@ -1022,6 +1049,8 @@ public:
         if (cfg.place_attn != "pre" || cfg.place_ffn != "pre" || !cfg.has_final_norm())
             return "norm placement " + cfg.place_attn + "/" + cfg.place_ffn + " (gpt2 export needs pre-norm)";
         if (cfg.qkv_conv) return "qkv_conv (gpt2 export has no convolution)";
+        if (!cfg.qk_norm.empty()) return "qk_norm (gpt2 export has no q/k norm)";
+        if (!cfg.logits_expr.empty()) return "logits " + cfg.logits_expr + " (gpt2 export has no logits expr)";
         return "";
     }
     bool windowed() const { return cfg.attention == "swa"; }
@@ -1052,6 +1081,9 @@ public:
         // MDHA: a conv1d_causal node on the fused projection before the split, over the recurrent slot
         // "qkv_conv" (its K - 1 previous rows), weight blk.{i}.attn_qkv_conv.weight [3d, K], no bias.
         const bool mdha = c.qkv_conv > 0;
+        // The q/k norm: an rmsnorm node on q and on k right after the split (before the rope node), weights
+        // blk.{i}.attn_q_norm.weight / attn_k_norm.weight, with group head_dim when per head (IR_SPEC 5.6).
+        const bool qkn = !c.qk_norm.empty();
         const std::string p = "blk.{i}.";
         const auto& b0 = *blocks[0];
         const bool plain = c.residual == "plain", highway = c.residual == "highway";
@@ -1109,7 +1141,7 @@ public:
         if (pre_a) emit_norm(n, b0.ns[0], "x", "h", p + "attn_norm");
         auto attn = b0.attn ? b0.attn->export_ir(pre_a ? "h" : "x", o, p + "attn_qkv.weight", p + "attn_output.weight", "kv")
                             : b0.swa_attn->export_ir(pre_a ? "h" : "x", o, p + "attn_qkv.weight", p + "attn_output.weight", "kv");
-        if (rope || t5 || shaw || mdha) {  // FlexBlock::attend: the rope node between split and attention, as LlamaBlock's
+        if (rope || t5 || shaw || mdha || qkn) {  // FlexBlock::attend: the rope node between split and attention, as LlamaBlock's
             ir::json edited = ir::json::array();
             for (auto node : attn) {
                 if (mdha && node["op"] == "split")
@@ -1124,6 +1156,16 @@ public:
                                            {"value", c.rel_values ? ir::json(p + "attn_rel_v.weight") : ir::json(nullptr)},
                                            {"max_distance", c.rel_max_distance}};
                 edited.push_back(node);
+                if (qkn && node["op"] == "split")
+                    for (const char* t : {"q", "k"}) {
+                        ir::json nd = ir::rmsnorm(t, p + "attn_" + t + "_norm.weight", ops::kRmsNormEps, t);
+                        if (c.qk_norm == "per_head") {
+                            nd.erase("out");
+                            nd["group"] = dk;
+                            nd["out"] = t;
+                        }
+                        edited.push_back(nd);
+                    }
             }
             attn = edited;
         }
@@ -1186,6 +1228,7 @@ public:
         if (fn.on())
             emit_norm(head_nodes, fn, "x", "h", "output_norm");
         head_nodes.push_back(head->export_ir(fn.on() ? "h" : "x", "logits", "output.weight"));
+        if (logits_expr) head_nodes.push_back(ir::expr({"logits"}, logits_expr->text(), "logits"));
         FamilyExport fx;
         fx.heads = H;
         fx.d_ff = c.d_ff;
@@ -1257,6 +1300,10 @@ public:
             if (k.qkv_conv_w) put_tensor(fx.tensors, g + "attn_qkv_conv.weight", k.qkv_conv_w->data, L::ROWS);  // [3d, K]
             if (k.rel_k) put_tensor(fx.tensors, g + "attn_rel_k.weight", k.rel_k->data, L::ROWS);  // [K + 1, W]
             if (k.rel_v) put_tensor(fx.tensors, g + "attn_rel_v.weight", k.rel_v->data, L::ROWS);
+            if (k.q_norm_w) {
+                put_tensor(fx.tensors, g + "attn_q_norm.weight", k.q_norm_w->data, L::VEC);
+                put_tensor(fx.tensors, g + "attn_k_norm.weight", k.k_norm_w->data, L::VEC);
+            }
             put_linear(fx.tensors, g + "attn_output", out);
             if (k.ns[2].on()) put_norm(g + "attn_post_norm", k.ns[2]);
             if (highway) put_linear(fx.tensors, g + "highway_attn", *k.gate_a);
@@ -1315,6 +1362,7 @@ public:
     std::shared_ptr<const Expr> norm_expr;  // norm "expr:<e>", parsed once
     std::shared_ptr<nn::Linear> head;
     std::shared_ptr<const Expr> embed_expr; // cfg.embed_expr, parsed once
+    std::shared_ptr<const Expr> logits_expr; // cfg.logits_expr, parsed once
     std::vector<Var> embed_params;          // its learned inputs
     Var rel_bias;                           // position t5_relative: [rel_buckets, heads], every layer's
     std::vector<int> rel_buckets;           // its bucket by distance (ops::t5_position_buckets)

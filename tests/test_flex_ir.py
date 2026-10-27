@@ -53,6 +53,14 @@ CASES = {
                "norm_placement": {"attn": "pre", "ffn": "branch_post"}},
     "none_highway": {"norm": "rmsnorm", "activation": "relu", "residual": "highway",
                      "norm_placement": {"attn": "none", "ffn": "branch_post"}},
+    # The q/k norm on flex (28 Oct 2026, LOCAL_LLM_WORK E3): per head with flex flavours; over the whole width
+    # (OLMo 2's) with the llama block's flavours, which only flex builds.
+    "qk_per_head": {"norm": "rmsnorm", "activation": "relu", "position": "rope", "qk_norm": "per_head"},
+    "qk_full": {"norm": "rmsnorm", "activation": "swiglu", "position": "rope", "qk_norm": "full",
+                "norm_placement": "branch_post", "rope_theta": 500000.0},
+    # An expr on the logits: PaLM's 1/sqrt(d) at d = 32 written as a number, and Gemma 2's final soft cap.
+    "logits_scale": {"norm": "layernorm", "activation": "gelu", "position": "learned", "logits": "expr:x * 0.1767767"},
+    "softcap": {"norm": "rmsnorm", "activation": "swiglu", "position": "rope", "logits": "expr:30 * tanh(x / 30)"},
 }
 
 def spec_of(tmp, name, custom, steps=30, formats=("safetensors", "gguf")):
@@ -108,6 +116,16 @@ def check_nodes(name, doc):
     elif name == "none_highway":
         i_attn = ops.index("attention")
         assert "rmsnorm" not in ops[:i_attn] and ops.count("rmsnorm") == 1
+    elif name in ("qk_per_head", "qk_full"):
+        i = ops.index("split")
+        assert ops[i + 1:i + 4] == ["rmsnorm", "rmsnorm", "rope"], ops
+        for t_, n in zip("qk", nodes[i + 1:i + 3]):
+            assert n["in"] == [t_] and n["out"] == t_ and n["weight"] == f"blk.{{i}}.attn_{t_}_norm.weight"
+            assert n.get("group") == (8 if name == "qk_per_head" else None)  # head_dim 32 / 4, or the row
+        assert nodes[i + 3]["theta"] == (500000.0 if name == "qk_full" else 10000.0)  # OLMo 2's base on flex
+    elif name in ("logits_scale", "softcap"):
+        last = doc["head"]["nodes"][-1]
+        assert last["op"] == "expr" and last["in"] == ["logits"] and last["out"] == "logits"
 
 
 @needs_bin
@@ -177,6 +195,11 @@ def test_llama_flavours_with_a_flex_option_are_flex(tmp_path):
                                    "norm_placement": "sandwich"}, steps=2, formats=("safetensors",))
     run(spec)
     assert next(e for e in events(spec) if e["event"] == "model")["family"] == "flex"
+    # A per-head q/k norm with flex's flavours is flex's own (28 Oct 2026); an unknown width is refused.
     spec = spec_of(tmp_path, "l", {"qk_norm": True, "norm_placement": "post"}, steps=2, formats=("safetensors",))
+    run(spec)
+    model = next(e for e in events(spec) if e["event"] == "model")
+    assert model["family"] == "flex" and model["qk_norm"] == "per_head"
+    spec = spec_of(tmp_path, "w", {"qk_norm": "sideways"}, steps=2, formats=("safetensors",))
     r = subprocess.run([BIN, "plan", str(spec)], capture_output=True, text=True, timeout=60)
-    assert r.returncode != 0
+    assert r.returncode != 0 and "per_head or full" in r.stderr + r.stdout

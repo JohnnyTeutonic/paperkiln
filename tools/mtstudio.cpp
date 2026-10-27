@@ -78,6 +78,9 @@ struct Spec {
     // rel_max_distance (Shaw's clipping distance), rel_per_head and rel_values; qkv_conv (Primer's MDHA width).
     std::vector<parity::FlexConfig::ExprInput> act_inputs, norm_inputs, embed_inputs;
     std::string embed_expr;  // arch.custom.embed "expr:<e>" (parity::FlexConfig embed_expr)
+    // arch.custom.logits "expr:<e>" (parity::FlexConfig logits_expr); the flex family's q/k norm
+    // (parity::FlexConfig qk_norm "per_head" | "full"), set from arch.custom.qk_norm when the family is flex.
+    std::string logits_expr, flex_qk_norm;
     std::string place_attn = "pre", place_ffn = "pre";
     int final_norm = -1;
     size_t rel_buckets = 32, rel_max_distance = 128;
@@ -361,6 +364,10 @@ Spec parse_spec(const std::string& path) {
             s.embed_expr = c["embed"].get<std::string>();
             s.flex_only_keys = true;
         }
+        if (c.contains("logits")) {
+            s.logits_expr = c["logits"].get<std::string>();
+            s.flex_only_keys = true;
+        }
         if (c.contains("norm_placement")) {
             const json& p = c["norm_placement"];
             if (p.is_string()) {
@@ -416,7 +423,19 @@ Spec parse_spec(const std::string& path) {
         s.kv_heads = c.value("kv_heads", s.kv_heads);
         s.rope_pairing = c.value("rope_pairing", s.rope_pairing);
         s.rope_dims = c.value("rope_dims", s.rope_dims);
-        s.qk_norm = c.value("qk_norm", s.qk_norm);
+        if (c.contains("qk_norm")) {
+            // true or "per_head": per head (the llama family's, or flex's); "full": over the whole q and k
+            // rows, which only the flex family builds; false: none.
+            const json& q = c["qk_norm"];
+            const std::string m = q.is_boolean() ? (q.get<bool>() ? "per_head" : "") : q.get<std::string>();
+            if (!m.empty() && m != "per_head" && m != "full")
+                throw std::runtime_error("arch.custom.qk_norm must be true, false, per_head or full, got " + m);
+            s.qk_norm = m == "per_head";
+            if (m == "full") {
+                s.flex_qk_norm = m;
+                s.flex_only_keys = true;
+            }
+        }
         s.rope_theta = c.value("rope_theta", s.rope_theta);
         if (s.rope_pairing != "interleaved" && s.rope_pairing != "neox")
             throw std::runtime_error("arch.custom.rope_pairing must be interleaved or neox, got " + s.rope_pairing);
@@ -550,16 +569,24 @@ Spec parse_spec(const std::string& path) {
     }
 
     if (s.flex_only_keys && s.family != "flex")
-        throw std::runtime_error("arch.custom.activation_inputs, norm_inputs, embed, embed_inputs, norm_placement, final_norm and "
-                                 "rel_buckets / rel_max_distance / rel_per_head / rel_values / qkv_conv need the flex family");
+        throw std::runtime_error("arch.custom.activation_inputs, norm_inputs, embed, embed_inputs, logits, norm_placement, "
+                                 "final_norm, qk_norm full and rel_buckets / rel_max_distance / rel_per_head / "
+                                 "rel_values / qkv_conv need the flex family");
+    if (s.family == "flex" && s.qk_norm) {  // a per-head q/k norm on the flex family: its own, not llama's
+        s.flex_qk_norm = "per_head";
+        s.qk_norm = false;
+    }
     if (s.attn_res && s.family != "llama")
         throw std::runtime_error("arch.custom.attn_res needs the llama family (rmsnorm, swiglu, rope, exact attention); "
                                  "the gpt2 attnres preset is its own family");
     if (s.rec_block > 0 && s.family != "llama")
         throw std::runtime_error("arch.custom.recursion needs the llama family (rmsnorm, swiglu, rope, exact attention)");
-    if ((s.thirdparty() || s.rope_theta != 10000.0f) && s.family != "llama")
-        throw std::runtime_error("arch.custom.kv_heads, rope_pairing, rope_dims, qk_norm and rope_theta need the llama "
-                                 "family (rmsnorm, swiglu, rope, exact attention)");
+    // A stated RoPE base also on flex with position rope (parity::FlexConfig rope_theta; the IR rope node's theta).
+    if ((s.thirdparty() || (s.rope_theta != 10000.0f && !(s.family == "flex" && s.position == "rope"))) &&
+        s.family != "llama")
+        throw std::runtime_error("arch.custom.kv_heads, rope_pairing, rope_dims and qk_norm need the llama family "
+                                 "(rmsnorm, swiglu, rope, exact attention), rope_theta the llama family or flex with "
+                                 "position rope");
     if (s.thirdparty()) {
         const size_t kv = s.kv_heads ? s.kv_heads : s.heads, hd = s.heads ? s.d / s.heads : 0;
         if (kv == 0 || s.heads % kv != 0)
@@ -2122,6 +2149,9 @@ parity::FlexConfig flex_config(const Spec& s, size_t vocab) {
     fc.rel_per_head = s.rel_per_head;
     fc.rel_values = s.rel_values;
     fc.qkv_conv = s.qkv_conv;
+    fc.qk_norm = s.flex_qk_norm;
+    fc.rope_theta = s.rope_theta;
+    fc.logits_expr = s.logits_expr;
     const std::string bad = fc.problem();
     if (!bad.empty()) throw std::runtime_error("arch.custom: " + bad);
     return fc;
@@ -2381,6 +2411,13 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                         fc.norm.substr(5).c_str(), gc["fd_worst_rel"].get<double>());
         } else if (fc.norm != "layernorm" && fc.norm != "rmsnorm")
             throw std::runtime_error("unknown norm " + fc.norm);
+        if (!fc.logits_expr.empty()) {
+            json gc = expr_gradcheck(fc.logits_expr.substr(5), "logits");
+            gc["slot"] = "logits";
+            ev.emit(gc);
+            std::printf("expr logits %s: gradient vs finite differences worst rel %.2e\n", fc.logits_expr.substr(5).c_str(),
+                        gc["fd_worst_rel"].get<double>());
+        }
         if (!fc.embed_expr.empty()) {
             json gc = expr_gradcheck(fc.embed_expr.substr(5), "embed", fc.embed_inputs);
             gc["slot"] = "embed";
@@ -2502,6 +2539,8 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         model_ev["shaw_relative"] = {{"max_distance", flex->cfg.rel_max_distance},
                                      {"per_head", flex->cfg.rel_per_head}, {"values", flex->cfg.rel_values}};
     if (flex && flex->cfg.qkv_conv) model_ev["qkv_conv"] = flex->cfg.qkv_conv;
+    if (flex && !flex->cfg.qk_norm.empty()) model_ev["qk_norm"] = flex->cfg.qk_norm;
+    if (flex && !flex->cfg.logits_expr.empty()) model_ev["logits"] = flex->cfg.logits_expr;
     if (s.lr_warmup > 0 || s.lr_decay != "none")
         model_ev["lr_schedule"] = {
             {"warmup_steps", s.lr_warmup}, {"decay", s.lr_decay}, {"min_lr_frac", s.lr_min_frac}};
@@ -2510,7 +2549,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     if (llama && s.thirdparty())
         model_ev["thirdparty"] = {{"kv_heads", llama->cfg.kv_heads()}, {"rope_pairing", s.rope_pairing},
                                   {"rope_dims", s.rope_dims ? s.rope_dims : s.d / s.heads}, {"qk_norm", s.qk_norm}};
-    if (llama && s.rope_theta != 10000.0f) model_ev["rope_theta"] = s.rope_theta;
+    if ((llama || flex) && s.rope_theta != 10000.0f) model_ev["rope_theta"] = s.rope_theta;
     // Absent for the S4-style mamba: its model event is unchanged.
     if (mamba && s.ssm == "mamba1")
         model_ev["ssm"] = {{"kind", "mamba1"}, {"d_state", s.d_state}, {"d_conv", s.d_conv}, {"expand", s.expand},

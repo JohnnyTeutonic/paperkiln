@@ -1,0 +1,309 @@
+{
+ "arxiv_id": "2501.00656",
+ "stages": {
+  "gate": {
+   "at": "2026-10-28T01:34:40",
+   "verdict": "in_scope",
+   "passes": true,
+   "reason": "The paper releases a new family of dense autoregressive language models (OLMo 2) and describes a modified model architecture, so the extractor can recover the architecture from the body.",
+   "architecture_kind": "dense autoregressive transformer language model family",
+   "evidence": "we describe our modified model architecture and training recipe",
+   "evidence_found": true,
+   "gate": {
+    "model": "claude-opus-5-5",
+    "served_by": "claude-opus-5-5",
+    "effort": "low",
+    "max_tokens": 3000,
+    "prompt_sha256": "c14d094a07ba3f62d99ba57195c8f64c9e255aaf6b8dd3c27d875920a193a418",
+    "request_id": "req_011CgSucJ1faKTD353mChLie",
+    "cache_hit": false,
+    "input_tokens": 1146,
+    "output_tokens": 119,
+    "cost_usd": 0.006964,
+    "original_cost_usd": null,
+    "tag": "relevance_gate",
+    "extractor_sha256": "8bed901f508a0c21d93d3220a0ace86fe416caf7ffe68895528b219b2eefb781"
+   }
+  },
+  "extract": {
+   "at": "2026-10-28T01:34:40",
+   "extraction_sha256": "c143961580059e5af016f29a59bd4d66e8261253683903c14563cfc554bb9ba2",
+   "source": {
+    "tex_sha256": "2cd8c2f055f575f1ba54070e558bff4e3d29d52de24b2f225803a2490dd1f348",
+    "sent_sha256": "0e5a8b72608ff71fbd54035c9a6db5415cbf58b6f5677110d65c2368ab0a7966",
+    "from": "https://arxiv.org/e-print/2501.00656",
+    "extractor": "papers/llm_extract.py",
+    "extractor_sha256": "af22b1e4f748d368b6fc51a974278eb266a21e4386346082670d4a0fb9e626b0",
+    "model": "claude-opus-5-5",
+    "effort": "high",
+    "prompt_sha256": "10a300fb8b18ee2715951d4a0791df3b1f472f70a93641084aaaf963ab88e016",
+    "n_calls": 1,
+    "cost_usd": 0.626636,
+    "request_ids": [
+     "req_011CgSpVvZa6h9dCPcqCkmUR"
+    ],
+    "reverified": {
+     "verifier": "papers/llm_extract.py",
+     "verifier_sha256": "8bed901f508a0c21d93d3220a0ace86fe416caf7ffe68895528b219b2eefb781",
+     "sent_sha256": "0e5a8b72608ff71fbd54035c9a6db5415cbf58b6f5677110d65c2368ab0a7966"
+    },
+    "cached_from": "/home/jonat/e3_pk/experiments/arxiv_chain_2026-10-28_e3/2501.00656.extraction.json"
+   },
+   "mechanism_scan": []
+  },
+  "spec": {
+   "at": "2026-10-28T01:34:40",
+   "family": "flex",
+   "name": "arxiv_2501_00656",
+   "report": [
+    [
+     "MATCHED",
+     "norm placement, attention sublayer: norm_placement = branch_post (Sec. 2.1 Model Architecture)"
+    ],
+    [
+     "MATCHED",
+     "norm placement, FFN sublayer: norm_placement = branch_post (Sec. 2.1 Model Architecture)"
+    ],
+    [
+     "NOTED",
+     "qkv_bias = false (stated, quote_only): not a knob; flex's projections carry biases, the llama family's do not"
+    ],
+    [
+     "NOTED",
+     "mlp_bias = false (stated, quote_only): not a knob; flex's projections carry biases, the llama family's do not"
+    ],
+    [
+     "MATCHED",
+     "norm = rmsnorm (used: \u201cWe use the RMSNorm \\citep{RMSNorm} variant of LayerNorm \\citep{Ba2016LayerNorm} without a bias term to normalize activat\u201d)"
+    ],
+    [
+     "MATCHED",
+     "activation = swiglu (used: \u201cWe use the SwiGLU activation function \\citep{Shazeer2020GLUVI} [Sec. 2.1 Model Architecture]\u201d)"
+    ],
+    [
+     "MATCHED",
+     "positional = rope (used: \u201cWe replace absolute positional embeddings with rotary positional embeddings (RoPE; \\citealp{Su2021RoFormerET}). [Sec. 2.\u201d)"
+    ],
+    [
+     "MATCHED",
+     "residual = residual (used: \u201c\\pmb{h} := \\pmb{x} + \\text{RMSNorm}(\\text{Attention}(\\pmb{x})) [Sec. 3.3.2 Reordered norm and QK-norm]\u201d)"
+    ],
+    [
+     "MATCHED",
+     "attention = exact (used: \u201ca family of dense autoregressive language models at 7B, 13B and 32B scales [Abstract]\u201d)"
+    ],
+    [
+     "MATCHED",
+     "the q/k norm's kind: RMSNorm (the block graph's)"
+    ],
+    [
+     "MATCHED",
+     "qk_norm = full (by the operator, --assert): an RMSNorm over the whole query and key rows (the flex family)"
+    ],
+    [
+     "MATCHED",
+     "rope_theta = 500000 (Sec. 2.1 Model Architecture): rope_theta = 500000 on the flex family"
+    ],
+    [
+     "MATCHED",
+     "norm_placement = \"branch_post\" on the flex family (parity::FlexConfig place_attn / place_ffn); the norm before the head stays unless both sublayers are post-norm"
+    ],
+    [
+     "MATCHED",
+     "position = rope on the flex family (the paper's other flavours are not the llama block's): every head rotated, interleaved pairs, theta 10000, as the llama block and the IR rope node"
+    ],
+    [
+     "SIZED",
+     "d=64 layers=2 heads=4 T=64 chosen for this run (paper: {'d_model': 4096, 'n_layers': 32, 'n_heads': 32, 'd_ff': 11008, 'context_length': 4096}); the mechanism is the paper's"
+    ]
+   ],
+   "pretrain_spec": {
+    "name": "arxiv_2501_00656_base",
+    "arch": {
+     "custom": {
+      "rope_theta": 500000.0,
+      "norm": "rmsnorm",
+      "activation": "swiglu",
+      "position": "rope",
+      "residual": "residual",
+      "attention": "exact",
+      "qk_norm": "full",
+      "norm_placement": "branch_post",
+      "d": 64,
+      "layers": 2,
+      "heads": 4
+     }
+    },
+    "data": {
+     "vocab": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/vocab_fineweb_tinychat_bpe8k_v1/fineweb_tinychat_bpe8k.gguf",
+     "vocab_cap": 8192,
+     "T": 64,
+     "corpus": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/tinychat_hf_sample_v1/pretrain_train.txt",
+     "max_tokens": 400000
+    },
+    "train": {
+     "steps": 400,
+     "lr": 0.003,
+     "batch": 4,
+     "eval_every": 100,
+     "checkpoint_every": 400,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw"
+    },
+    "export": {
+     "formats": [
+      "safetensors"
+     ]
+    },
+    "out_dir": "/home/jonat/e3_runs/olmo2/pretrain"
+   },
+   "sft_spec": {
+    "name": "arxiv_2501_00656",
+    "arch": {
+     "custom": {
+      "rope_theta": 500000.0,
+      "norm": "rmsnorm",
+      "activation": "swiglu",
+      "position": "rope",
+      "residual": "residual",
+      "attention": "exact",
+      "qk_norm": "full",
+      "norm_placement": "branch_post",
+      "d": 64,
+      "layers": 2,
+      "heads": 4
+     }
+    },
+    "data": {
+     "vocab": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/vocab_fineweb_tinychat_bpe8k_v1/fineweb_tinychat_bpe8k.gguf",
+     "vocab_cap": 8192,
+     "T": 64,
+     "sft_examples": "/home/jonat/e3_runs/olmo2/sft_examples.jsonl"
+    },
+    "train": {
+     "steps": 100,
+     "lr": 0.001,
+     "batch": 4,
+     "eval_every": 50,
+     "checkpoint_every": 100,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "objective": "sft",
+     "init_from": "/home/jonat/e3_runs/olmo2/pretrain/arxiv_2501_00656_base.safetensors"
+    },
+    "export": {
+     "formats": [
+      "safetensors"
+     ]
+    },
+    "out_dir": "/home/jonat/e3_runs/olmo2/sft"
+   }
+  },
+  "pretrain": {
+   "at": "2026-10-28T01:51:23",
+   "corpus": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/tinychat_hf_sample_v1/pretrain_train.txt",
+   "corpus_sha256": "f6a7ccbaed0e5018f9ade0a1f0ce6a3027e046f176d2b8f7ff7f5efedfaedb76",
+   "max_tokens": 400000,
+   "vocab_sha256": "c79eec5b5ec2036b7f398061e9901c34014b54096db64f9dce6f030532e75b23",
+   "weights_sha256": "27723f066dbedb5a01b565383720456f87489a5eadd9249e47be277ead0c9773",
+   "result": {
+    "T": 64,
+    "accum": 1,
+    "attention": "exact",
+    "batch": 4,
+    "best_val": 4.632650852203369,
+    "checkpoint_activations": false,
+    "d": 64,
+    "early_stopped": false,
+    "family": "flex",
+    "final_step": 400,
+    "heads": 4,
+    "layers": 2,
+    "lr": 0.003000000026077032,
+    "name": "arxiv_2501_00656_base",
+    "params": 1180736,
+    "seed": 1,
+    "steps_requested": 400,
+    "tokens_per_second": 103.01150481544002,
+    "wall_seconds": 994.06372311
+   }
+  },
+  "sft": {
+   "at": "2026-10-28T01:56:32",
+   "sft_source": "/home/jonat/pkchat/fwsft/sft_mix.jsonl",
+   "sft_limit": 2000,
+   "sft_fit": {
+    "source": "/home/jonat/pkchat/fwsft/sft_mix.jsonl",
+    "T": 64,
+    "limit": 2000,
+    "seen": 11315,
+    "kept": 2000,
+    "dropped_longer_than_T": 9315,
+    "longest_kept_tokens": 65,
+    "longest_dropped_tokens": 257,
+    "rule": "len(prompt) + len(completion) + 1 end token <= T + 1 (mtstudio load_sft), file order"
+   },
+   "sft_slice_sha256": "1f2e7e614ebd721b4a7a5f3b83d5acab08eab478b12a31262833dcfa7b5bbd10",
+   "weights_sha256": "3a9691a520145486a9636ed4fe8e5802a7782227b68b36c39c9adc5885633735",
+   "result": {
+    "T": 64,
+    "accum": 1,
+    "attention": "exact",
+    "batch": 4,
+    "best_val": 4.363434314727783,
+    "checkpoint_activations": false,
+    "d": 64,
+    "early_stopped": false,
+    "family": "flex",
+    "final_step": 100,
+    "heads": 4,
+    "layers": 2,
+    "lr": 0.0010000000474974513,
+    "name": "arxiv_2501_00656",
+    "params": 1180736,
+    "seed": 1,
+    "steps_requested": 100,
+    "tokens_per_second": 90.56776473891236,
+    "wall_seconds": 282.661276601
+   }
+  },
+  "export": {
+   "at": "2026-10-28T01:56:32",
+   "gguf": "/home/jonat/e3_runs/olmo2/export/arxiv_2501_00656.gguf",
+   "gguf_sha256": "6ee21d544d36addc4f652ba4f33c09e1fad2f2a3ce42630797f8940d298f7f93",
+   "ir_sha256": "5f189dc61edce41e1de4a5136ef93a61105cbde9f0e0d24ec0e55f45dbcaca26",
+   "family_hint": "flex",
+   "rope_heads": "all"
+  },
+  "chat": {
+   "at": "2026-10-28T01:56:54",
+   "parity": {
+    "engine": "numpy (tools/ir_run.py)",
+    "n": 10,
+    "identical_replies": 10,
+    "pass": true,
+    "settings": {
+     "user_input": null,
+     "max_new_tokens": 40,
+     "temperature": 1.0,
+     "top_k": 1,
+     "top_p": 1.0,
+     "seed": 0
+    },
+    "prompts_sha256": "a906b25aaf9f32848f83e8b87c8ad95e7eb8d5802129635f7e55fc62a68b3132"
+   },
+   "chat": [
+    {
+     "user": "Hello, how are you?",
+     "reply": "I understand that can be very frustrating, I understand that can be very happy.",
+     "tokens": 16
+    }
+   ]
+  }
+ },
+ "relevance_gate": "in_scope",
+ "title": "2 OLMo 2 Furious",
+ "parity_pass": true
+}

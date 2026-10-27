@@ -1,0 +1,486 @@
+[
+ {
+  "arxiv_id": "2109.08668",
+  "extraction": "experiments\\arxiv_chain_2026-10-28_e3\\2109.08668.extraction.json",
+  "prompt_sha256": "10a300fb",
+  "asserts": [],
+  "waive": [],
+  "verdict": "refused",
+  "reasons": [
+   "mechanism outside the extractor's lattice: Shaw-style relative attention (codebase default in T5/Lingvo) inside the attention logits; the IR attention op has no slot for it and its parameters are not stated (llm extraction, verified quote, Appendix Full Training Details: “T2T uses positional embeddings and subword tokenization, while T5 and Lingvo use relative attention~\\cite{Shaw2018SelfAttentionWR} and SentencePieces~\\cite{Kudo2018SentencePieceAS}.”); no family here builds it, and training the extracted flavours alone would silently approximate the paper",
+   "conv1d_causal on some but not all of the attention's q, k and v projections (or not directly after a projection): flex's qkv_conv convolves all three after the projection, so it would silently approximate the paper",
+   "positional = shaw_relative, but rel_max_distance (Shaw's clipping distance k) is unresolved: the paper does not state it (not_stated); assert it with --assert rel_max_distance=K if you know it",
+   "positional = shaw_relative, but rel_per_head (whether each head has its own relative vectors) is unresolved: the paper does not state it (not_stated); assert it with --assert rel_per_head=true|false"
+  ]
+ },
+ {
+  "arxiv_id": "2312.00752",
+  "extraction": "experiments\\arxiv_chain_2026-10-26\\2312.00752.extraction.json",
+  "prompt_sha256": "e6c6c505",
+  "asserts": [],
+  "waive": [],
+  "verdict": "refused",
+  "reasons": [
+   "a norm inside the state-space block (llm extraction, verified quote, Sec. 3.4 A Simplified SSM Architecture: “Finally, we additionally use an optional normalization layer (we choose LayerNorm~\\citep{ba2016layer}),”): the paper states neither its place in the block nor which of its models use it, so it cannot be built as the paper's (refused by rule); --assert ssm_inner_norm=none builds the block without it, on the operator's word",
+   "d_conv is unresolved: the paper does not state Mamba-1's d_conv (not_stated); assert it with --assert d_conv=VALUE if you know it"
+  ]
+ },
+ {
+  "arxiv_id": "2312.00752",
+  "extraction": "experiments\\arxiv_chain_2026-10-26\\2312.00752.extraction.json",
+  "prompt_sha256": "e6c6c505",
+  "asserts": [
+   "d_conv=4",
+   "ssm_inner_norm=none"
+  ],
+  "waive": [],
+  "verdict": "builds",
+  "family": "mamba",
+  "arch": {
+   "preset": "mamba-tiny",
+   "custom": {
+    "ssm": "mamba1",
+    "d": 64,
+    "layers": 2,
+    "d_state": 16,
+    "d_conv": 4,
+    "expand": 2
+   }
+  },
+  "report": [
+   [
+    "NOTED",
+    "mlp_bias = false (stated, quote_only): not a knob; flex's projections carry biases, the llama family's do not"
+   ],
+   [
+    "NOTED",
+    "state-space model: llm extraction, verified quote, Abstract, We integrate these selective SSMs into a simplified end-to-end neural network architecture without attention or even MLP blocks (built as Mamba-1: the extraction's ssm = mamba1)"
+   ],
+   [
+    "ASSERTED",
+    "Optional LayerNorm inside the Mamba block, placed as in RetNet (exact location not specified): llm extraction, verified quote, Sec. 3.4 A Simplified SSM Architecture (not built: --assert ssm_inner_norm=none, the operator's statement that the model has no inner norm)"
+   ],
+   [
+    "MATCHED",
+    "d_state = 16 (“State size fixed to $N=16$.”)"
+   ],
+   [
+    "ASSERTED",
+    "d_conv = 4 (by the operator, --assert; paper: not stated)"
+   ],
+   [
+    "MATCHED",
+    "expand = 2 (“We always fix to $E=2$ in our experiments”)"
+   ],
+   [
+    "DEFAULT",
+    "dt_rank = ceil(d/16) = 4: not stated by the paper; Mamba-1's own rule (parity::Mamba1Config dt_rank 0)"
+   ],
+   [
+    "NOTED",
+    "activation = silu (used): the Mamba-1 block is fixed (SiLU gate, no positions, no attention); not a knob here"
+   ],
+   [
+    "NOTED",
+    "attention = other:none (attention-free) (used): the Mamba-1 block is fixed (SiLU gate, no positions, no attention); not a knob here"
+   ],
+   [
+    "SIZED",
+    "d=64 layers=2 T=64 chosen for this run (paper: no dims extracted); the mechanism is the paper's"
+   ]
+  ]
+ },
+ {
+  "arxiv_id": "2505.09388",
+  "extraction": "experiments\\arxiv_chain_2026-10-26\\2505.09388.extraction.json",
+  "prompt_sha256": "e6c6c505",
+  "asserts": [],
+  "waive": [],
+  "verdict": "refused",
+  "reasons": [
+   "mixture of experts, but the paper does not state whether the top-k gates are renormalised over the k (Mixtral's Softmax(TopK(.))) or kept as the full softmax's entries (Switch's); assert it with --assert moe_gate_norm=renorm|raw if you know it",
+   "mechanism outside the extractor's lattice: Fine-grained expert segmentation in the MoE layers (llm extraction, verified quote, Sec. Architecture: “We follow Qwen2.5-MoE~\\citep{qwen2.5} and implement fine-grained expert segmentation~\\citep{deepseekmoe}.”); no family here builds it, and training the extracted flavours alone would silently approximate the paper",
+   "mechanism outside the extractor's lattice: No shared experts in the MoE layers (llm extraction, verified quote, Sec. Architecture: “Unlike Qwen2.5-MoE, the Qwen3-MoE design excludes shared experts.”); no family here builds it, and training the extracted flavours alone would silently approximate the paper",
+   "mechanism outside the extractor's lattice: Global-batch load balancing auxiliary loss (training-time) (llm extraction, verified quote, Sec. Architecture: “we adopt the global-batch load balancing loss~\\citep{global_balance} to encourage expert specialization”); no family here builds it, and training the extracted flavours alone would silently approximate the paper",
+   "mechanism outside the extractor's lattice: YARN and Dual Chunk Attention for inference-time context extension (llm extraction, verified quote, Sec. Pre-training Stage: “we introduce YARN \\citep{yarn} and Dual Chunk Attention~(DCA, \\citealp{chunkllama}) to achieve a four-fold increase in sequence length capacity during inference”); no family here builds it, and training the extracted flavours alone would silently approximate the paper",
+   "qk_norm = unspecified (Sec. Architecture): the paper normalises the queries and keys but does not say over which width; the llama family builds a per-head norm: settle it with --assert qk_norm=per_head if that is the paper's"
+  ]
+ },
+ {
+  "arxiv_id": "2505.09388",
+  "extraction": "experiments\\arxiv_chain_2026-10-26\\2505.09388.extraction.json",
+  "prompt_sha256": "e6c6c505",
+  "asserts": [
+   "qk_norm=per_head",
+   "moe_gate_norm=renorm"
+  ],
+  "waive": [
+   "fine-grained expert segmentation",
+   "no shared experts",
+   "load balancing",
+   "yarn and dual chunk"
+  ],
+  "verdict": "builds",
+  "family": "llama",
+  "arch": {
+   "custom": {
+    "position": "rope",
+    "qk_norm": true,
+    "kv_heads": 1,
+    "rope_theta": 1000000.0,
+    "d": 128,
+    "layers": 2,
+    "heads": 16
+   },
+   "moe": {
+    "experts": 128,
+    "top_k": 8,
+    "gate": "renorm"
+   },
+   "rope_heads": "all"
+  },
+  "report": [
+   [
+    "MATCHED",
+    "n_experts = 128 (“The Qwen3 MoE models have 128 total experts with 8 activated experts per token.”)"
+   ],
+   [
+    "MATCHED",
+    "top_k = 8 (“The Qwen3 MoE models have 128 total experts with 8 activated experts per token.”)"
+   ],
+   [
+    "ASSERTED",
+    "moe_gate_norm = renorm (by the operator, --assert)"
+   ],
+   [
+    "MATCHED",
+    "moe = 128 SwiGLU experts, top 8, gates renormalised over the k (the llama family's arch.moe; include/microtorch/moe.hpp)"
+   ],
+   [
+    "NOTED",
+    "the router's load-balance and z-loss terms are training objectives, not the network: paperkiln's defaults (aux_loss 0.01, z_loss 0.001), not the paper's"
+   ],
+   [
+    "MATCHED",
+    "norm placement, attention sublayer: norm_placement = pre (Sec. Architecture)"
+   ],
+   [
+    "MATCHED",
+    "norm placement, FFN sublayer: norm_placement = pre (Sec. Architecture)"
+   ],
+   [
+    "NOTED",
+    "qkv_bias = false (stated, quote_only): not a knob; flex's projections carry biases, the llama family's do not"
+   ],
+   [
+    "NOTED",
+    "mixture of experts: llm extraction, verified quote, Sec. Architecture (built as arch.moe, above)"
+   ],
+   [
+    "NOTED",
+    "grouped or multi-query attention: llm extraction, verified quote, Table tab:arch-moe, Qwen3-235B-A22B & 94 & 64 / 4 &128 / 8 & 128K (built from n_kv_heads)"
+   ],
+   [
+    "WAIVED",
+    "Fine-grained expert segmentation in the MoE layers (llm extraction, verified quote, Sec. Architecture): not built, by the operator (--waive 'fine-grained expert segmentation': not part of the network)"
+   ],
+   [
+    "WAIVED",
+    "No shared experts in the MoE layers (llm extraction, verified quote, Sec. Architecture): not built, by the operator (--waive 'no shared experts': not part of the network)"
+   ],
+   [
+    "WAIVED",
+    "Global-batch load balancing auxiliary loss (training-time) (llm extraction, verified quote, Sec. Architecture): not built, by the operator (--waive 'load balancing': not part of the network)"
+   ],
+   [
+    "WAIVED",
+    "YARN and Dual Chunk Attention for inference-time context extension (llm extraction, verified quote, Sec. Pre-training Stage): not built, by the operator (--waive 'yarn and dual chunk': not part of the network)"
+   ],
+   [
+    "MATCHED",
+    "norm = rmsnorm (used: “and RMSNorm~\\citep{rmsnorm} with pre-normalization [Sec. Architecture]”)"
+   ],
+   [
+    "MATCHED",
+    "activation = swiglu (used: “including using Grouped Query Attention (GQA, \\citealp{gqa}), SwiGLU~\\citep{glu} [Sec. Architecture]”)"
+   ],
+   [
+    "MATCHED",
+    "positional = rope (used: “Rotary Positional Embeddings (RoPE, \\citealp{rope}) [Sec. Architecture]”)"
+   ],
+   [
+    "DEFAULT",
+    "residual = residual: not established by the paper (the extraction's value is unverified: the quote does not name residual (looked for /residual|skip|\\bx\\}?\\s*\\+\\s*\\\\?[A-Za-z]/)); a highway or plain stream would be a stated departure"
+   ],
+   [
+    "MATCHED",
+    "attention = exact (used: “including using Grouped Query Attention (GQA, \\citealp{gqa}) [Sec. Architecture]”)"
+   ],
+   [
+    "MATCHED",
+    "the q/k norm's kind: RMSNorm (the block graph's)"
+   ],
+   [
+    "MATCHED",
+    "qk_norm = per_head (by the operator, --assert): an RMSNorm on each head's queries and keys"
+   ],
+   [
+    "MATCHED",
+    "n_kv_heads = 4 of n_heads = 64 (grouped/multi-query attention): kv_heads = 1 of this run's 16 heads (the paper's ratio)"
+   ],
+   [
+    "MATCHED",
+    "rope_theta = 1000000 (Sec. Pre-training Stage): rope_theta = 1000000.0 (the llama family)"
+   ],
+   [
+    "SIZED",
+    "d=128 layers=2 heads=16 T=64 chosen for this run (paper: {'n_layers': 94, 'n_heads': 64, 'context_length': 131072}); the mechanism is the paper's"
+   ],
+   [
+    "MATCHED",
+    "rope_heads = all (GGUF engines rotate every head; contract point 2)"
+   ]
+  ]
+ },
+ {
+  "arxiv_id": "2401.04088",
+  "extraction": "papers\\llm_extract_receipts\\2401.04088.extraction.json",
+  "prompt_sha256": "e6c6c505",
+  "asserts": [],
+  "waive": [],
+  "verdict": "refused",
+  "reasons": [
+   "norm is unresolved: the paper does not state it and names no ancestor that does (mentions: none); assert it with --assert norm=VALUE if you know it",
+   "positional is unresolved: the paper does not state it and names no ancestor that does (mentions: none); assert it with --assert positional=VALUE if you know it",
+   "mixture of experts: only the llama family builds one (rmsnorm, swiglu experts, rope, exact attention, residual stream, pre-norm); this paper's other flavours make it flex"
+  ]
+ },
+ {
+  "arxiv_id": "2401.04088",
+  "extraction": "papers\\llm_extract_receipts\\2401.04088.extraction.json",
+  "prompt_sha256": "e6c6c505",
+  "asserts": [
+   "norm=rmsnorm",
+   "positional=rope"
+  ],
+  "waive": [],
+  "verdict": "builds",
+  "family": "llama",
+  "arch": {
+   "custom": {
+    "position": "rope",
+    "kv_heads": 1,
+    "d": 64,
+    "layers": 2,
+    "heads": 4
+   },
+   "moe": {
+    "experts": 8,
+    "top_k": 2,
+    "gate": "renorm"
+   },
+   "rope_heads": "all"
+  },
+  "report": [
+   [
+    "MATCHED",
+    "n_experts = 8 (“\\texttt{num\\_experts} & $8$”)"
+   ],
+   [
+    "MATCHED",
+    "top_k = 2 (“\\texttt{top\\_k\\_experts} & $2$”)"
+   ],
+   [
+    "MATCHED",
+    "moe_gate_norm = renorm (“\\[ G(x) := \\text{Softmax}(\\text{TopK}(x \\cdot W_g)), \\]”)"
+   ],
+   [
+    "MATCHED",
+    "moe = 8 SwiGLU experts, top 2, gates renormalised over the k (the llama family's arch.moe; include/microtorch/moe.hpp)"
+   ],
+   [
+    "NOTED",
+    "the router's load-balance and z-loss terms are training objectives, not the network: paperkiln's defaults (aux_loss 0.01, z_loss 0.001), not the paper's"
+   ],
+   [
+    "NOTED",
+    "mixture of experts: llm extraction, verified quote, Sec. 2.1 Sparse Mixture of Experts (built as arch.moe, above)"
+   ],
+   [
+    "NOTED",
+    "grouped or multi-query attention: llm extraction, verified quote, Table 1 (tab:param), \\texttt{n\\_kv\\_heads} & $8$ (built from n_kv_heads)"
+   ],
+   [
+    "ASSERTED",
+    "norm = rmsnorm (by the operator, --assert; paper: unresolved)"
+   ],
+   [
+    "MATCHED",
+    "activation = swiglu (used: “For \\mixtral we use the same SwiGLU architecture as the expert function $E_i(x)$ and set $K=2$. [Sec. 2.1 Sparse Mixture”)"
+   ],
+   [
+    "ASSERTED",
+    "positional = rope (by the operator, --assert; paper: unresolved)"
+   ],
+   [
+    "DEFAULT",
+    "residual = residual: the LLM extraction found no stated residual wiring (a highway or plain stream would be a stated departure)"
+   ],
+   [
+    "MATCHED",
+    "attention = exact (used: “\\mixtral supports a fully dense context length of 32k tokens [Sec. 2 Architectural details]”)"
+   ],
+   [
+    "MATCHED",
+    "n_kv_heads = 8 of n_heads = 32 (grouped/multi-query attention): kv_heads = 1 of this run's 4 heads (the paper's ratio)"
+   ],
+   [
+    "SIZED",
+    "d=64 layers=2 heads=4 T=64 chosen for this run (paper: {'d_model': 4096, 'n_layers': 32, 'n_heads': 32, 'd_ff': 14336, 'context_length': 32768}); the mechanism is the paper's"
+   ],
+   [
+    "MATCHED",
+    "rope_heads = all (GGUF engines rotate every head; contract point 2)"
+   ]
+  ]
+ },
+ {
+  "arxiv_id": "2501.00656",
+  "extraction": "experiments\\arxiv_chain_2026-10-28_e3\\2501.00656.extraction.json",
+  "prompt_sha256": "10a300fb",
+  "asserts": [],
+  "waive": [],
+  "verdict": "refused",
+  "reasons": [
+   "qk_norm = unspecified (Sec. 2.1 Model Architecture): the paper normalises the queries and keys but does not say over which width; the llama family builds a per-head norm: settle it with --assert qk_norm=per_head if that is the paper's"
+  ]
+ },
+ {
+  "arxiv_id": "2501.00656",
+  "extraction": "experiments\\arxiv_chain_2026-10-28_e3\\2501.00656.extraction.json",
+  "prompt_sha256": "10a300fb",
+  "asserts": [
+   "qk_norm=full"
+  ],
+  "waive": [],
+  "verdict": "builds",
+  "family": "flex",
+  "arch": {
+   "custom": {
+    "rope_theta": 500000.0,
+    "norm": "rmsnorm",
+    "activation": "swiglu",
+    "position": "rope",
+    "residual": "residual",
+    "attention": "exact",
+    "qk_norm": "full",
+    "norm_placement": "branch_post",
+    "d": 64,
+    "layers": 2,
+    "heads": 4
+   }
+  },
+  "report": [
+   [
+    "MATCHED",
+    "norm placement, attention sublayer: norm_placement = branch_post (Sec. 2.1 Model Architecture)"
+   ],
+   [
+    "MATCHED",
+    "norm placement, FFN sublayer: norm_placement = branch_post (Sec. 2.1 Model Architecture)"
+   ],
+   [
+    "NOTED",
+    "qkv_bias = false (stated, quote_only): not a knob; flex's projections carry biases, the llama family's do not"
+   ],
+   [
+    "NOTED",
+    "mlp_bias = false (stated, quote_only): not a knob; flex's projections carry biases, the llama family's do not"
+   ],
+   [
+    "MATCHED",
+    "norm = rmsnorm (used: “We use the RMSNorm \\citep{RMSNorm} variant of LayerNorm \\citep{Ba2016LayerNorm} without a bias term to normalize activat”)"
+   ],
+   [
+    "MATCHED",
+    "activation = swiglu (used: “We use the SwiGLU activation function \\citep{Shazeer2020GLUVI} [Sec. 2.1 Model Architecture]”)"
+   ],
+   [
+    "MATCHED",
+    "positional = rope (used: “We replace absolute positional embeddings with rotary positional embeddings (RoPE; \\citealp{Su2021RoFormerET}). [Sec. 2.”)"
+   ],
+   [
+    "MATCHED",
+    "residual = residual (used: “\\pmb{h} := \\pmb{x} + \\text{RMSNorm}(\\text{Attention}(\\pmb{x})) [Sec. 3.3.2 Reordered norm and QK-norm]”)"
+   ],
+   [
+    "MATCHED",
+    "attention = exact (used: “a family of dense autoregressive language models at 7B, 13B and 32B scales [Abstract]”)"
+   ],
+   [
+    "MATCHED",
+    "the q/k norm's kind: RMSNorm (the block graph's)"
+   ],
+   [
+    "MATCHED",
+    "qk_norm = full (by the operator, --assert): an RMSNorm over the whole query and key rows (the flex family)"
+   ],
+   [
+    "MATCHED",
+    "rope_theta = 500000 (Sec. 2.1 Model Architecture): rope_theta = 500000 on the flex family"
+   ],
+   [
+    "MATCHED",
+    "norm_placement = \"branch_post\" on the flex family (parity::FlexConfig place_attn / place_ffn); the norm before the head stays unless both sublayers are post-norm"
+   ],
+   [
+    "MATCHED",
+    "position = rope on the flex family (the paper's other flavours are not the llama block's): every head rotated, interleaved pairs, theta 500000, as the llama block and the IR rope node"
+   ],
+   [
+    "SIZED",
+    "d=64 layers=2 heads=4 T=64 chosen for this run (paper: {'d_model': 4096, 'n_layers': 32, 'n_heads': 32, 'd_ff': 11008, 'context_length': 4096}); the mechanism is the paper's"
+   ]
+  ]
+ },
+ {
+  "arxiv_id": "2204.02311",
+  "extraction": "papers\\llm_extract_receipts\\2204.02311.extraction.json",
+  "prompt_sha256": "e6c6c505",
+  "asserts": [],
+  "waive": [],
+  "verdict": "refused",
+  "reasons": [
+   "mechanism outside the extractor's lattice: parallel attention and FFN sublayers (llm extraction, verified quote, Sec. 2 Model Architecture, Parallel Layers: “We use a ``parallel'' formulation in each Transformer block~\\citep{gpt-j}, rather than the standard ``serialized'' formulation.”); no family here builds it, and training the extracted flavours alone would silently approximate the paper",
+   "norm = other:layernorm without bias (learned scale only) has no engine support (mtstudio takes ['layernorm', 'rmsnorm'])"
+  ]
+ },
+ {
+  "arxiv_id": "2408.00118",
+  "extraction": "papers\\llm_extract_receipts\\2408.00118.extraction.json",
+  "prompt_sha256": "e6c6c505",
+  "asserts": [],
+  "waive": [],
+  "verdict": "refused",
+  "reasons": [
+   "new op softcapped_attention needs a new primitive (Sec. Model Architecture, Logit soft-capping): Needs a GQA causal attention primitive that applies 50*tanh(s/50) to the [heads, T, T] pre-softmax logit matrix before the softmax. Its window must also switch between 4096-token sliding-window layers and global (8192) layers on alternating layers. The standard attention op exposes neither the logit cap nor a per-layer window schedule.; no family here builds it and no expr can state it, so the chain refuses rather than approximates (paper: “We cap logits~\\citep{bello2016combinatorial} in each attention layer and the final layer such that the value of the logits stays between $-\\text{soft\\_cap}$ and $+\\text{soft\\_cap}$.”)",
+   "mechanism outside the extractor's lattice: Per-layer alternation of local sliding-window (4096) and global (8192 span) attention. The block is not identical across layers. Which parity starts with local attention is not stated. (llm extraction, verified quote, Sec. Model Architecture: “We alternate between a local sliding window attention~\\citep{slidingwindow, beltagy2020longformer} and global attention~\\citep{globalattention} in every other layer.”); no family here builds it, and training the extracted flavours alone would silently approximate the paper",
+   "activation = geglu has no engine support (mtstudio takes ['gelu', 'relu', 'swiglu'])",
+   "attention = other:alternating local sliding-window (4096) and global (8192 span) attention every other layer, with tanh logit soft-capping (50) has no engine support (mtstudio takes ['exact', 'swa'])"
+  ]
+ },
+ {
+  "arxiv_id": "1706.03762",
+  "extraction": "experiments\\arxiv_chain_2026-10-28_e3\\1706.03762.extraction.json",
+  "prompt_sha256": "10a300fb",
+  "asserts": [
+   "family=decoder_only"
+  ],
+  "waive": [],
+  "verdict": "refused",
+  "reasons": [
+   "new op sinusoidal_pe needs a new primitive (Sec. 3.5 Positional Encoding): Needs a fixed (non-learned) [T, d_model] table generated from the position index and the feature index: PE(pos,2i)=sin(pos/10000^(2i/d_model)), PE(pos,2i+1)=cos(pos/10000^(2i/d_model)); the expr grammar has no access to the position or feature index.; no family here builds it and no expr can state it, so the chain refuses rather than approximates (paper: “PE_{(pos,2i)} = sin(pos / 10000^{2i/\\dmodel}) \\\\ PE_{(pos,2i+1)} = cos(pos / 10000^{2i/\\dmodel})”)",
+   "embed = expr:x*8: the paper scales the token embedding before adding its sinusoidal position table, and flex's embed expr acts after the table is added"
+  ]
+ }
+]

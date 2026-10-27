@@ -91,9 +91,32 @@ def test_sizes_matched_per_config():
     assert s["unmatched_extracted"] == ["extra"]
 
 
+def test_sizes_match_a_config_by_name_when_no_size_agrees():
+    # Mamba's headline configs state only a context length: matched by name, not left unmatched.
+    truth = [{"name": "Mamba-130M", "context_length": {"value": 2048}}]
+    s = B.score_sizes(truth, [{"_name": "Mamba-130M", "context_length": 2048.0}])
+    assert s["tally"] == {"correct": 1, "WRONG": 0, "abstain": 0, "unlabelled": 0}
+    s = B.score_sizes(truth, [{"_name": "other", "context_length": 2048.0}])
+    assert s["tally"] == {"correct": 0, "WRONG": 0, "abstain": 1, "unlabelled": 1}
+
+
+def test_accept_lists_for_context_length_and_qk_norm():
+    # DeepSeek-V2: the 4K pre-training length or the extended 128K (main session, 27 Oct 2026).
+    truth = [{"name": "DeepSeek-V2", "d_model": {"value": 5120},
+              "context_length": {"value": 4096, "accept": [4096, 131072, 128000]}}]
+    for got, verdict in ((131072.0, "correct"), (4096.0, "correct"), (32768.0, "WRONG")):
+        s = B.score_sizes(truth, [{"_name": "DeepSeek-V2", "d_model": 5120.0, "context_length": got}])
+        assert s["tally"][verdict] == (2 if verdict == "correct" else 1)
+    # OLMo 2's q/k norm reads as full or unspecified.
+    nf = {"new_fields": {"qk_norm": {"value": "full", "accept": ["full", "unspecified"]}}}
+    for got, verdict in (("full", "correct"), ("unspecified", "correct"), ("per_head", "WRONG")):
+        rows = {r["field"]: r["score"] for r in B.score_new_fields("x", _rep({"qk_norm": got}), {}, nf)}
+        assert rows["qk_norm"] == verdict
+
+
 def test_truth_file_quotes_occur_in_the_sources():
     truth = json.loads(open(B.TRUTH_FILE, encoding="utf-8").read())
-    assert len(truth["papers"]) == 40
+    assert len(truth["papers"]) == 43  # the 40 + Mamba, Qwen3, OLMo 2 (28 Oct 2026)
     checked = 0
     for pid, p in truth["papers"].items():
         path = os.path.join(HERE, ".cache", f"{pid}.tex")

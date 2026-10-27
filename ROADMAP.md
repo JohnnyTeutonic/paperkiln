@@ -157,16 +157,10 @@ advisory steps that cannot fail the build.
   569 / 2 / 71 vs the rule-based 136 / 8 / 498; block graph 91 / 2 / 2; per-sublayer placement 34 / 0 / 0;
   qk_norm, ssm and learned inputs 40 / 0 / 0 each; positions outside the old lattice 5 / 0 / 2; new-op inputs
   6 / 0 / 1; `papers/bench_score.py` against `papers/bench_truth_structure.json`,
-  `papers/llm_extract_receipts/2026-10-27_bench_scores.json`). Open: the verifier's position cues miss T5's
-  own wording of its bias and BART's learned table; an inheritance quote that names the ancestor by a LaTeX
-  macro (RoBERTa's `\bertlarge{}`) fails the ancestor check; no value for a GELU whose form is not stated
-  (GPT-NeoX); an affine scale given as a formula (PaLM's `1/sqrt(d_model)`) does not build; the bench has no
-  q/k-norm or SSM paper, so those fields are measured only as false assertions. Check every `expr` with
-  `spec/tools/ir_expr.py` (the parser both engines use; landed in 1159d63e); a studio button that runs it
-  instead of `fetch.py` when a key is configured; prompt optimisation later.
-- **Chain gaps still refusing** (LOCAL_LLM_WORK.md E3): a q/k norm on flex or over the full width;
-  Mamba-1's inner LayerNorm (the paper's optional norm); MoE headline models. Primer's positions still
-  refuse: the paper cites Shaw for the T5 and Lingvo codebases' relative attention and states no distance.
+  `papers/llm_extract_receipts/2026-10-27_bench_scores.json`). The same replies rescored by the 28 Oct
+  verifier and scorer, with Mamba, Qwen3 and OLMo 2 labelled (43 papers; OLMo 2 has no reply under the
+  bench's prompt): `2026-10-28_bench_scores.json` (`experiments/arxiv_chain_2026-10-28_e3/`). Open: a
+  studio button that runs it instead of `fetch.py` when a key is configured; prompt optimisation later.
 - **Two lexical gaps found while fixing the wrong assertions:** the GELU
   pattern does not match the spelling "GeLU" (Megatron, BART), and a
   vetoed runner-up still marks a field as contested.

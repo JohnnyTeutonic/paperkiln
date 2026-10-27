@@ -1,0 +1,1867 @@
+{
+ "arxiv_id": "1706.03762",
+ "title": "Attention Is All You Need",
+ "fields": {
+  "d_model": {
+   "value": 512,
+   "evidence": "base & 6 & 512 & 2048 & 8 & 64 & 64 & 0.1 & 0.1 & 100K [Table 3 (tab:variations)]",
+   "verdict": "used"
+  },
+  "n_layers": {
+   "value": 6,
+   "evidence": "base & 6 & 512 & 2048 & 8 & 64 & 64 & 0.1 & 0.1 & 100K [Table 3 (tab:variations)]",
+   "verdict": "used"
+  },
+  "n_heads": {
+   "value": 8,
+   "evidence": "base & 6 & 512 & 2048 & 8 & 64 & 64 & 0.1 & 0.1 & 100K [Table 3 (tab:variations)]",
+   "verdict": "used"
+  },
+  "n_kv_heads": {
+   "value": 8,
+   "evidence": "In this work we employ $h=8$ parallel attention layers, or heads. [Sec. 3.2.2 Multi-Head Attention]",
+   "verdict": "used"
+  },
+  "d_ff": {
+   "value": 2048,
+   "evidence": "The dimensionality of input and output is $\\dmodel=512$, and the inner-layer has dimensionality $d_{ff}=2048$. [Sec. 3.3 Position-wise Feed-Forward Networks]",
+   "verdict": "used"
+  },
+  "vocab_size": {
+   "value": 37000,
+   "evidence": "which has a shared source-target vocabulary of about 37000 tokens [Sec. 5.1 Training Data and Batching]",
+   "verdict": "used"
+  },
+  "norm": {
+   "value": "layernorm",
+   "evidence": "We employ a residual connection \\citep{he2016deep} around each of the two sub-layers, followed by layer normalization \\cite{layernorm2016}. [Sec. 3.1 Encoder and Decoder Stacks]",
+   "verdict": "used"
+  },
+  "activation": {
+   "value": "relu",
+   "evidence": "This consists of two linear transformations with a ReLU activation in between. [Sec. 3.3 Position-wise Feed-Forward Networks]",
+   "verdict": "used"
+  },
+  "positional": {
+   "value": "sinusoidal",
+   "evidence": "In this work, we use sine and cosine functions of different frequencies: [Sec. 3.5 Positional Encoding]",
+   "verdict": "used"
+  },
+  "residual": {
+   "value": "residual",
+   "evidence": "We employ a residual connection \\citep{he2016deep} around each of the two sub-layers, followed by layer normalization \\cite{layernorm2016}. [Sec. 3.1 Encoder and Decoder Stacks]",
+   "verdict": "used"
+  },
+  "attention": {
+   "value": "exact",
+   "evidence": "We compute the dot products of the query with all keys, divide each by $\\sqrt{d_k}$, and apply a softmax function to obtain the weights on the values. [Sec. 3.2.1 Scaled Dot-Product Attention]",
+   "verdict": "used"
+  }
+ },
+ "unresolved": [
+  "context_length"
+ ],
+ "unverified": [],
+ "mentions": {},
+ "inherits": null,
+ "variants": [
+  {
+   "d_model": 512,
+   "n_layers": 6,
+   "n_heads": 8,
+   "n_kv_heads": 8,
+   "d_ff": 2048,
+   "vocab_size": 37000
+  },
+  {
+   "d_model": 1024,
+   "n_layers": 6,
+   "n_heads": 16,
+   "n_kv_heads": 16,
+   "d_ff": 4096,
+   "vocab_size": 37000
+  }
+ ],
+ "mechanism_scan": [
+  {
+   "mechanism": "encoder-decoder or encoder-only model",
+   "where": "llm extraction, verified quote, Sec. 3 Model Architecture",
+   "blocking": true,
+   "evidence": "The Transformer follows this overall architecture using stacked self-attention and point-wise, fully connected layers for both the encoder and decoder"
+  },
+  {
+   "mechanism": "new op sinusoidal_pe (needs a new primitive: Needs a fixed (non-learned) [T, d_model] table generated from the position index and the feature index: PE(pos,2i)=sin(p)",
+   "where": "llm extraction, verified quote, Sec. 3.5 Positional Encoding",
+   "blocking": true,
+   "evidence": "PE_{(pos,2i)} = sin(pos / 10000^{2i/\\dmodel}) \\\\\n    PE_{(pos,2i+1)} = cos(pos / 10000^{2i/\\dmodel})"
+  },
+  {
+   "mechanism": "Encoder-decoder structure: separate 6-layer decoder whose layers add a third sublayer of cross-attention over the encoder output (queries from decoder, keys/values from encoder), each sublayer with residual + post LayerNorm",
+   "where": "llm extraction, verified quote, Sec. 3.1 Encoder and Decoder Stacks",
+   "blocking": true,
+   "evidence": "In addition to the two sub-layers in each encoder layer, the decoder inserts a third sub-layer, which performs multi-head attention over the output of the encoder stack."
+  },
+  {
+   "mechanism": "Decoder self-attention is causally masked (output embeddings shifted right by one)",
+   "where": "llm extraction, verified quote, Sec. 3.1 Encoder and Decoder Stacks",
+   "blocking": true,
+   "evidence": "We also modify the self-attention sub-layer in the decoder stack to prevent positions from attending to subsequent positions."
+  },
+  {
+   "mechanism": "Single embedding matrix shared between encoder input embedding, decoder input embedding and the output projection",
+   "where": "llm extraction, verified quote, Sec. 3.4 Embeddings and Softmax",
+   "blocking": true,
+   "evidence": "In our model, we share the same weight matrix between the two embedding layers and the pre-softmax linear transformation"
+  }
+ ],
+ "source": {
+  "tex_sha256": "9769d42d4243e4bad80eadbd4f6390fda706824f58b04d1ae1914fe23d3c6fe1",
+  "sent_sha256": "478c731f5bcdf0a847f1501ea456fc951031d20dd6526731fe240a3b972751a7",
+  "from": "https://arxiv.org/e-print/1706.03762",
+  "extractor": "papers/llm_extract.py",
+  "extractor_sha256": "af22b1e4f748d368b6fc51a974278eb266a21e4386346082670d4a0fb9e626b0",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "prompt_sha256": "10a300fb8b18ee2715951d4a0791df3b1f472f70a93641084aaaf963ab88e016",
+  "n_calls": 1,
+  "cost_usd": 0.327864,
+  "request_ids": [
+   "req_011CgSpMxRidYJnJRL7oZpnh"
+  ]
+ },
+ "llm": {
+  "output": {
+   "title": "Attention Is All You Need",
+   "model_name": "Transformer",
+   "family": {
+    "value": "encoder_decoder",
+    "status": "stated",
+    "quote": "The Transformer follows this overall architecture using stacked self-attention and point-wise, fully connected layers for both the encoder and decoder",
+    "where": "Sec. 3 Model Architecture"
+   },
+   "inherits": {
+    "ancestor": "",
+    "quote": "",
+    "where": ""
+   },
+   "configs": [
+    {
+     "name": "base",
+     "d_model": {
+      "value": "512",
+      "status": "stated",
+      "quote": "base & 6 & 512 & 2048 & 8 & 64 & 64 & 0.1 & 0.1 & 100K",
+      "where": "Table 3 (tab:variations)"
+     },
+     "n_layers": {
+      "value": "6",
+      "status": "stated",
+      "quote": "base & 6 & 512 & 2048 & 8 & 64 & 64 & 0.1 & 0.1 & 100K",
+      "where": "Table 3 (tab:variations)"
+     },
+     "n_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "base & 6 & 512 & 2048 & 8 & 64 & 64 & 0.1 & 0.1 & 100K",
+      "where": "Table 3 (tab:variations)"
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "In this work we employ $h=8$ parallel attention layers, or heads.",
+      "where": "Sec. 3.2.2 Multi-Head Attention"
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "For each of these we use $d_k=d_v=\\dmodel/h=64$.",
+      "where": "Sec. 3.2.2 Multi-Head Attention"
+     },
+     "d_ff": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "The dimensionality of input and output is $\\dmodel=512$, and the inner-layer has dimensionality $d_{ff}=2048$.",
+      "where": "Sec. 3.3 Position-wise Feed-Forward Networks"
+     },
+     "vocab_size": {
+      "value": "37000",
+      "status": "stated",
+      "quote": "which has a shared source-target vocabulary of about 37000 tokens",
+      "where": "Sec. 5.1 Training Data and Batching"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    },
+    {
+     "name": "big",
+     "d_model": {
+      "value": "1024",
+      "status": "stated",
+      "quote": "big & 6 & 1024 & 4096 & 16 & & & 0.3 & & 300K",
+      "where": "Table 3 (tab:variations)"
+     },
+     "n_layers": {
+      "value": "6",
+      "status": "stated",
+      "quote": "big & 6 & 1024 & 4096 & 16 & & & 0.3 & & 300K",
+      "where": "Table 3 (tab:variations)"
+     },
+     "n_heads": {
+      "value": "16",
+      "status": "stated",
+      "quote": "big & 6 & 1024 & 4096 & 16 & & & 0.3 & & 300K",
+      "where": "Table 3 (tab:variations)"
+     },
+     "n_kv_heads": {
+      "value": "16",
+      "status": "stated",
+      "quote": "big & 6 & 1024 & 4096 & 16 & & & 0.3 & & 300K",
+      "where": "Table 3 (tab:variations)"
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "For each of these we use $d_k=d_v=\\dmodel/h=64$.",
+      "where": "Sec. 3.2.2 Multi-Head Attention"
+     },
+     "d_ff": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "big & 6 & 1024 & 4096 & 16 & & & 0.3 & & 300K",
+      "where": "Table 3 (tab:variations)"
+     },
+     "vocab_size": {
+      "value": "37000",
+      "status": "stated",
+      "quote": "which has a shared source-target vocabulary of about 37000 tokens",
+      "where": "Sec. 5.1 Training Data and Batching"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    }
+   ],
+   "primary_config": "base",
+   "flavours": {
+    "norm": {
+     "value": "layernorm",
+     "status": "stated",
+     "quote": "We employ a residual connection \\citep{he2016deep} around each of the two sub-layers, followed by layer normalization \\cite{layernorm2016}.",
+     "where": "Sec. 3.1 Encoder and Decoder Stacks"
+    },
+    "norm_placement": {
+     "value": "post",
+     "status": "stated",
+     "quote": "That is, the output of each sub-layer is $\\mathrm{LayerNorm}(x + \\mathrm{Sublayer}(x))$",
+     "where": "Sec. 3.1 Encoder and Decoder Stacks"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "activation": {
+     "value": "relu",
+     "status": "stated",
+     "quote": "This consists of two linear transformations with a ReLU activation in between.",
+     "where": "Sec. 3.3 Position-wise Feed-Forward Networks"
+    },
+    "positional": {
+     "value": "sinusoidal",
+     "status": "stated",
+     "quote": "In this work, we use sine and cosine functions of different frequencies:",
+     "where": "Sec. 3.5 Positional Encoding"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_per_head": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_values": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "residual": {
+     "value": "residual",
+     "status": "stated",
+     "quote": "We employ a residual connection \\citep{he2016deep} around each of the two sub-layers, followed by layer normalization \\cite{layernorm2016}.",
+     "where": "Sec. 3.1 Encoder and Decoder Stacks"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "stated",
+     "quote": "That is, the output of each sub-layer is $\\mathrm{LayerNorm}(x + \\mathrm{Sublayer}(x))$",
+     "where": "Sec. 3.1 Encoder and Decoder Stacks"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "We compute the dot products of the query with all keys, divide each by $\\sqrt{d_k}$, and apply a softmax function to obtain the weights on the values.",
+     "where": "Sec. 3.2.1 Scaled Dot-Product Attention"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qkv_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "mlp_bias": {
+     "value": "true",
+     "status": "stated",
+     "quote": "\\mathrm{FFN}(x)=\\max(0, xW_1 + b_1) W_2 + b_2",
+     "where": "Sec. 3.3 Position-wise Feed-Forward Networks"
+    },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "tied_embeddings": {
+     "value": "true",
+     "status": "stated",
+     "quote": "In our model, we share the same weight matrix between the two embedding layers and the pre-softmax linear transformation",
+     "where": "Sec. 3.4 Embeddings and Softmax"
+    },
+    "moe": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    }
+   },
+   "block_ops": [
+    {
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding (shared between encoder, decoder and output head)",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "e",
+     "attributes": [
+      {
+       "name": "d",
+       "value": "512",
+       "status": "stated",
+       "quote": "all sub-layers in the model, as well as the embedding layers, produce outputs of dimension $\\dmodel=512$",
+       "where": "Sec. 3.1 Encoder and Decoder Stacks"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "embed",
+     "op": "affine",
+     "role": "multiply embeddings by sqrt(d_model)",
+     "inputs": [
+      "e"
+     ],
+     "output": "es",
+     "attributes": [
+      {
+       "name": "scale",
+       "value": "sqrt(d_model)",
+       "status": "stated",
+       "quote": "In the embedding layers, we multiply those weights by $\\sqrt{\\dmodel}$.",
+       "where": "Sec. 3.4 Embeddings and Softmax"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "embed",
+     "op": "unsupported",
+     "role": "fixed sinusoidal positional encoding table",
+     "inputs": [
+      "pos"
+     ],
+     "output": "pe",
+     "attributes": [
+      {
+       "name": "base",
+       "value": "10000",
+       "status": "stated",
+       "quote": "PE_{(pos,2i)} = sin(pos / 10000^{2i/\\dmodel})",
+       "where": "Sec. 3.5 Positional Encoding"
+      }
+     ],
+     "new_op": "sinusoidal_pe"
+    },
+    {
+     "subgraph": "embed",
+     "op": "add",
+     "role": "add positional encodings to input embeddings",
+     "inputs": [
+      "es",
+      "pe"
+     ],
+     "output": "x",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "query projection W^Q",
+     "inputs": [
+      "x"
+     ],
+     "output": "q",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "512",
+       "status": "stated",
+       "quote": "base & 6 & 512 & 2048 & 8 & 64 & 64 & 0.1 & 0.1 & 100K",
+       "where": "Table 3 (tab:variations)"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection W^K",
+     "inputs": [
+      "x"
+     ],
+     "output": "k",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "512",
+       "status": "stated",
+       "quote": "base & 6 & 512 & 2048 & 8 & 64 & 64 & 0.1 & 0.1 & 100K",
+       "where": "Table 3 (tab:variations)"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection W^V",
+     "inputs": [
+      "x"
+     ],
+     "output": "v",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "512",
+       "status": "stated",
+       "quote": "base & 6 & 512 & 2048 & 8 & 64 & 64 & 0.1 & 0.1 & 100K",
+       "where": "Table 3 (tab:variations)"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "attention",
+     "role": "multi-head scaled dot-product self-attention (encoder: bidirectional)",
+     "inputs": [
+      "q",
+      "k",
+      "v"
+     ],
+     "output": "a",
+     "attributes": [
+      {
+       "name": "heads",
+       "value": "8",
+       "status": "stated",
+       "quote": "In this work we employ $h=8$ parallel attention layers, or heads.",
+       "where": "Sec. 3.2.2 Multi-Head Attention"
+      },
+      {
+       "name": "kv_heads",
+       "value": "8",
+       "status": "stated",
+       "quote": "In this work we employ $h=8$ parallel attention layers, or heads.",
+       "where": "Sec. 3.2.2 Multi-Head Attention"
+      },
+      {
+       "name": "head_dim",
+       "value": "64",
+       "status": "stated",
+       "quote": "For each of these we use $d_k=d_v=\\dmodel/h=64$.",
+       "where": "Sec. 3.2.2 Multi-Head Attention"
+      },
+      {
+       "name": "scale",
+       "value": "1/sqrt(d_k)",
+       "status": "stated",
+       "quote": "To counteract this effect, we scale the dot products by $\\frac{1}{\\sqrt{d_k}}$.",
+       "where": "Sec. 3.2.1 Scaled Dot-Product Attention"
+      },
+      {
+       "name": "causal",
+       "value": "false",
+       "status": "stated",
+       "quote": "Each position in the encoder can attend to all positions in the previous layer of the encoder.",
+       "where": "Sec. 3.2.3 Applications of Attention in our Model"
+      },
+      {
+       "name": "window",
+       "value": "0",
+       "status": "stated",
+       "quote": "Each position in the encoder can attend to all positions in the previous layer of the encoder.",
+       "where": "Sec. 3.2.3 Applications of Attention in our Model"
+      },
+      {
+       "name": "sinks",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection W^O",
+     "inputs": [
+      "a"
+     ],
+     "output": "ao",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "512",
+       "status": "stated",
+       "quote": "all sub-layers in the model, as well as the embedding layers, produce outputs of dimension $\\dmodel=512$",
+       "where": "Sec. 3.1 Encoder and Decoder Stacks"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "ao"
+     ],
+     "output": "r1",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "post-norm after attention residual",
+     "inputs": [
+      "r1"
+     ],
+     "output": "h",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN W_1",
+     "inputs": [
+      "h"
+     ],
+     "output": "f1",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "2048",
+       "status": "stated",
+       "quote": "The dimensionality of input and output is $\\dmodel=512$, and the inner-layer has dimensionality $d_{ff}=2048$.",
+       "where": "Sec. 3.3 Position-wise Feed-Forward Networks"
+      },
+      {
+       "name": "bias",
+       "value": "true",
+       "status": "stated",
+       "quote": "\\mathrm{FFN}(x)=\\max(0, xW_1 + b_1) W_2 + b_2",
+       "where": "Sec. 3.3 Position-wise Feed-Forward Networks"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "relu",
+     "role": "FFN activation",
+     "inputs": [
+      "f1"
+     ],
+     "output": "f2",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN W_2",
+     "inputs": [
+      "f2"
+     ],
+     "output": "f3",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "512",
+       "status": "stated",
+       "quote": "The dimensionality of input and output is $\\dmodel=512$, and the inner-layer has dimensionality $d_{ff}=2048$.",
+       "where": "Sec. 3.3 Position-wise Feed-Forward Networks"
+      },
+      {
+       "name": "bias",
+       "value": "true",
+       "status": "stated",
+       "quote": "\\mathrm{FFN}(x)=\\max(0, xW_1 + b_1) W_2 + b_2",
+       "where": "Sec. 3.3 Position-wise Feed-Forward Networks"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "h",
+      "f3"
+     ],
+     "output": "r2",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "post-norm after FFN residual",
+     "inputs": [
+      "r2"
+     ],
+     "output": "x",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "linear",
+     "role": "pre-softmax output projection (decoder), tied to embeddings",
+     "inputs": [
+      "x"
+     ],
+     "output": "logits",
+     "attributes": [
+      {
+       "name": "tied_to",
+       "value": "token_embd",
+       "status": "stated",
+       "quote": "In our model, we share the same weight matrix between the two embedding layers and the pre-softmax linear transformation",
+       "where": "Sec. 3.4 Embeddings and Softmax"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    }
+   ],
+   "new_ops": [
+    {
+     "name": "sinusoidal_pe",
+     "kind": "needs_new_primitive",
+     "expr": "",
+     "inputs": [
+      {
+       "name": "pos",
+       "meaning": "token position index",
+       "role": "other",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       }
+      }
+     ],
+     "replaces": "positional embedding table",
+     "reason": "Needs a fixed (non-learned) [T, d_model] table generated from the position index and the feature index: PE(pos,2i)=sin(pos/10000^(2i/d_model)), PE(pos,2i+1)=cos(pos/10000^(2i/d_model)); the expr grammar has no access to the position or feature index.",
+     "quote": "PE_{(pos,2i)} = sin(pos / 10000^{2i/\\dmodel}) \\\\\n    PE_{(pos,2i+1)} = cos(pos / 10000^{2i/\\dmodel})",
+     "where": "Sec. 3.5 Positional Encoding"
+    }
+   ],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Encoder-decoder structure: separate 6-layer decoder whose layers add a third sublayer of cross-attention over the encoder output (queries from decoder, keys/values from encoder), each sublayer with residual + post LayerNorm",
+     "quote": "In addition to the two sub-layers in each encoder layer, the decoder inserts a third sub-layer, which performs multi-head attention over the output of the encoder stack.",
+     "where": "Sec. 3.1 Encoder and Decoder Stacks"
+    },
+    {
+     "mechanism": "Decoder self-attention is causally masked (output embeddings shifted right by one)",
+     "quote": "We also modify the self-attention sub-layer in the decoder stack to prevent positions from attending to subsequent positions.",
+     "where": "Sec. 3.1 Encoder and Decoder Stacks"
+    },
+    {
+     "mechanism": "Single embedding matrix shared between encoder input embedding, decoder input embedding and the output projection",
+     "quote": "In our model, we share the same weight matrix between the two embedding layers and the pre-softmax linear transformation",
+     "where": "Sec. 3.4 Embeddings and Softmax"
+    }
+   ],
+   "notes": "Encoder-decoder Transformer; block_ops describe one encoder layer (bidirectional self-attention + ReLU FFN, post-LN); the decoder (causal self-attention, cross-attention, FFN) is listed under mechanisms_outside_ir, and the head is the decoder's tied output projection. Base listed first as primary; big (1024/4096/16 heads, 6 layers) is the headline 28.4 BLEU model. Big's head_dim is not in its table row ('Unlisted values are identical to those of the base model'); 64 follows d_model/h. Vocab is 'about 37000' shared BPE for EN-DE; EN-FR uses 32000 word-pieces. Context length, LayerNorm eps and QKV-projection bias are not stated. Dropout is training-only and omitted."
+  },
+  "verification": {
+   "errors": [],
+   "warnings": [],
+   "inherits": null,
+   "family": {
+    "value": "encoder_decoder",
+    "status": "stated",
+    "quote": "The Transformer follows this overall architecture using stacked self-attention and point-wise, fully connected layers for both the encoder and decoder",
+    "where": "Sec. 3 Model Architecture",
+    "reasons": [],
+    "check": "verified"
+   },
+   "configs": [
+    {
+     "name": "base",
+     "d_model": {
+      "value": "512",
+      "status": "stated",
+      "quote": "base & 6 & 512 & 2048 & 8 & 64 & 64 & 0.1 & 0.1 & 100K",
+      "where": "Table 3 (tab:variations)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "6",
+      "status": "stated",
+      "quote": "base & 6 & 512 & 2048 & 8 & 64 & 64 & 0.1 & 0.1 & 100K",
+      "where": "Table 3 (tab:variations)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "base & 6 & 512 & 2048 & 8 & 64 & 64 & 0.1 & 0.1 & 100K",
+      "where": "Table 3 (tab:variations)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "In this work we employ $h=8$ parallel attention layers, or heads.",
+      "where": "Sec. 3.2.2 Multi-Head Attention",
+      "reasons": [],
+      "check": "verified"
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "For each of these we use $d_k=d_v=\\dmodel/h=64$.",
+      "where": "Sec. 3.2.2 Multi-Head Attention",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "The dimensionality of input and output is $\\dmodel=512$, and the inner-layer has dimensionality $d_{ff}=2048$.",
+      "where": "Sec. 3.3 Position-wise Feed-Forward Networks",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "37000",
+      "status": "stated",
+      "quote": "which has a shared source-target vocabulary of about 37000 tokens",
+      "where": "Sec. 5.1 Training Data and Batching",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads divides n_heads",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads <= n_heads",
+       "ok": true
+      },
+      {
+       "check": "head_dim * n_heads == d_model",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "big",
+     "d_model": {
+      "value": "1024",
+      "status": "stated",
+      "quote": "big & 6 & 1024 & 4096 & 16 & & & 0.3 & & 300K",
+      "where": "Table 3 (tab:variations)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "6",
+      "status": "stated",
+      "quote": "big & 6 & 1024 & 4096 & 16 & & & 0.3 & & 300K",
+      "where": "Table 3 (tab:variations)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "16",
+      "status": "stated",
+      "quote": "big & 6 & 1024 & 4096 & 16 & & & 0.3 & & 300K",
+      "where": "Table 3 (tab:variations)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "16",
+      "status": "stated",
+      "quote": "big & 6 & 1024 & 4096 & 16 & & & 0.3 & & 300K",
+      "where": "Table 3 (tab:variations)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "For each of these we use $d_k=d_v=\\dmodel/h=64$.",
+      "where": "Sec. 3.2.2 Multi-Head Attention",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "big & 6 & 1024 & 4096 & 16 & & & 0.3 & & 300K",
+      "where": "Table 3 (tab:variations)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "37000",
+      "status": "stated",
+      "quote": "which has a shared source-target vocabulary of about 37000 tokens",
+      "where": "Sec. 5.1 Training Data and Batching",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads divides n_heads",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads <= n_heads",
+       "ok": true
+      },
+      {
+       "check": "head_dim * n_heads == d_model",
+       "ok": true
+      }
+     ]
+    }
+   ],
+   "primary_config": "base",
+   "flavours": {
+    "norm": {
+     "value": "layernorm",
+     "status": "stated",
+     "quote": "We employ a residual connection \\citep{he2016deep} around each of the two sub-layers, followed by layer normalization \\cite{layernorm2016}.",
+     "where": "Sec. 3.1 Encoder and Decoder Stacks",
+     "reasons": [],
+     "check": "verified"
+    },
+    "norm_placement": {
+     "value": "post",
+     "status": "stated",
+     "quote": "That is, the output of each sub-layer is $\\mathrm{LayerNorm}(x + \\mathrm{Sublayer}(x))$",
+     "where": "Sec. 3.1 Encoder and Decoder Stacks",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "activation": {
+     "value": "relu",
+     "status": "stated",
+     "quote": "This consists of two linear transformations with a ReLU activation in between.",
+     "where": "Sec. 3.3 Position-wise Feed-Forward Networks",
+     "reasons": [],
+     "check": "verified"
+    },
+    "positional": {
+     "value": "sinusoidal",
+     "status": "stated",
+     "quote": "In this work, we use sine and cosine functions of different frequencies:",
+     "where": "Sec. 3.5 Positional Encoding",
+     "reasons": [],
+     "check": "verified"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_per_head": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_values": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "residual": {
+     "value": "residual",
+     "status": "stated",
+     "quote": "We employ a residual connection \\citep{he2016deep} around each of the two sub-layers, followed by layer normalization \\cite{layernorm2016}.",
+     "where": "Sec. 3.1 Encoder and Decoder Stacks",
+     "reasons": [],
+     "check": "verified"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "stated",
+     "quote": "That is, the output of each sub-layer is $\\mathrm{LayerNorm}(x + \\mathrm{Sublayer}(x))$",
+     "where": "Sec. 3.1 Encoder and Decoder Stacks",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "We compute the dot products of the query with all keys, divide each by $\\sqrt{d_k}$, and apply a softmax function to obtain the weights on the values.",
+     "where": "Sec. 3.2.1 Scaled Dot-Product Attention",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qkv_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "mlp_bias": {
+     "value": "true",
+     "status": "stated",
+     "quote": "\\mathrm{FFN}(x)=\\max(0, xW_1 + b_1) W_2 + b_2",
+     "where": "Sec. 3.3 Position-wise Feed-Forward Networks",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "tied_embeddings": {
+     "value": "true",
+     "status": "stated",
+     "quote": "In our model, we share the same weight matrix between the two embedding layers and the pre-softmax linear transformation",
+     "where": "Sec. 3.4 Embeddings and Softmax",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "moe": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    }
+   },
+   "new_ops": [
+    {
+     "name": "sinusoidal_pe",
+     "kind": "needs_new_primitive",
+     "replaces": "positional embedding table",
+     "reason": "Needs a fixed (non-learned) [T, d_model] table generated from the position index and the feature index: PE(pos,2i)=sin(pos/10000^(2i/d_model)), PE(pos,2i+1)=cos(pos/10000^(2i/d_model)); the expr grammar has no access to the position or feature index.",
+     "quote": "PE_{(pos,2i)} = sin(pos / 10000^{2i/\\dmodel}) \\\\\n    PE_{(pos,2i+1)} = cos(pos / 10000^{2i/\\dmodel})",
+     "where": "Sec. 3.5 Positional Encoding",
+     "inputs": [
+      {
+       "name": "pos",
+       "meaning": "token position index",
+       "role": "other",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       },
+       "init_check": "not_stated"
+      }
+     ],
+     "errors": [],
+     "quote_found": true,
+     "check": "verified"
+    }
+   ],
+   "block_ops": [
+    {
+     "i": 0,
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding (shared between encoder, decoder and output head)",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "e",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "512",
+       "status": "stated",
+       "quote": "all sub-layers in the model, as well as the embedding layers, produce outputs of dimension $\\dmodel=512$",
+       "where": "Sec. 3.1 Encoder and Decoder Stacks",
+       "reasons": [],
+       "check": "verified",
+       "name": "d"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 1,
+     "subgraph": "embed",
+     "op": "affine",
+     "role": "multiply embeddings by sqrt(d_model)",
+     "inputs": [
+      "e"
+     ],
+     "output": "es",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "sqrt(d_model)",
+       "status": "stated",
+       "quote": "In the embedding layers, we multiply those weights by $\\sqrt{\\dmodel}$.",
+       "where": "Sec. 3.4 Embeddings and Softmax",
+       "reasons": [],
+       "check": "verified",
+       "name": "scale"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 2,
+     "subgraph": "embed",
+     "op": "unsupported",
+     "role": "fixed sinusoidal positional encoding table",
+     "inputs": [
+      "pos"
+     ],
+     "output": "pe",
+     "new_op": "sinusoidal_pe",
+     "attributes": [
+      {
+       "value": "10000",
+       "status": "stated",
+       "quote": "PE_{(pos,2i)} = sin(pos / 10000^{2i/\\dmodel})",
+       "where": "Sec. 3.5 Positional Encoding",
+       "reasons": [],
+       "check": "verified",
+       "name": "base"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 3,
+     "subgraph": "embed",
+     "op": "add",
+     "role": "add positional encodings to input embeddings",
+     "inputs": [
+      "es",
+      "pe"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 4,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "query projection W^Q",
+     "inputs": [
+      "x"
+     ],
+     "output": "q",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "512",
+       "status": "stated",
+       "quote": "base & 6 & 512 & 2048 & 8 & 64 & 64 & 0.1 & 0.1 & 100K",
+       "where": "Table 3 (tab:variations)",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 5,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection W^K",
+     "inputs": [
+      "x"
+     ],
+     "output": "k",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "512",
+       "status": "stated",
+       "quote": "base & 6 & 512 & 2048 & 8 & 64 & 64 & 0.1 & 0.1 & 100K",
+       "where": "Table 3 (tab:variations)",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 6,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection W^V",
+     "inputs": [
+      "x"
+     ],
+     "output": "v",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "512",
+       "status": "stated",
+       "quote": "base & 6 & 512 & 2048 & 8 & 64 & 64 & 0.1 & 0.1 & 100K",
+       "where": "Table 3 (tab:variations)",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 7,
+     "subgraph": "block",
+     "op": "attention",
+     "role": "multi-head scaled dot-product self-attention (encoder: bidirectional)",
+     "inputs": [
+      "q",
+      "k",
+      "v"
+     ],
+     "output": "a",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "8",
+       "status": "stated",
+       "quote": "In this work we employ $h=8$ parallel attention layers, or heads.",
+       "where": "Sec. 3.2.2 Multi-Head Attention",
+       "reasons": [],
+       "check": "verified",
+       "name": "heads"
+      },
+      {
+       "value": "8",
+       "status": "stated",
+       "quote": "In this work we employ $h=8$ parallel attention layers, or heads.",
+       "where": "Sec. 3.2.2 Multi-Head Attention",
+       "reasons": [],
+       "check": "verified",
+       "name": "kv_heads"
+      },
+      {
+       "value": "64",
+       "status": "stated",
+       "quote": "For each of these we use $d_k=d_v=\\dmodel/h=64$.",
+       "where": "Sec. 3.2.2 Multi-Head Attention",
+       "reasons": [],
+       "check": "verified",
+       "name": "head_dim"
+      },
+      {
+       "value": "1/sqrt(d_k)",
+       "status": "stated",
+       "quote": "To counteract this effect, we scale the dot products by $\\frac{1}{\\sqrt{d_k}}$.",
+       "where": "Sec. 3.2.1 Scaled Dot-Product Attention",
+       "reasons": [],
+       "check": "verified",
+       "name": "scale"
+      },
+      {
+       "value": "false",
+       "status": "stated",
+       "quote": "Each position in the encoder can attend to all positions in the previous layer of the encoder.",
+       "where": "Sec. 3.2.3 Applications of Attention in our Model",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "causal"
+      },
+      {
+       "value": "0",
+       "status": "stated",
+       "quote": "Each position in the encoder can attend to all positions in the previous layer of the encoder.",
+       "where": "Sec. 3.2.3 Applications of Attention in our Model",
+       "reasons": [
+        "0 does not occur in its quote"
+       ],
+       "check": "unverified",
+       "name": "window"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "sinks"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 8,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection W^O",
+     "inputs": [
+      "a"
+     ],
+     "output": "ao",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "512",
+       "status": "stated",
+       "quote": "all sub-layers in the model, as well as the embedding layers, produce outputs of dimension $\\dmodel=512$",
+       "where": "Sec. 3.1 Encoder and Decoder Stacks",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 9,
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "ao"
+     ],
+     "output": "r1",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 10,
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "post-norm after attention residual",
+     "inputs": [
+      "r1"
+     ],
+     "output": "h",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 11,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN W_1",
+     "inputs": [
+      "h"
+     ],
+     "output": "f1",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "2048",
+       "status": "stated",
+       "quote": "The dimensionality of input and output is $\\dmodel=512$, and the inner-layer has dimensionality $d_{ff}=2048$.",
+       "where": "Sec. 3.3 Position-wise Feed-Forward Networks",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "true",
+       "status": "stated",
+       "quote": "\\mathrm{FFN}(x)=\\max(0, xW_1 + b_1) W_2 + b_2",
+       "where": "Sec. 3.3 Position-wise Feed-Forward Networks",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 12,
+     "subgraph": "block",
+     "op": "relu",
+     "role": "FFN activation",
+     "inputs": [
+      "f1"
+     ],
+     "output": "f2",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 13,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN W_2",
+     "inputs": [
+      "f2"
+     ],
+     "output": "f3",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "512",
+       "status": "stated",
+       "quote": "The dimensionality of input and output is $\\dmodel=512$, and the inner-layer has dimensionality $d_{ff}=2048$.",
+       "where": "Sec. 3.3 Position-wise Feed-Forward Networks",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "true",
+       "status": "stated",
+       "quote": "\\mathrm{FFN}(x)=\\max(0, xW_1 + b_1) W_2 + b_2",
+       "where": "Sec. 3.3 Position-wise Feed-Forward Networks",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 14,
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "h",
+      "f3"
+     ],
+     "output": "r2",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 15,
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "post-norm after FFN residual",
+     "inputs": [
+      "r2"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 16,
+     "subgraph": "head",
+     "op": "linear",
+     "role": "pre-softmax output projection (decoder), tied to embeddings",
+     "inputs": [
+      "x"
+     ],
+     "output": "logits",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "token_embd",
+       "status": "stated",
+       "quote": "In our model, we share the same weight matrix between the two embedding layers and the pre-softmax linear transformation",
+       "where": "Sec. 3.4 Embeddings and Softmax",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "tied_to"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    }
+   ],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Encoder-decoder structure: separate 6-layer decoder whose layers add a third sublayer of cross-attention over the encoder output (queries from decoder, keys/values from encoder), each sublayer with residual + post LayerNorm",
+     "quote": "In addition to the two sub-layers in each encoder layer, the decoder inserts a third sub-layer, which performs multi-head attention over the output of the encoder stack.",
+     "where": "Sec. 3.1 Encoder and Decoder Stacks",
+     "check": "verified"
+    },
+    {
+     "mechanism": "Decoder self-attention is causally masked (output embeddings shifted right by one)",
+     "quote": "We also modify the self-attention sub-layer in the decoder stack to prevent positions from attending to subsequent positions.",
+     "where": "Sec. 3.1 Encoder and Decoder Stacks",
+     "check": "verified"
+    },
+    {
+     "mechanism": "Single embedding matrix shared between encoder input embedding, decoder input embedding and the output projection",
+     "quote": "In our model, we share the same weight matrix between the two embedding layers and the pre-softmax linear transformation",
+     "where": "Sec. 3.4 Embeddings and Softmax",
+     "check": "verified"
+    }
+   ],
+   "summary": {
+    "counts": {
+     "verified": 32,
+     "quote_only": 9,
+     "unverified": 1,
+     "not_stated": 33
+    },
+    "unverified": [
+     {
+      "field": "block_ops[7].window",
+      "reasons": [
+       "0 does not occur in its quote"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 1,
+    "n_block_ops": 17
+   }
+  }
+ }
+}

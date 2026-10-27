@@ -1,0 +1,2208 @@
+{
+ "arxiv_id": "2501.00656",
+ "title": "2 OLMo 2 Furious",
+ "fields": {
+  "d_model": {
+   "value": 4096,
+   "evidence": "\\textbf{Hidden Size}~$(d_{model})$ & 4096 & 5120 & 5120 [Table tab:model_sizes]",
+   "verdict": "used"
+  },
+  "n_layers": {
+   "value": 32,
+   "evidence": "\\textbf{Layers} & 32 & 40 & 64 [Table tab:model_sizes]",
+   "verdict": "used"
+  },
+  "n_heads": {
+   "value": 32,
+   "evidence": "\\textbf{Attention Heads (Q/KV)} & 32/32 (MHA) & 40/40 (MHA) & 40/8 (GQA) [Table tab:model_sizes]",
+   "verdict": "used"
+  },
+  "n_kv_heads": {
+   "value": 32,
+   "evidence": "\\textbf{Attention Heads (Q/KV)} & 32/32 (MHA) & 40/40 (MHA) & 40/8 (GQA) [Table tab:model_sizes]",
+   "verdict": "used"
+  },
+  "d_ff": {
+   "value": 11008,
+   "evidence": "set the corresponding hidden size to approximately $\\frac{8}{3}d$, but increased to the closest multiple of 128 ($11,008$ for our 7B model) to improve throughput [Sec. 2.1 Model Architecture]",
+   "verdict": "used"
+  },
+  "context_length": {
+   "value": 4096,
+   "evidence": "\\textbf{Sequence Length} & 4096 & 4096 & 4096 [Table tab:model_sizes]",
+   "verdict": "used"
+  },
+  "norm": {
+   "value": "rmsnorm",
+   "evidence": "We use the RMSNorm \\citep{RMSNorm} variant of LayerNorm \\citep{Ba2016LayerNorm} without a bias term to normalize activations, instead of nonparametric LayerNorm. [Sec. 2.1 Model Architecture]",
+   "verdict": "used"
+  },
+  "activation": {
+   "value": "swiglu",
+   "evidence": "We use the SwiGLU activation function \\citep{Shazeer2020GLUVI} [Sec. 2.1 Model Architecture]",
+   "verdict": "used"
+  },
+  "positional": {
+   "value": "rope",
+   "evidence": "We replace absolute positional embeddings with rotary positional embeddings (RoPE; \\citealp{Su2021RoFormerET}). [Sec. 2.1 Model Architecture]",
+   "verdict": "used"
+  },
+  "residual": {
+   "value": "residual",
+   "evidence": "\\pmb{h} := \\pmb{x} + \\text{RMSNorm}(\\text{Attention}(\\pmb{x})) [Sec. 3.3.2 Reordered norm and QK-norm]",
+   "verdict": "unverified",
+   "reasons": [
+    "the quote does not name residual (looked for /residual|skip|\\bx\\s*\\+\\s*\\\\?[A-Za-z]/)"
+   ]
+  },
+  "attention": {
+   "value": "exact",
+   "evidence": "a family of dense autoregressive language models at 7B, 13B and 32B scales [Abstract]",
+   "verdict": "used"
+  }
+ },
+ "unresolved": [
+  "vocab_size"
+ ],
+ "unverified": [
+  {
+   "field": "residual",
+   "reasons": [
+    "the quote does not name residual (looked for /residual|skip|\\bx\\s*\\+\\s*\\\\?[A-Za-z]/)"
+   ]
+  }
+ ],
+ "mentions": {},
+ "inherits": {
+  "ancestor": "OLMo (Groeneveld et al., 2024)",
+  "evidence": "Our architecture is very similar to the first iteration of \\olmo \\citep{Groeneveld2024OLMoAT}, with several changes to improve training stability",
+  "section": "Sec. 2.1 Model Architecture"
+ },
+ "variants": [
+  {
+   "d_model": 4096,
+   "n_layers": 32,
+   "n_heads": 32,
+   "n_kv_heads": 32,
+   "d_ff": 11008,
+   "context_length": 4096
+  },
+  {
+   "d_model": 5120,
+   "n_layers": 40,
+   "n_heads": 40,
+   "n_kv_heads": 40,
+   "context_length": 4096
+  },
+  {
+   "d_model": 5120,
+   "n_layers": 64,
+   "n_heads": 40,
+   "n_kv_heads": 8,
+   "context_length": 4096
+  }
+ ],
+ "mechanism_scan": [],
+ "source": {
+  "tex_sha256": "2cd8c2f055f575f1ba54070e558bff4e3d29d52de24b2f225803a2490dd1f348",
+  "sent_sha256": "0e5a8b72608ff71fbd54035c9a6db5415cbf58b6f5677110d65c2368ab0a7966",
+  "from": "https://arxiv.org/e-print/2501.00656",
+  "extractor": "papers/llm_extract.py",
+  "extractor_sha256": "af22b1e4f748d368b6fc51a974278eb266a21e4386346082670d4a0fb9e626b0",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "prompt_sha256": "10a300fb8b18ee2715951d4a0791df3b1f472f70a93641084aaaf963ab88e016",
+  "n_calls": 1,
+  "cost_usd": 0.626636,
+  "request_ids": [
+   "req_011CgSpVvZa6h9dCPcqCkmUR"
+  ]
+ },
+ "llm": {
+  "output": {
+   "title": "2 OLMo 2 Furious",
+   "model_name": "OLMo 2",
+   "family": {
+    "value": "decoder_only",
+    "status": "stated",
+    "quote": "We adopt a decoder-only transformer architecture based on \\citet{vaswani2017attention},",
+    "where": "Sec. 2.1 Model Architecture"
+   },
+   "inherits": {
+    "ancestor": "OLMo (Groeneveld et al., 2024)",
+    "quote": "Our architecture is very similar to the first iteration of \\olmo \\citep{Groeneveld2024OLMoAT}, with several changes to improve training stability",
+    "where": "Sec. 2.1 Model Architecture"
+   },
+   "configs": [
+    {
+     "name": "7B",
+     "d_model": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "\\textbf{Hidden Size}~$(d_{model})$ & 4096 & 5120 & 5120",
+      "where": "Table tab:model_sizes"
+     },
+     "n_layers": {
+      "value": "32",
+      "status": "stated",
+      "quote": "\\textbf{Layers} & 32 & 40 & 64",
+      "where": "Table tab:model_sizes"
+     },
+     "n_heads": {
+      "value": "32",
+      "status": "stated",
+      "quote": "\\textbf{Attention Heads (Q/KV)} & 32/32 (MHA) & 40/40 (MHA) & 40/8 (GQA)",
+      "where": "Table tab:model_sizes"
+     },
+     "n_kv_heads": {
+      "value": "32",
+      "status": "stated",
+      "quote": "\\textbf{Attention Heads (Q/KV)} & 32/32 (MHA) & 40/40 (MHA) & 40/8 (GQA)",
+      "where": "Table tab:model_sizes"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "11008",
+      "status": "stated",
+      "quote": "set the corresponding hidden size to approximately $\\frac{8}{3}d$, but increased to the closest multiple of 128 ($11,008$ for our 7B model) to improve throughput",
+      "where": "Sec. 2.1 Model Architecture"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "\\textbf{Sequence Length} & 4096 & 4096 & 4096",
+      "where": "Table tab:model_sizes"
+     }
+    },
+    {
+     "name": "13B",
+     "d_model": {
+      "value": "5120",
+      "status": "stated",
+      "quote": "\\textbf{Hidden Size}~$(d_{model})$ & 4096 & 5120 & 5120",
+      "where": "Table tab:model_sizes"
+     },
+     "n_layers": {
+      "value": "40",
+      "status": "stated",
+      "quote": "\\textbf{Layers} & 32 & 40 & 64",
+      "where": "Table tab:model_sizes"
+     },
+     "n_heads": {
+      "value": "40",
+      "status": "stated",
+      "quote": "\\textbf{Attention Heads (Q/KV)} & 32/32 (MHA) & 40/40 (MHA) & 40/8 (GQA)",
+      "where": "Table tab:model_sizes"
+     },
+     "n_kv_heads": {
+      "value": "40",
+      "status": "stated",
+      "quote": "\\textbf{Attention Heads (Q/KV)} & 32/32 (MHA) & 40/40 (MHA) & 40/8 (GQA)",
+      "where": "Table tab:model_sizes"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "\\textbf{Sequence Length} & 4096 & 4096 & 4096",
+      "where": "Table tab:model_sizes"
+     }
+    },
+    {
+     "name": "32B",
+     "d_model": {
+      "value": "5120",
+      "status": "stated",
+      "quote": "\\textbf{Hidden Size}~$(d_{model})$ & 4096 & 5120 & 5120",
+      "where": "Table tab:model_sizes"
+     },
+     "n_layers": {
+      "value": "64",
+      "status": "stated",
+      "quote": "\\textbf{Layers} & 32 & 40 & 64",
+      "where": "Table tab:model_sizes"
+     },
+     "n_heads": {
+      "value": "40",
+      "status": "stated",
+      "quote": "\\textbf{Attention Heads (Q/KV)} & 32/32 (MHA) & 40/40 (MHA) & 40/8 (GQA)",
+      "where": "Table tab:model_sizes"
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "\\textbf{Attention Heads (Q/KV)} & 32/32 (MHA) & 40/40 (MHA) & 40/8 (GQA)",
+      "where": "Table tab:model_sizes"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "\\textbf{Sequence Length} & 4096 & 4096 & 4096",
+      "where": "Table tab:model_sizes"
+     }
+    }
+   ],
+   "primary_config": "7B",
+   "flavours": {
+    "norm": {
+     "value": "rmsnorm",
+     "status": "stated",
+     "quote": "We use the RMSNorm \\citep{RMSNorm} variant of LayerNorm \\citep{Ba2016LayerNorm} without a bias term to normalize activations, instead of nonparametric LayerNorm.",
+     "where": "Sec. 2.1 Model Architecture"
+    },
+    "norm_placement": {
+     "value": "branch_post",
+     "status": "stated",
+     "quote": "We normalize the outputs to the attention and feedforward (MLP) layers within each transformer block, instead of the inputs.",
+     "where": "Sec. 2.1 Model Architecture"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "activation": {
+     "value": "swiglu",
+     "status": "stated",
+     "quote": "We use the SwiGLU activation function \\citep{Shazeer2020GLUVI}",
+     "where": "Sec. 2.1 Model Architecture"
+    },
+    "positional": {
+     "value": "rope",
+     "status": "stated",
+     "quote": "We replace absolute positional embeddings with rotary positional embeddings (RoPE; \\citealp{Su2021RoFormerET}).",
+     "where": "Sec. 2.1 Model Architecture"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_per_head": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_values": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_theta": {
+     "value": "500000",
+     "status": "stated",
+     "quote": "We increase the RoPE $\\theta$ to 500,000 from 10,000.",
+     "where": "Sec. 2.1 Model Architecture"
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "residual": {
+     "value": "residual",
+     "status": "stated",
+     "quote": "\\pmb{h} := \\pmb{x} + \\text{RMSNorm}(\\text{Attention}(\\pmb{x}))",
+     "where": "Sec. 3.3.2 Reordered norm and QK-norm"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "stated",
+     "quote": "\\pmb{h}_{\\text{out}} := \\pmb{h} + \\text{RMSNorm}(\\text{MLP}(\\pmb{h}))",
+     "where": "Sec. 3.3.2 Reordered norm and QK-norm"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "a family of dense autoregressive language models at 7B, 13B and 32B scales",
+     "where": "Abstract"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qkv_bias": {
+     "value": "false",
+     "status": "stated",
+     "quote": "We exclude all bias terms from our architecture",
+     "where": "Sec. 2.1 Model Architecture"
+    },
+    "mlp_bias": {
+     "value": "false",
+     "status": "stated",
+     "quote": "We exclude all bias terms from our architecture",
+     "where": "Sec. 2.1 Model Architecture"
+    },
+    "qk_norm": {
+     "value": "unspecified",
+     "status": "stated",
+     "quote": "we normalize the key and query projections with RMSNorm before calculating attention.",
+     "where": "Sec. 2.1 Model Architecture"
+    },
+    "tied_embeddings": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe": {
+     "value": "false",
+     "status": "stated",
+     "quote": "a family of dense autoregressive language models at 7B, 13B and 32B scales",
+     "where": "Abstract"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "ssm": {
+     "value": "none",
+     "status": "stated",
+     "quote": "We adopt a decoder-only transformer architecture based on \\citet{vaswani2017attention},",
+     "where": "Sec. 2.1 Model Architecture"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    }
+   },
+   "block_ops": [
+    {
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "attributes": [
+      {
+       "name": "vocab",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "d",
+       "value": "4096",
+       "status": "stated",
+       "quote": "\\textbf{Hidden Size}~$(d_{model})$ & 4096 & 5120 & 5120",
+       "where": "Table tab:model_sizes"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "query projection",
+     "inputs": [
+      "x"
+     ],
+     "output": "q",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "stated",
+       "quote": "We exclude all bias terms from our architecture",
+       "where": "Sec. 2.1 Model Architecture"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection",
+     "inputs": [
+      "x"
+     ],
+     "output": "k",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "stated",
+       "quote": "We exclude all bias terms from our architecture",
+       "where": "Sec. 2.1 Model Architecture"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection",
+     "inputs": [
+      "x"
+     ],
+     "output": "v",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "stated",
+       "quote": "We exclude all bias terms from our architecture",
+       "where": "Sec. 2.1 Model Architecture"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "QK-norm on queries",
+     "inputs": [
+      "q"
+     ],
+     "output": "qn",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "group",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "QK-norm on keys",
+     "inputs": [
+      "k"
+     ],
+     "output": "kn",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "group",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on queries",
+     "inputs": [
+      "qn"
+     ],
+     "output": "qr",
+     "attributes": [
+      {
+       "name": "rope_heads",
+       "value": "all",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "pairing",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "n_rot",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "theta",
+       "value": "500000",
+       "status": "stated",
+       "quote": "We increase the RoPE $\\theta$ to 500,000 from 10,000.",
+       "where": "Sec. 2.1 Model Architecture"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on keys",
+     "inputs": [
+      "kn"
+     ],
+     "output": "kr",
+     "attributes": [
+      {
+       "name": "rope_heads",
+       "value": "all",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "pairing",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "n_rot",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "theta",
+       "value": "500000",
+       "status": "stated",
+       "quote": "We increase the RoPE $\\theta$ to 500,000 from 10,000.",
+       "where": "Sec. 2.1 Model Architecture"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "attention",
+     "role": "causal multi-head self-attention",
+     "inputs": [
+      "qr",
+      "kr",
+      "v"
+     ],
+     "output": "a",
+     "attributes": [
+      {
+       "name": "heads",
+       "value": "32",
+       "status": "stated",
+       "quote": "\\textbf{Attention Heads (Q/KV)} & 32/32 (MHA) & 40/40 (MHA) & 40/8 (GQA)",
+       "where": "Table tab:model_sizes"
+      },
+      {
+       "name": "kv_heads",
+       "value": "32",
+       "status": "stated",
+       "quote": "\\textbf{Attention Heads (Q/KV)} & 32/32 (MHA) & 40/40 (MHA) & 40/8 (GQA)",
+       "where": "Table tab:model_sizes"
+      },
+      {
+       "name": "head_dim",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "scale",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "causal",
+       "value": "true",
+       "status": "stated",
+       "quote": "a family of dense autoregressive language models at 7B, 13B and 32B scales",
+       "where": "Abstract"
+      },
+      {
+       "name": "window",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "sinks",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "ao",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "4096",
+       "status": "stated",
+       "quote": "\\textbf{Hidden Size}~$(d_{model})$ & 4096 & 5120 & 5120",
+       "where": "Table tab:model_sizes"
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "stated",
+       "quote": "We exclude all bias terms from our architecture",
+       "where": "Sec. 2.1 Model Architecture"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "norm on attention output (reordered norm)",
+     "inputs": [
+      "ao"
+     ],
+     "output": "aon",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "aon"
+     ],
+     "output": "h",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "SwiGLU gate projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "g",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "11008",
+       "status": "stated",
+       "quote": "($11,008$ for our 7B model)",
+       "where": "Sec. 2.1 Model Architecture"
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "stated",
+       "quote": "We exclude all bias terms from our architecture",
+       "where": "Sec. 2.1 Model Architecture"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "SwiGLU up projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "u",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "11008",
+       "status": "stated",
+       "quote": "($11,008$ for our 7B model)",
+       "where": "Sec. 2.1 Model Architecture"
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "stated",
+       "quote": "We exclude all bias terms from our architecture",
+       "where": "Sec. 2.1 Model Architecture"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "silu",
+     "role": "SwiGLU activation",
+     "inputs": [
+      "g"
+     ],
+     "output": "gs",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "mul",
+     "role": "gating",
+     "inputs": [
+      "gs",
+      "u"
+     ],
+     "output": "m",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "m"
+     ],
+     "output": "f",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "4096",
+       "status": "stated",
+       "quote": "\\textbf{Hidden Size}~$(d_{model})$ & 4096 & 5120 & 5120",
+       "where": "Table tab:model_sizes"
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "stated",
+       "quote": "We exclude all bias terms from our architecture",
+       "where": "Sec. 2.1 Model Architecture"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "norm on MLP output (reordered norm)",
+     "inputs": [
+      "f"
+     ],
+     "output": "fn",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "h",
+      "fn"
+     ],
+     "output": "x",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "linear",
+     "role": "LM head",
+     "inputs": [
+      "x"
+     ],
+     "output": "logits",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "stated",
+       "quote": "We exclude all bias terms from our architecture",
+       "where": "Sec. 2.1 Model Architecture"
+      },
+      {
+       "name": "tied_to",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    }
+   ],
+   "new_ops": [],
+   "mechanisms_outside_ir": [],
+   "notes": "Headline OLMo 2 base models (7B, 13B, 32B) described; block attributes use the 7B config. The 1B (Appendix: 16 layers, d_model 2048, 16/16 heads) is an experimentation-scale model and is not listed as a config. Sec. 2.1's equation writes h_out = h + RMSNorm(MLP(x)), but Sec. 3.3.2's table gives MLP(h), meaning a sequential, non-parallel block. That is what I used, and I treat the Sec. 2.1 form as a typo. QK-norm is RMSNorm on the key and query projections; the paper does not say whether it is per-head or full width, so I left it unspecified. Vocab size is not given: the tokenizer is cl100k plus extra masking tokens. Also not stated: head_dim, d_ff for 13B/32B (only the approximately 8/3·d rule rounded to a multiple of 128), norm eps, RoPE pairing, tied embeddings and any final norm before the head. Z-loss (training regularizer), weight decay and checkpoint souping are training details, not architecture."
+  },
+  "verification": {
+   "errors": [],
+   "warnings": [],
+   "inherits": {
+    "ancestor": "OLMo (Groeneveld et al., 2024)",
+    "resolved": null,
+    "quote": "Our architecture is very similar to the first iteration of \\olmo \\citep{Groeneveld2024OLMoAT}, with several changes to improve training stability",
+    "where": "Sec. 2.1 Model Architecture",
+    "quote_found": true
+   },
+   "family": {
+    "value": "decoder_only",
+    "status": "stated",
+    "quote": "We adopt a decoder-only transformer architecture based on \\citet{vaswani2017attention},",
+    "where": "Sec. 2.1 Model Architecture",
+    "reasons": [],
+    "check": "quote_only"
+   },
+   "configs": [
+    {
+     "name": "7B",
+     "d_model": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "\\textbf{Hidden Size}~$(d_{model})$ & 4096 & 5120 & 5120",
+      "where": "Table tab:model_sizes",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "32",
+      "status": "stated",
+      "quote": "\\textbf{Layers} & 32 & 40 & 64",
+      "where": "Table tab:model_sizes",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "32",
+      "status": "stated",
+      "quote": "\\textbf{Attention Heads (Q/KV)} & 32/32 (MHA) & 40/40 (MHA) & 40/8 (GQA)",
+      "where": "Table tab:model_sizes",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "32",
+      "status": "stated",
+      "quote": "\\textbf{Attention Heads (Q/KV)} & 32/32 (MHA) & 40/40 (MHA) & 40/8 (GQA)",
+      "where": "Table tab:model_sizes",
+      "reasons": [],
+      "check": "verified"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "11008",
+      "status": "stated",
+      "quote": "set the corresponding hidden size to approximately $\\frac{8}{3}d$, but increased to the closest multiple of 128 ($11,008$ for our 7B model) to improve throughput",
+      "where": "Sec. 2.1 Model Architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "\\textbf{Sequence Length} & 4096 & 4096 & 4096",
+      "where": "Table tab:model_sizes",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads divides n_heads",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads <= n_heads",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "13B",
+     "d_model": {
+      "value": "5120",
+      "status": "stated",
+      "quote": "\\textbf{Hidden Size}~$(d_{model})$ & 4096 & 5120 & 5120",
+      "where": "Table tab:model_sizes",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "40",
+      "status": "stated",
+      "quote": "\\textbf{Layers} & 32 & 40 & 64",
+      "where": "Table tab:model_sizes",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "40",
+      "status": "stated",
+      "quote": "\\textbf{Attention Heads (Q/KV)} & 32/32 (MHA) & 40/40 (MHA) & 40/8 (GQA)",
+      "where": "Table tab:model_sizes",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "40",
+      "status": "stated",
+      "quote": "\\textbf{Attention Heads (Q/KV)} & 32/32 (MHA) & 40/40 (MHA) & 40/8 (GQA)",
+      "where": "Table tab:model_sizes",
+      "reasons": [],
+      "check": "verified"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "\\textbf{Sequence Length} & 4096 & 4096 & 4096",
+      "where": "Table tab:model_sizes",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads divides n_heads",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads <= n_heads",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "32B",
+     "d_model": {
+      "value": "5120",
+      "status": "stated",
+      "quote": "\\textbf{Hidden Size}~$(d_{model})$ & 4096 & 5120 & 5120",
+      "where": "Table tab:model_sizes",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "64",
+      "status": "stated",
+      "quote": "\\textbf{Layers} & 32 & 40 & 64",
+      "where": "Table tab:model_sizes",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "40",
+      "status": "stated",
+      "quote": "\\textbf{Attention Heads (Q/KV)} & 32/32 (MHA) & 40/40 (MHA) & 40/8 (GQA)",
+      "where": "Table tab:model_sizes",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "\\textbf{Attention Heads (Q/KV)} & 32/32 (MHA) & 40/40 (MHA) & 40/8 (GQA)",
+      "where": "Table tab:model_sizes",
+      "reasons": [],
+      "check": "verified"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "\\textbf{Sequence Length} & 4096 & 4096 & 4096",
+      "where": "Table tab:model_sizes",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads divides n_heads",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads <= n_heads",
+       "ok": true
+      }
+     ]
+    }
+   ],
+   "primary_config": "7B",
+   "flavours": {
+    "norm": {
+     "value": "rmsnorm",
+     "status": "stated",
+     "quote": "We use the RMSNorm \\citep{RMSNorm} variant of LayerNorm \\citep{Ba2016LayerNorm} without a bias term to normalize activations, instead of nonparametric LayerNorm.",
+     "where": "Sec. 2.1 Model Architecture",
+     "reasons": [],
+     "check": "verified"
+    },
+    "norm_placement": {
+     "value": "branch_post",
+     "status": "stated",
+     "quote": "We normalize the outputs to the attention and feedforward (MLP) layers within each transformer block, instead of the inputs.",
+     "where": "Sec. 2.1 Model Architecture",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "activation": {
+     "value": "swiglu",
+     "status": "stated",
+     "quote": "We use the SwiGLU activation function \\citep{Shazeer2020GLUVI}",
+     "where": "Sec. 2.1 Model Architecture",
+     "reasons": [],
+     "check": "verified"
+    },
+    "positional": {
+     "value": "rope",
+     "status": "stated",
+     "quote": "We replace absolute positional embeddings with rotary positional embeddings (RoPE; \\citealp{Su2021RoFormerET}).",
+     "where": "Sec. 2.1 Model Architecture",
+     "reasons": [],
+     "check": "verified"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_per_head": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_values": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_theta": {
+     "value": "500000",
+     "status": "stated",
+     "quote": "We increase the RoPE $\\theta$ to 500,000 from 10,000.",
+     "where": "Sec. 2.1 Model Architecture",
+     "reasons": [],
+     "check": "verified"
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "residual": {
+     "value": "residual",
+     "status": "stated",
+     "quote": "\\pmb{h} := \\pmb{x} + \\text{RMSNorm}(\\text{Attention}(\\pmb{x}))",
+     "where": "Sec. 3.3.2 Reordered norm and QK-norm",
+     "reasons": [
+      "the quote does not name residual (looked for /residual|skip|\\bx\\s*\\+\\s*\\\\?[A-Za-z]/)"
+     ],
+     "check": "unverified"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "stated",
+     "quote": "\\pmb{h}_{\\text{out}} := \\pmb{h} + \\text{RMSNorm}(\\text{MLP}(\\pmb{h}))",
+     "where": "Sec. 3.3.2 Reordered norm and QK-norm",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "a family of dense autoregressive language models at 7B, 13B and 32B scales",
+     "where": "Abstract",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qkv_bias": {
+     "value": "false",
+     "status": "stated",
+     "quote": "We exclude all bias terms from our architecture",
+     "where": "Sec. 2.1 Model Architecture",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "mlp_bias": {
+     "value": "false",
+     "status": "stated",
+     "quote": "We exclude all bias terms from our architecture",
+     "where": "Sec. 2.1 Model Architecture",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "qk_norm": {
+     "value": "unspecified",
+     "status": "stated",
+     "quote": "we normalize the key and query projections with RMSNorm before calculating attention.",
+     "where": "Sec. 2.1 Model Architecture",
+     "reasons": [],
+     "check": "verified"
+    },
+    "tied_embeddings": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe": {
+     "value": "false",
+     "status": "stated",
+     "quote": "a family of dense autoregressive language models at 7B, 13B and 32B scales",
+     "where": "Abstract",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "ssm": {
+     "value": "none",
+     "status": "stated",
+     "quote": "We adopt a decoder-only transformer architecture based on \\citet{vaswani2017attention},",
+     "where": "Sec. 2.1 Model Architecture",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    }
+   },
+   "new_ops": [],
+   "block_ops": [
+    {
+     "i": 0,
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "vocab"
+      },
+      {
+       "value": "4096",
+       "status": "stated",
+       "quote": "\\textbf{Hidden Size}~$(d_{model})$ & 4096 & 5120 & 5120",
+       "where": "Table tab:model_sizes",
+       "reasons": [],
+       "check": "verified",
+       "name": "d"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 1,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "query projection",
+     "inputs": [
+      "x"
+     ],
+     "output": "q",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "stated",
+       "quote": "We exclude all bias terms from our architecture",
+       "where": "Sec. 2.1 Model Architecture",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 2,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection",
+     "inputs": [
+      "x"
+     ],
+     "output": "k",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "stated",
+       "quote": "We exclude all bias terms from our architecture",
+       "where": "Sec. 2.1 Model Architecture",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 3,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection",
+     "inputs": [
+      "x"
+     ],
+     "output": "v",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "stated",
+       "quote": "We exclude all bias terms from our architecture",
+       "where": "Sec. 2.1 Model Architecture",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 4,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "QK-norm on queries",
+     "inputs": [
+      "q"
+     ],
+     "output": "qn",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "group"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 5,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "QK-norm on keys",
+     "inputs": [
+      "k"
+     ],
+     "output": "kn",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "group"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 6,
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on queries",
+     "inputs": [
+      "qn"
+     ],
+     "output": "qr",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "all",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [
+        "not_stated carries a value or quote (ignored)"
+       ],
+       "check": "not_stated",
+       "name": "rope_heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "pairing"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "n_rot"
+      },
+      {
+       "value": "500000",
+       "status": "stated",
+       "quote": "We increase the RoPE $\\theta$ to 500,000 from 10,000.",
+       "where": "Sec. 2.1 Model Architecture",
+       "reasons": [],
+       "check": "verified",
+       "name": "theta"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 7,
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on keys",
+     "inputs": [
+      "kn"
+     ],
+     "output": "kr",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "all",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [
+        "not_stated carries a value or quote (ignored)"
+       ],
+       "check": "not_stated",
+       "name": "rope_heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "pairing"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "n_rot"
+      },
+      {
+       "value": "500000",
+       "status": "stated",
+       "quote": "We increase the RoPE $\\theta$ to 500,000 from 10,000.",
+       "where": "Sec. 2.1 Model Architecture",
+       "reasons": [],
+       "check": "verified",
+       "name": "theta"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 8,
+     "subgraph": "block",
+     "op": "attention",
+     "role": "causal multi-head self-attention",
+     "inputs": [
+      "qr",
+      "kr",
+      "v"
+     ],
+     "output": "a",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "32",
+       "status": "stated",
+       "quote": "\\textbf{Attention Heads (Q/KV)} & 32/32 (MHA) & 40/40 (MHA) & 40/8 (GQA)",
+       "where": "Table tab:model_sizes",
+       "reasons": [],
+       "check": "verified",
+       "name": "heads"
+      },
+      {
+       "value": "32",
+       "status": "stated",
+       "quote": "\\textbf{Attention Heads (Q/KV)} & 32/32 (MHA) & 40/40 (MHA) & 40/8 (GQA)",
+       "where": "Table tab:model_sizes",
+       "reasons": [],
+       "check": "verified",
+       "name": "kv_heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "head_dim"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "scale"
+      },
+      {
+       "value": "true",
+       "status": "stated",
+       "quote": "a family of dense autoregressive language models at 7B, 13B and 32B scales",
+       "where": "Abstract",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "causal"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "window"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "sinks"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 9,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "ao",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "4096",
+       "status": "stated",
+       "quote": "\\textbf{Hidden Size}~$(d_{model})$ & 4096 & 5120 & 5120",
+       "where": "Table tab:model_sizes",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "stated",
+       "quote": "We exclude all bias terms from our architecture",
+       "where": "Sec. 2.1 Model Architecture",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 10,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "norm on attention output (reordered norm)",
+     "inputs": [
+      "ao"
+     ],
+     "output": "aon",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 11,
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "aon"
+     ],
+     "output": "h",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 12,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "SwiGLU gate projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "g",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "11008",
+       "status": "stated",
+       "quote": "($11,008$ for our 7B model)",
+       "where": "Sec. 2.1 Model Architecture",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "stated",
+       "quote": "We exclude all bias terms from our architecture",
+       "where": "Sec. 2.1 Model Architecture",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 13,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "SwiGLU up projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "u",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "11008",
+       "status": "stated",
+       "quote": "($11,008$ for our 7B model)",
+       "where": "Sec. 2.1 Model Architecture",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "stated",
+       "quote": "We exclude all bias terms from our architecture",
+       "where": "Sec. 2.1 Model Architecture",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 14,
+     "subgraph": "block",
+     "op": "silu",
+     "role": "SwiGLU activation",
+     "inputs": [
+      "g"
+     ],
+     "output": "gs",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 15,
+     "subgraph": "block",
+     "op": "mul",
+     "role": "gating",
+     "inputs": [
+      "gs",
+      "u"
+     ],
+     "output": "m",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 16,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "m"
+     ],
+     "output": "f",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "4096",
+       "status": "stated",
+       "quote": "\\textbf{Hidden Size}~$(d_{model})$ & 4096 & 5120 & 5120",
+       "where": "Table tab:model_sizes",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "stated",
+       "quote": "We exclude all bias terms from our architecture",
+       "where": "Sec. 2.1 Model Architecture",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 17,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "norm on MLP output (reordered norm)",
+     "inputs": [
+      "f"
+     ],
+     "output": "fn",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 18,
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "h",
+      "fn"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 19,
+     "subgraph": "head",
+     "op": "linear",
+     "role": "LM head",
+     "inputs": [
+      "x"
+     ],
+     "output": "logits",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "stated",
+       "quote": "We exclude all bias terms from our architecture",
+       "where": "Sec. 2.1 Model Architecture",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "bias"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "tied_to"
+      }
+     ],
+     "errors": []
+    }
+   ],
+   "mechanisms_outside_ir": [],
+   "summary": {
+    "counts": {
+     "verified": 30,
+     "quote_only": 17,
+     "unverified": 1,
+     "not_stated": 49
+    },
+    "unverified": [
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "the quote does not name residual (looked for /residual|skip|\\bx\\s*\\+\\s*\\\\?[A-Za-z]/)"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 20
+   }
+  }
+ }
+}

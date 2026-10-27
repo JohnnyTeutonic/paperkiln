@@ -1,0 +1,27 @@
+{
+ "arxiv_id": "2501.00656",
+ "title": "2 OLMo 2 Furious",
+ "abstract_sha256": "fee93039e35bdacc33fadd8d9a31572de6247d8c28eef8a363ca0712e60a3ef6",
+ "verdict": "in_scope",
+ "reason": "The paper releases a new family of dense autoregressive language models (OLMo 2) and describes a modified model architecture, so the extractor can recover the architecture from the body.",
+ "architecture_kind": "dense autoregressive transformer language model family",
+ "evidence": "we describe our modified model architecture and training recipe",
+ "evidence_found": true,
+ "errors": [],
+ "passes": true,
+ "gate": {
+  "model": "claude-opus-5-5",
+  "served_by": "claude-opus-5-5",
+  "effort": "low",
+  "max_tokens": 3000,
+  "prompt_sha256": "c14d094a07ba3f62d99ba57195c8f64c9e255aaf6b8dd3c27d875920a193a418",
+  "request_id": "req_011CgSucJ1faKTD353mChLie",
+  "cache_hit": false,
+  "input_tokens": 1146,
+  "output_tokens": 119,
+  "cost_usd": 0.006964,
+  "original_cost_usd": null,
+  "tag": "relevance_gate",
+  "extractor_sha256": "8bed901f508a0c21d93d3220a0ace86fe416caf7ffe68895528b219b2eefb781"
+ }
+}

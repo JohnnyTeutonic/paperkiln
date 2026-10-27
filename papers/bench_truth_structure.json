@@ -1,5 +1,5 @@
 {
- "_about": "Truth labels for the extractor benchmark's sizes and block structure (papers/bench_score.py), 40 papers = flavor_bench.TRUTH's. Read off each paper's LaTeX (papers/.cache/<id>.tex) on 26 Oct 2026 by four Claude agents that saw only the LaTeX and the protocol below, never an extraction; every quote is verbatim in the source and every number inside its quote (checked by script). configs: every size configuration of the paper's own models the paper states; a field the paper does not state is null. structure: norm_placement (pre, post, sandwich, or per sublayer {attn, ffn} with branch_post = the norm on the sublayer's output inside the residual branch), parallel_block, ffn_gated; null = not stated. A label changes only when the source shows it wrong, never to make an extractor pass. new_fields (27 Oct 2026, one Claude agent under the same rule: LaTeX only, no extraction): qk_norm (per_head, full, unspecified, none, or absent = never mentioned), ssm (mamba1, s4, absent; with d_state, d_conv, expand, dt_rank), new_ops (elementwise or row ops outside the standard set, with each input's role and a learned input's init; category and scored added on merge), token_mixing_ops (listed, not scored), and positional for the 11 papers flavor_bench.TRUTH leaves unlabelled (with T5's rel_buckets and rel_max_distance).",
+ "_about": "Truth labels for the extractor benchmark's sizes and block structure (papers/bench_score.py), 40 papers = flavor_bench.TRUTH's, and since 28 Oct 2026 three more with a q/k norm or an SSM (Mamba 2312.00752, Qwen3 2505.09388, OLMo 2 2501.00656), labelled under the same rule. Read off each paper's LaTeX (papers/.cache/<id>.tex) on 26 Oct 2026 by four Claude agents that saw only the LaTeX and the protocol below, never an extraction; every quote is verbatim in the source and every number inside its quote (checked by script). configs: every size configuration of the paper's own models the paper states; a field the paper does not state is null. structure: norm_placement (pre, post, sandwich, or per sublayer {attn, ffn} with branch_post = the norm on the sublayer's output inside the residual branch), parallel_block, ffn_gated; null = not stated. A label changes only when the source shows it wrong, never to make an extractor pass. new_fields (27 Oct 2026, one Claude agent under the same rule: LaTeX only, no extraction): qk_norm (per_head, full, unspecified, none, or absent = never mentioned), ssm (mamba1, s4, absent; with d_state, d_conv, expand, dt_rank), new_ops (elementwise or row ops outside the standard set, with each input's role and a learned input's init; category and scored added on merge), token_mixing_ops (listed, not scored), and positional for the 11 papers flavor_bench.TRUTH leaves unlabelled (with T5's rel_buckets and rel_max_distance).",
  "protocol": "Truth labels for the arXiv extractor's benchmark: sizes and block structure, read off the LaTeX.\n\nSource: the paper's LaTeX, cached at\n  C:\\Users\\jonat\\OneDrive\\Documents\\research_portfolio_complete\\microtorch\\papers\\.cache\\<arxiv_id>.tex\nRead ONLY that file for each paper (Grep and Read with offsets; some files are large). Do NOT open anything\nunder microtorch\\papers\\llm_extract_receipts, microtorch\\experiments, microtorch\\papers\\.cache\\llm, or any\n*.extraction.json: the labels must be independent of the extractor being scored. Do not use your own memory\nof the model: a value the LaTeX does not state is null, even if you \"know\" it.\n\nFor each paper, label what the paper states about ITS OWN model(s) (not baselines, not related work, not\nmodels it only compares against, not rejected ablations, not future work).\n\n1. configs: every size configuration of the paper's own models that the paper states (usually a table:\n   one row per model size). For each config give:\n     name            the paper's name for it (e.g. \"7B\", \"BERT-base\", \"125M\")\n     d_model         hidden width\n     n_layers        number of layers (blocks). For encoder-decoder models: layers per stack, and say so in notes.\n     n_heads         attention (query) heads\n     n_kv_heads      key/value heads, ONLY when the paper states grouped-query / multi-query (else null)\n     d_ff            FFN inner width\n     vocab_size      vocabulary size, when stated for the model (a global statement applies to every config)\n     context_length  the model's training context / sequence length, when stated (a global statement applies to every config)\n   Each field: {\"value\": <number>, \"quote\": \"<verbatim span from the LaTeX that contains the number>\"} or null.\n   A quote is ONE contiguous span copied character for character from the .tex (LaTeX commands, &, $ and all),\n   e.g. a table row \"6.7B & 32 & 4096 & 32 & 128\". Numbers as plain integers (4K -> 4096 only if the paper\n   means 4096; \"2048\" stays 2048). If the paper gives head_dim and heads but not d_model, do not compute\n   d_model: null.\n2. structure (each {\"value\": ..., \"quote\": \"<verbatim span>\"} or null when the paper does not state it):\n     norm_placement  \"pre\" (each sublayer's input is normalised: x + f(norm(x))), \"post\" (norm after the\n                     residual add: norm(x + f(x))), \"sandwich\" (norm on the sublayer's input and output),\n                     or \"other:<short description>\" (e.g. different per sublayer). An explicit statement\n                     that the model follows a named model's placement counts only if it names the\n                     placement (\"pre-normalization as in GPT-2\").\n     parallel_block  true when attention and FFN run in parallel on the same input (\"parallel\n                     formulation\", y = x + attn(ln(x)) + mlp(ln(x))), false only when the paper says so\n                     explicitly or its equations/figure show the sequential block; else null.\n     ffn_gated       true when the FFN is a gated linear unit (SwiGLU, GeGLU, ReGLU, GLU, \"gated-GELU\"),\n                     false when the paper states a plain two-matrix FFN (ReLU/GeLU between two linears).\n3. notes: one or two sentences: which model you took as the paper's own, anything ambiguous.\n\nWrite ONE JSON file (UTF-8, valid JSON, no comments): a list of objects\n  {\"arxiv_id\": \"...\", \"model\": \"...\", \"configs\": [...], \"structure\": {\"norm_placement\": ..., \"parallel_block\": ...,\n   \"ffn_gated\": ...}, \"notes\": \"...\"}\nin the order you were given the ids. Before writing, re-check that every quote occurs verbatim in that paper's\n.tex (use Grep with a distinctive fixed substring of the quote) and that each number occurs inside its quote.\n",
  "adjudicated": [
   {
@@ -82,6 +82,59 @@
    "field": "new_fields.new_ops (LogN, YaRN)",
    "now": "not scored",
    "why": "context-extension rescaling at inference or in a length-extension stage, not the trained block"
+  },
+  {
+   "arxiv_id": "2312.00752",
+   "field": "configs (scaling-law 125M, 350M, 760M, 1.3B)",
+   "now": "dropped",
+   "why": "their n_layers come from the GPT-3 table (\"taken directly from the GPT3 specifications\"), and Mamba uses \"two stacks of the block\" per Transformer layer: the count is not Mamba's own as stated; every other field of those rows is null"
+  },
+  {
+   "arxiv_id": "2312.00752",
+   "field": "new_fields.ssm.dt_rank",
+   "now": null,
+   "why": "\"We set this to be a small fraction of D\" states neither a number nor a rule"
+  },
+  {
+   "arxiv_id": "2312.00752",
+   "field": "new_fields.new_ops (softplus)",
+   "now": "not scored",
+   "why": "dt's softplus is part of the selective scan, which the IR states as one op"
+  },
+  {
+   "arxiv_id": "2312.00752",
+   "field": "structure.norm_placement",
+   "now": null,
+   "why": "a state-space block has no attention or FFN sublayer, and the paper does not state the block's own norm placement (\"interleaved with standard normalization and residual connections\")"
+  },
+  {
+   "arxiv_id": "2501.00656",
+   "field": "new_fields.qk_norm",
+   "now": {
+    "value": "full",
+    "accept": [
+     "full",
+     "unspecified"
+    ]
+   },
+   "why": "\"we normalize the key and query projections with RMSNorm\": the projections' rows, but the paper never says per head or over the whole width, so unspecified is accepted"
+  },
+  {
+   "arxiv_id": "2405.04434",
+   "field": "configs[DeepSeek-V2, DeepSeek-V2-Lite].context_length",
+   "accept": [
+    [
+     4096,
+     131072,
+     128000
+    ],
+    [
+     4096,
+     32768,
+     32000
+    ]
+   ],
+   "why": "the paper states both the 4K pre-training length (\"We set the maximum sequence length to 4K\", .tex 840; 1437 for the Lite) and the extended lengths (\"supports a context length of 128K tokens\"; the Lite's 32K, .tex 1396); either is accepted, as InternLM2's \"32k\" (the main session's ruling, 27 Oct 2026)"
   }
  ],
  "papers": {
@@ -4695,7 +4748,12 @@
      "vocab_size": null,
      "context_length": {
       "value": 4096,
-      "quote": "We set the maximum sequence length to 4K"
+      "quote": "We set the maximum sequence length to 4K",
+      "accept": [
+       4096,
+       131072,
+       128000
+      ]
      }
     },
     {
@@ -4720,7 +4778,12 @@
      "vocab_size": null,
      "context_length": {
       "value": 4096,
-      "quote": "we set the maximum sequence length to 4K"
+      "quote": "we set the maximum sequence length to 4K",
+      "accept": [
+       4096,
+       32768,
+       32000
+      ]
      }
     }
    ],
@@ -5194,6 +5257,606 @@
      }
     ],
     "notes": "Own model is Gemma 2. Pre- and post-sublayer RMSNorm is standard RMSNorm. No query pre-attention scaling or embedding scaling is stated in the LaTeX."
+   }
+  },
+  "2312.00752": {
+   "model": "Mamba",
+   "configs": [
+    {
+     "name": "Mamba-130M",
+     "d_model": null,
+     "n_layers": null,
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "Note that Mamba and Pythia are trained with context length 2048, while RWKV was trained with context length 1024."
+     }
+    },
+    {
+     "name": "Mamba-370M",
+     "d_model": null,
+     "n_layers": null,
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "Note that Mamba and Pythia are trained with context length 2048, while RWKV was trained with context length 1024."
+     }
+    },
+    {
+     "name": "Mamba-790M",
+     "d_model": null,
+     "n_layers": null,
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "Note that Mamba and Pythia are trained with context length 2048, while RWKV was trained with context length 1024."
+     }
+    },
+    {
+     "name": "Mamba-1.4B",
+     "d_model": null,
+     "n_layers": null,
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "Note that Mamba and Pythia are trained with context length 2048, while RWKV was trained with context length 1024."
+     }
+    },
+    {
+     "name": "Mamba-2.8B",
+     "d_model": null,
+     "n_layers": null,
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "Note that Mamba and Pythia are trained with context length 2048, while RWKV was trained with context length 1024."
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": null,
+    "parallel_block": null,
+    "ffn_gated": {
+     "value": true,
+     "quote": "We focus on the viewpoint that the Mamba block is simply the standard SwiGLU block with an extra $\\mathsf{conv} \\to \\mathsf{SSM}$ path added."
+    }
+   },
+   "notes": "Headline models are the 300B-token Pile models Mamba-130M/370M/790M/1.4B/2.8B (zero-shot table), whose widths and depths the .tex never states. The scaling-law table is 'taken directly from the GPT3 specifications' and its caption says 'Model dimension and number of heads applies only to Transformer models', so d_model and n_heads are null; n_layers is labelled from the table but is ambiguous because Mamba uses 'two stacks of the block' per Transformer layer. Norm is rmsnorm through 'Mamba: The standard Mamba architecture, with the improved training recipe'; activation could also be read as swiglu (the block is called a SwiGLU block with an extra conv-SSM path).",
+   "new_fields": {
+    "qk_norm": {
+     "value": "absent",
+     "quote": null,
+     "kind": null
+    },
+    "ssm": {
+     "value": "mamba1",
+     "quote": "We specifically choose $s_B(x) = \\mathsf{Linear}_N(x)$, $s_C(x) = \\mathsf{Linear}_N(x)$,",
+     "d_state": {
+      "value": 16,
+      "quote": "State size fixed to $N=16$."
+     },
+     "d_conv": null,
+     "expand": {
+      "value": 2,
+      "quote": "We always fix to $E=2$ in our experiments"
+     },
+     "dt_rank": null
+    },
+    "new_ops": [
+     {
+      "name": "softplus",
+      "replaces": "none (maps the input-dependent step size Delta to positive values inside the selective SSM)",
+      "formula": "$\\tau_\\dt = \\mathsf{softplus}$",
+      "inputs": [
+       {
+        "meaning": "s_Delta(x), the input-dependent projection of the input",
+        "role": "input",
+        "init": null
+       },
+       {
+        "meaning": "the Delta parameter (a bias term) added before the softplus",
+        "role": "learned_vector",
+        "init": {
+         "value": "tau_Delta^{-1}(Uniform([0.001, 0.1]))",
+         "quote": "is initialized to $\\tau_\\dt^{-1}(\\mathsf{Uniform}([0.001, 0.1]))$"
+        }
+       }
+      ],
+      "quote": "$s_\\dt(x) = \\mathsf{Broadcast}_D(\\mathsf{Linear}_1(x))$, and $\\tau_\\dt = \\mathsf{softplus}$,",
+      "category": "other",
+      "scored": false,
+      "not_scored_because": "inside the selective scan's definition of dt (selective_scan), not an op of its own"
+     }
+    ],
+    "token_mixing_ops": [
+     {
+      "name": "selective scan (S6: input-dependent Delta, B, C)",
+      "quote": "The main difference is simply making several parameters $\\dt, \\B, \\C$ functions of the input,"
+     },
+     {
+      "name": "convolution before the SSM inside the Mamba block",
+      "quote": "We focus on the viewpoint that the Mamba block is simply the standard SwiGLU block with an extra $\\mathsf{conv} \\to \\mathsf{SSM}$ path added."
+     }
+    ],
+    "notes": "d_state 16 is from an ablation caption and the scan benchmark; the ablations fix the Delta projection size to 64 at ~350M, but the general rule is only 'a small fraction of D'. The convolution's width is never stated. The block also has an optional inner LayerNorm ('we choose LayerNorm', after RetNet); the outer block norm is RMSNorm via the improved recipe.",
+    "labelled": "28 Oct 2026, one Claude agent, LaTeX only (no extraction)"
+   }
+  },
+  "2505.09388": {
+   "model": "Qwen3",
+   "configs": [
+    {
+     "name": "Qwen3-0.6B",
+     "d_model": null,
+     "n_layers": {
+      "value": 28,
+      "quote": "Qwen3-0.6B  & 28 & 16 / 8 & Yes & 32K"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "Qwen3-0.6B  & 28 & 16 / 8 & Yes & 32K"
+     },
+     "n_kv_heads": {
+      "value": 8,
+      "quote": "Qwen3-0.6B  & 28 & 16 / 8 & Yes & 32K"
+     },
+     "d_ff": null,
+     "vocab_size": {
+      "value": 151669,
+      "quote": "with a vocabulary size of 151,669"
+     },
+     "context_length": {
+      "value": 32768,
+      "quote": "Qwen3-0.6B  & 28 & 16 / 8 & Yes & 32K",
+      "accept": [
+       32768,
+       32000
+      ]
+     }
+    },
+    {
+     "name": "Qwen3-1.7B",
+     "d_model": null,
+     "n_layers": {
+      "value": 28,
+      "quote": "Qwen3-1.7B  & 28 & 16 / 8 & Yes & 32K"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "Qwen3-1.7B  & 28 & 16 / 8 & Yes & 32K"
+     },
+     "n_kv_heads": {
+      "value": 8,
+      "quote": "Qwen3-1.7B  & 28 & 16 / 8 & Yes & 32K"
+     },
+     "d_ff": null,
+     "vocab_size": {
+      "value": 151669,
+      "quote": "with a vocabulary size of 151,669"
+     },
+     "context_length": {
+      "value": 32768,
+      "quote": "Qwen3-1.7B  & 28 & 16 / 8 & Yes & 32K",
+      "accept": [
+       32768,
+       32000
+      ]
+     }
+    },
+    {
+     "name": "Qwen3-4B",
+     "d_model": null,
+     "n_layers": {
+      "value": 36,
+      "quote": "Qwen3-4B  & 36 & 32 / 8 & Yes & 128K"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "Qwen3-4B  & 36 & 32 / 8 & Yes & 128K"
+     },
+     "n_kv_heads": {
+      "value": 8,
+      "quote": "Qwen3-4B  & 36 & 32 / 8 & Yes & 128K"
+     },
+     "d_ff": null,
+     "vocab_size": {
+      "value": 151669,
+      "quote": "with a vocabulary size of 151,669"
+     },
+     "context_length": {
+      "value": 131072,
+      "quote": "Qwen3-4B  & 36 & 32 / 8 & Yes & 128K",
+      "accept": [
+       131072,
+       128000
+      ]
+     }
+    },
+    {
+     "name": "Qwen3-8B",
+     "d_model": null,
+     "n_layers": {
+      "value": 36,
+      "quote": "Qwen3-8B  & 36 & 32 / 8 & No & 128K"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "Qwen3-8B  & 36 & 32 / 8 & No & 128K"
+     },
+     "n_kv_heads": {
+      "value": 8,
+      "quote": "Qwen3-8B  & 36 & 32 / 8 & No & 128K"
+     },
+     "d_ff": null,
+     "vocab_size": {
+      "value": 151669,
+      "quote": "with a vocabulary size of 151,669"
+     },
+     "context_length": {
+      "value": 131072,
+      "quote": "Qwen3-8B  & 36 & 32 / 8 & No & 128K",
+      "accept": [
+       131072,
+       128000
+      ]
+     }
+    },
+    {
+     "name": "Qwen3-14B",
+     "d_model": null,
+     "n_layers": {
+      "value": 40,
+      "quote": "Qwen3-14B & 40 & 40 / 8 & No & 128K"
+     },
+     "n_heads": {
+      "value": 40,
+      "quote": "Qwen3-14B & 40 & 40 / 8 & No & 128K"
+     },
+     "n_kv_heads": {
+      "value": 8,
+      "quote": "Qwen3-14B & 40 & 40 / 8 & No & 128K"
+     },
+     "d_ff": null,
+     "vocab_size": {
+      "value": 151669,
+      "quote": "with a vocabulary size of 151,669"
+     },
+     "context_length": {
+      "value": 131072,
+      "quote": "Qwen3-14B & 40 & 40 / 8 & No & 128K",
+      "accept": [
+       131072,
+       128000
+      ]
+     }
+    },
+    {
+     "name": "Qwen3-32B",
+     "d_model": null,
+     "n_layers": {
+      "value": 64,
+      "quote": "Qwen3-32B & 64 & 64 / 8 & No & 128K"
+     },
+     "n_heads": {
+      "value": 64,
+      "quote": "Qwen3-32B & 64 & 64 / 8 & No & 128K"
+     },
+     "n_kv_heads": {
+      "value": 8,
+      "quote": "Qwen3-32B & 64 & 64 / 8 & No & 128K"
+     },
+     "d_ff": null,
+     "vocab_size": {
+      "value": 151669,
+      "quote": "with a vocabulary size of 151,669"
+     },
+     "context_length": {
+      "value": 131072,
+      "quote": "Qwen3-32B & 64 & 64 / 8 & No & 128K",
+      "accept": [
+       131072,
+       128000
+      ]
+     }
+    },
+    {
+     "name": "Qwen3-30B-A3B",
+     "d_model": null,
+     "n_layers": {
+      "value": 48,
+      "quote": "Qwen3-30B-A3B  & 48 & 32 / 4 &128 / 8  & 128K"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "Qwen3-30B-A3B  & 48 & 32 / 4 &128 / 8  & 128K"
+     },
+     "n_kv_heads": {
+      "value": 4,
+      "quote": "Qwen3-30B-A3B  & 48 & 32 / 4 &128 / 8  & 128K"
+     },
+     "d_ff": null,
+     "vocab_size": {
+      "value": 151669,
+      "quote": "with a vocabulary size of 151,669"
+     },
+     "context_length": {
+      "value": 131072,
+      "quote": "Qwen3-30B-A3B  & 48 & 32 / 4 &128 / 8  & 128K",
+      "accept": [
+       131072,
+       128000
+      ]
+     },
+     "notes": "MoE: 128 experts in total, 8 activated per token, no shared experts; expert FFN width not stated."
+    },
+    {
+     "name": "Qwen3-235B-A22B",
+     "d_model": null,
+     "n_layers": {
+      "value": 94,
+      "quote": "Qwen3-235B-A22B  & 94 & 64 / 4 &128 / 8  & 128K"
+     },
+     "n_heads": {
+      "value": 64,
+      "quote": "Qwen3-235B-A22B  & 94 & 64 / 4 &128 / 8  & 128K"
+     },
+     "n_kv_heads": {
+      "value": 4,
+      "quote": "Qwen3-235B-A22B  & 94 & 64 / 4 &128 / 8  & 128K"
+     },
+     "d_ff": null,
+     "vocab_size": {
+      "value": 151669,
+      "quote": "with a vocabulary size of 151,669"
+     },
+     "context_length": {
+      "value": 131072,
+      "quote": "Qwen3-235B-A22B  & 94 & 64 / 4 &128 / 8  & 128K",
+      "accept": [
+       131072,
+       128000
+      ]
+     },
+     "notes": "MoE: 128 experts in total, 8 activated per token, no shared experts; expert FFN width not stated."
+    }
+   ],
+   "structure": {
+    "norm_placement": {
+     "value": "pre",
+     "quote": "RMSNorm~\\citep{rmsnorm} with pre-normalization"
+    },
+    "parallel_block": null,
+    "ffn_gated": {
+     "value": true,
+     "quote": "Grouped Query Attention (GQA, \\citealp{gqa}), SwiGLU~\\citep{glu}"
+    }
+   },
+   "notes": "All eight released models (six dense, two MoE) are the paper's own; no hidden size or FFN width is stated for any of them. Context length is the table's per-model value (32K for 0.6B/1.7B, 128K otherwise) although pre-training ends at 'a sequence length of 32,768 tokens' and 128K relies on YARN/DCA; tie embedding is Yes for 0.6B/1.7B/4B and No for 8B/14B/32B.",
+   "new_fields": {
+    "qk_norm": {
+     "value": "unspecified",
+     "quote": "introduce QK-Norm~\\citep{pmlr-v202-dehghani23a} to the attention mechanism",
+     "kind": null
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [
+     {
+      "name": "YARN",
+      "replaces": "rope (rescaled RoPE frequencies for length extrapolation)",
+      "formula": "YARN~\\citep{yarn} with a \\texttt{scaling\\_factor=4}",
+      "inputs": [
+       {
+        "meaning": "rotary position frequencies",
+        "role": "input",
+        "init": null
+       },
+       {
+        "meaning": "scaling factor",
+        "role": "other",
+        "init": {
+         "value": 4,
+         "quote": "\\texttt{scaling\\_factor=4}"
+        }
+       }
+      ],
+      "quote": "To enable length extrapolation, we utilize YARN~\\citep{yarn} with a \\texttt{scaling\\_factor=4}.",
+      "category": "other",
+      "scored": false,
+      "not_scored_because": "inference-time context-extension rescaling, not part of the trained architecture"
+     }
+    ],
+    "token_mixing_ops": [
+     {
+      "name": "MoE routing (128 experts, 8 activated per token)",
+      "quote": "The Qwen3 MoE models have 128 total experts with 8 activated experts per token."
+     },
+     {
+      "name": "fine-grained expert segmentation",
+      "quote": "implement fine-grained expert segmentation~\\citep{deepseekmoe}"
+     },
+     {
+      "name": "Dual Chunk Attention (inference-time context extension)",
+      "quote": "Dual Chunk Attention~(DCA, \\citealp{chunkllama})"
+     }
+    ],
+    "notes": "QK-Norm is introduced with a citation only: neither its width nor its norm type is stated. The RoPE base is raised from 10,000 to 1,000,000 (ABF) in the long-context stage; QKV-bias is removed; Qwen3-MoE excludes shared experts and uses a global-batch load balancing loss.",
+    "labelled": "28 Oct 2026, one Claude agent, LaTeX only (no extraction)"
+   }
+  },
+  "2501.00656": {
+   "model": "OLMo 2",
+   "configs": [
+    {
+     "name": "OLMo 2 7B",
+     "d_model": {
+      "value": 4096,
+      "quote": "\\textbf{Hidden Size}~$(d_{model})$ & 4096 & 5120 & 5120"
+     },
+     "n_layers": {
+      "value": 32,
+      "quote": "\\textbf{Layers} & 32 & 40 & 64"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "\\textbf{Attention Heads (Q/KV)} & 32/32 (MHA) & 40/40 (MHA) & 40/8 (GQA)"
+     },
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 11008,
+      "quote": "($11,008$ for our 7B model)"
+     },
+     "vocab_size": null,
+     "context_length": {
+      "value": 4096,
+      "quote": "\\textbf{Sequence Length} & 4096 & 4096 & 4096"
+     }
+    },
+    {
+     "name": "OLMo 2 13B",
+     "d_model": {
+      "value": 5120,
+      "quote": "\\textbf{Hidden Size}~$(d_{model})$ & 4096 & 5120 & 5120"
+     },
+     "n_layers": {
+      "value": 40,
+      "quote": "\\textbf{Layers} & 32 & 40 & 64"
+     },
+     "n_heads": {
+      "value": 40,
+      "quote": "\\textbf{Attention Heads (Q/KV)} & 32/32 (MHA) & 40/40 (MHA) & 40/8 (GQA)"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 4096,
+      "quote": "\\textbf{Sequence Length} & 4096 & 4096 & 4096"
+     }
+    },
+    {
+     "name": "OLMo 2 32B",
+     "d_model": {
+      "value": 5120,
+      "quote": "\\textbf{Hidden Size}~$(d_{model})$ & 4096 & 5120 & 5120"
+     },
+     "n_layers": {
+      "value": 64,
+      "quote": "\\textbf{Layers} & 32 & 40 & 64"
+     },
+     "n_heads": {
+      "value": 40,
+      "quote": "\\textbf{Attention Heads (Q/KV)} & 32/32 (MHA) & 40/40 (MHA) & 40/8 (GQA)"
+     },
+     "n_kv_heads": {
+      "value": 8,
+      "quote": "\\textbf{Attention Heads (Q/KV)} & 32/32 (MHA) & 40/40 (MHA) & 40/8 (GQA)"
+     },
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 4096,
+      "quote": "\\textbf{Sequence Length} & 4096 & 4096 & 4096"
+     }
+    },
+    {
+     "name": "OLMo 2 1B",
+     "d_model": {
+      "value": 2048,
+      "quote": "\\textbf{Hidden Size ($d_{model}$: } 2048 instead of 4096"
+     },
+     "n_layers": {
+      "value": 16,
+      "quote": "\\textbf{Layers:} 16 instead of 32"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "\\textbf{Attention Heads (Q/KV): } 16/16 (MHA) instead of 32/32 (MHA)"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": null
+    }
+   ],
+   "structure": {
+    "norm_placement": {
+     "value": {
+      "attn": "branch_post",
+      "ffn": "branch_post"
+     },
+     "quote": "We normalize the outputs to the attention and feedforward (MLP) layers within each transformer block, instead of the inputs."
+    },
+    "parallel_block": {
+     "value": false,
+     "quote": "$ \\pmb{h}_{\\text{out}} := \\pmb{h} + \\text{RMSNorm}(\\text{MLP}(\\pmb{h})) $"
+    },
+    "ffn_gated": {
+     "value": true,
+     "quote": "We use the SwiGLU activation function"
+    }
+   },
+   "notes": "Headline models are OLMo 2 7B, 13B and 32B; the 1B is the paper's own experimentation size, defined as 7B with listed departures (its 4096 sequence length is implied, not stated, so left null). Vocabulary size is never given as a number (cl100k plus masking tokens). The first reordered-norm equation applies MLP to x (a parallel reading) but the later table writes MLP(h), so parallel_block is false; d_ff is stated only for 7B (rule ~8/3 d rounded to a multiple of 128).",
+   "new_fields": {
+    "qk_norm": {
+     "value": "full",
+     "quote": "we normalize the key and query projections with RMSNorm before calculating attention",
+     "kind": "rmsnorm",
+     "accept": [
+      "full",
+      "unspecified"
+     ]
+    },
+    "ssm": {
+     "value": "absent",
+     "quote": null,
+     "d_state": null,
+     "d_conv": null,
+     "expand": null,
+     "dt_rank": null
+    },
+    "new_ops": [
+     {
+      "name": "z-loss",
+      "replaces": "none (auxiliary regulariser on the softmax normaliser of the output logits)",
+      "formula": "$10^{-4} \\cdot \\log^2 Z$",
+      "inputs": [
+       {
+        "meaning": "Z, the denominator in the softmax over the logits",
+        "role": "input",
+        "init": null
+       }
+      ],
+      "quote": "we apply z-loss regularization by adding $10^{-4} \\cdot \\log^2 Z$ to our loss function",
+      "category": "final_logits",
+      "scored": false,
+      "not_scored_because": "a training-loss term, not a forward-pass operation; the weight is 10^-4 in the text but 10^-5 in the architecture table"
+     }
+    ],
+    "token_mixing_ops": [],
+    "notes": "QK-norm is labelled full because the paper normalises 'the key and query projections'; it never says per head or whole width explicitly, so 'unspecified' is the alternative reading. RoPE theta is 500,000; no biases.",
+    "labelled": "28 Oct 2026, one Claude agent, LaTeX only (no extraction)"
    }
   }
  }

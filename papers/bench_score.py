@@ -13,7 +13,8 @@ flavor_bench.TRUTH:
              2026-10-22 bench receipts score them.
   sizes      every size field of every truth config: correct, wrong, or abstain (the extractor
              asserts nothing there), each extracted config matched to the truth config it agrees with
-             most (d_model, n_layers, n_heads; name as tie-break). An asserted size with no truth
+             most (d_model, n_layers, n_heads; name as tie-break, or the name alone when the paper
+             states none of the three, as Mamba's headline configs). An asserted size with no truth
              label (the paper states it where the labels have null, or a config the labels lack) is
              counted apart as unlabelled, not scored. The rule-based extractor (papers/fetch.py) is
              scored the same way on its d_model / n_heads / n_layers variants.
@@ -250,7 +251,7 @@ def _num(v):
 
 def match_configs(truth: list[dict], got: list[dict]) -> list[tuple[dict, dict | None]]:
     """Each truth config with the extracted config that agrees with it on most of d_model, n_layers,
-    n_heads (at least one), the name breaking ties; each extracted config used once."""
+    n_heads (at least one, or else the same name), the name breaking ties; each extracted config used once."""
     pairs, used = [], set()
     for t in truth:
         best, key = None, (0, 0)
@@ -261,7 +262,7 @@ def match_configs(truth: list[dict], got: list[dict]) -> list[tuple[dict, dict |
                         if (t.get(f) or {}).get("value") is not None and c.get(f) is not None
                         and _num(t[f]["value"]) == c[f])
             same = int(str(t.get("name", "")).lower().replace(" ", "") == str(c.get("_name", "")).lower().replace(" ", ""))
-            if agree and (agree, same) > key:
+            if (agree or same) and (agree, same) > key:  # a config stating no size matches by its name (Mamba's)
                 best, key = k, (agree, same)
         if best is not None:
             used.add(best)
@@ -386,7 +387,8 @@ def score_new_fields(pid: str, rep: dict, output: dict, truth: dict) -> list[dic
             row(field, t, got if not asserted_sizes else {"value": got, **asserted_sizes},
                 "WRONG" if bad else "correct")
         else:
-            row(field, t, got)
+            accept = nf[field].get("accept") or [t]  # a label that reads two ways (OLMo 2's q/k norm)
+            row(field, t, got, None if got is None else "correct" if got in accept else "WRONG")
             for s in sizes:
                 ts = (nf[field].get(s) or {}).get("value")
                 if ts is not None:

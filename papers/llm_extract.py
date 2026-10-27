@@ -523,7 +523,7 @@ SYSTEM_PROMPT = """You read the LaTeX source of a machine-learning paper and ext
   norm: layernorm (with learned weight and bias), rmsnorm, nonparametric_layernorm (no learned affine parameters), none
   norm_placement: pre (normalise each sublayer's input: x + f(norm(x))), post (normalise after the residual add: norm(x + f(x))), sandwich (normalise the sublayer's input and its output: x + norm(f(norm(x)))), branch_post (normalise the sublayer's output inside the residual branch, not its input: x + norm(f(x))), none
   norm_placement_attn, norm_placement_ffn: the same names, for the attention sublayer and the FFN sublayer, ONLY when the paper places the two differently (then norm_placement is "other:<short description>"); otherwise not_stated
-  activation (of the FFN): relu, gelu (exact erf form), gelu_tanh (tanh approximation), silu, swiglu, geglu, reglu
+  activation (of the FFN): relu, gelu (exact erf form, or a GELU whose form the paper does not state), gelu_tanh (tanh approximation), silu, swiglu, geglu, reglu
   positional: learned (absolute, trained table), sinusoidal, rope, alibi, t5_bias (T5's learned scalar bias per head, by bucketed relative distance, added to the attention logits; give rel_buckets and rel_max_distance when stated), shaw_relative (Shaw et al.'s learned relative position representations: vectors by the clipped query-key distance added to the keys inside the attention logits, and usually to the values; give rel_max_distance = the clipping distance k, rel_per_head and rel_values when stated), relative (any other relative scheme, e.g. Transformer-XL's, DeBERTa's), none
   rope_pairing: interleaved (adjacent pairs x[2j], x[2j+1]), neox (first half with second half)
   residual: residual (x + f(x)), highway (gated carry), plain (no skip)
@@ -541,7 +541,7 @@ The network is three subgraphs: embed -> block (repeated n_layers times) -> head
   linear (out, bias: true/false; tied_to: "token_embd" for a tied output head)
   split (sizes: fused qkv read as q, k, v)
   rmsnorm (eps; group: per-head width for a per-head q/k norm); layernorm (eps; weight and bias)
-  gelu (approx: "tanh" or "none"), silu, relu, sigmoid; add, mul, sub (elementwise); affine (scale, shift: x*scale + shift)
+  gelu (approx: "tanh" or "none"), silu, relu, sigmoid; add, mul, sub (elementwise); affine (scale, shift: x*scale + shift; a scale the paper states as a function of the model width is a formula in d_model, e.g. "sqrt(d_model)" or "1/sqrt(d_model)", not its value at one size)
   scale (per-feature y = x * w + b, learned w and optional b of length d: a norm's gain and bias)
   mul_col ([T,w] times a [T,1] column), rms_row (sqrt(mean(x^2) + eps) per row)
   rope (rope_heads: "all"; pairing: interleaved/neox; n_rot: rotated dims per head; theta)
@@ -1094,6 +1094,74 @@ def number_in_quote(value: float, quote: str) -> bool:
     return any(q == value or abs(q - value) <= 1e-9 * max(abs(q), abs(value)) for q in numbers_in(quote))
 
 
+# A value stated as a function of the model width (an affine scale: the Transformer's sqrt(d_model) on the
+# embeddings, PaLM's 1/sqrt(n) on the logits): the expr grammar over the one name d_model, evaluated at a run's
+# width by the chain. Its check: every number of the formula occurs in the quote, a root is named by the quote
+# (\sqrt, "square root"), and the quote names a width.
+WIDTH_NAME = re.compile(r"model|hidden|embedding|width|dimension|\\d\b|\bd\b|\$d\$|\bd_", re.IGNORECASE)
+
+
+def width_formula(value: str):
+    """The parsed formula when value is an expression in d_model (sqrt and arithmetic only), else None."""
+    v = (value or "").strip()
+    if not re.search(r"\bd_model\b", v):
+        return None
+    try:
+        node = parse_expr(re.sub(r"\bd_model\b", "x", v))
+    except ValueError:
+        return None
+    if expr_vars(node) != {"x"}:
+        return None
+
+    def funcs(n):
+        if n[0] == "call":
+            yield n[1]
+            for a in n[2]:
+                yield from funcs(a)
+        elif n[0] == "bin":
+            yield from funcs(n[2])
+            yield from funcs(n[3])
+        elif n[0] == "neg":
+            yield from funcs(n[1])
+    return node if set(funcs(node)) <= {"sqrt"} else None
+
+
+def width_formula_value(value: str, d: float) -> float | None:
+    """The formula at width d, or None when it is not one or not finite there."""
+    node = width_formula(value)
+    if node is None:
+        return None
+    try:
+        y = expr_eval(node, {"x": [float(d)]})[0]
+    except Exception:  # noqa: BLE001 - any evaluation failure is "no value"
+        return None
+    return y if y is not None and math.isfinite(y) else None
+
+
+def width_formula_check(value: str, quote: str) -> tuple[bool, str]:
+    node = width_formula(value)
+    if node is None:
+        return False, f"{value!r} is not a formula in d_model"
+    nums = [float(m) for m in re.findall(r"(?<![\w.])\d+(?:\.\d+)?", re.sub(r"\bd_model\b", "x", value))]
+    missing = [n for n in nums if not number_in_quote(n, quote)]
+    if missing:
+        return False, f"the formula's number(s) {missing} do not occur in its quote"
+    if "sqrt" in value and not re.search(r"\\sqrt|square root|sqrt", quote, re.IGNORECASE):
+        return False, "the formula takes a square root its quote does not name"
+    if not WIDTH_NAME.search(quote):
+        return False, "the quote names no width (d_model, hidden or embedding size)"
+    if width_formula_value(value, 64.0) is None:
+        return False, "the formula is not finite at a width of 64"
+    return True, ""
+
+
+# "other:gelu (exact vs tanh form not stated)": a GELU the reply could not place as gelu (erf) or gelu_tanh
+# because the paper does not say which form.
+GELU_FORM_UNSTATED = re.compile(r"^other:\s*gelu\b(?!_?tanh)(?=.*(?:not (?:stated|specified|given)|unstated|"
+                                r"unspecified|either|erf (?:or|vs\.?) tanh|tanh (?:or|vs\.?) erf|exact (?:or|vs\.?) tanh))",
+                                re.IGNORECASE)
+
+
 # Words a quote must contain to assert a flavour (case-insensitive). A value
 # missing here (or mapped to None) is checked for its quote only.
 FLAVOUR_CUES = {
@@ -1106,14 +1174,20 @@ FLAVOUR_CUES = {
                    "swiglu": r"SwiGLU|swish|SiLU", "geglu": r"GeGLU|gated[- ]?GeLU",
                    "reglu": r"ReGLU|gated[- ]?ReLU"},
     "positional": {"rope": r"RoPE|rotary", "alibi": r"ALiBi|linear bias",
-                   "sinusoidal": r"sinusoid|\\sin|\\cos|sine", "learned": r"learn|trainable|absolute",
-                   "t5_bias": r"T5|bucket", "shaw_relative": r"relative|Shaw|clip", "relative": r"relative",
+                   "sinusoidal": r"sinusoid|\\sin|\\cos|sine",
+                   # A table of position embeddings is a learned one (BART's "the BART positional embeddings").
+                   "learned": r"learn|trainable|absolute|position(?:al)?[- ]embeddings?",
+                   # T5's own wording: "each ``embedding'' is simply a scalar that is added to the corresponding logit".
+                   "t5_bias": r"T5|bucket|scalar[^.]*added to[^.]*logit",
+                   "shaw_relative": r"relative|Shaw|clip", "relative": r"relative",
                    "none": r"\bno\b|without|NoPE"},
     "ssm": {"mamba1": r"selective|selection|Mamba|S6|input[- ]dependent|functions? of the input","s4": r"\bS4\b|structured state|time[- ]invariant"},
     "qk_norm": {"per_head": r"(?s)(?=.*(?:QK|quer|\bkeys?\b))(?=.*head)", "full": r"QK|quer|\bkeys?\b",
                 "unspecified": r"QK|quer|\bkeys?\b"},
     "attention": {"swa": r"window|local", "linear": r"linear", "sparse": r"sparse"},
-    "residual": {"highway": r"highway|gate|carry", "residual": r"residual|skip"},
+    # A residual is also named by its equation: PaLM's "y = x + \textrm{MLP}(...)", the Transformer's
+    # "LayerNorm(x + \mathrm{Sublayer}(x))".
+    "residual": {"highway": r"highway|gate|carry", "residual": r"residual|skip|\bx\}?\s*\+\s*\\?[A-Za-z]"},
     "rope_pairing": {"interleaved": r"interleav|adjacent|pair", "neox": r"half|neox|rotate_half"},
     "moe_gate_norm": {"renorm": r"normali[sz]|softmax|renorm", "raw": r"softmax"},
 }
@@ -1130,10 +1204,43 @@ def resolve_ancestor(name: str) -> str | None:
     return None
 
 
+def latex_macros(source: str) -> dict[str, str]:
+    """The paper's own argument-free macros, name -> body: \\newcommand{\\x}{...}, \\newcommand*\\x{...},
+    \\renewcommand, \\providecommand, \\def\\x{...} (bodies brace-balanced; a macro with arguments is left
+    out). RoBERTa names BERT-large as \\bertlarge{} = BERT$_{\\textsc{large}}$."""
+    out: dict[str, str] = {}
+    head = re.compile(r"\\(?:(?:re|provide|new)command\*?\s*\{?\s*\\([A-Za-z@]+)\s*\}?|def\s*\\([A-Za-z@]+))\s*(?=\{)")
+    for m in head.finditer(source):
+        i, depth = m.end(), 0
+        for j in range(i, min(len(source), i + 2000)):
+            c = source[j]
+            if c == "{" and source[j - 1] != "\\":
+                depth += 1
+            elif c == "}" and source[j - 1] != "\\":
+                depth -= 1
+                if depth == 0:
+                    out.setdefault(m.group(1) or m.group(2), source[i + 1:j])
+                    break
+    return out
+
+
+def expand_macros(text: str, macros: dict[str, str], rounds: int = 3) -> str:
+    """text with the argument-free macros replaced by their bodies (\\x{} and \\x not followed by a letter)."""
+    for _ in range(rounds):
+        before = text
+        for name in sorted(macros, key=len, reverse=True):
+            body = macros[name].replace("\\", "\\\\")
+            text = re.sub(rf"\\{re.escape(name)}(?:\{{\}}|(?![A-Za-z@]))", body, text)
+        if text == before:
+            break
+    return text
+
+
 class Verifier:
     def __init__(self, source: str):
         self.src = norm_ws(source)
         self.labels = set(re.findall(r"\\label\{([^}]*)\}", source))
+        self.macros = latex_macros(source)
 
     def quote_found(self, quote: str) -> bool:
         q = norm_ws(quote)
@@ -1150,6 +1257,12 @@ class Verifier:
         r = {"value": ev.get("value", ""), "status": ev.get("status"), "quote": ev.get("quote", ""),
              "where": ev.get("where", ""), "reasons": []}
         st, val, quote = r["status"], (r["value"] or "").strip(), r["quote"] or ""
+        if field == "activation" and GELU_FORM_UNSTATED.match(val):
+            # A GELU whose form (erf or tanh) the paper does not state (GPT-NeoX): the enum's gelu, which names
+            # the GELU family; the form is recorded as unstated (canonical_flavour builds both forms alike).
+            r["value"] = val = "gelu"
+            r["reasons"].append("GELU of unstated form (the reply wrote it as other:); asserted as gelu")
+            r["gelu_form"] = "unstated"
         if st == "not_stated":
             r["check"] = "not_stated"
             if val or quote.strip():
@@ -1183,8 +1296,10 @@ class Verifier:
                     if not ok:
                         r["reasons"].append(f"inherited value {val!r} but fetch.ANCESTORS[{anc!r}] has "
                                             f"{table[field]!r}")
-                if not re.search(re.escape((ancestor or {}).get("ancestor", "\0")), quote, re.IGNORECASE) \
-                        and not any(re.search(rf"(?<![\w-]){re.escape(a)}(?![\w-])", quote, re.IGNORECASE)
+                # The ancestor may be named through the paper's own macro (RoBERTa's \bertlarge{}).
+                named = expand_macros(quote, self.macros)
+                if not re.search(re.escape((ancestor or {}).get("ancestor", "\0")), named, re.IGNORECASE) \
+                        and not any(re.search(rf"(?<![\w-]){re.escape(a)}(?![\w-])", named, re.IGNORECASE)
                                     for a, t in fetch.ANCESTOR_ALIASES.items() if t == anc):
                     r["reasons"].append("the inheritance quote does not name the ancestor")
                     checks.append(False)
@@ -1207,6 +1322,11 @@ class Verifier:
                 checks.append(ok)
                 if not ok:
                     r["reasons"].append(f"the quote does not name {field} (looked for /{BOOL_CUES[field]}/)")
+        elif kind == "formula":
+            ok, why = width_formula_check(val, quote)
+            checks.append(ok)
+            if not ok:
+                r["reasons"].append(why)
         elif kind == "dt_rank":
             rule = DT_RANK_RULE.match(val.replace(" ", ""))
             num = parse_number(val) if not rule else None
@@ -1352,16 +1472,24 @@ def verify(output: dict, source: str) -> dict:
             elif match[0]["kind"] != want:
                 rn["errors"].append(f"op {rn['op']} references a {match[0]['kind']} new op")
         for a in n.get("attributes") or []:
-            kind = "number" if parse_number(a.get("value") or "") is not None else "text"
+            kind = ("formula" if width_formula(a.get("value") or "") is not None else
+                    "number" if parse_number(a.get("value") or "") is not None else "text")
             ra = V.evidence(a, kind, a.get("name", ""), ancestor)
             ra["name"] = a.get("name", "")
             rn["attributes"].append(ra)
         rep["block_ops"].append(rn)
 
+    mechs = output.get("mechanisms_outside_ir") or []
+    # An entry with neither a mechanism nor a quote states nothing (Mamba's 26 Oct reply has one): dropped,
+    # with a warning, rather than blocking a build as an unnamed, unverified mechanism.
+    empty = [m for m in mechs if not (m.get("mechanism") or "").strip() and not (m.get("quote") or "").strip()]
+    if empty:
+        rep["warnings"].append(f"{len(empty)} empty mechanisms_outside_ir entr{'y' if len(empty) == 1 else 'ies'} "
+                               "(no mechanism, no quote) dropped")
     rep["mechanisms_outside_ir"] = [
         {"mechanism": m.get("mechanism", ""), "quote": m.get("quote", ""), "where": m.get("where", ""),
          "check": "verified" if V.quote_found(m.get("quote", "")) else "unverified"}
-        for m in output.get("mechanisms_outside_ir") or []]
+        for m in mechs if m not in empty]
 
     rep["summary"] = summarise(rep)
     return rep

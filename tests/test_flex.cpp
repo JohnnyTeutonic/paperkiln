@@ -28,6 +28,10 @@
 //  11. T5's relative position bias: the bucket table, ops::relpos_attention
 //      against causal attention and finite differences; the flex model's
 //      gradient check; the GGUF export refused (no keramos op yet)
+//  14. the q/k norm (qk_norm per_head, full): scale invariance per head and over the row, gradient checks,
+//      exported as rmsnorm after the split (group head_dim per head)
+//  15. an expr on the logits (logits_expr): x*0.125 bit for bit, a soft cap's gradient check, the expr node
+//      after the head
 #include <algorithm>
 #include <cmath>
 #include <string>
@@ -714,6 +718,120 @@ int main() {
                     "%zu entries %.2e; exported as attention.relative_kv\n", nm, wm, nm2, wm2);
     }
 
-    std::printf("FLEX-OK 13/13\n");
+    // 14. The q/k norm (qk_norm per_head and full): an RMSNorm on q and k after the projection -----------------
+    {
+        const size_t dkh = d / H;
+        // Scale one head's query columns (weights and bias) of every block's fused projection by c.
+        auto scale_q = [&](parity::FlexLM& m, size_t h0, size_t h1, float c) {
+            for (auto& b : m.blocks) {
+                nn::Linear& l = *b->attn->c_attn;
+                for (size_t j = h0 * dkh; j < h1 * dkh; ++j) {
+                    for (size_t i = 0; i < l.W->data.rows(); ++i) l.W->data(i, j) *= c;
+                    if (l.b) l.b->data(0, j) *= c;
+                }
+            }
+        };
+        auto maxdiff = [](const Var& a, const Var& b) {
+            float w = 0;
+            for (size_t i = 0; i < a->data.rows(); ++i)
+                for (size_t j = 0; j < a->data.cols(); ++j) w = std::max(w, std::fabs(a->data(i, j) - b->data(i, j)));
+            return w;
+        };
+        const std::vector<int> ids = ids_mod(T, V, 81);
+        float inv[2] = {0, 0}, head_only[2] = {0, 0};
+        double wg[2] = {0, 0};
+        size_t ng[2] = {0, 0};
+        int k = 0;
+        for (const char* mode : {"per_head", "full"}) {
+            parity::FlexConfig qc = small(V, d, H, T);
+            qc.norm = "rmsnorm";
+            qc.pos = "rope";
+            qc.qk_norm = mode;
+            parity::FlexLM m(qc, 80);
+            scale_q(m, 0, H, 10.0f);  // queries well above the norm's eps, so the invariance is to rounding
+            parity::FlexConfig bc = qc;
+            bc.qk_norm = "";
+            parity::FlexLM base(bc, 80);
+            const size_t w = k == 0 ? dkh : d;
+            CHECK(m.parameter_count() == base.parameter_count() + qc.n_layers * 2 * w);
+            // An RMSNorm row is invariant to a positive scale of its input (to eps): per head, scaling one head's
+            // queries moves nothing; full width, scaling all of them moves nothing, one head's alone does.
+            const Var y0 = m.forward(ids);
+            scale_q(m, 0, k == 0 ? 1 : H, 3.0f);
+            inv[k] = maxdiff(m.forward(ids), y0);
+            parity::FlexLM m1(qc, 80);
+            scale_q(m1, 0, H, 10.0f);
+            scale_q(m1, 0, 1, 3.0f);
+            head_only[k] = maxdiff(m1.forward(ids), y0);
+            parity::FlexLM g(qc, 82);
+            wg[k] = model_gradcheck(g, ids_mod(8, V, 83), {"q_norm", "k_norm", "attn.c_attn"}, 24, ng[k]);
+            CHECK(wg[k] < 2e-3);
+            // Exported: an rmsnorm on q and on k right after the split and before the rope node, group head_dim
+            // per head, no group over the full width; weights [w].
+            const auto fx = g.family_export();
+            CHECK(fx.has_value() && fx->arch == "paperkiln");
+            const auto& nodes = fx->ir["block"]["nodes"];
+            size_t split_at = 0, rope_at = 0, norms = 0;
+            for (size_t i = 0; i < nodes.size(); ++i) {
+                if (nodes[i]["op"] == "split") split_at = i;
+                if (nodes[i]["op"] == "rope") rope_at = i;
+            }
+            for (size_t i = split_at + 1; i < rope_at; ++i)
+                if (nodes[i]["op"] == "rmsnorm") {
+                    const std::string t = norms == 0 ? "q" : "k";
+                    CHECK(nodes[i]["in"][0] == t && nodes[i]["out"] == t);
+                    CHECK(nodes[i]["weight"] == "blk.{i}.attn_" + t + "_norm.weight");
+                    CHECK(k == 0 ? nodes[i]["group"] == dkh : !nodes[i].contains("group"));
+                    ++norms;
+                }
+            CHECK(norms == 2 && rope_at == split_at + 3);
+            size_t tens = 0;
+            for (const auto& t : fx->tensors)
+                if (t.name.find("_norm.weight") != std::string::npos && t.name.find("attn_q") != std::string::npos) {
+                    CHECK(t.m.rows() * t.m.cols() == w);
+                    ++tens;
+                }
+            CHECK(tens == qc.n_layers);
+            ++k;
+        }
+        // Invariant (to the eps and rounding): per head to its head's scale, full to the whole row's; one head's
+        // scale moves the full-width model by far more.
+        const float tol = 1e-4f;
+        CHECK(inv[0] < tol && inv[1] < tol && head_only[0] < tol);
+        CHECK(head_only[1] > 20.0f * std::max({inv[0], inv[1], head_only[0], 1e-7f}));
+        std::printf("14. q/k norm: per head invariant to a head's query scale (%.2e), full invariant to the row's "
+                    "(%.2e) and not to one head's (%.2e); gradchecks %zu entries %.2e, %zu entries %.2e; exported as "
+                    "rmsnorm after the split (group head_dim per head)\n", head_only[0], inv[1], head_only[1], ng[0],
+                    wg[0], ng[1], wg[1]);
+    }
+
+    // 15. An expr on the logits (logits_expr): PaLM's scale and Gemma 2's final soft cap -----------------------
+    {
+        parity::FlexConfig lc = small(V, d, H, T);
+        lc.logits_expr = "expr:x*0.125";
+        parity::FlexLM m(lc, 84);
+        parity::FlexLM base(small(V, d, H, T), 84);
+        CHECK(m.parameter_count() == base.parameter_count());
+        const std::vector<int> ids = ids_mod(T, V, 85);
+        const Var a = m.forward(ids), b = base.forward(ids);
+        bool exact = true;
+        for (size_t i = 0; i < a->data.rows(); ++i)
+            for (size_t j = 0; j < a->data.cols(); ++j) exact = exact && a->data(i, j) == b->data(i, j) * 0.125f;
+        CHECK(exact);  // a power-of-two scale: bit for bit
+        lc.logits_expr = "expr:30*tanh(x/30)";
+        parity::FlexLM cap(lc, 86);
+        size_t n = 0;
+        const double w = model_gradcheck(cap, ids_mod(8, V, 87), {"head", "wte"}, 24, n);
+        CHECK(w < 2e-3);
+        const auto fx = cap.family_export();
+        CHECK(fx.has_value() && fx->arch == "paperkiln");
+        const auto& hn = fx->ir["head"]["nodes"];
+        CHECK(hn.back()["op"] == "expr" && hn.back()["in"][0] == "logits" && hn.back()["out"] == "logits");
+        CHECK(!cap.gpt2_export_blocker().empty());
+        std::printf("15. logits expr: x*0.125 = the head's logits * 0.125 bit for bit; 30*tanh(x/30) gradcheck %zu "
+                    "entries %.2e; exported as an expr node after the head's linear\n", n, w);
+    }
+
+    std::printf("FLEX-OK 15/15\n");
     return 0;
 }

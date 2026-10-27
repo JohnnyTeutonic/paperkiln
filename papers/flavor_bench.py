@@ -59,6 +59,15 @@ KNOWN_WRONG: dict[tuple[str, str], str] = {
 }
 
 TRUTH: dict[str, dict[str, str | None]] = {
+    # ---- q/k norm and SSM batch (28 Oct 2026; papers/bench_truth_structure.json, labelled off the LaTeX by an
+    # agent that saw no extraction) ----
+    "2312.00752": {"activation": "silu"},                # Mamba: "We use the SiLU / Swish activation function"
+    # ^ norm omitted: "RMSNorm instead of LayerNorm" is the "improved recipe" given to "several models", not
+    # stated for the headline Mamba models; no position encoding to label.
+    "2505.09388": {"norm": "rmsnorm", "activation": "swiglu",
+                   "positional": "rope"},                # Qwen3
+    "2501.00656": {"norm": "rmsnorm", "activation": "swiglu",
+                   "positional": "rope"},                # OLMo 2
     # ---- original ten (2026-08-01) ----
     "1706.03762": {"norm": "layernorm", "activation": "relu",
                    "positional": "sinusoidal"},          # Transformer
