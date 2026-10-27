@@ -64,11 +64,14 @@ the same pipeline then scales up unchanged.
    **Budget: $200 total (Jonathan, 28 Oct 2026)**, enforced by
    `chat_judge.py --max-usd 200` over the cache's whole recorded spend. Two
    200-prompt pilots measure cost and agreement (128 and 256 new tokens;
-   RESULTS.md, "Preference pilot"), then the full run takes every eligible
-   smol-smoltalk test prompt (3,021 at 256 new tokens and T 512) if the
-   256-token pilot's candidates mostly finish (more than half of its runs
-   end on end-of-text; Jonathan, 28 Oct 2026). Best vs worst pairs where
-   both orders agree, length-matched; DPO+NLL at a gentle rate (below).
+   RESULTS.md, "Preference pilots"), then the full run takes every eligible
+   smol-smoltalk test prompt (3,021 at 256 new tokens and T 512) with the
+   rubric unchanged (the main session's decision under Jonathan's carte
+   blanche, 28 Oct 2026: the judge already chose the finished reply in 24 of
+   30 mixed pairs, so the pairs already push towards finishing; a rubric
+   change would re-key every verdict, the pilots' $20 included; the full run
+   and the gate fit the $200 cap). Best vs worst pairs where both orders
+   agree, length-matched; DPO+NLL at a gentle rate (below).
 
    **Sampling the candidates** (`tools/colab_chat/pref_pilot_v1.json` at 128
    new tokens, `pref_pilot_v2.json` at 256, `pref_sample_vm.py`,
@@ -98,7 +101,9 @@ the same pipeline then scales up unchanged.
    **The DPO arm and its gate (fixed 28 Oct 2026, before the full run's pairs
    or any DPO number existed).**
    - *Pairs:* the full run's (256-token candidates only), one per prompt, best
-     vs worst where both orders agree, within 1.5x in words. A reply gets an
+     vs worst where both orders agree, within 1.5x in words. All of them are
+     the training set; the subset whose chosen reply finished is reported as
+     a breakdown only. A reply gets an
      end-of-text only if it stopped on one (`chosen_stop` / `rejected_stop`
      from `chat_judge.py pairs`; mtstudio trains a cut reply as the prefix it
      is). The last 5% of the file are mtstudio's held-out pairs.

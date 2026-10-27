@@ -125,23 +125,25 @@ def spent(cache_path):
 
 
 def run(requests, cache_path, judge_id, rubric_path, max_calls, transport, now=None, max_usd=None):
-    """max_usd caps the cache's TOTAL recorded spend (earlier runs included):
-    no call starts once it is reached, so repeated runs cannot pass it."""
+    """max_usd caps the cache's TOTAL recorded spend (earlier runs included): no call starts when
+    the spend plus the dearest call so far would pass it, so repeated runs cannot pass it either."""
     rubric, version, rsha = rubric_identity(rubric_path)
     done = {c["key"] for c in read_jsonl(cache_path)}
     before = spent(cache_path)
     calls, cost, failures = 0, 0.0, 0
+    dearest = max((float(c.get("cost_usd", 0.0)) for c in read_jsonl(cache_path)), default=0.0)
     with open(cache_path, "a", encoding="utf-8", newline="\n") as cache, \
             open(cache_path + ".failures.jsonl", "a", encoding="utf-8", newline="\n") as fail:
         for r, order in jobs(requests):
             k = key_of(r["prompt"], r["candidates"], order, judge_id, version)
             if k in done:
                 continue
-            if calls >= max_calls or (max_usd is not None and before + cost >= max_usd):
+            if calls >= max_calls or (max_usd is not None and before + cost + dearest > max_usd + 1e-9):
                 break
             text, c = transport(rubric, render(r["prompt"], r["candidates"], order))
             calls += 1
             cost += c
+            dearest = max(dearest, c)
             ranking, why = parse_ranking(text, order)
             rec = {"key": k, "uri": r.get("uri", ""), "order": order, "judge_id": judge_id, "rubric_version": version,
                    "rubric_sha256": rsha, "response_sha256": sha256_bytes(text.encode("utf-8")), "cost_usd": c,

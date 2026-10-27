@@ -238,20 +238,18 @@ reversed, one call at a time.
   saw the workspace's instructions. Every verdict was made from the empty directory. Four probe calls
   outside the cache cost $0.16.
 
-### The full run: not launched
+### The full run
 
-- Jonathan's condition (28 Oct 2026) for the full run was that most candidates finish, more than half of the
-  256-token pilot's runs ending on end-of-text. **0.414 did, so the full run did not start.** The next lever,
-  the rubric's preference for finished replies, is his call.
-- Were it run at the 256-token pilot's rate, the remaining 2,831 eligible prompts (3,021 fit prompt + 256 in
-  T 512) would cost about $161 and give about 1,560 more pairs, half of them both cut; with the $20.07 the
-  cache holds, about $181 of the $200 cap; the judged side-by-side of the DPO gate (PLAN.md; about 600
-  calls, about $17) would bring it to about $199.
-- What the pilots show for a finished-reply rule: at 256 tokens, 44 of the 105 pairs already have a
-  finished chosen reply, and 68% of prompts have at least one finished candidate to choose.
-- Prepared and not launched: `tools/colab_chat/pref_full_v1.json` (the full sampling, continuing the
-  256-token pilot's file), the DPO arm and its gate (PLAN.md), mtstudio's `chosen_stop` / `rejected_stop`,
-  and `tools/posttrain/side_by_side.py` with `tools/colab_chat/sbs_vm.py`.
+- **Decision (main session, under Jonathan's carte blanche, 28 Oct 2026): the full run at 256 new tokens
+  with the rubric unchanged.** The judge already chose the finished reply in 24 of 30 mixed pairs, so the
+  pairs already push towards finishing; a rubric change would re-key every verdict, the pilots' $20
+  included; the full run and the gate come to about $199, inside the $200 cap. The condition that more than
+  half of the pilot's runs end on end-of-text (0.414 did) was a brief's condition, not a registered rule.
+- At the pilot's rate the remaining 2,831 eligible prompts (3,021 fit prompt + 256 in T 512) cost about $161
+  and give about 1,560 more pairs; with the $20.07 the cache holds, about $181; the judged side-by-side of the
+  DPO gate (PLAN.md; about 600 calls, about $17) brings it to about $199.
+- The training set is every agreeing, length-matched pair; the subset whose chosen reply finished is
+  reported beside it as a breakdown.
 
 ## Conversation schema v2: system prompts and tool turns (27 Oct 2026)
 
