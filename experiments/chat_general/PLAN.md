@@ -56,41 +56,73 @@ the same pipeline then scales up unchanged.
 3. **SFT:** the same 24k TinyChat examples in the chat template, 1500 steps
    (~45 min on the L4 at today's speed).
 4. **Preference (RLAIF):** Claude (`claude-opus-5-5`) as judge through the
-   logged-in Claude Code CLI in print mode, no API key handled. Measured cost
-   with a trimmed system prompt and no tools: **$0.0117 per call**. Listwise:
-   one call ranks a prompt's 4 sampled replies, run twice with the order
-   reversed, and only agreeing ranks are kept. About $0.03 per prompt.
-   **Budget: $100 total (Jonathan, 19 Oct 2026)**, enforced by
-   `chat_judge.py --max-usd 100` over the cache's whole recorded spend: a
-   200-prompt pilot (~$6) measures cost and agreement, then ~3,000 prompts
-   (~1,700-2,000 pairs; up to twice that with `--pairs-per-prompt 2`). Best vs
-   worst pairs, length-matched;
-   DPO+NLL at a gentle rate. The arm fails if it repeats more than its SFT
-   start (`chat_eval.py` repeat gate) or loses the ember side-by-side.
+   logged-in Claude Code CLI in print mode, no API key handled, run from an
+   empty directory with the rubric as the whole system prompt and no tools.
+   Listwise: one call ranks a prompt's 4 sampled replies, run twice with the
+   order reversed, and only agreeing ranks are kept. Measured on the 128-token
+   pilot: $0.024 per call, $0.048 per prompt.
+   **Budget: $200 total (Jonathan, 28 Oct 2026)**, enforced by
+   `chat_judge.py --max-usd 200` over the cache's whole recorded spend. Two
+   200-prompt pilots measure cost and agreement (128 and 256 new tokens;
+   RESULTS.md, "Preference pilot"), then the full run takes every eligible
+   smol-smoltalk test prompt (3,021 at 256 new tokens and T 512) if the
+   256-token pilot's candidates mostly finish (more than half of its runs
+   end on end-of-text; Jonathan, 28 Oct 2026). Best vs worst pairs where
+   both orders agree, length-matched; DPO+NLL at a gentle rate (below).
 
-   **Sampling the candidates** (`tools/colab_chat/pref_pilot_v1.json`,
-   `pref_sample_vm.py`, `tools/posttrain/sample_candidates.py`): the winner,
-   pk_sft_v1 (Jonathan's pick, 27 Oct 2026), on ember's CUDA server at ember
-   main **7526469**, with `EMBER_GEMM_TF32=0` and `EMBER_DETERMINISTIC=1` (a
-   recorded seed draws the same reply again on the same GPU and build), and
-   `EMBER_SPEC` and `EMBER_DRAFT` unset. 7526469 carries e57c0fb's
-   `utf8_valid` (cherry-picked as 2fb95b2) on every text path: /chat answers
-   a reply cut inside a UTF-8 character with U+FFFD, where fe01b35 and bace837
-   answer HTTP 500 (pk-bench2's IF-tiny job stopped on one); generated ids are
-   unchanged (ember `experiments/utf8_2026-10-27`). The tiny-chat default,
-   aa50a61 (ember main of 25 Oct: IR spec v1, the CUDA prefill rmsnorm fix),
-   and fe01b35 are ancestors. No gate holds the pilot to that line: TF32 is
-   off by the same switch; deterministic mode only adds, under speculation,
-   the exact verify pass (off here); with speculation unset the decode
-   kernels are 70ed063's unchanged; pk_sft_v1's greedy parity gate (aa50a61)
-   and its IF-tiny run (fe01b35, deterministic mode) are records of those
-   builds, not pins for sampling. Replies holding U+FFFD follow
+   **Sampling the candidates** (`tools/colab_chat/pref_pilot_v1.json` at 128
+   new tokens, `pref_pilot_v2.json` at 256, `pref_sample_vm.py`,
+   `tools/posttrain/sample_candidates.py`): the winner, pk_sft_v1 (Jonathan's
+   pick, 27 Oct 2026), on ember's CUDA server with `EMBER_GEMM_TF32=0` and
+   `EMBER_DETERMINISTIC=1` (a recorded seed draws the same reply again on the
+   same GPU and build), `EMBER_SPEC` and `EMBER_DRAFT` unset. The 128-token
+   pilot ran at ember main 7526469; the 256-token pilot and the full run run
+   at ember main 9d993f48, whose engine is b49eb5c's (conversation schema v2
+   with paperkiln/1 byte-identical, ec3201b's tiled split-K decode attention
+   gated in default and deterministic mode). Both carry e57c0fb's
+   `utf8_valid`: /chat answers a reply cut inside a UTF-8 character with
+   U+FFFD, where fe01b35 and bace837 answer HTTP 500; generated ids are
+   unchanged. aa50a61 (the tiny-chat default) and fe01b35 are ancestors, and
+   no gate holds sampling to that line: TF32 is off by the same switch, and
+   pk_sft_v1's greedy parity gate (aa50a61) and its IF-tiny run (fe01b35) are
+   records of those builds, not pins. Replies holding U+FFFD follow
    sample_candidates.py's rule `trim_cut_tail_drop_other`: a reply cut by the
    token budget inside a character is a cut reply, trimmed to its last whole
    character; any other U+FFFD (or a cut with no whole character before it)
    drops that run from the candidates (the run stays in the record), and a
    prompt left with fewer than two distinct candidates is skipped as
-   `fewer_than_two_valid`.
+   `fewer_than_two_valid`. The full run continues the 256-token pilot's
+   candidate file (`pref_sample_vm.py` RESUME_PREFIX), so its first prompts
+   are the pilot's and their verdicts are already in the cache.
+
+   **The DPO arm and its gate (fixed 28 Oct 2026, before the full run's pairs
+   or any DPO number existed).**
+   - *Pairs:* the full run's (256-token candidates only), one per prompt, best
+     vs worst where both orders agree, within 1.5x in words. A reply gets an
+     end-of-text only if it stopped on one (`chosen_stop` / `rejected_stop`
+     from `chat_judge.py pairs`; mtstudio trains a cut reply as the prefix it
+     is). The last 5% of the file are mtstudio's held-out pairs.
+   - *Training (pk_dpo_v1):* mtstudio `provenance_po` from pk_sft_v1, the
+     reference pk_sft_v1 frozen; weight_mode uniform; beta 0.1; NLL 0.2 on the
+     chosen reply; AdamW, lr 2e-6, warmup 20 steps, cosine to 0.1; batch 8
+     pairs; two passes in expectation over the training pairs; FP32; the
+     final checkpoint.
+   - *Gate* (pk_dpo_v1 against pk_sft_v1, both in one `chat_eval_vm.sh` run on
+     one ember build): (1) protocol failures at most 0.10 on every prompt set
+     and source (amendment A1); (2) repeats no higher than pk_sft_v1's on the
+     frozen TinyChat prompts and on `chat_prompts_v1`'s ultrachat source;
+     (3) simple-QA at most 3 questions below pk_sft_v1's (one standard error
+     is about 2.7); (4) ember parity: greedy 40/40 against `mtstudio chat` on
+     CUDA (TF32 off) and CPU; (5) **the judged side-by-side**
+     (`tools/posttrain/side_by_side.py`): one reply from each model to each of
+     the first 300 eligible smol-smoltalk val-split prompts (held out from
+     the SFT and from the pairs), temperature 0.7, seed 71 + prompt index,
+     256 new tokens, on ember's CUDA server in deterministic mode, ranked by
+     the same judge in both orders; a prompt is won when both orders agree,
+     a tie otherwise. pk_dpo_v1 wins the side-by-side when its share of the
+     decided prompts exceeds 0.5 with the Wilson 95% lower bound above 0.5.
+   - pk_dpo_v1 replaces pk_sft_v1 only if all five hold. Otherwise the arm is
+     recorded as a negative, with every number, and pk_sft_v1 stays.
 
 ## How it is judged
 

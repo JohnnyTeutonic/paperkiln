@@ -114,3 +114,17 @@ def test_cli_runs_in_an_empty_directory(tmp_path, monkeypatch):
     import pytest
     with pytest.raises(SystemExit, match="must be empty"):
         J.claude_cli_transport("claude", "m", workdir=str(tmp_path))
+
+
+def test_pairs_carry_how_each_reply_stopped(tmp_path):
+    cache = tmp_path / "c.jsonl"
+    rs = reqs()
+    t = fake(lambda s: ("pasta" in s) * 2 + ("well" in s) - ("today today" in s) * 3)
+    J.run(rs, str(cache), "claude-test", str(RUBRIC), 100, t)
+    rs[0]["sampler"] = {"runs": [{"stop": "eos"}, {"stop": "length"}, {"stop": "length"}, {"stop": "turn"}],
+                        "candidate_runs": [[0], [1], [2], [3]]}
+    out = tmp_path / "p.jsonl"
+    J.pairs(rs, str(cache), "claude-test", str(RUBRIC), str(out))
+    ps = [json.loads(x) for x in out.read_text(encoding="utf-8").splitlines()]
+    assert ps[0]["chosen_stop"] == "eos" and ps[0]["rejected_stop"] == "length"
+    assert "chosen_stop" not in ps[1]  # a request without sampler runs

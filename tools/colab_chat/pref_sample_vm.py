@@ -5,15 +5,19 @@ default tiny_chat_run.EMBER_COMMIT; EMBER_GEMM_TF32=0 and EMBER_DETERMINISTIC=1,
 draws the same reply again on the same GPU and build) on the model's f32 GGUF, and
 tools/posttrain/sample_candidates.py drawing k = 4 replies per smol-smoltalk test-split prompt.
 
-    python3 tools/colab_chat/pref_sample_vm.py OUT TAG N_PROMPTS [MAX_NEW=64] [EMBER_COMMIT]
+    python3 tools/colab_chat/pref_sample_vm.py OUT TAG N_PROMPTS [MAX_NEW=64] [EMBER_COMMIT] [RESUME_PREFIX]
 
 TAG is a chat_eval_stage.py tag: NAME (an uploaded NAME.gguf / NAME.safetensors with its eval spec)
 or NAME@JOB (a model this session trained). The context passed to the sampler is the model's T.
 Writes OUT/candidates.jsonl (+ .skipped.jsonl; resumable: a rerun continues it) and
-OUT/sample_summary.json (the sampler's counts, the GGUF's sha256, ember's build record)."""
+OUT/sample_summary.json (the sampler's counts, the GGUF's sha256, ember's build record).
+RESUME_PREFIX: when OUT holds no candidates yet, /content/chat/upload/PREFIXcandidates.jsonl and
+PREFIXcandidates.jsonl.skipped.jsonl (an earlier run's files, uploaded) are copied in first, so the
+sampler continues them; it refuses unless their recorded configuration equals this run's."""
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -42,7 +46,11 @@ def main():
     out, tag, n = sys.argv[1], sys.argv[2], int(sys.argv[3])
     max_new = sys.argv[4] if len(sys.argv) > 4 else "64"
     commit = sys.argv[5] if len(sys.argv) > 5 else ""
+    resume = sys.argv[6] if len(sys.argv) > 6 else ""
     os.makedirs(out, exist_ok=True)
+    if resume and not os.path.exists(f"{out}/candidates.jsonl"):
+        for f in ("candidates.jsonl", "candidates.jsonl.skipped.jsonl"):
+            shutil.copyfile(f"/content/chat/upload/{resume}{f}", f"{out}/{f}")
     # The test split (and the train split it is checked against): pinned, sha256-verified by the fetcher.
     subprocess.run([sys.executable, "corpus/fetchers/smol_smoltalk.py", "qa_v1"], cwd=REPO, check=True)
     spec_path = subprocess.run([sys.executable, "tools/colab_chat/chat_eval_stage.py", tag], cwd=REPO, check=True,

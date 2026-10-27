@@ -1574,6 +1574,7 @@ struct PrefData {
     std::vector<float> w;
     std::vector<std::string> kind;  // the weaker receipt's kind, for the histogram
     size_t val_start = 0;
+    size_t chosen_open = 0, rejected_open = 0;  // replies with no end-of-text (chosen_stop / rejected_stop)
 };
 
 float receipt_weight(const json& e, const json& table) {
@@ -1615,9 +1616,18 @@ PrefData load_pref(const Spec& s, const std::map<std::string, int>& vocab) {
         auto p = tokenize(r["prompt"].get<std::string>(), vocab, 100000);
         auto c = tokenize(r["chosen"].get<std::string>(), vocab, 100000);
         auto j = tokenize(r["rejected"].get<std::string>(), vocab, 100000);
+        // A reply ends on end-of-text unless its pair says how sampling stopped
+        // ("chosen_stop" / "rejected_stop", tools/posttrain/chat_judge.py pairs): only "eos"
+        // ends on it; a reply the token budget cut ("length") or that stopped on a
+        // generated role marker ("turn") is trained as the prefix it is, never given an
+        // end the model did not write.
+        const bool c_end = r.value("chosen_stop", std::string("eos")) == "eos";
+        const bool j_end = r.value("rejected_stop", std::string("eos")) == "eos";
+        d.chosen_open += !c_end;
+        d.rejected_open += !j_end;
         if (eos >= 0) {
-            c.push_back(eos);
-            j.push_back(eos);
+            if (c_end) c.push_back(eos);
+            if (j_end) j.push_back(eos);
         }
         if (p.empty() || c.empty() || j.empty()) throw std::runtime_error("pair " + std::to_string(n) + " is empty");
         if (p.size() + std::max(c.size(), j.size()) > s.T + 1)
@@ -2263,6 +2273,8 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                  {"weight_mode", s.po_weight_mode},
                  {"weight_sum_by_kind", wsum},
                  {"pairs_by_kind", wcount},
+                 {"chosen_open", pd.chosen_open},
+                 {"rejected_open", pd.rejected_open},
                  {"beta", s.po_beta},
                  {"nll", s.po_nll},
                  {"vocab", tokens.size()}});

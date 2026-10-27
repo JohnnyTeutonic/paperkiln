@@ -31,7 +31,6 @@ from __future__ import annotations
 
 import argparse
 import datetime as _dt
-import hashlib
 import json
 import os
 import re
@@ -151,6 +150,17 @@ def run(requests, cache_path, judge_id, rubric_path, max_calls, transport, now=N
             "total_spent_usd": round(before + cost, 4)}
 
 
+def stops(r, chosen, rejected):
+    """{"chosen_stop", "rejected_stop"} from a sampled request (sample_candidates.py's sampler.runs:
+    how each candidate's first run stopped: "eos", "length" or "turn"), or {} for a request without
+    them. mtstudio's provenance_po gives a reply its end-of-text only when it stopped on one."""
+    s = r.get("sampler") or {}
+    if "runs" not in s or "candidate_runs" not in s:
+        return {}
+    return {"chosen_stop": s["runs"][s["candidate_runs"][chosen][0]]["stop"],
+            "rejected_stop": s["runs"][s["candidate_runs"][rejected][0]]["stop"]}
+
+
 def pairs(requests, cache_path, judge_id, rubric_path, out_path, per_prompt=1):
     """Best vs worst where both orders agree on them; with per_prompt=2 (four
     or more candidates) also second-best vs second-worst where both orders
@@ -181,11 +191,12 @@ def pairs(requests, cache_path, judge_id, rubric_path, out_path, per_prompt=1):
                 if max(lb, lw) / min(lb, lw) > 1.5:
                     long_short += 1
                     continue
-                g.write(json.dumps({"prompt": r["prompt"], "chosen": best, "rejected": worst, "uri": r.get("uri", ""),
-                                    "rank_pair": [hi, lo],
-                                    "chosen_evidence": dict(ev, rationale=got[0]["rationale"]),
-                                    "rejected_evidence": dict(ev, rationale=got[1]["rationale"])},
-                                   ensure_ascii=False) + "\n")
+                rec = {"prompt": r["prompt"], "chosen": best, "rejected": worst, "uri": r.get("uri", ""),
+                       "rank_pair": [hi, lo],
+                       "chosen_evidence": dict(ev, rationale=got[0]["rationale"]),
+                       "rejected_evidence": dict(ev, rationale=got[1]["rationale"])}
+                rec.update(stops(r, a[hi], a[lo]))
+                g.write(json.dumps(rec, ensure_ascii=False) + "\n")
                 n_pairs += 1
     return {"pairs": n_pairs, "position_disagreements": disagree, "unranked": unranked,
             "length_mismatched": long_short, "out": out_path}

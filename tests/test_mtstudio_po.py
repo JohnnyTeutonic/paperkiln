@@ -115,3 +115,31 @@ def test_rpo_nll_term(base):
     # With nll = 0 the term is absent (plain DPO): chosen_nll is reported as 0.
     plain = [e for e in run(po_spec(base, "po_plain", steps=2)) if e["event"] == "step"]
     assert all(e["chosen_nll"] == 0 for e in plain)
+
+
+@needs_bin
+def test_stop_fields_decide_the_end_of_text(base):
+    # chosen == rejected text: with both ending on end-of-text the pair carries no signal (margin 0
+    # at every step); a chosen reply the budget cut (chosen_stop "length") is the prefix without the
+    # end-of-text, so the two sequences differ by that token and the margin moves.
+    same = [{"prompt": f"what is {a} plus {b} ?", "chosen": f"the answer is {a + b} .",
+             "rejected": f"the answer is {a + b} ."} for a, b in FACTS * 3]
+    (base / "same.jsonl").write_text("".join(json.dumps(p) + "\n" for p in same), encoding="utf-8")
+    cut = [dict(p, chosen_stop="length", rejected_stop="eos") for p in same]
+    (base / "cut.jsonl").write_text("".join(json.dumps(p) + "\n" for p in cut), encoding="utf-8")
+
+    def go(name, pairs_file):
+        p = spec(base, name, {"steps": 4, "eval_every": 4, "objective": "provenance_po", "lr": 0.003,
+                              "init_from": str(base / "base" / "base.safetensors"),
+                              "po": {"beta": 0.5, "weight_mode": "uniform"}}, {"pref_pairs": str(base / pairs_file)})
+        return run(p)
+
+    ev = go("po_same", "same.jsonl")
+    data = next(e for e in ev if e["event"] == "data")
+    assert data["chosen_open"] == 0 and data["rejected_open"] == 0
+    assert all(abs(e["margin"]) < 1e-6 for e in ev if e["event"] == "step")
+    ev = go("po_cut", "cut.jsonl")
+    data = next(e for e in ev if e["event"] == "data")
+    assert data["chosen_open"] == data["pairs"] and data["rejected_open"] == 0
+    steps = [e for e in ev if e["event"] == "step"]
+    assert abs(steps[0]["margin"]) < 1e-4 and any(abs(e["margin"]) > 1e-3 for e in steps[1:])
