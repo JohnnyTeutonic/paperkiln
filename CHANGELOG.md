@@ -7,6 +7,16 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **pk_base_v1 and pk_sft_v1 on the Hugging Face Hub** (28 Oct; LOCAL_LLM_STACK.md section 10).
+  [johnnyteutonic/pk_base_v1](https://huggingface.co/johnnyteutonic/pk_base_v1) (MIT: F32 GGUF, the gated
+  Q4_K_M and Q4_K_S, safetensors) and [johnnyteutonic/pk_sft_v1](https://huggingface.co/johnnyteutonic/pk_sft_v1)
+  (CC-BY-NC-4.0, because its SFT set includes TinyChat: F32 GGUF, safetensors). `tools/publish_hf.py` gains a
+  release mode: `--file` (chosen files), `--card` (a hand-written card, used as written when it has a metadata
+  header), `--sha256` (expected hashes, checked before anything is staged), `--stage` (the repo as a folder of
+  hard links, uploaded with the Hub's resumable large-folder upload), `--verify` / `--verify-only` (download
+  every file back and check its sha256); `--env-file` now loads only the token lines; a run directory's README
+  names the GGUF's own tokenizer instead of always "word-level". `tests/test_publish_hf.py` (9, no network).
+
 - **New primitives drafted by Claude: Shaw-style relative positions, and Primer's MDHA wired** (27 Oct;
   LOCAL_LLM_STACK.md 5.4, D2; keramos v1.4.0 pinned). `ops::shaw_attention` (Shaw, Uszkoreit and Vaswani 2018,
   arXiv 1803.02155, eqs. 3-4): relative key and value vectors by the clipped query-key distance, shared by

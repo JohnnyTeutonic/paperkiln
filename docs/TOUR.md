@@ -262,7 +262,11 @@ python3 tools/publish_hf.py runs/tinychat-quick --repo your-name/tinychat-quick 
 python3 tools/publish_hf.py runs/tinychat-quick --repo your-name/tinychat-quick
 ```
 
-The Hub page is the model card, with a "chat with it" section.
+The Hub page is the model card, with a "chat with it" section. For a release
+with a hand-written card and chosen files, `--file F` (repeatable), `--card
+card.md`, `--sha256 expected.sha256` (checked before upload), `--stage DIR`
+(resumable upload) and `--verify DIR` (download back and check every hash);
+pk_base_v1 and pk_sft_v1 were published this way.
 
 ## Evaluating a tiny chat model: Carry-5
 
