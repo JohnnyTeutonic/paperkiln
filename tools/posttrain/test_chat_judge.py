@@ -139,3 +139,17 @@ def test_cli_limit_stops_the_run(monkeypatch):
     monkeypatch.setattr(J.subprocess, "run", lambda argv, **kw: Done())
     with pytest.raises(SystemExit, match="session limit"):
         J.claude_cli_transport("claude", "m")("sys", "user")
+
+
+def test_workers_give_the_same_verdicts_and_respect_the_cap(tmp_path):
+    t1, t3 = fake(lambda s: len(s)), fake(lambda s: len(s))
+    a, b = tmp_path / "a.jsonl", tmp_path / "b.jsonl"
+    J.run(reqs(), str(a), "claude-test", str(RUBRIC), 100, t1)
+    r = J.run(reqs(), str(b), "claude-test", str(RUBRIC), 100, t3, workers=3)
+    assert r["calls"] == 4
+    va = {c["key"]: c["ranking"] for c in map(json.loads, a.read_text(encoding="utf-8").splitlines())}
+    vb = {c["key"]: c["ranking"] for c in map(json.loads, b.read_text(encoding="utf-8").splitlines())}
+    assert va == vb
+    capped = J.run(reqs(), str(tmp_path / "c.jsonl"), "claude-test", str(RUBRIC), 100, fake(len), max_usd=0.02,
+                   workers=3)
+    assert capped["total_spent_usd"] <= 0.02 + 1e-9

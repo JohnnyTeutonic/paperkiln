@@ -124,23 +124,31 @@ def spent(cache_path):
                for c in read_jsonl(p))
 
 
-def run(requests, cache_path, judge_id, rubric_path, max_calls, transport, now=None, max_usd=None):
+def run(requests, cache_path, judge_id, rubric_path, max_calls, transport, now=None, max_usd=None, workers=1):
     """max_usd caps the cache's TOTAL recorded spend (earlier runs included): no call starts when
-    the spend plus the dearest call so far would pass it, so repeated runs cannot pass it either."""
+    the spend, the calls in flight and one more, each at the dearest call so far, would pass it, so
+    repeated runs cannot pass it either. workers > 1 keeps that many calls in flight (threads); the
+    verdicts are the same, appended in the order they return."""
+    from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
     rubric, version, rsha = rubric_identity(rubric_path)
     done = {c["key"] for c in read_jsonl(cache_path)}
     before = spent(cache_path)
     calls, cost, failures = 0, 0.0, 0
     dearest = max((float(c.get("cost_usd", 0.0)) for c in read_jsonl(cache_path)), default=0.0)
+    stop_err = None
     with open(cache_path, "a", encoding="utf-8", newline="\n") as cache, \
-            open(cache_path + ".failures.jsonl", "a", encoding="utf-8", newline="\n") as fail:
-        for r, order in jobs(requests):
-            k = key_of(r["prompt"], r["candidates"], order, judge_id, version)
-            if k in done:
-                continue
-            if calls >= max_calls or (max_usd is not None and before + cost + dearest > max_usd + 1e-9):
-                break
-            text, c = transport(rubric, render(r["prompt"], r["candidates"], order))
+            open(cache_path + ".failures.jsonl", "a", encoding="utf-8", newline="\n") as fail, \
+            ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+        pending = {}
+
+        def settle(fut):
+            nonlocal calls, cost, failures, dearest, stop_err
+            k, order, r = pending.pop(fut)
+            try:
+                text, c = fut.result()
+            except SystemExit as e:  # an account limit: no verdict; stop starting calls
+                stop_err = stop_err or e
+                return
             calls += 1
             cost += c
             dearest = max(dearest, c)
@@ -150,10 +158,33 @@ def run(requests, cache_path, judge_id, rubric_path, max_calls, transport, now=N
                    "created": now or _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds")}
             if ranking is None:
                 fail.write(json.dumps(dict(rec, response=text), ensure_ascii=False) + "\n")
+                fail.flush()
                 failures += 1
-                continue
+                return
             cache.write(json.dumps(dict(rec, ranking=ranking, rationale=why), ensure_ascii=False) + "\n")
+            cache.flush()
             done.add(k)
+
+        for r, order in jobs(requests):
+            k = key_of(r["prompt"], r["candidates"], order, judge_id, version)
+            if k in done:
+                continue
+            # One call at a time until a call's cost is known (the cap reserves the dearest per call).
+            while len(pending) >= (max(1, workers) if dearest > 0 else 1):
+                for f in wait(list(pending), return_when=FIRST_COMPLETED).done:
+                    settle(f)
+            if stop_err is not None or calls + len(pending) >= max_calls or (
+                    max_usd is not None and before + cost + dearest * (len(pending) + 1) > max_usd + 1e-9):
+                break
+            fut = pool.submit(transport, rubric, render(r["prompt"], r["candidates"], order))
+            pending[fut] = (k, order, r)
+        while pending:
+            for f in wait(list(pending), return_when=FIRST_COMPLETED).done:
+                settle(f)
+    if stop_err is not None:
+        print(json.dumps({"calls": calls, "cost_usd": round(cost, 4), "failures": failures,
+                          "total_spent_usd": round(before + cost, 4)}))
+        raise stop_err
     return {"calls": calls, "cost_usd": round(cost, 4), "failures": failures,
             "total_spent_usd": round(before + cost, 4)}
 
@@ -221,6 +252,7 @@ def main(argv=None):
     ap.add_argument("--max-calls", type=int)
     ap.add_argument("--max-usd", type=float, help="cap on the cache's total recorded spend (run needs it)")
     ap.add_argument("--pairs-per-prompt", type=int, default=1, choices=[1, 2])
+    ap.add_argument("--workers", type=int, default=1, help="calls in flight at once (run)")
     ap.add_argument("--out")
     a = ap.parse_args(argv)
     reqs = read_jsonl(a.requests)
@@ -233,7 +265,8 @@ def main(argv=None):
         if not a.claude_bin or a.max_calls is None or a.max_usd is None:
             ap.error("run needs --claude-bin, --max-calls and --max-usd")
         print(json.dumps(run(reqs, a.cache, a.judge_id, a.rubric, a.max_calls,
-                             claude_cli_transport(a.claude_bin, a.judge_id), max_usd=a.max_usd)))
+                             claude_cli_transport(a.claude_bin, a.judge_id), max_usd=a.max_usd,
+                             workers=a.workers)))
     else:
         if not a.out:
             ap.error("pairs needs --out")

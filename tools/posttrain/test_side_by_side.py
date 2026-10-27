@@ -55,3 +55,14 @@ def test_count_wins_ties_and_interval(tmp_path):
     assert rep["eos_share"] == {"sft": 1.0, "dpo": 0.0}
     lo, hi = B.wilson(30, 50)
     assert lo < 0.6 < hi and 0.45 < lo < 0.47
+
+
+def test_dpo_pairs_drops_over_T_and_counts_stops():
+    import dpo_pairs as D
+    ps = [{"prompt": "ab", "chosen": "c" * 5, "rejected": "d", "chosen_stop": "length", "rejected_stop": "eos"},
+          {"prompt": "ab", "chosen": "c" * 6, "rejected": "d", "chosen_stop": "eos", "rejected_stop": "eos"},
+          {"prompt": "ab", "chosen": "c", "rejected": "d"}]
+    kept, rep = D.build(ps, lambda s: list(s), 7)  # T + 1 = 8: 2 + 5 fits, 2 + 6 + eos does not
+    assert [len(p["chosen"]) for p in kept] == [5, 1]
+    assert rep["over_T"] == 1 and rep["chosen_finished"] == 1 and rep["val_pairs"] == 1
+    assert rep["stops_chosen_rejected"] == {"length/eos": 1, "eos/eos": 1}

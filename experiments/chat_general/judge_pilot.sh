@@ -11,7 +11,7 @@
 # (MAX_USD, default 100: Jonathan, 19 Oct 2026; $200 from 28 Oct 2026) caps the
 # cache's TOTAL recorded spend. The report adds the share of sampled runs that
 # ended on end-of-text and the pairs whose two replies were both cut by the budget.
-# Run from the microtorch root. Light work (one CLI call at a time).
+# Run from the microtorch root. Light work: one CLI call at a time, or WORKERS in flight.
 set -euo pipefail
 CAND=${1:?candidates jsonl}
 N=${2:-200}
@@ -27,7 +27,7 @@ ARGS=(--requests "$REQ" --cache "$D/judge_cache.jsonl" --rubric tools/posttrain/
       --judge-id claude-opus-5-5)
 J=tools/posttrain/chat_judge.py
 python3 "$J" plan "${ARGS[@]}" | tee "$D/${NAME}_plan.json"
-python3 "$J" run "${ARGS[@]}" --claude-bin "$CLAUDE_BIN" --max-calls $((2 * NREQ)) --max-usd "$MAX_USD" \
+python3 "$J" run "${ARGS[@]}" --claude-bin "$CLAUDE_BIN" --max-calls $((2 * NREQ)) --max-usd "$MAX_USD" --workers "${WORKERS:-1}" \
   | tee "$D/${NAME}_run.json"
 python3 "$J" pairs "${ARGS[@]}" --out "$D/${NAME}_pairs.jsonl" | tee "$D/${NAME}_pairs_summary.json"
 python3 - "$D" "$NREQ" "$NAME" "$REQ" <<'PY'
