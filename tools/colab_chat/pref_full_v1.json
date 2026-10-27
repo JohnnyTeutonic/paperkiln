@@ -1,0 +1,9 @@
+{
+ "_comment": "PREPARED, NOT LAUNCHED: Jonathan's condition (28 Oct 2026) is that more than half of the 256-token pilot's runs end on end-of-text; 315 of 760 did (0.414), so this waits on his call (RESULTS.md, Preference pilot). Claude-judged preference stage, the full sampling (experiments/chat_general/PLAN.md, preference step): every eligible smol-smoltalk test-split first turn (3,123 after the filters; 3,021 fit prompt + 256 in T 512), 4 candidates each at the 256-token pilot's settings (k 4, temperatures 0.8/0.9/1.0/0.9, seed 31, 256 new tokens), pk_sft_v1 (GGUF 4d53c7ff...) on ember main 9d993f48 with EMBER_GEMM_TF32=0 and EMBER_DETERMINISTIC=1. The job continues the 256-token pilot's candidate file (uploaded as p256_candidates.jsonl and its skipped file; RESUME_PREFIX p256_), so the pilot's prompts are not sampled again and their verdicts stay in the cache; sample_candidates.py refuses unless the recorded configuration matches. The judge runs at home. Uploads: pksft.gguf, pksft.safetensors, vocab_llama3_bpe.gguf, p256_candidates.jsonl, p256_candidates.jsonl.skipped.jsonl.",
+ "max_parallel": 1,
+ "jobs": [
+  {"name": "sample",
+   "cmd": ["python3", "tools/colab_chat/pref_sample_vm.py", "{out}", "pksft", "3123", "256", "9d993f48de2cd976a7708d90767df3a58107baf8", "p256_"],
+   "outputs": ["candidates.jsonl", "candidates.jsonl.skipped.jsonl", "sample_summary.json", "sample.log", "ember_build.json", "ember.log"]}
+ ]
+}

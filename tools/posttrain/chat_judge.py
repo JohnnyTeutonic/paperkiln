@@ -98,7 +98,13 @@ def claude_cli_transport(claude_bin, model, workdir=None):
                             "--output-format", "json"], capture_output=True, text=True, timeout=300,
                            stdin=subprocess.DEVNULL, cwd=workdir)
         d = json.loads(p.stdout)
-        return d.get("result", ""), float(d.get("total_cost_usd", 0.0))
+        text, cost = d.get("result", ""), float(d.get("total_cost_usd", 0.0))
+        # An account limit is no verdict: stop the run instead of logging a failure per call
+        # (28 Oct 2026: 121 calls answered "You've hit your session limit" at $0). The verdicts
+        # already cached stay; a rerun after the reset continues with the rest.
+        if d.get("is_error") or (cost == 0.0 and re.search(r"\b(session|usage) limit\b", text)):
+            raise SystemExit(f"claude CLI: {text[:200]!r}; stopped, rerun after the limit resets")
+        return text, cost
     return call
 
 

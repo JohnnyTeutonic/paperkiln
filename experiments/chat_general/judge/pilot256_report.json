@@ -1,0 +1,40 @@
+{
+ "prompts": 190,
+ "calls_needed": 380,
+ "verdicts": 380,
+ "usd": 10.8293,
+ "usd_per_call": 0.0285,
+ "usd_per_call_median": 0.0288,
+ "usd_per_prompt": 0.057,
+ "pairs": 105,
+ "pairs_per_prompt": 0.553,
+ "position_disagreements": 53,
+ "position_disagreement_rate": 0.279,
+ "length_mismatched": 32,
+ "unranked": 0,
+ "runs_eos_share": 0.414,
+ "pair_stops_chosen_rejected": {
+  "eos/length": 24,
+  "length/length": 55,
+  "eos/eos": 20,
+  "length/eos": 6
+ },
+ "first_shown_ranked_best": 0.332,
+ "projected_usd_3000_prompts": 170.99,
+ "judge_runs": [
+  {
+   "calls": 372,
+   "cost_usd": 7.1983,
+   "failures": 121,
+   "total_spent_usd": 16.6009
+  },
+  {
+   "calls": 121,
+   "cost_usd": 3.472,
+   "failures": 0,
+   "total_spent_usd": 20.073
+  }
+ ],
+ "total_spent_usd": 20.073,
+ "note": "The first judge run stopped short: 121 of its 372 calls answered the CLI's session limit ($0, logged as failures); the second, after the reset, made those 121 calls. Every figure covers all 380 verdicts."
+}

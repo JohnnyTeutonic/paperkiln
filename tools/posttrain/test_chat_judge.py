@@ -128,3 +128,14 @@ def test_pairs_carry_how_each_reply_stopped(tmp_path):
     ps = [json.loads(x) for x in out.read_text(encoding="utf-8").splitlines()]
     assert ps[0]["chosen_stop"] == "eos" and ps[0]["rejected_stop"] == "length"
     assert "chosen_stop" not in ps[1]  # a request without sampler runs
+
+
+def test_cli_limit_stops_the_run(monkeypatch):
+    import pytest
+
+    class Done:
+        stdout = json.dumps({"result": "You've hit your session limit", "total_cost_usd": 0.0})
+
+    monkeypatch.setattr(J.subprocess, "run", lambda argv, **kw: Done())
+    with pytest.raises(SystemExit, match="session limit"):
+        J.claude_cli_transport("claude", "m")("sys", "user")

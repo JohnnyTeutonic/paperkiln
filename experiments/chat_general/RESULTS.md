@@ -177,57 +177,81 @@ tables, including ctrl_sft's per-source numbers for ember: `receipts/general_cha
   moe_sft frozen-prompt reply, one big_sft chat_prompts_v1 reply), which moves moe_sft's frozen
   reference F1 from 0.101 to 0.100; every other summary field is equal.
 
-## Preference pilot on pk_sft_v1 (27 Oct 2026)
+## Preference pilots on pk_sft_v1 (27-28 Oct 2026)
 
-The pilot of PLAN.md's preference step on the winner, pk_sft_v1: candidates sampled on a RunPod L4, then
-ranked at home by Claude (`claude-opus-5-5`) through the Claude Code CLI. Receipts: the candidates in
-`C:/ml_artifacts/pref_pilot/sample/` (`candidates.jsonl`, sha256 c969def7...), the verdicts and pairs in
-`judge/` (`judge_cache.jsonl`, the cache the full run reuses; `pilot_pairs.jsonl`; `pilot_report.json`).
+Two pilots of PLAN.md's preference step on the winner, pk_sft_v1, at 128 and 256 new tokens: candidates
+sampled on a RunPod L4, then ranked at home by Claude (`claude-opus-5-5`) through the Claude Code CLI.
+Receipts: the candidates in `C:/ml_artifacts/pref_pilot/sample/` (128 tokens; `candidates.jsonl`, sha256
+c969def7...) and `C:/ml_artifacts/pref_pilot256/sample/` (256 tokens); the verdicts and pairs in `judge/`
+(`judge_cache.jsonl`, the cache the full run reuses; `pilot_*` and `pilot256_*`).
 
 ### Sampling
 
-- **Run:** root `scripts/colab_driver.json` entry pk-pref-pilot (`tools/colab_chat/pref_pilot_v1.json`,
-  paperkiln 799aa7d0), one RunPod L4 (EUR-IS-1, $0.59/h), 12:50-13:32, **$0.41** (cap $2): uploads 20 min,
-  the job 17 min (data fetch, ember build, sampling). ember main 7526469 built on the pod (117 s), CUDA, `EMBER_GEMM_TF32=0`,
-  `EMBER_DETERMINISTIC=1` (its /health reports it); pk_sft_v1.gguf 4d53c7ff..., T 512.
-- **Prompts:** the first 200 eligible smol-smoltalk test-split first turns (the filters drop 38 test-split
-  prompts in all for overlap with the train split, none for the eval sets or markers); 5 skipped because
-  prompt + 128 new tokens exceed 512. **195 requests, each with 4 distinct candidates (780).**
-- **Replies:** 685 of the 780 runs stop at the 128-token budget, 95 on end-of-text; median 96 words per
-  candidate. 3 runs ended inside a UTF-8 character and were trimmed to their last whole character (rule
-  `trim_cut_tail_drop_other`); none was dropped, no candidate holds U+FFFD, and no request failed.
-- **The rule on a CPU build** of 7526469 with pk_sft_v1 (`receipts/pref_pilot_1027/`): 48 greedy requests
-  that draw Japanese text, each reply equal to the vocabulary's decode of the returned ids and none answered
-  HTTP 500; at the budgets that cut a character, 52 sampled runs, 7 trimmed, no U+FFFD in any candidate.
+- **128 tokens:** root `scripts/colab_driver.json` entry pk-pref-pilot (`tools/colab_chat/pref_pilot_v1.json`,
+  paperkiln 799aa7d0), one RunPod L4 (EUR-IS-1, $0.59/h), 27 Oct 12:50-13:32, **$0.41** (cap $2): uploads 20
+  min, the job 17 min (data fetch, ember build, sampling). ember main 7526469 built on the pod (117 s).
+- **256 tokens** (Jonathan, 28 Oct 2026): entry pk-pref-pilot2 (`pref_pilot_v2.json`, paperkiln 1a5da7db),
+  one RunPod L4 (EU-RO-1), 28 Oct 00:13-01:21 (no L4 in stock for the first 8 minutes), **$0.66**: uploads
+  42 min, the job 22 min. ember main 9d993f48 (engine b49eb5c).
+- Both: CUDA, `EMBER_GEMM_TF32=0`, `EMBER_DETERMINISTIC=1` (/health reports it); pk_sft_v1.gguf 4d53c7ff...,
+  T 512; k 4, temperatures 0.8/0.9/1.0/0.9, seed 31; the first 200 eligible smol-smoltalk test-split first
+  turns (the filters drop 38 test-split prompts in all for overlap with the train split, none for the eval
+  sets or markers).
+
+| new tokens | requests | over context | runs | end on end-of-text | median words | trimmed (U+FFFD) | dropped |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 128 | 195 | 5 | 780 | 95 (0.122) | 96 | 3 | 0 |
+| 256 | 190 | 10 | 760 | 315 (0.414) | 176 | 0 | 0 |
+
+- Every request kept 4 distinct candidates; no candidate holds U+FFFD and no request failed.
+- At 256 tokens, 129 of the 190 prompts have at least one finished candidate, 90 at least two, 61 none.
+  Finished replies run to a median of 175 tokens (90th percentile 241), so many of the cut ones are long
+  answers, not loops alone.
+- **The U+FFFD rule on a CPU build** of 7526469 with pk_sft_v1 (`receipts/pref_pilot_1027/`): 48 greedy
+  requests that draw Japanese text, each reply equal to the vocabulary's decode of the returned ids and none
+  answered HTTP 500; at the budgets that cut a character, 52 sampled runs, 7 trimmed, no U+FFFD in any
+  candidate.
 
 ### Judging
 
-`bash experiments/chat_general/judge_pilot.sh C:/ml_artifacts/pref_pilot/sample/candidates.jsonl 200`
-(paperkiln cf63b95b), each prompt ranked twice, the candidates in order and reversed, one call at a time.
+`bash experiments/chat_general/judge_pilot.sh CANDIDATES.jsonl 200 NAME` (paperkiln cf63b95b for the 128-token
+pilot, 7dbb222f and later for the 256-token one), each prompt ranked twice, the candidates in order and
+reversed, one call at a time.
 
-| calls | failures | cost | per call (median, range) | per prompt | pairs | pairs per prompt | position disagreements | length-mismatched |
-|---:|---:|---:|---|---:|---:|---:|---:|---:|
-| 390 | 0 | $9.40 | $0.0238 (0.0176-0.0325) | $0.048 | 125 | 0.641 | 57 of 195 (0.292) | 13 |
+| new tokens | calls | cost | per call (median) | per prompt | pairs | pairs per prompt | position disagreements | length-mismatched | both replies cut |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 128 | 390 | $9.40 | $0.0238 | $0.048 | 125 | 0.641 | 57 of 195 (0.292) | 13 | 112 of 125 |
+| 256 | 380 | $10.83 | $0.0288 | $0.057 | 105 | 0.553 | 53 of 190 (0.279) | 32 | 55 of 105 |
 
-- The two orders agree on the best reply for 156 prompts, on the worst for 170, on the whole ranking for
-  117. The candidate shown first is ranked best in 118 of 390 calls (0.30; 0.25 by chance).
-- 112 of the 125 pairs have both replies cut by the 128-token budget; 8 pair a finished chosen reply with a
-  cut rejected one, 2 the reverse, 3 are both finished.
-- A call costs about twice PLAN.md's measured $0.0117: the 128-token candidates are longer than the ones it
-  was measured on.
-- The CLI now runs in an empty directory of its own (`chat_judge.py`, paperkiln cf63b95b). Started from the
+- **How the pairs' replies stopped** (chosen / rejected): at 128 tokens 112 cut/cut, 8 finished/cut, 2
+  cut/finished, 3 finished/finished; at 256 tokens 55 cut/cut, 24 finished/cut, 6 cut/finished, 20
+  finished/finished. Where one reply finished and the other was cut, the judge chose the finished one in
+  24 of 30 pairs at 256 tokens.
+- The candidate shown first is ranked best in 0.30 (128) and 0.33 (256) of calls; 0.25 by chance.
+- At 256 tokens more pairs fail the 1.5x length match (32 against 13): finished replies vary in length.
+- The 256-token judging ran in two parts: 121 of the first run's 372 calls answered the CLI's session limit
+  ($0, logged as failures), and a second run after the reset made those 121 calls. `chat_judge.py` now stops
+  a run at such an answer instead of logging a failure per call.
+- The CLI runs in an empty directory of its own (`chat_judge.py`, paperkiln cf63b95b). Started from the
   microtorch root it loaded both AGENTS.md files and project memory into each call: 15,610 prompt tokens and
   $0.13 a call, against 1,177 tokens and $0.012 for the same probe from an empty directory, and the judge
-  saw the workspace's instructions. Every pilot verdict was made from the empty directory. Three probe
-  calls outside the cache cost $0.15.
+  saw the workspace's instructions. Every verdict was made from the empty directory. Four probe calls
+  outside the cache cost $0.16.
 
-### The full run
+### The full run: not launched
 
-- At the pilot's rate, 3,000 prompts cost **$144.66** and give about 1,920 pairs. The cache already holds
-  $9.40, so the run passes the $100 cap (`--max-usd 100` stops it there): under the cap, about 1,880 more
-  prompts (about 2,075 in all, about 1,330 pairs).
-- Nine in ten pairs would train DPO on two replies the budget cut. More new tokens per candidate (T 512
-  leaves room) or a preference for finished replies changes that, and the cost per call with it.
+- Jonathan's condition (28 Oct 2026) for the full run was that most candidates finish, more than half of the
+  256-token pilot's runs ending on end-of-text. **0.414 did, so the full run did not start.** The next lever,
+  the rubric's preference for finished replies, is his call.
+- Were it run at the 256-token pilot's rate, the remaining 2,831 eligible prompts (3,021 fit prompt + 256 in
+  T 512) would cost about $161 and give about 1,560 more pairs, half of them both cut; with the $20.07 the
+  cache holds, about $181 of the $200 cap; the judged side-by-side of the DPO gate (PLAN.md; about 600
+  calls, about $17) would bring it to about $199.
+- What the pilots show for a finished-reply rule: at 256 tokens, 44 of the 105 pairs already have a
+  finished chosen reply, and 68% of prompts have at least one finished candidate to choose.
+- Prepared and not launched: `tools/colab_chat/pref_full_v1.json` (the full sampling, continuing the
+  256-token pilot's file), the DPO arm and its gate (PLAN.md), mtstudio's `chosen_stop` / `rejected_stop`,
+  and `tools/posttrain/side_by_side.py` with `tools/colab_chat/sbs_vm.py`.
 
 ## Conversation schema v2: system prompts and tool turns (27 Oct 2026)
 
