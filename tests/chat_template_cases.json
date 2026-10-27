@@ -1160,6 +1160,113 @@
    "expect": "<|user|>What is the weather in Paris?<|assistant|><|tool_call|>get_time\n<|endoftext|><|tool|>{\"temp_c\": 18}<|assistant|>"
   },
   {
+   "name": "v2 tool_call_id null answering a call without an id",
+   "template": "paperkiln/2",
+   "messages": [
+    {
+     "role": "user",
+     "content": "What is the weather in Paris?"
+    },
+    {
+     "role": "assistant",
+     "content": "",
+     "tool_calls": [
+      {
+       "type": "function",
+       "function": {
+        "name": "get_weather",
+        "arguments": "{\"city\": \"Paris\"}"
+       }
+      }
+     ]
+    },
+    {
+     "role": "tool",
+     "content": "{\"temp_c\": 18}",
+     "tool_call_id": null
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<|user|>What is the weather in Paris?<|assistant|><|tool_call|>get_weather\n{\"city\": \"Paris\"}<|endoftext|><|tool|>{\"temp_c\": 18}<|assistant|>"
+  },
+  {
+   "name": "v2 tool_call_id null and a string, calls without and with an id",
+   "template": "paperkiln/2",
+   "messages": [
+    {
+     "role": "user",
+     "content": "What is the weather in Paris?"
+    },
+    {
+     "role": "assistant",
+     "content": "",
+     "tool_calls": [
+      {
+       "type": "function",
+       "function": {
+        "name": "get_weather",
+        "arguments": "{\"city\": \"Paris\"}"
+       }
+      },
+      {
+       "type": "function",
+       "function": {
+        "name": "get_time",
+        "arguments": "{}"
+       },
+       "id": "c2"
+      }
+     ]
+    },
+    {
+     "role": "tool",
+     "content": "{\"temp_c\": 18}",
+     "tool_call_id": null
+    },
+    {
+     "role": "tool",
+     "content": "\"09:00\"",
+     "tool_call_id": "c2"
+    },
+    {
+     "role": "assistant",
+     "content": "18 C at 09:00."
+    }
+   ],
+   "generation_prompt": false,
+   "tools": [
+    {
+     "type": "function",
+     "function": {
+      "name": "get_weather",
+      "description": "Current weather in a city",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "city": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "city"
+       ]
+      }
+     }
+    },
+    {
+     "type": "function",
+     "function": {
+      "name": "get_time",
+      "parameters": {
+       "type": "object",
+       "properties": {}
+      }
+     }
+    }
+   ],
+   "expect": "<|system|>{\"type\": \"function\", \"function\": {\"name\": \"get_weather\", \"description\": \"Current weather in a city\", \"parameters\": {\"type\": \"object\", \"properties\": {\"city\": {\"type\": \"string\"}}, \"required\": [\"city\"]}}}\n{\"type\": \"function\", \"function\": {\"name\": \"get_time\", \"parameters\": {\"type\": \"object\", \"properties\": {}}}}<|user|>What is the weather in Paris?<|assistant|><|tool_call|>get_weather\n{\"city\": \"Paris\"}<|tool_call|>get_time\n{}<|endoftext|><|tool|>{\"temp_c\": 18}<|tool|>\"09:00\"<|assistant|>18 C at 09:00.<|endoftext|>"
+  },
+  {
    "name": "v2 newline-only and empty contents",
    "template": "paperkiln/2",
    "messages": [
@@ -1401,6 +1508,140 @@
      "role": "tool",
      "content": "{\"temp_c\": 18}",
      "tool_call_id": "c1"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": null
+  },
+  {
+   "name": "v2 tool_call_id null against a call with an id",
+   "template": "paperkiln/2",
+   "messages": [
+    {
+     "role": "user",
+     "content": "What is the weather in Paris?"
+    },
+    {
+     "role": "assistant",
+     "content": "",
+     "tool_calls": [
+      {
+       "type": "function",
+       "function": {
+        "name": "get_weather",
+        "arguments": "{\"city\": \"Paris\"}"
+       },
+       "id": "c1"
+      }
+     ]
+    },
+    {
+     "role": "tool",
+     "content": "{\"temp_c\": 18}",
+     "tool_call_id": null
+    }
+   ],
+   "generation_prompt": true,
+   "expect": null
+  },
+  {
+   "name": "v2 tool_call_id null against the second call's id",
+   "template": "paperkiln/2",
+   "messages": [
+    {
+     "role": "user",
+     "content": "What is the weather in Paris?"
+    },
+    {
+     "role": "assistant",
+     "content": "",
+     "tool_calls": [
+      {
+       "type": "function",
+       "function": {
+        "name": "get_weather",
+        "arguments": "{\"city\": \"Paris\"}"
+       }
+      },
+      {
+       "type": "function",
+       "function": {
+        "name": "get_time",
+        "arguments": "{}"
+       },
+       "id": "c2"
+      }
+     ]
+    },
+    {
+     "role": "tool",
+     "content": "{\"temp_c\": 18}",
+     "tool_call_id": null
+    },
+    {
+     "role": "tool",
+     "content": "\"09:00\"",
+     "tool_call_id": null
+    }
+   ],
+   "generation_prompt": true,
+   "expect": null
+  },
+  {
+   "name": "v2 tool_call_id neither a string nor null",
+   "template": "paperkiln/2",
+   "messages": [
+    {
+     "role": "user",
+     "content": "What is the weather in Paris?"
+    },
+    {
+     "role": "assistant",
+     "content": "",
+     "tool_calls": [
+      {
+       "type": "function",
+       "function": {
+        "name": "get_weather",
+        "arguments": "{\"city\": \"Paris\"}"
+       }
+      }
+     ]
+    },
+    {
+     "role": "tool",
+     "content": "{\"temp_c\": 18}",
+     "tool_call_id": 7
+    }
+   ],
+   "generation_prompt": true,
+   "expect": null
+  },
+  {
+   "name": "v2 a tool call's id null",
+   "template": "paperkiln/2",
+   "messages": [
+    {
+     "role": "user",
+     "content": "What is the weather in Paris?"
+    },
+    {
+     "role": "assistant",
+     "content": "",
+     "tool_calls": [
+      {
+       "type": "function",
+       "function": {
+        "name": "get_weather",
+        "arguments": "{\"city\": \"Paris\"}"
+       },
+       "id": null
+      }
+     ]
+    },
+    {
+     "role": "tool",
+     "content": "{\"temp_c\": 18}"
     }
    ],
    "generation_prompt": true,

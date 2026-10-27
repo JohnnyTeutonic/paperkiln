@@ -18,7 +18,8 @@ the tool role is reserved (refused).
 Schema v2 (paperkiln/2, LOCAL_LLM_STACK.md section 3, point 3g) adds tool turns: an assistant
 message may carry "tool_calls": [{"id"?, "type"?: "function", "function": {"name", "arguments"}}]
 (arguments a string, rendered verbatim), followed by exactly as many {"role": "tool", "content",
-"tool_call_id"?} messages in call order, then an assistant message; and a conversation may carry
+"tool_call_id"?} messages in call order (tool_call_id, when present, the call's id; a call without an
+id counts as id null, keramos IR_SPEC 8.1.6), then an assistant message; and a conversation may carry
 "tools": [JSON objects] (tool definitions), rendered inside the system turn. A prompt conversation
 then ends on a user or a tool message.
 
@@ -252,6 +253,8 @@ def _structure(messages, prompt, tools_ok=False):
             raise TemplateError("tool_calls belong on assistant messages of a template with tool turns")
         if "tool_call_id" in m and m["role"] != "tool":
             raise TemplateError("tool_call_id belongs on tool messages")
+        if "tool_call_id" in m and m["tool_call_id"] is not None and not isinstance(m["tool_call_id"], str):
+            raise TemplateError("tool_call_id is a string or null")
     sys_text, rest = None, messages
     if messages[0]["role"] == "system":
         sys_text, rest = messages[0]["content"], messages[1:]
@@ -277,6 +280,7 @@ def _structure(messages, prompt, tools_ok=False):
             want = "tool" if pending else "user"
         else:
             cid = pending.pop(0)[0]
+            # A call without an id counts as id null (IR_SPEC 8.1.6): a null tool_call_id answers only such a call.
             if "tool_call_id" in m and m["tool_call_id"] != cid:
                 raise TemplateError(f"tool_call_id {m['tool_call_id']!r} is not the call's id {cid!r} "
                                     "(tool messages answer the calls in order)")

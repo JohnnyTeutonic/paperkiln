@@ -41,8 +41,9 @@
 // the system message is its own turn behind <|system|> (no fold); an assistant message may carry
 // tool_calls [{id?, type?: "function", function: {name, arguments}}], each rendered after its
 // content as <|tool_call|> + name + "\n" + arguments (the arguments string verbatim); exactly as
-// many tool messages follow, in call order (tool_call_id, when given, equals the call's id; ids are
-// never rendered), each <|tool|> + content, then an assistant message; tool definitions (JSON
+// many tool messages follow, in call order (tool_call_id, when given, equals the call's id, a call
+// without an id counting as id null, keramos IR_SPEC 8.1.6; ids are never rendered), each
+// <|tool|> + content, then an assistant message; tool definitions (JSON
 // objects) render inside the system turn as Python's json.dumps(d, ensure_ascii=False) text
 // (detail::dump_py; HF's tojson), joined by "\n", after the system text and "\n\n". A prompt
 // conversation ends on a user message or on the last tool message of a call. parse_reply splits a
@@ -355,6 +356,7 @@ struct Message {
     std::vector<ToolCall> tool_calls;
     bool has_tool_call_id = false;  // tool messages: the call's id, checked, never rendered
     std::string tool_call_id;
+    bool tool_call_id_null = false;  // tool_call_id null: answers a call without an id (IR_SPEC 8.1.6)
 
     Message() = default;
     Message(std::string r, std::string c, int l = -1) : role(std::move(r)), content(std::move(c)), loss(l) {}
@@ -406,8 +408,12 @@ std::vector<Message> messages_from_json(const J& a) {
         }
         if (m.contains("tool_call_id")) {
             x.has_tool_call_id = true;
-            if (!m["tool_call_id"].is_string()) throw Error("tool_call_id is a string");
-            x.tool_call_id = m["tool_call_id"].template get<std::string>();
+            if (m["tool_call_id"].is_null())
+                x.tool_call_id_null = true;
+            else if (!m["tool_call_id"].is_string())
+                throw Error("tool_call_id is a string or null");
+            else
+                x.tool_call_id = m["tool_call_id"].template get<std::string>();
         }
         out.push_back(std::move(x));
     }
@@ -465,7 +471,11 @@ inline size_t check_structure(const std::vector<Message>& m, bool prompt, bool t
         } else {
             const ToolCall& c = caller->tool_calls[call++];
             --pending;
-            if (m[i].has_tool_call_id && (!c.has_id || m[i].tool_call_id != c.id))
+            // A call without an id counts as id null (IR_SPEC 8.1.6): a null tool_call_id answers only such a call.
+            if (m[i].has_tool_call_id && m[i].tool_call_id_null && c.has_id)
+                throw Error("tool_call_id null is not the call's id '" + c.id + "' (tool messages answer the calls in "
+                            "order; null answers a call without an id)");
+            if (m[i].has_tool_call_id && !m[i].tool_call_id_null && (!c.has_id || m[i].tool_call_id != c.id))
                 throw Error("tool_call_id '" + m[i].tool_call_id + "' is not the call's id (tool messages answer the "
                             "calls in order)");
             want = pending ? "tool" : "assistant";

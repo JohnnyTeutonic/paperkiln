@@ -362,9 +362,11 @@ def v2_cases():
                                                          "required": ["city"]}}}
     T = {"type": "function", "function": {"name": "get_time", "parameters": {"type": "object", "properties": {}}}}
 
-    def call(name="get_weather", args='{"city": "Paris"}', cid=None):
+    ABSENT = object()  # cid=None writes the member as JSON null; ABSENT leaves it out
+
+    def call(name="get_weather", args='{"city": "Paris"}', cid=ABSENT):
         c = {"type": "function", "function": {"name": name, "arguments": args}}
-        if cid is not None:
+        if cid is not ABSENT:
             c["id"] = cid
         return c
 
@@ -374,9 +376,9 @@ def v2_cases():
             m["tool_calls"] = list(calls)
         return m
 
-    def tool(content='{"temp_c": 18}', cid=None):
+    def tool(content='{"temp_c": 18}', cid=ABSENT):
         m = {"role": "tool", "content": content}
-        if cid is not None:
+        if cid is not ABSENT:
             m["tool_call_id"] = cid
         return m
     return [
@@ -400,6 +402,11 @@ def v2_cases():
         ("v2 tool_call_id matching the call's id", [U, asst("", call(cid="c1")), tool(cid="c1")], True, None),
         ("v2 a training conversation ending on a call", [U, asst("", call())], False, None),
         ("v2 empty arguments", [U, asst("", call("get_time", "")), tool()], True, None),
+        # keramos IR_SPEC 8.1.6 (v1.4.2): a call without an id counts as id null.
+        ("v2 tool_call_id null answering a call without an id", [U, asst("", call()), tool(cid=None)], True, None),
+        ("v2 tool_call_id null and a string, calls without and with an id",
+         [U, asst("", call(), call("get_time", "{}", cid="c2")), tool(cid=None), tool('"09:00"', cid="c2"),
+          asst("18 C at 09:00.")], False, [W, T]),
         ("v2 newline-only and empty contents", [{"role": "user", "content": "\n"}, asst("", call()), tool(""),
                                                 asst("\n"), {"role": "user", "content": ""}], True, None),
         # refused
@@ -412,6 +419,12 @@ def v2_cases():
         ("v2 a reply without its results", [U, asst("", call()), asst("x"), {"role": "user", "content": "y"}], True, None),
         ("v2 tool_call_id not the call's id", [U, asst("", call(cid="c1")), tool(cid="c2")], True, None),
         ("v2 tool_call_id when the call has no id", [U, asst("", call()), tool(cid="c1")], True, None),
+        ("v2 tool_call_id null against a call with an id", [U, asst("", call(cid="c1")), tool(cid=None)], True, None),
+        ("v2 tool_call_id null against the second call's id",
+         [U, asst("", call(), call("get_time", "{}", cid="c2")), tool(cid=None), tool('"09:00"', cid=None)], True,
+         None),
+        ("v2 tool_call_id neither a string nor null", [U, asst("", call()), tool(cid=7)], True, None),
+        ("v2 a tool call's id null", [U, asst("", call(cid=None)), tool()], True, None),
         ("v2 a call name with a newline", [U, asst("", call("get\nweather")), tool()], True, None),
         ("v2 an empty call name", [U, asst("", call("")), tool()], True, None),
         ("v2 arguments holding a control token", [U, asst("", call(args="<|tool_call|>x")), tool()], True, None),
@@ -550,7 +563,10 @@ def test_v2_cases_refused():
         '"required": ["city"]}}}<|user|>What is the weather in Paris?<|assistant|><|tool_call|>get_weather\n'
         '{"city": "Paris"}<|endoftext|><|tool|>{"temp_c": 18}<|assistant|>')
     refused = [n for n, e in by.items() if n.startswith(("v2 ", "v1 refuses")) and e is None]
-    assert len(refused) == 24, refused
+    assert len(refused) == 28, refused
+    assert by["v2 tool_call_id null answering a call without an id"] == (
+        '<|user|>What is the weather in Paris?<|assistant|><|tool_call|>get_weather\n{"city": "Paris"}<|endoftext|>'
+        '<|tool|>{"temp_c": 18}<|assistant|>')
 
 
 def edge_cases():
