@@ -76,6 +76,26 @@ public:
     // IR node (microtorch/ir.hpp): out = in W, `weight` its GGUF tensor name.
     ir::json export_ir(const std::string& in, const std::string& out, const std::string& weight) const;
     Var W, b;  // b empty when bias=false
+    // BitLinear (BitNet b1.58; quantisation-aware training, LOCAL_LLM_WORK
+    // R3). Off by default: y = x W (+ b), untouched. On (set_bitlinear):
+    //   h = in_norm ? rmsnorm(x, 1) : x        (a parameter-free RMSNorm)
+    //   h = act_bits ? act_quant_ste(h, act_bits) : h
+    //   y = h ternary_ste(W) (+ b)
+    // the forward of the authors' reference BitLinear (absmean ternary
+    // weights per tensor, absmax int8 activations per token, straight-
+    // through estimators), in training and inference alike. W holds the
+    // latent full-precision weights the optimiser updates.
+    struct BitLinear {
+        bool on = false;
+        int act_bits = 8;  // 0 = activations left in float
+        bool in_norm = true;
+    };
+    void set_bitlinear(const BitLinear& q);
+    const BitLinear& bitlinear() const { return bl_; }
+
+private:
+    BitLinear bl_;
+    Var ones_;  // in_norm's constant gamma [1, in] (not a parameter)
 };
 
 class LayerNorm : public Module {

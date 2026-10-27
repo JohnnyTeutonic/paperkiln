@@ -105,11 +105,26 @@ Linear::Linear(size_t in, size_t out, bool bias, unsigned seed) {
 }
 
 Var Linear::forward(const Var& x) const {
+    if (bl_.on) {
+        Var h = bl_.in_norm ? ops::rmsnorm(x, ones_) : x;
+        if (bl_.act_bits) h = ops::act_quant_ste(h, bl_.act_bits);
+        Var y = ops::matmul(h, ops::ternary_ste(W));
+        return b ? ops::add_bias(y, b) : y;
+    }
     Var y = ops::matmul(x, W);
     return b ? ops::add_bias(y, b) : y;
 }
 
+void Linear::set_bitlinear(const BitLinear& q) {
+    if (q.on && q.act_bits != 0 && (q.act_bits < 2 || q.act_bits > 8))
+        throw std::runtime_error("BitLinear: act_bits must be 0 or in 2..8");
+    bl_ = q;
+    ones_ = q.on && q.in_norm ? make_var(Matrix(1, W->data.rows(), 1.0f)) : Var();
+}
+
 ir::json Linear::export_ir(const std::string& in, const std::string& out, const std::string& weight) const {
+    // No IR op states BitLinear's in-norm and int8 activations (LOCAL_LLM_WORK R3).
+    if (bl_.on) throw std::runtime_error("Linear::export_ir: a BitLinear layer has no IR form (" + weight + ")");
     // The GGUF stores the bias beside its weight ("x.weight" -> "x.bias").
     ir::json bias = nullptr;
     if (b) {

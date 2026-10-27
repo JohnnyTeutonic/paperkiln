@@ -286,6 +286,12 @@ bool embed_scatter_add(const Matrix&, const std::vector<int>&, Matrix&) {
 bool sumsq(const std::vector<const Matrix*>&, std::vector<double>&) {
     return false;
 }
+bool ternary_fwd(const Matrix&, Matrix&) {
+    return false;
+}
+bool act_quant_fwd(const Matrix&, int, Matrix&) {
+    return false;
+}
 }  // namespace devops
 }  // namespace device
 }  // namespace microtorch

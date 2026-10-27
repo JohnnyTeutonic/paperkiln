@@ -109,6 +109,16 @@ struct Spec {
     std::string rope_pairing = "interleaved";
     bool qk_norm = false;
     float rope_theta = 10000.0f;
+    // llama family: BitNet b1.58 BitLinear projections (arch.custom.bitlinear
+    // {"weights": "ternary", "act_bits": 8, "in_norm": true}; nn::LlamaConfig::
+    // bitlinear; LOCAL_LLM_WORK R3). false = no key = float projections.
+    bool bitlinear = false;
+    int bl_act_bits = 8;
+    bool bl_in_norm = true;
+    // llama family: arch.custom.tie_embeddings (default true: the head is the
+    // token embedding). false: a separate lm_head.weight, as a dequantised
+    // llama.cpp file with its own output.weight needs.
+    bool tie_embeddings = true;
     bool thirdparty() const {
         return (kv_heads && kv_heads != heads) || rope_pairing != "interleaved" ||
                (rope_dims && rope_dims != d / heads) || qk_norm;
@@ -418,6 +428,22 @@ Spec parse_spec(const std::string& path) {
         s.rope_dims = c.value("rope_dims", s.rope_dims);
         s.qk_norm = c.value("qk_norm", s.qk_norm);
         s.rope_theta = c.value("rope_theta", s.rope_theta);
+        s.tie_embeddings = c.value("tie_embeddings", s.tie_embeddings);
+        if (c.contains("bitlinear")) {
+            const json b = c["bitlinear"];
+            if (!b.is_object()) throw std::runtime_error("arch.custom.bitlinear must be an object");
+            for (const auto& [k, v] : b.items())
+                if (k != "weights" && k != "act_bits" && k != "in_norm" && k.rfind("_", 0) != 0)
+                    throw std::runtime_error("arch.custom.bitlinear: unknown key " + k + " (weights, act_bits, in_norm)");
+            const std::string w = b.value("weights", std::string("ternary"));
+            if (w != "ternary")
+                throw std::runtime_error("arch.custom.bitlinear.weights must be \"ternary\", got " + w);
+            s.bitlinear = true;
+            s.bl_act_bits = b.value("act_bits", s.bl_act_bits);
+            s.bl_in_norm = b.value("in_norm", s.bl_in_norm);
+            if (s.bl_act_bits != 0 && (s.bl_act_bits < 2 || s.bl_act_bits > 8))
+                throw std::runtime_error("arch.custom.bitlinear.act_bits must be 0 or in 2..8");
+        }
         if (s.rope_pairing != "interleaved" && s.rope_pairing != "neox")
             throw std::runtime_error("arch.custom.rope_pairing must be interleaved or neox, got " + s.rope_pairing);
         if (!(s.rope_theta > 0.0f)) throw std::runtime_error("arch.custom.rope_theta must be positive");
@@ -557,6 +583,10 @@ Spec parse_spec(const std::string& path) {
                                  "the gpt2 attnres preset is its own family");
     if (s.rec_block > 0 && s.family != "llama")
         throw std::runtime_error("arch.custom.recursion needs the llama family (rmsnorm, swiglu, rope, exact attention)");
+    if ((s.bitlinear || !s.tie_embeddings) && s.family != "llama")
+        throw std::runtime_error("arch.custom.bitlinear and tie_embeddings need the llama family");
+    if (s.bitlinear && (s.attn_res || arch.contains("moe")))
+        throw std::runtime_error("arch.custom.bitlinear is wired for dense llama blocks only (no moe, no attn_res)");
     if ((s.thirdparty() || s.rope_theta != 10000.0f) && s.family != "llama")
         throw std::runtime_error("arch.custom.kv_heads, rope_pairing, rope_dims, qk_norm and rope_theta need the llama "
                                  "family (rmsnorm, swiglu, rope, exact attention)");
@@ -847,6 +877,12 @@ Spec parse_spec(const std::string& path) {
 void apply_attn_res(nn::LlamaConfig& lc, const Spec& s) {
     lc.attn_res.on = s.attn_res;
     lc.attn_res.scale = s.attn_res_scale;
+    // Called at every llama construction site, so the head tying and the
+    // BitLinear option (arch.custom.tie_embeddings / bitlinear) ride along.
+    lc.tie_embeddings = s.tie_embeddings;
+    lc.bitlinear.on = s.bitlinear;
+    lc.bitlinear.act_bits = s.bl_act_bits;
+    lc.bitlinear.in_norm = s.bl_in_norm;
 }
 
 // The spec's thirdparty attention options and RoPE base onto a llama config
@@ -1784,7 +1820,15 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, 
                                                    : attnres ? attnres->family_export()
                                                    : mamba   ? mamba->family_export(s.T)
                                                              : std::nullopt;
-    if (llama && s.moe_experts > 0 && s.moe_gate == "raw") {
+    if (llama && s.bitlinear) {
+        // No engine or IR op computes BitLinear's in-norm and int8 activations
+        // (LOCAL_LLM_WORK R3): the latent weights in a GGUF would be served wrong.
+        emit({{"event", "export_skipped"},
+              {"format", "gguf"},
+              {"reason", "arch.custom.bitlinear: no GGUF/IR form for BitLinear layers; the safetensors carry the "
+                         "latent weights and mtstudio serves them"}});
+        std::fprintf(stderr, "export: no IR written (bitlinear model)\n");
+    } else if (llama && s.moe_experts > 0 && s.moe_gate == "raw") {
         // llama.cpp's llama-architecture MoE renormalises its top-k gates;
         // a raw-gate (Switch) model would be served with different outputs.
         emit({{"event", "export_skipped"},
@@ -2516,6 +2560,10 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         model_ev["recursion"]["mor"] = {{"route", s.rec_mor_route}, {"gate", s.rec_mor_gate},
                                         {"balance", s.rec_mor_balance}, {"z_loss", s.rec_mor_z},
                                         {"kv_rows", s.rec_mor_kv}, {"router_params", s.d * s.rec_repeats}};
+    // Absent without BitLinear: the model event is unchanged.
+    if (s.bitlinear)
+        model_ev["bitlinear"] = {{"weights", "ternary"}, {"act_bits", s.bl_act_bits}, {"in_norm", s.bl_in_norm}};
+    if (!s.tie_embeddings) model_ev["tie_embeddings"] = false;
     // Absent without attention residuals: the model event is unchanged.
     if (s.attn_res)
         model_ev["attn_res"] = {{"form", "full"}, {"scale", s.attn_res_scale},

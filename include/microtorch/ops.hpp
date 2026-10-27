@@ -205,6 +205,25 @@ constexpr float kRmsNormEps = 1e-5f;
 Var rmsnorm(const Var& x, const Var& w);  // RMS normalization: x / RMS(x) * w
                                           // (no bias, no mean centering);
                                           // w: [1, d], learned scale per feature
+
+// ---- quantisation-aware training (BitNet b1.58; LOCAL_LLM_WORK R3) ----
+// Fake quantisers with straight-through estimators: the forward returns the
+// quantised values in float, the backward passes the gradient through
+// unchanged (dX = dY). Formulas are those of the BitNet b1.58 authors'
+// reference code ("The Era of 1-bit LLMs: Training Tips, Code and FAQ"):
+//   ternary_ste:   s = 1 / max(mean|W|, 1e-5) over the whole tensor;
+//                  y = clamp(round(W s), -1, 1) / s   (absmean ternary)
+//   act_quant_ste: per row, s = 127 / max(max_j |x_j|, 1e-5);
+//                  y = clamp(round(x s), -128, 127) / s   (absmax int8)
+// round is round-half-to-even (std::nearbyint; rintf on the device), as
+// torch.round. mean|W| accumulates in double (on the device too, in a
+// different order: equal to double rounding). bits: 2..8 for act_quant_ste
+// (127 and -128 become 2^(bits-1) - 1 and -2^(bits-1)).
+Var ternary_ste(const Var& w);
+Var act_quant_ste(const Var& x, int bits = 8);
+// The values alone (no tape), for export and tests: the ternary codes in
+// {-1, 0, 1} and the scale s, so ternary_ste(W) = codes / s.
+float ternary_scale(const Matrix& w);  // s above
 // RoPE pairing (keramos IR_SPEC 5.14): Interleaved rotates adjacent pairs
 // (x[2j], x[2j+1]) within a head (paperkiln's own models, llama.cpp NORM);
 // Neox rotates (x[j], x[j + n_rot/2]) (llama.cpp NEOX, HF rotate_half;
