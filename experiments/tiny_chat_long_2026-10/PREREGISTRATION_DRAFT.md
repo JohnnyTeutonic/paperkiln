@@ -315,7 +315,7 @@ seeds 1, 2, 3 paired by seed. Rung logging is not registered here.
 | **B** | 60m_L\* at T 1,024 | = | core: every contrast below is against it |
 | D | B's pretrained weights; SFT with 10+-turn dialogues oversampled x4 (`sft_human_long4.jsonl`: the T 1,024 data job's SFT rows, each row of 10+ trained turns four times, `--long-sft 10:4`; B's 1,500 steps) | = | core (data option 1, SFT only) |
 | S-gist | B + k = 4 state slots, `turn_state` mask (IR_SPEC_DRAFT section 1) | + 4d (1,536-4,352)† | core: E4, per-turn state, finished turns dropped |
-| S-full | B + k = 4 state slots after every exchange, plain causal mask | + 4d† | conditional: only if HS1 (S-gist vs B) is CONTRADICTED, to place the cost |
+| S-full | B + k = 4 state slots after every exchange, plain causal mask | + 4d† | conditional: only if HS1 (S-gist vs B) is SUPPORTED (S-gist loses), to place the cost |
 | P16 | plain 60m_L16 at T 1,024 (= B if L\* = 16)† | = | core when L\* is not 16 |
 | X | 60m_L16 + full attention residuals (`llama_attnres`) | +16,384 (0.02%)† | core: Jonathan's cross-layer hypothesis |
 | R | the recursion arm's winner at 60M | E1-R's matching | conditional†: only if a recursion contrast at 20M is SUPPORTED |
@@ -416,7 +416,7 @@ slopes on distance; 0.02 nats pairwise for panel losses.
   storage; a bottleneck may force fact retention): the difference is at least -3 points (EQUIVALENT or
   positive), which would make the 5x smaller cache free. Descriptive beside it: the retention ratio
   (acc(S-gist) - acc(noctx)) / (acc(B) - acc(noctx)) by distance, and the KV rows saved.
-- **HS0, insertion alone (S-full vs B), conditional†:** S-full runs only if HS1 is CONTRADICTED. Then: EQUIVALENT
+- **HS0, insertion alone (S-full vs B), conditional†:** S-full runs only if HS1 is SUPPORTED (S-gist scores below B beyond the SESOI). Then: EQUIVALENT
   within 3 points (predicted; the slots carry no information under the plain mask), and the mask's own cost,
   Y12(S-gist) - Y12(S-full), is reported beside it. A SUPPORTED HS0 means the slots act as extra computation or
   sinks.
@@ -481,7 +481,7 @@ for the whole conversation plus near_self: 30% fewer, and one forced-choice mode
 | data and gate jobs (one per machine) | | 1.5 |
 | **core** | 15-18 | **125 / 126 / 104 / 139** |
 | | | **$74 / $74 / $61 / $82** |
-| conditional: S-full (if HS1 is CONTRADICTED) | 3 | 24.0-30.6 |
+| conditional: S-full (if HS1 is SUPPORTED) | 3 | 24.0-30.6 |
 | conditional: R (if a 20M recursion contrast is SUPPORTED) | 3 | about 36, plus its screens |
 
 - **Approved (Jonathan, 26 Oct 2026):** the core at 60M with these two cuts (self history to the target only, no
@@ -588,10 +588,9 @@ for the whole conversation plus near_self: 30% fewer, and one forced-choice mode
    149.5 MB (the 35% mix still takes two copies), SFT rows 19,461 against 16,932, of which 5,351 hold 10+ turns
    against 3,698 (D's set 35,514 rows against 28,026). With them B's data is no longer W512's, so HT would read
    T and the sources together.
-8. **S-full's trigger, one wording for the frozen file.** Sections 6, 8 and 13 run S-full "only if HS1 is
-   CONTRADICTED", and section 6 also says it is needed "only if S-gist loses"; HS1 predicts Y12(S-gist) - Y12(B) < 0,
-   so S-gist losing is a SUPPORTED HS1, not a CONTRADICTED one. `analyze.py` reports both readings
-   (`s_full_condition`); the frozen file states one.
+8. **S-full's trigger** (settled by the main session, 27 Oct 2026): S-full runs only if HS1 is SUPPORTED, that
+   is, S-gist scores below B beyond the SESOI, the case in which S-full places S-gist's cost between the
+   insertion and the mask (section 6: "only if S-gist loses"). `analyze.py` applies this one reading.
 
 For the freeze itself (the header's licence: the jobs files exercised end to end on CPU): the cells' jobs files
 (section 10: pretraining, SFT and the post job with Carry-12 after Carry-5, generation at ember ec3201b) and section
@@ -634,7 +633,7 @@ jobs files' comments, their `--commit` set to that commit.
 | X and P16 | 20m_L16 (d 320), +10,240 query parameters (0.04% of all, 0.05% of non-embedding) | 60m_L16 (d 512), +16,384 (0.02%) |
 | X's throughput | 0.3x P16 (unfused AttnRes in the literature) | 0.668x (X5's probe, A5.12) |
 | state slots | + 4d at 20M | + 4d = 1,536-4,352 |
-| S-full | core, positive control | conditional on HS1 CONTRADICTED |
+| S-full | core, positive control | conditional on HS1 SUPPORTED |
 | HS1 | S-gist vs S-full | S-gist vs B |
 | R | core, 20m_L4 recursion, about 14 VM-hours | conditional on a SUPPORTED 20M recursion contrast, about 39 |
 | learning rates | screens for B, S-gist and X at 3 rates | E1 at 60M's T 512 choice, no screens |

@@ -75,8 +75,7 @@ def test_registered_contrasts_and_verdicts(tmp_path):
     assert hd["verdict"] == "EQUIVALENT" and hd["counter_HD_0"].startswith("confirmed")
     hs1 = res["HS1_Sgist_minus_B"]
     assert hs1["verdict"] == "SUPPORTED" and abs(hs1["mean"] + 0.08) < 1e-9 and hs1["HS1_alt"] == "does not hold"
-    assert res["s_full_condition"]["s_gist_loses_HS1_SUPPORTED"] is True
-    assert res["s_full_condition"]["section_6_text_HS1_CONTRADICTED"] is False
+    assert res["s_full_condition"]["run_s_full"] is True
     # pooled over the context families by item counts: recall (60 items) and correction (30, flat at 0.70)
     r9 = res["HS1_retention_ratio_by_distance"]["9"]["ratio"]
     sg, b = (0.48 * 60 + 0.70 * 30) / 90, (0.60 * 60 + 0.70 * 30) / 90
@@ -103,7 +102,7 @@ def test_contradicted_and_hs1_alt(tmp_path):
     hs1 = res["HS1_Sgist_minus_B"]
     assert hs1["verdict"] == "EQUIVALENT" and hs1["HS1_alt"].startswith("holds")
     sc = res["s_full_condition"]
-    assert not sc["s_gist_loses_HS1_SUPPORTED"] and not sc["section_6_text_HS1_CONTRADICTED"]
+    assert sc["run_s_full"] is False
 
 
 def test_floor_gates_contrasts(tmp_path):

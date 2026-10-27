@@ -42,8 +42,8 @@ Registered contrasts (section 8):
 Secondary, descriptive: every cell's means (Y12, Y12_gold, the decomposition twin -> near -> gold -> self, the
 validity quantities, Carry-5's Y, the panel losses, instruction compliance), accuracy by distance, and W512's
 reproduction of E1's SFT (its sft_weights_sha256 against E1's home post summaries, --e1-home).
-The registered S-full trigger is read from HS1 (s_full_condition); section 6's wording and HS1's direction disagree
-(section 11 records it for a ruling), so both readings are reported.
+The registered S-full trigger is read from HS1 (s_full_condition): S-full runs only if HS1 is SUPPORTED, that is,
+S-gist scores below B beyond the SESOI (section 11 item 8).
 """
 from __future__ import annotations
 
@@ -312,10 +312,8 @@ def analyze(runs, partial=False, lstar=8, r_sign=None, e1_home=None):
     res["HS1_retention_ratio_by_distance"] = retention(runs, seeds)
     res["s_full_condition"] = {
         "HS1_verdict": hs1["verdict"],
-        "section_6_text_HS1_CONTRADICTED": hs1["verdict"] == "CONTRADICTED",
-        "s_gist_loses_HS1_SUPPORTED": hs1["verdict"] == "SUPPORTED",
-        "note": "section 6 runs S-full 'only if HS1 is CONTRADICTED' and 'only if S-gist loses'; HS1's direction makes "
-                "'S-gist loses' a SUPPORTED HS1. The frozen file states one trigger; both readings are reported."}
+        "run_s_full": hs1["verdict"] == "SUPPORTED",
+        "rule": "S-full runs only if HS1 is SUPPORTED: S-gist scores below B beyond the SESOI (section 11 item 8)"}
     if all(("Sfull", r) in runs for r in seeds):
         h0 = contrast("Sfull", "B", "Y12", +1)
         h0["prediction"] = "EQUIVALENT (the slots carry no information under the plain mask)"
