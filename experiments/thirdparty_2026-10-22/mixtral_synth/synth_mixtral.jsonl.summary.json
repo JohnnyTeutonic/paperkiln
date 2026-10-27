@@ -1,0 +1,17 @@
+{
+ "family": "mixtral",
+ "gguf_arch": "llama",
+ "sequences": 40,
+ "len": [
+  48
+ ],
+ "worst_rel_all_positions": 2.9304164854693227e-06,
+ "top1_same": 1920,
+ "positions": 1920,
+ "greedy_same": 40,
+ "max_new": 16,
+ "seed": 0,
+ "keramos_tools": "spec/tools",
+ "window": 0,
+ "gate_norm_swapped_rel": 0.46858617663383484
+}

@@ -1,0 +1,18 @@
+{
+ "family": "qwen2moe",
+ "gguf_arch": "qwen2moe",
+ "sequences": 40,
+ "len": [
+  48
+ ],
+ "worst_rel_all_positions": 8.981569408206269e-06,
+ "top1_same": 1920,
+ "positions": 1920,
+ "greedy_same": 40,
+ "max_new": 16,
+ "seed": 0,
+ "keramos_tools": "spec/tools",
+ "window": 0,
+ "gate_norm_swapped_rel": 0.3633502721786499,
+ "shared_gate_off_rel": 0.7009033560752869
+}

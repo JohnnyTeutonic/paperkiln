@@ -1,0 +1,19 @@
+{
+ "family": "deepseek2_qlora",
+ "gguf_arch": "deepseek2",
+ "sequences": 40,
+ "len": [
+  48
+ ],
+ "worst_rel_all_positions": 3.179155328325578e-06,
+ "top1_same": 1920,
+ "positions": 1920,
+ "greedy_same": 40,
+ "max_new": 16,
+ "seed": 0,
+ "keramos_tools": "spec/tools",
+ "window": 0,
+ "gate_norm_swapped_rel": 0.5123357772827148,
+ "rope_neox_rel": 1.0135523080825806,
+ "routed_scale_off_rel": 0.6293754577636719
+}

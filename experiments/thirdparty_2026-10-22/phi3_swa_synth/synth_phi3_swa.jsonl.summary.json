@@ -1,0 +1,17 @@
+{
+ "family": "phi3_swa",
+ "gguf_arch": "phi3",
+ "sequences": 40,
+ "len": [
+  48
+ ],
+ "worst_rel_all_positions": 4.817360604647547e-06,
+ "top1_same": 1920,
+ "positions": 1920,
+ "greedy_same": 40,
+ "max_new": 16,
+ "seed": 0,
+ "keramos_tools": "spec/tools",
+ "window": 8,
+ "window_off_rel": 1.0553817749023438
+}

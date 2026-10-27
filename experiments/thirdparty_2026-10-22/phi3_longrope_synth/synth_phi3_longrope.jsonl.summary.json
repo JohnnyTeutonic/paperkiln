@@ -1,0 +1,21 @@
+{
+ "family": "phi3_longrope",
+ "gguf_arch": "phi3",
+ "sequences": 40,
+ "len": [
+  12,
+  24,
+  48
+ ],
+ "worst_rel_all_positions": 3.075538415941992e-06,
+ "top1_same": 1104,
+ "positions": 1104,
+ "greedy_same": 40,
+ "max_new": 16,
+ "seed": 0,
+ "keramos_tools": "spec/tools",
+ "window": 0,
+ "factors_swapped_rel_short": 0.658044159412384,
+ "factors_swapped_rel_long": 0.8654226064682007,
+ "attn_factor_off_rel": 0.5481359362602234
+}

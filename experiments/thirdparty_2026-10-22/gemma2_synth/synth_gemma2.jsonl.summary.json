@@ -1,0 +1,26 @@
+{
+ "family": "gemma2",
+ "gguf_arch": "gemma2",
+ "sequences": 40,
+ "len": [
+  48
+ ],
+ "worst_rel_all_positions": 1.983664560611942e-06,
+ "top1_same": 1920,
+ "positions": 1920,
+ "greedy_same": 40,
+ "max_new": 16,
+ "seed": 0,
+ "keramos_tools": "spec/tools",
+ "window": {
+  "per_layer": [
+   8,
+   0,
+   8,
+   0
+  ]
+ },
+ "window_off_rel": 0.8890147805213928,
+ "attn_softcap_off_rel": 0.7801657915115356,
+ "final_softcap_off_rel": 1.760129451751709
+}
