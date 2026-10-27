@@ -1,5 +1,5 @@
 {
- "_comment": "LOCAL_LLM_WORK R3, experiments/lowbit_2026-10-28: BitNet b1.58 ternary QAT at E1's 20m_L16 shape and recipe (the shape spec shape_20m_L16_bit.json: arch.custom.bitlinear, lr 0.001, 10000 x 16384 tokens), on E1's data job (the gate refuses unless mix_s35.ids and both panels hash as E1's ledger and test_bitlinear passes its CUDA leg). Post as E1's (SFT 1500 steps, panels, Carry-5) with --gen mtstudio: no engine serves BitLinear. bench_bit: the seven benchmarks through mtstudio score. panels_home brings the panel files home for the PTQ campaign. Upload vocab_llama3_bpe.gguf. Seed 1.",
+ "_comment": "LOCAL_LLM_WORK R3, experiments/lowbit_2026-10-28: BitNet b1.58 ternary QAT at E1's 20m_L16 shape and recipe (the shape spec shape_20m_L16_bit.json: arch.custom.bitlinear, lr 0.001, 10000 x 16384 tokens), on E1's data job (the gate refuses unless mix_s35.ids and both panels hash as E1's ledger and test_bitlinear passes its CUDA leg). Post as E1's (SFT 1500 steps, panels, Carry-5) with --gen mtstudio: no engine serves BitLinear. bench_bit: the seven benchmarks through mtstudio score. panels_home brings the panel files home for the PTQ campaign. Upload vocab_llama3_bpe.gguf. Seed 1. Beside the training, in the light slot: the PTQ measurement of pick_e1_L16 (lowbit_vm.py ptq: its F32, Q8_0, Q4_K_M, Q4_K_S and Q4_0 exports, panels at 512 windows, the seven benchmarks through hfgguf on each quantised file; then Carry-5 of each variant), uploads pick_e1_L16.safetensors (the pick's weights rebuilt by rebuild_weights.py).",
  "max_parallel": 1,
  "max_parallel_light": 1,
  "jobs": [
@@ -175,6 +175,117 @@
    "outputs": [
     "bench_summary.json",
     "bench.log"
+   ]
+  },
+  {
+   "name": "ptq_pick_e1_L16",
+   "cmd": [
+    "python3",
+    "experiments/lowbit_2026-10-28/lowbit_vm.py",
+    "ptq",
+    "{out}",
+    "pick_e1_L16"
+   ],
+   "outputs": [
+    "summary_pick_e1_L16.json",
+    "deps.log"
+   ],
+   "light": true,
+   "after": "data"
+  },
+  {
+   "name": "c5_pick_e1_L16_f32",
+   "after": "ptq_pick_e1_L16",
+   "light": true,
+   "cmd": [
+    "python3",
+    "experiments/lowbit_2026-10-28/lowbit_vm.py",
+    "carry5",
+    "{out}",
+    "pick_e1_L16",
+    "f32"
+   ],
+   "outputs": [
+    "summary.json",
+    "gen_engine.json",
+    "carry5/m/items.jsonl",
+    "carry5/m/gen.jsonl"
+   ]
+  },
+  {
+   "name": "c5_pick_e1_L16_q8_0_all",
+   "after": "ptq_pick_e1_L16",
+   "light": true,
+   "cmd": [
+    "python3",
+    "experiments/lowbit_2026-10-28/lowbit_vm.py",
+    "carry5",
+    "{out}",
+    "pick_e1_L16",
+    "q8_0_all"
+   ],
+   "outputs": [
+    "summary.json",
+    "gen_engine.json",
+    "carry5/m/items.jsonl",
+    "carry5/m/gen.jsonl"
+   ]
+  },
+  {
+   "name": "c5_pick_e1_L16_q4_k_m",
+   "after": "ptq_pick_e1_L16",
+   "light": true,
+   "cmd": [
+    "python3",
+    "experiments/lowbit_2026-10-28/lowbit_vm.py",
+    "carry5",
+    "{out}",
+    "pick_e1_L16",
+    "q4_k_m"
+   ],
+   "outputs": [
+    "summary.json",
+    "gen_engine.json",
+    "carry5/m/items.jsonl",
+    "carry5/m/gen.jsonl"
+   ]
+  },
+  {
+   "name": "c5_pick_e1_L16_q4_k_s",
+   "after": "ptq_pick_e1_L16",
+   "light": true,
+   "cmd": [
+    "python3",
+    "experiments/lowbit_2026-10-28/lowbit_vm.py",
+    "carry5",
+    "{out}",
+    "pick_e1_L16",
+    "q4_k_s"
+   ],
+   "outputs": [
+    "summary.json",
+    "gen_engine.json",
+    "carry5/m/items.jsonl",
+    "carry5/m/gen.jsonl"
+   ]
+  },
+  {
+   "name": "c5_pick_e1_L16_q4_0",
+   "after": "ptq_pick_e1_L16",
+   "light": true,
+   "cmd": [
+    "python3",
+    "experiments/lowbit_2026-10-28/lowbit_vm.py",
+    "carry5",
+    "{out}",
+    "pick_e1_L16",
+    "q4_0"
+   ],
+   "outputs": [
+    "summary.json",
+    "gen_engine.json",
+    "carry5/m/items.jsonl",
+    "carry5/m/gen.jsonl"
    ]
   }
  ]
