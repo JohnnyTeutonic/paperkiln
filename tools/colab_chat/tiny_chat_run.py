@@ -104,6 +104,11 @@ CARRY5_MODES = ("gold", "self", "twin", "noctx")
 CARRY5_CHANCE = 0.25  # four candidates per item; carry5_eval's uniform scorer is exactly this
 
 
+# post --score-batch-tokens N (opt-in, 28 Oct 2026; LOCAL_LLM_WORK E5.2): `mtstudio score --batch-tokens N` for
+# every Carry-5 and Carry-12 forced-choice score of the job. 0, the default, leaves every argv as before.
+SCORE_BATCH_TOKENS = 0
+
+
 def carry5_argv(spec, items, out_dir, gen, port, ember=None, scorer="mtstudio", extra=()):
     """tools/carry5_eval.py (benchmark agent, 23 Oct 2026): `run` scores the model named by SPEC
     (out_dir/name.safetensors) with `mtstudio score` and plays the self history through a /chat
@@ -117,6 +122,8 @@ def carry5_argv(spec, items, out_dir, gen, port, ember=None, scorer="mtstudio", 
             "--mtstudio", BIN, "--gen", gen, "--set", items, "--port", str(port)]
     if gen == "ember":
         argv += ["--ember-bin", ember["bin"], "--gpu-layers", str(ember["gpu_layers"])]
+    if SCORE_BATCH_TOKENS and scorer == "mtstudio":
+        argv += ["--score-batch-tokens", str(SCORE_BATCH_TOKENS)]
     return argv + list(extra)
 
 
@@ -1012,6 +1019,8 @@ def run_carry12(a, spec_path, weights):
     argv = [sys.executable, CARRY12_TOOL, "run", "--model", f"m={spec_path}", "--out", out, "--set", a.carry12_items,
             "--scorer", "mtstudio", "--mtstudio", BIN, "--gen", gen, "--self-scope", "target",
             "--max-new", str(CARRY12_MAX_NEW), "--no-near-self", "--port", str(port_for(out)), *extra]
+    if SCORE_BATCH_TOKENS:
+        argv += ["--score-batch-tokens", str(SCORE_BATCH_TOKENS)]
     rec["argv"] = argv[1:]
     t0 = time.time()
     p = subprocess.run(argv, capture_output=True, text=True)
@@ -1024,6 +1033,8 @@ def run_carry12(a, spec_path, weights):
 
 
 def cmd_post(a):
+    global SCORE_BATCH_TOKENS
+    SCORE_BATCH_TOKENS = max(0, int(getattr(a, "score_batch_tokens", 0) or 0))
     done = os.path.join(a.out, "summary.json")
     shape = shape_spec(a.spec)
     custom = shape["arch"]["custom"]
@@ -1605,6 +1616,9 @@ def main(argv=None):
     p.add_argument("--carry12-gen", choices=["ember", "mtstudio", "none"], default="ember",
                    help="Carry-12's generation (none: forced choice only, cell W512's re-run)")
     p.add_argument("--carry12-spot", type=int, default=20, help="Carry-12's ember vs mtstudio spot-check items")
+    p.add_argument("--score-batch-tokens", type=int, default=0,
+                   help="mtstudio score --batch-tokens N for Carry-5 and Carry-12's forced choice (opt-in; 0, the "
+                        "default, scores one request per forward as every registered arm does)")
     p.add_argument("--no-carry5", action="store_true",
                    help="skip Carry-5 and base-model Carry-5 (cell W512's re-run SFT: Carry-12 alone)")
     p.add_argument("--sft-panels", action="store_true",

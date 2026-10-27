@@ -305,5 +305,7 @@ CPU and the pod's CUDA give identical ids on the 374 prompts before it (next bul
 
 - **ember main** still serialises the raw reply (bace837): e57c0fb's change is for ember's owner to take
   there.
-- **mtstudio score is slow.** It scores one request at a time on the host: ~75 ms each for the 14.6M live model
-  on the pod, with the GPU near idle. Batching it would let it carry the full sets.
+- **mtstudio score's speed.** By default it scores one request per forward (~75 ms each for the 14.6M live model
+  on the pod, the GPU near idle). `--batch-tokens N` (28 Oct 2026, opt-in) packs requests into one forward and
+  runs 7.5-8.1x faster on the 60M pick's Carry-5 and Carry-12 requests on an L4, within ROUNDING of the
+  unbatched scores (LOCAL_LLM_STACK.md section 10, 28 Oct); `bench_eval.py` does not pass it yet.

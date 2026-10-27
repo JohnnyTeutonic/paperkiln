@@ -1,0 +1,143 @@
+{
+ "spec": {
+  "name": "gate",
+  "arch": {
+   "preset": "llama-tiny",
+   "rope_heads": "all",
+   "custom": {
+    "d": 640,
+    "layers": 4,
+    "heads": 10,
+    "d_ff": 1760
+   }
+  },
+  "data": {
+   "corpus": "/content/chat/fused_gate/text.txt",
+   "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+   "vocab_cap": 16384,
+   "T": 512,
+   "max_tokens": 0
+  },
+  "train": {
+   "steps": 300,
+   "lr": 0.002,
+   "batch": 32,
+   "accum": 1,
+   "clip": 1.0,
+   "eval_every": 300,
+   "eval_windows": 16,
+   "checkpoint_every": 10000000,
+   "gradmap_every": 0,
+   "seed": 1,
+   "optimizer": "adamw",
+   "lr_schedule": {
+    "warmup_steps": 30,
+    "decay": "cosine",
+    "min_lr_frac": 0.1
+   }
+  },
+  "export": {
+   "formats": [
+    "safetensors",
+    "gguf"
+   ]
+  }
+ },
+ "env": {
+  "OMP_NUM_THREADS": "4",
+  "MICROTORCH_DEVICE": "cuda",
+  "MICROTORCH_DEVICE_OPS": "1",
+  "MICROTORCH_ATTN_BLOCKED": "1",
+  "MICROTORCH_STEP_RESIDENCY": "1",
+  "MICROTORCH_DEFER_DOWNLOADS": "1",
+  "MICROTORCH_CUBLAS": "1"
+ },
+ "new": "/content/pk/build_cuda/mtstudio",
+ "old": "/content/pk_pin_c6365b88/build_cuda/mtstudio",
+ "gpu": "NVIDIA L4",
+ "rule": "Gate for train.fused_head (the fused LM head + cross-entropy, 26 Oct 2026), on real text.\n\n    python3 tools/fused_head_gate.py run --new BIN [--old OLD_BIN] --text TEXT --vocab VOCAB.gguf --out DIR\n        [--shape 20m_L8 | --custom D,L,H,DFF] [--batch B] [--accum A] [--T T] [--steps N] [--text-bytes N] [--cpu]\n\nRuns mtstudio on one seeded spec (tools/precision_gate.py's: one eval at the end, safetensors + F32\nGGUF export) as legs, and writes DIR/gate.json. The rule, stated before any run:\n  off_bitwise   OLD_BIN vs BIN, the spec without the new keys: every step's loss and grad norm, the\n                final validation loss and the exported files' sha256 identical (pre-registered arms,\n                which run with the option off, train as before). Only with --old.\n  off_explicit  BIN with \"fused_head\": false vs BIN without the key: identical as above.\n  repeat        BIN twice: identical (run-to-run determinism, the precondition of the two above).\n  fused         BIN with \"fused_head\": true vs BIN without: the model event and result.json record\n                fused_head; the first step's loss identical on the host (--cpu: the op's loss is the\n                unfused loss bit for bit there) and within 1e-6 relative on the device (cuBLAS); the\n                20-step moving average of the training loss within 0.5% relative at every step and\n                the final validation loss within 0.5% (the flash gate's tolerances: only the head\n                weight's gradient changes summation order, so the runs part by rounding alone).\n                Seconds per step for both, and their ratio.\n--cpu runs the host path (MICROTORCH_DEVICE=cpu); otherwise the production device environment\n(tools/colab_chat/jobs_vm.py ENV). Exit 0 when every leg passes.\n",
+ "legs": {
+  "off_bitwise": {
+   "ok": true,
+   "steps_differ": 0,
+   "val": [
+    6.2350567281246185,
+    6.2350567281246185
+   ],
+   "files_identical": true,
+   "files": {
+    "gate.gguf": "04bb2bab315fc24881c2d4a9f31dbe5335a4717722977d1cb6cb232d5e8d53b1",
+    "gate.safetensors": "dcaea600179e719db5d5349edb8c934b967d5f228eff5ff43034b694eccb3ed2",
+    "model.safetensors": "dcaea600179e719db5d5349edb8c934b967d5f228eff5ff43034b694eccb3ed2",
+    "optim.safetensors": "f8762e9ac1e360807aa355e97ce7d9cba33f6d8bda84952beb15f1d2a8dbbf55"
+   }
+  },
+  "off_explicit": {
+   "ok": true,
+   "steps_differ": 0,
+   "val": [
+    6.2350567281246185,
+    6.2350567281246185
+   ],
+   "files_identical": true,
+   "files": {
+    "gate.gguf": "04bb2bab315fc24881c2d4a9f31dbe5335a4717722977d1cb6cb232d5e8d53b1",
+    "gate.safetensors": "dcaea600179e719db5d5349edb8c934b967d5f228eff5ff43034b694eccb3ed2",
+    "model.safetensors": "dcaea600179e719db5d5349edb8c934b967d5f228eff5ff43034b694eccb3ed2",
+    "optim.safetensors": "f8762e9ac1e360807aa355e97ce7d9cba33f6d8bda84952beb15f1d2a8dbbf55"
+   }
+  },
+  "repeat": {
+   "ok": true,
+   "steps_differ": 0,
+   "val": [
+    6.2350567281246185,
+    6.2350567281246185
+   ],
+   "files_identical": true,
+   "files": {
+    "gate.gguf": "04bb2bab315fc24881c2d4a9f31dbe5335a4717722977d1cb6cb232d5e8d53b1",
+    "gate.safetensors": "dcaea600179e719db5d5349edb8c934b967d5f228eff5ff43034b694eccb3ed2",
+    "model.safetensors": "dcaea600179e719db5d5349edb8c934b967d5f228eff5ff43034b694eccb3ed2",
+    "optim.safetensors": "f8762e9ac1e360807aa355e97ce7d9cba33f6d8bda84952beb15f1d2a8dbbf55"
+   }
+  },
+  "fused": {
+   "recorded": true,
+   "rc": [
+    0,
+    0
+   ],
+   "first_loss": [
+    9.82862377166748,
+    9.82862377166748
+   ],
+   "first_rel": 0.0,
+   "first_ok": true,
+   "loss_raw_worst_rel": 0.002330571900266036,
+   "loss_ma20_worst_rel": 0.0008394623396480673,
+   "val": [
+    6.234180212020874,
+    6.2350567281246185
+   ],
+   "val_rel": 0.00014057868949143395,
+   "tolerance": {
+    "first": 1e-06,
+    "ma20": 0.005,
+    "val": 0.005
+   },
+   "s_per_step": [
+    0.4999159757654054,
+    0.48469601348644636
+   ],
+   "speedup": 0.969554959199581,
+   "ok": true
+  }
+ },
+ "base": {
+  "rc": 0,
+  "val": 6.2350567281246185,
+  "s_per_step": 0.48469601348644636
+ },
+ "ok": true
+}

@@ -7,6 +7,18 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Batched `mtstudio score`, the fused head on the GPU, step_profile limits, runner_multi's home jobs** (28 Oct;
+  LOCAL_LLM_STACK.md section 10). `mtstudio score --batch-tokens N [--no-window]` (opt-in) packs consecutive
+  requests into one forward (`nn::Llama::forward_packed_hidden`, `Llama::head`; the head on scored rows only, one
+  device step window): 7.5x and 8.1x on an L4 for a 60M model's Carry-5 and Carry-12 requests, within ROUNDING of
+  the unbatched scores, forced choices identical; `--score-batch-tokens` in carry5_eval.py, carry12_eval.py and
+  `tiny_chat_run.py post` (default 0: unchanged). `tests/test_score_batch.cpp` (in colab_cuda_validate.sh),
+  `test_score_batch_cli.py`, `test_score_batch_post.py`, `tools/score_batch_bench.py`. `train.fused_head` passes
+  its device gate (off byte-identical to c6365b88; 0.97-1.04x fp32; 11-34% less peak memory). step_profile.py:
+  per-run time limit with a stall report, launch counts per step (`gpu_n`, `device::gpu_profile_counts`).
+  runner_multi.py: a data job is home and FINISHED in the tick its last output lands; adopted state dirs mark
+  such jobs FINISHED (`tests/test_runner_home.py`).
+
 - **pk_base_v1 and pk_sft_v1 on the Hugging Face Hub** (28 Oct; LOCAL_LLM_STACK.md section 10).
   [johnnyteutonic/pk_base_v1](https://huggingface.co/johnnyteutonic/pk_base_v1) (MIT: F32 GGUF, the gated
   Q4_K_M and Q4_K_S, safetensors) and [johnnyteutonic/pk_sft_v1](https://huggingface.co/johnnyteutonic/pk_sft_v1)
