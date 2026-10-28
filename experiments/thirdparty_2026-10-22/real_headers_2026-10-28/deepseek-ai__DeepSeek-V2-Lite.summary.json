@@ -1,0 +1,114 @@
+{
+ "model": "deepseek-ai/DeepSeek-V2-Lite",
+ "architecture": "deepseek2",
+ "tensors": 404,
+ "header_bytes": 2073170,
+ "digest": "fec457cc849c4edf7420d321c679a331affcc26e3429f7d7466f5e0e3aea4a03",
+ "config": {
+  "first_k_dense_replace": 1,
+  "scoring_func": "softmax",
+  "topk_method": "greedy",
+  "n_group": 1,
+  "topk_group": 1,
+  "norm_topk_prob": false,
+  "routed_scaling_factor": 1.0,
+  "q_lora_rank": null,
+  "kv_lora_rank": 512,
+  "rope_scaling": {
+   "beta_fast": 32,
+   "beta_slow": 1,
+   "factor": 40,
+   "mscale": 0.707,
+   "mscale_all_dim": 0.707,
+   "original_max_position_embeddings": 4096,
+   "type": "yarn",
+   "rope_type": "yarn"
+  },
+  "num_hidden_layers": 27
+ },
+ "metadata": {
+  "deepseek2.block_count": 27,
+  "deepseek2.context_length": 163840,
+  "deepseek2.embedding_length": 2048,
+  "deepseek2.feed_forward_length": 10944,
+  "deepseek2.attention.head_count": 16,
+  "deepseek2.attention.head_count_kv": 1,
+  "deepseek2.rope.freq_base": 10000,
+  "deepseek2.attention.layer_norm_rms_epsilon": 1e-06,
+  "deepseek2.expert_used_count": 6,
+  "deepseek2.attention.key_length": 576,
+  "deepseek2.attention.value_length": 512,
+  "deepseek2.leading_dense_block_count": 1,
+  "deepseek2.vocab_size": 102400,
+  "deepseek2.attention.kv_lora_rank": 512,
+  "deepseek2.attention.key_length_mla": 192,
+  "deepseek2.attention.value_length_mla": 128,
+  "deepseek2.expert_feed_forward_length": 1408,
+  "deepseek2.expert_count": 64,
+  "deepseek2.expert_shared_count": 2,
+  "deepseek2.expert_weights_scale": 1.0,
+  "deepseek2.expert_weights_norm": false,
+  "deepseek2.expert_gating_func": 1,
+  "deepseek2.rope.dimension_count": 64,
+  "deepseek2.rope.scaling.type": "yarn",
+  "deepseek2.rope.scaling.factor": 40,
+  "deepseek2.rope.scaling.original_context_length": 4096,
+  "deepseek2.rope.scaling.yarn_log_multiplier": 0.0707
+ },
+ "ir": {
+  "n_layers": 27,
+  "block_nodes": 24,
+  "apply": [
+   "{\"per_layer\": [false, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true]}",
+   "{\"per_layer\": [true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]}"
+  ],
+  "moe_ffn": [
+   {
+    "n_experts": 64,
+    "top_k": 6,
+    "gate_norm": "raw"
+   }
+  ],
+  "rope_freq_factors": [
+   [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.081081,
+    1.1764706,
+    1.2903225,
+    1.4285715,
+    1.6,
+    1.8181819,
+    2.1052632,
+    2.5,
+    3.0769231,
+    4.0,
+    5.714286,
+    10.0,
+    40.0,
+    40.0,
+    40.0,
+    40.0,
+    40.0,
+    40.0,
+    40.0,
+    40.0,
+    40.0
+   ]
+  ],
+  "mla_scale": [
+   0.11472139
+  ],
+  "affine": []
+ },
+ "ir_check": "OK"
+}

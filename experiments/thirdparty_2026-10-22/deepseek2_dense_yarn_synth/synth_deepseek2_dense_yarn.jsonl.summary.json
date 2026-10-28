@@ -1,0 +1,21 @@
+{
+ "family": "deepseek2_dense_yarn",
+ "gguf_arch": "deepseek2",
+ "sequences": 40,
+ "len": [
+  48
+ ],
+ "worst_rel_all_positions": 1.991569888559752e-06,
+ "top1_same": 1920,
+ "positions": 1920,
+ "greedy_same": 40,
+ "max_new": 16,
+ "seed": 0,
+ "keramos_tools": "spec/tools",
+ "window": 0,
+ "gate_norm_swapped_rel": 0.11055433005094528,
+ "dense_layer_zeroed_rel": 0.9861925840377808,
+ "yarn_factors_off_rel": 0.7047981023788452,
+ "rope_neox_rel": 0.8007087111473083,
+ "routed_scale_off_rel": 1.004908995128062e-06
+}

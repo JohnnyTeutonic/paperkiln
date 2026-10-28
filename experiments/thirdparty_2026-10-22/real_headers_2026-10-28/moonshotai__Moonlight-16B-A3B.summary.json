@@ -1,0 +1,72 @@
+{
+ "model": "moonshotai/Moonlight-16B-A3B",
+ "architecture": "deepseek2",
+ "tensors": 430,
+ "header_bytes": 3364700,
+ "digest": "d90c35e8f47e1d12d0fdd85b5ab56f77eb322144f0e08264e6adce8e0a0d64a3",
+ "config": {
+  "first_k_dense_replace": 1,
+  "scoring_func": "sigmoid",
+  "topk_method": "noaux_tc",
+  "n_group": 1,
+  "topk_group": 1,
+  "norm_topk_prob": true,
+  "routed_scaling_factor": 2.446,
+  "q_lora_rank": null,
+  "kv_lora_rank": 512,
+  "rope_scaling": null,
+  "num_hidden_layers": 27
+ },
+ "metadata": {
+  "deepseek2.block_count": 27,
+  "deepseek2.context_length": 8192,
+  "deepseek2.embedding_length": 2048,
+  "deepseek2.feed_forward_length": 11264,
+  "deepseek2.attention.head_count": 16,
+  "deepseek2.attention.head_count_kv": 1,
+  "deepseek2.rope.freq_base": 50000.0,
+  "deepseek2.attention.layer_norm_rms_epsilon": 1e-05,
+  "deepseek2.expert_used_count": 6,
+  "deepseek2.attention.key_length": 576,
+  "deepseek2.attention.value_length": 512,
+  "deepseek2.leading_dense_block_count": 1,
+  "deepseek2.vocab_size": 163840,
+  "deepseek2.attention.kv_lora_rank": 512,
+  "deepseek2.attention.key_length_mla": 192,
+  "deepseek2.attention.value_length_mla": 128,
+  "deepseek2.expert_feed_forward_length": 1408,
+  "deepseek2.expert_count": 64,
+  "deepseek2.expert_shared_count": 2,
+  "deepseek2.expert_weights_scale": 2.446,
+  "deepseek2.expert_weights_norm": true,
+  "deepseek2.expert_gating_func": 2,
+  "deepseek2.rope.dimension_count": 64
+ },
+ "ir": {
+  "n_layers": 27,
+  "block_nodes": 25,
+  "apply": [
+   "{\"per_layer\": [false, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true]}",
+   "{\"per_layer\": [true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]}"
+  ],
+  "moe_ffn": [
+   {
+    "n_experts": 64,
+    "top_k": 6,
+    "gate_norm": "renorm",
+    "scoring": "sigmoid",
+    "selection_bias": "blk.{i}.exp_probs_b.bias"
+   }
+  ],
+  "rope_freq_factors": [
+   null
+  ],
+  "mla_scale": [
+   0.07216878
+  ],
+  "affine": [
+   2.446
+  ]
+ },
+ "ir_check": "OK"
+}

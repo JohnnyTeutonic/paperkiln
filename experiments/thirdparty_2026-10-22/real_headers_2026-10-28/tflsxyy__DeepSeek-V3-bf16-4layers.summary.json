@@ -1,0 +1,119 @@
+{
+ "model": "tflsxyy/DeepSeek-V3-bf16-4layers",
+ "architecture": "deepseek2",
+ "tensors": 60,
+ "header_bytes": 2613775,
+ "digest": "a4d1eb9eef6a30608df77916fa7ce99f54351d8ccc51157c534ee799fa88ae71",
+ "config": {
+  "first_k_dense_replace": 3,
+  "scoring_func": "sigmoid",
+  "topk_method": "noaux_tc",
+  "n_group": 8,
+  "topk_group": 4,
+  "norm_topk_prob": true,
+  "routed_scaling_factor": 2.5,
+  "q_lora_rank": 1536,
+  "kv_lora_rank": 512,
+  "rope_scaling": {
+   "beta_fast": 32.0,
+   "beta_slow": 1.0,
+   "factor": 40.0,
+   "mscale": 1.0,
+   "mscale_all_dim": 1.0,
+   "original_max_position_embeddings": 4096,
+   "type": "yarn",
+   "rope_type": "yarn"
+  },
+  "num_hidden_layers": 4
+ },
+ "metadata": {
+  "deepseek2.block_count": 4,
+  "deepseek2.context_length": 163840,
+  "deepseek2.embedding_length": 7168,
+  "deepseek2.feed_forward_length": 18432,
+  "deepseek2.attention.head_count": 128,
+  "deepseek2.attention.head_count_kv": 1,
+  "deepseek2.rope.freq_base": 10000,
+  "deepseek2.attention.layer_norm_rms_epsilon": 1e-06,
+  "deepseek2.expert_used_count": 8,
+  "deepseek2.attention.key_length": 576,
+  "deepseek2.attention.value_length": 512,
+  "deepseek2.leading_dense_block_count": 3,
+  "deepseek2.vocab_size": 129280,
+  "deepseek2.attention.q_lora_rank": 1536,
+  "deepseek2.attention.kv_lora_rank": 512,
+  "deepseek2.attention.key_length_mla": 192,
+  "deepseek2.attention.value_length_mla": 128,
+  "deepseek2.expert_feed_forward_length": 2048,
+  "deepseek2.expert_count": 256,
+  "deepseek2.expert_shared_count": 1,
+  "deepseek2.expert_weights_scale": 2.5,
+  "deepseek2.expert_weights_norm": true,
+  "deepseek2.expert_gating_func": 2,
+  "deepseek2.rope.dimension_count": 64,
+  "deepseek2.rope.scaling.type": "yarn",
+  "deepseek2.rope.scaling.factor": 40.0,
+  "deepseek2.rope.scaling.original_context_length": 4096,
+  "deepseek2.rope.scaling.yarn_log_multiplier": 0.1
+ },
+ "ir": {
+  "n_layers": 4,
+  "block_nodes": 27,
+  "apply": [
+   "{\"per_layer\": [false, false, false, true]}",
+   "{\"per_layer\": [true, true, true, false]}"
+  ],
+  "moe_ffn": [
+   {
+    "n_experts": 256,
+    "top_k": 8,
+    "gate_norm": "renorm",
+    "scoring": "sigmoid",
+    "selection_bias": "blk.{i}.exp_probs_b.bias"
+   }
+  ],
+  "rope_freq_factors": [
+   [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.081081,
+    1.1764706,
+    1.2903225,
+    1.4285715,
+    1.6,
+    1.8181819,
+    2.1052632,
+    2.5,
+    3.0769231,
+    4.0,
+    5.714286,
+    10.0,
+    40.0,
+    40.0,
+    40.0,
+    40.0,
+    40.0,
+    40.0,
+    40.0,
+    40.0,
+    40.0
+   ]
+  ],
+  "mla_scale": [
+   0.13523377
+  ],
+  "affine": [
+   2.5
+  ]
+ },
+ "ir_check": "OK"
+}

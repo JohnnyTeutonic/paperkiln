@@ -195,7 +195,11 @@ def hf_model(family, seed):
         with torch.no_grad():
             for name_, buf in model.named_buffers():
                 if name_.endswith("e_score_correction_bias"):
-                    buf.copy_(0.3 * torch.randn_like(buf))
+                    # Positive biases, so every selection score is positive: transformers fills dropped groups'
+                    # experts with 0 where DeepSeek's own code (and keramos 5.16) excludes them, which picks a
+                    # dropped group's expert whenever a kept group has fewer than top_k positive scores (with
+                    # biases 0.3 N(0, 1): 7 of 40 sequences, every differing position such a case).
+                    buf.copy_(0.5 + 0.1 * torch.randn_like(buf))
     else:
         raise SystemExit(f"thirdparty_synth: unknown family {family}")
     with torch.no_grad():
