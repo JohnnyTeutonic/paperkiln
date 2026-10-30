@@ -1,5 +1,15 @@
 # Changelog
 
+## Existing Flex compatibility work integrated (31 October 2026)
+
+Validated the preserved workspace implementation of exact GELU, tied Flex heads
+and embedding expressions before positional tables. CPU gradient and full-row
+Keramos/Ember parity checks pass; HF mapping and GPU validation remain separate.
+[Source, provenance and validation](docs/receipts/author_flex_20261031/validation.json).
+Original working files were preserved; two test defects were corrected without
+weakening their assertions.
+
+
 ## Studio evaluation probes (31 October 2026)
 
 Optional bounded needle-retrieval and behavioural literal contracts now run after

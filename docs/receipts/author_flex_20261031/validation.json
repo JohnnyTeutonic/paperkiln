@@ -1,7 +1,7 @@
 {
   "status": "VERIFIED_CPU_ONLY",
-  "provenance": "Integration of six pre-existing author working edits. Original OneDrive author files were not changed. Only changed-range clang-format18 was applied in isolated integration checkout.",
-  "integration_correction": "Initial CTest exposed dangling JSON references in three author-added range-for tests over family_export temporary optionals. Keep exported optionals alive; original assertions and tolerances unchanged. Initial failing log retained.",
+  "provenance": "Integration of six pre-existing author working edits; original OneDrive files unchanged. Changed-range clang-format18 and the two author-test corrections described below were applied only in the isolated integration checkout.",
+  "integration_correction": "Preserved initial failing logs. Retained family_export optional objects during three range-for loops to avoid dangling references under C++17. Compared tied and untied parameter counts using identical post-norm configurations, isolating exactly the V*d head reduction. Assertions and numerical tolerances were not weakened.",
   "source_parent": "fdb422f58c54dfa8919e476b680aa9497f6b473e",
   "author_provenance": {
     "original_hashes": {
