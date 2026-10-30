@@ -52,6 +52,11 @@ LlamaBlock::LlamaBlock(const LlamaConfig& cfg, unsigned seed)
         q_norm_w = reg("self_attn.q_norm.weight", Matrix(1, dk, 1.0f));
         k_norm_w = reg("self_attn.k_norm.weight", Matrix(1, dk, 1.0f));
     }
+    if (cfg.qk_temp != 0.0f) {
+        if (!cfg.qk_norm) throw std::runtime_error("llama: qk_temp needs qk_norm");
+        if (!(cfg.qk_temp > 0.0f)) throw std::runtime_error("llama: qk_temp must be positive");
+        q_temp_w = reg("self_attn.q_temp.weight", Matrix(1, H, cfg.qk_temp));
+    }
     if (cfg.moe.experts > 0) {
         // Registered as "mlp": layers.N.mlp.router.weight,
         // layers.N.mlp.experts.{e}.{gate,up,down}_proj.weight. Expert 0 takes
@@ -112,6 +117,17 @@ Var LlamaBlock::attn_qkv(const Var& h, const std::vector<int>& pos) const {
     if (q_norm_w) {
         q = ops::rmsnorm_group(q, q_norm_w, dk);
         k = ops::rmsnorm_group(k, k_norm_w, dk);
+    }
+    if (q_temp_w) {
+        // qk_temp: head h's normed q times its temperature. The [1, H] weight
+        // is repeated over each head's dk columns (repeat_heads with head
+        // width 1), broadcast over the rows by a [rows, 1] x [1, d] product
+        // with ones (exact: one term per entry), then multiplied in; all three
+        // ops have device kernels. The export writes the repeated row and an
+        // IR scale node, the same products.
+        const Var row = ops::repeat_heads(q_temp_w, H, dk, 1);
+        const Var ones = make_var(Matrix(q->data.rows(), 1, 1.0f));
+        q = ops::mul(q, ops::matmul(ones, row));
     }
     if (KV != H) {
         k = ops::repeat_heads(k, KV, H / KV, dk);
@@ -301,6 +317,9 @@ ir::json LlamaBlock::export_ir() const {
             n.push_back(nd);
         }
     }
+    // qk_temp: q times its head's temperature, the [1, H] weight repeated over
+    // each head's columns (blk.{i}.attn_q_temp.weight [d]).
+    if (q_temp_w) n.push_back(ir::scale("q", p + "attn_q_temp.weight", "", "q"));
     ir::json rope = ir::rope("q", "k", "pos", H, dk, rope_theta_, rope_all_heads_);
     if (KV != H || rope_neox_ || rope_dims_ != dk) {
         // IR_SPEC 5.14's thirdparty attributes: k's head count, the rotated

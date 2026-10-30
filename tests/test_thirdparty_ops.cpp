@@ -420,6 +420,96 @@ int main() {
         std::printf("3. finite differences through k_proj and the q/k norms (%d spots): worst %.2e\n", checked, worst);
     }
 
+    // ---- 3b. qk_temp: a learned per-head temperature on the normed q ----
+    {
+        nn::LlamaConfig c;
+        c.vocab = 23;
+        c.d = 24;
+        c.n_layers = 2;
+        c.n_heads = 4;
+        c.d_ff = 40;
+        c.n_ctx = 32;
+        c.qk_norm = true;
+        const auto ids = ids_of(12, c.vocab, 42);
+        // Temperature 1 is the plain qk_norm block bit for bit (x * (1 * 1) = x).
+        nn::LlamaConfig one = c;
+        one.qk_temp = 1.0f;
+        nn::Llama mq(c, 7), m1(one, 7);
+        CHECK(bits_equal(host(mq.forward(ids)), host(m1.forward(ids))));
+        // Head h's q columns times t[h]: the composition (repeat_heads, the ones product, mul) against a
+        // float re-statement, and its finite differences in t and in x.
+        const size_t H = 4, dk = 6, T = 5;
+        Var x = make_var(randn(T, H * dk, 60), true);
+        Var t = make_var(randn(1, H, 61, 0.5f), true);
+        auto f = [&]() {
+            const Var row = ops::repeat_heads(t, H, dk, 1);
+            return ops::mul(x, ops::matmul(make_var(Matrix(T, 1, 1.0f)), row));
+        };
+        Matrix want(T, H * dk);
+        for (size_t i = 0; i < T; ++i)
+            for (size_t j = 0; j < H * dk; ++j) want(i, j) = x->data(i, j) * t->data(0, j / dk);
+        CHECK(bits_equal(host(f()), want));
+        const double gt = gradcheck(f, t, 62), gx = gradcheck(f, x, 63);
+        CHECK(gt < 1e-3 && gx < 1e-3);
+        // The model: init value, KV-cached decode, a stacked batch, finite differences through q_temp.
+        nn::LlamaConfig tc = c;
+        tc.qk_temp = 2.75f;
+        tc.n_kv_heads = 2;
+        nn::Llama m(tc, 9);
+        size_t n_temp = 0;
+        for (const auto& [name, p] : m.named_parameters())
+            if (name.find("q_temp") != std::string::npos) {
+                CHECK(p->data.rows() == 1 && p->data.cols() == tc.n_heads && p->data(0, 3) == 2.75f);
+                for (size_t h = 0; h < tc.n_heads; ++h) p->data(0, h) = 1.5f + 0.5f * static_cast<float>(h);
+                ++n_temp;
+            }
+        CHECK(n_temp == tc.n_layers);
+        {
+            NoGrad ng;
+            const Var full = m.forward(ids);
+            nn::LlamaKV kv;
+            Var pre = m.forward_cached(std::vector<int>(ids.begin(), ids.begin() + 5), kv);
+            double dc = logits_diff(host(pre), 0, host(full), 0, 5);
+            for (size_t s = 5; s < ids.size(); ++s)
+                dc = std::max(dc, logits_diff(host(m.forward_cached({ids[s]}, kv)), 0, host(full), s, 1));
+            CHECK(dc < 1e-5);
+            const auto ids2 = ids_of(12, c.vocab, 43);
+            std::vector<int> both = ids;
+            both.insert(both.end(), ids2.begin(), ids2.end());
+            const Matrix b = host(m.forward(both, ids.size())), s2 = host(m.forward(ids2));
+            const double db = std::max(logits_diff(b, 0, host(full), 0, ids.size()),
+                                       logits_diff(b, ids.size(), s2, 0, ids.size()));
+            CHECK(db < 1e-5);
+            std::printf("3b. qk_temp: t = 1 == qk_norm bit for bit; head scaling exact; fd t %.2e x %.2e; cached decode "
+                        "%.2e, batch vs singles %.1e\n", gt, gx, dc, db);
+        }
+        const std::vector<int> y(ids.rbegin(), ids.rend());
+        auto loss_now = [&]() { return ops::cross_entropy(m.forward(ids), y); };
+        backward(loss_now());
+        int checked = 0;
+        double worst = 0;
+        const float h = 5e-3f;
+        for (const auto& [name, p] : m.named_parameters()) {
+            if (name.find("q_temp") == std::string::npos) continue;
+            const Matrix g = host(make_var(p->grad));
+            for (size_t j = 0; j < p->data.cols(); ++j) {
+                const float w0 = p->data(0, j);
+                NoGrad ng;
+                p->data(0, j) = w0 + h;
+                const double lp = host(loss_now())(0, 0);
+                p->data(0, j) = w0 - h;
+                const double lm = host(loss_now())(0, 0);
+                p->data(0, j) = w0;
+                const double fd = (lp - lm) / (2.0 * h);
+                worst = std::max(worst, std::fabs(fd - g(0, j)) / (1.0 + std::fabs(fd)));
+                ++checked;
+            }
+        }
+        CHECK(checked == 2 * 4);
+        CHECK(worst < 2e-2);
+        std::printf("3b. finite differences through q_temp (%d spots): worst %.2e\n", checked, worst);
+    }
+
     // ---- 4. Mamba-1 ----
     {
         parity::Mamba1Config c;
