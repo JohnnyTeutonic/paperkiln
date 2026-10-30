@@ -1103,9 +1103,11 @@ def main():
         T.attach(st)  # registers the runner for runpod_sweep.py; atexit and signal handlers end the pod
 
     deadline = time.time() + a.max_hours * 3600
+    T.deadline = deadline  # transport must enforce it while a transfer blocks the main loop
     if listed() is None and not st.d.get("endpoint"):
         if not launch(st, a.commit, a.jobs, jobs, uploads):
-            time.sleep(TICK)
+            if time.time() < deadline and not T.over_budget(st):
+                time.sleep(min(TICK, max(0, deadline - time.time())))
     try:
         while time.time() < deadline:
             why = T.over_budget(st)

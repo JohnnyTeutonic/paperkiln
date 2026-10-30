@@ -30,6 +30,7 @@ import re
 import shlex
 import signal
 import subprocess
+import tempfile
 import time
 import urllib.request
 
@@ -57,6 +58,7 @@ ENV_PREAMBLE = (
     "    _pk_os.environ['PATH'] = '/usr/local/cuda/bin:' + _pk_os.environ.get('PATH', '')\n")
 UP_SECONDS = 1500  # create -> ssh answering (image pull included) before the pod is given up
 DC_FAILS_MOVE = 2   # failed creates before an UNUSED volume may move
+OPERATION_POLL_S = 2.0  # bound transfer overspend/deadline latency without remote calls
 MIN_RAM, MIN_VCPU = 32, 6  # per GPU: the host floor (RunPod L4 hosts: 6 vCPU/62 GB in EU-RO-1, 12/100 in EUR-IS-2)
 
 
@@ -112,6 +114,7 @@ class RunPodTransport:
         self._last = None      # the pod as the API last returned it; None = gone; "error" = API failed
         self._in_stop = False
         self._n = 0
+        self.deadline = None  # runner wall-clock deadline, also enforced inside blocking transfers
 
     # ------------------------------------------------------------ state
     def R(self, st=None):
@@ -159,13 +162,65 @@ class RunPodTransport:
                 "-o", "ConnectTimeout=20", "-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=4",
                 "-o", "BatchMode=yes", "-o", "LogLevel=ERROR"]
 
+    def _operation_limit(self):
+        if self.deadline is not None and time.time() >= self.deadline:
+            return "runner deadline reached during transport operation"
+        return self.over_budget(self.st) if self.st is not None else None
+
+    @staticmethod
+    def _kill_owned_group(process):
+        """Only the process group created by this _run, never a terminal/other driver."""
+        if os.name == "posix":
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        else:
+            subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                           capture_output=True, check=False)
+            if process.poll() is None:
+                process.kill()
+        return process.communicate()  # close pipes and reap our process, including timeout paths
+
     def _run(self, argv, timeout, stdin_text=None):
+        why = self._operation_limit()
+        if why:
+            raise api.Refused(why)
+        # CPython POSIX communicate(timeout) cannot reliably resume a partially written stdin:
+        # a retry without input stops selecting its write pipe. A private file avoids that deadlock.
+        input_file = tempfile.TemporaryFile(mode="w+t", encoding="utf-8") if stdin_text is not None else None
+        if input_file is not None:
+            input_file.write(stdin_text)
+            input_file.seek(0)
         try:
-            p = subprocess.run(argv, input=stdin_text, capture_output=True, text=True, timeout=timeout,
-                               stdin=None if stdin_text is not None else subprocess.DEVNULL, start_new_session=True)
-            return p.returncode, (p.stdout or "") + (p.stderr or "")
-        except subprocess.TimeoutExpired:
-            return 124, "TIMEOUT"
+            process = subprocess.Popen(
+                argv, stdin=input_file if input_file is not None else subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True)
+        except BaseException:
+            if input_file is not None:
+                input_file.close()
+            raise
+        end = time.monotonic() + timeout
+        try:
+            while True:
+                why = self._operation_limit()
+                if why:
+                    raise api.Refused(why)  # never let upload_whole retry past the cap/deadline
+                remaining = end - time.monotonic()
+                if remaining <= 0:
+                    out, err = self._kill_owned_group(process)
+                    return 124, (out or "") + (err or "") + "TIMEOUT"
+                try:
+                    out, err = process.communicate(timeout=min(OPERATION_POLL_S, remaining))
+                    return process.returncode, (out or "") + (err or "")
+                except subprocess.TimeoutExpired:
+                    pass  # communicate retains captured output across retries
+        except BaseException:
+            self._kill_owned_group(process)
+            raise
+        finally:
+            if input_file is not None:
+                input_file.close()
 
     def exec(self, code, timeout=200):
         pod = self.R().get("pod")
