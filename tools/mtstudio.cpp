@@ -451,7 +451,8 @@ Spec parse_spec(const std::string& path) {
         }
         s.qk_temp = c.value("qk_temp", s.qk_temp);
         if (s.qk_temp != 0.0f && (!s.qk_norm || !(s.qk_temp > 0.0f) || !std::isfinite(s.qk_temp)))
-            throw std::runtime_error("arch.custom.qk_temp must be positive and needs qk_norm (finite values only)");
+            throw std::runtime_error(
+                "arch.custom.qk_temp must be positive and needs qk_norm (finite values only)");
         s.rope_theta = c.value("rope_theta", s.rope_theta);
         s.tie_embeddings = c.value("tie_embeddings", s.tie_embeddings);
         if (c.contains("bitlinear")) {
@@ -459,10 +460,12 @@ Spec parse_spec(const std::string& path) {
             if (!b.is_object()) throw std::runtime_error("arch.custom.bitlinear must be an object");
             for (const auto& [k, v] : b.items())
                 if (k != "weights" && k != "act_bits" && k != "in_norm" && k.rfind("_", 0) != 0)
-                    throw std::runtime_error("arch.custom.bitlinear: unknown key " + k + " (weights, act_bits, in_norm)");
+                    throw std::runtime_error("arch.custom.bitlinear: unknown key " + k +
+                                             " (weights, act_bits, in_norm)");
             const std::string w = b.value("weights", std::string("ternary"));
             if (w != "ternary")
-                throw std::runtime_error("arch.custom.bitlinear.weights must be \"ternary\", got " + w);
+                throw std::runtime_error("arch.custom.bitlinear.weights must be \"ternary\", got " +
+                                         w);
             s.bitlinear = true;
             s.bl_act_bits = b.value("act_bits", s.bl_act_bits);
             s.bl_in_norm = b.value("in_norm", s.bl_in_norm);
@@ -616,7 +619,8 @@ Spec parse_spec(const std::string& path) {
     if ((s.bitlinear || !s.tie_embeddings) && s.family != "llama")
         throw std::runtime_error("arch.custom.bitlinear and tie_embeddings need the llama family");
     if (s.bitlinear && (s.attn_res || arch.contains("moe")))
-        throw std::runtime_error("arch.custom.bitlinear is wired for dense llama blocks only (no moe, no attn_res)");
+        throw std::runtime_error(
+            "arch.custom.bitlinear is wired for dense llama blocks only (no moe, no attn_res)");
     // A stated RoPE base also on flex with position rope (parity::FlexConfig rope_theta; the IR rope node's theta).
     if ((s.thirdparty() || (s.rope_theta != 10000.0f && !(s.family == "flex" && s.position == "rope"))) &&
         s.family != "llama")
@@ -1869,8 +1873,10 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, 
         // (LOCAL_LLM_WORK R3): the latent weights in a GGUF would be served wrong.
         emit({{"event", "export_skipped"},
               {"format", "gguf"},
-              {"reason", "arch.custom.bitlinear: no GGUF/IR form for BitLinear layers; the safetensors carry the "
-                         "latent weights and mtstudio serves them"}});
+              {"reason",
+               "arch.custom.bitlinear: no GGUF/IR form for BitLinear layers; the safetensors carry "
+               "the "
+               "latent weights and mtstudio serves them"}});
         std::fprintf(stderr, "export: no IR written (bitlinear model)\n");
     } else if (llama && s.moe_experts > 0 && s.moe_gate == "raw") {
         // llama.cpp's llama-architecture MoE renormalises its top-k gates;
@@ -1984,7 +1990,8 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, 
                     "reproduce this model's outputs";
             emit(xe);
         }
-    } else if ((gpt || flex) && (gpt ? gpt->gpt2_export_blocker() : flex->gpt2_export_blocker()).empty()) {
+    } else if ((gpt || flex) &&
+               (gpt ? gpt->gpt2_export_blocker() : flex->gpt2_export_blocker()).empty()) {
         // llama.cpp's gpt2 architecture: LayerNorm with bias, fused qkv,
         // tanh GELU (llama.cpp's gpt2 uses the same approximation), learned
         // positions, untied head. Quantised variants are not offered yet.
@@ -2636,7 +2643,8 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                                         {"kv_rows", s.rec_mor_kv}, {"router_params", s.d * s.rec_repeats}};
     // Absent without BitLinear: the model event is unchanged.
     if (s.bitlinear)
-        model_ev["bitlinear"] = {{"weights", "ternary"}, {"act_bits", s.bl_act_bits}, {"in_norm", s.bl_in_norm}};
+        model_ev["bitlinear"] = {
+            {"weights", "ternary"}, {"act_bits", s.bl_act_bits}, {"in_norm", s.bl_in_norm}};
     if (!s.tie_embeddings) model_ev["tie_embeddings"] = false;
     // Absent without attention residuals: the model event is unchanged.
     if (s.attn_res)

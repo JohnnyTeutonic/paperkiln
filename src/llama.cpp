@@ -71,9 +71,10 @@ LlamaBlock::LlamaBlock(const LlamaConfig& cfg, unsigned seed)
     if (cfg.bitlinear.on) {
         // BitNet b1.58 (LlamaConfig::bitlinear): the block's projections only.
         if (cfg.moe.experts > 0) throw std::runtime_error("llama: bitlinear with MoE is not wired");
-        if (cfg.attn_res.on) throw std::runtime_error("llama: bitlinear with attn_res is not wired");
-        for (Linear* p : {q_proj.get(), k_proj.get(), v_proj.get(), o_proj.get(), gate_proj.get(), up_proj.get(),
-                          down_proj.get()})
+        if (cfg.attn_res.on)
+            throw std::runtime_error("llama: bitlinear with attn_res is not wired");
+        for (Linear* p : {q_proj.get(), k_proj.get(), v_proj.get(), o_proj.get(), gate_proj.get(),
+                          up_proj.get(), down_proj.get()})
             p->set_bitlinear(cfg.bitlinear);
     }
 }

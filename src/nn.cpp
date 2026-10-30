@@ -129,7 +129,9 @@ void Linear::set_bitlinear(const BitLinear& q) {
 
 ir::json Linear::export_ir(const std::string& in, const std::string& out, const std::string& weight) const {
     // No IR op states BitLinear's in-norm and int8 activations (LOCAL_LLM_WORK R3).
-    if (bl_.on) throw std::runtime_error("Linear::export_ir: a BitLinear layer has no IR form (" + weight + ")");
+    if (bl_.on)
+        throw std::runtime_error("Linear::export_ir: a BitLinear layer has no IR form (" + weight +
+                                 ")");
     // The GGUF stores the bias beside its weight ("x.weight" -> "x.bias").
     ir::json bias = nullptr;
     if (b) {

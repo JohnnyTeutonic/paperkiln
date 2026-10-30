@@ -1,7 +1,7 @@
 // Compile without microtorch's public DEVCHECK definition: arguments disappear.
+#include <cstdio>
 #include "check.hpp"
 #include "microtorch/device_cache.hpp"
-#include <cstdio>
 #ifdef MICROTORCH_DEVCHECK
 #error This target must test the default disabled macro.
 #endif

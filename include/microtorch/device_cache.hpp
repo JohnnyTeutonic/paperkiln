@@ -11,8 +11,8 @@
 #pragma once
 #include <cstdint>
 #include <cstring>
-#include <string>
 #include <stdexcept>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -304,9 +304,11 @@ namespace detail {
 // Shared CPU-testable predicate; CUDA supplies the actual value-cache flags.
 inline void check_host_read_state(bool stale, bool released, const char* where) {
     if (released)
-        throw std::runtime_error(std::string("DEVCHECK: host read of released activation at ") + where);
+        throw std::runtime_error(std::string("DEVCHECK: host read of released activation at ") +
+                                 where);
     if (stale)
-        throw std::runtime_error(std::string("DEVCHECK: host read of device-stale tensor at ") + where);
+        throw std::runtime_error(std::string("DEVCHECK: host read of device-stale tensor at ") +
+                                 where);
 }
 }  // namespace detail
 

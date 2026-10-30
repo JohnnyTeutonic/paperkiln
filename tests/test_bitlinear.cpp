@@ -63,7 +63,8 @@ double max_abs(const Matrix& a, const Matrix& b) {
 // The reference formulas, written out independently of ops.cpp.
 Matrix ref_ternary(const Matrix& w, float* scale = nullptr) {
     double acc = 0.0;
-    for (size_t i = 0; i < w.rows() * w.cols(); ++i) acc += std::fabs(static_cast<double>(w.get_data()[i]));
+    for (size_t i = 0; i < w.rows() * w.cols(); ++i)
+        acc += std::fabs(static_cast<double>(w.get_data()[i]));
     const float mean = static_cast<float>(acc / static_cast<double>(w.rows() * w.cols()));
     const float s = 1.0f / std::max(mean, 1e-5f);
     if (scale) *scale = s;
@@ -111,11 +112,13 @@ Var wsum(const Var& y, const Matrix& g) {
 
 float weighted_sum(const Var& y, const Matrix& g) {
     double s = 0.0;
-    for (size_t i = 0; i < g.rows() * g.cols(); ++i) s += static_cast<double>(y->data.get_data()[i]) * g.get_data()[i];
+    for (size_t i = 0; i < g.rows() * g.cols(); ++i)
+        s += static_cast<double>(y->data.get_data()[i]) * g.get_data()[i];
     return static_cast<float>(s);
 }
 
-double fd_vs_analytic(const std::function<float()>& f, Var leaf, const Matrix& analytic, float h = 1e-2f) {
+double fd_vs_analytic(const std::function<float()>& f, Var leaf, const Matrix& analytic,
+                      float h = 1e-2f) {
     double worst = 0.0;
     for (size_t i = 0; i < leaf->data.rows(); ++i)
         for (size_t j = 0; j < leaf->data.cols(); ++j) {
@@ -139,8 +142,10 @@ void leg1_forwards() {
     float s = 0.0f;
     const Matrix want = ref_ternary(w, &s);
     const Var y = ops::ternary_ste(make_var(w));
-    check(max_abs(y->data, want) == 0.0, "ternary_ste == clamp(round(W s), -1, 1) / s", max_abs(y->data, want));
-    check(ops::ternary_scale(w) == s, "ternary_scale == 1 / mean|W|", std::fabs(ops::ternary_scale(w) - s));
+    check(max_abs(y->data, want) == 0.0, "ternary_ste == clamp(round(W s), -1, 1) / s",
+          max_abs(y->data, want));
+    check(ops::ternary_scale(w) == s, "ternary_scale == 1 / mean|W|",
+          std::fabs(ops::ternary_scale(w) - s));
     size_t bad = 0, zeros = 0;
     for (size_t i = 0; i < w.rows() * w.cols(); ++i) {
         const float q = y->data.get_data()[i] * s;
@@ -153,7 +158,8 @@ void leg1_forwards() {
     check(zf > 0.2 && zf < 0.45, "zero share near a Gaussian's 31%", zf);
     const Matrix z(4, 6);
     const Var yz = ops::ternary_ste(make_var(z));
-    check(max_abs(yz->data, z) == 0.0, "an all-zero tensor stays zero (the 1e-5 floor)", max_abs(yz->data, z));
+    check(max_abs(yz->data, z) == 0.0, "an all-zero tensor stays zero (the 1e-5 floor)",
+          max_abs(yz->data, z));
 
     for (int bits : {8, 4}) {
         const Matrix x = randn(19, 41, 2 + bits, 2.0f);
@@ -171,10 +177,11 @@ void leg1_forwards() {
                 if (std::fabs(x(i, j)) > std::fabs(x(i, a))) a = j;
             float m = std::fabs(x(i, a));
             const float sc = qmax / m;
-            worst = std::max(worst, static_cast<double>(std::fabs(std::fabs(yx->data(i, a) * sc) - qmax)));
+            worst = std::max(worst,
+                             static_cast<double>(std::fabs(std::fabs(yx->data(i, a) * sc) - qmax)));
         }
-        std::snprintf(lab, sizeof lab, "act_quant_ste(%d bits): each row's absmax maps to +-%d", bits,
-                      static_cast<int>(qmax));
+        std::snprintf(lab, sizeof lab, "act_quant_ste(%d bits): each row's absmax maps to +-%d",
+                      bits, static_cast<int>(qmax));
         check(worst < 1e-3, lab, worst);
     }
 }
@@ -185,12 +192,14 @@ void leg2_ste() {
     Var wv = make_var(w, true);
     Var y = ops::ternary_ste(wv);
     backward(wsum(y, g));
-    check(max_abs(wv->grad, y->grad) == 0.0, "ternary_ste: dW == dY (bit for bit)", max_abs(wv->grad, y->grad));
+    check(max_abs(wv->grad, y->grad) == 0.0, "ternary_ste: dW == dY (bit for bit)",
+          max_abs(wv->grad, y->grad));
     Var xv = make_var(randn(5, 9, 5), true);
     const Matrix gx = randn(5, 9, 6);
     Var yx = ops::act_quant_ste(xv, 8);
     backward(wsum(yx, gx));
-    check(max_abs(xv->grad, yx->grad) == 0.0, "act_quant_ste: dX == dY (bit for bit)", max_abs(xv->grad, yx->grad));
+    check(max_abs(xv->grad, yx->grad) == 0.0, "act_quant_ste: dX == dY (bit for bit)",
+          max_abs(xv->grad, yx->grad));
 }
 
 void leg3_layer() {
@@ -206,10 +215,12 @@ void leg3_layer() {
     Var y = lin.forward(x);
     const Matrix hq = ref_actq(ref_rmsnorm1(x0), 8), wq = ref_ternary(lin.W->data);
     const Matrix want = hq * wq;
-    check(max_abs(y->data, want) < 1e-5, "forward == actq(rmsnorm(x, 1)) ternary(W)", max_abs(y->data, want));
+    check(max_abs(y->data, want) < 1e-5, "forward == actq(rmsnorm(x, 1)) ternary(W)",
+          max_abs(y->data, want));
     backward(wsum(y, G));
     const Matrix dw = hq.transpose() * G;
-    check(max_abs(lin.W->grad, dw) < 1e-5, "dW == h_q^T dY (straight through the ternary)", max_abs(lin.W->grad, dw));
+    check(max_abs(lin.W->grad, dw) < 1e-5, "dW == h_q^T dY (straight through the ternary)",
+          max_abs(lin.W->grad, dw));
     // dx: the surrogate rmsnorm(x, 1) W_q with W_q held fixed, the activation
     // quantiser passed straight through.
     Var xs = make_var(x0, true);
@@ -220,7 +231,8 @@ void leg3_layer() {
         Var ys = ops::matmul(ops::rmsnorm(xs, ones), wqv);
         backward(wsum(ys, G));
     }
-    check(max_abs(x->grad, xs->grad) < 1e-6, "dx == the surrogate's gradient", max_abs(x->grad, xs->grad));
+    check(max_abs(x->grad, xs->grad) < 1e-6, "dx == the surrogate's gradient",
+          max_abs(x->grad, xs->grad));
     const double fd = fd_vs_analytic(sur, xs, xs->grad);
     check(fd < 2e-3, "the surrogate's gradient vs finite differences", fd);
 
@@ -231,7 +243,8 @@ void leg3_layer() {
     lin0.set_bitlinear(q);
     Var x2 = make_var(x0, true);
     backward(wsum(lin0.forward(x2), G));
-    const double fd0 = fd_vs_analytic([&]() { return weighted_sum(lin0.forward(x2), G); }, x2, x2->grad);
+    const double fd0 =
+        fd_vs_analytic([&]() { return weighted_sum(lin0.forward(x2), G); }, x2, x2->grad);
     check(fd0 < 2e-3, "act_bits 0: dx vs finite differences on the layer", fd0);
     // in_norm off, act_bits 0: y = x ternary(W), so dx = dY ternary(W)^T exactly.
     nn::Linear lin1(IN, OUT, false, 9);
@@ -241,13 +254,15 @@ void leg3_layer() {
     Var x3 = make_var(x0, true);
     backward(wsum(lin1.forward(x3), G));
     const Matrix dx3 = G * wq.transpose();
-    check(max_abs(x3->grad, dx3) < 1e-5, "no norm, no act quant: dx == dY W_q^T", max_abs(x3->grad, dx3));
+    check(max_abs(x3->grad, dx3) < 1e-5, "no norm, no act quant: dx == dY W_q^T",
+          max_abs(x3->grad, dx3));
     // A float layer with the same weights is untouched by the option's existence.
     nn::Linear f(IN, OUT, false, 9);
     f.W->data = lin.W->data;
     const Var yf = f.forward(make_var(x0));
     const Var yref = ops::matmul(make_var(x0), make_var(lin.W->data));
-    check(max_abs(yf->data, yref->data) == 0.0, "off: y == ops::matmul(x, W) bit for bit", max_abs(yf->data, yref->data));
+    check(max_abs(yf->data, yref->data) == 0.0, "off: y == ops::matmul(x, W) bit for bit",
+          max_abs(yf->data, yref->data));
 }
 
 nn::LlamaConfig tiny(bool bit) {
@@ -271,10 +286,12 @@ void leg4_llama() {
     check(same, "state_dict: the float model's keys and initial values", same ? 0.0 : 1.0);
     size_t on = 0;
     for (const auto& b : bit.blocks)
-        for (const nn::Linear* p : {b->q_proj.get(), b->k_proj.get(), b->v_proj.get(), b->o_proj.get(),
-                                    b->gate_proj.get(), b->up_proj.get(), b->down_proj.get()})
+        for (const nn::Linear* p :
+             {b->q_proj.get(), b->k_proj.get(), b->v_proj.get(), b->o_proj.get(),
+              b->gate_proj.get(), b->up_proj.get(), b->down_proj.get()})
             on += p->bitlinear().on;
-    check(on == 14, "every block projection is a BitLinear (7 x 2 layers)", static_cast<double>(on));
+    check(on == 14, "every block projection is a BitLinear (7 x 2 layers)",
+          static_cast<double>(on));
     std::mt19937 rng(1);
     std::vector<int> ids(20);
     for (int& t : ids) t = static_cast<int>(rng() % 61);
@@ -284,13 +301,15 @@ void leg4_llama() {
         full = bit.forward(ids)->data;
         ffp = fp.forward(ids)->data;
     }
-    check(max_abs(full, ffp) > 1e-3, "the quantised forward differs from the float one", max_abs(full, ffp));
+    check(max_abs(full, ffp) > 1e-3, "the quantised forward differs from the float one",
+          max_abs(full, ffp));
     // Cached decode: prefill 4, then one token at a time.
     nn::LlamaKV kv;
     Matrix cached(ids.size(), 61);
     {
         NoGrad ng;
-        const Matrix p = bit.forward_cached(std::vector<int>(ids.begin(), ids.begin() + 4), kv)->data;
+        const Matrix p =
+            bit.forward_cached(std::vector<int>(ids.begin(), ids.begin() + 4), kv)->data;
         for (size_t i = 0; i < 4; ++i)
             for (size_t j = 0; j < 61; ++j) cached(i, j) = p(i, j);
         for (size_t t = 4; t < ids.size(); ++t) {
@@ -324,7 +343,8 @@ void leg4_llama() {
     }
     std::printf("     loss %.4f -> %.4f\n", first, last);
     check(last < 0.5f * first, "60 AdamW steps halve the loss", last / first);
-    check(max_abs(m.blocks[0]->q_proj->W->data, w0) > 0.0, "the latent weights train", max_abs(m.blocks[0]->q_proj->W->data, w0));
+    check(max_abs(m.blocks[0]->q_proj->W->data, w0) > 0.0, "the latent weights train",
+          max_abs(m.blocks[0]->q_proj->W->data, w0));
 }
 
 void leg5_cuda() {
@@ -334,7 +354,8 @@ void leg5_cuda() {
         return;
     }
     device::set_device_ops(true);
-    const std::vector<std::pair<size_t, size_t>> shapes = {{67, 133}, {320, 864}, {864, 320}, {1, 5}};
+    const std::vector<std::pair<size_t, size_t>> shapes = {
+        {67, 133}, {320, 864}, {864, 320}, {1, 5}};
     for (const auto& [r, c] : shapes) {
         const Matrix w = randn(r, c, static_cast<unsigned>(r + c), 0.03f);
         Matrix yd(r, c);
@@ -384,7 +405,8 @@ void leg5_cuda() {
 int main() {
     device::set_from_env();
     std::printf("test_bitlinear (BitNet b1.58 fake quantisers, straight-through estimators)\n");
-    // Legs 1-4 are the CPU reference (bit-for-bit claims); leg 5 runs on the device when one is set.
+    // Legs 1-4 are the CPU reference (bit-for-bit claims); leg 5 runs on the device when one is
+    // set.
     const device::Device dev = device::get();
     device::set(device::Device::CPU);
     leg1_forwards();

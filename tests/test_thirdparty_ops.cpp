@@ -17,9 +17,9 @@
 // Run with MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 for the device legs (sections 1-3 then run the
 // device kernels of rope, repeat_heads and rmsnorm_group).
 #include <cmath>
-#include <limits>
 #include <cstdio>
 #include <functional>
+#include <limits>
 #include <random>
 #include <vector>
 
@@ -464,8 +464,8 @@ int main() {
             }
             CHECK(refused);
         }
-        // Head h's q columns times t[h]: the composition (repeat_heads, the ones product, mul) against a
-        // float re-statement, and its finite differences in t and in x.
+        // Head h's q columns times t[h]: the composition (repeat_heads, the ones product, mul)
+        // against a float re-statement, and its finite differences in t and in x.
         const size_t H = 4, dk = 6, T = 5;
         Var x = make_var(randn(T, H * dk, 60), true);
         Var t = make_var(randn(1, H, 61, 0.5f), true);
@@ -479,7 +479,8 @@ int main() {
         CHECK(bits_equal(host(f()), want));
         const double gt = gradcheck(f, t, 62), gx = gradcheck(f, x, 63);
         CHECK(gt < 1e-3 && gx < 1e-3);
-        // The model: init value, KV-cached decode, a stacked batch, finite differences through q_temp.
+        // The model: init value, KV-cached decode, a stacked batch, finite differences through
+        // q_temp.
         nn::LlamaConfig tc = c;
         tc.qk_temp = 2.75f;
         tc.n_kv_heads = 2;
@@ -487,8 +488,10 @@ int main() {
         size_t n_temp = 0;
         for (const auto& [name, p] : m.named_parameters())
             if (name.find("q_temp") != std::string::npos) {
-                CHECK(p->data.rows() == 1 && p->data.cols() == tc.n_heads && p->data(0, 3) == 2.75f);
-                for (size_t h = 0; h < tc.n_heads; ++h) p->data(0, h) = 1.5f + 0.5f * static_cast<float>(h);
+                CHECK(p->data.rows() == 1 && p->data.cols() == tc.n_heads &&
+                      p->data(0, 3) == 2.75f);
+                for (size_t h = 0; h < tc.n_heads; ++h)
+                    p->data(0, h) = 1.5f + 0.5f * static_cast<float>(h);
                 ++n_temp;
             }
         CHECK(n_temp == tc.n_layers);
@@ -499,7 +502,8 @@ int main() {
             Var pre = m.forward_cached(std::vector<int>(ids.begin(), ids.begin() + 5), kv);
             double dc = logits_diff(host(pre), 0, host(full), 0, 5);
             for (size_t s = 5; s < ids.size(); ++s)
-                dc = std::max(dc, logits_diff(host(m.forward_cached({ids[s]}, kv)), 0, host(full), s, 1));
+                dc = std::max(
+                    dc, logits_diff(host(m.forward_cached({ids[s]}, kv)), 0, host(full), s, 1));
             CHECK(dc < 1e-5);
             const auto ids2 = ids_of(12, c.vocab, 43);
             std::vector<int> both = ids;
@@ -508,8 +512,11 @@ int main() {
             const double db = std::max(logits_diff(b, 0, host(full), 0, ids.size()),
                                        logits_diff(b, ids.size(), s2, 0, ids.size()));
             CHECK(db < 1e-5);
-            std::printf("3b. qk_temp: t = 1 == qk_norm bit for bit; head scaling exact; fd t %.2e x %.2e; cached decode "
-                        "%.2e, batch vs singles %.1e\n", gt, gx, dc, db);
+            std::printf(
+                "3b. qk_temp: t = 1 == qk_norm bit for bit; head scaling exact; fd t %.2e x %.2e; "
+                "cached decode "
+                "%.2e, batch vs singles %.1e\n",
+                gt, gx, dc, db);
         }
         const std::vector<int> y(ids.rbegin(), ids.rend());
         auto loss_now = [&]() { return ops::cross_entropy(m.forward(ids), y); };
@@ -535,7 +542,8 @@ int main() {
         }
         CHECK(checked == 2 * 4);
         CHECK(worst < 2e-2);
-        std::printf("3b. finite differences through q_temp (%d spots): worst %.2e\n", checked, worst);
+        std::printf("3b. finite differences through q_temp (%d spots): worst %.2e\n", checked,
+                    worst);
     }
 
     // ---- 4. Mamba-1 ----

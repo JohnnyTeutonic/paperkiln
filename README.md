@@ -24,11 +24,14 @@ flowchart LR
 
 ## What it is
 
-A readable C++ LLM training stack (reverse-mode autograd, hand-derived backwards, every op
-finite-difference checked) that trains real architectures end to end, from paper to served
-model. It has the habit of publishing its negatives next to its wins. The core engine (tape,
-ops, layers, Llama family, quantisation, GGUF) is ordinary C++ with scoped CTest and Python
+A readable C++ LLM training stack (reverse-mode autograd and hand-derived backwards) that trains
+real architectures end to end, from paper to served model. It publishes negatives next to its wins.
+The core engine (tape, ops, layers, Llama family, quantisation, GGUF) is ordinary C++ with scoped CTest and Python
 suites; supported behaviour and numerical limits are recorded beside the tests and receipts.
+
+Gradient checks include finite differences for differentiable primitives. BitLinear uses a
+straight-through estimator: its surrogate gradients are tested against their specified rules,
+rather than finite differences of the discontinuous quantized forward.
 
 | Area | What you get |
 |---|---|

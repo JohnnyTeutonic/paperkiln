@@ -141,15 +141,18 @@ int main(int argc, char** argv) {
     doc = ir::json::parse(slurp(suite + "refuse/apply_leaves_value_unwritten.json"))["doc"];
     size_t repaired = 0;
     for (auto& node : doc["block"]["nodes"])
-        if (node.contains("apply") && node["apply"].is_object() && node["apply"].contains("per_layer") &&
+        if (node.contains("apply") && node["apply"].is_object() &&
+            node["apply"].contains("per_layer") &&
             node["apply"]["per_layer"] == ir::json::array({false, false, false})) {
             node["apply"]["per_layer"] = ir::json::array({true, false, false});
             ++repaired;
         }
     CHECK(repaired == 5);
     CHECK(ir::read_errors(doc).empty());
-    std::printf("4. conditional reads: scalar/per-layer refusals, original indices, cross-application persistence, "
-                "read-before-write and leading-dense/later-MoE acceptance\n");
+    std::printf(
+        "4. conditional reads: scalar/per-layer refusals, original indices, cross-application "
+        "persistence, "
+        "read-before-write and leading-dense/later-MoE acceptance\n");
     std::printf("ir_digest: all checks passed\n");
     return 0;
 }
