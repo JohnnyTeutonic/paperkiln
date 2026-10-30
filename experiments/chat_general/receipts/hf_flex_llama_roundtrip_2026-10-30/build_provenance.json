@@ -1,0 +1,38 @@
+{
+ "source_commit": "3eb746f2103f332a6ba69d9aafb704f964fab416",
+ "archive_sha256": "17218a7e2a0a572a9843539df268c54c8c34033f22ec842b3003175d314bbacd",
+ "archive_bytes": 34539520,
+ "archive_paths": [
+  "CMakeLists.txt",
+  "include",
+  "src",
+  "tools",
+  "third_party",
+  "tests",
+  "studio",
+  "spec",
+  "specs",
+  "python"
+ ],
+ "source": "/home/jonat/hf_flex_llama_clean_20261030/source",
+ "build": "/home/jonat/hf_flex_llama_clean_20261030/build",
+ "configure": [
+  "-DCMAKE_BUILD_TYPE=Release",
+  "-DMICROTORCH_CUDA=OFF",
+  "-DMICROTORCH_DEVCHECK=OFF",
+  "-DMICROTORCH_BUILD_PYTHON=OFF"
+ ],
+ "untied_only": true,
+ "route": "arch.custom.final_norm=True forces committed flex-only routing; no tie_head option claimed",
+ "unused_candidate_binary": {
+  "path": "/home/jonat/gelu_work/build/mtstudio",
+  "sha256": "740a939fa4730fae20fa7815da6520a7a08a399e3b10e45eaa26a159169dde73",
+  "reason": "dirty source provenance; never used for training/verification"
+ },
+ "failed_probe": "failed_stale_binary_native_llama; old pk_fh_build silently resolved nativeLlama, refused before HF export",
+ "archive_home": "C:\\ml_artifacts\\hf_flex_llama_roundtrip_20261030\\source_archive_3eb746f.tar",
+ "source_binary": "/home/jonat/hf_flex_llama_clean_20261030/build/mtstudio",
+ "source_binary_sha256": "fe1be5499e9592f4864377cbd6b292d7dd7c32d2dc9ef2e062c145a547914f00",
+ "tests": "165/165 HF tests PASS including independent C++ tokenizers; Ruff/diffcheck PASS",
+ "build_result": "PASS; Release CPU-only clean archived tracked source, --parallel1"
+}

@@ -15,3 +15,9 @@ experiments/tiny_chat_long_2026-10/receipts/core_2026-10-30/* -text
 experiments/benchmarks_2026-10-26/receipts/attnres_cpu_backend_audit_2026-10-30.json -text
 experiments/tiny_chat_long_2026-10/hs1_extension_*.json -text
 tools/colab_chat/carry12_hs1_*.json -text
+
+# Exact untied Llama-flex interoperability receipts retain recorded byte hashes.
+experiments/chat_general/receipts/hf_flex_llama_roundtrip_2026-10-30/* -text
+# Export verification records these source bytes as provenance, across checkouts.
+tools/hf_export.py text eol=lf
+tools/hf_export_verify.py text eol=lf

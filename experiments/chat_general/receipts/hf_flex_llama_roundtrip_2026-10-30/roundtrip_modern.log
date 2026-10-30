@@ -1,0 +1,186 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+== mtstudio: hf_flex_llama_untied ==
+arch: exact d=16 layers=3 heads=2 | T=32 vocab_cap=4096
+train: 6 steps batch=1 accum=1 lr=0.001 clip=1 eval_every=3 ckpt_every=2 early_stop(patience=0, min_delta=0)
+export: safetensors gguf | serve: no | out: /mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run
+{"event":"start","name":"hf_flex_llama_untied","steps":6}
+{"event":"data","tokens":8192,"val_tokens":409,"vocab":4096}
+{"T":32,"accum":1,"activation":"swiglu","attention":"exact","batch":1,"checkpoint_activations":false,"d":16,"d_ff":40,"event":"model","family":"flex","final_norm":true,"gate_bias_init":-2.0,"heads":2,"layers":3,"lr":0.0010000000474974513,"norm":"rmsnorm","norm_placement":{"attn":"pre","ffn":"pre"},"params":140208,"position":"rope","residual":"residual","rope_theta":1234.0,"seed":843,"sinks":1,"vocab":4096,"window":64}
+{"event":"step","grad_norm":2.5942962169647217,"loss":8.369241714477539,"step":1}
+{"event":"step","grad_norm":2.341073751449585,"loss":8.295476913452148,"step":2}
+{"event":"step","grad_norm":1.836495280265808,"loss":8.282902717590332,"step":3}
+{"event":"eval","step":3,"val_loss":8.272195100784302}
+{"event":"step","grad_norm":1.6534584760665894,"loss":8.247930526733398,"step":4}
+{"event":"step","grad_norm":1.8862305879592896,"loss":8.251103401184082,"step":5}
+{"event":"step","grad_norm":1.4639930725097656,"loss":8.251680374145508,"step":6}
+{"event":"eval","step":6,"val_loss":8.223028421401978}
+{"event":"export","format":"safetensors","path":"/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf_flex_llama_untied.safetensors"}
+GGUF Export: Successfully wrote 30 tensors to /mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf_flex_llama_untied.gguf
+{"arch":"paperkiln","event":"export","family":"flex","format":"gguf","ir":"/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf_flex_llama_untied.ir.json","path":"/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf_flex_llama_untied.gguf"}
+{"best_val":8.223028182983398,"early_stopped":false,"event":"done","final_step":6,"wall_seconds":0.909568704}
+HF export -> /mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf  (30 tensors, vocab 4096, unk='<unk>')
+verify: python tools/hf_export_verify.py /mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf /mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run
+{
+ "status": "HF-PARITY-OK",
+ "prompt_ids": [
+  40,
+  45,
+  7,
+  35
+ ],
+ "continuation_ids": [
+  1244,
+  1244,
+  1244,
+  1244,
+  1244,
+  1244,
+  2334,
+  2599
+ ],
+ "mtstudio_argmax": [
+  1244,
+  1244,
+  1244,
+  1244,
+  1244,
+  1244,
+  2334,
+  2599
+ ],
+ "max_abs_logit_error": 7.450580596923828e-08,
+ "atol": 0.0002,
+ "rtol": 0.0002,
+ "spec": "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/spec.json",
+ "scope": "raw token IDs, source tensor mapping and output logits; not chat rendering",
+ "score_spec_delta": {},
+ "mapped_tensors": 42,
+ "source_prompt_tokenizer_ids_checked": true,
+ "versions": {
+  "torch": "2.8.0+cu128"
+ },
+ "sha256": {
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/hf_export_verify.py": "c3a2993684be9e24a90d02da3bc58901c77faf18d376011f78790f73d5d29858",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/hf_export.py": "2316cc88e82ec52ff76a028f7fb2eccbd8d2a4df7aa6e48ea034bb78e1d09122",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/llama3_bpe.py": "3d0426ba5632de17c5f2507d45e066b277b7bdb4334339b21330fcaed88dd135",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf_flex_llama_untied.gguf": "b7520c01af056c3be4d8414f8cad153f0358b5cebdec17ba6da1034eae60d814",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf_flex_llama_untied.safetensors": "975c4e8e9f1806d2a017708ae1fcfb7065dc485d5c0cd0c0b74e5805cf1b5f93",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/spec.json": "cdce617dfe1fabf74114ac352ace49fc5016a1c8ffc0f1b1a30b1e21423ba955",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/events.jsonl": "4b1ca601341ea66b9b0fb817f5dce66b993d35b2a8f16f458c4c85a07471b913",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf/model.safetensors": "d91c65ae7e24e78283a137f3e5c33d02804d584367af6a09ad81c197ba9508e4",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf/config.json": "ab99cf0ff25f329be2389ec378fe58fb1c295cf773ffacf8e730df26c80362da",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf/tokenizer.json": "b3fedb08ec85d9f0899885102f844e51d4b845244e4d14d854f8e947c8a7c54b",
+  "/home/jonat/hf_flex_llama_clean_20261030/build/mtstudio": "fe1be5499e9592f4864377cbd6b292d7dd7c32d2dc9ef2e062c145a547914f00"
+ }
+}
+{
+ "status": "HF-PARITY-OK",
+ "prompt_ids": [
+  338,
+  16,
+  16,
+  155,
+  0,
+  7,
+  1371,
+  0
+ ],
+ "continuation_ids": [
+  2599,
+  860,
+  3323,
+  3644,
+  3323,
+  3644,
+  2170,
+  3090
+ ],
+ "mtstudio_argmax": [
+  2599,
+  860,
+  3323,
+  3644,
+  3323,
+  3644,
+  2170,
+  3090
+ ],
+ "max_abs_logit_error": 5.960464477539063e-08,
+ "atol": 0.0002,
+ "rtol": 0.0002,
+ "spec": "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/spec.json",
+ "scope": "raw token IDs, source tensor mapping and output logits; not chat rendering",
+ "score_spec_delta": {},
+ "mapped_tensors": 42,
+ "source_prompt_tokenizer_ids_checked": true,
+ "versions": {
+  "torch": "2.8.0+cu128"
+ },
+ "sha256": {
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/hf_export_verify.py": "c3a2993684be9e24a90d02da3bc58901c77faf18d376011f78790f73d5d29858",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/hf_export.py": "2316cc88e82ec52ff76a028f7fb2eccbd8d2a4df7aa6e48ea034bb78e1d09122",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/llama3_bpe.py": "3d0426ba5632de17c5f2507d45e066b277b7bdb4334339b21330fcaed88dd135",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf_flex_llama_untied.gguf": "b7520c01af056c3be4d8414f8cad153f0358b5cebdec17ba6da1034eae60d814",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf_flex_llama_untied.safetensors": "975c4e8e9f1806d2a017708ae1fcfb7065dc485d5c0cd0c0b74e5805cf1b5f93",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/spec.json": "cdce617dfe1fabf74114ac352ace49fc5016a1c8ffc0f1b1a30b1e21423ba955",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/events.jsonl": "4b1ca601341ea66b9b0fb817f5dce66b993d35b2a8f16f458c4c85a07471b913",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf/model.safetensors": "d91c65ae7e24e78283a137f3e5c33d02804d584367af6a09ad81c197ba9508e4",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf/config.json": "ab99cf0ff25f329be2389ec378fe58fb1c295cf773ffacf8e730df26c80362da",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf/tokenizer.json": "b3fedb08ec85d9f0899885102f844e51d4b845244e4d14d854f8e947c8a7c54b",
+  "/home/jonat/hf_flex_llama_clean_20261030/build/mtstudio": "fe1be5499e9592f4864377cbd6b292d7dd7c32d2dc9ef2e062c145a547914f00"
+ }
+}
+{
+ "status": "HF-PARITY-OK",
+ "prompt_ids": [
+  3,
+  33,
+  82,
+  56,
+  103
+ ],
+ "continuation_ids": [
+  2926,
+  1005,
+  5,
+  62,
+  3709,
+  1031,
+  505,
+  396
+ ],
+ "mtstudio_argmax": [
+  2926,
+  1005,
+  5,
+  62,
+  3709,
+  1031,
+  505,
+  396
+ ],
+ "max_abs_logit_error": 8.940696716308594e-08,
+ "atol": 0.0002,
+ "rtol": 0.0002,
+ "spec": "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/spec.json",
+ "scope": "raw token IDs, source tensor mapping and output logits; not chat rendering",
+ "score_spec_delta": {},
+ "mapped_tensors": 42,
+ "source_prompt_tokenizer_ids_checked": true,
+ "versions": {
+  "torch": "2.8.0+cu128"
+ },
+ "sha256": {
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/hf_export_verify.py": "c3a2993684be9e24a90d02da3bc58901c77faf18d376011f78790f73d5d29858",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/hf_export.py": "2316cc88e82ec52ff76a028f7fb2eccbd8d2a4df7aa6e48ea034bb78e1d09122",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/llama3_bpe.py": "3d0426ba5632de17c5f2507d45e066b277b7bdb4334339b21330fcaed88dd135",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf_flex_llama_untied.gguf": "b7520c01af056c3be4d8414f8cad153f0358b5cebdec17ba6da1034eae60d814",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf_flex_llama_untied.safetensors": "975c4e8e9f1806d2a017708ae1fcfb7065dc485d5c0cd0c0b74e5805cf1b5f93",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/spec.json": "cdce617dfe1fabf74114ac352ace49fc5016a1c8ffc0f1b1a30b1e21423ba955",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/events.jsonl": "4b1ca601341ea66b9b0fb817f5dce66b993d35b2a8f16f458c4c85a07471b913",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf/model.safetensors": "d91c65ae7e24e78283a137f3e5c33d02804d584367af6a09ad81c197ba9508e4",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf/config.json": "ab99cf0ff25f329be2389ec378fe58fb1c295cf773ffacf8e730df26c80362da",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf/tokenizer.json": "b3fedb08ec85d9f0899885102f844e51d4b845244e4d14d854f8e947c8a7c54b",
+  "/home/jonat/hf_flex_llama_clean_20261030/build/mtstudio": "fe1be5499e9592f4864377cbd6b292d7dd7c32d2dc9ef2e062c145a547914f00"
+ }
+}

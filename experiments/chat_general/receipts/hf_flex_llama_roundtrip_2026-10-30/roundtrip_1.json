@@ -1,0 +1,57 @@
+{
+ "status": "HF-PARITY-OK",
+ "prompt_ids": [
+  338,
+  16,
+  16,
+  155,
+  0,
+  7,
+  1371,
+  0
+ ],
+ "continuation_ids": [
+  2599,
+  860,
+  3323,
+  3644,
+  3323,
+  3644,
+  2170,
+  3090
+ ],
+ "mtstudio_argmax": [
+  2599,
+  860,
+  3323,
+  3644,
+  3323,
+  3644,
+  2170,
+  3090
+ ],
+ "max_abs_logit_error": 5.960464477539063e-08,
+ "atol": 0.0002,
+ "rtol": 0.0002,
+ "spec": "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/spec.json",
+ "scope": "raw token IDs, source tensor mapping and output logits; not chat rendering",
+ "score_spec_delta": {},
+ "mapped_tensors": 42,
+ "source_prompt_tokenizer_ids_checked": true,
+ "versions": {
+  "torch": "2.8.0+cu128"
+ },
+ "sha256": {
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/hf_export_verify.py": "c3a2993684be9e24a90d02da3bc58901c77faf18d376011f78790f73d5d29858",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/hf_export.py": "2316cc88e82ec52ff76a028f7fb2eccbd8d2a4df7aa6e48ea034bb78e1d09122",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/llama3_bpe.py": "3d0426ba5632de17c5f2507d45e066b277b7bdb4334339b21330fcaed88dd135",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf_flex_llama_untied.gguf": "b7520c01af056c3be4d8414f8cad153f0358b5cebdec17ba6da1034eae60d814",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf_flex_llama_untied.safetensors": "975c4e8e9f1806d2a017708ae1fcfb7065dc485d5c0cd0c0b74e5805cf1b5f93",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/spec.json": "cdce617dfe1fabf74114ac352ace49fc5016a1c8ffc0f1b1a30b1e21423ba955",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/events.jsonl": "4b1ca601341ea66b9b0fb817f5dce66b993d35b2a8f16f458c4c85a07471b913",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf/model.safetensors": "d91c65ae7e24e78283a137f3e5c33d02804d584367af6a09ad81c197ba9508e4",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf/config.json": "ab99cf0ff25f329be2389ec378fe58fb1c295cf773ffacf8e730df26c80362da",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf/tokenizer.json": "b3fedb08ec85d9f0899885102f844e51d4b845244e4d14d854f8e947c8a7c54b",
+  "/home/jonat/hf_flex_llama_clean_20261030/build/mtstudio": "fe1be5499e9592f4864377cbd6b292d7dd7c32d2dc9ef2e062c145a547914f00"
+ }
+}

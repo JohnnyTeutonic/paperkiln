@@ -102,7 +102,7 @@ def main():
         if set(loaded) != allowed or not np.array_equal(loaded["lm_head.weight"].numpy(), loaded["model.embed_tokens.weight"].numpy()):
             raise ValueError("unexpected HF tensor inventory or untied Llama output head")
     elif set(loaded) != set(mapped) or model.config.tie_word_embeddings:
-        raise ValueError("unexpected HF GPT2 tensor inventory or tied output head")
+        raise ValueError("unexpected HF tensor inventory or tied output head")
     prompt = tok.encode(args.prompt, add_special_tokens=False).ids
     source_gguf = source.with_suffix(".gguf")
     source_ids = source_prompt_ids(source_gguf, args.prompt)

@@ -7,6 +7,15 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Untied Llama-flavour flex HF export** (30 Oct). Preserves biased Q/K/V/O attention,
+  per-head RoPE permutation of q/k weights and biases, RMSNorm eps1e-5, bias-free SwiGLU
+  and an untied head. A clean committed-source CPU build (3eb746f) trained a tiny
+  three-layer d_ff40/theta1234 fixture; all42 HF tensors load bitwise, and three actual
+  source/HF roundtrips match24/24 IDs (worst raw-logit error8.941e-8). All165 HF tests
+  pass, including explicit tied-head and other modifier refusals. Tied flex remains author
+  WIP and is not supported. Receipt and exact source snapshots:
+  `experiments/chat_general/receipts/hf_flex_llama_roundtrip_2026-10-30/`.
+
 - **Carry-12 three-seed core complete** (30 Oct). The existing frozen finalizer published
   all seven cells with seeds 1–3, no missing reports and all validity gates passing.
   Independent source/input/report rehashes passed. HT-SFT is SUPPORTED (+9.16 points);

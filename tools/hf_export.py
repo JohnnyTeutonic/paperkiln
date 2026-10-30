@@ -3,7 +3,7 @@
 
     python tools/hf_export.py OUT_DIR [--hf-dir OUT_DIR/hf]
 
-Takes a finished plain llama, exact two-block GPT2, or plain GPT2-flavour flex run (events.jsonl +
+Takes a finished plain llama, exact two-block GPT2, or plain GPT2/Llama-flavour flex run (events.jsonl +
 <name>.safetensors + <name>.gguf) and writes an HF-layout folder that
 `transformers.AutoModelForCausalLM.from_pretrained` opens directly:
 
@@ -12,7 +12,9 @@ Takes a finished plain llama, exact two-block GPT2, or plain GPT2-flavour flex r
                            microtorch's [in, out] Linear layout to HF's
                            [out, in]; norm gammas squeezed [1,d] -> [d].
                            GPT2 Conv1D weights retain [in,out]; its untied
-                           output head alone is transposed.
+                           output head alone is transposed. Llama-flavour flex
+                           splits fused QKV, permutes q/k weights AND biases,
+                           preserves biased attention and an untied head.
     tokenizer.json (+cfg)  exact llama-BPE reconstruction from GGUF, or
                            native paperkiln byte-BPE, preserving token IDs and
                            byte decoding; legacy word-level vocabularies use
@@ -201,8 +203,89 @@ def convert_gpt2_weights(sd, m):
     return out
 
 
+def hf_model_type(m):
+    if m.get("family") in ("llama", "gpt2"):
+        return m["family"]
+    if m.get("family") == "flex":
+        flavour = (m.get("norm"), m.get("activation"), m.get("position"))
+        if flavour == ("layernorm", "gelu", "learned"):
+            return "gpt2"
+        if flavour == ("rmsnorm", "swiglu", "rope"):
+            return "llama"
+    raise ValueError("HF export supports only plain llama/GPT2 and their exact flex flavours")
+
+
+def validate_flex_llama(m):
+    """Committed FlexLM has biased MHA, all-head RoPE and an untied head."""
+    required = {"attention", "norm", "activation", "position", "residual", "final_norm", "norm_placement", "d_ff"}
+    if m.get("family") != "flex" or not required <= m.keys():
+        raise ValueError("Llama-flavour flex requires the complete resolved flavour record")
+    if ((m["norm"], m["activation"], m["position"]) != ("rmsnorm", "swiglu", "rope")
+            or m["attention"] != "exact" or m["residual"] != "residual" or m["final_norm"] is not True
+            or m["norm_placement"] != {"attn": "pre", "ffn": "pre"}):
+        raise ValueError("HF Llama-flavour flex requires exact attention, pre RMSNorm, SwiGLU, RoPE and residuals")
+    if any(m.get(k) for k in ("thirdparty", "qk_norm", "recursion", "attn_res", "moe", "state_tokens", "tie_embeddings", "tie_head",
+                              "qkv_conv", "embed", "embed_expr", "embed_inputs", "embed_before_positions", "embed_before_pos",
+                              "logits", "logits_expr", "activation_inputs", "norm_inputs", "t5_relative", "shaw_relative", "ssm")):
+        raise ValueError("modified Llama-flavour flex exports are unsupported")
+    if (any(type(m.get(k)) is not int or m[k] < 1 for k in ("d", "heads", "layers", "vocab", "T", "d_ff"))
+            or m["d"] % m["heads"] or (m["d"] // m["heads"]) % 2):
+        raise ValueError("unsupported Llama-flavour flex geometry")
+    if (m.get("kv_heads", m["heads"]) != m["heads"] or m.get("rope_pairing", "interleaved") != "interleaved"
+            or m.get("rope_dims", m["d"] // m["heads"]) != m["d"] // m["heads"]
+            or m.get("rope_heads", "all") != "all" or m.get("rms_norm_eps", 1e-5) != 1e-5
+            or type(m.get("tie_head", False)) is not bool):
+        raise ValueError("alternate RoPE, RMSNorm constants or head semantics are unsupported")
+    theta = m.get("rope_theta", 10000.0)
+    if type(theta) not in (int, float) or not np.isfinite(theta) or theta <= 0:
+        raise ValueError("invalid recorded rope_theta")
+    return theta
+
+
+def convert_flex_llama_weights(sd, m):
+    validate_flex_llama(m)
+    d, ff, vocab, heads = m["d"], m["d_ff"], m["vocab"], m["heads"]
+    layout = {"wte.weight": (vocab, d), "norm.weight": (1, d), "head.weight": (d, vocab)}
+    for b in range(m["layers"]):
+        base = f"layers.{b}."
+        layout.update({base+"norm1.weight": (1, d), base+"norm2.weight": (1, d),
+                       base+"attn.c_attn.weight": (d, 3*d), base+"attn.c_attn.bias": (1, 3*d),
+                       base+"attn.c_proj.weight": (d, d), base+"attn.c_proj.bias": (1, d),
+                       base+"mlp.gate_proj.weight": (d, ff), base+"mlp.up_proj.weight": (d, ff),
+                       base+"mlp.down_proj.weight": (ff, d)})
+    if set(sd) != set(layout):
+        raise ValueError("Llama-flavour flex tensor inventory differs from complete mapping")
+    for key, shape in layout.items():
+        if sd[key].shape != shape or not np.isfinite(sd[key]).all():
+            raise ValueError("invalid Llama-flavour flex source tensor: " + key)
+    out = {"model.embed_tokens.weight": sd["wte.weight"], "model.norm.weight": sd["norm.weight"].reshape(-1),
+           "lm_head.weight": sd["head.weight"].T}
+    dk = d // heads
+    perm = rope_perm(dk)
+    for b in range(m["layers"]):
+        base, hf = f"layers.{b}.", f"model.layers.{b}."
+        for norm, name in (("norm1", "input_layernorm"), ("norm2", "post_attention_layernorm")):
+            out[hf+name+".weight"] = sd[base+norm+".weight"].reshape(-1)
+        for i, name in enumerate(("q_proj", "k_proj", "v_proj")):
+            weight = sd[base+"attn.c_attn.weight"][:, i*d:(i+1)*d].T
+            bias = sd[base+"attn.c_attn.bias"].reshape(3, d)[i]
+            if i < 2:
+                weight = weight.reshape(heads, dk, d)[:, perm, :].reshape(d, d)
+                bias = bias.reshape(heads, dk)[:, perm].reshape(d)
+            out[hf+"self_attn."+name+".weight"] = weight
+            out[hf+"self_attn."+name+".bias"] = bias
+        out[hf+"self_attn.o_proj.weight"] = sd[base+"attn.c_proj.weight"].T
+        out[hf+"self_attn.o_proj.bias"] = sd[base+"attn.c_proj.bias"].reshape(-1)
+        for name in ("gate_proj", "up_proj", "down_proj"):
+            out[hf+"mlp."+name+".weight"] = sd[base+"mlp."+name+".weight"].T
+    return {k: np.ascontiguousarray(v, dtype=np.float32) for k, v in out.items()}
+
+
 def map_weights(sd, m):
-    return convert_gpt2_weights(sd, m) if m["family"] in ("gpt2", "flex") else convert_weights(sd, m["heads"])
+    kind = hf_model_type(m)
+    if m["family"] == "flex" and kind == "llama":
+        return convert_flex_llama_weights(sd, m)
+    return convert_gpt2_weights(sd, m) if kind == "gpt2" else convert_weights(sd, m["heads"])
 
 
 def native_bpe_tokenizer(gguf_path):
@@ -393,17 +476,15 @@ def main():
                          "every head, so its outputs will differ)")
     args = ap.parse_args()
     m = model_event(args.out_dir, args.events)
-    if m.get("family") not in ("llama", "gpt2", "flex"):
-        raise SystemExit("HF export supports plain llama/GPT2 and GPT2-flavour flex only (HF "
-                         f"mapping); this run is family={m.get('family')}")
+    kind = hf_model_type(m)
     rope = m.get("rope_heads", "first")
     if m["family"] == "llama" and rope != "all" and m.get("heads", 1) > 1 and not args.allow_legacy_rope:
         raise SystemExit(
             f"this run has rope_heads={rope} (RoPE on head 0 of {m['heads']}); "
             "HF Llama rotates every head and cannot reproduce it. Retrain with "
             "arch.rope_heads=all, or pass --allow-legacy-rope to export anyway")
-    theta = validate_model(m) if m["family"] == "llama" else None
-    if m["family"] in ("gpt2", "flex"):
+    theta = (validate_flex_llama(m) if m["family"] == "flex" else validate_model(m)) if kind == "llama" else None
+    if kind == "gpt2":
         validate_gpt2(m)
     name = start_name(args.out_dir, args.events)
     hf_dir = args.hf_dir or os.path.join(args.out_dir, "hf")
@@ -423,7 +504,7 @@ def main():
 
     from llama3_bpe import read_gguf_kv
     special_ids = read_gguf_kv(gguf_path, {"tokenizer.ggml.bos_token_id", "tokenizer.ggml.eos_token_id"})
-    if m["family"] == "llama":
+    if kind == "llama":
         cfg = {
             "architectures": ["LlamaForCausalLM"],
             "model_type": "llama",
@@ -437,8 +518,8 @@ def main():
             "rms_norm_eps": 1e-5,  # ops::kRmsNormEps, including the training tape
             "rope_theta": theta,
             "hidden_act": "silu",
-            "tie_word_embeddings": True,
-            "attention_bias": False,
+            "tie_word_embeddings": m["family"] != "flex",
+            "attention_bias": m["family"] == "flex",
             "mlp_bias": False,
             "torch_dtype": "float32",
             "bos_token_id": special_ids.get("tokenizer.ggml.bos_token_id", vocab.get("<s>")),

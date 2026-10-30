@@ -1,0 +1,298 @@
+{
+ "scope": "Tiny clean-source CPU interoperability fixture for strictly plain untied Llama-flavour FlexLM; no model-quality, GPU or performance claim",
+ "supported": "Exact biased MHA, all-head adjacent-pair RoPE (q/k weights AND biases permuted to HF halves), pre RMSNorm eps1e-5, SwiGLU without MLP bias, final norm, residuals, untied output head. Complete resolved flavour event and exact native tensor inventory required.",
+ "source_model_event": {
+  "T": 32,
+  "accum": 1,
+  "activation": "swiglu",
+  "attention": "exact",
+  "batch": 1,
+  "checkpoint_activations": false,
+  "d": 16,
+  "d_ff": 40,
+  "event": "model",
+  "family": "flex",
+  "final_norm": true,
+  "gate_bias_init": -2.0,
+  "heads": 2,
+  "layers": 3,
+  "lr": 0.0010000000474974513,
+  "norm": "rmsnorm",
+  "norm_placement": {
+   "attn": "pre",
+   "ffn": "pre"
+  },
+  "params": 140208,
+  "position": "rope",
+  "residual": "residual",
+  "rope_theta": 1234.0,
+  "seed": 843,
+  "sinks": 1,
+  "vocab": 4096,
+  "window": 64
+ },
+ "training": {
+  "best_val": 8.223028182983398,
+  "early_stopped": false,
+  "event": "done",
+  "final_step": 6,
+  "wall_seconds": 0.909568704
+ },
+ "source_commit": "3eb746f2103f332a6ba69d9aafb704f964fab416",
+ "source_binary": "/home/jonat/hf_flex_llama_clean_20261030/build/mtstudio",
+ "source_binary_sha256": "fe1be5499e9592f4864377cbd6b292d7dd7c32d2dc9ef2e062c145a547914f00",
+ "cpu_budget": {
+  "session": "paperkiln",
+  "cores": 1,
+  "local_gpu": false
+ },
+ "source_safetensors_metadata": null,
+ "source_tensors": {
+  "head.weight": {
+   "dtype": "F32",
+   "shape": [
+    16,
+    4096
+   ]
+  },
+  "layers.0.attn.c_attn.bias": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    48
+   ]
+  },
+  "layers.0.attn.c_attn.weight": {
+   "dtype": "F32",
+   "shape": [
+    16,
+    48
+   ]
+  },
+  "layers.0.attn.c_proj.bias": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.0.attn.c_proj.weight": {
+   "dtype": "F32",
+   "shape": [
+    16,
+    16
+   ]
+  },
+  "layers.0.mlp.down_proj.weight": {
+   "dtype": "F32",
+   "shape": [
+    40,
+    16
+   ]
+  },
+  "layers.0.mlp.gate_proj.weight": {
+   "dtype": "F32",
+   "shape": [
+    16,
+    40
+   ]
+  },
+  "layers.0.mlp.up_proj.weight": {
+   "dtype": "F32",
+   "shape": [
+    16,
+    40
+   ]
+  },
+  "layers.0.norm1.weight": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.0.norm2.weight": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.1.attn.c_attn.bias": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    48
+   ]
+  },
+  "layers.1.attn.c_attn.weight": {
+   "dtype": "F32",
+   "shape": [
+    16,
+    48
+   ]
+  },
+  "layers.1.attn.c_proj.bias": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.1.attn.c_proj.weight": {
+   "dtype": "F32",
+   "shape": [
+    16,
+    16
+   ]
+  },
+  "layers.1.mlp.down_proj.weight": {
+   "dtype": "F32",
+   "shape": [
+    40,
+    16
+   ]
+  },
+  "layers.1.mlp.gate_proj.weight": {
+   "dtype": "F32",
+   "shape": [
+    16,
+    40
+   ]
+  },
+  "layers.1.mlp.up_proj.weight": {
+   "dtype": "F32",
+   "shape": [
+    16,
+    40
+   ]
+  },
+  "layers.1.norm1.weight": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.1.norm2.weight": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.2.attn.c_attn.bias": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    48
+   ]
+  },
+  "layers.2.attn.c_attn.weight": {
+   "dtype": "F32",
+   "shape": [
+    16,
+    48
+   ]
+  },
+  "layers.2.attn.c_proj.bias": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.2.attn.c_proj.weight": {
+   "dtype": "F32",
+   "shape": [
+    16,
+    16
+   ]
+  },
+  "layers.2.mlp.down_proj.weight": {
+   "dtype": "F32",
+   "shape": [
+    40,
+    16
+   ]
+  },
+  "layers.2.mlp.gate_proj.weight": {
+   "dtype": "F32",
+   "shape": [
+    16,
+    40
+   ]
+  },
+  "layers.2.mlp.up_proj.weight": {
+   "dtype": "F32",
+   "shape": [
+    16,
+    40
+   ]
+  },
+  "layers.2.norm1.weight": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.2.norm2.weight": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "norm.weight": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "wte.weight": {
+   "dtype": "F32",
+   "shape": [
+    4096,
+    16
+   ]
+  }
+ },
+ "roundtrips": {
+  "prompts": 3,
+  "greedy_ids": 24,
+  "all_ids_match": true,
+  "maximum_raw_logit_error": 8.940696716308594e-08,
+  "source_prompt_tokenizer_ids_checked": true,
+  "mapped_tensors_loaded_bitwise": 42
+ },
+ "validation": "165 HF tests PASS including independent C++ native BPE and legacy tokenizer checks; ruff/diffcheck PASS",
+ "artifact_home": "C:\\ml_artifacts\\hf_flex_llama_roundtrip_20261030",
+ "artifacts": {
+  "untied\\spec.json": "cdce617dfe1fabf74114ac352ace49fc5016a1c8ffc0f1b1a30b1e21423ba955",
+  "untied\\run\\events.jsonl": "4b1ca601341ea66b9b0fb817f5dce66b993d35b2a8f16f458c4c85a07471b913",
+  "untied\\run\\hf_flex_llama_untied.safetensors": "975c4e8e9f1806d2a017708ae1fcfb7065dc485d5c0cd0c0b74e5805cf1b5f93",
+  "untied\\run\\hf_flex_llama_untied.gguf": "b7520c01af056c3be4d8414f8cad153f0358b5cebdec17ba6da1034eae60d814",
+  "untied\\run\\hf\\model.safetensors": "d91c65ae7e24e78283a137f3e5c33d02804d584367af6a09ad81c197ba9508e4",
+  "untied\\run\\hf\\config.json": "ab99cf0ff25f329be2389ec378fe58fb1c295cf773ffacf8e730df26c80362da",
+  "untied\\run\\hf\\tokenizer.json": "b3fedb08ec85d9f0899885102f844e51d4b845244e4d14d854f8e947c8a7c54b"
+ },
+ "receipt_files": {
+  "build.log": "b47cd89893e9f1ee7696070779877f05803a8d35d245cf04a3ae785be1346a88",
+  "build_provenance.json": "00907f2aff37bf73519c26bc9b4b215259370d3ae4922ec7fbc64786e449e2b1",
+  "configure.log": "83d2e40c7fa0dbf30df03fbbf96e44f3a0a73cf4e8bfdbb150fa69cdab1f8307",
+  "roundtrip_0.json": "e7733a90e98106991a887549168c1dc84c687b5bb26921ef334d02c3bb27fd68",
+  "roundtrip_1.json": "24cf6c1ee051411ebe8630b50aed8d4a766baaaa9defbc7cea613851adc7d97b",
+  "roundtrip_2.json": "0c8c2583634464ac1836b8979127f9056acf3d1bba47c75cd1972cabbb8d573a",
+  "roundtrip_modern.log": "2de7dcda20aa9974de2760b9b6f7f9541fc5bc94b5de3c597f5c71b58f7dbfd3",
+  "source_build.sh": "730ee2fb187875e23e003724a27f84000f268def6a2178fd69b01ac670ac3bc0",
+  "source_fixture_driver.py": "8bc827f5bf5993d63acb04a480e70357510a023bcff6efc04175eea2dc009cd9",
+  "source_hf_export.py": "2316cc88e82ec52ff76a028f7fb2eccbd8d2a4df7aa6e48ea034bb78e1d09122",
+  "source_hf_export_verify.py": "c3a2993684be9e24a90d02da3bc58901c77faf18d376011f78790f73d5d29858",
+  "spec.json": "cdce617dfe1fabf74114ac352ace49fc5016a1c8ffc0f1b1a30b1e21423ba955",
+  "tests.log": "91c3df36cec76ea8349939b00b490f0f06104af6452c6d7e73336ad50a5f4350"
+ },
+ "remaining": "Tied-head flex is author WIP, absent from the pinned committed C++ source; explicitly refused. Other flex flavours, SWA, expr/modifier slots, GQA, partial/alternate RoPE and norm placement remain refused.",
+ "excluded_probe": "Old pk_fh_build silently resolved requested flex into nativeLlama; refused before HF export and preserved separately in canonical home. Dirty gelu_work candidate never used."
+}

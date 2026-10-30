@@ -1,0 +1,47 @@
+{
+ "name": "hf_flex_llama_untied",
+ "arch": {
+  "family": "gpt2",
+  "custom": {
+   "d": 16,
+   "layers": 3,
+   "heads": 2,
+   "d_ff": 40,
+   "norm": "rmsnorm",
+   "activation": "swiglu",
+   "position": "rope",
+   "norm_placement": {
+    "attn": "pre",
+    "ffn": "pre"
+   },
+   "rope_theta": 1234.0,
+   "final_norm": true
+  },
+  "rope_heads": "all"
+ },
+ "data": {
+  "vocab": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/vocab_tinystories_valid_v1/tinystories_vocab.gguf",
+  "corpus": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/tinychat_v2_4000/tinychat.txt",
+  "vocab_cap": 4096,
+  "T": 32,
+  "max_tokens": 8192
+ },
+ "train": {
+  "steps": 6,
+  "lr": 0.001,
+  "batch": 1,
+  "eval_every": 3,
+  "eval_examples": 2,
+  "checkpoint_every": 2,
+  "gradmap_every": 0,
+  "seed": 843,
+  "optimizer": "adamw"
+ },
+ "export": {
+  "formats": [
+   "safetensors",
+   "gguf"
+  ]
+ },
+ "out_dir": "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run"
+}

@@ -517,3 +517,108 @@ def test_plain_flex_config_and_complete_hf_loaded_inventory(tmp_path, monkeypatc
     assert set(loaded) == set(mapped)
     for key, value in mapped.items():
         np.testing.assert_array_equal(loaded[key].numpy(), value)
+
+
+def flex_llama_fixture():
+    m = {"family": "flex", "d": 8, "heads": 2, "layers": 3, "vocab": 7, "T": 16, "d_ff": 10,
+         "norm": "rmsnorm", "activation": "swiglu", "position": "rope", "attention": "exact",
+         "residual": "residual", "norm_placement": {"attn": "pre", "ffn": "pre"}, "final_norm": True,
+         "rope_theta": 1234.0}
+    def a(n, k):
+        return np.arange(n*k, dtype=np.float32).reshape(n, k)/100
+    state = {"wte.weight": a(7, 8), "norm.weight": np.ones((1, 8), dtype=np.float32), "head.weight": a(8, 7)}
+    for b in range(3):
+        p = f"layers.{b}."
+        state.update({p+"norm1.weight": np.ones((1, 8), dtype=np.float32),
+                      p+"norm2.weight": np.ones((1, 8), dtype=np.float32),
+                      p+"attn.c_attn.weight": a(8, 24), p+"attn.c_attn.bias": a(1, 24),
+                      p+"attn.c_proj.weight": a(8, 8), p+"attn.c_proj.bias": a(1, 8),
+                      p+"mlp.gate_proj.weight": a(8, 10), p+"mlp.up_proj.weight": a(8, 10),
+                      p+"mlp.down_proj.weight": a(10, 8)})
+    return m, state
+
+
+def test_flex_llama_splits_fused_qkv_and_permutes_weights_and_biases_per_head():
+    model, state = flex_llama_fixture()
+    mapped = hf_export.map_weights(state, model)
+    assert len(mapped) == 42
+    for i, name in enumerate(("q_proj", "k_proj", "v_proj")):
+        weight = state["layers.2.attn.c_attn.weight"][:, i*8:(i+1)*8].T
+        bias = state["layers.2.attn.c_attn.bias"].reshape(3, 8)[i]
+        if i < 2:
+            weight = weight.reshape(2, 4, 8)[:, [0, 2, 1, 3], :].reshape(8, 8)
+            bias = bias.reshape(2, 4)[:, [0, 2, 1, 3]].reshape(8)
+        np.testing.assert_array_equal(mapped[f"model.layers.2.self_attn.{name}.weight"], weight)
+        np.testing.assert_array_equal(mapped[f"model.layers.2.self_attn.{name}.bias"], bias)
+    np.testing.assert_array_equal(mapped["model.layers.1.self_attn.o_proj.bias"], state["layers.1.attn.c_proj.bias"].reshape(-1))
+    np.testing.assert_array_equal(mapped["model.layers.0.mlp.down_proj.weight"], state["layers.0.mlp.down_proj.weight"].T)
+    np.testing.assert_array_equal(mapped["lm_head.weight"], state["head.weight"].T)
+
+
+@pytest.mark.parametrize("extra", [
+    {"attention": "swa"}, {"activation": "silu"}, {"norm": "layernorm"}, {"position": "learned"},
+    {"residual": "plain"}, {"residual": "highway"}, {"norm_placement": "pre"},
+    {"norm_placement": {"attn": "pre", "ffn": "post"}}, {"final_norm": False},
+    {"qkv_conv": 3}, {"qk_norm": "full"}, {"embed": {"expr": "expr:x*2"}}, {"logits": "expr:x*2"},
+    {"activation_inputs": [{"kind": "up"}]}, {"norm_inputs": [{"kind": "row"}]},
+    {"state_tokens": {"k": 4}}, {"recursion": {"repeats": 2}}, {"attn_res": True},
+    {"moe": {"experts": 2}}, {"ssm": {"kind": "mamba1"}}, {"thirdparty": {"kv_heads": 1}},
+    {"kv_heads": 1}, {"rope_heads": "first"}, {"rope_dims": 2}, {"rope_pairing": "neox"},
+    {"rms_norm_eps": 1e-6}, {"rope_theta": float("nan")}, {"rope_theta": 0}, {"rope_theta": "10000"},
+    {"d_ff": 0}, {"d_ff": True}, {"d": 6}, {"tie_head": 1}, {"tie_head": True}, {"tie_embeddings": True},
+])
+def test_flex_llama_unmapped_semantics_are_refused(extra):
+    model, _ = flex_llama_fixture()
+    with pytest.raises(ValueError):
+        hf_export.validate_flex_llama({**model, **extra})
+
+
+@pytest.mark.parametrize("field", ["attention", "norm", "activation", "position", "residual", "final_norm", "norm_placement", "d_ff"])
+def test_flex_llama_missing_record_is_not_inferred(field):
+    model, _ = flex_llama_fixture()
+    del model[field]
+    with pytest.raises(ValueError, match="resolved flavour record"):
+        hf_export.validate_flex_llama(model)
+
+
+@pytest.mark.parametrize("change", ["missing", "extra", "shape", "nan", "untied_but_head_absent"])
+def test_flex_llama_exact_tensor_inventory_and_shapes_are_required(change):
+    model, state = flex_llama_fixture()
+    if change == "missing":
+        del state["layers.2.attn.c_attn.bias"]
+    elif change == "extra":
+        state["layers.0.mlp.up_proj.bias"] = np.zeros((1, 10), dtype=np.float32)
+    elif change == "shape":
+        state["layers.0.attn.c_attn.bias"] = np.zeros((24,), dtype=np.float32)
+    elif change == "nan":
+        state["layers.0.norm1.weight"][0, 0] = np.nan
+    else:
+        del state["head.weight"]
+    with pytest.raises(ValueError, match="tensor"):
+        hf_export.map_weights(state, model)
+
+
+def test_flex_llama_config_biases_untied_head_and_loaded_weights(tmp_path, monkeypatch):
+    from safetensors.numpy import load_file
+    transformers = pytest.importorskip("transformers")
+    model, state = flex_llama_fixture()
+    model["event"] = "model"
+    run = tmp_path / "run"
+    run.mkdir()
+    (run / "events.jsonl").write_text(json.dumps({"event": "start", "name": "tiny"}) + "\n" + json.dumps(model) + "\n")
+    monkeypatch.setattr(hf_export, "load_file", lambda _: state)
+    monkeypatch.setattr(hf_export, "gguf_tokens", lambda _: ["<unk>", "a", "b", "c", "d", "e", "f"])
+    monkeypatch.setattr(hf_export, "write_tokenizer", lambda *a: ({str(i): i for i in range(7)}, "<unk>"))
+    import llama3_bpe
+    monkeypatch.setattr(llama3_bpe, "read_gguf_kv", lambda *a: {})
+    monkeypatch.setattr(sys, "argv", ["hf_export.py", str(run)])
+    hf_export.main()
+    cfg = json.loads((run / "hf/config.json").read_text())
+    assert cfg["model_type"] == "llama" and cfg["attention_bias"] is True and cfg["mlp_bias"] is False
+    assert cfg["tie_word_embeddings"] is False and cfg["rms_norm_eps"] == 1e-5
+    assert cfg["rope_theta"] == 1234.0 and cfg["intermediate_size"] == 10 and cfg["num_hidden_layers"] == 3
+    loaded = transformers.AutoModelForCausalLM.from_pretrained(run / "hf").state_dict()
+    mapped = load_file(str(run / "hf/model.safetensors"))
+    assert set(loaded) == set(mapped)
+    for key, value in mapped.items():
+        np.testing.assert_array_equal(loaded[key].numpy(), value)

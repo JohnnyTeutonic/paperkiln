@@ -117,7 +117,7 @@ advisory steps that cannot fail the build.
 - **int4/NF4 quantisation.**
 - **Kimi linear attention:** the non-causal backward (`src/ops.cpp:658`
   throws).
-- **HF export for modified flex flavours and unmapped GPT2 variants; quantised GGUFs outside the llama family.** Strictly plain GPT2-flavour flex now has a verified HF mapping (arbitrary depth/MLP width); its completed subset leaves this list. Every mtstudio family now exports F32 GGUF with its IR
+- **HF export for modified flex flavours and unmapped GPT2 variants; quantised GGUFs outside the llama family.** Strictly plain GPT2-flavour and untied Llama-flavour flex now have verified HF mappings (arbitrary depth/MLP width); those completed subsets leave this list. Tied-head flex remains unsupported until its C++ source lands. Every mtstudio family now exports F32 GGUF with its IR
   (`include/microtorch/ir.hpp`, Families): gpt2 and flex with the GPT-2
   flavour in llama.cpp's `gpt2` layout, as are kimi and plain-residual flex
   of that flavour (the IR alone carries what differs); srd, attnres, mamba
