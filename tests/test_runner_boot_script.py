@@ -15,7 +15,7 @@ runner = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(runner)
 
 
-@pytest.mark.parametrize("script", ["boot_jobs.sh", "boot_commands.sh"])
+@pytest.mark.parametrize("script", ["boot_jobs.sh", "boot_commands.sh", "boot_commands_sparse.sh"])
 def test_production_boot_snippet_fetches_selected_pinned_script(tmp_path, monkeypatch, script):
     urls, launches = [], []
     target = tmp_path / "boot.sh"
