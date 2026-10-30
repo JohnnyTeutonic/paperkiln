@@ -730,7 +730,9 @@ def parse_tables(text: str) -> list[dict[str, int]]:
 _MOE_WORDS = r"\bMoE\b|mixture[- ]of[- ]experts|sparsely[- ]gated"
 _MOE_SELF = (r"\bwe\s+(?:use|adopt|employ|propose|introduce|activate|select|route)\b|"
              r"\bour\s+(?:MoE\s+)?(?:model|architecture|network|layers?)\s+"
-             r"(?:uses?|has|contains?|employs?|comprises?|consists?\s+of|routes?)\b")
+             r"(?:uses?|has|contains?|employs?|comprises?|consists?\s+of|routes?)\b|"
+             r"\bour\s+(?:model|architecture|network|layers?)\s+(?:is|are)\s+(?:an?\s+)?"
+             r"(?:MoE\b|mixture[- ]of[- ]experts|sparsely[- ]gated)")
 _MOE_N = r"(?<![\d.])(\d+(?:,\d{3})*)(?![\d.])"
 _MOE_PATTERNS = {
     "n_experts": [r"\b(?:uses?|employs?|has|contains?|comprises?|with|of)\s+" + _MOE_N +
@@ -773,6 +775,13 @@ def extract_moe(arch: Arch, sections: list[tuple[str, str]]) -> None:
             if re.search(r"\b(?:no|without)\s+(?:an?\s+)?(?:MoE\b|mixture[- ]of[- ]experts)|\b(?:not|never)\s+(?:use|adopt|employ)\s+(?:an?\s+)?(?:MoE\b|mixture[- ]of[- ]experts)", statement, re.I):
                 continue
             evidence = " ".join(statement.split())
+            # Dense alternatives describe the rejected reference, not adoption.
+            # Abstain rather than silently choose either architecture in emitters.
+            if re.search(r"\bdense\b.*?\b(?:instead\s+of|rather\s+than|alternative\s+to)\s+"
+                         r"(?:an?\s+)?(?:" + _MOE_WORDS + r")", statement, re.I):
+                ambiguous = True
+                arch.mentions.setdefault("moe", []).append({"evidence": evidence, "status": "rejected_alternative"})
+                continue
             if re.search(r"\bas\s+(?:a\s+)?baseline\b", statement, re.I):
                 continue
             if re.search(r"\b(?:compare|baseline|ablation|candidate|experimented|tried|preliminary|early|initial|pilot|exploratory|not|without|avoid|never)\b|\b(?:prior|previous)\s+work\b", statement, re.I):

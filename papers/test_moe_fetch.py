@@ -201,3 +201,35 @@ def test_explicit_router_metric_still_does_not_define_top_k(metric):
     arch = fields("We use MoE with 8 experts and report " + metric + " of 90%.")
     assert arch.fields["n_experts"].value == 8
     assert "top_k" not in arch.fields
+
+
+@pytest.mark.parametrize("subject,verb", [("model", "is"), ("architecture", "is"), ("layers", "are")])
+def test_copular_own_moe_cannot_fall_through_to_dense(subject, verb):
+    text = f"Our {subject} {verb} a mixture-of-experts with 8 experts and top-2 routing."
+    arch = fields(text)
+    assert arch.fields["moe"].value == "true"
+    assert arch.fields["n_experts"].value == 8 and arch.fields["top_k"].value == 2
+    assert arch.fields["moe"].evidence == text
+    for emitter in (emit_spec, emit_cpp):
+        with pytest.raises(ValueError, match="MoE"):
+            emitter(arch)
+
+
+@pytest.mark.parametrize("text", [
+    "We propose a dense model instead of a MoE with 8 experts and top-2 routing.",
+    "We adopt dense FFNs rather than mixture-of-experts with 8 experts and top-2 routing.",
+    "We propose a dense alternative to MoE with 8 experts and top-2 routing.",
+])
+def test_rejected_alternative_counts_are_not_own_adoption(text):
+    arch = fields(text)
+    assert not ({"moe", "n_experts", "top_k"} & set(arch.fields))
+    assert "moe" in arch.unresolved
+    assert any(m["status"] == "rejected_alternative" for m in arch.mentions["moe"])
+    for emitter in (emit_spec, emit_cpp):
+        with pytest.raises(ValueError, match="MoE"):
+            emitter(arch)
+
+
+def test_copular_comparison_is_not_automatically_own_adoption():
+    arch = fields("Our model is compared to a MoE baseline with 8 experts and top-2 routing.")
+    assert not ({"moe", "n_experts", "top_k"} & set(arch.fields))
