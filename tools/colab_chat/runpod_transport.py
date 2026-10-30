@@ -370,8 +370,10 @@ class RunPodTransport:
     def release(self, st):
         """The campaign is home: delete its volume(s)."""
         R = self.R(st)
-        if not st.d.get("campaign_home") or R.get("pod") or any(
-                not job.get("home") for job in st.d.get("jobs", {}).values()):
+        jobs = st.d.get("jobs")
+        if (st.d.get("campaign_home") is not True or not isinstance(jobs, dict) or not jobs
+                or R.get("pod") or st.d.get("endpoint") or R.get("creating") or any(
+                    not isinstance(job, dict) or job.get("home") is not True for job in jobs.values())):
             raise api.Refused("volume release requires all campaign jobs home and no active pod")
         vols = [v for v in [R.get("volume")] + R["retired_volumes"] if v]
         for v in vols:
@@ -533,6 +535,9 @@ class RunPodTransport:
     def _wait_up(self, pod_id):
         t0 = time.time()
         while time.time() - t0 < UP_SECONDS:
+            why = self._operation_limit()
+            if why:
+                raise api.Refused(why)
             p = self._fetch()
             if p is None:
                 self.log(f"pod {pod_id} vanished while starting")

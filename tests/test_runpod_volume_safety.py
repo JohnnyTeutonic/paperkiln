@@ -111,3 +111,23 @@ def test_release_requires_all_home_and_no_pod_then_cleans_used_retired(setup):
     assert calls["deleted"] == ["old", "retired"]
     assert state.d["runpod"]["volume"] is None
     assert state.d["runpod"]["retired_volumes"] == []
+
+
+@pytest.mark.parametrize("bad", ["missing", "empty", "truthy", "endpoint", "creating"])
+def test_release_rejects_incomplete_legacy_completion_proof(setup, bad):
+    transport, state, calls = setup
+    state.d["campaign_home"] = True
+    state.d["jobs"]["score"]["home"] = True
+    if bad == "missing":
+        state.d.pop("jobs")
+    elif bad == "empty":
+        state.d["jobs"] = {}
+    elif bad == "truthy":
+        state.d["jobs"]["score"]["home"] = "yes"
+    elif bad == "endpoint":
+        state.d["endpoint"] = "pending"
+    else:
+        state.d["runpod"]["creating"] = 123
+    with pytest.raises(rt.api.Refused):
+        transport.release(state)
+    assert not calls["deleted"]

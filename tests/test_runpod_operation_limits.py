@@ -84,3 +84,12 @@ def test_expiry_kills_only_owned_process_group_no_running_child_leak(transport, 
     finally:
         unrelated.terminate()
         unrelated.wait(timeout=5)
+
+
+def test_wait_for_unreachable_ssh_checks_budget_before_provider_poll(transport, monkeypatch):
+    polls = []
+    monkeypatch.setattr(transport, "_operation_limit", lambda: "spend cap reached")
+    monkeypatch.setattr(transport, "_fetch", lambda: polls.append(True))
+    with pytest.raises(rt.api.Refused, match="spend cap"):
+        transport._wait_up("pending-pod")
+    assert not polls

@@ -56,6 +56,7 @@ class FakeAPI:
 
 
 def test_create_pod_guardrails(monkeypatch):
+    monkeypatch.setattr(api, "MAX_PODS", 4)  # fixture cap; production account limit remains unchanged
     f = FakeAPI(pods=[{"id": i} for i in "abcd"])
     f.install(monkeypatch)
     with pytest.raises(api.Refused, match="cap 4"):
