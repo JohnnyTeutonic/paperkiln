@@ -177,3 +177,21 @@ def test_archive_preserves_pre1980_files_without_timestamp_failure(tmp_path):
         assert bundle.read("evidence/old.bin") == b"exact historical raw bytes"
         assert bundle.getinfo("evidence/old.bin").date_time[0] == 1980
         assert bundle.testzip() is None
+
+
+@pytest.mark.parametrize("field,value", [("attempt_status", "PASS"), ("numerical_pass", True),
+    ("numerical_pass", 0), ("archive_bytes", 1), ("diagnostic_worker_returncode", 1)])
+def test_redundant_receipt_tamper_rejected_without_execution(upload, tmp_path, field, value):
+    out = tmp_path / "receipt-tamper"
+    calls = []
+    execute = fake_execute("negative", calls=calls)
+    assert vm.run(upload, out, execute=execute) == 0
+    path = out / "archive_receipt.json"
+    record = json.loads(path.read_text())
+    record[field] = value
+    path.write_text(json.dumps(record))
+    before = len(calls)
+    with pytest.raises(RuntimeError, match="contradicts summary/stat"):
+        vm.run(upload, out, execute=execute)
+    assert len(calls) == before
+    assert summary(out)["status"] == "HALTED"

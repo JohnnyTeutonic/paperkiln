@@ -97,6 +97,22 @@ def run(upload, out, *, execute=command, pack=package):
         old = json.loads(receipt_path.read_text())
         if old["manifest_sha256"] != manifest_sha or old["archive_sha256"] != sha(archive) or old["summary_sha256"] != sha(summary_path):
             raise RuntimeError("existing diagnostic artifact differs; refusing retry")
+        actual_summary = json.loads(summary_path.read_text())
+        status = actual_summary.get("status")
+        passed = actual_summary.get("numerical_pass")
+        if (actual_summary.get("schema") != "paperkiln.bf16_attention.attempt.v1"
+                or actual_summary.get("manifest_sha256") != manifest_sha
+                or status not in ("PASS", "HALTED", "OPERATIONAL_FAILURE")
+                or type(passed) is not bool or passed is not (status == "PASS")
+                or old.get("schema") != "paperkiln.bf16_attention.archive.v1"
+                or old.get("attempt_status") != status
+                or type(old.get("numerical_pass")) is not bool
+                or old["numerical_pass"] is not passed
+                or type(old.get("archive_bytes")) is not int
+                or old["archive_bytes"] != archive.stat().st_size
+                or type(old.get("diagnostic_worker_returncode")) is not int
+                or old["diagnostic_worker_returncode"] != 0):
+            raise RuntimeError("existing archive receipt contradicts summary/stat; refusing retry")
         with zipfile.ZipFile(archive) as bundle:
             if bundle.testzip() is not None or bundle.read("attempt_summary.json") != summary_path.read_bytes():
                 raise RuntimeError("existing archive is invalid")
@@ -156,7 +172,7 @@ def run(upload, out, *, execute=command, pack=package):
                          "--no-input", "--no-deps", "--index-url", "https://pypi.org/simple", "numpy==1.26.4"], 300)
         if rc:
             raise RuntimeError("NumPy1.26.4 installation failed")
-        rc, _ = call("python_numpy", [sys.executable, "-c", "import sys,numpy; print(sys.version); print(numpy.__version__); assert numpy.__version__ == '1.26.4'"], 30)
+        rc, _ = call("python_numpy", [sys.executable, "-c", "import sys,numpy; print(sys.version); print(numpy.__version__); assert numpy.__version__ == '1.26.4'; numpy.show_config()"], 30)
         if rc:
             raise RuntimeError("NumPy version check failed")
         binary = work / "bf16_attention_probe"
