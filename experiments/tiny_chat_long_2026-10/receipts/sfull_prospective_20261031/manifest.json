@@ -1,0 +1,104 @@
+{
+  "baseline_artifact_sha256": {
+    "c12_B_r1/post_c12_B_r1/summary.json": "14042125ccb95198fb13268041515e0726883c81a1ee195b159e90659bd0bd14",
+    "c12_B_r1/data/data.ledger.json": "1e3c118c6ae801dec9e6bd036efc3fcbf8ab57d11dbfbb6c4f12fc07f15e5d91",
+    "c12_B_r1/gate/gate.json": "bcc2ccf8618bd488c2450b14bb2902a486481b83eace3a8b1f8183bf793fad74",
+    "c12_B_r2/post_c12_B_r2/summary.json": "03e459e1a5082a6be12bff4d51b974bb936c6c0c0fa6bfe3ae309e4f01c20880",
+    "c12_B_r2/data/data.ledger.json": "1e3c118c6ae801dec9e6bd036efc3fcbf8ab57d11dbfbb6c4f12fc07f15e5d91",
+    "c12_B_r2/gate/gate.json": "bcc2ccf8618bd488c2450b14bb2902a486481b83eace3a8b1f8183bf793fad74",
+    "c12_B_r3/post_c12_B_r3/summary.json": "6b38633a02e308ee11df18c726bbf821ad37b8b2842e9fbd9981daa485e64813",
+    "c12_B_r3/data/data.ledger.json": "1e3c118c6ae801dec9e6bd036efc3fcbf8ab57d11dbfbb6c4f12fc07f15e5d91",
+    "c12_B_r3/gate/gate.json": "bcc2ccf8618bd488c2450b14bb2902a486481b83eace3a8b1f8183bf793fad74",
+    "c12_Sgist_r1/post_c12_Sgist_r1/summary.json": "3dfc5ac9f352f9c8559e17375cac924f43073546e3395806ed5b4f349010c2fe",
+    "c12_Sgist_r1/data/data.ledger.json": "acd00d74a93299aa0614f98233f837ef3dc30d38ce9120330e9f2f5c2b982cf4",
+    "c12_Sgist_r1/gate/gate.json": "bcc2ccf8618bd488c2450b14bb2902a486481b83eace3a8b1f8183bf793fad74",
+    "c12_Sgist_r2/post_c12_Sgist_r2/summary.json": "9132c0ff45c26b1d6236de8fca892625266c9002b17cabc12a13d5fea6d695d4",
+    "c12_Sgist_r2/data/data.ledger.json": "acd00d74a93299aa0614f98233f837ef3dc30d38ce9120330e9f2f5c2b982cf4",
+    "c12_Sgist_r2/gate/gate.json": "bcc2ccf8618bd488c2450b14bb2902a486481b83eace3a8b1f8183bf793fad74",
+    "c12_Sgist_r3/post_c12_Sgist_r3/summary.json": "3f49dcaadf94f873e9933790f6f327d180df92ed47734c827ec1964f9d633e90",
+    "c12_Sgist_r3/data/data.ledger.json": "acd00d74a93299aa0614f98233f837ef3dc30d38ce9120330e9f2f5c2b982cf4",
+    "c12_Sgist_r3/gate/gate.json": "bcc2ccf8618bd488c2450b14bb2902a486481b83eace3a8b1f8183bf793fad74"
+  },
+  "status": "INCOMPLETE_PROSPECTIVE_PACKET_NOT_LAUNCHABLE",
+  "ready_for_launch": false,
+  "archive_commit": null,
+  "engineering_remaining": [
+    "immutable archive and launch pin",
+    "readiness and source freeze",
+    "independent finalizer review"
+  ],
+  "parent": "3dc818b2476b0957b1337b4c9af22474b76350b5",
+  "trigger_report_sha256": "6868c6374d6ca637b91ec106d762c79c193b9cd0de9c784fb43311b9588da04a",
+  "trigger": {
+    "n": 5,
+    "per_seed": [
+      -0.1333,
+      -0.1514,
+      -0.05869999999999999,
+      -0.1487,
+      -0.1413
+    ],
+    "mean": -0.12668000000000001,
+    "sd": 0.03864844110698387,
+    "t": -7.3292759882748975,
+    "crit": 2.776,
+    "ci90": [
+      -0.16352971891249107,
+      -0.08983028108750896
+    ],
+    "sesoi": 0.03,
+    "verdict": "SUPPORTED",
+    "sign_agreement": "5/5",
+    "extend_to_5_seeds": false
+  },
+  "cell": "Sfull",
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "comparison_seeds": [
+    1,
+    2,
+    3
+  ],
+  "reuse_baselines": [
+    "B1-3",
+    "Sgist1-3"
+  ],
+  "data_reference_sha256": "acd00d74a93299aa0614f98233f837ef3dc30d38ce9120330e9f2f5c2b982cf4",
+  "data_seed": 1,
+  "weights_reused": false,
+  "scientific_delta_from_Sgist": "arch.state_tokens.mask turn_state -> causal only; k4 and L8 retained",
+  "bootstrap_delta": "frozen boot dependencies plus tokenizers==0.23.3; training/data code unchanged",
+  "artifacts_sha256": {
+    "tools/colab_chat/carry12_sfull_r1.json": "9f06a75a6555ec8e1c021449ac49a401eb567d5663355a415affb0bb9b408e4a",
+    "tools/colab_chat/carry12_sfull_r2.json": "36f60ff87211e6f74eaee0656a63e0cbf10544c3b7d8f1c5a87221cc479b3b21",
+    "tools/colab_chat/carry12_sfull_r3.json": "50f69668f0df28959ea7cd143566a68b8a807c75216e669320fdf61d7cf1a9df",
+    "experiments/tiny_chat_long_2026-10/specs/cell_Sfull.json": "9fa9d9e7c360b03cc839e2bb4385c719e8d70fac71abdd03af5854f7e48b5d5d",
+    "experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/data_reference.json": "acd00d74a93299aa0614f98233f837ef3dc30d38ce9120330e9f2f5c2b982cf4",
+    "experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/trigger_hs1_five_seed.json": "6868c6374d6ca637b91ec106d762c79c193b9cd0de9c784fb43311b9588da04a",
+    "experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/historical_history_parity.json": "da3e3880fa4eb4d3ad1ed88b908c2a4b637780860eb9438f94fc93a6a92ded9e",
+    "experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/.gitattributes": "705fd4d6451a31d36b3df7de96f83f30ac976c9b4a6d1e51671d8e2f33e2d0da",
+    "tools/colab_chat/.gitattributes": "5e03a0a010b8a8d446a7f58bd2dcb63c62fe7329713708a9dd032f1270d028b4",
+    "experiments/tiny_chat_long_2026-10/specs/.gitattributes": "50b93d66ca7b4bdd5f14847f86b0442709fa52a2adc4c05dd5bca5050168f473",
+    "tools/colab_chat/sfull_verify_inputs.py": "59c27187e31a282fa394ccab7730a13a4bc148b86c3ce251b26a0cd7db9f979b",
+    "tools/colab_chat/boot_sfull.sh": "f0013231f7523a482b36905f97b40c632bdce76361447640d16e50430c5449d3"
+  },
+  "per_seed_cap_usd": 7,
+  "total_cap_usd": 21,
+  "expected_gpu_hours": [
+    18,
+    27
+  ],
+  "expected_gpu_usd": [
+    11,
+    16
+  ],
+  "proposed_queue": "serial; no watchdog entry enabled; root funding review required",
+  "review_blockers": [
+    "actual funding above reserve",
+    "six historical full-history argmax mismatches; no all-pass claim"
+  ],
+  "no_paid_launch": true
+}

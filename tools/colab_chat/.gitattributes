@@ -1,0 +1,2 @@
+carry12_sfull_*.json -text
+sfull_verify_inputs.py text eol=lf
