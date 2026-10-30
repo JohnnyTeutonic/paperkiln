@@ -136,9 +136,6 @@ that cannot fail the build.
 
 ## 7. Studio, chat and distribution
 
-- **Studio features:**
-  - an evaluation-probe stage in the spec (needle and behavioural
-    probes).
 - **Open-weight models on our own engines: speed.** Parity is done through the IR,
   on the CPU and on CUDA. CPU comparison is complete for SmolLM2-135M and Gemma3-270M
   at three lengths (strict full-row parity); paired AVX2 improves prefill 2.38-2.87x

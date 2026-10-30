@@ -1,5 +1,15 @@
 # Changelog
 
+## Studio evaluation probes (31 October 2026)
+
+Optional bounded needle-retrieval and behavioural literal contracts now run after
+training against the actual exported final weights. Studio configures the stage
+and displays immutable receipts; `mtstudio probes` supports manual replay.
+CPU model, HTTP, browser and identity checks are recorded in
+[the validation receipt](docs/receipts/studio_probes_20261031/validation.json).
+These are configured diagnostic contracts, not semantic-quality benchmark scores.
+
+
 Notable changes to microtorch. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); versions are tagged `v*`.
 
