@@ -1,0 +1,30 @@
+{
+  "status": "PASS",
+  "receipts": [
+    {
+      "file": "wordlevel.json",
+      "sha256": "87a605b3578386db659fb26e067a646114cd428554452fb38e1b9e50d67be5d3",
+      "recorded_status": "COMPLETE",
+      "viewer_status": "COMPLETE: 1 literal passes, 1 failures, 0 operational errors / 2 cases. Diagnostic contracts only; not semantic quality."
+    },
+    {
+      "file": "native_bpe.json",
+      "sha256": "dd8d71c77522419dd87b75ecca123353228bc60e57f17cc4a976a16fa9afb6ef",
+      "recorded_status": "COMPLETE",
+      "viewer_status": "COMPLETE: 0 literal passes, 1 failures, 0 operational errors / 1 cases. Diagnostic contracts only; not semantic quality."
+    },
+    {
+      "file": "oversized_error.json",
+      "sha256": "8dbd2777e2887227093153c2f73d18cbe419a477bd36469eda5ee0e7f67a762f",
+      "recorded_status": "ERROR",
+      "viewer_status": "Operational probe error: probe prompt empty/oversized; no training started"
+    }
+  ],
+  "source_sha256": "81542cb79468bca9564608659340158892e30870d8138f1f687d85f836fd9865",
+  "provider_calls": 0,
+  "gpu_calls": 0,
+  "additional_model_calls": 0,
+  "test_source_sha256": "6494e4af1d86fcdd83451227a84f40a6ef5fc22a9debf8218924c3a05488cb6d",
+  "backend_commit": "b41aa715a",
+  "scope": "Actual previously generated CPU receipts through actual Studio browser UI; no new generation"
+}

@@ -161,6 +161,11 @@
     ],
     "provider_calls": 0,
     "gpu_calls": 0,
-    "model_calls": 0
+    "model_calls": 0,
+    "actual_backend_receipts_browser": {
+      "receipt": "../studio_probes_20261031/actual_receipts_browser.json",
+      "sha256": "fdcb120104d28944f975f4611919f6b7a84dbafa9fcc6dcd61dd07e5944b068e",
+      "result": "PASS: WordLevel COMPLETE, nativeBPE COMPLETE, oversized ERROR; builder unchanged; zero additional model calls"
+    }
   }
 }
