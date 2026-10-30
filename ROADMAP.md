@@ -19,11 +19,6 @@ where one of those documents carries a plan, this file wins.*
      L4 (`tools/colab_chat/pref_pilot_v1.json`), then `experiments/chat_general/judge_pilot.sh`
      (200 prompts, $100 cap) at home; then the full ~3,000 prompts and DPO + NLL.
 2. **Engine:** BF16 mixed precision and a fused attention backward (opt-in; building).
-3. **Colab runner: a re-provisioned driver pushes stale checkpoints over
-   finished runs** (`tools/colab_transfer_runner.py`). In Study 3 it
-   overwrote four M25 event logs at step ~2900; the runs were re-run
-   (execution clarification 1). Fix: never relay a checkpoint into a run
-   directory that already has `result.json`.
 
 ## 2. Decisions waiting on Jonathan
 

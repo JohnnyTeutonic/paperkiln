@@ -404,12 +404,20 @@ def push_resume(session, local_out, out_root):
         "import os, zipfile\n"
         f"d = {out_root + '/runs'!r}\n"
         "os.makedirs(d, exist_ok=True)\n"
-        "zipfile.ZipFile('/content/tr_resume.zip').extractall(d)\n"
+        # An adopted VM may have finished a run after our last relay. Its
+        # result and event log outrank any older local resume archive.
+        "with zipfile.ZipFile('/content/tr_resume.zip') as zf:\n"
+        "    finished = {n for n in os.listdir(d) if os.path.exists(os.path.join(d, n, 'result.json'))}\n"
+        "    for member in zf.infolist():\n"
+        "        name = member.filename.split('/')[0]\n"
+        "        if name not in finished:\n"
+        "            zf.extract(member, d)\n"
         f"runs = {sorted(runs)!r}\n"
         f"partial = {sorted(partial)!r}\n"
         "missing = [n for n in runs if not os.path.exists(os.path.join(d, n, 'result.json'))]\n"
-        "missing += [n for n in partial if not (os.path.exists(os.path.join(d, n, 'state.txt'))"
-        " and os.path.exists(os.path.join(d, n, 'optim.safetensors')))]\n"
+        "missing += [n for n in partial if not (os.path.exists(os.path.join(d, n, 'result.json'))"
+        " or (os.path.exists(os.path.join(d, n, 'state.txt'))"
+        " and os.path.exists(os.path.join(d, n, 'optim.safetensors'))))]\n"
         "print('RESUME_VERIFIED' if not missing else 'RESUME_MISSING ' + ' '.join(missing))\n"),
         timeout=900)
         if "RESUME_VERIFIED" in out:
