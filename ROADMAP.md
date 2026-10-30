@@ -139,7 +139,6 @@ that cannot fail the build.
 ## 7. Studio, chat and distribution
 
 - **Studio features:**
-  - a fit-to-VRAM budgeter;
   - an evaluation-probe stage in the spec (needle and behavioural
     probes).
 - **Open-weight models on our own engines: speed.** Parity is done through the IR,

@@ -73,5 +73,53 @@
     ],
     "provider_calls": 0,
     "production_changes": false
+  },
+  "vram_planning_followthrough": {
+    "base_commit": "42d7af0432c972213bb24913bd31dcabfdb585bc",
+    "scope": "Offline plain FP32 dense tied-head Llama/GPT2 + AdamW, no checkpoint/flavor overrides; explicit microbatch-divisor/compensating accumulation apply only",
+    "parameter_constructor_counts": {
+      "llama_d16_L2_H2_V64_T8_F48": 7760,
+      "llama_d16_L2_H2_V64_T8_F64": 9296,
+      "gpt2_d16_L2_H2_V64_T8_F64": 7744
+    },
+    "native_library_source_matches_current": true,
+    "library_sha256": "7bd5c0d099402e63f7920a2159dccf8815975804f82198f6d1282ff94fe25947",
+    "transformer_library_sha256": "1f710551b97719295309e13a4d5f0e2fcd95d16139b54cdd5532af3f2e33ee76",
+    "source_sha256": {
+      "studio/index.html": "d2f40b27ae4b8e56b351c585ee480808e8bcb4b2c0d9f7957b2b021505ef0dc0",
+      "tests/test_studio_vram.js": "7538c52adf74eb289fd130876488c9415f07d6a01d9bcd5859c0dc8c6c76db73",
+      "tests/studio_vram_browser.js": "71bfd5c0e51cf7fd1c8a2fb8ffc53e4e849d4ee35fd80173d460167d0864e0fd",
+      "tests/studio_vram_parameter_probe.cpp": "b278ea923f4c824ff21a5da141b55c26afc32c2a37d3ae7b65c1576509850a6a"
+    },
+    "logs_sha256": {
+      "vram_tests.log": "bafd5f630e377fe70d2e48580fc53f65b94d08178b9074a7cdcc4410f1c95108",
+      "vram_browser.json": "534bed2c4e7a69a13b4fda2dbca07bca7859329795db60affa7c8334b9576e76",
+      "vram_native_counts.log": "be0fda4e3c8641a21759c769dd29e8c6a8e318a6cd6d01da2f9e4ebbc856bc12"
+    },
+    "javascript_tests": "33 passed (6 VRAM plus27 existing Studio)",
+    "offline_Chrome": {
+      "status": "PASS",
+      "cases": [
+        "preview leaves spec unchanged",
+        "explicit apply changes batch/accum only",
+        "effective batch preserved",
+        "stale proposal disabled",
+        "checkpoint refused",
+        "420px panel fits"
+      ],
+      "provider_calls": 0,
+      "gpu_calls": 0
+    },
+    "production_cpp_changes": false,
+    "model_training_runs": 0,
+    "provider_calls": 0,
+    "gpu_calls": 0,
+    "limitations": [
+      "Uncalibrated allocation coefficients, neither measured peak nor proven upper bound/OOM guarantee.",
+      "Reserve covers unspecified allocator/runtime/other-process pressure only as a user allowance.",
+      "Vocabulary cap bounds a valid run; selected GGUF is not inspected by the browser.",
+      "Accumulation preserves examples/update, not floating-point trajectory.",
+      "BF16/checkpoint/Muon/Kimi/SRD/AttnRes/SWA/flex/MoE/recursion unsupported; sequence/model never reduced automatically."
+    ]
   }
 }

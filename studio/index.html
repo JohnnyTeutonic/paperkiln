@@ -172,6 +172,17 @@
     <label><input id="b-gguf" type="checkbox" checked> export GGUF</label>
     <label>out dir <input id="b-out" size="24" value="/tmp/mtstudio_run"></label>
   </div>
+  <details id="vram-panel" style="margin:1rem 0">
+    <summary>Fit microbatch to a VRAM planning budget (FP32 dense models)</summary>
+    <p class="legend">Uncalibrated allocation estimate, not an OOM guarantee. The driver, other processes, allocator fragmentation and implementation workspaces vary. Set an available budget and reserve; verify on your target device before training.</p>
+    <div class="form">
+      <label>available GiB <input id="vram-gib" type="number" min="0.1" step="0.5" value="8"></label>
+      <label>reserve GiB <input id="vram-reserve" type="number" min="0" step="0.25" value="2"></label>
+      <button id="vram-plan" type="button">estimate / propose microbatch</button>
+      <button id="vram-apply" type="button" disabled>apply proposed batch + accumulation</button>
+    </div>
+    <pre id="vram-result" style="white-space:pre-wrap;overflow-wrap:anywhere" role="status">No settings changed. Only a smaller divisor microbatch and compensating accumulation may be proposed; sequence length and architecture stay fixed.</pre>
+  </details>
   <pre id="b-json"></pre>
   <button id="b-dl">download spec.json</button>
   <span id="b-cmd" class="legend"></span>
@@ -935,20 +946,25 @@ function drawArchDiagram() {
 
   $("arch-svg").innerHTML = s.join("");
   const ffmats = a.act === "SwiGLU" ? 3 : 2;
-  const params = 2 * a.cap * a.d + a.L *
+  let params = 2 * a.cap * a.d + a.L *
     (4 * a.d * a.d + ffmats * a.d * a.dff) + a.cap * a.d;
+  let paramLabel = "rough params ≈ ";
+  try { params=estimateVram(JSON.parse(buildSpecPreview()),0).params;paramLabel="covered parameter count at vocab cap ≈ "; } catch (_) {}
   const fam = a.flex
     ? "flex family — paper-faithful (" + a.norm + " / " + a.pos + " / " +
       a.act + ")"
     : a.llama ? "llama family (RMSNorm / RoPE / SwiGLU)"
               : "gpt2 family (LayerNorm / learned positions / GELU)";
   $("arch-cap").textContent = a.preset + " · " + fam +
-    " · rough params ≈ " + (params / 1e6).toFixed(2) + "M " +
+    " · " + paramLabel + (params / 1e6).toFixed(2) + "M " +
     "(embeddings + blocks + head; exact count is printed by the run's " +
     "model event)";
 }
 
 // ---- spec builder: form -> spec.json (mtstudio's input format) ----
+function buildSpecPreview() {
+  return document.getElementById("b-json").textContent || "{}";
+}
 function buildSpec() {
   const v = id => document.getElementById(id).value;
   const custom = {};
@@ -984,6 +1000,84 @@ function buildSpec() {
   drawArchDiagram();
   return txt;
 }
+// BEGIN STUDIO_VRAM_CORE
+function estimateVram(spec, reserveGiB) {
+  const fail = message => { throw Error(message); };
+  const presets = {"llama-tiny":[128,2,4],"gpt2-nano":[128,2,4],"gpt2-small":[256,4,8]};
+  const a=spec.arch||{}, tr=spec.train||{}, data=spec.data||{}, c=a.custom||{};
+  if (Object.keys(spec).some(k=>!["name","arch","data","train","export","serve","out_dir"].includes(k)) ||
+      Object.keys(data).some(k=>!["corpus","vocab","vocab_cap","T"].includes(k)) ||
+      Object.keys(tr).some(k=>!["steps","lr","optimizer","batch","accum","checkpoint_activations","eval_every","checkpoint_every","gradmap_every","early_stopping","precision","attention_kernel"].includes(k)) ||
+      !presets[a.preset] || Object.keys(a).some(k=>!["preset","custom"].includes(k)) ||
+      Object.keys(c).some(k=>!["d","layers","heads","d_ff"].includes(k)) ||
+      (tr.optimizer||"adamw")!=="adamw" || (tr.precision||"fp32")!=="fp32" ||
+      tr.checkpoint_activations || (tr.attention_kernel && tr.attention_kernel!=="default"))
+    fail("Unsupported: use a plain FP32 dense llama/GPT2 preset, AdamW, no flavor overrides or activation checkpointing.");
+  const llama=a.preset==="llama-tiny", base=presets[a.preset];
+  if (!llama && c.d_ff!==undefined) fail("GPT2 custom d_ff is not modeled (the runtime uses 4d).");
+  const d=c.d??base[0], L=c.layers??base[1], H=c.heads??base[2], F=c.d_ff??(llama?3:4)*d;
+  const T=data.T,V=data.vocab_cap,B=tr.batch,A=tr.accum;
+  if ([d,L,H,F,T,V,B,A].some(x=>!Number.isSafeInteger(x)||x<=0) || d%H || (llama && (d/H)%2) ||
+      !Number.isFinite(reserveGiB)||reserveGiB<0) fail("Positive integer dimensions/batch/accum/vocab cap and valid head geometry are required; reserve must be finite and nonnegative.");
+  // Both covered plain families tie their token/head weights. Llama has RMS scales; GPT2 includes biases.
+  const params=llama ? V*d+L*(4*d*d+3*d*F+2*d)+d :
+    V*d+T*d+L*(4*d*d+2*d*F+9*d+F)+2*d;
+  const N=B*T;
+  const parts={parameters:32*params,activations:4*L*N*(40*d+12*F),
+    attention:16*L*H*N*N,logits:32*N*V,reserve:Math.ceil(reserveGiB*2**30)};
+  const total=Object.values(parts).reduce((a,b)=>a+b,0);
+  if (![params,total,...Object.values(parts)].every(Number.isSafeInteger)) fail("Configuration exceeds safe estimator arithmetic.");
+  return {params,parts,total,batch:B,accum:A,T};
+}
+function planVram(spec, availableGiB, reserveGiB) {
+  if (!Number.isFinite(availableGiB)||availableGiB<=0) throw Error("Available GiB must be finite and positive.");
+  const current=estimateVram(spec,reserveGiB), effective=current.batch*current.accum;
+  if (!Number.isSafeInteger(effective)) throw Error("Effective batch exceeds safe integer arithmetic.");
+  if (current.batch>65536) throw Error("Microbatch above 65536 is outside the bounded search.");
+  for (let batch=current.batch;batch>=1;--batch) {
+    if (current.batch%batch) continue;
+    const proposal=JSON.parse(JSON.stringify(spec));
+    proposal.train.batch=batch;proposal.train.accum=effective/batch;
+    const estimate=estimateVram(proposal,reserveGiB);
+    if (estimate.total<=availableGiB*2**30) return {current,estimate,batch,accum:effective/batch};
+  }
+  return {current,estimate:null};
+}
+// END STUDIO_VRAM_CORE
+let vramProposal=null;
+function invalidateVram() {
+  vramProposal=null;$("vram-apply").disabled=true;
+}
+$("vram-plan").addEventListener("click",()=>{
+  invalidateVram();
+  try {
+    const spec=JSON.parse(buildSpec()), available=Number($("vram-gib").value), reserve=Number($("vram-reserve").value);
+    const plan=planVram(spec,available,reserve), e=plan.estimate||plan.current;
+    const names={parameters:"FP32 weights/gradients/AdamW plus transpose/copy allowance (32 bytes per parameter)",
+      activations:"retained linear/FFN activations (4LBT × (40d + 12d_ff) bytes)",
+      attention:"dense attention scores/probabilities/backward (16LH × (BT)^2 bytes)",
+      logits:"logits/loss/backward copies (32BTV bytes)",reserve:"user reserve"};
+    $("vram-result").textContent=(plan.estimate?`Proposed batch ${plan.batch}, accumulation ${plan.accum}; T=${e.T} unchanged.`:"No supported fit even at microbatch 1. Increase the budget or explicitly redesign the run.")+"\n"+
+      `Planning total: ${(e.total/2**30).toFixed(3)} GiB; parameters ≈ ${(e.params/1e6).toFixed(3)}M\n`+
+      Object.entries(e.parts).map(([k,v])=>`${names[k]}: ${(v/2**30).toFixed(3)} GiB`).join("\n")+
+      "\nConservative planning coefficients, not measured peak memory. Vocabulary cap is an upper bound only for a valid run (BPE vocab larger than cap is refused by the trainer). Full flattened attention allowance deliberately overcounts isolated batches. Accumulation preserves examples/update but can change floating-point reduction order; no numerical-equivalence claim.";
+    if (plan.estimate && plan.batch!==spec.train.batch) {
+      vramProposal={snapshot:buildSpec(),available,reserve,batch:plan.batch,accum:plan.accum};
+      $("vram-apply").disabled=false;
+    }
+  } catch(error) { $("vram-result").textContent=error.message; }
+});
+$("vram-apply").addEventListener("click",()=>{
+  const p=vramProposal;
+  if (!p || p.snapshot!==buildSpec() || p.available!==Number($("vram-gib").value) || p.reserve!==Number($("vram-reserve").value)) {
+    invalidateVram();$("vram-result").textContent="Settings changed: estimate again before applying.";return;
+  }
+  $("b-batch").value=p.batch;$("b-accum").value=p.accum;
+  buildSpec();markEdited();invalidateVram();
+  $("vram-result").textContent+="\nApplied batch and accumulation only. Review spec.json before training.";
+});
+document.querySelectorAll(".form input, .form select").forEach(el=>el.addEventListener("input",invalidateVram));
+
 // Once the form is edited (or filled from a paper), the Train button
 // trains this page's spec instead of the one armed at launch.
 let specEdited = false;
@@ -993,7 +1087,7 @@ function markEdited() {
   if (b && !b.disabled) b.textContent = "\u25B6 train this spec";
 }
 document.querySelectorAll(".form input, .form select")
-  .forEach(el => el.addEventListener("input", () => { buildSpec(); markEdited(); }));
+  .forEach(el => el.addEventListener("input", () => { if (!el.id.startsWith("vram-")) { buildSpec(); markEdited(); } }));
 document.getElementById("b-dl").addEventListener("click", () => {
   const blob = new Blob([buildSpec()], { type: "application/json" });
   const a = document.createElement("a");

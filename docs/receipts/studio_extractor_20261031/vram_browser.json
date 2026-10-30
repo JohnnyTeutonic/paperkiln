@@ -1,0 +1,1 @@
+{"status":"PASS","cases":["preview leaves spec unchanged","explicit apply changes batch/accum only","effective batch preserved","stale proposal disabled","checkpoint refused","420px panel fits"],"provider_calls":0,"gpu_calls":0}

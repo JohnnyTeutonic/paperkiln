@@ -334,3 +334,20 @@ python tools/reproduce.py S3-lrxopt --run             # re-run a finding: REPLIC
 ## License
 
 MIT, see [LICENSE](LICENSE).
+
+### Studio VRAM planning
+
+The run builder has an offline **Fit microbatch to a VRAM planning budget** panel.
+Enter available GiB and a reserve, then preview its parameter/state, activation,
+attention and logits allowances. This is an uncalibrated planning estimate, not
+measured peak usage, a proven upper bound, or an OOM guarantee. The supported
+subset is plain FP32 dense Llama/GPT2, AdamW, without flavor overrides or
+activation checkpointing. Unsupported configurations are refused.
+
+Only **Apply proposed batch + accumulation** edits the spec. It selects a smaller
+microbatch divisor and compensating accumulation, preserving sequence length,
+architecture and examples per update. Floating-point reduction order may change;
+identical training trajectories are not promised. If even microbatch one exceeds
+the estimate, the panel reports no supported fit. Check actual target-device
+memory before a full run. Vocabulary cap is a valid-run planning bound, not an
+inspection of the selected vocabulary file.

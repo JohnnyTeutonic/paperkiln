@@ -914,3 +914,8 @@ Notable changes to microtorch. Format loosely follows
 - Novel mechanisms with unit + gradient tests: Kimi linear attention,
   cerebellum gating, Mamba state-space.
 - GTest suite, benchmarks, Doxygen documentation workflow.
+
+- Studio: offline, explicitly applied microbatch/accumulation VRAM planner for
+  plain FP32 AdamW dense Llama/GPT2; transparent uncalibrated allowances and
+  reserve, unsupported-path refusal, tied-head parameter counts checked against
+  CPU constructors. No measured peak-memory or OOM guarantee.
