@@ -1,0 +1,21 @@
+{
+ "_comment": "Versioned corrected environment contract; exact original CUDA executable and canonical SmolGGUF; prior HALTED preserved; no gate changes.",
+ "max_parallel": 1,
+ "jobs": [
+  {
+   "name": "hf_cuda_smol_v3",
+   "cmd": [
+    "bash",
+    "-c",
+    "set -eu; out=\"$1\"; mkdir -p \"$out\"; for f in ember.tgz converter.tgz smol_manifest.json native_cuda_binary launch_contract_v3.py COMMITS hf_cuda_vm.sh INPUT_SHA256SUMS; do cp \"/content/chat/upload/$f\" \"/content/$f\"; done; rc=0; bash /content/hf_cuda_vm.sh || rc=$?; cp /content/vm.log \"$out/vm.log\"; if [ -s /content/out.zip ]; then cp /content/out.zip \"$out/out.zip\"; fi; if [ -s /content/out/gate_summary.json ]; then cp /content/out/gate_summary.json \"$out/gate_summary.json\"; fi; exit \"$rc\"",
+    "hf-cuda-smol-v3",
+    "{out}"
+   ],
+   "outputs": [
+    "out.zip",
+    "vm.log",
+    "gate_summary.json"
+   ]
+  }
+ ]
+}
