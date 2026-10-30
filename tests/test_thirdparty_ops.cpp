@@ -17,6 +17,7 @@
 // Run with MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 for the device legs (sections 1-3 then run the
 // device kernels of rope, repeat_heads and rmsnorm_group).
 #include <cmath>
+#include <limits>
 #include <cstdio>
 #include <functional>
 #include <random>
@@ -436,6 +437,33 @@ int main() {
         one.qk_temp = 1.0f;
         nn::Llama mq(c, 7), m1(one, 7);
         CHECK(bits_equal(host(mq.forward(ids)), host(m1.forward(ids))));
+        // Projection BF16 must not round the separate FP32 temperature multiply.
+        // Otherwise an unrepresentable temperature and its BF16-rounded value
+        // become identical, while exported IR retains the original FP32 value.
+        {
+            nn::LlamaConfig precise = c;
+            precise.qk_temp = 1.236f;
+            nn::LlamaConfig rounded = precise;
+            rounded.qk_temp = device::bf16_round(precise.qk_temp);
+            CHECK(precise.qk_temp != rounded.qk_temp);
+            nn::Llama mp(precise, 7), mr(rounded, 7);
+            const auto old_precision = device::matmul_precision();
+            device::set_matmul_precision(device::Precision::BF16);
+            const Matrix yp = host(mp.forward(ids)), yr = host(mr.forward(ids));
+            device::set_matmul_precision(old_precision);
+            CHECK(!bits_equal(yp, yr));
+        }
+        {
+            nn::LlamaConfig bad = c;
+            bad.qk_temp = std::numeric_limits<float>::infinity();
+            bool refused = false;
+            try {
+                nn::Llama invalid(bad, 7);
+            } catch (const std::runtime_error&) {
+                refused = true;
+            }
+            CHECK(refused);
+        }
         // Head h's q columns times t[h]: the composition (repeat_heads, the ones product, mul) against a
         // float re-statement, and its finite differences in t and in x.
         const size_t H = 4, dk = 6, T = 5;

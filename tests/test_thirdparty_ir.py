@@ -175,6 +175,26 @@ def test_thirdparty_export_and_numpy_parity(tmp_path, name):
 
 
 @needs_bin
+@pytest.mark.parametrize("op,attribute,value", [
+    ("rope", "freq_factors", "f"),
+    ("rope", "freq_factors", [1.0, 4.0]),
+    ("rope", "freq_factors", {"short": "fs", "long": "fl", "original_ctx": 10}),
+    ("rope", "attn_factor", 1.25),
+    ("attention", "softcap", 2.0),
+])
+def test_ir_eval_explicitly_skips_untrained_modifiers(op, attribute, value):
+    """Unsupported training-op modifiers must never return plain-RoPE outputs."""
+    binary = Path(BIN).parent / "ir_eval"
+    assert binary.is_file(), "build ir_eval alongside mtstudio"
+    request = {"method": "run_node", "node": {"op": op, attribute: value}, "inputs": {}, "weights": {}}
+    result = subprocess.run([str(binary)], input=json.dumps([request]), capture_output=True,
+                            text=True, timeout=60, check=True)
+    rows = json.loads(result.stdout)
+    assert len(rows) == 1 and set(rows[0]) == {"skip"}, rows
+    assert attribute in rows[0]["skip"]
+
+
+@needs_bin
 def test_thirdparty_single_ops_match_numpy():
     """The conformance suite's op cases for these ops, paperkiln's training ops against numpy's expected values."""
     ie = Path(BIN).parent / "ir_eval"
@@ -188,10 +208,10 @@ def test_thirdparty_single_ops_match_numpy():
         seen[key] = counts
         assert counts["FAIL"] == 0, (key, counts)
     passed = sum(c["PASS"] for c in seen.values())
-    # rope 4 (interleaved, neox, neox_partial, grouped_query), rmsnorm 2 (row, group), attention 4 (causal,
-    # grouped_query, position_bias, position_bias_grouped_query: T5's bias through ops::relpos_attention since
-    # e8f66a10), conv1d 1, selective_scan 1; skipped: freq_scale, weight_offset, windows (not trained here).
-    assert passed == 12, seen
+    # Original 12: rope 4, rmsnorm 2, causal/GQA/T5 attention 4, conv1d 1, scan 1.
+    # Plus 5 supported Shaw relative-KV cases. Untrained modifiers explicitly
+    # SKIP with reasons; no fixture or original supported case is removed.
+    assert passed == 17, seen
 
 
 @needs_bin
@@ -207,6 +227,7 @@ def test_thirdparty_single_ops_match_numpy():
     ("mamba-tiny", {"d": 32, "ssm": "mamba2"}, None, "must be s4 or mamba1"),
     ("llama-tiny", {"d": 32, "heads": 4, "qk_temp": 2.0}, None, "qk_temp must be positive and needs qk_norm"),
     ("llama-tiny", {"d": 32, "heads": 4, "qk_norm": True, "qk_temp": -1.0}, None, "qk_temp must be positive"),
+    ("llama-tiny", {"d": 32, "heads": 4, "qk_norm": True, "qk_temp": 1e39}, None, "qk_temp must be positive"),
 ])
 def test_bad_thirdparty_specs_are_refused(tmp_path, preset, custom, extra, msg):
     spec = spec_of(tmp_path, "bad", preset, custom, formats=("safetensors",), extra=extra)

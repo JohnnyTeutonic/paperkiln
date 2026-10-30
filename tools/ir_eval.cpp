@@ -103,6 +103,12 @@ json run_op(const json& req) {
         return make_var(decode(req.at("weights").at(nd[key].get<std::string>())));
     };
     if (op == "rope") {
+        // This adapter exercises training ops, not arbitrary IR RoPE variants.
+        // Refuse untrained modifiers instead of silently returning plain RoPE.
+        if (nd.contains("freq_factors") && !nd.at("freq_factors").is_null())
+            throw std::domain_error("ir_eval: rope freq_factors (paperkiln training op has no factors)");
+        if (nd.value("attn_factor", 1.0) != 1.0)
+            throw std::domain_error("ir_eval: rope attn_factor != 1 (paperkiln training op has no amplitude scale)");
         if (nd.value("freq_scale", 1.0) != 1.0) throw std::domain_error("ir_eval: rope freq_scale != 1 (paperkiln trains none)");
         if (nd.at("rope_heads") != "all") throw std::domain_error("ir_eval: rope_heads first");
         const size_t H = nd.at("heads"), hd = nd.at("head_dim"), KV = nd.value("kv_heads", H);
@@ -132,6 +138,8 @@ json run_op(const json& req) {
         return {{"outputs", {{nd.at("out").get<std::string>(), encode(y->data)}}}, {"state", json::object()}};
     }
     if (op == "attention") {
+        if (nd.value("softcap", 0.0) != 0.0)
+            throw std::domain_error("ir_eval: attention softcap (paperkiln training op has no softcap)");
         if (!nd.at("causal").get<bool>() || nd.value("window", 0) != 0 || nd.value("sinks", 0) != 0 ||
             nd.value("mask", std::string("causal")) != "causal")
             throw std::domain_error("ir_eval: attention other than plain causal (the llama block's)");

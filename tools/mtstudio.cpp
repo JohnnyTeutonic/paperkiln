@@ -450,8 +450,8 @@ Spec parse_spec(const std::string& path) {
             }
         }
         s.qk_temp = c.value("qk_temp", s.qk_temp);
-        if (s.qk_temp != 0.0f && (!s.qk_norm || !(s.qk_temp > 0.0f)))
-            throw std::runtime_error("arch.custom.qk_temp must be positive and needs qk_norm");
+        if (s.qk_temp != 0.0f && (!s.qk_norm || !(s.qk_temp > 0.0f) || !std::isfinite(s.qk_temp)))
+            throw std::runtime_error("arch.custom.qk_temp must be positive and needs qk_norm (finite values only)");
         s.rope_theta = c.value("rope_theta", s.rope_theta);
         s.tie_embeddings = c.value("tie_embeddings", s.tie_embeddings);
         if (c.contains("bitlinear")) {

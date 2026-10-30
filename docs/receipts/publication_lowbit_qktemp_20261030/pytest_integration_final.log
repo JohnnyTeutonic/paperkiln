@@ -1,0 +1,67 @@
+tp_gqa: numpy IR vs mtstudio log-probs worst 2.52e-07 of max(1, |ref|); greedy 40/40
+.tp_qwen: numpy IR vs mtstudio log-probs worst 2.95e-07 of max(1, |ref|); greedy 40/40
+.tp_mqa_partial: numpy IR vs mtstudio log-probs worst 3.09e-07 of max(1, |ref|); greedy 40/40
+.tp_neox_partial: numpy IR vs mtstudio log-probs worst 4.28e-07 of max(1, |ref|); greedy 40/40
+.tp_mamba1: numpy IR vs mtstudio log-probs worst 3.77e-07 of max(1, |ref|); greedy 40/40
+.tp_qk_temp: numpy IR vs mtstudio log-probs worst 5.35e-07 of max(1, |ref|); greedy 40/40
+......adapter mtstudio (backend cpu, exact True); 298 cases
+PASS op/rope/interleaved: q worst 1.36e-08 of max(1, |ref|); k worst 1.25e-09 of max(1, |ref|)
+PASS op/rope/neox: q worst 3.17e-09 of max(1, |ref|); k worst 0.00e+00 of max(1, |ref|)
+PASS op/rope/neox_partial: q worst 0.00e+00 of max(1, |ref|); k worst 0.00e+00 of max(1, |ref|)
+SKIP op/rope/freq_scale: ir_eval: rope freq_scale != 1 (paperkiln trains none)
+PASS op/rope/grouped_query: q worst 1.36e-08 of max(1, |ref|); k worst 4.88e-09 of max(1, |ref|)
+SKIP op/rope/first_head: ir_eval: rope_heads first
+SKIP op/rope/freq_factors: ir_eval: rope freq_factors (paperkiln training op has no factors)
+SKIP op/rope/freq_factors_short: ir_eval: rope freq_factors (paperkiln training op has no factors)
+SKIP op/rope/freq_factors_long: ir_eval: rope freq_factors (paperkiln training op has no factors)
+SKIP op/rope/attn_factor: ir_eval: rope attn_factor != 1 (paperkiln training op has no amplitude scale)
+SKIP op/rope/freq_factors_partial_attn_factor: ir_eval: rope freq_factors (paperkiln training op has no factors)
+SKIP op/rope/freq_factors_values: ir_eval: rope freq_factors (paperkiln training op has no factors)
+summary mtstudio: 4 pass, 0 fail, 8 skip, 0 xfail, 0 xpass; by kind op 4/0/8 (pass/fail/skip)
+adapter mtstudio (backend cpu, exact True); 298 cases
+PASS op/rmsnorm/row: y worst 1.17e-08 of max(1, |ref|)
+PASS op/rmsnorm/group: y worst 2.33e-08 of max(1, |ref|)
+SKIP op/rmsnorm/weight_offset: ir_eval: rmsnorm weight_offset (paperkiln trains none)
+summary mtstudio: 2 pass, 0 fail, 1 skip, 0 xfail, 0 xpass; by kind op 2/0/1 (pass/fail/skip)
+adapter mtstudio (backend cpu, exact True); 298 cases
+PASS op/attention/causal: a worst 3.52e-08 of max(1, |ref|)
+SKIP op/attention/window_sinks: ir_eval: attention other than plain causal (the llama block's)
+PASS op/attention/grouped_query: a worst 9.89e-08 of max(1, |ref|)
+PASS op/attention/position_bias: a worst 8.01e-08 of max(1, |ref|)
+SKIP op/attention/position_bias_window_sinks: ir_eval: attention other than plain causal (the llama block's)
+PASS op/attention/position_bias_grouped_query: a worst 1.10e-07 of max(1, |ref|)
+PASS op/attention/relative_kv: a worst 7.38e-08 of max(1, |ref|)
+PASS op/attention/relative_kv_per_head: a worst 4.19e-08 of max(1, |ref|)
+PASS op/attention/relative_kv_keys_only: a worst 1.27e-07 of max(1, |ref|)
+SKIP op/attention/relative_kv_window_sinks: ir_eval: attention other than plain causal (the llama block's)
+PASS op/attention/relative_kv_grouped_query: a worst 1.14e-07 of max(1, |ref|)
+PASS op/attention/relative_kv_distance_zero: a worst 1.19e-07 of max(1, |ref|)
+SKIP op/attention/softcap: ir_eval: attention softcap (paperkiln training op has no softcap)
+SKIP op/attention/softcap_window_sinks: ir_eval: attention softcap (paperkiln training op has no softcap)
+SKIP op/attention/softcap_position_bias: ir_eval: attention softcap (paperkiln training op has no softcap)
+summary mtstudio: 9 pass, 0 fail, 6 skip, 0 xfail, 0 xpass; by kind op 9/0/6 (pass/fail/skip)
+adapter mtstudio (backend cpu, exact True); 298 cases
+PASS op/conv1d_causal/k4: y worst 0.00e+00 of max(1, |ref|); state conv.x worst 0.00e+00 of max(1, |ref|)
+summary mtstudio: 1 pass, 0 fail, 0 skip, 0 xfail, 0 xpass; by kind op 1/0/0 (pass/fail/skip)
+adapter mtstudio (backend cpu, exact True); 298 cases
+PASS op/selective_scan/d3n2: y worst 1.36e-07 of max(1, |ref|); state ssm.s worst 7.40e-08 of max(1, |ref|)
+summary mtstudio: 1 pass, 0 fail, 0 skip, 0 xfail, 0 xpass; by kind op 1/0/0 (pass/fail/skip)
+..............gated: numpy IR vs mtstudio log-probs worst 2.67e-07; greedy 40/40
+.swish_beta: numpy IR vs mtstudio log-probs worst 3.23e-07; greedy 40/40
+.dyt: numpy IR vs mtstudio log-probs worst 1.70e-07; greedy 40/40
+.dyt_channel: numpy IR vs mtstudio log-probs worst 1.62e-07; greedy 40/40
+.dyt_llama: numpy IR vs mtstudio log-probs worst 8.93e-08; greedy 40/40
+.post: numpy IR vs mtstudio log-probs worst 3.17e-07; greedy 40/40
+.sandwich: numpy IR vs mtstudio log-probs worst 3.12e-07; greedy 40/40
+.primer: numpy IR vs mtstudio log-probs worst 2.13e-07; greedy 40/40
+.none_highway: numpy IR vs mtstudio log-probs worst 2.11e-07; greedy 40/40
+.qk_per_head: numpy IR vs mtstudio log-probs worst 3.04e-07; greedy 40/40
+.qk_full: numpy IR vs mtstudio log-probs worst 2.52e-07; greedy 40/40
+.logits_scale: numpy IR vs mtstudio log-probs worst 7.19e-08; greedy 40/40
+.softcap: numpy IR vs mtstudio log-probs worst 3.48e-07; greedy 40/40
+.t5_relative (IR_SPEC 5.15 position_bias): numpy vs mtstudio log-probs worst 2.62e-07; greedy 40/40
+........recursion {'prelude': 1, 'block': 2, 'repeats': 3, 'coda': 1, 'inject': 'none'}: numpy IR vs mtstudio log-probs worst 3.56e-07 of max(1, |ref|); greedy 40/40
+.recursion {'prelude': 1, 'block': 2, 'repeats': 3, 'coda': 1, 'inject': 'add'}: numpy IR vs mtstudio log-probs worst 3.19e-07 of max(1, |ref|); greedy 40/40
+.recursion {'block': 2, 'repeats': 4, 'inject': 'none'}: numpy IR vs mtstudio log-probs worst 3.79e-07 of max(1, |ref|); greedy 40/40
+.................
+65 passed in 7.42s
