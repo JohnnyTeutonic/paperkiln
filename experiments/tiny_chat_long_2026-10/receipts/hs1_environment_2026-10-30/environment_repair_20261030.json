@@ -1,0 +1,48 @@
+{
+ "time": "2026-10-30T05:56:53.591134+00:00",
+ "pin": "7baf6d95f79b9cc543705e9b510bcbfeb5c18a63",
+ "source_vocab_sha256": {
+  "/content/pk/tools/bpe.py": "25607be05b41881d0238796b616cb697031c8ebf89623bc4c4537f8aaf56de39",
+  "/content/pk/tools/colab_chat/tiny_chat_data.py": "48df84d69ef7e309b3eee1701653584625a426bca0ea6a0b214cba82d2eef465",
+  "/content/chat/upload/vocab_llama3_bpe.gguf": "0b880aa073a7e27c0770d5ecc5215b55d6d415080d20bd3dc7b169ecabadf198"
+ },
+ "preserved_failed_status": {
+  "STATUS_post_c12_Sgist_r5": "FAILED",
+  "STATUS_pt_c12_Sgist_r5": "FAILED",
+  "STATUS_data": "FAILED",
+  "STATUS_gate": "FINISHED",
+  "STATUS_cuda_gate": "FINISHED",
+  "STATUS": "FINISHED"
+ },
+ "failure_log": "+ python3 corpus/fetchers/human_dialogue.py oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots --allow-sa --allow-nc --out-dir /content/chat/data/human\nWarning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\ndecontamination: frozen eval sets (carry5_v1 not used)\nhuman_oasst_v1: {'decontaminated': 8, 'kept': 5328, 'llm_tell': 50, 'not_english_or_not_ready': 8453, 'rows_in': 13854, 'too_short': 15, 'written': 5328}\nhuman_convai2_v1: {'decontaminated': 19, 'kept': 8951, 'member:./train_none_original_no_cands.txt': 1, 'perspective_duplicate': 8908, 'rows_in': 17878, 'written': 8951}\nhuman_wow_v1: {'decontaminated': 2, 'kept': 18428, 'leading_assistant_turns_trimmed': 9155, 'rows_in': 18430, 'written': 18428}\nhuman_bst_v1: {'kept': 4819, 'rows_in': 4819, 'turns_merged_same_speaker': 1, 'utterances_removed_empty_or_silence': 1, 'written': 4819}\nhuman_taskmaster_v1: {'decontaminated': 92, 'duplicate': 13, 'empty_turn': 4, 'held_out_split': 1540, 'kept': 28791, 'leading_assistant_turns_trimmed': 14903, 'multi_party': 13, 'rows_in': 54276, 'too_short': 66, 'turns_merged_same_speaker': 75843, 'unknown_speaker': 23757, 'utterances_removed_empty_or_silence': 66, 'written': 28791}\nhuman_multiwoz_v1: {'decontaminated': 132, 'duplicate': 13, 'kept': 8292, 'rows_in': 8437, 'written': 8292}\nhuman_self_dialogue_v1: {'duplicate': 22, 'empty_turn': 1, 'kept': 24133, 'rejected_or_blocked_worker': 84, 'rows_in': 24249, 'too_short': 9, 'written': 24133}\nhuman_topical_chat_v1: {'decontaminated': 23, 'kept': 8605, 'rows_in': 8628, 'written': 8605}\nhuman_dolly_v1: {'decontaminated': 2, 'duplicate': 17, 'kept': 14945, 'llm_tell': 47, 'rows_in': 15011, 'written': 14945}\nhuman_quac_v1: {'kept': 11567, 'qa_pairs_removed_cannotanswer': 14459, 'rows_in': 11567, 'written': 11567}\nhuman_empathetic_v1: {'kept': 17780, 'rows_in': 17844, 'too_short': 64, 'written': 17780}\nhuman_dailydialog_v1: {'decontaminated': 5, 'duplicate': 878, 'kept': 10235, 'rows_in': 11118, 'written': 10235}\nhuman_no_robots_v1: {'decontaminated': 2, 'kept': 8698, 'llm_tell': 5, 'non_alternating': 1, 'rows_in': 9500, 'system_instruction': 794, 'written': 8698}\n+ /usr/bin/python3 tools/chat_data.py sft /content/chat/data/human_sft.jsonl --vocab /content/chat/upload/vocab_llama3_bpe.gguf --T 1024 --all-turns --out /content/chat/data/sft_raw.jsonl.tmp\nTraceback (most recent call last):\n  File \"/content/pk/tools/chat_data.py\", line 281, in <module>\n    sys.exit(main())\n             ^^^^^^\n  File \"/content/pk/tools/chat_data.py\", line 276, in main\n    print(json.dumps({\"sft\": cmd_sft, \"prompts\": cmd_prompts, \"pairs\": cmd_pairs, \"mix\": cmd_mix}[a.cmd](a)))\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/content/pk/tools/chat_data.py\", line 138, in cmd_sft\n    return cmd_sft_all_turns(a)\n           ^^^^^^^^^^^^^^^^^^^^\n  File \"/content/pk/tools/chat_data.py\", line 177, in cmd_sft_all_turns\n    _init_tok(a.vocab)\n  File \"/content/pk/tools/chat_data.py\", line 97, in _init_tok\n    _TOK = _Llama3(vocab) if model == \"gpt2\" else bpe.read_gguf(vocab)\n           ^^^^^^^^^^^^^^\n  File \"/content/pk/tools/chat_data.py\", line 84, in __init__\n    self.tok = llama3_bpe.from_gguf(vocab)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/content/pk/tools/llama3_bpe.py\", line 73, in from_gguf\n    from tokenizers import AddedToken, Regex, Tokenizer, decoders, models, pre_tokenizers\nModuleNotFoundError: No module named 'tokenizers'\nsft failed (1)\n",
+ "tokenizers_version": "0.23.3",
+ "encode_fixtures": {
+  "hello": [
+   11520,
+   82
+  ],
+  "punctuation: []!": [
+   83,
+   14789,
+   6700,
+   29,
+   1596,
+   64,
+   4
+  ],
+  "line\nbreak": [
+   1318,
+   202,
+   4621,
+   494
+  ],
+  "caf\u00e9": [
+   70,
+   2017,
+   2689
+  ]
+ },
+ "pip_log_sha256": "7826cc6472cf73a16e5fd890f14cdd9ba3f40127f5ae4720bcf8489b020700e0",
+ "action": "install missing operational dependency; frozen source/inputs unchanged; same campaign resume",
+ "failed_log_sha256": "bd35518c0cf10dc971e509a8f272b84ee2176cb242f7117721d1b96360e70bff"
+}

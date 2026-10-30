@@ -1,0 +1,190 @@
+{
+ "recipe": "tools/colab_chat/tiny_chat_data.py",
+ "args": {
+  "out": "/content/chat/data",
+  "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+  "fineweb": "corpus/data/fineweb_edu_shard0_v1",
+  "shares": "35",
+  "mix_bytes": 800000000,
+  "max_epochs": 4,
+  "T": 1024,
+  "seed": 1,
+  "human_dir": null,
+  "human_fetch": "python3 corpus/fetchers/human_dialogue.py oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots --allow-sa --allow-nc --out-dir {human}",
+  "sources": "oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots",
+  "require_pinned": true,
+  "measure_only": false,
+  "carry12": true,
+  "long_sft": "10:4",
+  "template_sft": false
+ },
+ "vocab_sha256": "0b880aa073a7e27c0770d5ecc5215b55d6d415080d20bd3dc7b169ecabadf198",
+ "human_pt_bytes": 149472768,
+ "steps": {
+  "sft": {
+   "kept": 16932,
+   "skipped": 0,
+   "turns_kept": 92459,
+   "turns_cut_over_T": 64,
+   "dropped_over_T": 45,
+   "dropped_dialogues_with_markers": 0,
+   "out": "/content/chat/data/sft_raw.jsonl.tmp"
+  },
+  "sft_shuffle": {
+   "examples": 16932,
+   "by_source": {
+    "sft_raw.jsonl": 16932
+   },
+   "seed": 1,
+   "out": "/content/chat/data/sft_human.jsonl.tmp"
+  },
+  "sft_long_shuffle": {
+   "examples": 28026,
+   "by_source": {
+    "sft_raw.jsonl": 28026
+   },
+   "seed": 1,
+   "out": "/content/chat/data/sft_human_long4.jsonl.tmp"
+  },
+  "panel_fineweb": {
+   "out": "/content/chat/data/panel_fineweb.ids.tmp",
+   "tokens": 3973498,
+   "width": 2,
+   "vocab": 16384,
+   "sha256": "c1aa6d42aafe80d8607b2d1f19235eb1539ccd94997567c506ae68f330c06e6b"
+  },
+  "panel_dialogue": {
+   "out": "/content/chat/data/panel_dialogue.ids.tmp",
+   "tokens": 2050881,
+   "width": 2,
+   "vocab": 16384,
+   "sha256": "7881aa1c196e30b692a18ba2704a49333a78d8ce059dedb98e794baa0838258a"
+  },
+  "mix_s35": {
+   "main": {
+    "bytes": 800003935,
+    "documents": 380337
+   },
+   "tail": {
+    "bytes": 0,
+    "documents": 0
+   }
+  },
+  "ids_s35": {
+   "out": "/content/chat/data/mix_s35.ids.tmp",
+   "tokens": 184064335,
+   "width": 2,
+   "vocab": 16384,
+   "sha256": "01b9d364ba6547544ca787e6ea49aa877f5c6bb9621002607c21bdef183c4f94"
+  }
+ },
+ "long_sft": {
+  "min_turns": 10,
+  "copies": 4,
+  "rows": 16932,
+  "rows_long": 3698,
+  "rows_out": 28026
+ },
+ "outputs": {
+  "sft_human.jsonl": {
+   "bytes": 23120799,
+   "sha256": "4785e1494d34b81970d947e3488897afcdd36d19a8625b6670dfefcc69b42ecb"
+  },
+  "sft_human_long4.jsonl": {
+   "bytes": 48809277,
+   "sha256": "e03509467843d5fc55374917c30ab8da77b761c338f2370735d63920b4db02d8"
+  },
+  "panel_fineweb.ids": {
+   "bytes": 7947020,
+   "tokens": 3973498,
+   "sha256": "c1aa6d42aafe80d8607b2d1f19235eb1539ccd94997567c506ae68f330c06e6b"
+  },
+  "panel_dialogue.ids": {
+   "bytes": 4101786,
+   "tokens": 2050881,
+   "sha256": "7881aa1c196e30b692a18ba2704a49333a78d8ce059dedb98e794baa0838258a"
+  },
+  "mix_s35.ids": {
+   "bytes": 368128694,
+   "tokens": 184064335,
+   "sha256": "01b9d364ba6547544ca787e6ea49aa877f5c6bb9621002607c21bdef183c4f94"
+  }
+ },
+ "mixes": {
+  "s35": {
+   "share_registered": 35,
+   "share_effective": 35,
+   "dialogue_copies": 2,
+   "mix_ledger": {
+    "seed": 1,
+    "tail_fraction": 0.0,
+    "total_bytes_target": 800000000,
+    "unit": "bytes of document text",
+    "source_order": [
+     "dialogue",
+     "fineweb"
+    ],
+    "sources": {
+     "dialogue": {
+      "path": "/content/chat/data/human_pt_copies.txt",
+      "sha256": "3c26ee37fdb1ebafffa1b177b532478da8dad8627af01e209f0646b828fd83a5",
+      "documents": 289956,
+      "bytes": 298945536,
+      "documents_used": 271581
+     },
+     "fineweb": {
+      "path": "corpus/data/fineweb_edu_shard0_v1/pretrain_train.txt",
+      "sha256": "4f3dbe8aa9bf20bf6ad68b4cdcb3eb08a0f1631da26845ec4cebb2d8ab215e66",
+      "documents": 722360,
+      "bytes": 3463414063,
+      "documents_used": 108756
+     }
+    },
+    "parts": {
+     "main": {
+      "fraction": 1.0,
+      "file": "mix_s35.main.txt",
+      "sources": {
+       "dialogue": {
+        "ratio": 0.35,
+        "budget_bytes": 280000000,
+        "documents": 271581,
+        "bytes": 280000454
+       },
+       "fineweb": {
+        "ratio": 0.65,
+        "budget_bytes": 520000000,
+        "documents": 108756,
+        "bytes": 520003481
+       }
+      },
+      "documents": 380337,
+      "bytes": 800003935,
+      "sha256": "f2ec86dd420192bbd9c1146d7dcc4400587ed8f8e66745dde126e3bfbea8b0b8"
+     },
+     "tail": {
+      "fraction": 0.0,
+      "file": "mix_s35.tail.txt",
+      "sources": {
+       "dialogue": {
+        "ratio": 0.35,
+        "budget_bytes": 0,
+        "documents": 0,
+        "bytes": 0
+       },
+       "fineweb": {
+        "ratio": 0.65,
+        "budget_bytes": 0,
+        "documents": 0,
+        "bytes": 0
+       }
+      },
+      "documents": 0,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+     }
+    }
+   }
+  }
+ }
+}
