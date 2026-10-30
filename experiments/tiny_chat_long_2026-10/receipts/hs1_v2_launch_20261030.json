@@ -1,0 +1,20 @@
+{
+  "status": "PROSPECTIVE_WAITING_FOR_FOUR_POST_REPORTS",
+  "implementation": "a298ff53e",
+  "source_count": 56,
+  "root_targeted_tests": 16,
+  "root_historical_builder_git_blob_check": "exact 7baf6d95f79b9cc543705e9b510bcbfeb5c18a63",
+  "root_proof_ledger_reference_hash_checks": "PASS",
+  "production_freeze_utc": "2026-10-30T06:29:40Z",
+  "state_sha256_at_freeze": "9eef52f3bab0cf18fbc82c732bcb48fbfdda767c3cf35982de50fcc7986fc9b2",
+  "original_halt_and_ledgers_preserved": true,
+  "statistical_helpers_and_decisions_unchanged": true,
+  "watchdog_entry": {
+    "name": "carry12-hs1-finalize-v2 (exact cached-ledger proof; v1 halt preserved; registered five seeds; disable when home)",
+    "enabled": true,
+    "workdir": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch",
+    "state_dir": "/home/jonat/carry12_hs1_finalizer_v2_20261030",
+    "command": "python3 -u experiments/tiny_chat_long_2026-10/finalize_hs1_extension_v2.py --art /mnt/c/ml_artifacts/tiny_chat --state-dir /home/jonat/carry12_hs1_finalizer_v2_20261030 --out /mnt/c/ml_artifacts/tiny_chat/carry12_hs1_final_v2 --poll-seconds 240 --max-hours 24"
+  },
+  "scope": "One exact operational metadata omission justified by frozen raw-input/output proof; no general normalizer exception, paid compute, model call or S-full launch"
+}
