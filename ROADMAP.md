@@ -24,16 +24,6 @@ where one of those documents carries a plan, this file wins.*
    `experiments/chat_general/RESULTS.md`, "The full run" (00ecd0d4); judging and training remain pending,
    with the recorded $200 total cap including the cache and held-out side-by-side gate.
 
-## 3. Broken now
-
-- **`mtstudio score` on CPU is slow for `llama_attnres`.** Stage L0 on pick_e1_x5_X5 (20m_L16 + Attention
-  Residuals) scored about 4.5 min per chunk, against about 0.8 min for plain 20m_L16's pick on the same laptop
-  build (`~/pk_state_build/mtstudio`, four slots; the process sat at ~210% CPU). A 30 Oct
-  controlled check (four identical 480+8-token requests) found only ~9% overhead at two threads,
-  and none at one; the original workload discrepancy remains open. Receipt:
-  `experiments/benchmarks_2026-10-26/receipts/attnres_cpu_2026-10-30.json`. On the L4, training
-  runs at 0.67x plain.
-
 The last recorded CI status is green on all three workflows (Code Quality, the test
 suite with its Python suites and the fetcher drift check, and the wheel
 build with its smoke test), and the chat-v1 release serves the quickstart's

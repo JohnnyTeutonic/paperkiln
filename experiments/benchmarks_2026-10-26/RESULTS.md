@@ -328,3 +328,19 @@ changed, and the original workload discrepancy remains on ROADMAP.
 [Receipt](receipts/attnres_cpu_2026-10-30.json) records requests, specs, alternating repeated
 timings, binary/weight hashes, the recovered plain control and the small profile. No paid
 compute, training, benchmark labels or registered analysis inputs changed.
+
+The historical comparison has now been traced to **different scoring backends**. The original
+plain `pick_e1_L16/l0.json` records `--scorer ir`, whereas X5 records `--scorer mtstudio`.
+Both commands include `--mtstudio /home/jonat/pk_state_build/mtstudio`, but that argument does
+not select the backend: the IR branch scores through `IrBackend` and does not invoke that binary.
+All 91 chunk key sequences are identical between the two runs. Their median adjacent file-mtime
+gaps are 42.74 s and 367.93 s respectively; these are filesystem observations, with different
+run dates and uncontrolled contention/resumption, rather than instrumented timings.
+
+This resolves the basis for the roadmap's claimed same-backend regression. The observed latency
+difference remains real as a historical observation, but cannot isolate Attention Residuals.
+The controlled matched-`mtstudio` result above supports only its tested request/thread settings;
+it does not establish general Attention Residuals performance. The
+[backend audit](receipts/attnres_cpu_backend_audit_2026-10-30.json) preserves exact historical
+arguments, receipt/model/spec hashes and every chunk hash, plus current source hashes explicitly
+distinguished from an unavailable historical checkout.

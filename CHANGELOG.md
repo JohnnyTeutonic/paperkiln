@@ -7,6 +7,12 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Attention Residuals CPU latency diagnosis** (30 Oct). Historical Stage L0 receipts show
+  the plain model used the NumPy IR scorer while X5 used `mtstudio`; all 91 chunk key sequences
+  match. Removed the unsupported same-backend regression from ROADMAP. Exact arguments and
+  source/input inventories accompany the existing controlled same-backend timing receipt;
+  no general performance claim, model rerun or frozen experiment change.
+
 - **Cross-platform wheels reconciled** (30 Oct). GitHub run40207438451 atbc9b3fb5 already
   built and smoke-tested cp310–cp312 on Windows x64 and both macOS architectures. Rechecked
   all nine actual smoke successes and repaired wheel names; removed the stale Linux-only
