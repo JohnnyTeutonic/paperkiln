@@ -53,6 +53,7 @@ import argparse
 import base64
 import hashlib
 import json
+import math
 import os
 import re
 import shutil
@@ -1058,12 +1059,23 @@ def parse_deadline_utc(value):
 
 def resolve_deadline(max_hours, absolute, now):
     """A watchdog restart cannot extend a supplied absolute deadline."""
+    if not math.isfinite(max_hours) or max_hours <= 0:
+        raise ValueError("--max-hours must be finite and positive")
     deadline = now + max_hours * 3600
+    if not math.isfinite(deadline):
+        raise ValueError("--max-hours must produce a finite deadline")
     if absolute is not None:
         deadline = min(deadline, absolute)
     if deadline <= now:
         raise ValueError("runner deadline has already expired; no session may be created")
     return deadline
+
+
+def sleep_tick(deadline):
+    """Wait at most one normal tick, and never intentionally sleep past the ceiling."""
+    delay = min(TICK, max(0, deadline - time.time()))
+    if delay > 0:
+        time.sleep(delay)
 
 
 def main():
@@ -1147,7 +1159,7 @@ def main():
     if listed() is None and not st.d.get("endpoint"):
         if not launch(st, a.commit, a.jobs, jobs, uploads):
             if time.time() < deadline and not T.over_budget(st):
-                time.sleep(min(TICK, max(0, deadline - time.time())))
+                sleep_tick(deadline)
     try:
         while time.time() < deadline:
             why = T.over_budget(st)
@@ -1173,24 +1185,24 @@ def main():
                         log("session gone on 3 consecutive ticks; relaunching from the relayed checkpoints")
                         st.d["gone_ticks"] = 0
                         if not launch(st, a.commit, a.jobs, jobs, uploads):
-                            time.sleep(TICK)
+                            sleep_tick(deadline)
                             continue
                     elif probe is None:
                         log(f"session not listed and VM silent ({st.d['gone_ticks']}/3); waiting")
-                        time.sleep(TICK)
+                        sleep_tick(deadline)
                         continue
             else:
                 st.d["gone_ticks"] = 0
             if not st.d.get("booted", True):
                 log("session up but not booted; preparing it")
                 if not prepare(st, a.commit, a.jobs, jobs, uploads):
-                    time.sleep(TICK)
+                    sleep_tick(deadline)
                     continue
             upload_pending(st)
             r = vm_status(jobs)
             if r is None:
                 log("vm status: no reply")
-                time.sleep(TICK)
+                sleep_tick(deadline)
                 continue
             if r["vm"] == "BOOT_FAILED":
                 log("boot failed on the VM; downloading boot.log")
@@ -1234,7 +1246,7 @@ def main():
                 st.d["campaign_home"] = True
                 st.save()
                 break
-            time.sleep(TICK)
+            sleep_tick(deadline)
     finally:
         T.stop(st)
         if st.d.get("campaign_home"):

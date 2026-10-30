@@ -50,3 +50,35 @@ def test_expired_launch_never_stops_or_creates(monkeypatch):
     monkeypatch.setattr(runner,'log',lambda m:None)
     assert runner.launch(None,'c','j',[],[]) is False
     assert calls==[]
+
+
+@pytest.mark.parametrize("hours", [float("nan"), float("inf"), -float("inf"), 0, -1, 1e308])
+def test_nonfinite_nonpositive_or_overflowing_duration_rejected(hours):
+    with pytest.raises(ValueError, match="finite|positive"):
+        runner.resolve_deadline(hours, None, 100)
+    with pytest.raises(ValueError, match="finite|positive"):
+        runner.resolve_deadline(hours, 1000, 100)
+
+
+@pytest.mark.parametrize("hours", ["nan", "inf", "0", "-1"])
+def test_invalid_duration_cli_refuses_before_provider_or_filesystem(hours, tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(runner, "make_transport", lambda *args: calls.append("transport"))
+    monkeypatch.setattr(runner, "listed", lambda *args: calls.append("listed"))
+    monkeypatch.setattr(sys, "argv", ["runner", "--backend", "runpod", "--commit", "frozen",
+        "--jobs", "missing.json", "--name", "invalid", "--art", str(tmp_path / "art"),
+        "--state-dir", str(tmp_path / "state"), "--max-hours", hours])
+    with pytest.raises(SystemExit) as exc:
+        runner.main()
+    assert exc.value.code == 2 and calls == []
+    assert not (tmp_path / "art").exists() and not (tmp_path / "state").exists()
+
+
+@pytest.mark.parametrize("remaining,expected", [(-10, None), (0, None), (.125, .125),
+                                               (runner.TICK, runner.TICK), (runner.TICK + 20, runner.TICK)])
+def test_tick_never_sleeps_negative_or_past_deadline(remaining, expected, monkeypatch):
+    calls = []
+    monkeypatch.setattr(runner.time, "time", lambda: 100)
+    monkeypatch.setattr(runner.time, "sleep", calls.append)
+    runner.sleep_tick(100 + remaining)
+    assert calls == ([] if expected is None else [expected])
