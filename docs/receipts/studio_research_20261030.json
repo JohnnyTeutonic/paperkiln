@@ -1,0 +1,95 @@
+{
+  "scope": "File-based Studio clone and comparison feature; training interoperability smoke, not a model-quality comparison",
+  "status": "PASS",
+  "canonical_home": "C:\\ml_artifacts\\studio_research_20261030\\final",
+  "contract_tests": 15,
+  "independent_core_rereview": "15 tests pass; early stop/resume, unsafe integer and array-length refusals verified; no additional demonstrated bug",
+  "browser": {
+    "pass": true,
+    "mode": "file-based; installed Chrome headless GPU disabled",
+    "checks": [
+      "downloaded clone preserves all other fields",
+      "bad value type refuses",
+      "two synthetic event-log fixtures overlay",
+      "early-stop status retained",
+      "malformed replacement hides stale comparison",
+      "untrusted name stays text",
+      "desktop/narrow layout"
+    ],
+    "page_errors": [],
+    "clone_out_dir": "/mnt/c/ml_artifacts/studio_research_20261030/final/original-clone-1793338683585",
+    "chrome": "155.0.8059.85",
+    "node": "v24.19.0",
+    "fixture_source": "C:/ml_artifacts/hf_gpt2_roundtrip_20261030/spec.json",
+    "html_sha256": "9c4e328abb259bb23ca4eb7e0a8219bc2662a3aad05f0ed6e2843e263aab0a84",
+    "original_spec_sha256": "4991b83bb2f6d22b06f9821c9e801860d11168989de54471ec0efa89798bf875",
+    "clone_sha256": "46b6fe557fad2c85239ced33c73ddc077ba71751aa4beb699d968c63293a5158"
+  },
+  "training": {
+    "scope": "UI download consumed by actual CPU trainer; interoperability smoke, not model quality or controlled loss comparison",
+    "pass": true,
+    "command": [
+      "python3",
+      "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/scripts/cpu_budget.py",
+      "run",
+      "--session",
+      "paperkiln",
+      "--job",
+      "final Studio downloaded clone",
+      "--cores",
+      "1",
+      "--resume",
+      "preserve downloaded clone and its output; do not rerun",
+      "--",
+      "/home/jonat/pk_fh_build/mtstudio",
+      "run",
+      "/mnt/c/ml_artifacts/studio_research_20261030/final/clone.json"
+    ],
+    "started_utc": "2026-10-30T05:39:54.277740+00:00",
+    "binary_sha256": "312a6d5bbb2a056b1ee38c4a0f52df88a4ccfaefd95c44e5b20487ec97177dd4",
+    "source_original_sha256": "4991b83bb2f6d22b06f9821c9e801860d11168989de54471ec0efa89798bf875",
+    "downloaded_clone_sha256": "46b6fe557fad2c85239ced33c73ddc077ba71751aa4beb699d968c63293a5158",
+    "original_spec_unchanged": true,
+    "scientific_change": {
+      "path": [
+        "train",
+        "lr"
+      ],
+      "old": 0.001,
+      "new": 0.002
+    },
+    "administrative_changes": [
+      "name",
+      "out_dir"
+    ],
+    "output": "/mnt/c/ml_artifacts/studio_research_20261030/final/original-clone-1793338683585",
+    "event_log_sha256": "a33d716302838dba960256d2bf32d0255ad2ff0945bd114b9b7a9566ddd953c1",
+    "train_log_sha256": "18603e00ab4424454365d2657a10bb7e7624c8d8de0df5004e18aa208e9f064d",
+    "done": {
+      "best_val": 8.141805648803711,
+      "early_stopped": false,
+      "event": "done",
+      "final_step": 6,
+      "wall_seconds": 0.878541024
+    }
+  },
+  "artifacts": {
+    "browser_receipt.json": "ad1caa6474521038a8c88c8bd414118fa16a8d0bcbf17ed81293ba7596293b9f",
+    "clone.json": "46b6fe557fad2c85239ced33c73ddc077ba71751aa4beb699d968c63293a5158",
+    "original_spec.json": "4991b83bb2f6d22b06f9821c9e801860d11168989de54471ec0efa89798bf875",
+    "research_desktop.png": "a9233bf6167541ba4ae4dd827d622c72e4bf4568b1b8e1f85e302846973d8175",
+    "research_narrow.png": "78e612a6e2a4c568eaaa21a1082dd15e53a883fe3bbc593b2432ff519a92c8db",
+    "training_receipt.json": "972966e806bce40f520065dc2f45b99eddfa02636a652dccac3ea8472337f4f4",
+    "train_clone.log": "18603e00ab4424454365d2657a10bb7e7624c8d8de0df5004e18aa208e9f064d"
+  },
+  "source_sha256": {
+    "studio\\index.html": "9c4e328abb259bb23ca4eb7e0a8219bc2662a3aad05f0ed6e2843e263aab0a84",
+    "tests\\test_studio_research.js": "43fccb28c55fbc3030cddfa6945a8e35d8579aa359c089899b4d6b255d8727d7",
+    "tests\\studio_research_browser.js": "9e793cf6914c600d84591608b339a57141891e61ca187e1effcf43f05add73fd"
+  },
+  "limitations": [
+    "Comparison uses selected local files; no experiment registry, statistics or quality claim.",
+    "Browser logs are synthetic status/rendering fixtures; downloaded real clone separately trained six CPU steps.",
+    "Other Studio roadmap features remain open."
+  ]
+}

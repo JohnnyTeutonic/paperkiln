@@ -131,6 +131,20 @@ onto the page. The extracted architecture fills the spec builder, the diagram re
 ▶ train runs in the same tab. Details: [the LLM extractor](docs/TOUR.md#paper-to-architecture-the-llm-extractor)
 and [the rule-based fetcher](docs/TOUR.md#paper-to-architecture-the-rule-based-arxiv-fetcher-no-api-key).
 
+The **Research** panel also works by opening `studio/index.html` directly. Load a complete
+`saved spec.json`, choose one existing parameter and enter a value of the same JSON type.
+Download the clone, review its new name/output folder, then use `mtstudio run clone.json`.
+The original file and every other setting are preserved; creating the clone does not start
+training. Load two saved `events.jsonl` files to overlay their train losses and validation
+points and compare counts, last/best loss and completion status. Backward/repeated steps
+break the trace and are flagged instead of joining separate training segments. Files are
+processed locally (50 MiB per file); no model or server call is made by this panel.
+
+Contract checks: `node --test tests/test_studio_research.js`. The optional installed-Chrome
+smoke is `node tests/studio_research_browser.js OUTPUT_DIR` with Playwright available to Node
+(`STUDIO_CHROME` can select an executable). Its default spec/logs are synthetic; the saved
+30 October receipt additionally verifies that a downloaded real six-step clone trains and exports.
+
 ## Quick start: export and serve anywhere
 
 ```jsonc

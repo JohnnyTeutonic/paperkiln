@@ -7,6 +7,14 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Studio Research Mode** (30 Oct). Clone a full saved spec with one typed parameter change
+  and a fresh name/output directory; unknown fields remain intact and the original stays
+  unchanged. Compare two saved JSONL event logs with loss overlays, validation points and
+  honest early-stop/resume status. Fifteen contract tests, installed-Chrome desktop/mobile
+  checks and an actual six-step CPU run of the downloaded clone passed. File processing is
+  local; the panel does not automatically launch training. Receipt:
+  `docs/receipts/studio_research_20261030.json`.
+
 - **Untied Llama-flavour flex HF export** (30 Oct). Preserves biased Q/K/V/O attention,
   per-head RoPE permutation of q/k weights and biases, RMSNorm eps1e-5, bias-free SwiGLU
   and an untied head. A clean committed-source CPU build (3eb746f) trained a tiny

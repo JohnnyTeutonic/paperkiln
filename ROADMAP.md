@@ -131,13 +131,15 @@ advisory steps that cannot fail the build.
 ## 7. Studio, chat and distribution
 
 - **Studio features:**
-  - Research Mode: clone a run with one change, compare two runs;
   - a sweep heatmap;
   - a fit-to-VRAM budgeter;
   - an evaluation-probe stage in the spec (needle and behavioural
     probes).
 - **Open-weight models on our own engines: speed.** Parity is done through the IR,
-  on the CPU and on CUDA; benchmark ember against `transformers` for speed.
+  on the CPU and on CUDA. CPU comparison is complete for SmolLM2-135M and Gemma3-270M
+  at three lengths (strict full-row parity); paired AVX2 improves prefill 2.38-2.87x
+  and decode 1.04-1.50x but remains slower than Transformers. Evidence:
+  `../ember.cpp/experiments/hf_cpu_2026-10-30/`. Remaining: matched CUDA speed comparison. 
 - **Browser performance and remaining device gates** (LOCAL_LLM_WORK.md E9, E10).
   The IR family and recurrence paths are built in WebAssembly/WebGPU. The 28 Oct hardware
   receipt (`../ember.cpp/experiments/webgpu_gpu_2026-10-27/`) covers the existing tiny families,

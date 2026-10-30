@@ -184,3 +184,14 @@ jobs:
         with:
           name: valgrind-report
           path: build/valgrind.log
+
+  studio-research:
+    name: Studio research-mode contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Clone preservation and event-log contracts
+        run: node --test tests/test_studio_research.js

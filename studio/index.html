@@ -59,6 +59,20 @@
            cursor: pointer; }
   .legend .sw { display: inline-block; width: .7em; height: .7em;
                 border-radius: 2px; margin: 0 .3em 0 .9em; }
+  #research-panel .form { align-items: end; }
+  #research-panel input, #research-panel select { max-width: 100%; }
+  #research-panel label { min-width: 0; max-width: 100%; flex-direction: column; align-items: flex-start; gap: .25rem; }
+  #r-field { max-width: 22rem; }
+  #r-summary td, #r-summary th { padding: .35rem .5rem; border-bottom: 1px solid var(--border); }
+  #r-summary td:first-child { overflow-wrap: anywhere; max-width: 22rem; }
+  @media (max-width: 600px) {
+    #r-summary table, #r-summary tbody, #r-summary tr { display: block; width: 100%; }
+    #r-summary thead { display: none; }
+    #r-summary tr { padding: .4rem 0; border-bottom: 1px solid var(--border); }
+    #r-summary td { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: .5rem; border: 0; overflow-wrap: anywhere; }
+    #r-summary td:first-child { max-width: none; }
+    #r-summary td::before { content: attr(data-label); color: var(--dim); }
+  }
 </style>
 </head>
 <body>
@@ -153,6 +167,33 @@
   <span id="b-cmd" class="legend"></span>
 </div>
 
+<div class="panel" id="research-panel">
+  <h2>research mode</h2>
+  <p class="legend">Clone a saved spec with one parameter changed, then compare two saved runs. Files stay in this browser.</p>
+  <div class="form" style="margin-top:.7rem">
+    <label>original spec <input id="r-spec" type="file" accept=".json"></label>
+    <label>field <select id="r-field" disabled aria-label="Parameter to change"></select></label>
+    <label>new value (JSON) <input id="r-value" disabled placeholder="e.g. 0.001 or false"></label>
+    <button id="r-clone" disabled>download clone</button>
+  </div>
+  <p class="legend" id="r-clone-status" role="status">Choose the original spec.json. Every other setting is preserved; the clone gets a new name and output folder.</p>
+  <pre id="r-diff" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:12rem;overflow:auto"></pre>
+  <hr style="border:0;border-top:1px solid var(--border);margin:1rem 0">
+  <div class="form">
+    <label>run A events <input id="r-a" type="file" accept=".jsonl,.json,.txt"></label>
+    <label>run B events <input id="r-b" type="file" accept=".jsonl,.json,.txt"></label>
+  </div>
+  <p class="legend" id="r-compare-status" role="status">Load two events.jsonl files to overlay their recorded losses.</p>
+  <svg id="r-chart" viewBox="0 0 1000 260" style="width:100%;height:260px;display:none" role="img" aria-label="Run A and B losses against optimizer step"></svg>
+  <div id="r-summary" style="display:none;overflow-x:auto">
+    <table style="width:100%;text-align:left;border-collapse:collapse">
+      <thead><tr><th>run</th><th>logged steps</th><th>last train loss</th><th>best recorded val</th><th>status</th></tr></thead>
+      <tbody><tr><td id="r-a-name" data-label="run"></td><td id="r-a-steps" data-label="logged steps"></td><td id="r-a-last" data-label="last train loss"></td><td id="r-a-best" data-label="best recorded val"></td><td id="r-a-status" data-label="status"></td></tr>
+      <tr><td id="r-b-name" data-label="run"></td><td id="r-b-steps" data-label="logged steps"></td><td id="r-b-last" data-label="last train loss"></td><td id="r-b-best" data-label="best recorded val"></td><td id="r-b-status" data-label="status"></td></tr></tbody>
+    </table>
+  </div>
+  <p class="legend">A: blue training, orange validation. B: purple training, green validation. The horizontal axis is optimizer step; check datasets, token budgets and evaluation settings before interpreting loss differences.</p>
+</div>
 <div class="panel">
   <h2>architecture — what this spec builds</h2>
   <svg id="arch-svg" viewBox="0 0 1040 190" width="100%"
@@ -227,6 +268,184 @@
     dim&nbsp;=&nbsp;vanishing · red&nbsp;=&nbsp;exploding, scaled per-module
     against its own run median · size&nbsp;∝&nbsp;share of global grad norm</div>
 </div>
+
+<script id="studio-research-core">
+// BEGIN STUDIO_RESEARCH_CORE
+const StudioResearch = (() => {
+  const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+  const unsafe = k => ["__proto__", "prototype", "constructor"].includes(String(k));
+  const object = x => x !== null && typeof x === "object" && !Array.isArray(x);
+  const primitive = x => x === null || ["string", "boolean", "number"].includes(typeof x);
+  function fields(spec) {
+    if (!object(spec)) throw Error("Choose a spec.json object.");
+    const result = [];
+    function visit(value, path) {
+      if (primitive(value)) {
+        if (typeof value === "number" && (!Number.isFinite(value) || (Number.isInteger(value) && !Number.isSafeInteger(value)) || Object.is(value, -0))) throw Error("Spec contains a number this browser cannot preserve exactly.");
+        if (path.length && !(path.length === 1 && ["name", "out_dir"].includes(path[0]))) result.push({path, value});
+      } else if (value && typeof value === "object") {
+        for (const key of Object.keys(value)) {
+          if (unsafe(key)) continue;
+          visit(value[key], [...path, key]);
+        }
+      } else throw Error("Spec contains a value JSON cannot preserve.");
+    }
+    visit(spec, []);
+    return result;
+  }
+  function clone(spec, path, value, suffix) {
+    const available = fields(spec);
+    if (!Array.isArray(path) || !path.length || path.some(unsafe) ||
+        (path.length === 1 && ["name", "out_dir"].includes(path[0]))) throw Error("Select an existing run parameter.");
+    if (!available.some(f => JSON.stringify(f.path) === JSON.stringify(path))) throw Error("Select a listed scalar parameter.");
+    if (!primitive(value) || (typeof value === "number" && (!Number.isFinite(value) || (Number.isInteger(value) && !Number.isSafeInteger(value)) || Object.is(value, -0)))) throw Error("New value must be a JSON scalar this browser can preserve exactly.");
+    const copy = JSON.parse(JSON.stringify(spec));
+    let node = copy;
+    for (const key of path.slice(0, -1)) {
+      if (!node || typeof node !== "object" || !own(node, key)) throw Error("Parameter path does not exist.");
+      node = node[key];
+    }
+    const key = path[path.length - 1];
+    if (!node || typeof node !== "object" || !own(node, key) || !primitive(node[key])) throw Error("Parameter must be an existing scalar.");
+    if (node[key] !== null && typeof node[key] !== typeof value) throw Error("Keep the parameter's JSON type.");
+    if (typeof node[key] === "number" && Number.isInteger(node[key]) && !Number.isInteger(value)) throw Error("This parameter needs an integer.");
+    if (Object.is(node[key], value)) throw Error("Choose a value different from the original.");
+    if (!/^[A-Za-z0-9_-]+$/.test(suffix)) throw Error("Invalid clone suffix.");
+    node[key] = value;
+    copy.name = String(spec.name || "run") + "-" + suffix;
+    copy.out_dir = String(spec.out_dir || "out") + "-" + suffix;
+    return copy;
+  }
+  function events(text, filename) {
+    const result = {name: filename, steps: [], evals: [], status: "in progress", resets: 0};
+    let previous = -1;
+    for (const [i, line] of text.split(/\r?\n/).entries()) {
+      if (!line.trim()) continue;
+      let e;
+      try { e = JSON.parse(line); } catch { throw Error(filename + ": invalid JSON on line " + (i + 1)); }
+      if (!object(e) || typeof e.event !== "string") throw Error(filename + ": missing event on line " + (i + 1));
+      if (e.event === "start") {
+        result.status = "in progress";
+        if (typeof e.name === "string") result.name = e.name;
+      }
+      if (e.event === "step" || e.event === "eval") {
+        const value = e.event === "step" ? e.loss : e.val_loss;
+        if (!Number.isInteger(e.step) || e.step < 0 || typeof value !== "number" || !Number.isFinite(value)) throw Error(filename + ": invalid loss/step on line " + (i + 1));
+        if (e.event === "step") {
+          const reset = e.step <= previous;
+          if (reset) result.resets++;
+          result.steps.push({step: e.step, value, reset}); previous = e.step;
+        } else result.evals.push({step: e.step, value});
+      }
+      if (e.event === "early_stop") result.status = "early stopped";
+      if (e.event === "done") result.status = e.early_stopped || result.status === "early stopped" ? "early stopped" : "complete";
+    }
+    if (!result.steps.length && !result.evals.length) throw Error(filename + ": no recorded losses.");
+    result.last = result.steps.length ? result.steps[result.steps.length - 1].value : null;
+    result.best = result.evals.length ? result.evals.reduce((best, x) => Math.min(best, x.value), Infinity) : null;
+    return result;
+  }
+  return {fields, clone, events};
+})();
+if (typeof module !== "undefined" && module.exports) module.exports = StudioResearch;
+// END STUDIO_RESEARCH_CORE
+(() => {
+  const el = id => document.getElementById(id);
+  const state = {spec: null, files: {a: null, b: null}, version: {spec: 0, a: 0, b: 0}};
+  const limit = 50 * 1024 * 1024;
+  async function read(file) {
+    if (!file) throw Error("Choose a file.");
+    if (file.size > limit) throw Error("This viewer accepts files up to 50 MiB.");
+    return file.text();
+  }
+  el("r-spec").onchange = async () => {
+    const version = ++state.version.spec;
+    state.spec = null; el("r-field").disabled = true; el("r-value").disabled = true; el("r-clone").disabled = true; el("r-diff").textContent = "";
+    try {
+      const spec = JSON.parse(await read(el("r-spec").files[0]));
+      const fields = StudioResearch.fields(spec);
+      if (!fields.length) throw Error("No scalar run parameters found.");
+      if (version !== state.version.spec) return;
+      state.spec = spec;
+      el("r-field").replaceChildren(...fields.map(f => {
+        const option = document.createElement("option"); option.value = JSON.stringify(f.path);
+        option.textContent = f.path.join(".") + " = " + JSON.stringify(f.value); return option;
+      }));
+      el("r-field").disabled = false; el("r-value").disabled = false; el("r-clone").disabled = false;
+      el("r-field").onchange();
+      el("r-clone-status").textContent = "Original loaded. The download preserves all settings except your selected field, name and output folder.";
+    } catch (e) { if (version === state.version.spec) el("r-clone-status").textContent = e.message; }
+  };
+  el("r-field").onchange = () => {
+    if (!state.spec) return;
+    let value = state.spec;
+    for (const key of JSON.parse(el("r-field").value)) value = value[key];
+    el("r-value").value = JSON.stringify(value); el("r-diff").textContent = "";
+  };
+  el("r-clone").onclick = () => {
+    try {
+      const path = JSON.parse(el("r-field").value), value = JSON.parse(el("r-value").value);
+      const suffix = "clone-" + Date.now();
+      const copy = StudioResearch.clone(state.spec, path, value, suffix);
+      let original = state.spec; for (const key of path) original = original[key];
+      el("r-diff").textContent = path.join(".") + ": " + JSON.stringify(original) + " -> " + JSON.stringify(value) + "\nname: " + JSON.stringify(state.spec.name) + " -> " + JSON.stringify(copy.name) + "\nout_dir: " + JSON.stringify(state.spec.out_dir) + " -> " + JSON.stringify(copy.out_dir);
+      const url = URL.createObjectURL(new Blob([JSON.stringify(copy, null, 2) + "\n"], {type: "application/json"}));
+      const link = document.createElement("a"); link.href = url; link.download = copy.name.replace(/[^A-Za-z0-9_.-]/g, "_") + ".json";
+      link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+      el("r-clone-status").textContent = "Clone downloaded. Review it, then run: mtstudio run <clone.json>. The original run is unchanged.";
+    } catch (e) { el("r-clone-status").textContent = e.message; }
+  };
+  function draw() {
+    const a = state.files.a, b = state.files.b;
+    el("r-chart").style.display = "none"; el("r-summary").style.display = "none";
+    if (!a || !b) return;
+    const svg = el("r-chart"); svg.replaceChildren();
+    const width = Math.max(280, el("research-panel").clientWidth - 34), right = width - 14;
+    svg.setAttribute("viewBox", "0 0 " + width + " 260");
+    const all = [...a.steps, ...a.evals, ...b.steps, ...b.evals];
+    const [minX, maxX, minY, maxY] = all.reduce((b,p) => [Math.min(b[0],p.step),Math.max(b[1],p.step),Math.min(b[2],p.value),Math.max(b[3],p.value)], [Infinity,-Infinity,Infinity,-Infinity]);
+    const X = n => 62 + (right - 62) * (maxX === minX ? .5 : (n - minX) / (maxX - minX));
+    const Y = n => 12 + 215 * (1 - (maxY === minY ? .5 : (n - minY) / (maxY - minY)));
+    function add(tag, attrs, text) {
+      const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+      for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, String(value));
+      if (text !== undefined) node.textContent = text; svg.appendChild(node); return node;
+    }
+    for (let i = 0; i <= 4; i++) {
+      const n = minY + (maxY - minY) * i / 4;
+      add("line", {x1:62,x2:right,y1:Y(n),y2:Y(n),stroke:"#30363d"});
+      add("text", {x:2,y:Y(n)+4,fill:"#8b949e","font-size":11}, n.toFixed(3));
+    }
+    add("text", {x:62,y:250,fill:"#8b949e","font-size":11}, String(minX));
+    add("text", {x:right,y:250,fill:"#8b949e","font-size":11,"text-anchor":"end"}, String(maxX));
+    for (const [key, run, trainColor, valColor] of [["a",a,"#58a6ff","#f0883e"],["b",b,"#bc8cff","#3fb950"]]) {
+      let d = "";
+      run.steps.forEach((p,i) => { d += (i === 0 || p.reset ? "M" : "L") + X(p.step) + "," + Y(p.value) + " "; });
+      if (d) add("path", {d,fill:"none",stroke:trainColor,"stroke-width":2,"data-run":key});
+      if (run.steps.length === 1) add("circle", {cx:X(run.steps[0].step),cy:Y(run.steps[0].value),r:3,fill:trainColor});
+      for (const p of run.evals) add("circle", {cx:X(p.step),cy:Y(p.value),r:3,fill:valColor,"data-validation":key});
+      el("r-"+key+"-name").textContent = run.name;
+      el("r-"+key+"-steps").textContent = run.steps.length;
+      el("r-"+key+"-last").textContent = run.last === null ? "n/a" : run.last.toFixed(4);
+      el("r-"+key+"-best").textContent = run.best === null ? "n/a" : run.best.toFixed(4);
+      el("r-"+key+"-status").textContent = run.status;
+    }
+    svg.style.display = ""; el("r-summary").style.display = "";
+    el("r-compare-status").textContent = "Two runs loaded." + (a.resets || b.resets ? " Repeated/backward steps found; training lines break at each restart." : "");
+  }
+  let resizeTimer;
+  window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(draw, 100); });
+  for (const key of ["a","b"]) el("r-"+key).onchange = async () => {
+    const version = ++state.version[key]; state.files[key] = null; draw();
+    try {
+      const file = el("r-"+key).files[0], run = StudioResearch.events(await read(file), file.name);
+      if (version !== state.version[key]) return;
+      state.files[key] = run; draw();
+      if (!state.files.a || !state.files.b) el("r-compare-status").textContent = "Run " + key.toUpperCase() + " loaded; choose the other run.";
+    } catch (e) { if (version === state.version[key]) el("r-compare-status").textContent = e.message; }
+  };
+})();
+</script>
 
 <script>
 "use strict";
