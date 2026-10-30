@@ -799,8 +799,9 @@ def extract(arxiv_id: str, tex: str) -> Arch:
         # GLU-family naming disagreement: if the top two are members of
         # one family, they agree on architecture and differ only in name.
         fam = FLAVOR_FAMILIES.get(fieldname, {})
-        if (second is not None and fam.get(top["value"]) and
-                fam.get(top["value"]) == fam.get(second["value"])):
+        if (second is not None and "rejection-elsewhere" not in top["cues"]
+                and fam.get(top["value"])
+                and fam.get(top["value"]) == fam.get(second["value"])):
             arch.fields[fieldname] = Finding(
                 fam[top["value"]], top["evidence"], verdict="family",
                 score=top["score"],

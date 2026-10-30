@@ -48,6 +48,30 @@ def test_rejected_runner_up_does_not_contest() -> None:
     assert "rejection-elsewhere" in candidates[1]["cues"]
 
 
+def test_veto_cannot_be_bypassed_by_family_verdict() -> None:
+    arch = extract("veto-family", "We use GeGLU in every layer. "
+                   "We use GeGLU in all blocks. We use SwiGLU in early runs. "
+                   "We choose not to adopt GeGLU.")
+    assert "activation" in arch.unresolved
+    assert "activation" not in arch.fields
+
+
+def test_eligible_third_candidate_still_contests() -> None:
+    from unittest.mock import patch
+    candidates = {"activation": [
+        {"value": "gelu", "score": 4.0, "evidence": "chosen", "cues": []},
+        {"value": "swiglu", "score": 3.8, "evidence": "rejected",
+         "cues": ["rejection-elsewhere"]},
+        {"value": "relu", "score": 3.7, "evidence": "also used", "cues": []},
+    ]}
+    with patch("fetch.score_flavors", return_value=candidates):
+        arch = extract("third-candidate", "Our model.")
+    finding = arch.fields["activation"]
+    assert finding.verdict == "contested"
+    assert finding.runner_up["value"] == "relu"
+    assert len(arch.mentions["activation"]) == 3
+
+
 def test_prose() -> None:
     arch = extract("0000.00000", FIXTURE_PROSE)
     got = {k: f.value for k, f in arch.fields.items()}
@@ -437,6 +461,8 @@ def test_emit_spec() -> None:
 
 
 if __name__ == "__main__":
+    test_veto_cannot_be_bypassed_by_family_verdict()
+    test_eligible_third_candidate_still_contests()
     test_gelu_case_spelling()
     test_rejected_runner_up_does_not_contest()
     test_compact_notation()

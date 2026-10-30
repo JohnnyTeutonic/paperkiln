@@ -28,6 +28,10 @@ Notable changes to microtorch. Format loosely follows
   cannot create a contested/family verdict; a further eligible alternative can still contest.
   Fifteen offline extraction tests pass, including the existing symmetric-use and top-veto controls;
   Ruff passes. Removed the completed lexical work from ROADMAP. No benchmark labels changed.
+  Independent edge review also prevents a rejected top candidate from bypassing its veto via a
+  same-GLU-family verdict; an eligible third candidate still creates a genuine contest. Seventeen
+  extraction tests pass. Cached-corpus audit is 82 correct / 17 abstain / 0 wrong versus 79/20/0;
+  both dated receipts preserve unchanged label and corpus identities.
 - **Completed operational/release work removed from ROADMAP** (30 Oct). The VM relay snapshot
   was already implemented in 76f59c66: it copies and checks a checkpoint set before transfer,
   preserves a pending snapshot until home, and commits local state last. The browser F16 release
