@@ -1,0 +1,70 @@
+{
+ "scope": "Partial host-read boundary instrumentation; CPU checks only, actual deferred-cache CUDA integration awaits root-owned remote job",
+ "guard_call_sites": {
+  "src/autograd.cpp": 6,
+  "src/nn.cpp": 13,
+  "src/depth_attend.cpp": 6,
+  "src/safetensors.cpp": 1,
+  "src/llama.cpp": 2,
+  "src/llama_attnres.cpp": 1,
+  "src/moe.cpp": 1
+ },
+ "remaining": "WIP ops.cpp/mtstudio/parity_model plus unreviewed host-read paths remain outside this audit; no full coverage claim",
+ "predicate_fix": "Released device-only activations clear stale; devcheck must also reject the released flag",
+ "cpu_debug_tests": [
+  "nn",
+  "llama_attnres",
+  "gpt2_device",
+  "devcheck_host_read"
+ ],
+ "cpu_debug_result": "4/4 PASS",
+ "disabled_macro_result": "PASS: argument expression not evaluated",
+ "vm_protocol_tests": "5/5 PASS: actual-proof enforcement, wrong GPU, build failure, CPU fallback and regression failure; all declared outputs always land",
+ "build": "/home/jonat/pk_devcheck_build",
+ "cpu_budget": {
+  "session": "paperkiln",
+  "cores": 1,
+  "gpu": false
+ },
+ "source_sha256": {
+  "CMakeLists.txt": "e7b16163ead294a6b8ac051db261edcadc132c79c7276c81be3e8b0a8770873a",
+  "include/microtorch/device_cache.hpp": "69b5dda14d19be1bd2cdf64b8cb650afe5e57106da259ea308079bd87f85dc8c",
+  "src/cuda_resident.cu": "4c5b5995551d680b3b53936d028c2c24358573054e49d53cab12cde34503ffab",
+  "src/autograd.cpp": "1f43e97883ba23786efaecc2bb75acfe601feb7fe33078bfb10f6182e10e9c6c",
+  "src/nn.cpp": "4c485aa352d5cf982455f8d9e7075676a09d43429ab91cdde1743d9bca4b497f",
+  "src/depth_attend.cpp": "f9262ec2ff605fd545bc68e4cb772d110c67d2a3cd7895c9a81039ba1c9421ab",
+  "src/safetensors.cpp": "918c41750e21a2c795e814a206eb1ad5537835d5f4bce69c21bceb7b28a4880c",
+  "src/llama.cpp": "40d4d18f860b4679f0081f860fd326703134656bdc5c512142fa8a629803c8c6",
+  "src/llama_attnres.cpp": "77276862ca750636c362cd6fd951398b043fd01f619d5c642f6ecd08619099ac",
+  "src/moe.cpp": "097e882c698219c322977dace4f84e379cd7718fea1257005e2b2a3f79f4191c",
+  "tests/test_devcheck_host_read.cpp": "2ca21c41c3d90db6fd3ce4832ba8f59ecdab30387b690f5bfc549445ab57b292",
+  "tests/test_devcheck_disabled.cpp": "ccc756cff62e5e976b8cde830b57f0a617199fb17e2cc8833b81935919a81cea",
+  "tools/colab_chat/devcheck_host_read_vm.py": "9773755955b7664bc025a387c577c1f8e02075425ea90ce629eccf3b458e17ee",
+  "tools/colab_chat/devcheck_host_read_20261030.json": "d0de153db609711ff79618714b5392562cc22c74e9af03970687595feaada42c"
+ },
+ "normalized_lf_source_sha256": {
+  "CMakeLists.txt": "e7b16163ead294a6b8ac051db261edcadc132c79c7276c81be3e8b0a8770873a",
+  "include/microtorch/device_cache.hpp": "2a28459fce686a2883d39427dedf961c49b6f354c05e716482482d925b5e03ee",
+  "src/cuda_resident.cu": "4c5b5995551d680b3b53936d028c2c24358573054e49d53cab12cde34503ffab",
+  "src/autograd.cpp": "1f43e97883ba23786efaecc2bb75acfe601feb7fe33078bfb10f6182e10e9c6c",
+  "src/nn.cpp": "4c485aa352d5cf982455f8d9e7075676a09d43429ab91cdde1743d9bca4b497f",
+  "src/depth_attend.cpp": "f9262ec2ff605fd545bc68e4cb772d110c67d2a3cd7895c9a81039ba1c9421ab",
+  "src/safetensors.cpp": "918c41750e21a2c795e814a206eb1ad5537835d5f4bce69c21bceb7b28a4880c",
+  "src/llama.cpp": "40d4d18f860b4679f0081f860fd326703134656bdc5c512142fa8a629803c8c6",
+  "src/llama_attnres.cpp": "77276862ca750636c362cd6fd951398b043fd01f619d5c642f6ecd08619099ac",
+  "src/moe.cpp": "097e882c698219c322977dace4f84e379cd7718fea1257005e2b2a3f79f4191c",
+  "tests/test_devcheck_host_read.cpp": "ed0548596bccfcbda5427acdb532b17552cb52e9daa16565a41b3108c04cf569",
+  "tests/test_devcheck_disabled.cpp": "863f6a291b18439208fb81c0c29a158d8242afbe2110145d9fe5292c2e661da8",
+  "tools/colab_chat/devcheck_host_read_vm.py": "9773755955b7664bc025a387c577c1f8e02075425ea90ce629eccf3b458e17ee",
+  "tools/colab_chat/devcheck_host_read_20261030.json": "e4f5853f7592d567d7902ca41b0d3250a0dca3734d37366339dcb1b636808ab4"
+ },
+ "line_endings_note": "device_cache.hpp historically CRLF, restored before commit; tested compiler input is equivalent after normal line-ending normalization.",
+ "preexisting_wip_preserved_sha256": {
+  "include/microtorch/ops.hpp": "042a85f145c7db942fb1eabab0e9f0c0790be5de8cabf2b9403e63568a79c65e",
+  "src/ops.cpp": "7c3776c389aea399b919bda7c07bcf0110520b7a7b6f227cce73df2d2e90c3aa",
+  "tests/test_flex.cpp": "a4f0f6d58d02bf75a2151c029d9162a01831c4ab7d27463cf8f5fa722a20e6df",
+  "tools/model_card.py": "c1fdaf5d4807ce303dc5f461f6f56d591d2013e987239ddc4621099a339d80d9",
+  "tools/mtstudio.cpp": "30c4bc8d4398ecf1d83b39116bf102f867746e3d095398f5e01e565c418ff4bf",
+  "tools/parity_model.hpp": "9b8013736e44d560964cd5fdc31d40d51e10e38a9106ad3e42a230fe804d0712"
+ }
+}

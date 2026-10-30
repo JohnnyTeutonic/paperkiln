@@ -92,6 +92,10 @@ add_library(microtorch STATIC
     src/posttrain/verifier.cpp
 )
 target_include_directories(microtorch PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+option(MICROTORCH_DEVCHECK "Assert materialization at audited host-read boundaries" OFF)
+if(MICROTORCH_DEVCHECK)
+    target_compile_definitions(microtorch PUBLIC MICROTORCH_DEVCHECK)
+endif()
 # nlohmann_json is PUBLIC: module headers declare their IR export
 # (microtorch/ir.hpp) through <nlohmann/json_fwd.hpp>.
 target_link_libraries(microtorch PUBLIC transformer_core nlohmann_json::nlohmann_json)
@@ -390,6 +394,16 @@ file(WRITE ${CMAKE_BINARY_DIR}/generated/mtstudio_chat_html.hpp
      "static const unsigned char kChatHtml[] = {${MTSTUDIO_CHAT_BYTES}};\n"
      "static const size_t kChatHtmlSize = sizeof(kChatHtml);\n")
 target_include_directories(mtstudio PRIVATE ${CMAKE_BINARY_DIR}/generated)
+
+# Debug host-read boundaries: CPU predicate/macro checks and real CUDA negatives.
+add_executable(test_devcheck_host_read tests/test_devcheck_host_read.cpp)
+target_link_libraries(test_devcheck_host_read PRIVATE microtorch)
+add_test(NAME devcheck_host_read COMMAND test_devcheck_host_read)
+# This target deliberately does not inherit microtorch's PUBLIC debug definition.
+add_executable(test_devcheck_disabled tests/test_devcheck_disabled.cpp)
+target_include_directories(test_devcheck_disabled PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include ${MICROTORCH_TCPP_DIR}/include)
+add_test(NAME devcheck_disabled COMMAND test_devcheck_disabled)
+
 
 # Word tokenizer pins: end-of-text as one token, legacy vocabs unchanged.
 add_executable(test_word_tokenizer tests/test_word_tokenizer.cpp)

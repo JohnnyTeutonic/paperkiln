@@ -1,0 +1,6 @@
+{
+ "_comment": "Bounded L4 DEVCHECK host-read integration and regression gate. Root watchdog owns launch and $2 cap. No corpus/model uploads or training; normal FINISHED means diagnostics landed, require gate_summary.pass and explicit CUDA/DEVCHECK proof.",
+ "max_parallel": 1,
+ "jobs": [{"name": "devcheck_host_read", "cmd": ["python3", "tools/colab_chat/devcheck_host_read_vm.py", "{out}"],
+ "outputs": ["gate_summary.json", "hardware.log", "nvcc.log", "configure.log", "build.log", "host_read_negative_positive.log", "gpt2_device_regression.log", "depth_attend_regression.log"]}]
+}

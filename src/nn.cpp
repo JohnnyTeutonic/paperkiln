@@ -5,6 +5,7 @@
 #include <stdexcept>
 
 #include "microtorch/device.hpp"
+#include "microtorch/device_cache.hpp"
 #include "microtorch/ir.hpp"
 
 namespace microtorch {
@@ -60,7 +61,10 @@ size_t Module::parameter_count() const {
 
 std::map<std::string, Matrix> Module::state_dict() const {
     std::map<std::string, Matrix> sd;
-    for (auto& [n, p] : named_parameters()) sd.emplace(n, p->data);
+    for (auto& [n, p] : named_parameters()) {
+        MT_DEVCHECK_HOST_READ(p->data, "Module::state_dict parameter copy");
+        sd.emplace(n, p->data);
+    }
     return sd;
 }
 
@@ -78,6 +82,7 @@ void Module::load_state_dict(const std::map<std::string, Matrix>& sd, bool stric
         if (m.rows() != it->second->data.rows() || m.cols() != it->second->data.cols()) {
             throw std::runtime_error("load_state_dict: shape mismatch at " + name);
         }
+        MT_DEVCHECK_HOST_READ(m, "Module::load_state_dict source copy");
         it->second->data = m;
         ++hit;
     }
@@ -432,6 +437,9 @@ void SGD::step() {
         }
         // B2.3a seam for the momentum-free case (no state to persist).
         if (mu_ == 0.0f && device::devops::sgd_step(p->data, p->grad, nullptr, lr, mu_)) continue;
+        MT_DEVCHECK_HOST_READ(p->data, "SGD::step parameter");
+        MT_DEVCHECK_HOST_READ(p->grad, "SGD::step gradient");
+        if (mu_ != 0.0f) MT_DEVCHECK_HOST_READ(vel_[k], "SGD::step velocity");
         for (size_t i = 0; i < p->data.rows(); ++i)
             for (size_t j = 0; j < p->data.cols(); ++j) {
                 float g = p->grad(i, j);
@@ -508,6 +516,10 @@ void AdamW::step() {
                 "off — do not toggle MICROTORCH_DEVICE_OPS mid-run");
         }
         device::materialize(p->grad);  // no-op unless the step left it on the device
+        MT_DEVCHECK_HOST_READ(p->grad, "AdamW::step gradient");
+        MT_DEVCHECK_HOST_READ(p->data, "AdamW::step parameter");
+        MT_DEVCHECK_HOST_READ(m_[k], "AdamW::step first moment");
+        MT_DEVCHECK_HOST_READ(v_[k], "AdamW::step second moment");
         for (size_t i = 0; i < p->data.rows(); ++i)
             for (size_t j = 0; j < p->data.cols(); ++j) {
                 const float g = p->grad(i, j);
@@ -662,6 +674,7 @@ Var AttnResStack::forward(const Var& h1) const {
 // ---- Muon ------------------------------------------------------------------
 
 Matrix newton_schulz5(const Matrix& G, int steps) {
+    MT_DEVCHECK_HOST_READ(G, "newton_schulz5 input copy");
     const float a = 3.4445f, b = -4.7750f, c = 2.0315f;
     const bool transposed = G.rows() > G.cols();
     Matrix X = transposed ? G.transpose() : G;
@@ -707,6 +720,9 @@ void Muon::step() {
         Var& p = params_[k];
         if (p->grad.rows() == 0) continue;
         Matrix& buf = buf_[k];
+        MT_DEVCHECK_HOST_READ(p->grad, "Muon::step gradient");
+        MT_DEVCHECK_HOST_READ(p->data, "Muon::step parameter");
+        MT_DEVCHECK_HOST_READ(buf, "Muon::step momentum");
         const size_t R = p->data.rows(), C = p->data.cols();
         Matrix upd(R, C);
         for (size_t i = 0; i < R; ++i)

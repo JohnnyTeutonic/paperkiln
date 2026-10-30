@@ -632,3 +632,26 @@ That leg is the thing whose absence allowed this.
 the constructor was overwriting it afterwards.)*
 
 </details>
+
+
+### Host-read debug boundaries, 30 October 2026 (partial audit)
+
+`MICROTORCH_DEVCHECK=ON` now enables assertions at audited host-read boundaries in
+`autograd.cpp`, `nn.cpp`, `depth_attend.cpp`, `llama.cpp`, `llama_attnres.cpp`,
+`moe.cpp` and safetensors serialization. The default remains OFF; a standalone
+compile test confirms macro arguments are not evaluated. The predicate now also
+rejects released device-only values: release clears the stale flag, so the former
+stale-only predicate missed them. No automatic materialization was added.
+
+CPU debug builds pass nn, llama_attnres, gpt2_device and the new host-read test.
+The latter checks stale/released predicate failures; actual CUDA cache integration
+is a separate, still-pending gate. Its strict command-only job requires L4, CUDA
+and DEVCHECK, then exercises a real stale Module::state_dict copy, a successful
+copy after materialize, and a released copy, followed by device regressions.
+Diagnostic FINISHED does not mean pass; inspect gate_summary.json. Failed phases
+still write every declared diagnostic, so the normal runner can stop the pod.
+
+Receipt: `docs/receipts/devcheck_host_read_cpu_20261030.json`. This is not a complete
+host-read audit: existing author work in ops.cpp, mtstudio and parity_model was
+preserved, and other host loops remain unreviewed. The open coverage item stays
+open until those paths are audited and actual device evidence is home.

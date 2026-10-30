@@ -47,8 +47,12 @@ Var depth_attend(const std::vector<Var>& sources, const Var& w, float eps, float
     auto rinv = cached(device::out_matrix(T, S));
     auto logit = cached(device::out_matrix(T, S));
     if (!device::devops::depth_attend_fwd(src, w->data, eps, scale, out, *alpha, *rinv, *logit)) {
-        for (const Matrix* m : src) device::materialize(*m);
+        for (const Matrix* m : src) {
+            device::materialize(*m);
+            MT_DEVCHECK_HOST_READ(*m, "depth_attend source");
+        }
         device::materialize(w->data);
+        MT_DEVCHECK_HOST_READ(w->data, "depth_attend query");
         const float* wq = w->data.get_data();
         const float fd = static_cast<float>(d);
 #pragma omp parallel for schedule(static)
@@ -114,9 +118,17 @@ Var depth_attend(const std::vector<Var>& sources, const Var& w, float eps, float
         if (!device::devops::depth_attend_bwd(src, wv->data, scale, *alpha, *rinv, *logit, self->grad, dsp,
                                               wv->requires_grad ? &dw : nullptr)) {
             device::materialize(self->grad);
-            for (const Matrix* m : src) device::materialize(*m);
+            MT_DEVCHECK_HOST_READ(self->grad, "depth_attend backward gradient");
+            for (const Matrix* m : src) {
+                device::materialize(*m);
+                MT_DEVCHECK_HOST_READ(*m, "depth_attend backward source");
+            }
             device::materialize(wv->data);
-            for (const Matrix* m : {alpha.get(), rinv.get(), logit.get()}) device::materialize(*m);
+            MT_DEVCHECK_HOST_READ(wv->data, "depth_attend backward query");
+            for (const Matrix* m : {alpha.get(), rinv.get(), logit.get()}) {
+                device::materialize(*m);
+                MT_DEVCHECK_HOST_READ(*m, "depth_attend backward cache");
+            }
             const float* wq = wv->data.get_data();
             const float fd = static_cast<float>(d);
             // coef(t, i) = dl_i r_i, kept for the query's gradient below.

@@ -1,4 +1,5 @@
 #include "microtorch/safetensors.hpp"
+#include "microtorch/device_cache.hpp"
 
 #include <cstdint>
 #include <fstream>
@@ -63,6 +64,7 @@ void save_safetensors(const std::string& path, const std::map<std::string, Matri
     nlohmann::json header;
     std::uint64_t offset = 0;
     for (const auto& [name, m] : tensors) {
+        MT_DEVCHECK_HOST_READ(m, "save_safetensors tensor serialization");
         const std::uint64_t nbytes =
             static_cast<std::uint64_t>(m.rows()) * m.cols() * sizeof(float);
         header[name] = {

@@ -201,6 +201,7 @@ Var LlamaBlock::forward_cached_rows(const Var& x, const std::vector<int>& pos, s
         qkv = ops::apply_rope(qkv_in, pos, rope_theta_, dk, rope_all_heads_);
     }
     device::materialize(qkv->data);
+    MT_DEVCHECK_HOST_READ(qkv->data, "llama.cpp materialized qkv");
     const Matrix& m = qkv->data;  // [n, 3d]: q | k | v
     for (size_t i = 0; i < n; ++i)
         for (size_t c = 0; c < d; ++c) {
@@ -492,6 +493,7 @@ Var Llama::route(const Var& h, std::vector<int>& depth, std::vector<float>& marg
     Var logits = rec_router->forward(h);  // [N, R]
     // Host-read: the depths set every later step's row sets (as MoE's top-k).
     device::materialize(logits->data);
+    MT_DEVCHECK_HOST_READ(logits->data, "llama.cpp materialized logits");
     depth.assign(N, 1);
     margin.assign(N, std::numeric_limits<float>::infinity());
     const size_t force = cfg.recursion.mor.force_depth;

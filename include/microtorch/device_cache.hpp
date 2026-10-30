@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <cstring>
 #include <string>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -299,7 +300,17 @@ void discard(const Matrix& m);
 // on CPU builds. LlamaBlock::forward uses it (~40% of a dense llama
 // step's activations, 20 Oct 2026).
 void release(const Matrix& m);
-// Throws if m is host-stale — the DEVCHECK assert. Call sites compile to
+namespace detail {
+// Shared CPU-testable predicate; CUDA supplies the actual value-cache flags.
+inline void check_host_read_state(bool stale, bool released, const char* where) {
+    if (released)
+        throw std::runtime_error(std::string("DEVCHECK: host read of released activation at ") + where);
+    if (stale)
+        throw std::runtime_error(std::string("DEVCHECK: host read of device-stale tensor at ") + where);
+}
+}  // namespace detail
+
+// Throws if m is host-stale or released — the DEVCHECK assert. Call sites compile to
 // nothing unless MICROTORCH_DEVCHECK is defined at build time.
 void devcheck_host_read(const Matrix& m, const char* where);
 #ifdef MICROTORCH_DEVCHECK

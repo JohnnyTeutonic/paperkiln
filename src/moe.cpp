@@ -82,6 +82,7 @@ Var MoEFFN::forward(const Var& x, MoEAux* aux) const {
     // (each expert's token list sets its matrix shapes), and [T, E] logits
     // are a few hundred KB; everything after the selection stays on device.
     device::materialize(logits->data);
+    MT_DEVCHECK_HOST_READ(logits->data, "moe.cpp materialized logits");
 
     // Top-k per token: descending logit, ties to the lower index. Selection
     // by logits equals selection by softmax probabilities (monotone).

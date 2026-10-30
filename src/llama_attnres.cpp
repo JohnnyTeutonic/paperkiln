@@ -80,6 +80,7 @@ Var attn_sub_cached(const LlamaBlock& b, const Var& x, const std::vector<int>& p
     Var qkv_in = ops::concat_cols({b.q_proj->forward(h), b.k_proj->forward(h), b.v_proj->forward(h)});
     Var qkv = ops::apply_rope(qkv_in, pos, b.rope_theta_, b.dk, b.rope_all_heads_);
     device::materialize(qkv->data);
+    MT_DEVCHECK_HOST_READ(qkv->data, "llama_attnres.cpp materialized qkv");
     const Matrix& m = qkv->data;
     for (size_t i = 0; i < n; ++i)
         for (size_t c = 0; c < d; ++c) {

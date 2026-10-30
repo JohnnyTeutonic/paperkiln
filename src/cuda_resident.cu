@@ -527,10 +527,10 @@ void release(const Matrix& m) {
 }
 
 void devcheck_host_read(const Matrix& m, const char* where) {
-    if (host_stale(m))
-        throw std::runtime_error(
-            std::string("DEVCHECK: host read of device-stale tensor at ") +
-            where);
+    const auto it = g_vcache.find(m.get_data());
+    const bool present = it != g_vcache.end();
+    detail::check_host_read_state(present && it->second.stale,
+                                  present && it->second.released, where);
 }
 
 namespace detail {

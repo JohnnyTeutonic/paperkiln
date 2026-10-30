@@ -41,6 +41,8 @@ void Variable::accumulate(const Matrix& g) {
     if (!device_side || !device::devops::axpy(grad, 1.0f, g)) {
         device::materialize(grad);
         device::materialize(g);
+        MT_DEVCHECK_HOST_READ(grad, "Variable::accumulate grad");
+        MT_DEVCHECK_HOST_READ(g, "Variable::accumulate input");
         grad += g;
     }
 }
@@ -79,6 +81,8 @@ void Variable::accumulate_cols(size_t c0, const Matrix& g) {
     if (dev_fresh) device::zero_if_uninit(grad);
     device::materialize(grad);
     device::materialize(g);
+    MT_DEVCHECK_HOST_READ(grad, "Variable::accumulate_cols grad");
+    MT_DEVCHECK_HOST_READ(g, "Variable::accumulate_cols input");
     for (size_t i = 0; i < g.rows(); ++i)
         for (size_t j = 0; j < g.cols(); ++j) grad(i, c0 + j) += g(i, j);
 }
@@ -138,7 +142,9 @@ Var checkpoint(const std::function<Var(const Var&)>& fn, const Var& x) {
     Matrix out_data;
     {
         NoGrad ng;
-        out_data = fn(x)->data;  // inner tape never exists
+        const Var inner = fn(x);  // inner tape never exists
+        MT_DEVCHECK_HOST_READ(inner->data, "checkpoint output copy");
+        out_data = inner->data;
     }
     // requires_grad is set unconditionally: fn may capture parameters the
     // segment's single recorded edge (x) cannot see, and under training
@@ -150,6 +156,7 @@ Var checkpoint(const std::function<Var(const Var&)>& fn, const Var& x) {
     out->backward_fn = [self, fn_copy]() {
         const Var& xin = self->parents[0];
         // Recompute the segment on a detached leaf copy of the input.
+        MT_DEVCHECK_HOST_READ(xin->data, "checkpoint input copy");
         Var x2 = make_var(xin->data, /*requires_grad=*/true);
         Var y2 = fn_copy(x2);
         if (y2->data.rows() != self->grad.rows() || y2->data.cols() != self->grad.cols()) {
