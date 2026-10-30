@@ -1017,7 +1017,7 @@ def emit_html(arch: Arch) -> str:
     for i, (k, f) in enumerate(arch.fields.items()):
         v = _html.escape(str(f.value))
         ev = _html.escape(f.evidence)
-        status = "extracted" if not f.verdict else f.verdict
+        status = _html.escape(str("extracted" if not f.verdict else f.verdict))
         rows.append(
             f'<tr class="fld" data-i="{i}"><td class="k">{_html.escape(k)}</td>'
             f'<td class="v">{v}</td><td class="st ok">{status}</td></tr>')
@@ -1026,7 +1026,7 @@ def emit_html(arch: Arch) -> str:
             ru = f.runner_up
             extra = (f'<div class="ev">contested with <b>'
                      f'{_html.escape(str(ru["value"]))}</b> '
-                     f'({ru["score"]}): &ldquo;'
+                     f'({_html.escape(str(ru["score"]))}): &ldquo;'
                      f'{_html.escape(ru.get("evidence", ""))}&rdquo;</div>')
         snips.append(
             f'<div class="snip" data-i="{i}"><div class="sk">{_html.escape(k)}'
@@ -1072,7 +1072,7 @@ def emit_html(arch: Arch) -> str:
   .note {{ color:var(--dim); font-size:.78rem; margin-top:.8rem; }}
 </style></head><body>
 <h1>diff-to-paper <span class="accent">{title}</span></h1>
-<div id="sub">arXiv:{arch.arxiv_id} &middot; every value below carries its
+<div id="sub">arXiv:{_html.escape(str(arch.arxiv_id))} &middot; every value below carries its
 evidence; unresolved fields are reported, never guessed</div>
 <div class="cols">
   <div class="panel"><h2>extracted architecture</h2>

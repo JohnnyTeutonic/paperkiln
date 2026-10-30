@@ -7,6 +7,10 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Extractor HTML field escaping** (30 Oct). Public-API identifiers, finding verdicts and
+  runner-up scores are escaped before HTML rendering, matching values/evidence and the new
+  HF comparison report. A regression covers all three formerly raw interpolation sites.
+
 - **Offline HF-config cross-check** (30 Oct). Both extractor CLIs accept `--hf-config PATH`.
   Explicit numeric aliases are compared with paper-derived primary fields and every size
   variant independently. Differences, missing values and source quotes remain visible in

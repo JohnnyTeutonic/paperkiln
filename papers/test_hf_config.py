@@ -155,3 +155,13 @@ def test_hf_agreement_cannot_verify_an_ineligible_paper_finding(verdict):
     assert row["paper_evidence"] == "A numerical mention: 256."
     assert report["primary"]["compared_fields"] == []
     assert arch.fields["d_model"].verdict == verdict
+
+
+def test_public_api_html_escapes_identifier_verdict_and_runner_up_score():
+    import html
+    payload = '<img src=x onerror=alert(1)>'
+    arch = Arch(payload, title="Safe title", fields={"d_model": Finding(
+        256, "Quoted size.", verdict=payload, runner_up={"value": 512, "score": payload})})
+    rendered = emit_html(arch)
+    assert payload not in rendered
+    assert rendered.count(html.escape(payload)) == 3
