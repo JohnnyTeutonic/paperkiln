@@ -1,0 +1,12 @@
+[
+ [
+  "/usr/bin/python3",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/experiments/tiny_chat_long_2026-10/analyze.py",
+  "--art",
+  "/mnt/c/ml_artifacts/tiny_chat",
+  "--e1-home",
+  "/mnt/c/ml_artifacts/tiny_chat/e1_60m_L8",
+  "--out",
+  "/mnt/c/ml_artifacts/tiny_chat/carry12_core_final/.incoming/analysis_carry12.json"
+ ]
+]

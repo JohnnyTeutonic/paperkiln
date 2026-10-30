@@ -12,7 +12,9 @@ where one of those documents carries a plan, this file wins.*
    E5, E1 at 20M/60M, recursion and MoR are home and analysed
    (`experiments/tiny_chat_2026-10/analysis_2026-10-28.json`). Remaining: the registered size
    extension's 20M/60M seeds 4-5 (all five 150M runs are home), Stage L0 on the registered 150M
-   pick, and Carry-12's full analysis after the remaining post summaries arrive. The size extension
+   pick, and Carry-12's registered HS1 extension review (B/S-gist seeds 4–5). The complete
+   three-seed Carry-12 core is analysed in `experiments/tiny_chat_long_2026-10/RESULTS.md`:
+   HT-SFT SUPPORTED, other primary tests unresolved; S-full does not trigger. The size extension
    rule has fired; its pins and 150M pick inputs passed
    `experiments/tiny_chat_2026-10/size/readiness_2026-10-30.json`.
 1. **The chat model (LOCAL_LLM_WORK.md E2).** Full preference judging at 256 new tokens

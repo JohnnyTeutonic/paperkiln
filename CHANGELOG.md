@@ -7,6 +7,13 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Carry-12 three-seed core complete** (30 Oct). The existing frozen finalizer published
+  all seven cells with seeds 1–3, no missing reports and all validity gates passing.
+  Independent source/input/report rehashes passed. HT-SFT is SUPPORTED (+9.16 points);
+  the other primary tests are unresolved. HS1 qualifies for its registered B/S-gist
+  seeds 4–5 extension review, while S-full does not trigger. Results and immutable
+  completion receipts are in `experiments/tiny_chat_long_2026-10/`; no new paid launch.
+
 - **Plain GPT2-flavour flex HF export** (30 Oct). Exact attention, pre LayerNorm, learned
   positions, tanh GELU and untied residual models map arbitrary positive depth/MLP width
   to GPT2Config. All 41 tensors of a three-layer, d_ff40 CPU fixture load bitwise; three

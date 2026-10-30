@@ -1,0 +1,39 @@
+{
+ "date": "2026-10-30",
+ "checks": [
+  {
+   "kind": "source",
+   "files": 36,
+   "mismatches": []
+  },
+  {
+   "kind": "input",
+   "files": 55,
+   "mismatches": []
+  },
+  {
+   "kind": "report",
+   "files": 3,
+   "mismatches": []
+  }
+ ],
+ "partial": false,
+ "seeds": [
+  1,
+  2,
+  3
+ ],
+ "missing": [],
+ "exact_core_cells": [
+  "B",
+  "D",
+  "P16",
+  "Sgist",
+  "TS",
+  "W512",
+  "X"
+ ],
+ "all_validity_gates_pass": true,
+ "original_published_reports": "/mnt/c/ml_artifacts/tiny_chat/carry12_core_final/reports",
+ "no_analysis_rerun": true
+}
