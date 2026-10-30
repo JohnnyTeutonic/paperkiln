@@ -1,0 +1,49 @@
+{
+  "utc": "2026-10-30T10:28:23.973261+00:00",
+  "implementation_commit": "68ccaf90c",
+  "fixture": "existing clean-source untied Llama-flavour flex,3 layers,d16,dff40,theta1234; no retraining",
+  "scope": "fresh interoperability verification and retained raw-row replay; historical receipts unchanged; not a model-quality or GPU result",
+  "native_binary_sha256": "fe1be5499e9592f4864377cbd6b292d7dd7c32d2dc9ef2e062c145a547914f00",
+  "tests": {
+    "WSL_pass": 208,
+    "WSL_skip": 1,
+    "Windows_evidence_pass": 26,
+    "independent_review": "preference reviewed provenance/publication/numeric checks; post-link interrupt regression passes"
+  },
+  "reports": [
+    {
+      "receipt": "roundtrip_0.json",
+      "rows": 8,
+      "max_abs_logit_error": 7.450580596923828e-08,
+      "all_prompt_ids_generated_ids_and_delta_match_historical": true
+    },
+    {
+      "receipt": "roundtrip_1.json",
+      "rows": 8,
+      "max_abs_logit_error": 5.960464477539063e-08,
+      "all_prompt_ids_generated_ids_and_delta_match_historical": true
+    },
+    {
+      "receipt": "roundtrip_2.json",
+      "rows": 8,
+      "max_abs_logit_error": 8.940696716308594e-08,
+      "all_prompt_ids_generated_ids_and_delta_match_historical": true
+    }
+  ],
+  "files_sha256": {
+    ".gitattributes": "8b9c3028d6467ff3be7c793141927841d70f47f52d0590677438f488ca154992",
+    "fixture_driver.py": "810c58aaff45d31857ae2fdc94118ea81dfef191703a31e701472654573e3321",
+    "README.md": "612662bd0ba415b6ccdacb827ac14fbd1a167172a57cfe375630203acb90699f",
+    "roundtrip_0.json": "953eb99e4e0a9f5aac1ef599305f06226cb1ded49e69273f3d470ec1e8552400",
+    "roundtrip_1.json": "96f2d333e85954d113e34aad240e86905d8b4ab77eae9e95a67cc9b14106af01",
+    "roundtrip_2.json": "23ce32ec4751a5aaa12ed42546da41a15a297bcac1143b0b00e5b1d4293cc78f",
+    "source_bpe.py": "25607be05b41881d0238796b616cb697031c8ebf89623bc4c4537f8aaf56de39",
+    "source_hf_export.py": "40e214fe9df347a126ec368ee91ae128bcdd0cfa17dbaf41587c1d7c5991b07d",
+    "source_hf_export_verify.py": "e27fe1332197842863b75c096352205b94a52105d63e5d5f881e67ebefe97230",
+    "source_llama3_bpe.py": "3d0426ba5632de17c5f2507d45e066b277b7bdb4334339b21330fcaed88dd135",
+    "tests.log": "1ac0a4434f382fec59239fd791989881d531d600c7f36b63b7fc20cf95c93fe3",
+    "roundtrip_0.json.evidence/logits.npz": "b4bf35ec6eef60a75d130211f4544b9ec8d3f525f0e1c2ab412f86e54ddf37fa",
+    "roundtrip_1.json.evidence/logits.npz": "39eb2784ca417533fb8f076671ba96b5bd9e2f1e698deb68467f104f08ca98f5",
+    "roundtrip_2.json.evidence/logits.npz": "2c58f67f52e1998c823a7a6bbeb661440705ef0b991fc2637007357d8f3462cf"
+  }
+}

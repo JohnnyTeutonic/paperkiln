@@ -1,0 +1,67 @@
+{
+ "status": "HF-PARITY-OK",
+ "prompt_ids": [
+  338,
+  16,
+  16,
+  155,
+  0,
+  7,
+  1371,
+  0
+ ],
+ "continuation_ids": [
+  2599,
+  860,
+  3323,
+  3644,
+  3323,
+  3644,
+  2170,
+  3090
+ ],
+ "mtstudio_argmax": [
+  2599,
+  860,
+  3323,
+  3644,
+  3323,
+  3644,
+  2170,
+  3090
+ ],
+ "max_abs_logit_error": 5.960464477539063e-08,
+ "atol": 0.0002,
+ "rtol": 0.0002,
+ "spec": "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/spec.json",
+ "scope": "raw token IDs, source tensor mapping and output logits; not chat rendering",
+ "score_spec_delta": {},
+ "mapped_tensors": 42,
+ "source_prompt_tokenizer_ids_checked": true,
+ "versions": {
+  "torch": "2.8.0+cu128"
+ },
+ "sha256": {
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/hf_export_verify.py": "e27fe1332197842863b75c096352205b94a52105d63e5d5f881e67ebefe97230",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/hf_export.py": "40e214fe9df347a126ec368ee91ae128bcdd0cfa17dbaf41587c1d7c5991b07d",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/llama3_bpe.py": "3d0426ba5632de17c5f2507d45e066b277b7bdb4334339b21330fcaed88dd135",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/bpe.py": "25607be05b41881d0238796b616cb697031c8ebf89623bc4c4537f8aaf56de39",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf_flex_llama_untied.gguf": "b7520c01af056c3be4d8414f8cad153f0358b5cebdec17ba6da1034eae60d814",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf_flex_llama_untied.safetensors": "975c4e8e9f1806d2a017708ae1fcfb7065dc485d5c0cd0c0b74e5805cf1b5f93",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/spec.json": "cdce617dfe1fabf74114ac352ace49fc5016a1c8ffc0f1b1a30b1e21423ba955",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/events.jsonl": "4b1ca601341ea66b9b0fb817f5dce66b993d35b2a8f16f458c4c85a07471b913",
+  "/home/jonat/hf_flex_llama_clean_20261030/build/mtstudio": "fe1be5499e9592f4864377cbd6b292d7dd7c32d2dc9ef2e062c145a547914f00",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf/config.json": "ab99cf0ff25f329be2389ec378fe58fb1c295cf773ffacf8e730df26c80362da",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf/export_receipt.json": "d2e050823cb55c34728d4c4c654c4d4c9114ab6b6da250b8db3dbd438dbbc819",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf/model.safetensors": "d91c65ae7e24e78283a137f3e5c33d02804d584367af6a09ad81c197ba9508e4",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf/tokenizer.json": "b3fedb08ec85d9f0899885102f844e51d4b845244e4d14d854f8e947c8a7c54b",
+  "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/untied/run/hf/tokenizer_config.json": "c2f4deb7a5748324ceac9ebf596750a15bc722ee93a0ff5618b286e3467ddb8e"
+ },
+ "verification_inputs_unchanged": true,
+ "evidence": {
+  "schema": 1,
+  "file": "roundtrip_1.json.evidence/logits.npz",
+  "bytes": 262918,
+  "sha256": "39eb2784ca417533fb8f076671ba96b5bd9e2f1e698deb68467f104f08ca98f5"
+ }
+}
