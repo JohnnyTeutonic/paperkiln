@@ -7,6 +7,17 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Smol CUDA runtime comparison recorded** (30 Oct, Ember 7b546d8). The existing
+  SmolLM2-135M F32 model passes 96 full-row/greedy gates and 24 immutable timing trials
+  on an L4 against eager HF; source, weights and raw trials independently replayed.
+  Decode medians are 3.80-3.95x faster on three synthetic prompt shapes, including
+  synchronous CPU-ID to CPU-row transfers and runtime wrappers. This is a scoped
+  runtime result, not isolated-kernel, chat or model-quality evidence. Gemma CUDA
+  remains unmeasured and unqueued. Receipt:
+  `../ember.cpp/experiments/hf_cuda_2026-10-30/receipts/smol_v3_20261030_final.json`.
+  ROADMAP now distinguishes the 49-CTest/65-integration publication checks from
+  pending GitHub CI and the 17 pre-existing whole-file formatting failures.
+
 - **HF export publication and durable numerical evidence** (30 Oct). Complete staging,
   explicit overwrite, caught-failure rollback and stale-loader refusal protect existing exports
   (fe9271589). New parity receipts atomically publish hashed float32 HF/native rows and support

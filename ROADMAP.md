@@ -25,11 +25,14 @@ where one of those documents carries a plan, this file wins.*
    `experiments/chat_general/RESULTS.md`, "The full run" (00ecd0d4); judging and training remain pending,
    with the recorded $200 total cap including the cache and held-out side-by-side gate.
 
-The last recorded CI status is green on all three workflows (Code Quality, the test
-suite with its Python suites and the fetcher drift check, and the wheel
-build with its smoke test), and the chat-v1 release serves the quickstart's
-ready-made model. One open choice: cppcheck and Valgrind still run as
-advisory steps that cannot fail the build.
+The 30 Oct publication integration passes all 49 CPU CTests and 65 targeted Python
+integration tests. Changed C++ ranges pass clang-format 18 checks, but 17 files
+retain whole-file formatting failures at or below the exact pre-existing baseline;
+this is not an all-green CI claim. GitHub CI for the new default-branch publication
+is pending. Source-bound evidence is in
+`docs/receipts/publication_lowbit_qktemp_20261030/`. The chat-v1 release serves the
+quickstart's ready-made model. cppcheck and Valgrind still run as advisory steps
+that cannot fail the build.
 
 ## 3b. Environment traps found 17 Oct 2026
 
@@ -135,9 +138,15 @@ advisory steps that cannot fail the build.
   on the CPU and on CUDA. CPU comparison is complete for SmolLM2-135M and Gemma3-270M
   at three lengths (strict full-row parity); paired AVX2 improves prefill 2.38-2.87x
   and decode 1.04-1.50x but remains slower than Transformers. Evidence:
-  `../ember.cpp/experiments/hf_cpu_2026-10-30/`. Remaining: matched CUDA speed comparison.
-  A separate synchronized harness is prepared (`../ember.cpp/experiments/hf_cuda_2026-10-30/`),
-  with 13 offline contracts and an actual CPU-only fallback-refusal check. No CUDA timing result yet.
+  `../ember.cpp/experiments/hf_cpu_2026-10-30/`. The SmolLM2-135M CUDA subset is now complete:
+  actual L4, FP32, one host thread and eager HF, with 96 full-row/greedy parity checks
+  and 24 immutable ABBA timing trials independently replayed. Ember decode medians
+  are 3.80-3.95x faster on these synthetic runtime workloads; the 512-token prefill
+  medians are close and four observations do not establish a broad prefill advantage.
+  Timers include synchronous CPU-ID to CPU-row transfers and runtime dispatch, rather
+  than isolated kernels or chat. See the scoped results and exact receipt in
+  `../ember.cpp/experiments/hf_cuda_2026-10-30/` (Ember commit 7b546d8).
+  Remaining: Gemma3-270M has no CUDA comparison result and is not queued.
 - **Browser performance and remaining device gates** (LOCAL_LLM_WORK.md E9, E10).
   The IR family and recurrence paths are built in WebAssembly/WebGPU. The 28 Oct hardware
   receipt (`../ember.cpp/experiments/webgpu_gpu_2026-10-27/`) covers the existing tiny families,
