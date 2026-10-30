@@ -13,3 +13,5 @@ experiments/chat_general/receipts/hf_flex_gpt2_roundtrip_2026-10-30/* -text
 # Frozen analysis receipts preserve published hashes across Windows checkouts.
 experiments/tiny_chat_long_2026-10/receipts/core_2026-10-30/* -text
 experiments/benchmarks_2026-10-26/receipts/attnres_cpu_backend_audit_2026-10-30.json -text
+experiments/tiny_chat_long_2026-10/hs1_extension_*.json -text
+tools/colab_chat/carry12_hs1_*.json -text

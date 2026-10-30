@@ -1,0 +1,12 @@
+{
+ "commit": "7baf6d95f79b9cc543705e9b510bcbfeb5c18a63",
+ "parent": "3dc818b2476b0957b1337b4c9af22474b76350b5",
+ "branch": "refs/heads/codex/carry12-hs1-extension-20261030",
+ "only_changed_paths": [
+  "experiments/tiny_chat_long_2026-10/hs1_extension_manifest.json",
+  "tools/colab_chat/carry12_hs1_B_r4.json",
+  "tools/colab_chat/carry12_hs1_B_r5.json",
+  "tools/colab_chat/carry12_hs1_Sgist_r4.json",
+  "tools/colab_chat/carry12_hs1_Sgist_r5.json"
+ ]
+}
