@@ -46,6 +46,11 @@ def source_prompt_ids(source_gguf, text):
     if kind == "bpe":
         import bpe
         return bpe.read_gguf(str(source_gguf)).encode(text)
+    if kind in (None, "word", "wordlevel"):
+        from hf_export import legacy_word_vocab, legacy_word_ids, legacy_word_tokenizer
+        tokens = legacy_word_vocab(source_gguf)
+        legacy_word_tokenizer(tokens)  # same explicit supported-vocabulary contract
+        return legacy_word_ids(tokens, text)
     raise ValueError("source tokenizer is unsupported for independent token-ID parity: " + repr(kind))
 
 

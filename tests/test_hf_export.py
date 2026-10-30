@@ -190,7 +190,7 @@ def test_native_rejects_invalid_layout_or_ranked_merge(native_fixture, monkeypat
 
 
 @pytest.mark.parametrize("kind", [None, "word", "wordlevel"])
-def test_legacy_word_level_export_cannot_silently_change_token_ids(tmp_path, monkeypatch, kind):
+def test_legacy_word_level_export_preserves_source_token_ids(tmp_path, monkeypatch, kind):
     # Native ASCII word encoding yields [hello, !, !, it's]; HF Whitespace
     # previously produced [UNK, UNK, it, UNK, s] for this same example.
     import llama3_bpe
@@ -199,20 +199,137 @@ def test_legacy_word_level_export_cannot_silently_change_token_ids(tmp_path, mon
     old = Tokenizer(models.WordLevel(vocab, unk_token="<unk>"))
     old.pre_tokenizer = pre_tokenizers.Whitespace()
     assert old.encode("Hello!! it's").ids != [1, 2, 2, 3]
-    monkeypatch.setattr(llama3_bpe, "read_gguf_kv", lambda *a: {"tokenizer.ggml.model": kind})
-    with pytest.raises(ValueError, match="legacy word-level HF export is unsupported"):
-        hf_export.write_tokenizer(tmp_path, list(vocab), "legacy.gguf")
-    assert not (tmp_path / "tokenizer.json").exists()
+    monkeypatch.setattr(llama3_bpe, "read_gguf_kv", lambda *a: {"tokenizer.ggml.model": kind, "tokenizer.ggml.tokens": list(vocab)})
+    hf_export.write_tokenizer(tmp_path, list(vocab), "legacy.gguf")
+    assert Tokenizer.from_file(str(tmp_path / "tokenizer.json")).encode("Hello!! it's").ids == [1, 2, 2, 3]
 
 
-def test_missing_gguf_cannot_select_unchecked_wordlevel_fallback(tmp_path):
-    with pytest.raises(ValueError, match="legacy word-level HF export is unsupported"):
-        hf_export.write_tokenizer(tmp_path, ["<unk>", "hello"])
+def test_explicit_legacy_vocabulary_without_gguf_is_supported(tmp_path):
+    from tokenizers import Tokenizer
+    hf_export.write_tokenizer(tmp_path, ["<unk>", "hello"])
+    assert Tokenizer.from_file(str(tmp_path / "tokenizer.json")).encode("HELLO").ids == [1]
 
 
-@pytest.mark.parametrize("kind", [None, "word", "wordlevel", "unknown"])
+@pytest.mark.parametrize("kind", ["unknown", "sentencepiece"])
 def test_verifier_refuses_unsupported_source_encoder(monkeypatch, kind):
     import llama3_bpe
     monkeypatch.setattr(llama3_bpe, "read_gguf_kv", lambda *a: {"tokenizer.ggml.model": kind})
     with pytest.raises(ValueError, match="unsupported for independent token-ID parity"):
         verify.source_prompt_ids("unused.gguf", "Hello!! it's")
+
+
+LEGACY_TOKENS = ["<unk>", "hello", "world", "it's", "123", "a", "z", "<|endoftext|>", "caf\u00e9", "\u201ci", "\U0001f600"] + list(".,!?;:()<>|/-_+=$[]{}") + ["\x00", "\x7f"]
+
+
+def legacy_decode(tokens, ids):
+    out = ""
+    for i in ids:
+        token = tokens[i]
+        if out and not (len(token) == 1 and token in ".,!?;:)") and not out.endswith("("):
+            out += " "
+        out += token
+    return out
+
+
+@pytest.mark.parametrize("with_eos", [False, True])
+def test_legacy_serialized_unicode_bytes_punctuation_controls_and_digits(tmp_path, with_eos):
+    from tokenizers import Tokenizer
+    import random
+    tokens = [t for t in LEGACY_TOKENS if with_eos or t != "<|endoftext|>"]
+    tok = hf_export.legacy_word_tokenizer(tokens)
+    path = tmp_path / "legacy.json"
+    tok.save(str(path))
+    loaded = Tokenizer.from_file(str(path))
+    cases = native_cases() + ["HELLO!! it's", "hello<|endoftext|>world", "<|ENDOFTEXT|>", "(hello,world!)", "123 12345"]
+    for text in cases:
+        want = hf_export.legacy_word_ids(tokens, text)
+        assert loaded.encode(text, add_special_tokens=False).ids == want, repr(text)
+        assert loaded.decode(want, skip_special_tokens=False) == legacy_decode(tokens, want), repr(text)
+    rng = random.Random(840)
+    for _ in range(1000):
+        ids = [rng.randrange(len(tokens)) for _ in range(rng.randrange(0, 30))]
+        assert loaded.decode(ids, skip_special_tokens=False) == legacy_decode(tokens, ids)
+
+
+@pytest.mark.parametrize("bad", [[], [""], ["a", "a"], ["<unk>", "a b"], ["<unk>", "!!"]])
+def test_legacy_nonrepresentable_vocabulary_remains_refused(bad):
+    with pytest.raises(ValueError, match="legacy word-level HF export requires"):
+        hf_export.legacy_word_tokenizer(bad)
+
+
+@pytest.fixture(scope="module")
+def legacy_cpp_reference(tmp_path_factory):
+    import shutil
+    import subprocess
+    compiler = shutil.which("g++") or shutil.which("c++")
+    if not compiler:
+        pytest.skip("C++ compiler needed for independent C-locale legacy reference")
+    root = Path(__file__).resolve().parents[1]
+    out = tmp_path_factory.mktemp("legacy_cpp") / "word_reference"
+    result = subprocess.run([compiler, "-std=c++17", "-O1", "-I", str(root / "include"),
+                             str(root / "tests/word_tokenizer_reference.cpp"), "-o", str(out)],
+                            capture_output=True, timeout=60)
+    assert result.returncode == 0, result.stderr.decode(errors="replace")
+    return out
+
+
+@pytest.mark.parametrize("with_eos", [False, True])
+def test_legacy_serialized_ids_and_decode_match_cpp_bytes(tmp_path, legacy_cpp_reference, with_eos):
+    import subprocess
+    from tokenizers import Tokenizer
+    tokens = [t for t in LEGACY_TOKENS if with_eos or t != "<|endoftext|>"]
+    vocab = tmp_path / "tokens.hex"
+    vocab.write_text("".join(t.encode("utf-8").hex() + "\n" for t in tokens))
+    cases = native_cases() + ["HELLO!! it's", "hello<|endoftext|>world", "<|ENDOFTEXT|>", "123 12345"]
+    result = subprocess.run([str(legacy_cpp_reference), str(vocab)],
+                            input="".join(t.encode("utf-8").hex() + "\n" for t in cases).encode(),
+                            capture_output=True, timeout=60)
+    assert result.returncode == 0, result.stderr.decode(errors="replace")
+    path = tmp_path / "tokenizer.json"
+    hf_export.legacy_word_tokenizer(tokens).save(str(path))
+    tok = Tokenizer.from_file(str(path))
+    rows = result.stdout.decode("ascii").splitlines()
+    assert len(rows) == len(cases)
+    for text, row in zip(cases, rows):
+        encoded, decoded = row.split("\t")
+        ids = [int(i) for i in encoded.split(",")] if encoded else []
+        assert ids == hf_export.legacy_word_ids(tokens, text) == tok.encode(text).ids, repr(text)
+        assert tok.decode(ids, skip_special_tokens=False).encode("utf-8").hex() == decoded, repr(text)
+
+
+@pytest.mark.parametrize("tokens", [[b"\xff"], ["good", b"\xc3"]])
+def test_legacy_invalid_utf8_source_tokens_never_silently_replace(monkeypatch, tokens):
+    import llama3_bpe
+    monkeypatch.setattr(llama3_bpe, "read_gguf_kv", lambda *a: {"tokenizer.ggml.tokens": tokens})
+    with pytest.raises(ValueError, match="valid UTF-8 GGUF token strings"):
+        hf_export.legacy_word_vocab("unused.gguf")
+
+
+
+def test_legacy_auto_tokenizer_reload_keeps_original_spacing_and_control_semantics(tmp_path):
+    transformers = pytest.importorskip("transformers")
+    hf_export.write_tokenizer(tmp_path, LEGACY_TOKENS)
+    tok = transformers.AutoTokenizer.from_pretrained(tmp_path, local_files_only=True)
+    for text in ["HELLO!! it's", "hello<|endoftext|>world", "<|ENDOFTEXT|>", "\u4e2d\U0001f600", "\x00\x7f", "(hello,world!)"]:
+        ids = hf_export.legacy_word_ids(LEGACY_TOKENS, text)
+        assert tok.encode(text, add_special_tokens=False) == ids
+        assert tok.decode(ids, skip_special_tokens=False) == legacy_decode(LEGACY_TOKENS, ids)
+    assert tok.clean_up_tokenization_spaces is False
+
+
+
+def test_legacy_arbitrary_generated_ids_decode_like_cpp(tmp_path, legacy_cpp_reference):
+    import random
+    import subprocess
+    tokens = LEGACY_TOKENS
+    vocab = tmp_path / "tokens.hex"
+    vocab.write_text("".join(t.encode("utf-8").hex() + "\n" for t in tokens))
+    rng = random.Random(841)
+    sequences = [[rng.randrange(len(tokens)) for _ in range(rng.randrange(0, 40))] for _ in range(1000)]
+    result = subprocess.run([str(legacy_cpp_reference), str(vocab)],
+                            input="".join("d:" + ",".join(map(str, ids)) + "\n" for ids in sequences).encode(),
+                            capture_output=True, timeout=60)
+    assert result.returncode == 0, result.stderr.decode(errors="replace")
+    tok = hf_export.legacy_word_tokenizer(tokens)
+    for ids, row in zip(sequences, result.stdout.decode("ascii").splitlines(), strict=True):
+        assert tok.decode(ids, skip_special_tokens=False).encode("utf-8").hex() == row.split("\t")[1]

@@ -1,0 +1,53 @@
+{
+ "scope": "C-locale legacy word tokenizer; valid UTF-8 text and source vocabulary; exact token IDs and legacy readable decoding, not model quality",
+ "restrictions": "Invalid UTF-8 GGUF token bytes, empty/duplicate vocabulary entries, ASCII whitespace in tokens and multi-character tokens starting closing punctuation remain refused. No Unicode lowercasing or Unicode whitespace normalization.",
+ "seeds": [
+  300,
+  301,
+  841
+ ],
+ "results": [
+  {
+   "vocab": "corpus/data/vocab_tinystories_valid_v1/tinystories_vocab.gguf",
+   "vocab_sha256": "8c3cfa7d31c96e7b2b5f69123736f84e7def8fee3dc7b3793d1731f1a86605c9",
+   "tokens": 4096,
+   "cpp_serialized_auto_tokenizer_encode_decode_cases": 3015,
+   "arbitrary_generated_id_decode_cases": 1000,
+   "all_match": true,
+   "serialized_tokenizer": "/mnt/c/ml_artifacts/hf_legacy_tokenizer_parity_20261030/vocab_tinystories_valid_v1/tokenizer.json",
+   "serialized_tokenizer_sha256": "b3fedb08ec85d9f0899885102f844e51d4b845244e4d14d854f8e947c8a7c54b"
+  },
+  {
+   "vocab": "corpus/data/vocab_chat7b_cap4096_v1/chat7b_cap4096.gguf",
+   "vocab_sha256": "dba8b5f207cce60879265304dd8bf06876c37dc02131caf8d7542d889bbfa461",
+   "tokens": 4096,
+   "cpp_serialized_auto_tokenizer_encode_decode_cases": 3015,
+   "arbitrary_generated_id_decode_cases": 1000,
+   "all_match": true,
+   "serialized_tokenizer": "/mnt/c/ml_artifacts/hf_legacy_tokenizer_parity_20261030/vocab_chat7b_cap4096_v1/tokenizer.json",
+   "serialized_tokenizer_sha256": "ca6844a65fbc722bc7eb3b18d82aed183a729aa312b9b3805f51b6ac2aafc4cf"
+  },
+  {
+   "vocab": "corpus/data/tinychat_v2_4000/tinychat_vocab.gguf",
+   "vocab_sha256": "17e1ca75fa1a9b6a07bf8467b4311a1f956a14284f74a164b6100b5787f1170c",
+   "tokens": 259,
+   "cpp_serialized_auto_tokenizer_encode_decode_cases": 3015,
+   "arbitrary_generated_id_decode_cases": 1000,
+   "all_match": true,
+   "serialized_tokenizer": "/mnt/c/ml_artifacts/hf_legacy_tokenizer_parity_20261030/tinychat_v2_4000/tokenizer.json",
+   "serialized_tokenizer_sha256": "e08af7edfb87b034ac2afd486922ca171c7bbed9e0cd2de9b7ed48d962b3e654"
+  }
+ ],
+ "versions": {
+  "tokenizers": "0.22.1",
+  "transformers": "4.57.0"
+ },
+ "source_sha256": {
+  "tools/hf_export.py": "c24b2a94edc8e0f86d0a30bd7c9861db9c93a6d6c5a373e6edb51e8bc29815d4",
+  "tools/hf_export_verify.py": "74b7329465808edb39f7822d8665ca864027f555c3e2a4f27ab6aa22b0c37bec",
+  "tests/test_hf_export.py": "81f979db571f5482ac938667deacb487f1c32e170fe1caa193e2a3a8c60f46c1",
+  "tests/word_tokenizer_reference.cpp": "273ce973f956111ff704eb1ad0082c5bc11556f1a7bf29996f16b0739aa06c20",
+  "include/microtorch/word_tokenizer.hpp": "fb1b5dd1b86f6446d641641d8be7c94e86cd788aee4dfc2912849823d7a5394e",
+  "/home/jonat/hf_legacy_reference": "a79c891d9627cbae784676e34b1da347def68aeee6fa2f7fcb64f07116298f28"
+ }
+}

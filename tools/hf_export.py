@@ -13,7 +13,8 @@ Takes a finished llama-family mtstudio run directory (events.jsonl +
                            [out, in]; norm gammas squeezed [1,d] -> [d]
     tokenizer.json (+cfg)  exact llama-BPE reconstruction from GGUF, or
                            native paperkiln byte-BPE, preserving token IDs and
-                           byte decoding. Legacy word-level exports are refused.
+                           byte decoding; legacy word-level vocabularies use
+                           the C-locale byte scanner and original spacing.
 
 The receipt lives in tools/hf_export_verify.py: transformers loads the
 folder and greedy-generates ARGMAX-IDENTICAL continuations to
@@ -174,6 +175,86 @@ def native_bpe_tokenizer(gguf_path):
     return tok
 
 
+def legacy_word_tokenizer(tokens):
+    """Serializable C-locale wordtok semantics for lossless UTF-8 vocabularies.
+
+    UTF-8 input is still consumed byte by byte: non-ASCII bytes are separate
+    punctuation/unknown tokens, never Unicode letters or Unicode whitespace.
+    Refuse vocabulary shapes the serialized spacing decoder cannot preserve.
+    This matches the source process's initial C locale; custom C locales and
+    invalid UTF-8 byte-string APIs are outside the HF text-tokenizer contract.
+    """
+    from tokenizers import AddedToken, Regex, Tokenizer, decoders, models, normalizers, pre_tokenizers
+    if (not tokens or len(set(tokens)) != len(tokens) or
+            any(not t or any(c in " \t\n\r\v\f" for c in t)
+                or (len(t) > 1 and t[0] in ".,!?;:)") for t in tokens)):
+        raise ValueError("legacy word-level HF export requires unique nonempty UTF-8 tokens without ASCII whitespace "
+                         "or multi-character tokens beginning with closing punctuation")
+    bs = list(range(33, 127)) + list(range(161, 173)) + list(range(174, 256))
+    cs = list(bs)
+    next_code = 256
+    for byte in range(256):
+        if byte not in bs:
+            bs.append(byte)
+            cs.append(next_code)
+            next_code += 1
+    byte_map = dict(zip(bs, map(chr, cs)))
+    mapped = ["".join(byte_map[b] for b in t.encode("utf-8")) for t in tokens]
+    tok = Tokenizer(models.WordLevel({t: i for i, t in enumerate(mapped)}, unk_token=mapped[0]))
+    tok.normalizer = normalizers.Sequence([normalizers.Replace(chr(c), chr(c + 32)) for c in range(65, 91)])
+    whitespace = "".join(byte_map[b] for b in b" \t\n\r\v\f")
+    tok.pre_tokenizer = pre_tokenizers.Sequence([
+        pre_tokenizers.ByteLevel(add_prefix_space=False, use_regex=False),
+        pre_tokenizers.Split(Regex("[" + whitespace + "]+"), behavior="removed"),
+        pre_tokenizers.Split(Regex("[a-z0-9']+|[^a-z0-9']"), behavior="isolated")])
+    # Prefix each token before ByteLevel fuses the sequence, then reproduce
+    # wordtok::detokenize's exact seven attaching punctuation characters.
+    tok.decoder = decoders.Sequence([
+        decoders.Replace(Regex("^"), byte_map[32]), decoders.ByteLevel(),
+        *[decoders.Replace(" " + c, c) for c in ".,!?;:)"],
+        decoders.Replace("( ", "("), decoders.Strip(" ", 1, 0)])
+    if "<|endoftext|>" in tokens:
+        tok.add_special_tokens([AddedToken("<|endoftext|>", special=True, normalized=False)])
+    return tok
+
+
+def legacy_word_vocab(path):
+    """Read losslessly: GGUF invalid UTF-8 byte strings cannot be HF text tokens."""
+    from llama3_bpe import read_gguf_kv
+    tokens = read_gguf_kv(str(path), {"tokenizer.ggml.tokens"}).get("tokenizer.ggml.tokens")
+    if not isinstance(tokens, list) or any(not isinstance(t, str) for t in tokens):
+        raise ValueError("legacy word-level HF export requires valid UTF-8 GGUF token strings")
+    return tokens
+
+
+def legacy_word_ids(tokens, text):
+    """Independent byte-scanning mirror of C-locale wordtok::tokenize."""
+    vocab = {t.encode("utf-8"): i for i, t in enumerate(tokens)}
+    eos = b"<|endoftext|>"
+    raw, ids, word = text.encode("utf-8"), [], bytearray()
+    def flush():
+        if word:
+            ids.append(vocab.get(bytes(word), 0))
+            word.clear()
+    i = 0
+    while i < len(raw):
+        c = raw[i]
+        if c == 60 and eos in vocab and raw.startswith(eos, i):
+            flush()
+            ids.append(vocab[eos])
+            i += len(eos)
+            continue
+        if 65 <= c <= 90 or 97 <= c <= 122 or 48 <= c <= 57 or c == 39:
+            word.append(c + 32 if 65 <= c <= 90 else c)
+        else:
+            flush()
+            if c not in b" \t\n\r\v\f":
+                ids.append(vocab.get(bytes([c]), 0))
+        i += 1
+    flush()
+    return ids
+
+
 def write_tokenizer(hf_dir, tokens, gguf_path=None):
     if gguf_path:
         from llama3_bpe import from_gguf, read_gguf_kv
@@ -195,8 +276,15 @@ def write_tokenizer(hf_dir, tokens, gguf_path=None):
             return tok.get_vocab(), None
         if kind not in (None, "word", "wordlevel"):
             raise ValueError(f"unsupported tokenizer model: {kind!r}")
-    raise ValueError("legacy word-level HF export is unsupported: paperkiln lowercases ASCII words, "
-                     "keeps apostrophes and splits punctuation by byte; HF Whitespace is not equivalent")
+    if gguf_path:
+        tokens = legacy_word_vocab(gguf_path)
+    tok = legacy_word_tokenizer(tokens)
+    tok.save(os.path.join(hf_dir, "tokenizer.json"))
+    with open(os.path.join(hf_dir, "tokenizer_config.json"), "w", encoding="utf-8") as f:
+        json.dump({"tokenizer_class": "PreTrainedTokenizerFast", "model_max_length": 1_000_000,
+                   "clean_up_tokenization_spaces": False}, f, indent=1)
+    return tok.get_vocab(), tokens[0]
+
 
 
 def validate_model(m):
