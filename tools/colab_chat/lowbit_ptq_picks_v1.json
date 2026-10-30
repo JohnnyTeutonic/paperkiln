@@ -1,0 +1,225 @@
+{
+ "_comment": "LOCAL_LLM_WORK R3, experiments/lowbit_2026-10-28: post-training quantisation cost against F32 for pk_base_v1, pk_sft_v1, pick_e1_L16 and pick_e1_60m_L32. ptq_TAG: mtstudio export of the uploaded F32 weights to F32, Q8_0 (q8_0_all), Q4_K_M, Q4_K_S and Q4_0 GGUFs, each dequantised to untied F32 weights (dequant.py: ember's arithmetic), the two text panels (E1's panel files, uploaded) and the seven benchmarks (hfgguf on the quantised file). c5_TAG_V: Carry-5 of each pick's variant (ember aa50a61 on the quantised GGUF after the 40-item spot-check, else mtstudio). Uploads: TAG.safetensors (pick weights rebuilt by rebuild_weights.py), the vocabulary, panel_fineweb.ids, panel_dialogue.ids (placed under /content/chat/data by the ptq job). This file: pick_e1_L16, pick_e1_60m_L32 (the uploads of the other models stay off this VM).",
+ "max_parallel": 2,
+ "max_parallel_light": 3,
+ "jobs": [
+  {
+   "name": "ptq_pick_e1_L16",
+   "cmd": [
+    "python3",
+    "experiments/lowbit_2026-10-28/lowbit_vm.py",
+    "ptq",
+    "{out}",
+    "pick_e1_L16"
+   ],
+   "outputs": [
+    "summary_pick_e1_L16.json",
+    "deps.log"
+   ]
+  },
+  {
+   "name": "ptq_pick_e1_60m_L32",
+   "cmd": [
+    "python3",
+    "experiments/lowbit_2026-10-28/lowbit_vm.py",
+    "ptq",
+    "{out}",
+    "pick_e1_60m_L32"
+   ],
+   "outputs": [
+    "summary_pick_e1_60m_L32.json",
+    "deps.log"
+   ]
+  },
+  {
+   "name": "c5_pick_e1_L16_f32",
+   "after": "ptq_pick_e1_L16",
+   "light": true,
+   "cmd": [
+    "python3",
+    "experiments/lowbit_2026-10-28/lowbit_vm.py",
+    "carry5",
+    "{out}",
+    "pick_e1_L16",
+    "f32"
+   ],
+   "outputs": [
+    "summary.json",
+    "gen_engine.json",
+    "carry5/m/items.jsonl",
+    "carry5/m/gen.jsonl"
+   ]
+  },
+  {
+   "name": "c5_pick_e1_L16_q8_0_all",
+   "after": "ptq_pick_e1_L16",
+   "light": true,
+   "cmd": [
+    "python3",
+    "experiments/lowbit_2026-10-28/lowbit_vm.py",
+    "carry5",
+    "{out}",
+    "pick_e1_L16",
+    "q8_0_all"
+   ],
+   "outputs": [
+    "summary.json",
+    "gen_engine.json",
+    "carry5/m/items.jsonl",
+    "carry5/m/gen.jsonl"
+   ]
+  },
+  {
+   "name": "c5_pick_e1_L16_q4_k_m",
+   "after": "ptq_pick_e1_L16",
+   "light": true,
+   "cmd": [
+    "python3",
+    "experiments/lowbit_2026-10-28/lowbit_vm.py",
+    "carry5",
+    "{out}",
+    "pick_e1_L16",
+    "q4_k_m"
+   ],
+   "outputs": [
+    "summary.json",
+    "gen_engine.json",
+    "carry5/m/items.jsonl",
+    "carry5/m/gen.jsonl"
+   ]
+  },
+  {
+   "name": "c5_pick_e1_L16_q4_k_s",
+   "after": "ptq_pick_e1_L16",
+   "light": true,
+   "cmd": [
+    "python3",
+    "experiments/lowbit_2026-10-28/lowbit_vm.py",
+    "carry5",
+    "{out}",
+    "pick_e1_L16",
+    "q4_k_s"
+   ],
+   "outputs": [
+    "summary.json",
+    "gen_engine.json",
+    "carry5/m/items.jsonl",
+    "carry5/m/gen.jsonl"
+   ]
+  },
+  {
+   "name": "c5_pick_e1_L16_q4_0",
+   "after": "ptq_pick_e1_L16",
+   "light": true,
+   "cmd": [
+    "python3",
+    "experiments/lowbit_2026-10-28/lowbit_vm.py",
+    "carry5",
+    "{out}",
+    "pick_e1_L16",
+    "q4_0"
+   ],
+   "outputs": [
+    "summary.json",
+    "gen_engine.json",
+    "carry5/m/items.jsonl",
+    "carry5/m/gen.jsonl"
+   ]
+  },
+  {
+   "name": "c5_pick_e1_60m_L32_f32",
+   "after": "ptq_pick_e1_60m_L32",
+   "light": true,
+   "cmd": [
+    "python3",
+    "experiments/lowbit_2026-10-28/lowbit_vm.py",
+    "carry5",
+    "{out}",
+    "pick_e1_60m_L32",
+    "f32"
+   ],
+   "outputs": [
+    "summary.json",
+    "gen_engine.json",
+    "carry5/m/items.jsonl",
+    "carry5/m/gen.jsonl"
+   ]
+  },
+  {
+   "name": "c5_pick_e1_60m_L32_q8_0_all",
+   "after": "ptq_pick_e1_60m_L32",
+   "light": true,
+   "cmd": [
+    "python3",
+    "experiments/lowbit_2026-10-28/lowbit_vm.py",
+    "carry5",
+    "{out}",
+    "pick_e1_60m_L32",
+    "q8_0_all"
+   ],
+   "outputs": [
+    "summary.json",
+    "gen_engine.json",
+    "carry5/m/items.jsonl",
+    "carry5/m/gen.jsonl"
+   ]
+  },
+  {
+   "name": "c5_pick_e1_60m_L32_q4_k_m",
+   "after": "ptq_pick_e1_60m_L32",
+   "light": true,
+   "cmd": [
+    "python3",
+    "experiments/lowbit_2026-10-28/lowbit_vm.py",
+    "carry5",
+    "{out}",
+    "pick_e1_60m_L32",
+    "q4_k_m"
+   ],
+   "outputs": [
+    "summary.json",
+    "gen_engine.json",
+    "carry5/m/items.jsonl",
+    "carry5/m/gen.jsonl"
+   ]
+  },
+  {
+   "name": "c5_pick_e1_60m_L32_q4_k_s",
+   "after": "ptq_pick_e1_60m_L32",
+   "light": true,
+   "cmd": [
+    "python3",
+    "experiments/lowbit_2026-10-28/lowbit_vm.py",
+    "carry5",
+    "{out}",
+    "pick_e1_60m_L32",
+    "q4_k_s"
+   ],
+   "outputs": [
+    "summary.json",
+    "gen_engine.json",
+    "carry5/m/items.jsonl",
+    "carry5/m/gen.jsonl"
+   ]
+  },
+  {
+   "name": "c5_pick_e1_60m_L32_q4_0",
+   "after": "ptq_pick_e1_60m_L32",
+   "light": true,
+   "cmd": [
+    "python3",
+    "experiments/lowbit_2026-10-28/lowbit_vm.py",
+    "carry5",
+    "{out}",
+    "pick_e1_60m_L32",
+    "q4_0"
+   ],
+   "outputs": [
+    "summary.json",
+    "gen_engine.json",
+    "carry5/m/items.jsonl",
+    "carry5/m/gen.jsonl"
+   ]
+  }
+ ]
+}

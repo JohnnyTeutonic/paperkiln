@@ -1127,6 +1127,59 @@ Var rmsnorm(const Var& x, const Var& w) {
     });
 }
 
+// ---- quantisation-aware training (ops.hpp: BitNet b1.58's fake quantisers) ----
+float ternary_scale(const Matrix& w) {
+    double acc = 0.0;
+    const size_t n = w.rows() * w.cols();
+    const float* p = w.get_data();
+    for (size_t i = 0; i < n; ++i) acc += std::fabs(static_cast<double>(p[i]));
+    const float mean = n ? static_cast<float>(acc / static_cast<double>(n)) : 0.0f;
+    return 1.0f / std::max(mean, 1e-5f);
+}
+
+namespace {
+// The straight-through backward: the parent's gradient is the output's.
+void ste_backward(Variable* self) {
+    if (self->parents[0]->requires_grad) self->parents[0]->accumulate(self->grad);
+}
+}  // namespace
+
+Var ternary_ste(const Var& w) {
+    const size_t R = w->data.rows(), C = w->data.cols();
+    Matrix out = device::out_matrix(R, C);
+    if (!device::devops::ternary_fwd(w->data, out)) {
+        device::materialize(w->data);
+        const float s = ternary_scale(w->data);
+        const float* p = w->data.get_data();
+        float* y = out.get_data();
+        for (size_t i = 0; i < R * C; ++i) {
+            const float q = std::min(1.0f, std::max(-1.0f, std::nearbyint(p[i] * s)));
+            y[i] = q / s;
+        }
+    }
+    return record(std::move(out), {w}, ste_backward);
+}
+
+Var act_quant_ste(const Var& x, int bits) {
+    if (bits < 2 || bits > 8) throw std::runtime_error("act_quant_ste: bits must be in 2..8");
+    const size_t R = x->data.rows(), C = x->data.cols();
+    Matrix out = device::out_matrix(R, C);
+    if (!device::devops::act_quant_fwd(x->data, bits, out)) {
+        device::materialize(x->data);
+        const float qmax = static_cast<float>((1 << (bits - 1)) - 1), qmin = -qmax - 1.0f;
+        for (size_t i = 0; i < R; ++i) {
+            float m = 0.0f;
+            for (size_t j = 0; j < C; ++j) m = std::max(m, std::fabs(x->data(i, j)));
+            const float s = qmax / std::max(m, 1e-5f);
+            for (size_t j = 0; j < C; ++j) {
+                const float q = std::min(qmax, std::max(qmin, std::nearbyint(x->data(i, j) * s)));
+                out(i, j) = q / s;
+            }
+        }
+    }
+    return record(std::move(out), {x}, ste_backward);
+}
+
 namespace {
 // One RoPE pass over the fused [T, 3d] qkv in place: q and k heads h <
 // n_heads rotate the first n_rot dims of each head by sign * angle (sign -1:

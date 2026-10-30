@@ -2518,6 +2518,85 @@ bool sumsq(const std::vector<const Matrix*>& xs, std::vector<double>& out) {
     return true;
 }
 
+// ---- BitNet b1.58 fake quantisers (ops::ternary_ste / act_quant_ste) ----
+namespace {
+constexpr int QT_THREADS = 1024;
+
+// s = 1 / max(mean|w|, 1e-5): one block, each thread a strided double sum,
+// then a tree in shared memory (a fixed order, so run to run identical).
+__global__ void k_ternary_scale(const float* w, size_t n, float* s_out) {
+    __shared__ double sh[QT_THREADS];
+    double acc = 0.0;
+    for (size_t i = threadIdx.x; i < n; i += blockDim.x) acc += fabs(static_cast<double>(w[i]));
+    sh[threadIdx.x] = acc;
+    __syncthreads();
+    for (int s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (threadIdx.x < s) sh[threadIdx.x] += sh[threadIdx.x + s];
+        __syncthreads();
+    }
+    if (threadIdx.x == 0) {
+        const float mean = n ? static_cast<float>(sh[0] / static_cast<double>(n)) : 0.0f;
+        *s_out = 1.0f / fmaxf(mean, 1e-5f);
+    }
+}
+
+__global__ void k_ternary_apply(const float* w, const float* s_in, float* y, size_t n) {
+    const float s = *s_in;
+    for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += gridDim.x * blockDim.x) {
+        const float q = fminf(1.0f, fmaxf(-1.0f, rintf(w[i] * s)));
+        y[i] = q / s;
+    }
+}
+
+// One block per row: the row's absmax, then the int-grid rounding.
+__global__ void k_act_quant(const float* x, float* y, int C, float qmax) {
+    extern __shared__ float sh[];
+    const float* xr = x + static_cast<size_t>(blockIdx.x) * C;
+    float* yr = y + static_cast<size_t>(blockIdx.x) * C;
+    float m = 0.0f;
+    for (int j = threadIdx.x; j < C; j += blockDim.x) m = fmaxf(m, fabsf(xr[j]));
+    sh[threadIdx.x] = m;
+    __syncthreads();
+    for (int s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (threadIdx.x < s) sh[threadIdx.x] = fmaxf(sh[threadIdx.x], sh[threadIdx.x + s]);
+        __syncthreads();
+    }
+    const float sc = qmax / fmaxf(sh[0], 1e-5f);
+    const float qmin = -qmax - 1.0f;
+    for (int j = threadIdx.x; j < C; j += blockDim.x) {
+        const float q = fminf(qmax, fmaxf(qmin, rintf(xr[j] * sc)));
+        yr[j] = q / sc;
+    }
+}
+}  // namespace
+
+bool ternary_fwd(const Matrix& w, Matrix& y) {
+    if (!active()) return false;
+    const size_t n = w.rows() * w.cols();
+    In iw(w.get_data(), n);
+    Out oy(y.get_data(), n);
+    DBuf s(1);
+    k_ternary_scale<<<1, QT_THREADS>>>(iw.d, n, s.d);
+    k_ternary_apply<<<ew_grid(n), NTHREADS>>>(iw.d, s.d, oy.d, n);
+    cuda_check(cudaGetLastError(), "ternary_fwd");
+    oy.finish();
+    return true;
+}
+
+bool act_quant_fwd(const Matrix& x, int bits, Matrix& y) {
+    if (!active()) return false;
+    const int R = static_cast<int>(x.rows()), C = static_cast<int>(x.cols());
+    const size_t n = static_cast<size_t>(R) * C;
+    if (n == 0) return false;
+    In ix(x.get_data(), n);
+    Out oy(y.get_data(), n);
+    const float qmax = static_cast<float>((1 << (bits - 1)) - 1);
+    k_act_quant<<<R, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(ix.d, oy.d, C, qmax);
+    cuda_check(cudaGetLastError(), "act_quant_fwd");
+    oy.finish();
+    return true;
+}
+
 }  // namespace devops
 }  // namespace device
 }  // namespace microtorch

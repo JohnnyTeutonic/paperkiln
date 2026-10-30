@@ -131,6 +131,12 @@ struct LlamaConfig {
     size_t state_k = 0;
     std::string state_mask = "turn_state";
     bool turn_state() const { return state_k > 0 && state_mask == "turn_state"; }
+    // BitNet b1.58 quantisation-aware training (spec arch.custom.bitlinear;
+    // nn::Linear::BitLinear; LOCAL_LLM_WORK R3). Off by default. On: every
+    // block projection (q, k, v, o, gate, up, down) is a BitLinear; the
+    // token embedding, the norms and the head stay in float, as in BitNet.
+    // Dense blocks only (MoE, attention residuals and recursion refused).
+    Linear::BitLinear bitlinear;
 };
 
 // The applications before which inject "add" adds the embedding: the first

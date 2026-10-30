@@ -543,6 +543,14 @@ bool mul_col_dc(const Matrix& dy, const Matrix& x, Matrix& dc);
 bool transpose(const Matrix& x, Matrix& y);
 bool embed_scatter_add(const Matrix& g, const std::vector<int>& ids, Matrix& table_grad);
 bool sumsq(const std::vector<const Matrix*>& xs, std::vector<double>& out);
+// ops::ternary_ste / act_quant_ste forwards (BitNet b1.58's fake quantisers;
+// ops.hpp has the formulas). ternary_fwd: mean|w| in double over the whole
+// tensor (one block, a fixed order), then y = clamp(rint(w s), -1, 1) / s.
+// act_quant_fwd: one block per row, its absmax (exact in any order), then
+// y = clamp(rint(x s), qmin, qmax) / s. Backwards are the identity (the
+// tape's accumulate).
+bool ternary_fwd(const Matrix& w, Matrix& y);
+bool act_quant_fwd(const Matrix& x, int bits, Matrix& y);
 }  // namespace devops
 
 }  // namespace device
