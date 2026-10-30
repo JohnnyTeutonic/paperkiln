@@ -1,0 +1,195 @@
+{
+ "_comment": "Registered HS1 extension only, B seed 5. Derived from 3dc818b2476b0957b1337b4c9af22474b76350b5:tools/colab_chat/carry12_B_r1.json; only seed-dependent identifiers/training seeds and gate jobs path change; B omits unrelated D/TS/W512/chat jobs. Original data recipe including corpus seed 1, all CUDA/data gates and post outputs remain unchanged. No new selection or S-full. RunPod L4, cumulative cap $6, 80GB volume, max-hours 23.5; launch through existing watchdog only.",
+ "max_parallel": 1,
+ "max_parallel_light": 2,
+ "jobs": [
+  {
+   "name": "cuda_gate",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "cuda_gate",
+    "--out",
+    "{out}"
+   ],
+   "outputs": [
+    "cuda_gate.json",
+    "cuda_gate.log"
+   ]
+  },
+  {
+   "name": "data",
+   "light": true,
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_data.py",
+    "--out",
+    "{out}",
+    "--vocab",
+    "/content/chat/upload/vocab_llama3_bpe.gguf",
+    "--fineweb",
+    "corpus/data/fineweb_edu_shard0_v1",
+    "--shares",
+    "35",
+    "--mix-bytes",
+    "800000000",
+    "--max-epochs",
+    "4",
+    "--T",
+    "1024",
+    "--seed",
+    "1",
+    "--human-fetch",
+    "python3 corpus/fetchers/human_dialogue.py oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots --allow-sa --allow-nc --out-dir {human}",
+    "--sources",
+    "oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots",
+    "--require-pinned",
+    "--carry12",
+    "--long-sft",
+    "10:4",
+    "--template-sft"
+   ],
+   "outputs": [
+    "data.ledger.json",
+    "human_decontam.json",
+    "tsft_decontam.json"
+   ]
+  },
+  {
+   "name": "gate",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "gate",
+    "--out",
+    "{out}",
+    "--jobs",
+    "tools/colab_chat/carry12_hs1_B_r5.json",
+    "--choice",
+    "experiments/tiny_chat_2026-10/stage0/lr_choice.json",
+    "--design",
+    "experiments/tiny_chat_2026-10/design.json",
+    "--need-cuda-gate",
+    "experiments/tiny_chat_long_2026-10/stage0/cuda_gate_c12_s0.json",
+    "--need-file",
+    "experiments/tiny_chat_long_2026-10/PREREGISTRATION.md"
+   ],
+   "outputs": [
+    "gate.json"
+   ]
+  },
+  {
+   "name": "pt_c12_B_r5",
+   "model_name": "tc_c12_B_r5",
+   "after": [
+    "data",
+    "gate",
+    "cuda_gate"
+   ],
+   "relay_every_steps": 2500,
+   "spec": {
+    "name": "tc_60m_L8",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 768,
+      "layers": 8,
+      "heads": 12,
+      "d_ff": 2240
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/mix_s35.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "max_tokens": 0
+    },
+    "train": {
+     "steps": 10000,
+     "lr": 0.0005,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 500,
+     "eval_windows": 32,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 5,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 500,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   }
+  },
+  {
+   "name": "post_c12_B_r5",
+   "after": "pt_c12_B_r5",
+   "init_job": "pt_c12_B_r5",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "post",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_long_2026-10/specs/cell_B.json",
+    "--pt-weights",
+    "/content/chat/pt_c12_B_r5/tc_c12_B_r5.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_c12_B_r5",
+    "--sft-template",
+    "experiments/tiny_chat_long_2026-10/specs/sft_T1024.json",
+    "--seed",
+    "5",
+    "--cell",
+    "B",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember",
+    "--ember-commit",
+    "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "--ember-deterministic",
+    "--sft-batching",
+    "spec",
+    "--carry12-items",
+    "corpus/eval/carry12_v1.jsonl",
+    "--carry12-spot",
+    "20",
+    "--score-batch-tokens",
+    "16384",
+    "--sft-panels"
+   ],
+   "outputs": [
+    "summary.json",
+    "carry12/summary.json",
+    "carry12/m/items.jsonl",
+    "carry12/m/gen.jsonl",
+    "carry12/m/gen_engine.json",
+    "carry5/m/items.jsonl",
+    "carry5/m/gen.jsonl",
+    "gen_engine.json",
+    "sft_spec.json",
+    "sft/tc_sft_B_r5.safetensors",
+    "sft/tc_sft_B_r5.gguf"
+   ]
+  }
+ ]
+}

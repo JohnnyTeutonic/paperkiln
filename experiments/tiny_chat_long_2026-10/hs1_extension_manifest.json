@@ -1,0 +1,69 @@
+{
+ "parent": "3dc818b2476b0957b1337b4c9af22474b76350b5",
+ "rule": "PREREGISTRATION.md section 9: primary NOT_RESOLVED, same sign all3, seeds4/5 once",
+ "trigger_report_sha256": "a5d916ff3c7dd5f5dafe78e0188b3381b4d8a6d5a35b16e67b9a549ab98a99cc",
+ "HS1_trigger": {
+  "n": 3,
+  "per_seed": [
+   -0.1333,
+   -0.1514,
+   -0.05869999999999999
+  ],
+  "mean": -0.11446666666666666,
+  "sd": 0.04913596781720427,
+  "t": -4.034968501633925,
+  "crit": 4.303,
+  "ci90": [
+   -0.19730316626544125,
+   -0.03163016706789208
+  ],
+  "sesoi": 0.03,
+  "verdict": "NOT_RESOLVED",
+  "sign_agreement": "3/3",
+  "extend_to_5_seeds": true,
+  "HS1_alt": "undecided"
+ },
+ "S_full": false,
+ "jobs": {
+  "tools/colab_chat/carry12_hs1_B_r4.json": {
+   "sha256": "aa27eb95b5729326cdc8170d120d41fa1198ce166ec27966780e03b6ebcb1a35",
+   "source": "tools/colab_chat/carry12_B_r1.json",
+   "source_sha256": "3e7665d2a39db25b2f419f405748bdc5d49255156b6fb38f3ceffd7026df19ff",
+   "cell": "B",
+   "seed": 4
+  },
+  "tools/colab_chat/carry12_hs1_B_r5.json": {
+   "sha256": "6b10277ba287341bb1863b16e8422ce2ea6e5bd191d666c77310da7944a6e4eb",
+   "source": "tools/colab_chat/carry12_B_r1.json",
+   "source_sha256": "3e7665d2a39db25b2f419f405748bdc5d49255156b6fb38f3ceffd7026df19ff",
+   "cell": "B",
+   "seed": 5
+  },
+  "tools/colab_chat/carry12_hs1_Sgist_r4.json": {
+   "sha256": "6559af99e5abf493d468782f2767a7d0ad321b0c33d8432d3a6f9202e201ed58",
+   "source": "tools/colab_chat/carry12_Sgist_r1.json",
+   "source_sha256": "521c21ae2f751e4dc68404b71cf103f07c3a3fff84e460f64b28953a54f823fc",
+   "cell": "Sgist",
+   "seed": 4
+  },
+  "tools/colab_chat/carry12_hs1_Sgist_r5.json": {
+   "sha256": "f18d852ee595719225e310078d3cfce06efd50fca2a52c8505c2ce421d3f67d4",
+   "source": "tools/colab_chat/carry12_Sgist_r1.json",
+   "source_sha256": "521c21ae2f751e4dc68404b71cf103f07c3a3fff84e460f64b28953a54f823fc",
+   "cell": "Sgist",
+   "seed": 5
+  }
+ },
+ "expected_gpu_usd": 18.16,
+ "total_cumulative_cap_usd": 24,
+ "model_or_recipe_changes": false,
+ "data_seed": 1,
+ "excluded_jobs": [
+  "D",
+  "TS",
+  "W512",
+  "chat",
+  "Sfull"
+ ],
+ "analysis_scope": "B/Sgist five-seed HS1 only; unchanged global core remains three-seed"
+}
