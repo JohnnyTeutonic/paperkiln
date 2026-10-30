@@ -107,6 +107,19 @@ HS1 contrast, not a five-seed reanalysis of the other arms.
 and the three-point SESOI. The five differences are -13.33, -15.14, -5.87, -14.87
 and -14.13 points. Both validity gates pass.
 
+**History-parity limitation:** a subsequent complete receipt audit found six
+nonidentical full-history argmax checks among 174,240 recorded reply checks. The
+engine spot checks passed, but that does not mean every full-history check passed.
+B seed1 has three failures, B seed3 one, S-gist seed1 one and S-gist seed4 one;
+all are distinct primary-family items, before the target turn, with EOS stops and
+no dropped histories or server errors. The saved boolean flags do not retain the
+scorer argmax vectors or logit margins, so a near-tie/rounding explanation is not
+established. The numerical registered verdict above is preserved as computed;
+it must not be described as clearing complete greedy-history parity. The
+[exact affected-item audit](receipts/hs1_five_seed_20261030/history_argmax_audit.json)
+records this protocol limitation. S-full launch remains blocked on review of
+this limitation as well as funding; no threshold or history has been changed.
+
 | Five-seed cell | Self accuracy | Twin accuracy | Y12 | Gold-history Y12 |
 |---|---:|---:|---:|---:|
 | B | 43.014% | 52.522% | -9.508 points | -8.536 points |
