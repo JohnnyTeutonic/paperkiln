@@ -301,10 +301,19 @@ std::vector<std::string> read_errors(const json& doc) {
     const bool routed = !block->empty() && (*block)[0].is_object() && (*block)[0].value("op", "") == "depth_route";
     using Set = std::vector<std::string>;
     auto has = [](const Set& s, const std::string& x) { return std::find(s.begin(), s.end(), x) != s.end(); };
-    auto walk = [&](const char* sec, const json& nodes, size_t from, size_t to, Set& have) {
+    auto walk = [&](const char* sec, const json& nodes, size_t from, size_t to, Set& have, int64_t application = -1) {
         for (size_t j = from; j < to && j < nodes.size(); ++j) {
             const json& n = nodes[j];
             if (!n.is_object()) continue;
+            if (application >= 0 && n.contains("apply")) {
+                const json* active = &n["apply"];
+                if (active->is_object() && active->contains("per_layer") && (*active)["per_layer"].is_array() &&
+                    static_cast<size_t>(application) < (*active)["per_layer"].size())
+                    active = &(*active)["per_layer"][static_cast<size_t>(application)];
+                // Schema/refusal rules check malformed apply values separately. As the pinned Python
+                // reader does, only a literal false removes this application's node and its writes.
+                if (active->is_boolean() && !active->get<bool>()) continue;
+            }
             if (n.contains("in") && n["in"].is_array())
                 for (size_t k = 0; k < n["in"].size(); ++k) {
                     if (!n["in"][k].is_string()) continue;
@@ -313,7 +322,8 @@ std::vector<std::string> read_errors(const json& doc) {
                         errs.push_back(std::string("IR_SPEC ") + (routed && std::string(sec) != "embed" ? "7.4" : "3.5") +
                                        " (rule 36): " + sec + "[" + std::to_string(j) + "] " + n.value("op", "?") +
                                        " reads '" + x + "' (its input " + std::to_string(k) +
-                                       "), which no earlier node writes");
+                                       "), which no earlier node writes" +
+                                       (application >= 0 ? " (application " + std::to_string(application) + ")" : ""));
                 }
             for (const auto& o : node_outs(n))
                 if (!has(have, o)) have.push_back(o);
@@ -322,7 +332,18 @@ std::vector<std::string> read_errors(const json& doc) {
     Set have = {"tokens", "pos"};
     walk("embed", *embed, 0, embed->size(), have);
     if (!has(have, "x")) errs.push_back("IR_SPEC 3.5 (rule 36): the embed section writes no x");
-    if (routed) {
+    int64_t applications = 0;
+    if (doc["block"].contains("repeat") && doc["block"]["repeat"].is_number_integer())
+        applications = doc["block"]["repeat"].get<int64_t>();
+    bool conditional = false;
+    for (const auto& n : *block) conditional |= n.is_object() && n.contains("apply");
+    if (!routed && applications > 0 && conditional) {
+        // Revision 1.6: inactive nodes do not define values; active writes remain available in
+        // later applications. Keep original node indices rather than filtering a temporary list.
+        for (int64_t i = 0; i < applications; ++i)
+            walk("block", *block, 0, block->size(), have, i);
+        walk("head", *head, 0, head->size(), have);
+    } else if (routed) {
         Set embed_have = have;
         walk("block", *block, 0, 1, have);
         Set step = {"x", "pos"};

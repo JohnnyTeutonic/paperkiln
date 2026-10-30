@@ -99,6 +99,57 @@ int main(int argc, char** argv) {
     CHECK(r35 >= 3 && r36 >= 4 && accepted >= 13);
     std::printf("3. documents: %zu duplicate-member texts refused (rule 35), %zu unwritten reads refused (rule 36), "
                 "%zu documents to accept pass both\n", r35, r36, accepted);
+    // Revision 1.6 apply predicates affect definite writes per application (rule 36).
+    auto minimal = [] {
+        return ir::json::parse(R"JSON({
+            "embed":{"nodes":[{"op":"embedding","in":["tokens"],"out":"x"}]},
+            "block":{"repeat":2,"nodes":[]},
+            "head":{"nodes":[{"op":"linear","in":["x"],"out":"logits"}]}
+        })JSON");
+    };
+    auto doc = minimal();
+    doc["block"]["nodes"] = ir::json::parse(R"JSON([
+        {"op":"linear","in":["x"],"out":"unwritten","apply":false},
+        {"op":"add","in":["x","unwritten"],"out":"x"}
+    ])JSON");
+    auto errors = ir::read_errors(doc);
+    CHECK(!errors.empty());
+    CHECK(errors[0].find("block[1]") != std::string::npos);  // original index, not filtered index
+    CHECK(errors[0].find("application 0") != std::string::npos);
+    doc["block"]["nodes"][0]["apply"] = {{"per_layer", ir::json::array({false, false})}};
+    CHECK(!ir::read_errors(doc).empty());
+    doc["block"]["nodes"][0]["apply"] = true;
+    CHECK(ir::read_errors(doc).empty());
+
+    // A value from the first application remains available in the second and in the head.
+    doc = minimal();
+    doc["block"]["nodes"] = ir::json::parse(R"JSON([
+        {"op":"linear","in":["carried"],"out":"x","apply":{"per_layer":[false,true]}},
+        {"op":"linear","in":["x"],"out":"carried","apply":{"per_layer":[true,false]}}
+    ])JSON");
+    doc["head"]["nodes"][0]["in"] = ir::json::array({"carried"});
+    CHECK(ir::read_errors(doc).empty());
+    // A writer in this or a later application cannot retroactively justify an earlier read.
+    doc["block"]["nodes"][0]["apply"]["per_layer"] = ir::json::array({true, false});
+    errors = ir::read_errors(doc);
+    CHECK(!errors.empty());
+    CHECK(errors[0].find("block[0]") != std::string::npos);
+    CHECK(errors[0].find("application 0") != std::string::npos);
+
+    // Repair only the inactive leading dense branch of the original DeepSeek-style refusal:
+    // its leading dense layer then writes f, and later MoE applications overwrite it.
+    doc = ir::json::parse(slurp(suite + "refuse/apply_leaves_value_unwritten.json"))["doc"];
+    size_t repaired = 0;
+    for (auto& node : doc["block"]["nodes"])
+        if (node.contains("apply") && node["apply"].is_object() && node["apply"].contains("per_layer") &&
+            node["apply"]["per_layer"] == ir::json::array({false, false, false})) {
+            node["apply"]["per_layer"] = ir::json::array({true, false, false});
+            ++repaired;
+        }
+    CHECK(repaired == 5);
+    CHECK(ir::read_errors(doc).empty());
+    std::printf("4. conditional reads: scalar/per-layer refusals, original indices, cross-application persistence, "
+                "read-before-write and leading-dense/later-MoE acceptance\n");
     std::printf("ir_digest: all checks passed\n");
     return 0;
 }
