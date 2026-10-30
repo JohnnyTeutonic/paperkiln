@@ -139,3 +139,9 @@ def test_partial_output_cannot_publish(ready, monkeypatch):
     monkeypatch.setattr(ready, "run_analyses", run)
     assert ready.tick() == "HALTED"
     assert not (ready.output / "reports").exists()
+
+
+@pytest.mark.parametrize("key", ["corpus_path_sha256", "semantic_time_steps", "human_empathetic_v1/dialogues.jsonl",
+                               "hosted_corpus_sha256", "date_annotations", "elapsed_training_steps"])
+def test_similarly_named_semantic_fields_are_preserved(key):
+    assert f.data_ledger({key: "one"}) != f.data_ledger({key: "two"})

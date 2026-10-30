@@ -69,8 +69,7 @@ def data_ledger(value):
     """
     if isinstance(value, dict):
         result = {k: data_ledger(v) for k, v in value.items()
-                  if k != "out" and not any(t in k.lower() for t in
-                      ("time", "date", "host", "wall", "elapsed", "started", "path"))}
+                  if k not in ("out", "path")}
         if "args" in result:
             for key, default in (("carry12", False), ("template_sft", False), ("long_sft", "")):
                 result["args"].setdefault(key, default)
