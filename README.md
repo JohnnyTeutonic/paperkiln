@@ -297,18 +297,16 @@ python tools/reproduce.py S3-lrxopt --run             # re-run a finding: REPLIC
 
 ## In progress
 
-- **Tiny chat from scratch** (above): E5, E1 and the recursion arm on Colab, E1 at 60M on
-  RunPod; Carry-12 and its first stage follow E5 and E1.
-- **The general chat model:** `pk_base_v1` (d768 L12, 97.5M parameters, 0.98B tokens on the
-  16k Llama 3 scheme vocabulary) is trained and runs in ember; its fine-tune on the large SFT
-  set, then DPO on Claude-judged pairs (pilot: 200 prompts). The MoE, dense-control and d768 L12
-  fine-tunes are evaluated against the live model on the frozen chat prompts and the simple-QA
-  probe.
-- **After mixed precision:** a per-shape BF16 step profile decides the next speed-up: a fused
-  LM head and cross-entropy, or fewer kernel launches per step.
-- **Papers to models:** a gated or parameterised activation (DyT's learned alpha) in `expr`,
-  post-norm placement and relative position biases; Claude-drafted primitives in both engines,
-  accepted only through the same gates.
+- **Tiny chat from scratch** (above): Stage L0 evaluation on the registered 150M pick,
+  and the Carry-12 HS1 five-seed extension's remaining evaluations and final analysis.
+- **The general chat model:** full candidate sampling is complete; remaining work is
+  Claude-judged preference ranking, DPO + NLL, and the fixed held-out quality/parity gates.
+  The released `pk_sft_v1` already runs in ember and the browser chat.
+- **BF16 attention products:** the completed per-shape profile puts attention at 16–34%
+  of instrumented baseline GPU spans. Implementation, numerical/gradient parity and any
+  incremental end-to-end benefit remain to be established.
+- **Papers to models:** wire the verified LLM extractor into the Studio and expand the
+  source-checked benchmark. Architectures outside the supported grammar remain explicit refusals.
 
 [ROADMAP.md](ROADMAP.md) has the full list.
 
