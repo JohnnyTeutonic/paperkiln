@@ -1,0 +1,24 @@
+{
+  "status": "OFFLINE_REVIEW_READY_ONLY",
+  "tests_passed": 35,
+  "archive_parent_exact": true,
+  "archive_new_paths": 12,
+  "frozen_source_files_verified": 23,
+  "baseline_artifact_hashes_verified": 18,
+  "prospective_finalizer_status": "WAITING",
+  "pending_inputs": 30,
+  "analysis_output_absent": true,
+  "Sfull_watchdog_enabled": false,
+  "paid_calls": 0,
+  "runtime_data_preverified": false,
+  "raw_human_expected_hashes": 13,
+  "product_expected_hashes": 5,
+  "expected_gpu_hours_combined": [
+    18,
+    27
+  ],
+  "operational_ceiling_per_seed_hours": 23.5,
+  "combined_cap_usd": 21,
+  "source_freeze_sha256": "59fbc7a17087f305b9851b9f9c5ec2f08dd624b3906d6aea97fecea98c3090bc",
+  "readiness_sha256": "bf89ddf7bd6b2ee9e26727cbecc52d99d179e7195b667934b2f0eb12097d61f7"
+}

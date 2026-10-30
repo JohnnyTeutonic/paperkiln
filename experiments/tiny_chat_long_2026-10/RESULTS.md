@@ -215,3 +215,34 @@ Exact [L0 receipt](receipts/l0_150m_20261030/l0.json),
 and [raw-credit replay](receipts/l0_150m_20261030/raw_credit_audit.json) are retained.
 Raw generation and scored-item records have one home under
 `C:/ml_artifacts/tiny_chat/l0_colab/l0_pick_e1_150m_L8/pick_e1_150m_L8/`.
+
+### Conditional S-full packet prepared, unlaunched
+
+The offline packet is **READY_FOR_FUNDING_REVIEW_WITH_RUNTIME_DATA_GATE**, not authorised
+for an unconditional launch. [Exact commands, hashes and limits](receipts/sfull_prospective_20261031/readiness.json)
+are bound to archive `7edb0ca1b252bd9332094558a478d924568f8e52`, whose exact parent is the
+frozen `3dc818b2476b0957b1337b4c9af22474b76350b5`. Its only delta is twelve new paths:
+three S-full seed jobs, the L8 causal-mask spec and operational proof/verifier/boot files.
+Existing scientific source, registration, helpers, core results and five-seed HS1 stay unchanged.
+The spec clones S-gist L8 (d768, h12, d_ff2240, k4), changing only turn_state to causal;
+it does not use the unsupported Sfull/L16 fallback in make_jobs.
+
+The three initial seeds run **serially**, each with its own $7 cumulative cap and 23.5-hour
+operational clock: **$21 total**, expected **18–27 GPU-hours combined**, approximately $11–16
+before incidental storage. The combined estimate is not squeezed into one 23.5-hour campaign.
+Any later continuation requires explicit funding and remaining-budget review; no cap increase
+or new arm is automatic. The proposal preserves a $20 reserve; a top-up offer is not credited funds.
+
+The thirteen original human-source corpora and five finished data products are unavailable
+locally. Their expected byte hashes, the exact reference ledger, pinned vocabulary and
+`tokenizers==0.23.3` are specified. A future frozen rebuild must match every source, product,
+evaluation and decontamination hash **before pretraining**; mismatch blocks training, with no
+fallback or automatic rerun. Offline readiness does not claim those absent data bytes verified.
+
+The separate prospective HS0 finalizer retains the unchanged registered statistical helpers,
+initial seeds1–3 and full historical parity disclosure. New S-full raw checks must all pass,
+with each item's flag count matching its registered target turn; six historical HS1 failures
+remain a review blocker, not a waived threshold. The once-only smoke check is WAITING on thirty
+missing inputs and produced no analysis. The [offline validation](receipts/sfull_prospective_20261031/offline_validation.json)
+records 35 passing tests and the frozen source inventory. All proposed entries remain disabled;
+no compute was rented and no S-full training or result exists.

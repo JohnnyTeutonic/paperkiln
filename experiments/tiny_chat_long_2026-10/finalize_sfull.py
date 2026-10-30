@@ -108,11 +108,19 @@ class Finalizer(common.Finalizer):
         output=None,
         max_hours=96,
         campaign_state_root="/home/jonat",
+        source_freeze=None,
     ):
         super().__init__(art, state_dir, output, max_hours)
         self.campaign_state_root = Path(campaign_state_root).resolve()
+        self.source_freeze = Path(source_freeze).resolve() if source_freeze else None
 
     def state(self):
+        actual = {str(p.resolve()): common.sha(p) for p in sources()}
+        if self.source_freeze is not None:
+            frozen = common.load_json(self.source_freeze)
+            if frozen.get("source_hashes") != actual:
+                raise ValueError("prospective finalizer source freeze differs")
+            actual[str(self.source_freeze)] = common.sha(self.source_freeze)
         if self.state_path.exists():
             s = super().state()
             if s.get("cpu_budget") != str(common.CPU_BUDGET.resolve()):
@@ -127,7 +135,7 @@ class Finalizer(common.Finalizer):
             "art": str(self.art),
             "output": str(self.output),
             "campaign_state_root": str(self.campaign_state_root),
-            "source_hashes": {str(p.resolve()): common.sha(p) for p in sources()},
+            "source_hashes": actual,
             "funding_or_parity_approval_not_inferred": True,
             "cpu_budget": str(common.CPU_BUDGET.resolve()),
         }
@@ -261,6 +269,10 @@ class Finalizer(common.Finalizer):
                     flags = [v for x in rows for v in x["gate"]]
                     if (
                         len(flags) != 17424
+                        or any(
+                            len(x.get("gate", [])) != expected_targets[x["id"]]
+                            for x in rows
+                        )
                         or not all(v is True for v in flags)
                         or any(x.get("server_errors") != 0 for x in rows)
                     ):
@@ -481,6 +493,7 @@ def main():
     p.add_argument("--out", required=True)
     p.add_argument("--state-dir")
     p.add_argument("--campaign-state-root", default="/home/jonat")
+    p.add_argument("--source-freeze", type=Path, default=PROOF / "source_freeze.json")
     p.add_argument("--max-hours", type=float, default=96)
     p.add_argument("--calculate", action="store_true")
     p.add_argument("--once", action="store_true")
@@ -494,7 +507,9 @@ def main():
         p.error("--cpu-budget must name the workspace CPU budget wrapper")
     if not a.state_dir:
         p.error("--state-dir required")
-    f = Finalizer(a.art, a.state_dir, a.out, a.max_hours, a.campaign_state_root)
+    f = Finalizer(
+        a.art, a.state_dir, a.out, a.max_hours, a.campaign_state_root, a.source_freeze
+    )
     with common.DriverLock(f.home):
         while True:
             status = f.tick()

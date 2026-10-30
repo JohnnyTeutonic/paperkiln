@@ -158,10 +158,12 @@ def write(out):
                 baseline[path] = sha((art / path).read_bytes())
     manifest = {
         "baseline_artifact_sha256": baseline,
-        "status": "INCOMPLETE_PROSPECTIVE_PACKET_NOT_LAUNCHABLE",
+        "status": "READY_FOR_FUNDING_REVIEW_WITH_RUNTIME_DATA_GATE",
         "ready_for_launch": False,
         "archive_commit": None,
-        "engineering_remaining": ["immutable archive and launch pin", "readiness and source freeze", "independent finalizer review"],
+        "engineering_remaining": [
+            "independent funding/parity/readiness review before any enable"
+        ],
         "parent": PIN,
         "trigger_report_sha256": TRIGGER_SHA,
         "trigger": proof,
@@ -182,6 +184,7 @@ def write(out):
         "proposed_queue": "serial; no watchdog entry enabled; root funding review required",
         "review_blockers": [
             "actual funding above reserve",
+            "13 raw human corpora and 5 products unavailable locally; exact rebuild required; hash mismatch blocks PT, no fallback or automatic rerun",
             "six historical full-history argmax mismatches; no all-pass claim",
         ],
         "no_paid_launch": True,

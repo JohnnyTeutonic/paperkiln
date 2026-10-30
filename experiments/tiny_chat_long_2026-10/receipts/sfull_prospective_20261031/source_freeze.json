@@ -1,0 +1,30 @@
+{
+  "source_hashes": {
+    "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_long_2026-10/finalize_sfull.py": "f3b0b8a3481ea70aa1d381781a42bc1183b8e9d39a97efc07720ffc8ef13788c",
+    "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_long_2026-10/prepare_sfull.py": "0cb5931b282b93fb04f43c913244cc7d306400e56dec196010d6afe2a366d46e",
+    "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_long_2026-10/finalize_core.py": "598b3abe0a49b69c66e0d2e9f7e5688f9b1bc32fd919f33debcb4c8f65c001b3",
+    "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_long_2026-10/analyze.py": "17dab803cef88e1d6e8aeecc4186925dc98d48d1745bf5cb489bb3f0f004f41e",
+    "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_long_2026-10/PREREGISTRATION.md": "ca45477f11326edfc5ed6e5529ea85cbf5b1625258ed45c588f49a0426e7b4e6",
+    "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_2026-10/analyze.py": "ff5293b144230d0fc7a0b1e31ebe8dfae7a08aeada2f40ab1dc822c24bb14d64",
+    "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_2026-10/analyze_x5.py": "b11388477a7fa9c139acac63530350978134227749a43dd6e56d60ef58eff6f9",
+    "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/scripts/cpu_budget.py": "ecf07e753acf808a59b1d5ff902a546ab05b251a73417b1a89d89efc3ff5998a",
+    "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/manifest.json": "890f8973d0faf98c3cbf36d93a7d21fce1a7509e9e68a03801e32e3c92762943",
+    "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/launch_pin.json": "92557dc74562eefe09ae915cf211b52e5c8a37ad2d0410a0f6da2f40e37cd5ba",
+    "/home/jonat/pk_sfull_packet_20261031/corpus/eval/carry12_v1.jsonl": "de24f2c726a1006e8e61542dd3b2dfbf8677b9e6fe689277cca035305bd32797",
+    "/home/jonat/pk_sfull_packet_20261031/tools/colab_chat/carry12_sfull_r1.json": "9f06a75a6555ec8e1c021449ac49a401eb567d5663355a415affb0bb9b408e4a",
+    "/home/jonat/pk_sfull_packet_20261031/tools/colab_chat/carry12_sfull_r2.json": "36f60ff87211e6f74eaee0656a63e0cbf10544c3b7d8f1c5a87221cc479b3b21",
+    "/home/jonat/pk_sfull_packet_20261031/tools/colab_chat/carry12_sfull_r3.json": "50f69668f0df28959ea7cd143566a68b8a807c75216e669320fdf61d7cf1a9df",
+    "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_long_2026-10/specs/cell_Sfull.json": "9fa9d9e7c360b03cc839e2bb4385c719e8d70fac71abdd03af5854f7e48b5d5d",
+    "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/data_reference.json": "acd00d74a93299aa0614f98233f837ef3dc30d38ce9120330e9f2f5c2b982cf4",
+    "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/trigger_hs1_five_seed.json": "6868c6374d6ca637b91ec106d762c79c193b9cd0de9c784fb43311b9588da04a",
+    "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/historical_history_parity.json": "da3e3880fa4eb4d3ad1ed88b908c2a4b637780860eb9438f94fc93a6a92ded9e",
+    "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/.gitattributes": "705fd4d6451a31d36b3df7de96f83f30ac976c9b4a6d1e51671d8e2f33e2d0da",
+    "/home/jonat/pk_sfull_packet_20261031/tools/colab_chat/.gitattributes": "5e03a0a010b8a8d446a7f58bd2dcb63c62fe7329713708a9dd032f1270d028b4",
+    "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_long_2026-10/specs/.gitattributes": "50b93d66ca7b4bdd5f14847f86b0442709fa52a2adc4c05dd5bca5050168f473",
+    "/home/jonat/pk_sfull_packet_20261031/tools/colab_chat/sfull_verify_inputs.py": "59c27187e31a282fa394ccab7730a13a4bc148b86c3ce251b26a0cd7db9f979b",
+    "/home/jonat/pk_sfull_packet_20261031/tools/colab_chat/boot_sfull.sh": "f0013231f7523a482b36905f97b40c632bdce76361447640d16e50430c5449d3"
+  },
+  "scope": "REGISTERED CONDITIONAL HS0 ONLY; exact initial seeds1-3; five-seed HS1 trigger preserved",
+  "prospective": true,
+  "data_outcomes_absent": true
+}

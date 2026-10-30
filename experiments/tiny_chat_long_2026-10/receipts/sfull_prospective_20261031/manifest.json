@@ -19,13 +19,11 @@
     "c12_Sgist_r3/data/data.ledger.json": "acd00d74a93299aa0614f98233f837ef3dc30d38ce9120330e9f2f5c2b982cf4",
     "c12_Sgist_r3/gate/gate.json": "bcc2ccf8618bd488c2450b14bb2902a486481b83eace3a8b1f8183bf793fad74"
   },
-  "status": "INCOMPLETE_PROSPECTIVE_PACKET_NOT_LAUNCHABLE",
+  "status": "READY_FOR_FUNDING_REVIEW_WITH_RUNTIME_DATA_GATE",
   "ready_for_launch": false,
-  "archive_commit": null,
+  "archive_commit": "7edb0ca1b252bd9332094558a478d924568f8e52",
   "engineering_remaining": [
-    "immutable archive and launch pin",
-    "readiness and source freeze",
-    "independent finalizer review"
+    "independent funding/parity/readiness review before any enable"
   ],
   "parent": "3dc818b2476b0957b1337b4c9af22474b76350b5",
   "trigger_report_sha256": "6868c6374d6ca637b91ec106d762c79c193b9cd0de9c784fb43311b9588da04a",
@@ -98,7 +96,9 @@
   "proposed_queue": "serial; no watchdog entry enabled; root funding review required",
   "review_blockers": [
     "actual funding above reserve",
+    "13 raw human corpora and 5 products unavailable locally; exact rebuild required; hash mismatch blocks PT, no fallback or automatic rerun",
     "six historical full-history argmax mismatches; no all-pass claim"
   ],
-  "no_paid_launch": true
+  "no_paid_launch": true,
+  "runtime_data_preverified": false
 }

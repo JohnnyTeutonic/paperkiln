@@ -386,3 +386,26 @@ def test_partial_analysis_output_refuses(tmp_path):
     )
     with pytest.raises(ValueError):
         final.Finalizer.verify_outputs(tmp_path)
+
+
+def test_prospective_source_freeze_required_bytes(case, tmp_path):
+    f, art, marker, states = case
+    freeze = tmp_path / "prospective.json"
+    dump(freeze, {"source_hashes": {str(marker.resolve()): final.common.sha(marker)}})
+    f.source_freeze = freeze
+    assert f.tick() == "COMPLETE"
+    value = final.common.load_json(freeze)
+    value["source_hashes"][str(marker.resolve())] = "f" * 64
+    dump(freeze, value)
+    with pytest.raises(ValueError, match="prospective finalizer source freeze"):
+        f.tick()
+
+
+def test_same_total_history_flags_wrong_item_allocation_refused(case):
+    f, art, marker, states = case
+    path = art / "c12_Sfull_r1/post_c12_Sfull_r1/carry12/m/items.jsonl"
+    rows = [json.loads(x) for x in path.read_text().splitlines()]
+    rows[0]["gate"].pop()
+    rows[1]["gate"].append(True)
+    path.write_text("\n".join(json.dumps(x) for x in rows) + "\n")
+    assert f.tick() == "HALTED"
