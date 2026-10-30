@@ -1,0 +1,89 @@
+{
+  "kind": "external_comparison_readiness",
+  "date_utc": "2026-10-30",
+  "status": "REQUIRES_SEPARATE_PREREGISTRATION",
+  "execution": "Read-only source/metadata research; no weights or datasets downloaded, model calls, training, evaluation, or spending.",
+  "decision": "Use BabyLM 2026 Strict-Small as a retrospective public data-efficiency benchmark. First establish an official GPT-2 baseline reference; aiming at the published frontier is a later, separately registered experiment. This receipt does not close the research goal or establish competitiveness.",
+  "sources": {
+    "rules": "https://arxiv.org/html/2602.20092v1",
+    "final_findings": "https://aclanthology.org/2026.babylm-main.37.pdf",
+    "dataset": "https://huggingface.co/datasets/BabyLM-community/BabyLM-2026-Strict-Small",
+    "baseline": "https://huggingface.co/BabyLM-community/BabyLM-2026-Baseline-GPT2-Strict-Small",
+    "baseline_config": "https://huggingface.co/BabyLM-community/BabyLM-2026-Baseline-GPT2-Strict-Small/blob/main/config.json",
+    "evaluation": "https://github.com/babylm-org/babylm-eval/tree/main/strict",
+    "tinystories_dataset": "https://huggingface.co/datasets/roneneldan/TinyStories/raw/main/README.md",
+    "tinystories_model": "https://huggingface.co/roneneldan/TinyStories-33M"
+  },
+  "local_contract_sha256": {
+    "experiments/tiny_chat_2026-10/PREREGISTRATION.md": "d18537a5e388e3ef7bab0102c7ea1159e67e1d4d8af263026caaf4ebfcb59a2f",
+    "experiments/tiny_chat_long_2026-10/PREREGISTRATION.md": "255479c39a05f2551bed947a7088d64b20d8c492de155ccebd8ee8aa965cb3bf",
+    "experiments/tiny_chat_2026-10/design.json": "464bfc7b7b6c6e07b54901d23ecb06f95d98f58d128604427fffd75faa1fec08",
+    "experiments/tiny_chat_long_2026-10/stage0/e1_60m_walls_t512.json": "19fea8d97d2ef128dc2e99a375acfd0fa06cd5ed418028db68aaa83bd3e0b627"
+  },
+  "current_runs": {
+    "training": "Existing PT is 163.84M model subword tokens; SFT is 24.576M padded token positions, not 24.576M supervised assistant tokens. Carry12 uses T1024, original tiny-chat T512. Corpus mixing is by bytes; word/token shares cannot be inferred from those percentages.",
+    "parameters": "Size labels count non-embedding parameters. L8 totals are 27,188,672 / 72,758,016 / 169,988,288, not 20M / 60M / 150M total parameters.",
+    "eligibility": "Existing FineWeb/dialogue mixture and its separately trained 16,384-entry tokenizer are not the official corpus/tokenizer. Tokenizer learning used additional language data. Eligibility requires unique-word and cumulative-exposure accounting including learned external tools; 163.84M subwords alone neither proves nor disproves a 100M-word exposure violation.",
+    "evaluation": "Carry5/Carry12 self-history minus single-turn-twin accuracy is a custom memory endpoint. Existing losses in nats/token are only directly comparable under the same tokenizer and data. Neither is an official BabyLM score or general chat-quality measure.",
+    "carry12": "Template-SFT improvement on the registered Carry12 endpoint is useful narrow evidence, not external SoTA. Keep its templates, controls, seed policy, and unresolved hypotheses unchanged."
+  },
+  "candidate_contract": {
+    "rules": "2026 Strict-Small permits at most 10M unique training words and 100M cumulative word exposure; Strict permits 100M / 1B. These are words, not model tokens. The 2026 event has concluded, so this would be a retrospective comparison, not a competition entry.",
+    "baseline": "Official GPT2 Strict-Small config: 12 layers, width768, 12 heads, 16,384 vocabulary, learned positions, T1024, GELU-new/LayerNorm, dropout0.1; published repository reports about 98.4M total parameters. Same vocabulary size does not mean same tokenizer. This is not matched to the current 72.76M-total Llama L8.",
+    "frontier": "Final 2026 findings identify BabySteps/GPT-BERT with optimizer improvements as winning Strict-Small and Strict submissions. Beating the official naive GPT2 baseline would not itself be SoTA. Use the final published baseline list rather than assuming the earlier call for papers is current. Freeze dated official aggregate/leaderboard evidence before any frontier claim.",
+    "evaluation": "Pin the official evaluation repository and dataset revisions. Run the causal HF backend, final full evaluation and prescribed checkpoint evaluations. Include NLP tasks and fine-tuning costs; BLiMP alone or a convenient zero-shot subset is not the full official aggregate. Entity tracking is candidate-probability evaluation, not Carry-style free chat.",
+    "license_readiness": "Dataset card currently labels the 2026 Strict-Small release MIT; archive actual license/datasheet and upstream component terms before use or redistribution. The inspected official GPT2 repository has no explanatory model card/license visible; do not infer its model license from the dataset tag. Full immutable model/tokenizer/data/eval revisions and baseline training recipe remain to be captured."
+  },
+  "next_registration": [
+    "Choose the scientific claim first: open-track data efficiency permits different models; a controlled architectural claim additionally matches total parameters, context, data order, optimizer/search allocation and exposure, and reports FLOPs/wall cost.",
+    "Freeze the official 2026 detoxified 10M-word corpus and disjoint development/evaluation splits. Train a fresh tokenizer only on the allowed training corpus and freeze its hash. For controlled comparisons use one shared tokenizer; otherwise report separate token counts and identical word exposure, never compare raw tokenizer-dependent losses.",
+    "Start with a plain causal control and exactly one predeclared intervention, at least three matched seeds, a fixed stopping/exposure rule, and separate tuning/development data. Save required intermediate checkpoints. Fit total-parameter targets after tokenizer selection; do not match only non-embedding labels.",
+    "Verify HF export/log-likelihood conventions, context truncation, candidate length normalization and tie handling against the pinned harness. Include a constant/tied-score negative control. Keep external tests out of model selection. Carry12 may remain a separately labelled secondary diagnostic after contamination/context/template checks.",
+    "A cheap first measurement is evaluation-only of a frozen existing checkpoint and the official GPT2 checkpoint with their own tokenizers. Report this explicitly as an unmatched cross-system reference, not a controlled trial or BabyLM-eligible submission. Resolve licensing and budget before executing."
+  ],
+  "tinystories": "Not a drop-in alternative: its dataset is generated by GPT-3.5/GPT-4 and labelled CDLA-Sharing-1.0, contrary to current human-only training. The original and V2-GPT4 corpora differ. The 33M checkpoint has a MIT model card, GPT-Neo/local-global attention and a 50,257-entry tokenizer; its name is not a verified total-parameter match. Story coherence is not multi-turn memory. A synthetic-data arm would require a different explicitly authorized protocol.",
+  "planning_only": {
+    "measurements": [
+      {
+        "shape": "20m_L8",
+        "source": "C:/ml_artifacts/tiny_chat/s0/probe_20m_L8/summary.json",
+        "sha256": "f3e8b489f8011cac0d1dfe034dace2e340af741a55816ababf620bf8409f0972",
+        "total_parameters": 27188672,
+        "steady_model_tokens_per_second": 27947.613244034656,
+        "hours_per_100M_model_tokens": 0.9939230779825848,
+        "hours_per_163_84M_model_tokens": 1.628443570966667
+      },
+      {
+        "shape": "60m_L8",
+        "source": "C:/ml_artifacts/tiny_chat/s0_60m/probe_60m_L8/summary.json",
+        "sha256": "743519a3fa3401cf15e54117d1fbe0fcbcfa37bcbdcb0295ca14b8b39844152f",
+        "total_parameters": 72758016,
+        "steady_model_tokens_per_second": 13798.664584859443,
+        "hours_per_100M_model_tokens": 2.0130772515665676,
+        "hours_per_163_84M_model_tokens": 3.298225768966664
+      },
+      {
+        "shape": "150m_L8",
+        "source": "microtorch/experiments/tiny_chat_2026-10/size/stage0/probe_150m_L8/summary.json",
+        "sha256": "e2494764a2a2450e0f19e55aa8f7c248687d91b848c8ee15f100201ed8394965",
+        "total_parameters": 169988288,
+        "steady_model_tokens_per_second": 7239.837032751251,
+        "hours_per_100M_model_tokens": 3.836796001362725,
+        "hours_per_163_84M_model_tokens": 6.2862065686326885
+      }
+    ],
+    "formula": "PT hours = measured model-token exposure / (measured tokens_per_second * 3600). For BabyLM, first measure tokenizer tokens per whitespace word, then convert the registered cumulative word exposure. No token/word ratio has been measured here.",
+    "observed_60m_full_pt_seconds": [
+      13104.0,
+      12926.0,
+      12362.0
+    ],
+    "observed_60m_sft_seconds": [
+      2427.8,
+      2485.5,
+      2414.0
+    ],
+    "illustration": "At the old 60M L4 probe throughput, a 163.84M-model-token PT run is about 3.30h; actual complete same-shape PT walls were 3.43-3.64h. Three runs are about 10.3-10.9 L4h before evaluation/setup. At the historical $0.59/L4h this is about $6.08-$6.44 PT only, not a current price quote or proposed full experiment budget.",
+    "limits": "New tokenizer, corpus, context and model affect throughput. The official GPT2/GPT-BERT runtime has not been timed here. Fine-tuning/evaluation, tuning, transfer, retries and checkpoint storage are additional. Rebenchmark a bounded probe and price the complete matrix before requesting/authorizing compute; this note authorizes no spending."
+  }
+}
