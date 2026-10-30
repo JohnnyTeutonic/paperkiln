@@ -1,0 +1,21 @@
+{
+ "_comment": "E10.1 exact original two-model CPU/cublas/fixed reference gate; no engine default change; full inventory and numerical gate fail closed.",
+ "max_parallel": 1,
+ "jobs": [
+  {
+   "name": "e10_fixed",
+   "cmd": [
+    "bash",
+    "-c",
+    "set -eu; out=\"$1\"; mkdir -p \"$out\"; for f in ember.tgz pick.gguf pk.gguf eval100.jsonl COMMITS fixed_reference_vm.sh INPUT_SHA256SUMS; do cp \"/content/chat/upload/$f\" \"/content/$f\"; done; rc=0; bash /content/fixed_reference_vm.sh || rc=$?; cp /content/vm.log \"$out/vm.log\"; if [ -s /content/out.zip ]; then cp /content/out.zip \"$out/out.zip\"; fi; if [ -s /content/out/gate_summary.json ]; then cp /content/out/gate_summary.json \"$out/gate_summary.json\"; fi; exit \"$rc\"",
+    "e10-fixed-job",
+    "{out}"
+   ],
+   "outputs": [
+    "out.zip",
+    "vm.log",
+    "gate_summary.json"
+   ]
+  }
+ ]
+}
