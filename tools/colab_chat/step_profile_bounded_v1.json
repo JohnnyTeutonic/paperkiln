@@ -1,0 +1,10 @@
+{
+ "_comment": "Descriptive per-shape BF16/flash throughput only: exact ten shapes x fp32/bf16/flash/bf16_flash, clean plus profiled30steps/warm8; committed sources only. No repeat of completed noise-floor science. Command-only boot, only vocabulary upload, L4 cumulative cap$2. Fail closed on first terminal cell failure; preserve raw specs/events and source/binary/vocab/synthetic-corpus provenance.",
+ "max_parallel": 1,
+ "max_parallel_light": 1,
+ "jobs": [{
+  "name": "step_profile_bounded",
+  "cmd": ["bash", "tools/colab_chat/step_profile_bounded_vm.sh", "{out}", "{upload}/vocab_llama3_bpe.gguf"],
+  "outputs": ["cmake.log", "build.log", "cuda_gate_driver.log", "cuda_gate/cuda_gate.json", "cuda_gate/cuda_gate.log", "profile/profile.json", "profile/source_manifest.json", "profile/wrapper_state.json", "profile/completion.json", "profile/raw_events.tar.gz", "../step_profile_bounded_train.log"]
+ }]
+}
