@@ -93,3 +93,17 @@ def test_export_uses_training_rms_epsilon(tmp_path, monkeypatch):
     hf_export.main()
     cfg = json.loads((run / "hf/config.json").read_text())
     assert cfg["rms_norm_eps"] == 1e-5
+
+
+@pytest.mark.parametrize("extra", [
+    {"thirdparty": {"kv_heads": 2}}, {"kv_heads": 2}, {"qk_norm": True},
+    {"rope_pairing": "neox"}, {"rope_dims": 2}, {"norm_placement": "post"},
+    {"tie_embeddings": False}, {"tie_head": False}, {"rope_theta": float("nan")},
+])
+def test_refuse_unmapped_llama_variants(extra):
+    with pytest.raises(ValueError):
+        hf_export.validate_model({"heads": 4, "d": 32, **extra})
+
+
+def test_nondefault_rope_theta_is_preserved():
+    assert hf_export.validate_model({"heads": 4, "d": 32, "rope_theta": 500000.}) == 500000.

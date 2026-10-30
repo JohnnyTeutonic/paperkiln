@@ -161,6 +161,25 @@ def write_tokenizer(hf_dir, tokens, gguf_path=None):
     return vocab, unk
 
 
+def validate_model(m):
+    """Only the plain tied-head Llama mapping is supported by this exporter."""
+    if (m.get("attention", "exact") != "exact" or m.get("norm", "rmsnorm") != "rmsnorm"
+            or m.get("activation", "swiglu") != "swiglu" or m.get("position", "rope") != "rope"
+            or m.get("residual", "residual") != "residual" or not m.get("final_norm", True)
+            or m.get("norm_placement", "pre") != "pre"):
+        raise ValueError("HF Llama export requires exact attention, pre RMSNorm, SwiGLU, RoPE and residuals")
+    if (m.get("thirdparty") or m.get("kv_heads", m["heads"]) != m["heads"]
+            or m.get("qk_norm") or m.get("rope_pairing", "interleaved") != "interleaved"
+            or m.get("rope_dims", m["d"] // m["heads"]) != m["d"] // m["heads"]):
+        raise ValueError("thirdparty/GQA/partial or alternate RoPE/qk-normalized Llama export is unsupported")
+    if not m.get("tie_embeddings", m.get("tie_head", True)):
+        raise ValueError("untied output embeddings are unsupported")
+    theta = m.get("rope_theta", 10000.0)
+    if not np.isfinite(theta) or theta <= 0:
+        raise ValueError("invalid recorded rope_theta")
+    return theta
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("out_dir")
@@ -180,10 +199,7 @@ def main():
             f"this run has rope_heads={rope} (RoPE on head 0 of {m['heads']}); "
             "HF Llama rotates every head and cannot reproduce it. Retrain with "
             "arch.rope_heads=all, or pass --allow-legacy-rope to export anyway")
-    if (m.get("attention", "exact") != "exact" or m.get("norm", "rmsnorm") != "rmsnorm"
-            or m.get("activation", "swiglu") != "swiglu" or m.get("position", "rope") != "rope"
-            or m.get("residual", "residual") != "residual" or not m.get("final_norm", True)):
-        raise ValueError("HF Llama export requires exact attention, pre RMSNorm, SwiGLU, RoPE and residuals")
+    theta = validate_model(m)
     name = start_name(args.out_dir, args.events)
     hf_dir = args.hf_dir or os.path.join(args.out_dir, "hf")
     os.makedirs(hf_dir, exist_ok=True)
@@ -194,6 +210,8 @@ def main():
     if len(vocab) != m["vocab"]:
         raise ValueError("tokenizer vocabulary does not match model vocabulary")
     sd = load_file(os.path.join(args.out_dir, f"{name}.safetensors"))
+    if "lm_head.weight" in sd:
+        raise ValueError("untied output-head tensor is unsupported")
     save_file(convert_weights(sd, m["heads"]),
               os.path.join(hf_dir, "model.safetensors"))
 
@@ -211,7 +229,7 @@ def main():
         "vocab_size": m["vocab"],
         "max_position_embeddings": m["T"],
         "rms_norm_eps": 1e-5,  # ops::kRmsNormEps, including the training tape
-        "rope_theta": 10000.0,
+        "rope_theta": theta,
         "hidden_act": "silu",
         "tie_word_embeddings": True,
         "attention_bias": False,
