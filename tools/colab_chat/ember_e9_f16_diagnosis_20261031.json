@@ -1,0 +1,22 @@
+{
+ "_comment": "E9 f16 diagnosis only; no arithmetic change or gate closure. One L4, $1.50 cumulative,95min VM/2.25h driver. Explicit incomplete receipt on timeout; raw journals on retained storage until terminal fetch.",
+ "max_parallel": 1,
+ "jobs": [
+  {
+   "name": "e9_f16_diagnosis",
+   "cmd": [
+    "bash",
+    "-c",
+    "set -u\nout=\"$1\"; mkdir -p \"$out\"\nfor f in ember.tgz graph_ir_original.cpp COMMITS INPUT_SHA256SUMS f16_diagnosis_vm.sh; do cp \"/content/chat/upload/$f\" \"/content/$f\" || exit 1; done\nrc=0\ntimeout --signal=TERM --kill-after=30s 95m bash /content/f16_diagnosis_vm.sh \"$out\" || rc=$?\npython3 - \"$out\" \"$rc\" <<'PY'\nimport json,pathlib,sys\nout=pathlib.Path(sys.argv[1]);rc=int(sys.argv[2]);report=out/'diagnosis_report.json'\nif not report.exists():report.write_text(json.dumps({'status':'INCOMPLETE','complete':False,'e9_closed':False,'exit_code':rc})+'\\n')\nr=json.loads(report.read_text());complete=rc==0 and r.get('status')=='DIAGNOSTIC_COMPLETE'\n(out/'execution.json').write_text(json.dumps({'diagnostic_only':True,'exit_code':rc,'complete':complete,'e9_closed':False,'scientific_result':r.get('status')})+'\\n')\nPY\n# FINISHED means evidence transport only, including valid negatives/incomplete diagnostics.\nexit 0",
+    "e9-f16-diagnosis",
+    "{out}"
+   ],
+   "outputs": [
+    "out.zip",
+    "vm.log",
+    "diagnosis_report.json",
+    "execution.json"
+   ]
+  }
+ ]
+}
