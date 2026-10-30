@@ -1,0 +1,88 @@
+{
+  "scope": "Reconciliation of historical completed gates; no new training or CUDA claim. Loss-curve arithmetic independently recomputed; recorded-setting status comes from original summary, not reinspection of deleted run exports.",
+  "sources": [
+    {
+      "path": "C:\\ml_artifacts\\thirdparty_cuda_1026\\cuda_gate\\cuda_gate.json",
+      "sha256": "77511a80411070d8b01592cbce3a34391e3d8f1fbf5a55aff4c064fe9dcb4810"
+    },
+    {
+      "path": "C:\\ml_artifacts\\thirdparty_cuda_1026\\tp_device\\tp_device.log",
+      "sha256": "64a594a0a2fc69d50566885021250b580934e60d68f77256dcdb4b474d1bd3bc"
+    },
+    {
+      "path": "C:\\ml_artifacts\\bf16_gate_v2\\noise_20m\\noise.json",
+      "sha256": "34d5ee394e055540541217ec00d17240bbe9b7ebcd137dc7652114368b3be34f"
+    },
+    {
+      "path": "C:\\ml_artifacts\\bf16_gate_v2\\noise_60m\\noise.json",
+      "sha256": "409499c4ef110eaffdc27114ad88275922f6c2816ba83363decbc9e436a65a8d"
+    }
+  ],
+  "thirdparty": {
+    "commit": "70638bafbf5c900bd580a16e7c804052f577bb33",
+    "device": "NVIDIA L4",
+    "cuda_legs": 23,
+    "all_pass": true,
+    "models": [
+      {
+        "name": "tp_gqa",
+        "worst_rel": 2.42e-07,
+        "greedy": "40/40"
+      },
+      {
+        "name": "tp_qwen",
+        "worst_rel": 2.42e-07,
+        "greedy": "40/40"
+      },
+      {
+        "name": "tp_mqa_partial",
+        "worst_rel": 2.89e-07,
+        "greedy": "40/40"
+      },
+      {
+        "name": "tp_neox_partial",
+        "worst_rel": 2.09e-07,
+        "greedy": "40/40"
+      },
+      {
+        "name": "tp_mamba1",
+        "worst_rel": 2.6e-07,
+        "greedy": "40/40"
+      }
+    ]
+  },
+  "bf16_noise": {
+    "seeds": [
+      1,
+      2,
+      3
+    ],
+    "steps": 300,
+    "val_range": 0.12406298518180847,
+    "curve_range_mean": 0.08838738036820613,
+    "checks": {
+      "flash": {
+        "val_diff_mean_recomputed": -0.0010426044464111328,
+        "curve_diff_mean_abs_recomputed": 0.0007824485203817856,
+        "primary": true,
+        "secondary": true,
+        "recorded_setting_status": true
+      },
+      "bf16": {
+        "val_diff_mean_recomputed": -0.0031448006629943848,
+        "curve_diff_mean_abs_recomputed": 0.005529677155483309,
+        "primary": true,
+        "secondary": true,
+        "recorded_setting_status": true
+      },
+      "bf16_flash": {
+        "val_diff_mean_recomputed": -0.0013580818970998128,
+        "curve_diff_mean_abs_recomputed": 0.007478488425651259,
+        "primary": true,
+        "secondary": true,
+        "recorded_setting_status": true
+      }
+    }
+  },
+  "remaining": "BF16/flash per-shape throughput profile and device host-read instrumentation remain open."
+}

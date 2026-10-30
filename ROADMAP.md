@@ -104,22 +104,19 @@ advisory steps that cannot fail the build.
 ## 6. Engine
 
 - **CUDA** (records: `docs/CUDA_PHASE_B2.md`):
-  - The third-party ops' device legs (queued until the RunPod top-up): root `scripts/colab_driver.json`
-    entry pk-tp-cuda, `tools/colab_chat/thirdparty_cuda_v1.json` (the CUDA gate with
-    `tests/test_thirdparty_ops.cpp`, and `tests/test_thirdparty_ir.py`'s five models trained with the device
-    op set against numpy's IR).
   - Wire `MT_DEVCHECK_HOST_READ` at real call sites; today it is defined
     and never called.
   - Coalesce loads in the transposed GEMM paths.
   - Re-measure the speedup on the op-set configuration over a full run
     before any paper quotes it. The 21x and 30.5x figures were measured
     over nine steps with deferral on.
-- **BF16 mixed precision and flash attention** (`train.precision` bf16, `train.attention_kernel`
-  flash; built opt-in and CPU-gated 24 Oct 2026, CHANGELOG; v1 on an L4: CUDA legs 19/19, precision
-  off bitwise equal to dc29b5e6): the noise-floor gate `tools/colab_chat/bf16_gate_v2.json` (3 seeds,
-  rule in `docs/receipts/bf16_gate_v2_prereg_20261025.md`) and the throughput per shape. Then, per the profile
-  (`tools/step_profile.py`): BF16 inside the attention products only if attention shows up. (Launch count is
-  not the limit at the tiny-chat shapes: the GPU idles 1-2% of a step; LOCAL_LLM_STACK.md section 10, 28 Oct.)
+- **BF16/flash per-shape throughput profile.** The three-seed noise-floor gate is complete
+  (25 Oct): flash, bf16 and bf16+flash pass the pre-stated primary and curve rules; 60M is
+  one-seed descriptive evidence. The full per-shape profile remains open: its original campaign
+  did not finish. Historical loss arithmetic and third-party CUDA completion were rechecked
+  on 30 Oct (`docs/receipts/roadmap_device_reconciliation_20261030.json`); do not rerun those
+  completed gates. BF16 inside attention products is conditional on attention showing up in
+  the profile (launch count is already closed, LOCAL_LLM_STACK.md section 10, 28 Oct).
 - **Mamba:** a parallel scan and device kernels for Mamba-1's `ops::conv1d_causal` and
   `ops::selective_scan` (sequential, host only; the mamba preset's `ssm: "mamba1"`).
 - **int4/NF4 quantisation.**

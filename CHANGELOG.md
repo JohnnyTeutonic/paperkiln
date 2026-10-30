@@ -7,6 +7,18 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Historical device gate reconciliation** (30 Oct). Removed stale third-party CUDA and
+  BF16 noise-floor work from ROADMAP after checking original hashed receipts:23 device legs,
+  five trained models with40/40 greedy parity each, and recomputed primary/secondary loss
+  arithmetic for all three BF16/flash configurations. These completed on26/25Oct respectively;
+  no new GPU run. The full per-shape throughput profile remains open.
+
+- **Standalone fetch0.1.1 release preparation** (30 Oct). HF skeleton emission now rejects
+  incompatible explicit mechanisms and invalid geometry, preserves supported activation choices,
+  and declares skeleton assumptions/constants. Independent review added absent-residual and
+  bare-SiLU gating refusals;32 focused tests pass including HF AutoConfig reload. Distribution
+  publication is not yet complete.
+
 - **Bounded rule-based MoE fields** (30 Oct). Explicit adopted-model declarations and
   single-value architecture-table rows can supply quoted `moe`, `n_experts` and `top_k`.
   Baseline/related-work counts, human annotators and ordinary dense FFNs are excluded.
