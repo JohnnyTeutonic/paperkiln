@@ -1,0 +1,29 @@
+{
+  "scope": "Independent replay of raw summed log-prob credits and item-pool arithmetic; no model inference replay",
+  "corpus_sha256": "de24f2c726a1006e8e61542dd3b2dfbf8677b9e6fe689277cca035305bd32797",
+  "runs": [
+    {
+      "path": "/mnt/c/ml_artifacts/tiny_chat/l0_colab/l0_pick_e1_150m_L8/pick_e1_150m_L8/eval/pick_e1_150m_L8/items.jsonl",
+      "sha256": "ec20c5d84934728458525d60726e14021fc155de8719643ead6c93f3b3e14adb",
+      "items": 1452,
+      "raw_fc_credits_recomputed": 8712,
+      "self_primary": 0.4311594202898551,
+      "twin_primary": 0.486231884057971,
+      "Y12": -0.05507246376811592,
+      "context_twin_minus_noctx": 0.23787878787878788,
+      "hl0": {
+        "n": 1320,
+        "mean": -0.04697,
+        "se": 0.0121,
+        "ci95": [
+          -0.07069,
+          -0.02325
+        ],
+        "ci90": [
+          -0.06688,
+          -0.02706
+        ]
+      }
+    }
+  ]
+}

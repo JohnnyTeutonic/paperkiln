@@ -10,8 +10,9 @@ where one of those documents carries a plan, this file wins.*
 0. **Tiny chat from scratch (LOCAL_LLM_WORK.md E1;
    `experiments/tiny_chat_2026-10/`, `experiments/tiny_chat_long_2026-10/`).**
    E5, E1 at 20M/60M, recursion and MoR are home and analysed
-   (`experiments/tiny_chat_2026-10/analysis_2026-10-28.json`). Remaining: Stage L0 on the unchanged registered 150M
-   pick (evaluation scoring). Carry-12's registered HS1 extension is complete and all four
+   (`experiments/tiny_chat_2026-10/analysis_2026-10-28.json`). Stage L0 on the unchanged 150M
+   pick is complete and home (single-pick descriptive result in the long-carry RESULTS).
+   Carry-12's registered HS1 extension is complete and all four
    new B/S-gist runs are home: the five-seed S-gist minus B contrast is SUPPORTED
    (-12.668 points). Its registered S-full control now triggers but has not launched;
    recipe and spending require review. The broader programme remains open.

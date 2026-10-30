@@ -1,0 +1,85 @@
+{
+  "utc": "2026-10-30T14:02:02.868179+00:00",
+  "scope": "Single original150M pick; descriptive extension, not a new multi-seed confirmatory result or inference replay.",
+  "launch_commit": "82c86c96bd0086ae47e35ab31370b5fb98ae28ed",
+  "selected_registered_source_blobs_sha256": {
+    "tools/carry12_l0.py": "33aeda65a8e1b72f31811f8f40f47c33ae27b4fe02529d7a3c86f452938e9d26",
+    "tools/carry12_eval.py": "6630aa9a7327f14d5d16b2526dc06a08370deb00ecde7f67e3b187fbebd9a9b5",
+    "tools/carry12_build.py": "bd6edd48ab5d32b448517b65bde11b681dc844d1cb62070cc9ed0e7ce6588a7e",
+    "tools/carry5_eval.py": "f9d729af90bdf884fc4f299fc53ef3443867d441396d1cc2da8889e2a77df30f",
+    "tools/chat_eval.py": "cdde9a4a2d3534414dc7107fd2006bd42abf2b7162e54f4a0ed82722e2eb58a8",
+    "tools/llama3_bpe.py": "880b4558b66486cd099115f62571c1389a70ab3edf01327d7db5de1f97fc5b71",
+    "tools/colab_chat/tiny_chat_run.py": "f6b8e55601203de8484a4519e74c852c0881b88060f11ea698db8d57f5c214cf",
+    "tools/colab_chat/carry12_l0_e1_150m_v1.json": "a917d1ab60819b37eca2c556a867a3b3806510b82a0440708dd8796f3deec32a",
+    "experiments/tiny_chat_long_2026-10/STAGE_L0.md": "74889984b98d72509103cdbae3cb406f8dd3d49ec99916ba363f374a8be24e7e",
+    "corpus/eval/carry12_v1.jsonl": "de24f2c726a1006e8e61542dd3b2dfbf8677b9e6fe689277cca035305bd32797"
+  },
+  "model_inputs_sha256": {
+    "weights": {
+      "path": "/mnt/c/ml_artifacts/tiny_chat/e1_150m/pick_e1_150m_L8/model.safetensors",
+      "sha256": "02f8b00e2253272eded24341bd8bf93b11abcd6378ef693756a088e285c2f7fd"
+    },
+    "gguf": {
+      "path": "/mnt/c/ml_artifacts/tiny_chat/e1_150m/pick_e1_150m_L8/model.gguf",
+      "sha256": "99944e664225984d93577620cb40ea8f4b74406dbbeb8b0cc586872bb31345c5"
+    },
+    "spec": {
+      "path": "/mnt/c/ml_artifacts/tiny_chat/e1_150m/pick_e1_150m_L8/spec.json",
+      "sha256": "1506cca15af986cfabdb555e4da4ce3d7eccfbd4dbc065970c3ad2a17741ccec"
+    },
+    "vocab": {
+      "path": "/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf",
+      "sha256": "0b880aa073a7e27c0770d5ecc5215b55d6d415080d20bd3dc7b169ecabadf198"
+    }
+  },
+  "artifact_files_sha256": {
+    "eval.log": "ab659f66731b21af43e87456b31afb6d53587cf1e5a20b150bfb5cee1fd76f53",
+    "l0.json": "9a804bdbd6919b4ae7f79ef687baf33c0ae2d9ded4f5e022b5388ca874e0e1ba",
+    "eval/summary.json": "59879dd0b2b0fa23bce82d28de37ee5ac2a08f55c55d68f1c256d3fcae685561",
+    "eval/summary.md": "3d202c3944d704403ea27c6946ff95e64ab7b4b552be9cddce9ab590472bad91",
+    "eval/pick_e1_150m_L8/gen.jsonl": "fc09499b5ca60e748119834ab948cd45cd3975110c6933cf9e7494b041850a5f",
+    "eval/pick_e1_150m_L8/gen_engine.json": "7a382c9044f634335c1a47f62576a34c9ded8979267e62cb4ec722e014a77ac4",
+    "eval/pick_e1_150m_L8/items.jsonl": "ec20c5d84934728458525d60726e14021fc155de8719643ead6c93f3b3e14adb"
+  },
+  "raw_score_audit": {
+    "path": "/mnt/c/ml_artifacts/tiny_chat/l0_colab/l0_pick_e1_150m_L8/pick_e1_150m_L8/eval/pick_e1_150m_L8/items.jsonl",
+    "sha256": "ec20c5d84934728458525d60726e14021fc155de8719643ead6c93f3b3e14adb",
+    "items": 1452,
+    "raw_fc_credits_recomputed": 8712,
+    "self_primary": 0.4311594202898551,
+    "twin_primary": 0.486231884057971,
+    "Y12": -0.05507246376811592,
+    "context_twin_minus_noctx": 0.23787878787878788,
+    "hl0": {
+      "n": 1320,
+      "mean": -0.04697,
+      "se": 0.0121,
+      "ci95": [
+        -0.07069,
+        -0.02325
+      ],
+      "ci90": [
+        -0.06688,
+        -0.02706
+      ]
+    }
+  },
+  "generation": {
+    "items": 1452,
+    "spot_items_identical": 20,
+    "spot_replies_identical": 404,
+    "full_argmax_gates_passed": 22956,
+    "server_errors": 0
+  },
+  "hl0_recorded_verdict": "SUPPORTED",
+  "home": {
+    "campaign_home": true,
+    "all_jobs_home": true,
+    "pod": null,
+    "volume": null,
+    "pod_absent_from_provider": true,
+    "cumulative_usd": 6.972699837730843,
+    "state_sha256": "354b5ae7bd3d8833ca3edcbf01c34464759ffcd4c210fd796ec5e2048c69acbb"
+  },
+  "incident": "Original partial evaluation was lost in the documented volume incident; this is the authorized unchanged-recipe recovery. Prior failure receipts remain unmodified."
+}

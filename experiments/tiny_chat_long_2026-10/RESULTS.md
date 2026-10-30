@@ -142,3 +142,49 @@ Canonical [analysis](receipts/hs1_five_seed_20261030/analysis_hs1.json),
 [raw-credit audit](receipts/hs1_five_seed_20261030/raw_credit_audit.json) and
 [home proof](receipts/hs1_five_seed_20261030/home_receipt.json) are retained here.
 The single raw-artifact home remains `C:/ml_artifacts/tiny_chat/`.
+
+
+## Stage L0 on the original 150M pick
+
+The last pending 150M pick evaluation is complete and home, with no training or
+model reselection. This is **one descriptive pick**, at its original context 512,
+not another five-seed comparison or a new confirmatory scaling result. The frozen
+Stage L0 command scored all 1,452 Carry-12 items in gold, near, twin, no-context,
+self and near-self modes; greedy history ends at the target and uses max-new 24.
+
+Its validity gate passes: primary twin accuracy is 48.623%, and context-family
+twin minus no-context accuracy is 23.788 points. Gold accuracy on the 1,320 context
+items is 42.121%, against 46.818% with near history. Thus the recorded distance
+cost D=gold-near is **-4.697 points**, normal-approximation 95% CI
+[-7.069,-2.325] and 90% CI [-6.688,-2.706]. The frozen helper labels it SUPPORTED
+against its negative-direction, three-point rule. For this additional 150M pick
+that verdict is descriptive: it does not extend the originally named winner tests.
+Items share templates and values, so these item-level intervals may be too narrow;
+near history changes length as well as distance.
+
+Descriptively, primary self accuracy is 43.12%, twin accuracy 48.62%, and the
+frozen rounded-pool Y12 is -5.50 points. These values do not establish a general
+model-quality or state-of-the-art comparison. The model is the unchanged original
+150M/depth-8 Carry-5 pick, not a pick made using these L0 results.
+
+Independent verification rehashed its original weights, GGUF, spec and vocabulary,
+bound the job to source pin `82c86c96bd0086ae47e35ab31370b5fb98ae28ed` and checked
+10 selected registered source/data blobs. Replaying all 8,712 forced-choice credits
+from saved raw sums reproduces D, its intervals and the gate. The recorded generation
+gate passes all 22,956 reply checks, and the 20-item spot check matches all 404 replies;
+this audit checks those retained receipts, not fresh model forwards. The campaign is
+home, with pod and volume gone and provider absence checked. Its cumulative cost was
+$6.973 under the $10 recovery cap, including the original interrupted attempt.
+
+The original partial run was lost in the documented volume/sweeper incident. This
+receipt is the explicitly authorized recomputation of the same frozen recipe and
+inputs; original failure and recovery records remain unchanged in
+[incident evidence](receipts/l0_volume_loss_20261030/). No lost partial scores were
+presented as recovered results.
+
+Exact [L0 receipt](receipts/l0_150m_20261030/l0.json),
+[full summary](receipts/l0_150m_20261030/summary.json),
+[independent source/input/raw-credit/home audit](receipts/l0_150m_20261030/independent_audit.json)
+and [raw-credit replay](receipts/l0_150m_20261030/raw_credit_audit.json) are retained.
+Raw generation and scored-item records have one home under
+`C:/ml_artifacts/tiny_chat/l0_colab/l0_pick_e1_150m_L8/pick_e1_150m_L8/`.

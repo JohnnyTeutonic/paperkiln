@@ -7,6 +7,15 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Original 150M pick L0 evaluation home** (30 Oct). No new training or reselection.
+  All1,452 items and8,712 forced-choice credits independently audited; original model
+  inputs/pinned sources verified. The single-pick descriptive gold-minus-near cost
+  is -4.697 points (95% item-level CI[-7.069,-2.325]), with the validity gate passing.
+  Recorded generation gates pass22,956 replies. The documented lost partial run is
+  distinguished from its authorized unchanged-recipe recovery ($6.973 cumulative).
+  `experiments/tiny_chat_long_2026-10/RESULTS.md` retains evidence and limitations;
+  the newly triggered S-full control still awaits review, so the programme stays open.
+
 - **Registered five-seed HS1 extension complete** (30 Oct). All four new B/S-gist
   runs are home. S-gist minus B is SUPPORTED at -12.668 Y12 points (90% CI
   [-16.353,-8.983]); the original three-seed core stays unchanged. Independent
