@@ -89,6 +89,18 @@ class Finalizer(common.Finalizer):
                         raise ValueError('invalid HS1 summary identity/metric: '+str(p))
                     if seed>=4 and row.get('provenance',{}).get('paperkiln_commit')!=pin:
                         raise ValueError('extension source pin mismatch: '+str(p))
+                    if seed>=4:
+                        c12=row.get('carry12',{});meta=c12.get('meta',{});engine=c12.get('gen_engine',{})
+                        if (meta.get('items')!=1452 or meta.get('max_new')!=48
+                            or meta.get('self_scope')!='target' or meta.get('near_self') is not False
+                            or meta.get('scorer')!='mtstudio' or meta.get('spot')!=20
+                            or meta.get('sha256')!='de24f2c726a1006e8e61542dd3b2dfbf8677b9e6fe689277cca035305bd32797'
+                            or 'error' in c12):
+                            raise ValueError('incomplete/different registered Carry-12 evaluation: '+str(p))
+                        if (engine.get('engine') not in ('ember','mtstudio')
+                            or (engine['engine']=='ember' and (engine.get('spot') or {}).get('pass') is not True)
+                            or (engine['engine']=='mtstudio' and not engine.get('flag'))):
+                            raise ValueError('missing checked generation engine/fallback receipt: '+str(p))
                     if row.get('carry12',{}).get('context')!=1024:
                         raise ValueError('wrong context: '+str(p))
                     files[str(p)]=common.sha(p);pairs.append([cell,seed])

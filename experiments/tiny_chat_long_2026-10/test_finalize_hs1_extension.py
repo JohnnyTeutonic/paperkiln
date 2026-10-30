@@ -25,6 +25,9 @@ def driver(tmp_path,monkeypatch):
    row={'mode':'post','cell':c,'seed':s,'Y12':(-.1 if c=='B' else -.2)-s*.001,
         'provenance':{'paperkiln_commit':pin},'carry12':{'context':1024,'pools':{'acc':{
           'primary':{'twin':{'mean':.6}},'context':{'twin':{'mean':.6},'noctx':{'mean':.3}}}}}}
+   row['carry12']['meta']={'items':1452,'max_new':48,'self_scope':'target','near_self':False,
+        'scorer':'mtstudio','spot':20,'sha256':'de24f2c726a1006e8e61542dd3b2dfbf8677b9e6fe689277cca035305bd32797'}
+   row['carry12']['gen_engine']={'engine':'ember','spot':{'pass':True}}
    m.common.atomic_json(base/f'post_c12_{c}_r{s}/summary.json',row)
  return m.Finalizer(art,tmp_path/'state',tmp_path/'out')
 
@@ -48,6 +51,20 @@ def test_wrong_pin_halts(driver):
 def test_duplicate_halts(driver):
  p=driver.art/'copy/post_c12_B_r5';p.mkdir(parents=True);(p/'summary.json').write_bytes((driver.art/'c12_B_r5/post_c12_B_r5/summary.json').read_bytes())
  assert driver.tick()=='HALTED'
+
+@pytest.mark.parametrize('change',['partial_items','unchecked_ember','unannotated_fallback','different_scope'])
+def test_incomplete_evaluation_halts(driver,change):
+ p=driver.art/'c12_B_r5/post_c12_B_r5/summary.json';r=m.common.load_json(p);c=r['carry12']
+ if change=='partial_items':c['meta']['items']=100
+ if change=='unchecked_ember':c['gen_engine']['spot']['pass']=False
+ if change=='unannotated_fallback':c['gen_engine']={'engine':'mtstudio'}
+ if change=='different_scope':c['meta']['near_self']=True
+ m.common.atomic_json(p,r);assert driver.tick()=='HALTED'
+
+def test_annotated_fallback_remains_valid(driver):
+ p=driver.art/'c12_B_r5/post_c12_B_r5/summary.json';r=m.common.load_json(p)
+ r['carry12']['gen_engine']={'engine':'mtstudio','flag':'ember spot mismatch, generated with mtstudio throughout'}
+ m.common.atomic_json(p,r);assert driver.inputs()['ready']
 
 def test_source_change_halts(driver,tmp_path,monkeypatch):
  p=tmp_path/'source';p.write_text('old');monkeypatch.setattr(m,'SOURCES',[p]);driver.state();p.write_text('new')
