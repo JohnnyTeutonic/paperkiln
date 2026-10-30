@@ -93,8 +93,9 @@ advisory steps that cannot fail the build.
   verifier and scorer, with Mamba, Qwen3 and OLMo 2 labelled (43 papers; OLMo 2 has no reply under the
   bench's prompt): `2026-10-28_bench_scores.json` (`experiments/arxiv_chain_2026-10-28_e3/`). Open: a
   studio button that runs it instead of `fetch.py` when a key is configured; prompt optimisation later.
-- **Publish `paperkiln-fetch` 0.1.1** with the extractor fixes (0.1.0 on
-  PyPI predates them).
+- **Publish `paperkiln-fetch` 0.1.1.** Wheel and source archive are built, licensed, metadata-checked
+  and smoke-tested from an isolated installation (`docs/receipts/fetch_release_011_build_20261030.json`).
+  Publication is blocked by a missing configured PyPI API token;0.1.0 is still the public release.
 - **Grow the benchmark from 40 to 60–100 papers**, with ground truth read
   off the fetched source and never recalled. Add a reconstruction-fidelity
   task (parameter-count error per reconstructed paper) for a datasets and
@@ -135,8 +136,6 @@ advisory steps that cannot fail the build.
 
 ## 7. Studio, chat and distribution
 
-- **More `paperkiln` wheels:** macOS and Windows builds (Linux x86-64
-  only today).
 - **Studio features:**
   - Research Mode: clone a run with one change, compare two runs;
   - a sweep heatmap;
@@ -145,12 +144,12 @@ advisory steps that cannot fail the build.
     probes).
 - **Open-weight models on our own engines: speed.** Parity is done through the IR,
   on the CPU and on CUDA; benchmark ember against `transformers` for speed.
-- **Browser performance and remaining device gates** (LOCAL_LLM_WORK.md E4, E9, E10).
+- **Browser performance and remaining device gates** (LOCAL_LLM_WORK.md E9, E10).
   The IR family and recurrence paths are built in WebAssembly/WebGPU. The 28 Oct hardware
   receipt (`../ember.cpp/experiments/webgpu_gpu_2026-10-27/`) covers the existing tiny families,
   Gemma-3-270m, Qwen2.5-0.5B, Qwen3-0.6B and the page chat path on an L4. This does not close
-  newer families' op-specific CUDA gates or establish hardware WebGPU execution for operations
-  currently delegated to WebAssembly. Small-IR browser speed remains a measured limitation
+  establish hardware WebGPU execution for operations currently delegated to WebAssembly.
+  E4's later CUDA gate is complete (eight actual GPU families and two explicit CPU fallbacks). Small-IR browser speed remains a measured limitation
   (state4 24.7 replies/s WebGPU against 136 in single-threaded WebAssembly in that receipt).
 - **Windows testing of the quickstart** (parked).
 

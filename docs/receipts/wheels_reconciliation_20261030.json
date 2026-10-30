@@ -1,0 +1,56 @@
+{
+  "scope": "Historical CI completion reconciliation, not a new build or public package publication",
+  "workflow_run": 40207438451,
+  "commit": "bc9b3fb5893d685f9d53f24e289a122d31b2609a",
+  "url": "https://github.com/JohnnyTeutonic/paperkiln/actions/runs/40207438451",
+  "jobs": [
+    {
+      "job_id": 121211284694,
+      "platform": "macos-arm64",
+      "smoke_passes": 3,
+      "wheels": [
+        "paperkiln-0.3.1-cp310-cp310-macosx_14_0_arm64.whl",
+        "paperkiln-0.3.1-cp311-cp311-macosx_14_0_arm64.whl",
+        "paperkiln-0.3.1-cp312-cp312-macosx_14_0_arm64.whl"
+      ]
+    },
+    {
+      "job_id": 121211284893,
+      "platform": "macos-x86_64",
+      "smoke_passes": 3,
+      "wheels": [
+        "paperkiln-0.3.1-cp310-cp310-macosx_15_0_x86_64.whl",
+        "paperkiln-0.3.1-cp311-cp311-macosx_15_0_x86_64.whl",
+        "paperkiln-0.3.1-cp312-cp312-macosx_15_0_x86_64.whl"
+      ]
+    },
+    {
+      "job_id": 121211284956,
+      "platform": "windows-amd64",
+      "smoke_passes": 3,
+      "wheels": [
+        "paperkiln-0.3.1-cp310-cp310-win_amd64.whl",
+        "paperkiln-0.3.1-cp311-cp311-win_amd64.whl",
+        "paperkiln-0.3.1-cp312-cp312-win_amd64.whl"
+      ]
+    }
+  ],
+  "artifact_delivery": "GitHub Actions workflow artifacts; no PyPI publication",
+  "artifact_metadata": [
+    {
+      "id": 12604336559,
+      "name": "wheels-macos-15-intel-x86_64",
+      "sha256": "e8ea20ffb36f6c095a787c5f83255a5464f04baec02eccf4e76fdc4cb2bba6d7"
+    },
+    {
+      "id": 12604172323,
+      "name": "wheels-windows-latest-AMD64",
+      "sha256": "21a74d5fa58ca8e222c8e30be3bc08b66c4abd9e17c69466f779a353e959d8aa"
+    },
+    {
+      "id": 12603964967,
+      "name": "wheels-macos-14-arm64",
+      "sha256": "5d8c4a2039473c38a9856a7dd178942f42df740ce780ed38a7f7dadbf8a6676d"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "source_commit": "f515920636473d5ca23d0beeee22839310d9cad4",
+  "version": "0.1.1",
+  "artifacts": [
+    {
+      "path": "/mnt/c/ml_artifacts/releases/paperkiln_fetch/0.1.1/final/paperkiln_fetch-0.1.1-py3-none-any.whl",
+      "bytes": 32537,
+      "sha256": "0561e20be163b2d54af75a794af87c99bf9e0d0dbf1188672f31fef5961b4dc2"
+    },
+    {
+      "path": "/mnt/c/ml_artifacts/releases/paperkiln_fetch/0.1.1/final/paperkiln_fetch-0.1.1.tar.gz",
+      "bytes": 32233,
+      "sha256": "1ecbacd26a2b61a0b78a9780f0070d66c22a4a4c7027ebbcf527bd9ad76008b4"
+    }
+  ],
+  "twine_check": "PASS",
+  "installed_module": {
+    "module_version": "0.1.1",
+    "distribution_version": "0.1.1",
+    "module_path": "/home/jonat/paperkiln_fetch_release_env/lib/python3.11/site-packages/paperkiln_fetch/__init__.py"
+  },
+  "installed_cli_dense_skeleton": "PASS",
+  "installed_cli_moe_refusal": "PASS",
+  "published": false,
+  "build_receipt_sha256": "654b22795d45a8052970261594740f76850ee2980ec81539ef5e76cdff48c17e",
+  "publication_attempt": {
+    "tool": "twine upload --non-interactive",
+    "status": "BLOCKED_MISSING_PYPI_API_TOKEN",
+    "published": false
+  }
+}

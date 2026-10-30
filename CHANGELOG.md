@@ -7,6 +7,11 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Cross-platform wheels reconciled** (30 Oct). GitHub run40207438451 atbc9b3fb5 already
+  built and smoke-tested cp310–cp312 on Windows x64 and both macOS architectures. Rechecked
+  all nine actual smoke successes and repaired wheel names; removed the stale Linux-only
+  roadmap item. Workflow artifacts are available; no PyPI publication is claimed.
+
 - **Faithful legacy tokenizer and plain GPT2 HF export** (30 Oct). Serialized legacy
   tokenizers preserve C-locale ASCII case/whitespace and UTF-8 byte punctuation, including
   EOS and original readable spacing. Three real vocabularies match independent C++, Python,
