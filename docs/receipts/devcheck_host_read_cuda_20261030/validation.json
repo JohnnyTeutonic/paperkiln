@@ -1,0 +1,117 @@
+{
+ "scope": "Partial audited non-WIP host-read boundaries; actual CUDA+DEVCHECK integration and device regressions. Full host-read coverage remains OPEN.",
+ "source_commit": "7e30a34a51f450d7236ab5ec55307a349878679b",
+ "gpu": "NVIDIA L4",
+ "gate_pass": true,
+ "integration": {
+  "pass": true,
+  "devcheck_enabled": true,
+  "cuda_integration": true,
+  "stale_and_released_predicate_negatives": true,
+  "macro_evaluation_checked": true
+ },
+ "source_provenance": {
+  "CMakeLists.txt": {
+   "pinned_git_blob_sha256": "e7b16163ead294a6b8ac051db261edcadc132c79c7276c81be3e8b0a8770873a",
+   "pinned_lf_sha256": "e7b16163ead294a6b8ac051db261edcadc132c79c7276c81be3e8b0a8770873a",
+   "vm_sha256": "e7b16163ead294a6b8ac051db261edcadc132c79c7276c81be3e8b0a8770873a"
+  },
+  "include/microtorch/device_cache.hpp": {
+   "pinned_git_blob_sha256": "69b5dda14d19be1bd2cdf64b8cb650afe5e57106da259ea308079bd87f85dc8c",
+   "pinned_lf_sha256": "2a28459fce686a2883d39427dedf961c49b6f354c05e716482482d925b5e03ee",
+   "vm_sha256": "69b5dda14d19be1bd2cdf64b8cb650afe5e57106da259ea308079bd87f85dc8c"
+  },
+  "src/cuda_resident.cu": {
+   "pinned_git_blob_sha256": "4c5b5995551d680b3b53936d028c2c24358573054e49d53cab12cde34503ffab",
+   "pinned_lf_sha256": "4c5b5995551d680b3b53936d028c2c24358573054e49d53cab12cde34503ffab",
+   "vm_sha256": "4c5b5995551d680b3b53936d028c2c24358573054e49d53cab12cde34503ffab"
+  },
+  "src/autograd.cpp": {
+   "pinned_git_blob_sha256": "1f43e97883ba23786efaecc2bb75acfe601feb7fe33078bfb10f6182e10e9c6c",
+   "pinned_lf_sha256": "1f43e97883ba23786efaecc2bb75acfe601feb7fe33078bfb10f6182e10e9c6c",
+   "vm_sha256": "1f43e97883ba23786efaecc2bb75acfe601feb7fe33078bfb10f6182e10e9c6c"
+  },
+  "src/nn.cpp": {
+   "pinned_git_blob_sha256": "4c485aa352d5cf982455f8d9e7075676a09d43429ab91cdde1743d9bca4b497f",
+   "pinned_lf_sha256": "4c485aa352d5cf982455f8d9e7075676a09d43429ab91cdde1743d9bca4b497f",
+   "vm_sha256": "4c485aa352d5cf982455f8d9e7075676a09d43429ab91cdde1743d9bca4b497f"
+  },
+  "src/depth_attend.cpp": {
+   "pinned_git_blob_sha256": "f9262ec2ff605fd545bc68e4cb772d110c67d2a3cd7895c9a81039ba1c9421ab",
+   "pinned_lf_sha256": "f9262ec2ff605fd545bc68e4cb772d110c67d2a3cd7895c9a81039ba1c9421ab",
+   "vm_sha256": "f9262ec2ff605fd545bc68e4cb772d110c67d2a3cd7895c9a81039ba1c9421ab"
+  },
+  "src/safetensors.cpp": {
+   "pinned_git_blob_sha256": "918c41750e21a2c795e814a206eb1ad5537835d5f4bce69c21bceb7b28a4880c",
+   "pinned_lf_sha256": "918c41750e21a2c795e814a206eb1ad5537835d5f4bce69c21bceb7b28a4880c",
+   "vm_sha256": "918c41750e21a2c795e814a206eb1ad5537835d5f4bce69c21bceb7b28a4880c"
+  },
+  "src/llama.cpp": {
+   "pinned_git_blob_sha256": "40d4d18f860b4679f0081f860fd326703134656bdc5c512142fa8a629803c8c6",
+   "pinned_lf_sha256": "40d4d18f860b4679f0081f860fd326703134656bdc5c512142fa8a629803c8c6",
+   "vm_sha256": "40d4d18f860b4679f0081f860fd326703134656bdc5c512142fa8a629803c8c6"
+  },
+  "src/llama_attnres.cpp": {
+   "pinned_git_blob_sha256": "77276862ca750636c362cd6fd951398b043fd01f619d5c642f6ecd08619099ac",
+   "pinned_lf_sha256": "77276862ca750636c362cd6fd951398b043fd01f619d5c642f6ecd08619099ac",
+   "vm_sha256": "77276862ca750636c362cd6fd951398b043fd01f619d5c642f6ecd08619099ac"
+  },
+  "src/moe.cpp": {
+   "pinned_git_blob_sha256": "097e882c698219c322977dace4f84e379cd7718fea1257005e2b2a3f79f4191c",
+   "pinned_lf_sha256": "097e882c698219c322977dace4f84e379cd7718fea1257005e2b2a3f79f4191c",
+   "vm_sha256": "097e882c698219c322977dace4f84e379cd7718fea1257005e2b2a3f79f4191c"
+  },
+  "src/ops.cpp": {
+   "pinned_git_blob_sha256": "8f2c4acd929ee154e914467c76e0b13c5bd3c401eda3fb9946475737b5ea8d58",
+   "pinned_lf_sha256": "8f2c4acd929ee154e914467c76e0b13c5bd3c401eda3fb9946475737b5ea8d58",
+   "vm_sha256": "8f2c4acd929ee154e914467c76e0b13c5bd3c401eda3fb9946475737b5ea8d58"
+  },
+  "tests/test_devcheck_host_read.cpp": {
+   "pinned_git_blob_sha256": "2ca21c41c3d90db6fd3ce4832ba8f59ecdab30387b690f5bfc549445ab57b292",
+   "pinned_lf_sha256": "ed0548596bccfcbda5427acdb532b17552cb52e9daa16565a41b3108c04cf569",
+   "vm_sha256": "2ca21c41c3d90db6fd3ce4832ba8f59ecdab30387b690f5bfc549445ab57b292"
+  }
+ },
+ "artifacts": {
+  "build.log": {
+   "sha256": "76cbf08e6d64574d7206018cd2c8060671d53be34ab698b43ae0aec018e5158d",
+   "bytes": 23308
+  },
+  "configure.log": {
+   "sha256": "3de4f8173a32c8b61e44c7b8a8c6d960fb492acfe0075edb7870ae0c268b751f",
+   "bytes": 1972
+  },
+  "depth_attend_regression.log": {
+   "sha256": "d3562eb2a72665c3e5a84916bfa8cf326bc9625c37033c82248e0d31516048dd",
+   "bytes": 3253
+  },
+  "devcheck_host_read_train.log": {
+   "sha256": "ad5ca95b73b5cf58ed5bfd2b78bc2b4b48788f9114ff77989456be9cc79fa681",
+   "bytes": 29
+  },
+  "gate_summary.json": {
+   "sha256": "2c1e2b9aade88f91f083d3a2e27448ddf456bd2d0efb466d886b02136dd12ab5",
+   "bytes": 2813
+  },
+  "gpt2_device_regression.log": {
+   "sha256": "d854accbbe07831df92d935bc1c157b55f5ce9b50046553944b2fba9cf70ec85",
+   "bytes": 2508
+  },
+  "hardware.log": {
+   "sha256": "4d27402575c0fbfcbc714a6563f4bcc9ea0e3699ea638e7bd89db077eef291de",
+   "bytes": 21
+  },
+  "host_read_negative_positive.log": {
+   "sha256": "c2d19c0865447bcc323edfcb1e26ae76e7fd5f0796f86ed19579763cf0d246dc",
+   "bytes": 194
+  },
+  "nvcc.log": {
+   "sha256": "3c71ed984d2ca98770b0cba5c23a849a87209351e105433929c3062fb66d1915",
+   "bytes": 209
+  }
+ },
+ "canonical_home": "C:\\ml_artifacts\\devcheck_host_read_20261030\\devcheck_host_read",
+ "budget_cap_usd": 2,
+ "cleanup": "Normal driver terminated pod fo548p6a0pu5jt and deleted volume tczvok2xkj at04:39:15/16UTC; ledger .12",
+ "remaining": "ops.cpp, mtstudio, parity_model and other unreviewed host loops excluded; no full coverage claim"
+}

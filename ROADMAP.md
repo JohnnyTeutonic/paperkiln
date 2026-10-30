@@ -105,8 +105,10 @@ advisory steps that cannot fail the build.
 ## 6. Engine
 
 - **CUDA** (records: `docs/CUDA_PHASE_B2.md`):
-  - Wire `MT_DEVCHECK_HOST_READ` at real call sites; today it is defined
-    and never called.
+  - Finish the host-read boundary audit in author-WIP ops.cpp/mtstudio/parity_model
+    and other unreviewed host loops. The audited non-WIP boundaries are wired and
+    pass actual L4 CUDA+DEVCHECK integration (`docs/receipts/devcheck_host_read_cuda_20261030/`);
+    those completed guards leave this list.
   - Coalesce loads in the transposed GEMM paths.
   - Re-measure the speedup on the op-set configuration over a full run
     before any paper quotes it. The 21x and 30.5x figures were measured

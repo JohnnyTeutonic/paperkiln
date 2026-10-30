@@ -1,0 +1,101 @@
+{
+ "pass": true,
+ "scope": "audited non-WIP host-read boundaries; ops.cpp/mtstudio/parity_model not audited",
+ "cuda_required": true,
+ "devcheck_required": true,
+ "commands": [
+  {
+   "name": "hardware",
+   "argv": [
+    "nvidia-smi",
+    "--query-gpu=name,driver_version",
+    "--format=csv,noheader"
+   ],
+   "returncode": 0
+  },
+  {
+   "name": "nvcc",
+   "argv": [
+    "nvcc",
+    "--version"
+   ],
+   "returncode": 0
+  },
+  {
+   "name": "configure",
+   "argv": [
+    "cmake",
+    "-S",
+    "/content/pk",
+    "-B",
+    "/content/devcheck_build",
+    "-DCMAKE_BUILD_TYPE=Release",
+    "-DMICROTORCH_CUDA=ON",
+    "-DMICROTORCH_DEVCHECK=ON",
+    "-DMICROTORCH_BUILD_PYTHON=OFF",
+    "-DCMAKE_CUDA_ARCHITECTURES=89"
+   ],
+   "returncode": 0
+  },
+  {
+   "name": "build",
+   "argv": [
+    "cmake",
+    "--build",
+    "/content/devcheck_build",
+    "--target",
+    "test_devcheck_host_read",
+    "test_gpt2_device",
+    "test_llama_attnres",
+    "--parallel",
+    "4"
+   ],
+   "returncode": 0
+  },
+  {
+   "name": "host_read_negative_positive",
+   "argv": [
+    "/content/devcheck_build/test_devcheck_host_read",
+    "--require-cuda"
+   ],
+   "returncode": 0
+  },
+  {
+   "name": "gpt2_device_regression",
+   "argv": [
+    "/content/devcheck_build/test_gpt2_device"
+   ],
+   "returncode": 0
+  },
+  {
+   "name": "depth_attend_regression",
+   "argv": [
+    "/content/devcheck_build/test_llama_attnres"
+   ],
+   "returncode": 0
+  }
+ ],
+ "errors": [],
+ "commit": "7e30a34a51f450d7236ab5ec55307a349878679b",
+ "source_sha256": {
+  "CMakeLists.txt": "e7b16163ead294a6b8ac051db261edcadc132c79c7276c81be3e8b0a8770873a",
+  "include/microtorch/device_cache.hpp": "69b5dda14d19be1bd2cdf64b8cb650afe5e57106da259ea308079bd87f85dc8c",
+  "src/cuda_resident.cu": "4c5b5995551d680b3b53936d028c2c24358573054e49d53cab12cde34503ffab",
+  "src/autograd.cpp": "1f43e97883ba23786efaecc2bb75acfe601feb7fe33078bfb10f6182e10e9c6c",
+  "src/nn.cpp": "4c485aa352d5cf982455f8d9e7075676a09d43429ab91cdde1743d9bca4b497f",
+  "src/depth_attend.cpp": "f9262ec2ff605fd545bc68e4cb772d110c67d2a3cd7895c9a81039ba1c9421ab",
+  "src/safetensors.cpp": "918c41750e21a2c795e814a206eb1ad5537835d5f4bce69c21bceb7b28a4880c",
+  "src/llama.cpp": "40d4d18f860b4679f0081f860fd326703134656bdc5c512142fa8a629803c8c6",
+  "src/llama_attnres.cpp": "77276862ca750636c362cd6fd951398b043fd01f619d5c642f6ecd08619099ac",
+  "src/moe.cpp": "097e882c698219c322977dace4f84e379cd7718fea1257005e2b2a3f79f4191c",
+  "src/ops.cpp": "8f2c4acd929ee154e914467c76e0b13c5bd3c401eda3fb9946475737b5ea8d58",
+  "tests/test_devcheck_host_read.cpp": "2ca21c41c3d90db6fd3ce4832ba8f59ecdab30387b690f5bfc549445ab57b292"
+ },
+ "integration": {
+  "pass": true,
+  "devcheck_enabled": true,
+  "cuda_integration": true,
+  "stale_and_released_predicate_negatives": true,
+  "macro_evaluation_checked": true
+ }
+}

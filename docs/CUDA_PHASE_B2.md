@@ -645,13 +645,15 @@ stale-only predicate missed them. No automatic materialization was added.
 
 CPU debug builds pass nn, llama_attnres, gpt2_device and the new host-read test.
 The latter checks stale/released predicate failures; actual CUDA cache integration
-is a separate, still-pending gate. Its strict command-only job requires L4, CUDA
+passed on an L4 at pinned 7e30a34a (30 Oct). Its strict command-only job requires L4, CUDA
 and DEVCHECK, then exercises a real stale Module::state_dict copy, a successful
 copy after materialize, and a released copy, followed by device regressions.
 Diagnostic FINISHED does not mean pass; inspect gate_summary.json. Failed phases
 still write every declared diagnostic, so the normal runner can stop the pod.
 
-Receipt: `docs/receipts/devcheck_host_read_cpu_20261030.json`. This is not a complete
+Receipts: `docs/receipts/devcheck_host_read_cpu_20261030.json` and the raw CUDA gate
+plus independently checked source hashes in `docs/receipts/devcheck_host_read_cuda_20261030/`. This is not a complete
 host-read audit: existing author work in ops.cpp, mtstudio and parity_model was
 preserved, and other host loops remain unreviewed. The open coverage item stays
-open until those paths are audited and actual device evidence is home.
+open until those remaining paths are audited. The device evidence for the boundaries
+instrumented here is home and passes; that bounded implementation leaves the roadmap.
