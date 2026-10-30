@@ -12,9 +12,10 @@ Notable changes to microtorch. Format loosely follows
   native paperkiln byte-BPE until faithfully supported. Corrected the HF RMSNorm epsilon
   from 1e-6 to the training tape's 1e-5. The verifier resolves a real spec, checks every
   exported/loaded tensor against the source mapping, compares source/HF prompt IDs, and checks
-  greedy IDs plus raw output logits instead of whitespace-split text. Nineteen regressions pass.
+  greedy IDs plus raw output logits instead of whitespace-split text. Twenty-three regressions pass.
   Non-default recorded RoPE theta is preserved; GQA, q/k norm, alternate/partial RoPE,
-  untied heads and other unmapped variants are explicitly refused.
+  untied heads, recursion, attention residuals, MoE, state tokens and other unmapped variants
+  are explicitly refused.
   An existing 7.6M, four-layer SFT model passed three eight-token prompts (ordinary prose,
   punctuation/newline, non-ASCII): all 24 IDs match, all 38 mapped tensors match exactly,
   maximum raw-logit error 9.54e-6 under unchanged 2e-4 absolute/relative tolerances.

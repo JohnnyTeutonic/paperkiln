@@ -98,6 +98,8 @@ def test_export_uses_training_rms_epsilon(tmp_path, monkeypatch):
 @pytest.mark.parametrize("extra", [
     {"thirdparty": {"kv_heads": 2}}, {"kv_heads": 2}, {"qk_norm": True},
     {"rope_pairing": "neox"}, {"rope_dims": 2}, {"norm_placement": "post"},
+    {"recursion": {"repeats": 2}}, {"attn_res": {"form": "full"}},
+    {"moe": {"experts": 2}}, {"state_tokens": {"k": 2}},
     {"tie_embeddings": False}, {"tie_head": False}, {"rope_theta": float("nan")},
 ])
 def test_refuse_unmapped_llama_variants(extra):

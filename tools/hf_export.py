@@ -172,6 +172,8 @@ def validate_model(m):
             or m.get("qk_norm") or m.get("rope_pairing", "interleaved") != "interleaved"
             or m.get("rope_dims", m["d"] // m["heads"]) != m["d"] // m["heads"]):
         raise ValueError("thirdparty/GQA/partial or alternate RoPE/qk-normalized Llama export is unsupported")
+    if any(m.get(k) for k in ("recursion", "attn_res", "moe", "state_tokens")):
+        raise ValueError("recursion, attention residuals, MoE and state-token exports are unsupported")
     if not m.get("tie_embeddings", m.get("tie_head", True)):
         raise ValueError("untied output embeddings are unsupported")
     theta = m.get("rope_theta", 10000.0)
