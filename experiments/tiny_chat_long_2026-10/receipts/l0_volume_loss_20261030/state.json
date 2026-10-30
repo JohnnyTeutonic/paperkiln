@@ -1,0 +1,76 @@
+{
+ "endpoint": null,
+ "launches": 1,
+ "jobs": {
+  "l0_pick_e1_150m_L8": {
+   "relayed_step": 0,
+   "status": "RUNNING",
+   "home": false,
+   "failed_seen": 0
+  }
+ },
+ "gpu": "L4",
+ "backend": "runpod",
+ "runpod": {
+  "pod": null,
+  "volume": {
+   "id": "vnwyd6e9jp",
+   "dc": "EUR-IS-1",
+   "gb": 80,
+   "created": 1793341789.7895856
+  },
+  "retired_volumes": [],
+  "ledger": {
+   "pods": [
+    {
+     "id": "lvxo04p2pncblo",
+     "name": "pk-tc-l0-150m",
+     "gpu": "L4",
+     "usd_per_hr": 0.59,
+     "dc": "EU-RO-1",
+     "volume": "y867xwx6ny",
+     "start": 1793323340.513445,
+     "stop": 1793341523.2865567,
+     "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+     "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+     "stopped_by": "runner"
+    },
+    {
+     "id": "qv7vvy5l25kmst",
+     "name": "pk-tc-l0-150m",
+     "gpu": "L4",
+     "usd_per_hr": 0.59,
+     "dc": "EUR-IS-1",
+     "volume": "vnwyd6e9jp",
+     "start": 1793341793.2103076,
+     "stop": 1793342029.2609167,
+     "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+     "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+     "stopped_by": "runner"
+    }
+   ],
+   "volumes": [
+    {
+     "id": "y867xwx6ny",
+     "dc": "EU-RO-1",
+     "gb": 80,
+     "created": 1793323336.4781532,
+     "name": "pk-tc-l0-150m-vol",
+     "deleted": 1793342146.9735975
+    },
+    {
+     "id": "vnwyd6e9jp",
+     "dc": "EUR-IS-1",
+     "gb": 80,
+     "created": 1793341789.7895856,
+     "name": "pk-tc-l0-150m-vol"
+    }
+   ]
+  },
+  "dc_fails": 0,
+  "creating": null
+ },
+ "booted": true,
+ "pending_uploads": [],
+ "gone_ticks": 0
+}

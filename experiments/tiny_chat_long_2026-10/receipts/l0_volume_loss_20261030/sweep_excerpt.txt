@@ -1,0 +1,2 @@
+2026-10-30 17:35:46 volume y867xwx6ny (pk-tc-l0-150m-vol): campaign /home/jonat/pk_tc_l0_150m_runner is on another volume; deleting
+2026-10-30 17:35:46 volume y867xwx6ny: deleted

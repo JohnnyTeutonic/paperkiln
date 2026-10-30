@@ -1,0 +1,71 @@
+{
+  "utc": "2026-10-30T06:38:59.349061+00:00",
+  "volumes": [
+    {
+      "dataCenterId": "EU-RO-1",
+      "id": "05zud7xylj",
+      "name": "pk-c12-hs1-b-r4-vol",
+      "size": 80
+    },
+    {
+      "dataCenterId": "EU-RO-1",
+      "id": "1ktdrhaaay",
+      "name": "pk-bf16-profile-1030-vol",
+      "size": 80
+    },
+    {
+      "dataCenterId": "EUR-IS-1",
+      "id": "280o1sbn0i",
+      "name": "pk-c12-hs1-b-r5-vol",
+      "size": 80
+    },
+    {
+      "dataCenterId": "EUR-IS-1",
+      "id": "a7wh33qn0c",
+      "name": "pk-c12-hs1-sgist-r4-vol",
+      "size": 80
+    },
+    {
+      "dataCenterId": "EU-RO-1",
+      "id": "br5gdlgye1",
+      "name": "pk-tc-x60-r5-vol",
+      "size": 80
+    },
+    {
+      "dataCenterId": "EUR-IS-1",
+      "id": "igktsifn41",
+      "name": "ember-e10-self-1030-vol",
+      "size": 30
+    },
+    {
+      "dataCenterId": "EU-RO-1",
+      "id": "oj8kd23ndi",
+      "name": "pk-tc-e1-150m-r2-vol",
+      "size": 80
+    },
+    {
+      "dataCenterId": "EU-RO-1",
+      "id": "oqqup6xvo0",
+      "name": "pk-tc-x60-r4-vol",
+      "size": 80
+    },
+    {
+      "dataCenterId": "EU-RO-1",
+      "id": "pikt2fwh4y",
+      "name": "pk-tc-e1-150m-r3-vol",
+      "size": 80
+    },
+    {
+      "dataCenterId": "EUR-IS-1",
+      "id": "swhxav3hok",
+      "name": "pk-c12-hs1-sgist-r5-vol",
+      "size": 80
+    },
+    {
+      "dataCenterId": "EUR-IS-1",
+      "id": "vnwyd6e9jp",
+      "name": "pk-tc-l0-150m-vol",
+      "size": 80
+    }
+  ]
+}
