@@ -1,0 +1,21 @@
+{
+ "_comment": "Versioned E10.2 operational repair pilot ONLY: first100 frozen requests/model; exact archived binary; no full pool, candidate or evaluation. V1 failure untouched.",
+ "max_parallel": 1,
+ "jobs": [
+  {
+   "name": "e10_self_pilot_v2",
+   "cmd": [
+    "bash",
+    "-c",
+    "set -eu; out=\"$1\"; mkdir -p \"$out\"; for f in tinyllama_server self_output_pool.py self_output_pilot_v2.py self_output_vm.sh pick.gguf pk.gguf pick_pool.jsonl pk_pool.jsonl pick_table.bin pk_table.bin COMMITS INPUT_SHA256SUMS; do cp \"/content/chat/upload/$f\" \"/content/$f\"; done; rc=0; bash /content/self_output_vm.sh || rc=$?; cp /content/vm.log \"$out/vm.log\"; if [ -s /content/out.zip ]; then cp /content/out.zip \"$out/out.zip\"; fi; if [ -s /content/out/pilot_summary.json ]; then cp /content/out/pilot_summary.json \"$out/pilot_summary.json\"; fi; exit \"$rc\"",
+    "e10-self-pilot-v2",
+    "{out}"
+   ],
+   "outputs": [
+    "out.zip",
+    "vm.log",
+    "pilot_summary.json"
+   ]
+  }
+ ]
+}
