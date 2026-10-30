@@ -113,5 +113,35 @@
   "all_bounded_variants_meet_numerical_supported_rule": true,
   "proof": "For componentwise delta bounds b, sampleSD(d+delta)<=sampleSD(d)+norm(b)/sqrt(n-1), since centering is an orthogonal projection. Mean extrema use exact rounded per-cell endpoint pools; all five paired differences remain negative.",
   "historical_parity_violation_remains": true,
-  "canonical_data_and_analysis_modified": false
+  "canonical_data_and_analysis_modified": false,
+  "replay": {
+    "tool_sha256": "59d9f9521f90d3ecf1a477cab6aade6e20dd175ba8cc68f8208c137d198cc149",
+    "input_sha256": {
+      "history_argmax_audit.json": "da3e3880fa4eb4d3ad1ed88b908c2a4b637780860eb9438f94fc93a6a92ded9e",
+      "analysis_hs1.json": "6868c6374d6ca637b91ec106d762c79c193b9cd0de9c784fb43311b9588da04a",
+      "raw_credit_audit.json": "bc8dd6d40b723fe5f1a0e891abd660e0c0be3964f1c9e3b61e4a3adcfa10e52b",
+      "completion.json": "5f744dd5363606d8e53ff3f055b5cdd7379f6136436832108ceb6412e91733c1",
+      "c12_B_r1/post_c12_B_r1/carry12/m/items.jsonl": "23c3ce956f9ff43d8d6b14575eef8c44e3f7a32c218096483da114133a2a4bd9",
+      "c12_B_r1/post_c12_B_r1/summary.json": "14042125ccb95198fb13268041515e0726883c81a1ee195b159e90659bd0bd14",
+      "c12_B_r2/post_c12_B_r2/carry12/m/items.jsonl": "ab4052caf8ad6a03309fb41b27bf0d7d720c80ae2909c201a412a80a636405db",
+      "c12_B_r2/post_c12_B_r2/summary.json": "03e459e1a5082a6be12bff4d51b974bb936c6c0c0fa6bfe3ae309e4f01c20880",
+      "c12_B_r3/post_c12_B_r3/carry12/m/items.jsonl": "cc4f08fab753d831c00f9ef6975a6f21a3a8301ee514694cb14a5f43bee833b7",
+      "c12_B_r3/post_c12_B_r3/summary.json": "6b38633a02e308ee11df18c726bbf821ad37b8b2842e9fbd9981daa485e64813",
+      "c12_B_r4/post_c12_B_r4/carry12/m/items.jsonl": "963e5c16ca43d185c9e32aa60ce916feaec598c3fd4ae39f32464e98aa0f7a66",
+      "c12_B_r4/post_c12_B_r4/summary.json": "f87d4a4df237842d2660987c2a4bca9814353347987550dedbcccd42bce6a5f3",
+      "c12_B_r5/post_c12_B_r5/carry12/m/items.jsonl": "e7684c1f8764916a24bd96800a41900274bed7e4f8e36a71633f8af824c178b8",
+      "c12_B_r5/post_c12_B_r5/summary.json": "e2bb91c230e1e61cb5a5725d5d53344773c30b418b6daff9e056bd7cc147fe1c",
+      "c12_Sgist_r1/post_c12_Sgist_r1/carry12/m/items.jsonl": "c148482aa9a8c8ad9b5b1918a3ff719f35d7eb2c5b0ab207e3b86d8c31ac7425",
+      "c12_Sgist_r1/post_c12_Sgist_r1/summary.json": "3dfc5ac9f352f9c8559e17375cac924f43073546e3395806ed5b4f349010c2fe",
+      "c12_Sgist_r2/post_c12_Sgist_r2/carry12/m/items.jsonl": "f8d10c2c70e723a27cffbb8e11df166701b00290c0cb01f8d670dccb45a8f85e",
+      "c12_Sgist_r2/post_c12_Sgist_r2/summary.json": "9132c0ff45c26b1d6236de8fca892625266c9002b17cabc12a13d5fea6d695d4",
+      "c12_Sgist_r3/post_c12_Sgist_r3/carry12/m/items.jsonl": "efef2067017fd73c7a599aa56aad8031958263fa149b88dd58a854f62db7e3f7",
+      "c12_Sgist_r3/post_c12_Sgist_r3/summary.json": "3f49dcaadf94f873e9933790f6f327d180df92ed47734c827ec1964f9d633e90",
+      "c12_Sgist_r4/post_c12_Sgist_r4/carry12/m/items.jsonl": "081b24b9827cf9f0d379b4bfc9dd6313bd4280600f6ef7cea2aff453b9a69e92",
+      "c12_Sgist_r4/post_c12_Sgist_r4/summary.json": "b7c30d14499c6fd4648becf54cee3362a3ad84aa04e48c468817748a7d3ee35b",
+      "c12_Sgist_r5/post_c12_Sgist_r5/carry12/m/items.jsonl": "2506752942184fd67e2da6338a4374626159de5e8901f11761719563e9f707e1",
+      "c12_Sgist_r5/post_c12_Sgist_r5/summary.json": "295a7f7c419400e2235fb2882646debf1a88650aeae3dc62ac87fc10c9c6e4af"
+    },
+    "canonical_statistics_changed": false
+  }
 }
