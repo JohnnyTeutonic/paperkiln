@@ -1,0 +1,64 @@
+{
+ "scope": "Read-only postimplementation mechanical audit by the original implementer; separate coordinate/tensor checks, not a second independent design reviewer",
+ "status": "PASS",
+ "implementation_commit": "679fb5ba1",
+ "source_archive_validation_commit": "8365e79ec",
+ "historical_clean_cpp_source_commit": "3eb746f2103f332a6ba69d9aafb704f964fab416",
+ "original_receipt_files_rehashed": 13,
+ "all_artifact_and_runtime_receipt_hashes_verified": true,
+ "frozen_exporter_and_verifier_snapshots_match_current_source_bytes": true,
+ "archived_compiler_source_files_rehashed": 1274,
+ "archive_and_manifest_hashes_verified": true,
+ "mapping_checks": {
+  "native_tensors": 30,
+  "exported_tensors": 42,
+  "parameters_each": 140208,
+  "method": "Independent inverse coordinate checks, without invoking exporter mapping: Q/K HF halves equal native even/odd coordinates per head for both weights and biases; V unpermuted; O/MLP/head transposed; norms flattened; all source and target keys consumed exactly",
+  "config_fields_checked": {
+   "model_type": "llama",
+   "hidden_size": 16,
+   "intermediate_size": 40,
+   "num_hidden_layers": 3,
+   "num_attention_heads": 2,
+   "num_key_value_heads": 2,
+   "vocab_size": 4096,
+   "max_position_embeddings": 32,
+   "rms_norm_eps": 1e-05,
+   "rope_theta": 1234.0,
+   "hidden_act": "silu",
+   "tie_word_embeddings": false,
+   "attention_bias": true,
+   "mlp_bias": false
+  },
+  "actual_hf_reload_all_42_tensors_bit_identical": true,
+  "model_forward_invocations": 0
+ },
+ "token_and_id_checks": {
+  "prompts": 3,
+  "clean_pinned_cpp_tokenizer_and_serialized_hf_ids_match_saved_prompt_ids": true,
+  "cpp_tokenizer_binary_sha256": "a79c891d9627cbae784676e34b1da347def68aeee6fa2f7fcb64f07116298f28",
+  "saved_generated_ids": 24,
+  "all_saved_mtstudio_argmax_ids_match_hf_continuation_ids": true
+ },
+ "unit_tests": {
+  "passed": 165,
+  "returncode": 0,
+  "log_home": "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/postimplementation_tests_20261030.log",
+  "log_sha256": "1cbb8cc49cd317e316b8a86e34bbd03cb2b5ed765355cd814a76d4f5cde90e9a",
+  "no_model_forwards_or_training_or_timing_comparison": true
+ },
+ "numerical_limit": {
+  "recorded_maximum_logit_error": 8.940696716308594e-08,
+  "raw_logit_matrices_retained": false,
+  "numerical_delta_recomputed_by_this_audit": false,
+  "explanation": "The historical verifier compared full HF/mtstudio logit matrices inside a temporary directory, then retained IDs and maximum error in hashed receipts. The matrices were deleted. This audit validates their recorded result/provenance, not an offline recomputation of that numeric error. No fresh forward was run."
+ },
+ "remaining": "Tied heads and modified flex variants remain refused; fixture evidence is tiny CPU interoperability only, not model quality, GPU behavior, chat rendering or all possible configurations.",
+ "git_origin_checks": {
+  "implementation_receipt_blobs_matching_original_679fb5ba1": 14,
+  "source_archive_validation_matches_original_8365e79ec": true,
+  "original_receipts_unchanged": true
+ },
+ "artifact_path_handling": "Frozen metadata contains Windows-relative artifact names; auditor normalized directory separators only when reading from WSL.",
+ "mechanical_audit_raw_home_sha256": "c9dc494afc3ac5ee0e41f571668f7f19d23616f7584cf7b6c61fbd16e3321f54"
+}
