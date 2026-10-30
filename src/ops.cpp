@@ -1541,18 +1541,14 @@ void rows_into(Matrix& dst, const Matrix& src, size_t r0) {
 Var kimi_attention(const Var& q, const Var& k, const Var& v, bool causal, size_t seq_len) {
     using kimi::KimiLinearAttention;
 
-    // The class backward recomputes CAUSAL prefix sums; a non-causal
-    // forward under grad would get silently wrong gradients. Fail loudly
-    // until the full-sum backward exists.
-    if (!causal && grad_enabled() && (q->requires_grad || k->requires_grad || v->requires_grad)) {
-        throw std::runtime_error(
-            "kimi_attention: non-causal backward not implemented; wrap in "
-            "NoGrad for inference or use causal=true");
-    }
-
     const size_t T = q->data.rows();
+    if (q->data.cols() == 0 || k->data.rows() != T || v->data.rows() != T ||
+        k->data.cols() != q->data.cols() || v->data.cols() != q->data.cols())
+        throw std::runtime_error("kimi_attention: q/k/v shape mismatch");
     const size_t sl = seq_len == 0 ? T : seq_len;
-    if (T % sl != 0) throw std::runtime_error("kimi_attention: rows not a multiple of seq_len");
+    if (T == 0 || sl == 0 || T % sl != 0)
+        throw std::runtime_error(
+            "kimi_attention: empty sequence or rows not a multiple of seq_len");
     const size_t B = T / sl;
     size_t head_dim = q->data.cols();
     device::materialize(q->data);
@@ -1563,7 +1559,7 @@ Var kimi_attention(const Var& q, const Var& k, const Var& v, bool causal, size_t
     // Stacked mini-batch: linear attention's causal prefix sums must
     // reset at sequence boundaries, and blocks are independent — so run
     // the verified kernel PER BLOCK and stitch. Same total work
-    // (linear attention is O(T d^2); splitting is free).
+    // (this channelwise mixer is O(T d); splitting preserves that cost).
     Matrix out(T, head_dim);
     for (size_t b = 0; b < B; ++b) {
         Matrix ob = kimi.forward(rows_of(q->data, b * sl, (b + 1) * sl),
@@ -1572,33 +1568,35 @@ Var kimi_attention(const Var& q, const Var& k, const Var& v, bool causal, size_t
         rows_into(out, ob, b * sl);
     }
 
-    return record(std::move(out), {q, k, v}, [kimi = std::move(kimi), sl, B](Variable* self) {
-        const Var& q_var = self->parents[0];
-        const Var& k_var = self->parents[1];
-        const Var& v_var = self->parents[2];
+    return record(std::move(out), {q, k, v},
+                  [kimi = std::move(kimi), sl, B, causal](Variable* self) {
+                      const Var& q_var = self->parents[0];
+                      const Var& k_var = self->parents[1];
+                      const Var& v_var = self->parents[2];
 
-        if (!q_var->requires_grad && !k_var->requires_grad && !v_var->requires_grad) {
-            return;
-        }
+                      if (!q_var->requires_grad && !k_var->requires_grad && !v_var->requires_grad) {
+                          return;
+                      }
 
-        Matrix gq(q_var->data.rows(), q_var->data.cols());
-        Matrix gk(k_var->data.rows(), k_var->data.cols());
-        Matrix gv(v_var->data.rows(), v_var->data.cols());
-        device::materialize(self->grad);  // B2.3c: host-read below
-        for (size_t b = 0; b < B; ++b) {
-            auto [bq, bk, bv] = kimi.backward(rows_of(self->grad, b * sl, (b + 1) * sl),
-                                              rows_of(q_var->data, b * sl, (b + 1) * sl),
-                                              rows_of(k_var->data, b * sl, (b + 1) * sl),
-                                              rows_of(v_var->data, b * sl, (b + 1) * sl),
-                                              rows_of(self->data, b * sl, (b + 1) * sl));
-            rows_into(gq, bq, b * sl);
-            rows_into(gk, bk, b * sl);
-            rows_into(gv, bv, b * sl);
-        }
-        if (q_var->requires_grad) q_var->accumulate(std::move(gq));
-        if (k_var->requires_grad) k_var->accumulate(std::move(gk));
-        if (v_var->requires_grad) v_var->accumulate(std::move(gv));
-    });
+                      Matrix gq(q_var->data.rows(), q_var->data.cols());
+                      Matrix gk(k_var->data.rows(), k_var->data.cols());
+                      Matrix gv(v_var->data.rows(), v_var->data.cols());
+                      device::materialize(self->grad);  // B2.3c: host-read below
+                      for (size_t b = 0; b < B; ++b) {
+                          auto [bq, bk, bv] =
+                              kimi.backward(rows_of(self->grad, b * sl, (b + 1) * sl),
+                                            rows_of(q_var->data, b * sl, (b + 1) * sl),
+                                            rows_of(k_var->data, b * sl, (b + 1) * sl),
+                                            rows_of(v_var->data, b * sl, (b + 1) * sl),
+                                            rows_of(self->data, b * sl, (b + 1) * sl), causal);
+                          rows_into(gq, bq, b * sl);
+                          rows_into(gk, bk, b * sl);
+                          rows_into(gv, bv, b * sl);
+                      }
+                      if (q_var->requires_grad) q_var->accumulate(std::move(gq));
+                      if (k_var->requires_grad) k_var->accumulate(std::move(gk));
+                      if (v_var->requires_grad) v_var->accumulate(std::move(gv));
+                  });
 }
 
 Var ssm_scan(const Var& u, const Var& A, const Var& B, const Var& C, const Var& D) {

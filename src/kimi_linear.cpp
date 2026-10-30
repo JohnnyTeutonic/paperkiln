@@ -80,16 +80,16 @@ Matrix KimiLinearAttention::safe_divide(const Matrix& numerator, const Matrix& d
 }
 
 // Forward: Linear-time attention
-// Complexity: O(n * d²) where n = seq_len, d = head_dim
+// Complexity: O(n * d) for this channelwise mixer; no cross-feature products.
 // vs O(n² * d) for standard attention
 Matrix KimiLinearAttention::forward(const Matrix& q, const Matrix& k, const Matrix& v,
                                     bool causal) {
     // Verify shapes: [batch*heads, seq, head_dim]
     // After attention ops, q/k/v should all be [seq, head_dim] per batch*head
-    if (q.rows() != k.rows() || k.rows() != v.rows()) {
+    if (q.rows() == 0 || head_dim_ == 0 || q.rows() != k.rows() || k.rows() != v.rows()) {
         throw std::runtime_error("KimiLinear: seq_len mismatch in q, k, v");
     }
-    if (q.cols() != k.cols() || k.cols() != head_dim_) {
+    if (q.cols() != k.cols() || k.cols() != head_dim_ || v.cols() != head_dim_) {
         throw std::runtime_error("KimiLinear: head_dim mismatch in q, k");
     }
 
@@ -147,9 +147,17 @@ Matrix KimiLinearAttention::forward(const Matrix& q, const Matrix& k, const Matr
 // Backward: Compute gradients
 // This is complex due to the cumulative sums and divisions
 // We use reverse-mode AD: propagate grad_out backward through each operation
-std::tuple<Matrix, Matrix, Matrix> KimiLinearAttention::backward(
-    const Matrix& grad_out, const Matrix& q, const Matrix& k, const Matrix& v,
-    const Matrix& attention_out) const {
+std::tuple<Matrix, Matrix, Matrix> KimiLinearAttention::backward(const Matrix& grad_out,
+                                                                 const Matrix& q, const Matrix& k,
+                                                                 const Matrix& v,
+                                                                 const Matrix& attention_out,
+                                                                 bool causal) const {
+    if (q.rows() == 0 || head_dim_ == 0 || q.rows() != k.rows() || q.rows() != v.rows() ||
+        q.cols() != head_dim_ || k.cols() != head_dim_ || v.cols() != head_dim_ ||
+        grad_out.rows() != q.rows() || grad_out.cols() != head_dim_ ||
+        attention_out.rows() != q.rows() || attention_out.cols() != head_dim_) {
+        throw std::runtime_error("KimiLinear backward: shape mismatch or empty sequence");
+    }
     size_t seq_len = q.rows();
 
     // Recompute forward activations (needed for backward)
@@ -157,6 +165,31 @@ std::tuple<Matrix, Matrix, Matrix> KimiLinearAttention::backward(
     Matrix phi_k = feature_map(k);
     Matrix phi_q_grad = feature_map_grad(q);
     Matrix phi_k_grad = feature_map_grad(k);
+
+    if (!causal) {
+        Matrix grad_q(seq_len, head_dim_), grad_k(seq_len, head_dim_), grad_v(seq_len, head_dim_);
+        for (size_t j = 0; j < head_dim_; ++j) {
+            float numerator = 0.f, denominator = 0.f;
+            for (size_t t = 0; t < seq_len; ++t) {
+                numerator += phi_k(t, j) * v(t, j);
+                denominator += phi_k(t, j);
+            }
+            const float denom = std::max(denominator, 1e-8f);
+            float grad_numerator = 0.f, grad_denominator = 0.f;
+            for (size_t t = 0; t < seq_len; ++t) {
+                grad_q(t, j) = grad_out(t, j) * numerator / denom * phi_q_grad(t, j);
+                grad_numerator += grad_out(t, j) * phi_q(t, j) / denom;
+                // The clamp is constant below its boundary; equality uses the zero subgradient.
+                if (denominator > 1e-8f)
+                    grad_denominator -= grad_out(t, j) * phi_q(t, j) * numerator / (denom * denom);
+            }
+            for (size_t t = 0; t < seq_len; ++t) {
+                grad_k(t, j) = (grad_numerator * v(t, j) + grad_denominator) * phi_k_grad(t, j);
+                grad_v(t, j) = grad_numerator * phi_k(t, j);
+            }
+        }
+        return std::make_tuple(grad_q, grad_k, grad_v);
+    }
 
     // Recompute cumulative sums
     Matrix numerator = Matrix(seq_len, head_dim_);
@@ -199,9 +232,8 @@ std::tuple<Matrix, Matrix, Matrix> KimiLinearAttention::backward(
     }
 
     // Backward through numerator and denominator (cumsum operations)
-    // These require special handling due to the cumulative structure
-    // For now, use simplified version: direct gradients
-    // Full implementation would track cumsum gradients precisely
+    // Each prefix depends on all previous keys; the suffix accumulation below
+    // propagates every query contribution back to each affected key/value.
 
     Matrix grad_numerator = Matrix(seq_len, head_dim_);
     Matrix grad_denominator = Matrix(seq_len, head_dim_);
@@ -215,7 +247,9 @@ std::tuple<Matrix, Matrix, Matrix> KimiLinearAttention::backward(
             grad_numerator(t, j) = grad_out(t, j) * phi_q(t, j) / denom;
 
             // d(output[t,j])/d(denom[t,j]) = -φ(q[t,j]) * num / denom²
-            grad_denominator(t, j) = -grad_out(t, j) * phi_q(t, j) * numerator(t, j) / denom_sq;
+            grad_denominator(t, j) = denominator(t, j) > 1e-8f ? -grad_out(t, j) * phi_q(t, j) *
+                                                                     numerator(t, j) / denom_sq
+                                                               : 0.f;
         }
     }
 

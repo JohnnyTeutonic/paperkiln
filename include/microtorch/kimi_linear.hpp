@@ -1,12 +1,9 @@
 #pragma once
-// Phase 3a: Kimi Linear - Linear-time attention mechanism
-// O(n) complexity vs O(n²) for standard attention
-// Maintains expressiveness through efficient linear parameterization
-//
-// Reference: arXiv:2510.26692 "Kimi Linear: Linear-Time Attention"
-//
-// Core idea: Replace quadratic attention matrix with linear projection space
-// that preserves model expressiveness while breaking the n² scaling bottleneck.
+// Legacy-named channelwise ELU+1 normalised mixer, not the published Kimi Linear/KDA architecture.
+// For each feature j: y[t,j] = phi(q[t,j]) * sum_s(phi(k[s,j])*v[s,j]) / max(sum_s phi(k[s,j]),
+// 1e-8). The causal form sums s<=t; the non-causal form sums the whole independent sequence. This
+// is O(T*d), without cross-feature QK products. Float exp(x)-1+1 can cancel for very negative x;
+// backward uses the ordinary smooth ELU derivative, not a derivative of floating-point rounding.
 
 #include <cmath>
 #include <memory>
@@ -15,8 +12,8 @@
 namespace microtorch::kimi {
 
 // Linear-time attention forward + backward
-// Input shapes: q, k, v all [batch*heads, seq, head_dim]
-// Output: [batch*heads, seq, head_dim], same shape as v
+// Input shapes: q, k, v all [seq, head_dim], one independent sequence.
+// Output: [seq, head_dim]; ops::kimi_attention splits stacked batches into blocks.
 //
 // Mechanism:
 // 1. Feature map: transform queries and keys through feature function φ
@@ -31,18 +28,20 @@ public:
     explicit KimiLinearAttention(size_t head_dim) : head_dim_(head_dim) {}
 
     // Forward: linear-time attention
-    // q, k, v: [batch*heads, seq, head_dim]
+    // q, k, v: [seq, head_dim]
     // causal: if true, use causal mask (tokens can only attend to past)
-    // Returns: attention output [batch*heads, seq, head_dim]
+    // Returns: mixer output [seq, head_dim]
     Matrix forward(const Matrix& q, const Matrix& k, const Matrix& v, bool causal = true);
 
     // Backward: compute gradients w.r.t. q, k, v
-    // grad_out: gradient from upstream [batch*heads, seq, head_dim]
+    // causal must match forward (default true preserves existing callers).
+    // grad_out: gradient from upstream [seq, head_dim]
     // q, k, v, attention_out: forward pass activations
     // Returns: (grad_q, grad_k, grad_v)
     std::tuple<Matrix, Matrix, Matrix> backward(const Matrix& grad_out, const Matrix& q,
                                                 const Matrix& k, const Matrix& v,
-                                                const Matrix& attention_out) const;
+                                                const Matrix& attention_out,
+                                                bool causal = true) const;
 
 private:
     size_t head_dim_;

@@ -7,6 +7,18 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Non-causal backward for the channelwise ELU mixer** (31 Oct). The legacy-named
+  `KimiLinearAttention` now differentiates its full-sequence sums; the autograd wrapper
+  captures the forward mode and preserves independent stacked sequences and selective
+  gradients. Empty/mismatched geometry refuses before slicing/division; denominator-clamp
+  derivatives are guarded in both modes. Forward arithmetic is unchanged. This operator
+  is not the published Kimi Linear/KDA architecture. An independent dense float64 oracle,
+  270 component oracle finite differences, 18 production-float directional differences,
+  batching/selective-gradient/metamorphic checks and causal regressions pass. Very negative
+  ELU features retain the existing float-cancellation limitation; tests explicitly distinguish
+  smooth-expression AD from finite differences of the rounded float forward there.
+  [CPU source-bound receipt](docs/receipts/kimi_noncausal_20261031.json).
+
 - **Studio LLM extraction and evidence review** (31 Oct). With an explicitly configured
   `ANTHROPIC_API_KEY`, Studio defaults to the source-verified LLM extractor, with a per-job
   spend cap, background status, cancellation and original extraction download. The worker

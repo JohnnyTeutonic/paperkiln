@@ -1,0 +1,81 @@
+{
+  "scope": "CPU backward for existing legacy-named channelwise ELU+1 normalized mixer, not published Kimi Linear/KDA",
+  "base_commit": "42d7af0432c972213bb24913bd31dcabfdb585bc",
+  "source_sha256": {
+    "CMakeLists.txt": "d868189efe88063dc8ecfa40fd22c4c0c7cb71ff93621c5e20ece16744c8efc0",
+    "include/microtorch/kimi_linear.hpp": "cfe06cf8be998e746e2da662ce103278ee2022dd2b4bd718bc16e89b17fc52b9",
+    "src/kimi_linear.cpp": "fd6d44c18885af22a00150ccdb3a154dc1a4e19e6705e3acbe487052ab346ba5",
+    "src/ops.cpp": "a54222ef56be44a6cf1331c0d3c5187ffb516e23010ecaee112f5366cd08c500",
+    "tests/test_kimi_noncausal.cpp": "6518a9263b1c0d5ddb4eef5c6b8d1ffabf912d5ed565f4824dc2a5a8d934b6ea"
+  },
+  "binary_sha256": {
+    "test_kimi_noncausal": "6e2e487cd242e1701bdbc4bc2d0f5fcda5018ee88c604ae57c4ae5cd2e6c2f8f",
+    "test_kimi_linear": "b4287cac9224e2473fb027b6df7c061be7f01d2ce4a25e391b1ce001699806c7",
+    "test_recurrence_op": "325830fe131211ffcc1e348435c8edc757defdafc3528ed69b240784509b84c0",
+    "libmicrotorch.a": "d87e1eb2491ee341f7e2ea1368af60d7cbae68b8ebfd8fc0707cf97de7b619f4"
+  },
+  "configure": {
+    "build_type": "Release",
+    "CUDA_ENABLED": false,
+    "MICROTORCH_CUDA": false,
+    "source": "/home/jonat/pk_kimi_noncausal_20261031",
+    "build": "/home/jonat/pk_kimi_noncausal_build_20261031"
+  },
+  "compiler": "c++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "clang_format": "18.1.8",
+  "format_changed_ranges_or_new_file_idempotent": {
+    "include/microtorch/kimi_linear.hpp": true,
+    "src/kimi_linear.cpp": true,
+    "src/ops.cpp": true,
+    "tests/test_kimi_noncausal.cpp": true
+  },
+  "ctest": {
+    "command": [
+      "ctest",
+      "--test-dir",
+      "/home/jonat/pk_kimi_noncausal_build_20261031",
+      "--timeout",
+      "120",
+      "--output-on-failure"
+    ],
+    "passed": 50,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 9.72
+  },
+  "numerical_checks": {
+    "dense_reference": "independent O(B*T*T*d) float64 pair weights for implemented channelwise operator",
+    "oracle_component_fd": 270,
+    "production_float_directional_fd": 18,
+    "worst_normalized_forward_or_gradient_error": 8.25e-08,
+    "worst_oracle_component_fd_error": 3.64e-11,
+    "worst_production_directional_fd_error": 9.01e-06,
+    "coverage": [
+      "causal and noncausal",
+      "B1/T5/d3, B2/T3/d4, B3/T1/d2",
+      "requires_grad masks0..7",
+      "batch isolation",
+      "constant V implies phi(q)*V and dK\u22480",
+      "joint K/V permutation invariant",
+      "empty/mismatched geometry refuses",
+      "clamped rounded-zero feature cases both modes"
+    ]
+  },
+  "limits": [
+    "Forward arithmetic unchanged, including exp(x)-1+1 cancellation for very negative x.",
+    "Backward uses smooth ELU derivative; cancellation cases explicitly do not claim finite differences of rounded float forward agree.",
+    "Causal denominator-clamp derivative guarded; ordinary causal regressions retained.",
+    "CPU only; no CUDA execution, training, model-quality or performance claim.",
+    "Class backward causal argument must match forward; default true preserves existing source callers."
+  ],
+  "paid_calls": 0,
+  "GPU_execution": false,
+  "logs_sha256": {
+    "kimi_noncausal.log": "e716541c48f0f36b93ed83b4272ba7a7073ea873ecde3529c5b0830b475f52d4",
+    "configure.log": "fa741f63b3cae8410082a4976ce50aaad0ac0022b04a7eb48b0f1d56c6bb450d",
+    "LastTest.log": "23fe68ceec53c7d4f2226827cdc715472837c4aee593f01829f8b1d30ca0e4f0",
+    "initial_ctest.log": "45a980095ca52564ee1535a98f04eac3c381ed90d24fd4c69e1fa87a932d3686",
+    "ctest_timeout120.log": "dc17590a14a9c319a4bcd9b013a74eade0ff447c0373d44f821699df3cf57048",
+    "initial_harness_issue.txt": "f28ec397627c3dc74ae9066f31977c13dcc1e3a0bc31ada15c8feb8e0ff4d38d"
+  }
+}

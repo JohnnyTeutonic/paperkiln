@@ -1,0 +1,2 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+PASS channelwise noncausal+causal dense64, 270 component FD, 18 production directional FD; worst normalized gradient/forward 8.25e-08, FD 3.64e-11, directional 9.01e-06; selective grad/batches/clamp-cancellation/refusals
