@@ -44,6 +44,12 @@ def main() -> int:
             _fetch.refuse_unsupported_moe(arch)
         except ValueError as exc:
             ap.error(str(exc))
+    hf_result = None
+    if args.emit_hf:
+        try:
+            hf_result = build_hf_config(arch)
+        except ValueError as exc:
+            ap.error(str(exc))
     if args.hf_config:
         try:
             arch.hf_config_crosscheck = _fetch.load_hf_config_report(arch, args.hf_config)
@@ -69,7 +75,7 @@ def main() -> int:
             json.dump(_fetch.to_json(arch), fh, indent=2)
         print(f"wrote {args.json}")
     if args.emit_hf:
-        cfg, family, defaults = build_hf_config(arch)
+        cfg, family, defaults = hf_result
         with open(args.emit_hf, "w", encoding="utf-8") as fh:
             json.dump(cfg, fh, indent=2)
         print(f"wrote {args.emit_hf}  ({family}-family)")

@@ -36,11 +36,19 @@ These simple emitters do not implement MoE: requesting C++, mtsweep or HF-config
 stated or unresolved MoE fails before writing a dense substitute. JSON/HTML extraction reports
 remain available. This bounded support does not infer expert-gate normalization.
 
+HF output is a **configuration skeleton**, not a weight conversion or a verified reconstruction
+of the paper. The two supported skeletons cannot represent every extracted mechanism: explicit
+sliding windows, sinks, highway residuals, incompatible norm/position/activation combinations,
+and GPT-2 grouped-query attention refuse rather than silently change the architecture.
+Dimensions and head geometry are checked. Unverified or contested findings remain in provenance
+but are not applied. Missing dimensions, architecture assumptions and emitted constants are named
+in `_paperkiln.defaults_applied`; an unqualified GELU uses the exact form as a declared assumption.
+
 ## Why this exists
 
 Most transformer papers are deltas over a known skeleton — dims, depth,
 heads, norm flavor, activation, position encoding. That makes extraction
-tractable. What nobody else ships is **provenance**:
+tractable. This package preserves **provenance**:
 
 - every extracted value carries the **evidence snippet** it was read
   from (the sentence, the table row);
@@ -53,14 +61,10 @@ tractable. What nobody else ships is **provenance**:
 - explicit rejections ("we choose not to adopt X") **veto** a candidate
   outright.
 
-On a 40-paper ground-truth benchmark the scorer runs at grouped AUROC
-0.905, abstention-first, with **no wrong assertion in 92 verdicts** (72
-correct, the rest abstentions). Every wrong assertion the benchmark has
-found is registered with its root cause and fixed. The benchmark,
-its confidence intervals, and its growth protocol ship in the
-[paperkiln repo](https://github.com/JohnnyTeutonic/paperkiln), where the
-extracted architectures also *train* — as real models, on a readable
-C++ stack, with the paper's actual hyperparameters.
+The [paperkiln repository](https://github.com/JohnnyTeutonic/paperkiln) contains
+its paper corpus, ground truth, scoring code and dated benchmark receipts. Those
+records identify the extractor and protocol that produced each result. The full
+stack can also train supported extracted architectures on its C++ engine.
 
 ## The full loop lives upstream
 
@@ -69,9 +73,7 @@ no API key. The mother repo also has an LLM extractor
 (`papers/llm_extract.py`): one Claude call per paper returns the
 architecture as an op graph, new operations as formulas the engines run,
 and a verbatim quote for every value, each quote checked against the
-LaTeX before use. On the same 40-paper benchmark it scores 82 correct,
-9 abstentions and 1 wrong, against this package's 72 / 20 / 0. The mother
-repo adds: constructor-real training of the extracted architecture
+LaTeX before use. The mother repo adds: constructor-real training of the extracted architecture
 (`--emit-cpp`, mtsweep specs), GGUF export, in-browser chat with the
 model you just trained, and the Architecture Atlas — a pre-registered
 findings registry for architecture claims.

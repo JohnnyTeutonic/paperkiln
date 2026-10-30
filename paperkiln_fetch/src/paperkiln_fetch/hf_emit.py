@@ -27,7 +27,7 @@ def _value(arch: Arch, key: str):
     f = arch.fields.get(key)
     if f is None:
         return None
-    if f.verdict == "contested":
+    if key in arch.unresolved or f.verdict not in (None, "used", "inherited"):
         return None
     return f.value
 
@@ -72,6 +72,29 @@ def build_hf_config(arch: Arch) -> tuple[dict, str, dict]:
     family = pick_family(arch)
     defaults: dict = {}
 
+    # These two skeletons cannot represent every mechanism the extractor
+    # recognizes. Metadata extraction remains available when config emission
+    # refuses; never replace an explicitly stated mechanism with a default.
+    supported = {
+        "llama": {"norm": {"rmsnorm"}, "positional": {"rope"},
+                  "activation": {"swiglu", "silu", "geglu"}},
+        "gpt2": {"norm": {"layernorm"}, "positional": {"learned"},
+                 "activation": {"gelu", "relu"}},
+    }
+    for key, values in supported[family].items():
+        value = _value(arch, key)
+        if value is not None and value not in values:
+            raise ValueError(f"{family} HF config cannot represent {key}={value}; use JSON metadata")
+    for key, neutral in (("attention", {"exact", "dense"}),
+                         ("residual", {"plain", "residual"})):
+        value = _value(arch, key)
+        if value is not None and value not in neutral:
+            raise ValueError(f"{family} HF config cannot represent {key}={value}; use JSON metadata")
+    for key in ("window", "n_sinks"):
+        value = _value(arch, key)
+        if value not in (None, 0):
+            raise ValueError(f"{family} HF config cannot represent {key}={value}; use JSON metadata")
+
     def get(key, fallback):
         v = _value(arch, key)
         if v is None:
@@ -79,21 +102,28 @@ def build_hf_config(arch: Arch) -> tuple[dict, str, dict]:
             return fallback
         return v
 
-    d = get("d_model", 768)
-    layers = get("n_layers", 12)
-    heads = get("n_heads", 12)
-    vocab = get("vocab_size", 32000 if family == "llama" else 50257)
-    ctx = get("context_length", 2048 if family == "llama" else 1024)
+    def positive(key, fallback):
+        value = get(key, fallback)
+        if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+            raise ValueError(f"{key} must be a positive integer")
+        return value
+
+    d = positive("d_model", 768)
+    layers = positive("n_layers", 12)
+    heads = positive("n_heads", 12)
+    vocab = positive("vocab_size", 32000 if family == "llama" else 50257)
+    ctx = positive("context_length", 2048 if family == "llama" else 1024)
+    dff = positive("d_ff", 4 * d)
+    if d % heads:
+        raise ValueError("d_model must be divisible by n_heads")
 
     if family == "llama":
-        kv = _value(arch, "n_kv_heads")
-        if kv is None:
-            defaults["n_kv_heads"] = heads
-            kv = heads
-        dff = _value(arch, "d_ff")
-        if dff is None:
-            defaults["d_ff"] = 4 * d
-            dff = 4 * d
+        kv = positive("n_kv_heads", heads)
+        if heads % kv:
+            raise ValueError("n_heads must be divisible by n_kv_heads")
+        if (d // heads) % 2:
+            raise ValueError("RoPE requires an even head dimension")
+        activation = get("activation", "swiglu")
         cfg = {
             "architectures": ["LlamaForCausalLM"],
             "model_type": "llama",
@@ -106,17 +136,17 @@ def build_hf_config(arch: Arch) -> tuple[dict, str, dict]:
             "max_position_embeddings": ctx,
             "rms_norm_eps": 1e-5,
             "rope_theta": 10000.0,
-            "hidden_act": "silu",
+            "hidden_act": "gelu" if activation == "geglu" else "silu",
             "tie_word_embeddings": False,
             "attention_bias": False,
             "mlp_bias": False,
             "torch_dtype": "float32",
         }
     else:
-        dff = _value(arch, "d_ff")
-        if dff is None:
-            defaults["d_ff"] = 4 * d
-            dff = 4 * d
+        kv = _value(arch, "n_kv_heads")
+        if kv is not None and (isinstance(kv, bool) or not isinstance(kv, int) or kv != heads):
+            raise ValueError("GPT2 HF config cannot represent grouped-query attention")
+        activation = get("activation", "gelu")
         cfg = {
             "architectures": ["GPT2LMHeadModel"],
             "model_type": "gpt2",
@@ -127,13 +157,24 @@ def build_hf_config(arch: Arch) -> tuple[dict, str, dict]:
             "vocab_size": vocab,
             "n_positions": ctx,
             "n_ctx": ctx,
-            "activation_function": "gelu_new",
+            "activation_function": "relu" if activation == "relu" else "gelu",
             "layer_norm_epsilon": 1e-5,
             "torch_dtype": "float32",
         }
 
+    # Architecture assumptions and non-extracted config constants are visible
+    # alongside missing dimensions, rather than being hidden inside HF defaults.
+    for key, value in (("norm", "rmsnorm" if family == "llama" else "layernorm"),
+                       ("positional", "rope" if family == "llama" else "learned")):
+        get(key, value)
+    constants = ("rms_norm_eps", "rope_theta", "tie_word_embeddings", "attention_bias", "mlp_bias") if family == "llama" else ("layer_norm_epsilon",)
+    defaults.update({key: cfg[key] for key in constants})
+    if activation in ("gelu", "geglu"):
+        # The rule-based label does not determine an author's approximation.
+        defaults["gelu_approximation"] = "exact"
     prov = _prov(arch)
     prov["family"] = family
+    prov["scope"] = "Configuration skeleton; not weight conversion or verified paper reconstruction."
     prov["defaults_applied"] = defaults
     cfg["_paperkiln"] = prov
     return cfg, family, defaults
