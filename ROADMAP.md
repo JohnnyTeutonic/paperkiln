@@ -14,8 +14,9 @@ where one of those documents carries a plan, this file wins.*
    pick is complete and home (single-pick descriptive result in the long-carry RESULTS).
    Carry-12's registered HS1 extension is complete and all four
    new B/S-gist runs are home: the five-seed S-gist minus B contrast is SUPPORTED
-   (-12.668 points). Its registered S-full control now triggers but has not launched;
-   recipe and spending require review. The broader programme remains open.
+   (-12.668 points), with six recorded full-history parity mismatches now under review.
+   Its registered S-full condition is numerically true, but no control has launched;
+   parity evidence, recipe and spending require review. The broader programme remains open.
    The complete three-seed Carry-12 core is analysed in `experiments/tiny_chat_long_2026-10/RESULTS.md`:
    HT-SFT SUPPORTED, other primary tests unresolved at three seeds. The separate five-seed
    HS1 result now activates the S-full condition. The registered size

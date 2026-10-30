@@ -16,6 +16,14 @@ Notable changes to microtorch. Format loosely follows
   exits; paid routes reject foreign origins. Offline worker, HTTP and browser checks use no API.
   Validation: `docs/receipts/studio_extractor_20261031/validation.json`.
 
+- **HS1 full-history parity limitation disclosed** (30 Oct). A complete audit found
+  six nonidentical reply checks among174,240, despite passing engine spot checks.
+  Exact affected items and retained flags are recorded; raw scorer argmax vectors
+  and margins were not retained, so the cause is unresolved. The registered
+  numerical verdict stays unchanged, but full-history parity is not all-pass;
+  S-full remains unlaunched pending parity and funding review. No thresholds,
+  histories or canonical analysis outputs changed.
+
 - **Original 150M pick L0 evaluation home** (30 Oct). No new training or reselection.
   All1,452 items and8,712 forced-choice credits independently audited; original model
   inputs/pinned sources verified. The single-pick descriptive gold-minus-near cost
