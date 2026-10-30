@@ -1,0 +1,52 @@
+{
+  "schema": "paperkiln.bf16_attention.replay_readiness.v1",
+  "timestamp_utc": "2026-10-30T14:39:00.507431+00:00",
+  "prior_source_commit": "0618fdb808d64e94abd759159447ad3e82d81107",
+  "scientific_sources_byte_unchanged": {
+    "tools/bf16_attention_probe.cu": "4707a44cc23d06ed25cdda87ccc0f2d61784d06f4ddbf3b023d1fc123c0c5be1",
+    "tools/bf16_attention_reference.py": "d59c3ac6f207e3d73fc7d7ffb752bea73fa9849ea22445b5190b10c6d3329632",
+    "tools/bf16_attention_check.py": "8309900ac994db8c7b6e8e733d7cc51e7e54d0b32fc095f09d2ef5a2553ba22e",
+    "tools/test_bf16_attention_reference.py": "9abbecaae5b30e8d88179003609a8df5870ce942dd2f5302a9ce98e6953fd6be"
+  },
+  "changes": [
+    "Recovery validates redundant status/numerical_pass/archive_bytes/worker_rc against actualsummary andarchive stat.",
+    "Five receiptmetadata tamper fixtures rejected without executing scientific checker again.",
+    "Remote version log captures numpy.show_config; no dispatch forcing or gate changes."
+  ],
+  "source_sha256": {
+    "tools/colab_chat/bf16_attention_vm.py": "2da5e96796b37b5daaf56fadb374cf45072ac65ba38e5a06b58a9c34869d10f1",
+    "tools/colab_chat/test_bf16_attention_vm.py": "8401179fbba4797c3c8a8272c8b825201baaab3a0e3873a920e6785aa097cf66",
+    "tools/colab_chat/bf16_attention_manifest.json": "dd79a8cef6c816b81c9fbd2930ff71f4033a13cf5dc8bf31321b9490f6890dfb"
+  },
+  "upload_bytes": 48542,
+  "manifest_sha256": "dd79a8cef6c816b81c9fbd2930ff71f4033a13cf5dc8bf31321b9490f6890dfb",
+  "matched_replay_environment": {
+    "python_executable": "/home/jonat/pk_bf16_replay_20261031/bin/python",
+    "python": "3.11.15 (main, Jun 23 2026, 15:19:43) [Clang 22.1.3 ]",
+    "numpy": "1.26.4",
+    "numpy_build_config": "/home/jonat/pk_bf16_replay_20261031/lib/python3.11/site-packages/numpy/__config__.py:155: UserWarning: Install `pyyaml` for better output\n  warnings.warn(\"Install `pyyaml` for better output\", stacklevel=1)\n{\n  \"Compilers\": {\n    \"c\": {\n      \"name\": \"gcc\",\n      \"linker\": \"ld.bfd\",\n      \"version\": \"10.2.1\",\n      \"commands\": \"cc\",\n      \"args\": \"-fno-strict-aliasing\",\n      \"linker args\": \"-Wl,--strip-debug, -fno-strict-aliasing\"\n    },\n    \"cython\": {\n      \"name\": \"cython\",\n      \"linker\": \"cython\",\n      \"version\": \"3.0.8\",\n      \"commands\": \"cython\"\n    },\n    \"c++\": {\n      \"name\": \"gcc\",\n      \"linker\": \"ld.bfd\",\n      \"version\": \"10.2.1\",\n      \"commands\": \"c++\",\n      \"linker args\": \"-Wl,--strip-debug\"\n    }\n  },\n  \"Machine Information\": {\n    \"host\": {\n      \"cpu\": \"x86_64\",\n      \"family\": \"x86_64\",\n      \"endian\": \"little\",\n      \"system\": \"linux\"\n    },\n    \"build\": {\n      \"cpu\": \"x86_64\",\n      \"family\": \"x86_64\",\n      \"endian\": \"little\",\n      \"system\": \"linux\"\n    }\n  },\n  \"Build Dependencies\": {\n    \"blas\": {\n      \"name\": \"openblas64\",\n      \"found\": true,\n      \"version\": \"0.3.23.dev\",\n      \"detection method\": \"pkgconfig\",\n      \"include directory\": \"/usr/local/include\",\n      \"lib directory\": \"/usr/local/lib\",\n      \"openblas configuration\": \"USE_64BITINT=1 DYNAMIC_ARCH=1 DYNAMIC_OLDER= NO_CBLAS= NO_LAPACK= NO_LAPACKE= NO_AFFINITY=1 USE_OPENMP= HASWELL MAX_THREADS=2\",\n      \"pc file directory\": \"/usr/local/lib/pkgconfig\"\n    },\n    \"lapack\": {\n      \"name\": \"dep140213194937296\",\n      \"found\": true,\n      \"version\": \"1.26.4\",\n      \"detection method\": \"internal\",\n      \"include directory\": \"unknown\",\n      \"lib directory\": \"unknown\",\n      \"openblas configuration\": \"unknown\",\n      \"pc file directory\": \"unknown\"\n    }\n  },\n  \"Python Information\": {\n    \"path\": \"/opt/python/cp311-cp311/bin/python\",\n    \"version\": \"3.11\"\n  },\n  \"SIMD Extensions\": {\n    \"baseline\": [\n      \"SSE\",\n      \"SSE2\",\n      \"SSE3\"\n    ],\n    \"found\": [\n      \"SSSE3\",\n      \"SSE41\",\n      \"POPCNT\",\n      \"SSE42\",\n      \"AVX\",\n      \"F16C\",\n      \"FMA3\",\n      \"AVX2\"\n    ],\n    \"not found\": [\n      \"AVX512F\",\n      \"AVX512CD\",\n      \"AVX512_KNL\",\n      \"AVX512_KNM\",\n      \"AVX512_SKX\",\n      \"AVX512_CLX\",\n      \"AVX512_CNL\",\n      \"AVX512_ICL\"\n    ]\n  }\n}\n",
+    "numpy_blas_library_sha256": {
+      "libgfortran-040039e1.so.5.0.0": "14afb3129b1a8b50bc40a3b0820c7f1152ea9bc10121aab152943f7057472886",
+      "libopenblas64_p-r0-0cf96a72.3.23.dev.so": "9254d0854dd7615e11de28d771ae408878ca8123a7ac204f21e4cc7a376cc2e5",
+      "libquadmath-96973f99.so.0.0.0": "934c22ded0e7d169c4d4678876c96051adf3d94545da962f60b41659b075da3b"
+    },
+    "venv": "/home/jonat/pk_bf16_replay_20261031",
+    "existing_managed_python_reused": true,
+    "global_runtime_or_config_changes": false,
+    "threads": {
+      "OMP_NUM_THREADS": 1,
+      "OPENBLAS_NUM_THREADS": 1,
+      "MKL_NUM_THREADS": 1
+    },
+    "OPENBLAS_CORETYPE": "not forced; actual backend recorded"
+  },
+  "tests": {
+    "passed": 30,
+    "log_sha256": "df9ffe79778d639bf0fa73a8643b7d1722e7f2a65716f7c074f48f6b49a0fca6",
+    "log_path": "/home/jonat/bf16_attention_matched_env_20261031.tests.log",
+    "ruff": "PASS",
+    "gpu_calls": 0
+  },
+  "strict_replay_policy": "Use archived checker/reference/binary and NumPy1.26.4 with threads1; preserve any strict audit/BLAS dispatch mismatch for review, do not retry altered dispatch or relax numerical gates.",
+  "remote_status": "NOT_LAUNCHED"
+}

@@ -1,0 +1,80 @@
+{
+  "schema": "paperkiln.bf16_attention.prelaunch.v1",
+  "timestamp_utc": "2026-10-30T14:32:19.848620+00:00",
+  "base_commit": "688517d60a18b1ef302b88fcdc66b878fa846a13",
+  "source_sha256": {
+    "tools/bf16_attention_probe.cu": "4707a44cc23d06ed25cdda87ccc0f2d61784d06f4ddbf3b023d1fc123c0c5be1",
+    "tools/bf16_attention_reference.py": "d59c3ac6f207e3d73fc7d7ffb752bea73fa9849ea22445b5190b10c6d3329632",
+    "tools/bf16_attention_check.py": "8309900ac994db8c7b6e8e733d7cc51e7e54d0b32fc095f09d2ef5a2553ba22e",
+    "tools/test_bf16_attention_reference.py": "9abbecaae5b30e8d88179003609a8df5870ce942dd2f5302a9ce98e6953fd6be",
+    "tools/colab_chat/bf16_attention_vm.py": "3c48966ecc44b1556047d1c49c2414468f7d24382620be97d2abd967d2895e6f",
+    "tools/colab_chat/test_bf16_attention_vm.py": "91bd34eae4fc8197e608680c64ab2d4b78d46cf470397967df42cd4454dd95ae",
+    "tools/colab_chat/bf16_attention_manifest.json": "53f599fc840ca93a0894e0279e9c0ba1ccf1af11a18b7ed9620ce0206ac24d94",
+    "tools/colab_chat/bf16_attention_20261031.json": "a52a1a7c7ba6f172b6c0890d6fc1fb4c75e9f2f7f71ea22f1ad4e38dab071472"
+  },
+  "upload_manifest_sha256": "53f599fc840ca93a0894e0279e9c0ba1ccf1af11a18b7ed9620ce0206ac24d94",
+  "upload_bytes": 47433,
+  "fixed32_raw_input_output_bytes": 145379968,
+  "offline_tests": {
+    "count": 25,
+    "status": "PASS",
+    "log_path": "/home/jonat/bf16_attention_preflight_20261031.tests.log",
+    "log_sha256": "01d6efa4d3993f8964679d542ff662b23f04e4e7592efd27c65c15e621fe6931",
+    "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+    "numpy": "2.3.3",
+    "mocked": [
+      "GPUhardware",
+      "compiler",
+      "checker in packaging tests"
+    ],
+    "additional_checks": [
+      "source verifier numerical reference tests",
+      "case/report tampering rejection",
+      "first execution header rejection",
+      "binary drift rejection",
+      "optimized Python refusal",
+      "hardlink preflight",
+      "normal/timeout child reap",
+      "HALTED/nonpass packaging",
+      "operational return codes",
+      "packaging failure nonzero",
+      "no automatic scientific retry",
+      "pre1980ZIP compatibility"
+    ]
+  },
+  "compile_only": {
+    "status": "PASS",
+    "command": [
+      "/usr/local/cuda-12.6/bin/nvcc",
+      "-O3",
+      "-std=c++17",
+      "-arch=sm_89",
+      "/home/jonat/pk_attention_20261031/tools/bf16_attention_probe.cu",
+      "-lcublas",
+      "-o",
+      "/home/jonat/pk_attention_20261031_bf16_compile_probe"
+    ],
+    "compiler_version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2024 NVIDIA Corporation\nBuilt on Tue_Oct_29_23:50:19_PDT_2024\nCuda compilation tools, release 12.6, V12.6.85\nBuild cuda_12.6.r12.6/compiler.35059454_0\n",
+    "binary_sha256": "29d78e2ee717b95c5229aa3153dc95a0f96cc097d58221b60722814ed940b896",
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "exit_code": 0,
+    "local_gpu_executions": 0,
+    "limitation": "CUDA12.6 compile-only, not remoteCUDA12.4 build/device evidence; first compile needed explicitmath_constants.h"
+  },
+  "lint": "RuffPASS",
+  "new_CUDA_format": "clang-format18.1.8PASS",
+  "planned_remote": {
+    "gpu": "NVIDIA L4",
+    "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+    "max_usd": 1.5,
+    "max_hours": 1.5,
+    "numpy": "1.26.4",
+    "automatic_scientific_retries": false,
+    "status": "NOT_LAUNCHED"
+  },
+  "limits": [
+    "No actual GPU numerical/timing evidence yet.",
+    "No production wiring, model/training or speed adoption claim.",
+    "Worker/job FINISHED means packaged diagnostic attempt; inspect numerical_pass and replay raw evidence."
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "schema": "paperkiln.bf16_attention.upload.v1",
+  "files": {
+    "bf16_attention_probe.cu": "4707a44cc23d06ed25cdda87ccc0f2d61784d06f4ddbf3b023d1fc123c0c5be1",
+    "bf16_attention_reference.py": "d59c3ac6f207e3d73fc7d7ffb752bea73fa9849ea22445b5190b10c6d3329632",
+    "bf16_attention_check.py": "8309900ac994db8c7b6e8e733d7cc51e7e54d0b32fc095f09d2ef5a2553ba22e",
+    "test_bf16_attention_reference.py": "9abbecaae5b30e8d88179003609a8df5870ce942dd2f5302a9ce98e6953fd6be",
+    "bf16_attention_vm.py": "2da5e96796b37b5daaf56fadb374cf45072ac65ba38e5a06b58a9c34869d10f1"
+  },
+  "scope": "standalone fixed32 dense MHA; no model/training/production dispatch",
+  "cuda_compile_target": "sm_89",
+  "remote_cuda": "12.4",
+  "numpy": "1.26.4",
+  "diagnostic_contract": "FINISHED/worker rc0 means packaged attempt; require numerical_pass plus raw replay",
+  "automatic_scientific_retries": false
+}

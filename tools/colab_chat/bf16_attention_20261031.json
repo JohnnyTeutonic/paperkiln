@@ -1,0 +1,6 @@
+{
+  "_comment": "Standalone fixed32 BF16/FP32 denseMHA L4 diagnostic. No models/training/production dispatch. Root owns <=$1.50 and1.5h/absolute deadline. FINISHED means packaged attempt only: require attempt_summary.numerical_pass true and verified raw replay for numerical PASS. HALTED/operational failures relay explicitly, no scientific retries.",
+  "max_parallel": 1,
+  "jobs": [{"name": "bf16_attention_primitive", "cmd": ["python3", "{upload}/bf16_attention_vm.py", "--upload", "{upload}", "--out", "{out}"],
+    "outputs": ["out.zip", "attempt_summary.json", "archive_receipt.json"]}]
+}
