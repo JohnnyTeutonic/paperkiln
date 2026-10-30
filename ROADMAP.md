@@ -49,7 +49,6 @@ advisory steps that cannot fail the build.
   DPO, byte-BPE and chat-model milestones are recorded in CHANGELOG and the charter.
   Other open follow-ups whose completion is not established here:
   - the remaining per-token host work (zero-filled Matrix construction in the profile);
-  - HF-export round trip of an SFT'd model (the brief's Phase 3 export check).
 
 - **Scale ladder, depth rung.** d=256, 4 layers, exact against SWA, as its
   own pre-registration. Deep SWA is built and gated.

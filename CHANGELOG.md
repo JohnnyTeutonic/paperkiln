@@ -7,6 +7,20 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **HF export SFT roundtrip** (30 Oct). The exporter preserves the current llama-BPE tokenizer
+  using its exact GGUF reconstruction, retains legacy WordLevel support and explicitly refuses
+  native paperkiln byte-BPE until faithfully supported. Corrected the HF RMSNorm epsilon
+  from 1e-6 to the training tape's 1e-5. The verifier resolves a real spec, checks every
+  exported/loaded tensor against the source mapping, compares source/HF prompt IDs, and checks
+  greedy IDs plus raw output logits instead of whitespace-split text. Nine regressions pass.
+  An existing 7.6M, four-layer SFT model passed three eight-token prompts (ordinary prose,
+  punctuation/newline, non-ASCII): all 24 IDs match, all 38 mapped tensors match exactly,
+  maximum raw-logit error 9.54e-6 under unchanged 2e-4 absolute/relative tolerances.
+  The older CPU binary scored identical raw IDs with only the unused chat field omitted;
+  receipts record that delta and original source hashes. This verifies this small SFT numeric
+  roundtrip, not chat-template rendering, broad model families or language quality.
+  Receipts: `experiments/chat_general/receipts/hf_sft_roundtrip_2026-10-30/`.
+
 - **Fetcher lexical gaps closed** (30 Oct). Bare GeLU/Gelu spellings now normalize to GELU,
   while gated compounds remain GeGLU. A rejected runner-up stays in the reported mentions but
   cannot create a contested/family verdict; a further eligible alternative can still contest.

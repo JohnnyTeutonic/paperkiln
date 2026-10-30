@@ -1,0 +1,65 @@
+{
+ "status": "HF-PARITY-OK",
+ "prompt_ids": [
+  3668,
+  15,
+  911,
+  2185,
+  1225,
+  321,
+  224,
+  22,
+  3354,
+  224,
+  23,
+  34
+ ],
+ "continuation_ids": [
+  1,
+  2,
+  44,
+  618,
+  2213,
+  15,
+  311,
+  618
+ ],
+ "mtstudio_argmax": [
+  1,
+  2,
+  44,
+  618,
+  2213,
+  15,
+  311,
+  618
+ ],
+ "max_abs_logit_error": 9.5367431640625e-06,
+ "atol": 0.0002,
+ "rtol": 0.0002,
+ "spec": "/mnt/c/ml_artifacts/chat_v2/gate_v2/run/spec.json",
+ "scope": "raw token IDs, source tensor mapping and output logits; not chat rendering",
+ "score_spec_delta": {
+  "removed_chat": {
+   "template": "paperkiln/2"
+  }
+ },
+ "mapped_tensors": 38,
+ "source_prompt_tokenizer_ids_checked": true,
+ "versions": {
+  "torch": "2.8.0+cu128"
+ },
+ "sha256": {
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/hf_export_verify.py": "7ac84fdeda04a845f9e6b3ae5c847c7bfeb5f336770f6be5a5f8825a5da4f815",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/hf_export.py": "a179d5c7cfb8d380c94d064d79df8a440ba9ebd368277ad2567e11673d93cdaf",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/llama3_bpe.py": "3d0426ba5632de17c5f2507d45e066b277b7bdb4334339b21330fcaed88dd135",
+  "/mnt/c/ml_artifacts/chat_v2/gate_v2/run/gate_v2.gguf": "598b235066d585f88da7c188bca8d34233529462e81273d6f0031358f81e528a",
+  "/mnt/c/ml_artifacts/chat_v2/gate_v2/run/gate_v2.safetensors": "46b2cad96fd60142f16af16bbba6f663a6139c2be22c45b4786d81f72c35cf6c",
+  "/mnt/c/ml_artifacts/chat_v2/gate_v2/run/spec.json": "7f2f1a36f0d2ab0dd5cd65ae3e6c2071dac64bbc0ffacf965994c02a4e95b962",
+  "/mnt/c/ml_artifacts/chat_v2/gate_v2/train.log": "8a5ef7dd1d82483ca313f85ead6550e7d9e7cfacd65db3039d9fab128f9599b6",
+  "/mnt/c/ml_artifacts/chat_v2/gate_v2/hf/model.safetensors": "6eeee8223ce32413640da2107e2c51dc50c4bda13ae877efeecbc85029914634",
+  "/mnt/c/ml_artifacts/chat_v2/gate_v2/hf/config.json": "26a25d35f40b9a304ae69a59514b0ce977ae21fbbe93606e1cb27826340e4271",
+  "/mnt/c/ml_artifacts/chat_v2/gate_v2/hf/tokenizer.json": "a97e8ffa4ad333c00162855493d6b38de4403d51aff5e00bbd961c4f7b7ad058",
+  "/home/jonat/pk_fh_build/mtstudio": "312a6d5bbb2a056b1ee38c4a0f52df88a4ccfaefd95c44e5b20487ec97177dd4"
+ }
+}

@@ -11,9 +11,9 @@ Takes a finished llama-family mtstudio run directory (events.jsonl +
     model.safetensors      weights renamed to model.* and converted from
                            microtorch's [in, out] Linear layout to HF's
                            [out, in]; norm gammas squeezed [1,d] -> [d]
-    tokenizer.json (+cfg)  the run's word-level vocabulary (read from the
-                           exported GGUF, which embeds it) as a
-                           tokenizers WordLevel model
+    tokenizer.json (+cfg)  exact llama-BPE reconstruction from GGUF, or
+                           the legacy word-level vocabulary. Native paperkiln
+                           byte-BPE is refused until faithfully supported.
 
 The receipt lives in tools/hf_export_verify.py: transformers loads the
 folder and greedy-generates ARGMAX-IDENTICAL continuations to
@@ -33,24 +33,27 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
 
 import numpy as np
 from safetensors.numpy import load_file, save_file
 
 
-def model_event(out_dir):
-    with open(os.path.join(out_dir, "events.jsonl"), encoding="utf-8") as f:
+def model_event(out_dir, events=None):
+    with open(events or os.path.join(out_dir, "events.jsonl"), encoding="utf-8") as f:
         for line in f:
+            if not line.lstrip().startswith("{"):
+                continue
             e = json.loads(line)
             if e.get("event") == "model":
                 return e
     raise SystemExit("no model event in events.jsonl")
 
 
-def start_name(out_dir):
-    with open(os.path.join(out_dir, "events.jsonl"), encoding="utf-8") as f:
+def start_name(out_dir, events=None):
+    with open(events or os.path.join(out_dir, "events.jsonl"), encoding="utf-8") as f:
         for line in f:
+            if not line.lstrip().startswith("{"):
+                continue
             e = json.loads(line)
             if e.get("event") == "start":
                 return e["name"]
@@ -126,10 +129,25 @@ def convert_weights(sd, n_heads):
     return out
 
 
-def write_tokenizer(hf_dir, tokens):
+def write_tokenizer(hf_dir, tokens, gguf_path=None):
     from tokenizers import Tokenizer
     from tokenizers.models import WordLevel
     from tokenizers.pre_tokenizers import Whitespace
+    if gguf_path:
+        from llama3_bpe import from_gguf, read_gguf_kv
+        kind = read_gguf_kv(gguf_path, {"tokenizer.ggml.model"}).get("tokenizer.ggml.model")
+        if kind == "gpt2":
+            tok = from_gguf(gguf_path)
+            tok.save(os.path.join(hf_dir, "tokenizer.json"))
+            vocab = tok.get_vocab()
+            with open(os.path.join(hf_dir, "tokenizer_config.json"), "w", encoding="utf-8") as f:
+                json.dump({"tokenizer_class": "PreTrainedTokenizerFast",
+                           "model_max_length": 1_000_000}, f, indent=1)
+            return vocab, None
+        if kind == "bpe":
+            raise ValueError("native paperkiln byte-BPE has no faithful HF export yet")
+        if kind not in (None, "word", "wordlevel"):
+            raise ValueError(f"unsupported tokenizer model: {kind!r}")
     vocab = {t: i for i, t in enumerate(tokens)}
     unk = "<unk>" if "<unk>" in vocab else tokens[0]
     tok = Tokenizer(WordLevel(vocab, unk_token=unk))
@@ -147,11 +165,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("out_dir")
     ap.add_argument("--hf-dir")
+    ap.add_argument("--events", help="recorded JSONL events or mixed training log")
     ap.add_argument("--allow-legacy-rope", action="store_true",
                     help="export a rope_heads=first run anyway (HF will rotate "
                          "every head, so its outputs will differ)")
     args = ap.parse_args()
-    m = model_event(args.out_dir)
+    m = model_event(args.out_dir, args.events)
     if m.get("family") != "llama":
         raise SystemExit("HF export is llama-family only (LlamaForCausalLM "
                          f"mapping); this run is family={m.get('family')}")
@@ -161,17 +180,26 @@ def main():
             f"this run has rope_heads={rope} (RoPE on head 0 of {m['heads']}); "
             "HF Llama rotates every head and cannot reproduce it. Retrain with "
             "arch.rope_heads=all, or pass --allow-legacy-rope to export anyway")
-    name = start_name(args.out_dir)
+    if (m.get("attention", "exact") != "exact" or m.get("norm", "rmsnorm") != "rmsnorm"
+            or m.get("activation", "swiglu") != "swiglu" or m.get("position", "rope") != "rope"
+            or m.get("residual", "residual") != "residual" or not m.get("final_norm", True)):
+        raise ValueError("HF Llama export requires exact attention, pre RMSNorm, SwiGLU, RoPE and residuals")
+    name = start_name(args.out_dir, args.events)
     hf_dir = args.hf_dir or os.path.join(args.out_dir, "hf")
     os.makedirs(hf_dir, exist_ok=True)
 
+    gguf_path = os.path.join(args.out_dir, f"{name}.gguf")
+    tokens = gguf_tokens(gguf_path)
+    vocab, unk = write_tokenizer(hf_dir, tokens, gguf_path)
+    if len(vocab) != m["vocab"]:
+        raise ValueError("tokenizer vocabulary does not match model vocabulary")
     sd = load_file(os.path.join(args.out_dir, f"{name}.safetensors"))
     save_file(convert_weights(sd, m["heads"]),
               os.path.join(hf_dir, "model.safetensors"))
 
-    tokens = gguf_tokens(os.path.join(args.out_dir, f"{name}.gguf"))
-    vocab, unk = write_tokenizer(hf_dir, tokens)
 
+    from llama3_bpe import read_gguf_kv
+    special_ids = read_gguf_kv(gguf_path, {"tokenizer.ggml.bos_token_id", "tokenizer.ggml.eos_token_id"})
     cfg = {
         "architectures": ["LlamaForCausalLM"],
         "model_type": "llama",
@@ -182,18 +210,20 @@ def main():
         "num_key_value_heads": m["heads"],
         "vocab_size": m["vocab"],
         "max_position_embeddings": m["T"],
-        "rms_norm_eps": 1e-6,
+        "rms_norm_eps": 1e-5,  # ops::kRmsNormEps, including the training tape
         "rope_theta": 10000.0,
         "hidden_act": "silu",
         "tie_word_embeddings": True,
         "attention_bias": False,
         "mlp_bias": False,
         "torch_dtype": "float32",
-        "bos_token_id": vocab.get("<s>", 0),
-        "eos_token_id": vocab.get("</s>", 0),
+        "bos_token_id": special_ids.get("tokenizer.ggml.bos_token_id", vocab.get("<s>")),
+        "eos_token_id": special_ids.get("tokenizer.ggml.eos_token_id", vocab.get("</s>")),
     }
     with open(os.path.join(hf_dir, "config.json"), "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=1)
+    with open(os.path.join(hf_dir, "export_receipt.json"), "w", encoding="utf-8") as f:
+        json.dump({"events": os.path.abspath(args.events) if args.events else None}, f)
     print(f"HF export -> {hf_dir}  ({len(sd)} tensors, vocab {len(tokens)}, "
           f"unk={unk!r})")
     print("verify: python tools/hf_export_verify.py", hf_dir, args.out_dir)
