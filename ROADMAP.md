@@ -11,8 +11,8 @@ where one of those documents carries a plan, this file wins.*
    `experiments/tiny_chat_2026-10/`, `experiments/tiny_chat_long_2026-10/`).**
    E5, E1 at 20M/60M, recursion and MoR are home and analysed
    (`experiments/tiny_chat_2026-10/analysis_2026-10-28.json`). Remaining: the registered size
-   extension's two 60M post summaries (20M seeds4/5 and all five150M runs are home), Stage L0 on the registered150M
-   pick, and Carry-12's registered HS1 extension (B/S-gist seeds4/5, training under the watchdog). The complete
+   extension's two 60M post summaries (20M seeds 4/5 and all five 150M runs are home), Stage L0 on the registered 150M
+   pick, and Carry-12's registered HS1 extension (B/S-gist seeds 4/5, training under the watchdog). The complete
    three-seed Carry-12 core is analysed in `experiments/tiny_chat_long_2026-10/RESULTS.md`:
    HT-SFT SUPPORTED, other primary tests unresolved; S-full does not trigger. The size extension
    rule has fired; its pins and 150M pick inputs passed
@@ -140,7 +140,7 @@ advisory steps that cannot fail the build.
   and decode 1.04-1.50x but remains slower than Transformers. Evidence:
   `../ember.cpp/experiments/hf_cpu_2026-10-30/`. Remaining: matched CUDA speed comparison.
   A separate synchronized harness is prepared (`../ember.cpp/experiments/hf_cuda_2026-10-30/`),
-  with13 offline contracts and an actual CPU-only fallback-refusal check. No CUDA timing result yet.
+  with 13 offline contracts and an actual CPU-only fallback-refusal check. No CUDA timing result yet.
 - **Browser performance and remaining device gates** (LOCAL_LLM_WORK.md E9, E10).
   The IR family and recurrence paths are built in WebAssembly/WebGPU. The 28 Oct hardware
   receipt (`../ember.cpp/experiments/webgpu_gpu_2026-10-27/`) covers the existing tiny families,
