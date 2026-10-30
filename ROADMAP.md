@@ -12,8 +12,8 @@ where one of those documents carries a plan, this file wins.*
    E5, E1 at 20M/60M, recursion and MoR are home and analysed
    (`experiments/tiny_chat_2026-10/analysis_2026-10-28.json`). Remaining: Stage L0 on the unchanged registered 150M
    pick (evaluation scoring) and Carry-12's registered HS1 extension (B/S-gist seeds 4/5).
-   All four extension runs have finished pretraining and SFT; both B runs are home, while
-   S-gist seeds 4/5 are scoring Carry-12 under the watchdog. The frozen five-seed finalizer
+   All four extension runs have finished pretraining and SFT; B seeds 4/5 and S-gist seed 4
+   are home. Only S-gist seed 5 is still scoring Carry-12 under the watchdog. The frozen five-seed finalizer
    waits for the complete evaluated inputs.
    The complete three-seed Carry-12 core is analysed in `experiments/tiny_chat_long_2026-10/RESULTS.md`:
    HT-SFT SUPPORTED, other primary tests unresolved; S-full does not trigger. The registered size
