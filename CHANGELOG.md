@@ -16,7 +16,8 @@ Notable changes to microtorch. Format loosely follows
   before creating an output, rather than silently producing a dense network. Metadata-only
   extraction remains available. This closes the bounded field-extraction item, not universal
   MoE parsing, gate-normalization inference or MoE reconstruction. The vendored package is
-  synced; 164 offline extractor/LLM-extractor tests and Ruff pass, including 41 MoE cases.
+  synced; independent review also covers copular adoption and rejected dense alternatives.
+  All 171 offline extractor/LLM-extractor tests pass, including 48 MoE cases; Ruff passes.
 
 - **Extractor HTML field escaping** (30 Oct). Public-API identifiers, finding verdicts and
   runner-up scores are escaped before HTML rendering, matching values/evidence and the new
