@@ -1,0 +1,30 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+attention residuals on the llama block (llama_attnres)
+Using CUDA device: NVIDIA L4
+Compute capability: 8.9
+  fused depth_attend vs composed (S 5, T 7, d 16, scale 1): output worst rel 8.69e-08, gradients (sources and query) worst rel 3.73e-07
+  fused depth_attend vs composed (S 5, T 7, d 16, scale 5): output worst rel 1.04e-07, gradients (sources and query) worst rel 3.17e-07
+  FD gradcheck of the fused op (S 4, scale 3): 168 entries, worst rel 3.44e-03
+  parameters: the plain model's 29 tensors (0 bits differ) plus 6 zero queries
+  parameters: the plain model's 38 tensors (0 bits differ) plus 16 zero queries
+  FD gradcheck 3 layers, scale sources: 47 entries over 35 tensors, worst rel 6.50e-03
+  FD gradcheck 3 layers, scale none: 47 entries over 35 tensors, worst rel 6.51e-03
+  FD gradcheck 1 + [2] x 3 + 1, per-application queries: 86 entries over 54 tensors, worst rel 4.73e-03
+  init (scale sources, default weights): logits worst rel 1.06e-07 (271/370 bits differ); plain parameters' gradients worst rel 3.97e-07; nonzero query-gradient entries 96
+  init (scale sources, randomised non-query weights): logits worst rel 2.14e-07 (314/370 bits differ); plain parameters' gradients worst rel 1.26e-06; nonzero query-gradient entries 96
+  init (scale sources, recursion, randomised non-query weights): logits worst rel 2.37e-07 (300/370 bits differ); plain parameters' gradients worst rel 1.10e-06; nonzero query-gradient entries 256
+  init (scale none, default weights): logits worst rel 2.30e-01 (370/370 bits differ); plain parameters' gradients worst rel 6.66e-01; nonzero query-gradient entries 96
+  init (scale none, randomised non-query weights): logits worst rel 5.50e-05 (370/370 bits differ); plain parameters' gradients worst rel 3.36e-04; nonzero query-gradient entries 96
+  init (scale none, 16 layers, default weights): logits worst rel 7.44e-01 (370/370 bits differ); plain parameters' gradients worst rel 1.38e+00; nonzero query-gradient entries 512
+  init (scale sources, 16 layers, default weights): logits worst rel 2.17e-07 (318/370 bits differ); plain parameters' gradients worst rel 1.07e-06; nonzero query-gradient entries 512
+  forward_cached (prefill 6, decode 4; 3 layers) vs forward: worst rel 3.25e-06
+  forward_cached (prefill 6, decode 4; 3 layers, scale none) vs forward: worst rel 1.37e-06
+  forward_cached (prefill 6, decode 4; 1 + [2] x 3 + 1) vs forward: worst rel 1.12e-06
+  checkpoint_blocks per sublayer: gradients 0 bits differ, worst rel 0.00e+00
+  refused: schedule mor, inject add, MoE, an unknown scale
+device (device op set ON)
+  depth_attend S 33, T 64, d 320 (device kernels vs host): output worst rel 3.43e-06, gradients worst rel 1.45e-05
+  3 layers, 4 steps, accum 2 (device op set + residency + deferred downloads vs host): loss worst rel 1.26e-07, step-1 gradients worst rel 3.17e-06, final parameters max |diff| 2.51e-05 (3923/7328 bits differ); losses 4.0213 -> 3.7339
+  1 + [2] x 3 + 1, 4 steps, accum 2 (device op set + residency + deferred downloads vs host): loss worst rel 7.69e-07, step-1 gradients worst rel 6.79e-06, final parameters max |diff| 2.16e-04 (9146/9696 bits differ); losses 3.9253 -> 3.7227
+
+[PASS] llama_attnres

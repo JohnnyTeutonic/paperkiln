@@ -3,3 +3,6 @@
 
 # Rubric cache identity hashes raw bytes; checkout must not change its version.
 tools/posttrain/rubrics/*.txt text eol=lf
+
+# Device receipt provenance hashes the exact landed bytes.
+docs/receipts/devcheck_host_read_cuda_20261030/* -text

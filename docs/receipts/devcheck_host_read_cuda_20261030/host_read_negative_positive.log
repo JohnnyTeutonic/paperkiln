@@ -1,0 +1,2 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+{"pass":true,"devcheck_enabled":true,"cuda_integration":true,"stale_and_released_predicate_negatives":true,"macro_evaluation_checked":true}

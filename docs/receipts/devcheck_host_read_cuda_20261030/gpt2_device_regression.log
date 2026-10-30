@@ -1,0 +1,18 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+gpt2 family on the device (device op set ON)
+Using CUDA device: NVIDIA L4
+Compute capability: 8.9
+  gpt2 exact: eval forward in a window vs outside (deferred vs write-through): loss rel 0.00e+00, logits rel 0.00e+00, stale entries left 0
+  gpt2 swa (window 4, 1 sink): eval forward in a window vs outside (deferred vs write-through): loss rel 0.00e+00, logits rel 0.00e+00, stale entries left 0
+  gpt2 kimi: eval forward in a window vs outside (deferred vs write-through): loss rel 0.00e+00, logits rel 0.00e+00, stale entries left 0
+  gpt2 srd: eval forward in a window vs outside (deferred vs write-through): loss rel 0.00e+00, logits rel 0.00e+00, stale entries left 0
+  flex layernorm/gelu, 3 layers: eval forward in a window vs outside (deferred vs write-through): loss rel 0.00e+00, logits rel 0.00e+00, stale entries left 0
+  llama 2 layers: eval forward in a window vs outside (deferred vs write-through): loss rel 0.00e+00, logits rel 0.00e+00, stale entries left 0
+  gpt2 exact, 4 steps, accum 2 (device op set + residency + deferred downloads vs host): loss worst rel 0.00e+00, step-1 gradients worst rel 1.09e-06, final parameters max |diff| 8.82e-04 (2040/8160 bits differ); losses 3.7856 -> 3.6205
+  gpt2 swa (window 4, 1 sink), 4 steps, accum 2 (device op set + residency + deferred downloads vs host): loss worst rel 6.58e-08, step-1 gradients worst rel 8.77e-07, final parameters max |diff| 9.45e-04 (2033/8160 bits differ); losses 3.8077 -> 3.6209
+  gpt2 kimi, 4 steps, accum 2 (device op set + residency + deferred downloads vs host): loss worst rel 6.36e-08, step-1 gradients worst rel 7.61e-07, final parameters max |diff| 5.15e-04 (2029/8160 bits differ); losses 3.9003 -> 3.7462
+  gpt2 srd, 4 steps, accum 2 (device op set + residency + deferred downloads vs host): loss worst rel 6.38e-08, step-1 gradients worst rel 4.42e-06, final parameters max |diff| 9.24e-07 (2178/8456 bits differ); losses 3.7464 -> 3.7371
+  flex layernorm/gelu, 3 layers, 4 steps, accum 2 (device op set + residency + deferred downloads vs host): loss worst rel 0.00e+00, step-1 gradients worst rel 1.03e-06, final parameters max |diff| 2.36e-03 (2011/7480 bits differ); losses 3.7329 -> 3.6601
+  llama 2 layers, 4 steps, accum 2 (device op set + residency + deferred downloads vs host): loss worst rel 1.28e-07, step-1 gradients worst rel 1.15e-06, final parameters max |diff| 1.42e-07 (1410/5024 bits differ); losses 4.0955 -> 3.7559
+
+[PASS] gpt2_device
