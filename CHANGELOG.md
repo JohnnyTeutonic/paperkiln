@@ -7,6 +7,15 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Preserve judge rubric identity on Windows checkout** (30 Oct). Scoped `.gitattributes`
+  rule forces LF for `tools/posttrain/rubrics/*.txt`; both working rubrics restored to their exact
+  existing Git-blob bytes. Raw-byte rubric hashing and all cache keys stay unchanged. Before the
+  fix the full-sample plan missed every cached ranking (6,040 calls); after it, 380 rankings are
+  reused and 5,660 remain. Regression checks the shipped LF bytes and historical chat_v1 identity;
+  17 post-training tests pass. Readiness receipt: `experiments/chat_general/receipts/pref_full_readiness_20261030.json`.
+  No paid calls. The pilot-rate estimate including recorded cache spend and the 600-call gate is
+  $198.47 against the $200 cap; actual future calls must still obey the existing budget guard.
+
 - **Roadmap reconciled with completed stack work** (30 Oct). Removed stale running E5/E1/recursion
   status, the completed winner selection and preference pilots, the BF16 "building" entry, delegated
   MoR/MSC decisions (25 Oct), published Hub models and completed browser family implementation.

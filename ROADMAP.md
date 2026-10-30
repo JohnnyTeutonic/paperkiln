@@ -18,8 +18,8 @@ where one of those documents carries a plan, this file wins.*
 1. **The chat model (LOCAL_LLM_WORK.md E2).** Full preference judging at 256 new tokens
    with the rubric unchanged, then DPO + NLL and the five-part gate in `experiments/chat_general/PLAN.md`.
    The winner, both pilots and full sampling are complete (3,020 candidate rows home in
-   `C:/ml_artifacts/pref_full/sample/`). A read-only plan needs 5,660 more rankings with the
-   original LF rubric and existing cache; CRLF conversion changes its hash and loses cache reuse.
+   `C:/ml_artifacts/pref_full/sample/`). The read-only readiness plan needs 5,660 more rankings
+   with the existing cache (`receipts/pref_full_readiness_20261030.json` in the chat experiment).
    The delegated 28 Oct decision is recorded in
    `experiments/chat_general/RESULTS.md`, "The full run" (00ecd0d4); judging and training remain pending,
    with the recorded $200 total cap including the cache and held-out side-by-side gate.

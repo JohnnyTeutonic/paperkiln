@@ -1,0 +1,96 @@
+{
+ "kind": "READINESS_ONLY_NO_JUDGE_CALLS",
+ "sample_summary": {
+  "tag": "pksft",
+  "model": "pk_sft_v1",
+  "gguf_sha256": "4d53c7ff236ecba3a2b34cd2d4769f08bdf0408bbc3655afa44b9ddc70929fdd",
+  "ember": {
+   "bin": "/content/ember/build/tinyllama_server",
+   "commit": "9d993f48de2cd976a7708d90767df3a58107baf8",
+   "repo": "https://github.com/JohnnyTeutonic/ember.cpp.git",
+   "cuda": true,
+   "cmake_args": [
+    "-DCMAKE_CUDA_ARCHITECTURES=89"
+   ],
+   "seconds": 156.4,
+   "built_here": true
+  },
+  "health": {
+   "chat_template": {
+    "name": "paperkiln",
+    "version": 1
+   },
+   "chat_template_why": "declared",
+   "context": 512,
+   "deterministic": true,
+   "hidden_size": 768,
+   "layers": 12,
+   "model": "/content/eval/pksft/pk_sft_v1.gguf",
+   "status": "ok",
+   "tokenizer": "bpe",
+   "vocab_size": 16384
+  },
+  "counts": {
+   "prompts": 3123,
+   "ok": 2830,
+   "over_context": 92,
+   "fewer_than_two_distinct": 1,
+   "fewer_than_two_valid": 0,
+   "already_done": 200,
+   "decontaminated": 0,
+   "train_overlap": 38,
+   "markers": 0,
+   "utf8_trimmed": 11,
+   "utf8_invalid": 6,
+   "out": "/content/chat/sample/candidates.jsonl"
+  }
+ },
+ "files": {
+  "C:\\ml_artifacts\\pref_full\\sample\\candidates.jsonl": {
+   "sha256": "9ced3660e8755516e108637bc798280ca0a335c2c5e99f3760d9f04a9ed67c8c",
+   "bytes": 15419649
+  },
+  "C:\\ml_artifacts\\pref_full\\sample\\sample_summary.json": {
+   "sha256": "c128a0b38c782eb53afe4c065be651883692c1baeec9a3cf31e7a49e5cfe5721",
+   "bytes": 1044
+  },
+  "microtorch\\experiments\\chat_general\\judge\\judge_cache.jsonl": {
+   "sha256": "879742b1ed53098097c52e308bbbc98bfbdecb2b093c03d55a2a1b0481e7e041",
+   "bytes": 585008
+  },
+  "microtorch\\tools\\posttrain\\rubrics\\chat_v1.txt": {
+   "sha256": "cb04edd3543d0906aedc3d82a1d829586272da874182775c6d7c9826e28d937a",
+   "bytes": 716
+  },
+  "microtorch\\.gitattributes": {
+   "sha256": "9c0d8cb8b097c90074e3001de590c7cbbd5b4467c8c1ea80ce5004baf1da1631",
+   "bytes": 219
+  }
+ },
+ "plan": {
+  "requests": 3020,
+  "calls_needed": 5660
+ },
+ "cached_rankings_reused": 380,
+ "cache_rows": 762,
+ "recorded_cache_spend_usd": 20.072988,
+ "rubric_version": "chat_v1@cb04edd3543d",
+ "checkout_fix": "rubrics/*.txt forced LF; original Git-blob bytes restored; cache keys and semantic rubric unchanged",
+ "cost_estimate": {
+  "pilot_usd_per_call": 0.028498157894736843,
+  "remaining_judging_usd": 161.29957368421054,
+  "cache_plus_judging_plus_600_call_gate_usd": 198.47145642105264,
+  "registered_total_cap_usd": 200,
+  "assumption": "Pilot mean call cost persists; this is an estimate, not an authorization or guaranteed final cost."
+ },
+ "remaining": [
+  "Judge remaining rankings with existing cache and guarded total budget",
+  "Build agreeing length-matched pairs",
+  "DPO + NLL and five-part registered gate"
+ ],
+ "checks": {
+  "posttrain_tests_passed": 17,
+  "rubric_attributes": "eol=lf for chat_v1.txt and tinyarith_v1.txt"
+ },
+ "paid_calls_made": 0
+}

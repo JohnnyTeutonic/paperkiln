@@ -83,3 +83,16 @@ def test_rubric_edit_changes_version(tmp_path):
     r.write_text("grade it carefully")
     _, v2, _ = js.rubric_identity(str(r))
     assert v1 != v2 and v1.startswith("rub@")
+
+
+def test_shipped_rubrics_keep_lf_cache_identity():
+    # Cached verdicts identify a rubric by its raw bytes. Windows checkout
+    # conversion must not turn an unchanged rubric into a new paid judge job.
+    from pathlib import Path
+
+    folder = Path(__file__).with_name("rubrics")
+    for rubric in folder.glob("*.txt"):
+        assert b"\r\n" not in rubric.read_bytes(), f"CRLF changes cache identity: {rubric.name}"
+    _, version, digest = js.rubric_identity(str(folder / "chat_v1.txt"))
+    assert version == "chat_v1@cb04edd3543d"
+    assert digest == "cb04edd3543d0906aedc3d82a1d829586272da874182775c6d7c9826e28d937a"

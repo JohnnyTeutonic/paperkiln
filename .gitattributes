@@ -1,2 +1,5 @@
 # Shell scripts must keep LF endings, even in a Windows checkout run from WSL.
 *.sh text eol=lf
+
+# Rubric cache identity hashes raw bytes; checkout must not change its version.
+tools/posttrain/rubrics/*.txt text eol=lf
