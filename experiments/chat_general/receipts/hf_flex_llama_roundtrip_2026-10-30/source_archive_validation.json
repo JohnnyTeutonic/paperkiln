@@ -1,0 +1,70 @@
+{
+ "source_commit": "3eb746f2103f332a6ba69d9aafb704f964fab416",
+ "archive_sha256": "17218a7e2a0a572a9843539df268c54c8c34033f22ec842b3003175d314bbacd",
+ "manifest_home": "/mnt/c/ml_artifacts/hf_flex_llama_roundtrip_20261030/archive_source_manifest.json",
+ "manifest_sha256": "847128abecfb4a6018b271e00823c926dbeb95a395afdc2a56f2bb4d8104cfd1",
+ "files_checked": 1274,
+ "crlf_converted_files": 1161,
+ "all_archive_files_match_pinned_git_after_crlf_normalization": true,
+ "all_extracted_compiler_source_files_match_raw_archive_bytes": true,
+ "raw_git_blob_identity_claimed": false,
+ "critical_source_files": {
+  "CMakeLists.txt": {
+   "mode": "100644",
+   "git_blob_sha1": "31883f5536de02c2c64f53924f06de9f2ab07e4d",
+   "git_blob_sha256": "e7b16163ead294a6b8ac051db261edcadc132c79c7276c81be3e8b0a8770873a",
+   "archive_sha256": "3dc296ceee789350acf106d2195c0f6937aa0dae1962320bb4e3b163845b0af2",
+   "normalized_lf_sha256": "e7b16163ead294a6b8ac051db261edcadc132c79c7276c81be3e8b0a8770873a",
+   "raw_bytes_equal": false
+  },
+  "tools/mtstudio.cpp": {
+   "mode": "100644",
+   "git_blob_sha1": "7d184b3d1d0477cb866e5e16025f55707cf67d47",
+   "git_blob_sha256": "2342e5e7725e99583da0c9800f0ad9422f6c5e34659db23b4d8797ab5d28e96f",
+   "archive_sha256": "6d983bf69339f0ad90e4047caa14be358478242cce8ad1273c74023e4cb052ec",
+   "normalized_lf_sha256": "2342e5e7725e99583da0c9800f0ad9422f6c5e34659db23b4d8797ab5d28e96f",
+   "raw_bytes_equal": false
+  },
+  "tools/parity_model.hpp": {
+   "mode": "100644",
+   "git_blob_sha1": "d0282c3b60bb28d8eea0a4b5f862240683d4883a",
+   "git_blob_sha256": "181b44cae052651c3dc006f3bb6a663ab85eaaffadf5b653e0762c1958d3cce9",
+   "archive_sha256": "5112dbb55960c2f7080ea4fbc88248c4f55cc0a31937c4912f27a2d3a071335c",
+   "normalized_lf_sha256": "181b44cae052651c3dc006f3bb6a663ab85eaaffadf5b653e0762c1958d3cce9",
+   "raw_bytes_equal": false
+  },
+  "src/ops.cpp": {
+   "mode": "100644",
+   "git_blob_sha1": "01ad07b286d16b367c6bab95e48ed0e28e287210",
+   "git_blob_sha256": "8f2c4acd929ee154e914467c76e0b13c5bd3c401eda3fb9946475737b5ea8d58",
+   "archive_sha256": "5b403e8bc09803dcc8ce4e3eca98cee8c5ba0200350e3b928bb2c38ee7c46e06",
+   "normalized_lf_sha256": "8f2c4acd929ee154e914467c76e0b13c5bd3c401eda3fb9946475737b5ea8d58",
+   "raw_bytes_equal": false
+  },
+  "src/nn.cpp": {
+   "mode": "100644",
+   "git_blob_sha1": "3a34b61d04bcf5877c8f2e4525928004c7d70818",
+   "git_blob_sha256": "4c485aa352d5cf982455f8d9e7075676a09d43429ab91cdde1743d9bca4b497f",
+   "archive_sha256": "8707d217b9ceab1a20f130475e5e93382ff47c0fa1b736891149858768749718",
+   "normalized_lf_sha256": "4c485aa352d5cf982455f8d9e7075676a09d43429ab91cdde1743d9bca4b497f",
+   "raw_bytes_equal": false
+  },
+  "src/safetensors.cpp": {
+   "mode": "100644",
+   "git_blob_sha1": "e0594c6f6026dd5723d52ff61ed67a372c570b72",
+   "git_blob_sha256": "918c41750e21a2c795e814a206eb1ad5537835d5f4bce69c21bceb7b28a4880c",
+   "archive_sha256": "3b35a405564f5d6c1952280769fa1f42398f3a06f8b9b0471f08990ceef21542",
+   "normalized_lf_sha256": "918c41750e21a2c795e814a206eb1ad5537835d5f4bce69c21bceb7b28a4880c",
+   "raw_bytes_equal": false
+  },
+  "include/microtorch/ops.hpp": {
+   "mode": "100644",
+   "git_blob_sha1": "3089813aa39895d2fbfe886b780cb622a1385304",
+   "git_blob_sha256": "d98ee2e3fcdd3694b7d14440b13aa3b6565cd7118064da002a8e60013330ac09",
+   "archive_sha256": "a8ae105881ea6af14ae58d7826d62b08851bcc0e98c15e7fac2785a1b4f4d9b8",
+   "normalized_lf_sha256": "d98ee2e3fcdd3694b7d14440b13aa3b6565cd7118064da002a8e60013330ac09",
+   "raw_bytes_equal": false
+  }
+ },
+ "note": "Windows git archive applied checkout CRLF conversion to some files. Raw archive hashes are compiler inputs; normalized hashes prove no other changes from pinned Git source. Independently checked all extracted files against the raw archive; no author working-tree source was used."
+}
