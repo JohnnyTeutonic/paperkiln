@@ -82,7 +82,7 @@ VALUE_LABEL = {
     "exact": "full", "swa": "sliding window", "kimi": "linear (Kimi)",
     "srd": "surprise-routed", "attnres": "attention residuals",
     "rope": "rotary", "learned": "learned", "sinusoidal": "sinusoidal",
-    "rmsnorm": "RMSNorm", "layernorm": "LayerNorm", "gelu": "GELU",
+    "rmsnorm": "RMSNorm", "layernorm": "LayerNorm", "gelu": "GELU", "gelu_erf": "GELU (exact)",
     "relu": "ReLU", "swiglu": "SwiGLU", "residual": "residual",
     "highway": "highway gate", "plain": "none", "adamw": "AdamW", "muon": "Muon",
 }
@@ -117,6 +117,7 @@ PLAIN = {
     },
     "activation": {
         "gelu": "the feed-forward layers use a smooth on/off switch (GELU) to decide which internal features fire",
+        "gelu_erf": "the feed-forward layers use a smooth on/off switch (GELU, in its exact form) to decide which internal features fire",
         "relu": "the feed-forward layers use the simplest on/off switch (ReLU) to decide which internal features fire",
         "swiglu": "the feed-forward layers use a gate (SwiGLU) that lets one set of features switch another on or off, as most modern models do",
     },

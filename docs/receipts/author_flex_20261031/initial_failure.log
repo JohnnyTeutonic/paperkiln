@@ -1,0 +1,33 @@
+Test project /home/jonat/pk_studio_probes_build_20261031
+      Start 38: flex
+      Start 30: mixed_precision
+ 1/51 Test #38: flex .............................***Failed    2.82 sec
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+CHECK failed /home/jonat/pk_studio_probes_20261031/tests/test_flex.cpp:964: before.parameter_count() - tied.parameter_count() == V * d
+1. equivalence pin: FlexLM(defaults) == ParityLM(EXACT) bitwise
+2. sinusoidal: formula matches, zero parameters added
+3. depth: layers.5 exists, params grow with L
+4. rmsnorm+swiglu+sinusoidal trains: 3.444 -> 1.433
+5. relu path: grad reaches layers.0.mlp.c_fc (|g|=40.2)
+6. batch pin: stacked == singles (max diff 0.00e+00)
+7. rope: no table (-512 params), row 0 == no-rope bitwise, last row moves by 8.56e-01 of its range, batch pin 0.00e+00, gradcheck 185 entries worst rel 3.71e-04
+8. expr norm: layernorm as an expr == layernorm (max 8.94e-08, logit range 0.351); gradcheck layernorm-expr 447 entries worst rel 3.26e-04, Primer's x(x - mu) 441 entries 7.18e-04
+9. expr inputs: Swish-beta at beta 1 == x sigmoid(x) bitwise, gradcheck 104 entries 3.61e-04; GLU as sigmoid(a) * x 229 entries 5.23e-04; DyT tanh(alpha x) 30 entries 4.59e-06, per channel 96 entries 9.32e-07; DyT-on-LLaMA (per-place alpha, embedding scalar) 28 entries 1.53e-06; four bad configurations refused
+10. placements: 25 attention x FFN placements == the block's parts composed by hand (bitwise), final norm absent only for post/post; gradcheck 640 entries worst 2.08e-04; Primer's (expr norm, pre / branch_post, rope) 345 entries 7.79e-04; an unknown placement refused
+11. T5 relative bias: buckets(32, 128) as HF's (16 exact, 31 from 127); zero table == causal attention (2.98e-07), shift-invariant (1.79e-07); op gradcheck 304 entries worst 5.80e-05; flex t5_relative gradcheck 128 entries 3.00e-04; exported as attention.position_bias
+12. MDHA (qkv_conv 3): identity kernel = no convolution (0.00e+00); causal; stacked = alone (0.00e+00); gradcheck 144 entries 2.89e-04; exported as conv1d_causal over 3d before the split
+13. Shaw relative positions (K 4): gradcheck shared k+v 256 entries 3.74e-04, per-head keys only 150 entries 3.67e-04; exported as attention.relative_kv
+14. q/k norm: per head invariant to a head's query scale (2.91e-07), full invariant to the row's (3.99e-07) and not to one head's (4.04e-02); gradchecks 128 entries 2.24e-04, 224 entries 2.43e-04; exported as rmsnorm after the split (group head_dim per head)
+15. logits expr: x*0.125 = the head's logits * 0.125 bit for bit; 30*tanh(x/30) gradcheck 50 entries 3.24e-04; exported as an expr node after the head's linear
+
+      Start 15: gguf_q4
+ 2/51 Test #30: mixed_precision ..................   Passed    4.59 sec
+      Start  6: fused_head
+ 3/51 Test #15: gguf_q4 ..........................   Passed    2.77 sec
+      Start 19: verifier
+ 4/51 Test  #6: fused_head .......................   Passed    1.21 sec
+      Start 32: moe_device
+ 5/51 Test #32: moe_device .......................   Passed    0.73 sec
+      Start 17: device_rope
+ 6/51 Test #19: verifier .........................   Passed    0.98 sec
+      Start 28: state_tokens

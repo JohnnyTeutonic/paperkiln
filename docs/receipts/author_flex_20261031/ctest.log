@@ -1,0 +1,107 @@
+Test project /home/jonat/pk_studio_probes_build_20261031
+      Start 38: flex
+      Start 30: mixed_precision
+ 1/51 Test #38: flex .............................   Passed    1.35 sec
+      Start 15: gguf_q4
+ 2/51 Test #30: mixed_precision ..................   Passed    2.54 sec
+      Start  6: fused_head
+ 3/51 Test #15: gguf_q4 ..........................   Passed    1.95 sec
+      Start 19: verifier
+ 4/51 Test  #6: fused_head .......................   Passed    1.26 sec
+      Start 17: device_rope
+ 5/51 Test #19: verifier .........................   Passed    0.92 sec
+      Start 32: moe_device
+ 6/51 Test #17: device_rope ......................   Passed    0.56 sec
+      Start  4: deep_swa
+ 7/51 Test #32: moe_device .......................   Passed    0.80 sec
+      Start 28: state_tokens
+ 8/51 Test  #4: deep_swa .........................   Passed    0.67 sec
+      Start 24: recursion
+ 9/51 Test #24: recursion ........................   Passed    0.22 sec
+      Start 25: mor
+10/51 Test #28: state_tokens .....................   Passed    0.32 sec
+      Start 23: llama_attnres
+11/51 Test #25: mor ..............................   Passed    0.20 sec
+      Start  8: nn
+12/51 Test #23: llama_attnres ....................   Passed    0.19 sec
+      Start  7: score_batch
+13/51 Test  #8: nn ...............................   Passed    0.12 sec
+      Start 21: bitlinear
+14/51 Test  #7: score_batch ......................   Passed    0.07 sec
+      Start 40: gpt2_device
+15/51 Test #21: bitlinear ........................   Passed    0.11 sec
+      Start 31: moe
+16/51 Test #40: gpt2_device ......................   Passed    0.09 sec
+      Start 27: kv_cache
+17/51 Test #27: kv_cache .........................   Passed    0.06 sec
+      Start 45: attn_res
+18/51 Test #31: moe ..............................   Passed    0.08 sec
+      Start 41: expr
+19/51 Test #41: expr .............................   Passed    0.05 sec
+      Start 18: posttrain_losses
+20/51 Test #45: attn_res .........................   Passed    0.07 sec
+      Start 42: recurrence_op
+21/51 Test #18: posttrain_losses .................   Passed    0.04 sec
+      Start 44: swa
+22/51 Test #42: recurrence_op ....................   Passed    0.03 sec
+      Start 16: attention_blocked
+23/51 Test #16: attention_blocked ................   Passed    0.03 sec
+      Start 34: batching
+24/51 Test #44: swa ..............................   Passed    0.05 sec
+      Start 35: checkpointing
+25/51 Test #34: batching .........................   Passed    0.03 sec
+      Start 26: pooled_gemm
+26/51 Test #35: checkpointing ....................   Passed    0.03 sec
+      Start 11: mamba
+27/51 Test #26: pooled_gemm ......................   Passed    0.03 sec
+      Start 22: llama
+28/51 Test #11: mamba ............................   Passed    0.03 sec
+      Start 43: ir_digest
+29/51 Test #22: llama ............................   Passed    0.03 sec
+      Start  5: thirdparty_ops
+30/51 Test #43: ir_digest ........................   Passed    0.03 sec
+      Start 10: cerebellum
+31/51 Test #10: cerebellum .......................   Passed    0.02 sec
+      Start 36: muon
+32/51 Test  #5: thirdparty_ops ...................   Passed    0.03 sec
+      Start  2: step_residency
+33/51 Test #36: muon .............................   Passed    0.02 sec
+      Start 39: shaw_attention
+34/51 Test  #2: step_residency ...................   Passed    0.02 sec
+      Start 51: evaluation_probes_helpers
+35/51 Test #51: evaluation_probes_helpers ........   Passed    0.01 sec
+      Start  3: highway
+36/51 Test #39: shaw_attention ...................   Passed    0.02 sec
+      Start  1: gradcheck
+37/51 Test  #3: highway ..........................   Passed    0.01 sec
+      Start 29: chat_template
+38/51 Test  #1: gradcheck ........................   Passed    0.01 sec
+      Start 46: srd
+39/51 Test #29: chat_template ....................   Passed    0.01 sec
+      Start 33: rope_heads
+40/51 Test #33: rope_heads .......................   Passed    0.00 sec
+      Start 14: gguf_q8
+41/51 Test #46: srd ..............................   Passed    0.00 sec
+      Start 50: kimi_noncausal
+42/51 Test #14: gguf_q8 ..........................   Passed    0.00 sec
+      Start 20: lora_quant
+43/51 Test #50: kimi_noncausal ...................   Passed    0.00 sec
+      Start 12: train_utils
+44/51 Test #20: lora_quant .......................   Passed    0.00 sec
+      Start 37: inplace
+45/51 Test #12: train_utils ......................   Passed    0.00 sec
+      Start 13: gguf_export
+46/51 Test #37: inplace ..........................   Passed    0.00 sec
+      Start  9: kimi_linear
+47/51 Test #13: gguf_export ......................   Passed    0.00 sec
+      Start 47: devcheck_host_read
+48/51 Test  #9: kimi_linear ......................   Passed    0.00 sec
+      Start 49: word_tokenizer
+49/51 Test #47: devcheck_host_read ...............   Passed    0.00 sec
+      Start 48: devcheck_disabled
+50/51 Test #49: word_tokenizer ...................   Passed    0.00 sec
+51/51 Test #48: devcheck_disabled ................   Passed    0.00 sec
+
+100% tests passed, 0 tests failed out of 51
+
+Total Test time (real) =   6.07 sec

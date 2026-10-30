@@ -28,10 +28,19 @@
 //  11. T5's relative position bias: the bucket table, ops::relpos_attention
 //      against causal attention and finite differences; the flex model's
 //      gradient check; the GGUF export refused (no keramos op yet)
-//  14. the q/k norm (qk_norm per_head, full): scale invariance per head and over the row, gradient checks,
+//  14. the q/k norm (qk_norm per_head, full): scale invariance per head and over the row, gradient
+//  checks,
 //      exported as rmsnorm after the split (group head_dim per head)
-//  15. an expr on the logits (logits_expr): x*0.125 bit for bit, a soft cap's gradient check, the expr node
+//  15. an expr on the logits (logits_expr): x*0.125 bit for bit, a soft cap's gradient check, the
+//  expr node
 //      after the head
+//  16. the GELU's two forms: ops::gelu_erf against a binary64 statement of 0.5 x (1 + erf(x / sqrt
+//  2)) and its
+//      finite differences; flex "gelu_erf" differs from the tanh "gelu", passes a whole-model
+//      gradient check and exports gelu {approx: "none"}, the tanh form {approx: "tanh"}; an embed
+//      expr before the position table (embed_before_pos, the Transformer's sqrt(d_model)) equals
+//      the token table scaled by hand, bit for bit, and exports embedding, expr, pos_embedding in
+//      that order
 #include <algorithm>
 #include <cmath>
 #include <string>
@@ -832,6 +841,153 @@ int main() {
                     "entries %.2e; exported as an expr node after the head's linear\n", n, w);
     }
 
-    std::printf("FLEX-OK 15/15\n");
+    // 16. The GELU's two forms and an embed expr before the position table
+    // -------------------------------------
+    {
+        // The op against binary64 and its finite differences, on [-8, 8].
+        Matrix xs(1, 161);
+        for (size_t j = 0; j < xs.cols(); ++j) xs(0, j) = -8.0f + 0.1f * static_cast<float>(j);
+        const Var x = make_var(xs, /*requires_grad=*/true);
+        const Var y = ops::gelu_erf(x);
+        double worst_fwd = 0.0;
+        for (size_t j = 0; j < xs.cols(); ++j) {
+            const double v = xs(0, j), want = 0.5 * v * (1.0 + std::erf(v / std::sqrt(2.0)));
+            worst_fwd =
+                std::max(worst_fwd, std::abs(y->data(0, j) - want) / std::max(1.0, std::abs(want)));
+        }
+        CHECK(worst_fwd < 1e-6);
+        backward(ops::scale(ops::mean(y), static_cast<float>(xs.cols())));  // dL/dy = 1
+        double worst_op = 0.0;
+        for (size_t j = 0; j < xs.cols(); ++j) {
+            const double v = xs(0, j), h = 1e-4;
+            auto g = [](double t) { return 0.5 * t * (1.0 + std::erf(t / std::sqrt(2.0))); };
+            const double fd = (g(v + h) - g(v - h)) / (2.0 * h), a = x->grad(0, j);
+            worst_op = std::max(worst_op, std::abs(a - fd) / (1.0 + std::abs(fd)));
+        }
+        CHECK(worst_op < 1e-5);
+        // Not the tanh form: the two differ somewhere on the grid by more than f32 rounding.
+        const Var yt = ops::gelu(make_var(xs));
+        double gap = 0.0;
+        for (size_t j = 0; j < xs.cols(); ++j)
+            gap = std::max(gap, double(std::abs(yt->data(0, j) - y->data(0, j))));
+        CHECK(gap > 1e-5);
+
+        // The flex model with the exact form: the same parameters as the tanh form's (nn::MLP's
+        // Linears and seeds), different logits, a whole-model gradient check, the IR's gelu with
+        // approx "none".
+        parity::FlexConfig ec = small(V, d, H, T);
+        ec.pos = "sinusoidal";  // not the gpt2 flavour, so both forms export through family_export
+        parity::FlexConfig tc = ec;
+        ec.act = "gelu_erf";
+        parity::FlexLM erf_m(ec, 91), tanh_m(tc, 91);
+        CHECK(erf_m.parameter_count() == tanh_m.parameter_count());
+        const std::vector<int> ids = ids_mod(T, V, 92);
+        const Var la = erf_m.forward(ids), lb = tanh_m.forward(ids);
+        double diff = 0.0;
+        for (size_t i = 0; i < la->data.rows(); ++i)
+            for (size_t j = 0; j < la->data.cols(); ++j)
+                diff = std::max(diff, double(std::abs(la->data(i, j) - lb->data(i, j))));
+        CHECK(diff > 0.0);
+        size_t n = 0;
+        const double w =
+            model_gradcheck(erf_m, ids_mod(8, V, 93), {"mlp.c_fc", "mlp.c_proj", "wte"}, 24, n);
+        CHECK(w < 2e-3);
+        auto gelu_nodes = [](const parity::FlexLM& m) {
+            std::vector<std::string> out;
+            const auto exported = m.family_export();
+            for (const auto& nd : exported->ir["block"]["nodes"])
+                if (nd["op"] == "gelu") out.push_back(nd["approx"].get<std::string>());
+            return out;
+        };
+        CHECK(gelu_nodes(erf_m) == std::vector<std::string>{"none"});
+        CHECK(gelu_nodes(tanh_m) == std::vector<std::string>{"tanh"});
+        CHECK(!erf_m.gpt2_export_blocker().empty());
+        parity::FlexConfig bad = small(V, d, H, T);
+        bad.act = "gelu_tanh";  // mtstudio's name for "gelu"; FlexConfig itself refuses an unknown
+                                // activation
+        CHECK(bad.problem().find("activation must be") != std::string::npos);
+
+        // An embed expr before the table: x*2 on the token rows, then the sinusoidal table, equals
+        // a model with no embed expr whose token table is doubled (a power of two: exact), bit for
+        // bit.
+        parity::FlexConfig bc = small(V, d, H, T);
+        bc.pos = "sinusoidal";
+        bc.act = "gelu_erf";
+        parity::FlexConfig pc = bc;
+        bc.embed_expr = "expr:x*2";
+        bc.embed_before_pos = true;
+        parity::FlexLM before(bc, 94), plain(pc, 94);
+        CHECK(before.parameter_count() == plain.parameter_count());
+        for (size_t i = 0; i < plain.wte->weight->data.rows(); ++i)
+            for (size_t j = 0; j < plain.wte->weight->data.cols(); ++j)
+                plain.wte->weight->data(i, j) *= 2.0f;
+        const Var pa = before.forward(ids), pb = plain.forward(ids);
+        bool same = true;
+        for (size_t i = 0; i < pa->data.rows(); ++i)
+            for (size_t j = 0; j < pa->data.cols(); ++j)
+                same = same && pa->data(i, j) == pb->data(i, j);
+        CHECK(same);
+        parity::FlexConfig after_c =
+            bc;  // the default placement: x*2 after the table, a different model
+        after_c.embed_before_pos = false;
+        parity::FlexLM after(after_c, 94);
+        const Var pc_out = after.forward(ids);
+        bool differs = false;
+        for (size_t i = 0; i < pa->data.rows(); ++i)
+            for (size_t j = 0; j < pa->data.cols(); ++j)
+                differs = differs || pa->data(i, j) != pc_out->data(i, j);
+        CHECK(differs);
+        std::vector<std::string> eops;
+        const auto before_export = before.family_export();
+        for (const auto& nd : before_export->ir["embed"]["nodes"])
+            eops.push_back(nd["op"].get<std::string>());
+        CHECK((eops == std::vector<std::string>{"embedding", "expr", "pos_embedding"}));
+        eops.clear();
+        const auto after_export = after.family_export();
+        for (const auto& nd : after_export->ir["embed"]["nodes"])
+            eops.push_back(nd["op"].get<std::string>());
+        CHECK((eops == std::vector<std::string>{"embedding", "pos_embedding", "expr"}));
+        parity::FlexConfig nb = bc;
+        nb.pos = "rope";
+        CHECK(nb.problem().find("needs a position table") != std::string::npos);
+        nb = pc;
+        nb.embed_before_pos = true;
+        CHECK(nb.problem().find("needs an embed expr") != std::string::npos);
+
+        // A tied head (the Transformer's shared embedding and pre-softmax matrix): no head
+        // parameters, the logits h E^T, gradients into E through both uses, exported with tied_to
+        // and no output.weight tensor.
+        parity::FlexConfig tie_c = bc;
+        tie_c.tie_head = true;
+        tie_c.place_attn = tie_c.place_ffn = "post";
+        parity::FlexLM tied(tie_c, 95);
+        auto untied_c = tie_c;
+        untied_c.tie_head = false;
+        parity::FlexLM untied(untied_c, 95);
+        CHECK(untied.parameter_count() - tied.parameter_count() == V * d);
+        CHECK(!tied.head);
+        size_t nt = 0;
+        const double wt = model_gradcheck(tied, ids_mod(8, V, 96), {"wte", "mlp.c_fc"}, 24, nt);
+        CHECK(wt < 2e-3);
+        const auto tfx = tied.family_export();
+        CHECK(tfx.has_value() && tfx->arch == "paperkiln");
+        const auto& th = tfx->ir["head"]["nodes"];
+        CHECK(th.size() == 1 && th[0]["op"] == "linear" && th[0]["tied_to"] == "token_embd.weight");
+        bool has_output = false;
+        for (const auto& t : tfx->tensors) has_output = has_output || t.name == "output.weight";
+        CHECK(!has_output);
+        std::printf(
+            "16. GELU forms: gelu_erf vs binary64 %.2e, op fd %.2e, %.2e from the tanh form; flex "
+            "gelu_erf "
+            "gradcheck %zu entries %.2e, exported gelu approx none (tanh form: approx tanh); embed "
+            "expr "
+            "before the sinusoidal table = the doubled token table bit for bit, exported "
+            "embedding, expr, "
+            "pos_embedding; tied head gradcheck %zu entries %.2e, exported with tied_to and no "
+            "output.weight\n",
+            worst_fwd, worst_op, gap, n, w, nt, wt);
+    }
+
+    std::printf("FLEX-OK 16/16\n");
     return 0;
 }

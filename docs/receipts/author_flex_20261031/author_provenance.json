@@ -1,0 +1,11 @@
+{
+  "original_hashes": {
+    "include/microtorch/ops.hpp": "042a85f145c7db942fb1eabab0e9f0c0790be5de8cabf2b9403e63568a79c65e",
+    "src/ops.cpp": "7c3776c389aea399b919bda7c07bcf0110520b7a7b6f227cce73df2d2e90c3aa",
+    "tests/test_flex.cpp": "a4f0f6d58d02bf75a2151c029d9162a01831c4ab7d27463cf8f5fa722a20e6df",
+    "tools/model_card.py": "c1fdaf5d4807ce303dc5f461f6f56d591d2013e987239ddc4621099a339d80d9",
+    "tools/mtstudio.cpp": "30c4bc8d4398ecf1d83b39116bf102f867746e3d095398f5e01e565c418ff4bf",
+    "tools/parity_model.hpp": "9b8013736e44d560964cd5fdc31d40d51e10e38a9106ad3e42a230fe804d0712"
+  },
+  "patch_sha256": "39519f7590356a69e3539751188901684aa61870b83f07da56ea595e53c879fe"
+}

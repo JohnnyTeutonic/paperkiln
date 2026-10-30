@@ -2852,6 +2852,22 @@ Var erf(const Var& x) {
                       [](float v, float) { return 1.1283791670955126f * std::exp(-v * v); });  // 2/sqrt(pi)
 }
 
+// The exact GELU, in keramos's order (IR_SPEC 5.8, spec/tools/ir_numpy.py): t = x / sqrt(2) rounded
+// to f32, e = erff(t), y = (0.5 x) (1 + e), each step rounded to f32. Its derivative Phi(x) + x
+// phi(x), with Phi(x) = 0.5 (1 + erf(x / sqrt 2)) and phi(x) = exp(-x^2 / 2) / sqrt(2 pi).
+Var gelu_erf(const Var& x) {
+    return unary_host(
+        x,
+        [](float v) {
+            const float e = std::erf(v / 1.41421356237309515f);
+            return 0.5f * v * (1.0f + e);
+        },
+        [](float v, float) {
+            const float cdf = 0.5f * (1.0f + std::erf(v / 1.41421356237309515f));
+            return cdf + v * (0.398942280401432678f * std::exp(-0.5f * v * v));
+        });
+}
+
 Var abs(const Var& x) {
     return unary_host(x, [](float v) { return std::fabs(v); },
                       [](float v, float) { return v > 0.0f ? 1.0f : (v < 0.0f ? -1.0f : 0.0f); });

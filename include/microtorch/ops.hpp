@@ -21,6 +21,11 @@ Var add_bias(const Var& x, const Var& b);  // b: [1,n] broadcast over rows;
 Var gelu(const Var& x);                    // tanh approximation; OWN correct
                                            // derivative (see primitives.hpp
                                            // on the transformer_core bug)
+Var gelu_erf(const Var& x);                // the exact GELU (Hendrycks and
+                                           // Gimpel 2016): 0.5 x (1 + erf(x /
+                                           // sqrt 2)), the IR's gelu approx
+                                           // "none"; host, f32 erff (IR_SPEC
+                                           // 5.8); dx = dy (Phi(x) + x phi(x))
 Var softmax_row(const Var& x);             // dX = S .* (dY - rowsum(dY .* S))
 Var mean(const Var& x);                    // -> [1,1]
 

@@ -81,6 +81,12 @@ struct Spec {
     // rel_max_distance (Shaw's clipping distance), rel_per_head and rel_values; qkv_conv (Primer's MDHA width).
     std::vector<parity::FlexConfig::ExprInput> act_inputs, norm_inputs, embed_inputs;
     std::string embed_expr;  // arch.custom.embed "expr:<e>" (parity::FlexConfig embed_expr)
+    // arch.custom.embed_before_positions: the embed expr on the token embedding, before the
+    // position table is added (parity::FlexConfig embed_before_pos; the Transformer's
+    // sqrt(d_model)).
+    bool embed_before_pos = false;
+    // arch.custom.tie_head: the head reads the token embedding (parity::FlexConfig tie_head).
+    bool tie_head = false;
     // arch.custom.logits "expr:<e>" (parity::FlexConfig logits_expr); the flex family's q/k norm
     // (parity::FlexConfig qk_norm "per_head" | "full"), set from arch.custom.qk_norm when the family is flex.
     std::string logits_expr, flex_qk_norm;
@@ -393,6 +399,14 @@ Spec parse_spec(const std::string& path) {
             s.embed_expr = c["embed"].get<std::string>();
             s.flex_only_keys = true;
         }
+        if (c.contains("embed_before_positions")) {
+            s.embed_before_pos = c["embed_before_positions"].get<bool>();
+            s.flex_only_keys = true;
+        }
+        if (c.contains("tie_head")) {
+            s.tie_head = c["tie_head"].get<bool>();
+            s.flex_only_keys = true;
+        }
         if (c.contains("logits")) {
             s.logits_expr = c["logits"].get<std::string>();
             s.flex_only_keys = true;
@@ -620,9 +634,11 @@ Spec parse_spec(const std::string& path) {
     }
 
     if (s.flex_only_keys && s.family != "flex")
-        throw std::runtime_error("arch.custom.activation_inputs, norm_inputs, embed, embed_inputs, logits, norm_placement, "
-                                 "final_norm, qk_norm full and rel_buckets / rel_max_distance / rel_per_head / "
-                                 "rel_values / qkv_conv need the flex family");
+        throw std::runtime_error(
+            "arch.custom.activation_inputs, norm_inputs, embed, embed_inputs, "
+            "embed_before_positions, tie_head, logits, norm_placement, "
+            "final_norm, qk_norm full and rel_buckets / rel_max_distance / rel_per_head / "
+            "rel_values / qkv_conv need the flex family");
     if (s.family == "flex" && s.qk_norm) {  // a per-head q/k norm on the flex family: its own, not llama's
         s.flex_qk_norm = "per_head";
         s.qk_norm = false;
@@ -2221,7 +2237,9 @@ parity::FlexConfig flex_config(const Spec& s, size_t vocab) {
     fc.d_ff = s.d_ff ? s.d_ff : 4 * s.d;
     fc.n_ctx = s.T;
     if (!s.norm.empty()) fc.norm = s.norm;
-    if (!s.activation.empty()) fc.act = s.activation;
+    // "gelu_tanh" names the tanh form explicitly (the arXiv chain writes it); flex's "gelu" is that
+    // form.
+    if (!s.activation.empty()) fc.act = s.activation == "gelu_tanh" ? "gelu" : s.activation;
     if (!s.position.empty()) fc.pos = s.position;
     if (!s.residual.empty()) fc.residual = s.residual;
     fc.gate_bias_init = s.gate_bias_init;
@@ -2232,6 +2250,8 @@ parity::FlexConfig flex_config(const Spec& s, size_t vocab) {
     fc.norm_inputs = s.norm_inputs;
     fc.embed_expr = s.embed_expr;
     fc.embed_inputs = s.embed_inputs;
+    fc.embed_before_pos = s.embed_before_pos;
+    fc.tie_head = s.tie_head;
     fc.place_attn = s.place_attn;
     fc.place_ffn = s.place_ffn;
     fc.final_norm = s.final_norm;
@@ -2543,7 +2563,8 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             ev.emit(gc);
             std::printf("expr activation %s: gradient vs finite differences worst rel %.2e, finite on "
                         "[-20, 20]\n", fc.act.substr(5).c_str(), gc["fd_worst_rel"].get<double>());
-        } else if (fc.act != "gelu" && fc.act != "relu" && fc.act != "swiglu")
+        } else if (fc.act != "gelu" && fc.act != "gelu_erf" && fc.act != "relu" &&
+                   fc.act != "swiglu")
             throw std::runtime_error("unknown activation " + fc.act);
         if (fc.pos != "learned" && fc.pos != "sinusoidal" && fc.pos != "rope" && fc.pos != "t5_relative" &&
             fc.pos != "shaw_relative")
@@ -2642,6 +2663,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         json a = json::array();
         for (const auto& i : flex->cfg.embed_inputs) a.push_back({{"kind", i.kind}, {"init", i.init}});
         model_ev["embed"] = {{"expr", flex->cfg.embed_expr}, {"inputs", a}};
+        if (flex->cfg.embed_before_pos) model_ev["embed"]["before_positions"] = true;
     }
     if (flex && flex->cfg.pos == "t5_relative")
         model_ev["t5_relative"] = {{"buckets", flex->cfg.rel_buckets}, {"max_distance", flex->cfg.rel_max_distance}};
@@ -2651,6 +2673,11 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     if (flex && flex->cfg.qkv_conv) model_ev["qkv_conv"] = flex->cfg.qkv_conv;
     if (flex && !flex->cfg.qk_norm.empty()) model_ev["qk_norm"] = flex->cfg.qk_norm;
     if (flex && !flex->cfg.logits_expr.empty()) model_ev["logits"] = flex->cfg.logits_expr;
+    if (flex && flex->cfg.tie_head) model_ev["tie_head"] = true;
+    // The GELU's form, where the activation is one (keramos IR_SPEC 5.8's approx): flex's "gelu" is
+    // the tanh form.
+    if (flex && (r_act == "gelu" || r_act == "gelu_erf"))
+        model_ev["gelu_approx"] = r_act == "gelu" ? "tanh" : "none";
     if (s.lr_warmup > 0 || s.lr_decay != "none")
         model_ev["lr_schedule"] = {
             {"warmup_steps", s.lr_warmup}, {"decay", s.lr_decay}, {"min_lr_frac", s.lr_min_frac}};

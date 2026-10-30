@@ -1,0 +1,63 @@
+{
+  "status": "VERIFIED_CPU_ONLY",
+  "provenance": "Integration of six pre-existing author working edits. Original OneDrive author files were not changed. Only changed-range clang-format18 was applied in isolated integration checkout.",
+  "integration_correction": "Initial CTest exposed dangling JSON references in three author-added range-for tests over family_export temporary optionals. Keep exported optionals alive; original assertions and tolerances unchanged. Initial failing log retained.",
+  "source_parent": "fdb422f58c54dfa8919e476b680aa9497f6b473e",
+  "author_provenance": {
+    "original_hashes": {
+      "include/microtorch/ops.hpp": "042a85f145c7db942fb1eabab0e9f0c0790be5de8cabf2b9403e63568a79c65e",
+      "src/ops.cpp": "7c3776c389aea399b919bda7c07bcf0110520b7a7b6f227cce73df2d2e90c3aa",
+      "tests/test_flex.cpp": "a4f0f6d58d02bf75a2151c029d9162a01831c4ab7d27463cf8f5fa722a20e6df",
+      "tools/model_card.py": "c1fdaf5d4807ce303dc5f461f6f56d591d2013e987239ddc4621099a339d80d9",
+      "tools/mtstudio.cpp": "30c4bc8d4398ecf1d83b39116bf102f867746e3d095398f5e01e565c418ff4bf",
+      "tools/parity_model.hpp": "9b8013736e44d560964cd5fdc31d40d51e10e38a9106ad3e42a230fe804d0712"
+    },
+    "patch_sha256": "39519f7590356a69e3539751188901684aa61870b83f07da56ea595e53c879fe"
+  },
+  "sources": {
+    "include/microtorch/ops.hpp": "c137545c6bb68fb485440cf9a010e83534ffed740412b4dab6efdd98ad42aa56",
+    "src/ops.cpp": "e3942b4564d035243be9f8084025222d7f93a01c794a2e40b3ef2e86cde0f42e",
+    "tests/test_flex.cpp": "9cc2e82108319faf8bfe973cbf20c1fce1737e348da07f9be036cbf67f0690e4",
+    "tools/model_card.py": "c1fdaf5d4807ce303dc5f461f6f56d591d2013e987239ddc4621099a339d80d9",
+    "tools/mtstudio.cpp": "ed7c2f965065551221f33ab26872c197b24dfec4fb257d83ec2605778c613905",
+    "tools/parity_model.hpp": "53ee275b94e2cdfd71dc4fadcf10ae0884e6895f3a49dfb100d6d24bf227d39d"
+  },
+  "binary": {
+    "mtstudio_sha256": "3cba15295005af59affc1418c11c013b1ecf0f4accf8c4441df4cc6b003dd52a",
+    "test_flex_sha256": "38fe5e22d1df2e715ac931b8287423ab066f2199416848542458c7cafc87c450"
+  },
+  "checks": {
+    "ctest_passed": 51,
+    "ctest_failed": 0,
+    "timeout_seconds": 120,
+    "cpu_only": true,
+    "cores": 2,
+    "flex_sections_passed": 16,
+    "model_card_python_compile": true
+  },
+  "scope": [
+    "Exact erf GELU and its derivative; Flex tied token/output head; expression embedding before learned/sinusoidal positions; model card labels.",
+    "Existing author test additions compare GELU with binary64 and finite differences, whole-model gradients, placement identity and IR/tensor export contracts.",
+    "HF mapping of Flex tied heads remains unsupported pending a separate parity gate. No GPU execution claim."
+  ],
+  "artifacts": {
+    "flex.log": "9e462431afecd15627365bfaf20fef8779ea8517f22cebb3b935a7ca8d1777aa",
+    "ir_ids.json": "42bcd67b8400068018d2a624109607c607d3351f7ed1dd699b77f0ecaecaa6c5",
+    "build.log": "a662bcd57e200ad03444a1045de5d32a49e52ab9933d6bf6d74b65e3f645ef41",
+    "test_rebuild.log": "df23b8b2582ee21a60e00f6d524a99121778f1626b58509a03a8c729b162e4c8",
+    "author_provenance.json": "21ffc47946745ef2edb065063d3dae7c3e12c966434ab31616d5a7b9cffe9e61",
+    "initial_failure.log": "8da2f0c43511fd398588265334f8d5252b7d707a2781b2e03cf403ab46762b99",
+    "ctest.log": "7a635682d0fba4bb5ebb8f46dfc7560a959fdad92f42d89b4e72b0cb7b7d1886",
+    "ir_check.log": "841eeff0d5383094babf9cc17246fcd2a8e579bfc582bd21d4ca019445f73883",
+    "ir_parity.json": "90853a045c7832241723ef5e4905684de8646b2d4284cda0f96b6b81190cb78d",
+    "combined.ir.json": "7fab78f084784127b409c327e58f0e332b17f0a8177d1fdced98056f85dc1530",
+    "ir_score_out.jsonl": "77ca8e3ce9f2a6650d58f1232b8daa6886b4c740f2931dda65f06495262d6ecb",
+    "ir_ember_rows.json": "be43afd26613198799a8b5d6c8307eec82f4468b7d5bf750c99a1574a9e4a4b3",
+    "ir_proof_run.py": "f76eec9a256f21c7b89fc335fc94029fa3df70ed15611fe0963d095f1ff4f0c0",
+    "ir_spec.json": "c04b0c252dff1d40372b90096a793f32a5ec5d67a35f6726f0bc3b18b1c576f7",
+    "ir_score_in.jsonl": "afee4cabe17fb3fc2a2a6b9f43f8c4984cb9e808556c782dd43173c18f3cd9d0",
+    "parameter_failure.log": "860ab28f5b263ed916d1cac25b9ef813748562201eb0dc1edc12ff822b83c294",
+    "ir_train.log": "43d928c1d6eefcdb60ec387099fb247b13d41a17c5885a8aa40cf1975bfd37c1",
+    "ir_ember_stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

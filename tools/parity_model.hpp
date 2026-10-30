@@ -513,7 +513,8 @@ private:
 // The FLEX family: the paper-faithful decoder. Everything papers/fetch.py
 // extracts becomes constructor-real here — depth, d_ff, norm flavor
 // (LayerNorm|RMSNorm, or one defined at runtime: "expr:<e>"), FFN
-// activation (GELU|ReLU|SwiGLU, or "expr:<e>", microtorch/expr.hpp), and
+// activation (GELU in its tanh form or its exact erf form|ReLU|SwiGLU, or
+// "expr:<e>", microtorch/expr.hpp), and
 // position encoding (learned|sinusoidal|rope). Pre-norm wiring throughout
 // (post-norm is not yet a knob). mtstudio sends position=rope with the
 // llama flavours (rmsnorm, swiglu, residual, exact) to the llama family;
@@ -525,6 +526,13 @@ private:
 //     pos * rope_theta^(-2j/head_dim), all heads), positions restarting at
 //     0 for each sequence of a stacked batch. Exported as the IR rope node
 //     between split and attention, as the llama block's.
+//   act "gelu": the tanh approximation 0.5 x (1 + tanh(sqrt(2/pi) (x +
+//     0.044715 x^3))) (ops::gelu, nn::MLP: GPT-2's, and the equivalence
+//     pin's); act "gelu_erf": the exact 0.5 x (1 + erf(x / sqrt 2))
+//     (Hendrycks and Gimpel's definition; ops::gelu_erf) on nn::MLP's
+//     Linears with the same seeds. Exported as the IR gelu node with approx
+//     "tanh" and "none" (keramos IR_SPEC 5.8: an engine must not substitute
+//     one for the other). mtstudio reads "gelu_tanh" as "gelu".
 //   norm "expr:<e>": y = e(x) * g + b row by row, e an expr over the one
 //     input x (the row reductions rowsum/rowmean/rowmax allowed), g and b
 //     learned [d] (init 1 and 0: layernorm's affine). Exported as an expr
@@ -539,7 +547,7 @@ private:
 struct FlexConfig {
     size_t vocab = 0, d = 128, n_layers = 2, n_heads = 4, d_ff = 512, n_ctx = 128;
     std::string norm = "layernorm";  // layernorm | rmsnorm | expr:<e> (e over the row, row reductions allowed)
-    std::string act = "gelu";        // gelu | relu | swiglu | expr:<e>
+    std::string act = "gelu";  // gelu (tanh form) | gelu_erf (exact) | relu | swiglu | expr:<e>
     std::string pos = "learned";     // learned | sinusoidal | rope | t5_relative
     float rope_theta = 10000.0f;     // pos == "rope" (the llama block's default)
     // Registry #0001 (Highway Networks, arXiv 1505.00387): how each
@@ -580,6 +588,18 @@ struct FlexConfig {
     // scalars and channels of width d).
     std::string embed_expr;
     std::vector<ExprInput> embed_inputs;
+    // Where the embed expr acts: false = on the embed output, after an additive position table is
+    // added (the default); true = on the token embedding alone, before the table is added (the
+    // Transformer's sqrt(d_model) times the embedding weights, then the sinusoidal encodings:
+    // Vaswani et al. 2017, 3.4-3.5). Exported as the expr node between the embedding and
+    // pos_embedding nodes. Needs an embed expr and a table (position learned or sinusoidal).
+    bool embed_before_pos = false;
+    // A tied head: the output projection reads the token embedding's table, logits = h E^T, no head
+    // weight of its own (Vaswani et al. 2017, 3.4: "we share the same weight matrix between the two
+    // embedding layers and the pre-softmax linear transformation"; Press and Wolf 2017). Gradients
+    // reach E through the gather and the head. Exported as the head's linear with tied_to
+    // "token_embd.weight" and no output.weight tensor (keramos IR_SPEC 5.3).
+    bool tie_head = false;
     // Where each sublayer's norm n sits, f the sublayer: pre x + f(n(x)) (the default); post
     // n(x + f(x)) (the original Transformer); sandwich x + n'(f(n(x))) (a second norm on the
     // output, Gemma 2); branch_post x + n(f(x)) (Primer's FFN: the norm after the
@@ -657,6 +677,14 @@ inline std::string FlexConfig::problem() const {
         if (!e.empty()) return e;
     }
     if (!embed_expr.empty() && embed_expr.rfind("expr:", 0) != 0) return "embed must be expr:<e>";
+    if (act != "gelu" && act != "gelu_erf" && act != "relu" && act != "swiglu" &&
+        act.rfind("expr:", 0) != 0)
+        return "activation must be gelu, gelu_erf, relu, swiglu or expr:<e>, got " + act;
+    if (embed_before_pos && embed_expr.empty()) return "embed_before_positions needs an embed expr";
+    if (embed_before_pos && pos != "learned" && pos != "sinusoidal")
+        return "embed_before_positions needs a position table (learned or sinusoidal), got "
+               "position " +
+               pos;
     if (!embed_inputs.empty()) {
         if (embed_expr.empty()) return "embed_inputs need an embed expr";
         const std::string e = check_inputs(embed_inputs, "row", "embed", false);
@@ -782,7 +810,8 @@ public:
             down = mod<nn::Linear>("mlp.down_proj", c.d_ff, c.d, false, s + 3 + 19);
         } else if (act_ == "gelu") {
             mlp = mod<nn::MLP>("mlp", c.d, c.d_ff, s + 3);  // ParityLM's exact layout
-        } else {  // relu or expr: nn::MLP's Linears (same seeds), the activation in between
+        } else {  // relu, gelu_erf or expr: nn::MLP's Linears (same seeds), the activation in
+                  // between
             if (act_.rfind("expr:", 0) == 0)
                 act_expr = std::make_shared<const Expr>(
                     Expr::parse(act_.substr(5), std::max<size_t>(1, act_in_.size())));
@@ -894,7 +923,7 @@ public:
 
     // The FFN's activation over its up-projection u (and the gate's projection of n).
     Var activate(const Var& n, const Var& u) const {
-        if (!act_expr) return ops::relu(u);
+        if (!act_expr) return act_ == "gelu_erf" ? ops::gelu_erf(u) : ops::relu(u);
         if (act_in_.empty()) return ops::expr({u}, *act_expr);
         const Var g = fc_gate ? fc_gate->forward(n) : nullptr;
         return ops::expr(flex_expr_args(act_in_, u, g, act_params), *act_expr);
@@ -986,7 +1015,7 @@ public:
                                                        c.norm_inputs[j].init_at("final"))));
             }
         }
-        head = mod<nn::Linear>("head", c.d, c.vocab, false, seed + 99);
+        if (!c.tie_head) head = mod<nn::Linear>("head", c.d, c.vocab, false, seed + 99);
         if (!c.logits_expr.empty())
             logits_expr = std::make_shared<const Expr>(Expr::parse(c.logits_expr.substr(5), 1));
         if (!c.embed_expr.empty()) {
@@ -1014,23 +1043,29 @@ public:
         const size_t sl = seq_len == 0 ? ids.size() : seq_len;
         std::vector<int> pos(ids.size());
         for (size_t i = 0; i < pos.size(); ++i) pos[i] = static_cast<int>(i % sl);
-        Var h;
+        Var h = wte->forward(ids);
+        auto embed = [&](const Var& v) {
+            return ops::expr(flex_expr_args(cfg.embed_inputs, v, nullptr, embed_params),
+                             *embed_expr);
+        };
+        if (embed_expr && cfg.embed_before_pos)
+            h = embed(h);  // on the token embedding, before the table
         if (wpe) {
-            h = ops::add(wte->forward(ids), wpe->forward(pos));
+            h = ops::add(h, wpe->forward(pos));
         } else if (cfg.pos == "rope" || cfg.pos == "t5_relative" ||
                    cfg.pos == "shaw_relative") {  // positions enter in each block's attention
-            h = wte->forward(ids);
         } else {
             Matrix pe(ids.size(), cfg.d);
             for (size_t r = 0; r < ids.size(); ++r)
                 for (size_t j = 0; j < cfg.d; ++j) pe(r, j) = sin_table(pos[r], j);
-            h = ops::add(wte->forward(ids), make_var(std::move(pe), false));
+            h = ops::add(h, make_var(std::move(pe), false));
         }
-        if (embed_expr) h = ops::expr(flex_expr_args(cfg.embed_inputs, h, nullptr, embed_params), *embed_expr);
+        if (embed_expr && !cfg.embed_before_pos) h = embed(h);
         FlexRelPos rel{rel_bias, &rel_buckets};
         for (auto& b : blocks) h = b->forward(h, seq_len, rel_bias ? &rel : nullptr);
         const Var n = fn.on() ? flex_norm_forward(fn, h, norm_expr.get(), cfg.norm_inputs) : h;
-        const Var logits = head->forward(n);
+        const Var logits =
+            head ? head->forward(n) : ops::matmul(n, ops::transpose(wte->weight));  // tie_head
         return logits_expr ? ops::expr({logits}, *logits_expr) : logits;
     }
 
@@ -1051,6 +1086,7 @@ public:
         if (cfg.qkv_conv) return "qkv_conv (gpt2 export has no convolution)";
         if (!cfg.qk_norm.empty()) return "qk_norm (gpt2 export has no q/k norm)";
         if (!cfg.logits_expr.empty()) return "logits " + cfg.logits_expr + " (gpt2 export has no logits expr)";
+        if (cfg.tie_head) return "tie_head (gpt2 export writes the head's own weight)";
         return "";
     }
     bool windowed() const { return cfg.attention == "swa"; }
@@ -1188,7 +1224,8 @@ public:
         } else {  // relu, or the runtime-defined activation (its gate and learned inputs first)
             n.push_back(b0.fc->export_ir(fin, "u", p + "ffn_up.weight"));
             if (!b0.act_expr) {
-                n.push_back(ir::unary("relu", "u", "u"));
+                n.push_back(c.act == "gelu_erf" ? ir::gelu("u", "none", "u")
+                                                : ir::unary("relu", "u", "u"));
             } else if (c.act_inputs.empty()) {
                 n.push_back(ir::expr({"u"}, b0.act_expr->text(), "u"));
             } else {
@@ -1227,14 +1264,25 @@ public:
         ir::json head_nodes = ir::json::array();
         if (fn.on())
             emit_norm(head_nodes, fn, "x", "h", "output_norm");
-        head_nodes.push_back(head->export_ir(fn.on() ? "h" : "x", "logits", "output.weight"));
+        if (head)
+            head_nodes.push_back(head->export_ir(fn.on() ? "h" : "x", "logits", "output.weight"));
+        else  // tie_head: the token table, read through tied_to (no output.weight in the file)
+            head_nodes.push_back({{"op", "linear"},
+                                  {"in", ir::json::array({fn.on() ? "h" : "x"})},
+                                  {"weight", "output.weight"},
+                                  {"bias", nullptr},
+                                  {"tied_to", "token_embd.weight"},
+                                  {"out", "logits"}});
         if (logits_expr) head_nodes.push_back(ir::expr({"logits"}, logits_expr->text(), "logits"));
         FamilyExport fx;
         fx.heads = H;
         fx.d_ff = c.d_ff;
-        ir::json embed_nodes = rope || t5 || shaw ? ir::json::array({wte->export_ir("tokens", "x", "token_embd.weight")})
-                                                  : gpt2_embed_ir(*wte);
-        if (embed_expr) {  // the expr on the embed output: its learned inputs as scale nodes over a ones row
+        ir::json embed_nodes =
+            ir::json::array({wte->export_ir("tokens", "x", "token_embd.weight")});
+        const ir::json table_node = ir::pos_embedding("x", "pos", "position_embd.weight", "x");
+        if (!rope && !t5 && !shaw && !c.embed_before_pos) embed_nodes.push_back(table_node);
+        if (embed_expr) {  // the expr on the embed output (or on the token embedding, before the
+                           // table): its learned inputs as scale nodes over a ones row
             std::vector<std::string> ins;
             bool ones = false;
             for (size_t j = 0; j < std::max<size_t>(1, c.embed_inputs.size()); ++j) {
@@ -1250,10 +1298,12 @@ public:
             }
             embed_nodes.push_back(ir::expr(ins, embed_expr->text(), "x"));
         }
+        if (c.embed_before_pos) embed_nodes.push_back(table_node);  // problem(): a table is there
         fx.ir = family_doc(c.residual == "residual" ? "flex" : "flex_" + c.residual, c.vocab, c.d, c.n_layers,
                            c.n_ctx, /*positions=*/true, embed_nodes, state, n, head_nodes);
-        if (c.norm == "layernorm" && c.act == "gelu" && c.pos == "learned" && plain && c.place_attn == "pre" &&
-            c.place_ffn == "pre" && c.has_final_norm() && !mdha) {
+        if (c.norm == "layernorm" && c.act == "gelu" && c.pos == "learned" && plain &&
+            c.place_attn == "pre" && c.place_ffn == "pre" && c.has_final_norm() && !mdha &&
+            !c.tie_head) {
             // llama.cpp's gpt2 tensors exactly, but no gpt2 graph computes
             // a block without its skip connections.
             fx.arch = "gpt2";
@@ -1327,7 +1377,7 @@ public:
             if (highway) put_linear(fx.tensors, g + "highway_ffn", *k.gate_m);
         }
         if (fn.on()) put_norm("output_norm", fn);
-        put_linear(fx.tensors, "output", *head);
+        if (head) put_linear(fx.tensors, "output", *head);
         if (t5) put_tensor(fx.tensors, "rel_pos_bias.weight", rel_bias->data, L::ROWS);
         for (size_t j = 0, k = 0; j < c.embed_inputs.size(); ++j)
             if (c.embed_inputs[j].kind != "row")
