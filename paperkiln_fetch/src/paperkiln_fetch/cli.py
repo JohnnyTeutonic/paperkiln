@@ -25,6 +25,7 @@ def main() -> int:
         prog="paperfetch", description=__doc__.splitlines()[0])
     ap.add_argument("arxiv_id")
     ap.add_argument("--tex", help="parse a local .tex file instead of fetching")
+    ap.add_argument("--hf-config", help="compare a local HF config.json without overriding paper evidence")
     ap.add_argument("--json", help="write the normalized extraction here")
     ap.add_argument("--emit-hf", metavar="PATH",
                     help="write a Hugging Face config.json here (llama- or "
@@ -38,6 +39,12 @@ def main() -> int:
     tex = (open(args.tex, encoding="utf-8", errors="replace").read()
            if args.tex else _fetch.fetch_source(args.arxiv_id))
     arch = _fetch.extract(args.arxiv_id, tex)
+    if args.hf_config:
+        try:
+            arch.hf_config_crosscheck = _fetch.load_hf_config_report(arch, args.hf_config)
+        except (OSError, ValueError, TypeError) as exc:
+            ap.error(str(exc))
+        print(_fetch.hf_config_summary(arch.hf_config_crosscheck))
 
     print(f"arXiv:{arch.arxiv_id}  {arch.title or ''}".strip())
     if arch.inherits:

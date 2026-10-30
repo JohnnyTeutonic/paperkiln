@@ -100,8 +100,7 @@ advisory steps that cannot fail the build.
   task (parameter-count error per reconstructed paper) for a datasets and
   benchmarks paper. Candidates next in line: StarCoder, ELECTRA, UL2,
   BigBird, Chinchilla.
-- **Fetcher v2 remainder:** MoE fields and the HF-config cross-check. The
-  per-variant fields and `n_kv_heads` are done.
+- **Fetcher v2 remainder:** evidence-carrying MoE fields in the rule-based extractor.
 
 ## 6. Engine
 
@@ -127,8 +126,8 @@ advisory steps that cannot fail the build.
 - **int4/NF4 quantisation.**
 - **Kimi linear attention:** the non-causal backward (`src/ops.cpp:658`
   throws).
-- **HF export for the flex and gpt2 families; quantised GGUFs outside the
-  llama family.** Every mtstudio family now exports F32 GGUF with its IR
+- **Faithful legacy word-level HF tokenizer conversion; HF export for the
+  flex and gpt2 families; quantised GGUFs outside the llama family.** Every mtstudio family now exports F32 GGUF with its IR
   (`include/microtorch/ir.hpp`, Families): gpt2 and flex with the GPT-2
   flavour in llama.cpp's `gpt2` layout, as are kimi and plain-residual flex
   of that flavour (the IR alone carries what differs); srd, attnres, mamba

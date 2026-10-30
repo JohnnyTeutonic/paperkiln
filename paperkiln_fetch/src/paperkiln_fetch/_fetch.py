@@ -19,6 +19,7 @@ Requires: requests (pip install requests). Nothing else.
 from __future__ import annotations
 
 import argparse
+import pathlib
 import io
 import json
 import re
@@ -103,6 +104,7 @@ class Arch:
     # {ancestor, evidence, section} when the paper declares it inherits an
     # architecture; the source of any verdict-"inherited" field.
     inherits: dict | None = None
+    hf_config_crosscheck: dict | None = None
 
 
 def _num(s: str) -> int:
@@ -172,7 +174,7 @@ FLAVOR = {
     # stops the bare X inside it from also matching.
     "activation": [("swiglu", r"SwiGLU|[Gg]ated[-\s]?(?:SiLU|[Ss]wish)"),
                    ("geglu", r"GeGLU|[Gg]ated[-\s]?G[Ee][Ll][Uu]"),
-                   ("gelu", r"GELU"), ("silu", r"SiLU|swish"),
+                   ("gelu", r"G[Ee][Ll][Uu]"), ("silu", r"SiLU|swish"),
                    ("relu", r"ReLU")],
     "positional": [("rope", r"RoPE|[Rr]otary\s+(?:position|embedding)"),
                    ("alibi", r"ALiBi"),
@@ -791,12 +793,17 @@ def extract(arxiv_id: str, tex: str) -> Arch:
             arch.unresolved.append(fieldname)
             continue
         top = cands[0]
-        second = cands[1] if len(cands) > 1 else None
+        # A rejected alternative remains visible in mentions, but cannot
+        # contest an adopted value (including a GLU-family verdict). Keep
+        # searching: a third, eligible candidate may still contest it.
+        second = next((c for c in cands[1:]
+                       if "rejection-elsewhere" not in c["cues"]), None)
         # GLU-family naming disagreement: if the top two are members of
         # one family, they agree on architecture and differ only in name.
         fam = FLAVOR_FAMILIES.get(fieldname, {})
-        if (second is not None and fam.get(top["value"]) and
-                fam.get(top["value"]) == fam.get(second["value"])):
+        if (second is not None and "rejection-elsewhere" not in top["cues"]
+                and fam.get(top["value"])
+                and fam.get(top["value"]) == fam.get(second["value"])):
             arch.fields[fieldname] = Finding(
                 fam[top["value"]], top["evidence"], verdict="family",
                 score=top["score"],
@@ -877,6 +884,102 @@ def extract(arxiv_id: str, tex: str) -> Arch:
 # emit
 # --------------------------------------------------------------------------
 
+# Only explicit scalar sizes are compared. No config defaults, family inference,
+# checkpoint selection or missing-paper-field completion enters extraction.
+HF_SIZE_ALIASES = {
+    "d_model": ("hidden_size", "n_embd", "d_model"),
+    "n_layers": ("num_hidden_layers", "n_layer", "num_layers"),
+    "n_heads": ("num_attention_heads", "n_head", "num_heads"),
+    "n_kv_heads": ("num_key_value_heads",),
+    "head_dim": ("head_dim",),
+    "d_ff": ("intermediate_size", "n_inner", "d_ff"),
+    "vocab_size": ("vocab_size",),
+    "context_length": ("max_position_embeddings", "n_positions", "n_ctx"),
+    "n_experts": ("num_local_experts", "num_experts", "n_routed_experts"),
+    "top_k": ("num_experts_per_tok", "num_selected_experts", "moe_top_k"),
+}
+
+
+def crosscheck_hf_config(arch: Arch, config: dict) -> dict:
+    """Compare, never repair: all values/evidence in arch remain untouched.
+
+    This is equality of explicitly reported numbers, not proof that a checkpoint
+    implements a paper. All table variants are reported independently; none is
+    auto-selected. A conflicting alias makes the HF input unusable, not a vote.
+    """
+    if not isinstance(config, dict):
+        raise ValueError("HF config must be a JSON object")
+    hf = {}
+    for fieldname, aliases in HF_SIZE_ALIASES.items():
+        present = {key: config[key] for key in aliases if key in config and config[key] is not None}
+        for key, value in present.items():
+            if type(value) is not int or value < 0:
+                raise ValueError(f"HF config {key} must be a nonnegative integer or null")
+        if len(set(present.values())) > 1:
+            raise ValueError(f"conflicting HF aliases for {fieldname}: {present}")
+        hf[fieldname] = {"value": next(iter(present.values()), None), "aliases": present}
+
+    def compare(values, evidence, metadata=None):
+        fields = {}
+        for name, value in hf.items():
+            paper = values.get(name)
+            actual = value["value"]
+            meta = (metadata or {}).get(name, {})
+            if meta.get("status") in ("unverified", "quote_only", "contested", "unresolved", "not_stated"):
+                status = "paper_" + meta["status"]
+            elif paper is None:
+                status = "paper_not_stated"
+            elif actual is None:
+                status = "hf_not_stated"
+            elif type(paper) is not int:
+                status = "paper_not_numeric"
+            else:
+                status = "match" if paper == actual else "difference"
+            fields[name] = {"paper": paper, "hf": actual, "status": status,
+                            "hf_aliases": value["aliases"], "paper_evidence": evidence.get(name),
+                            "paper_verdict": meta.get("verdict"),
+                            "paper_status": meta.get("status", "variant_table" if paper is not None else "not_stated"),
+                            "paper_reported_value": meta.get("reported_value", paper)}
+        return {"fields": fields, "compared_fields": [k for k, v in fields.items() if v["status"] in ("match", "difference")],
+                "differences": [k for k, v in fields.items() if v["status"] == "difference"]}
+
+    ineligible = {"contested", "unverified", "quote_only", "not_stated"}
+    values = {k: f.value for k, f in arch.fields.items() if f.verdict not in ineligible and k not in arch.unresolved}
+    metadata = {k: {"verdict": f.verdict, "reported_value": f.value,
+                    "status": "unresolved" if k in arch.unresolved else (f.verdict or "quoted")}
+                for k, f in arch.fields.items()}
+    report = {
+        "scope": "explicit numeric values only; differences do not establish extraction error or checkpoint identity",
+        "primary": compare(values, {k: f.evidence for k, f in arch.fields.items()}, metadata),
+        "variants": [{"index": i, **compare(variant, {})} for i, variant in enumerate(arch.variants)],
+        "variant_selected": None,
+        "paper_fields_modified": False,
+    }
+    if "text_config" in config:
+        report["note"] = "Only top-level config fields compared; nested text_config was not selected."
+    return report
+
+
+def load_hf_config_report(arch: Arch, path: str) -> dict:
+    """Read only the explicitly supplied local file and retain its exact hash."""
+    import hashlib
+    config_bytes = pathlib.Path(path).read_bytes()
+    report = crosscheck_hf_config(arch, json.loads(config_bytes))
+    report["source"] = {"path": str(pathlib.Path(path).resolve()),
+                        "sha256": hashlib.sha256(config_bytes).hexdigest()}
+    return report
+
+
+def hf_config_summary(report: dict) -> str:
+    differences = report["primary"]["differences"]
+    compared = len(report["primary"]["compared_fields"])
+    if not compared:
+        return "HF numeric cross-check: 0 comparable primary fields; paper fields unchanged; no variant selected"
+    return ("HF numeric cross-check: " + ("primary differences: " + ", ".join(differences)
+            if differences else "no primary numeric differences") +
+            "; paper fields unchanged; no variant selected")
+
+
 def to_json(arch: Arch) -> dict:
     def field_json(f: Finding) -> dict:
         d: dict = {"value": f.value, "evidence": f.evidence}
@@ -894,6 +997,7 @@ def to_json(arch: Arch) -> dict:
         "mentions": arch.mentions,
         "inherits": arch.inherits,
         "variants": arch.variants,
+        **({"hf_config_crosscheck": arch.hf_config_crosscheck} if arch.hf_config_crosscheck is not None else {}),
     }
 
 
@@ -906,6 +1010,10 @@ def emit_html(arch: Arch) -> str:
     import html as _html
 
     rows, snips = [], []
+    hf_note = ""
+    if arch.hf_config_crosscheck is not None:
+        hf_note = ("<h3>HF config cross-check (comparison only)</h3><pre>" +
+                   _html.escape(json.dumps(arch.hf_config_crosscheck, indent=2)) + "</pre>")
     for i, (k, f) in enumerate(arch.fields.items()):
         v = _html.escape(str(f.value))
         ev = _html.escape(f.evidence)
@@ -968,7 +1076,7 @@ def emit_html(arch: Arch) -> str:
 evidence; unresolved fields are reported, never guessed</div>
 <div class="cols">
   <div class="panel"><h2>extracted architecture</h2>
-    <table>{''.join(rows)}</table>{variants}</div>
+    <table>{''.join(rows)}</table>{variants}{hf_note}</div>
   <div class="panel"><h2>evidence from the paper's LaTeX</h2>
     {''.join(snips)}</div>
 </div>
@@ -1152,11 +1260,18 @@ def main() -> int:
     ap.add_argument("--vocab", default="", help="emit-spec: vocab gguf path")
     ap.add_argument("--steps", type=int, default=1200, help="emit-spec: train steps")
     ap.add_argument("--tex", help="parse a local .tex file instead of fetching")
+    ap.add_argument("--hf-config", help="compare a local HF config.json; never fill or override paper fields")
     args = ap.parse_args()
 
     tex = (open(args.tex, encoding="utf-8", errors="replace").read()
            if args.tex else fetch_source(args.arxiv_id))
     arch = extract(args.arxiv_id, tex)
+    if args.hf_config:
+        try:
+            arch.hf_config_crosscheck = load_hf_config_report(arch, args.hf_config)
+        except (OSError, ValueError, TypeError) as exc:
+            ap.error(str(exc))
+        print(hf_config_summary(arch.hf_config_crosscheck))
 
     print(f"arXiv:{arch.arxiv_id}  {arch.title or ''}".strip())
     if arch.inherits:

@@ -7,12 +7,25 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Offline HF-config cross-check** (30 Oct). Both extractor CLIs accept `--hf-config PATH`.
+  Explicit numeric aliases are compared with paper-derived primary fields and every size
+  variant independently. Differences, missing values and source quotes remain visible in
+  JSON and escaped HTML; no checkpoint/variant is selected and no paper value is filled or
+  overridden. Conflicting aliases, booleans and invalid numbers reject the supplied config.
+  Local file hashes are recorded, and zero comparable fields is reported explicitly. The
+  public package API exposes `crosscheck_hf_config`; its vendored extractor is synchronized.
+  Offline regressions cover immutable paper evidence, aliases, variants, missing/nested values,
+  malformed inputs, both CLIs and HTML escaping; 122 extractor/LLM-extractor tests pass.
+  Unverified, quote-only, contested and unresolved paper findings retain their status/quote and
+  cannot be promoted to a comparable assertion by matching HF values. The HF comparison is removed from ROADMAP;
+  rule-based MoE field extraction remains open (the LLM extractor already has those fields).
+
 - **HF export SFT roundtrip** (30 Oct). The exporter preserves the current llama-BPE tokenizer
   using its exact GGUF reconstruction, faithfully converts native paperkiln byte-BPE,
-  and retains legacy WordLevel support. Corrected the HF RMSNorm epsilon
+  and refuses legacy word-level exports until their exact source semantics are supported. Corrected the HF RMSNorm epsilon
   from 1e-6 to the training tape's 1e-5. The verifier resolves a real spec, checks every
   exported/loaded tensor against the source mapping, compares source/HF prompt IDs, and checks
-  greedy IDs plus raw output logits instead of whitespace-split text. Twenty-seven regressions pass (including independent C++ tokenizer parity).
+  greedy IDs plus raw output logits instead of whitespace-split text. Thirty-five HF regressions pass (including independent C++ tokenizer parity).
   Non-default recorded RoPE theta is preserved; GQA, q/k norm, alternate/partial RoPE,
   untied heads, recursion, attention residuals, MoE, state tokens and other unmapped variants
   are explicitly refused.

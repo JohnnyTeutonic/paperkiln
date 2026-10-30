@@ -18,6 +18,18 @@ paperfetch 2302.13971 --emit-hf llama_config.json
 # declared default riding inside it under the "_paperkiln" key
 ```
 
+To compare a checkpoint's explicitly supplied local configuration with the paper extraction:
+
+```bash
+paperfetch 2302.13971 --tex paper.tex --hf-config checkpoint/config.json --json comparison.json --emit-html comparison.html
+```
+
+The comparison reports explicit numeric differences and missing values, with every paper-size
+variant shown separately. It never selects a checkpoint/variant or fills or overwrites a quoted
+paper field. Conflicting config aliases and invalid numeric values are rejected. Only top-level
+config keys are compared; a nested `text_config` is not silently selected. Numeric agreement
+alone does not establish architecture equivalence or checkpoint identity.
+
 ## Why this exists
 
 Most transformer papers are deltas over a known skeleton — dims, depth,
