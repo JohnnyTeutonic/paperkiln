@@ -3,7 +3,7 @@
 
     python tools/hf_export.py OUT_DIR [--hf-dir OUT_DIR/hf]
 
-Takes a finished plain llama or exact two-block GPT2 mtstudio run directory (events.jsonl +
+Takes a finished plain llama, exact two-block GPT2, or plain GPT2-flavour flex run (events.jsonl +
 <name>.safetensors + <name>.gguf) and writes an HF-layout folder that
 `transformers.AutoModelForCausalLM.from_pretrained` opens directly:
 
@@ -133,25 +133,41 @@ def convert_weights(sd, n_heads):
 
 
 def validate_gpt2(m):
-    """Only the source's exact two-block ParityLM, with its untied head."""
+    """ParityLM or the exact GPT2-flavour FlexLM subset, both untied."""
+    flex = m.get("family") == "flex"
+    placement = m.get("norm_placement", "pre")
+    if flex:
+        required = {"attention", "norm", "activation", "position", "residual", "final_norm", "norm_placement", "d_ff"}
+        if not required <= m.keys():
+            raise ValueError("plain flex HF export requires the complete resolved flavour record")
+        # Flex writes each placement separately; refuse missing/extra slots.
+        placement_ok = placement == {"attn": "pre", "ffn": "pre"}
+    else:
+        placement_ok = placement == "pre"
     if (m.get("attention", "exact") != "exact" or m.get("norm", "layernorm") != "layernorm"
             or m.get("activation", "gelu") != "gelu" or m.get("position", "learned") != "learned"
             or m.get("residual", "residual") != "residual" or not m.get("final_norm", True)
-            or m.get("norm_placement", "pre") != "pre"):
+            or not placement_ok):
         raise ValueError("HF GPT2 export requires exact attention, pre LayerNorm, tanh GELU, learned positions and residuals")
-    if any(m.get(k) for k in ("thirdparty", "qk_norm", "recursion", "attn_res", "moe", "state_tokens", "tie_head", "tie_embeddings")):
+    if any(m.get(k) for k in ("thirdparty", "qk_norm", "recursion", "attn_res", "moe", "state_tokens", "tie_head", "tie_embeddings",
+                              "qkv_conv", "embed", "embed_expr", "embed_inputs", "embed_before_positions", "embed_before_pos",
+                              "logits", "logits_expr", "activation_inputs", "norm_inputs", "t5_relative", "shaw_relative", "ssm")):
         raise ValueError("modified or tied-head GPT2 exports are unsupported")
     if m.get("gelu_approx", "tanh") != "tanh" or m.get("layer_norm_epsilon", 1e-5) != 1e-5:
         raise ValueError("GPT2 source GELU/LayerNorm constants differ from the supported mapping")
     if (any(type(m.get(k)) is not int or m[k] < 1 for k in ("d", "heads", "layers", "vocab", "T"))
-            or m["d"] % m["heads"] or m["layers"] != 2 or m.get("d_ff", 4 * m["d"]) != 4 * m["d"]):
-        raise ValueError("unsupported GPT2 geometry (the source ParityLM has two blocks and 4d MLPs)")
+            or m["d"] % m["heads"] or (not flex and m["layers"] != 2)
+            or type(m.get("d_ff", 4*m["d"])) is not int or m.get("d_ff", 4*m["d"]) < 1
+            or (not flex and m.get("d_ff", 4*m["d"]) != 4*m["d"])):
+        raise ValueError("unsupported GPT2 geometry (ParityLM has two blocks and 4d MLPs; plain flex permits arbitrary positive depth/MLP width)")
 
 
 def convert_gpt2_weights(sd, m):
     """Conv1D weights already use [in,out]; transpose only the untied head."""
     validate_gpt2(m)
     d, vocab, ctx = m["d"], m["vocab"], m["T"]
+    ff = m.get("d_ff", 4*d)
+    flex = m.get("family") == "flex"
     layout = {"wte.weight": ("transformer.wte.weight", (vocab, d)),
               "wpe.weight": ("transformer.wpe.weight", (ctx, d)),
               "ln_f.weight": ("transformer.ln_f.weight", (1, d)),
@@ -160,14 +176,16 @@ def convert_gpt2_weights(sd, m):
     for b in range(m["layers"]):
         for native, hf, width_in, width_out in (("attn", "attn.c_attn", d, 3*d),
                                                 ("attn", "attn.c_proj", d, d),
-                                                ("mlp", "mlp.c_fc", d, 4*d),
-                                                ("mlp", "mlp.c_proj", 4*d, d)):
+                                                ("mlp", "mlp.c_fc", d, ff),
+                                                ("mlp", "mlp.c_proj", ff, d)):
             suffix = hf.split(".", 1)[1]
-            layout[f"{native}_{b}.{suffix}.weight"] = (f"transformer.h.{b}.{hf}.weight", (width_in, width_out))
-            layout[f"{native}_{b}.{suffix}.bias"] = (f"transformer.h.{b}.{hf}.bias", (1, width_out))
+            prefix = f"layers.{b}.{native}" if flex else f"{native}_{b}"
+            layout[f"{prefix}.{suffix}.weight"] = (f"transformer.h.{b}.{hf}.weight", (width_in, width_out))
+            layout[f"{prefix}.{suffix}.bias"] = (f"transformer.h.{b}.{hf}.bias", (1, width_out))
         for native, hf in (("ln1", "ln_1"), ("ln2", "ln_2")):
             for part in ("weight", "bias"):
-                layout[f"{native}_{b}.{part}"] = (f"transformer.h.{b}.{hf}.{part}", (1, d))
+                key = f"layers.{b}.{hf}.{part}" if flex else f"{native}_{b}.{part}"
+                layout[key] = (f"transformer.h.{b}.{hf}.{part}", (1, d))
     if set(sd) != set(layout):
         raise ValueError("GPT2 source tensor inventory differs from the complete supported mapping")
     out = {}
@@ -177,14 +195,14 @@ def convert_gpt2_weights(sd, m):
             raise ValueError("invalid GPT2 source tensor: " + key)
         if key == "head.weight":
             w = w.T
-        elif key.startswith(("ln1_", "ln2_", "ln_f.")) or key.endswith(".bias"):
+        elif name.endswith(("ln_1.weight", "ln_2.weight", "ln_f.weight")) or key.endswith(".bias"):
             w = w.reshape(-1)
         out[name] = np.ascontiguousarray(w, dtype=np.float32)
     return out
 
 
 def map_weights(sd, m):
-    return convert_gpt2_weights(sd, m) if m["family"] == "gpt2" else convert_weights(sd, m["heads"])
+    return convert_gpt2_weights(sd, m) if m["family"] in ("gpt2", "flex") else convert_weights(sd, m["heads"])
 
 
 def native_bpe_tokenizer(gguf_path):
@@ -375,8 +393,8 @@ def main():
                          "every head, so its outputs will differ)")
     args = ap.parse_args()
     m = model_event(args.out_dir, args.events)
-    if m.get("family") not in ("llama", "gpt2"):
-        raise SystemExit("HF export supports plain llama/GPT2 families only (HF "
+    if m.get("family") not in ("llama", "gpt2", "flex"):
+        raise SystemExit("HF export supports plain llama/GPT2 and GPT2-flavour flex only (HF "
                          f"mapping); this run is family={m.get('family')}")
     rope = m.get("rope_heads", "first")
     if m["family"] == "llama" and rope != "all" and m.get("heads", 1) > 1 and not args.allow_legacy_rope:
@@ -385,7 +403,7 @@ def main():
             "HF Llama rotates every head and cannot reproduce it. Retrain with "
             "arch.rope_heads=all, or pass --allow-legacy-rope to export anyway")
     theta = validate_model(m) if m["family"] == "llama" else None
-    if m["family"] == "gpt2":
+    if m["family"] in ("gpt2", "flex"):
         validate_gpt2(m)
     name = start_name(args.out_dir, args.events)
     hf_dir = args.hf_dir or os.path.join(args.out_dir, "hf")
@@ -428,7 +446,7 @@ def main():
         }
     else:
         cfg = {"architectures": ["GPT2LMHeadModel"], "model_type": "gpt2",
-               "n_embd": m["d"], "n_inner": 4*m["d"], "n_layer": m["layers"],
+               "n_embd": m["d"], "n_inner": m.get("d_ff", 4*m["d"]), "n_layer": m["layers"],
                "n_head": m["heads"], "vocab_size": m["vocab"], "n_positions": m["T"], "n_ctx": m["T"],
                "activation_function": "gelu_new", "layer_norm_epsilon": 1e-5,
                "tie_word_embeddings": False, "resid_pdrop": 0., "embd_pdrop": 0., "attn_pdrop": 0.,

@@ -7,6 +7,15 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Plain GPT2-flavour flex HF export** (30 Oct). Exact attention, pre LayerNorm, learned
+  positions, tanh GELU and untied residual models map arbitrary positive depth/MLP width
+  to GPT2Config. All 41 tensors of a three-layer, d_ff40 CPU fixture load bitwise; three
+  actual source/HF roundtrips match 24/24 greedy IDs (worst raw-logit error1.193e-7).
+  Complete resolved flavour records and inventories are required; SWA, expression slots,
+  alternate placements, q/k norm, convolution, tied heads and other modifiers still refuse.
+  All115 HF tests pass including independent C++ tokenizer checks. Receipt:
+  `experiments/chat_general/receipts/hf_flex_gpt2_roundtrip_2026-10-30/`.
+
 - **Attention Residuals CPU latency diagnosis** (30 Oct). Historical Stage L0 receipts show
   the plain model used the NumPy IR scorer while X5 used `mtstudio`; all 91 chunk key sequences
   match. Removed the unsupported same-backend regression from ROADMAP. Exact arguments and

@@ -419,3 +419,101 @@ def test_gpt2_export_config_and_hf_loaded_tensors_are_faithful(tmp_path, monkeyp
     assert set(loaded) == set(mapped)
     for key, value in mapped.items():
         np.testing.assert_array_equal(loaded[key].numpy(), value)
+
+
+def flex_gpt2_fixture():
+    """Native FlexLM's layer registration, including non-ParityLM geometry."""
+    model, old = gpt2_fixture()
+    model.update(family="flex", layers=3, d_ff=10,
+                 norm_placement={"attn": "pre", "ffn": "pre"}, attention="exact",
+                 norm="layernorm", activation="gelu", position="learned", residual="residual", final_norm=True)
+    state = {k: v.copy() for k, v in old.items() if k.startswith(("wte.", "wpe.", "head.", "ln_f."))}
+    for b in range(3):
+        for module, layer, dim_in, dim_out in (("attn", "c_attn", 4, 12), ("attn", "c_proj", 4, 4),
+                                               ("mlp", "c_fc", 4, 10), ("mlp", "c_proj", 10, 4)):
+            state[f"layers.{b}.{module}.{layer}.weight"] = np.arange(dim_in*dim_out, dtype=np.float32).reshape(dim_in, dim_out)
+            state[f"layers.{b}.{module}.{layer}.bias"] = np.arange(dim_out, dtype=np.float32).reshape(1, dim_out)
+        for norm in ("ln_1", "ln_2"):
+            state[f"layers.{b}.{norm}.weight"] = np.ones((1, 4), dtype=np.float32)
+            state[f"layers.{b}.{norm}.bias"] = np.zeros((1, 4), dtype=np.float32)
+    return model, state
+
+
+def test_plain_flex_maps_every_layer_and_nonstandard_mlp_width():
+    model, state = flex_gpt2_fixture()
+    mapped = hf_export.map_weights(state, model)
+    assert len(mapped) == 41
+    np.testing.assert_array_equal(mapped["transformer.h.2.mlp.c_fc.weight"], state["layers.2.mlp.c_fc.weight"])
+    assert mapped["transformer.h.1.ln_1.weight"].shape == (4,)
+    assert mapped["transformer.h.2.mlp.c_fc.bias"].shape == (10,)
+    np.testing.assert_array_equal(mapped["lm_head.weight"], state["head.weight"].T)
+
+
+@pytest.mark.parametrize("field", ["attention", "norm", "activation", "position", "residual", "final_norm", "norm_placement", "d_ff"])
+def test_flex_missing_resolved_flavour_record_is_refused(field):
+    model, _ = flex_gpt2_fixture()
+    del model[field]
+    with pytest.raises(ValueError, match="resolved flavour record"):
+        hf_export.validate_gpt2(model)
+
+
+@pytest.mark.parametrize("extra", [
+    {"attention": "swa"}, {"activation": "gelu_erf"}, {"norm": "rmsnorm"},
+    {"position": "sinusoidal"}, {"residual": "plain"}, {"residual": "highway"},
+    {"norm_placement": "pre"}, {"norm_placement": {"attn": "pre"}},
+    {"norm_placement": {"attn": "post", "ffn": "pre"}},
+    {"norm_placement": {"attn": "pre", "ffn": "pre", "other": "pre"}},
+    {"final_norm": False}, {"qkv_conv": 3}, {"qk_norm": "per_head"},
+    {"embed": {"expr": "expr:x*2"}}, {"logits": "expr:x*2"},
+    {"activation_inputs": [{"kind": "up"}, {"kind": "scalar"}]},
+    {"norm_inputs": [{"kind": "row"}, {"kind": "scalar"}]},
+    {"tie_head": True}, {"state_tokens": {"k": 4}}, {"recursion": {"repeats": 2}},
+    {"attn_res": True}, {"moe": {"experts": 2}}, {"ssm": {"kind": "mamba1"}},
+    {"d_ff": 0}, {"d_ff": True}, {"layers": 0}, {"heads": 3},
+])
+def test_flex_modified_or_unrecorded_geometry_is_refused(extra):
+    model, _ = flex_gpt2_fixture()
+    with pytest.raises(ValueError):
+        hf_export.validate_gpt2({**model, **extra})
+
+
+@pytest.mark.parametrize("change", ["missing", "extra", "shape", "nan", "wrong_family_names"])
+def test_flex_tensor_mapping_never_silently_discards_or_reshapes(change):
+    model, state = flex_gpt2_fixture()
+    if change == "missing":
+        del state["layers.2.attn.c_proj.bias"]
+    elif change == "extra":
+        state["layers.0.attn.q_norm.weight"] = np.ones((1, 2), dtype=np.float32)
+    elif change == "shape":
+        state["layers.0.mlp.c_fc.weight"] = np.zeros((4, 16), dtype=np.float32)
+    elif change == "nan":
+        state["head.weight"][0, 0] = np.nan
+    else:
+        state["ln1_0.weight"] = state.pop("layers.0.ln_1.weight")
+    with pytest.raises(ValueError, match="tensor"):
+        hf_export.map_weights(state, model)
+
+
+def test_plain_flex_config_and_complete_hf_loaded_inventory(tmp_path, monkeypatch):
+    from safetensors.numpy import load_file
+    transformers = pytest.importorskip("transformers")
+    model, state = flex_gpt2_fixture()
+    model.update(event="model", attention="exact", activation="gelu", norm="layernorm", position="learned")
+    run = tmp_path / "run"
+    run.mkdir()
+    (run / "events.jsonl").write_text(json.dumps({"event": "start", "name": "tiny"}) + "\n" + json.dumps(model) + "\n")
+    monkeypatch.setattr(hf_export, "load_file", lambda _: state)
+    monkeypatch.setattr(hf_export, "gguf_tokens", lambda _: ["<unk>", "a", "b", "c", "d", "e", "f"])
+    monkeypatch.setattr(hf_export, "write_tokenizer", lambda *a: ({str(i): i for i in range(7)}, "<unk>"))
+    import llama3_bpe
+    monkeypatch.setattr(llama3_bpe, "read_gguf_kv", lambda *a: {})
+    monkeypatch.setattr(sys, "argv", ["hf_export.py", str(run)])
+    hf_export.main()
+    cfg = json.loads((run / "hf/config.json").read_text())
+    assert cfg["n_layer"] == 3 and cfg["n_inner"] == 10
+    assert cfg["activation_function"] == "gelu_new" and cfg["tie_word_embeddings"] is False
+    loaded = transformers.AutoModelForCausalLM.from_pretrained(run / "hf").state_dict()
+    mapped = load_file(str(run / "hf/model.safetensors"))
+    assert set(loaded) == set(mapped)
+    for key, value in mapped.items():
+        np.testing.assert_array_equal(loaded[key].numpy(), value)

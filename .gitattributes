@@ -6,3 +6,6 @@ tools/posttrain/rubrics/*.txt text eol=lf
 
 # Device receipt provenance hashes the exact landed bytes.
 docs/receipts/devcheck_host_read_cuda_20261030/* -text
+
+# Exact HF fixture receipts and source snapshots retain their recorded byte hashes.
+experiments/chat_general/receipts/hf_flex_gpt2_roundtrip_2026-10-30/* -text

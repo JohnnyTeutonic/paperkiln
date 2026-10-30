@@ -1,0 +1,365 @@
+{
+ "scope": "Tiny CPU interoperability fixture for strictly plain GPT2-flavour FlexLM; not model quality, GPU performance or support for modified flex variants",
+ "supported": "Exact attention, pre LayerNorm eps1e-5 on both sublayers, final norm, tanh GELU, learned positions, residuals, untied head; arbitrary positive depth and MLP width. Complete resolved flavour event and exact native tensor inventory required.",
+ "source_model_event": {
+  "T": 32,
+  "accum": 1,
+  "activation": "gelu",
+  "attention": "exact",
+  "batch": 1,
+  "checkpoint_activations": false,
+  "d": 16,
+  "d_ff": 40,
+  "event": "model",
+  "family": "flex",
+  "final_norm": true,
+  "gate_bias_init": -2.0,
+  "heads": 2,
+  "layers": 3,
+  "lr": 0.0010000000474974513,
+  "norm": "layernorm",
+  "norm_placement": {
+   "attn": "pre",
+   "ffn": "pre"
+  },
+  "params": 139080,
+  "position": "learned",
+  "residual": "residual",
+  "seed": 842,
+  "sinks": 1,
+  "vocab": 4096,
+  "window": 64
+ },
+ "training": {
+  "best_val": 8.19746208190918,
+  "early_stopped": false,
+  "event": "done",
+  "final_step": 6,
+  "wall_seconds": 1.311761703
+ },
+ "cpu_budget": {
+  "session": "paperkiln",
+  "cores": 1,
+  "local_gpu": false
+ },
+ "source_safetensors_metadata": null,
+ "source_tensors": {
+  "head.weight": {
+   "dtype": "F32",
+   "shape": [
+    16,
+    4096
+   ]
+  },
+  "layers.0.attn.c_attn.bias": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    48
+   ]
+  },
+  "layers.0.attn.c_attn.weight": {
+   "dtype": "F32",
+   "shape": [
+    16,
+    48
+   ]
+  },
+  "layers.0.attn.c_proj.bias": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.0.attn.c_proj.weight": {
+   "dtype": "F32",
+   "shape": [
+    16,
+    16
+   ]
+  },
+  "layers.0.ln_1.bias": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.0.ln_1.weight": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.0.ln_2.bias": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.0.ln_2.weight": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.0.mlp.c_fc.bias": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    40
+   ]
+  },
+  "layers.0.mlp.c_fc.weight": {
+   "dtype": "F32",
+   "shape": [
+    16,
+    40
+   ]
+  },
+  "layers.0.mlp.c_proj.bias": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.0.mlp.c_proj.weight": {
+   "dtype": "F32",
+   "shape": [
+    40,
+    16
+   ]
+  },
+  "layers.1.attn.c_attn.bias": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    48
+   ]
+  },
+  "layers.1.attn.c_attn.weight": {
+   "dtype": "F32",
+   "shape": [
+    16,
+    48
+   ]
+  },
+  "layers.1.attn.c_proj.bias": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.1.attn.c_proj.weight": {
+   "dtype": "F32",
+   "shape": [
+    16,
+    16
+   ]
+  },
+  "layers.1.ln_1.bias": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.1.ln_1.weight": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.1.ln_2.bias": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.1.ln_2.weight": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.1.mlp.c_fc.bias": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    40
+   ]
+  },
+  "layers.1.mlp.c_fc.weight": {
+   "dtype": "F32",
+   "shape": [
+    16,
+    40
+   ]
+  },
+  "layers.1.mlp.c_proj.bias": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.1.mlp.c_proj.weight": {
+   "dtype": "F32",
+   "shape": [
+    40,
+    16
+   ]
+  },
+  "layers.2.attn.c_attn.bias": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    48
+   ]
+  },
+  "layers.2.attn.c_attn.weight": {
+   "dtype": "F32",
+   "shape": [
+    16,
+    48
+   ]
+  },
+  "layers.2.attn.c_proj.bias": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.2.attn.c_proj.weight": {
+   "dtype": "F32",
+   "shape": [
+    16,
+    16
+   ]
+  },
+  "layers.2.ln_1.bias": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.2.ln_1.weight": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.2.ln_2.bias": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.2.ln_2.weight": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.2.mlp.c_fc.bias": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    40
+   ]
+  },
+  "layers.2.mlp.c_fc.weight": {
+   "dtype": "F32",
+   "shape": [
+    16,
+    40
+   ]
+  },
+  "layers.2.mlp.c_proj.bias": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "layers.2.mlp.c_proj.weight": {
+   "dtype": "F32",
+   "shape": [
+    40,
+    16
+   ]
+  },
+  "ln_f.bias": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "ln_f.weight": {
+   "dtype": "F32",
+   "shape": [
+    1,
+    16
+   ]
+  },
+  "wpe.weight": {
+   "dtype": "F32",
+   "shape": [
+    32,
+    16
+   ]
+  },
+  "wte.weight": {
+   "dtype": "F32",
+   "shape": [
+    4096,
+    16
+   ]
+  }
+ },
+ "roundtrips": {
+  "prompts": 3,
+  "greedy_ids": 24,
+  "all_ids_match": true,
+  "maximum_raw_logit_error": 1.1920928955078125e-07,
+  "source_prompt_tokenizer_ids_checked": true,
+  "mapped_tensors_loaded_bitwise": 41
+ },
+ "validation": "115 HF tests PASS including independent C++ native BPE and legacy tokenizer checks; ruff/diffcheck PASS",
+ "artifact_home": "C:\\ml_artifacts\\hf_flex_gpt2_roundtrip_20261030",
+ "source_binary": "/home/jonat/pk_fh_build/mtstudio",
+ "source_binary_sha256": "312a6d5bbb2a056b1ee38c4a0f52df88a4ccfaefd95c44e5b20487ec97177dd4",
+ "artifacts": {
+  "spec.json": "c8cf2e0b36f20c7a8619b5d876961c59e366471b20903ab7bdd4379cb8107eb7",
+  "run\\events.jsonl": "84f90231145a6bdf616003c145b1fb76890fdbff7c50112f5e5926f696d5c022",
+  "run\\hf_flex_gpt2_fixture.safetensors": "cc668b1a1aa66289351212ad4b69e81be8b16420c115729e2ff8625198c7b088",
+  "run\\hf_flex_gpt2_fixture.gguf": "bd962b9bf4a6deda13441d8f1ee33f12b5eeffde4a2baed4adb432b31ce2cafb",
+  "run\\hf\\model.safetensors": "90cae8e6129f2d00534f141a15d8a31febec7419abca0dbf1e3b978155488d09",
+  "run\\hf\\config.json": "7d4afff09c19a5e0affa19eeb689be8354d3f04d15572f2278be8f9df6465b56",
+  "run\\hf\\tokenizer.json": "b3fedb08ec85d9f0899885102f844e51d4b845244e4d14d854f8e947c8a7c54b"
+ },
+ "receipt_files": {
+  "roundtrip_final_0.json": "d268f04dadcd01b31de35f11954fef53c12413f1cc234c4374740a2b1f097087",
+  "roundtrip_final_1.json": "8cf83b92f982f565aa49a43f683946591e91755a04865b32fce8d2b372c7ec54",
+  "roundtrip_final_2.json": "9d9bedc5e54425605851cc8a18d299412f23c947fdb3a794c0fa09caf8e4d743",
+  "source_hf_export.py": "6bc80d1509edf71dcebd462c0d9cc254591c6289eb3556bbfee470627e15188c",
+  "source_hf_export_verify.py": "b3168f8fcaea7c62159cc54d44fec090f5e7151b95ccc7a17fc27f2158e0c3c0",
+  "spec.json": "c8cf2e0b36f20c7a8619b5d876961c59e366471b20903ab7bdd4379cb8107eb7"
+ },
+ "earlier_probe": "Original first three probe receipts and their exact exporter snapshot remain in canonical artifact home; final receipts here use the final complete-record guard."
+}
