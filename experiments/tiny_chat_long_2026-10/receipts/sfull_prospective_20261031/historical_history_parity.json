@@ -1,0 +1,244 @@
+{
+  "scope": "Read-only audit of retained complete HS1 history argmax flags; mismatch causes unavailable without original score chunks/logit rows. No threshold, history or registered metric altered.",
+  "counts": {
+    "B1": {
+      "pass": 17421,
+      "total": 17424
+    },
+    "B2": {
+      "pass": 17424,
+      "total": 17424
+    },
+    "B3": {
+      "pass": 17423,
+      "total": 17424
+    },
+    "B4": {
+      "pass": 17424,
+      "total": 17424
+    },
+    "B5": {
+      "pass": 17424,
+      "total": 17424
+    },
+    "Sgist1": {
+      "pass": 17423,
+      "total": 17424
+    },
+    "Sgist2": {
+      "pass": 17424,
+      "total": 17424
+    },
+    "Sgist3": {
+      "pass": 17424,
+      "total": 17424
+    },
+    "Sgist4": {
+      "pass": 17423,
+      "total": 17424
+    },
+    "Sgist5": {
+      "pass": 17424,
+      "total": 17424
+    }
+  },
+  "nonidentical": [
+    {
+      "cell": "B",
+      "seed": 1,
+      "id": "carry12_v1:recall:0017",
+      "family": "recall",
+      "gate_turn": 4,
+      "target_turn": 14,
+      "before_target": true,
+      "at_target": false,
+      "stop": "eos",
+      "reply": "It should be ready for pickup in 6 months.",
+      "ids": [
+        1079,
+        796,
+        313,
+        3260,
+        330,
+        4141,
+        1188,
+        291,
+        224,
+        25,
+        2542,
+        17
+      ],
+      "stop_id": 1,
+      "dropped": false,
+      "primary_family": true,
+      "item_file_sha256": "23c3ce956f9ff43d8d6b14575eef8c44e3f7a32c218096483da114133a2a4bd9",
+      "gen_file_sha256": "02e214ae599f9214335356217a65d28712cb8242c81c570d33455ab6a992b3ad"
+    },
+    {
+      "cell": "B",
+      "seed": 1,
+      "id": "carry12_v1:correction:0046",
+      "family": "correction",
+      "gate_turn": 2,
+      "target_turn": 10,
+      "before_target": true,
+      "at_target": false,
+      "stop": "eos",
+      "reply": "Its a great day, I like to watch the walking dead, what about you?",
+      "ids": [
+        44,
+        871,
+        261,
+        787,
+        1056,
+        15,
+        311,
+        570,
+        289,
+        3342,
+        265,
+        4800,
+        3498,
+        15,
+        624,
+        521,
+        319,
+        34
+      ],
+      "stop_id": 1,
+      "dropped": false,
+      "primary_family": true,
+      "item_file_sha256": "23c3ce956f9ff43d8d6b14575eef8c44e3f7a32c218096483da114133a2a4bd9",
+      "gen_file_sha256": "02e214ae599f9214335356217a65d28712cb8242c81c570d33455ab6a992b3ad"
+    },
+    {
+      "cell": "B",
+      "seed": 1,
+      "id": "carry12_v1:correction:0224",
+      "family": "correction",
+      "gate_turn": 2,
+      "target_turn": 14,
+      "before_target": true,
+      "at_target": false,
+      "stop": "eos",
+      "reply": "That's awesome. I'm a freelancer.",
+      "ids": [
+        1027,
+        414,
+        11492,
+        17,
+        311,
+        618,
+        261,
+        1731,
+        340,
+        13981,
+        17
+      ],
+      "stop_id": 1,
+      "dropped": false,
+      "primary_family": true,
+      "item_file_sha256": "23c3ce956f9ff43d8d6b14575eef8c44e3f7a32c218096483da114133a2a4bd9",
+      "gen_file_sha256": "02e214ae599f9214335356217a65d28712cb8242c81c570d33455ab6a992b3ad"
+    },
+    {
+      "cell": "B",
+      "seed": 3,
+      "id": "carry12_v1:correction:0306",
+      "family": "correction",
+      "gate_turn": 2,
+      "target_turn": 11,
+      "before_target": true,
+      "at_target": false,
+      "stop": "eos",
+      "reply": "You can use a needle and a needle to make it easier.",
+      "ids": [
+        1526,
+        390,
+        693,
+        261,
+        14119,
+        290,
+        261,
+        14119,
+        289,
+        745,
+        349,
+        3842,
+        17
+      ],
+      "stop_id": 1,
+      "dropped": false,
+      "primary_family": true,
+      "item_file_sha256": "cc4f08fab753d831c00f9ef6975a6f21a3a8301ee514694cb14a5f43bee833b7",
+      "gen_file_sha256": "f6de3eba9d834982b5f1e4eec45bdc9878840bb5d17b080cd3e5d462a8849549"
+    },
+    {
+      "cell": "Sgist",
+      "seed": 1,
+      "id": "carry12_v1:correction:0111",
+      "family": "correction",
+      "gate_turn": 3,
+      "target_turn": 11,
+      "before_target": true,
+      "at_target": false,
+      "stop": "eos",
+      "reply": "I'm not sure if you're a dog person. They are a very popular family dog.",
+      "ids": [
+        44,
+        618,
+        451,
+        1141,
+        657,
+        319,
+        761,
+        261,
+        3288,
+        994,
+        17,
+        967,
+        364,
+        261,
+        976,
+        1979,
+        1383,
+        3288,
+        17
+      ],
+      "stop_id": 1,
+      "dropped": false,
+      "primary_family": true,
+      "item_file_sha256": "c148482aa9a8c8ad9b5b1918a3ff719f35d7eb2c5b0ab207e3b86d8c31ac7425",
+      "gen_file_sha256": "d5c8a2a755d68c003a69dc08b428822699c7e034c6617cb9e208dda5e3daaa63"
+    },
+    {
+      "cell": "Sgist",
+      "seed": 4,
+      "id": "carry12_v1:recall:0365",
+      "family": "recall",
+      "gate_turn": 8,
+      "target_turn": 11,
+      "before_target": true,
+      "at_target": false,
+      "stop": "eos",
+      "reply": "I guess I will. I am a cop.",
+      "ids": [
+        44,
+        3068,
+        311,
+        537,
+        17,
+        311,
+        751,
+        261,
+        2654,
+        17
+      ],
+      "stop_id": 1,
+      "dropped": false,
+      "primary_family": true,
+      "item_file_sha256": "081b24b9827cf9f0d379b4bfc9dd6313bd4280600f6ef7cea2aff453b9a69e92",
+      "gen_file_sha256": "6a42427b24737a772bcf737403a8317e80408d1e1b3fd4cb3b7345cf10dcfff5"
+    }
+  ]
+}
