@@ -7,6 +7,12 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Four missing evaluation hash manifests added** (30 Oct). CI exposed absent manifests for
+  IF-tiny, IF-distance and the two conversation-v2 evaluation sets. Each dataset is byte-identical
+  to its first Git commit; both IF sets also regenerate exactly and match the recorded result
+  hash prefixes. These are newly recorded pins, not recovered historical manifests. Frozen
+  data and tests are unchanged; full hashes and origins: `corpus/hashes/manifest_backfill_20261030.json`.
+
 - **Smol CUDA runtime comparison recorded** (30 Oct, Ember 7b546d8). The existing
   SmolLM2-135M F32 model passes 96 full-row/greedy gates and 24 immutable timing trials
   on an L4 against eager HF; source, weights and raw trials independently replayed.

@@ -1,0 +1,66 @@
+{
+  "schema": "paperkiln.eval_manifest_backfill.v1",
+  "date": "2026-10-30",
+  "audited_git_head": "7a0e2c584aeedb9e3f71be3b4c663ba461ddfd91",
+  "scope": "Four missing hash manifests added prospectively for unchanged original committed data. No evaluation data, existing pins, scientific protocols or tests modified. These are newly recorded pins, not recovered historical manifests.",
+  "verification": [
+    {
+      "file": "corpus/eval/chat_v2_prompts_v1.jsonl",
+      "sha256": "254e8ee4635eb7e0f0efc54836e05f511ecc84636250d7b595cfcea5529ff84a",
+      "bytes": 46676,
+      "rows": 40,
+      "first_commit": "1a8db67dc4133629b5b6432278ea34d7d6f30fda",
+      "first_sha256": "254e8ee4635eb7e0f0efc54836e05f511ecc84636250d7b595cfcea5529ff84a",
+      "history_commits": 1,
+      "unchanged_from_first": true,
+      "first_commit_author_date": "2026-10-27T18:39:03+11:00"
+    },
+    {
+      "file": "corpus/eval/ifdist_v1.jsonl",
+      "sha256": "9299d5f65ff5e3b96745676e6c29308609a1f6ae1c7c607186fc76544435db13",
+      "bytes": 643909,
+      "rows": 1344,
+      "first_commit": "93c34a81af621c90fe340c69f86b7d4fc602488a",
+      "first_sha256": "9299d5f65ff5e3b96745676e6c29308609a1f6ae1c7c607186fc76544435db13",
+      "history_commits": 1,
+      "unchanged_from_first": true,
+      "deterministic_rebuild_exact": true,
+      "first_commit_author_date": "2026-10-26T02:18:36+11:00"
+    },
+    {
+      "file": "corpus/eval/iftiny_v1.jsonl",
+      "sha256": "f23006228e89f04fb5193b601f0d5728ee58857643782dd02a6ddcbcc208fb2a",
+      "bytes": 228627,
+      "rows": 574,
+      "first_commit": "93c34a81af621c90fe340c69f86b7d4fc602488a",
+      "first_sha256": "f23006228e89f04fb5193b601f0d5728ee58857643782dd02a6ddcbcc208fb2a",
+      "history_commits": 1,
+      "unchanged_from_first": true,
+      "deterministic_rebuild_exact": true,
+      "first_commit_author_date": "2026-10-26T02:18:36+11:00"
+    },
+    {
+      "file": "corpus/eval/tool_calls_v1.jsonl",
+      "sha256": "010aa70ced60d6dd1830bef8b1d85ba9a58a0f1d245ee93af70607d39e79552c",
+      "bytes": 262909,
+      "rows": 300,
+      "first_commit": "1a8db67dc4133629b5b6432278ea34d7d6f30fda",
+      "first_sha256": "010aa70ced60d6dd1830bef8b1d85ba9a58a0f1d245ee93af70607d39e79552c",
+      "history_commits": 1,
+      "unchanged_from_first": true,
+      "first_commit_author_date": "2026-10-27T18:39:03+11:00"
+    }
+  ],
+  "historical_results_prefixes": {
+    "iftiny_v1": "f2300622",
+    "ifdist_v1": "9299d5f6"
+  },
+  "deterministic_regeneration": "Imported tools/iftiny_build.py single_turn() and distance(); serialized each row with json.dumps(ensure_ascii=False) plus LF, matching the existing generator write(). No data outputs rewritten.",
+  "validation": {
+    "focused": "85 passed: tests/test_eval_frozen.py tests/test_iftiny_checks.py",
+    "ci_selected_python": "257 passed, 2 skipped in 73.11s; exact selected suites from .github/workflows/tests.yml, using publication-build mtstudio/posttrain_verify/bpe_encode, CPU budget 1 core",
+    "ci_selected_log_sha256": "0724e3f7c31def8c7d8dbde964b574cd1a9ef853faf73ee3e11d5aa0208b1f00",
+    "fetch_package_sync": "python3 tools/sync_fetch_pkg.py --check: exit 0, in sync",
+    "harness_note": "The outer temporary Windows-authored shell script passed a trailing CR to its final sync command, after pytest succeeded. The unchanged sync command was rerun directly with LF arguments and passed; no test or source changes were needed."
+  }
+}
