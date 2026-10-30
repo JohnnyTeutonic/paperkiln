@@ -9,3 +9,7 @@ docs/receipts/devcheck_host_read_cuda_20261030/* -text
 
 # Exact HF fixture receipts and source snapshots retain their recorded byte hashes.
 experiments/chat_general/receipts/hf_flex_gpt2_roundtrip_2026-10-30/* -text
+
+# Frozen analysis receipts preserve published hashes across Windows checkouts.
+experiments/tiny_chat_long_2026-10/receipts/core_2026-10-30/* -text
+experiments/benchmarks_2026-10-26/receipts/attnres_cpu_backend_audit_2026-10-30.json -text
