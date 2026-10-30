@@ -440,3 +440,8 @@ if(MICROTORCH_BUILD_PYTHON)
     # the wheel root beside the pure-python microtorch package.
     install(TARGETS _microtorch LIBRARY DESTINATION .)
 endif()
+
+# Channelwise ELU-mixer non-causal backward: independent dense64/FD, batched autograd.
+add_executable(test_kimi_noncausal tests/test_kimi_noncausal.cpp)
+target_link_libraries(test_kimi_noncausal PRIVATE microtorch)
+add_test(NAME kimi_noncausal COMMAND test_kimi_noncausal)

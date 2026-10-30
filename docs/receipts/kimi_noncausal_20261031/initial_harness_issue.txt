@@ -1,0 +1,1 @@
+Initial standalone new-test smoke aborted: std::runtime_error: Matrix dimensions cannot be zero. The test constructed Matrix(0,2) before entering its refusal helper. It was corrected to the supported default-empty Matrix so the operation itself receives empty input and its guard is tested. No numerical tolerance or production algorithm was changed to make that fixture pass.
