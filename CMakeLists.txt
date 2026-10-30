@@ -445,3 +445,8 @@ endif()
 add_executable(test_kimi_noncausal tests/test_kimi_noncausal.cpp)
 target_link_libraries(test_kimi_noncausal PRIVATE microtorch)
 add_test(NAME kimi_noncausal COMMAND test_kimi_noncausal)
+
+add_executable(test_evaluation_probes_helpers tests/test_evaluation_probes_helpers.cpp)
+target_link_libraries(test_evaluation_probes_helpers PRIVATE microtorch)
+add_test(NAME evaluation_probes_helpers COMMAND test_evaluation_probes_helpers)
+set_tests_properties(evaluation_probes_helpers PROPERTIES TIMEOUT 120)

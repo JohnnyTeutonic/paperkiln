@@ -1,0 +1,51 @@
+{
+  "status": "VERIFIED_CPU_ONLY",
+  "source_parent": "9c276db5e06626a15c7d17d5b02c6344e7ff32c3",
+  "sources": {
+    "tools/mtstudio.cpp": "15a3d62da185860b42b4b23037859c8b25a1adef55852090ef05a4f8a2ad8f61",
+    "tools/evaluation_probes.hpp": "df2de8237404b861c42f7b081215a460fe30cfd319238cb40de8f8eb49653982",
+    "tests/test_evaluation_probes_helpers.cpp": "dddd085d346fa9a64b3c2879a70d7642e97f9f6fadb4ad849579e32930bd05db",
+    "tests/test_evaluation_probes_cli.py": "4a1942e091aabf493a4941b29b311bb4420a34d3e79e1d47b09acbc47d7655c3",
+    "CMakeLists.txt": "1b883580515b9cfe413e16e731caf5917030f1f494b5e07623c64d28fab5b74f"
+  },
+  "binary": {
+    "path": "/home/jonat/pk_studio_probes_build_20261031/mtstudio",
+    "sha256": "5fff710239a3645040db1663f935f57b027a791f29099e2685026d503c083337"
+  },
+  "configuration": {
+    "MICROTORCH_CUDA": false,
+    "CUDA_ENABLED": false,
+    "build_type": "Release",
+    "build_cores": 2,
+    "ctest_timeout_seconds": 120
+  },
+  "checks": {
+    "ctest": {
+      "passed": 51,
+      "failed": 0
+    },
+    "actual_cli": {
+      "passed": 14,
+      "failed": 0
+    },
+    "helpers": "8 SHA256 known vectors including padding boundaries and million bytes; final UTF8 split/invalid; literal contracts; immutable output/lock/no-replace race"
+  },
+  "scope": [
+    "Actual one-step tiny Llama CPU model with WordLevel and native byte BPE; automatic final-model stage and manual immutable replay.",
+    "HTTP rejects malformed new stage before replacing existing train_spec; prompt/tokenizer preflight occurs before training.",
+    "Every evaluated tensor byte compared against bound final safetensors before and after evaluation; no second model allocation.",
+    "Manual requested BF16/flash flags tested as recorded settings on CPU, not BF16/flash GPU execution.",
+    "Needle cases require a literal expected substring in supplied prompt. All scores are exact literal contracts, not semantic accuracy or benchmark quality.",
+    "No GPU, provider, API, network experiment or research training launch."
+  ],
+  "artifacts": {
+    "cli.log": "dcc038a247e132a5b20c58e4c095d4429c5deb23a841d4b4bb011a364a6b7dfe",
+    "oversized_error.json": "8dbd2777e2887227093153c2f73d18cbe419a477bd36469eda5ee0e7f67a762f",
+    "wordlevel.json": "87a605b3578386db659fb26e067a646114cd428554452fb38e1b9e50d67be5d3",
+    "recipe_config.log": "afafc9ddcc819d57a34f2a173e859ba16149968a0ae45191a44aef77afe03c68",
+    "ctest.log": "239524b1d01436a0a344426052b6a45913810057803750d2ff4be9069d709e3f",
+    "full_build.log": "623339f513c16e2dc5af41a858a4f6999d26666afb37dcbba0b0bb5590fa0571",
+    "native_bpe.json": "dd8d71c77522419dd87b75ecca123353228bc60e57f17cc4a976a16fa9afb6ef",
+    "helpers.log": "bf10f002335a2ebca21cb1947fa1232157c9ebc7fcad287097fdcc1f1113ed25"
+  }
+}

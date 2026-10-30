@@ -1,0 +1,33 @@
+{
+  "cases": [],
+  "checkpoint": null,
+  "configuration": {
+    "cases": [
+      {
+        "contract": "contains",
+        "expected": "cat",
+        "id": "needle",
+        "kind": "needle",
+        "prompt": "the cat the cat the cat the cat the cat the cat the cat the cat the cat the cat the cat the cat the cat the cat the cat the cat the cat the cat the cat the cat "
+      },
+      {
+        "contract": "not_contains",
+        "expected": "not_a_semantic_test",
+        "id": "behaviour",
+        "kind": "behaviour",
+        "prompt": "the cat"
+      }
+    ],
+    "max_new_tokens": 3
+  },
+  "error": "probe prompt empty/oversized; no training started",
+  "global_errors": 1,
+  "schema_version": 1,
+  "status": "ERROR",
+  "summary": {
+    "errors": 0,
+    "failed": 0,
+    "passed": 0,
+    "total": 0
+  }
+}

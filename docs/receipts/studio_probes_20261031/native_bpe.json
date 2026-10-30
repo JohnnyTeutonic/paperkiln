@@ -1,0 +1,139 @@
+{
+  "cases": [
+    {
+      "context_evicted_tokens": 0,
+      "contract": "contains",
+      "expected": "amber",
+      "expected_first_byte_offset": 8,
+      "generated_ids": [
+        120,
+        120,
+        120,
+        120
+      ],
+      "generated_text": "tttt",
+      "generated_tokens": 4,
+      "generation_steps": 4,
+      "id": "native",
+      "kind": "needle",
+      "prompt": "red key amber",
+      "prompt_ids": [
+        118,
+        274,
+        266,
+        281
+      ],
+      "prompt_tokens": 4,
+      "status": "FAIL",
+      "stop_reason": "token_limit"
+    }
+  ],
+  "checkpoint": {
+    "bytes": 12744,
+    "path": "/tmp/pytest-of-jonat/pytest-214/test_actual_native_bpe_probe_p0/native/native.safetensors",
+    "selection": "final_or_early_stop_current_weights_not_best",
+    "sha256": "d0cbe9ad8948374698061bc28c8bddca917ec8cdaa4f0ece002dc475d70f39d8"
+  },
+  "configuration": {
+    "cases": [
+      {
+        "contract": "contains",
+        "expected": "amber",
+        "id": "native",
+        "kind": "needle",
+        "prompt": "red key amber"
+      }
+    ],
+    "max_new_tokens": 4
+  },
+  "configuration_sha256": "f0a6506c055d4ce2c2a7614cf32156605cdeb1c23caa8de28f6ba3bd3f4548c2",
+  "final_step": 1,
+  "generation": {
+    "context_policy": "reject_long_prompt_then_sliding_window",
+    "eos_id": 1,
+    "eos_policy": "stop only on vocabulary literal<|endoftext|>; absent means token cap",
+    "execution_device": "cpu",
+    "mode": "greedy",
+    "requested_attention_kernel": "tiled",
+    "requested_precision": "fp32",
+    "runtime_attention_kernel_setting": "tiled",
+    "runtime_matmul_precision_setting": "fp32",
+    "special_token_bans": false,
+    "tie_break": "lowest_id",
+    "token_count_policy": "generated_ids exclude stopping EOS; generation_steps counts every forward/selection"
+  },
+  "global_errors": 0,
+  "limitations": [
+    "Literal configured probes, not a benchmark or semantic/instruction-compliance assessment.",
+    "not_contains on empty output asserts only a literal absence.",
+    "Greedy full-vocabulary logits, no chat template, sampling, penalties or special-token bans."
+  ],
+  "resolved_architecture": {
+    "T": 32,
+    "attention": "exact",
+    "d": 8,
+    "family": "llama",
+    "heads": 2,
+    "layers": 1,
+    "precision": "fp32"
+  },
+  "schema_version": 1,
+  "specification": {
+    "arch": {
+      "custom": {
+        "d": 8,
+        "d_ff": 16,
+        "heads": 2,
+        "layers": 1
+      },
+      "preset": "llama-tiny"
+    },
+    "data": {
+      "T": 32,
+      "corpus": "/tmp/pytest-of-jonat/pytest-214/test_actual_native_bpe_probe_p0/corpus.txt",
+      "vocab": "/tmp/pytest-of-jonat/pytest-214/test_actual_native_bpe_probe_p0/v.gguf"
+    },
+    "evaluation_probes": {
+      "cases": [
+        {
+          "contract": "contains",
+          "expected": "amber",
+          "id": "native",
+          "kind": "needle",
+          "prompt": "red key amber"
+        }
+      ],
+      "max_new_tokens": 4
+    },
+    "export": {
+      "formats": [
+        "safetensors"
+      ]
+    },
+    "name": "native",
+    "out_dir": "/tmp/pytest-of-jonat/pytest-214/test_actual_native_bpe_probe_p0/native",
+    "train": {
+      "batch": 1,
+      "checkpoint_every": 10,
+      "eval_every": 10,
+      "gradmap_every": 0,
+      "steps": 1
+    }
+  },
+  "specification_sha256": "2dbee2c40db834e4f9f8b2eeda5d0fa780db8f436817a9e3587aee2f77f60c40",
+  "status": "COMPLETE",
+  "summary": {
+    "errors": 0,
+    "failed": 1,
+    "passed": 0,
+    "total": 1
+  },
+  "tokenizer": {
+    "decode": "native_bpe",
+    "model": "bpe",
+    "pre": "",
+    "sha256": "968b4d74db9b7c134ead3db6301af714a3024ea1ad738771a03af143f89a425f",
+    "source": "/tmp/pytest-of-jonat/pytest-214/test_actual_native_bpe_probe_p0/v.gguf",
+    "vocab_cap": 284
+  }
+}

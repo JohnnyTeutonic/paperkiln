@@ -40,18 +40,19 @@
 #include <regex>
 #include "httplib.h"
 
+#include "evaluation_probes.hpp"
+#include "microtorch/bpe_tokenizer.hpp"
+#include "microtorch/chat_template.hpp"
 #include "microtorch/device.hpp"
 #include "microtorch/device_cache.hpp"
 #include "microtorch/gguf.hpp"
 #include "microtorch/ir.hpp"
 #include "microtorch/llama.hpp"
+#include "microtorch/llama3_tokenizer.hpp"
 #include "microtorch/llama_attnres.hpp"
-#include "microtorch/safetensors.hpp"
 #include "microtorch/posttrain/grpo.hpp"
 #include "microtorch/posttrain/verifier.hpp"
-#include "microtorch/bpe_tokenizer.hpp"
-#include "microtorch/llama3_tokenizer.hpp"
-#include "microtorch/chat_template.hpp"
+#include "microtorch/safetensors.hpp"
 #include "microtorch/word_tokenizer.hpp"
 #include "parity_model.hpp"
 
@@ -277,7 +278,15 @@ struct Spec {
     size_t draft_max_bytes = 0;
     bool serve = false;
     std::string out_dir = "mtstudio_out";
+    json evaluation_probes;
+    json specification;
 };
+
+int evaluation_probes_stage(const Spec&, const std::function<Var(const std::vector<int>&)>&,
+                            const std::vector<std::string>&, const std::map<std::string, int>&,
+                            const std::string&, nn::Module&, const std::string&, int = -1);
+void preflight_probe_inputs(const Spec&, const std::vector<std::string>&,
+                            const std::map<std::string, int>&);
 
 // Known presets; "custom" reads arch.custom.* instead.
 const std::map<std::string, std::array<size_t, 4>> PRESETS = {
@@ -306,7 +315,12 @@ Spec parse_spec(const std::string& path) {
     if (!f) throw std::runtime_error("cannot open spec " + path);
     json j = json::parse(f, nullptr, true, /*ignore_comments=*/true);
     Spec s;
+    s.specification = j;
     s.name = j.value("name", s.name);
+    if (j.contains("evaluation_probes")) {
+        studio_probes::validate_spec(j);
+        s.evaluation_probes = j["evaluation_probes"];
+    }
 
     const json arch = j.value("arch", json::object());
     if (arch.contains("preset")) {
@@ -909,6 +923,8 @@ Spec parse_spec(const std::string& path) {
             throw std::runtime_error("export.draft_table needs the chat text the model was trained on: "
                                      "data.sft_examples, or export.draft_table.sources");
     }
+    if (!s.evaluation_probes.is_null() && !s.exp_safetensors)
+        throw std::runtime_error("evaluation_probes requires final safetensors export");
     return s;
 }
 
@@ -1121,6 +1137,7 @@ struct TextBpe {
 // Set by read_gguf_vocab for a BPE vocabulary. Null for word-level
 // vocabularies, whose code paths are unchanged.
 std::shared_ptr<TextBpe> g_bpe;
+std::string g_tokenizer_model;
 std::string ids_to_text(const std::vector<int>& ids, const std::vector<std::string>& tokens);
 std::vector<int> tokenize(const std::string& text, const std::map<std::string, int>& vocab,
                           size_t max_tokens);
@@ -2236,6 +2253,10 @@ std::string draft_table_tool();
 void write_draft_table(const Spec& s, const std::string& out_dir, const std::function<void(const json&)>& emit);
 
 int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
+    std::unique_ptr<studio_probes::ArtifactGuard> probe_guard;
+    if (!plan_only && !s.evaluation_probes.is_null())
+        probe_guard =
+            std::make_unique<studio_probes::ArtifactGuard>(s.out_dir + "/evaluation_probes.json");
     std::printf("== mtstudio: %s ==\n", s.name.c_str());
     std::printf("arch: %s d=%zu layers=%zu heads=%zu | T=%zu vocab_cap=%zu\n", s.attention.c_str(),
                 s.d, s.layers, s.heads, s.T, s.vocab_cap);
@@ -2343,6 +2364,21 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     if (s.vocab_cap > 0 && s.vocab_cap < tokens.size()) tokens.resize(s.vocab_cap);
     std::map<std::string, int> vocab;
     for (size_t i = 0; i < tokens.size(); ++i) vocab.emplace(tokens[i], static_cast<int>(i));
+    if (!s.evaluation_probes.is_null()) try {
+            preflight_probe_inputs(s, tokens, vocab);
+        } catch (const std::exception& error) {
+            studio_probes::publish(
+                s.out_dir + "/evaluation_probes.json",
+                {{"schema_version", 1},
+                 {"status", "ERROR"},
+                 {"configuration", s.evaluation_probes},
+                 {"checkpoint", nullptr},
+                 {"cases", json::array()},
+                 {"summary", {{"total", 0}, {"passed", 0}, {"failed", 0}, {"errors", 0}}},
+                 {"global_errors", 1},
+                 {"error", studio_probes::safe_error(error)}});
+            throw;
+        }
     const bool sft = s.objective == "sft" || s.objective == "rejection_sft";
     const bool grpo = s.objective == "grpo";
     const bool po = s.objective == "provenance_po";
@@ -3440,6 +3476,13 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         std::ofstream rf(s.out_dir + "/result.json");
         rf << result.dump(2) << "\n";
     }
+    if (!s.evaluation_probes.is_null()) {
+        model_ref.eval();
+        if (evaluation_probes_stage(
+                s, [&](const std::vector<int>& ids) { return fwd(ids); }, tokens, vocab,
+                s.out_dir + "/evaluation_probes.json", model_ref, s.vocab_gguf, last_step))
+            return 1;
+    }
     // After the run's record: a table that fails leaves the weights, the GGUFs and result.json in place
     // (`mtstudio export --from` writes it again), and the run still exits non-zero. Reported on stdout and in
     // the table's receipt (<table>.json), not in events.jsonl, whose last event stays "done".
@@ -3566,6 +3609,7 @@ std::vector<std::string> read_gguf_vocab(const std::string& path) {
         }
     }
     g_bpe.reset();
+    g_tokenizer_model = model;
     const bpe::GgufTokenizer g =
         model == "bpe" || model == "gpt2" ? bpe::read_gguf_tokenizer(path) : bpe::GgufTokenizer{};
     if (model == "bpe") {
@@ -3672,6 +3716,7 @@ std::string slurp(const std::string& path) {
 struct LoadedLM {
     Spec s;
     std::vector<std::string> tokens;
+    std::string vocab_path;
     std::map<std::string, int> vocab;
     int eos = -1;  // end-of-text id, -1 when the vocabulary has none
     std::shared_ptr<parity::ParityLM> gpt;
@@ -3687,6 +3732,7 @@ struct LoadedLM {
         std::string vpath = s.vocab_gguf;
         const std::string exported = s.out_dir + "/" + s.name + ".gguf";
         if (!std::ifstream(vpath).good() && std::ifstream(exported).good()) vpath = exported;
+        vocab_path = vpath;
         tokens = read_gguf_vocab(vpath);
         if (s.vocab_cap > 0 && s.vocab_cap < tokens.size()) tokens.resize(s.vocab_cap);
         for (size_t i = 0; i < tokens.size(); ++i) vocab.emplace(tokens[i], static_cast<int>(i));
@@ -3893,6 +3939,253 @@ int export_cmd(Spec s, const std::string& from, const std::string& formats, cons
 // with temperature + top-k, stopping early at end-of-text. ember.cpp
 // remains the real server; this closes the train→poke loop without
 // leaving the studio.
+void preflight_probe_inputs(const Spec& s, const std::vector<std::string>& tokens,
+                            const std::map<std::string, int>& vocab) {
+    if (!g_bpe && g_tokenizer_model != "word" && g_tokenizer_model != "wordlevel")
+        throw std::runtime_error("unsupported probe tokenizer metadata");
+    for (const auto& item : s.evaluation_probes["cases"]) {
+        auto ids = tokenize(item["prompt"].get<std::string>(), vocab, 8193);
+        if (ids.empty() || ids.size() > s.T)
+            throw std::runtime_error("probe prompt empty/oversized; no training started");
+        for (int id : ids)
+            if (id < 0 || static_cast<size_t>(id) >= tokens.size() ||
+                (id == 0 && tokens[0] == "<unk>"))
+                throw std::runtime_error("probe prompt OOV/unencodable; no training started");
+    }
+}
+void verify_probe_checkpoint(const std::string& path, nn::Module& model) {
+    std::ifstream input(path, std::ios::binary);
+    uint64_t length = 0;
+    input.read(reinterpret_cast<char*>(&length), 8);
+    if (!input || length > 16 * 1024 * 1024)
+        throw std::runtime_error("invalid checkpoint header for probe identity");
+    std::string header(length, '\0');
+    input.read(header.data(), length);
+    if (!input) throw std::runtime_error("truncated checkpoint header");
+    json h = json::parse(header);
+    auto params = model.named_parameters();
+    size_t count = 0;
+    for (auto it = h.begin(); it != h.end(); ++it)
+        if (it.key() != "__metadata__") ++count;
+    if (count != params.size())
+        throw std::runtime_error("checkpoint parameter inventory differs from evaluated model");
+    std::array<char, 65536> buffer{};
+    for (const auto& entry : params) {
+        const auto& name = entry.first;
+        const auto& value = entry.second;
+        device::materialize(value->data);
+        const auto& meta = h.at(name);
+        if (meta.at("dtype") != "F32" ||
+            meta.at("shape") != json::array({value->data.rows(), value->data.cols()}))
+            throw std::runtime_error("checkpoint parameter geometry differs");
+        size_t bytes = value->data.rows() * value->data.cols() * sizeof(float);
+        uint64_t start = meta.at("data_offsets").at(0), end = meta.at("data_offsets").at(1);
+        if (end < start || end - start != bytes)
+            throw std::runtime_error("checkpoint parameter bytes differ");
+        input.seekg(8 + length + start);
+        const char* memory = reinterpret_cast<const char*>(value->data.data());
+        for (size_t offset = 0; offset < bytes; offset += buffer.size()) {
+            size_t n = std::min(buffer.size(), bytes - offset);
+            input.read(buffer.data(), n);
+            if (!input || std::memcmp(buffer.data(), memory + offset, n))
+                throw std::runtime_error(
+                    "checkpoint bytes do not equal actual in-memory evaluated weights");
+        }
+    }
+}
+
+int evaluation_probes_stage(const Spec& s,
+                            const std::function<Var(const std::vector<int>&)>& forward,
+                            const std::vector<std::string>& tokens,
+                            const std::map<std::string, int>& vocab, const std::string& output,
+                            nn::Module& model, const std::string& vocab_path, int final_step) {
+    json report = {{"schema_version", 1},
+                   {"status", "ERROR"},
+                   {"configuration", s.evaluation_probes},
+                   {"checkpoint", nullptr},
+                   {"generation",
+                    {{"mode", "greedy"},
+                     {"tie_break", "lowest_id"},
+                     {"special_token_bans", false},
+                     {"context_policy", "reject_long_prompt_then_sliding_window"}}},
+                   {"cases", json::array()},
+                   {"summary", {{"total", 0}, {"passed", 0}, {"failed", 0}, {"errors", 0}}},
+                   {"limitations",
+                    {"Literal configured probes, not a benchmark or "
+                     "semantic/instruction-compliance assessment.",
+                     "not_contains on empty output asserts only a literal absence.",
+                     "Greedy full-vocabulary logits, no chat template, sampling, penalties or "
+                     "special-token bans."}}};
+    struct RestorePrecision {
+        device::Precision previous = device::matmul_precision();
+        ops::AttnKernel previous_attention = ops::attention_kernel();
+        ~RestorePrecision() {
+            device::set_matmul_precision(previous);
+            ops::set_attention_kernel(previous_attention);
+        }
+    } restore_precision;
+    device::set_matmul_precision(s.precision == "bf16" ? device::Precision::BF16
+                                                       : device::Precision::FP32);
+    ops::set_attention_kernel(s.attention_kernel == "flash" ? ops::AttnKernel::Flash
+                                                            : ops::AttnKernel::Tiled);
+    report["generation"]["requested_precision"] = s.precision;
+    report["generation"]["requested_attention_kernel"] = s.attention_kernel;
+    report["generation"]["runtime_attention_kernel_setting"] =
+        ops::attention_kernel() == ops::AttnKernel::Flash ? "flash" : "tiled";
+    report["generation"]["execution_device"] =
+        device::get() == device::Device::CUDA ? "cuda" : "cpu";
+    report["generation"]["runtime_matmul_precision_setting"] =
+        device::matmul_precision() == device::Precision::BF16 ? "bf16" : "fp32";
+    report["generation"]["eos_policy"] =
+        "stop only on vocabulary literal<|endoftext|>; absent means token cap";
+    report["generation"]["eos_id"] = wordtok::eos_id(vocab);
+    report["generation"]["token_count_policy"] =
+        "generated_ids exclude stopping EOS; generation_steps counts every forward/selection";
+    int errors = 0, global_errors = 0, passed = 0, failed = 0;
+    try {
+        const std::string weights = s.out_dir + "/" + s.name + ".safetensors";
+        verify_probe_checkpoint(weights, model);
+        report["specification"] = s.specification;
+        report["specification_sha256"] = ir::sha256_hex(s.specification.dump());
+        report["resolved_architecture"] = {
+            {"family", s.family},      {"attention", s.attention}, {"d", s.d},
+            {"layers", s.layers},      {"heads", s.heads},         {"T", s.T},
+            {"precision", s.precision}};
+        report["final_step"] = final_step < 0 ? json(nullptr) : json(final_step);
+        report["checkpoint"] = {
+            {"path", weights},
+            {"bytes", std::filesystem::file_size(weights)},
+            {"sha256", studio_probes::file_sha256(weights)},
+            {"selection", final_step < 0 ? "explicit_loaded_weights_final_step_unknown"
+                                         : "final_or_early_stop_current_weights_not_best"}};
+        report["configuration_sha256"] = ir::sha256_hex(s.evaluation_probes.dump());
+        if (!g_bpe && g_tokenizer_model != "word" && g_tokenizer_model != "wordlevel")
+            throw std::runtime_error("unsupported tokenizer metadata for probes: " +
+                                     g_tokenizer_model);
+        report["tokenizer"] = {{"model", g_tokenizer_model},
+                               {"pre", g_bpe ? g_bpe->pre : ""},
+                               {"vocab_cap", tokens.size()},
+                               {"source", vocab_path},
+                               {"sha256", studio_probes::file_sha256(vocab_path)},
+                               {"decode", g_bpe ? "native_bpe" : "word_detokenize"}};
+        std::ofstream journal(output + ".cases.jsonl", std::ios::binary);
+        if (!journal) throw std::runtime_error("cannot write probe journal");
+        NoGrad no_grad;
+        for (const auto& item : s.evaluation_probes["cases"]) {
+            json row = item;
+            if (item["kind"] == "needle")
+                row["expected_first_byte_offset"] =
+                    item["prompt"].get<std::string>().find(item["expected"].get<std::string>());
+            row["status"] = "ERROR";
+            row["generated_text"] = "";
+            row["generated_ids"] = json::array();
+            row["prompt_ids"] = json::array();
+            row["prompt_tokens"] = 0;
+            row["generated_tokens"] = 0;
+            row["generation_steps"] = 0;
+            row["context_evicted_tokens"] = 0;
+            row["stop_reason"] = "error";
+            try {
+                auto ids = tokenize(item["prompt"].get<std::string>(), vocab, 8193);
+                row["prompt_ids"] = ids;
+                row["prompt_tokens"] = ids.size();
+                if (ids.empty() || ids.size() > s.T)
+                    throw std::runtime_error(
+                        "empty or context-oversized prompt; no prompt truncation performed");
+                for (int id : ids)
+                    if (id < 0 || static_cast<size_t>(id) >= tokens.size() ||
+                        (id == 0 && tokens[0] == "<unk>"))
+                        throw std::runtime_error("unencodable/OOV or capped-vocabulary prompt");
+                std::vector<int> generated;
+                size_t decoded_upper_bound = 0;
+                const int eos = wordtok::eos_id(vocab);
+                int evicted = 0;
+                row["stop_reason"] = "token_limit";
+                for (int i = 0; i < s.evaluation_probes["max_new_tokens"].get<int>(); ++i) {
+                    row["generation_steps"] = i + 1;
+                    std::vector<int> ctx = ids;
+                    if (ctx.size() > s.T) {
+                        evicted = std::max(evicted, static_cast<int>(ctx.size() - s.T));
+                        ctx.erase(ctx.begin(), ctx.end() - s.T);
+                    }
+                    row["context_evicted_tokens"] = evicted;
+                    auto logits = forward(ctx);
+                    device::materialize(logits->data);
+                    if (logits->data.rows() != ctx.size() || logits->data.cols() != tokens.size())
+                        throw std::runtime_error("probe logits shape mismatch");
+                    int pick = -1;
+                    float maximum = -std::numeric_limits<float>::infinity();
+                    for (size_t j = 0; j < tokens.size(); ++j) {
+                        float x = logits->data(ctx.size() - 1, j);
+                        if (!std::isfinite(x)) throw std::runtime_error("nonfinite probe logits");
+                        if (pick < 0 || x > maximum) {
+                            maximum = x;
+                            pick = static_cast<int>(j);
+                        }
+                    }
+                    if (pick < 0) throw std::runtime_error("no selectable probe logits");
+                    if (pick == eos) {
+                        row["stop_reason"] = "eos";
+                        break;
+                    }
+                    if (tokens[pick].size() + 1 > 65536 - decoded_upper_bound)
+                        throw std::runtime_error(
+                            "probe decoded output byte budget exceeded before decoding");
+                    decoded_upper_bound += tokens[pick].size() + 1;
+                    generated.push_back(pick);
+                    ids.push_back(pick);
+                    row["generated_ids"] = generated;
+                    row["generated_tokens"] = generated.size();
+                }
+                const std::string text =
+                    g_bpe ? g_bpe->decode(generated) : wordtok::detokenize(generated, tokens);
+                if (text.size() > 65536)
+                    throw std::runtime_error("probe decoded output exceeds65536byte limit");
+                if (!studio_probes::valid_utf8(text)) {
+                    row["generated_bytes_hex"] = studio_probes::hex_bytes(text);
+                    throw std::runtime_error(
+                        "invalid or incomplete UTF8 generated bytes; literal contract not scored");
+                }
+                row["generated_text"] = text;
+                bool match = studio_probes::matches(row["generated_text"].get<std::string>(),
+                                                    item["contract"], item["expected"]);
+                row["status"] = match ? "PASS" : "FAIL";
+                if (match)
+                    ++passed;
+                else
+                    ++failed;
+            } catch (const std::exception& e) {
+                row["error"] = studio_probes::safe_error(e);
+                row["stop_reason"] = "error";
+                ++errors;
+            }
+            report["cases"].push_back(row);
+            journal << row.dump() << "\n";
+            journal.flush();
+            if (!journal) throw std::runtime_error("probe case journal write failed");
+        }
+        verify_probe_checkpoint(weights, model);
+        if (studio_probes::file_sha256(weights) != report["checkpoint"]["sha256"])
+            throw std::runtime_error("checkpoint changed during probes");
+        report["summary"] = {{"total", report["cases"].size()},
+                             {"passed", passed},
+                             {"failed", failed},
+                             {"errors", errors}};
+        report["status"] = errors ? "COMPLETE_WITH_ERRORS" : "COMPLETE";
+    } catch (const std::exception& e) {
+        report["error"] = studio_probes::safe_error(e);
+        report["status"] = "ERROR";
+        ++global_errors;
+    }
+    report["summary"] = {{"total", report["cases"].size()},
+                         {"passed", passed},
+                         {"failed", failed},
+                         {"errors", errors}};
+    report["global_errors"] = global_errors;
+    studio_probes::publish(output, report);
+    return errors || global_errors ? 1 : 0;
+}
+
 int sample_cmd(const Spec& s, const std::string& prompt, int n_new, float temp, int topk,
                unsigned sseed, const std::string& out_file) {
     LoadedLM lm(s);
@@ -4257,6 +4550,7 @@ int serve_ui(const std::string& out_dir, int port, const std::string& ui_path,
             try {
                 json j = json::parse(req.body, nullptr, true, /*ignore_comments=*/true);
                 if (!j.is_object()) throw std::runtime_error("spec must be a JSON object");
+                studio_probes::validate_spec(j);
                 j["out_dir"] = out_dir;
                 std::ofstream(path, std::ios::trunc) << j.dump(2) << "\n";
                 parse_spec(path);
@@ -4438,6 +4732,13 @@ int serve_ui(const std::string& out_dir, int port, const std::string& ui_path,
                        "sampling failed — train (and export safetensors) first; "
                        "details in sample.log");
         }
+    });
+    svr.Get("/evaluation-probes", [&](const httplib::Request&, httplib::Response& res) {
+        const auto content = slurp(out_dir + "/evaluation_probes.json");
+        if (content.empty())
+            text_reply(res, 404, "no evaluation probe receipt");
+        else
+            text_reply(res, 200, content, "application/json; charset=utf-8");
     });
     svr.Get("/fetchstatus", [&](const httplib::Request&, httplib::Response& res) {
         std::lock_guard<std::mutex> lk(mu);
@@ -5348,6 +5649,27 @@ int main(int argc, char** argv) {
         device::set_from_env();
         if ((cmd == "run" || cmd == "plan") && argc >= 3)
             return run(parse_spec(argv[2]), cmd == "plan", argv[2]);
+        if (cmd == "probes" && argc >= 3) {
+            Spec spec = parse_spec(argv[2]);
+            if (spec.evaluation_probes.is_null())
+                throw std::runtime_error("spec has no evaluation_probes");
+            std::string output = spec.out_dir + "/evaluation_probes.json";
+            if (argc == 5 && std::string(argv[3]) == "--out")
+                output = argv[4];
+            else if (argc != 3)
+                throw std::runtime_error("probes spec.json [--out NEW.json]");
+            studio_probes::ArtifactGuard guard(output);
+            try {
+                LoadedLM lm(spec);
+                return evaluation_probes_stage(
+                    spec, [&](const std::vector<int>& ids) { return lm.forward(ids); }, lm.tokens,
+                    lm.vocab, output, lm.model(), lm.vocab_path, -1);
+            } catch (const std::exception& error) {
+                studio_probes::publish(output,
+                                       studio_probes::error_report(spec.evaluation_probes, error));
+                return 1;
+            }
+        }
         if (cmd == "sample" && argc >= 3) {
             std::string prompt = "once upon a time", out_file;
             int n_new = 40, topk = 40;
@@ -5454,21 +5776,26 @@ int main(int argc, char** argv) {
         std::fprintf(stderr, "mtstudio: %s\n", e.what());
         return 1;
     }
-    std::fprintf(stderr,
-                 "usage: mtstudio run|plan spec.json\n"
-                 "       mtstudio sample spec.json [--prompt P] [--tokens N] [--temp T] "
-                 "[--topk K] [--seed S] [--out FILE]\n"
-                 "       mtstudio sample-set spec.json --prompts P.jsonl --out R.jsonl [--n 8] "
-                 "[--temp 1.0] [--seed 17] [--max-new 16]\n"
-                 "       mtstudio export spec.json [--from model.safetensors] "
-                 "[--formats gguf,gguf_q8_0,gguf_q8_0_out,gguf_q8_0_all,gguf_q4_0,gguf_q4_k_m,gguf_q4_k_s]\n"
-                 "         [--out-dir DIR]\n"
-                 "       mtstudio serve <out_dir> [port] [spec]   (MTSTUDIO_UI "
-                 "overrides the index.html path)\n"
-                 "       mtstudio chat <out_dir|spec.json> [--port 8080] [--host 127.0.0.1] [--kv-cache [--evict]]\n"
-                 "       mtstudio score <out_dir|spec.json> --in REQ.jsonl --out RES.jsonl [--kv-cache [--evict] "
-                 "[--kv-step N]] [--logits ROWS.f32] [--batch-tokens N [--no-window]]\n"
-                 "         (per-token log-probs of {prompt | messages, continuation})\n"
-                 "       mtstudio sft-dump spec.json --out ROWS.jsonl   (the SFT rows the spec trains on)\n");
+    std::fprintf(
+        stderr,
+        "usage: mtstudio run|plan spec.json\n"
+        "       mtstudio sample spec.json [--prompt P] [--tokens N] [--temp T] "
+        "[--topk K] [--seed S] [--out FILE]\n"
+        "       mtstudio sample-set spec.json --prompts P.jsonl --out R.jsonl [--n 8] "
+        "[--temp 1.0] [--seed 17] [--max-new 16]\n"
+        "       mtstudio probes spec.json [--out NEW.json]\n"
+        "       mtstudio export spec.json [--from model.safetensors] "
+        "[--formats gguf,gguf_q8_0,gguf_q8_0_out,gguf_q8_0_all,gguf_q4_0,gguf_q4_k_m,gguf_q4_k_s]\n"
+        "         [--out-dir DIR]\n"
+        "       mtstudio serve <out_dir> [port] [spec]   (MTSTUDIO_UI "
+        "overrides the index.html path)\n"
+        "       mtstudio chat <out_dir|spec.json> [--port 8080] [--host 127.0.0.1] [--kv-cache "
+        "[--evict]]\n"
+        "       mtstudio score <out_dir|spec.json> --in REQ.jsonl --out RES.jsonl [--kv-cache "
+        "[--evict] "
+        "[--kv-step N]] [--logits ROWS.f32] [--batch-tokens N [--no-window]]\n"
+        "         (per-token log-probs of {prompt | messages, continuation})\n"
+        "       mtstudio sft-dump spec.json --out ROWS.jsonl   (the SFT rows the spec trains "
+        "on)\n");
     return 2;
 }

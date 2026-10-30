@@ -1,0 +1,177 @@
+{
+  "cases": [
+    {
+      "context_evicted_tokens": 0,
+      "contract": "contains",
+      "expected": "cat",
+      "expected_first_byte_offset": 4,
+      "generated_ids": [
+        1,
+        1,
+        1
+      ],
+      "generated_text": "the the the",
+      "generated_tokens": 3,
+      "generation_steps": 3,
+      "id": "needle",
+      "kind": "needle",
+      "prompt": "the cat",
+      "prompt_ids": [
+        1,
+        2
+      ],
+      "prompt_tokens": 2,
+      "status": "FAIL",
+      "stop_reason": "token_limit"
+    },
+    {
+      "context_evicted_tokens": 0,
+      "contract": "not_contains",
+      "expected": "not_a_semantic_test",
+      "generated_ids": [
+        1,
+        1,
+        1
+      ],
+      "generated_text": "the the the",
+      "generated_tokens": 3,
+      "generation_steps": 3,
+      "id": "behaviour",
+      "kind": "behaviour",
+      "prompt": "the cat",
+      "prompt_ids": [
+        1,
+        2
+      ],
+      "prompt_tokens": 2,
+      "status": "PASS",
+      "stop_reason": "token_limit"
+    }
+  ],
+  "checkpoint": {
+    "bytes": 4120,
+    "path": "/tmp/pytest-of-jonat/pytest-214/test_real_model_probe_replay_i0/probes/probes.safetensors",
+    "selection": "final_or_early_stop_current_weights_not_best",
+    "sha256": "30b994db86ebe3b17b9647ba577120abf1b80932f51c5c5437bf0be5d1a2116d"
+  },
+  "configuration": {
+    "cases": [
+      {
+        "contract": "contains",
+        "expected": "cat",
+        "id": "needle",
+        "kind": "needle",
+        "prompt": "the cat"
+      },
+      {
+        "contract": "not_contains",
+        "expected": "not_a_semantic_test",
+        "id": "behaviour",
+        "kind": "behaviour",
+        "prompt": "the cat"
+      }
+    ],
+    "max_new_tokens": 3
+  },
+  "configuration_sha256": "bee265fcdf724cd7f614369de6008f7db78e12d15249fe47a9d89e67a64b5a9c",
+  "final_step": 1,
+  "generation": {
+    "context_policy": "reject_long_prompt_then_sliding_window",
+    "eos_id": -1,
+    "eos_policy": "stop only on vocabulary literal<|endoftext|>; absent means token cap",
+    "execution_device": "cpu",
+    "mode": "greedy",
+    "requested_attention_kernel": "tiled",
+    "requested_precision": "fp32",
+    "runtime_attention_kernel_setting": "tiled",
+    "runtime_matmul_precision_setting": "fp32",
+    "special_token_bans": false,
+    "tie_break": "lowest_id",
+    "token_count_policy": "generated_ids exclude stopping EOS; generation_steps counts every forward/selection"
+  },
+  "global_errors": 0,
+  "limitations": [
+    "Literal configured probes, not a benchmark or semantic/instruction-compliance assessment.",
+    "not_contains on empty output asserts only a literal absence.",
+    "Greedy full-vocabulary logits, no chat template, sampling, penalties or special-token bans."
+  ],
+  "resolved_architecture": {
+    "T": 16,
+    "attention": "exact",
+    "d": 8,
+    "family": "llama",
+    "heads": 2,
+    "layers": 1,
+    "precision": "fp32"
+  },
+  "schema_version": 1,
+  "specification": {
+    "arch": {
+      "custom": {
+        "d": 8,
+        "d_ff": 16,
+        "heads": 2,
+        "layers": 1
+      },
+      "preset": "llama-tiny"
+    },
+    "data": {
+      "T": 16,
+      "corpus": "/tmp/pytest-of-jonat/pytest-214/test_real_model_probe_replay_i0/c.txt",
+      "max_tokens": 0,
+      "vocab": "/tmp/pytest-of-jonat/pytest-214/test_real_model_probe_replay_i0/v.gguf"
+    },
+    "evaluation_probes": {
+      "cases": [
+        {
+          "contract": "contains",
+          "expected": "cat",
+          "id": "needle",
+          "kind": "needle",
+          "prompt": "the cat"
+        },
+        {
+          "contract": "not_contains",
+          "expected": "not_a_semantic_test",
+          "id": "behaviour",
+          "kind": "behaviour",
+          "prompt": "the cat"
+        }
+      ],
+      "max_new_tokens": 3
+    },
+    "export": {
+      "formats": [
+        "safetensors",
+        "gguf"
+      ]
+    },
+    "name": "probes",
+    "out_dir": "/tmp/pytest-of-jonat/pytest-214/test_real_model_probe_replay_i0/probes",
+    "train": {
+      "batch": 2,
+      "checkpoint_every": 20,
+      "eval_every": 20,
+      "gradmap_every": 0,
+      "lr": 0.003,
+      "seed": 3,
+      "steps": 1
+    }
+  },
+  "specification_sha256": "875ae0974b71e7a24e294d28a5033733e6a6fb08b613f1d5ee13bcf2691dbaa8",
+  "status": "COMPLETE",
+  "summary": {
+    "errors": 0,
+    "failed": 1,
+    "passed": 1,
+    "total": 2
+  },
+  "tokenizer": {
+    "decode": "word_detokenize",
+    "model": "word",
+    "pre": "",
+    "sha256": "879b0dcb5995b7d79c9b0b72779416d9fe54fb9a4bb223424feee827605ea48a",
+    "source": "/tmp/pytest-of-jonat/pytest-214/test_real_model_probe_replay_i0/v.gguf",
+    "vocab_cap": 15
+  }
+}
