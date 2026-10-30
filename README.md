@@ -27,8 +27,8 @@ flowchart LR
 A readable C++ LLM training stack (reverse-mode autograd, hand-derived backwards, every op
 finite-difference checked) that trains real architectures end to end, from paper to served
 model. It has the habit of publishing its negatives next to its wins. The core engine (tape,
-ops, layers, Llama family, quantisation, GGUF) is about 5,100 lines, and the whole stack runs
-30 CTest suites plus the Python suites in CI.
+ops, layers, Llama family, quantisation, GGUF) is ordinary C++ with scoped CTest and Python
+suites; supported behaviour and numerical limits are recorded beside the tests and receipts.
 
 | Area | What you get |
 |---|---|
@@ -36,15 +36,35 @@ ops, layers, Llama family, quantisation, GGUF) is about 5,100 lines, and the who
 | **Conversations** | one schema for instruction tuning and chat (an instruction is a one-exchange conversation; a system message folds into the first user message); the loss policy declared per run (by default every assistant turn); the chat template written into every GGUF as a versioned record, with a generated `tokenizer.chat_template` and an Ollama Modelfile, so llama.cpp, LM Studio and Ollama prompt a 16k-vocabulary model exactly as paperkiln and ember.cpp do; opt-in, the export writes ember's draft table for the chat model, built from the conversations it was trained on (`export.draft_table`), for speculative decoding at about twice plain decode |
 | **Runtime-defined ops** | a paper's new activation, gate or norm variant written as an `expr` (`"activation": "expr:max(x, 0)^2"`): parsed at runtime into differentiable primitives, gradient-checked, trained and exported as an IR node without recompiling; ember.cpp runs the same grammar. C++ vs the numpy reference within 1.2e-7 |
 | **Any architecture, both directions** | every family exports its graph as IR; and standard llama.cpp GGUFs of Qwen2/Qwen3, Gemma 3, GPT-2, GPT-NeoX (Pythia), Mistral (sliding window) and Mamba-1 get an IR built from their metadata (`spec/tools/gguf_ir.py`), run by a numpy reference interpreter (`spec/tools/ir_numpy.py`) and gated against Hugging Face transformers (`tools/thirdparty_parity.py`: GPT-2 124M and Pythia-160m 40/40 greedy); ember.cpp runs them, Qwen2.5 and Qwen3 40/40 vs HF |
-| **Training** | AdamW, SGD, **Muon**; warmup + cosine; mini-batching, gradient accumulation, checkpointing, fused attention; LoRA and QLoRA (int8); **CUDA** device-resident step (L4: 0.109 s/step at d384, from 6.4); **BF16 mixed precision** and flash attention, opt-in (`train.precision`, `train.attention_kernel`): 1.58x (20M) to 1.71x (60M) on an L4, with the final loss moved by about 1/40 of FP32's seed-to-seed spread |
+| **Training** | AdamW, SGD, **Muon**; warmup + cosine; mini-batching, gradient accumulation, checkpointing, fused attention; LoRA and QLoRA (int8); **CUDA** device-resident step (L4: 0.109 s/step at d384, from 6.4); **BF16 mixed precision** and flash attention, opt-in (`train.precision`, `train.attention_kernel`): the complete ten-shape L4 profile records 1.34-2.09x for the combination in single descriptive measurements ([results](docs/receipts/bf16_profile_20261030/RESULTS.md)); the separate seeded loss/noise gate is retained |
 | **Post-training** | masked SFT, rejection SFT, GRPO, DPO + RPO; AI-judged preference data: candidate replies sampled through ember (`tools/posttrain/sample_candidates.py`), a Claude judge ranking both orders under a hard cost cap, and a 200-prompt pilot (`experiments/chat_general/judge_pilot.sh`) |
 | **Data** | pinned corpora with ledgers and hashes: FineWeb-Edu (shard 0; shards 1-3 are pinned on their first fetch), dialogue for pretraining (SODA, OpenAssistant, UltraChat, everyday-conversations; `corpus/fetchers/dialogue_pt.py`), a large SFT set from smol-smoltalk (`tools/lever1_sft.py`); the dialogue and SFT sources checked against the frozen eval sets (`corpus/decontam.py`); a two-part mixer with an annealing tail (`corpus/mix_pretrain.py`); pre-tokenised `.ids` corpora (`tools/corpus_ids.py`) |
 | **Tokenisers** | paperkiln's byte-level BPE, and a llama.cpp-compatible vocabulary in the Llama 3 scheme: a trainer (`corpus/fetchers/vocab_llama3_bpe.py`) whose check compares ids with llama.cpp's own tokeniser, and an exact C++ encoder ported from llama.cpp (`include/microtorch/llama3_tokenizer.hpp`) |
-| **The IR** | the graph format both engines share, specified in **keramos** (its own repository; vendored here at a pinned tag in [`spec/`](spec/), `spec/KERAMOS_PIN.json`): IR version 1, specification revision 1.1, with profiles core, state, recursion, chat, thirdparty and recurrence (a per-token state update declared in the document); every op EXACT (bit-identical on every backend) or ROUNDING (within a stated tolerance); the document's digest (RFC 8785 + SHA-256, `paperkiln.ir_sha256`); exact values for every stored tensor type; a JSON Schema, a validator, a numpy reference interpreter and a conformance suite that any engine joins through a JSON Lines adapter ([`spec/README.md`](spec/README.md)) |
+| **The IR** | the graph format both engines share, specified in **keramos** (its own repository; vendored here at a pinned tag in [`spec/`](spec/), `spec/KERAMOS_PIN.json`): IR version 1, specification revision 1.6 (vendored tag v1.6.0), with profiles core, state, recursion, chat, thirdparty and recurrence (a per-token state update declared in the document); every op EXACT (bit-identical on every backend) or ROUNDING (within a stated tolerance); the document's digest (RFC 8785 + SHA-256, `paperkiln.ir_sha256`); exact values for every stored tensor type; a JSON Schema, a validator, a numpy reference interpreter and a conformance suite that any engine joins through a JSON Lines adapter ([`spec/README.md`](spec/README.md)) |
 | **Export** | safetensors (HF round trip), Hugging Face `from_pretrained` folders, GGUF with the tokeniser embedded, **Q8_0 and 4-bit (Q4_0, Q4_K_M, Q4_K_S) GGUFs** (byte-identical to the reference quantisers), and the **model graph as IR** in every GGUF, so [ember.cpp](https://github.com/JohnnyTeutonic/ember.cpp) runs every family; opt-in, **ember's corpus draft table** beside a chat model's GGUF (`export.draft_table`, `tools/draft_table.py`: the most frequent next token per context of up to 4 tokens of its own SFT text, byte-identical to ember's builder; `EMBER_DRAFT=table` speculation is 1.9-2.2x plain decode on chat on an L4, replies unchanged) |
-| **Studio** | one JSON spec runs train → eval → export → serve; a zero-dependency dashboard with live loss, gradient glow, spec builder, architecture diagram, from-paper flow and chat |
+| **Studio** | one JSON spec runs train → eval → export → serve; a zero-dependency dashboard with live loss, gradient glow, spec builder, architecture diagram, from-paper flow and chat; clone a full saved spec with one typed change, overlay two saved event logs, and explore typed-factor sweep heatmaps without uploading files |
 | **From papers** | **LLM extractor** (`papers/llm_extract.py`): one Claude call reads the paper's LaTeX and returns the architecture as an IR op graph, new operations as runtime-defined `expr` ops, and a verbatim quote for every value; a deterministic verifier checks each quote against the source before anything trains. On the 40-paper benchmark (27 Oct prompt): flavours 81 correct, 11 abstain, 0 wrong, against the rule-based extractor's 73 / 19 / 0; sizes 569 / 2 / 71 against 136 / 8 / 498. The rule-based extractor (`papers/fetch.py` / `pip install paperkiln-fetch`, no API key) stays as the offline path |
 | **Research tooling** | the Architecture Atlas (designed experiments, multi-seed cells, a findings registry with retractions), falsifiers built into the modules, one-command replication |
+
+## Current results and limits
+
+The [registered five-seed size comparison](experiments/tiny_chat_2026-10/size/RESULTS.md)
+is complete: under its fixed-token, eight-layer protocol, the primary carry-score slope across
+20M/60M/150M meets the registered practical-equivalence rule. Language-model loss improves
+with size, but this particular conversational-memory score does not. This is a scoped result,
+not a general scaling limit or a state-of-the-art comparison. Carry-12's three-seed core and
+its still-running registered follow-up are recorded separately in
+[the long-conversation results](experiments/tiny_chat_long_2026-10/RESULTS.md).
+
+HF interoperability now includes faithful native BPE and supported legacy tokenizers, complete
+source-tensor checks, greedy IDs and raw logit checks. New verifier receipts retain the rows
+for offline numerical replay; an existing tiny flex fixture reproduces all24 IDs and its
+8.94e-8 maximum logit difference ([retained evidence](docs/receipts/hf_raw_evidence_20261030/README.md)).
+This does not validate every architecture modifier, chat template or downstream task.
+
+Open engineering and research work is listed in [ROADMAP.md](ROADMAP.md). In particular,
+projection BF16 and the measured flash path do not imply BF16 attention-product kernels;
+modified-flex HF exports and the remaining device/host boundaries stay explicitly scoped.
 
 ## What makes it different
 
@@ -175,8 +195,9 @@ an existing model.
   WebAssembly), and llama-family and MoE models on the visitor's GPU in the browser (WebGPU).
 - llama.cpp runs the llama, MoE and gpt2 exports, given token ids. Models on the new Llama 3
   scheme vocabulary tokenise in llama.cpp, Ollama and LM Studio too.
-- `python tools/hf_export.py <run> --hf-dir <dir>` turns a llama-family run into a folder that
-  `transformers.from_pretrained` opens.
+- `python tools/hf_export.py <run> --hf-dir <dir>` writes folders that
+  `transformers.from_pretrained` opens for supported plain Llama, GPT-2 and plain untied
+  Llama/GPT-2 flex mappings. Unsupported modifiers refuse rather than silently approximate.
   Exports stage completely before publication; replacing managed files requires `--overwrite`.
   Unrelated files are preserved. Replacement of an existing export is rollback-protected,
   not crash-atomic; stale shards or loader overrides refuse rather than being silently deleted.

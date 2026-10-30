@@ -7,6 +7,14 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **HF export publication and durable numerical evidence** (30 Oct). Complete staging,
+  explicit overwrite, caught-failure rollback and stale-loader refusal protect existing exports
+  (fe9271589). New parity receipts atomically publish hashed float32 HF/native rows and support
+  NumPy-only offline numerical/greedy replay (68ccaf90c). Source inputs are snapshotted before
+  execution and rechecked afterwards. The existing tiny untied Llama-flex fixture reproduces
+  all 24 IDs and its historical8.94e-8 maximum with retained rows; old receipts remain unchanged.
+  Combined regression:208 passes,one optional skip. Records: `docs/receipts/hf_raw_evidence_20261030/`.
+
 - **Registered five-seed size extension complete** (30 Oct). All 15 selected 20M/60M/150M
   summaries are home. Primary size slope is EQUIVALENT within the registered ±0.01 Y/doubling
   interval; the 60M→150M secondary remains unresolved. Language-model panel losses decrease with size,
