@@ -351,3 +351,28 @@ identical training trajectories are not promised. If even microbatch one exceeds
 the estimate, the panel reports no supported fit. Check actual target-device
 memory before a full run. Vocabulary cap is a valid-run planning bound, not an
 inspection of the selected vocabulary file.
+
+### Optional Studio evaluation probes
+
+The builder's **Optional post-training needle and behaviour probes** panel adds
+`evaluation_probes` only after you enable it and click **Apply probe
+configuration to spec**. Draft edits do not replace the applied configuration;
+invalid drafts preserve it. To remove the stage, disable it and Apply. Existing
+runs without the stage keep their training behaviour.
+
+Each case has a unique safe `id`, `kind` (`needle` or `behaviour`), `prompt`,
+`contract` and `expected` text. Contracts are case-sensitive literal `exact`,
+`contains`, `prefix` or `not_contains` checks, never semantic judgements. Use
+1–32 cases, 1–128 `max_new_tokens`, and at most 1024 case×token allowance in total.
+Prompts are limited to 8192 UTF8 bytes and expected text to 256 bytes. A needle
+case uses the supplied prompt as written; the label does not create a long-context
+benchmark or imply retrieval competence. Unsupported stage keys are refused.
+
+**Load saved probe results** reads the server's `/evaluation-probes` artifact
+(`evaluation_probes.json`); a local receipt can also be opened. It never runs a
+model. The viewer distinguishes literal FAIL from operational ERROR and displays
+raw generated output, token IDs, stop reasons, context evictions, configuration
+and checkpoint provenance from the receipt. Invalid identities, outcome/count
+mismatches or receipts above 2 MiB are rejected; no judge/API is called. The VRAM
+planner accepts validated probe configuration but estimates **training only**,
+excluding the post-training probe peak. Review device memory separately.

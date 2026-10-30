@@ -183,6 +183,20 @@
     </div>
     <pre id="vram-result" style="white-space:pre-wrap;overflow-wrap:anywhere" role="status">No settings changed. Only a smaller divisor microbatch and compensating accumulation may be proposed; sequence length and architecture stay fixed.</pre>
   </details>
+  <details id="probe-panel" style="margin:1rem 0">
+    <summary>Optional post-training needle and behaviour probes</summary>
+    <p class="legend">Bounded greedy checks of exact token sequences, literal output strings or fixed output prefixes. These are diagnostic contracts, not semantic accuracy or a benchmark score. Disabled unless you apply an enabled configuration.</p>
+    <label><input id="probe-enabled" type="checkbox"> enable probes after training</label>
+    <label for="probe-config" style="display:block;margin-top:.5rem">configuration JSON (draft)</label>
+    <textarea id="probe-config" rows="12" spellcheck="false" style="width:100%;background:#0a0d12;color:var(--text);padding:.5rem;font:inherit"></textarea>
+    <button id="probe-apply" type="button">apply probe configuration to spec</button>
+    <p id="probe-status" class="legend" role="status">Disabled in the spec. Draft edits do not change the run until Apply.</p>
+    <hr style="margin:1rem 0;border:0;border-top:1px solid var(--border)">
+    <button id="probe-refresh" type="button">load saved probe results</button>
+    <label>or local receipt <input id="probe-file" type="file" accept=".json"></label>
+    <p id="probe-result-status" class="legend" role="status">No probe receipt loaded. Loading results never runs a model.</p>
+    <pre id="probe-results" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:25rem;overflow:auto"></pre>
+  </details>
   <pre id="b-json"></pre>
   <button id="b-dl">download spec.json</button>
   <span id="b-cmd" class="legend"></span>
@@ -961,6 +975,99 @@ function drawArchDiagram() {
     "model event)";
 }
 
+// BEGIN STUDIO_PROBES_CORE
+function validateProbeConfig(value) {
+  const object=x=>x!==null && typeof x==="object" && !Array.isArray(x);
+  const keys=(x,allowed)=>object(x)&&Object.keys(x).every(k=>allowed.includes(k));
+  const bytes=x=>{
+    if(typeof x!=="string")return Infinity;
+    for(let i=0;i<x.length;i++) {
+      const code=x.charCodeAt(i);
+      if(code>=0xd800 && code<=0xdbff) { const next=x.charCodeAt(++i);if(!(next>=0xdc00&&next<=0xdfff))return Infinity; }
+      else if(code>=0xdc00&&code<=0xdfff)return Infinity;
+    }
+    return new TextEncoder().encode(x).length;
+  };
+  if (!keys(value,["max_new_tokens","cases"]) || !Number.isInteger(value.max_new_tokens) ||
+      value.max_new_tokens<1 || value.max_new_tokens>128 || !Array.isArray(value.cases) ||
+      value.cases.length<1 || value.cases.length>32 || value.cases.length*value.max_new_tokens>1024)
+    throw Error("Use 1–32 cases, max_new_tokens 1–128, total case × token allowance at most 1024; unknown keys are refused.");
+  const ids=new Set();
+  for (const c of value.cases) {
+    if (!keys(c,["id","kind","prompt","contract","expected"]) || typeof c.id!=="string" ||
+        !/^[a-zA-Z0-9_-]{1,64}$/.test(c.id) || ids.has(c.id) ||
+        !["needle","behaviour"].includes(c.kind) || !["exact","contains","prefix","not_contains"].includes(c.contract) ||
+        typeof c.prompt!=="string" || !bytes(c.prompt) || bytes(c.prompt)>8192 ||
+        typeof c.expected!=="string" || !bytes(c.expected) || bytes(c.expected)>256)
+      throw Error("Each case needs a unique safe id, needle/behaviour kind, literal contract, nonempty prompt ≤8192 UTF8 bytes and expected text ≤256 bytes.");
+    ids.add(c.id);
+  }
+  return JSON.parse(JSON.stringify(value));
+}
+function probeContract(text, contract, expected) {
+  if(contract==="exact")return text===expected;
+  if(contract==="contains")return text.includes(expected);
+  if(contract==="prefix")return text.startsWith(expected);
+  if(contract==="not_contains")return !text.includes(expected);
+  throw Error("Unknown literal probe contract.");
+}
+function validateProbeReport(report) {
+  if (!report || report.schema_version!==1 || !["COMPLETE","COMPLETE_WITH_ERRORS","ERROR"].includes(report.status)) throw Error("Unsupported probe receipt schema/status.");
+  const config=validateProbeConfig(report.configuration);
+  if (report.status==="ERROR") {
+    if(typeof report.error!=="string" || !report.error)throw Error("Operational ERROR receipt needs its recorded error.");
+    return report;
+  }
+  if (!report.generation || report.generation.mode!=="greedy" || !Array.isArray(report.cases) || report.cases.length!==config.cases.length) throw Error("Incomplete greedy probe receipt.");
+  const counts={passed:0,failed:0,errors:0,total:report.cases.length};
+  for(let i=0;i<report.cases.length;i++) {
+    const row=report.cases[i],c=config.cases[i];
+    if(!row || ["id","kind","prompt","contract","expected"].some(k=>row[k]!==c[k]) || !["PASS","FAIL","ERROR"].includes(row.status)) throw Error("Probe case identity/status differs from saved configuration.");
+    if(row.status==="ERROR") {
+      if(typeof row.error!=="string"||!row.error)throw Error("Probe error detail missing.");
+      counts.errors++;
+    } else {
+      if(typeof row.generated_text!=="string" || probeContract(row.generated_text,c.contract,c.expected)!==(row.status==="PASS")) throw Error("Recorded literal contract outcome disagrees with generated text.");
+      counts[row.status==="PASS"?"passed":"failed"]++;
+    }
+  }
+  if(!report.summary || Object.keys(counts).some(k=>report.summary[k]!==counts[k]) ||
+     report.status!==(counts.errors?"COMPLETE_WITH_ERRORS":"COMPLETE"))throw Error("Probe summary/status differs from recorded cases.");
+  return report;
+}
+function renderProbeReport(report) {
+  const r=validateProbeReport(report);
+  $("probe-result-status").textContent=r.status==="ERROR"?"Operational probe error: "+r.error:
+    `${r.status}: ${r.summary.passed} literal passes, ${r.summary.failed} failures, ${r.summary.errors} operational errors / ${r.summary.total} cases. Diagnostic contracts only; not semantic quality.`;
+  $("probe-results").textContent=JSON.stringify(r,null,2);
+}
+// END STUDIO_PROBES_CORE
+let appliedProbeConfig=null;
+$("probe-config").value=JSON.stringify({max_new_tokens:16,cases:[{id:"needle1",kind:"needle",prompt:"The codeword is amber. Repeat the codeword:",contract:"contains",expected:"amber"},{id:"format1",kind:"behaviour",prompt:"Reply with exactly OK",contract:"exact",expected:"OK"}]},null,2);
+for(const id of ["probe-config","probe-enabled"]) $(id).addEventListener("input",()=>{
+  $("probe-status").textContent="Draft changed; Apply to update the spec. Previously applied configuration is unchanged.";
+});
+$("probe-apply").addEventListener("click",()=>{
+  try {
+    const next=$("probe-enabled").checked?validateProbeConfig(JSON.parse($("probe-config").value)):null;
+    appliedProbeConfig=next;buildSpec();markEdited();invalidateVram();
+    $("probe-status").textContent=next?`Applied ${next.cases.length} cases, greedy token allowance ${next.cases.length*next.max_new_tokens}; inspect spec before training.`:"Probes disabled in the spec.";
+  }catch(e){$("probe-status").textContent=e.message+" Previous applied configuration preserved.";}
+});
+async function loadProbeReport(text) {
+  $("probe-results").textContent="";
+  if(new TextEncoder().encode(text).length>2*1024*1024)throw Error("Probe receipt exceeds 2 MiB viewer limit.");
+  renderProbeReport(JSON.parse(text));
+}
+$("probe-refresh").addEventListener("click",async()=>{
+  try {$("probe-results").textContent="";const r=await fetch("evaluation-probes");if(!r.ok)throw Error("No saved probe receipt available (HTTP "+r.status+").");await loadProbeReport(await r.text());}
+  catch(e){$("probe-result-status").textContent=e.message;}
+});
+$("probe-file").addEventListener("change",async()=>{
+  try {const f=$("probe-file").files[0];if(!f)return;if(f.size>2*1024*1024)throw Error("Probe receipt exceeds 2 MiB viewer limit.");await loadProbeReport(await f.text());}
+  catch(e){$("probe-results").textContent="";$("probe-result-status").textContent=e.message;}
+});
+
 // ---- spec builder: form -> spec.json (mtstudio's input format) ----
 function buildSpecPreview() {
   return document.getElementById("b-json").textContent || "{}";
@@ -992,6 +1099,7 @@ function buildSpec() {
     serve: { on_finish: true },
     out_dir: v("b-out")
   };
+  if (appliedProbeConfig) spec.evaluation_probes=validateProbeConfig(appliedProbeConfig);
   const txt = JSON.stringify(spec, null, 2);
   document.getElementById("b-json").textContent = txt;
   document.getElementById("b-cmd").textContent =
@@ -1004,8 +1112,9 @@ function buildSpec() {
 function estimateVram(spec, reserveGiB) {
   const fail = message => { throw Error(message); };
   const presets = {"llama-tiny":[128,2,4],"gpt2-nano":[128,2,4],"gpt2-small":[256,4,8]};
+  if (spec.evaluation_probes!==undefined) validateProbeConfig(spec.evaluation_probes);
   const a=spec.arch||{}, tr=spec.train||{}, data=spec.data||{}, c=a.custom||{};
-  if (Object.keys(spec).some(k=>!["name","arch","data","train","export","serve","out_dir"].includes(k)) ||
+  if (Object.keys(spec).some(k=>!["name","arch","data","train","export","serve","out_dir","evaluation_probes"].includes(k)) ||
       Object.keys(data).some(k=>!["corpus","vocab","vocab_cap","T"].includes(k)) ||
       Object.keys(tr).some(k=>!["steps","lr","optimizer","batch","accum","checkpoint_activations","eval_every","checkpoint_every","gradmap_every","early_stopping","precision","attention_kernel"].includes(k)) ||
       !presets[a.preset] || Object.keys(a).some(k=>!["preset","custom"].includes(k)) ||
@@ -1062,7 +1171,7 @@ $("vram-plan").addEventListener("click",()=>{
       attention:"dense attention scores/probabilities/backward (16LH × (BT)^2 bytes)",
       logits:"logits/loss/backward copies (32BTV bytes)",reserve:"user reserve"};
     $("vram-result").textContent=(plan.estimate?`Proposed batch ${plan.batch}, accumulation ${plan.accum}; T=${e.T} unchanged.`:`No supported fit: the microbatch 1, accumulation ${e.accum} estimate still exceeds the budget. Increase the budget or explicitly redesign the run.`)+"\n"+
-      `Planning total: ${(e.total/2**30).toFixed(3)} GiB; parameters ≈ ${(e.params/1e6).toFixed(3)}M\n`+
+      `Training-only planning total (excludes post-training probe peak): ${(e.total/2**30).toFixed(3)} GiB; parameters ≈ ${(e.params/1e6).toFixed(3)}M\n`+
       Object.entries(e.parts).map(([k,v])=>`${names[k]}: ${(v/2**30).toFixed(3)} GiB`).join("\n")+
       "\nConservative planning coefficients, not measured peak memory. Vocabulary cap is an upper bound only for a valid run (BPE vocab larger than cap is refused by the trainer). Full flattened attention allowance deliberately overcounts isolated batches. Accumulation preserves examples/update but can change floating-point reduction order; no numerical-equivalence claim.";
     if (plan.estimate && plan.batch!==spec.train.batch) {

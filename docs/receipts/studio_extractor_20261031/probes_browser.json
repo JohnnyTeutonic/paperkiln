@@ -1,0 +1,1 @@
+{"status":"PASS","cases":["absent by default","explicit application only","invalid draft preserves applied stage","literal PASS/FAIL raw text review","HTML injection stays text","tampered summary rejected/no stale output","disable removes stage","420px fits"],"provider_calls":0,"gpu_calls":0,"model_calls":0}

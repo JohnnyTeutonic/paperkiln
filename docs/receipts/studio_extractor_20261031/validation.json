@@ -123,5 +123,44 @@
     ],
     "integer_bounds": "Runtime batch/accum signed32bit; effective batch INT_MAX bounded scope; finite safely representable available-byte budget; no-fit shows actual microbatch1 estimate",
     "logs_newlines": "Windows captured output normalized to UTF8/LF"
+  },
+  "optional_probes_ui": {
+    "base_commit": "6a42fefcd83b48bc2705010a810f5416ec75d292",
+    "scope": "Browser spec configuration and saved-results viewer only; no model execution from UI tests",
+    "source_sha256": {
+      "studio/index.html": "7a129d80812a0c4f2329220870581bd2f972b568b6c4d07137900f6196114655",
+      "tests/test_studio_probes.js": "493a8ae0e505f64734c9d4acb50dae902d10f22ddf78a3e3bedcaed07d039bd2",
+      "tests/studio_probes_browser.js": "d00fd15997c7f4e0403eeb43a40c8f3ccd568d8e2ffafb0f733811ab30710a6a"
+    },
+    "logs_sha256": {
+      "probes_ui_tests.log": "5777f29e0947c214e7699dcb3bba7e92513abfffa306ec15a93a4e0fc230fcc7",
+      "probes_browser.json": "b253437d69e1a1a6507628b4b8b46fc764b910d2916a08af263d9e00489f13f5"
+    },
+    "logs_newlines": "Windows output capture normalized UTF8/LF",
+    "javascript_tests": "39 passed (5 probes +34 existing)",
+    "offline_Chrome": {
+      "status": "PASS",
+      "cases": [
+        "absent by default",
+        "explicit application only",
+        "invalid draft preserves applied stage",
+        "literal PASS/FAIL raw text review",
+        "HTML injection stays text",
+        "tampered summary rejected/no stale output",
+        "disable removes stage",
+        "420px fits"
+      ],
+      "provider_calls": 0,
+      "gpu_calls": 0,
+      "model_calls": 0
+    },
+    "limitations": [
+      "Literal byte/case-sensitive contracts are diagnostics, not semantic quality or benchmark results.",
+      "Viewer checks recorded configuration/case identities/literal outcomes/counts; checkpoint is displayed provenance, not model bytes independently rehashed in browser.",
+      "VRAM estimate covers training only, not post-training probe peak."
+    ],
+    "provider_calls": 0,
+    "gpu_calls": 0,
+    "model_calls": 0
   }
 }
