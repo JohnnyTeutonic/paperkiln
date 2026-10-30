@@ -129,6 +129,10 @@ change); a conservative sample-SD bound gives |t| at least 7.008, still above 2.
 Thus those six bounded item-credit changes alone cannot reverse the numerical rule.
 This does not establish the mismatch cause, bound unrecorded defects, or repair the
 historical parity violation. Canonical observations and analysis remain unchanged.
+Replay uses the adjacent pinned public receipts and the retained raw artifacts:
+`python audit_parity_sensitivity.py --art-root PATH` (optional `--output NEW.json`).
+The receipt pins the report, affected-item audit, raw-item inventory, completion,
+every used item/summary file and replay-source hashes; no temporary file is required.
 
 | Five-seed cell | Self accuracy | Twin accuracy | Y12 | Gold-history Y12 |
 |---|---:|---:|---:|---:|
