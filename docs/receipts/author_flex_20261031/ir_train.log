@@ -1,0 +1,18 @@
+== mtstudio: author_combined ==
+arch: exact d=16 layers=2 heads=2 | T=16 vocab_cap=4096
+train: 3 steps batch=1 accum=1 lr=0.001 clip=1 eval_every=3 ckpt_every=3 early_stop(patience=0, min_delta=0)
+export: safetensors gguf | serve: no | out: /home/jonat/author_flex_probe_20261031/trained
+{"event":"start","name":"author_combined","steps":3}
+{"event":"data","tokens":2800,"val_tokens":140,"vocab":7}
+{"event":"expr_gradcheck","expr":"x*2","fd_h":0.009999999776482582,"fd_points":32,"fd_tol":0.002,"fd_worst_rel":4.51546706095203e-05,"inputs":["x"],"pass":true,"probe":"x in [-20, 20] step 0.25","probe_nonfinite":0,"slot":"embed"}
+expr embed x*2: gradient vs finite differences worst rel 4.52e-05
+{"T":16,"accum":1,"activation":"gelu_erf","attention":"exact","batch":1,"checkpoint_activations":false,"d":16,"d_ff":24,"embed":{"before_positions":true,"expr":"expr:x*2","inputs":[]},"event":"model","family":"flex","final_norm":true,"gate_bias_init":-2.0,"gelu_approx":"none","heads":2,"layers":2,"lr":0.0010000000474974513,"norm":"layernorm","norm_placement":{"attn":"pre","ffn":"pre"},"params":4064,"position":"sinusoidal","residual":"residual","seed":9,"sinks":1,"tie_head":true,"vocab":7,"window":64}
+{"event":"step","grad_norm":0.8728601336479187,"loss":1.955687165260315,"step":1}
+{"event":"step","grad_norm":0.863568902015686,"loss":1.9476454257965088,"step":2}
+{"event":"step","grad_norm":0.8985517621040344,"loss":1.9705408811569214,"step":3}
+{"event":"eval","step":3,"val_loss":1.9509060680866241}
+{"event":"export","format":"safetensors","path":"/home/jonat/author_flex_probe_20261031/trained/author_combined.safetensors"}
+GGUF Export: Successfully wrote 28 tensors to /home/jonat/author_flex_probe_20261031/trained/author_combined.gguf
+{"arch":"paperkiln","event":"export","family":"flex","format":"gguf","ir":"/home/jonat/author_flex_probe_20261031/trained/author_combined.ir.json","path":"/home/jonat/author_flex_probe_20261031/trained/author_combined.gguf"}
+{"best_val":1.9509060382843018,"early_stopped":false,"event":"done","final_step":3,"wall_seconds":0.003377406}
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)

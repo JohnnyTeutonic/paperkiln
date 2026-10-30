@@ -1,0 +1,65 @@
+{
+  "status": "PASS",
+  "scope": "Tiny trained CPU combined FLEX tiedhead/exactGELU/embed-before-sinusoidal; no HF/GPU claim",
+  "binary_sha256": "3cba15295005af59affc1418c11c013b1ecf0f4accf8c4441df4cc6b003dd52a",
+  "ember_binary_sha256": "1f877524c3b59e1cdbf3ca29ab6d4e0ed216900516e1bcb28d5ec7e7e21b9a0f",
+  "spec_sha256": "c04b0c252dff1d40372b90096a793f32a5ec5d67a35f6726f0bc3b18b1c576f7",
+  "gguf_sha256": "5f215a02045dfab523e60acda29e0059d48dcb836be856fec56f3c666028792b",
+  "ir_sha256": "7fab78f084784127b409c327e58f0e332b17f0a8177d1fdced98056f85dc1530",
+  "ir_validator": "PASS",
+  "missing_output_weight": true,
+  "tied_to": "token_embd.weight",
+  "embed_node_ops": [
+    "embedding",
+    "expr",
+    "pos_embedding"
+  ],
+  "numpy_vs_ember": {
+    "prefill": {
+      "rounding_error": 2.9802322387695312e-08,
+      "argmax_equal": 17,
+      "rows": 17,
+      "bound": 1e-05
+    },
+    "decode": {
+      "rounding_error": 2.9802322387695312e-08,
+      "argmax_equal": 17,
+      "rows": 17,
+      "bound": 1e-05
+    }
+  },
+  "numpy_vs_mtstudio_score": {
+    "max_logprob_rounding": 9.452573255113611e-09,
+    "greedy_sequences_equal": 4,
+    "sequences": 4,
+    "continuation_tokens_per_sequence": 2
+  },
+  "source_sha256": {
+    "include/microtorch/ops.hpp": "c137545c6bb68fb485440cf9a010e83534ffed740412b4dab6efdd98ad42aa56",
+    "src/ops.cpp": "e3942b4564d035243be9f8084025222d7f93a01c794a2e40b3ef2e86cde0f42e",
+    "tools/parity_model.hpp": "53ee275b94e2cdfd71dc4fadcf10ae0884e6895f3a49dfb100d6d24bf227d39d",
+    "tools/mtstudio.cpp": "ed7c2f965065551221f33ab26872c197b24dfec4fb257d83ec2605778c613905"
+  },
+  "provider_calls": 0,
+  "gpu_calls": 0,
+  "raw_fixture_home": "/home/jonat/author_flex_probe_20261031",
+  "executed_script_sha256": "f76eec9a256f21c7b89fc335fc94029fa3df70ed15611fe0963d095f1ff4f0c0",
+  "proof_files_sha256": {
+    "ir_spec.json": "c04b0c252dff1d40372b90096a793f32a5ec5d67a35f6726f0bc3b18b1c576f7",
+    "ir_ids.json": "42bcd67b8400068018d2a624109607c607d3351f7ed1dd699b77f0ecaecaa6c5",
+    "ir_ember_rows.json": "be43afd26613198799a8b5d6c8307eec82f4468b7d5bf750c99a1574a9e4a4b3",
+    "ir_ember_stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ir_score_in.jsonl": "afee4cabe17fb3fc2a2a6b9f43f8c4984cb9e808556c782dd43173c18f3cd9d0",
+    "ir_score_out.jsonl": "77ca8e3ce9f2a6650d58f1232b8daa6886b4c740f2931dda65f06495262d6ecb",
+    "ir_train.log": "43d928c1d6eefcdb60ec387099fb247b13d41a17c5885a8aa40cf1975bfd37c1",
+    "ir_check.log": "841eeff0d5383094babf9cc17246fcd2a8e579bfc582bd21d4ca019445f73883",
+    "combined.ir.json": "7fab78f084784127b409c327e58f0e332b17f0a8177d1fdced98056f85dc1530",
+    "ir_proof_run.py": "f76eec9a256f21c7b89fc335fc94029fa3df70ed15611fe0963d095f1ff4f0c0"
+  },
+  "limitations": [
+    "Tiny CPU-only combined configuration, four prompts/17 teacherforced positions and eight greedy continuation tokens.",
+    "No HF mapping or GPU support/parity established.",
+    "Source before/after and binary before/after unchanged; final source commit must match source_sha256.",
+    "Local artifact home retains sole model/corpus/checkpoints; public receipt includes only small raw rows/logs/spec/IR/script."
+  ]
+}
