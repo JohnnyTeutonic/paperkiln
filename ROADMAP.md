@@ -1,6 +1,6 @@
 # paperkiln roadmap
 
-*The one list of what is left to do, as at 24 October 2026. Finished work
+*The one list of what is left to do, as at 30 October 2026. Finished work
 moves to [`CHANGELOG.md`](CHANGELOG.md) and comes out of here. Everything
 else under `docs/` and `atlas/` is reference (design, records, results);
 where one of those documents carries a plan, this file wins.*
@@ -9,45 +9,21 @@ where one of those documents carries a plan, this file wins.*
 
 0. **Tiny chat from scratch (LOCAL_LLM_WORK.md E1;
    `experiments/tiny_chat_2026-10/`, `experiments/tiny_chat_long_2026-10/`).**
-   E5, E1 and the recursion arm run on Colab; E1 at 60M waits for an L4 (first use of the
-   RunPod backend for `tools/colab_chat/runner_multi.py`, under validation); Carry-12 and its
-   Stage L0 follow E5 and E1.
-1. **The chat model (LOCAL_LLM_STACK.md sections 8 and 11, item 2).**
-   - Jonathan's pick between the winner rule's two verdicts (`experiments/chat_general/RESULTS.md`,
-     "The winner": live as registered, pk_sft_v1 under amendment A1).
-   - The Claude-judge pilot on pk_sft_v1, prepared, launch on Jonathan's go: candidates on a RunPod
-     L4 (`tools/colab_chat/pref_pilot_v1.json`), then `experiments/chat_general/judge_pilot.sh`
-     (200 prompts, $100 cap) at home; then the full ~3,000 prompts and DPO + NLL.
-2. **Engine:** BF16 mixed precision and a fused attention backward (opt-in; building).
-
-## 2. Decisions waiting on Jonathan
-
-- The tiny-chat MoR block's nine runs (amendment 4, A4.7: his confirmation of the measured
-  total) and R8 if A3.3's rule fires.
-- Carry-12's MSC rulings (licence unstated; an episode as one conversation; ConvAI2 duplicates).
-
-Settled on 25 Oct 2026 (the main session, under Jonathan's delegation): paperkiln's own translation
-units are compiled with `-ffp-contract=off` (spec/IR_SPEC.md Q15; fc96e602).
-
-Settled on 22 Oct 2026: up to four Colab sessions at once, one named session per job, each
-driver under the Windows watchdog. Settled on 16 Oct 2026: the post-training and corpus charter
-([`docs/decisions/0001-posttrain-charter.md`](docs/decisions/0001-posttrain-charter.md))
-is approved, with the open calls delegated and recorded in its §12.
-
-Settled on 10 Oct 2026:
-- PyPI: `paperkiln-fetch` 0.1.0 and `paperkiln` 0.3.1 are published
-  (`paperkiln`: portable x86-64-v3 Linux wheels for Python 3.10–3.12).
-- Registry: Study 2 has its row (T2-structure-position-fragile), which
-  supersedes T1-structure-transfers; T1-fixed-lr-mistunes stands. The
-  highway pilot has its row (R0001-highway-depth2-null).
-- Parked until the journal verdicts are in: the two synthesis sketches
-  (consensus prefill, commit-gated TTT) and the designer pilot. Their
-  code and plans are committed.
-- The mechanism freeze is lifted; every new mechanism ships with a
-  pre-registered falsifier (decision D10).
-- No separate methodology paper: its argument was in the transfer paper,
-  retired on 20 Oct 2026 after the Machine Learning desk rejection.
-  `atlas/PAPER_PLAN.md` stays as reference.
+   E5, E1 at 20M/60M, recursion and MoR are home and analysed
+   (`experiments/tiny_chat_2026-10/analysis_2026-10-28.json`). Remaining: the registered size
+   extension's 20M/60M seeds 4-5 (all five 150M runs are home), Stage L0 on the registered 150M
+   pick, and Carry-12's full analysis after the remaining post summaries arrive. The size extension
+   rule has fired; its pins and 150M pick inputs passed
+   `experiments/tiny_chat_2026-10/size/readiness_2026-10-30.json`.
+1. **The chat model (LOCAL_LLM_WORK.md E2).** Full preference judging at 256 new tokens
+   with the rubric unchanged, then DPO + NLL and the five-part gate in `experiments/chat_general/PLAN.md`.
+   The winner, both pilots and full sampling are complete (3,020 candidate rows home in
+   `C:/ml_artifacts/pref_full/sample/`). A read-only plan needs 5,660 more rankings with the
+   original LF rubric and existing cache; CRLF conversion changes its hash and loses cache reuse.
+   The delegated 28 Oct decision is recorded in
+   `experiments/chat_general/RESULTS.md`, "The full run" (00ecd0d4); judging and training remain pending,
+   with the recorded $200 total cap including the cache and held-out side-by-side gate.
+   Release of the staged F16 browser model remains pending Jonathan's go (E2.2).
 
 ## 3. Broken now
 
@@ -56,7 +32,7 @@ Settled on 10 Oct 2026:
   build (`~/pk_state_build/mtstudio`, four slots; the process sat at ~210% CPU). Not diagnosed. On the L4, training
   runs at 0.67x plain.
 
-CI is green on all three workflows (Code Quality, the test
+The last recorded CI status is green on all three workflows (Code Quality, the test
 suite with its Python suites and the fetcher drift check, and the wheel
 build with its smoke test), and the chat-v1 release serves the quickstart's
 ready-made model. One open choice: cppcheck and Valgrind still run as
@@ -70,51 +46,11 @@ advisory steps that cannot fail the build.
 ## 4. Research
 
 - **Post-training and corpus provenance** (charter 0001, order of work §11).
-  Step 1 done (16 Oct 2026): `corpus/` registry, ledgers, pinned fetchers
-  (`make corpus` rebuilds the research slice byte-exact), cards, and C0.
-  Phase 1 done: `posttrain/verifier.hpp` (receipts mandatory; exact match,
-  format, synthetic judge, cached LLM judge, human audit, Linux code sandbox)
-  and `tools/posttrain/judge_sidecar.py` (round trip to C++ tested).
-  Phase E done: `tinyarith` (levels R=10/20/50, splits disjoint by fact) with
-  frozen dev/test/hack-probe sets, and frozen held-out narrative and dialogue text
-  (`corpus/eval/`, pins enforced by tests). Probe: Common Crawl (FineWeb-Edu) and
-  Simple Wikipedia lose 17-20% of tokens even to their own 4096-word vocabulary,
-  so they are retired until there is a subword tokenizer. Next:
-  Phases 2-3 done (17 Oct 2026): `mtstudio sample-set` (pure temperature,
-  replayable), `rejection_sample.py`, `audit_sample.py`, masked SFT
-  (`train.objective` sft / rejection_sft, `train.init_from`); the lm path is
-  bit-identical to a banked Atlas receipt (`experiments/posttrain_bridge/`);
-  pipeline smoke in `experiments/posttrain_smoke/`.
-  Phases 4-5 done (17 Oct 2026): GRPO (`ops::policy_gradient_kl`; bandit lands on
-  the analytic optimum to 2e-7) and provenance-weighted DPO (`ops::dpo_weighted`),
-  both as mtstudio objectives with monitors and falsifier modes; how-to in
-  `docs/POSTTRAIN.md`. Studies:
-  - `posttrain_calib`: done, R = 20 (charter §13);
-  - PT2 (filter provenance): done, null (charter §14);
-  - PT4 (hack monitor, +1 channel): done, MONITOR_BLIND; PT4b (+2 channel): done,
-    MONITOR_VALIDATED (charter §15–16);
-  - PT5 (judge vs noise pairs; provenance weighting): done (18 Oct 2026),
-    NOT_RESOLVED and WEIGHTING_INERT; the weight table is retired as the default
-    (`train.po.weight_mode` is `uniform`). The fixed DPO recipe lowered truth in
-    every arm, exact-ordered included (charter §17).
-  - Byte-level BPE (`tools/bpe.py`, `bpe_tokenizer.hpp`, 8192-entry TinyChat vocab)
-    and the chat corpus (TinyChat, ledger 0003) are in; GGUF exports of BPE models
-    carry their merges.
-  Next:
-  - **TinyChat chat model: done (19 Oct 2026).** Base 12000 steps (val 1.989) +
-    SFT, served by ember.cpp with BPE and 40/40 greedy parity
-    (`experiments/chat_tinychat/RESULTS.md`). Chat improves with base steps; the
-    simple-QA probe stays 0/50 on facts, science and arithmetic. SPIN preference
-    pairs retired (repetition, collapse). SFT overfits after ~500 steps.
-  - **General-text chat model** (running from 19 Oct 2026,
-    `experiments/chat_general/PLAN.md`): FineWeb-Edu base d384 L6, ~195M tokens,
-    47,500 steps, ~24 L4-hours (`tools/colab_chat/boot_fineweb.sh`, runner
-    session pk-fw); then TinyChat SFT (~500 steps), then a Claude-judged
-    preference stage (`tools/posttrain/chat_judge.py`, ~$25 per 1,000 prompts,
-    needs Jonathan's OK), scored by `tools/chat_eval.py` and `tools/qa_eval.py`.
-  - Engine, next: the remaining per-token host work (zero-filled Matrix
-    construction on every op is the largest item in the profile); a VM-side
-    snapshot before each checkpoint relay, so relays stop racing the saves.
+  Remaining preference execution is listed in section 1; completed corpus, verifier, SFT, GRPO,
+  DPO, byte-BPE and chat-model milestones are recorded in CHANGELOG and the charter.
+  Other open follow-ups whose completion is not established here:
+  - the remaining per-token host work (zero-filled Matrix construction in the profile);
+  - a VM-side snapshot before each checkpoint relay, so relays stop racing saves;
   - HF-export round trip of an SFT'd model (the brief's Phase 3 export check).
 
 - **Scale ladder, depth rung.** d=256, 4 layers, exact against SWA, as its
@@ -127,6 +63,7 @@ advisory steps that cannot fail the build.
   - the R2-efficiency row, still pending;
   - the optimiser-interaction follow-up.
 - **Parked lines, resumable.**
+  - consensus prefill, commit-gated TTT and the designer pilot, parked until the journal verdicts;
   - SRD rung 2b;
   - the sparse S1 depth rung;
   - V2 CoD;
@@ -207,8 +144,6 @@ advisory steps that cannot fail the build.
 
 ## 7. Studio, chat and distribution
 
-- **Publish the default chat model** (see Broken now) and put it on the
-  Hugging Face Hub with `tools/publish_hf.py`.
 - **More `paperkiln` wheels:** macOS and Windows builds (Linux x86-64
   only today).
 - **Studio features:**
@@ -217,21 +152,25 @@ advisory steps that cannot fail the build.
   - a fit-to-VRAM budgeter;
   - an evaluation-probe stage in the spec (needle and behavioural
     probes).
-- **Browser chat** for SWA, Kimi, SRD and attnres models. It supports
-  exact attention only.
 - **Open-weight models on our own engines: speed.** Parity is done through the IR,
   on the CPU and on CUDA; benchmark ember against `transformers` for speed.
-- **WebGPU for the IR families** (ember's browser chat runs llama and MoE GGUFs on
-  WebGPU).
+- **Browser performance and remaining device gates** (LOCAL_LLM_WORK.md E4, E9, E10).
+  The IR family and recurrence paths are built in WebAssembly/WebGPU. The 28 Oct hardware
+  receipt (`../ember.cpp/experiments/webgpu_gpu_2026-10-27/`) covers the existing tiny families,
+  Gemma-3-270m, Qwen2.5-0.5B, Qwen3-0.6B and the page chat path on an L4. This does not close
+  newer families' op-specific CUDA gates or establish hardware WebGPU execution for operations
+  currently delegated to WebAssembly. Small-IR browser speed remains a measured limitation
+  (state4 24.7 replies/s WebGPU against 136 in single-threaded WebAssembly in that receipt).
 - **Windows testing of the quickstart** (parked).
 
 ## 8. Ecosystem (coalfire.cpp, ember.cpp)
 
 *Reference: [`docs/ECOSYSTEM.md`](docs/ECOSYSTEM.md).*
 
-- **C2, the cross-engine logit-parity pin:** no receipt exists.
+- **C2, the paperkiln/coalfire training logit-parity pin:** no receipt exists for that contract.
 - **C3, a single GGUF writer** (coalfire side).
-- **C5, a shared BPE tokenizer.** Training is still word-level.
+- **C5, tokenizer consolidation with coalfire.** Paperkiln already trains byte-level BPE models
+  (`tools/bpe.py`, `bpe_tokenizer.hpp`); the coalfire consolidation contract remains open.
 - **Technique transfer still open** (`docs/TECH_TRANSFER.md`):
   - SiTU-GLU and quantile balancing;
   - gated MLA/NoPE;

@@ -7,6 +7,20 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Roadmap reconciled with completed stack work** (30 Oct). Removed stale running E5/E1/recursion
+  status, the completed winner selection and preference pilots, the BF16 "building" entry, delegated
+  MoR/MSC decisions (25 Oct), published Hub models and completed browser family implementation.
+  Existing receipts establish real-L4 WebGPU gates as well as CPU/SwiftShader checks; newer op-specific
+  device gates and browser speed limits remain open. Full preference execution follows the later
+  00ecd0d4 decision (256 tokens, unchanged rubric, $200 total cap), not the superseded pilot hold.
+  Full sampling is already home (3,020 candidate rows). Read-only judging plan: 5,660 calls remain
+  with the original LF rubric/cache; restored CRLF bytes falsely require all 6,040 calls. No judge
+  call was made; preserve the original rubric hash before executing the remaining work.
+  The size extension has fired but lacks four matched runs; its initial-three-seed pick inputs are
+  verified in `experiments/tiny_chat_2026-10/size/readiness_2026-10-30.json`. Removed completed research
+  history from the open list, retained unverified follow-ups and parked work, and corrected the obsolete
+  word-level-only claim without closing coalfire's separate tokenizer/parity contracts.
+
 - **Resume archives preserve completed remote runs** (30 Oct; 6db8fcf6). The transfer runner
   skips archive members belonging to a destination run that already has `result.json` and accepts
   that completed result during verification. An adopted VM's final events and results cannot be
