@@ -77,7 +77,7 @@ def build_hf_config(arch: Arch) -> tuple[dict, str, dict]:
     # refuses; never replace an explicitly stated mechanism with a default.
     supported = {
         "llama": {"norm": {"rmsnorm"}, "positional": {"rope"},
-                  "activation": {"swiglu", "silu", "geglu"}},
+                  "activation": {"swiglu", "geglu"}},
         "gpt2": {"norm": {"layernorm"}, "positional": {"learned"},
                  "activation": {"gelu", "relu"}},
     }
@@ -86,7 +86,7 @@ def build_hf_config(arch: Arch) -> tuple[dict, str, dict]:
         if value is not None and value not in values:
             raise ValueError(f"{family} HF config cannot represent {key}={value}; use JSON metadata")
     for key, neutral in (("attention", {"exact", "dense"}),
-                         ("residual", {"plain", "residual"})):
+                         ("residual", {"residual"})):
         value = _value(arch, key)
         if value is not None and value not in neutral:
             raise ValueError(f"{family} HF config cannot represent {key}={value}; use JSON metadata")

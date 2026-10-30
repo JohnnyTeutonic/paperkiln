@@ -47,7 +47,9 @@ def test_geglu_uses_gelu_gate_not_silu():
     {"norm": "rmsnorm", "positional": "learned", "activation": "swiglu"},
     {"norm": "layernorm", "positional": "rope", "activation": "swiglu"},
     {"positional": "rope"}, {"activation": "swiglu"},
-    {"attention": "swa"}, {"residual": "highway"}, {"window": 16}, {"n_sinks": 4},
+    {"attention": "swa"}, {"residual": "highway"}, {"residual": "plain"},
+    {"norm": "rmsnorm", "positional": "rope", "activation": "silu"},
+    {"window": 16}, {"n_sinks": 4},
     {"n_kv_heads": 2},
 ])
 def test_unsupported_known_mechanisms_refuse(fields):

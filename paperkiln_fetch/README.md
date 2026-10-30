@@ -38,11 +38,12 @@ remain available. This bounded support does not infer expert-gate normalization.
 
 HF output is a **configuration skeleton**, not a weight conversion or a verified reconstruction
 of the paper. The two supported skeletons cannot represent every extracted mechanism: explicit
-sliding windows, sinks, highway residuals, incompatible norm/position/activation combinations,
+sliding windows, sinks, highway or absent residuals, incompatible norm/position/activation combinations,
 and GPT-2 grouped-query attention refuse rather than silently change the architecture.
 Dimensions and head geometry are checked. Unverified or contested findings remain in provenance
 but are not applied. Missing dimensions, architecture assumptions and emitted constants are named
 in `_paperkiln.defaults_applied`; an unqualified GELU uses the exact form as a declared assumption.
+Bare SiLU does not establish a gated FFN, so Llama emission requires explicit SwiGLU or GEGLU.
 
 ## Why this exists
 
