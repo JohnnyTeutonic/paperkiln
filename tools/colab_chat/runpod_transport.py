@@ -12,9 +12,9 @@ The volume (SECURE cloud) is created once per campaign in a data centre with the
 mounted at /content, so /content/chat and /content/pk are Colab's paths and outlive any pod: a
 relaunch in the same data centre needs no re-upload, the build is reused (same commit), and jobs
 resume from their own checkpoints on the volume (runner_multi.volume_has). When that data centre
-has no stock (or two creates there failed) the campaign moves: a new volume elsewhere, a full
-prepare(), the old volume deleted once the new pod is up. The volume is deleted when the campaign
-is home (release); runpod_sweep.py deletes it too if the runner could not.
+has no stock, a used volume stays in its original data centre and the runner waits/retries.
+Only a volume never referenced by a pod can move automatically. Used retired volumes remain until
+all jobs are home and release() runs; a replacement pod's successful prelude is not migration proof.
 
 The pod is terminated (never just stopped: its container disk would still bill) whenever the runner
 stops it: queue empty, deadline, a fatal error, SIGTERM/SIGINT/SIGHUP, or interpreter exit (atexit).
@@ -56,7 +56,7 @@ ENV_PREAMBLE = (
     "if _pk_os.path.isdir('/usr/local/cuda/bin') and '/usr/local/cuda/bin' not in _pk_os.environ.get('PATH', ''):\n"
     "    _pk_os.environ['PATH'] = '/usr/local/cuda/bin:' + _pk_os.environ.get('PATH', '')\n")
 UP_SECONDS = 1500  # create -> ssh answering (image pull included) before the pod is given up
-DC_FAILS_MOVE = 2   # failed creates in the volume's data centre before the campaign moves
+DC_FAILS_MOVE = 2   # failed creates before an UNUSED volume may move
 MIN_RAM, MIN_VCPU = 32, 6  # per GPU: the host floor (RunPod L4 hosts: 6 vCPU/62 GB in EU-RO-1, 12/100 in EUR-IS-2)
 
 
@@ -315,6 +315,9 @@ class RunPodTransport:
     def release(self, st):
         """The campaign is home: delete its volume(s)."""
         R = self.R(st)
+        if not st.d.get("campaign_home") or R.get("pod") or any(
+                not job.get("home") for job in st.d.get("jobs", {}).values()):
+            raise api.Refused("volume release requires all campaign jobs home and no active pod")
         vols = [v for v in [R.get("volume")] + R["retired_volumes"] if v]
         for v in vols:
             self._delete_volume(st, v)
@@ -340,11 +343,22 @@ class RunPodTransport:
     def _stocked(self):
         return api.stocked_dcs(self.gpu, MIN_RAM, MIN_VCPU, secure=self.cloud == "SECURE")
 
+    def _volume_used(self, st, vol):
+        """A pod reference means potentially irreplaceable progress, including failed boots.
+        Legacy pod records without a volume binding are uncertain, hence protected too.
+        """
+        R = self.R(st)
+        pods = R["ledger"]["pods"]
+        live = R.get("pod")
+        unbound_live = live and not any(p.get("id") == live.get("id") for p in pods)
+        return bool(unbound_live) or any(
+            p.get("volume") == vol["id"] or "volume" not in p for p in pods)
+
     def _retire(self, st, vol):
         """The campaign leaves this volume: deleted now when no pod ever ran on it (nothing to lose), else
-        kept until the next pod is up (create) or the campaign is home (release)."""
+        kept until the entire campaign is home (release), never just until a replacement pod is up."""
         R = self.R(st)
-        if not any(p.get("volume") == vol["id"] for p in R["ledger"]["pods"]) and self._delete_volume(st, vol):
+        if not self._volume_used(st, vol) and self._delete_volume(st, vol):
             return
         R["retired_volumes"].append(vol)
         st.save()
@@ -360,10 +374,17 @@ class RunPodTransport:
             return stocked[0], None
         if self.dc:
             if vol and vol["dc"] != self.dc:
+                if self._volume_used(st, vol):
+                    raise api.Refused("used volume cannot switch data centre without operator-verified migration; "
+                                      "preserve its checkpoints and resume in " + vol["dc"])
                 self._retire(st, vol)
                 vol = R["volume"] = None
             dc = self.dc
         else:
+            if vol and self._volume_used(st, vol):
+                # Stock metadata and repeated create failures cannot authorize losing partial results.
+                # Try the same DC; the provider's no-stock response is a safe retry, never migration.
+                return vol["dc"], vol
             stocked = self._stocked()
             if vol and vol["dc"] in stocked and R.get("dc_fails", 0) < DC_FAILS_MOVE:
                 return vol["dc"], vol
@@ -442,7 +463,8 @@ class RunPodTransport:
                 self.stop(st)
                 return 1, "prelude failed; pod terminated"
             for v in list(R["retired_volumes"]):
-                self._delete_volume(st, v)
+                if not self._volume_used(st, v):
+                    self._delete_volume(st, v)
             R["retired_volumes"] = [v for v in R["retired_volumes"] if not v.get("deleted")]
             st.save()
             return 0, pod["id"]
