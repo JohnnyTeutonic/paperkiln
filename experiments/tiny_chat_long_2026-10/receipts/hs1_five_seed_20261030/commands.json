@@ -1,0 +1,11 @@
+[
+ [
+  "/usr/bin/python3",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/experiments/tiny_chat_long_2026-10/finalize_hs1_extension.py",
+  "--calculate",
+  "--art",
+  "/mnt/c/ml_artifacts/tiny_chat",
+  "--out",
+  "/mnt/c/ml_artifacts/tiny_chat/carry12_hs1_final_v2/.incoming/analysis_hs1.json"
+ ]
+]

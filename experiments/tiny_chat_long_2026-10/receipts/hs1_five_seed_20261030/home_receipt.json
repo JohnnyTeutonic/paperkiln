@@ -1,0 +1,175 @@
+{
+  "checked_utc": "2026-10-30T13:58:04.420713+00:00",
+  "states": {
+    "b_r4": {
+      "state_sha256": "bca8db47cc9cd84915b3771892b20383607259b3213d27c92957864d1da261e7",
+      "campaign_home": true,
+      "all_jobs_home": true,
+      "pod": null,
+      "volume": null,
+      "ledger": {
+        "pods": [
+          {
+            "id": "uodb032gkd485t",
+            "name": "pk-c12-hs1-b-r4",
+            "gpu": "L4",
+            "usd_per_hr": 0.59,
+            "dc": "EU-RO-1",
+            "volume": "05zud7xylj",
+            "start": 1793336164.1192045,
+            "stop": 1793357361.5449486,
+            "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+            "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+            "stopped_by": "runner"
+          }
+        ],
+        "volumes": [
+          {
+            "id": "05zud7xylj",
+            "dc": "EU-RO-1",
+            "gb": 80,
+            "created": 1793336156.4094324,
+            "name": "pk-c12-hs1-b-r4-vol",
+            "deleted": 1793357362.3108535
+          }
+        ]
+      }
+    },
+    "b_r5": {
+      "state_sha256": "cfd821eaaae0d75564b1b5785e92ea9a02f40cc5cd815610dc92baa3195d1fcc",
+      "campaign_home": true,
+      "all_jobs_home": true,
+      "pod": null,
+      "volume": null,
+      "ledger": {
+        "pods": [
+          {
+            "id": "kazmo6lxv4ckp8",
+            "name": "pk-c12-hs1-b-r5",
+            "gpu": "L4",
+            "usd_per_hr": 0.59,
+            "dc": "EUR-IS-1",
+            "volume": "280o1sbn0i",
+            "start": 1793336411.6354163,
+            "stop": 1793361202.0869653,
+            "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+            "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+            "stopped_by": "runner"
+          }
+        ],
+        "volumes": [
+          {
+            "id": "81nqt1lczz",
+            "dc": "EU-RO-1",
+            "gb": 80,
+            "created": 1793336157.0478055,
+            "name": "pk-c12-hs1-b-r5-vol",
+            "deleted": 1793336406.7312827
+          },
+          {
+            "id": "280o1sbn0i",
+            "dc": "EUR-IS-1",
+            "gb": 80,
+            "created": 1793336407.951874,
+            "name": "pk-c12-hs1-b-r5-vol",
+            "deleted": 1793361202.9281697
+          }
+        ]
+      }
+    },
+    "sgist_r4": {
+      "state_sha256": "45407993ae6e55e09e5b5b062dde16a5e72b3cd18294cc4cb6bbe437c29f414b",
+      "campaign_home": true,
+      "all_jobs_home": true,
+      "pod": null,
+      "volume": null,
+      "ledger": {
+        "pods": [
+          {
+            "id": "6x9uqw4y3olp8q",
+            "name": "pk-c12-hs1-sgist-r4",
+            "gpu": "L4",
+            "usd_per_hr": 0.59,
+            "dc": "EUR-IS-1",
+            "volume": "a7wh33qn0c",
+            "start": 1793336412.3120024,
+            "stop": 1793365545.0612621,
+            "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+            "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+            "stopped_by": "runner"
+          }
+        ],
+        "volumes": [
+          {
+            "id": "js76cx8b64",
+            "dc": "EU-RO-1",
+            "gb": 80,
+            "created": 1793336157.63051,
+            "name": "pk-c12-hs1-sgist-r4-vol",
+            "deleted": 1793336407.7052963
+          },
+          {
+            "id": "a7wh33qn0c",
+            "dc": "EUR-IS-1",
+            "gb": 80,
+            "created": 1793336408.8360732,
+            "name": "pk-c12-hs1-sgist-r4-vol",
+            "deleted": 1793365545.923362
+          }
+        ]
+      }
+    },
+    "sgist_r5": {
+      "state_sha256": "dcf6fd5ed88ceefede8db0c5eeaf9f21b8137d52ebd04e817eb7a7cfcf6046a0",
+      "campaign_home": true,
+      "all_jobs_home": true,
+      "pod": null,
+      "volume": null,
+      "ledger": {
+        "pods": [
+          {
+            "id": "ixf11kb989nzxl",
+            "name": "pk-c12-hs1-sgist-r5",
+            "gpu": "L4",
+            "usd_per_hr": 0.59,
+            "dc": "EUR-IS-1",
+            "volume": "swhxav3hok",
+            "start": 1793336658.7439287,
+            "stop": 1793368599.2227385,
+            "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+            "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+            "stopped_by": "runner"
+          }
+        ],
+        "volumes": [
+          {
+            "id": "8kcv9d32c8",
+            "dc": "EU-RO-1",
+            "gb": 80,
+            "created": 1793336158.6722124,
+            "name": "pk-c12-hs1-sgist-r5-vol",
+            "deleted": 1793336408.2745142
+          },
+          {
+            "id": "swhxav3hok",
+            "dc": "EUR-IS-1",
+            "gb": 80,
+            "created": 1793336410.0144832,
+            "name": "pk-c12-hs1-sgist-r5-vol",
+            "deleted": 1793368600.0801754
+          }
+        ]
+      }
+    }
+  },
+  "provider_check": {
+    "utc": "2026-10-30T13:58:47.032465+00:00",
+    "all_four_campaign_pods_absent": true,
+    "checked_pod_ids": [
+      "6x9uqw4y3olp8q",
+      "ixf11kb989nzxl",
+      "kazmo6lxv4ckp8",
+      "uodb032gkd485t"
+    ]
+  }
+}

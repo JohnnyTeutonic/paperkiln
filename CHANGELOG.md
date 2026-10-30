@@ -7,6 +7,14 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Registered five-seed HS1 extension complete** (30 Oct). All four new B/S-gist
+  runs are home. S-gist minus B is SUPPORTED at -12.668 Y12 points (90% CI
+  [-16.353,-8.983]); the original three-seed core stays unchanged. Independent
+  source/input/report/statistical audits and 72,600 raw-credit replays pass.
+  The S-full condition is now true, but no control campaign has launched and the
+  broader programme remains open. Results and exact cache-resume exception:
+  `experiments/tiny_chat_long_2026-10/RESULTS.md`.
+
 - **Four missing evaluation hash manifests added** (30 Oct). CI exposed absent manifests for
   IF-tiny, IF-distance and the two conversation-v2 evaluation sets. Each dataset is byte-identical
   to its first Git commit; both IF sets also regenerate exactly and match the recorded result

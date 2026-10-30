@@ -1,0 +1,113 @@
+{
+  "audit": "independent input/source hashes and raw-pool five-pair arithmetic",
+  "completion": "2026-10-30T13:53:00.357791+00:00",
+  "inventories_verified": {
+    "sources": 56,
+    "inputs": 69,
+    "reports": 3
+  },
+  "cell_means": {
+    "B": {
+      "self": 0.43014,
+      "twin": 0.52522,
+      "Y12": -0.09508,
+      "twin_minus_noctx_context": 0.26955999999999997,
+      "validity_gate": true
+    },
+    "Sgist": {
+      "self": 0.31116,
+      "twin": 0.53292,
+      "Y12": -0.22175999999999996,
+      "twin_minus_noctx_context": 0.27892,
+      "validity_gate": true
+    }
+  },
+  "paired": {
+    "per_seed": [
+      -0.1333,
+      -0.1514,
+      -0.05869999999999999,
+      -0.1487,
+      -0.1413
+    ],
+    "mean": -0.12668000000000001,
+    "sd": 0.03864844110698387,
+    "t": -7.3292759882748975,
+    "crit": 2.776,
+    "ci90": [
+      -0.16352971891249107,
+      -0.08983028108750896
+    ],
+    "verdict": "SUPPORTED"
+  },
+  "report_sha256": "6868c6374d6ca637b91ec106d762c79c193b9cd0de9c784fb43311b9588da04a",
+  "raw_score_replay": {
+    "runs": 10,
+    "items": 14520,
+    "forced_choice_credits": 72600,
+    "scope": "Recomputed credit from saved four-candidate raw log-prob sums/gold index and over-context flags, not a new model-forward pass. Every pool matches frozen summary rounding to4 decimals; registered contrasts use those unchanged summary values.",
+    "registered_rounding_verified": [
+      {
+        "cell": "B",
+        "seed": 1,
+        "raw_Y12": -0.07536231884057976,
+        "registered_summary_Y12": -0.0754
+      },
+      {
+        "cell": "B",
+        "seed": 2,
+        "raw_Y12": -0.09275362318840585,
+        "registered_summary_Y12": -0.0928
+      },
+      {
+        "cell": "B",
+        "seed": 3,
+        "raw_Y12": -0.1159420289855072,
+        "registered_summary_Y12": -0.116
+      },
+      {
+        "cell": "B",
+        "seed": 4,
+        "raw_Y12": -0.08768115942028992,
+        "registered_summary_Y12": -0.0876
+      },
+      {
+        "cell": "B",
+        "seed": 5,
+        "raw_Y12": -0.10362318840579715,
+        "registered_summary_Y12": -0.1036
+      },
+      {
+        "cell": "Sgist",
+        "seed": 1,
+        "raw_Y12": -0.20869565217391312,
+        "registered_summary_Y12": -0.2087
+      },
+      {
+        "cell": "Sgist",
+        "seed": 2,
+        "raw_Y12": -0.24420289855072463,
+        "registered_summary_Y12": -0.2442
+      },
+      {
+        "cell": "Sgist",
+        "seed": 3,
+        "raw_Y12": -0.17463768115942035,
+        "registered_summary_Y12": -0.1747
+      },
+      {
+        "cell": "Sgist",
+        "seed": 4,
+        "raw_Y12": -0.23623188405797102,
+        "registered_summary_Y12": -0.2363
+      },
+      {
+        "cell": "Sgist",
+        "seed": 5,
+        "raw_Y12": -0.24492753623188407,
+        "registered_summary_Y12": -0.2449
+      }
+    ],
+    "raw_audit_sha256": "bc8dd6d40b723fe5f1a0e891abd660e0c0be3964f1c9e3b61e4a3adcfa10e52b"
+  }
+}

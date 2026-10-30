@@ -84,7 +84,7 @@ higher on chat2, while repetition rises by about 2 points and distinct bigrams f
 remains near zero (B 0%, TS 0.46%). These are narrow diagnostics, not evidence that TS
 has become a broadly useful conversational model.
 
-## Remaining work
+## Remaining work at the three-seed core receipt
 
 The three-seed core is complete. HS1 alone meets section 9's primary-contrast extension
 rule (NOT_RESOLVED and one sign in all three seeds): it requires B and S-gist at seeds
@@ -93,3 +93,52 @@ that launch rule. Exact flags and per-seed values remain in the JSON; follow-up 
 and spending require review before launch. Stage L0 on the registered 150M pick and the
 matched five-seed size extension are separate campaigns and were still running when
 this core receipt was written.
+
+
+## Registered HS1 extension: all five matched seeds
+
+Completed 30 October 2026. Only B and S-gist gained seeds 4 and 5, as section 9
+required after the unresolved, same-sign three-seed contrast. The complete seven-cell
+three-seed core above remains unchanged; the five-seed report is a separate registered
+HS1 contrast, not a five-seed reanalysis of the other arms.
+
+**HS1 is now SUPPORTED:** S-gist minus B is -12.668 percentage points of Y12, with
+90% CI [-16.353, -8.983], paired t=-7.329 against the unchanged df=4 cutoff 2.776
+and the three-point SESOI. The five differences are -13.33, -15.14, -5.87, -14.87
+and -14.13 points. Both validity gates pass.
+
+| Five-seed cell | Self accuracy | Twin accuracy | Y12 | Gold-history Y12 |
+|---|---:|---:|---:|---:|
+| B | 43.014% | 52.522% | -9.508 points | -8.536 points |
+| S-gist | 31.116% | 53.292% | -22.176 points | -20.696 points |
+
+The tested per-turn state arrangement reduces self-history performance while twin
+accuracy remains similar. This comparison does not locate the cost between inserting
+state slots and imposing the state mask. The registration's **S-full condition is now
+true**: that control is needed to separate those explanations. It has not been launched;
+its exact recipe and spending await review. No additional seed extension is allowed
+for this contrast. The broader long-carry programme is therefore not complete.
+
+The watchdog finalizer published at 13:53:00 UTC. Independent verification rehashed all
+56 frozen sources, 69 inputs and three reports, checked exactly ten cell/seed summaries
+and recomputed the paired result without importing the registered statistical helpers.
+An additional replay of all 14,520 saved items recomputed 72,600 forced-choice credits
+from their four raw log-prob sums, frozen gold index and overflow flag. These reproduce
+the frozen summaries' four-decimal pool rounding; the registered contrast uses those
+unchanged summary values. This checks recorded score arithmetic, not fresh model forwards.
+All four extension campaigns are home, with their pods and volumes removed.
+
+S-gist seed 5 required an operational dependency repair and resumed a legacy data cache.
+The original v1 finalizer halt is preserved. Before its post-training outcomes, v2 froze
+a narrowly bound exception for that exact resumed-ledger hash and independently checked
+source/decontamination/output proof; the statistical helpers and rules stayed unchanged.
+The historical builder blob is retained rather than substituted with the later cache fix.
+See [environment evidence](receipts/hs1_environment_2026-10-30/) and the exact input/source
+inventory in the [five-seed receipts](receipts/hs1_five_seed_20261030/).
+
+Canonical [analysis](receipts/hs1_five_seed_20261030/analysis_hs1.json),
+[completion manifest](receipts/hs1_five_seed_20261030/completion.json),
+[independent audit](receipts/hs1_five_seed_20261030/independent_audit.json),
+[raw-credit audit](receipts/hs1_five_seed_20261030/raw_credit_audit.json) and
+[home proof](receipts/hs1_five_seed_20261030/home_receipt.json) are retained here.
+The single raw-artifact home remains `C:/ml_artifacts/tiny_chat/`.

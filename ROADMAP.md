@@ -11,12 +11,13 @@ where one of those documents carries a plan, this file wins.*
    `experiments/tiny_chat_2026-10/`, `experiments/tiny_chat_long_2026-10/`).**
    E5, E1 at 20M/60M, recursion and MoR are home and analysed
    (`experiments/tiny_chat_2026-10/analysis_2026-10-28.json`). Remaining: Stage L0 on the unchanged registered 150M
-   pick (evaluation scoring) and Carry-12's registered HS1 extension (B/S-gist seeds 4/5).
-   All four extension runs have finished pretraining and SFT; B seeds 4/5 and S-gist seed 4
-   are home. Only S-gist seed 5 is still scoring Carry-12 under the watchdog. The frozen five-seed finalizer
-   waits for the complete evaluated inputs.
+   pick (evaluation scoring). Carry-12's registered HS1 extension is complete and all four
+   new B/S-gist runs are home: the five-seed S-gist minus B contrast is SUPPORTED
+   (-12.668 points). Its registered S-full control now triggers but has not launched;
+   recipe and spending require review. The broader programme remains open.
    The complete three-seed Carry-12 core is analysed in `experiments/tiny_chat_long_2026-10/RESULTS.md`:
-   HT-SFT SUPPORTED, other primary tests unresolved; S-full does not trigger. The registered size
+   HT-SFT SUPPORTED, other primary tests unresolved at three seeds. The separate five-seed
+   HS1 result now activates the S-full condition. The registered size
    extension is complete at five matched seeds (`experiments/tiny_chat_2026-10/size/RESULTS.md`):
    primary size slope EQUIVALENT within ±0.01 Y/doubling under this fixed-token protocol; secondary 60M→150M step unresolved.
 1. **The chat model (LOCAL_LLM_WORK.md E2).** Full preference judging at 256 new tokens
