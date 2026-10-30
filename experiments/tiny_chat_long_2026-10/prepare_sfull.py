@@ -183,7 +183,7 @@ def write(out):
         "expected_gpu_usd": [11, 16],
         "proposed_queue": "serial; no watchdog entry enabled; root funding review required",
         "review_blockers": [
-            "actual funding above reserve",
+            "separate long-run and funding review; $40 top-up offered but uncredited; notify below $20, not a mandated reserve",
             "13 raw human corpora and 5 products unavailable locally; exact rebuild required; hash mismatch blocks PT, no fallback or automatic rerun",
             "six historical full-history argmax mismatches; no all-pass claim",
         ],

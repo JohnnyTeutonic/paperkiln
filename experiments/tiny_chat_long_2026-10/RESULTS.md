@@ -231,7 +231,10 @@ The three initial seeds run **serially**, each with its own $7 cumulative cap an
 operational clock: **$21 total**, expected **18–27 GPU-hours combined**, approximately $11–16
 before incidental storage. The combined estimate is not squeezed into one 23.5-hour campaign.
 Any later continuation requires explicit funding and remaining-budget review; no cap increase
-or new arm is automatic. The proposal preserves a $20 reserve; a top-up offer is not credited funds.
+or new arm is automatic. The user requested notification below $20, not a mandatory reserve. The offered $40 top-up
+is uncredited; the existing provider accessor has its own $15 minimum-balance constraint.
+This 18–27-hour programme remains unlaunched, outside the bounded five tasks, for separate
+long-run and funding review.
 
 The thirteen original human-source corpora and five finished data products are unavailable
 locally. Their expected byte hashes, the exact reference ledger, pinned vocabulary and

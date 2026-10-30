@@ -1,15 +1,15 @@
 {
   "source_hashes": {
     "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_long_2026-10/finalize_sfull.py": "f3b0b8a3481ea70aa1d381781a42bc1183b8e9d39a97efc07720ffc8ef13788c",
-    "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_long_2026-10/prepare_sfull.py": "0cb5931b282b93fb04f43c913244cc7d306400e56dec196010d6afe2a366d46e",
+    "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_long_2026-10/prepare_sfull.py": "962c3fc11833942131f02db50f7ade15167248aab3e605547fd1c8d47ab537ce",
     "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_long_2026-10/finalize_core.py": "598b3abe0a49b69c66e0d2e9f7e5688f9b1bc32fd919f33debcb4c8f65c001b3",
     "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_long_2026-10/analyze.py": "17dab803cef88e1d6e8aeecc4186925dc98d48d1745bf5cb489bb3f0f004f41e",
     "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_long_2026-10/PREREGISTRATION.md": "ca45477f11326edfc5ed6e5529ea85cbf5b1625258ed45c588f49a0426e7b4e6",
     "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_2026-10/analyze.py": "ff5293b144230d0fc7a0b1e31ebe8dfae7a08aeada2f40ab1dc822c24bb14d64",
     "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_2026-10/analyze_x5.py": "b11388477a7fa9c139acac63530350978134227749a43dd6e56d60ef58eff6f9",
     "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/scripts/cpu_budget.py": "ecf07e753acf808a59b1d5ff902a546ab05b251a73417b1a89d89efc3ff5998a",
-    "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/manifest.json": "890f8973d0faf98c3cbf36d93a7d21fce1a7509e9e68a03801e32e3c92762943",
-    "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/launch_pin.json": "92557dc74562eefe09ae915cf211b52e5c8a37ad2d0410a0f6da2f40e37cd5ba",
+    "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/manifest.json": "05277a13a7a87bf67785d484dde02fe41179c4a516a3062162e6433341aab275",
+    "/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/launch_pin.json": "28e21f7e183e531e7bf9f8fc98f6fa4add4491de3eab52881a27a05fcccba668",
     "/home/jonat/pk_sfull_packet_20261031/corpus/eval/carry12_v1.jsonl": "de24f2c726a1006e8e61542dd3b2dfbf8677b9e6fe689277cca035305bd32797",
     "/home/jonat/pk_sfull_packet_20261031/tools/colab_chat/carry12_sfull_r1.json": "9f06a75a6555ec8e1c021449ac49a401eb567d5663355a415affb0bb9b408e4a",
     "/home/jonat/pk_sfull_packet_20261031/tools/colab_chat/carry12_sfull_r2.json": "36f60ff87211e6f74eaee0656a63e0cbf10544c3b7d8f1c5a87221cc479b3b21",

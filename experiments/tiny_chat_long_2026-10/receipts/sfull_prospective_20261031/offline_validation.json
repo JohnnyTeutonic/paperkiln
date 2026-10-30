@@ -19,6 +19,8 @@
   ],
   "operational_ceiling_per_seed_hours": 23.5,
   "combined_cap_usd": 21,
-  "source_freeze_sha256": "59fbc7a17087f305b9851b9f9c5ec2f08dd624b3906d6aea97fecea98c3090bc",
-  "readiness_sha256": "bf89ddf7bd6b2ee9e26727cbecc52d99d179e7195b667934b2f0eb12097d61f7"
+  "source_freeze_sha256": "af9744e00f8da1c6809142d3363472392cc321931fdaee9ec61fb0b6c97c71a2",
+  "readiness_sha256": "bcce9fc92d1004bb351d49f5577d1b9269e1543ad6198b995307cffab4f4bbd8",
+  "budget_policy": "Notify below20; offered40 uncredited; existing provider accessor MIN_BALANCE15; no user-mandated20 reserve or41 minimum",
+  "metadata_review_state": "pk_c12_sfull_finalizer_review_20261031_metadata_v2"
 }

@@ -18,7 +18,7 @@
     "tools/colab_chat/carry12_sfull_r3.json",
     "tools/colab_chat/sfull_verify_inputs.py"
   ],
-  "source_freeze_sha256": "59fbc7a17087f305b9851b9f9c5ec2f08dd624b3906d6aea97fecea98c3090bc",
+  "source_freeze_sha256": "af9744e00f8da1c6809142d3363472392cc321931fdaee9ec61fb0b6c97c71a2",
   "vocab_upload_sha256": "0b880aa073a7e27c0770d5ecc5215b55d6d415080d20bd3dc7b169ecabadf198",
   "expected_raw_human_sha256": {
     "human_bst_v1/dialogues.jsonl": "e66aab659918d3cfe6b0828d05ddd1a7c790507b62737690e500814a2687f75f",
@@ -64,8 +64,10 @@
   "runtime_gate": "all13 raw sources +5 products +vocab +evaluations +decontamination exact before PT; mismatch blocks; no fallback/no automatic rerun",
   "historical_parity_blocker": "six original HS1 history mismatches retained; not waived",
   "funding_required_not_inferred": true,
-  "reserve_floor_usd": 20,
-  "minimum_unencumbered_balance_for_all_caps_usd": 41,
+  "notification_threshold_usd": 20,
+  "offered_topup_usd_uncredited": 40,
+  "existing_provider_min_balance_accessor_constraint_usd": 15,
+  "separate_long_run_funding_review_required": true,
   "tokenizer_runtime_requirement": "tokenizers==0.23.3",
   "modern_local_controller": {
     "commit": "5de89be1d27db02f23c06213a802f20f5d6b3b2d",
