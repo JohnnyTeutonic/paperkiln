@@ -110,11 +110,14 @@ that cannot fail the build.
   - Re-measure the speedup on the op-set configuration over a full run
     before any paper quotes it. The 21x and 30.5x figures were measured
     over nine steps with deferral on.
-- **BF16 inside attention products.** The completed 40-cell descriptive profile
+- **BF16 attention production integration.** The completed 40-cell descriptive profile
   (`docs/receipts/bf16_profile_20261030/RESULTS.md`) measures attention spans at 16–34% of
-  baseline instrumented GPU-span time, satisfying the condition to investigate this optimization.
-  Implementation/parity and any incremental end-to-end benefit remain open; the per-shape profile,
-  noise-floor gate and launch-count work are complete and should not be rerun as unfinished tasks.
+  baseline instrumented GPU-span time. The standalone dense MHA primitive now passes its fixed
+  32-case L4 FP32/BF16 matrix and independent raw replay, with FP32 softmax/backward and an explicit
+  BF16 straight-through surrogate (`docs/receipts/bf16_attention_20261031/RESULTS.md`).
+  Production wiring, model-level forward/backward parity and loss, and incremental end-to-end
+  benefit remain open. The primitive matrix, profile, noise-floor gate and launch-count work
+  are complete; these results do not establish a production speed gain.
 - **Mamba:** a parallel scan and device kernels for Mamba-1's `ops::conv1d_causal` and
   `ops::selective_scan` (sequential, host only; the mamba preset's `ssm: "mamba1"`).
 - **int4/NF4 quantisation.**

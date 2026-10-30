@@ -7,6 +7,14 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Standalone BF16 attention primitive gated on L4** (31 Oct). All 32 fixed dense/causal FP32/BF16
+  cases pass unchanged stage/end bounds; an independent NumPy 1.26.4 raw replay reproduces every
+  metric and leaves evidence bytes unchanged. This validates the scoped six-product primitive
+  with FP32 softmax/backward and the explicit BF16 surrogate, not production wiring, model loss
+  or a speed adoption. Raw binaries remain outside Git; hashes and scope:
+  `docs/receipts/bf16_attention_20261031/RESULTS.md`.
+
+
 - **Four missing evaluation hash manifests added** (30 Oct). CI exposed absent manifests for
   IF-tiny, IF-distance and the two conversation-v2 evaluation sets. Each dataset is byte-identical
   to its first Git commit; both IF sets also regenerate exactly and match the recorded result

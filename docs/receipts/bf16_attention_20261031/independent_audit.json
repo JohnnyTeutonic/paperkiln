@@ -1,0 +1,167 @@
+{
+  "schema": "paperkiln.bf16_attention.independent_audit.v1",
+  "timestamp_utc": "2026-10-30T14:54:54.807313+00:00",
+  "source_commit": "557322bac6a8dafd5c3479c3616031ee175e835a",
+  "raw_home": "C:/ml_artifacts/bf16_attention_20261031/bf16_attention_primitive",
+  "archive_sha256": "e5cb03a1753ee8d9d6cf4910ce5c150b8102bf7adfbca5bb65345aef354db107",
+  "archive_bytes": 123495491,
+  "summary_sha256": "b43e78a209274b9e72c1f616004aee61bdc68e86c96375aabf2837d80cdb3dc0",
+  "archive_receipt_sha256": "b4207b8ba14fd5f394bf9dacd0e8c98caef60c3d1cd451e78b2fd7f4c80a37e3",
+  "manifest_sha256": "dd79a8cef6c816b81c9fbd2930ff71f4033a13cf5dc8bf31321b9490f6890dfb",
+  "binary_sha256": "5a6945f9579c536421f5817a5dce77e15cac4dd26bd080d5b53a36a821f476bd",
+  "report_sha256": "caea210a086a8c3f9e638b532ef83fc6dc073556e9f1d5b510b886897d4f4f6f",
+  "source_sha256": {
+    "bf16_attention_probe.cu": "4707a44cc23d06ed25cdda87ccc0f2d61784d06f4ddbf3b023d1fc123c0c5be1",
+    "bf16_attention_reference.py": "d59c3ac6f207e3d73fc7d7ffb752bea73fa9849ea22445b5190b10c6d3329632",
+    "bf16_attention_check.py": "8309900ac994db8c7b6e8e733d7cc51e7e54d0b32fc095f09d2ef5a2553ba22e",
+    "test_bf16_attention_reference.py": "9abbecaae5b30e8d88179003609a8df5870ce942dd2f5302a9ce98e6953fd6be",
+    "bf16_attention_vm.py": "2da5e96796b37b5daaf56fadb374cf45072ac65ba38e5a06b58a9c34869d10f1"
+  },
+  "case_count": 32,
+  "passes_by_precision": {
+    "fp32": 16,
+    "bf16": 16
+  },
+  "gpu": "NVIDIA L4",
+  "gpu_uuid": "a5247a52c62a22d03245d4600f86abf0",
+  "hardware_log": "NVIDIA L4, GPU-a5247a52-c62a-22d0-3245-d4600f86abf0, 595.91.07",
+  "numerical_summary": {
+    "fp32": {
+      "max_stage_error": 9.518974214569967e-07,
+      "max_end_error": 1.0384334608183479e-06,
+      "stage_bound": 3e-05,
+      "end_bound": 3e-05,
+      "timing_min_ms": 0.0235248003,
+      "timing_max_ms": 0.293297589,
+      "worst_stage": {
+        "case": "case07_mask1_bf160",
+        "array": "dv",
+        "error": 9.518974214569967e-07
+      },
+      "worst_end": {
+        "case": "case07_mask1_bf160",
+        "array": "dv",
+        "error": 1.0384334608183479e-06
+      }
+    },
+    "bf16": {
+      "max_stage_error": 2.246476293929304e-06,
+      "max_end_error": 0.0012971460819244385,
+      "stage_bound": 3e-05,
+      "end_bound": 0.005,
+      "timing_min_ms": 0.0341663994,
+      "timing_max_ms": 0.120241597,
+      "worst_stage": {
+        "case": "case07_mask1_bf161",
+        "array": "dv",
+        "error": 2.246476293929304e-06
+      },
+      "worst_end": {
+        "case": "case07_mask0_bf161",
+        "array": "dq",
+        "error": 0.0012971460819244385
+      }
+    }
+  },
+  "status": "VERIFIED",
+  "independent_checks": [
+    "ZIP CRC and exact external archive/summary/receipt SHA and size",
+    "Uploaded manifest and five sources byte-identical to Git557322bac",
+    "Seven operational commands returned0 and raw log hashes match summary",
+    "Fixed8shapes x2masks x2precisions;32 expected unique orderedcases",
+    "SameL4UUID in all32native timing records, matching hardwarelog",
+    "Archived native binary/source/report pins match manifest/summary",
+    "Strict replay recomputes every raw input/header, stage andend metric with no evidencebytechanges"
+  ],
+  "remote_runtime": {
+    "python": "3.11.10 (main, Sep  7 2024, 18:35:41) [GCC 11.4.0]",
+    "numpy": "1.26.4",
+    "version_log_sha256": "b4db1cad20950afb24fa00f567b8623a52db03f35a65dae287696a23fff901e2",
+    "nvcc_log_sha256": "3c71ed984d2ca98770b0cba5c23a849a87209351e105433929c3062fb66d1915"
+  },
+  "strict_local_replay": {
+    "returncode": 0,
+    "stdout": "all 32 cases complete\n",
+    "stderr": "",
+    "python": "3.11.15 (main, Jun 23 2026, 15:19:43) [Clang 22.1.3 ]",
+    "python_executable": "/home/jonat/pk_bf16_replay_20261031/bin/python",
+    "numpy": "1.26.4",
+    "threads": 1,
+    "OPENBLAS_CORETYPE": "not forced",
+    "source_cache_policy": "empty alternative bytecode search prefix +dontwritebytecode; verified sources used",
+    "evidence_byte_unchanged": true,
+    "command": [
+      "/home/jonat/pk_bf16_replay_20261031/bin/python",
+      "/home/jonat/bf16_attention_audit_20261031/evidence/sources/bf16_attention_check.py",
+      "--binary",
+      "/home/jonat/bf16_attention_audit_20261031/evidence/bf16_attention_probe",
+      "--output",
+      "/home/jonat/bf16_attention_audit_20261031/evidence/results",
+      "--replay"
+    ],
+    "stdout_sha256": "21acf22d4a2acdfa8bf7ccad1f819474535046358a6cd786577e0ac9dc89ba81",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "scope": {
+    "primitive": "dense equal-length MHA;FP32softmax/backward;sixcuBLASproducts;explicitBF16operandrounding",
+    "shapes": [
+      [
+        1,
+        1,
+        1,
+        8
+      ],
+      [
+        2,
+        3,
+        7,
+        8
+      ],
+      [
+        1,
+        2,
+        16,
+        16
+      ],
+      [
+        1,
+        3,
+        33,
+        24
+      ],
+      [
+        2,
+        2,
+        64,
+        32
+      ],
+      [
+        1,
+        4,
+        128,
+        64
+      ],
+      [
+        1,
+        8,
+        256,
+        64
+      ],
+      [
+        1,
+        4,
+        512,
+        64
+      ]
+    ],
+    "causal_cases": 16,
+    "dense_cases": 16,
+    "bf16_backward": "explicit straight-through surrogate; not derivative of discontinuous rounding",
+    "production_wiring": false,
+    "model_training_or_loss_evidence": false,
+    "performance_adoption": false,
+    "new_gpu_runs_during_audit": 0
+  },
+  "timing_limit": "Retained per-case GPUevent averages over20forward/backward iterations are descriptive only; not pairedendtoend/model/inference speed evidence.",
+  "cost_limit": "Independent raw numerical audit only; provider cost/resource closure remains supervised runnerledger responsibility."
+}
