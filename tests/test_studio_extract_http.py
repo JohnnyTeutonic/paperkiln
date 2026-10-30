@@ -132,3 +132,36 @@ def test_no_key_fails_before_worker_and_status_never_exposes_key(studio):
     assert status["configured"] is False
     assert request("extract", {"arxiv_id":"1234.56789", "budget_usd":1})[0] == 409
     assert not list(out.iterdir())
+
+
+def test_cancel_then_fresh_success_has_new_identity_and_no_revival(studio):
+    request, out, _ = studio
+    assert request('extract', {'arxiv_id': '1111.11111', 'budget_usd': 1})[0] == 202
+    cancelled_job = wait_state(request, 'extracting')['job']
+    assert request('extractcancel', {}) == (200, 'cancelled')
+    assert request('extractcancel', {}) == (200, 'cancelled')
+    assert request('extract', {'arxiv_id': '1234.56789', 'budget_usd': 1})[0] == 202
+    complete = wait_state(request, 'done')
+    assert complete['job'] != cancelled_job
+    result_before = request('extractresult')
+    assert result_before[0] == 200
+    assert json.loads(result_before[1])['arxiv_id'] == '1234.56789'
+    evidence = {p.name: p.read_bytes() for p in out.glob('*.extraction.json')}
+    assert len(evidence) == 1
+    # Polling/repeated cancellation must never revive the cancelled job or erase
+    # the fresh completed result, even after the server reaps child state again.
+    for _ in range(3):
+        assert request('extractcancel', {}) == (200, 'done')
+        assert json.loads(request('extractstatus')[1])['job'] == complete['job']
+        assert request('extractresult') == result_before
+        assert {p.name: p.read_bytes() for p in out.glob('*.extraction.json')} == evidence
+
+
+def test_idle_cancellation_is_idempotent_and_creates_no_evidence(studio):
+    request, out, _ = studio
+    initial = request('extractstatus')
+    for _ in range(2):
+        assert request('extractcancel', {}) == (200, 'idle')
+        assert request('extractstatus') == initial
+        assert request('extractresult')[0] == 409
+        assert not list(out.iterdir())

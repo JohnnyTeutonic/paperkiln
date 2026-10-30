@@ -55,5 +55,23 @@
     "C++ Studio built/tested on Linux CPU; no Windows C++ build claimed.",
     "Browser uses intercepted mocked HTTP responses; separate Python tests exercise actual compiled HTTP server with owned mock worker.",
     "No architecture reconstruction/training/GPU correctness claim."
-  ]
+  ],
+  "lifecycle_followthrough": {
+    "source_commit": "7247387bcce7fa226e15eed7f45abe36400b3a77",
+    "source_unchanged_from_original_validation": true,
+    "mtstudio_source_sha256": "2134b534168b4bd6e1bd95f0599d3a385a36542361c70df6732026e8ca64ad3e",
+    "binary_sha256": "08db9c4691bd9092122a5499a9c246ac26123e5014772710a3e27276fe851193",
+    "test_source_sha256": "30e4119b181e522f6f67454777488b158bf35d13f180c1cb028e2c3587d6179c",
+    "log_sha256": "6750e4f66247d5b8f4eaa44a72186bfdbfb4bfaf46353b5111eeadd472cf30d9",
+    "command": "MTSTUDIO_BIN=/home/jonat/pk_studio_build_20261031/mtstudio python3 -m pytest tests/test_studio_extract_http.py -q",
+    "result": "6 passed in 0.44s",
+    "scope": [
+      "cancel then fresh success receives new job identity",
+      "repeated cancellation preserves completed result bytes",
+      "idle cancellation is idempotent and creates no evidence",
+      "existing cancellation verifies worker PID reaped on POSIX"
+    ],
+    "provider_calls": 0,
+    "production_changes": false
+  }
 }
