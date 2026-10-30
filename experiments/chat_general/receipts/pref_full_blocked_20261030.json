@@ -1,0 +1,38 @@
+{
+ "kind": "PREFERENCE_JUDGE_BLOCKED_NO_NEW_CALLS_IN_RECEIPT_CREATION",
+ "date": "2026-10-30",
+ "stage": "full preference judging, 256 new tokens, unchanged rubric",
+ "observation": {
+  "source": "single foreground availability attempt made earlier in this autonomous mission; not retried",
+  "availability_attempts": 1,
+  "calls_completed": 0,
+  "new_cost_usd": 0.0,
+  "new_failures": 0,
+  "cli_message": "You've hit your weekly limit · resets Nov 2, 9am (Australia/Sydney)",
+  "reset_local": "2026-11-02T09:00:00+11:00",
+  "cache_changed": false,
+  "total_recorded_spend_usd": 20.072988
+ },
+ "resume": {
+  "requests": "C:/ml_artifacts/pref_full/sample/candidates.jsonl",
+  "candidate_rows": 3020,
+  "uncached_rankings": 5660,
+  "cached_rankings_reused": 380,
+  "registered_total_cap_usd": 200,
+  "note": "Resume existing cache after reset; preserve separate budget for held-out judged gate. DPO and its five-part gate remain unrun."
+ },
+ "sha256": {
+  "judge_cache": "879742b1ed53098097c52e308bbbc98bfbdecb2b093c03d55a2a1b0481e7e041",
+  "rubric": "cb04edd3543d0906aedc3d82a1d829586272da874182775c6d7c9826e28d937a"
+ },
+ "offline_accounting_audit": {
+  "paid_stop_cost": "Reported cost is recorded even when a CLI error yields no verdict; the run stops.",
+  "historical_reservation": "Largest observed cost includes previous failure records, not just successful verdicts.",
+  "test_result": {
+   "passed": 43,
+   "skipped": 3
+  },
+  "ruff": "passed",
+  "external_calls_during_audit": 0
+ }
+}

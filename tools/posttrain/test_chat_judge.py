@@ -153,3 +153,64 @@ def test_workers_give_the_same_verdicts_and_respect_the_cap(tmp_path):
     capped = J.run(reqs(), str(tmp_path / "c.jsonl"), "claude-test", str(RUBRIC), 100, fake(len), max_usd=0.02,
                    workers=3)
     assert capped["total_spent_usd"] <= 0.02 + 1e-9
+
+
+def test_cli_paid_error_preserves_reported_cost(monkeypatch):
+    import pytest
+
+    class Done:
+        stdout = json.dumps({"result": "provider aborted", "is_error": True, "total_cost_usd": 0.03})
+
+    monkeypatch.setattr(J.subprocess, "run", lambda argv, **kw: Done())
+    with pytest.raises(J.JudgeStopped) as caught:
+        J.claude_cli_transport("claude", "m")("sys", "user")
+    assert caught.value.cost_usd == 0.03
+    assert caught.value.response == "provider aborted"
+
+
+def test_paid_stop_is_accounted_and_stops_new_calls(tmp_path, capsys):
+    import pytest
+
+    cache = tmp_path / "c.jsonl"
+    attempts = []
+
+    def stopped(system, user):
+        attempts.append(user)
+        raise J.JudgeStopped("provider aborted", 0.03)
+
+    with pytest.raises(J.JudgeStopped):
+        J.run(reqs(), str(cache), "test", str(RUBRIC), 100, stopped, max_usd=0.05)
+    report = json.loads(capsys.readouterr().out)
+    assert report == {"calls": 1, "cost_usd": 0.03, "failures": 1, "total_spent_usd": 0.03}
+    failures = J.read_jsonl(str(cache) + ".failures.jsonl")
+    assert len(attempts) == len(failures) == 1
+    assert failures[0]["transport_stopped"] is True
+    assert failures[0]["cost_usd"] == 0.03
+    assert not cache.read_text(encoding="utf-8").strip()
+    # The next run must reserve the largest failed call too: .03 + .03 exceeds .05.
+    after = J.run(reqs(), str(cache), "test", str(RUBRIC), 100, fake(len), max_usd=0.05)
+    assert after["calls"] == 0 and after["total_spent_usd"] == 0.03
+
+
+def test_free_weekly_limit_stops_once_without_failure_ledger(tmp_path, monkeypatch, capsys):
+    import pytest
+
+    attempts = []
+
+    class Done:
+        # A limit can be returned as text without is_error; it still must stop.
+        stdout = json.dumps({"result": "You've hit your weekly limit", "total_cost_usd": 0.0})
+
+    def cli(argv, **kwargs):
+        attempts.append(argv)
+        return Done()
+
+    monkeypatch.setattr(J.subprocess, "run", cli)
+    cache = tmp_path / "c.jsonl"
+    with pytest.raises(J.JudgeStopped, match="weekly limit"):
+        J.run(reqs(), str(cache), "test", str(RUBRIC), 100,
+              J.claude_cli_transport("claude", "m"), max_usd=200)
+    assert len(attempts) == 1
+    assert json.loads(capsys.readouterr().out)["cost_usd"] == 0
+    assert J.spent(str(cache)) == 0
+    assert not J.read_jsonl(str(cache) + ".failures.jsonl")

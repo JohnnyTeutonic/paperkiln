@@ -82,6 +82,14 @@ def parse_ranking(text, order):
     return [order[labs.index(str(x))] for x in rk], why
 
 
+class JudgeStopped(SystemExit):
+    """A non-verdict CLI response may still report a billable call."""
+
+    def __init__(self, response, cost_usd):
+        self.response, self.cost_usd = response, cost_usd
+        super().__init__(f"claude CLI: {response[:200]!r}; stopped, resolve the CLI error before resuming")
+
+
 def claude_cli_transport(claude_bin, model, workdir=None):
     """The CLI runs in an empty directory of its own: started inside a repository it loads that
     repository's instruction files and project memory into every call (27 Oct 2026, from the
@@ -102,8 +110,8 @@ def claude_cli_transport(claude_bin, model, workdir=None):
         # An account limit is no verdict: stop the run instead of logging a failure per call
         # (28 Oct 2026: 121 calls answered "You've hit your session limit" at $0). The verdicts
         # already cached stay; a rerun after the reset continues with the rest.
-        if d.get("is_error") or (cost == 0.0 and re.search(r"\b(session|usage) limit\b", text)):
-            raise SystemExit(f"claude CLI: {text[:200]!r}; stopped, rerun after the limit resets")
+        if d.get("is_error") or (cost == 0.0 and re.search(r"\b(session|usage|weekly|rate) limit\b", text)):
+            raise JudgeStopped(text, cost)
         return text, cost
     return call
 
@@ -134,7 +142,8 @@ def run(requests, cache_path, judge_id, rubric_path, max_calls, transport, now=N
     done = {c["key"] for c in read_jsonl(cache_path)}
     before = spent(cache_path)
     calls, cost, failures = 0, 0.0, 0
-    dearest = max((float(c.get("cost_usd", 0.0)) for c in read_jsonl(cache_path)), default=0.0)
+    dearest = max((float(c.get("cost_usd", 0.0))
+                   for p in (cache_path, cache_path + ".failures.jsonl") for c in read_jsonl(p)), default=0.0)
     stop_err = None
     with open(cache_path, "a", encoding="utf-8", newline="\n") as cache, \
             open(cache_path + ".failures.jsonl", "a", encoding="utf-8", newline="\n") as fail, \
@@ -144,20 +153,29 @@ def run(requests, cache_path, judge_id, rubric_path, max_calls, transport, now=N
         def settle(fut):
             nonlocal calls, cost, failures, dearest, stop_err
             k, order, r = pending.pop(fut)
+            stopped = False
             try:
                 text, c = fut.result()
-            except SystemExit as e:  # an account limit: no verdict; stop starting calls
+            except JudgeStopped as e:
+                stop_err = stop_err or e
+                if e.cost_usd <= 0.0:
+                    return  # a free account-limit response has no billable call or verdict
+                text, c, stopped = e.response, e.cost_usd, True
+            except SystemExit as e:  # a transport without a billable-response receipt
                 stop_err = stop_err or e
                 return
             calls += 1
             cost += c
             dearest = max(dearest, c)
-            ranking, why = parse_ranking(text, order)
+            ranking, why = (None, "") if stopped else parse_ranking(text, order)
             rec = {"key": k, "uri": r.get("uri", ""), "order": order, "judge_id": judge_id, "rubric_version": version,
                    "rubric_sha256": rsha, "response_sha256": sha256_bytes(text.encode("utf-8")), "cost_usd": c,
                    "created": now or _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds")}
             if ranking is None:
-                fail.write(json.dumps(dict(rec, response=text), ensure_ascii=False) + "\n")
+                failed = dict(rec, response=text)
+                if stopped:
+                    failed["transport_stopped"] = True
+                fail.write(json.dumps(failed, ensure_ascii=False) + "\n")
                 fail.flush()
                 failures += 1
                 return

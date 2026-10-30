@@ -7,6 +7,13 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Preference-judge stopped-call accounting** (30 Oct). A CLI error with a reported nonzero cost
+  is now recorded in the failure ledger before judging stops; a free account-limit response still
+  creates no verdict or artificial failure. Subsequent per-call budget reservations include the
+  largest historical failed call as well as successful calls. Offline post-training tests: 43 pass,
+  3 optional skips. Full judging is blocked by the observed weekly reset (2 Nov, 9am Sydney);
+  `experiments/chat_general/receipts/pref_full_blocked_20261030.json` records the zero-cost attempt.
+
 - **Preserve judge rubric identity on Windows checkout** (30 Oct). Scoped `.gitattributes`
   rule forces LF for `tools/posttrain/rubrics/*.txt`; both working rubrics restored to their exact
   existing Git-blob bytes. Raw-byte rubric hashing and all cache keys stay unchanged. Before the
