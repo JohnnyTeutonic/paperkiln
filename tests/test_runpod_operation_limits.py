@@ -93,3 +93,28 @@ def test_wait_for_unreachable_ssh_checks_budget_before_provider_poll(transport, 
     with pytest.raises(rt.api.Refused, match="spend cap"):
         transport._wait_up("pending-pod")
     assert not polls
+
+
+def test_expired_creation_never_calls_provider(transport,monkeypatch):
+    state=SimpleNamespace(d={})
+    transport.deadline=time.time()-1
+    monkeypatch.setattr(transport,'_volume_for_create',lambda st:pytest.fail('expired launch created volume'))
+    monkeypatch.setattr(rt.api,'create_pod',lambda body:pytest.fail('expired launch created pod'))
+    rc,reason=transport.create(state)
+    assert rc==1 and 'deadline' in reason
+
+
+def test_deadline_expiring_during_preparation_refuses_pod(transport,monkeypatch,tmp_path):
+    state=SimpleNamespace(d={},save=lambda:None)
+    transport.deadline=time.time()+100
+    monkeypatch.setattr(transport,'_volume_for_create',lambda st:('DC',None))
+    key=tmp_path/'key'
+    key.with_suffix('.pub').write_text('public-test-key')
+    monkeypatch.setattr(rt,'KEY',str(key))
+    def digest(image):
+        transport.deadline=time.time()-1
+        return 'sha256:fixture'
+    monkeypatch.setattr(rt,'image_digest',digest)
+    monkeypatch.setattr(rt.api,'create_pod',lambda body:pytest.fail('expired preparation created pod'))
+    rc,reason=transport.create(state)
+    assert rc==1 and 'deadline' in reason

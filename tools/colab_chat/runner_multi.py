@@ -692,7 +692,13 @@ def apply_rung_resets(st, jobs):
 
 
 def launch(st, commit, jobs_rel, jobs, uploads):
+    if getattr(T, "deadline", None) is not None and time.time() >= T.deadline:
+        log("deadline expired before launch; no session created")
+        return False
     T.stop(st)
+    if getattr(T, "deadline", None) is not None and time.time() >= T.deadline:
+        log("deadline expired while stopping prior session; no replacement created")
+        return False
     rc, out = T.create(st)
     if rc != 0:
         log(f"no {T.gpu} ({out.strip()[-120:]}); retry later")
@@ -1036,6 +1042,30 @@ def make_transport(a):
                            image=a.image, max_usd=a.max_usd, commit=a.commit, name=NAME, home=HOME, log=log)
 
 
+def parse_deadline_utc(value):
+    """Timezone-aware ISO8601 only; return an absolute Unix timestamp."""
+    from datetime import datetime
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})", value):
+        raise argparse.ArgumentTypeError("deadline must be timezone-aware ISO8601, e.g. 2026-10-30T13:17:00Z")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if parsed.utcoffset() is None:
+            raise ValueError("timezone required")
+        return parsed.timestamp()
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("invalid ISO8601 deadline") from exc
+
+
+def resolve_deadline(max_hours, absolute, now):
+    """A watchdog restart cannot extend a supplied absolute deadline."""
+    deadline = now + max_hours * 3600
+    if absolute is not None:
+        deadline = min(deadline, absolute)
+    if deadline <= now:
+        raise ValueError("runner deadline has already expired; no session may be created")
+    return deadline
+
+
 def main():
     global NAME, ART, HOME, T, BOOT_SCRIPT
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
@@ -1045,6 +1075,8 @@ def main():
                     choices=["tools/colab_chat/boot_jobs.sh", "tools/colab_chat/boot_commands.sh", "tools/colab_chat/boot_commands_sparse.sh"],
                     help="pinned VM boot; command-only boot skips trainer and corpus setup")
     ap.add_argument("--max-hours", type=float, default=23.5)
+    ap.add_argument("--deadline-utc", type=parse_deadline_utc, default=None,
+                    help="absolute timezone-aware ISO8601 ceiling, preserved across watchdog restarts")
     ap.add_argument("--name", required=True, help="Colab session name (this run's own)")
     ap.add_argument("--art", required=True, help="local artifact directory")
     ap.add_argument("--state-dir", required=True, help="runner state, pid file and log")
@@ -1058,6 +1090,10 @@ def main():
     ap.add_argument("--max-usd", type=float, default=None,
                     help="RunPod: stop and create nothing once this runner's ledger passes this many dollars")
     a = ap.parse_args()
+    try:
+        resolve_deadline(a.max_hours, a.deadline_utc, time.time())
+    except ValueError as exc:
+        ap.error(str(exc))
     BOOT_SCRIPT = a.boot_script
     NAME, ART, HOME = a.name, a.art, os.path.expanduser(a.state_dir)
     os.makedirs(HOME, exist_ok=True)
@@ -1094,6 +1130,10 @@ def main():
     # Nor for a campaign that is home (a restart after the end would otherwise launch a pod and find nothing to do).
     if a.backend != "colab" and all(st.d["jobs"].get(j["name"], {}).get("home") for j in jobs):
         sys.exit("every job is home; nothing to run (no pod rented)")
+    try:
+        resolve_deadline(a.max_hours, a.deadline_utc, time.time())
+    except ValueError as exc:
+        ap.error(str(exc))
     T = make_transport(a)
     open(pid, "w").write(str(os.getpid()))
     if a.backend != "colab":
@@ -1102,7 +1142,7 @@ def main():
         st.save()
         T.attach(st)  # registers the runner for runpod_sweep.py; atexit and signal handlers end the pod
 
-    deadline = time.time() + a.max_hours * 3600
+    deadline = resolve_deadline(a.max_hours, a.deadline_utc, time.time())
     T.deadline = deadline  # transport must enforce it while a transfer blocks the main loop
     if listed() is None and not st.d.get("endpoint"):
         if not launch(st, a.commit, a.jobs, jobs, uploads):
