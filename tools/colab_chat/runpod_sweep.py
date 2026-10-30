@@ -13,7 +13,7 @@ that --state-dir. For each pod on the account:
     written into the dead runner's ledger.
 Pod ids or names in ~/.runpod/keep.json (a JSON list) are never touched: pods made by hand.
 For each network volume: deleted when its runner is not alive and its campaign is home (state
-"campaign_home", or runner.log ends with "all jobs finished and home"); otherwise left (a volume
+"campaign_home" plus every recorded job explicitly home, with no active pod); otherwise left (a volume
 without a runner state is reported, never deleted). Exit 0 unless the API failed.
 """
 from __future__ import annotations
@@ -75,14 +75,13 @@ def runner_alive(state_dir):
 
 
 def campaign_home(state_dir, st):
-    if st.get("campaign_home"):
-        return True
-    try:
-        with open(os.path.join(state_dir, "runner.log")) as f:
-            tail = f.readlines()[-8:]
-    except OSError:
-        return False
-    return any("all jobs finished and home" in ln for ln in tail)
+    """Deletion proof comes from complete current state, never a log line or retirement."""
+    jobs = st.get("jobs")
+    R = st.get("runpod") or {}
+    return (st.get("campaign_home") is True and isinstance(jobs, dict) and bool(jobs)
+            and all(isinstance(job, dict) and job.get("home") is True for job in jobs.values())
+            and not R.get("pod") and not st.get("endpoint")
+            and not R.get("creating"))
 
 
 def main(argv=None):
@@ -160,13 +159,18 @@ def main(argv=None):
             log(f"volume {vid} ({v.get('name')}, {v.get('size')} GB, {v.get('dataCenterId')}): no runner state "
                 "records it; left alone")
             continue
-        if owner["alive"]:
+        owners = [r for r in runners if (r["R"].get("volume") or {}).get("id") == vid
+                  or any(x.get("id") == vid for x in r["R"].get("retired_volumes", []))]
+        # Re-read immediately before deletion: the initial snapshot may predate a rescue/restart.
+        # Shared/legacy/missing state and retirement alone never authorize deleting checkpoints.
+        if any(runner_alive(r["dir"]) or not campaign_home(
+                r["dir"], jload(os.path.join(r["dir"], "state.json"), {}) or {}) for r in owners):
             continue
-        retired = any(x.get("id") == vid for x in owner["R"].get("retired_volumes", []))
-        if not (campaign_home(owner["dir"], owner["st"] or {}) or retired):
+        if any(p.get("networkVolumeId") == vid or
+               (p.get("networkVolume") or {}).get("id") == vid for p in pods):
             continue
-        log(f"volume {vid} ({v.get('name')}): campaign {owner['dir']} is "
-            f"{'home' if not retired else 'on another volume'}; {'would delete (dry run)' if a.dry_run else 'deleting'}")
+        log(f"volume {vid} ({v.get('name')}): campaign {owner['dir']} is verified home; "
+            f"{'would delete (dry run)' if a.dry_run else 'deleting'}")
         acted = True
         if a.dry_run:
             continue

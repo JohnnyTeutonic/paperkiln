@@ -79,7 +79,7 @@ def test_ledger_usd():
 def runner_state(tmp, name, pod=None, vol=None, home=False, creating=None, alive=False):
     d = tmp / name
     d.mkdir()
-    st = {"endpoint": pod, "launches": 1, "jobs": {}, "campaign_home": home,
+    st = {"endpoint": pod, "launches": 1, "jobs": {"completed": {"home": True}} if home else {}, "campaign_home": home,
           "runpod": {"pod": {"id": pod} if pod else None, "volume": {"id": vol, "dc": "X"} if vol else None,
                      "retired_volumes": [], "creating": creating,
                      "ledger": {"pods": [{"id": pod, "start": 1.0, "stop": None, "usd_per_hr": 0.5}] if pod else [],
