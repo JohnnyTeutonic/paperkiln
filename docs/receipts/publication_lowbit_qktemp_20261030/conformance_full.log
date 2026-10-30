@@ -1,0 +1,600 @@
+adapter mtstudio (backend cpu, exact True); 298 cases
+PASS model/pk_attnres: log-probs worst 9.52e-08; greedy 4/4
+SKIP trace/pk_attnres_decode: not implemented
+PASS model/pk_flex_expr: log-probs worst 1.96e-07; greedy 4/4
+SKIP trace/pk_flex_expr_decode: not implemented
+PASS model/pk_flex_highway: log-probs worst 9.97e-08; greedy 4/4
+SKIP trace/pk_flex_highway_decode: not implemented
+PASS model/pk_flex_mdha: log-probs worst 1.38e-07; greedy 4/4
+SKIP trace/pk_flex_mdha_decode: not implemented
+SKIP trace/pk_flex_mdha_snapshot: not implemented
+PASS model/pk_flex_shaw: log-probs worst 1.39e-07; greedy 4/4
+SKIP trace/pk_flex_shaw_decode: not implemented
+PASS model/pk_flex_t5: log-probs worst 9.71e-08; greedy 4/4
+SKIP trace/pk_flex_t5_decode: not implemented
+PASS model/pk_gpt2: log-probs worst 1.10e-07; greedy 4/4
+SKIP trace/pk_gpt2_decode: not implemented
+PASS model/pk_gpt2_swa: log-probs worst 9.62e-08; greedy 4/4
+SKIP trace/pk_gpt2_swa_decode: not implemented
+PASS model/pk_kimi: log-probs worst 9.79e-08; greedy 4/4
+SKIP trace/pk_kimi_decode: not implemented
+SKIP trace/pk_kimi_snapshot: not implemented
+PASS model/pk_llama: log-probs worst 1.41e-07; greedy 4/4
+PASS trace/pk_llama_decode: decode by kv cache, token by token: log-probs worst 2.67e-08, greedy same (via the adapter's score)
+SKIP trace/pk_llama_truncate: not implemented
+PASS model/pk_llama_attnres: log-probs worst 9.63e-08; greedy 4/4
+SKIP trace/pk_llama_attnres_decode: not implemented
+PASS model/pk_llama_attnres_rec: log-probs worst 1.28e-07; greedy 4/4
+SKIP trace/pk_llama_attnres_rec_decode: not implemented
+PASS model/pk_mamba: log-probs worst 1.38e-07; greedy 4/4
+SKIP trace/pk_mamba_decode: not implemented
+SKIP trace/pk_mamba_snapshot: not implemented
+PASS model/pk_moe: log-probs worst 1.19e-07; greedy 4/4
+PASS trace/pk_moe_decode: decode by kv cache, token by token: log-probs worst 2.71e-08, greedy same (via the adapter's score)
+PASS model/pk_mor: log-probs worst 1.51e-07; greedy 4/4; depth traces 4/4
+PASS trace/pk_mor_decode: decode by kv cache, token by token: log-probs worst 3.55e-08, greedy same; depths of the last 1 decoded token(s) same (via the adapter's score)
+SKIP trace/pk_mor_truncate: not implemented
+PASS model/pk_recurrence: log-probs worst 1.26e-07; greedy 4/4
+SKIP trace/pk_recurrence_decode: not implemented
+SKIP trace/pk_recurrence_snapshot: not implemented
+PASS model/pk_recursive: log-probs worst 1.02e-07; greedy 4/4
+PASS trace/pk_recursive_decode: decode by kv cache, token by token: log-probs worst 4.81e-08, greedy same (via the adapter's score)
+PASS model/pk_srd: log-probs worst 1.02e-07; greedy 4/4
+SKIP trace/pk_srd_decode: not implemented
+SKIP trace/pk_srd_snapshot: not implemented
+PASS model/pk_state: log-probs worst 6.61e-08; greedy 4/4
+PASS trace/pk_state_evict_on: decode by kv cache, token by token: log-probs worst 2.01e-08, greedy same; kv rows 8 legal (via the adapter's score)
+PASS trace/pk_state_evict_off: decode by kv cache, token by token: log-probs worst 2.01e-08, greedy same (via the adapter's score)
+SKIP trace/pk_state_rewind_evicted: not implemented
+SKIP trace/pk_state_rewind_current: not implemented
+SKIP trace/pk_state_rewind_at_block: not implemented
+SKIP model/tp_deepseek2: no mtstudio run record (not a paperkiln-trained model)
+SKIP trace/tp_deepseek2_decode: not implemented
+SKIP trace/tp_deepseek2_truncate: not implemented
+SKIP model/tp_deepseek3: no mtstudio run record (not a paperkiln-trained model)
+SKIP trace/tp_deepseek3_decode: not implemented
+SKIP trace/tp_deepseek3_truncate: not implemented
+SKIP model/tp_gemma2: no mtstudio run record (not a paperkiln-trained model)
+SKIP trace/tp_gemma2_decode: not implemented
+SKIP model/tp_gemma3: no mtstudio run record (not a paperkiln-trained model)
+SKIP trace/tp_gemma3_decode: not implemented
+SKIP model/tp_gptneox: no mtstudio run record (not a paperkiln-trained model)
+SKIP trace/tp_gptneox_decode: not implemented
+SKIP model/tp_llama_hd16: no mtstudio run record (not a paperkiln-trained model)
+SKIP trace/tp_llama_hd16_decode: not implemented
+SKIP trace/tp_llama_hd16_truncate: not implemented
+SKIP model/tp_mamba1: no mtstudio run record (not a paperkiln-trained model)
+SKIP trace/tp_mamba1_decode: not implemented
+SKIP trace/tp_mamba1_snapshot: not implemented
+SKIP model/tp_mistral: no mtstudio run record (not a paperkiln-trained model)
+SKIP trace/tp_mistral_decode: not implemented
+SKIP model/tp_mistral_hd16: no mtstudio run record (not a paperkiln-trained model)
+SKIP trace/tp_mistral_hd16_decode: not implemented
+SKIP model/tp_phi3: no mtstudio run record (not a paperkiln-trained model)
+SKIP trace/tp_phi3_decode: not implemented
+SKIP trace/tp_phi3_truncate: not implemented
+SKIP model/tp_qwen2moe: no mtstudio run record (not a paperkiln-trained model)
+SKIP trace/tp_qwen2moe_decode: not implemented
+SKIP model/tp_qwen3: no mtstudio run record (not a paperkiln-trained model)
+SKIP trace/tp_qwen3_decode: not implemented
+SKIP trace/tp_qwen3_truncate: not implemented
+SKIP model/tp_qwen3_hd16: no mtstudio run record (not a paperkiln-trained model)
+SKIP trace/tp_qwen3_hd16_decode: not implemented
+SKIP trace/tp_qwen3_hd16_truncate: not implemented
+SKIP model/tp_qwen3moe: no mtstudio run record (not a paperkiln-trained model)
+SKIP trace/tp_qwen3moe_decode: not implemented
+SKIP op/embedding/rows: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/embedding/state_weight: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/pos_embedding/rows: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/linear/bias: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/linear/no_bias: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/linear/tied_to: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/scale/bias: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/scale/no_bias: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/split/three: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/split/groups: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+PASS op/rmsnorm/row: y worst 1.17e-08 of max(1, |ref|)
+PASS op/rmsnorm/group: y worst 2.33e-08 of max(1, |ref|)
+SKIP op/rmsnorm/weight_offset: ir_eval: rmsnorm weight_offset (paperkiln trains none)
+SKIP op/layernorm/row: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/gelu/tanh: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/gelu/none: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/silu/x: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/sigmoid/x: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/relu/x: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/add/ab: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/mul/ab: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/sub/ab: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/affine/scale_shift: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/mul_col/x_c: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/rms_row/eps: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+PASS op/rope/interleaved: q worst 1.36e-08 of max(1, |ref|); k worst 1.25e-09 of max(1, |ref|)
+PASS op/rope/neox: q worst 3.17e-09 of max(1, |ref|); k worst 0.00e+00 of max(1, |ref|)
+PASS op/rope/neox_partial: q worst 0.00e+00 of max(1, |ref|); k worst 0.00e+00 of max(1, |ref|)
+SKIP op/rope/freq_scale: ir_eval: rope freq_scale != 1 (paperkiln trains none)
+PASS op/rope/grouped_query: q worst 1.36e-08 of max(1, |ref|); k worst 4.88e-09 of max(1, |ref|)
+SKIP op/rope/first_head: ir_eval: rope_heads first
+SKIP op/rope/freq_factors: ir_eval: rope freq_factors (paperkiln training op has no factors)
+SKIP op/rope/freq_factors_short: ir_eval: rope freq_factors (paperkiln training op has no factors)
+SKIP op/rope/freq_factors_long: ir_eval: rope freq_factors (paperkiln training op has no factors)
+SKIP op/rope/attn_factor: ir_eval: rope attn_factor != 1 (paperkiln training op has no amplitude scale)
+SKIP op/rope/freq_factors_partial_attn_factor: ir_eval: rope freq_factors (paperkiln training op has no factors)
+SKIP op/rope/freq_factors_values: ir_eval: rope freq_factors (paperkiln training op has no factors)
+PASS op/attention/causal: a worst 3.52e-08 of max(1, |ref|)
+SKIP op/attention/window_sinks: ir_eval: attention other than plain causal (the llama block's)
+PASS op/attention/grouped_query: a worst 9.89e-08 of max(1, |ref|)
+PASS op/attention/position_bias: a worst 8.01e-08 of max(1, |ref|)
+SKIP op/attention/position_bias_window_sinks: ir_eval: attention other than plain causal (the llama block's)
+PASS op/attention/position_bias_grouped_query: a worst 1.10e-07 of max(1, |ref|)
+PASS op/attention/relative_kv: a worst 7.38e-08 of max(1, |ref|)
+PASS op/attention/relative_kv_per_head: a worst 4.19e-08 of max(1, |ref|)
+PASS op/attention/relative_kv_keys_only: a worst 1.27e-07 of max(1, |ref|)
+SKIP op/attention/relative_kv_window_sinks: ir_eval: attention other than plain causal (the llama block's)
+PASS op/attention/relative_kv_grouped_query: a worst 1.14e-07 of max(1, |ref|)
+PASS op/attention/relative_kv_distance_zero: a worst 1.19e-07 of max(1, |ref|)
+SKIP op/attention/softcap: ir_eval: attention softcap (paperkiln training op has no softcap)
+SKIP op/attention/softcap_window_sinks: ir_eval: attention softcap (paperkiln training op has no softcap)
+SKIP op/attention/softcap_position_bias: ir_eval: attention softcap (paperkiln training op has no softcap)
+SKIP op/moe_ffn/renorm: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/moe_ffn/raw: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/moe_ffn/sigmoid_renorm: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/moe_ffn/sigmoid_bias_groups: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/moe_ffn/softmax_bias_raw: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/list/two: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/append/one: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/depth_attend/one_source: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/depth_attend/three_sources: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/depth_attend/eps_default: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+PASS op/expr/gelu_sigmoid: y worst 1.61e-08 of max(1, |ref|)
+PASS op/expr/relu_squared: y worst 0.00e+00 of max(1, |ref|)
+PASS op/expr/where_rowmean: y worst 0.00e+00 of max(1, |ref|)
+PASS op/expr/layer_norm: y worst 0.00e+00 of max(1, |ref|)
+PASS op/expr/rowsum_constant: y worst 0.00e+00 of max(1, |ref|)
+PASS op/expr/depth_200: y worst 0.00e+00 of max(1, |ref|)
+SKIP op/linear_attention/two_heads: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/ssm_scan/n4: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+PASS op/conv1d_causal/k4: y worst 0.00e+00 of max(1, |ref|); state conv.x worst 0.00e+00 of max(1, |ref|)
+PASS op/selective_scan/d3n2: y worst 1.36e-07 of max(1, |ref|); state ssm.s worst 7.40e-08 of max(1, |ref|)
+PASS op/recurrence/linear_attention_body: y worst 4.89e-08 of max(1, |ref|); state lin.num worst 2.90e-08 of max(1, |ref|); state lin.den worst 5.87e-08 of max(1, |ref|)
+PASS op/recurrence/ssm_scan_body: y 0 values differ in their bits; state ssm.s 0 values differ in their bits
+PASS op/recurrence/conv1d_causal_body: y 0 values differ in their bits; state conv.x 0 values differ in their bits
+PASS op/recurrence/selective_scan_body: y worst 1.81e-07 of max(1, |ref|); state ssm.s worst 2.47e-08 of max(1, |ref|)
+PASS op/recurrence/rnn_init_offset: y worst 8.28e-08 of max(1, |ref|); state rnn.h worst 5.96e-08 of max(1, |ref|)
+PASS op/recurrence/ema_bias_corrected: y worst 0.00e+00 of max(1, |ref|); state avg.m worst 0.00e+00 of max(1, |ref|); state avg.n worst 0.00e+00 of max(1, |ref|)
+PASS op/recurrence/ema_exact: y 0 values differ in their bits; state avg.m 0 values differ in their bits; state avg.n 0 values differ in their bits
+PASS op/recurrence/square_weight_declaration: y 0 values differ in their bits; state sq.h 0 values differ in their bits
+PASS op/recurrence/read_beyond_declaration: y 0 values differ in their bits; state pad.h 0 values differ in their bits
+SKIP op/mla_attention/two_heads: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/mla_attention/window_sinks: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP op/mla_attention/one_head: mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops
+SKIP refuse/unknown_op: not implemented
+SKIP refuse/unknown_attribute: not implemented
+SKIP refuse/unknown_top_key: not implemented
+SKIP refuse/version_2: not implemented
+SKIP refuse/repeat_ne_n_layers: not implemented
+SKIP refuse/model_ctx_missing: not implemented
+SKIP refuse/per_layer_wrong_length: not implemented
+SKIP refuse/per_layer_in_head: not implemented
+SKIP refuse/add_one_input: not implemented
+SKIP refuse/rope_pairing_unknown: not implemented
+SKIP refuse/rope_n_rot_odd: not implemented
+SKIP refuse/attention_not_causal: not implemented
+SKIP refuse/attention_heads_not_multiple: not implemented
+SKIP refuse/attention_window_differs: not implemented
+SKIP refuse/slot_declared_twice: not implemented
+SKIP refuse/slot_unread: not implemented
+SKIP refuse/slot_unknown_kind: not implemented
+SKIP refuse/attention_no_slot: not implemented
+SKIP refuse/kv_slot_field_missing: not implemented
+SKIP refuse/tensor_index_without_weight_index: not implemented
+SKIP refuse/name_with_i_outside_block: not implemented
+SKIP refuse/evict_on_causal: not implemented
+SKIP refuse/missing_tensor: not implemented
+SKIP refuse/gelu_approx_unknown: not implemented
+SKIP refuse/split_count: not implemented
+SKIP refuse/expr_does_not_parse: not implemented
+SKIP refuse/moe_top_k_too_large: not implemented
+SKIP refuse/moe_gate_norm_unknown: not implemented
+SKIP refuse/recurrent_dtype_f16: not implemented
+SKIP refuse/recurrent_shape_mismatch: not implemented
+SKIP refuse/recurrent_op_mismatch: not implemented
+SKIP refuse/linear_attention_not_causal: not implemented
+SKIP refuse/conv_kernel_one: not implemented
+SKIP refuse/weight_index_wrong_length: not implemented
+SKIP refuse/weight_index_unused_layer: not implemented
+SKIP refuse/weight_index_negative: not implemented
+SKIP refuse/mor_route_not_first: not implemented
+SKIP refuse/mor_expert_choice: not implemented
+SKIP refuse/mor_unequal_steps: not implemented
+SKIP refuse/mor_steps_descending: not implemented
+SKIP refuse/mor_step_length_wrong: not implemented
+SKIP refuse/mor_no_kv_rows_active: not implemented
+SKIP refuse/mor_kv_from: not implemented
+SKIP refuse/mor_gate_unknown: not implemented
+SKIP refuse/mor_router_with_i: not implemented
+SKIP refuse/mor_kv_rows_shared: not implemented
+SKIP refuse/mor_route_in_head: not implemented
+SKIP refuse/turn_state_with_window: not implemented
+SKIP refuse/turn_state_without_state_weight: not implemented
+SKIP refuse/evict_without_mask: not implemented
+SKIP refuse/evict_unknown: not implemented
+SKIP refuse/mask_unknown: not implemented
+SKIP refuse/state_weight_with_i: not implemented
+SKIP refuse/two_state_weights: not implemented
+SKIP refuse/state_weight_wrong_name: not implemented
+SKIP refuse/recurrence_body_does_not_parse: not implemented
+SKIP refuse/recurrence_name_twice: not implemented
+SKIP refuse/recurrence_rowsum: not implemented
+SKIP refuse/recurrence_index_size_zero: not implemented
+SKIP refuse/recurrence_index_out_of_scope: not implemented
+SKIP refuse/recurrence_init_reads_input: not implemented
+SKIP refuse/recurrence_rank_mismatch: not implemented
+SKIP refuse/recurrence_index_undeclared: not implemented
+SKIP refuse/recurrence_slot_shape: not implemented
+SKIP refuse/recurrence_slot_missing_tensor: not implemented
+SKIP refuse/recurrence_init_flag: not implemented
+SKIP refuse/recurrence_weight_size: not implemented
+SKIP refuse/recurrence_assignment_repeats_index: not implemented
+SKIP refuse/recurrence_bare_undeclared_name: not implemented
+SKIP refuse/reads_unwritten_value: not implemented
+SKIP refuse/embed_writes_no_x: not implemented
+SKIP refuse/head_writes_no_logits: not implemented
+SKIP refuse/mor_reads_outside_value: not implemented
+SKIP refuse/mor_step_gap: not implemented
+SKIP refuse/mor_reads_tokens: not implemented
+SKIP refuse/mor_reads_route_out: not implemented
+SKIP refuse/position_bias_bucket_negative: not implemented
+SKIP refuse/position_bias_buckets_empty: not implemented
+SKIP refuse/position_bias_table_shape: not implemented
+SKIP refuse/position_bias_per_layer: not implemented
+SKIP refuse/tensor_index_in_head: not implemented
+SKIP refuse/tensor_index_value_unknown: not implemented
+SKIP refuse/tensor_index_on_affine: not implemented
+SKIP refuse/tensor_index_absent_application_tensor: not implemented
+SKIP refuse/relative_kv_distance_negative: not implemented
+SKIP refuse/relative_kv_without_key: not implemented
+SKIP refuse/relative_kv_unknown_field: not implemented
+SKIP refuse/relative_kv_key_shape: not implemented
+SKIP refuse/relative_kv_value_shape: not implemented
+SKIP refuse/relative_kv_with_position_bias: not implemented
+SKIP refuse/relative_kv_per_layer: not implemented
+SKIP refuse/softcap_not_positive: not implemented
+SKIP refuse/attn_factor_not_positive: not implemented
+SKIP refuse/freq_factors_without_original_ctx: not implemented
+SKIP refuse/freq_factors_unknown_field: not implemented
+SKIP refuse/freq_factors_tensor_shape: not implemented
+SKIP refuse/freq_factors_per_layer: not implemented
+SKIP refuse/split_groups_zero: not implemented
+SKIP refuse/mla_slot_head_dim: not implemented
+SKIP refuse/mla_slot_kv_heads: not implemented
+SKIP refuse/mla_k_b_shape: not implemented
+SKIP refuse/mla_reads_three: not implemented
+SKIP refuse/mla_without_k_b: not implemented
+SKIP refuse/mla_not_causal: not implemented
+SKIP refuse/apply_entries_not_boolean: not implemented
+SKIP refuse/apply_outside_block: not implemented
+SKIP refuse/apply_on_attention: not implemented
+SKIP refuse/apply_leaves_value_unwritten: not implemented
+SKIP refuse/apply_with_depth_route: not implemented
+SKIP refuse/moe_groups_not_dividing: not implemented
+SKIP refuse/moe_scoring_unknown: not implemented
+SKIP refuse/moe_selection_bias_shape: not implemented
+SKIP refuse/freq_factors_values_length: not implemented
+SKIP refuse/freq_factors_values_not_positive: not implemented
+SKIP refuse/duplicate_member_top: not implemented
+SKIP refuse/duplicate_member_node: not implemented
+SKIP refuse/duplicate_member_prose: not implemented
+SKIP refuse/version_key_mismatch: not implemented
+SKIP refuse/state_tokens_k_mismatch: not implemented
+SKIP refuse/state_template_not_v1: not implemented
+SKIP refuse/weight_index_block_count: not implemented
+SKIP refuse/state_tokens_arch_llama: not implemented
+SKIP refuse/duplicate_member_embedded: not implemented
+SKIP refuse/architecture_kimi_as_gpt2: not implemented
+SKIP refuse/architecture_swa_as_gpt2: not implemented
+SKIP refuse/architecture_metadata_disagrees: not implemented
+SKIP refuse/architecture_without_graph: not implemented
+SKIP refuse/architecture_gemma2_softcap_dropped: not implemented
+SKIP refuse/architecture_substituted_document: not implemented
+PASS digest/vectors/rfc8785_number_0000000000000000: sha256 equal; canonical equal
+PASS digest/vectors/rfc8785_number_0000000000000001: sha256 equal; canonical equal
+PASS digest/vectors/rfc8785_number_8000000000000001: sha256 equal; canonical equal
+PASS digest/vectors/rfc8785_number_7fefffffffffffff: sha256 equal; canonical equal
+PASS digest/vectors/rfc8785_number_ffefffffffffffff: sha256 equal; canonical equal
+PASS digest/vectors/rfc8785_number_4340000000000000: sha256 equal; canonical equal
+PASS digest/vectors/rfc8785_number_c340000000000000: sha256 equal; canonical equal
+PASS digest/vectors/rfc8785_number_4430000000000000: sha256 equal; canonical equal
+PASS digest/vectors/rfc8785_number_44b52d02c7e14af5: sha256 equal; canonical equal
+PASS digest/vectors/rfc8785_number_44b52d02c7e14af6: sha256 equal; canonical equal
+PASS digest/vectors/rfc8785_number_44b52d02c7e14af7: sha256 equal; canonical equal
+PASS digest/vectors/rfc8785_number_444b1ae4d6e2ef4e: sha256 equal; canonical equal
+PASS digest/vectors/rfc8785_number_444b1ae4d6e2ef4f: sha256 equal; canonical equal
+PASS digest/vectors/rfc8785_number_444b1ae4d6e2ef50: sha256 equal; canonical equal
+PASS digest/vectors/rfc8785_number_3eb0c6f7a0b5ed8c: sha256 equal; canonical equal
+PASS digest/vectors/rfc8785_number_3eb0c6f7a0b5ed8d: sha256 equal; canonical equal
+PASS digest/vectors/rfc8785_number_41b3de4355555553: sha256 equal; canonical equal
+PASS digest/vectors/rfc8785_number_41b3de4355555554: sha256 equal; canonical equal
+PASS digest/vectors/rfc8785_number_41b3de4355555555: sha256 equal; canonical equal
+PASS digest/vectors/rfc8785_number_41b3de4355555556: sha256 equal; canonical equal
+PASS digest/vectors/rfc8785_number_41b3de4355555557: sha256 equal; canonical equal
+PASS digest/vectors/rfc8785_number_becbf647612f3696: sha256 equal; canonical equal
+PASS digest/vectors/rfc8785_number_43143ff3c1cb0959: sha256 equal; canonical equal
+PASS digest/vectors/f32_eps: sha256 equal; canonical equal
+PASS digest/vectors/f32_rope_theta: sha256 equal; canonical equal
+PASS digest/vectors/f32_scale: sha256 equal; canonical equal
+PASS digest/vectors/f32_den_floor: sha256 equal; canonical equal
+PASS digest/vectors/integer_2p53: sha256 equal; canonical equal
+PASS digest/vectors/negative_integer: sha256 equal; canonical equal
+PASS digest/vectors/minus_zero_integer_form: sha256 equal; canonical equal
+PASS digest/vectors/exponent_form: sha256 equal; canonical equal
+PASS digest/vectors/string_controls: sha256 equal; canonical equal
+PASS digest/vectors/string_controls_escaped: sha256 equal; canonical equal
+PASS digest/vectors/string_escapes: sha256 equal; canonical equal
+PASS digest/vectors/string_escapes_escaped: sha256 equal; canonical equal
+PASS digest/vectors/string_line_separators: sha256 equal; canonical equal
+PASS digest/vectors/string_line_separators_escaped: sha256 equal; canonical equal
+PASS digest/vectors/string_astral: sha256 equal; canonical equal
+PASS digest/vectors/string_astral_escaped: sha256 equal; canonical equal
+PASS digest/vectors/string_accents: sha256 equal; canonical equal
+PASS digest/vectors/string_accents_escaped: sha256 equal; canonical equal
+PASS digest/vectors/string_names: sha256 equal; canonical equal
+PASS digest/vectors/string_names_escaped: sha256 equal; canonical equal
+PASS digest/vectors/key_order_utf16: sha256 equal; canonical equal
+PASS digest/vectors/nesting: sha256 equal; canonical equal
+PASS digest/vectors/prose_removed: sha256 equal; canonical equal
+PASS digest/vectors/prose_kept_in_serialiser_test: sha256 equal; canonical equal
+PASS digest/vectors/document_pk_attnres: sha256 equal; canonical equal
+PASS digest/vectors/document_pk_flex_expr: sha256 equal; canonical equal
+PASS digest/vectors/document_pk_flex_highway: sha256 equal; canonical equal
+PASS digest/vectors/document_pk_flex_mdha: sha256 equal; canonical equal
+PASS digest/vectors/document_pk_flex_shaw: sha256 equal; canonical equal
+PASS digest/vectors/document_pk_flex_t5: sha256 equal; canonical equal
+PASS digest/vectors/document_pk_gpt2: sha256 equal; canonical equal
+PASS digest/vectors/document_pk_gpt2_swa: sha256 equal; canonical equal
+PASS digest/vectors/document_pk_kimi: sha256 equal; canonical equal
+PASS digest/vectors/document_pk_llama: sha256 equal; canonical equal
+PASS digest/vectors/document_pk_llama_attnres: sha256 equal; canonical equal
+PASS digest/vectors/document_pk_llama_attnres_rec: sha256 equal; canonical equal
+PASS digest/vectors/document_pk_mamba: sha256 equal; canonical equal
+PASS digest/vectors/document_pk_moe: sha256 equal; canonical equal
+PASS digest/vectors/document_pk_mor: sha256 equal; canonical equal
+PASS digest/vectors/document_pk_recurrence: sha256 equal; canonical equal
+PASS digest/vectors/document_pk_recursive: sha256 equal; canonical equal
+PASS digest/vectors/document_pk_srd: sha256 equal; canonical equal
+PASS digest/vectors/document_pk_state: sha256 equal; canonical equal
+PASS digest/vectors/document_tp_deepseek2: sha256 equal; canonical equal
+PASS digest/vectors/document_tp_deepseek3: sha256 equal; canonical equal
+PASS digest/vectors/document_tp_gemma2: sha256 equal; canonical equal
+PASS digest/vectors/document_tp_gemma3: sha256 equal; canonical equal
+PASS digest/vectors/document_tp_gptneox: sha256 equal; canonical equal
+PASS digest/vectors/document_tp_llama_hd16: sha256 equal; canonical equal
+PASS digest/vectors/document_tp_mamba1: sha256 equal; canonical equal
+PASS digest/vectors/document_tp_mistral: sha256 equal; canonical equal
+PASS digest/vectors/document_tp_mistral_hd16: sha256 equal; canonical equal
+PASS digest/vectors/document_tp_phi3: sha256 equal; canonical equal
+PASS digest/vectors/document_tp_qwen2moe: sha256 equal; canonical equal
+PASS digest/vectors/document_tp_qwen3: sha256 equal; canonical equal
+PASS digest/vectors/document_tp_qwen3_hd16: sha256 equal; canonical equal
+PASS digest/vectors/document_tp_qwen3moe: sha256 equal; canonical equal
+PASS digest/vectors/negative_zero: refused
+PASS digest/vectors/integer_beyond_2p53: refused
+PASS digest/vectors/overflow: refused
+PASS digest/vectors/duplicate_key: refused
+PASS digest/vectors/lone_surrogate: refused
+PASS digest/vectors/nan_literal: refused
+PASS digest/vectors/prose_overflow: refused
+PASS digest/vectors/prose_negative_zero: refused
+PASS digest/vectors/prose_integer_beyond_2p53: refused
+PASS digest/vectors/prose_lone_surrogate: refused
+PASS digest/vectors/prose_key_lone_surrogate: refused
+PASS digest/vectors/prose_duplicate_key: refused
+PASS digest/vectors/fraction_form_beyond_2p53: sha256 equal; canonical equal
+PASS digest/vectors/exponent_form_1e300: sha256 equal; canonical equal
+PASS digest/vectors/negative_integer_2p53: sha256 equal; canonical equal
+PASS digest/vectors/negative_integer_beyond_2p53: refused
+SKIP dequant/blocks/f32: not implemented
+SKIP dequant/blocks/f16: not implemented
+SKIP dequant/blocks/q4_0: not implemented
+SKIP dequant/blocks/q5_0: not implemented
+SKIP dequant/blocks/q5_1: not implemented
+SKIP dequant/blocks/q8_0: not implemented
+SKIP dequant/blocks/q4_k: not implemented
+SKIP dequant/blocks/q5_k: not implemented
+SKIP dequant/blocks/q6_k: not implemented
+SKIP dequant/blocks/bf16: not implemented
+PASS grad/recurrence/linear_attention_body: dq worst 1.43e-07 of max(1, |ref|); dk worst 2.90e-07 of max(1, |ref|); dv worst 9.57e-08 of max(1, |ref|)
+PASS grad/recurrence/ssm_scan_body: du worst 1.87e-08 of max(1, |ref|); dA worst 1.10e-07 of max(1, |ref|); dB worst 9.02e-08 of max(1, |ref|); dC worst 3.00e-08 of max(1, |ref|); dDk worst 6.39e-08 of max(1, |ref|)
+PASS grad/recurrence/conv1d_causal_body: dx worst 3.02e-08 of max(1, |ref|); dw worst 1.06e-07 of max(1, |ref|); db worst 6.43e-08 of max(1, |ref|)
+PASS grad/recurrence/selective_scan_body: dx worst 9.19e-08 of max(1, |ref|); ddt worst 5.96e-08 of max(1, |ref|); dB worst 1.12e-07 of max(1, |ref|); dC worst 7.14e-08 of max(1, |ref|); dA worst 8.94e-08 of max(1, |ref|); dDk worst 5.96e-08 of max(1, |ref|)
+PASS grad/recurrence/rnn_init_offset: dx worst 9.40e-08 of max(1, |ref|); dW worst 4.48e-08 of max(1, |ref|); dU worst 9.58e-08 of max(1, |ref|); dh0 worst 5.96e-08 of max(1, |ref|)
+PASS grad/recurrence/ema_bias_corrected: dx worst 2.50e-08 of max(1, |ref|); dg worst 4.79e-08 of max(1, |ref|); ddecay worst 3.61e-07 of max(1, |ref|)
+PASS grad/recurrence/ema_exact: dx worst 8.34e-08 of max(1, |ref|); dg worst 1.49e-08 of max(1, |ref|); ddecay worst 1.60e-07 of max(1, |ref|)
+PASS grad/recurrence/square_weight_declaration: dx worst 3.23e-08 of max(1, |ref|); dW worst 3.96e-08 of max(1, |ref|)
+PASS grad/attention/relative_kv: dq worst 1.19e-07 of max(1, |ref|); dk worst 1.42e-07 of max(1, |ref|); dv worst 6.61e-08 of max(1, |ref|); drk worst 1.49e-07 of max(1, |ref|); drv worst 1.31e-07 of max(1, |ref|)
+PASS grad/attention/relative_kv_per_head_grouped_query: dq worst 9.62e-08 of max(1, |ref|); dk worst 1.19e-07 of max(1, |ref|); dv worst 8.38e-08 of max(1, |ref|); drk worst 1.76e-07 of max(1, |ref|); drv worst 5.73e-08 of max(1, |ref|)
+PASS grad/attention/relative_kv_keys_only: dq worst 1.49e-07 of max(1, |ref|); dk worst 1.19e-07 of max(1, |ref|); dv worst 8.76e-08 of max(1, |ref|); drk worst 1.19e-07 of max(1, |ref|)
+SKIP trace/pk_kimi_recurrence: not implemented
+SKIP trace/pk_srd_recurrence: not implemented
+SKIP trace/pk_mamba_recurrence: not implemented
+SKIP trace/tp_mamba1_recurrence: not implemented
+SKIP trace/pk_srd_truncate: not implemented
+SKIP trace/tp_mamba1_truncate: not implemented
+SKIP trace/pk_flex_mdha_truncate: not implemented
+SKIP trace/pk_gpt2_swa_rewind_window: not implemented
+SKIP trace/tp_gemma3_rewind_window: not implemented
+SKIP trace/tp_mistral_hd16_rewind_window: not implemented
+SKIP trace/tp_gemma2_rewind_window: not implemented
+SKIP trace/pk_attnres_chunks: not implemented
+SKIP trace/pk_flex_expr_chunks: not implemented
+SKIP trace/pk_flex_highway_chunks: not implemented
+SKIP trace/pk_flex_mdha_chunks: not implemented
+SKIP trace/pk_flex_shaw_chunks: not implemented
+SKIP trace/pk_flex_t5_chunks: not implemented
+SKIP trace/pk_gpt2_chunks: not implemented
+SKIP trace/pk_gpt2_swa_chunks: not implemented
+SKIP trace/pk_kimi_chunks: not implemented
+SKIP trace/pk_llama_chunks: not implemented
+SKIP trace/pk_llama_attnres_chunks: not implemented
+SKIP trace/pk_llama_attnres_rec_chunks: not implemented
+SKIP trace/pk_mamba_chunks: not implemented
+SKIP trace/pk_moe_chunks: not implemented
+SKIP trace/pk_mor_chunks: not implemented
+SKIP trace/pk_recurrence_chunks: not implemented
+SKIP trace/pk_recursive_chunks: not implemented
+SKIP trace/pk_srd_chunks: not implemented
+SKIP trace/pk_state_chunks: not implemented
+SKIP trace/tp_deepseek2_chunks: not implemented
+SKIP trace/tp_deepseek3_chunks: not implemented
+SKIP trace/tp_gemma2_chunks: not implemented
+SKIP trace/tp_gemma3_chunks: not implemented
+SKIP trace/tp_gptneox_chunks: not implemented
+SKIP trace/tp_llama_hd16_chunks: not implemented
+SKIP trace/tp_mamba1_chunks: not implemented
+SKIP trace/tp_mistral_chunks: not implemented
+SKIP trace/tp_mistral_hd16_chunks: not implemented
+SKIP trace/tp_phi3_chunks: not implemented
+SKIP trace/tp_qwen2moe_chunks: not implemented
+SKIP trace/tp_qwen3_chunks: not implemented
+SKIP trace/tp_qwen3_hd16_chunks: not implemented
+SKIP trace/tp_qwen3moe_chunks: not implemented
+SKIP trace/pk_llama_attnres_rec_untagged: not implemented
+SKIP trace/pk_flex_shaw_weight_index: not implemented
+SKIP trace/pk_mor_window: not implemented
+SKIP trace/pk_mor_window_rewind: not implemented
+SKIP accept/documents/model_pk_attnres: not implemented
+SKIP accept/documents/model_pk_flex_expr: not implemented
+SKIP accept/documents/model_pk_flex_highway: not implemented
+SKIP accept/documents/model_pk_flex_mdha: not implemented
+SKIP accept/documents/model_pk_flex_shaw: not implemented
+SKIP accept/documents/model_pk_flex_t5: not implemented
+SKIP accept/documents/model_pk_gpt2: not implemented
+SKIP accept/documents/model_pk_gpt2_swa: not implemented
+SKIP accept/documents/model_pk_kimi: not implemented
+SKIP accept/documents/model_pk_llama: not implemented
+SKIP accept/documents/model_pk_llama_attnres: not implemented
+SKIP accept/documents/model_pk_llama_attnres_rec: not implemented
+SKIP accept/documents/model_pk_mamba: not implemented
+SKIP accept/documents/model_pk_moe: not implemented
+SKIP accept/documents/model_pk_mor: not implemented
+SKIP accept/documents/model_pk_recurrence: not implemented
+SKIP accept/documents/model_pk_recursive: not implemented
+SKIP accept/documents/model_pk_srd: not implemented
+SKIP accept/documents/model_pk_state: not implemented
+SKIP accept/documents/model_tp_deepseek2: not implemented
+SKIP accept/documents/model_tp_deepseek3: not implemented
+SKIP accept/documents/model_tp_gemma2: not implemented
+SKIP accept/documents/model_tp_gemma3: not implemented
+SKIP accept/documents/model_tp_gptneox: not implemented
+SKIP accept/documents/model_tp_llama_hd16: not implemented
+SKIP accept/documents/model_tp_mamba1: not implemented
+SKIP accept/documents/model_tp_mistral: not implemented
+SKIP accept/documents/model_tp_mistral_hd16: not implemented
+SKIP accept/documents/model_tp_phi3: not implemented
+SKIP accept/documents/model_tp_qwen2moe: not implemented
+SKIP accept/documents/model_tp_qwen3: not implemented
+SKIP accept/documents/model_tp_qwen3_hd16: not implemented
+SKIP accept/documents/model_tp_qwen3moe: not implemented
+SKIP accept/documents/rewritten_pk_kimi: not implemented
+SKIP accept/documents/rewritten_pk_srd: not implemented
+SKIP accept/documents/rewritten_pk_mamba: not implemented
+SKIP accept/documents/rewritten_tp_mamba1: not implemented
+SKIP accept/documents/example_attnres_tiny: not implemented
+SKIP accept/documents/example_chat_sftfinal: not implemented
+SKIP accept/documents/example_flex_highway_tiny: not implemented
+SKIP accept/documents/example_gpt2_tiny: not implemented
+SKIP accept/documents/example_kimi_tiny: not implemented
+SKIP accept/documents/example_mamba_tiny: not implemented
+SKIP accept/documents/example_moe_tiny: not implemented
+SKIP accept/documents/example_srd_tiny: not implemented
+SKIP accept/documents/example_swa_tiny: not implemented
+SKIP accept/documents/substituted_over_duplicate_embedded: not implemented
+SKIP accept/documents/untagged_application_queries: not implemented
+SKIP accept/documents/relative_kv_weight_index: not implemented
+SKIP accept/documents/mor_window: not implemented
+SKIP chat/render/one user prompt: not implemented
+SKIP chat/render/system folds into the first user turn: not implemented
+SKIP chat/render/a lone system message: not implemented
+SKIP chat/render/a system message with no user message: not implemented
+SKIP chat/render/two system messages: not implemented
+SKIP chat/render/a system message mid-conversation: not implemented
+SKIP chat/render/the assistant first: not implemented
+SKIP chat/render/two user messages in a row: not implemented
+SKIP chat/render/a training conversation ending on a user message: not implemented
+SKIP chat/render/a prompt ending on an assistant message: not implemented
+SKIP chat/render/user content holding a role marker: not implemented
+SKIP chat/render/system content holding end-of-text: not implemented
+SKIP chat/render/assistant content holding a marker: not implemented
+SKIP chat/render/<unk> text is ordinary content: not implemented
+SKIP chat/render/newline-only user content: not implemented
+SKIP chat/render/newline-only and empty replies in the history: not implemented
+SKIP chat/render/the tool role is reserved: not implemented
+SKIP chat/render/an unknown role: not implemented
+SKIP chat/render/three exchanges with a system message: not implemented
+SKIP chat/render/a training conversation with a system message: not implemented
+SKIP chat/render/loss on a user message: not implemented
+SKIP chat/render/unicode content: not implemented
+SKIP chat/render/system mode none refuses a system message: not implemented
+SKIP chat/render/system mode none without one: not implemented
+SKIP chat/render/legacy word-level prompt: not implemented
+SKIP chat/render/gemma3 trims and folds: not implemented
+SKIP chat/render/gemma3 trims unicode edge whitespace: not implemented
+SKIP chat/render/gemma3 trims unicode whitespace in system and history: not implemented
+SKIP chat/render/gemma3 keeps inner unicode whitespace and zero-width space: not implemented
+SKIP chat/render/qwen3 strips past reasoning: not implemented
+SKIP chat/render/qwen2.5 writes its default system turn: not implemented
+SKIP chat/render/qwen3 thinking off: not implemented
+SKIP chat/render/v2 one user prompt (v1's text): not implemented
+SKIP chat/render/v2 user and assistant only (v1's text): not implemented
+SKIP chat/render/v2 system turn: not implemented
+SKIP chat/render/v2 empty system message: not implemented
+SKIP chat/render/v2 system turn and history: not implemented
+SKIP chat/render/v2 training conversation with a system turn: not implemented
+SKIP chat/render/v2 system and tool definitions: not implemented
+SKIP chat/render/v2 tool definitions without a system message: not implemented
+SKIP chat/render/v2 tool definitions with an empty system message: not implemented
+SKIP chat/render/v2 unicode tool definition: not implemented
+SKIP chat/render/v2 a call answered: the prompt ends on the tool message: not implemented
+SKIP chat/render/v2 a call, its result and the reply: not implemented
+SKIP chat/render/v2 content before a call: not implemented
+SKIP chat/render/v2 two calls, two results, a reply, then a user message: not implemented
+SKIP chat/render/v2 tool_call_id matching the call's id: not implemented
+SKIP chat/render/v2 a training conversation ending on a call: not implemented
+SKIP chat/render/v2 empty arguments: not implemented
+SKIP chat/render/v2 newline-only and empty contents: not implemented
+SKIP chat/render/v2 a tool message without a call: not implemented
+SKIP chat/render/v2 a tool message first: not implemented
+SKIP chat/render/v2 fewer results than calls: not implemented
+SKIP chat/render/v2 a prompt ending while a call has no result: not implemented
+SKIP chat/render/v2 a reply without its results: not implemented
+SKIP chat/render/v2 tool_call_id not the call's id: not implemented
+SKIP chat/render/v2 tool_call_id when the call has no id: not implemented
+SKIP chat/render/v2 a call name with a newline: not implemented
+SKIP chat/render/v2 an empty call name: not implemented
+SKIP chat/render/v2 arguments holding a control token: not implemented
+SKIP chat/render/v2 arguments that are not a string: not implemented
+SKIP chat/render/v2 a call type other than function: not implemented
+SKIP chat/render/v2 an empty tool_calls list: not implemented
+SKIP chat/render/v2 tool_calls on a user message: not implemented
+SKIP chat/render/v2 user content holding <|system|>: not implemented
+SKIP chat/render/v2 tool content holding a spare token: not implemented
+SKIP chat/render/v2 system content holding <|tool|>: not implemented
+SKIP chat/render/v2 a tool definition holding a control token: not implemented
+SKIP chat/render/v2 a tool definition with a non-integer number: not implemented
+SKIP chat/render/v2 a tool definition that is not an object: not implemented
+SKIP chat/render/v2 a system message mid-conversation: not implemented
+SKIP chat/render/v2 loss on a tool message: not implemented
+SKIP chat/render/v1 refuses tool definitions: not implemented
+SKIP chat/render/v1 refuses tool_calls: not implemented
+SKIP chat/parse_reply/no call: not implemented
+SKIP chat/parse_reply/content then a call: not implemented
+SKIP chat/parse_reply/a call alone: not implemented
+SKIP chat/parse_reply/two calls: not implemented
+SKIP chat/parse_reply/empty arguments: not implemented
+SKIP chat/parse_reply/arguments holding a newline: not implemented
+SKIP chat/parse_reply/the call's text as BPE pieces is content: not implemented
+SKIP chat/parse_reply/a call without a newline: not implemented
+SKIP chat/parse_reply/an empty name: not implemented
+SKIP chat/parse_reply/an empty call: not implemented
+SKIP chat/parse_reply/one good call and one bad: not implemented
+SKIP chat/parse_reply/no ids: not implemented
+summary mtstudio: 164 pass, 0 fail, 434 skip, 0 xfail, 0 xpass; by kind model 19/0/14, trace 6/0/93, op 32/0/52, refuse 0/0/129, digest 96/0/0, dequant 0/0/10, grad 11/0/0, accept 0/0/50, chat 0/0/86 (pass/fail/skip)

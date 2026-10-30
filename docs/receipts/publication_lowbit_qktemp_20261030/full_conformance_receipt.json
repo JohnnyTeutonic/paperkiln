@@ -1,0 +1,72 @@
+{
+  "utc": "2026-10-30T11:03:14.575586+00:00",
+  "source_commit": "990f594563b029cc029843deb97791712e012590",
+  "command": [
+    "tools/ir_conformance_mtstudio.py",
+    "--json",
+    "/home/jonat/pk_publication_build_20261030/conformance_full.json"
+  ],
+  "environment": {
+    "MTSTUDIO_BIN": "/home/jonat/pk_publication_build_20261030/mtstudio",
+    "cpu_budget_slots": 2
+  },
+  "cases": 598,
+  "PASS": 164,
+  "SKIP": 434,
+  "FAIL": 0,
+  "XFAIL": 0,
+  "XPASS": 0,
+  "by_kind_pass_skip": {
+    "model": [
+      19,
+      14
+    ],
+    "trace": [
+      6,
+      93
+    ],
+    "op": [
+      32,
+      52
+    ],
+    "digest": [
+      96,
+      0
+    ],
+    "grad": [
+      11,
+      0
+    ],
+    "refuse": [
+      0,
+      129
+    ],
+    "accept": [
+      0,
+      50
+    ],
+    "chat": [
+      0,
+      86
+    ],
+    "dequant": [
+      0,
+      10
+    ]
+  },
+  "scope": "Current training adapter only. Generic reader/refusal/accept, trace/chat/dequant methods are not implemented and explicitly SKIP. Zero unexpected failures is not full semantic coverage. Direct C++ rule36 reader checks passed separately in49CTest. No fixtures regenerated or expected failures changed. Counts are not compared with another adapter historical baseline.",
+  "binary_sha256": {
+    "mtstudio": "73260ae18ce9fcc07129666f87cf3dce0df1b0786ad9b02e2d766a0831db14cb",
+    "ir_eval": "ca050b1b50b9e2300a59a36ca8acaf452ac85a915eb4f6475964d28376d74ff1",
+    "expr_eval": "7be1e4d35a5623d8abe9441bb8f599deb92ea3aad485cac96fb1d897a80caffb"
+  },
+  "source_sha256": {
+    "tools/ir_conformance_mtstudio.py": "c8736448d3f713cca4b02276cde235fd34fcbc41ba457775231a13253de9bd52",
+    "tools/ir_eval.cpp": "a4ee44a13f6dec29a411d8d684554077d5416d01e2c941113daf22266d1ed53c",
+    "spec/tools/ir_conformance.py": "aae39563ff1fcdc0b9f00fa353e149deafa703693ee07df244ada48ba053b452"
+  },
+  "artifacts_sha256": {
+    "conformance_full.json": "c62f95a5102e0df27dbae5ee586142dc2621379d53c63d06b4dbf2de3c774ffa",
+    "conformance_full.log": "2cbab7ca7eb9f83641dcecbdaede0085fe4a949d72c8a728c61f203177d49b11"
+  }
+}
