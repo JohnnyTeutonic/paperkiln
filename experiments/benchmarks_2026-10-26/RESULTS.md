@@ -309,3 +309,22 @@ CPU and the pod's CUDA give identical ids on the 374 prompts before it (next bul
   on the pod, the GPU near idle). `--batch-tokens N` (28 Oct 2026, opt-in) packs requests into one forward and
   runs 7.5-8.1x faster on the 60M pick's Carry-5 and Carry-12 requests on an L4, within ROUNDING of the
   unbatched scores (LOCAL_LLM_STACK.md section 10, 28 Oct); `bench_eval.py` does not pass it yet.
+
+
+## Attention Residuals CPU diagnostic (30 Oct 2026)
+
+The historical Stage L0 score slowdown (~4.5 versus ~0.8 min per chunk) was not reproduced by
+controlled raw-ID scoring on the existing `~/pk_state_build/mtstudio`. Four identical requests,
+each 480 prompt + 8 continuation tokens, took mean 25.81 s for Attention Residuals versus
+23.69 s for the plain control at two threads (1.09x); one-thread means were 27.41 versus
+28.05 s. The control uses the same trained shared weights with only the depth-query tensors
+and Attention Residuals setting removed, so these are timing measurements, not a quality test.
+The independently recovered original plain pick took 23.31 s at two threads. Both original
+pick artifacts were preserved. A short 240-sample profile points mainly to matrix multiplication
+and OpenMP work; it does not establish a depth-mixture bottleneck. Laptop contention and the
+full original request distribution were not controlled. No numerical or inference code was
+changed, and the original workload discrepancy remains on ROADMAP.
+
+[Receipt](receipts/attnres_cpu_2026-10-30.json) records requests, specs, alternating repeated
+timings, binary/weight hashes, the recovered plain control and the small profile. No paid
+compute, training, benchmark labels or registered analysis inputs changed.
