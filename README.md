@@ -177,6 +177,14 @@ an existing model.
   scheme vocabulary tokenise in llama.cpp, Ollama and LM Studio too.
 - `python tools/hf_export.py <run> --hf-dir <dir>` turns a llama-family run into a folder that
   `transformers.from_pretrained` opens.
+  Exports stage completely before publication; replacing managed files requires `--overwrite`.
+  Unrelated files are preserved. Replacement of an existing export is rollback-protected,
+  not crash-atomic; stale shards or loader overrides refuse rather than being silently deleted.
+  `python tools/hf_export_verify.py <dir> <run> --spec <spec.json> --receipt parity.json`
+  checks source tensors, prompt IDs, greedy IDs and raw logits. It retains hashed float32 rows
+  beside the immutable receipt. `python tools/hf_export_verify.py --replay parity.json`
+  recomputes the retained numerical/greedy checks using NumPy, without loading models.
+  Offline replay checks those saved rows; it does not repeat model execution or validate chat rendering.
 
 ## Quick start: GPU
 
