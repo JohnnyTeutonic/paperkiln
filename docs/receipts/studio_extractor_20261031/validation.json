@@ -1,0 +1,59 @@
+{
+  "schema": "paperkiln.studio_llm_extraction.offline_validation.v1",
+  "timestamp_utc": "2026-10-30T14:08:26.212254+00:00",
+  "base_commit": "688517d60a18b1ef302b88fcdc66b878fa846a13",
+  "source_sha256": {
+    "tools/mtstudio.cpp": "2134b534168b4bd6e1bd95f0599d3a385a36542361c70df6732026e8ca64ad3e",
+    "tools/studio_extract.py": "8c0e7624931f2b7c99ab6c1b196009990c30f97e25890596c49057f93276c9d8",
+    "studio/index.html": "4fb97baea6dc9652d31855214beea92460c26a4f725f043e7ecce71be1483a4c",
+    "tests/test_studio_extract.py": "c6e62ce085889e3b95785c221c2dc6ee730376d3f137eef5ebd1a0f9689215e7",
+    "tests/test_studio_extract_http.py": "a87d46c9bcefa0cab59d0fb9e904e080bd7451143dd12f43de07e3062845a6fe",
+    "tests/test_studio_extract.js": "4726f1732eb3ff92526c80e077b6073fa64047d1401f8b0de43d56293c714a48",
+    "tests/studio_extract_browser.js": "072f46eec5c69f5324def854e3a611c7a2a8ab8607cbaafac4e65860947a3841"
+  },
+  "cpu_binary": {
+    "path": "/home/jonat/pk_studio_build_20261031/mtstudio",
+    "sha256": "08db9c4691bd9092122a5499a9c246ac26123e5014772710a3e27276fe851193"
+  },
+  "logs_sha256": {
+    "python_tests.log": "51dbee2b2fc1f2f374e1304870c1496491792c73b8362aadd966c3aa924a0c1e",
+    "cpu_build.log": "9b7d6a30a388c8f5475b26db329fe855befcbdfaf273b0dd1d15f76ba1833832",
+    "windows_worker_tests.log": "c45a5c5dba08fca4b4f601691a11accbfde4b687f902b445974759607d4cb64c",
+    "js_tests.log": "9d0fce899c08226ce686c3c10109e604a817acd8afab7159f378e7b1ead2e8b4",
+    "browser_tests.json": "35ba3fb414a7799bf72515696885a7bd0505c0a15b5bfba27f3401fb73970324"
+  },
+  "checks": {
+    "cpu_build": "PASS",
+    "python_extractor_and_HTTP": "103 passed",
+    "windows_worker_including_native_parent_lifetime": "15 passed",
+    "javascript_extractor_research_sweep": "27 passed",
+    "offline_Chrome": "PASS; desktop and420px panel; no overflow",
+    "ruff": "PASS",
+    "changed_Cpp_ranges": "clang-format18.1.8",
+    "api_calls": 0
+  },
+  "screenshots": {
+    "llm_review.png": {
+      "path": "C:/ml_artifacts/studio_extractor_20261031/llm_review.png",
+      "sha256": "e3e9083da9c71a7cb89358b8e547d3bf5282039494e0745bdbdd2db2fa2c1765"
+    },
+    "llm_review_narrow.png": {
+      "path": "C:/ml_artifacts/studio_extractor_20261031/llm_review_narrow.png",
+      "sha256": "220d64d8ba5ba88ec0a4f7c2e381ee5c2f5ba6f06a220d9d6641184e700f1f03"
+    }
+  },
+  "scope": [
+    "Raw model output reverified against actual source before atomic publication; unresolved/unverified retained visibly.",
+    "Finite positive per-job cap up to5USD; full precision preserved into worker.",
+    "Explicit environment key only; no browser key, dotenv search or failure fallback.",
+    "Owned cancellation reaps worker; actual Linux andWindows Python parent-death guard probes pass.",
+    "HTTP validation, original result review, failure after success does not reuse old result, cross-origin/foreign-host refusal.",
+    "LLM extraction leaves coarse run builder unchanged; rule-based mode separate."
+  ],
+  "limits": [
+    "No paid/live provider extraction performed.",
+    "C++ Studio built/tested on Linux CPU; no Windows C++ build claimed.",
+    "Browser uses intercepted mocked HTTP responses; separate Python tests exercise actual compiled HTTP server with owned mock worker.",
+    "No architecture reconstruction/training/GPU correctness claim."
+  ]
+}

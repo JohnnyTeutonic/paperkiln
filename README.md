@@ -150,9 +150,20 @@ paperfetch 2302.13971 --emit-hf cfg.json    # a Hugging Face config, citations i
 ```
 
 In the studio (`./build/mtstudio serve <out_dir> 8080`, then open the page), drag an arXiv link
-onto the page. The extracted architecture fills the spec builder, the diagram redraws, and
-▶ train runs in the same tab. Details: [the LLM extractor](docs/TOUR.md#paper-to-architecture-the-llm-extractor)
+onto the page. In rule-based mode, the extracted architecture fills the spec builder and
+the diagram redraws; ▶ train runs in the same tab. LLM mode opens the evidence review described
+below. Details: [the LLM extractor](docs/TOUR.md#paper-to-architecture-the-llm-extractor)
 and [the rule-based fetcher](docs/TOUR.md#paper-to-architecture-the-rule-based-arxiv-fetcher-no-api-key).
+
+For LLM extraction in Studio, install the optional `anthropic` and `requests` Python packages
+and configure `ANTHROPIC_API_KEY` in the server's environment before starting it. Studio never
+searches dotenv files or receives the key through the browser. The LLM mode has an explicit
+per-job spend cap (up to $5), status and cancellation; a request already sent to the provider
+may still be charged after cancellation. Results show source evidence, verification failures,
+unresolved values and mechanism blockers, with the original extraction available for download
+and the `arxiv_to_chat.py --extraction` handoff. The coarse form builder stays unchanged rather
+than approximating unsupported mechanisms. Rule-based extraction remains a separate, explicitly
+selected mode; an LLM failure never switches to it. Tests and cached verifier checks require no key.
 
 The **Research** panel also works by opening `studio/index.html` directly. Load a complete
 `saved spec.json`, choose one existing parameter and enter a value of the same JSON type.

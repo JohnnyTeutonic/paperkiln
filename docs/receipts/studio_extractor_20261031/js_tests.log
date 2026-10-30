@@ -1,0 +1,35 @@
+✔ actual verification/unresolved/blockers render as text with no builder application (2.2131ms)
+✔ completed result is fetched once per job; running/cancelled status changes controls (1.0302ms)
+✔ failed LLM request reports failure without rule-based fallback (0.8414ms)
+✔ clone changes only chosen field and administrative identity (0.547ms)
+✔ arrays, false, null and unknown fields survive (0.2554ms)
+✔ unlisted or dangerous path refuses: ["train","missing"] (0.3351ms)
+✔ unlisted or dangerous path refuses: ["train","length"] (0.112ms)
+✔ unlisted or dangerous path refuses: ["arch","unknown","nested","length"] (0.16ms)
+✔ unlisted or dangerous path refuses: ["__proto__","polluted"] (0.1499ms)
+✔ unlisted or dangerous path refuses: ["name"] (0.167ms)
+✔ unlisted or dangerous path refuses: ["out_dir"] (0.14ms)
+✔ unlisted or dangerous path refuses: ["constructor"] (0.0762ms)
+✔ type changes, same value, fractional integers and unsafe numbers refuse (0.4337ms)
+✔ strict logs reject malformed records and nonfinite losses (0.4604ms)
+✔ early stop stays early stop and a resumed run becomes in progress (0.1556ms)
+✔ restarts are retained and flagged rather than sorted away (0.1258ms)
+✔ large logs do not overflow argument limits (255.3074ms)
+✔ untrusted names remain data (0.2597ms)
+✔ reads the mtsweep aggregate schema without changing saved statistics (9.8527ms)
+✔ unobserved, zero-seed and repeated-coordinate cells remain distinct (0.3122ms)
+✔ typed factor levels do not collapse false, zero or string zero (0.1823ms)
+✔ all nuisance factors must be fixed explicitly; no implicit marginal pooling (0.5447ms)
+✔ linked factor objects use stable exact JSON identity (0.2029ms)
+✔ malformed JSON, empty files and partial schemas refuse (0.2716ms)
+✔ duplicate IDs and invalid numeric receipt fields refuse (0.3704ms)
+✔ axis selection refuses same/unknown axes and oversized grids (0.4696ms)
+✔ unsafe factor integers and prototype names refuse, HTML names stay data (0.1547ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 304.777

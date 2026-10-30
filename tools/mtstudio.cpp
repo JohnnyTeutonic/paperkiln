@@ -14,8 +14,10 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <cerrno>
 #include <chrono>
 #include <cmath>
+#include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -4105,6 +4107,28 @@ bool reap(Child& c, bool* exited_ok) {
     return true;
 }
 
+// Cancel only a process this server owns; no process-name matching.
+bool cancel_child(Child& child) {
+#ifdef _WIN32
+    if (!child.h) return true;
+    if (!TerminateProcess(child.h, 1) && WaitForSingleObject(child.h, 0) != WAIT_OBJECT_0)
+        return false;
+    if (WaitForSingleObject(child.h, 1000) != WAIT_OBJECT_0) return false;
+    CloseHandle(child.h);
+    child.h = nullptr;
+#else
+    if (child.pid <= 0) return true;
+    if (::kill(child.pid, SIGKILL) != 0 && errno != ESRCH) return false;
+    int status = 0;
+    while (::waitpid(child.pid, &status, 0) < 0) {
+        if (errno != EINTR && errno != ECHILD) return false;
+        if (errno == ECHILD) break;
+    }
+    child.pid = -1;
+#endif
+    return true;
+}
+
 // ---- export.draft_table: ember's corpus draft table beside the GGUF (tools/draft_table.py) ----
 std::string draft_table_tool() {
     const char* t = std::getenv("MTSTUDIO_DRAFT_TABLE");
@@ -4202,7 +4226,12 @@ int serve_ui(const std::string& out_dir, int port, const std::string& ui_path,
     // launches papers/fetch.py the same way (the drag-an-arXiv-id flow).
     // Handlers run on httplib's worker threads: `mu` guards this state.
     std::mutex mu, sample_mu;
-    Child run_child, fetch_child;
+    Child run_child, fetch_child, extract_child;
+    std::string extract_state = "idle", extract_path, extract_id;
+    struct ExtractCleanup {
+        Child& child;
+        ~ExtractCleanup() { cancel_child(child); }
+    } extract_cleanup{extract_child};
     bool run_finished = false, fetch_failed = false;
     std::string trained_spec = spec_path;  // what /sample reads: the last spec trained
     svr.set_pre_routing_handler([&](const httplib::Request&, httplib::Response&) {
@@ -4210,6 +4239,8 @@ int serve_ui(const std::string& out_dir, int port, const std::string& ui_path,
         if (reap(run_child, nullptr)) run_finished = true;
         bool ok = true;
         if (reap(fetch_child, &ok)) fetch_failed = !ok;
+        if (reap(extract_child, &ok))
+            extract_state = ok && !slurp(extract_path).empty() ? "done" : "failed";
         return httplib::Server::HandlerResponse::Unhandled;
     });
 
@@ -4273,6 +4304,105 @@ int serve_ui(const std::string& out_dir, int port, const std::string& ui_path,
                                   out_dir + "/fetch.log");
             text_reply(res, 200, ok ? "fetching " + id + "…" : "fork failed");
         }
+    });
+    // A localhost listener alone does not prevent a foreign web page from
+    // sending a simple POST. Paid calls require this exact local origin.
+    auto extraction_request_allowed = [&](const httplib::Request& req) {
+        const auto local = "127.0.0.1:" + std::to_string(port);
+        const auto named = "localhost:" + std::to_string(port);
+        const auto host = req.get_header_value("Host");
+        if (host != local && host != named) return false;
+        if (!req.has_header("Origin")) return true;  // explicit local CLI requests
+        const auto origin = req.get_header_value("Origin");
+        return origin == "http://" + local || origin == "http://" + named;
+    };
+    svr.Post("/extract", [&](const httplib::Request& req, httplib::Response& res) {
+        if (!extraction_request_allowed(req)) {
+            text_reply(res, 403, "extraction requests must come from this local Studio origin");
+            return;
+        }
+        std::lock_guard<std::mutex> lk(mu);
+        if (extract_child.running()) {
+            text_reply(res, 409, "an extraction is already running");
+            return;
+        }
+        const char* key = std::getenv("ANTHROPIC_API_KEY");
+        if (!key || !*key) {
+            text_reply(res, 409,
+                       "ANTHROPIC_API_KEY is not configured in the Studio server environment");
+            return;
+        }
+        try {
+            const auto request = json::parse(req.body);
+            const std::string id = sanitize_arxiv(request.at("arxiv_id").get<std::string>());
+            const double budget = request.at("budget_usd").get<double>();
+            if (id.empty() || !std::isfinite(budget) || budget <= 0 || budget > 5)
+                throw std::runtime_error(
+                    "provide an arXiv id and a spend cap greater than zero, at most $5");
+            extract_id =
+                "studio-" +
+                std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+            extract_path = out_dir + "/" + extract_id + ".extraction.json";
+            const char* py = std::getenv("MTSTUDIO_PYTHON");
+#ifdef _WIN32
+            const std::string python = py ? py : "python";
+#else
+            const std::string python = py ? py : "python3";
+#endif
+            const char* worker = std::getenv("MTSTUDIO_EXTRACT");
+#ifdef _WIN32
+            const auto parent_pid = GetCurrentProcessId();
+#else
+            const auto parent_pid = ::getpid();
+#endif
+            const bool ok = spawn(extract_child,
+                                  {python, worker ? worker : "tools/studio_extract.py", id, "--out",
+                                   extract_path, "--budget-usd", json(budget).dump(), "--tag",
+                                   extract_id, "--parent-pid", std::to_string(parent_pid)},
+                                  out_dir + "/" + extract_id + ".log");
+            extract_state = ok ? "extracting" : "failed";
+            text_reply(res, ok ? 202 : 500,
+                       ok ? "extracting" : "could not start the extraction worker");
+        } catch (const std::exception&) {
+            text_reply(res, 400,
+                       "provide JSON with arxiv_id and a finite positive budget_usd, at most $5");
+        }
+    });
+    svr.Post("/extractcancel", [&](const httplib::Request& req, httplib::Response& res) {
+        if (!extraction_request_allowed(req)) {
+            text_reply(res, 403, "cancellation must come from this local Studio origin");
+            return;
+        }
+        std::lock_guard<std::mutex> lk(mu);
+        if (extract_child.running()) {
+            if (!cancel_child(extract_child)) {
+                text_reply(res, 500, "could not cancel the extraction worker");
+                return;
+            }
+            extract_state = "cancelled";
+        }
+        text_reply(res, 200, extract_state);
+    });
+    svr.Get("/extractstatus", [&](const httplib::Request&, httplib::Response& res) {
+        std::lock_guard<std::mutex> lk(mu);
+        const char* key = std::getenv("ANTHROPIC_API_KEY");
+        json status = {{"state", extract_state}, {"configured", key && *key}, {"job", extract_id}};
+        if (extract_state == "failed") {
+            try {
+                status["error"] = json::parse(slurp(extract_path + ".error.json")).at("error");
+            } catch (...) {
+                status["error"] = "extraction worker failed; no result was applied";
+            }
+        }
+        text_reply(res, 200, status.dump(), "application/json");
+    });
+    svr.Get("/extractresult", [&](const httplib::Request&, httplib::Response& res) {
+        std::lock_guard<std::mutex> lk(mu);
+        if (extract_state != "done") {
+            text_reply(res, 409, "no completed extraction for the current job");
+            return;
+        }
+        text_reply(res, 200, slurp(extract_path), "application/json");
     });
     svr.Post("/sample", [&](const httplib::Request& req, httplib::Response& res) {
         // In-page quick-look generation: body = the prompt. Runs the

@@ -100,8 +100,11 @@
   <div class="form">
     <label>arXiv <input id="p-id" size="30"
       placeholder="e.g. 1706.03762 · or drop a link"></label>
-    <button id="p-go">&#8681; fetch architecture</button>
-    <span id="p-status" class="legend"></span>
+    <label>extractor <select id="p-mode"><option value="llm">LLM with source verification</option><option value="rule">Rule-based (no model call)</option></select></label>
+    <label id="p-budget-label">spend cap USD <input id="p-budget" type="number" min="0.01" max="5" step="0.01" value="2" size="5"></label>
+    <button id="p-go">&#8681; extract architecture</button>
+    <button id="p-cancel" hidden>cancel extraction</button>
+    <span id="p-status" class="legend" aria-live="polite"></span>
   </div>
   <div id="p-result" class="legend"></div>
 </div>
@@ -1108,6 +1111,7 @@ function applyArch(cfg) {
 
 let fetchTimer = null;
 function doFetch() {
+  if ($("p-mode").value === "llm") return doLlmExtract();
   const id = $("p-id").value.trim();
   if (!id) {
     $("p-status").textContent =
@@ -1124,10 +1128,11 @@ function doFetch() {
     clearInterval(fetchTimer);
     fetchTimer = setInterval(() => {
       fetch("fetchstatus").then(r => r.text()).then(s => {
+        if ($("p-mode").value !== "rule") return;
         $("p-status").textContent = s;
         if (s === "done") {
           clearInterval(fetchTimer);
-          fetch("arch.json").then(r => r.json()).then(applyArch)
+          fetch("arch.json").then(r => r.json()).then(cfg => { if ($("p-mode").value === "rule") applyArch(cfg); })
             .catch(() => { $("p-status").textContent = "arch.json unreadable"; });
         } else if (s.startsWith("failed")) {
           clearInterval(fetchTimer);
@@ -1139,6 +1144,122 @@ function doFetch() {
     }, 1500);
   }).catch(() => { $("p-status").textContent = "server unreachable"; });
 }
+// BEGIN STUDIO_EXTRACTION_CORE
+// LLM results are reviewed as verified source evidence. The coarse form
+// builder cannot represent every extracted mechanism, so it stays unchanged.
+let extractTimer = null;
+let reviewedExtractJob = "";
+function reviewExtraction(result) {
+  const box = $("p-result");
+  box.replaceChildren();
+  const heading = document.createElement("p");
+  heading.textContent = (result.title || result.arxiv_id) +
+    " — source-checked LLM extraction; builder unchanged. Review unresolved values and mechanisms before reconstruction.";
+  box.appendChild(heading);
+  const table = document.createElement("table");
+  table.style.width = "100%";
+  table.style.tableLayout = "fixed";
+  const labels = document.createElement("tr");
+  for (const label of ["Field", "Value", "Verification", "Source evidence"]) {
+    const cell = document.createElement("th");
+    cell.textContent = label;
+    cell.style.textAlign = "left";
+    cell.style.padding = "4px 8px";
+    labels.appendChild(cell);
+  }
+  table.appendChild(labels);
+  for (const [field, value] of Object.entries(result.fields || {})) {
+    const row = document.createElement("tr");
+    for (const text of [field, String(value.value), value.verdict || "", value.evidence || ""]) {
+      const cell = document.createElement("td");
+      cell.textContent = text;
+      cell.style.padding = "4px 8px";
+      cell.style.verticalAlign = "top";
+      cell.style.wordBreak = "break-word";
+      row.appendChild(cell);
+    }
+    table.appendChild(row);
+  }
+  box.appendChild(table);
+  const details = document.createElement("details");
+  const summary = document.createElement("summary");
+  summary.textContent = "Review all verification, unresolved values and mechanism blockers";
+  const raw = document.createElement("pre");
+  raw.style.whiteSpace = "pre-wrap";
+  raw.textContent = JSON.stringify(result, null, 2);
+  details.append(summary, raw);
+  box.appendChild(details);
+  const download = document.createElement("a");
+  download.href = "/extractresult";
+  download.style.color = "var(--accent)";
+  download.download = "extraction.json";
+  download.textContent = "Download extraction and verification report for arxiv_to_chat";
+  box.appendChild(download);
+}
+async function pollExtraction() {
+  const response = await fetch("extractstatus");
+  if (!response.ok) throw new Error("extraction status unavailable");
+  const status = await response.json();
+  $("p-cancel").hidden = status.state !== "extracting";
+  $("p-go").disabled = status.state === "extracting";
+  if (status.state !== "idle") $("p-status").textContent = status.state + (status.error ? ": " + status.error : "");
+  if (status.state === "done" && reviewedExtractJob !== status.job) {
+    const result = await fetch("extractresult");
+    if (!result.ok) throw new Error("completed extraction is unreadable");
+    reviewExtraction(await result.json());
+    reviewedExtractJob = status.job;
+  }
+  if (status.state !== "extracting") {
+    clearInterval(extractTimer);
+    extractTimer = null;
+  }
+  return status;
+}
+function watchExtraction() {
+  clearInterval(extractTimer);
+  extractTimer = setInterval(() => pollExtraction().catch(error => {
+    $("p-status").textContent = error.message;
+  }), 1000);
+}
+async function doLlmExtract() {
+  clearInterval(fetchTimer);
+  const id = $("p-id").value.trim();
+  const budget = Number($("p-budget").value);
+  if (!id || !Number.isFinite(budget) || budget <= 0 || budget > 5) {
+    $("p-status").textContent = "Enter an arXiv id and a positive spend cap up to $5.";
+    return;
+  }
+  $("p-go").disabled = true;
+  $("p-result").replaceChildren();
+  $("p-status").textContent = "starting source-verified LLM extraction…";
+  try {
+    const response = await fetch("extract", {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({arxiv_id: id, budget_usd: budget})});
+    if (!response.ok) throw new Error(await response.text());
+    watchExtraction();
+    await pollExtraction();
+  } catch (error) {
+    $("p-status").textContent = error.message;
+    $("p-go").disabled = false;
+  }
+}
+// END STUDIO_EXTRACTION_CORE
+$("p-cancel").addEventListener("click", async () => {
+  try {
+    const response = await fetch("extractcancel", {method: "POST"});
+    if (!response.ok) throw new Error(await response.text());
+    await pollExtraction();
+    $("p-status").textContent += " — an already-sent provider request may still be charged.";
+  } catch (error) { $("p-status").textContent = error.message; }
+});
+if (location.protocol !== "file:") pollExtraction().then(status => {
+  if (!status.configured) {
+    $("p-mode").value = "rule";
+    $("p-mode").querySelector('option[value="llm"]').disabled = true;
+    if (status.state === "idle") $("p-status").textContent = "LLM extraction needs ANTHROPIC_API_KEY in the server environment.";
+  }
+  if (status.state === "extracting") watchExtraction();
+}).catch(() => {});
 $("p-go").addEventListener("click", doFetch);
 $("p-id").addEventListener("keydown", e => { if (e.key === "Enter") doFetch(); });
 
