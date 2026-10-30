@@ -1,0 +1,77 @@
+{
+  "utc": "2026-10-30T06:45:27.546844+00:00",
+  "purpose": "exact frozen L0 recomputation after independently documented remote volume loss",
+  "authorized_cumulative_cap_usd": 7,
+  "prior_ledger_gpu_usd": 3.061306532373693,
+  "source_pin": "82c86c96bd0086ae47e35ab31370b5fb98ae28ed",
+  "job_sha256": "a917d1ab60819b37eca2c556a867a3b3806510b82a0440708dd8796f3deec32a",
+  "inputs": {
+    "pick_e1_150m_L8.model.safetensors": {
+      "path": "/mnt/c/ml_artifacts/tiny_chat/e1_150m/pick_e1_150m_L8/model.safetensors",
+      "bytes": 679961024,
+      "sha256": "02f8b00e2253272eded24341bd8bf93b11abcd6378ef693756a088e285c2f7fd"
+    },
+    "pick_e1_150m_L8.spec.json": {
+      "path": "/mnt/c/ml_artifacts/tiny_chat/e1_150m/pick_e1_150m_L8/spec.json",
+      "bytes": 858,
+      "sha256": "1506cca15af986cfabdb555e4da4ce3d7eccfbd4dbc065970c3ad2a17741ccec"
+    },
+    "pick_e1_150m_L8.model.gguf": {
+      "path": "/mnt/c/ml_artifacts/tiny_chat/e1_150m/pick_e1_150m_L8/model.gguf",
+      "bytes": 760284032,
+      "sha256": "99944e664225984d93577620cb40ea8f4b74406dbbeb8b0cc586872bb31345c5"
+    },
+    "vocab_llama3_bpe.gguf": {
+      "path": "/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf",
+      "bytes": 565152,
+      "sha256": "0b880aa073a7e27c0770d5ecc5215b55d6d415080d20bd3dc7b169ecabadf198"
+    }
+  },
+  "volume": {
+    "dataCenterId": "EUR-IS-1",
+    "id": "vnwyd6e9jp",
+    "name": "pk-tc-l0-150m-vol",
+    "size": 80
+  },
+  "state_sha256": "17213d5608f43769b09a191df660d6525c65a540275ec7a12a5dfd34d941b33c",
+  "local_partial_artifacts": 0,
+  "command": [
+    "python3",
+    "-u",
+    "tools/colab_chat/runner_multi.py",
+    "--backend",
+    "runpod",
+    "--gpu",
+    "L4",
+    "--commit",
+    "82c86c96bd0086ae47e35ab31370b5fb98ae28ed",
+    "--jobs",
+    "tools/colab_chat/carry12_l0_e1_150m_v1.json",
+    "--name",
+    "pk-tc-l0-150m",
+    "--art",
+    "/mnt/c/ml_artifacts/tiny_chat/l0_colab",
+    "--state-dir",
+    "/home/jonat/pk_tc_l0_150m_runner",
+    "--max-hours",
+    "8",
+    "--upload",
+    "pick_e1_150m_L8.model.safetensors=/mnt/c/ml_artifacts/tiny_chat/e1_150m/pick_e1_150m_L8/model.safetensors",
+    "--upload",
+    "pick_e1_150m_L8.spec.json=/mnt/c/ml_artifacts/tiny_chat/e1_150m/pick_e1_150m_L8/spec.json",
+    "--upload",
+    "pick_e1_150m_L8.model.gguf=/mnt/c/ml_artifacts/tiny_chat/e1_150m/pick_e1_150m_L8/model.gguf",
+    "--upload",
+    "vocab_llama3_bpe.gguf=/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf",
+    "--volume-gb",
+    "80",
+    "--max-usd",
+    "7",
+    "--datacenter",
+    "EUR-IS-1"
+  ],
+  "local_safety_sources": {
+    "runpod_transport.py": "1a29f7fbb88c30d55cae70401e3e4512a19fa6fe703db48e2031e1cff92e3f64",
+    "runpod_sweep.py": "421d2c72d1675a3cfbbb4ef8fed7b7f1895c4043a6e07045106a7f8a923da764"
+  }
+}
