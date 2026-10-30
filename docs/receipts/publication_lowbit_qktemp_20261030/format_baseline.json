@@ -1,0 +1,117 @@
+{
+  "baseline": "411f4d2726588f4cc4d6102945137ae999fa6930",
+  "same_clang_style": true,
+  "clang_format": "18.1.8",
+  "rows": [
+    {
+      "path": "include/microtorch/device_cache.hpp",
+      "baseline_errors": 36,
+      "current_errors": 39
+    },
+    {
+      "path": "include/microtorch/llama.hpp",
+      "baseline_errors": 44,
+      "current_errors": 44
+    },
+    {
+      "path": "include/microtorch/nn.hpp",
+      "baseline_errors": 7,
+      "current_errors": 7
+    },
+    {
+      "path": "include/microtorch/ops.hpp",
+      "baseline_errors": 96,
+      "current_errors": 96
+    },
+    {
+      "path": "src/autograd.cpp",
+      "baseline_errors": 2,
+      "current_errors": 2
+    },
+    {
+      "path": "src/depth_attend.cpp",
+      "baseline_errors": 10,
+      "current_errors": 10
+    },
+    {
+      "path": "src/device_cache.cpp",
+      "baseline_errors": 23,
+      "current_errors": 23
+    },
+    {
+      "path": "src/ir.cpp",
+      "baseline_errors": 108,
+      "current_errors": 117
+    },
+    {
+      "path": "src/llama.cpp",
+      "baseline_errors": 106,
+      "current_errors": 109
+    },
+    {
+      "path": "src/llama_attnres.cpp",
+      "baseline_errors": 41,
+      "current_errors": 41
+    },
+    {
+      "path": "src/moe.cpp",
+      "baseline_errors": 24,
+      "current_errors": 24
+    },
+    {
+      "path": "src/nn.cpp",
+      "baseline_errors": 54,
+      "current_errors": 56
+    },
+    {
+      "path": "src/ops.cpp",
+      "baseline_errors": 159,
+      "current_errors": 159
+    },
+    {
+      "path": "src/safetensors.cpp",
+      "baseline_errors": 0,
+      "current_errors": 0
+    },
+    {
+      "path": "tests/test_bitlinear.cpp",
+      "baseline_errors": null,
+      "current_errors": 25
+    },
+    {
+      "path": "tests/test_devcheck_disabled.cpp",
+      "baseline_errors": null,
+      "current_errors": 2
+    },
+    {
+      "path": "tests/test_devcheck_host_read.cpp",
+      "baseline_errors": null,
+      "current_errors": 11
+    },
+    {
+      "path": "tests/test_ir_digest.cpp",
+      "baseline_errors": 27,
+      "current_errors": 31
+    },
+    {
+      "path": "tests/test_thirdparty_ops.cpp",
+      "baseline_errors": 115,
+      "current_errors": 128
+    },
+    {
+      "path": "tests/word_tokenizer_reference.cpp",
+      "baseline_errors": null,
+      "current_errors": 40
+    },
+    {
+      "path": "tools/ir_eval.cpp",
+      "baseline_errors": 84,
+      "current_errors": 87
+    },
+    {
+      "path": "tools/mtstudio.cpp",
+      "baseline_errors": 807,
+      "current_errors": 815
+    }
+  ]
+}

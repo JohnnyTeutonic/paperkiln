@@ -1,0 +1,112 @@
+[
+  {
+    "path": "include/microtorch/device_cache.hpp",
+    "changed_ranges_idempotent": true,
+    "remaining_whole_file_errors": 36
+  },
+  {
+    "path": "include/microtorch/llama.hpp",
+    "changed_ranges_idempotent": true,
+    "remaining_whole_file_errors": 44
+  },
+  {
+    "path": "include/microtorch/nn.hpp",
+    "changed_ranges_idempotent": true,
+    "remaining_whole_file_errors": 7
+  },
+  {
+    "path": "include/microtorch/ops.hpp",
+    "changed_ranges_idempotent": true,
+    "remaining_whole_file_errors": 96
+  },
+  {
+    "path": "src/autograd.cpp",
+    "changed_ranges_idempotent": true,
+    "remaining_whole_file_errors": 2
+  },
+  {
+    "path": "src/depth_attend.cpp",
+    "changed_ranges_idempotent": true,
+    "remaining_whole_file_errors": 10
+  },
+  {
+    "path": "src/device_cache.cpp",
+    "changed_ranges_idempotent": true,
+    "remaining_whole_file_errors": 23
+  },
+  {
+    "path": "src/ir.cpp",
+    "changed_ranges_idempotent": true,
+    "remaining_whole_file_errors": 103
+  },
+  {
+    "path": "src/llama.cpp",
+    "changed_ranges_idempotent": true,
+    "remaining_whole_file_errors": 106
+  },
+  {
+    "path": "src/llama_attnres.cpp",
+    "changed_ranges_idempotent": true,
+    "remaining_whole_file_errors": 41
+  },
+  {
+    "path": "src/moe.cpp",
+    "changed_ranges_idempotent": true,
+    "remaining_whole_file_errors": 24
+  },
+  {
+    "path": "src/nn.cpp",
+    "changed_ranges_idempotent": true,
+    "remaining_whole_file_errors": 54
+  },
+  {
+    "path": "src/ops.cpp",
+    "changed_ranges_idempotent": true,
+    "remaining_whole_file_errors": 159
+  },
+  {
+    "path": "src/safetensors.cpp",
+    "changed_ranges_idempotent": true,
+    "remaining_whole_file_errors": 0
+  },
+  {
+    "path": "tests/test_bitlinear.cpp",
+    "changed_ranges_idempotent": true,
+    "remaining_whole_file_errors": 0
+  },
+  {
+    "path": "tests/test_devcheck_disabled.cpp",
+    "changed_ranges_idempotent": true,
+    "remaining_whole_file_errors": 0
+  },
+  {
+    "path": "tests/test_devcheck_host_read.cpp",
+    "changed_ranges_idempotent": true,
+    "remaining_whole_file_errors": 0
+  },
+  {
+    "path": "tests/test_ir_digest.cpp",
+    "changed_ranges_idempotent": true,
+    "remaining_whole_file_errors": 27
+  },
+  {
+    "path": "tests/test_thirdparty_ops.cpp",
+    "changed_ranges_idempotent": true,
+    "remaining_whole_file_errors": 115
+  },
+  {
+    "path": "tests/word_tokenizer_reference.cpp",
+    "changed_ranges_idempotent": true,
+    "remaining_whole_file_errors": 0
+  },
+  {
+    "path": "tools/ir_eval.cpp",
+    "changed_ranges_idempotent": true,
+    "remaining_whole_file_errors": 84
+  },
+  {
+    "path": "tools/mtstudio.cpp",
+    "changed_ranges_idempotent": true,
+    "remaining_whole_file_errors": 806
+  }
+]

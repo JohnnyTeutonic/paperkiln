@@ -1,0 +1,71 @@
+{
+  "utc": "2026-10-30T11:18:55.722887+00:00",
+  "scope": "CPU post-format build provenance supplement; does not replace pre-format numerical evidence",
+  "source_commit": "211041e647e2b3231cb13236165297fd4b0805c5",
+  "source_tree": "d52c4ce3269c4018579e611db65d9f3ccbd7a0b0",
+  "format_commit": "211041e647e2b3231cb13236165297fd4b0805c5",
+  "source_sha256": {
+    "README.md": "23bbeb0fdf2cfa0b96132f6f153e796d49a62f05033258a2f25ba2aec63963b4",
+    "include/microtorch/device_cache.hpp": "dd27b6bc9aa80016c6c9f385b83f42645755a58ddbe50e987fc46166762b7cad",
+    "src/ir.cpp": "91fffa49d1e2ea280d4bd74529055489d43f4caad3fc5ebd62718e1fe8e1f815",
+    "src/llama.cpp": "d360d2ef78245147b3dc25cea06937806b8afb3c14086d892c06d50cf7b41a9e",
+    "src/nn.cpp": "45922cd1e5ed18a46601948458558e5922c4dab0949be7617592138289fd5bbc",
+    "tests/test_bitlinear.cpp": "421af5467dafa1f3f2778c396199c8d155a4a0fb03fc8a701b768f0efaad5ab5",
+    "tests/test_devcheck_disabled.cpp": "11b79d70d20fccd20c49b4561a80387e51ead7af6aee05bb2ce57d76e6e23d07",
+    "tests/test_devcheck_host_read.cpp": "b47afb53c1d7015fda245d002b8ba3714c192d7ceb43ff8d3eef647b00735cc4",
+    "tests/test_ir_digest.cpp": "432c90242912e3c61a0ecf27265122995b3c760a1245db6d958d122064d8b3a1",
+    "tests/test_thirdparty_ops.cpp": "70944525d77fb52d1fd06230c3f7321b2d55eb88847619757822285e010fc2c2",
+    "tests/word_tokenizer_reference.cpp": "098d91780f2df8141cb0c39953cfd574134c25cce754ee3e2f995cc777a8bab2",
+    "tools/ir_eval.cpp": "d488c9a37b1618b60c3a1ab1e1d0fbb76cff5f4bb1fcaaf78df1882f97ed2564",
+    "tools/mtstudio.cpp": "1459680832eefea33b4d14141b315c758c19c1bd469dec9a60f5615539a6ac61"
+  },
+  "build": {
+    "source": "/home/jonat/pk_publication_20261030",
+    "directory": "/home/jonat/pk_publication_build_20261030",
+    "cuda": false,
+    "incremental_all_targets": "reported successful by format owner; independently retained CTest log and hashed resulting binaries",
+    "cpu_budget_slots": 1,
+    "CMakeCache_sha256": "1b5346286e6b294cea47ce6cd942783bfd70ed46f150c0f582f9b6408453f4bd",
+    "binaries_sha256": {
+      "mtstudio": "73260ae18ce9fcc07129666f87cf3dce0df1b0786ad9b02e2d766a0831db14cb",
+      "ir_eval": "ca050b1b50b9e2300a59a36ca8acaf452ac85a915eb4f6475964d28376d74ff1",
+      "expr_eval": "7be1e4d35a5623d8abe9441bb8f599deb92ea3aad485cac96fb1d897a80caffb",
+      "test_bitlinear": "f137a4a999a791a13dccd039e6c8f6f4a5c0daf28c4d6aa5f40113c5d62a89cf",
+      "test_thirdparty_ops": "4148553228a195abdc9ae000a0e413b4f4098fda395a61f860b548a400c8983d",
+      "test_ir_digest": "1d2382c339392afa13e656731ff57efff919862028180983eb3096208d9d21a2",
+      "libmicrotorch.a": "7bd5c0d099402e63f7920a2159dccf8815975804f82198f6d1282ff94fe25947"
+    }
+  },
+  "ctest": {
+    "passed": 49,
+    "failed": 0,
+    "raw_log": "ctest_postformat.log",
+    "raw_log_sha256": "1dc43b99d439638dc323c3f32371a6c36d29e24c6727fa839916f24dfa2e1ebb",
+    "last_tests_failed_caveat": "CTest leaves a stale LastTestsFailed.log from the earlier ir_digest failure; current LastTest.log has49 passes and0 failures.",
+    "total_time_seconds": 9.9
+  },
+  "prior_evidence": {
+    "validation": "validation.json",
+    "validation_sha256": "27d34ce92ac2b0b396d54cbc743d6d6045ebb3a7f09889b62bd7bf81d802a813",
+    "full_adapter": "full_conformance_receipt.json",
+    "full_adapter_sha256": "ddf7e8dd8f6a125d487d6ebc819b0ac4941222a28615f713f0810344a7521eea",
+    "broad_numerics_rerun": false,
+    "reason": "C++ change from prior checked implementation is formatting only; later operational Python guard is tested separately."
+  },
+  "formatting": {
+    "tool": "clang-format18.1.8",
+    "scope": "Changed ranges versus pinned origin/master411f4d, plus whole-file checks on4 new C++ files",
+    "reported_changed_range_checks": 22,
+    "reported_changed_range_idempotent": true,
+    "reported_new_file_checks": 4,
+    "legacy_failures_policy": "At or below exact baseline per format owner; these pre-existing whole-file failures remain, so this receipt does not claim all formatting CI is green.",
+    "baseline_commit": "411f4d2726588f4cc4d6102945137ae999fa6930",
+    "independent_checks": "All22 changed ranges idempotent;17 whole-file legacy failures at/below baseline, independently checked from archived owner diagnostics.",
+    "diagnostic_sha256": {
+      "format_after.json": "ad747f4a294a8656c2723a8d8b32ac1b19b937d8086f46292c73fd5b49c3a44a",
+      "format_baseline.json": "57b72f60ea73532346e236434162e33545c3af224e87b28fdc622a5f7597edd9"
+    },
+    "whole_file_legacy_failing_files": 17
+  },
+  "gpu_validation": "No new CUDA execution; no CUDA throughput or whole-engine coverage claim."
+}

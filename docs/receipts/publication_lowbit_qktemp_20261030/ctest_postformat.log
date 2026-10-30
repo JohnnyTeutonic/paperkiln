@@ -1,0 +1,1493 @@
+Start testing: Oct 30 22:17 AEDT
+----------------------------------------------------------
+1/49 Testing: gradcheck
+1/49 Test: gradcheck
+Command: "/home/jonat/pk_publication_build_20261030/test_gradcheck"
+Directory: /home/jonat/pk_publication_build_20261030
+"gradcheck" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+microtorch phase-1a gradcheck
+
+  [ok] matmul_optimized == naive matmul                     9.537e-07
+  [ok] dX vs finite differences                             6.821e-07
+  [ok] dW1 vs finite differences                            1.241e-05
+  [ok] db vs finite differences                             1.389e-06
+  [ok] dW2 vs finite differences                            1.107e-06
+  [ok] diamond accumulation: d(mean(a.*a)) == 2a/N          1.863e-09
+  [ok] sub: d(mean((p-q)^2)) signs on both branches         0.000e+00
+  [ok] gelu backward (microtorch) vs FD                     7.686e-07
+  [ok] legacy apply_gelu_derivative disagrees (canary)      2.491e-03
+  [ok] silu+mul_row: dx vs FD                               5.764e-07
+  [ok] mul_row: drow vs FD                                  7.892e-07
+  [ok] rmsnorm: dx vs FD                                    4.584e-06
+  [ok] rmsnorm: dw vs FD                                    3.665e-06
+  [ok] apply_rope: dqk vs FD                                1.034e-06
+  [ok] apply_rope H=3 all heads: dqk vs FD                  1.009e-06
+  [ok] apply_rope H=3 first head: dqk vs FD                 5.967e-07
+  [ok] fused_attention(causal): dq FD                       7.715e-07
+  [ok] fused_attention(causal): dk FD                       2.290e-06
+  [ok] fused_attention(causal): dv FD                       9.746e-07
+  [ok] fused_attention(causal): forward parity              5.960e-08
+  [ok] fused_attention(causal+batch): dq FD                 6.485e-07
+  [ok] fused_attention(causal+batch): dk FD                 8.746e-07
+  [ok] fused_attention(causal+batch): dv FD                 4.962e-07
+  [ok] fused_attention(causal+batch): forward parity        0.000e+00
+  [ok] fused_attention(bidir+batch): dq FD                  9.019e-07
+  [ok] fused_attention(bidir+batch): dk FD                  1.490e-06
+  [ok] fused_attention(bidir+batch): dv FD                  6.504e-07
+  [ok] fused_attention(bidir+batch): forward parity         2.980e-08
+  [ok] NoGrad: no tape recorded                             0.000e+00
+  [ok] constant leaf never accumulated a grad               0.000e+00
+  [ok] zero_grad + rebuild: bit-identical grads             0.000e+00
+
+ALL MICROTORCH GRADCHECKS PASSED
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"gradcheck" end time: Oct 30 22:17 AEDT
+"gradcheck" time elapsed: 00:00:00
+----------------------------------------------------------
+
+2/49 Testing: step_residency
+2/49 Test: step_residency
+Command: "/home/jonat/pk_publication_build_20261030/test_step_residency"
+Directory: /home/jonat/pk_publication_build_20261030
+"step_residency" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+1. no-op leg: residency+windows on CPU device is bitwise inert
+2-3. CUDA legs: SKIPPED (CPU-only build) — run on T4
+all step-residency checks passed
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"step_residency" end time: Oct 30 22:17 AEDT
+"step_residency" time elapsed: 00:00:00
+----------------------------------------------------------
+
+3/49 Testing: highway
+3/49 Test: highway
+Command: "/home/jonat/pk_publication_build_20261030/test_highway"
+Directory: /home/jonat/pk_publication_build_20261030
+"highway" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+1. gate biases init to gate_bias_init (default -2, custom honoured)
+2. params: +4224 as computed; 3./4. wiring live, default bitwise
+5. FD gradcheck through gate W and b (4 spots), |g|=0.0258
+all highway checks passed
+<end of output>
+Test time =   0.01 sec
+----------------------------------------------------------
+Test Passed.
+"highway" end time: Oct 30 22:17 AEDT
+"highway" time elapsed: 00:00:00
+----------------------------------------------------------
+
+4/49 Testing: deep_swa
+4/49 Test: deep_swa
+Command: "/home/jonat/pk_publication_build_20261030/test_deep_swa"
+Directory: /home/jonat/pk_publication_build_20261030
+"deep_swa" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+1. SWA pin: FlexLM(swa, defaults) == ParityLM(SWA) bitwise
+2. depth-4 swa: layers.3 real (12704 params), |grad|=16.8
+3. FD gradcheck through layers.0 swa attention (3 spots)
+4. depth-4 batch pin: stacked == singles (max diff 0.00e+00)
+4b. batch pin at 1..8 OpenMP threads, each equal to one thread's logits bit for bit
+5. swa + highway at depth 3: builds and runs
+all deep-swa checks passed
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"deep_swa" end time: Oct 30 22:17 AEDT
+"deep_swa" time elapsed: 00:00:00
+----------------------------------------------------------
+
+5/49 Testing: thirdparty_ops
+5/49 Test: thirdparty_ops
+Command: "/home/jonat/pk_publication_build_20261030/test_thirdparty_ops"
+Directory: /home/jonat/pk_publication_build_20261030
+"thirdparty_ops" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+third-party ops (host)
+1. rope interleaved          vs float64 2.34e-07, host-loop bits equal, fd 1.03e-04
+1. rope neox                 vs float64 1.91e-07, host-loop bits equal, fd 2.04e-04
+1. rope neox n_rot 4         vs float64 1.01e-07, host-loop bits equal, fd 6.52e-05
+1. rope interleaved n_rot 6  vs float64 1.40e-07, host-loop bits equal, fd 7.94e-05
+1. rmsnorm_group (4 x 3) vs float64 1.84e-07, fd x 1.39e-04 w 3.17e-05, one group == rmsnorm bit for bit
+1. repeat_heads (2 kv heads x 3): copies exact, backward the group sums, fd 1.24e-04
+1. conv1d_causal (K 4, 2 sequences) vs float64 1.26e-07, fd x 3.97e-05 w 7.09e-05 b 3.10e-05
+1. selective_scan (D 4, N 3, 2 sequences) vs float64 7.68e-08 of the range, fd worst 3.54e-04 (no softplus 8.36e-05)
+3. defaults == plain llama bit for bit; GQA (4 q / 2 kv heads) == MHA with repeated kv columns, max diff 0.0e+00
+3. GQA + neox + rope_dims 4 + qk_norm: cached decode vs forward 5.96e-08, batch vs singles 8.9e-08 (the plain llama's 6.0e-08)
+3. finite differences through k_proj and the q/k norms (15 spots): worst 4.44e-05
+3b. qk_temp: t = 1 == qk_norm bit for bit; head scaling exact; fd t 4.07e-05 x 1.92e-05; cached decode 8.94e-08, batch vs singles 4.5e-08
+3b. finite differences through q_temp (8 spots): worst 1.55e-05
+4. mamba1 (d 16, Di 32, N 4, K 4): batch == singles 0.0e+00
+4. finite differences through A_log, conv1d, D, x_proj and dt_proj's bias (15 spots): worst 2.42e-05
+all third-party op checks passed
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"thirdparty_ops" end time: Oct 30 22:17 AEDT
+"thirdparty_ops" time elapsed: 00:00:00
+----------------------------------------------------------
+
+6/49 Testing: fused_head
+6/49 Test: fused_head
+Command: "/home/jonat/pk_publication_build_20261030/test_fused_head"
+Directory: /home/jonat/pk_publication_build_20261030
+"fused_head" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+-- 1-2. fused vs unfused, per case and chunk size --
+  lm, tied                               chunk   32: loss, dh bitwise; dW/bound 0.119 (unfused 0.057), |dW - unfused| / max 3.18e-07
+  lm, untied + bias, upstream 1/2        chunk   32: loss, dh, db bitwise; dW/bound 0.115 (unfused 0.044), |dW - unfused| / max 2.75e-07
+  sft mask, tied, 130 rows               chunk   32: loss, dh bitwise; dW/bound 0.057 (unfused 0.027), |dW - unfused| / max 2.66e-07
+  explicit all-ones mask, untied         chunk   32: loss, dh bitwise; dW/bound 0.129 (unfused 0.049), |dW - unfused| / max 2.59e-07
+  scattered ignored rows, tied + bias    chunk   32: loss, dh, db bitwise; dW/bound 0.100 (unfused 0.047), |dW - unfused| / max 4.27e-07
+  one kept row, untied                   chunk   32: loss, dh bitwise; dW/bound 0.023 (unfused 0.023), |dW - unfused| / max 0.00e+00
+  every chunk size (1, 7, 32, default, all rows) gives the same bits
+-- 3. vendored GEMM rows not free (M forces a split) --
+  loss rel 0.00e+00, dh 3.06e-07, dW 6.99e-07 (normwise; float rounding)
+-- 4. finite differences --
+  untied: worst |a - fd| / (1 + max) h 1.06e-05, W 1.69e-05, b 1.16e-05
+  tied  : worst |a - fd| / (1 + max) h 2.41e-05, W 2.94e-05, b 2.25e-05
+-- 5. OpenMP thread counts --
+  1..8 threads: loss, dh, dW, db equal to one thread's bit for bit (tied and untied)
+-- 6. NoGrad --
+  loss bit for bit, no tape node
+-- 7. an upstream gradient other than the stated one --
+  loss bitwise; dh 3.96e-07, dW 2.74e-07, db 3.10e-07 (normwise)
+-- 8. nn::Llama: forward_hidden + the fused op --
+  tied            : loss bitwise, 19 of 20 parameter grads bitwise, head weight 2.31e-07 (normwise)
+  tied  , sft mask: loss bitwise, 19 of 20 parameter grads bitwise, head weight 1.73e-07 (normwise)
+  untied          : loss bitwise, 20 of 21 parameter grads bitwise, head weight 2.31e-07 (normwise)
+  untied, sft mask: loss bitwise, 20 of 21 parameter grads bitwise, head weight 1.71e-07 (normwise)
+-- 9. device legs: SKIP (CUDA build + MICROTORCH_DEVICE=cuda; run on a GPU only)
+test_fused_head PASSED
+<end of output>
+Test time =   0.83 sec
+----------------------------------------------------------
+Test Passed.
+"fused_head" end time: Oct 30 22:17 AEDT
+"fused_head" time elapsed: 00:00:00
+----------------------------------------------------------
+
+7/49 Testing: score_batch
+7/49 Test: score_batch
+Command: "/home/jonat/pk_publication_build_20261030/test_score_batch"
+Directory: /home/jonat/pk_publication_build_20261030
+"score_batch" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+-- 1. packed = alone, bit for bit, where the host GEMM's rows are free --
+  plain tied                     tail 0: exact 1 worst 0.00e+00 argmax 1
+  plain tied                     tail 3: exact 1 worst 0.00e+00 argmax 1
+  untied                         tail 0: exact 1 worst 0.00e+00 argmax 1
+  untied                         tail 3: exact 1 worst 0.00e+00 argmax 1
+  gqa + qk_norm + neox partial   tail 0: exact 1 worst 0.00e+00 argmax 1
+  gqa + qk_norm + neox partial   tail 3: exact 1 worst 0.00e+00 argmax 1
+  fixed recursion, inject add    tail 0: exact 1 worst 0.00e+00 argmax 1
+  fixed recursion, inject add    tail 3: exact 1 worst 0.00e+00 argmax 1
+  state tokens, causal mask     : exact 1
+-- 2. rows the host GEMM splits by M: float rounding --
+  273 rows: exact 0 worst 1.79e-07 argmax 1
+-- 3. what is not packable --
+-- 4. bad ranges and rows --
+test_score_batch: all checks passed
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"score_batch" end time: Oct 30 22:17 AEDT
+"score_batch" time elapsed: 00:00:00
+----------------------------------------------------------
+
+8/49 Testing: nn
+8/49 Test: nn
+Command: "/home/jonat/pk_publication_build_20261030/test_nn"
+Directory: /home/jonat/pk_publication_build_20261030
+"nn" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+microtorch phase-1b nn gate
+
+  [ok] FD through full model: wte.weight                    4.606e-03
+  [ok] FD through full model: wpe.weight                    3.018e-03
+  [ok] FD through full model: h.0.ln_1.weight               1.253e-05
+  [ok] FD through full model: h.0.ln_1.bias                 9.703e-06
+  [ok] FD through full model: h.0.attn.c_attn.weight        1.661e-05
+  [ok] FD through full model: h.0.attn.c_attn.bias          9.695e-06
+  [ok] FD through full model: h.0.attn.c_proj.weight        2.212e-05
+  [ok] FD through full model: h.0.attn.c_proj.bias          3.388e-03
+  [ok] FD through full model: h.0.ln_2.weight               1.103e-05
+  [ok] FD through full model: h.0.ln_2.bias                 1.020e-05
+  [ok] FD through full model: h.0.mlp.c_fc.weight           1.636e-05
+  [ok] FD through full model: h.0.mlp.c_fc.bias             1.297e-05
+  [ok] FD through full model: h.0.mlp.c_proj.weight         1.570e-05
+  [ok] FD through full model: h.0.mlp.c_proj.bias           3.060e-03
+  [ok] FD through full model: ln_f.weight                   9.427e-06
+  [ok] FD through full model: ln_f.bias                     1.049e-05
+  [ok] state_dict round trip: bit-identical loss            0.000e+00
+  [ok] strict load: missing key throws                      0.000e+00
+  [ok] strict load: unexpected key throws                   0.000e+00
+  [ok] SGD+momentum overfits one batch                      4.914e-06
+  [ok] AdamW overfits one batch                             1.322e-04
+  [ok] causal mask: past logits untouched by future edit    0.000e+00
+
+ALL NN CHECKS PASSED
+<end of output>
+Test time =   0.09 sec
+----------------------------------------------------------
+Test Passed.
+"nn" end time: Oct 30 22:17 AEDT
+"nn" time elapsed: 00:00:00
+----------------------------------------------------------
+
+9/49 Testing: kimi_linear
+9/49 Test: kimi_linear
+Command: "/home/jonat/pk_publication_build_20261030/test_kimi_linear"
+Directory: /home/jonat/pk_publication_build_20261030
+"kimi_linear" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+=== Kimi Linear Attention Tests ===
+
+=== Test 1: Feature Map Gradients ===
+Feature map operations verified
+
+=== Test 2: Kimi Forward Pass Basic ===
+Forward pass: shape ✓, finite values ✓
+
+=== Test 3: Kimi Backward Pass Basic ===
+Backward pass: shape ✓, finite gradients ✓
+
+=== Test 4: Finite Difference Gradient Check ===
+Gradient check (q): max_diff=5.88e-04 vs tol=5e-3 [PASS]
+
+=== Test 4: Causal Masking ===
+First pos diff: 851.305115 (should be large due to mask)
+Last pos diff:  0.000000 (should be ~0)
+Causal masking ✓
+
+[PASS] All tests completed!
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"kimi_linear" end time: Oct 30 22:17 AEDT
+"kimi_linear" time elapsed: 00:00:00
+----------------------------------------------------------
+
+10/49 Testing: cerebellum
+10/49 Test: cerebellum
+Command: "/home/jonat/pk_publication_build_20261030/test_cerebellum"
+Directory: /home/jonat/pk_publication_build_20261030
+"cerebellum" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+=== Cerebellum-Inspired Selective Computation Tests ===
+
+=== Test 1: RoutinePredictor ===
+✓ Output shape correct: [8, 256]
+✓ Outputs finite
+
+=== Test 2: SelectiveGate ===
+✓ Output shape correct: [8, 256]
+✓ Gate probabilities in [0, 1]
+✓ Gate logits (surprise signal): 0.3174 0.3161 0.3175 ...
+
+=== Test 3: GatedBlock ===
+✓ Output shape correct: [8, 256]
+✓ Block forward pass successful
+✓ Pre-LN + gated attention + gated MLP integrated
+
+=== Test 4: Gating Mechanism ===
+Routine input (1e-4): gate prob = 0.2690 (should be low)
+Surprising input (0.5): gate prob = 0.7313 (should be high)
+✓ Gating mechanism works: high residual → high gate prob
+
+[PASS] All cerebellum tests passed!
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"cerebellum" end time: Oct 30 22:17 AEDT
+"cerebellum" time elapsed: 00:00:00
+----------------------------------------------------------
+
+11/49 Testing: mamba
+11/49 Test: mamba
+Command: "/home/jonat/pk_publication_build_20261030/test_mamba"
+Directory: /home/jonat/pk_publication_build_20261030
+"mamba" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+=== Mamba State-Space Model Tests ===
+
+=== Test 1: S4Layer ===
+✓ Output shape correct: [8, 256]
+✓ Outputs finite
+
+=== Test 2: MambaBlock ===
+✓ Output shape correct: [8, 256]
+✓ MambaBlock forward pass successful
+
+=== Test 3: MambaModel ===
+✓ Logit shape correct: [8, 1024]
+✓ Model stacking and output projection working
+
+=== Test 4: State-Space Recurrence ===
+  sum |out1 - out2| = 1.113747 (threshold 0.1)
+✓ State-space outputs respond to input variation
+✓ Recurrence mechanism active (outputs differ for different inputs)
+
+=== Test 5: ssm_scan FD gradcheck (BPTT) ===
+  d/du rel err 7.92e-05
+  d/dA rel err 1.64e-03
+  d/dB rel err 2.97e-05
+  d/dC rel err 4.84e-05
+  d/dD rel err 7.55e-06
+
+[PASS] All Mamba tests passed!
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"mamba" end time: Oct 30 22:17 AEDT
+"mamba" time elapsed: 00:00:00
+----------------------------------------------------------
+
+12/49 Testing: train_utils
+12/49 Test: train_utils
+Command: "/home/jonat/pk_publication_build_20261030/test_train_utils"
+Directory: /home/jonat/pk_publication_build_20261030
+"train_utils" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+=== dropout ===
+  kept fraction 0.501 (target 0.500)
+  backward mask identical to forward mask
+  eval mode is identity
+=== clip_grad_norm ===
+  norm 5.0 clipped to 1.00000
+=== LR schedulers ===
+  cosine-warmup checkpoints correct
+  StepLR decays correctly
+=== safetensors round trip ===
+  2 tensors round-tripped bit-exact
+
+[PASS] all training-utility tests
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"train_utils" end time: Oct 30 22:17 AEDT
+"train_utils" time elapsed: 00:00:00
+----------------------------------------------------------
+
+13/49 Testing: gguf_export
+13/49 Test: gguf_export
+Command: "/home/jonat/pk_publication_build_20261030/test_gguf_export"
+Directory: /home/jonat/pk_publication_build_20261030
+"gguf_export" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+GGUF Export: Successfully wrote 21 tensors to /tmp/gguf_export_test.gguf
+=== parse back ===
+  metadata ok (13 u32 keys, 7 tokens)
+  21 tensors, data section aligned at 2208
+  tensor bytes identical through align-padded data section
+  unmapped tensor reported: model.layers.0.self_attn.q_proj.bias
+GGUF Export: Successfully wrote 21 tensors to /tmp/gguf_export_test_T.gguf
+  weights_in_out=true transposes correctly
+GGUF Export: Successfully wrote 23 tensors to /tmp/gguf_export_test_moe.gguf
+  blk.0.ffn_gate_inp.weight  ne = { 6 3 }
+  blk.0.ffn_gate_exps.weight ne = { 6 10 3 }
+  blk.0.ffn_up_exps.weight   ne = { 6 10 3 }
+  blk.0.ffn_down_exps.weight ne = { 10 6 3 }
+  blk.1.ffn_gate_inp.weight  ne = { 6 3 }
+  blk.1.ffn_gate_exps.weight ne = { 6 10 3 }
+  blk.1.ffn_up_exps.weight   ne = { 6 10 3 }
+  blk.1.ffn_down_exps.weight ne = { 10 6 3 }
+  MoE export: expert_count/used metadata, router {d,E}, 3-D *_exps tensors byte-exact per expert
+
+[PASS] GGUF export round trip
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"gguf_export" end time: Oct 30 22:17 AEDT
+"gguf_export" time elapsed: 00:00:00
+----------------------------------------------------------
+
+14/49 Testing: gguf_q8
+14/49 Test: gguf_q8
+Command: "/home/jonat/pk_publication_build_20261030/test_gguf_q8"
+Directory: /home/jonat/pk_publication_build_20261030
+"gguf_q8" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+=== quantize_q8_0 known blocks ===
+  zeros, d = 1, half-way, negative max, rounded and subnormal fp16 scales ok
+=== tiny Q8_0 exports ===
+GGUF Export: Successfully wrote 21 tensors to /tmp/gguf_q8_test_q8_0.gguf
+  q8_0     14 tensors Q8_0, dims/sizes/offsets/bytes ok
+GGUF Export: Successfully wrote 21 tensors to /tmp/gguf_q8_test_q8_0_out.gguf
+  q8_0_out 15 tensors Q8_0, dims/sizes/offsets/bytes ok
+GGUF Export: Successfully wrote 21 tensors to /tmp/gguf_q8_test_q8_0_all.gguf
+  q8_0_all 16 tensors Q8_0, dims/sizes/offsets/bytes ok
+  ne0 % 32 != 0 refused by name; unknown quant refused
+
+[PASS] GGUF Q8_0 export
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"gguf_q8" end time: Oct 30 22:17 AEDT
+"gguf_q8" time elapsed: 00:00:00
+----------------------------------------------------------
+
+15/49 Testing: gguf_q4
+15/49 Test: gguf_q4
+Command: "/home/jonat/pk_publication_build_20261030/test_gguf_q4"
+Directory: /home/jonat/pk_publication_build_20261030
+"gguf_q4" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+=== known blocks (gguf-py 0.19 bytes) ===
+  Q4_0 / Q5_0 / Q5_1: 8 blocks each match; block independence; n % 32 and inf refused
+=== tiny 4-bit exports ===
+GGUF Export: Successfully wrote 75 tensors to /tmp/gguf_q4_test_q4_0.gguf
+  q4_0        F32 17, Q4_0 57, Q5_0 0, Q5_1 0, Q8_0 1: order/types/keys/offsets/bytes ok
+GGUF Export: Successfully wrote 75 tensors to /tmp/gguf_q4_test_q4_k_m.gguf
+  q4_k_m      F32 17, Q4_0 0, Q5_0 49, Q5_1 0, Q8_0 9: order/types/keys/offsets/bytes ok
+GGUF Export: Successfully wrote 75 tensors to /tmp/gguf_q4_test_q4_k_s.gguf
+  q4_k_s      F32 17, Q4_0 0, Q5_0 52, Q5_1 5, Q8_0 1: order/types/keys/offsets/bytes ok
+GGUF Export: Successfully wrote 74 tensors to /tmp/gguf_q4_test_q4_0_tied.gguf
+  q4_0   tied F32 17, Q4_0 56, Q5_0 0, Q5_1 0, Q8_0 1: order/types/keys/offsets/bytes ok
+GGUF Export: Successfully wrote 74 tensors to /tmp/gguf_q4_test_q4_k_m_tied.gguf
+  q4_k_m tied F32 17, Q4_0 0, Q5_0 48, Q5_1 0, Q8_0 9: order/types/keys/offsets/bytes ok
+GGUF Export: Successfully wrote 74 tensors to /tmp/gguf_q4_test_q4_k_s_tied.gguf
+  q4_k_s tied F32 17, Q4_0 0, Q5_0 51, Q5_1 5, Q8_0 1: order/types/keys/offsets/bytes ok
+=== refusals ===
+  MoE, unknown quant and ne0 % 32 != 0 refused
+=== real k-quant blocks (d = 256, d_ff = 512, 8 layers) ===
+GGUF Export: Successfully wrote 75 tensors to /tmp/gguf_q4_test_k_q4_0.gguf
+  q4_0   F32 17, Q4_0 57, Q4_K 0, Q5_K 0, Q6_K 1: types/offsets/bytes ok
+GGUF Export: Successfully wrote 75 tensors to /tmp/gguf_q4_test_k_q4_k_m.gguf
+  q4_k_m F32 17, Q4_0 0, Q4_K 49, Q5_K 0, Q6_K 9: types/offsets/bytes ok
+GGUF Export: Successfully wrote 75 tensors to /tmp/gguf_q4_test_k_q4_k_s.gguf
+  q4_k_s F32 17, Q4_0 0, Q4_K 52, Q5_K 5, Q6_K 1: types/offsets/bytes ok
+  Q4_K / Q5_K / Q6_K: 9 patterns x 2 super-blocks equal llama.cpp b6000's reference rows
+
+[PASS] GGUF 4-bit export
+<end of output>
+Test time =   1.90 sec
+----------------------------------------------------------
+Test Passed.
+"gguf_q4" end time: Oct 30 22:17 AEDT
+"gguf_q4" time elapsed: 00:00:01
+----------------------------------------------------------
+
+16/49 Testing: attention_blocked
+16/49 Test: attention_blocked
+Command: "/home/jonat/pk_publication_build_20261030/test_attention_blocked"
+Directory: /home/jonat/pk_publication_build_20261030
+"attention_blocked" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+blocked attention
+  blocked == per-sequence, bit for bit (causal=1): output and all three gradients
+  blocked == per-sequence, bit for bit (causal=0): output and all three gradients
+  FD gradcheck, blocked attention: worst relative error 1.659e-06
+  attention_heads == per-head slices + concat, bit for bit (causal=1)
+  attention_heads == per-head slices + concat, bit for bit (causal=0)
+test_attention_blocked: all checks passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"attention_blocked" end time: Oct 30 22:17 AEDT
+"attention_blocked" time elapsed: 00:00:00
+----------------------------------------------------------
+
+17/49 Testing: device_rope
+17/49 Test: device_rope
+Command: "/home/jonat/pk_publication_build_20261030/test_device_rope"
+Directory: /home/jonat/pk_publication_build_20261030
+"device_rope" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+device rope/slice/concat (host path)
+  slice/concat copies: 0/1048576 bits differ
+  accumulate_cols (overlapping slices + direct use): write-through 0/393216, deferred 0/393216 bits differ
+  rope alone, B=4 sl=256 H=6 dk=64 (all_heads=1): y worst 0.000e+00 (0/1179648 bits differ), grad worst 0.000e+00 (0/1179648)
+  rope alone, B=4 sl=256 H=6 dk=64 (all_heads=0): y worst 0.000e+00 (0/1179648 bits differ), grad worst 0.000e+00 (0/1179648)
+  block chain (all_heads=1): output + q/k/v grads worst 0.000e+00 (0/1572864 bits differ)
+  block chain (all_heads=0): output + q/k/v grads worst 0.000e+00 (0/1572864 bits differ)
+  FD gradcheck, block chain: worst relative error 1.446e-06
+test_device_rope: all checks passed
+<end of output>
+Test time =   0.49 sec
+----------------------------------------------------------
+Test Passed.
+"device_rope" end time: Oct 30 22:17 AEDT
+"device_rope" time elapsed: 00:00:00
+----------------------------------------------------------
+
+18/49 Testing: posttrain_losses
+18/49 Test: posttrain_losses
+Command: "/home/jonat/pk_publication_build_20261030/test_posttrain_losses"
+Directory: /home/jonat/pk_publication_build_20261030
+"posttrain_losses" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+posttrain losses
+  all-ones mask: loss and gradient bit-identical to cross_entropy
+  masked: equals cross_entropy on the kept rows bit for bit; masked rows get zero gradient
+  FD gradcheck, masked CE: worst relative error 5.812e-06
+  FD gradcheck, policy_gradient_kl: worst relative error 1.035e-05
+  anchors: k=0 equals cross_entropy; KL to itself is 0 with zero gradient
+  bandit: pi(0) = 0.945179, analytic optimum 0.945179, |diff| 2.32e-07
+  group advantages: flat groups, known values, shuffle preserves each group's values
+  FD gradcheck, dpo_weighted: worst relative error 5.016e-06
+  dpo: weights {1,0,1} equal plain DPO on the kept pairs bit for bit; weight-0 rows get no gradient
+  dpo at the reference: loss log 2, gradient matches the closed form (max err 7.05e-09)
+test_posttrain_losses: all checks passed
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"posttrain_losses" end time: Oct 30 22:17 AEDT
+"posttrain_losses" time elapsed: 00:00:00
+----------------------------------------------------------
+
+19/49 Testing: verifier
+19/49 Test: verifier
+Command: "/home/jonat/pk_publication_build_20261030/test_verifier"
+Directory: /home/jonat/pk_publication_build_20261030
+"verifier" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+test_verifier: all checks passed
+<end of output>
+Test time =   0.92 sec
+----------------------------------------------------------
+Test Passed.
+"verifier" end time: Oct 30 22:17 AEDT
+"verifier" time elapsed: 00:00:00
+----------------------------------------------------------
+
+20/49 Testing: lora_quant
+20/49 Test: lora_quant
+Command: "/home/jonat/pk_publication_build_20261030/test_lora_quant"
+Directory: /home/jonat/pk_publication_build_20261030
+"lora_quant" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+=== int8 blockwise quantization ===
+  error within half-step everywhere; memory 0.27x of fp32
+=== QLinear vs fp32 Linear ===
+  max |QLinear - Linear| = 0.00470
+=== LoRA: identity delta at init ===
+  output identical to frozen base (B initialized to zero)
+=== LoRA: gradients hit adapters only ===
+  dB nonzero at step 0 (dA zero by B=0, as in the paper)
+  adapter step shifts the output; base W untouched
+=== LoRA: merged_weight equivalence ===
+  max |adapter - merged| = 0.0000002
+=== QLoRA: quantized base + adapters ===
+  base stored at 0.27x fp32 bytes
+  3 AdamW steps trained the adapters, outputs finite
+
+[PASS] all LoRA/QLoRA/quantization tests
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"lora_quant" end time: Oct 30 22:17 AEDT
+"lora_quant" time elapsed: 00:00:00
+----------------------------------------------------------
+
+21/49 Testing: bitlinear
+21/49 Test: bitlinear
+Command: "/home/jonat/pk_publication_build_20261030/test_bitlinear"
+Directory: /home/jonat/pk_publication_build_20261030
+"bitlinear" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+test_bitlinear (BitNet b1.58 fake quantisers, straight-through estimators)
+-- leg 1: forwards against the reference formulas --
+  [ok] ternary_ste == clamp(round(W s), -1, 1) / s                  0.000e+00
+  [ok] ternary_scale == 1 / mean|W|                                 0.000e+00
+  [ok] every value is a code in {-1, 0, 1} over s                   0.000e+00
+  [ok] zero share near a Gaussian's 31%                             3.157e-01
+  [ok] an all-zero tensor stays zero (the 1e-5 floor)               0.000e+00
+  [ok] act_quant_ste(8 bits) == per-row absmax rounding             0.000e+00
+  [ok] act_quant_ste(8 bits): each row's absmax maps to +-127       7.629e-06
+  [ok] act_quant_ste(4 bits) == per-row absmax rounding             0.000e+00
+  [ok] act_quant_ste(4 bits): each row's absmax maps to +-7         4.768e-07
+-- leg 2: straight-through backwards --
+  [ok] ternary_ste: dW == dY (bit for bit)                          0.000e+00
+  [ok] act_quant_ste: dX == dY (bit for bit)                        0.000e+00
+-- leg 3: the BitLinear layer --
+  [ok] forward == actq(rmsnorm(x, 1)) ternary(W)                    2.086e-07
+  [ok] dW == h_q^T dY (straight through the ternary)                4.768e-07
+  [ok] dx == the surrogate's gradient                               0.000e+00
+  [ok] the surrogate's gradient vs finite differences               2.502e-05
+  [ok] act_bits 0: dx vs finite differences on the layer            2.502e-05
+  [ok] no norm, no act quant: dx == dY W_q^T                        1.192e-07
+  [ok] off: y == ops::matmul(x, W) bit for bit                      0.000e+00
+-- leg 4: a BitLinear llama --
+  [ok] state_dict: the float model's keys and initial values        0.000e+00
+  [ok] every block projection is a BitLinear (7 x 2 layers)         1.400e+01
+  [ok] the quantised forward differs from the float one             9.093e-01
+  [ok] cached decode == full forward (over the logit range)         8.847e-08
+     loss 4.1180 -> 0.5526
+  [ok] 60 AdamW steps halve the loss                                1.342e-01
+  [ok] the latent weights train                                     1.414e-01
+-- leg 5: CUDA --
+  SKIP: a CUDA build with MICROTORCH_DEVICE=cuda runs this leg
+test_bitlinear PASSED
+<end of output>
+Test time =   0.09 sec
+----------------------------------------------------------
+Test Passed.
+"bitlinear" end time: Oct 30 22:17 AEDT
+"bitlinear" time elapsed: 00:00:00
+----------------------------------------------------------
+
+22/49 Testing: llama
+22/49 Test: llama
+Command: "/home/jonat/pk_publication_build_20261030/test_llama"
+Directory: /home/jonat/pk_publication_build_20261030
+"llama" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+=== HF-name contract ===
+  20 params, all sampled HF paths present, head tied
+=== forward ===
+  [8, 96] logits finite
+=== module-level FD gradcheck ===
+  d mean(logits)/d embed rel err 2.83e-04
+=== short training ===
+  loss 4.5599 -> 4.0231 over 25 steps
+
+[PASS] all Llama tests
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"llama" end time: Oct 30 22:17 AEDT
+"llama" time elapsed: 00:00:00
+----------------------------------------------------------
+
+23/49 Testing: llama_attnres
+23/49 Test: llama_attnres
+Command: "/home/jonat/pk_publication_build_20261030/test_llama_attnres"
+Directory: /home/jonat/pk_publication_build_20261030
+"llama_attnres" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+attention residuals on the llama block (llama_attnres)
+  fused depth_attend vs composed (S 5, T 7, d 16, scale 1): output worst rel 1.74e-07, gradients (sources and query) worst rel 4.60e-07
+  fused depth_attend vs composed (S 5, T 7, d 16, scale 5): output worst rel 2.09e-07, gradients (sources and query) worst rel 4.09e-07
+  FD gradcheck of the fused op (S 4, scale 3): 168 entries, worst rel 3.44e-03
+  parameters: the plain model's 29 tensors (0 bits differ) plus 6 zero queries
+  parameters: the plain model's 38 tensors (0 bits differ) plus 16 zero queries
+  FD gradcheck 3 layers, scale sources: 47 entries over 35 tensors, worst rel 6.55e-03
+  FD gradcheck 3 layers, scale none: 47 entries over 35 tensors, worst rel 6.50e-03
+  FD gradcheck 1 + [2] x 3 + 1, per-application queries: 86 entries over 54 tensors, worst rel 3.38e-03
+  init (scale sources, default weights): logits worst rel 1.06e-07 (278/370 bits differ); plain parameters' gradients worst rel 4.86e-07; nonzero query-gradient entries 96
+  init (scale sources, randomised non-query weights): logits worst rel 2.64e-07 (311/370 bits differ); plain parameters' gradients worst rel 1.22e-06; nonzero query-gradient entries 96
+  init (scale sources, recursion, randomised non-query weights): logits worst rel 4.06e-07 (328/370 bits differ); plain parameters' gradients worst rel 1.50e-06; nonzero query-gradient entries 256
+  init (scale none, default weights): logits worst rel 2.30e-01 (370/370 bits differ); plain parameters' gradients worst rel 6.66e-01; nonzero query-gradient entries 96
+  init (scale none, randomised non-query weights): logits worst rel 5.52e-05 (370/370 bits differ); plain parameters' gradients worst rel 3.39e-04; nonzero query-gradient entries 96
+  init (scale none, 16 layers, default weights): logits worst rel 7.44e-01 (370/370 bits differ); plain parameters' gradients worst rel 1.38e+00; nonzero query-gradient entries 512
+  init (scale sources, 16 layers, default weights): logits worst rel 3.02e-07 (328/370 bits differ); plain parameters' gradients worst rel 1.09e-06; nonzero query-gradient entries 512
+  forward_cached (prefill 6, decode 4; 3 layers) vs forward: worst rel 2.01e-06
+  forward_cached (prefill 6, decode 4; 3 layers, scale none) vs forward: worst rel 2.01e-06
+  forward_cached (prefill 6, decode 4; 1 + [2] x 3 + 1) vs forward: worst rel 3.08e-06
+  checkpoint_blocks per sublayer: gradients 0 bits differ, worst rel 0.00e+00
+  refused: schedule mor, inject add, MoE, an unknown scale
+device (CPU build or op set off)
+  depth_attend S 33, T 64, d 320 (host vs host): output worst rel 0.00e+00, gradients worst rel 0.00e+00
+  3 layers, 4 steps, accum 2 (host vs host): loss worst rel 0.00e+00, step-1 gradients worst rel 0.00e+00, final parameters max |diff| 0.00e+00 (0/7328 bits differ); losses 4.0213 -> 3.7339
+  1 + [2] x 3 + 1, 4 steps, accum 2 (host vs host): loss worst rel 0.00e+00, step-1 gradients worst rel 0.00e+00, final parameters max |diff| 0.00e+00 (0/9696 bits differ); losses 3.9253 -> 3.7227
+
+[PASS] llama_attnres
+<end of output>
+Test time =   0.16 sec
+----------------------------------------------------------
+Test Passed.
+"llama_attnres" end time: Oct 30 22:17 AEDT
+"llama_attnres" time elapsed: 00:00:00
+----------------------------------------------------------
+
+24/49 Testing: recursion
+24/49 Test: recursion
+Command: "/home/jonat/pk_publication_build_20261030/test_recursion"
+Directory: /home/jonat/pk_publication_build_20261030
+"recursion" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+tied-block recursion (llama family)
+  R=1: logits and 29 gradients bit for bit (0 bits differ); IR identical
+  1 + [2] x 3 + 1: 8 applications of 4 stored layers; 38 tensors listed once, 9440 parameters (the plain 4-layer model's names and count)
+  tied vs untied (1 + [2] x 3 + 1 vs 8 unshared copies): logits 0 bits differ; shared gradient vs the sum of its copies' worst rel 0.00e+00 (0/9440 bits differ)
+  FD gradcheck 1 + [2] x 3 + 1: 74 entries over 38 tensors, worst rel 1.89e-03
+  FD gradcheck [2] x 4: 56 entries over 20 tensors, worst rel 2.44e-03
+  FD gradcheck 1 + [2] x 3 + 1, inject add: 74 entries over 38 tensors, worst rel 2.67e-03
+  checkpoint_blocks per application (plain 4 layers, the reference): gradients 0 bits differ, worst rel 0.00e+00
+  checkpoint_blocks per application (1 + [2] x 3 + 1): gradients 0 bits differ, worst rel 0.00e+00
+  checkpoint_blocks per application (1 + [2] x 3 + 1, inject add): gradients 31 bits differ, worst rel 6.10e-08 embed_tokens.weight
+  forward_cached (prefill 6, decode 4; 8 caches, inject none) vs forward: worst rel 5.76e-07
+  forward_cached (prefill 6, decode 4; 8 caches, inject add) vs forward: worst rel 8.37e-07
+  AdamW on the recursed model vs on the plain stored-layer model with its gradients: 0 bits differ over 9440 parameters
+device steps (CPU build or op set off)
+  [2] x 4, 4 steps, accum 2 (host vs host): loss worst rel 0.00e+00, step-1 gradients worst rel 0.00e+00, final parameters max |diff| 0.00e+00 (0/5024 bits differ); losses 3.8390 -> 3.6096
+  1 + [2] x 3 + 1, inject add, 4 steps, accum 2 (host vs host): loss worst rel 0.00e+00, step-1 gradients worst rel 0.00e+00, final parameters max |diff| 0.00e+00 (0/9440 bits differ); losses 3.9858 -> 3.5192
+
+[PASS] recursion
+<end of output>
+Test time =   0.16 sec
+----------------------------------------------------------
+Test Passed.
+"recursion" end time: Oct 30 22:17 AEDT
+"recursion" time elapsed: 00:00:00
+----------------------------------------------------------
+
+25/49 Testing: mor
+25/49 Test: mor
+Command: "/home/jonat/pk_publication_build_20261030/test_mor"
+Directory: /home/jonat/pk_publication_build_20261030
+"mor" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+Mixture-of-Recursions, causal token choice (llama family)
+  forced depth 3, gate none, one sequence vs fixed 1 + [2] x 3 + 1: logits 0 bits differ, 38 gradients (9440 entries) 0 bits differ
+  forced depth 3, gate none, 2 stacked sequences vs fixed 1 + [2] x 3 + 1: logits 0 bits differ, 38 gradients (9440 entries) 0 bits differ
+  forced depth 2, gate none, one sequence vs fixed 1 + [2] x 2 + 1: logits 0 bits differ, 38 gradients (9440 entries) 0 bits differ
+  forced depth 2, gate none, 2 stacked sequences vs fixed 1 + [2] x 2 + 1: logits 0 bits differ, 38 gradients (9440 entries) 0 bits differ
+  gate score, forced depth 3: logits vs x + g (S(x) - x) per step, 0 bits differ
+  routed depths over 12 tokens: 4 at 1, 4 at 2, 4 at 3
+  balance 1.000000 (by hand 1.000000, |diff| 1.3e-08), z-loss 45.631451 (rel diff 1.8e-07); depth fractions 0.333 0.333 0.333
+  every prefix alone vs the full sequence: 0 depth mismatches, last-row logits worst rel 8.17e-07
+  prefill 1 + decode 11 vs forward: logits worst rel 7.96e-07, depths identical, per-application rows exactly the active tokens' (12/9/5 rows at steps 0/1/2)
+  prefill 7 + decode 5 vs forward: logits worst rel 7.96e-07, depths identical, per-application rows exactly the active tokens' (12/9/5 rows at steps 0/1/2)
+  truncate(5) and continue vs a fresh cache: 0 bits differ
+  2 stacked sequences vs each alone: logits worst rel 1.53e-06, depths identical (4, 5, 3)
+  FD gradcheck 1 + [2] x {1..3} + 1, gate score, one sequence (depths 4/4/4): 96 entries, 0 skipped (a depth flips), worst rel 7.18e-03 (layers.0.post_attention_layernorm.weight)
+  FD gradcheck the same, 2 stacked sequences (depths 2/5/5): 96 entries, 0 skipped (a depth flips), worst rel 4.63e-03 (layers.2.input_layernorm.weight)
+  checkpoint_blocks per application (routed, 2 stacked sequences): gradients 5027 bits differ, worst rel 6.34e-07
+  IR: family llama_mor, depth_route first (rec.0.router.weight, steps -1 0 0 1 1 2 2 -1), kv_rows active; force_depth has no IR form (refused)
+device steps (CPU build or op set off)
+  routed 1 + [2] x {1..3} + 1, 4 steps, accum 2 (host vs host): first micro-batch depths 4/14/14 (step-1 depths identical), loss worst rel 0.00e+00, step-1 gradients worst rel 0.00e+00, final parameters max |diff| 0.00e+00 (0/9488 bits differ); losses 3.9424 -> 4.0222
+
+[PASS] mor
+<end of output>
+Test time =   0.15 sec
+----------------------------------------------------------
+Test Passed.
+"mor" end time: Oct 30 22:17 AEDT
+"mor" time elapsed: 00:00:00
+----------------------------------------------------------
+
+26/49 Testing: pooled_gemm
+26/49 Test: pooled_gemm
+Command: "/home/jonat/pk_publication_build_20261030/test_pooled_gemm"
+Directory: /home/jonat/pk_publication_build_20261030
+"pooled_gemm" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+Phase A GEMM through the device pool (CPU: device legs skipped)
+  4. MoR 1 + [2] x {1..3} + 1, one sequence per call (as mtstudio score), 8 lengths 1 .. 64, depths 78/96/57: CPU only
+
+[PASS] pooled_gemm
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"pooled_gemm" end time: Oct 30 22:17 AEDT
+"pooled_gemm" time elapsed: 00:00:00
+----------------------------------------------------------
+
+27/49 Testing: kv_cache
+27/49 Test: kv_cache
+Command: "/home/jonat/pk_publication_build_20261030/test_kv_cache"
+Directory: /home/jonat/pk_publication_build_20261030
+"kv_cache" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+=== KV cache vs full recompute ===
+  dense        worst |dlogit| / range: decode 1.77e-07, chunked 1.65e-07, truncated 7.34e-08
+  moe top-2    worst |dlogit| / range: decode 1.21e-07, chunked 6.22e-08, truncated 7.09e-08
+  rope first   worst |dlogit| / range: decode 7.21e-08, chunked 6.90e-08, truncated 6.90e-08
+  untied head  worst |dlogit| / range: decode 1.33e-07, chunked 9.66e-08, truncated 1.11e-07
+KV cache tests passed
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"kv_cache" end time: Oct 30 22:17 AEDT
+"kv_cache" time elapsed: 00:00:00
+----------------------------------------------------------
+
+28/49 Testing: state_tokens
+28/49 Test: state_tokens
+Command: "/home/jonat/pk_publication_build_20261030/test_state_tokens"
+Directory: /home/jonat/pk_publication_build_20261030
+"state_tokens" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+per-turn state tokens (llama family, k = 3)
+  codes: worked example, incremental = batch, stacked restart, partial blocks
+  template: reply blocks only, early-stop rule (1 closed), raw-ids validation
+  k = 3, mask turn_state, no state id: logits 0 + 0 bits differ, 20 gradients 0 bits differ
+  k = 3, mask causal, no state id: logits 0 + 0 bits differ, 20 gradients 0 bits differ
+  IR: mask and evict under turn_state only, state_weight under both masks, family llama_state
+  mask: turn 2's logits after editing turn 0's text: 1 layer turn_state 0 bits differ (must be 0), causal 222; 2 layers turn_state 222 (through the state rows)
+  FD gradcheck attention_heads_turn_state (2 sequences of 13, 468 entries): worst rel 4.81e-04; forward vs a double-precision masked reference rel 1.08e-07
+  FD gradcheck turn_state, 2 layers: 49 entries (9 of state_embd), worst rel 4.15e-03 (state_embd.weight: fd -0.00346, analytic -0.00342)
+  FD gradcheck causal mask with state rows: 49 entries (9 of state_embd), worst rel 2.16e-03 (layers.1.self_attn.o_proj.weight: fd -0.00374, analytic -0.00376)
+  FD gradcheck turn_state, 1 + [2] x 2 + 1: 85 entries (9 of state_embd), worst rel 5.17e-03 (state_embd.weight: fd -0.01105, analytic -0.01099)
+  prefill = decode turn_state: token by token 0.00e+00, chunks of 4 0.00e+00, one call 0.00e+00 (rel to forward)
+  prefill = decode causal: token by token 4.88e-07, chunks of 4 4.88e-07, one call 4.88e-07 (rel to forward)
+  prefill = decode turn_state, 1 + [2] x 2 + 1: token by token 0.00e+00, chunks of 4 0.00e+00, one call 0.00e+00 (rel to forward)
+  eviction turn_state: keep every row vs evict (token by token, chunks of 3, one call): 0 bits differ (rel 0.00e+00); 12 rows kept of 26 after two turns
+  rewind into evicted turn 1: truncate(13) -> 10, re-prefill vs a run that never evicted: 0 bits differ; truncate inside the current turn keeps 23; into block 1 -> 10
+  eviction turn_state, 1 + [2] x 2 + 1: keep every row vs evict (token by token, chunks of 3, one call): 0 bits differ (rel 0.00e+00); 12 rows kept of 26 after two turns
+  rewind into evicted turn 1: truncate(13) -> 10, re-prefill vs a run that never evicted: 0 bits differ; truncate inside the current turn keeps 23; into block 1 -> 10
+  refusals: schedule mor, attention residuals, unknown mask, ids past the state ids, evict under the causal mask
+device (CPU build or op set off)
+  device op: skipped (CPU build or op set off)
+  turn_state, 4 steps, accum 2 (host vs host): loss worst rel 0.00e+00, step-1 gradients worst rel 0.00e+00, final parameters max |diff| 0.00e+00 (0/5072 bits differ); losses 4.1604 -> 3.8538
+  turn_state, 1 + [2] x 2 + 1, 4 steps, accum 2 (host vs host): loss worst rel 0.00e+00, step-1 gradients worst rel 0.00e+00, final parameters max |diff| 0.00e+00 (0/9488 bits differ); losses 4.2610 -> 3.6493
+
+[PASS] state tokens
+<end of output>
+Test time =   0.30 sec
+----------------------------------------------------------
+Test Passed.
+"state_tokens" end time: Oct 30 22:17 AEDT
+"state_tokens" time elapsed: 00:00:00
+----------------------------------------------------------
+
+29/49 Testing: chat_template
+29/49 Test: chat_template
+Command: "/home/jonat/pk_publication_build_20261030/test_chat_template" "/home/jonat/pk_publication_20261030/tests/chat_template_cases.json"
+Directory: /home/jonat/pk_publication_build_20261030
+"chat_template" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+chat_template: 37 cases rendered and 43 refused as in Python, 6 records, Jinja and Modelfile identical, 7 resolutions, 30 legacy prompts identical, 12 replies parsed as in Python
+<end of output>
+Test time =   0.01 sec
+----------------------------------------------------------
+Test Passed.
+"chat_template" end time: Oct 30 22:17 AEDT
+"chat_template" time elapsed: 00:00:00
+----------------------------------------------------------
+
+30/49 Testing: mixed_precision
+30/49 Test: mixed_precision
+Command: "/home/jonat/pk_publication_build_20261030/test_mixed_precision"
+Directory: /home/jonat/pk_publication_build_20261030
+"mixed_precision" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+mixed precision + flash attention (CPU)
+  bf16_round: edge cases and 1e6 random floats vs the nearest-neighbour reference: 0 differ
+  gemm: FP32 overload vs 6-argument gemm 0 bits differ; BF16 vs FP32 gemm of rounded inputs 0 bits differ (outside a step window: the host emulation on every build)
+  ops::matmul under BF16: forward and both gradients vs the rounded GEMMs: 0 bits differ
+    flash vs tiled causal     H 2 dk  3 sl  37 x 2: y rel 8.93e-08, dqkv rel 1.82e-07
+    flash vs tiled full       H 2 dk  8 sl  37 x 2: y rel 1.83e-07, dqkv rel 3.46e-07
+    flash vs tiled causal     H 3 dk 16 sl  70 x 1: y rel 1.18e-07, dqkv rel 2.16e-07
+    flash vs tiled causal     H 2 dk 33 sl  45 x 2: y rel 7.08e-08, dqkv rel 2.09e-07
+    flash vs tiled causal     H 1 dk 64 sl  97 x 2: y rel 1.59e-07, dqkv rel 4.64e-07
+    flash vs tiled full       H 2 dk 64 sl  64 x 2: y rel 5.74e-07, dqkv rel 4.94e-07
+    flash vs tiled turn_state H 2 dk  8 sl  37 x 2: y rel 6.88e-08, dqkv rel 2.16e-07
+    flash vs tiled turn_state H 2 dk 64 sl  75 x 2: y rel 1.06e-07, dqkv rel 1.28e-07
+    flash vs tiled causal     H 4 dk 16 sl 129 x 1: y rel 1.15e-07, dqkv rel 5.57e-07
+  flash vs tiled (host loops): worst y rel 5.74e-07 (bound 2e-6), worst dqkv rel 5.57e-07 (bound 1e-5)
+  FD gradcheck flash full       (H 2 dk 3, 2 x 13 rows, every entry of q, k, v): worst rel 1.98e-04
+  FD gradcheck flash causal     (H 2 dk 3, 2 x 13 rows, every entry of q, k, v): worst rel 3.56e-04
+  FD gradcheck flash turn_state (H 2 dk 3, 2 x 13 rows, every entry of q, k, v): worst rel 1.05e-03
+  FD gradcheck flash causal     (H 1 dk 5, 1 x 40 rows, every entry of q, k, v): worst rel 7.50e-04
+  training (host, 60 steps, loss 3.8631 -> 0.5991 FP32): FP32 rerun 0 steps differ; flash vs tiled worst rel 2.27e-07 (bound 1e-4); BF16 vs FP32 worst rel 4.46e-03, BF16 + flash 5.05e-03 (bound 2e-2); final BF16 0.5974
+mixed precision + flash attention: all checks passed
+<end of output>
+Test time =   2.42 sec
+----------------------------------------------------------
+Test Passed.
+"mixed_precision" end time: Oct 30 22:17 AEDT
+"mixed_precision" time elapsed: 00:00:02
+----------------------------------------------------------
+
+31/49 Testing: moe
+31/49 Test: moe
+Command: "/home/jonat/pk_publication_build_20261030/test_moe"
+Directory: /home/jonat/pk_publication_build_20261030
+"moe" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+microtorch MoE FFN tests
+=== dispatch ops vs finite differences ===
+  gather_rows/scatter_add_rows/gather_elems/logsumexp_row dX: worst rel err 4.466e-06
+  scatter_add_rows dX: worst rel err 1.291e-06
+  logsumexp([100,99,-50]) = 100.313263 (expect 100.313262)
+=== MoEFFN gradcheck (x, router, experts) ===
+  [k=1 raw] routing fractions: 0.143 0.143 0.429 0.286
+  [k=1 raw] FD worst rel err: dx 1.518e-06  drouter 2.938e-06  dexperts 6.246e-06  (0 entries skipped: routing flip)
+  [k=1 raw] |d router| = 2.162e-01
+  [k=2 renorm] routing fractions: 0.286 0.214 0.286 0.214
+  [k=2 renorm] FD worst rel err: dx 3.542e-06  drouter 2.409e-06  dexperts 6.114e-06  (0 entries skipped: routing flip)
+  [k=2 renorm] |d router| = 2.732e-01
+  [k=2 raw] routing fractions: 0.286 0.214 0.286 0.214
+  [k=2 raw] FD worst rel err: dx 1.685e-06  drouter 3.421e-06  dexperts 5.493e-06  (0 entries skipped: routing flip)
+  [k=2 raw] |d router| = 2.292e-01
+=== dense equivalence (E = 1, k = 1) ===
+  [E=1 k=1 raw] FFN output bit-identical; grads: x equal, gate bit-identical, up bit-identical, down bit-identical; |d router| max 0.0e+00
+  [E=1 k=1 renorm] FFN output bit-identical; grads: x equal, gate bit-identical, up bit-identical, down bit-identical; |d router| max 0.0e+00
+  [E=1 k=1 raw] model logits bit-identical: yes (0 mismatches); grads bit-identical 20/20, value-equal 20/20
+  [E=1 k=1 renorm] model logits bit-identical: yes (0 mismatches); grads bit-identical 20/20, value-equal 20/20
+  from-scratch E=3: 20/20 dense tensors equal their MoE counterpart (expert 0)
+=== auxiliary losses: hand-computed values + FD ===
+  f = [0.750 0.250] (expect [0.750 0.250])
+  load balance 1.2278332 (expect 1.2278332), z-loss 3.8240314 (expect 3.8240311)
+  zero router: lb 1.0000000 (expect 1), z 0.4804530 (expect log(2)^2 = 0.4804530)
+  load balance: FD worst rel err drouter 1.203e-05, dx 4.941e-06 (0 skipped)
+  z-loss: FD worst rel err drouter 2.292e-05, dx 2.100e-05 (0 skipped)
+=== sparse upcycling: identical experts reproduce the dense model ===
+  E=4 k=1 renorm, random router: max |logit diff| / max |logit| = 0.000e+00 (8 expert-layer slots used of 8)
+  E=4 k=2 renorm, random router: max |logit diff| / max |logit| = 2.892e-07 (8 expert-layer slots used of 8)
+  E=4 k=1 raw (Switch): relative logit diff 3.049e-01 -- not dense-equivalent, by construction
+=== names; dense models untouched ===
+  dense: 5232 params, no router/expert keys; E=3: 9936 params, HF-style expert names
+=== short training with auxiliary losses ===
+  task loss 3.9471 -> 3.1059 over 40 steps; final routing entropy 0.978 (1 = balanced)
+
+[PASS] all MoE tests
+<end of output>
+Test time =   0.07 sec
+----------------------------------------------------------
+Test Passed.
+"moe" end time: Oct 30 22:17 AEDT
+"moe" time elapsed: 00:00:00
+----------------------------------------------------------
+
+32/49 Testing: moe_device
+32/49 Test: moe_device
+Command: "/home/jonat/pk_publication_build_20261030/test_moe_device"
+Directory: /home/jonat/pk_publication_build_20261030
+"moe_device" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+MoE dispatch ops: device vs host (host vs host: CPU build or op set off)
+  ops: gathers/scatters/mul_col fwd + dX: 0/2411448 bits differ (worst 0.000e+00)
+    logsumexp fwd worst 0.000e+00 (0/1024 bits differ); logits grad (lse + gather_elems) worst 0.000e+00 (0/8192); mul_col dc worst 0.000e+00 (0/1024)
+  ops under deferred downloads: gathers/scatters/mul_col fwd + dX: 0/2411448 bits differ (worst 0.000e+00)
+    logsumexp fwd worst 0.000e+00 (0/1024 bits differ); logits grad (lse + gather_elems) worst 0.000e+00 (0/8192); mul_col dc worst 0.000e+00 (0/1024)
+  MoEFFN E=8 k=1 raw: routing identical; y worst 0.000e+00 (0/32768 bits differ), dX worst 0.000e+00 (0/32768), params worst 0.000e+00 (0/129536), aux worst 0.000e+00
+  MoEFFN E=8 k=2 renorm: routing identical; y worst 0.000e+00 (0/32768 bits differ), dX worst 0.000e+00 (0/32768), params worst 0.000e+00 (0/147968), aux worst 0.000e+00
+  MoEFFN E=8 k=2 raw: routing identical; y worst 0.000e+00 (0/32768 bits differ), dX worst 0.000e+00 (0/32768), params worst 0.000e+00 (0/147968), aux worst 0.000e+00
+  MoEFFN E=8 k=1 raw under deferred downloads: routing identical; y worst 0.000e+00 (0/32768 bits differ), dX worst 0.000e+00 (0/32768), params worst 0.000e+00 (0/129536), aux worst 0.000e+00
+  MoEFFN E=8 k=2 renorm under deferred downloads: routing identical; y worst 0.000e+00 (0/32768 bits differ), dX worst 0.000e+00 (0/32768), params worst 0.000e+00 (0/147968), aux worst 0.000e+00
+  MoEFFN E=8 k=2 raw under deferred downloads: routing identical; y worst 0.000e+00 (0/32768 bits differ), dX worst 0.000e+00 (0/32768), params worst 0.000e+00 (0/147968), aux worst 0.000e+00
+
+[PASS] MoE device ops
+<end of output>
+Test time =   0.50 sec
+----------------------------------------------------------
+Test Passed.
+"moe_device" end time: Oct 30 22:17 AEDT
+"moe_device" time elapsed: 00:00:00
+----------------------------------------------------------
+
+33/49 Testing: rope_heads
+33/49 Test: rope_heads
+Command: "/home/jonat/pk_publication_build_20261030/test_rope_heads"
+Directory: /home/jonat/pk_publication_build_20261030
+"rope_heads" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+=== first == pre-fix apply_rope, bit for bit ===
+  forward and backward identical to the legacy loop
+=== all == the one-head rotation applied per head ===
+  4 heads each rotated as head 0; v untouched
+=== relative position, per head ===
+  all,   head 0: shift drift 4.01e-07, score range 2.542
+  all,   head 1: shift drift 2.95e-07, score range 3.552
+  all,   head 2: shift drift 2.49e-07, score range 3.632
+  all,   head 3: shift drift 5.07e-07, score range 4.446
+  first, head 1: score range 0.00e+00 (position-blind)
+=== nn::Llama ===
+  H=1: all vs first logits identical
+  H=4: all vs first logits differ
+rope_heads: all checks passed
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"rope_heads" end time: Oct 30 22:17 AEDT
+"rope_heads" time elapsed: 00:00:00
+----------------------------------------------------------
+
+34/49 Testing: batching
+34/49 Test: batching
+Command: "/home/jonat/pk_publication_build_20261030/test_batching"
+Directory: /home/jonat/pk_publication_build_20261030
+"batching" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+  [gpt2] stacked-vs-seq1 logits max diff  1.192e-07
+  [gpt2] stacked-vs-seq2 logits max diff  1.192e-07
+  [gpt2] stacked-vs-mean CE loss diff     4.768e-07
+  [gpt2] stacked-vs-mean grad max diff    5.960e-08
+  [gpt2] batch isolation max leak         0.000e+00
+  [llama] stacked-vs-seq1 logits max diff  5.960e-08
+  [llama] stacked-vs-seq2 logits max diff  2.980e-08
+  [llama] stacked-vs-mean CE loss diff     0.000e+00
+  [llama] stacked-vs-mean grad max diff    2.980e-08
+  [llama] batch isolation max leak         0.000e+00
+  [kimi] stacked-vs-seq1 logits max diff  0.000e+00
+  [kimi] stacked-vs-seq2 logits max diff  0.000e+00
+  [kimi] stacked-vs-mean CE loss diff     0.000e+00
+  [kimi] stacked-vs-mean grad max diff    2.980e-08
+  [kimi] batch isolation max leak         0.000e+00
+  [srd] stacked-vs-seq1 logits max diff  8.941e-08
+  [srd] stacked-vs-seq2 logits max diff  5.960e-08
+  [srd] stacked-vs-mean CE loss diff     4.768e-07
+  [srd] stacked-vs-mean grad max diff    8.941e-08
+  [srd] batch isolation max leak         0.000e+00
+[PASS] all batching tests
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"batching" end time: Oct 30 22:17 AEDT
+"batching" time elapsed: 00:00:00
+----------------------------------------------------------
+
+35/49 Testing: checkpointing
+35/49 Test: checkpointing
+Command: "/home/jonat/pk_publication_build_20261030/test_checkpointing"
+Directory: /home/jonat/pk_publication_build_20261030
+"checkpointing" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+  [gpt2] loss diff                 0.000e+00
+  [gpt2] grad max diff             0.000e+00
+  [gpt2] live vars after fwd       127 -> 11  (9%)
+  [gpt2+batch] loss diff                 0.000e+00
+  [gpt2+batch] grad max diff             0.000e+00
+  [gpt2+batch] live vars after fwd       127 -> 11  (9%)
+  [llama] loss diff                 0.000e+00
+  [llama] grad max diff             0.000e+00
+  [llama] live vars after fwd       145 -> 9  (6%)
+  [llama+batch] loss diff                 0.000e+00
+  [llama+batch] grad max diff             0.000e+00
+  [llama+batch] live vars after fwd       145 -> 9  (6%)
+[PASS] all checkpointing tests
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"checkpointing" end time: Oct 30 22:17 AEDT
+"checkpointing" time elapsed: 00:00:00
+----------------------------------------------------------
+
+36/49 Testing: muon
+36/49 Test: muon
+Command: "/home/jonat/pk_publication_build_20261030/test_muon"
+Directory: /home/jonat/pk_publication_build_20261030
+"muon" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+  [muon] golden probe max diff          4.124e-06
+  [muon] golden frobenius diff          2.729e-07
+  [muon] pin vs hand-rolled step        0.000e+00
+  [muon] head update spread full=1.47x per-head=1.08x
+  [muon] training loss 4.3414 -> 0.0021 (200 steps)
+  [muon] guards: vectors + bad head counts refused
+[PASS] all Muon tests
+<end of output>
+Test time =   0.01 sec
+----------------------------------------------------------
+Test Passed.
+"muon" end time: Oct 30 22:17 AEDT
+"muon" time elapsed: 00:00:00
+----------------------------------------------------------
+
+37/49 Testing: inplace
+37/49 Test: inplace
+Command: "/home/jonat/pk_publication_build_20261030/test_inplace"
+Directory: /home/jonat/pk_publication_build_20261030
+"inplace" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+  [inplace] relu_: FD dA 2.652e-06  dW 2.339e-06
+  [inplace] relu_: parity loss 0.000e+00 grads 0.000e+00
+  [inplace] sigmoid_: FD dA 1.072e-06  dW 1.197e-06
+  [inplace] sigmoid_: parity loss 0.000e+00 grads 0.000e+00
+  [inplace] scale_: FD dA 3.908e-06  dW 3.745e-06
+  [inplace] scale_: parity loss 0.000e+00 grads 0.000e+00
+  [inplace] chain tape nodes: 3 out-of-place -> 1 in-place
+[PASS] all in-place tests
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"inplace" end time: Oct 30 22:17 AEDT
+"inplace" time elapsed: 00:00:00
+----------------------------------------------------------
+
+38/49 Testing: flex
+38/49 Test: flex
+Command: "/home/jonat/pk_publication_build_20261030/test_flex"
+Directory: /home/jonat/pk_publication_build_20261030
+"flex" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+1. equivalence pin: FlexLM(defaults) == ParityLM(EXACT) bitwise
+2. sinusoidal: formula matches, zero parameters added
+3. depth: layers.5 exists, params grow with L
+4. rmsnorm+swiglu+sinusoidal trains: 3.444 -> 1.433
+5. relu path: grad reaches layers.0.mlp.c_fc (|g|=40.2)
+6. batch pin: stacked == singles (max diff 0.00e+00)
+7. rope: no table (-512 params), row 0 == no-rope bitwise, last row moves by 8.56e-01 of its range, batch pin 0.00e+00, gradcheck 185 entries worst rel 3.71e-04
+8. expr norm: layernorm as an expr == layernorm (max 8.94e-08, logit range 0.351); gradcheck layernorm-expr 447 entries worst rel 3.26e-04, Primer's x(x - mu) 441 entries 7.18e-04
+9. expr inputs: Swish-beta at beta 1 == x sigmoid(x) bitwise, gradcheck 104 entries 3.61e-04; GLU as sigmoid(a) * x 229 entries 5.23e-04; DyT tanh(alpha x) 30 entries 4.59e-06, per channel 96 entries 9.32e-07; DyT-on-LLaMA (per-place alpha, embedding scalar) 28 entries 1.53e-06; four bad configurations refused
+10. placements: 25 attention x FFN placements == the block's parts composed by hand (bitwise), final norm absent only for post/post; gradcheck 640 entries worst 2.08e-04; Primer's (expr norm, pre / branch_post, rope) 345 entries 7.79e-04; an unknown placement refused
+11. T5 relative bias: buckets(32, 128) as HF's (16 exact, 31 from 127); zero table == causal attention (2.98e-07), shift-invariant (1.79e-07); op gradcheck 304 entries worst 5.80e-05; flex t5_relative gradcheck 128 entries 3.00e-04; exported as attention.position_bias
+12. MDHA (qkv_conv 3): identity kernel = no convolution (0.00e+00); causal; stacked = alone (0.00e+00); gradcheck 144 entries 2.89e-04; exported as conv1d_causal over 3d before the split
+13. Shaw relative positions (K 4): gradcheck shared k+v 256 entries 3.74e-04, per-head keys only 150 entries 3.67e-04; exported as attention.relative_kv
+14. q/k norm: per head invariant to a head's query scale (2.91e-07), full invariant to the row's (3.99e-07) and not to one head's (4.04e-02); gradchecks 128 entries 2.24e-04, 224 entries 2.43e-04; exported as rmsnorm after the split (group head_dim per head)
+15. logits expr: x*0.125 = the head's logits * 0.125 bit for bit; 30*tanh(x/30) gradcheck 50 entries 3.24e-04; exported as an expr node after the head's linear
+FLEX-OK 15/15
+<end of output>
+Test time =   1.01 sec
+----------------------------------------------------------
+Test Passed.
+"flex" end time: Oct 30 22:17 AEDT
+"flex" time elapsed: 00:00:01
+----------------------------------------------------------
+
+39/49 Testing: shaw_attention
+39/49 Test: shaw_attention
+Command: "/home/jonat/pk_publication_build_20261030/test_shaw_attention"
+Directory: /home/jonat/pk_publication_build_20261030
+"shaw_attention" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+1. zero tables = causal attention within 1.79e-07
+2. against Shaw's eqs. 3-4 in binary64 (shared, per head, keys only): worst 2.51e-07
+3. rows i < K = 3 never read table row K (bit for bit); later rows do
+4. gradients of q, k, v and the tables against central differences (4 layouts): worst 9.26e-05
+SHAW-OK 4/4
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"shaw_attention" end time: Oct 30 22:17 AEDT
+"shaw_attention" time elapsed: 00:00:00
+----------------------------------------------------------
+
+40/49 Testing: gpt2_device
+40/49 Test: gpt2_device
+Command: "/home/jonat/pk_publication_build_20261030/test_gpt2_device"
+Directory: /home/jonat/pk_publication_build_20261030
+"gpt2_device" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+gpt2 family on the device (CPU build or op set off)
+  gpt2 exact: eval forward in a window vs outside (host vs host): loss rel 0.00e+00, logits rel 0.00e+00, stale entries left 0
+  gpt2 swa (window 4, 1 sink): eval forward in a window vs outside (host vs host): loss rel 0.00e+00, logits rel 0.00e+00, stale entries left 0
+  gpt2 kimi: eval forward in a window vs outside (host vs host): loss rel 0.00e+00, logits rel 0.00e+00, stale entries left 0
+  gpt2 srd: eval forward in a window vs outside (host vs host): loss rel 0.00e+00, logits rel 0.00e+00, stale entries left 0
+  flex layernorm/gelu, 3 layers: eval forward in a window vs outside (host vs host): loss rel 0.00e+00, logits rel 0.00e+00, stale entries left 0
+  llama 2 layers: eval forward in a window vs outside (host vs host): loss rel 0.00e+00, logits rel 0.00e+00, stale entries left 0
+  gpt2 exact, 4 steps, accum 2 (host vs host): loss worst rel 0.00e+00, step-1 gradients worst rel 0.00e+00, final parameters max |diff| 0.00e+00 (0/8160 bits differ); losses 3.7856 -> 3.6205
+  gpt2 swa (window 4, 1 sink), 4 steps, accum 2 (host vs host): loss worst rel 0.00e+00, step-1 gradients worst rel 0.00e+00, final parameters max |diff| 0.00e+00 (0/8160 bits differ); losses 3.8077 -> 3.6209
+  gpt2 kimi, 4 steps, accum 2 (host vs host): loss worst rel 0.00e+00, step-1 gradients worst rel 0.00e+00, final parameters max |diff| 0.00e+00 (0/8160 bits differ); losses 3.9003 -> 3.7462
+  gpt2 srd, 4 steps, accum 2 (host vs host): loss worst rel 0.00e+00, step-1 gradients worst rel 0.00e+00, final parameters max |diff| 0.00e+00 (0/8456 bits differ); losses 3.7464 -> 3.7371
+  flex layernorm/gelu, 3 layers, 4 steps, accum 2 (host vs host): loss worst rel 0.00e+00, step-1 gradients worst rel 0.00e+00, final parameters max |diff| 0.00e+00 (0/7480 bits differ); losses 3.7329 -> 3.6601
+  llama 2 layers, 4 steps, accum 2 (host vs host): loss worst rel 0.00e+00, step-1 gradients worst rel 0.00e+00, final parameters max |diff| 0.00e+00 (0/5024 bits differ); losses 4.0955 -> 3.7559
+
+[PASS] gpt2_device
+<end of output>
+Test time =   0.07 sec
+----------------------------------------------------------
+Test Passed.
+"gpt2_device" end time: Oct 30 22:17 AEDT
+"gpt2_device" time elapsed: 00:00:00
+----------------------------------------------------------
+
+41/49 Testing: expr
+41/49 Test: expr
+Command: "/home/jonat/pk_publication_build_20261030/test_expr"
+Directory: /home/jonat/pk_publication_build_20261030
+"expr" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+1. parser: 15 accepted, 24 rejected at the right column, nesting capped
+2. values: 44 expressions bit-exact against hand-computed f32
+3. shapes: constants fill [T, w] without a gradient; inputs checked
+   max(x, 0)^2                                                rel err 6.00e-06
+   x*sigmoid(1.702*x)                                         rel err 2.72e-05
+   where(x, x, 0.01*x)                                        rel err 9.12e-06
+   x/(1+abs(x))                                               rel err 2.62e-05
+   (x-rowmean(x))/sqrt(rowmean((x-rowmean(x))^2)+1e-5)        rel err 1.37e-05
+   x*tanh(a)                                                  rel err 1.00e-05
+   exp(-x^2) + log(1 + x^2)                                   rel err 2.14e-05
+   erf(x/sqrt(2)) * 0.5 * x                                   rel err 1.15e-05
+   min(x, 0.5*x) - rowmax(x)                                  rel err 1.41e-05
+   sqrt(abs(x) + 1) + abs(x)^1.5                              rel err 1.37e-05
+   2^x - pi/(1 + x^2) + relu(x)                               rel err 1.06e-04
+   where(a, x^2, -x) + max(x, a) * min(a, 1)                  rel err 1.51e-05
+   (x - a) / (1 + exp(rowsum(x*a)/5))                         rel err 2.09e-05
+   relu(a)*x                                                  rel err 5.66e-06
+4. gradients: 14 expressions FD-checked, worst 1.06e-04
+5. flex: expr:relu(x) == relu bitwise; squared ReLU trains 3.455 -> 0.688; IR has the expr node
+EXPR-OK 5/5
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"expr" end time: Oct 30 22:17 AEDT
+"expr" time elapsed: 00:00:00
+----------------------------------------------------------
+
+42/49 Testing: recurrence_op
+42/49 Test: recurrence_op
+Command: "/home/jonat/pk_publication_build_20261030/test_recurrence_op"
+Directory: /home/jonat/pk_publication_build_20261030
+"recurrence_op" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+1. linear_attention body == ops::kimi_attention bit for bit ([14, 6], 2 sequences); derived vs hand-written backward: dq 1.9e-09 dk 8.4e-09 dv 7.5e-09
+2. ssm_scan body == ops::ssm_scan bit for bit ([9, 4]); derived vs hand-written backward worst 7.5e-09
+3. prefill == token-by-token decode bit for bit (outputs and state) for 5 bodies
+   linear_attention (q, k, v)         FD rel err 2.44e-05
+   ssm_scan (u, A, B, C, D)           FD rel err 1.16e-04
+   conv1d_causal (x, W, bias)         FD rel err 4.09e-05
+   selective_scan (x, dt, B, C, A, D) FD rel err 1.42e-04
+   tanh RNN with a learned h0 (init)  FD rel err 2.73e-04
+4. gradients: 5 bodies FD-checked, worst 2.73e-04
+5. refusals: 9 malformed nodes and a mis-sized input refused, each under its rule
+   whole-model FD over the attention projections: 32 entries, worst 1.50e-04
+6. mtstudio lane: recurrence model == kimi model bit for bit (logits, 2 sequences); parameter gradients within 3.0e-08; FD through the model, 32 entries, worst 1.50e-04; IR export carries the recurrence node and slot
+recurrence: all checks passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"recurrence_op" end time: Oct 30 22:17 AEDT
+"recurrence_op" time elapsed: 00:00:00
+----------------------------------------------------------
+
+43/49 Testing: ir_digest
+43/49 Test: ir_digest
+Command: "/home/jonat/pk_publication_build_20261030/test_ir_digest" "/home/jonat/pk_publication_20261030/spec/conformance/digest/vectors.json"
+Directory: /home/jonat/pk_publication_build_20261030
+"ir_digest" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+1. SHA-256: 4 FIPS 180-4 known answers
+2. digest vectors: 83 serialised and hashed as the reference does, 13 refused
+3. documents: 3 duplicate-member texts refused (rule 35), 5 unwritten reads refused (rule 36), 17 documents to accept pass both
+4. conditional reads: scalar/per-layer refusals, original indices, cross-application persistence, read-before-write and leading-dense/later-MoE acceptance
+ir_digest: all checks passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"ir_digest" end time: Oct 30 22:17 AEDT
+"ir_digest" time elapsed: 00:00:00
+----------------------------------------------------------
+
+44/49 Testing: swa
+44/49 Test: swa
+Command: "/home/jonat/pk_publication_build_20261030/test_swa"
+Directory: /home/jonat/pk_publication_build_20261030
+"swa" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+1. equivalence pin: swa(window>=T, sinks=0) == fused causal, bitwise
+2. FD gradcheck q/k/v (window=4, sinks=1): max rel err 1.01e-02
+3. locality: out-of-window v untouched row 9; in-window changed it
+4. sink: token 0 stays visible beyond the window
+5. batch pin: stacked == singles to fp epsilon (max diff 1.2e-07)
+6. ParityLM(SWA) trains: 3.429 -> 0.707
+SWA-OK 6/6
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"swa" end time: Oct 30 22:17 AEDT
+"swa" time elapsed: 00:00:00
+----------------------------------------------------------
+
+45/49 Testing: attn_res
+45/49 Test: attn_res
+Command: "/home/jonat/pk_publication_build_20261030/test_attn_res"
+Directory: /home/jonat/pk_publication_build_20261030
+"attn_res" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+  [attnres] one-source identity max diff   0.000e+00
+  [attnres] Block(S=1) vs Full max diff    0.000e+00
+  [attnres] Block(S=2) vs Full max diff    5.394e-01
+  [attnres] partial final block (L=5,S=2)  ok
+  [attnres] grad-dead params at init (bs=0)  0/30
+  [attnres] grad-dead params at init (bs=2)  0/30
+  [attnres] FD dx (bs=0)                  9.322e-07
+  [attnres] FD dw1 (bs=0)                 5.280e-07
+  [attnres] FD dx (bs=2)                  1.077e-06
+  [attnres] FD dw1 (bs=2)                 5.497e-07
+  [attnres] training loss 0.5198 -> 0.0287 (150 steps)
+[PASS] all AttnRes tests
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"attn_res" end time: Oct 30 22:17 AEDT
+"attn_res" time elapsed: 00:00:00
+----------------------------------------------------------
+
+46/49 Testing: srd
+46/49 Test: srd
+Command: "/home/jonat/pk_publication_build_20261030/test_srd"
+Directory: /home/jonat/pk_publication_build_20261030
+"srd" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+=== router-op gradchecks ===
+  mul_col (x path)  rel err 2.40e-04
+  mul_col (c path)  rel err 4.55e-04
+  rms_row           rel err 2.04e-03
+  sigmoid           rel err 3.48e-03
+  add_scalar        rel err 4.30e-04
+=== full-module FD gradcheck (both paths + gate) ===
+  d mean(SRD(x))/dx rel err 3.58e-04
+=== routing: surprise raises the gate ===
+  routine gate 0.270 | surprising gate 0.931
+=== blend algebra: g == 1 -> exact path ===
+  mul_col blend reproduces the selected path bit-exactly
+=== trainability + aux gate loss ===
+  predictor receives gradient through the gate
+  loss 0.05477 -> 0.05360 | mean gate 0.548 -> 0.536
+
+[PASS] all SRD tests
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"srd" end time: Oct 30 22:17 AEDT
+"srd" time elapsed: 00:00:00
+----------------------------------------------------------
+
+47/49 Testing: devcheck_host_read
+47/49 Test: devcheck_host_read
+Command: "/home/jonat/pk_publication_build_20261030/test_devcheck_host_read"
+Directory: /home/jonat/pk_publication_build_20261030
+"devcheck_host_read" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+{"pass":true,"devcheck_enabled":false,"cuda_integration":false,"stale_and_released_predicate_negatives":true,"macro_evaluation_checked":true}
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"devcheck_host_read" end time: Oct 30 22:17 AEDT
+"devcheck_host_read" time elapsed: 00:00:00
+----------------------------------------------------------
+
+48/49 Testing: devcheck_disabled
+48/49 Test: devcheck_disabled
+Command: "/home/jonat/pk_publication_build_20261030/test_devcheck_disabled"
+Directory: /home/jonat/pk_publication_build_20261030
+"devcheck_disabled" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+{"pass":true,"devcheck_enabled":false,"arguments_evaluated":false}
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"devcheck_disabled" end time: Oct 30 22:17 AEDT
+"devcheck_disabled" time elapsed: 00:00:00
+----------------------------------------------------------
+
+49/49 Testing: word_tokenizer
+49/49 Test: word_tokenizer
+Command: "/home/jonat/pk_publication_build_20261030/test_word_tokenizer"
+Directory: /home/jonat/pk_publication_build_20261030
+"word_tokenizer" start time: Oct 30 22:17 AEDT
+Output:
+----------------------------------------------------------
+word_tokenizer: all checks passed
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"word_tokenizer" end time: Oct 30 22:17 AEDT
+"word_tokenizer" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Oct 30 22:17 AEDT
