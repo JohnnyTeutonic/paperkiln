@@ -1,0 +1,18 @@
+{
+  "max_parallel": 1,
+  "jobs": [
+    {
+      "cmd": [
+        "python3",
+        "/content/chat/upload/e10_component_vm.py",
+        "{out}"
+      ],
+      "name": "e10_component_20261031",
+      "outputs": [
+        "out.zip",
+        "summary.json"
+      ]
+    }
+  ],
+  "_comment": "Component only. Original-only baseline always precedes candidate. Candidate failure preserves baseline. No automatic retry or production adoption."
+}
