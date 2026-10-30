@@ -88,7 +88,7 @@
     "source_sha256": {
       "studio/index.html": "6d10788e3d89dc82d7e5717e13d58e362714a28304a231b4772c1f127596829d",
       "tests/test_studio_vram.js": "7a57591e6bd96085d781782ed1e63507803258544ce24e74d6d27a76f6f1cf9f",
-      "tests/studio_vram_browser.js": "71bfd5c0e51cf7fd1c8a2fb8ffc53e4e849d4ee35fd80173d460167d0864e0fd",
+      "tests/studio_vram_browser.js": "f00210623b44d7279c1535bdf4db99b283774a02f44bf826ee7588e51c7e9bc1",
       "tests/studio_vram_parameter_probe.cpp": "b278ea923f4c824ff21a5da141b55c26afc32c2a37d3ae7b65c1576509850a6a"
     },
     "logs_sha256": {
