@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +8,8 @@ version = "0.1.1"
 description = "Drop an arXiv id, get the paper's transformer architecture back - every value with the evidence snippet it was read from, emitted as a Hugging Face config or normalized JSON."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Jonathan Reich" }]
 keywords = ["arxiv", "transformers", "architecture-extraction", "provenance", "huggingface"]
 classifiers = [
