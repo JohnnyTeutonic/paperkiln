@@ -12,8 +12,8 @@ Takes a finished llama-family mtstudio run directory (events.jsonl +
                            microtorch's [in, out] Linear layout to HF's
                            [out, in]; norm gammas squeezed [1,d] -> [d]
     tokenizer.json (+cfg)  exact llama-BPE reconstruction from GGUF, or
-                           the legacy word-level vocabulary. Native paperkiln
-                           byte-BPE is refused until faithfully supported.
+                           native paperkiln byte-BPE, or the legacy word-level
+                           vocabulary, preserving token IDs and byte decoding.
 
 The receipt lives in tools/hf_export_verify.py: transformers loads the
 folder and greedy-generates ARGMAX-IDENTICAL continuations to
@@ -129,6 +129,51 @@ def convert_weights(sd, n_heads):
     return out
 
 
+def native_bpe_tokenizer(gguf_path):
+    """Serializable HF equivalent of bpe.py's byte classes and ranked merges.
+
+    Every non-ASCII Unicode character consists entirely of native letter bytes.
+    The whitespace branch stops before exactly a space followed by a letter.
+    Added tokens are only the three native control strings; literal <unk> is text.
+    """
+    import bpe
+    from tokenizers import AddedToken, Regex, Tokenizer, decoders, models, pre_tokenizers
+    native = bpe.read_gguf(gguf_path)
+    base = len(bpe.SPECIALS) + 256
+    if (native.tokens[:4] != [t.encode() for t in bpe.SPECIALS]
+            or native.tokens[4:base] != [bytes([b]) for b in range(256)]
+            or len(native.tokens) != base + len(native.merges)):
+        raise ValueError("invalid native byte-BPE vocabulary layout")
+    for rank, (a, b) in enumerate(native.merges):
+        if min(a, b) < 0 or max(a, b) >= base + rank or native.tokens[base + rank] != native.tokens[a] + native.tokens[b]:
+            raise ValueError("invalid native byte-BPE ranked merge")
+    bs = list(range(33, 127)) + list(range(161, 173)) + list(range(174, 256))
+    cs = list(bs)
+    next_code = 256
+    for byte in range(256):
+        if byte not in bs:
+            bs.append(byte)
+            cs.append(next_code)
+            next_code += 1
+    byte_map = dict(zip(bs, map(chr, cs)))
+    tokens = ["".join(byte_map[b] for b in token) for token in native.tokens]
+    if len(set(tokens)) != len(tokens):
+        raise ValueError("duplicate native byte-BPE token strings are unsupported")
+    vocab = {token: i for i, token in enumerate(tokens)}
+    merges = [(tokens[a], tokens[b]) for a, b in native.merges]
+    tok = Tokenizer(models.BPE(vocab=vocab, merges=merges, ignore_merges=False))
+    letter = r"[A-Za-z'\x80-\x{10FFFF}]"
+    space = r"[ \t\n\r\x0b\x0c]"
+    pattern = (" ?" + letter + "+|[0-9]|(?:(?! " + letter + ")" + space + ")+|"
+               r"[^A-Za-z'0-9 \t\n\r\x0b\x0c\x80-\x{10FFFF}]+")
+    tok.pre_tokenizer = pre_tokenizers.Sequence([
+        pre_tokenizers.Split(Regex(pattern), behavior="isolated"),
+        pre_tokenizers.ByteLevel(add_prefix_space=False, use_regex=False)])
+    tok.decoder = decoders.ByteLevel()
+    tok.add_special_tokens([AddedToken(sp, special=True, normalized=False) for sp in bpe.SPECIALS[1:]])
+    return tok
+
+
 def write_tokenizer(hf_dir, tokens, gguf_path=None):
     from tokenizers import Tokenizer
     from tokenizers.models import WordLevel
@@ -145,7 +190,12 @@ def write_tokenizer(hf_dir, tokens, gguf_path=None):
                            "model_max_length": 1_000_000}, f, indent=1)
             return vocab, None
         if kind == "bpe":
-            raise ValueError("native paperkiln byte-BPE has no faithful HF export yet")
+            tok = native_bpe_tokenizer(gguf_path)
+            tok.save(os.path.join(hf_dir, "tokenizer.json"))
+            with open(os.path.join(hf_dir, "tokenizer_config.json"), "w", encoding="utf-8") as f:
+                json.dump({"tokenizer_class": "PreTrainedTokenizerFast",
+                           "model_max_length": 1_000_000}, f, indent=1)
+            return tok.get_vocab(), None
         if kind not in (None, "word", "wordlevel"):
             raise ValueError(f"unsupported tokenizer model: {kind!r}")
     vocab = {t: i for i, t in enumerate(tokens)}

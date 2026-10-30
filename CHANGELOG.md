@@ -8,11 +8,11 @@ Notable changes to microtorch. Format loosely follows
 ### September–October 2026
 
 - **HF export SFT roundtrip** (30 Oct). The exporter preserves the current llama-BPE tokenizer
-  using its exact GGUF reconstruction, retains legacy WordLevel support and explicitly refuses
-  native paperkiln byte-BPE until faithfully supported. Corrected the HF RMSNorm epsilon
+  using its exact GGUF reconstruction, faithfully converts native paperkiln byte-BPE,
+  and retains legacy WordLevel support. Corrected the HF RMSNorm epsilon
   from 1e-6 to the training tape's 1e-5. The verifier resolves a real spec, checks every
   exported/loaded tensor against the source mapping, compares source/HF prompt IDs, and checks
-  greedy IDs plus raw output logits instead of whitespace-split text. Twenty-three regressions pass.
+  greedy IDs plus raw output logits instead of whitespace-split text. Twenty-seven regressions pass (including independent C++ tokenizer parity).
   Non-default recorded RoPE theta is preserved; GQA, q/k norm, alternate/partial RoPE,
   untied heads, recursion, attention residuals, MoE, state tokens and other unmapped variants
   are explicitly refused.
@@ -22,6 +22,13 @@ Notable changes to microtorch. Format loosely follows
   The older CPU binary scored identical raw IDs with only the unused chat field omitted;
   receipts record that delta and original source hashes. This verifies this small SFT numeric
   roundtrip, not chat-template rendering, broad model families or language quality.
+  Native byte-BPE uses a serializable byte-class split, canonical byte alphabet and ranked
+  merges (no whole-token shortcut); only its three control strings are added tokens, so
+  literal `<unk>` keeps native text semantics. Both existing 8,192-token vocabularies pass
+  3,010 varied Unicode strings each after serialization/reload against the independent Python
+  encoder, plus 5,600 newline-framed cases each against the existing C++ encoder, with exact
+  IDs and lossless UTF-8 decoding. Malformed vocabulary layouts/merges are refused. This is
+  tokenizer parity on valid UTF-8 text, not an arbitrary invalid-byte string API contract.
   Receipts: `experiments/chat_general/receipts/hf_sft_roundtrip_2026-10-30/`.
 
 - **Fetcher lexical gaps closed** (30 Oct). Bare GeLU/Gelu spellings now normalize to GELU,

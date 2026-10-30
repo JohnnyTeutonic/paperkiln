@@ -26,13 +26,6 @@ def test_weight_mapping_transposes_and_permutes_each_head():
     np.testing.assert_array_equal(got["model.embed_tokens.weight"], source["embed_tokens.weight"])
 
 
-def test_native_bpe_refused_instead_of_silent_wordlevel(tmp_path):
-    import bpe
-    vocab = tmp_path / "v.gguf"
-    bpe.write_gguf(str(vocab), bpe.train("hello", 262))
-    with pytest.raises(ValueError, match="no faithful"):
-        hf_export.write_tokenizer(tmp_path, [], str(vocab))
-
 
 def test_llama_bpe_preserves_unicode_spaces_and_control_ids(tmp_path):
     from tokenizers import Tokenizer, decoders, models, pre_tokenizers, trainers
@@ -109,3 +102,88 @@ def test_refuse_unmapped_llama_variants(extra):
 
 def test_nondefault_rope_theta_is_preserved():
     assert hf_export.validate_model({"heads": 4, "d": 32, "rope_theta": 500000.}) == 500000.
+
+
+@pytest.fixture(scope="module")
+def native_fixture(tmp_path_factory):
+    import bpe
+    from test_bpe import TEXT
+    path = tmp_path_factory.mktemp("native") / "native.gguf"
+    bpe.write_gguf(str(path), bpe.train(TEXT, 700))
+    return path
+
+
+def native_cases():
+    import random
+    pieces = ["a", "Z", "ab", " ", "  ", "   ", "9", "12345", "3.14", "'", "'s", "'LL",
+              "!!", "...", "<unk>", "<|user|>", "<|assistant|>", "<|endoftext|>", "<|", "|>",
+              "x<|assistant|>y", "\t", "\r", "\n", "\r\n", "\x0b", "\x0c", "\x00", "\x7f",
+              "\u00e9", "e\u0301", "\u4e2d\u6587", "\U0001f600", "\u00a0", "\u3000", "\u2028"]
+    rng = random.Random(300)
+    cases = ["", "  a", " \ta", "\t a", "\n  a", "'a'", "<unk>", "x<|user|>y", "123456",
+             "".join(chr(i) for i in range(128))]
+    cases += ["".join(rng.choice(pieces) for _ in range(rng.randrange(1, 45))) for _ in range(2000)]
+    rng = random.Random(301)
+    for _ in range(1000):
+        cases.append("".join(chr(rng.choice([rng.randrange(0, 128), rng.randrange(128, 0xd800),
+                                           rng.randrange(0xe000, 0x110000)]))
+                             for _ in range(rng.randrange(1, 80))))
+    return cases
+
+
+def test_native_serialized_ids_and_decoding_match_independent_reference(native_fixture, tmp_path):
+    import bpe
+    from tokenizers import Tokenizer
+    original = bpe.read_gguf(str(native_fixture))
+    hf_export.write_tokenizer(tmp_path, [], str(native_fixture))
+    tok = Tokenizer.from_file(str(tmp_path / "tokenizer.json"))
+    for text in native_cases():
+        assert tok.encode(text, add_special_tokens=False).ids == original.encode(text), repr(text)
+        assert tok.decode(tok.encode(text).ids, skip_special_tokens=False) == text, repr(text)
+    assert 0 not in tok.encode("<unk>").ids
+    assert tok.encode("<|user|>").ids == [2]
+
+
+def test_native_cpp_reference_if_available(native_fixture):
+    import os
+    import subprocess
+    import bpe
+    binary = os.environ.get("BPE_ENCODE_BIN")
+    if not binary or not Path(binary).is_file():
+        pytest.skip("set BPE_ENCODE_BIN for independent C++ parity")
+    # The existing binary frames records by newline; include embedded-newline cases
+    # by splitting exactly as getline does, preserving every input byte.
+    stream = "\n".join(native_cases()) + "\n"
+    lines = [s + "\n" for s in stream.split("\n")[:-1]]
+    result = subprocess.run([binary, str(native_fixture)], input=stream.encode(), capture_output=True, timeout=120)
+    assert result.returncode == 0, result.stderr.decode()
+    cpp = [list(map(int, row.split())) for row in result.stdout.decode().splitlines()]
+    native = bpe.read_gguf(str(native_fixture))
+    tok = hf_export.native_bpe_tokenizer(str(native_fixture))
+    assert len(cpp) == len(lines)
+    for text, ids in zip(lines, cpp):
+        assert ids == native.encode(text) == tok.encode(text, add_special_tokens=False).ids, repr(text)
+
+
+def test_native_uses_ranked_merges_not_whole_token_shortcut(tmp_path):
+    import bpe
+    base = [s.encode() for s in bpe.SPECIALS] + [bytes([i]) for i in range(256)]
+    native = bpe.BPE(base + [b"ab", b"bc", b"abc"], [(101, 102), (102, 103), (101, 261)])
+    path = tmp_path / "ranked.gguf"
+    bpe.write_gguf(str(path), native)
+    tok = hf_export.native_bpe_tokenizer(str(path))
+    assert native.encode("abc") == [260, 103]
+    assert tok.encode("abc").ids == [260, 103]
+
+
+@pytest.mark.parametrize("bad", ["layout", "merge"])
+def test_native_rejects_invalid_layout_or_ranked_merge(native_fixture, monkeypatch, bad):
+    import bpe
+    native = bpe.read_gguf(str(native_fixture))
+    if bad == "layout":
+        native.tokens[4] = b"wrong"
+    else:
+        native.merges[0] = (999999, 0)
+    monkeypatch.setattr(bpe, "read_gguf", lambda _: native)
+    with pytest.raises(ValueError, match="invalid native"):
+        hf_export.native_bpe_tokenizer(str(native_fixture))

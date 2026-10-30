@@ -1,0 +1,40 @@
+{
+ "scope": "native byte-BPE tokenizer conversion, valid Unicode/UTF-8 text; not model quality or invalid byte-string API support",
+ "cases_seed": [
+  300,
+  301
+ ],
+ "versions": {
+  "tokenizers": "0.22.1"
+ },
+ "results": [
+  {
+   "path": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/vocab_tinychat_bpe8k_v1/tinychat_bpe8k.gguf",
+   "vocab_size": 8192,
+   "merges": 7932,
+   "serialized_reload_utf8_cases": 3010,
+   "cpp_framed_cases": 5600,
+   "all_id_matches": true,
+   "all_utf8_decode_matches": true,
+   "vocab_sha256": "290dcff8c696ef51bef75bdfe73d03a2a5c1c898227dbe54295ccf0ba38c4449",
+   "serialized_tokenizer_sha256": "bb88928e244d0b88ac16ba5b311aac539c711004e3ea31c0450ec3d953c4384d"
+  },
+  {
+   "path": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/vocab_fineweb_tinychat_bpe8k_v1/fineweb_tinychat_bpe8k.gguf",
+   "vocab_size": 8192,
+   "merges": 7932,
+   "serialized_reload_utf8_cases": 3010,
+   "cpp_framed_cases": 5600,
+   "all_id_matches": true,
+   "all_utf8_decode_matches": true,
+   "vocab_sha256": "c79eec5b5ec2036b7f398061e9901c34014b54096db64f9dce6f030532e75b23",
+   "serialized_tokenizer_sha256": "7ce949a4fa9a90965359f2af9ff4bf70dfccf04303d40f933a8b5c887f31d068"
+  }
+ ],
+ "source_sha256": {
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/hf_export.py": "fad1fbb2d1accdc4033641adbe33de8f8afe5fb05aa5cab95403ec38d4090147",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/bpe.py": "25607be05b41881d0238796b616cb697031c8ebf89623bc4c4537f8aaf56de39",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tests/test_hf_export.py": "ca8ccfe95359c0163d92ee3cb083bfa7ee25a95a40e90a3951ae6b98c14d7b46",
+  "/home/jonat/pk_fh_build/bpe_encode": "c580be663eb15b4118afb6b9135cb668652150e5fcfa43f3117d627d04e119f0"
+ }
+}

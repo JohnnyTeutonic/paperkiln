@@ -87,8 +87,15 @@ def main():
     from llama3_bpe import from_gguf, read_gguf_kv
     source_gguf = source.with_suffix(".gguf")
     kind = read_gguf_kv(str(source_gguf), {"tokenizer.ggml.model"}).get("tokenizer.ggml.model")
-    tokenizer_ids_checked = kind == "gpt2"
-    if tokenizer_ids_checked and from_gguf(str(source_gguf)).encode(args.prompt, add_special_tokens=False).ids != prompt:
+    tokenizer_ids_checked = kind in ("gpt2", "bpe")
+    if kind == "gpt2":
+        source_ids = from_gguf(str(source_gguf)).encode(args.prompt, add_special_tokens=False).ids
+    elif kind == "bpe":
+        import bpe
+        source_ids = bpe.read_gguf(str(source_gguf)).encode(args.prompt)
+    else:
+        source_ids = prompt
+    if source_ids != prompt:
         raise ValueError("exported prompt tokenizer IDs differ from source GGUF")
     if not prompt or len(prompt) + args.tokens > model.config.max_position_embeddings:
         raise ValueError("empty prompt or continuation exceeds the recorded context")
