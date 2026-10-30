@@ -1,0 +1,167 @@
+{
+ "kind": "POST_HOC_INPUT_AUDIT_NOT_A_SCIENTIFIC_RESULT",
+ "errors": [],
+ "auditor_sha256": "5aacd5d480c404168a284b4c0dfd27d82912e218b034eb150d8effa8362bc422",
+ "registration_sha256": "d18537a5e388e3ef7bab0102c7ea1159e67e1d4d8af263026caaf4ebfcb59a2f",
+ "analysis_sha256": "fe14587b8ac3b7426b0786344caaa6b0b667563ddd0999183b7015553d0e3f5a",
+ "extension": [
+  {
+   "size": "20m",
+   "seed": 4,
+   "pin": "ae9ed69f5507a4bbfae563c949d433c52abad7d2",
+   "only_registered_jobs_added": true,
+   "jobs_file": "tools/colab_chat/tiny_chat_e5_s35_r4.json",
+   "jobs_file_sha256": "9ef508322bd705f6f2c38a258200dc59c9693f14288b218efa86eb3b1b835b8b",
+   "working_jobs_equal_pin_after_CRLF_normalization": true,
+   "working_jobs_raw_sha256": "3cee8654d0b9e53343afff07cf40d751f351187a612039335b6b2aa378fcd6bb",
+   "summary": "C:\\ml_artifacts\\tiny_chat\\e5_s35_r4\\post_e5_s35_r4\\summary.json",
+   "summary_home": false
+  },
+  {
+   "size": "20m",
+   "seed": 5,
+   "pin": "ae9ed69f5507a4bbfae563c949d433c52abad7d2",
+   "only_registered_jobs_added": true,
+   "jobs_file": "tools/colab_chat/tiny_chat_e5_s35_r5.json",
+   "jobs_file_sha256": "f0f2bf6e514eab53b687cc6e9b4708722c75fe2f89c9040d38b6a89fd0876f90",
+   "working_jobs_equal_pin_after_CRLF_normalization": true,
+   "working_jobs_raw_sha256": "3b229df547af1b9e0f25b38f45f7ff87339efeb79dfc507ca66377d674bc277e",
+   "summary": "C:\\ml_artifacts\\tiny_chat\\e5_s35_r5\\post_e5_s35_r5\\summary.json",
+   "summary_home": false
+  },
+  {
+   "size": "60m",
+   "seed": 4,
+   "pin": "163f73ad349490ac4523b10a4ebb12cb4e6523f6",
+   "only_registered_jobs_added": true,
+   "jobs_file": "tools/colab_chat/tiny_chat_e1_60m_L8_r4.json",
+   "jobs_file_sha256": "6c7f56691ed29198e10673e26647022d5cc71ca76526d15889d23fac7d1bb381",
+   "working_jobs_equal_pin_after_CRLF_normalization": true,
+   "working_jobs_raw_sha256": "19701901ed0083de27a059f3bb072840cc94b3d39a2b7513ad96b54d6210c30b",
+   "summary": "C:\\ml_artifacts\\tiny_chat\\e1_60m_L8_r4\\post_e1_60m_L8_r4\\summary.json",
+   "summary_home": false
+  },
+  {
+   "size": "60m",
+   "seed": 5,
+   "pin": "163f73ad349490ac4523b10a4ebb12cb4e6523f6",
+   "only_registered_jobs_added": true,
+   "jobs_file": "tools/colab_chat/tiny_chat_e1_60m_L8_r5.json",
+   "jobs_file_sha256": "0dd226d83bf589518d99ae621fdef7b67de035dcdd53f11e7d69e75fb05451e3",
+   "working_jobs_equal_pin_after_CRLF_normalization": true,
+   "working_jobs_raw_sha256": "1f3d3a2dbe46286d23ab9f270e6ef0d1167df47a621227a0b3eadcf30839bacf",
+   "summary": "C:\\ml_artifacts\\tiny_chat\\e1_60m_L8_r5\\post_e1_60m_L8_r5\\summary.json",
+   "summary_home": false
+  },
+  {
+   "size": "150m",
+   "seed": 4,
+   "pin": "528201fe1eb74484cfc097fda2738f43f81215db",
+   "only_registered_jobs_added": true,
+   "jobs_file": "tools/colab_chat/tiny_chat_e1_150m_r4.json",
+   "jobs_file_sha256": "e4bed20c6312b896e1d000a888f8c8b80973f9b2661a85e6016997f7b1265f02",
+   "working_jobs_equal_pin_after_CRLF_normalization": true,
+   "working_jobs_raw_sha256": "0452b0ef66eec65a08aae114f37462ed7700380988a39957335504eaf3f0c1a2",
+   "summary": "C:\\ml_artifacts\\tiny_chat\\e1_150m_r4\\post_e1_150m_L8_r4\\summary.json",
+   "summary_home": true
+  },
+  {
+   "size": "150m",
+   "seed": 5,
+   "pin": "528201fe1eb74484cfc097fda2738f43f81215db",
+   "only_registered_jobs_added": true,
+   "jobs_file": "tools/colab_chat/tiny_chat_e1_150m_r5.json",
+   "jobs_file_sha256": "93609129cd2707b14e9867c79b47a67c598376fa1b8426982adc3a303286db14",
+   "working_jobs_equal_pin_after_CRLF_normalization": true,
+   "working_jobs_raw_sha256": "78da2ec8480ab79bafe0a34ba256cefc17d869056c4eaf93d7403682560a911b",
+   "summary": "C:\\ml_artifacts\\tiny_chat\\e1_150m_r5\\post_e1_150m_L8_r5\\summary.json",
+   "summary_home": true
+  }
+ ],
+ "missing_extension_runs": [
+  "20m/seed4",
+  "20m/seed5",
+  "60m/seed4",
+  "60m/seed5"
+ ],
+ "extension_complete": false,
+ "registered_extension_trigger": {
+  "HS1_size_slope_Y": {
+   "verdict": "NOT_RESOLVED",
+   "extend_to_5_seeds": true
+  },
+  "HS2_step_60_150_per_doubling": {
+   "verdict": "NOT_RESOLVED",
+   "extend_to_5_seeds": true
+  }
+ },
+ "extension_required_by_registered_rule": true,
+ "pick": {
+  "selection_seeds": [
+   1,
+   2,
+   3
+  ],
+  "all_home_scores": [
+   {
+    "seed": 1,
+    "primary": -0.07432432432432434,
+    "summary_sha256": "9c6b97542eccfd7f9598fbe58e29f735c99344adedd98463b82d667487381149",
+    "sft_weights_sha256": "c9487762369503d53b81d1156c2e9cafbfc44f3ca532003e2160f612a8ab0cef"
+   },
+   {
+    "seed": 2,
+    "primary": -0.06644144144144143,
+    "summary_sha256": "96c6a3a3fbcdc1441761166bcdfa8b4d0b2ec9f80315a92d605135519d9c5e65",
+    "sft_weights_sha256": "c87d03cad11bffb9d3cf0cb850d6929c667ea347392486d7f2bc45aa5707eee5"
+   },
+   {
+    "seed": 3,
+    "primary": -0.06306306306306303,
+    "summary_sha256": "ff6860334ed59f46cf27fbf38b036a914a7ed94d5fbcab481af1ff12b424f734",
+    "sft_weights_sha256": "02f8b00e2253272eded24341bd8bf93b11abcd6378ef693756a088e285c2f7fd"
+   },
+   {
+    "seed": 4,
+    "primary": -0.0641891891891892,
+    "summary_sha256": "6dcf4c55529111e089781ef4e3e16b9db20baf8f8a1756e3b012a6a63bc83c7c",
+    "sft_weights_sha256": "7ddf5f278b1203dd4d5beff6712151c5e51771fafb62285b84363fcbc263bbf8"
+   },
+   {
+    "seed": 5,
+    "primary": -0.04054054054054057,
+    "summary_sha256": "f67068f329855778636b6e91dda136e33a675b3f4555b0a98ccd44c3dc58f48b",
+    "sft_weights_sha256": "6d90e47dcc5fb988726d504516fe03fb03673c6754bb4c242613f2b02dce79e4"
+   }
+  ],
+  "registered_winner": {
+   "seed": 3,
+   "primary": -0.06306306306306303,
+   "summary_sha256": "ff6860334ed59f46cf27fbf38b036a914a7ed94d5fbcab481af1ff12b424f734",
+   "sft_weights_sha256": "02f8b00e2253272eded24341bd8bf93b11abcd6378ef693756a088e285c2f7fd"
+  },
+  "files": {
+   "model.safetensors": {
+    "bytes": 679961024,
+    "sha256": "02f8b00e2253272eded24341bd8bf93b11abcd6378ef693756a088e285c2f7fd"
+   },
+   "model.gguf": {
+    "bytes": 760284032,
+    "sha256": "99944e664225984d93577620cb40ea8f4b74406dbbeb8b0cc586872bb31345c5"
+   },
+   "spec.json": {
+    "bytes": 858,
+    "sha256": "1506cca15af986cfabdb555e4da4ce3d7eccfbd4dbc065970c3ad2a17741ccec"
+   },
+   "best.json": {
+    "bytes": 827,
+    "sha256": "f762c16c484621c0ae15b6e468e63a6bd89082a95b1d2da3075ede43c0336aa4"
+   }
+  },
+  "model_tensor_count": 74,
+  "note": "Seed 4/5 scores do not change the registered model pick."
+ },
+ "stage_l0_inputs_verified": true,
+ "stage_l0_scoring_complete": false,
+ "note": "Input audit only; no Stage L0 scoring, extension launch, or scientific decision was performed."
+}
