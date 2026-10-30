@@ -3,6 +3,7 @@
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import sys
 import tarfile
@@ -23,6 +24,7 @@ def test_baseline_first_and_preserved(tmp_path, monkeypatch, mode):
     runner = source / "tools/row_pick_profile/run.py"
     runner.parent.mkdir(parents=True)
     runner.write_text("# frozen test source")
+    os.utime(runner, (0, 0))
     upload = tmp_path / "upload"
     upload.mkdir()
     archive = upload / "e10_component_source.tar"
@@ -71,3 +73,19 @@ def test_baseline_first_and_preserved(tmp_path, monkeypatch, mode):
             json.loads((output / "baseline/receipt.json").read_text())["status"]
             == "COMPLETE"
         )
+
+
+@pytest.mark.parametrize("name", ["summary.json", "out.zip"])
+def test_existing_final_preserved_before_any_action(tmp_path, monkeypatch, name):
+    output = tmp_path / "result"
+    output.mkdir()
+    final = output / name
+    original = b"historical negative cause and immutable evidence"
+    final.write_bytes(original)
+    monkeypatch.setattr(
+        sys, "argv", ["vm", str(output), str(tmp_path / "missing-upload")]
+    )
+    with pytest.raises(FileExistsError):
+        vm.main()
+    assert final.read_bytes() == original
+    assert sorted(p.name for p in output.iterdir()) == [name]

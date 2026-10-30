@@ -16,6 +16,10 @@ def sha(path):
 def main():
     output = Path(sys.argv[1])
     output.mkdir(parents=True, exist_ok=True)
+    if (output / "summary.json").exists() or (output / "out.zip").exists():
+        raise FileExistsError(
+            "final component evidence already exists; refusing overwrite"
+        )
     upload = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("/content/chat/upload")
     manifest = json.loads((upload / "e10_component_manifest.json").read_text())
     archive = upload / "e10_component_source.tar"
@@ -70,7 +74,10 @@ def main():
         (output / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
         (output / "vm.py").write_bytes(Path(__file__).read_bytes())
         with zipfile.ZipFile(
-            output / "out.zip", "w", compression=zipfile.ZIP_DEFLATED
+            output / "out.zip",
+            "w",
+            compression=zipfile.ZIP_DEFLATED,
+            strict_timestamps=False,
         ) as archive_out:
             for path in sorted(output.rglob("*")):
                 if path.is_file() and path.name != "out.zip":
