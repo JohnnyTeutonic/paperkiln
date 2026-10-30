@@ -82,14 +82,14 @@ def main():
     model = AutoModelForCausalLM.from_pretrained(args.hf_dir, attn_implementation="eager")
     model.eval()
     from safetensors.numpy import load_file
-    from hf_export import convert_weights, model_event, start_name
+    from hf_export import map_weights, model_event, start_name
     # The original recorded model/weights must map bit-for-bit to the export.
     # Mixed logs may be passed as the export source, so the export records that path.
     provenance = json.loads((args.hf_dir / "export_receipt.json").read_text())
     events = provenance.get("events")
     recorded = model_event(args.out_dir, events)
     source = args.out_dir / (start_name(args.out_dir, events) + ".safetensors")
-    mapped = convert_weights(load_file(str(source)), recorded["heads"])
+    mapped = map_weights(load_file(str(source)), recorded)
     exported = load_file(str(args.hf_dir / "model.safetensors"))
     if set(mapped) != set(exported) or any(not np.array_equal(w, exported[k]) for k, w in mapped.items()):
         raise ValueError("exported tensor mapping differs from original source weights")
@@ -97,9 +97,12 @@ def main():
     for k, w in mapped.items():
         if k not in loaded or not np.array_equal(w, loaded[k].float().numpy()):
             raise ValueError("HF loaded tensor differs from mapped source: " + k)
-    allowed = set(mapped) | {"lm_head.weight"}
-    if set(loaded) != allowed or not np.array_equal(loaded["lm_head.weight"].numpy(), loaded["model.embed_tokens.weight"].numpy()):
-        raise ValueError("unexpected HF tensor inventory or untied output head")
+    if recorded["family"] == "llama":
+        allowed = set(mapped) | {"lm_head.weight"}
+        if set(loaded) != allowed or not np.array_equal(loaded["lm_head.weight"].numpy(), loaded["model.embed_tokens.weight"].numpy()):
+            raise ValueError("unexpected HF tensor inventory or untied Llama output head")
+    elif set(loaded) != set(mapped) or model.config.tie_word_embeddings:
+        raise ValueError("unexpected HF GPT2 tensor inventory or tied output head")
     prompt = tok.encode(args.prompt, add_special_tokens=False).ids
     source_gguf = source.with_suffix(".gguf")
     source_ids = source_prompt_ids(source_gguf, args.prompt)

@@ -333,3 +333,89 @@ def test_legacy_arbitrary_generated_ids_decode_like_cpp(tmp_path, legacy_cpp_ref
     tok = hf_export.legacy_word_tokenizer(tokens)
     for ids, row in zip(sequences, result.stdout.decode("ascii").splitlines(), strict=True):
         assert tok.decode(ids, skip_special_tokens=False).encode("utf-8").hex() == row.split("\t")[1]
+
+
+
+def gpt2_fixture():
+    model = {"family": "gpt2", "d": 4, "heads": 2, "layers": 2, "vocab": 7, "T": 16}
+    state = {"wte.weight": np.arange(28, dtype=np.float32).reshape(7, 4),
+             "wpe.weight": np.arange(64, dtype=np.float32).reshape(16, 4),
+             "head.weight": np.arange(28, dtype=np.float32).reshape(4, 7),
+             "ln_f.weight": np.ones((1, 4), dtype=np.float32), "ln_f.bias": np.zeros((1, 4), dtype=np.float32)}
+    for b in range(2):
+        for module, layer, dim_in, dim_out in (("attn", "c_attn", 4, 12), ("attn", "c_proj", 4, 4),
+                                               ("mlp", "c_fc", 4, 16), ("mlp", "c_proj", 16, 4)):
+            state[f"{module}_{b}.{layer}.weight"] = np.arange(dim_in*dim_out, dtype=np.float32).reshape(dim_in, dim_out)
+            state[f"{module}_{b}.{layer}.bias"] = np.arange(dim_out, dtype=np.float32).reshape(1, dim_out)
+        for norm in ("ln1", "ln2"):
+            state[f"{norm}_{b}.weight"] = np.ones((1, 4), dtype=np.float32)
+            state[f"{norm}_{b}.bias"] = np.zeros((1, 4), dtype=np.float32)
+    return model, state
+
+
+def test_gpt2_mapping_keeps_conv1d_layout_and_transposes_only_untied_head():
+    model, state = gpt2_fixture()
+    mapped = hf_export.map_weights(state, model)
+    assert len(mapped) == 29
+    np.testing.assert_array_equal(mapped["transformer.h.0.attn.c_attn.weight"], state["attn_0.c_attn.weight"])
+    np.testing.assert_array_equal(mapped["transformer.h.1.mlp.c_proj.weight"], state["mlp_1.c_proj.weight"])
+    np.testing.assert_array_equal(mapped["lm_head.weight"], state["head.weight"].T)
+    np.testing.assert_array_equal(mapped["transformer.h.0.attn.c_attn.bias"], state["attn_0.c_attn.bias"].reshape(-1))
+    assert mapped["transformer.h.0.ln_1.weight"].shape == (4,)
+    assert mapped["transformer.ln_f.bias"].shape == (4,)
+
+
+@pytest.mark.parametrize("change", ["missing", "extra", "shape", "nan"])
+def test_gpt2_incomplete_or_incompatible_tensor_inventory_is_refused(change):
+    model, state = gpt2_fixture()
+    if change == "missing":
+        del state["head.weight"]
+    elif change == "extra":
+        state["optimizer.adam_m"] = np.zeros((1,), dtype=np.float32)
+    elif change == "shape":
+        state["attn_0.c_attn.weight"] = state["attn_0.c_attn.weight"].T
+    else:
+        state["head.weight"][0, 0] = float("nan")
+    with pytest.raises(ValueError, match="tensor"):
+        hf_export.map_weights(state, model)
+
+
+@pytest.mark.parametrize("extra", [
+    {"attention": "swa"}, {"attention": "kimi"}, {"attention": "recurrence"},
+    {"norm": "rmsnorm"}, {"norm_placement": "post"}, {"final_norm": False},
+    {"activation": "relu"}, {"gelu_approx": "none"}, {"position": "rope"},
+    {"residual": "plain"}, {"residual": "highway"}, {"state_tokens": {"k": 4}},
+    {"recursion": {"repeats": 2}}, {"attn_res": True}, {"moe": {"experts": 2}},
+    {"tie_head": True}, {"tie_embeddings": True}, {"layers": 3}, {"d_ff": 8}, {"heads": 3},
+    {"layer_norm_epsilon": 1e-6},
+])
+def test_gpt2_export_refuses_unmapped_architectures(extra):
+    model, _ = gpt2_fixture()
+    with pytest.raises(ValueError):
+        hf_export.validate_gpt2({**model, **extra})
+
+
+def test_gpt2_export_config_and_hf_loaded_tensors_are_faithful(tmp_path, monkeypatch):
+    from safetensors.numpy import load_file
+    transformers = pytest.importorskip("transformers")
+    model, state = gpt2_fixture()
+    model.update(event="model", attention="exact", activation="gelu", norm="layernorm", position="learned")
+    run = tmp_path / "run"
+    run.mkdir()
+    (run / "events.jsonl").write_text(json.dumps({"event": "start", "name": "tiny"}) + "\n" + json.dumps(model) + "\n")
+    monkeypatch.setattr(hf_export, "load_file", lambda _: state)
+    monkeypatch.setattr(hf_export, "gguf_tokens", lambda _: ["<unk>", "a", "b", "c", "d", "e", "f"])
+    monkeypatch.setattr(hf_export, "write_tokenizer", lambda *a: ({str(i): i for i in range(7)}, "<unk>"))
+    import llama3_bpe
+    monkeypatch.setattr(llama3_bpe, "read_gguf_kv", lambda *a: {})
+    monkeypatch.setattr(sys, "argv", ["hf_export.py", str(run)])
+    hf_export.main()
+    cfg = json.loads((run / "hf/config.json").read_text())
+    assert cfg["activation_function"] == "gelu_new" and cfg["tie_word_embeddings"] is False
+    assert cfg["resid_pdrop"] == cfg["embd_pdrop"] == cfg["attn_pdrop"] == 0
+    assert cfg["n_positions"] == 16 and cfg["n_inner"] == 16
+    loaded = transformers.AutoModelForCausalLM.from_pretrained(run / "hf").state_dict()
+    mapped = load_file(str(run / "hf/model.safetensors"))
+    assert set(loaded) == set(mapped)
+    for key, value in mapped.items():
+        np.testing.assert_array_equal(loaded[key].numpy(), value)

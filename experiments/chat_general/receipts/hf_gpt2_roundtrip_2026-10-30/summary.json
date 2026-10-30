@@ -1,0 +1,261 @@
+{
+ "scope": "Tiny CPU export/interoperability fixture, not model quality, training performance or general GPT2-family support",
+ "supported": "Exact two-block source ParityLM: learned positions, pre LayerNorm eps1e-5, tanh GELU, 4d MLP, untied output head; no SWA/kimi/recurrence/state tokens/MoE/attention residuals",
+ "source_binary": "/home/jonat/pk_fh_build/mtstudio",
+ "source_binary_sha256": "312a6d5bbb2a056b1ee38c4a0f52df88a4ccfaefd95c44e5b20487ec97177dd4",
+ "cpu_budget": {
+  "session": "paperkiln",
+  "cores": 1,
+  "local_gpu": false
+ },
+ "training": {
+  "steps": 6,
+  "parameters": 138176,
+  "wall_seconds": 0.942376482,
+  "seed": 841
+ },
+ "source_safetensors_metadata": null,
+ "source_tensors": {
+  "attn_0.c_attn.bias": {
+   "shape": [
+    1,
+    48
+   ],
+   "dtype": "F32"
+  },
+  "attn_0.c_attn.weight": {
+   "shape": [
+    16,
+    48
+   ],
+   "dtype": "F32"
+  },
+  "attn_0.c_proj.bias": {
+   "shape": [
+    1,
+    16
+   ],
+   "dtype": "F32"
+  },
+  "attn_0.c_proj.weight": {
+   "shape": [
+    16,
+    16
+   ],
+   "dtype": "F32"
+  },
+  "attn_1.c_attn.bias": {
+   "shape": [
+    1,
+    48
+   ],
+   "dtype": "F32"
+  },
+  "attn_1.c_attn.weight": {
+   "shape": [
+    16,
+    48
+   ],
+   "dtype": "F32"
+  },
+  "attn_1.c_proj.bias": {
+   "shape": [
+    1,
+    16
+   ],
+   "dtype": "F32"
+  },
+  "attn_1.c_proj.weight": {
+   "shape": [
+    16,
+    16
+   ],
+   "dtype": "F32"
+  },
+  "head.weight": {
+   "shape": [
+    16,
+    4096
+   ],
+   "dtype": "F32"
+  },
+  "ln1_0.bias": {
+   "shape": [
+    1,
+    16
+   ],
+   "dtype": "F32"
+  },
+  "ln1_0.weight": {
+   "shape": [
+    1,
+    16
+   ],
+   "dtype": "F32"
+  },
+  "ln1_1.bias": {
+   "shape": [
+    1,
+    16
+   ],
+   "dtype": "F32"
+  },
+  "ln1_1.weight": {
+   "shape": [
+    1,
+    16
+   ],
+   "dtype": "F32"
+  },
+  "ln2_0.bias": {
+   "shape": [
+    1,
+    16
+   ],
+   "dtype": "F32"
+  },
+  "ln2_0.weight": {
+   "shape": [
+    1,
+    16
+   ],
+   "dtype": "F32"
+  },
+  "ln2_1.bias": {
+   "shape": [
+    1,
+    16
+   ],
+   "dtype": "F32"
+  },
+  "ln2_1.weight": {
+   "shape": [
+    1,
+    16
+   ],
+   "dtype": "F32"
+  },
+  "ln_f.bias": {
+   "shape": [
+    1,
+    16
+   ],
+   "dtype": "F32"
+  },
+  "ln_f.weight": {
+   "shape": [
+    1,
+    16
+   ],
+   "dtype": "F32"
+  },
+  "mlp_0.c_fc.bias": {
+   "shape": [
+    1,
+    64
+   ],
+   "dtype": "F32"
+  },
+  "mlp_0.c_fc.weight": {
+   "shape": [
+    16,
+    64
+   ],
+   "dtype": "F32"
+  },
+  "mlp_0.c_proj.bias": {
+   "shape": [
+    1,
+    16
+   ],
+   "dtype": "F32"
+  },
+  "mlp_0.c_proj.weight": {
+   "shape": [
+    64,
+    16
+   ],
+   "dtype": "F32"
+  },
+  "mlp_1.c_fc.bias": {
+   "shape": [
+    1,
+    64
+   ],
+   "dtype": "F32"
+  },
+  "mlp_1.c_fc.weight": {
+   "shape": [
+    16,
+    64
+   ],
+   "dtype": "F32"
+  },
+  "mlp_1.c_proj.bias": {
+   "shape": [
+    1,
+    16
+   ],
+   "dtype": "F32"
+  },
+  "mlp_1.c_proj.weight": {
+   "shape": [
+    64,
+    16
+   ],
+   "dtype": "F32"
+  },
+  "wpe.weight": {
+   "shape": [
+    32,
+    16
+   ],
+   "dtype": "F32"
+  },
+  "wte.weight": {
+   "shape": [
+    4096,
+    16
+   ],
+   "dtype": "F32"
+  }
+ },
+ "mapping": "All29 tensors loaded bit-for-bit in HF; Conv1D [in,out] retained; untied head transposed; biases/norm rows flattened. Extra/missing/incorrect-shape/nonfinite tensors refuse.",
+ "roundtrips": [
+  {
+   "receipt": "hf_gpt2_roundtrip_0.json",
+   "status": "HF-PARITY-OK",
+   "greedy_ids": 8,
+   "max_abs_logit_error": 7.450580596923828e-08,
+   "source_tokenizer_checked": true
+  },
+  {
+   "receipt": "hf_gpt2_roundtrip_1.json",
+   "status": "HF-PARITY-OK",
+   "greedy_ids": 8,
+   "max_abs_logit_error": 8.940696716308594e-08,
+   "source_tokenizer_checked": true
+  },
+  {
+   "receipt": "hf_gpt2_roundtrip_2.json",
+   "status": "HF-PARITY-OK",
+   "greedy_ids": 8,
+   "max_abs_logit_error": 5.960464477539063e-08,
+   "source_tokenizer_checked": true
+  }
+ ],
+ "tests": {
+  "hf_export": 73,
+  "ruff": "PASS"
+ },
+ "sha256": {
+  "tools/hf_export.py": "84a01ee9428336b446e4f2a311f25f06b129cc9dc4b4dd11457940dbc4c0199f",
+  "tools/hf_export_verify.py": "b3168f8fcaea7c62159cc54d44fec090f5e7151b95ccc7a17fc27f2158e0c3c0",
+  "tests/test_hf_export.py": "7a44d641f4b698a9a69802e0ea827db637b99c27944b2cd13f84534286ae8f8a",
+  "/mnt/c/ml_artifacts/hf_gpt2_roundtrip_20261030/spec.json": "c7516c8671ad471b7d699d2a79e57f66ff687c551b5773675d24d72af6d990aa",
+  "/mnt/c/ml_artifacts/hf_gpt2_roundtrip_20261030/train.log": "0927c8c7bfa4adf006cab32fc081a472cc5bf00f99a34586e232b2e203bc4636",
+  "/mnt/c/ml_artifacts/hf_gpt2_roundtrip_20261030/run/hf_gpt2_fixture.safetensors": "25d46912d94d0628e5bf5565160e1903bac556a2cdde6b2a59b9393c72640ce9",
+  "/mnt/c/ml_artifacts/hf_gpt2_roundtrip_20261030/hf/model.safetensors": "70c53c9fb5d086ebd6d5fc9d26ae03e68495f04873b69a3749b36d309f7cebaf",
+  "/mnt/c/ml_artifacts/hf_gpt2_roundtrip_20261030/hf/config.json": "338e4b84b004750cbd602ed794ebf63e2b6ddb94d074fa0874bd529f217c54f7"
+ }
+}

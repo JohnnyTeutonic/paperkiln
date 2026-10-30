@@ -1,0 +1,53 @@
+{
+ "status": "HF-PARITY-OK",
+ "prompt_ids": [
+  40,
+  45,
+  7,
+  35
+ ],
+ "continuation_ids": [
+  4080,
+  3948,
+  2742,
+  1246,
+  2480,
+  42,
+  662,
+  1536
+ ],
+ "mtstudio_argmax": [
+  4080,
+  3948,
+  2742,
+  1246,
+  2480,
+  42,
+  662,
+  1536
+ ],
+ "max_abs_logit_error": 7.450580596923828e-08,
+ "atol": 0.0002,
+ "rtol": 0.0002,
+ "spec": "/mnt/c/ml_artifacts/hf_gpt2_roundtrip_20261030/run/spec.json",
+ "scope": "raw token IDs, source tensor mapping and output logits; not chat rendering",
+ "score_spec_delta": {},
+ "mapped_tensors": 29,
+ "source_prompt_tokenizer_ids_checked": true,
+ "versions": {
+  "torch": "2.8.0+cu128"
+ },
+ "sha256": {
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/hf_export_verify.py": "b3168f8fcaea7c62159cc54d44fec090f5e7151b95ccc7a17fc27f2158e0c3c0",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/hf_export.py": "561314419dd28fd2e032a881ebf58f859a1bbf8a06b728e9c7d176beeb665dc6",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/llama3_bpe.py": "3d0426ba5632de17c5f2507d45e066b277b7bdb4334339b21330fcaed88dd135",
+  "/mnt/c/ml_artifacts/hf_gpt2_roundtrip_20261030/run/hf_gpt2_fixture.gguf": "c88d58f4def9dbea3d80d26b6cff0fe32b5ca9acbc138d971a87c6cd3bf132a0",
+  "/mnt/c/ml_artifacts/hf_gpt2_roundtrip_20261030/run/hf_gpt2_fixture.safetensors": "25d46912d94d0628e5bf5565160e1903bac556a2cdde6b2a59b9393c72640ce9",
+  "/mnt/c/ml_artifacts/hf_gpt2_roundtrip_20261030/run/spec.json": "c7516c8671ad471b7d699d2a79e57f66ff687c551b5773675d24d72af6d990aa",
+  "/mnt/c/ml_artifacts/hf_gpt2_roundtrip_20261030/train.log": "0927c8c7bfa4adf006cab32fc081a472cc5bf00f99a34586e232b2e203bc4636",
+  "/mnt/c/ml_artifacts/hf_gpt2_roundtrip_20261030/hf/model.safetensors": "70c53c9fb5d086ebd6d5fc9d26ae03e68495f04873b69a3749b36d309f7cebaf",
+  "/mnt/c/ml_artifacts/hf_gpt2_roundtrip_20261030/hf/config.json": "338e4b84b004750cbd602ed794ebf63e2b6ddb94d074fa0874bd529f217c54f7",
+  "/mnt/c/ml_artifacts/hf_gpt2_roundtrip_20261030/hf/tokenizer.json": "b3fedb08ec85d9f0899885102f844e51d4b845244e4d14d854f8e947c8a7c54b",
+  "/home/jonat/pk_fh_build/mtstudio": "312a6d5bbb2a056b1ee38c4a0f52df88a4ccfaefd95c44e5b20487ec97177dd4"
+ }
+}

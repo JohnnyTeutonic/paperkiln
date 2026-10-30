@@ -7,6 +7,18 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Faithful legacy tokenizer and plain GPT2 HF export** (30 Oct). Serialized legacy
+  tokenizers preserve C-locale ASCII case/whitespace and UTF-8 byte punctuation, including
+  EOS and original readable spacing. Three real vocabularies match independent C++, Python,
+  serialized Tokenizer and AutoTokenizer on 9,045 encode/decode cases and 3,000 generated-ID
+  decodes; invalid UTF-8 token bytes and unrepresentable vocabulary shapes still refuse.
+  Plain exact two-block GPT2 now maps all 29 tensors, keeps Conv1D layout, transposes its
+  untied head and records zero dropout/tanh GELU. A six-step tiny CPU fixture passes three
+  actual HF/source roundtrips (24 greedy IDs, maximum raw-logit error 8.95e-8). All 73 HF
+  tests pass, including unsupported-architecture/tensor-inventory rejection. Receipts:
+  `experiments/chat_general/receipts/hf_gpt2_roundtrip_2026-10-30/` and the adjacent legacy
+  tokenizer receipt. This is interoperability evidence, not model-quality evidence.
+
 - **Historical device gate reconciliation** (30 Oct). Removed stale third-party CUDA and
   BF16 noise-floor work from ROADMAP after checking original hashed receipts:23 device legs,
   five trained models with40/40 greedy parity each, and recomputed primary/secondary loss
