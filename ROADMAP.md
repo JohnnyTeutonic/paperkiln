@@ -11,7 +11,10 @@ where one of those documents carries a plan, this file wins.*
    `experiments/tiny_chat_2026-10/`, `experiments/tiny_chat_long_2026-10/`).**
    E5, E1 at 20M/60M, recursion and MoR are home and analysed
    (`experiments/tiny_chat_2026-10/analysis_2026-10-28.json`). Remaining: Stage L0 on the unchanged registered 150M
-   pick and Carry-12's registered HS1 extension (B/S-gist seeds 4/5, post-training under the watchdog).
+   pick (evaluation scoring) and Carry-12's registered HS1 extension (B/S-gist seeds 4/5).
+   All four extension runs have finished pretraining and SFT; both B runs are home, while
+   S-gist seeds 4/5 are scoring Carry-12 under the watchdog. The frozen five-seed finalizer
+   waits for the complete evaluated inputs.
    The complete three-seed Carry-12 core is analysed in `experiments/tiny_chat_long_2026-10/RESULTS.md`:
    HT-SFT SUPPORTED, other primary tests unresolved; S-full does not trigger. The registered size
    extension is complete at five matched seeds (`experiments/tiny_chat_2026-10/size/RESULTS.md`):
@@ -28,8 +31,8 @@ where one of those documents carries a plan, this file wins.*
 The 30 Oct publication integration passes all 49 CPU CTests and 65 targeted Python
 integration tests. Changed C++ ranges pass clang-format 18 checks, but 17 files
 retain whole-file formatting failures at or below the exact pre-existing baseline;
-this is not an all-green CI claim. GitHub CI for the new default-branch publication
-is pending. Source-bound evidence is in
+this is not an all-green CI claim. The publication's GitHub test workflow has since
+succeeded (41048998212); that does not establish success of every workflow. Source-bound evidence is in
 `docs/receipts/publication_lowbit_qktemp_20261030/`. The chat-v1 release serves the
 quickstart's ready-made model. cppcheck and Valgrind still run as advisory steps
 that cannot fail the build.
