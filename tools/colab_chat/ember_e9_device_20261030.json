@@ -1,0 +1,20 @@
+{
+ "_comment": "E9 f16 KV device gates, 30 Oct 2026; command-only boot; root watchdog owns launch, priority and $3 cumulative cap. Staged source/input hashes and full required phase inventory are checked. A job FINISHED status means diagnostic receipts are home; require gate_summary.pass=true and execution.gate_pass=true before scientific closure.",
+ "max_parallel": 1,
+ "jobs": [
+  {
+   "name": "e9_device",
+   "cmd": [
+    "python3",
+    "/content/chat/upload/runpod_kvq_job.py",
+    "{out}"
+   ],
+   "outputs": [
+    "out.zip",
+    "vm.log",
+    "gate_summary.json",
+    "execution.json"
+   ]
+  }
+ ]
+}
