@@ -7,6 +7,12 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Resume archives preserve completed remote runs** (30 Oct; 6db8fcf6). The transfer runner
+  skips archive members belonging to a destination run that already has `result.json` and accepts
+  that completed result during verification. An adopted VM's final events and results cannot be
+  replaced by an older local partial archive. Four filesystem regression cases execute the actual
+  VM restore snippet; all pass. Removed the completed runner item from ROADMAP.
+
 - **Batched `mtstudio score`, the fused head on the GPU, step_profile limits, runner_multi's home jobs** (28 Oct;
   LOCAL_LLM_STACK.md section 10). `mtstudio score --batch-tokens N [--no-window]` (opt-in) packs consecutive
   requests into one forward (`nn::Llama::forward_packed_hidden`, `Llama::head`; the head on scored rows only, one
