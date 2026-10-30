@@ -29,7 +29,10 @@ fixed text panels and the SFT set, all pre-tokenised with the llama3-scheme voca
    at the largest share k = max-epochs covers and the ledger says so (share_effective).
 Outputs in --out: mix_s<share>.ids, panel_fineweb.ids, panel_dialogue.ids, sft_human.jsonl and
 data.ledger.json (counts, bytes, tokens, copies, sha256 of every output). Idempotent: a finished
-output is not rebuilt.
+output is not rebuilt. A new human.cache.json atomically binds the split bytes, source/code/eval
+hashes, options and original fetch/decontamination provenance before tokenization. Cached splits
+without that verified receipt are refused without rewriting their ledger; use a fresh output
+directory rather than inventing legacy provenance. This does not migrate frozen experiment caches.
 
 The long-carry programme (experiments/tiny_chat_long_2026-10/PREREGISTRATION_DRAFT.md sections 2, 4 and 6):
 --carry12 adds Carry-12 v1 (corpus/eval/carry12_v1.jsonl, which must equal its pin) to step 2's
@@ -51,6 +54,7 @@ VMs measure.
 from __future__ import annotations
 
 import argparse
+import copy
 import glob
 import hashlib
 import json
@@ -135,6 +139,70 @@ def check_pins(files):
                 bad.append(f"human_{src}_v1/{f}")
     if bad:
         raise SystemExit(f"not the pinned bytes (or no pin): {bad}")
+
+
+HUMAN_CACHE_FILES = ("human_pt.txt", "human_val.txt", "human_sft.jsonl", "human_decontam.json")
+
+
+def human_cache_contract(args, files):
+    """Bind cached bytes to exact inputs and the code/targets that selected them."""
+    arg_values = {k: v for k, v in vars(args).items() if k != "measure_only"}
+    dependencies = [__file__, C.__file__, decontam.__file__,
+                    os.path.join(ROOT, "corpus/fetchers/human_dialogue.py"),
+                    decontam.SIMPLE_QA, *decontam.CHAT_SETS,
+                    os.path.join(ROOT, "corpus/eval/carry5_v1.jsonl")]
+    if args.carry12:
+        dependencies.append(os.path.join(ROOT, "corpus/eval/carry12_v1.jsonl"))
+    for src, path in files:
+        dependencies.append(path)
+        text = os.path.join(os.path.dirname(path), "text.txt")
+        if os.path.exists(text) or args.require_pinned:
+            dependencies.append(text)
+        if args.require_pinned:
+            dependencies.append(os.path.join(ROOT, "corpus/hashes", f"human_{src}_v1.sha256"))
+    return {"args": arg_values, "split_rule": SPLIT,
+            "dependencies": {os.path.abspath(path): C.sha256_file(path) for path in dependencies},
+            "vocab_sha256": C.sha256_file(args.vocab) if args.vocab else None}
+
+
+def save_human_cache(out, contract, ledger):
+    """Checkpoint immediately after splitting, before fallible tokenization/network-free work."""
+    receipt = {"schema": 1, "contract": contract,
+               "files": {name: C.sha256_file(os.path.join(out, name)) for name in HUMAN_CACHE_FILES},
+               "human": ledger["human"],
+               "steps": {key: ledger["steps"][key] for key in ("human_fetch", "decontam")}}
+    receipt["record_sha256"] = hashlib.sha256(json.dumps(receipt, sort_keys=True).encode()).hexdigest()
+    path = os.path.join(out, "human.cache.json")
+    with open(path + ".tmp", "w", encoding="utf-8", newline="\n") as f:
+        json.dump(receipt, f, indent=1)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(path + ".tmp", path)
+
+
+def restore_human_cache(out, contract, ledger):
+    """No legacy guessing: missing/incomplete proof must not overwrite a valid old ledger."""
+    path = os.path.join(out, "human.cache.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            receipt = json.load(f)
+        digest = receipt.pop("record_sha256")
+        if hashlib.sha256(json.dumps(receipt, sort_keys=True).encode()).hexdigest() != digest:
+            raise ValueError("cached provenance receipt digest differs")
+        if receipt["schema"] != 1 or receipt["contract"] != contract:
+            raise ValueError("source/options/decontamination contract differs")
+        expected = {name: C.sha256_file(os.path.join(out, name)) for name in HUMAN_CACHE_FILES}
+        if receipt["files"] != expected:
+            raise ValueError("cached split/decontamination bytes differ")
+        human = receipt["human"]
+        steps = receipt["steps"]
+        if not isinstance(human, dict) or not human.get("files") or not human.get("split") or \
+                not isinstance(steps.get("decontam"), dict) or "human_fetch" not in steps:
+            raise ValueError("cached provenance is incomplete")
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise SystemExit(f"unverified human cache; preserve existing files/ledger and rebuild in a fresh output directory: {exc}") from exc
+    ledger["human"] = copy.deepcopy(human)
+    ledger.setdefault("steps", {}).update(copy.deepcopy(steps))
 
 
 def trained_turns(row):
@@ -246,10 +314,13 @@ def main(argv=None):
 
     # 1-3. Human dialogues: fetch, normalise, decontaminate, split.
     pt_txt, val_txt, sft_dl = (os.path.join(out, f) for f in ("human_pt.txt", "human_val.txt", "human_sft.jsonl"))
-    if not all(os.path.exists(p) for p in (pt_txt, val_txt, sft_dl)):
+    cached = any(os.path.exists(p) for p in (pt_txt, val_txt, sft_dl))
+    if not cached:
         have = glob.glob(os.path.join(human, "**", "dialogues.jsonl"), recursive=True)
         if not have and a.human_fetch:
             sh(a.human_fetch.format(human=human).split(), ledger, "human_fetch")
+        ledger.setdefault("steps", {}).setdefault("human_fetch", {
+            "status": "not_run", "reason": "source files already present"})
         files = human_files(dirs, sources)
         if not files:
             raise SystemExit(f"no dialogues.jsonl under {dirs}: the human dialogue corpus is missing")
@@ -305,6 +376,16 @@ def main(argv=None):
         ledger["human"]["split"] = counts
         os.remove(allf)
         os.remove(clean)
+        save_human_cache(out, human_cache_contract(a, files), ledger)
+    else:
+        try:
+            files = human_files(dirs, sources)
+            if not files:
+                raise ValueError("source files unavailable for verification")
+            contract = human_cache_contract(a, files)
+        except (OSError, ValueError) as exc:
+            raise SystemExit(f"unverified human cache: {exc}") from exc
+        restore_human_cache(out, contract, ledger)
     H = os.path.getsize(pt_txt)
     ledger["human_pt_bytes"] = H
     if a.measure_only:
