@@ -1,6 +1,6 @@
 # BF16/flash per-shape profile: complete
 
-The bounded descriptive profile completed all 40 cells on one NVIDIA L4 at exact source pin `346354e8d34b1b9beac536f72ca1595cbf60edc9`: ten shapes × four configurations, each with a clean pass and an instrumented pass, 30 steps each, warmup 8. The input is deterministic synthetic uniform-ID data, not a convergence or quality evaluation. The tiny-chat shapes use batch 32 and sequence length 512; pk_base_v1 uses batch 16 and sequence length 512. Ratios compare configurations within the same shape. This closes the previously unfinished per-shape profile. It does not rerun or replace the separately completed noise-floor/loss gate.
+The bounded descriptive profile completed all 40 cells on one NVIDIA L4 at exact source pin `346354e8d34b1b9beac536f72ca1595cbf60edc9`: ten shapes × four configurations, each with a clean pass and an instrumented pass, 30 steps each, warmup 8. The input is deterministic synthetic uniform-ID data, not a convergence or quality evaluation. The tiny-chat shapes retain their own microbatch/accumulation settings at 16,384 tokens per optimizer step; pk_base_v1 uses 8,192. All use sequence length 512. Ratios compare configurations within the same shape. This closes the previously unfinished per-shape profile. It does not rerun or replace the separately completed noise-floor/loss gate.
 
 |Shape|FP32 tok/s|BF16 tok/s|Flash tok/s|Combined tok/s|BF16/FP32|Flash/FP32|Combined/FP32|FP32 attention/GPU spans|
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
