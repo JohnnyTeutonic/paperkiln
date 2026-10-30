@@ -75,3 +75,13 @@ def test_short_or_unscoped_inputs_refused_without_checkout(boot):
         result = subprocess.run(['bash', str(hook), revision, jobs], env=env)
         assert result.returncode != 0
     assert not root.exists()
+
+
+def test_existing_full_checkout_resumes_at_same_pin_with_sparse_runtime(boot):
+    source, commit, hook, root, env = boot
+    root.mkdir()
+    git('clone', str(source), str(root / 'pk'), cwd=root)
+    assert (root / 'pk/unneeded/payload.bin').exists()
+    subprocess.run(['bash', str(hook), commit, 'tools/colab_chat/run.json'], env=env, check=True)
+    assert git('rev-parse', 'HEAD', cwd=root / 'pk') == commit
+    assert not (root / 'pk/unneeded/payload.bin').exists()

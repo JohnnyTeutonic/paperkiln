@@ -12,11 +12,11 @@ trap 'echo "sparse command boot failed at line $LINENO"; echo BOOT_FAILED > "$RO
 if [ ! -d "$ROOT/pk/.git" ]; then
  git init -q "$ROOT/pk"
  git -C "$ROOT/pk" remote add origin "$URL"
- git -C "$ROOT/pk" config remote.origin.promisor true
- git -C "$ROOT/pk" config remote.origin.partialclonefilter blob:none
- git -C "$ROOT/pk" sparse-checkout init --no-cone
- git -C "$ROOT/pk" sparse-checkout set '/tools/colab_chat/'
 fi
+git -C "$ROOT/pk" config remote.origin.promisor true
+git -C "$ROOT/pk" config remote.origin.partialclonefilter blob:none
+git -C "$ROOT/pk" sparse-checkout init --no-cone
+git -C "$ROOT/pk" sparse-checkout set '/tools/colab_chat/'
 if [ "$(git -C "$ROOT/pk" rev-parse --verify HEAD 2>/dev/null || true)" != "$COMMIT" ]; then
  git -C "$ROOT/pk" fetch -q --depth=1 --filter=blob:none origin "$COMMIT"
 fi
