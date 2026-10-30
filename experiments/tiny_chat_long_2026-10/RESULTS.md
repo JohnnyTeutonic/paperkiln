@@ -120,6 +120,16 @@ it must not be described as clearing complete greedy-history parity. The
 records this protocol limitation. S-full launch remains blocked on review of
 this limitation as well as funding; no threshold or history has been changed.
 
+A separate [posthoc sensitivity bound](receipts/hs1_five_seed_20261030/parity_sensitivity.json)
+allows each of those six affected primary-item self-history credits to vary anywhere
+in [0,1], holding all other items and twin credits fixed. The primary denominator
+is 1,380 per run, and the bound includes the registered four-decimal pool rounding.
+The paired mean stays between -12.684 and -12.596 points (at most a 0.072-point
+change); a conservative sample-SD bound gives |t| at least 7.008, still above 2.776.
+Thus those six bounded item-credit changes alone cannot reverse the numerical rule.
+This does not establish the mismatch cause, bound unrecorded defects, or repair the
+historical parity violation. Canonical observations and analysis remain unchanged.
+
 | Five-seed cell | Self accuracy | Twin accuracy | Y12 | Gold-history Y12 |
 |---|---:|---:|---:|---:|
 | B | 43.014% | 52.522% | -9.508 points | -8.536 points |
