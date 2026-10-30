@@ -1022,6 +1022,7 @@ function estimateVram(spec, reserveGiB) {
   // Both covered plain families tie their token/head weights. Llama has RMS scales; GPT2 includes biases.
   const params=llama ? V*d+L*(4*d*d+3*d*F+2*d)+d :
     V*d+T*d+L*(4*d*d+2*d*F+9*d+F)+2*d;
+  if (B>2147483647 || A>2147483647) fail("Batch and accumulation must fit the runtime signed 32-bit integer fields.");
   const N=B*T;
   const parts={parameters:32*params,activations:4*L*N*(40*d+12*F),
     attention:16*L*H*N*N,logits:32*N*V,reserve:Math.ceil(reserveGiB*2**30)};
@@ -1031,8 +1032,10 @@ function estimateVram(spec, reserveGiB) {
 }
 function planVram(spec, availableGiB, reserveGiB) {
   if (!Number.isFinite(availableGiB)||availableGiB<=0) throw Error("Available GiB must be finite and positive.");
+  const availableBytes=availableGiB*2**30;
+  if (!Number.isSafeInteger(Math.ceil(availableBytes))) throw Error("Available-byte budget exceeds safe planning arithmetic.");
   const current=estimateVram(spec,reserveGiB), effective=current.batch*current.accum;
-  if (!Number.isSafeInteger(effective)) throw Error("Effective batch exceeds safe integer arithmetic.");
+  if (!Number.isSafeInteger(effective) || effective>2147483647) throw Error("Effective batch above INT_MAX is outside this bounded planner; accumulation compensation must fit the runtime integer field.");
   if (current.batch>65536) throw Error("Microbatch above 65536 is outside the bounded search.");
   for (let batch=current.batch;batch>=1;--batch) {
     if (current.batch%batch) continue;
@@ -1041,7 +1044,8 @@ function planVram(spec, availableGiB, reserveGiB) {
     const estimate=estimateVram(proposal,reserveGiB);
     if (estimate.total<=availableGiB*2**30) return {current,estimate,batch,accum:effective/batch};
   }
-  return {current,estimate:null};
+  const minimum=JSON.parse(JSON.stringify(spec));minimum.train.batch=1;minimum.train.accum=effective;
+  return {current,estimate:null,minimum:estimateVram(minimum,reserveGiB)};
 }
 // END STUDIO_VRAM_CORE
 let vramProposal=null;
@@ -1052,12 +1056,12 @@ $("vram-plan").addEventListener("click",()=>{
   invalidateVram();
   try {
     const spec=JSON.parse(buildSpec()), available=Number($("vram-gib").value), reserve=Number($("vram-reserve").value);
-    const plan=planVram(spec,available,reserve), e=plan.estimate||plan.current;
+    const plan=planVram(spec,available,reserve), e=plan.estimate||plan.minimum;
     const names={parameters:"FP32 weights/gradients/AdamW plus transpose/copy allowance (32 bytes per parameter)",
       activations:"retained linear/FFN activations (4LBT × (40d + 12d_ff) bytes)",
       attention:"dense attention scores/probabilities/backward (16LH × (BT)^2 bytes)",
       logits:"logits/loss/backward copies (32BTV bytes)",reserve:"user reserve"};
-    $("vram-result").textContent=(plan.estimate?`Proposed batch ${plan.batch}, accumulation ${plan.accum}; T=${e.T} unchanged.`:"No supported fit even at microbatch 1. Increase the budget or explicitly redesign the run.")+"\n"+
+    $("vram-result").textContent=(plan.estimate?`Proposed batch ${plan.batch}, accumulation ${plan.accum}; T=${e.T} unchanged.`:`No supported fit: the microbatch 1, accumulation ${e.accum} estimate still exceeds the budget. Increase the budget or explicitly redesign the run.`)+"\n"+
       `Planning total: ${(e.total/2**30).toFixed(3)} GiB; parameters ≈ ${(e.params/1e6).toFixed(3)}M\n`+
       Object.entries(e.parts).map(([k,v])=>`${names[k]}: ${(v/2**30).toFixed(3)} GiB`).join("\n")+
       "\nConservative planning coefficients, not measured peak memory. Vocabulary cap is an upper bound only for a valid run (BPE vocab larger than cap is refused by the trainer). Full flattened attention allowance deliberately overcounts isolated batches. Accumulation preserves examples/update but can change floating-point reduction order; no numerical-equivalence claim.";

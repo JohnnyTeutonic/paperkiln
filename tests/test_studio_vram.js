@@ -33,3 +33,11 @@ test("invalid, unsafe and unbounded inputs fail closed",()=>{
  for(const x of [0,-1,1.5,Number.MAX_SAFE_INTEGER]) {const s=spec();s.data.T=x;assert.throws(()=>estimateVram(s,0));}
  const s=spec();s.train.batch=65537;assert.throws(()=>planVram(s,8,0));
 });
+
+test("runtime integer compensation and available-byte overflow refuse",()=>{
+ const s=spec();s.train.accum=2147483648;assert.throws(()=>estimateVram(s,0),/runtime/);
+ const original=spec();original.train.accum=1073741824;
+ assert.throws(()=>planVram(original,8,0),/INT_MAX/);
+ assert.throws(()=>planVram(spec(),Number.MAX_VALUE,0),/safe planning/);
+ const nofit=planVram(spec(),1e-10,0);assert.equal(nofit.minimum.batch,1);assert.equal(nofit.minimum.accum,8);
+});
