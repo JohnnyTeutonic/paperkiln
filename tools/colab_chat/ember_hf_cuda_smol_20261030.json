@@ -1,0 +1,21 @@
+{
+ "_comment": "Smol-only synchronous FP32 CUDA versus Transformers; pinned official HF source and llama.cpp converter; refuse noncanonical GGUF before any forward; retain scientific HALTED outcomes.",
+ "max_parallel": 1,
+ "jobs": [
+  {
+   "name": "hf_cuda_smol",
+   "cmd": [
+    "bash",
+    "-c",
+    "set -eu; out=\"$1\"; mkdir -p \"$out\"; for f in ember.tgz converter.tgz smol_manifest.json COMMITS hf_cuda_vm.sh INPUT_SHA256SUMS; do cp \"/content/chat/upload/$f\" \"/content/$f\"; done; rc=0; bash /content/hf_cuda_vm.sh || rc=$?; cp /content/vm.log \"$out/vm.log\"; if [ -s /content/out.zip ]; then cp /content/out.zip \"$out/out.zip\"; fi; if [ -s /content/out/gate_summary.json ]; then cp /content/out/gate_summary.json \"$out/gate_summary.json\"; fi; exit \"$rc\"",
+    "hf-cuda-smol-job",
+    "{out}"
+   ],
+   "outputs": [
+    "out.zip",
+    "vm.log",
+    "gate_summary.json"
+   ]
+  }
+ ]
+}
