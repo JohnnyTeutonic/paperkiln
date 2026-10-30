@@ -145,6 +145,16 @@ smoke is `node tests/studio_research_browser.js OUTPUT_DIR` with Playwright avai
 (`STUDIO_CHROME` can select an executable). Its default spec/logs are synthetic; the saved
 30 October receipt additionally verifies that a downloaded real six-step clone trains and exports.
 
+The **Sweep heatmap** loads `cells.jsonl` from `tools/mtsweep.py`. Select distinct row and
+column factors and a fixed value for each remaining factor. Cells show the saved validation
+mean, seed count and population standard deviation; hover for the full precision and cell ID.
+Unobserved combinations, zero-seed cells and multiple distinct cells at one coordinate remain
+explicit and are not pooled or interpolated. The initial slice contains an actual recorded
+cell. These aggregate files do not prove planned seed coverage or statistical significance.
+The viewer accepts up to 50,000 records and 900 displayed grid positions. Its contract test is
+`node --test tests/test_studio_sweep.js`; optional Chrome smoke:
+`node tests/studio_sweep_browser.js OUTPUT_DIR` (same Playwright setup).
+
 ## Quick start: export and serve anywhere
 
 ```jsonc

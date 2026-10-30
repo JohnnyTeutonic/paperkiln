@@ -7,6 +7,13 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Studio sweep heatmap** (30 Oct). Opens the existing mtsweep `cells.jsonl` contract,
+  with typed factor axes and explicit fixed levels for all other factors. Saved means,
+  seed counts and population SD remain distinct from missing/ambiguous coordinates; no
+  hidden seed pooling or significance claims. Actual seven-factor sweep compatibility,
+  nine core tests and installed-Chrome desktop/mobile QA passed; all15 Research Mode
+  contracts and its browser smoke still pass. Receipt: `docs/receipts/studio_sweep_20261030.json`.
+
 - **Studio Research Mode** (30 Oct). Clone a full saved spec with one typed parameter change
   and a fresh name/output directory; unknown fields remain intact and the original stays
   unchanged. Compare two saved JSONL event logs with loss overlays, validation points and

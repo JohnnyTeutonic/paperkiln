@@ -194,4 +194,4 @@ jobs:
         with:
           node-version: "20"
       - name: Clone preservation and event-log contracts
-        run: node --test tests/test_studio_research.js
+        run: node --test tests/test_studio_research.js tests/test_studio_sweep.js

@@ -1,0 +1,65 @@
+{
+  "status": "PASS",
+  "scope": "Display saved mtsweep aggregates, not statistical validation or planned run coverage",
+  "canonical_home": "C:\\ml_artifacts\\studio_sweep_20261030\\final",
+  "browser": {
+    "pass": true,
+    "checks": [
+      "actual seven-factor mtsweep file loads with five fixed factors and an observed default slice",
+      "saved means/n/population SD and zero-seed cells rendered",
+      "narrow layout keeps horizontal grid scroll within panel",
+      "ambiguous coordinates remain separate and unobserved gaps explicit",
+      "untrusted axis labels remain text",
+      "malformed replacement hides old grid and disables controls"
+    ],
+    "page_errors": [],
+    "chrome": "155.0.8059.85",
+    "node": "v24.19.0",
+    "html_sha256": "f9fdb9067b65bc0d6cc9f8fcb86e8889246dfd2d312ace6b7a8d9c470af27442",
+    "real_fixture": {
+      "path": "C:\\Users\\jonat\\OneDrive\\Documents\\research_portfolio_complete\\microtorch\\experiments\\atlas_stage2\\cells.jsonl",
+      "sha256": "e2b1337da781b21e46a1637e89fc0fb52a9c5e166fc87902f2c5e5732987d5d0"
+    },
+    "scope": "file-based installed Chrome; no GPU/model/training/network calls by heatmap"
+  },
+  "core_tests": 9,
+  "research_regression_tests": 15,
+  "independent_review": "Both atlas_stage2 (12 cells, 7 factors) and atlas_stage3 (16 cells, 4 factors) parse/slice; recorded means unchanged; no additional demonstrated bug",
+  "artifacts": {
+    "browser_receipt.json": "d834fe8fc9d359fd3b05b084a65a37a998021983d0b97a784be64bbf775c5ddf",
+    "heatmap_desktop.png": "c54e080cad04749d455e6a7995da276fc3fd31fb60e2f4d21e61f016576e3ed7",
+    "heatmap_narrow.png": "a893a6cd7050d835dea5649943a576f15ea07c9e53283bcd773ae758184989f9"
+  },
+  "sources": {
+    "studio\\index.html": "f9fdb9067b65bc0d6cc9f8fcb86e8889246dfd2d312ace6b7a8d9c470af27442",
+    "tests\\test_studio_sweep.js": "d6719a56ba3a4eca5011b7cf7e680b38adb6f122d214b53a10055114d0d00a6c",
+    "tests\\studio_sweep_browser.js": "3793f9659ab460dbbeb5cc6fb2879312caf2c64c0e51b004d1eff5e4406c250c"
+  },
+  "research_browser_regression": {
+    "pass": true,
+    "mode": "file-based; installed Chrome headless GPU disabled",
+    "checks": [
+      "downloaded clone preserves all other fields",
+      "bad value type refuses",
+      "two synthetic event-log fixtures overlay",
+      "early-stop status retained",
+      "malformed replacement hides stale comparison",
+      "untrusted name stays text",
+      "desktop/narrow layout"
+    ],
+    "page_errors": [],
+    "clone_out_dir": "fixture-out-clone-1793339420800",
+    "chrome": "155.0.8059.85",
+    "node": "v24.19.0",
+    "fixture_source": "self-contained synthetic spec",
+    "html_sha256": "f9fdb9067b65bc0d6cc9f8fcb86e8889246dfd2d312ace6b7a8d9c470af27442",
+    "original_spec_sha256": "88f5147b384cb88f3c33dd5d813b19241a5a469b347dce25ec70bb5a5670bcb4",
+    "clone_sha256": "d879834507589394f75623095b04df38c858c5a9821d11908076391c1ff7800e"
+  },
+  "visual_review": "Desktop and 390px screenshots inspected; grid scroll stays within panel; no page errors",
+  "limitations": [
+    "Uploaded cell means/counts/SD are displayed, not independently rederived from per-seed events.",
+    "No inference about expected seed count, completion, statistical significance or unobserved design combinations.",
+    "Colours normalize only the selected slice; separate slices do not share a colour scale."
+  ]
+}

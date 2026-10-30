@@ -73,6 +73,13 @@
     #r-summary td:first-child { max-width: none; }
     #r-summary td::before { content: attr(data-label); color: var(--dim); }
   }
+  #sweep-panel label { min-width: 0; max-width: 100%; flex-direction: column; align-items: flex-start; gap: .25rem; }
+  #sweep-panel input, #sweep-panel select { max-width: 100%; }
+  #s-grid table { border-collapse: collapse; font-size: .8rem; }
+  #s-grid th, #s-grid td { padding: .65rem; border: 1px solid var(--border); min-width: 7rem; overflow-wrap: anywhere; }
+  #s-grid th { background: var(--panel); text-align: left; }
+  #s-grid td { color: #fff; }
+  #s-grid small { display: block; color: inherit; opacity: .85; }
 </style>
 </head>
 <body>
@@ -194,6 +201,19 @@
   </div>
   <p class="legend">A: blue training, orange validation. B: purple training, green validation. The horizontal axis is optimizer step; check datasets, token budgets and evaluation settings before interpreting loss differences.</p>
 </div>
+<div class="panel" id="sweep-panel">
+  <h2>sweep heatmap</h2>
+  <p class="legend">Explore the recorded cell means from mtsweep. Lower validation loss is better; colours describe only the selected slice.</p>
+  <div class="form" style="margin-top:.7rem">
+    <label>cell aggregates <input id="s-file" type="file" accept=".jsonl,.txt"></label>
+    <label>columns <select id="s-x" disabled></select></label>
+    <label>rows <select id="s-y" disabled></select></label>
+  </div>
+  <div class="form" id="s-filters"></div>
+  <p class="legend" id="s-status" role="status">Load cells.jsonl produced by tools/mtsweep.py.</p>
+  <div id="s-grid" style="overflow:auto;max-height:36rem;margin-top:.7rem"></div>
+  <p class="legend">Each value is a saved mean, with n and population standard deviation. Gray cells have no recorded value, an unobserved combination or multiple distinct cells; they are never filled with zero. This file does not establish planned seed counts, completion or statistical significance.</p>
+</div>
 <div class="panel">
   <h2>architecture — what this spec builds</h2>
   <svg id="arch-svg" viewBox="0 0 1040 190" width="100%"
@@ -268,6 +288,123 @@
     dim&nbsp;=&nbsp;vanishing · red&nbsp;=&nbsp;exploding, scaled per-module
     against its own run median · size&nbsp;∝&nbsp;share of global grad norm</div>
 </div>
+
+<script>
+// BEGIN STUDIO_SWEEP_CORE
+const StudioSweep = (() => {
+  const object = x => x !== null && typeof x === "object" && !Array.isArray(x);
+  function key(value) {
+    if (value === null || typeof value === "string" || typeof value === "boolean") return JSON.stringify(value);
+    if (typeof value === "number" && Number.isFinite(value) && (!Number.isInteger(value) || Number.isSafeInteger(value)) && !Object.is(value, -0)) return JSON.stringify(value);
+    if (Array.isArray(value)) return "[" + value.map(key).join(",") + "]";
+    if (object(value)) return "{" + Object.keys(value).sort().map(k => JSON.stringify(k) + ":" + key(value[k])).join(",") + "}";
+    throw Error("Factor value cannot be represented exactly.");
+  }
+  function parse(text) {
+    const cells = [], ids = new Set(); let names;
+    for (const [line, raw] of text.split(/\r?\n/).entries()) {
+      if (!raw.trim()) continue;
+      let cell; try { cell = JSON.parse(raw); } catch { throw Error("Invalid JSON on line " + (line + 1)); }
+      if (!object(cell) || !Number.isSafeInteger(cell.cell) || cell.cell < 0 || !object(cell.factors) || !Number.isSafeInteger(cell.n_seeds) || cell.n_seeds < 0) throw Error("Invalid cell/factors/n_seeds on line " + (line + 1));
+      if (ids.has(cell.cell)) throw Error("Duplicate cell ID " + cell.cell);
+      ids.add(cell.cell);
+      const here = Object.keys(cell.factors).sort();
+      if (here.some(k => ["__proto__", "constructor", "prototype"].includes(k))) throw Error("Unsupported factor name.");
+      if (names && JSON.stringify(here) !== JSON.stringify(names)) throw Error("All cells must name the same factors.");
+      names = here; for (const name of names) key(cell.factors[name]);
+      if (cell.n_seeds > 0 && (typeof cell.best_val_mean !== "number" || !Number.isFinite(cell.best_val_mean))) throw Error("Recorded seeds need a finite best_val_mean.");
+      if (cell.n_seeds === 0 && cell.best_val_mean != null) throw Error("A zero-seed cell cannot have a mean.");
+      if (cell.best_val_std != null && (typeof cell.best_val_std !== "number" || !Number.isFinite(cell.best_val_std) || cell.best_val_std < 0)) throw Error("Invalid population standard deviation.");
+      if (cell.n_seeds === 0 && cell.best_val_std != null) throw Error("A zero-seed cell cannot have a standard deviation.");
+      cells.push(cell); if (cells.length > 50000) throw Error("This viewer accepts up to 50,000 cells.");
+    }
+    if (!cells.length) throw Error("No cell aggregates found.");
+    if (names.length < 2) throw Error("A two-axis heatmap needs at least two factors.");
+    return {cells, names};
+  }
+  function levels(data, name) {
+    const found = new Map(); for (const c of data.cells) found.set(key(c.factors[name]), c.factors[name]);
+    return [...found.values()].sort((a,b) => typeof a === "number" && typeof b === "number" ? a - b : key(a).localeCompare(key(b)));
+  }
+  function slice(data, x, y, filters) {
+    if (x === y || !data.names.includes(x) || !data.names.includes(y)) throw Error("Choose two distinct factor axes.");
+    const others = data.names.filter(n => n !== x && n !== y);
+    if (!object(filters) || Object.keys(filters).length !== others.length || others.some(n => !Object.hasOwn(filters,n) || !levels(data,n).some(v => key(v) === filters[n]))) throw Error("Fix every other factor to one recorded level.");
+    const selected = data.cells.filter(c => others.every(n => key(c.factors[n]) === filters[n]));
+    const xs = levels({cells:selected},x), ys = levels({cells:selected},y);
+    if (xs.length * ys.length > 900) throw Error("This slice exceeds 900 displayed cells; choose other axes or a smaller input.");
+    const buckets = new Map();
+    for (const c of selected) {
+      const k = JSON.stringify([key(c.factors[x]), key(c.factors[y])]);
+      if (!buckets.has(k)) buckets.set(k,[]); buckets.get(k).push(c);
+    }
+    const numeric = [...buckets.values()].filter(cs => cs.length === 1 && cs[0].n_seeds > 0).map(cs => cs[0].best_val_mean);
+    return {xs, ys, buckets, selected: selected.length, min:numeric.length ? Math.min(...numeric) : null, max:numeric.length ? Math.max(...numeric) : null};
+  }
+  return {key, parse, levels, slice};
+})();
+if (typeof module !== "undefined" && module.exports) module.exports = StudioSweep;
+// END STUDIO_SWEEP_CORE
+(() => {
+  const el = id => document.getElementById(id); let data = null, version = 0;
+  function option(select, value, label) { const o = document.createElement("option"); o.value = value; o.textContent = label; select.appendChild(o); }
+  function draw() {
+    el("s-grid").replaceChildren(); if (!data) return;
+    try {
+      const filters = Object.fromEntries([...el("s-filters").querySelectorAll("select")].map(s => [s.dataset.factor,s.value]));
+      const view = StudioSweep.slice(data,el("s-x").value,el("s-y").value,filters);
+      if (!view.selected) { el("s-status").textContent = "No recorded cells in this factor slice. Choose another fixed level."; return; }
+      const table = document.createElement("table"), caption = document.createElement("caption");
+      caption.textContent = el("s-y").value + " (rows) / " + el("s-x").value + " (columns)";
+      table.appendChild(caption); const head = document.createElement("thead"), hr = document.createElement("tr");
+      const corner = document.createElement("th"); corner.textContent = "recorded mean"; hr.appendChild(corner);
+      for (const x of view.xs) { const th = document.createElement("th"); th.scope = "col"; th.textContent = StudioSweep.key(x); hr.appendChild(th); }
+      head.appendChild(hr);table.appendChild(head);const body = document.createElement("tbody");
+      for (const y of view.ys) {
+        const tr = document.createElement("tr"), th = document.createElement("th"); th.scope = "row";th.textContent = StudioSweep.key(y);tr.appendChild(th);
+        for (const x of view.xs) {
+          const td = document.createElement("td"), cells = view.buckets.get(JSON.stringify([StudioSweep.key(x),StudioSweep.key(y)])) || [];
+          td.style.background = "#30363d";
+          if (cells.length === 1 && cells[0].n_seeds > 0) {
+            const c = cells[0], range = view.max - view.min, t = range ? (c.best_val_mean - view.min) / range : .5;
+            td.style.background = "hsl(" + (205 - 175*t) + " 55% 25%)";td.textContent = c.best_val_mean.toFixed(4);
+            const sub = document.createElement("small"); sub.textContent = "n=" + c.n_seeds + "; SD=" + (c.best_val_std == null ? "not recorded" : c.best_val_std.toFixed(4));td.appendChild(sub);
+            td.title = "cell " + c.cell + "; mean=" + c.best_val_mean + "; population SD=" + c.best_val_std + "; best=" + c.best_val_min;
+          } else if (!cells.length) td.textContent = "unobserved";
+          else if (cells.length > 1) { td.textContent = "multiple cells (" + cells.length + ")";td.title = "Distinct cell IDs: " + cells.map(c => c.cell).join(", ") + ". No pooling is performed."; }
+          else { td.textContent = "no recorded value";td.title = "cell " + cells[0].cell + "; n=0"; }
+          tr.appendChild(td);
+        }
+        body.appendChild(tr);
+      }
+      table.appendChild(body); el("s-grid").appendChild(table);
+      el("s-status").textContent = view.selected + " recorded cells in this slice. " + (view.min == null ? "No unambiguous recorded means." : "Colour range " + view.min.toFixed(4) + " to " + view.max.toFixed(4) + "; lower is better.");
+    } catch (e) { el("s-status").textContent = e.message; }
+  }
+  function axes() {
+    el("s-filters").replaceChildren(); if (!data) return;
+    for (const name of data.names.filter(n => n !== el("s-x").value && n !== el("s-y").value)) {
+      const label = document.createElement("label"), select = document.createElement("select");label.textContent = "fix " + name;select.dataset.factor = name;
+      for (const value of StudioSweep.levels(data,name)) option(select,StudioSweep.key(value),StudioSweep.key(value));
+      select.value = StudioSweep.key(data.cells[0].factors[name]);
+      select.onchange = draw;label.appendChild(select);el("s-filters").appendChild(label);
+    }
+    draw();
+  }
+  el("s-file").onchange = async () => {
+    const current = ++version; data = null;el("s-grid").replaceChildren();el("s-filters").replaceChildren();
+    el("s-x").disabled = true; el("s-y").disabled = true;
+    try {
+      const file = el("s-file").files[0];if (!file) throw Error("Choose cells.jsonl.");
+      if (file.size > 50*1024*1024) throw Error("This viewer accepts files up to 50 MiB.");
+      const parsed = StudioSweep.parse(await file.text());if (current !== version) return; data = parsed;
+      for (const id of ["s-x","s-y"]) { el(id).replaceChildren();for (const name of data.names) option(el(id),name,name);el(id).disabled = false; }
+      el("s-y").selectedIndex = 1; axes();
+    } catch (e) { if (current === version) el("s-status").textContent = e.message; }
+  };
+  el("s-x").onchange = axes;el("s-y").onchange = axes;
+})();
+</script>
 
 <script id="studio-research-core">
 // BEGIN STUDIO_RESEARCH_CORE
