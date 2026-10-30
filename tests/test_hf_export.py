@@ -79,7 +79,11 @@ def test_export_uses_training_rms_epsilon(tmp_path, monkeypatch):
                     "heads": 1, "layers": 1, "vocab": 2, "T": 16}) + "\n")
     monkeypatch.setattr(hf_export, "load_file", lambda p: {"embed_tokens.weight": np.ones((2, 4))})
     monkeypatch.setattr(hf_export, "gguf_tokens", lambda p: ["<unk>", "a"])
-    monkeypatch.setattr(hf_export, "write_tokenizer", lambda *a: ({"<unk>": 0, "a": 1}, "<unk>"))
+    def tokenizer_fixture(directory, *args):
+        for name in ("tokenizer.json", "tokenizer_config.json"):
+            (Path(directory) / name).write_text("{}")
+        return {"<unk>": 0, "a": 1}, "<unk>"
+    monkeypatch.setattr(hf_export, "write_tokenizer", tokenizer_fixture)
     import llama3_bpe
     monkeypatch.setattr(llama3_bpe, "read_gguf_kv", lambda *a: {})
     monkeypatch.setattr(sys, "argv", ["hf_export.py", str(run)])
@@ -405,7 +409,11 @@ def test_gpt2_export_config_and_hf_loaded_tensors_are_faithful(tmp_path, monkeyp
     (run / "events.jsonl").write_text(json.dumps({"event": "start", "name": "tiny"}) + "\n" + json.dumps(model) + "\n")
     monkeypatch.setattr(hf_export, "load_file", lambda _: state)
     monkeypatch.setattr(hf_export, "gguf_tokens", lambda _: ["<unk>", "a", "b", "c", "d", "e", "f"])
-    monkeypatch.setattr(hf_export, "write_tokenizer", lambda *a: ({str(i): i for i in range(7)}, "<unk>"))
+    def tokenizer_fixture(directory, *args):
+        for name in ("tokenizer.json", "tokenizer_config.json"):
+            (Path(directory) / name).write_text("{}")
+        return {str(i): i for i in range(7)}, "<unk>"
+    monkeypatch.setattr(hf_export, "write_tokenizer", tokenizer_fixture)
     import llama3_bpe
     monkeypatch.setattr(llama3_bpe, "read_gguf_kv", lambda *a: {})
     monkeypatch.setattr(sys, "argv", ["hf_export.py", str(run)])
@@ -504,7 +512,11 @@ def test_plain_flex_config_and_complete_hf_loaded_inventory(tmp_path, monkeypatc
     (run / "events.jsonl").write_text(json.dumps({"event": "start", "name": "tiny"}) + "\n" + json.dumps(model) + "\n")
     monkeypatch.setattr(hf_export, "load_file", lambda _: state)
     monkeypatch.setattr(hf_export, "gguf_tokens", lambda _: ["<unk>", "a", "b", "c", "d", "e", "f"])
-    monkeypatch.setattr(hf_export, "write_tokenizer", lambda *a: ({str(i): i for i in range(7)}, "<unk>"))
+    def tokenizer_fixture(directory, *args):
+        for name in ("tokenizer.json", "tokenizer_config.json"):
+            (Path(directory) / name).write_text("{}")
+        return {str(i): i for i in range(7)}, "<unk>"
+    monkeypatch.setattr(hf_export, "write_tokenizer", tokenizer_fixture)
     import llama3_bpe
     monkeypatch.setattr(llama3_bpe, "read_gguf_kv", lambda *a: {})
     monkeypatch.setattr(sys, "argv", ["hf_export.py", str(run)])
@@ -608,7 +620,11 @@ def test_flex_llama_config_biases_untied_head_and_loaded_weights(tmp_path, monke
     (run / "events.jsonl").write_text(json.dumps({"event": "start", "name": "tiny"}) + "\n" + json.dumps(model) + "\n")
     monkeypatch.setattr(hf_export, "load_file", lambda _: state)
     monkeypatch.setattr(hf_export, "gguf_tokens", lambda _: ["<unk>", "a", "b", "c", "d", "e", "f"])
-    monkeypatch.setattr(hf_export, "write_tokenizer", lambda *a: ({str(i): i for i in range(7)}, "<unk>"))
+    def tokenizer_fixture(directory, *args):
+        for name in ("tokenizer.json", "tokenizer_config.json"):
+            (Path(directory) / name).write_text("{}")
+        return {str(i): i for i in range(7)}, "<unk>"
+    monkeypatch.setattr(hf_export, "write_tokenizer", tokenizer_fixture)
     import llama3_bpe
     monkeypatch.setattr(llama3_bpe, "read_gguf_kv", lambda *a: {})
     monkeypatch.setattr(sys, "argv", ["hf_export.py", str(run)])

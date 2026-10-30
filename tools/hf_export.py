@@ -30,6 +30,11 @@ RoPE: HF Llama rotates every head. A run recorded with rope_heads "first"
 head 0 only, so with more than one head HF cannot reproduce it; such runs
 are refused unless --allow-legacy-rope is given.
 
+Exports stage all five managed files before publication. Existing managed files require
+--overwrite; unrelated files are preserved, incompatible loader/shard leftovers are refused.
+Caught publication errors restore previous managed bytes. Existing-directory replacement is
+rollback-protected, not crash-atomic; retained recovery files are reported if rollback fails.
+
 Requires: numpy, safetensors, tokenizers;
 transformers+torch only for the verify step.
 """
@@ -38,6 +43,10 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from pathlib import Path
+import shutil
+import tempfile
+from contextlib import contextmanager
 
 import numpy as np
 from safetensors.numpy import load_file, save_file
@@ -466,15 +475,107 @@ def validate_model(m):
     return theta
 
 
+EXPORT_FILES = frozenset({"config.json", "model.safetensors", "tokenizer.json",
+                          "tokenizer_config.json", "export_receipt.json"})
+
+
+def export_destination(target, overwrite):
+    """Reject redirecting links and loader-affecting leftovers; preserve unrelated files."""
+    target = Path(target).absolute()
+    for component in (target, *target.parents):
+        if component.is_symlink() or (hasattr(component, "is_junction") and component.is_junction()):
+            raise ValueError("HF export target must not contain symlinks or junctions")
+    if target.exists():
+        if not target.is_dir():
+            raise ValueError("HF export target is not a directory")
+        for child in target.iterdir():
+            if child.name in EXPORT_FILES:
+                if not overwrite:
+                    raise ValueError("HF export already exists; use --overwrite to replace its managed files")
+                if child.is_symlink() or not child.is_file():
+                    raise ValueError("HF managed output must be a regular file")
+            elif (child.suffix in (".safetensors", ".bin") or child.name.endswith(".index.json")
+                  or child.name in {"generation_config.json", "special_tokens_map.json", "added_tokens.json",
+                                    "vocab.json", "merges.txt"}):
+                raise ValueError(f"incompatible stale HF loader artifact: {child.name}")
+    return target
+
+
+@contextmanager
+def staged_export(target, overwrite=False):
+    """Publish a complete export; caught failures roll back existing managed bytes.
+
+    Existing unrelated files stay in place. Directory publication for a new target is atomic;
+    replacing an existing directory's files is rollback-protected, not crash-atomic. A failed
+    rollback retains the staging/backup directory and reports its path for manual recovery.
+    """
+    target = export_destination(target, overwrite)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    lock = target.parent / ("." + target.name + ".export.lock")
+    fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    os.close(fd)
+    try:
+        stage = Path(tempfile.mkdtemp(prefix="." + target.name + ".export-", dir=target.parent))
+        build = stage / "build"
+        backup = stage / "backup"
+        build.mkdir()
+        backup.mkdir()
+    except BaseException:
+        lock.unlink()
+        raise
+    preserve = False
+    try:
+        yield str(build)
+        if {p.name for p in build.iterdir()} != EXPORT_FILES or any(
+                not p.is_file() or p.is_symlink() for p in build.iterdir()):
+            raise ValueError("staged HF export is incomplete or has unexpected files")
+        export_destination(target, overwrite)  # recheck before any destination mutation
+        if not target.exists():
+            os.replace(build, target)
+        else:
+            moved, published = [], []
+            try:
+                for name in sorted(EXPORT_FILES):
+                    if (target / name).exists():
+                        os.replace(target / name, backup / name)
+                        moved.append(name)
+                for name in sorted(EXPORT_FILES):
+                    os.replace(build / name, target / name)
+                    published.append(name)
+            except BaseException:
+                try:
+                    for name in reversed(published):
+                        os.replace(target / name, build / name)
+                    for name in reversed(moved):
+                        os.replace(backup / name, target / name)
+                except BaseException as recovery:
+                    preserve = True
+                    raise RuntimeError(f"HF publication rollback failed; preserve recovery files at {stage}") from recovery
+                raise
+    finally:
+        if not preserve:
+            shutil.rmtree(stage)
+            lock.unlink()
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("out_dir")
     ap.add_argument("--hf-dir")
     ap.add_argument("--events", help="recorded JSONL events or mixed training log")
+    ap.add_argument("--overwrite", action="store_true", help="replace existing managed HF files after successful staging")
     ap.add_argument("--allow-legacy-rope", action="store_true",
-                    help="export a rope_heads=first run anyway (HF will rotate "
-                         "every head, so its outputs will differ)")
+                    help="export a rope_heads=first run anyway (HF rotates every head, so outputs differ)")
     args = ap.parse_args()
+    target = args.hf_dir or os.path.join(args.out_dir, "hf")
+    with staged_export(target, args.overwrite) as stage:
+        args.hf_dir = stage
+        count, vocab, unk = export_model(args)
+    print(f"HF export -> {target} ({count} tensors, vocab {vocab}, unk={unk!r})")
+    print("verify: python tools/hf_export_verify.py", target, args.out_dir)
+
+
+def export_model(args):
     m = model_event(args.out_dir, args.events)
     kind = hf_model_type(m)
     rope = m.get("rope_heads", "first")
@@ -539,9 +640,8 @@ def main():
         json.dump(cfg, f, indent=1)
     with open(os.path.join(hf_dir, "export_receipt.json"), "w", encoding="utf-8") as f:
         json.dump({"events": os.path.abspath(args.events) if args.events else None}, f)
-    print(f"HF export -> {hf_dir}  ({len(sd)} tensors, vocab {len(tokens)}, "
-          f"unk={unk!r})")
-    print("verify: python tools/hf_export_verify.py", hf_dir, args.out_dir)
+    return len(sd), len(tokens), unk
+
 
 
 if __name__ == "__main__":
