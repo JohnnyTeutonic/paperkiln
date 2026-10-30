@@ -172,7 +172,7 @@ FLAVOR = {
     # stops the bare X inside it from also matching.
     "activation": [("swiglu", r"SwiGLU|[Gg]ated[-\s]?(?:SiLU|[Ss]wish)"),
                    ("geglu", r"GeGLU|[Gg]ated[-\s]?G[Ee][Ll][Uu]"),
-                   ("gelu", r"GELU"), ("silu", r"SiLU|swish"),
+                   ("gelu", r"G[Ee][Ll][Uu]"), ("silu", r"SiLU|swish"),
                    ("relu", r"ReLU")],
     "positional": [("rope", r"RoPE|[Rr]otary\s+(?:position|embedding)"),
                    ("alibi", r"ALiBi"),
@@ -791,7 +791,11 @@ def extract(arxiv_id: str, tex: str) -> Arch:
             arch.unresolved.append(fieldname)
             continue
         top = cands[0]
-        second = cands[1] if len(cands) > 1 else None
+        # A rejected alternative remains visible in mentions, but cannot
+        # contest an adopted value (including a GLU-family verdict). Keep
+        # searching: a third, eligible candidate may still contest it.
+        second = next((c for c in cands[1:]
+                       if "rejection-elsewhere" not in c["cues"]), None)
         # GLU-family naming disagreement: if the top two are members of
         # one family, they agree on architecture and differ only in name.
         fam = FLAVOR_FAMILIES.get(fieldname, {})

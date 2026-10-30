@@ -7,6 +7,17 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Fetcher lexical gaps closed** (30 Oct). Bare GeLU/Gelu spellings now normalize to GELU,
+  while gated compounds remain GeGLU. A rejected runner-up stays in the reported mentions but
+  cannot create a contested/family verdict; a further eligible alternative can still contest.
+  Fifteen offline extraction tests pass, including the existing symmetric-use and top-veto controls;
+  Ruff passes. Removed the completed lexical work from ROADMAP. No benchmark labels changed.
+- **Completed operational/release work removed from ROADMAP** (30 Oct). The VM relay snapshot
+  was already implemented in 76f59c66: it copies and checks a checkpoint set before transfer,
+  preserves a pending snapshot until home, and commits local state last. The browser F16 release
+  is now published (Space 8e107b9, website fdbaa1d; root stack log has verification), so neither
+  item remains open. No new experiment result is implied.
+
 - **Preference-judge stopped-call accounting** (30 Oct). A CLI error with a reported nonzero cost
   is now recorded in the failure ledger before judging stops; a free account-limit response still
   creates no verdict or artificial failure. Subsequent per-call budget reservations include the

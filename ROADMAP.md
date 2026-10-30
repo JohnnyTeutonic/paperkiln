@@ -23,7 +23,6 @@ where one of those documents carries a plan, this file wins.*
    The delegated 28 Oct decision is recorded in
    `experiments/chat_general/RESULTS.md`, "The full run" (00ecd0d4); judging and training remain pending,
    with the recorded $200 total cap including the cache and held-out side-by-side gate.
-   Release of the staged F16 browser model remains pending Jonathan's go (E2.2).
 
 ## 3. Broken now
 
@@ -50,7 +49,6 @@ advisory steps that cannot fail the build.
   DPO, byte-BPE and chat-model milestones are recorded in CHANGELOG and the charter.
   Other open follow-ups whose completion is not established here:
   - the remaining per-token host work (zero-filled Matrix construction in the profile);
-  - a VM-side snapshot before each checkpoint relay, so relays stop racing saves;
   - HF-export round trip of an SFT'd model (the brief's Phase 3 export check).
 
 - **Scale ladder, depth rung.** d=256, 4 layers, exact against SWA, as its
@@ -93,9 +91,6 @@ advisory steps that cannot fail the build.
   verifier and scorer, with Mamba, Qwen3 and OLMo 2 labelled (43 papers; OLMo 2 has no reply under the
   bench's prompt): `2026-10-28_bench_scores.json` (`experiments/arxiv_chain_2026-10-28_e3/`). Open: a
   studio button that runs it instead of `fetch.py` when a key is configured; prompt optimisation later.
-- **Two lexical gaps found while fixing the wrong assertions:** the GELU
-  pattern does not match the spelling "GeLU" (Megatron, BART), and a
-  vetoed runner-up still marks a field as contested.
 - **Publish `paperkiln-fetch` 0.1.1** with the extractor fixes (0.1.0 on
   PyPI predates them).
 - **Grow the benchmark from 40 to 60–100 papers**, with ground truth read

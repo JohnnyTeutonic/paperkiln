@@ -4,8 +4,8 @@
 """
 import sys
 
-from fetch import (Arch, detex, emit_cpp, emit_spec, extract, parse_tables,
-                   score_flavors, split_sections)
+from fetch import (detex, emit_cpp, emit_spec, extract, score_flavors,
+                   split_sections)
 
 FIXTURE_PROSE = r"""
 \title{A Tiny Transformer}
@@ -25,6 +25,27 @@ params & dimension & n heads & n layers \\
 7B & 4096 & 32 & 32 \\
 \end{tabular}
 """
+
+
+def test_gelu_case_spelling() -> None:
+    for spelling in ("GELU", "GeLU", "Gelu", "GElu"):
+        arch = extract("case-gelu", f"We use {spelling} in every layer.")
+        finding = arch.fields["activation"]
+        assert (finding.value, finding.verdict) == ("gelu", "used"), finding
+    for spelling in ("gated-GeLU", "Gated Gelu"):
+        arch = extract("case-gated", f"We use {spelling} in every layer.")
+        assert arch.fields["activation"].value == "geglu", arch.fields
+        assert all(c["value"] != "gelu" for c in arch.mentions["activation"])
+
+
+def test_rejected_runner_up_does_not_contest() -> None:
+    text = "We use RoPE in every layer and leave ALiBi for future work."
+    arch = extract("veto-runner-up", text)
+    finding = arch.fields["positional"]
+    assert (finding.value, finding.verdict) == ("rope", "used"), finding
+    assert {c["value"] for c in arch.mentions["positional"]} == {"rope", "alibi"}
+    candidates = score_flavors(split_sections(text))["positional"]
+    assert "rejection-elsewhere" in candidates[1]["cues"]
 
 
 def test_prose() -> None:
@@ -416,6 +437,8 @@ def test_emit_spec() -> None:
 
 
 if __name__ == "__main__":
+    test_gelu_case_spelling()
+    test_rejected_runner_up_does_not_contest()
     test_compact_notation()
     test_contribution_vs_mention()
     test_inheritance()
