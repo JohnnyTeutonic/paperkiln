@@ -100,7 +100,6 @@ advisory steps that cannot fail the build.
   task (parameter-count error per reconstructed paper) for a datasets and
   benchmarks paper. Candidates next in line: StarCoder, ELECTRA, UL2,
   BigBird, Chinchilla.
-- **Fetcher v2 remainder:** evidence-carrying MoE fields in the rule-based extractor.
 
 ## 6. Engine
 

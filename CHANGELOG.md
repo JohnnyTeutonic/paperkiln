@@ -7,6 +7,17 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Bounded rule-based MoE fields** (30 Oct). Explicit adopted-model declarations and
+  single-value architecture-table rows can supply quoted `moe`, `n_experts` and `top_k`.
+  Baseline/related-work counts, human annotators and ordinary dense FFNs are excluded.
+  Contradictions, preliminary/ambiguous adoption, own-model retractions and invalid expert/
+  top-k relationships abstain; top-N accuracy/router metrics cannot become routing counts.
+  All simple C++, mtsweep and packaged HF-config emitters refuse stated or unresolved MoE
+  before creating an output, rather than silently producing a dense network. Metadata-only
+  extraction remains available. This closes the bounded field-extraction item, not universal
+  MoE parsing, gate-normalization inference or MoE reconstruction. The vendored package is
+  synced; 164 offline extractor/LLM-extractor tests and Ruff pass, including 41 MoE cases.
+
 - **Extractor HTML field escaping** (30 Oct). Public-API identifiers, finding verdicts and
   runner-up scores are escaped before HTML rendering, matching values/evidence and the new
   HF comparison report. A regression covers all three formerly raw interpolation sites.

@@ -727,6 +727,119 @@ def parse_tables(text: str) -> list[dict[str, int]]:
     return configs
 
 
+_MOE_WORDS = r"\bMoE\b|mixture[- ]of[- ]experts|sparsely[- ]gated"
+_MOE_SELF = (r"\bwe\s+(?:use|adopt|employ|propose|introduce|activate|select|route)\b|"
+             r"\bour\s+(?:MoE\s+)?(?:model|architecture|network|layers?)\s+"
+             r"(?:uses?|has|contains?|employs?|comprises?|consists?\s+of|routes?)\b")
+_MOE_N = r"(?<![\d.])(\d+(?:,\d{3})*)(?![\d.])"
+_MOE_PATTERNS = {
+    "n_experts": [r"\b(?:uses?|employs?|has|contains?|comprises?|with|of)\s+" + _MOE_N +
+                  r"\s+(?:routed\s+)?experts\b(?!\s+(?:per|for)\s+(?:each\s+)?token)"],
+    "top_k": [r"\btop[- ]" + _MOE_N + r"\s+(?:routing|gating|experts?|router|selection)\b", r"\btop[- ]k\s*(?:=|:|is|of)\s*" + _MOE_N,
+              r"\b(?:activates?|selects?|routes?)(?:\s+(?:each\s+)?token)?(?:\s+to)?\s+" +
+              _MOE_N + r"(?:\s+(?:out\s+of|of)\s+(?:the\s+)?\d+(?:,\d{3})*)?\s+experts\b",
+              _MOE_N + r"\s+experts\s+per\s+token\b"],
+}
+
+
+def extract_moe(arch: Arch, sections: list[tuple[str, str]]) -> None:
+    """Narrow rule-based MoE declarations; no baseline counts or variant guessing."""
+    candidates = {"n_experts": [], "top_k": []}
+    declarations = []
+    ambiguous = False
+    retractions = []
+    for kind, segment in sections:
+        if kind == "related":
+            continue
+        for statement in re.split(r"(?<=[.!?])\s+", segment):
+            change = re.search(r"\bwe\s+(?:switch(?:ed)?|replac(?:e|ed)|abandon(?:ed)?|dropp?ed|drop|remove(?:d)?)\b|"
+                               r"\bour\s+(?:final\s+)?(?:model|architecture)\s+(?:switches|replaces|abandons|drops|removes)\b|"
+                               r"\bour\s+final\s+(?:model|architecture)\s+(?:is|uses|adopts)\s+(?:an?\s+)?dense\b", statement, re.I)
+            denial = re.search(r"\bwe\s+(?:(?:do|did|will)\s+not|never|no\s+longer)\s+(?:use|adopt|employ)\b|"
+                               r"\bour\s+(?:final\s+)?(?:model|architecture)\s+(?:does\s+not\s+use|no\s+longer\s+uses?|uses?\s+no|is\s+without)\b", statement, re.I)
+            if change or (denial and re.search(_MOE_WORDS, statement, re.I)):
+                retractions.append({"evidence": " ".join(statement.split()),
+                                    "explicit_moe_change": bool(change and re.search(_MOE_WORDS, statement, re.I))})
+            if not (re.search(_MOE_SELF, statement, re.I) or
+                    re.search(r"\bour\s+(?:MoE\b|mixture[- ]of[- ]experts)", statement, re.I)):
+                continue
+            explicit_moe = re.search(_MOE_WORDS, statement, re.I)
+            expert_mechanism = (re.search(r"\bexperts\b", statement, re.I) and
+                                re.search(r"\brout(?:e|er|ing)|\bgat(?:e|ing)|\bFFN\b|feed[- ]forward|per\s+token", statement, re.I))
+            if not (explicit_moe or expert_mechanism):
+                continue
+            if re.search(r"annotat|\bhuman\b|\braters?\b|\bjudges?\b", statement, re.I):
+                continue
+            if re.search(r"\b(?:no|without)\s+(?:an?\s+)?(?:MoE\b|mixture[- ]of[- ]experts)|\b(?:not|never)\s+(?:use|adopt|employ)\s+(?:an?\s+)?(?:MoE\b|mixture[- ]of[- ]experts)", statement, re.I):
+                continue
+            evidence = " ".join(statement.split())
+            if re.search(r"\bas\s+(?:a\s+)?baseline\b", statement, re.I):
+                continue
+            if re.search(r"\b(?:compare|baseline|ablation|candidate|experimented|tried|preliminary|early|initial|pilot|exploratory|not|without|avoid|never)\b|\b(?:prior|previous)\s+work\b", statement, re.I):
+                ambiguous = True
+                arch.mentions.setdefault("moe", []).append({"evidence": evidence, "status": "ambiguous_adoption"})
+                continue
+            declarations.append(evidence)
+            for fieldname, patterns in _MOE_PATTERNS.items():
+                for pattern in patterns:
+                    for match in re.finditer(pattern, statement, re.I):
+                        if fieldname == "top_k" and re.match(
+                                r"\s*(?:[- ]selection\s+)?(?:(?:token|expert|router|classification|test|validation)\s+){0,2}"
+                                r"(?:accuracy|error|recall|precision|score|metric)\b", statement[match.end():], re.I):
+                            continue
+                        candidates[fieldname].append({"value": int(match.group(1).replace(",", "")), "evidence": evidence})
+        # Only single-value architecture-table rows; baseline/variant columns
+        # and duplicate conflicting rows are not turned into one chosen model.
+        if kind != "method":
+            continue
+        for table in re.findall(r"\\begin\{tabular\}.*?\\end\{tabular\}", segment, re.S):
+            if re.search(r"baseline|comparison|related|prior|annotat|human|rater", table, re.I):
+                continue
+            if not (re.search(_MOE_WORDS, table, re.I) or re.search(r"routed\s+experts", table, re.I)
+                    or (re.search(r"\bexperts\b", table, re.I) and re.search(r"top[- _]k", table, re.I))):
+                continue
+            body = re.sub(r"\\begin\{tabular\}\{[^{}]*\}|\\end\{tabular\}", "", table)
+            for row in re.split(r"\\\\", body):
+                row = re.sub(r"\\(?:hline|toprule|midrule|bottomrule)\b", "", row).strip()
+                for fieldname, label in (("n_experts", r"(?:number\s+of\s+|routed\s+)?experts"),
+                                         ("top_k", r"top[- _]k|active\s+experts|experts\s+per\s+token")):
+                    match = re.fullmatch(r"(?:" + label + r")\s*&\s*" + _MOE_N + r"\s*", row, re.I)
+                    if match:
+                        evidence = " ".join(match.group(0).split())
+                        declarations.append(evidence)
+                        candidates[fieldname].append({"value": int(match.group(1).replace(",", "")), "evidence": evidence})
+    if retractions and (declarations or ambiguous or any(r["explicit_moe_change"] for r in retractions)):
+        ambiguous = True
+        arch.mentions.setdefault("moe", []).extend({**r, "status": "own_retraction"} for r in retractions)
+    if not declarations and not ambiguous:
+        return
+    if declarations and not ambiguous:
+        arch.fields["moe"] = Finding("true", declarations[0], verdict="used")
+    else:
+        arch.unresolved.append("moe")
+    for name, findings in candidates.items():
+        values = {f["value"] for f in findings}
+        if findings:
+            arch.mentions[name] = findings
+        if len(values) == 1 and 1 <= next(iter(values)) <= (1 << 20) and not ambiguous:
+            arch.fields[name] = Finding(findings[0]["value"], findings[0]["evidence"], verdict="used")
+        else:
+            arch.unresolved.append(name)
+    if "n_experts" in arch.fields and "top_k" in arch.fields:
+        if arch.fields["top_k"].value > arch.fields["n_experts"].value:
+            for name in ("n_experts", "top_k"):
+                del arch.fields[name]
+                arch.unresolved.append(name)
+
+
+def refuse_unsupported_moe(arch: Arch) -> None:
+    """The simple emitters have no faithful MoE layout; never emit dense instead."""
+    counts = any(k in arch.fields or k in arch.unresolved for k in ("n_experts", "top_k"))
+    marker = arch.fields.get("moe")
+    if counts or "moe" in arch.unresolved or (marker is not None and marker.value not in (False, "false")):
+        raise ValueError("MoE is stated or unresolved; this emitter cannot faithfully represent it")
+
+
 def extract(arxiv_id: str, tex: str) -> Arch:
     text = detex(tex)
     arch = Arch(arxiv_id=arxiv_id)
@@ -877,6 +990,7 @@ def extract(arxiv_id: str, tex: str) -> Arch:
                 if fieldname in arch.unresolved:
                     arch.unresolved.remove(fieldname)
         arch.variants = tables
+    extract_moe(arch, split_sections(tex))
     return arch
 
 
@@ -1098,6 +1212,7 @@ evidence; unresolved fields are reported, never guessed</div>
 
 
 def emit_cpp(arch: Arch) -> str:
+    refuse_unsupported_moe(arch)
     g = {k: f.value for k, f in arch.fields.items()}
     llama_family = g.get("norm") == "rmsnorm" or g.get("positional") == "rope"
     lines = [
@@ -1167,6 +1282,7 @@ def emit_spec(arch: Arch, house_dims: bool = False, corpus: str = "",
     at the atlas house protocol dims (registry-style token-matched run);
     False emits the paper-faithful dims, with T capped at 256 for
     runnability (cap noted in _comment when applied)."""
+    refuse_unsupported_moe(arch)
     g = {k: f.value for k, f in arch.fields.items()}
     custom: dict = {}
     notes: list[str] = []
@@ -1266,6 +1382,11 @@ def main() -> int:
     tex = (open(args.tex, encoding="utf-8", errors="replace").read()
            if args.tex else fetch_source(args.arxiv_id))
     arch = extract(args.arxiv_id, tex)
+    if args.emit_cpp or args.emit_spec:
+        try:
+            refuse_unsupported_moe(arch)
+        except ValueError as exc:
+            ap.error(str(exc))
     if args.hf_config:
         try:
             arch.hf_config_crosscheck = load_hf_config_report(arch, args.hf_config)
@@ -1288,7 +1409,8 @@ def main() -> int:
     dropped = {k: v for k, v in arch.mentions.items() if k in arch.unresolved}
     if dropped:
         summary = "; ".join(
-            f"{k}: " + ", ".join(f"{c['value']}({c['score']})" for c in v)
+            f"{k}: " + ", ".join(str(c.get("value", c.get("status", "unresolved"))) +
+                      (f"({c['score']})" if "score" in c else "") for c in v)
             for k, v in dropped.items())
         print(f"  mention-only (not applied): {summary}")
 

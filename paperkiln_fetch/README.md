@@ -30,6 +30,12 @@ paper field. Conflicting config aliases and invalid numeric values are rejected.
 config keys are compared; a nested `text_config` is not silently selected. Numeric agreement
 alone does not establish architecture equivalence or checkpoint identity.
 
+The rule-based extractor can report explicit MoE adoption and expert/top-k counts, with quotes.
+It abstains on conflicting counts, preliminary/retracted choices and ambiguous model variants.
+These simple emitters do not implement MoE: requesting C++, mtsweep or HF-config output for
+stated or unresolved MoE fails before writing a dense substitute. JSON/HTML extraction reports
+remain available. This bounded support does not infer expert-gate normalization.
+
 ## Why this exists
 
 Most transformer papers are deltas over a known skeleton — dims, depth,

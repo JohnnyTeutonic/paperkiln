@@ -39,6 +39,11 @@ def main() -> int:
     tex = (open(args.tex, encoding="utf-8", errors="replace").read()
            if args.tex else _fetch.fetch_source(args.arxiv_id))
     arch = _fetch.extract(args.arxiv_id, tex)
+    if args.emit_cpp or args.emit_hf:
+        try:
+            _fetch.refuse_unsupported_moe(arch)
+        except ValueError as exc:
+            ap.error(str(exc))
     if args.hf_config:
         try:
             arch.hf_config_crosscheck = _fetch.load_hf_config_report(arch, args.hf_config)

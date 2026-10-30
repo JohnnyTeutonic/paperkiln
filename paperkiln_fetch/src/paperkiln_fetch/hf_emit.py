@@ -16,7 +16,7 @@ unresolved and the default is declared.
 """
 from __future__ import annotations
 
-from ._fetch import Arch
+from ._fetch import Arch, refuse_unsupported_moe
 
 GENERATOR = "paperkiln-fetch"
 
@@ -68,6 +68,7 @@ def pick_family(arch: Arch) -> str:
 def build_hf_config(arch: Arch) -> tuple[dict, str, dict]:
     """Returns (config_dict, family, defaults) where defaults maps every
     field that had to fall back to a family default (name -> value)."""
+    refuse_unsupported_moe(arch)
     family = pick_family(arch)
     defaults: dict = {}
 
