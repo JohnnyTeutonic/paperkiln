@@ -1,0 +1,699 @@
+{
+  "utc": "2026-10-30T07:44:39.592185+00:00",
+  "autonomy_ends_utc": "2026-10-30T07:49:34Z",
+  "note": "Operational continuation snapshot, not completed experimental results. Existing watchdogs and frozen deterministic finalizers continue after agent work stops. No new launch/cap/science changes in this snapshot.",
+  "balance_and_hourly_usd": [
+    42.606456764,
+    4.831
+  ],
+  "campaigns": {
+    "pk_tc_x60_r4_runner": {
+      "state_sha256": "45c2e0df1bbfc044629ee920c1a4b16ad44886dd960a30d93809281f6a20b925",
+      "pod": {
+        "id": "u9sdbz81dhtdfw",
+        "ip": "213.173.105.28",
+        "port": 30188,
+        "dc": "EU-RO-1",
+        "created": 1793321990.740957
+      },
+      "volume": {
+        "id": "oqqup6xvo0",
+        "dc": "EU-RO-1",
+        "gb": 80,
+        "created": 1793321987.1007495
+      },
+      "jobs": {
+        "data": {
+          "relayed_step": 0,
+          "status": "FINISHED",
+          "home": true,
+          "failed_seen": 0,
+          "fetched": [
+            "data.ledger.json",
+            "../data_train.log"
+          ]
+        },
+        "gate": {
+          "relayed_step": 0,
+          "status": "FINISHED",
+          "home": true,
+          "failed_seen": 0,
+          "fetched": [
+            "gate.json",
+            "../gate_train.log"
+          ]
+        },
+        "rung_e1_60m_L8_r4_s500": {
+          "relayed_step": 0,
+          "status": "FINISHED",
+          "home": true,
+          "failed_seen": 0,
+          "fetched": [
+            "rung.json",
+            "../rung_e1_60m_L8_r4_s500_train.log"
+          ]
+        },
+        "rung_e1_60m_L8_r4_s1000": {
+          "relayed_step": 0,
+          "status": "FINISHED",
+          "home": true,
+          "failed_seen": 0,
+          "fetched": [
+            "rung.json",
+            "../rung_e1_60m_L8_r4_s1000_train.log"
+          ]
+        },
+        "rung_e1_60m_L8_r4_s2500": {
+          "relayed_step": 0,
+          "status": "FINISHED",
+          "home": true,
+          "failed_seen": 0,
+          "fetched": [
+            "rung.json",
+            "../rung_e1_60m_L8_r4_s2500_train.log"
+          ]
+        },
+        "rung_e1_60m_L8_r4_s5000": {
+          "relayed_step": 0,
+          "status": "RUNNING",
+          "home": false,
+          "failed_seen": 0
+        },
+        "post_e1_60m_L8_r4": {
+          "relayed_step": 0,
+          "status": "RUNNING",
+          "home": false,
+          "failed_seen": 0
+        },
+        "pt_e1_60m_L8_r4": {
+          "relayed_step": 7500,
+          "status": "FINISHED",
+          "home": true,
+          "failed_seen": 0
+        }
+      },
+      "spent_usd": 4.033239599681783,
+      "remote": {
+        "checked_epoch": 1793346284.4082325,
+        "statuses": {
+          "STATUS_rung_e1_60m_L8_r4_s5000": "RUNNING",
+          "STATUS_rung_e1_60m_L8_r4_s2500": "FINISHED",
+          "STATUS_rung_e1_60m_L8_r4_s1000": "FINISHED",
+          "STATUS_rung_e1_60m_L8_r4_s500": "FINISHED",
+          "STATUS_post_e1_60m_L8_r4": "RUNNING",
+          "STATUS_pt_e1_60m_L8_r4": "FINISHED",
+          "STATUS_gate": "FINISHED",
+          "STATUS_data": "FINISHED",
+          "STATUS": "RUNNING"
+        },
+        "pt": {
+          "pt_e1_60m_L8_r4/events.jsonl": {
+            "best_val": 3.3400914669036865,
+            "early_stopped": false,
+            "event": "done",
+            "final_step": 10000,
+            "wall_seconds": 12811.4460143
+          }
+        },
+        "score_chunks": {
+          "post_e1_60m_L8_r4/carry5_base/m/score": 42,
+          "post_e1_60m_L8_r4/carry5/m/score": 85
+        },
+        "uploads": {
+          "vocab_llama3_bpe.gguf": 565152
+        },
+        "profile": {}
+      }
+    },
+    "pk_tc_x60_r5_runner": {
+      "state_sha256": "161a6ebcdc89e59e812e108c631ef7d99dd92bc4bd38c6e2269a257899d9768f",
+      "pod": {
+        "id": "493aesy4acrdbg",
+        "ip": "213.173.105.15",
+        "port": 32044,
+        "dc": "EU-RO-1",
+        "created": 1793323213.490359
+      },
+      "volume": {
+        "id": "br5gdlgye1",
+        "dc": "EU-RO-1",
+        "gb": 80,
+        "created": 1793323209.2495034
+      },
+      "jobs": {
+        "data": {
+          "relayed_step": 0,
+          "status": "FINISHED",
+          "home": true,
+          "failed_seen": 0,
+          "fetched": [
+            "data.ledger.json",
+            "../data_train.log"
+          ]
+        },
+        "gate": {
+          "relayed_step": 0,
+          "status": "FINISHED",
+          "home": true,
+          "failed_seen": 0,
+          "fetched": [
+            "gate.json",
+            "../gate_train.log"
+          ]
+        },
+        "rung_e1_60m_L8_r5_s500": {
+          "relayed_step": 0,
+          "status": "FINISHED",
+          "home": true,
+          "failed_seen": 0,
+          "fetched": [
+            "rung.json",
+            "../rung_e1_60m_L8_r5_s500_train.log"
+          ]
+        },
+        "rung_e1_60m_L8_r5_s1000": {
+          "relayed_step": 0,
+          "status": "FINISHED",
+          "home": true,
+          "failed_seen": 0,
+          "fetched": [
+            "rung.json",
+            "../rung_e1_60m_L8_r5_s1000_train.log"
+          ]
+        },
+        "rung_e1_60m_L8_r5_s2500": {
+          "relayed_step": 0,
+          "status": "FINISHED",
+          "home": true,
+          "failed_seen": 0,
+          "fetched": [
+            "rung.json",
+            "../rung_e1_60m_L8_r5_s2500_train.log"
+          ]
+        },
+        "rung_e1_60m_L8_r5_s5000": {
+          "relayed_step": 0,
+          "status": "RUNNING",
+          "home": false,
+          "failed_seen": 0
+        },
+        "post_e1_60m_L8_r5": {
+          "relayed_step": 0,
+          "status": "RUNNING",
+          "home": false,
+          "failed_seen": 0
+        },
+        "pt_e1_60m_L8_r5": {
+          "relayed_step": 7500,
+          "status": "FINISHED",
+          "home": true,
+          "failed_seen": 0
+        }
+      },
+      "spent_usd": 3.8323135911425688,
+      "remote": {
+        "checked_epoch": 1793346284.3828518,
+        "statuses": {
+          "STATUS_rung_e1_60m_L8_r5_s5000": "RUNNING",
+          "STATUS_rung_e1_60m_L8_r5_s2500": "FINISHED",
+          "STATUS_rung_e1_60m_L8_r5_s1000": "FINISHED",
+          "STATUS_rung_e1_60m_L8_r5_s500": "FINISHED",
+          "STATUS_post_e1_60m_L8_r5": "RUNNING",
+          "STATUS_pt_e1_60m_L8_r5": "FINISHED",
+          "STATUS_gate": "FINISHED",
+          "STATUS_data": "FINISHED",
+          "STATUS": "RUNNING"
+        },
+        "pt": {
+          "pt_e1_60m_L8_r5/events.jsonl": {
+            "best_val": 3.342625379562378,
+            "early_stopped": false,
+            "event": "done",
+            "final_step": 10000,
+            "wall_seconds": 12917.80352235
+          }
+        },
+        "score_chunks": {
+          "post_e1_60m_L8_r5/carry5_base/m/score": 17,
+          "post_e1_60m_L8_r5/carry5/m/score": 85
+        },
+        "uploads": {
+          "vocab_llama3_bpe.gguf": 565152
+        },
+        "profile": {}
+      }
+    },
+    "pk_tc_l0_150m_runner": {
+      "state_sha256": "cd87b73327016962eb84d4c26267699ebe27fa7d6f9e37168e0529f88f585797",
+      "pod": {
+        "id": "j73owoxlpwzpoy",
+        "ip": "157.157.221.29",
+        "port": 29649,
+        "dc": "EUR-IS-1",
+        "created": 1793345311.864476
+      },
+      "volume": {
+        "id": "vnwyd6e9jp",
+        "dc": "EUR-IS-1",
+        "gb": 80,
+        "created": 1793341789.7895856
+      },
+      "jobs": {
+        "l0_pick_e1_150m_L8": {
+          "relayed_step": 0,
+          "status": "RUNNING",
+          "home": false,
+          "failed_seen": 0
+        }
+      },
+      "spent_usd": 3.227663759431427,
+      "remote": {
+        "checked_epoch": 1793346284.390894,
+        "statuses": {},
+        "pt": {},
+        "score_chunks": {},
+        "uploads": {},
+        "profile": {}
+      }
+    },
+    "pk_c12_hs1_b_r4_runner": {
+      "state_sha256": "4c059f635be755a6da8093c0a6176f8bb1974311b47fac7ce818b773e13a305c",
+      "pod": {
+        "id": "uodb032gkd485t",
+        "ip": "213.173.105.17",
+        "port": 14021,
+        "dc": "EU-RO-1",
+        "created": 1793336164.1192012
+      },
+      "volume": {
+        "id": "05zud7xylj",
+        "dc": "EU-RO-1",
+        "gb": 80,
+        "created": 1793336156.4094324
+      },
+      "jobs": {
+        "cuda_gate": {
+          "relayed_step": 0,
+          "status": "FINISHED",
+          "home": true,
+          "failed_seen": 0,
+          "fetched": [
+            "cuda_gate.json",
+            "cuda_gate.log",
+            "../cuda_gate_train.log"
+          ]
+        },
+        "data": {
+          "relayed_step": 0,
+          "status": "FINISHED",
+          "home": true,
+          "failed_seen": 0,
+          "fetched": [
+            "data.ledger.json",
+            "human_decontam.json",
+            "tsft_decontam.json",
+            "../data_train.log"
+          ]
+        },
+        "gate": {
+          "relayed_step": 0,
+          "status": "FINISHED",
+          "home": true,
+          "failed_seen": 0,
+          "fetched": [
+            "gate.json",
+            "../gate_train.log"
+          ]
+        },
+        "pt_c12_B_r4": {
+          "relayed_step": 5000,
+          "status": "RUNNING",
+          "home": false,
+          "failed_seen": 0
+        },
+        "post_c12_B_r4": {
+          "relayed_step": 0,
+          "status": "WAITING",
+          "home": false,
+          "failed_seen": 0
+        }
+      },
+      "spent_usd": 1.6805093293763973,
+      "remote": {
+        "checked_epoch": 1793346288.8252487,
+        "statuses": {
+          "STATUS_pt_c12_B_r4": "RUNNING",
+          "STATUS_data": "FINISHED",
+          "STATUS_gate": "FINISHED",
+          "STATUS_cuda_gate": "FINISHED",
+          "STATUS_post_c12_B_r4": "WAITING",
+          "STATUS": "RUNNING"
+        },
+        "pt": {
+          "pt_c12_B_r4/events.jsonl": {
+            "event": "step",
+            "grad_norm": 0.4405536353588104,
+            "loss": 3.2666850090026855,
+            "lr": 0.00016667063755448908,
+            "step": 6769
+          }
+        },
+        "score_chunks": {},
+        "uploads": {
+          "vocab_llama3_bpe.gguf": 565152
+        },
+        "profile": {}
+      }
+    },
+    "pk_c12_hs1_b_r5_runner": {
+      "state_sha256": "5d7245b459e3ad985ba2b32c9f9dd3e18267433f5c8a8fc04a9ff20a76ac4f71",
+      "pod": {
+        "id": "kazmo6lxv4ckp8",
+        "ip": "157.157.221.29",
+        "port": 29651,
+        "dc": "EUR-IS-1",
+        "created": 1793336411.6354122
+      },
+      "volume": {
+        "id": "280o1sbn0i",
+        "dc": "EUR-IS-1",
+        "gb": 80,
+        "created": 1793336407.951874
+      },
+      "jobs": {
+        "cuda_gate": {
+          "relayed_step": 0,
+          "status": "FINISHED",
+          "home": true,
+          "failed_seen": 0,
+          "fetched": [
+            "cuda_gate.json",
+            "cuda_gate.log",
+            "../cuda_gate_train.log"
+          ]
+        },
+        "data": {
+          "relayed_step": 0,
+          "status": "FINISHED",
+          "home": true,
+          "failed_seen": 0,
+          "fetched": [
+            "data.ledger.json",
+            "human_decontam.json",
+            "tsft_decontam.json",
+            "../data_train.log"
+          ]
+        },
+        "gate": {
+          "relayed_step": 0,
+          "status": "FINISHED",
+          "home": true,
+          "failed_seen": 0,
+          "fetched": [
+            "gate.json",
+            "../gate_train.log"
+          ]
+        },
+        "pt_c12_B_r5": {
+          "relayed_step": 5000,
+          "status": "RUNNING",
+          "home": false,
+          "failed_seen": 0
+        },
+        "post_c12_B_r5": {
+          "relayed_step": 0,
+          "status": "WAITING",
+          "home": false,
+          "failed_seen": 0
+        }
+      },
+      "spent_usd": 1.6400393202535164,
+      "remote": {
+        "checked_epoch": 1793346290.0310285,
+        "statuses": {
+          "STATUS_pt_c12_B_r5": "RUNNING",
+          "STATUS_data": "FINISHED",
+          "STATUS_gate": "FINISHED",
+          "STATUS_cuda_gate": "FINISHED",
+          "STATUS_post_c12_B_r5": "WAITING",
+          "STATUS": "RUNNING"
+        },
+        "pt": {
+          "pt_c12_B_r5/events.jsonl": {
+            "event": "step",
+            "grad_norm": 0.4859073758125305,
+            "loss": 3.532431125640869,
+            "lr": 0.0002590903895907104,
+            "step": 5464
+          }
+        },
+        "score_chunks": {},
+        "uploads": {
+          "vocab_llama3_bpe.gguf": 565152
+        },
+        "profile": {}
+      }
+    },
+    "pk_c12_hs1_sgist_r4_runner": {
+      "state_sha256": "c55e637cabe5c17e2560ddd36e1ac63f4384fe4b4eae9ced4c6c20653d574c7b",
+      "pod": {
+        "id": "6x9uqw4y3olp8q",
+        "ip": "157.157.221.29",
+        "port": 25592,
+        "dc": "EUR-IS-1",
+        "created": 1793336412.311998
+      },
+      "volume": {
+        "id": "a7wh33qn0c",
+        "dc": "EUR-IS-1",
+        "gb": 80,
+        "created": 1793336408.8360732
+      },
+      "jobs": {
+        "cuda_gate": {
+          "relayed_step": 0,
+          "status": "FINISHED",
+          "home": true,
+          "failed_seen": 0,
+          "fetched": [
+            "cuda_gate.json",
+            "cuda_gate.log",
+            "../cuda_gate_train.log"
+          ]
+        },
+        "data": {
+          "relayed_step": 0,
+          "status": "FINISHED",
+          "home": true,
+          "failed_seen": 0,
+          "fetched": [
+            "data.ledger.json",
+            "human_decontam.json",
+            "../data_train.log"
+          ]
+        },
+        "gate": {
+          "relayed_step": 0,
+          "status": "FINISHED",
+          "home": true,
+          "failed_seen": 0,
+          "fetched": [
+            "gate.json",
+            "../gate_train.log"
+          ]
+        },
+        "pt_c12_Sgist_r4": {
+          "relayed_step": 5000,
+          "status": "RUNNING",
+          "home": false,
+          "failed_seen": 0
+        },
+        "post_c12_Sgist_r4": {
+          "relayed_step": 0,
+          "status": "WAITING",
+          "home": false,
+          "failed_seen": 0
+        }
+      },
+      "spent_usd": 1.6399507158439837,
+      "remote": {
+        "checked_epoch": 1793346290.4838843,
+        "statuses": {
+          "STATUS_pt_c12_Sgist_r4": "RUNNING",
+          "STATUS_data": "FINISHED",
+          "STATUS_gate": "FINISHED",
+          "STATUS_cuda_gate": "FINISHED",
+          "STATUS_post_c12_Sgist_r4": "WAITING",
+          "STATUS": "RUNNING"
+        },
+        "pt": {
+          "pt_c12_Sgist_r4/events.jsonl": {
+            "event": "step",
+            "grad_norm": 0.4443548619747162,
+            "loss": 3.3500266075134277,
+            "lr": 0.00025567825650796294,
+            "step": 5510
+          }
+        },
+        "score_chunks": {},
+        "uploads": {
+          "vocab_llama3_bpe.gguf": 565152
+        },
+        "profile": {}
+      }
+    },
+    "pk_c12_hs1_sgist_r5_runner": {
+      "state_sha256": "87676c08fa9f93f4dea9a835073fc7586c30acd737c57cfe9e08eac50c588c58",
+      "pod": {
+        "id": "ixf11kb989nzxl",
+        "ip": "157.157.221.29",
+        "port": 29669,
+        "dc": "EUR-IS-1",
+        "created": 1793336658.7439246
+      },
+      "volume": {
+        "id": "swhxav3hok",
+        "dc": "EUR-IS-1",
+        "gb": 80,
+        "created": 1793336410.0144832
+      },
+      "jobs": {
+        "cuda_gate": {
+          "relayed_step": 0,
+          "status": "FINISHED",
+          "home": true,
+          "failed_seen": 0,
+          "fetched": [
+            "cuda_gate.json",
+            "cuda_gate.log",
+            "../cuda_gate_train.log"
+          ]
+        },
+        "data": {
+          "relayed_step": 0,
+          "status": "FINISHED",
+          "home": true,
+          "failed_seen": 0,
+          "fetched": [
+            "data.ledger.json",
+            "human_decontam.json",
+            "../data_train.log"
+          ]
+        },
+        "gate": {
+          "relayed_step": 0,
+          "status": "FINISHED",
+          "home": true,
+          "failed_seen": 0,
+          "fetched": [
+            "gate.json",
+            "../gate_train.log"
+          ]
+        },
+        "pt_c12_Sgist_r5": {
+          "relayed_step": 2500,
+          "status": "RUNNING",
+          "home": false,
+          "failed_seen": 0
+        },
+        "post_c12_Sgist_r5": {
+          "relayed_step": 0,
+          "status": "WAITING",
+          "home": false,
+          "failed_seen": 0
+        }
+      },
+      "spent_usd": 1.6002069857718766,
+      "remote": {
+        "checked_epoch": 1793346293.518479,
+        "statuses": {
+          "STATUS_pt_c12_Sgist_r5": "RUNNING",
+          "STATUS_data": "FINISHED",
+          "STATUS_post_c12_Sgist_r5": "WAITING",
+          "STATUS_gate": "FINISHED",
+          "STATUS_cuda_gate": "FINISHED",
+          "STATUS": "RUNNING"
+        },
+        "pt": {
+          "pt_c12_Sgist_r5/events.jsonl": {
+            "event": "step",
+            "grad_norm": 0.4480573534965515,
+            "loss": 3.493039608001709,
+            "lr": 0.0003488310321699828,
+            "step": 4239
+          }
+        },
+        "score_chunks": {},
+        "uploads": {
+          "vocab_llama3_bpe.gguf": 565152
+        },
+        "profile": {}
+      }
+    },
+    "pk_bf16_profile_1030_runner": {
+      "state_sha256": "c2dc0b575ea3fb2f2c15273811573b343c18098950922f4d4350afa932341bf0",
+      "pod": {
+        "id": "fkf5ecdzbz9j02",
+        "ip": "213.173.105.21",
+        "port": 18668,
+        "dc": "EU-RO-1",
+        "created": 1793341736.421264
+      },
+      "volume": {
+        "id": "1ktdrhaaay",
+        "dc": "EU-RO-1",
+        "gb": 80,
+        "created": 1793341731.5251863
+      },
+      "jobs": {
+        "step_profile_bounded": {
+          "relayed_step": 0,
+          "status": "RUNNING",
+          "home": false,
+          "failed_seen": 0
+        }
+      },
+      "spent_usd": 0.7561695304735943,
+      "remote": {
+        "checked_epoch": 1793346294.498908,
+        "statuses": {
+          "STATUS_step_profile_bounded": "RUNNING",
+          "STATUS": "RUNNING"
+        },
+        "pt": {},
+        "score_chunks": {},
+        "uploads": {
+          "vocab_llama3_bpe.gguf": 565152
+        },
+        "profile": {
+          "step_profile_bounded/profile/wrapper_state.json": {
+            "status": "RUNNING",
+            "completed": 33,
+            "current": "60m_L32/bf16"
+          }
+        }
+      }
+    }
+  },
+  "finalizers": {
+    "size_extension_finalize_runner": {
+      "status": "WAITING",
+      "pending_count": 2,
+      "art": "/mnt/c/ml_artifacts/tiny_chat",
+      "output": "/mnt/c/ml_artifacts/tiny_chat/size_extension_final",
+      "checked": "2026-10-30T05:01:21.982779+00:00",
+      "source_hash_mismatches": [],
+      "source_hash_count": 11
+    },
+    "carry12_hs1_finalizer_v2_20261030": {
+      "status": "WAITING",
+      "pending_count": 4,
+      "art": "/mnt/c/ml_artifacts/tiny_chat",
+      "output": "/mnt/c/ml_artifacts/tiny_chat/carry12_hs1_final_v2",
+      "checked": "2026-10-30T07:41:10.252850+00:00",
+      "source_hash_mismatches": [],
+      "source_hash_count": 56
+    }
+  },
+  "finalizer_audit_utc": "2026-10-30T07:45:18.464548+00:00"
+}
