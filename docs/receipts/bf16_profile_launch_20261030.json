@@ -1,0 +1,20 @@
+{
+  "status": "QUEUED_FOR_EXISTING_WATCHDOG",
+  "commit": "346354e8d34b1b9beac536f72ca1595cbf60edc9",
+  "readiness_sha256": "9212412882a57e3ec8070b8f1ac32919eeb5939ef104635e5b1595e34c94cbcc",
+  "root_checks": [
+    "exact new paths",
+    "all pinned source hashes",
+    "565152-byte vocabulary SHA",
+    "cap2/maxhours4/exact command",
+    "original driver entries unchanged"
+  ],
+  "root_tests": 20,
+  "entry": {
+    "name": "pk-bf16-profile-1030 (ten shapes x four configs; bounded descriptive profile; $2 cap; disable when home)",
+    "enabled": true,
+    "workdir": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch",
+    "state_dir": "/home/jonat/pk_bf16_profile_1030_runner",
+    "command": "python3 -u tools/colab_chat/runner_multi.py --backend runpod --gpu L4 --commit 346354e8d34b1b9beac536f72ca1595cbf60edc9 --jobs tools/colab_chat/step_profile_bounded_v1.json --boot-script tools/colab_chat/boot_commands.sh --name pk-bf16-profile-1030 --art /mnt/c/ml_artifacts/bf16_profile_20261030 --state-dir /home/jonat/pk_bf16_profile_1030_runner --max-hours 4 --volume-gb 80 --max-usd 2 --upload vocab_llama3_bpe.gguf=/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf"
+  }
+}
