@@ -17,7 +17,7 @@ Takes a finished llama-family mtstudio run directory (events.jsonl +
 
 The receipt lives in tools/hf_export_verify.py: transformers loads the
 folder and greedy-generates ARGMAX-IDENTICAL continuations to
-`mtstudio sample --topk 1` on the same prompt â€” the same parity standard
+`mtstudio sample --topk 1` on the same prompt — the same parity standard
 ember.cpp serving is held to.
 
 RoPE: HF Llama rotates every head. A run recorded with rope_heads "first"
@@ -61,7 +61,7 @@ def start_name(out_dir, events=None):
 
 
 def gguf_tokens(path):
-    """Minimal GGUF v3 metadata reader for tokenizer.ggml.tokens â€” no
+    """Minimal GGUF v3 metadata reader for tokenizer.ggml.tokens — no
     dependency, and we are parsing our OWN exporter's output
     (gguf.hpp), so the key set and types are known."""
     import struct
@@ -103,7 +103,7 @@ def gguf_tokens(path):
 
 
 def rope_perm(dk):
-    """paperkiln's apply_rope rotates ADJACENT pairs (x[2j], x[2j+1]) â€”
+    """paperkiln's apply_rope rotates ADJACENT pairs (x[2j], x[2j+1]) —
     the llama.cpp/GGUF interleaved convention. HF Llama rotates HALVES
     (x[j], x[j+dk/2]). Same mathematics under a permutation of each
     head's dimensions, so q/k output rows are permuted at export: HF

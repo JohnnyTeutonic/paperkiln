@@ -45,7 +45,7 @@ def test_llama_bpe_preserves_unicode_spaces_and_control_ids(tmp_path):
     _write_gguf(vocab, tokens, merges, [2, 3, 3, 3] + [1] * (len(tokens) - 4))
     hf_export.write_tokenizer(tmp_path, tokens, str(vocab))
     exported = Tokenizer.from_file(str(tmp_path / "tokenizer.json"))
-    for text in ("hello  cafÃƒÂ© Ã°Å¸Ëœâ‚¬\nworld", "x<|user|>hello", " 123\tÃ¤Â¸Â­Ã¦â€“â€¡"):
+    for text in ("hello  café 😀\nworld", "x<|user|>hello", " 123\t中文"):
         assert exported.encode(text).ids == tok.encode(text).ids
         assert exported.decode(exported.encode(text).ids, skip_special_tokens=False) == text
 
