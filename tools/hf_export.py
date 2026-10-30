@@ -12,12 +12,12 @@ Takes a finished llama-family mtstudio run directory (events.jsonl +
                            microtorch's [in, out] Linear layout to HF's
                            [out, in]; norm gammas squeezed [1,d] -> [d]
     tokenizer.json (+cfg)  exact llama-BPE reconstruction from GGUF, or
-                           native paperkiln byte-BPE, or the legacy word-level
-                           vocabulary, preserving token IDs and byte decoding.
+                           native paperkiln byte-BPE, preserving token IDs and
+                           byte decoding. Legacy word-level exports are refused.
 
 The receipt lives in tools/hf_export_verify.py: transformers loads the
 folder and greedy-generates ARGMAX-IDENTICAL continuations to
-`mtstudio sample --topk 1` on the same prompt — the same parity standard
+`mtstudio sample --topk 1` on the same prompt â€” the same parity standard
 ember.cpp serving is held to.
 
 RoPE: HF Llama rotates every head. A run recorded with rope_heads "first"
@@ -61,7 +61,7 @@ def start_name(out_dir, events=None):
 
 
 def gguf_tokens(path):
-    """Minimal GGUF v3 metadata reader for tokenizer.ggml.tokens — no
+    """Minimal GGUF v3 metadata reader for tokenizer.ggml.tokens â€” no
     dependency, and we are parsing our OWN exporter's output
     (gguf.hpp), so the key set and types are known."""
     import struct
@@ -103,7 +103,7 @@ def gguf_tokens(path):
 
 
 def rope_perm(dk):
-    """paperkiln's apply_rope rotates ADJACENT pairs (x[2j], x[2j+1]) —
+    """paperkiln's apply_rope rotates ADJACENT pairs (x[2j], x[2j+1]) â€”
     the llama.cpp/GGUF interleaved convention. HF Llama rotates HALVES
     (x[j], x[j+dk/2]). Same mathematics under a permutation of each
     head's dimensions, so q/k output rows are permuted at export: HF
@@ -175,9 +175,6 @@ def native_bpe_tokenizer(gguf_path):
 
 
 def write_tokenizer(hf_dir, tokens, gguf_path=None):
-    from tokenizers import Tokenizer
-    from tokenizers.models import WordLevel
-    from tokenizers.pre_tokenizers import Whitespace
     if gguf_path:
         from llama3_bpe import from_gguf, read_gguf_kv
         kind = read_gguf_kv(gguf_path, {"tokenizer.ggml.model"}).get("tokenizer.ggml.model")
@@ -198,17 +195,8 @@ def write_tokenizer(hf_dir, tokens, gguf_path=None):
             return tok.get_vocab(), None
         if kind not in (None, "word", "wordlevel"):
             raise ValueError(f"unsupported tokenizer model: {kind!r}")
-    vocab = {t: i for i, t in enumerate(tokens)}
-    unk = "<unk>" if "<unk>" in vocab else tokens[0]
-    tok = Tokenizer(WordLevel(vocab, unk_token=unk))
-    tok.pre_tokenizer = Whitespace()
-    tok.save(os.path.join(hf_dir, "tokenizer.json"))
-    with open(os.path.join(hf_dir, "tokenizer_config.json"), "w",
-              encoding="utf-8") as f:
-        json.dump({"tokenizer_class": "PreTrainedTokenizerFast",
-                   "unk_token": unk, "model_max_length": 1_000_000}, f,
-                  indent=1)
-    return vocab, unk
+    raise ValueError("legacy word-level HF export is unsupported: paperkiln lowercases ASCII words, "
+                     "keeps apostrophes and splits punctuation by byte; HF Whitespace is not equivalent")
 
 
 def validate_model(m):

@@ -37,6 +37,18 @@ def assess(hf_ids, mt, hf_logits, mt_logits, atol, rtol):
     return delta
 
 
+def source_prompt_ids(source_gguf, text):
+    """Use an independent supported source encoder; never echo exported IDs."""
+    from llama3_bpe import from_gguf, read_gguf_kv
+    kind = read_gguf_kv(str(source_gguf), {"tokenizer.ggml.model"}).get("tokenizer.ggml.model")
+    if kind == "gpt2":
+        return from_gguf(str(source_gguf)).encode(text, add_special_tokens=False).ids
+    if kind == "bpe":
+        import bpe
+        return bpe.read_gguf(str(source_gguf)).encode(text)
+    raise ValueError("source tokenizer is unsupported for independent token-ID parity: " + repr(kind))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("hf_dir", type=Path)
@@ -84,17 +96,8 @@ def main():
     if set(loaded) != allowed or not np.array_equal(loaded["lm_head.weight"].numpy(), loaded["model.embed_tokens.weight"].numpy()):
         raise ValueError("unexpected HF tensor inventory or untied output head")
     prompt = tok.encode(args.prompt, add_special_tokens=False).ids
-    from llama3_bpe import from_gguf, read_gguf_kv
     source_gguf = source.with_suffix(".gguf")
-    kind = read_gguf_kv(str(source_gguf), {"tokenizer.ggml.model"}).get("tokenizer.ggml.model")
-    tokenizer_ids_checked = kind in ("gpt2", "bpe")
-    if kind == "gpt2":
-        source_ids = from_gguf(str(source_gguf)).encode(args.prompt, add_special_tokens=False).ids
-    elif kind == "bpe":
-        import bpe
-        source_ids = bpe.read_gguf(str(source_gguf)).encode(args.prompt)
-    else:
-        source_ids = prompt
+    source_ids = source_prompt_ids(source_gguf, args.prompt)
     if source_ids != prompt:
         raise ValueError("exported prompt tokenizer IDs differ from source GGUF")
     if not prompt or len(prompt) + args.tokens > model.config.max_position_embeddings:
@@ -140,7 +143,7 @@ def main():
                "atol": args.atol, "rtol": args.rtol, "spec": str(spec),
                "scope": "raw token IDs, source tensor mapping and output logits; not chat rendering",
                "score_spec_delta": delta_spec, "mapped_tensors": len(mapped),
-               "source_prompt_tokenizer_ids_checked": tokenizer_ids_checked,
+               "source_prompt_tokenizer_ids_checked": True,
                "versions": {"torch": torch.__version__},
                "sha256": {str(p.resolve()): hashlib.sha256(p.read_bytes()).hexdigest()
                           for p in [Path(__file__), Path(__file__).with_name("hf_export.py"),

@@ -36,7 +36,7 @@ def test_llama_bpe_preserves_unicode_spaces_and_control_ids(tmp_path):
         pre_tokenizers.Split(Regex(LLAMA3), behavior="isolated"),
         pre_tokenizers.ByteLevel(add_prefix_space=False, use_regex=False)])
     tok.decoder = decoders.ByteLevel()
-    tok.train_from_iterator(["hello  café 😀\nworld" * 20], trainers.BpeTrainer(
+    tok.train_from_iterator(["hello  cafÃƒÂ© Ã°Å¸Ëœâ‚¬\nworld" * 20], trainers.BpeTrainer(
         vocab_size=300, initial_alphabet=pre_tokenizers.ByteLevel.alphabet(), special_tokens=SPECIALS))
     data = json.loads(tok.to_str())
     tokens = [t for t, _ in sorted(tok.get_vocab().items(), key=lambda x: x[1])]
@@ -45,7 +45,7 @@ def test_llama_bpe_preserves_unicode_spaces_and_control_ids(tmp_path):
     _write_gguf(vocab, tokens, merges, [2, 3, 3, 3] + [1] * (len(tokens) - 4))
     hf_export.write_tokenizer(tmp_path, tokens, str(vocab))
     exported = Tokenizer.from_file(str(tmp_path / "tokenizer.json"))
-    for text in ("hello  café 😀\nworld", "x<|user|>hello", " 123\t中文"):
+    for text in ("hello  cafÃƒÂ© Ã°Å¸Ëœâ‚¬\nworld", "x<|user|>hello", " 123\tÃ¤Â¸Â­Ã¦â€“â€¡"):
         assert exported.encode(text).ids == tok.encode(text).ids
         assert exported.decode(exported.encode(text).ids, skip_special_tokens=False) == text
 
@@ -187,3 +187,32 @@ def test_native_rejects_invalid_layout_or_ranked_merge(native_fixture, monkeypat
     monkeypatch.setattr(bpe, "read_gguf", lambda _: native)
     with pytest.raises(ValueError, match="invalid native"):
         hf_export.native_bpe_tokenizer(str(native_fixture))
+
+
+@pytest.mark.parametrize("kind", [None, "word", "wordlevel"])
+def test_legacy_word_level_export_cannot_silently_change_token_ids(tmp_path, monkeypatch, kind):
+    # Native ASCII word encoding yields [hello, !, !, it's]; HF Whitespace
+    # previously produced [UNK, UNK, it, UNK, s] for this same example.
+    import llama3_bpe
+    from tokenizers import Tokenizer, models, pre_tokenizers
+    vocab = {"<unk>": 0, "hello": 1, "!": 2, "it's": 3, "it": 4, "s": 5}
+    old = Tokenizer(models.WordLevel(vocab, unk_token="<unk>"))
+    old.pre_tokenizer = pre_tokenizers.Whitespace()
+    assert old.encode("Hello!! it's").ids != [1, 2, 2, 3]
+    monkeypatch.setattr(llama3_bpe, "read_gguf_kv", lambda *a: {"tokenizer.ggml.model": kind})
+    with pytest.raises(ValueError, match="legacy word-level HF export is unsupported"):
+        hf_export.write_tokenizer(tmp_path, list(vocab), "legacy.gguf")
+    assert not (tmp_path / "tokenizer.json").exists()
+
+
+def test_missing_gguf_cannot_select_unchecked_wordlevel_fallback(tmp_path):
+    with pytest.raises(ValueError, match="legacy word-level HF export is unsupported"):
+        hf_export.write_tokenizer(tmp_path, ["<unk>", "hello"])
+
+
+@pytest.mark.parametrize("kind", [None, "word", "wordlevel", "unknown"])
+def test_verifier_refuses_unsupported_source_encoder(monkeypatch, kind):
+    import llama3_bpe
+    monkeypatch.setattr(llama3_bpe, "read_gguf_kv", lambda *a: {"tokenizer.ggml.model": kind})
+    with pytest.raises(ValueError, match="unsupported for independent token-ID parity"):
+        verify.source_prompt_ids("unused.gguf", "Hello!! it's")
