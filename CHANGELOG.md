@@ -7,6 +7,23 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Registered five-seed size extension complete** (30 Oct). All 15 selected 20M/60M/150M
+  summaries are home. Primary size slope is EQUIVALENT within the registered ±0.01 Y/doubling
+  interval; the 60M→150M secondary remains unresolved. Language-model panel losses decrease with size,
+  carry means do not. The fixed-token scope and unchanged original 150M pick are explicit in
+  `experiments/tiny_chat_2026-10/size/RESULTS.md`; independent source/input/report and OLS audits passed.
+
+- **BF16/flash per-shape profile complete** (30 Oct). All 40 cells/80 passes/2,400 finite-loss
+  steps verified against raw events/specs and 4,718 immutable source files. Single descriptive
+  BF16/flash/combined speedups span 1.23–2.01×/1.01–1.07×/1.34–2.09×; no universal or significance
+  claim. Raw timing arithmetic and deterministic corpus hash independently checked. Records:
+  `docs/receipts/bf16_profile_20261030/RESULTS.md`. Attention-product optimization remains open.
+
+- **Future data-cache resume provenance** (30 Oct, 4050567c7). New builds atomically save and
+  verify `human.cache.json`, restoring exact human/decontamination/fetch provenance on resume.
+  Legacy caches without this proof refuse rather than infer provenance. Eleven tests pass;
+  historical experiment ledgers and frozen jobs/results remain unchanged.
+
 - **Studio sweep heatmap** (30 Oct). Opens the existing mtsweep `cells.jsonl` contract,
   with typed factor axes and explicit fixed levels for all other factors. Saved means,
   seed counts and population SD remain distinct from missing/ambiguous coordinates; no

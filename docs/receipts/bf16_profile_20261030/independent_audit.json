@@ -1,0 +1,180 @@
+{
+  "utc": "2026-10-30T10:12:51.406337+00:00",
+  "pin": "346354e8d34b1b9beac536f72ca1595cbf60edc9",
+  "git_source_files_rehashed": 4718,
+  "cells_verified": 40,
+  "passes_verified": 80,
+  "finite_loss_steps_verified": 2400,
+  "timed_steps_per_profile": 22,
+  "negative_idle_cells": [],
+  "raw_archive_sha256": "e6d7e812ba8deb6a0cd03556f963fab68ae9410137f3cfc26e2909cd1dc1ad2d",
+  "source_manifest_sha256": "5d496a5599a0b8cfaec63f50459ecad2cd2a9e3015ac5ffdfc96fa1d2ed4da7d",
+  "profile_sha256": "5033e20e6a22469036923f583485004842988a5d752ce5c3a87177896d378b46",
+  "scope": "descriptive per-shape throughput and instrumented op timing; not a new noise-floor gate",
+  "summary": [
+    {
+      "shape": "20m_L2",
+      "tok_s": {
+        "fp32": 36307.28644662554,
+        "bf16": 68037.57204866542,
+        "flash": 36650.24003366919,
+        "bf16_flash": 69973.11049855487
+      },
+      "speedup": {
+        "fp32": 1.0,
+        "bf16": 1.8739371268818394,
+        "flash": 1.0094458611647505,
+        "bf16_flash": 1.927247044513245
+      },
+      "fp32_attention_gpu_fraction": 0.1602498079307238
+    },
+    {
+      "shape": "20m_L4",
+      "tok_s": {
+        "fp32": 34154.46966269095,
+        "bf16": 54507.80782438735,
+        "flash": 35551.11292915194,
+        "bf16_flash": 57921.55922154505
+      },
+      "speedup": {
+        "fp32": 1.0,
+        "bf16": 1.5959201932486635,
+        "flash": 1.0408919617330972,
+        "bf16_flash": 1.6958705491134114
+      },
+      "fp32_attention_gpu_fraction": 0.20733486614865604
+    },
+    {
+      "shape": "20m_L8",
+      "tok_s": {
+        "fp32": 29752.71524658374,
+        "bf16": 44993.1204725451,
+        "flash": 31186.971568863042,
+        "bf16_flash": 47371.736554976604
+      },
+      "speedup": {
+        "fp32": 1.0,
+        "bf16": 1.5122357774627408,
+        "flash": 1.048205896853195,
+        "bf16_flash": 1.5921819626333402
+      },
+      "fp32_attention_gpu_fraction": 0.26163730172594507
+    },
+    {
+      "shape": "20m_L16",
+      "tok_s": {
+        "fp32": 26627.615080994234,
+        "bf16": 35977.899831470735,
+        "flash": 28534.034122014866,
+        "bf16_flash": 38932.928299916835
+      },
+      "speedup": {
+        "fp32": 1.0,
+        "bf16": 1.351149914178772,
+        "flash": 1.071595561045246,
+        "bf16_flash": 1.462125998948575
+      },
+      "fp32_attention_gpu_fraction": 0.33927473199192476
+    },
+    {
+      "shape": "20m_L32",
+      "tok_s": {
+        "fp32": 22650.16975667665,
+        "bf16": 27866.672177978864,
+        "flash": 24196.785319090173,
+        "bf16_flash": 30270.374065732838
+      },
+      "speedup": {
+        "fp32": 1.0,
+        "bf16": 1.2303074315707736,
+        "flash": 1.0682827360248646,
+        "bf16_flash": 1.3364303398569435
+      },
+      "fp32_attention_gpu_fraction": 0.3375136665601107
+    },
+    {
+      "shape": "60m_L4",
+      "tok_s": {
+        "fp32": 15298.983739353625,
+        "bf16": 30758.873020359242,
+        "flash": 15732.686243837712,
+        "bf16_flash": 32026.21627571454
+      },
+      "speedup": {
+        "fp32": 1.0,
+        "bf16": 2.0105174006583257,
+        "flash": 1.0283484518888972,
+        "bf16_flash": 2.0933557954789768
+      },
+      "fp32_attention_gpu_fraction": 0.16172403481318215
+    },
+    {
+      "shape": "60m_L8",
+      "tok_s": {
+        "fp32": 15150.971367088887,
+        "bf16": 24994.781429042476,
+        "flash": 15655.147843213716,
+        "bf16_flash": 26206.927736001937
+      },
+      "speedup": {
+        "fp32": 1.0,
+        "bf16": 1.649714782204422,
+        "flash": 1.0332768417225053,
+        "bf16_flash": 1.7297193098080117
+      },
+      "fp32_attention_gpu_fraction": 0.2220542049166843
+    },
+    {
+      "shape": "60m_L16",
+      "tok_s": {
+        "fp32": 13720.350493935417,
+        "bf16": 20722.42539156051,
+        "flash": 14507.99891346612,
+        "bf16_flash": 22099.356074371524
+      },
+      "speedup": {
+        "fp32": 1.0,
+        "bf16": 1.510342275929475,
+        "flash": 1.057407310394793,
+        "bf16_flash": 1.6106990914073036
+      },
+      "fp32_attention_gpu_fraction": 0.27971362814205725
+    },
+    {
+      "shape": "60m_L32",
+      "tok_s": {
+        "fp32": 11080.113843415562,
+        "bf16": 15092.84866941081,
+        "flash": 11732.626455588936,
+        "bf16_flash": 16443.85892710104
+      },
+      "speedup": {
+        "fp32": 1.0,
+        "bf16": 1.362156461811071,
+        "flash": 1.058890424899482,
+        "bf16_flash": 1.484087542735215
+      },
+      "fp32_attention_gpu_fraction": 0.3365907730713641
+    },
+    {
+      "shape": "pk_base_v1",
+      "tok_s": {
+        "fp32": 10575.347887842447,
+        "bf16": 17978.96869299095,
+        "flash": 11148.451948081856,
+        "bf16_flash": 19047.452215861056
+      },
+      "speedup": {
+        "fp32": 1.0,
+        "bf16": 1.7000829555366024,
+        "flash": 1.0541924545951114,
+        "bf16_flash": 1.801118262762613
+      },
+      "fp32_attention_gpu_fraction": 0.246577703746517
+    }
+  ],
+  "supplement_utc": "2026-10-30T10:14:13.995053+00:00",
+  "independent_raw_timing_arithmetic_cells": 40,
+  "synthetic_corpus_reconstructed_sha256": "713cb860d395d01bfb7001a4028ba5b263cb94b32739b3b41c1b3a8e5834c99a",
+  "clean_timing_limitation": "Clean throughput uses recorded subprocess line-arrival intervals; those wall-clock arrival timestamps are not retained in raw event JSONL. Reported clean speedups are recomputed from recorded throughput, while instrumented phase/op/wall/GPU/idle arithmetic is independently recomputed from raw events."
+}

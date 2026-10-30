@@ -1,0 +1,11 @@
+{
+ "status": "COMPLETE",
+ "cells": 40,
+ "steps": 30,
+ "warm": 8,
+ "profile_sha256": "5033e20e6a22469036923f583485004842988a5d752ce5c3a87177896d378b46",
+ "source_manifest_sha256": "5d496a5599a0b8cfaec63f50459ecad2cd2a9e3015ac5ffdfc96fa1d2ed4da7d",
+ "synth_sha256": "713cb860d395d01bfb7001a4028ba5b263cb94b32739b3b41c1b3a8e5834c99a",
+ "scope": "descriptive per-shape throughput and instrumented op timing; not a new noise-floor gate",
+ "negative_idle_cells": []
+}

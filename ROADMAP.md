@@ -10,13 +10,12 @@ where one of those documents carries a plan, this file wins.*
 0. **Tiny chat from scratch (LOCAL_LLM_WORK.md E1;
    `experiments/tiny_chat_2026-10/`, `experiments/tiny_chat_long_2026-10/`).**
    E5, E1 at 20M/60M, recursion and MoR are home and analysed
-   (`experiments/tiny_chat_2026-10/analysis_2026-10-28.json`). Remaining: the registered size
-   extension's two 60M post summaries (20M seeds 4/5 and all five 150M runs are home), Stage L0 on the registered 150M
-   pick, and Carry-12's registered HS1 extension (B/S-gist seeds 4/5, training under the watchdog). The complete
-   three-seed Carry-12 core is analysed in `experiments/tiny_chat_long_2026-10/RESULTS.md`:
-   HT-SFT SUPPORTED, other primary tests unresolved; S-full does not trigger. The size extension
-   rule has fired; its pins and 150M pick inputs passed
-   `experiments/tiny_chat_2026-10/size/readiness_2026-10-30.json`.
+   (`experiments/tiny_chat_2026-10/analysis_2026-10-28.json`). Remaining: Stage L0 on the unchanged registered 150M
+   pick and Carry-12's registered HS1 extension (B/S-gist seeds 4/5, post-training under the watchdog).
+   The complete three-seed Carry-12 core is analysed in `experiments/tiny_chat_long_2026-10/RESULTS.md`:
+   HT-SFT SUPPORTED, other primary tests unresolved; S-full does not trigger. The registered size
+   extension is complete at five matched seeds (`experiments/tiny_chat_2026-10/size/RESULTS.md`):
+   primary size slope EQUIVALENT within ±0.01 Y/doubling under this fixed-token protocol; secondary 60M→150M step unresolved.
 1. **The chat model (LOCAL_LLM_WORK.md E2).** Full preference judging at 256 new tokens
    with the rubric unchanged, then DPO + NLL and the five-part gate in `experiments/chat_general/PLAN.md`.
    The winner, both pilots and full sampling are complete (3,020 candidate rows home in
@@ -105,13 +104,11 @@ advisory steps that cannot fail the build.
   - Re-measure the speedup on the op-set configuration over a full run
     before any paper quotes it. The 21x and 30.5x figures were measured
     over nine steps with deferral on.
-- **BF16/flash per-shape throughput profile.** The three-seed noise-floor gate is complete
-  (25 Oct): flash, bf16 and bf16+flash pass the pre-stated primary and curve rules; 60M is
-  one-seed descriptive evidence. The full per-shape profile remains open: its original campaign
-  did not finish. Historical loss arithmetic and third-party CUDA completion were rechecked
-  on 30 Oct (`docs/receipts/roadmap_device_reconciliation_20261030.json`); do not rerun those
-  completed gates. BF16 inside attention products is conditional on attention showing up in
-  the profile (launch count is already closed, LOCAL_LLM_STACK.md section 10, 28 Oct).
+- **BF16 inside attention products.** The completed 40-cell descriptive profile
+  (`docs/receipts/bf16_profile_20261030/RESULTS.md`) measures attention spans at 16–34% of
+  baseline instrumented GPU-span time, satisfying the condition to investigate this optimization.
+  Implementation/parity and any incremental end-to-end benefit remain open; the per-shape profile,
+  noise-floor gate and launch-count work are complete and should not be rerun as unfinished tasks.
 - **Mamba:** a parallel scan and device kernels for Mamba-1's `ops::conv1d_causal` and
   `ops::selective_scan` (sequential, host only; the mamba preset's `ssm: "mamba1"`).
 - **int4/NF4 quantisation.**

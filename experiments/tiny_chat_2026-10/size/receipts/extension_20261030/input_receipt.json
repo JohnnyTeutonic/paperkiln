@@ -1,0 +1,109 @@
+{
+ "kind": "REGISTERED_EXTENSION_INPUT_CHECK_NOT_A_SCIENTIFIC_RESULT",
+ "registration_sha256": "d18537a5e388e3ef7bab0102c7ea1159e67e1d4d8af263026caaf4ebfcb59a2f",
+ "auditor_sha256": "b59544923798552caeeff205188265ddf04760f2248f6b2b0eb8f6bd2c002f75",
+ "ledger_normalizer_sha256": "612c76d0c9d6135716e451388a9e68bfb074ac9f3394c55ed879d72462410f7c",
+ "pending": [],
+ "errors": [],
+ "ledgers": [
+  {
+   "size": "20m",
+   "seed": 4,
+   "path": "/mnt/c/ml_artifacts/tiny_chat/e5_s35_r4/data/data.ledger.json",
+   "sha256": "567ea529118dd5a07c476e360ca9b40f3eb30c9658830e2a0f99dd816145e65e",
+   "reference": "/mnt/c/ml_artifacts/tiny_chat/e5/data/data.ledger.json",
+   "reference_sha256": "567ea529118dd5a07c476e360ca9b40f3eb30c9658830e2a0f99dd816145e65e",
+   "matches": true
+  },
+  {
+   "size": "20m",
+   "seed": 5,
+   "path": "/mnt/c/ml_artifacts/tiny_chat/e5_s35_r5/data/data.ledger.json",
+   "sha256": "567ea529118dd5a07c476e360ca9b40f3eb30c9658830e2a0f99dd816145e65e",
+   "reference": "/mnt/c/ml_artifacts/tiny_chat/e5/data/data.ledger.json",
+   "reference_sha256": "567ea529118dd5a07c476e360ca9b40f3eb30c9658830e2a0f99dd816145e65e",
+   "matches": true
+  },
+  {
+   "size": "60m",
+   "seed": 4,
+   "path": "/mnt/c/ml_artifacts/tiny_chat/e1_60m_L8_r4/data/data.ledger.json",
+   "sha256": "698bd6bf61e7953f81f7a673f56ec8f99fcf0947ae14689d92be00a92e3d3fc8",
+   "reference": "/mnt/c/ml_artifacts/tiny_chat/e1_60m_L8/data/data.ledger.json",
+   "reference_sha256": "698bd6bf61e7953f81f7a673f56ec8f99fcf0947ae14689d92be00a92e3d3fc8",
+   "matches": true
+  },
+  {
+   "size": "60m",
+   "seed": 5,
+   "path": "/mnt/c/ml_artifacts/tiny_chat/e1_60m_L8_r5/data/data.ledger.json",
+   "sha256": "698bd6bf61e7953f81f7a673f56ec8f99fcf0947ae14689d92be00a92e3d3fc8",
+   "reference": "/mnt/c/ml_artifacts/tiny_chat/e1_60m_L8/data/data.ledger.json",
+   "reference_sha256": "698bd6bf61e7953f81f7a673f56ec8f99fcf0947ae14689d92be00a92e3d3fc8",
+   "matches": true
+  },
+  {
+   "size": "150m",
+   "seed": 4,
+   "path": "/mnt/c/ml_artifacts/tiny_chat/e1_150m_r4/data/data.ledger.json",
+   "sha256": "698bd6bf61e7953f81f7a673f56ec8f99fcf0947ae14689d92be00a92e3d3fc8",
+   "reference": "/mnt/c/ml_artifacts/tiny_chat/e1_150m_r1/data/data.ledger.json",
+   "reference_sha256": "698bd6bf61e7953f81f7a673f56ec8f99fcf0947ae14689d92be00a92e3d3fc8",
+   "matches": true
+  },
+  {
+   "size": "150m",
+   "seed": 5,
+   "path": "/mnt/c/ml_artifacts/tiny_chat/e1_150m_r5/data/data.ledger.json",
+   "sha256": "698bd6bf61e7953f81f7a673f56ec8f99fcf0947ae14689d92be00a92e3d3fc8",
+   "reference": "/mnt/c/ml_artifacts/tiny_chat/e1_150m_r1/data/data.ledger.json",
+   "reference_sha256": "698bd6bf61e7953f81f7a673f56ec8f99fcf0947ae14689d92be00a92e3d3fc8",
+   "matches": true
+  }
+ ],
+ "summaries": [
+  {
+   "size": "20m",
+   "seed": 4,
+   "path": "/mnt/c/ml_artifacts/tiny_chat/e5_s35_r4/post_e5_s35_r4/summary.json",
+   "sha256": "881da61a5669fdcbf08ff4098e4e272ab93fcb3bd194f20acd82c8dfbd4208f9",
+   "valid": true
+  },
+  {
+   "size": "20m",
+   "seed": 5,
+   "path": "/mnt/c/ml_artifacts/tiny_chat/e5_s35_r5/post_e5_s35_r5/summary.json",
+   "sha256": "986f70c0a0638beda92ed92802fd6776090fe96797e067328f5aa54a3105090f",
+   "valid": true
+  },
+  {
+   "size": "60m",
+   "seed": 4,
+   "path": "/mnt/c/ml_artifacts/tiny_chat/e1_60m_L8_r4/post_e1_60m_L8_r4/summary.json",
+   "sha256": "080f19c22fd38a534bded1cd0b0310088ad04fcf925e6167ca30775012ef7a45",
+   "valid": true
+  },
+  {
+   "size": "60m",
+   "seed": 5,
+   "path": "/mnt/c/ml_artifacts/tiny_chat/e1_60m_L8_r5/post_e1_60m_L8_r5/summary.json",
+   "sha256": "c6b70c2afde298dc14295735004ac2808421370e28749f5c51e3025a56a156d6",
+   "valid": true
+  },
+  {
+   "size": "150m",
+   "seed": 4,
+   "path": "/mnt/c/ml_artifacts/tiny_chat/e1_150m_r4/post_e1_150m_L8_r4/summary.json",
+   "sha256": "6dcf4c55529111e089781ef4e3e16b9db20baf8f8a1756e3b012a6a63bc83c7c",
+   "valid": true
+  },
+  {
+   "size": "150m",
+   "seed": 5,
+   "path": "/mnt/c/ml_artifacts/tiny_chat/e1_150m_r5/post_e1_150m_L8_r5/summary.json",
+   "sha256": "f67068f329855778636b6e91dda136e33a675b3f4555b0a98ccd44c3dc58f48b",
+   "valid": true
+  }
+ ],
+ "ready": true
+}

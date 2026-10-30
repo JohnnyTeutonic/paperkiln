@@ -1,0 +1,20 @@
+[
+ [
+  "/usr/bin/python3",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/experiments/tiny_chat_2026-10/size/analyze_size.py",
+  "--art",
+  "/mnt/c/ml_artifacts/tiny_chat",
+  "--depth-choice",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/experiments/tiny_chat_2026-10/size/depth_choice.json",
+  "--out",
+  "/mnt/c/ml_artifacts/tiny_chat/size_extension_final/.incoming/analysis_size.json"
+ ],
+ [
+  "/usr/bin/python3",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/experiments/tiny_chat_2026-10/analyze.py",
+  "--art",
+  "/mnt/c/ml_artifacts/tiny_chat",
+  "--out",
+  "/mnt/c/ml_artifacts/tiny_chat/size_extension_final/.incoming/analysis_tiny_chat.json"
+ ]
+]
