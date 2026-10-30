@@ -1,0 +1,21 @@
+{
+ "_comment": "Full E10.2 continuation after audited both-model first100 pilot. Exact originalbinary/models/pools; hash-verified prefix reused without manifest editing; only f883healthrepair; all original candidate/parity/speed gates unchanged.",
+ "max_parallel": 1,
+ "jobs": [
+  {
+   "name": "e10_self_full_v3",
+   "cmd": [
+    "bash",
+    "-c",
+    "set -eu; out=\"$1\"; mkdir -p \"$out\"; for f in ember.tgz tinyllama_server self_output_pool.py self_output_gate.py self_output_vm.sh pilot_prefix.tgz pick.gguf pk.gguf eval100.jsonl pick_pool.jsonl pk_pool.jsonl pick_table.bin pk_table.bin COMMITS INPUT_SHA256SUMS; do cp \"/content/chat/upload/$f\" \"/content/$f\"; done; rc=0; bash /content/self_output_vm.sh || rc=$?; cp /content/vm.log \"$out/vm.log\"; if [ -s /content/out.zip ]; then cp /content/out.zip \"$out/out.zip\"; fi; if [ -s /content/out/gate_summary.json ]; then cp /content/out/gate_summary.json \"$out/gate_summary.json\"; fi; exit \"$rc\"",
+    "e10-self-full-v3",
+    "{out}"
+   ],
+   "outputs": [
+    "out.zip",
+    "vm.log",
+    "gate_summary.json"
+   ]
+  }
+ ]
+}

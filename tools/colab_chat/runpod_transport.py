@@ -472,7 +472,7 @@ class RunPodTransport:
         """(0, pod id) once the pod answers over ssh and the prelude has run; (1, why) otherwise
         (the runner logs it and retries next tick). A pod that fails to come up is terminated."""
         R = self.R(st)
-        why = self.over_budget(st)
+        why = self._operation_limit() or self.over_budget(st)
         if why:
             return 1, f"refused: {why}"
         try:
@@ -488,6 +488,9 @@ class RunPodTransport:
             else:
                 body["supportPublicIp"] = True
             digest = image_digest(self.image)
+            why = self._operation_limit() or self.over_budget(st)
+            if why:
+                return 1, f"refused: {why}"
             R["creating"] = time.time()
             st.save()
             try:
