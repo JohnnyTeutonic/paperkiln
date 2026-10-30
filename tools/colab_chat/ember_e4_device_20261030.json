@@ -1,0 +1,21 @@
+{
+ "_comment": "E4 CUDA gate,30Oct2026; command-only boot; pinned Ember archive includes all10 synthetic families and fail-closed receipt checker. Root watchdog owns launch and budget. No training corpus or mtstudio build required.",
+ "max_parallel": 1,
+ "jobs": [
+  {
+   "name": "e4_device",
+   "cmd": [
+    "bash",
+    "-c",
+    "set -eu; out=\"$1\"; mkdir -p \"$out\"; for f in ember.tgz small.tgz COMMITS e4_vm.sh; do cp \"/content/chat/upload/$f\" \"/content/$f\"; done; rc=0; bash /content/e4_vm.sh || rc=$?; cp /content/vm.log \"$out/vm.log\"; if [ -s /content/out.zip ]; then cp /content/out.zip \"$out/out.zip\"; fi; if [ -s /content/out/gate_summary.json ]; then cp /content/out/gate_summary.json \"$out/gate_summary.json\"; fi; exit \"$rc\"",
+    "e4-job",
+    "{out}"
+   ],
+   "outputs": [
+    "out.zip",
+    "vm.log",
+    "gate_summary.json"
+   ]
+  }
+ ]
+}

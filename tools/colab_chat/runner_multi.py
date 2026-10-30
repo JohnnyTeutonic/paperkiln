@@ -67,6 +67,7 @@ ADOPT = os.path.join(os.path.dirname(HERE), "colab_adopt.py")
 CHUNK = 45 * 1024 * 1024
 TICK = 240
 NAME = ART = HOME = None
+BOOT_SCRIPT = "tools/colab_chat/boot_jobs.sh"
 T = None  # the Transport (ColabTransport unless --backend runpod)
 
 
@@ -989,12 +990,7 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
         log(f"input reassembly failed: {out.strip()[-160:]}")
         return False
     log("inputs: " + " ".join(ln for ln in out.splitlines() if ln and not ln.startswith("[")))
-    url = f"https://raw.githubusercontent.com/JohnnyTeutonic/paperkiln/{commit}/tools/colab_chat/boot_jobs.sh"
-    rc, out = exec_py(
-        "import subprocess, urllib.request\n"
-        f"open('/content/boot_jobs.sh','wb').write(urllib.request.urlopen('{url}').read())\n"
-        f"subprocess.Popen('nohup bash /content/boot_jobs.sh {commit} {jobs_rel} > /dev/null 2>&1 &', shell=True)\n"
-        "print('BOOTED')\n")
+    rc, out = exec_py(boot_launch_code(commit, jobs_rel, BOOT_SCRIPT))
     if "BOOTED" not in out:
         log(f"boot exec failed: {out.strip()[-160:]}")
         return False
@@ -1002,6 +998,18 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
     st.save()
     log("boot launched")
     return True
+
+
+def boot_launch_code(commit, jobs_rel, boot_script="tools/colab_chat/boot_jobs.sh"):
+    """Pinned boot selection; the legacy training boot remains the default."""
+    if boot_script not in ("tools/colab_chat/boot_jobs.sh", "tools/colab_chat/boot_commands.sh"):
+        raise ValueError("unsupported boot script")
+    url = f"https://raw.githubusercontent.com/JohnnyTeutonic/paperkiln/{commit}/{boot_script}"
+    return (
+        "import subprocess, urllib.request\n"
+        f"open('/content/boot_jobs.sh','wb').write(urllib.request.urlopen('{url}').read())\n"
+        f"subprocess.Popen('nohup bash /content/boot_jobs.sh {commit} {jobs_rel} > /dev/null 2>&1 &', shell=True)\n"
+        "print('BOOTED')\n")
 
 
 def vm_status(jobs):
@@ -1029,10 +1037,13 @@ def make_transport(a):
 
 
 def main():
-    global NAME, ART, HOME, T
+    global NAME, ART, HOME, T, BOOT_SCRIPT
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--commit", required=True)
     ap.add_argument("--jobs", required=True, help="jobs JSON, path relative to the paperkiln repo root")
+    ap.add_argument("--boot-script", default="tools/colab_chat/boot_jobs.sh",
+                    choices=["tools/colab_chat/boot_jobs.sh", "tools/colab_chat/boot_commands.sh"],
+                    help="pinned VM boot; command-only boot skips trainer and corpus setup")
     ap.add_argument("--max-hours", type=float, default=23.5)
     ap.add_argument("--name", required=True, help="Colab session name (this run's own)")
     ap.add_argument("--art", required=True, help="local artifact directory")
@@ -1047,6 +1058,7 @@ def main():
     ap.add_argument("--max-usd", type=float, default=None,
                     help="RunPod: stop and create nothing once this runner's ledger passes this many dollars")
     a = ap.parse_args()
+    BOOT_SCRIPT = a.boot_script
     NAME, ART, HOME = a.name, a.art, os.path.expanduser(a.state_dir)
     os.makedirs(HOME, exist_ok=True)
     os.makedirs(ART, exist_ok=True)
