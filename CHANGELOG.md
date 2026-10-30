@@ -7,6 +7,16 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Studio LLM extraction and evidence review** (31 Oct). With an explicitly configured
+  `ANTHROPIC_API_KEY`, Studio defaults to the source-verified LLM extractor, with a per-job
+  spend cap, background status, cancellation and original extraction download. The worker
+  re-verifies raw replies against source before atomic publication; failures never fall back
+  to the rule extractor. Evidence, unresolved values and unsupported mechanisms are reviewed
+  without silently approximating them in the coarse form builder. Owned workers stop if Studio
+  exits; paid routes reject foreign origins. Offline worker, HTTP and browser checks use no API.
+  Validation: `docs/receipts/studio_extractor_20261031/validation.json`.
+
+
 - **Four missing evaluation hash manifests added** (30 Oct). CI exposed absent manifests for
   IF-tiny, IF-distance and the two conversation-v2 evaluation sets. Each dataset is byte-identical
   to its first Git commit; both IF sets also regenerate exactly and match the recorded result

@@ -88,8 +88,7 @@ that cannot fail the build.
   6 / 0 / 1; `papers/bench_score.py` against `papers/bench_truth_structure.json`,
   `papers/llm_extract_receipts/2026-10-27_bench_scores.json`). The same replies rescored by the 28 Oct
   verifier and scorer, with Mamba, Qwen3 and OLMo 2 labelled (43 papers; OLMo 2 has no reply under the
-  bench's prompt): `2026-10-28_bench_scores.json` (`experiments/arxiv_chain_2026-10-28_e3/`). Open: a
-  studio button that runs it instead of `fetch.py` when a key is configured; prompt optimisation later.
+  bench's prompt): `2026-10-28_bench_scores.json` (`experiments/arxiv_chain_2026-10-28_e3/`). Open: prompt optimisation.
 - **Publish `paperkiln-fetch` 0.1.1.** Wheel and source archive are built, licensed, metadata-checked
   and smoke-tested from an isolated installation (`docs/receipts/fetch_release_011_build_20261030.json`).
   Publication is blocked by a missing configured PyPI API token;0.1.0 is still the public release.
