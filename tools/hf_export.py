@@ -30,6 +30,9 @@ RoPE: HF Llama rotates every head. A run recorded with rope_heads "first"
 head 0 only, so with more than one head HF cannot reproduce it; such runs
 are refused unless --allow-legacy-rope is given.
 
+BitLinear master weights and learned QK temperatures are refused: a standard HF
+Llama/GPT2 configuration cannot reproduce those effective forward operations.
+
 Exports stage all five managed files before publication. Existing managed files require
 --overwrite; unrelated files are preserved, incompatible loader/shard leftovers are refused.
 Caught publication errors restore previous managed bytes. Existing-directory replacement is
@@ -143,8 +146,26 @@ def convert_weights(sd, n_heads):
     return out
 
 
+def validate_training_modifiers(m):
+    """Master weights are not the effective BitLinear/QK-temperature forward model."""
+    scopes = [m]
+    if isinstance(m.get("thirdparty"), dict):
+        scopes.append(m["thirdparty"])
+    for scope in scopes:
+        if "bitlinear" in scope and scope["bitlinear"] is not False:
+            raise ValueError("BitLinear HF export is unsupported: master weights omit ternary/activation/RMS semantics")
+        if "qk_temp" in scope:
+            value = scope["qk_temp"]
+            if type(value) not in (int, float) or not np.isfinite(value) or value != 0:
+                raise ValueError("QK-temperature HF export is unsupported: effective learned head scaling is unmapped")
+    if m.get("family") == "llama" and any(
+            key in m and m[key] is not True for key in ("tie_embeddings", "tie_head")):
+        raise ValueError("untied or conflicting output-head semantics are unsupported for native Llama HF export")
+
+
 def validate_gpt2(m):
     """ParityLM or the exact GPT2-flavour FlexLM subset, both untied."""
+    validate_training_modifiers(m)
     flex = m.get("family") == "flex"
     placement = m.get("norm_placement", "pre")
     if flex:
@@ -213,6 +234,7 @@ def convert_gpt2_weights(sd, m):
 
 
 def hf_model_type(m):
+    validate_training_modifiers(m)
     if m.get("family") in ("llama", "gpt2"):
         return m["family"]
     if m.get("family") == "flex":
@@ -226,6 +248,7 @@ def hf_model_type(m):
 
 def validate_flex_llama(m):
     """Committed FlexLM has biased MHA, all-head RoPE and an untied head."""
+    validate_training_modifiers(m)
     required = {"attention", "norm", "activation", "position", "residual", "final_norm", "norm_placement", "d_ff"}
     if m.get("family") != "flex" or not required <= m.keys():
         raise ValueError("Llama-flavour flex requires the complete resolved flavour record")
@@ -456,6 +479,7 @@ def write_tokenizer(hf_dir, tokens, gguf_path=None):
 
 def validate_model(m):
     """Only the plain tied-head Llama mapping is supported by this exporter."""
+    validate_training_modifiers(m)
     if (m.get("attention", "exact") != "exact" or m.get("norm", "rmsnorm") != "rmsnorm"
             or m.get("activation", "swiglu") != "swiglu" or m.get("position", "rope") != "rope"
             or m.get("residual", "residual") != "residual" or not m.get("final_norm", True)
