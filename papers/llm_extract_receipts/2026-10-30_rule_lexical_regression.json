@@ -1,0 +1,170 @@
+{
+ "kind": "offline cached benchmark regression, existing labels unchanged",
+ "source_commit": "ea40e502",
+ "before_source_sha256": "39d3819136af8bc31d9be96b5ee89aaf8f135765f8f6842eb094d686bd4f3454",
+ "after_source_sha256": "5b5f587d8032a25e79aa05b7842a45f15c6bdcd5265a81105ad020c790c4bd4e",
+ "totals": {
+  "before": {
+   "correct": 79,
+   "abstain": 20,
+   "wrong": 0
+  },
+  "after": {
+   "correct": 82,
+   "abstain": 17,
+   "wrong": 0
+  }
+ },
+ "changed": [
+  {
+   "arxiv_id": "2211.09085",
+   "field": "activation",
+   "before": {
+    "value": null,
+    "verdict": null,
+    "truth": "gelu",
+    "score": "abstain"
+   },
+   "after": {
+    "value": "gelu",
+    "verdict": "used",
+    "truth": "gelu",
+    "score": "correct"
+   }
+  },
+  {
+   "arxiv_id": "2004.05150",
+   "field": "activation",
+   "before": {
+    "value": null,
+    "verdict": null,
+    "truth": "gelu",
+    "score": "abstain"
+   },
+   "after": {
+    "value": "gelu",
+    "verdict": "used",
+    "truth": "gelu",
+    "score": "correct"
+   }
+  },
+  {
+   "arxiv_id": "2311.16867",
+   "field": "activation",
+   "before": {
+    "value": null,
+    "verdict": null,
+    "truth": "gelu",
+    "score": "abstain"
+   },
+   "after": {
+    "value": "gelu",
+    "verdict": "used",
+    "truth": "gelu",
+    "score": "correct"
+   }
+  },
+  {
+   "arxiv_id": "1909.08053",
+   "field": "activation",
+   "before": {
+    "value": "gelu",
+    "verdict": "inherited",
+    "truth": "gelu",
+    "score": "correct"
+   },
+   "after": {
+    "value": "gelu",
+    "verdict": "used",
+    "truth": "gelu",
+    "score": "correct"
+   }
+  },
+  {
+   "arxiv_id": "2304.03208",
+   "field": "activation",
+   "before": {
+    "value": "gelu",
+    "verdict": "inherited",
+    "truth": "gelu",
+    "score": "correct"
+   },
+   "after": {
+    "value": "gelu",
+    "verdict": "used",
+    "truth": "gelu",
+    "score": "correct"
+   }
+  }
+ ],
+ "audit_script": "import importlib.util,json,subprocess,sys,hashlib\nfrom pathlib import Path\nroot=Path.cwd();sys.path.insert(0,str(root/'microtorch/papers'))\nimport fetch,flavor_bench as bench\nsource=subprocess.check_output(['git','-C','microtorch','show','ea40e502^:papers/fetch.py']).decode('utf-8')\nold=type(sys)('old_fetch');sys.modules[old.__name__]=old;exec(compile(source,'old_fetch.py','exec'),old.__dict__)\ndef result(m,aid,tex,truth):\n a=m.extract(aid,tex);out={}\n for field,want in truth.items():\n  f=a.fields.get(field);v=None if f is None or f.verdict=='contested' else f.value\n  if f is not None and f.verdict=='family' and m.FLAVOR_FAMILIES.get(field,{}).get(want)==v:v=want\n  out[field]={'value':v,'verdict':None if f is None else f.verdict,'truth':want,'score':'correct' if v==want else ('abstain' if v is None else 'wrong')}\n return out\nrows=[];totals={k:{s:0 for s in ('correct','abstain','wrong')} for k in ('before','after')}\nfor aid,truth in bench.TRUTH.items():\n p=bench.CACHE/f'{aid}.tex'\n if not p.exists():continue\n t=p.read_text(encoding='utf-8');b=result(old,aid,t,truth);a=result(fetch,aid,t,truth)\n for ver,r in [('before',b),('after',a)]:\n  for v in r.values():totals[ver][v['score']]+=1\n for f in truth:\n  if b[f]!=a[f]:rows.append({'arxiv_id':aid,'field':f,'before':b[f],'after':a[f]})\nx={'kind':'offline cached benchmark regression, existing labels unchanged','source_commit':'ea40e502','before_source_sha256':hashlib.sha256(source.encode()).hexdigest(),'after_source_sha256':hashlib.sha256(Path(fetch.__file__).read_bytes()).hexdigest(),'totals':totals,'changed':rows}\np=root/'microtorch/papers/llm_extract_receipts/2026-10-30_rule_lexical_regression.json';assert not p.exists();p.write_text(json.dumps(x,indent=1)+'\\n',encoding='utf-8');print(json.dumps(x))\n",
+ "truth_sha256": "9e42b8969a7f8f787a1fad7c102407e5a22154671e4b770c724f8b37f22cfa95",
+ "cached_tex_sha256": {
+  "1706.03762.tex": "9769d42d4243e4bad80eadbd4f6390fda706824f58b04d1ae1914fe23d3c6fe1",
+  "1710.05941.tex": "f46b303468e752faa98d4b64a229aa4d61e315b2d317a2b4de75c60bc4a5eca8",
+  "1803.02155.tex": "24ac08ee488ff804fc091164ee59ad2dd49bfbbde153221971419b3972f6f13d",
+  "1810.04805.tex": "316ce742ca0fd58c3781c5b0f1e94501a6e9c30c7459fec6bf78962fcabc2924",
+  "1901.02860.tex": "68c89c564ff5fc36a3a4f50c8792bde116cf2c1f6197f6d1e5c8427e0f685292",
+  "1906.08237.tex": "d58fd79cd49bf9d9f0e59197ec2c6443c17f9c69c53b34c1bfa566f1bf408b68",
+  "1907.11692.tex": "f55cb6111a050d2a39ce6ec5b8a3f8d3128d2a56e09751fd589ab32c568326e2",
+  "1909.08053.tex": "710eaf9bc8c50eeb1f6d5a65f64e624ea0e282f0575e472d837348724856052c",
+  "1909.11942.tex": "96532e20c80172dfedab0265f5f752751b07c110ffe4875e6444ba2cae0f5b0f",
+  "1910.10683.tex": "c5d6db4b3ff7c06e6efbef6bd72d8e372dec328ee2025632028af8bd053bf6de",
+  "1910.13461.tex": "827f8b0d839305881b8ca67adfc1fea6a5050cba828f95d2ac93dace6335701b",
+  "2003.10555.tex": "c2ba86c429dac5bd0d0f3e9857bfe1ef92be33c81af069285ff112e8976b1a31",
+  "2004.05150.tex": "ee56a3c280bbaf24f0087b08adc2be9218eaddb9dc05995b083379359f002e9c",
+  "2005.14165.tex": "00f8b608e3bf3fee06cd310d351aa8eb04f1fcb75b284d69af673c5ee558a25b",
+  "2006.03654.tex": "4de14efa8b71bd6a7c87d1f4ff6382a5b003a08261be60d31da2497d4f812932",
+  "2007.14062.tex": "9e51f87462d63e64cf6bf543b7d71231b841762bd1c2585966f7ab50edb076c4",
+  "2101.03961.tex": "dfed692af97b97ef657d69cea274b2054ffd7e65e6549976814a5653922d1b38",
+  "2104.09864.tex": "f296bf76e65f308d07af20823375f42eb7806352cd5647d140e55c274c0302cc",
+  "2108.12409.tex": "0b6c5d575d59c842a526972b51009253e1ffed863b5c8073a47a99777aad90fe",
+  "2109.08668.tex": "6a9c59b9efdfceddb939264f695a117dc77c1320de906e2f09a27b0699b982d0",
+  "2112.11446.tex": "ad4cc28f48ee536443e68282921095956d51ba826e8318ad771f626e10ffda3b",
+  "2201.08239.tex": "1759ef2adfa49c838ae982a5f647ca918d2cf02909468ff82c7fbb656f9e8ea8",
+  "2203.15556.tex": "5992c8a5d97704c1e3914bc26adce1d01e291842b92d91c078553a853ac908fa",
+  "2204.02311.tex": "4b533f989c2041cdc98f4dc75104348aa16f716094de7ec038d3b4e22a7420e8",
+  "2204.06745.tex": "0c5ef0d8e36623186d4f3c5677b730b546f793887bab5807c09620bafc904714",
+  "2205.01068.tex": "c83fafd93abbec404a3571146761db6922791ea70fd7d5fe36996c5d2a838cf8",
+  "2205.05131.tex": "0a1f67791ccaee45684266fb5341751ae7e58cb5ca9f901efac5b853ae43cbb4",
+  "2211.05100.tex": "820ddda57b3e197c1faa954446f707a0a7910c56f4dfa642fcb0ef9c2895a559",
+  "2211.09085.tex": "3510a1f9323ed58a029c8b296fcd98f81235e586130189959e02be1d878d2ba6",
+  "2302.13971.tex": "72a52317cda0bed5ccf08b30b870048097862b276e592b485db91448e7e90fad",
+  "2304.01373.tex": "4674fa5a1f0b444e558b07b90b66b5468460f37519ef7547f5df9206d22d0f07",
+  "2304.03208.tex": "7a3cf76d7df16d912c6a8b742b0c23b811e4d1f9c385d7682c79cc96a4ed3e3a",
+  "2305.06161.tex": "105c3e331fc3f8adebd92fff68047d1948caff760232f63c4c35849b945ec24e",
+  "2305.13048.tex": "9b374eb4e229c45d51925110d0a213c04b0168ee9be92e6780a33d00209a8f9b",
+  "2307.09288.tex": "35b29763e6b9c538f0b0a795565ab9e90161c62233add0d8b0375614d0533e64",
+  "2308.12950.tex": "a2f8a465cf50f6b468693a74cf8dc6fada8377bee395a1b93400f6be761ff527",
+  "2309.10305.tex": "8df5845158ca55475d7ee96987ef8dc65ae615d3946abef1503d2b5fff7cca33",
+  "2309.16609.tex": "cf3c283bbbbc1cf473e34019622ab64aad99c7f4201bfd43c1cc40d695ec32e3",
+  "2310.06825.tex": "8e32b33b98dbd8e741a73b866657e31c45693bbf72752f76619fb6e1f0618f40",
+  "2311.16867.tex": "e0c7b58e8960341dd94b88d0926fa4ba94abb7f86567d89d2b256c58eb82be2e",
+  "2312.00752.tex": "a0ecbe9ebde648dded3b4bcdef3011fef5546db8838aeb0be295b5f81d1cb95f",
+  "2401.02385.tex": "1c9d46fdd7b2e1e8e859649b9e0257211c46ba2daa851a55c3c43bd54684727c",
+  "2401.02954.tex": "8867ac848756f03e118a973906046acc00fa354aaa909cf7bcd5dff90068ba5e",
+  "2401.04088.tex": "4ccae79cc155e73124df5727ce17596230e45f9fc8030fc0d00774f4d5d69bf8",
+  "2402.00838.tex": "fecdbd0062ec99017bdb40ba646d1a4a2a35796b48126a5e12bd03fba1514a07",
+  "2402.03804.tex": "0ce8071962ac9d501bc3a32c2578ac511a75b5002adea5e7fee70c6acbb8c405",
+  "2402.14905.tex": "a32b832eaa906b6a6f65a4d93c7acaf3e43160bea880d2f70e19e4b9a89fe867",
+  "2403.04652.tex": "a46f7303ed735cd5bb4ca265b7f2d8c3ddeffdf5dd9d85926089fd00e71f9843",
+  "2403.08295.tex": "24f4a193b583a51fac55171f293efdc6a1b661f4af0b3f70b1e7f8834f291c1e",
+  "2403.17297.tex": "3e5516d0f3b4732799e3c127f9ae8431650771a8d18733fbda9f449d294add3d",
+  "2404.06395.tex": "e5d1d225e930f6f733c429a8df771569397aff4ce893d5401ecb2cf902dc97e9",
+  "2404.14219.tex": "f7a2281574b164a0297c1fb2e31b3fbb2c254d204b04fba3f3a00cd431b57471",
+  "2405.04434.tex": "640ae17315684e9f528c6db1c6ed22f705a96eaf127f0413c75afb8b823f7c95",
+  "2405.20768.tex": "86c442bad285e069c856c5388b038d1037747da422527d884dc063e30f44a765",
+  "2407.10671.tex": "b3c5e97abd1ca9c13d829f1b2d0a3295911a7cb674239bb65979d1fec768998a",
+  "2408.00118.tex": "f56c9ecde44300bd601cf69c0020bc6e34c4ccbd1e08742e438707f160adb521",
+  "2408.06820.tex": "6d432e753553fc0c942993c88878ce1f322a3f767364e0d477ee451afeffd00e",
+  "2411.03884.tex": "9cb88e4db9513c4f1d0fb47887ddda403922a8ab75ffec53416673d207d197c0",
+  "2411.13010.tex": "86bb922830f0505c6e1efdd491cd2ce0b970b3fa895614c11123c5a89cb150ef",
+  "2412.20269.tex": "0383ef1082a849c1f3600adb8e8f4403d9a9e93310afcdd218314614490f1a1c",
+  "2501.00656.tex": "d6f2e34725325f74f9a44e740a4cd2e7b4a971f8acb8eae603dae78aba44e352",
+  "2502.03654.tex": "3a907ab706ec38cddccaff0d77e69d7bcacf09593f9601e59986c431c9546a04",
+  "2503.10622.tex": "68dfd287b1ea7c9e418e680997718cc98d2fc77be4c72f7d3a78597d97380dec",
+  "2505.09388.tex": "609356f68d2a1b674a07b2efa2aad13beccf2183b7276e31d176e71da46e7318",
+  "2603.06861.tex": "c7aaef7b6dc3af18cc07a4892d2e20784b517f2016db23287ea5a24906c98976",
+  "2607.03664.tex": "31638b5efd246ce2dd73fe2c29c53a0886a487e9a6e37e8366fddd69aa9b714e"
+ }
+}
