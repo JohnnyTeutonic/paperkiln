@@ -365,7 +365,9 @@ Each case has a unique safe `id`, `kind` (`needle` or `behaviour`), `prompt`,
 `contains`, `prefix` or `not_contains` checks, never semantic judgements. Use
 1–32 cases, 1–128 `max_new_tokens`, and at most 1024 case×token allowance in total.
 Prompts are limited to 8192 UTF8 bytes and expected text to 256 bytes. A needle
-case uses the supplied prompt as written; the label does not create a long-context
+case must include its expected literal in the supplied prompt and use exact,
+contains or prefix (not_contains is a behaviour contract). It uses the prompt
+as written; the label does not create a long-context
 benchmark or imply retrieval competence. Unsupported stage keys are refused.
 
 **Load saved probe results** reads the server's `/evaluation-probes` artifact

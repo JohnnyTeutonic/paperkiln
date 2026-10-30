@@ -128,12 +128,12 @@
     "base_commit": "6a42fefcd83b48bc2705010a810f5416ec75d292",
     "scope": "Browser spec configuration and saved-results viewer only; no model execution from UI tests",
     "source_sha256": {
-      "studio/index.html": "7a129d80812a0c4f2329220870581bd2f972b568b6c4d07137900f6196114655",
-      "tests/test_studio_probes.js": "493a8ae0e505f64734c9d4acb50dae902d10f22ddf78a3e3bedcaed07d039bd2",
+      "studio/index.html": "81542cb79468bca9564608659340158892e30870d8138f1f687d85f836fd9865",
+      "tests/test_studio_probes.js": "14c47e13d1dddf8932aedcde4bd039aeb2e7da1a373cfe88f978279a38e13c25",
       "tests/studio_probes_browser.js": "d00fd15997c7f4e0403eeb43a40c8f3ccd568d8e2ffafb0f733811ab30710a6a"
     },
     "logs_sha256": {
-      "probes_ui_tests.log": "5777f29e0947c214e7699dcb3bba7e92513abfffa306ec15a93a4e0fc230fcc7",
+      "probes_ui_tests.log": "aa910921a757f974e8cb13f390285d1573a8974f0ce2e257ed5c3d4ce9c88166",
       "probes_browser.json": "b253437d69e1a1a6507628b4b8b46fc764b910d2916a08af263d9e00489f13f5"
     },
     "logs_newlines": "Windows output capture normalized UTF8/LF",

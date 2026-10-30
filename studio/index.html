@@ -1000,6 +1000,8 @@ function validateProbeConfig(value) {
         typeof c.prompt!=="string" || !bytes(c.prompt) || bytes(c.prompt)>8192 ||
         typeof c.expected!=="string" || !bytes(c.expected) || bytes(c.expected)>256)
       throw Error("Each case needs a unique safe id, needle/behaviour kind, literal contract, nonempty prompt ≤8192 UTF8 bytes and expected text ≤256 bytes.");
+    if(c.kind==="needle" && (c.contract==="not_contains" || !c.prompt.includes(c.expected)))
+      throw Error("Needle cases must supply the expected literal in the prompt and use exact, contains or prefix; not_contains is a behaviour contract.");
     ids.add(c.id);
   }
   return JSON.parse(JSON.stringify(value));

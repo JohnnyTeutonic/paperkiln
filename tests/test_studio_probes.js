@@ -11,7 +11,7 @@ test("configuration copied and exact literal rules preserve case/whitespace",()=
  assert.equal(probeContract("amber","contains","Amber"),false);assert.equal(probeContract("amber","not_contains","red"),true);
 });
 test("bounded configuration, unknown keys, duplicates and UTF8 byte limits refused",()=>{
- for(const edit of [c=>c.max_new_tokens=129,c=>c.max_new_tokens=0,c=>c.max_new_tokens=1.1,c=>c.shell="bad",c=>c.cases=[],c=>c.cases[0].id="../bad",c=>c.cases[0].kind="semantic",c=>c.cases[0].contract="regex",c=>c.cases[0].expected="",c=>c.cases[0].prompt="\ud800",c=>c.cases[0].prompt="😀".repeat(2049),c=>c.cases[0].expected="😀".repeat(65),c=>c.cases[0].extra=true,c=>c.cases.push({...c.cases[0]})]){const c=config();edit(c);assert.throws(()=>validateProbeConfig(c));}
+ for(const edit of [c=>c.max_new_tokens=129,c=>c.max_new_tokens=0,c=>c.max_new_tokens=1.1,c=>c.shell="bad",c=>c.cases=[],c=>c.cases[0].id="../bad",c=>c.cases[0].kind="semantic",c=>c.cases[0].contract="regex",c=>c.cases[0].expected="",c=>c.cases[0].expected="missing",c=>c.cases[0].contract="not_contains",c=>c.cases[0].prompt="\ud800",c=>c.cases[0].prompt="😀".repeat(2049),c=>c.cases[0].expected="😀".repeat(65),c=>c.cases[0].extra=true,c=>c.cases.push({...c.cases[0]})]){const c=config();edit(c);assert.throws(()=>validateProbeConfig(c));}
  const c=config();c.max_new_tokens=128;c.cases=Array.from({length:9},(_,i)=>({...c.cases[0],id:"c"+i}));assert.throws(()=>validateProbeConfig(c));
  c.cases.pop();assert.equal(validateProbeConfig(c).cases.length,8);
 });
@@ -21,7 +21,7 @@ test("results bind config/outcomes/summary and distinguish operational errors",(
  const r=report();r.cases[0].status="ERROR";r.cases[0].error="prompt too long";r.status="COMPLETE_WITH_ERRORS";r.summary={passed:0,failed:0,errors:1,total:1};assert.equal(validateProbeReport(r).status,"COMPLETE_WITH_ERRORS");
 });
 test("untrusted report text rendered literally with no HTML insertion",()=>{
- const elements={};ctx.$=id=>elements[id]??={textContent:""};const r=report();r.configuration.cases[0].expected=r.cases[0].expected=r.cases[0].generated_text='<img src=x onerror="bad()">';
+ const elements={};ctx.$=id=>elements[id]??={textContent:""};const r=report();r.configuration.cases[0].prompt=r.cases[0].prompt=r.configuration.cases[0].expected=r.cases[0].expected=r.cases[0].generated_text='<img src=x onerror="bad()">';
  renderProbeReport(r);assert.ok(elements["probe-results"].textContent.includes("<img"));assert.ok(elements["probe-result-status"].textContent.includes("not semantic"));
 });
 test("validated post-training stage accepted by training-only VRAM planner",()=>{
