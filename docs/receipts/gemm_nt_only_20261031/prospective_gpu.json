@@ -1,0 +1,13 @@
+{
+  "status": "UNLAUNCHED_PENDING_REVIEW",
+  "source_commit": "c1c0539029515cd2718931437ec17a5f939fe1c9",
+  "manifest_sha256": "214c7f6147624c0660de5dd12c7b51c067b979ee5a380cd70c7796a30d2eb8ee",
+  "source_archive_sha256": "d36c2b72ddea27ab15934e742f0f17cba356b9451af53d2c54ecff0379715ef2",
+  "archive_files": 1382,
+  "max_additional_usd": 0.84,
+  "deadline": "2026-10-31T06:25:00Z",
+  "actual_L4_required": true,
+  "archive_cpu_configure": true,
+  "local_nvcc_compile": true,
+  "parser_tests": 12
+}
