@@ -1,0 +1,9 @@
+{
+  "campaign_home": true,
+  "runner_exited": true,
+  "owned_pod_id": "maybpe1e3e7te0",
+  "owned_volume_id": "k7az0uyizp",
+  "runner_log_confirms_pod_terminated_and_volume_deleted": true,
+  "provider_read_after_cleanup_confirmed_only_two_protected_volumes_and_no_pods_before_next_campaign": true,
+  "private_running_balances_published": false
+}

@@ -1,0 +1,32 @@
+{
+  "status": "PASS",
+  "commands": [
+    {
+      "name": "hardware",
+      "returncode": 0
+    },
+    {
+      "name": "configure",
+      "returncode": 0
+    },
+    {
+      "name": "build",
+      "returncode": 0
+    },
+    {
+      "name": "python_dependencies",
+      "returncode": 0
+    },
+    {
+      "name": "actual_cli",
+      "returncode": 0
+    },
+    {
+      "name": "independent_raw_replay",
+      "returncode": 0
+    }
+  ],
+  "complete": true,
+  "actual_cuda": true,
+  "source_commit": "bde18e8d074d9eac05c81201d65cd4f8dd0a201a"
+}

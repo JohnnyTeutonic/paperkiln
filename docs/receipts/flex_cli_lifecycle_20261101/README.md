@@ -1,3 +1,5 @@
+Actual L4 evidence is now home: [qualified independent audit](actual_l4_v2/README.md). Raw scientific bounds verify; the original cross-host exact summary-scalar replay fails and is preserved. The prospective packet below remains the pre-outcome plan.
+
 Prospective canonical plain-Flex CUDA CLI lifecycle packet. No device result exists yet. The public source base contains the checkpoint-copy fix; no production arithmetic changes are introduced here.
 
 The separate unchanged four-case model gate runs first from the freshly built source, followed by its independent NumPy full-gradient replay and exact BF16 GEMM launch controls. The actual CLI then runs LM (one layer, MLP12) and SFT (three layers, MLP20), each d8/heads2/vocab7/T8/batch2, seed37, with FP32 projections and train-only BF16 attention. Three training steps produce model/optimizer/state files; a distinct immutable resume recipe continues to step four with optimizer restoration verified. The per-step gradient norm is a finite/positive signal, not an independent full-gradient oracle for CLI training; the separate model-gate prerequisite supplies the full-gradient proof for the canonical numerical core.
