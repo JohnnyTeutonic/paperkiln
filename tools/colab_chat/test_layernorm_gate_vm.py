@@ -21,6 +21,11 @@ class Gate(unittest.TestCase):
  def test_fixed_requires_actual_cuda(self):
   for value in ({},{'pass':True,'cuda_integration':False,'devcheck_enabled':True},{'pass':True,'cuda_integration':True,'devcheck_enabled':False}):
    with self.assertRaises(ValueError):g.parse_proof(json.dumps(value),('pass','cuda_integration','devcheck_enabled'))
+ def test_existing_evidence_preserved(self):
+  with tempfile.TemporaryDirectory() as d:
+   out=Path(d)/'out';out.mkdir();marker=out/'gate_summary.json';marker.write_bytes(b'{"pass":false,"reason":"preserve"}');before=marker.read_bytes()
+   with self.assertRaises(FileExistsError):g.run(out)
+   self.assertEqual(marker.read_bytes(),before);self.assertEqual([x.name for x in out.iterdir()],['gate_summary.json'])
  def test_missing_inputs_durable_negative(self):
   with tempfile.TemporaryDirectory() as d:
    root=Path(d);(root/'uploads').mkdir();(root/'uploads/layernorm_inputs.json').write_text('{"files":{"missing":"x"}}');self.assertEqual(g.run(root/'out',root/'uploads',root/'source',root/'build'),0);r=json.loads((root/'out/gate_summary.json').read_text());self.assertFalse(r['pass']);self.assertTrue(r['errors']);self.assertEqual(len(r['logs']),13)

@@ -45,6 +45,8 @@ def check_baseline(rc, text, case):
 
 def run(out, upload=Path('/content/chat/upload'), root=Path('/content/layernorm_source'), build=Path('/content/layernorm_build')):
     out = Path(out); out.mkdir(parents=True, exist_ok=True)
+    if any(out.iterdir()):
+        raise FileExistsError("existing gate evidence is immutable; operational review required")
     report = {'pass': False, 'scope': 'LayerNorm fallback stale x/gamma/beta forward and stale gamma backward',
               'commands': [], 'errors': [], 'source_restored': False}
     env = {**os.environ, 'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1', 'OPENBLAS_NUM_THREADS': '1'}
