@@ -1,0 +1,447 @@
+{
+  "status": "PASS_BOUNDED_24_ONLY",
+  "protocol_file_sha256": "fb5c0433440609bb47406790a4010f0e8c4707c515bbd832110008e3ea3175fc",
+  "source_sha256": {
+    "chat_judge_campaign_diagnostic_v3.py": "01a67510a0df814a662f5e32098a1aaa2a2779dbf5ed269dbede49177c501d00",
+    "chat_judge_api_diagnostic_v3.py": "8558d9fcb0e8ae561402f0991b3270ee0746cee8ffc46ef0c50ad74dc6dffc6a",
+    "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+  },
+  "stop_sha256": "5271ea7dc5953998b975ac3d3e81399fd2b98ec3bd6b2d640d4da39f8d255b3f",
+  "stop": {
+    "api_actual_spend_usd": 8.398328,
+    "attempts_since_start": 24,
+    "baseline_usd": 20.08558,
+    "full_judging_complete": false,
+    "gate_reserve_usd": 25.0,
+    "kind": "BOUNDED_DIAGNOSTIC_FINISHED_REVIEW_REQUIRED",
+    "missing_rankings": 5475,
+    "protocol_sha256": "ad9e3085017b8d0b582128e612649adbfbc6811bc3d928aaad26c3f4628a6dfb",
+    "retained_unknown_ceiling_usd": 0.75
+  },
+  "status_replayed": {
+    "attempts_since_start": 24,
+    "missing_rankings": 5475,
+    "api_actual_spend_usd": 8.398328,
+    "retained_unknown_ceiling_usd": 0.75,
+    "baseline_usd": 20.08558,
+    "gate_reserve_usd": 25.0
+  },
+  "pending_reservations": 0,
+  "new_successful_rankings": 24,
+  "valid_rankings_total": 565,
+  "training_attempts_total": 520,
+  "new_api_spend_usd": 0.369276,
+  "trace_count": 24,
+  "traces": [
+    {
+      "id": "6db3d1ad8ec04f11bc9cc259ffbf0aa1",
+      "request_sha256": "35130f97e8e8f72df0e21405927362c88d3f5bd2787ff7435cdf04717f11803e",
+      "response_sha256": "38856f0b363bebd2a3a6e2030bf215800cb93087f0f9ed7bd4682a6643592b09",
+      "trace_sha256": "eebc0f8dc385eb48fc266bb5b584ee4b87ea56207574cbe45242d93f28388b24",
+      "http_status": 200,
+      "cost_usd": 0.015192,
+      "attempts": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443,
+          "tcp_connected": true
+        }
+      ],
+      "http_write_started": true
+    },
+    {
+      "id": "97a7d9b20bcc466c8186af9cce0af9a2",
+      "request_sha256": "f8fa36b40a4f4646369bd664ce4abe1012addcc626fc46e4c94a64f944e3c78d",
+      "response_sha256": "0c76dfca96690912d4e310d392f90b199a1a5dfd87f0da9cfa3766c7779e56da",
+      "trace_sha256": "2db1665dc93de42e2cafc982ee0c852c559bdf01381d61b9470ac9264a2052c7",
+      "http_status": 200,
+      "cost_usd": 0.013264,
+      "attempts": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443,
+          "tcp_connected": true
+        }
+      ],
+      "http_write_started": true
+    },
+    {
+      "id": "630bab47ce434b01896981862e73b549",
+      "request_sha256": "44a0b5a396da7b86f8774d46baf8ec4e6dc911f638a4f70d4334d38407c296a1",
+      "response_sha256": "814db409c314cff23b4ba04811c57c6f5253b352c24725f83d719fb60e0c003f",
+      "trace_sha256": "3ade06bd27299c6ad3a1506ed413778e838c1f2096a5a195bde35e8490b06974",
+      "http_status": 200,
+      "cost_usd": 0.015244,
+      "attempts": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443,
+          "tcp_connected": true
+        }
+      ],
+      "http_write_started": true
+    },
+    {
+      "id": "0674210e40e140f0957ce92b9c9e6364",
+      "request_sha256": "b1f78d33cef97051915ae13c51b98b5d129157a5049b9df042eafb2afce58363",
+      "response_sha256": "be307c3efd1dac0e3982e6be953ec1d22541c3ce9350f34c7663d8b67d6441e2",
+      "trace_sha256": "9717f11723bfdff78cf7a09f6d73746ae2f9f5d0ca3564c120c2c05edf104797",
+      "http_status": 200,
+      "cost_usd": 0.014244,
+      "attempts": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443,
+          "tcp_connected": true
+        }
+      ],
+      "http_write_started": true
+    },
+    {
+      "id": "80ad5054270644a6a63aee2de7717be3",
+      "request_sha256": "14aa95a0997af66268133953fd032f903f67aa6c032f086e984ceee7ce4428c7",
+      "response_sha256": "2378e0f074d841054dfef091ca0765f08a1a682d82883f46d4b1af15d73d40c3",
+      "trace_sha256": "de42a3fecccd82aecb5fccae8af34f86018e92c0221eca4658cd970a2a079998",
+      "http_status": 200,
+      "cost_usd": 0.011924,
+      "attempts": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443,
+          "tcp_connected": true
+        }
+      ],
+      "http_write_started": true
+    },
+    {
+      "id": "ab481bc658b843d99f8351a51a81c748",
+      "request_sha256": "99a02c206a39f121e9187633c4c9284d80e5aebb01c70bf953c5609040e59274",
+      "response_sha256": "3dc57a4d0d4cc53c764e4ca61802858b912d57de1cff93b69afe078d1b6fe464",
+      "trace_sha256": "ae64155c044ad5119ed3277d391efc12674a0f7b11791e247cba3737ed8e29c1",
+      "http_status": 200,
+      "cost_usd": 0.016596,
+      "attempts": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443,
+          "tcp_connected": true
+        }
+      ],
+      "http_write_started": true
+    },
+    {
+      "id": "041b245e6d9f4f4b8ec675d64c8c94f0",
+      "request_sha256": "da90fd24b1f9474632de6c5b47489d35ce667ccb079ed914fdca1387d5bed3c4",
+      "response_sha256": "86691a8a5188336c4aaf32500d915aa7720ac688f4e9ddf22b109ee0864b8aa3",
+      "trace_sha256": "ce0a6e554951981ee65c2b83c8788c1deefac0d890ad327fe21fa27ca6902ef3",
+      "http_status": 200,
+      "cost_usd": 0.019216,
+      "attempts": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443,
+          "tcp_connected": true
+        }
+      ],
+      "http_write_started": true
+    },
+    {
+      "id": "2d42a5d338684fd49e64d4d84a5bac84",
+      "request_sha256": "7551448475952ee1453957d0f5b7288022d0dc6957c66279c9c1c272e2c4c840",
+      "response_sha256": "d5c0e945b3f97308175bd07d1fa60e0b26e3a0faa4ca33d7123f25bddcbc4c2b",
+      "trace_sha256": "724e50b774235319434e2bd64a7e12c007526d71d13a16bbea034a7c2eab4036",
+      "http_status": 200,
+      "cost_usd": 0.015664,
+      "attempts": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443,
+          "tcp_connected": true
+        }
+      ],
+      "http_write_started": true
+    },
+    {
+      "id": "2a5bcfcc8c2d4c3eaa13131f926a373f",
+      "request_sha256": "cc71576a828af1e70db61b0620c149b368a16cb7d793903268424f62b715df0c",
+      "response_sha256": "bf6a200dee843feeaa528d8832b432a1c62c40b020fa9ae18979aad6e0e6e9fb",
+      "trace_sha256": "139e44accaa73e3eb2d2ad1a10e32f9b74e42164e8db083d0b974bca92872d17",
+      "http_status": 200,
+      "cost_usd": 0.018224,
+      "attempts": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443,
+          "tcp_connected": true
+        }
+      ],
+      "http_write_started": true
+    },
+    {
+      "id": "2d5934e8e3d54d689e4850144a8c74fb",
+      "request_sha256": "0438b3914c1a0897c9e1ed772663e5c3c4e23faf95c3c7c1a8e04217cd07e152",
+      "response_sha256": "9ce8fbd646859f6d0a78e7a5337871d35e4af486a497a474927514ede4bd55c1",
+      "trace_sha256": "8e75badb884dab6ff35bc00a9e5068b64bed38c8a64b7d732bec4bf34fde13b9",
+      "http_status": 200,
+      "cost_usd": 0.014132,
+      "attempts": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443,
+          "tcp_connected": true
+        }
+      ],
+      "http_write_started": true
+    },
+    {
+      "id": "1bdbc3a973314a1b890af023c224bdde",
+      "request_sha256": "e3ceb60d689a33a1ff3b95bbb44888f572cc6b8ee9d0c4715aa5565e5086771a",
+      "response_sha256": "e5bff021fe864ab10f2afc7943349fbd9282e2ca42afe0c83a2451e6a65ffedd",
+      "trace_sha256": "ec28634dbc2da24c11cb49855e348322592e5726703158eed25ff368d7bee5e6",
+      "http_status": 200,
+      "cost_usd": 0.012612,
+      "attempts": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443,
+          "tcp_connected": true
+        }
+      ],
+      "http_write_started": true
+    },
+    {
+      "id": "4a5be89da7324cfa8ec99bb323d718f8",
+      "request_sha256": "ae8d7d7128789d328b0e563fb5e93c0f50829e6d716fcc772d7e3110255f466b",
+      "response_sha256": "60d74197c83c6f13f04b0a89fee88c914591ca59b3c98a1d0e6c14ed221105ad",
+      "trace_sha256": "4b49d32735f956d5a3a25e64dc124e10722007925aee3b2fe40e16ab40dc513d",
+      "http_status": 200,
+      "cost_usd": 0.014732,
+      "attempts": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443,
+          "tcp_connected": true
+        }
+      ],
+      "http_write_started": true
+    },
+    {
+      "id": "2e3be8a11e9d473ab19558db409a8f57",
+      "request_sha256": "443926a880a4d8ca3d343c8f0245cfdd048d8ebdedbea5d6215b2d292ab72fe1",
+      "response_sha256": "b17b4b44c78a69a20b0ee9824aeb01de9683b6719e5d1dac5769920a2cb5f2e5",
+      "trace_sha256": "51ec3ccf2bf7768bd0668cac37ea59a60703d8f1d1a6040347c93e88e1b933c9",
+      "http_status": 200,
+      "cost_usd": 0.012992,
+      "attempts": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443,
+          "tcp_connected": true
+        }
+      ],
+      "http_write_started": true
+    },
+    {
+      "id": "7cc8c752f25c463f878925d9be5def43",
+      "request_sha256": "6e4d095f0a26927254fea1f6439b72ab7d12e5c8a3e4c495ca8c1b48ff0ec367",
+      "response_sha256": "7a2508964eaa7e4ac8a470fddc4f79da8d99cacea1ddd5a56e81aacee3c85fa9",
+      "trace_sha256": "9c31bc5de8f0da55c3e1b889f3bc600fa74e9174ed09ac36f683827e41f492b6",
+      "http_status": 200,
+      "cost_usd": 0.015804,
+      "attempts": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443,
+          "tcp_connected": true
+        }
+      ],
+      "http_write_started": true
+    },
+    {
+      "id": "096f5227dea949f0bd7e2ecf3af1f673",
+      "request_sha256": "f831940adae983176faeff4833a540964d6909f1546296cc6ec5ca26f17dff81",
+      "response_sha256": "ccb27add12c3ba56626404ed75de5ee4faf4966f37afa0b234f63cc2f302c741",
+      "trace_sha256": "dcc5f6e1fc576022c096603863b39e5c312517a3918835fbc078511e0cc0280c",
+      "http_status": 200,
+      "cost_usd": 0.018064,
+      "attempts": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443,
+          "tcp_connected": true
+        }
+      ],
+      "http_write_started": true
+    },
+    {
+      "id": "52b0975c46c64be28cc43325acab12fe",
+      "request_sha256": "4c8824326b74669909150165c014bfc45c9b163f9d1e1291fb0b7f7802ddb89b",
+      "response_sha256": "0a5059a6bf53838cc2cbf4c7fec6e33b5927ececc02c2447a135fd7737b60cc3",
+      "trace_sha256": "7aedbd0586c9eb1ed929574b762d145e9be28da63b5f59f276d15cefd16855ba",
+      "http_status": 200,
+      "cost_usd": 0.01742,
+      "attempts": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443,
+          "tcp_connected": true
+        }
+      ],
+      "http_write_started": true
+    },
+    {
+      "id": "b714a7d32a9343a0bff3ec59513411c1",
+      "request_sha256": "f0b5f12084b5aac90240f0945684ef66b55c2deb3ca90761b156cb9c1689cca9",
+      "response_sha256": "29bd8fdd8951fa4b188d3d509789ef4d5053476b1df607eabfd3351054e8e4b3",
+      "trace_sha256": "9a2f5271ab88d857700f0482bc6649aa83b2f48ee0ad53ef7e6054cd72f473a3",
+      "http_status": 200,
+      "cost_usd": 0.01612,
+      "attempts": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443,
+          "tcp_connected": true
+        }
+      ],
+      "http_write_started": true
+    },
+    {
+      "id": "7048e27445b848e1bd086cb63cfafa67",
+      "request_sha256": "c1c8a3cc4a26d6c4548e8c7054a89bfd2ddec2a1bf45ddf70bb8e03b6d4bf315",
+      "response_sha256": "bfd9586ee162326e56b7ecdbc680e354c330eb63710898c54b7ec445b5451b18",
+      "trace_sha256": "bce7fe77047e499cf5bf3665fd5ae572dc72c8912fa304ea3b58fdfc09d5d56a",
+      "http_status": 200,
+      "cost_usd": 0.01622,
+      "attempts": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443,
+          "tcp_connected": true
+        }
+      ],
+      "http_write_started": true
+    },
+    {
+      "id": "cb1e09a94bdf4121b7ae027816aebb9d",
+      "request_sha256": "35c270a0fe726d101df4bdd74d65a55c10c0bbbbcf6d0d5c75c045c6951f5182",
+      "response_sha256": "3b1b53ad1ea251b07acc2af3d9a1b0ba675c655f58fe522209c544d2acc27b3a",
+      "trace_sha256": "869a4543ee9ebebe945a3461215819e5c4c344a05fb413594c87ef760452dcd6",
+      "http_status": 200,
+      "cost_usd": 0.015444,
+      "attempts": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443,
+          "tcp_connected": true
+        }
+      ],
+      "http_write_started": true
+    },
+    {
+      "id": "443b02f7f05a417cb3353ea3a19ee7c2",
+      "request_sha256": "492bd10bb58c95c6a24e8ef80ba51896b59f22d21d66b9196a686ac2344762eb",
+      "response_sha256": "78c9b05f8646036a5debab24a433fb7d4799e01ecedbdd27429db1132b3c2514",
+      "trace_sha256": "011885ee471f948f2d2225ff653affaf647f70ecd4fdf68e915b5cbf63e6d92c",
+      "http_status": 200,
+      "cost_usd": 0.016732,
+      "attempts": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443,
+          "tcp_connected": true
+        }
+      ],
+      "http_write_started": true
+    },
+    {
+      "id": "2a6be09a4c53463fba53baf4be81086f",
+      "request_sha256": "f206bff1352566187b478e85cf922d18b885a76def26727354244efb9466740f",
+      "response_sha256": "a7a94eae31d63b9d098db1755b93848e072ac11720ad3918a137106bdb59a1c2",
+      "trace_sha256": "e61b32044ba08d117db1de690033b6abd6c2d934486606692c4e1991d26e66b5",
+      "http_status": 200,
+      "cost_usd": 0.017032,
+      "attempts": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443,
+          "tcp_connected": true
+        }
+      ],
+      "http_write_started": true
+    },
+    {
+      "id": "d0587b69bb6540f2b29dfcf85323e3cc",
+      "request_sha256": "2d9cb9342f838209789af4833b5484f2bde22c8a23a6150df55d11a42cea5d58",
+      "response_sha256": "139b8143ba78d9f2ad3a732d8ebc77ac180edcc851149a0cb6aec5a0b9ce215f",
+      "trace_sha256": "94fa4793cb184717d59e9159740d390f2137362d6875250a1e6caf793f4e6d32",
+      "http_status": 200,
+      "cost_usd": 0.014448,
+      "attempts": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443,
+          "tcp_connected": true
+        }
+      ],
+      "http_write_started": true
+    },
+    {
+      "id": "bf22ca4626274606a1b17d842508597c",
+      "request_sha256": "bba413a5353c35d5ab1bb9132ae2a43898e275a3acf8051f43dc84919e3a0a18",
+      "response_sha256": "4cecaf5fcc75f2926574d07ba7b0df302ba666e6936d27a8dea2b257e87f5e19",
+      "trace_sha256": "27e4cdee0ad64a0def3fd520512155055d60e63e4017566d3ade3185909809d8",
+      "http_status": 200,
+      "cost_usd": 0.014048,
+      "attempts": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443,
+          "tcp_connected": true
+        }
+      ],
+      "http_write_started": true
+    },
+    {
+      "id": "9035a35b53f24d23830bdf3a42656a83",
+      "request_sha256": "0403520f8f6be801937585c81d7457f5d35f474538680e8840690f9bb087549d",
+      "response_sha256": "7b0318981a83a2bf546e63438be6cef8cec2ed5cd507096b5c07de7ac8af0b9b",
+      "trace_sha256": "c5ff1fa8f9a1e20b7e01d46455ad83bbb4873fdffc659ff05fe25786fa76278b",
+      "http_status": 200,
+      "cost_usd": 0.013908,
+      "attempts": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443,
+          "tcp_connected": true
+        }
+      ],
+      "http_write_started": true
+    }
+  ],
+  "interpretation": "24 successful calls with durable endpoint traces. No historical network cause established; no full continuation authorised by this receipt."
+}
