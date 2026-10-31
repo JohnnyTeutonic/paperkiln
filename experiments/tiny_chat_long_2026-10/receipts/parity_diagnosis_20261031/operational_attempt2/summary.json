@@ -1,0 +1,455 @@
+{
+  "status": "ERROR",
+  "scope": "New source-bound reconstruction; not recovered historical logits",
+  "commands": [
+    {
+      "name": "tokenizer_dependency",
+      "argv": [
+        "/usr/bin/python3",
+        "-m",
+        "pip",
+        "install",
+        "tokenizers==0.23.3"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "hardware",
+      "argv": [
+        "nvidia-smi",
+        "--query-gpu=name,uuid,driver_version",
+        "--format=csv,noheader"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "configure",
+      "argv": [
+        "cmake",
+        "-S",
+        "/content/hs1_source",
+        "-B",
+        "/content/hs1_build",
+        "-DCMAKE_BUILD_TYPE=Release",
+        "-DMICROTORCH_CUDA=ON",
+        "-DCUDA_ENABLED=ON",
+        "-DCMAKE_CUDA_ARCHITECTURES=89"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "build_original",
+      "argv": [
+        "cmake",
+        "--build",
+        "/content/hs1_build",
+        "--target",
+        "mtstudio",
+        "--parallel",
+        "4"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "c12_B_r1_chunk1_original",
+      "argv": [
+        "/content/hs1_build/mtstudio",
+        "score",
+        "/content/chat/upload/c12_B_r1.spec.json",
+        "--in",
+        "/content/chat/upload/c12_B_r1.chunk0001.requests.jsonl",
+        "--out",
+        "/content/chat/hs1_parity_reconstruction_v2/c12_B_r1_chunk1_original.jsonl",
+        "--batch-tokens",
+        "16384"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "c12_B_r1_chunk65_original",
+      "argv": [
+        "/content/hs1_build/mtstudio",
+        "score",
+        "/content/chat/upload/c12_B_r1.spec.json",
+        "--in",
+        "/content/chat/upload/c12_B_r1.chunk0065.requests.jsonl",
+        "--out",
+        "/content/chat/hs1_parity_reconstruction_v2/c12_B_r1_chunk65_original.jsonl",
+        "--batch-tokens",
+        "16384"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "c12_B_r1_chunk87_original",
+      "argv": [
+        "/content/hs1_build/mtstudio",
+        "score",
+        "/content/chat/upload/c12_B_r1.spec.json",
+        "--in",
+        "/content/chat/upload/c12_B_r1.chunk0087.requests.jsonl",
+        "--out",
+        "/content/chat/hs1_parity_reconstruction_v2/c12_B_r1_chunk87_original.jsonl",
+        "--batch-tokens",
+        "16384"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "c12_B_r1_export",
+      "argv": [
+        "/content/hs1_build/mtstudio",
+        "export",
+        "/content/chat/upload/c12_B_r1.spec.json",
+        "--formats",
+        "gguf"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "c12_B_r3_chunk98_original",
+      "argv": [
+        "/content/hs1_build/mtstudio",
+        "score",
+        "/content/chat/upload/c12_B_r3.spec.json",
+        "--in",
+        "/content/chat/upload/c12_B_r3.chunk0098.requests.jsonl",
+        "--out",
+        "/content/chat/hs1_parity_reconstruction_v2/c12_B_r3_chunk98_original.jsonl",
+        "--batch-tokens",
+        "16384"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "c12_B_r3_export",
+      "argv": [
+        "/content/hs1_build/mtstudio",
+        "export",
+        "/content/chat/upload/c12_B_r3.spec.json",
+        "--formats",
+        "gguf"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "c12_Sgist_r1_chunk73_original",
+      "argv": [
+        "/content/hs1_build/mtstudio",
+        "score",
+        "/content/chat/upload/c12_Sgist_r1.spec.json",
+        "--in",
+        "/content/chat/upload/c12_Sgist_r1.chunk0073.requests.jsonl",
+        "--out",
+        "/content/chat/hs1_parity_reconstruction_v2/c12_Sgist_r1_chunk73_original.jsonl",
+        "--batch-tokens",
+        "16384"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "c12_Sgist_r1_export",
+      "argv": [
+        "/content/hs1_build/mtstudio",
+        "export",
+        "/content/chat/upload/c12_Sgist_r1.spec.json",
+        "--formats",
+        "gguf"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "c12_Sgist_r4_chunk45_original",
+      "argv": [
+        "/content/hs1_build/mtstudio",
+        "score",
+        "/content/chat/upload/c12_Sgist_r4.spec.json",
+        "--in",
+        "/content/chat/upload/c12_Sgist_r4.chunk0045.requests.jsonl",
+        "--out",
+        "/content/chat/hs1_parity_reconstruction_v2/c12_Sgist_r4_chunk45_original.jsonl",
+        "--batch-tokens",
+        "16384"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "c12_Sgist_r4_export",
+      "argv": [
+        "/content/hs1_build/mtstudio",
+        "export",
+        "/content/chat/upload/c12_Sgist_r4.spec.json",
+        "--formats",
+        "gguf"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "build_diagnostic",
+      "argv": [
+        "cmake",
+        "--build",
+        "/content/hs1_build",
+        "--target",
+        "mtstudio",
+        "--parallel",
+        "4"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "c12_B_r1_chunk1_diagnostic",
+      "argv": [
+        "/content/hs1_build/mtstudio",
+        "score",
+        "/content/chat/upload/c12_B_r1.spec.json",
+        "--in",
+        "/content/chat/upload/c12_B_r1.chunk0001.requests.jsonl",
+        "--out",
+        "/content/chat/hs1_parity_reconstruction_v2/c12_B_r1_chunk1_diagnostic.jsonl",
+        "--batch-tokens",
+        "16384",
+        "--logits",
+        "/content/chat/hs1_parity_reconstruction_v2/c12_B_r1_chunk1.f32"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "c12_B_r1_chunk65_diagnostic",
+      "argv": [
+        "/content/hs1_build/mtstudio",
+        "score",
+        "/content/chat/upload/c12_B_r1.spec.json",
+        "--in",
+        "/content/chat/upload/c12_B_r1.chunk0065.requests.jsonl",
+        "--out",
+        "/content/chat/hs1_parity_reconstruction_v2/c12_B_r1_chunk65_diagnostic.jsonl",
+        "--batch-tokens",
+        "16384",
+        "--logits",
+        "/content/chat/hs1_parity_reconstruction_v2/c12_B_r1_chunk65.f32"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "c12_B_r1_chunk87_diagnostic",
+      "argv": [
+        "/content/hs1_build/mtstudio",
+        "score",
+        "/content/chat/upload/c12_B_r1.spec.json",
+        "--in",
+        "/content/chat/upload/c12_B_r1.chunk0087.requests.jsonl",
+        "--out",
+        "/content/chat/hs1_parity_reconstruction_v2/c12_B_r1_chunk87_diagnostic.jsonl",
+        "--batch-tokens",
+        "16384",
+        "--logits",
+        "/content/chat/hs1_parity_reconstruction_v2/c12_B_r1_chunk87.f32"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "c12_B_r3_chunk98_diagnostic",
+      "argv": [
+        "/content/hs1_build/mtstudio",
+        "score",
+        "/content/chat/upload/c12_B_r3.spec.json",
+        "--in",
+        "/content/chat/upload/c12_B_r3.chunk0098.requests.jsonl",
+        "--out",
+        "/content/chat/hs1_parity_reconstruction_v2/c12_B_r3_chunk98_diagnostic.jsonl",
+        "--batch-tokens",
+        "16384",
+        "--logits",
+        "/content/chat/hs1_parity_reconstruction_v2/c12_B_r3_chunk98.f32"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "c12_Sgist_r1_chunk73_diagnostic",
+      "argv": [
+        "/content/hs1_build/mtstudio",
+        "score",
+        "/content/chat/upload/c12_Sgist_r1.spec.json",
+        "--in",
+        "/content/chat/upload/c12_Sgist_r1.chunk0073.requests.jsonl",
+        "--out",
+        "/content/chat/hs1_parity_reconstruction_v2/c12_Sgist_r1_chunk73_diagnostic.jsonl",
+        "--batch-tokens",
+        "16384",
+        "--logits",
+        "/content/chat/hs1_parity_reconstruction_v2/c12_Sgist_r1_chunk73.f32"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "c12_Sgist_r4_chunk45_diagnostic",
+      "argv": [
+        "/content/hs1_build/mtstudio",
+        "score",
+        "/content/chat/upload/c12_Sgist_r4.spec.json",
+        "--in",
+        "/content/chat/upload/c12_Sgist_r4.chunk0045.requests.jsonl",
+        "--out",
+        "/content/chat/hs1_parity_reconstruction_v2/c12_Sgist_r4_chunk45_diagnostic.jsonl",
+        "--batch-tokens",
+        "16384",
+        "--logits",
+        "/content/chat/hs1_parity_reconstruction_v2/c12_Sgist_r4_chunk45.f32"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "ember_clone",
+      "argv": [
+        "git",
+        "clone",
+        "--no-checkout",
+        "https://github.com/JohnnyTeutonic/ember.cpp.git",
+        "/content/hs1_ember"
+      ],
+      "returncode": 0
+    }
+  ],
+  "models": {
+    "c12_B_r1": {
+      "chunks": {
+        "1": {
+          "original": "c12_B_r1_chunk1_original.jsonl",
+          "target_keys": [
+            "carry12_v1:recall:0017|gate_self|4"
+          ],
+          "diagnostic": "c12_B_r1_chunk1_diagnostic.jsonl",
+          "logits": "c12_B_r1_chunk1.f32",
+          "numerical_json_identical": true,
+          "logit_rows": 13
+        },
+        "65": {
+          "original": "c12_B_r1_chunk65_original.jsonl",
+          "target_keys": [
+            "carry12_v1:correction:0046|gate_self|2"
+          ],
+          "diagnostic": "c12_B_r1_chunk65_diagnostic.jsonl",
+          "logits": "c12_B_r1_chunk65.f32",
+          "numerical_json_identical": true,
+          "logit_rows": 19
+        },
+        "87": {
+          "original": "c12_B_r1_chunk87_original.jsonl",
+          "target_keys": [
+            "carry12_v1:correction:0224|gate_self|2"
+          ],
+          "diagnostic": "c12_B_r1_chunk87_diagnostic.jsonl",
+          "logits": "c12_B_r1_chunk87.f32",
+          "numerical_json_identical": true,
+          "logit_rows": 12
+        }
+      },
+      "export": "EXACT_HASH",
+      "gguf_sha256": "290d37a3b6043e19ead788551f98961d47a4b68d835ff4e27394981e23f61fe3"
+    },
+    "c12_B_r3": {
+      "chunks": {
+        "98": {
+          "original": "c12_B_r3_chunk98_original.jsonl",
+          "target_keys": [
+            "carry12_v1:correction:0306|gate_self|2"
+          ],
+          "diagnostic": "c12_B_r3_chunk98_diagnostic.jsonl",
+          "logits": "c12_B_r3_chunk98.f32",
+          "numerical_json_identical": true,
+          "logit_rows": 14
+        }
+      },
+      "export": "EXACT_HASH",
+      "gguf_sha256": "115b4136db34dbcbbfd9da4b5ffe8e545628caaa18d1430126197c52feb8dd26"
+    },
+    "c12_Sgist_r1": {
+      "chunks": {
+        "73": {
+          "original": "c12_Sgist_r1_chunk73_original.jsonl",
+          "target_keys": [
+            "carry12_v1:correction:0111|gate_self|3"
+          ],
+          "diagnostic": "c12_Sgist_r1_chunk73_diagnostic.jsonl",
+          "logits": "c12_Sgist_r1_chunk73.f32",
+          "numerical_json_identical": true,
+          "logit_rows": 20
+        }
+      },
+      "export": "EXACT_HASH",
+      "gguf_sha256": "1effc37018942d3f5ce95ec21154261f3aeabadbdbee1e18d013e8ed5a238ce4"
+    },
+    "c12_Sgist_r4": {
+      "chunks": {
+        "45": {
+          "original": "c12_Sgist_r4_chunk45_original.jsonl",
+          "target_keys": [
+            "carry12_v1:recall:0365|gate_self|8"
+          ],
+          "diagnostic": "c12_Sgist_r4_chunk45_diagnostic.jsonl",
+          "logits": "c12_Sgist_r4_chunk45.f32",
+          "numerical_json_identical": true,
+          "logit_rows": 11
+        }
+      },
+      "export": "EXACT_HASH",
+      "gguf_sha256": "d9749df011cb53f91784181b0cbe8f66190b4520575ab7a9be6d2805f6a842ae"
+    }
+  },
+  "errors": [
+    "ember_checkout timed out"
+  ],
+  "input_manifest_sha256": "e051e601d167f61431fdb0a120d570692767c0bc012ea62edf0f8f2e2442fecc",
+  "spec_delta_path_only_verified": true,
+  "exact_source_inventory_verified": true,
+  "exact_historical_chunk_reconstruction_verified": true,
+  "original_binary_sha256": "65fe612c93f559d65b9b3f5f132e64b4049571b8732c8aae03d36e0351d61b4c",
+  "diagnostic_binary_sha256": "e40839ab2b365fea52d9fdcc48f09bd1e08894eba0b0682f71cf7352c8b22ea7",
+  "original_source_restored": true,
+  "files_sha256": {
+    "ember_checkout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ember_clone.log": "6d33f7f8835346dc65ea14351349f1c4fce9085e38099fda76e8208a1b93e631",
+    "c12_Sgist_r4_chunk45.f32": "e8a3c291eeb42a21579eb6192190bdecbc2e749441bf4795eaf1d5123b821c97",
+    "c12_Sgist_r4_chunk45_diagnostic.jsonl": "81346cd42e8fdf06cc7e2124c124fa71f14b7eac4fefeb9818802d60312188af",
+    "c12_Sgist_r4_chunk45_diagnostic.log": "24654632a4b6243354254dbeee4fe60da222c03ef6aacb86beb10d10a69011b6",
+    "c12_Sgist_r1_chunk73.f32": "dedcea9bdbd9ae40bc925f597107aa8fed21d8646fc861ed3198363ad01d84d5",
+    "c12_Sgist_r1_chunk73_diagnostic.jsonl": "2abd8ca1ce585780bed4078c8242b29fa81174407e5fe04ae0205c328aabacd7",
+    "c12_Sgist_r1_chunk73_diagnostic.log": "d943f0d0fba614f1b1328d1822d401a442860f928a8be190ab74084ca4fd649b",
+    "c12_B_r3_chunk98.f32": "9faa72bf5f888379ab8598070a74977f9b7e456dcd28106c100c29339eafc6d9",
+    "c12_B_r3_chunk98_diagnostic.jsonl": "0bb4961a6545a1db3f7d1f692ef4f6833aecf1fea6623cc3404475c6a0aefbdb",
+    "c12_B_r3_chunk98_diagnostic.log": "45bab6fdf0379b5f5f123f9a6baa7f58e9ba2014352f2fb2629128a3f14eeeea",
+    "c12_B_r1_chunk87.f32": "ab5517fcbdcc371dd5225fa85a58159e689f2b2aededffc83789abc7f5eaaac0",
+    "c12_B_r1_chunk87_diagnostic.jsonl": "37f51a156d10f1c65d30bbdb5914e6b187c22b6ede771fa19501c15ba6c268aa",
+    "c12_B_r1_chunk87_diagnostic.log": "d4efb9e4562404d6d5187e8665328e5f8f67c7cccc80ff1faebe8c4c29e41d14",
+    "c12_B_r1_chunk65.f32": "6e77d51381b3e9283585b11179d0d760ea21bbcfecc97e7aa09d2d0a1c2a359c",
+    "c12_B_r1_chunk65_diagnostic.jsonl": "bcdd21fc9ad0c1d785b4632655bf5e8ddd751ee88abcba006dfc3015a0d2c7bd",
+    "c12_B_r1_chunk65_diagnostic.log": "fafabbf7a6045d1642209492967e9757c27eaa0669a4b0c6c3295d55c0759fa6",
+    "c12_B_r1_chunk1.f32": "120c31597aa731de185a832cc413d784f4b92a4837aec3c34d16a909d8f08722",
+    "c12_B_r1_chunk1_diagnostic.jsonl": "5b57b342bcb9a394330c31db573b17c5592643986f3cb3973ac82d5f0b14f331",
+    "c12_B_r1_chunk1_diagnostic.log": "32e814a4f1fb5fbd18d9f7ec18c5654fbfb0db906ab7458f45284a150092a229",
+    "build_diagnostic.log": "1175b4c2c79e382f8c9cacb9e1b03da21f2ab3d5fed5cfc35f4c2744a9213449",
+    "c12_Sgist_r4_export.log": "9cabdca1e6c7b4847a001d3bd92b776e88dc14b779f8fe93f1988c5d6dc2d2df",
+    "c12_Sgist_r4_chunk45_original.jsonl": "81346cd42e8fdf06cc7e2124c124fa71f14b7eac4fefeb9818802d60312188af",
+    "c12_Sgist_r4_chunk45_original.log": "ab4b95742329a666915935d8ac0a5a6360c68897a9ad373f942d51b739d7a227",
+    "c12_Sgist_r1_export.log": "c104ef7d64955f1a405290dcd4833001e2b62a3ccdff47c406e2d56eaa90cb38",
+    "c12_Sgist_r1_chunk73_original.jsonl": "2abd8ca1ce585780bed4078c8242b29fa81174407e5fe04ae0205c328aabacd7",
+    "c12_Sgist_r1_chunk73_original.log": "a99db5db8831db44a923a8046894edf6035633f342a7415781fc1f7314f09dd1",
+    "c12_B_r3_export.log": "4c6a89f221ccdb298d644b64a8b84d4958fb00e0a27290fb684dda2cdd6ce3f1",
+    "c12_B_r3_chunk98_original.jsonl": "0bb4961a6545a1db3f7d1f692ef4f6833aecf1fea6623cc3404475c6a0aefbdb",
+    "c12_B_r3_chunk98_original.log": "500d5f6604c993a4eb88f00e60a6a5ceaf58e338397b7f94dc0ef1adbdc7f2fa",
+    "c12_B_r1_export.log": "c134e0da5ee9afe0da824bdeae6548099a71ae744254b6c918422a6d2eee0ca5",
+    "c12_B_r1_chunk87_original.jsonl": "37f51a156d10f1c65d30bbdb5914e6b187c22b6ede771fa19501c15ba6c268aa",
+    "c12_B_r1_chunk87_original.log": "33e56324f963db093d9fb8f11d02df9e5e22453a309a48523c57a962c9002d4e",
+    "c12_B_r1_chunk65_original.jsonl": "bcdd21fc9ad0c1d785b4632655bf5e8ddd751ee88abcba006dfc3015a0d2c7bd",
+    "c12_B_r1_chunk65_original.log": "611ba9e9c2bc27a3b1f5fe6017f99dd0fc54bfb58efbd774eb4d7f44fdeda76e",
+    "c12_B_r1_chunk1_original.jsonl": "5b57b342bcb9a394330c31db573b17c5592643986f3cb3973ac82d5f0b14f331",
+    "c12_B_r1_chunk1_original.log": "f2a1ec35017029db095779acbb786baa22ed0936bae38def42f3f40fff82b443",
+    "build_original.log": "25140b1dfc7d167b4e57ce397fcde54d8e38546e8619898af8c7f0f059153c20",
+    "configure.log": "c42d2afa1febda23ae6255f4d018285a4d69505c6fd23951fc7a2dc9547afb56",
+    "hardware.log": "8abe2b9bc0dbcf63b13cd13516b220fed04fe999d7b657d3b12305aaa31561ef",
+    "tokenizer_dependency.log": "6a3af2fc9c712866560278c77edae2ad7d648ae17e483521edd02f1178f6ae17",
+    "diagnostic_source.cpp": "c106d5465492f2ab81522cf2898e28df9a6959cf223d6081e8ec4231938185ab",
+    "input_manifest.json": "e051e601d167f61431fdb0a120d570692767c0bc012ea62edf0f8f2e2442fecc"
+  }
+}

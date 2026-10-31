@@ -1,0 +1,54 @@
+{
+  "status": "PARTIAL_SCORER_COMPONENT_VERIFIED_OVERALL_ERROR",
+  "tests": "26PASS",
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_hs1_parity_scorer_component_audit.py",
+        "tests/test_hs1_parity_compare.py",
+        "tests/test_hs1_parity_reconstruction_audit.py",
+        "tests/test_hs1_parity_cpu_replay.py",
+        "tools/colab_chat/test_hs1_parity_reconstruction_vm.py"
+      ],
+      "rc": 0,
+      "log": "tests.log"
+    },
+    {
+      "argv": [
+        "python3",
+        "/home/jonat/pk_hs1_parity_diagnosis_20261031/tools/hs1_parity_reconstruction_audit.py",
+        "--archive",
+        "/mnt/c/ml_artifacts/tiny_chat/hs1_parity_reconstruction_v2_20261031/hs1_parity_reconstruction_v2/out.zip",
+        "--stage",
+        "/home/jonat/hs1_parity_diagnosis_20261031/stage_v2",
+        "--output",
+        "/home/jonat/hs1_parity_diagnosis_20261031/SHOULD_NOT_EXIST_full_audit.json"
+      ],
+      "rc": 1,
+      "log": "full_audit_refusal.log",
+      "expected": "overallERROR must refuse"
+    }
+  ],
+  "full_gate_refused": true,
+  "generation_reconstruction": "NOT_EXECUTED",
+  "source_sha256": {
+    "tools/hs1_parity_scorer_component_audit.py": "11ba5132900c9a3e7bdf687b9a8c44672771a012e42ce84dd6427d1fde5ef948",
+    "tools/hs1_parity_reconstruction_audit.py": "9da39625877cae1e6844dd0dc2c8357d19ab576013c91580ef9a6ec218c9107d",
+    "tools/hs1_parity_compare.py": "038b6ab516ac26c8127f52ac45b8921d668e052b4aef96abf62ec2630e04a195",
+    "tools/hs1_parity_row_errors.py": "70be7916cc1c4c609a60770ff4c8ee8f5797acc773729386006de6252cc5d1c9"
+  },
+  "files_sha256": {
+    "scorer_component_audit.json": "cc140ed0e2c055ca1c30bc1f6cd3d280c5c1bf9b8666f7a3a5fec1bf04c72aed",
+    "reconstruction_comparison.json": "b2e61d50f2853db524a5d32bfbb8a35eb7fd28859c09c4fda5a3331522bedc1e",
+    "full_audit_refusal.log": "0ecb8f7f2be9eb193b31cf57fa32588331ac61b08e825c4be3dceed8549fffe6",
+    "fullrow_errors.json": "83a3b61a58fe7520be8185146163846ee0e3a61fcec1117ecbf26b8877347fd0",
+    "summary.json": "9be3cbc77b51b6167a3a8f8d4f39ba21862d983bb1cacb38b48aa431c92ecfa1",
+    "tests.log": "0be7428786bb2b1b4bbf8bc76b7fd4a048960e57c5df85a67f2660eade6729a7",
+    "out.zip": "e906a3db171fdc9b4ddfba9d2f309c6c3316a85471bac6a3a6d24c84f4b00d5e",
+    "home_receipt.json": "2ea219c47a8c56e6408d09ff20e7b85d5278177ec39cf7c4f5e97390e73b5d19"
+  }
+}

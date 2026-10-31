@@ -7,7 +7,12 @@ from pathlib import Path
 
 
 def compare(cpu, fp64, gpu):
-    if gpu.get("status") != "RECONSTRUCTION_AUDITED":
+    if gpu.get("status") == "SCORER_COMPONENT_AUDITED_OVERALL_ERROR":
+        if gpu.get("overall_run_status") != "ERROR" or gpu.get("generation") != []:
+            raise ValueError(
+                "partial component must preserve overall ERROR and absent generation"
+            )
+    elif gpu.get("status") != "RECONSTRUCTION_AUDITED":
         raise ValueError(
             "GPU reconstruction must first pass independent artifact audit"
         )
@@ -69,6 +74,9 @@ def compare(cpu, fp64, gpu):
         raise ValueError("expected89 positions")
     return {
         "scope": "New CPU/GPU/FP64 reconstructions only. Original failed positions/logits remain unavailable; historical strict failures remain unchanged. Generation engine fresh/repeated calls do not recreate original preceding cache trajectory.",
+        "gpu_audit_status": gpu["status"],
+        "overall_run_status": gpu.get("overall_run_status", "COMPLETE"),
+        "overall_run_errors": gpu.get("overall_run_errors", []),
         "positions": 89,
         "rows": rows,
         "generation": gpu["generation"],

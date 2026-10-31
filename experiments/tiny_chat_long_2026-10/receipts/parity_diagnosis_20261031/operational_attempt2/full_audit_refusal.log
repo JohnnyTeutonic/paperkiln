@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/home/jonat/pk_hs1_parity_diagnosis_20261031/tools/hs1_parity_reconstruction_audit.py", line 281, in <module>
+    result = audit(args.archive, args.stage)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jonat/pk_hs1_parity_diagnosis_20261031/tools/hs1_parity_reconstruction_audit.py", line 116, in audit
+    raise ValueError(
+ValueError: reconstruction incomplete or failed; preserve negative evidence

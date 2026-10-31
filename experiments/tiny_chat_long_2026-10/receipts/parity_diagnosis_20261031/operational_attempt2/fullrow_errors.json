@@ -1,0 +1,549 @@
+{
+  "scope": "Descriptive full-row arithmetic differences; not a historical or golden oracle.",
+  "overall_run_status": "ERROR",
+  "positions": [
+    {
+      "key": "carry12_v1:recall:0017|gate_self|4",
+      "position_zero_based": 0,
+      "gpu_cpu_full_max_abs": 1.52587890625e-05,
+      "gpu_fp64_max_abs": 1.0221239101326773e-05
+    },
+    {
+      "key": "carry12_v1:recall:0017|gate_self|4",
+      "position_zero_based": 1,
+      "gpu_cpu_full_max_abs": 1.621246337890625e-05,
+      "gpu_fp64_max_abs": 1.2698491680396273e-05
+    },
+    {
+      "key": "carry12_v1:recall:0017|gate_self|4",
+      "position_zero_based": 2,
+      "gpu_cpu_full_max_abs": 1.3828277587890625e-05,
+      "gpu_fp64_max_abs": 1.1241332831701811e-05
+    },
+    {
+      "key": "carry12_v1:recall:0017|gate_self|4",
+      "position_zero_based": 3,
+      "gpu_cpu_full_max_abs": 1.621246337890625e-05,
+      "gpu_fp64_max_abs": 1.2027933911085142e-05
+    },
+    {
+      "key": "carry12_v1:recall:0017|gate_self|4",
+      "position_zero_based": 4,
+      "gpu_cpu_full_max_abs": 1.430511474609375e-05,
+      "gpu_fp64_max_abs": 1.0193803186453465e-05
+    },
+    {
+      "key": "carry12_v1:recall:0017|gate_self|4",
+      "position_zero_based": 5,
+      "gpu_cpu_full_max_abs": 1.430511474609375e-05,
+      "gpu_fp64_max_abs": 1.57608819897348e-05
+    },
+    {
+      "key": "carry12_v1:recall:0017|gate_self|4",
+      "position_zero_based": 6,
+      "gpu_cpu_full_max_abs": 2.09808349609375e-05,
+      "gpu_fp64_max_abs": 1.2115664146605809e-05
+    },
+    {
+      "key": "carry12_v1:recall:0017|gate_self|4",
+      "position_zero_based": 7,
+      "gpu_cpu_full_max_abs": 1.52587890625e-05,
+      "gpu_fp64_max_abs": 1.2635738910304894e-05
+    },
+    {
+      "key": "carry12_v1:recall:0017|gate_self|4",
+      "position_zero_based": 8,
+      "gpu_cpu_full_max_abs": 1.71661376953125e-05,
+      "gpu_fp64_max_abs": 1.3704287830762496e-05
+    },
+    {
+      "key": "carry12_v1:recall:0017|gate_self|4",
+      "position_zero_based": 9,
+      "gpu_cpu_full_max_abs": 1.33514404296875e-05,
+      "gpu_fp64_max_abs": 1.0740949457854754e-05
+    },
+    {
+      "key": "carry12_v1:recall:0017|gate_self|4",
+      "position_zero_based": 10,
+      "gpu_cpu_full_max_abs": 1.4781951904296875e-05,
+      "gpu_fp64_max_abs": 1.1469598925728519e-05
+    },
+    {
+      "key": "carry12_v1:recall:0017|gate_self|4",
+      "position_zero_based": 11,
+      "gpu_cpu_full_max_abs": 1.811981201171875e-05,
+      "gpu_fp64_max_abs": 1.4359215960269012e-05
+    },
+    {
+      "key": "carry12_v1:recall:0017|gate_self|4",
+      "position_zero_based": 12,
+      "gpu_cpu_full_max_abs": 1.71661376953125e-05,
+      "gpu_fp64_max_abs": 1.6356363405023444e-05
+    },
+    {
+      "key": "carry12_v1:correction:0046|gate_self|2",
+      "position_zero_based": 0,
+      "gpu_cpu_full_max_abs": 1.621246337890625e-05,
+      "gpu_fp64_max_abs": 1.6295122229337267e-05
+    },
+    {
+      "key": "carry12_v1:correction:0046|gate_self|2",
+      "position_zero_based": 1,
+      "gpu_cpu_full_max_abs": 1.239776611328125e-05,
+      "gpu_fp64_max_abs": 1.1757812823809388e-05
+    },
+    {
+      "key": "carry12_v1:correction:0046|gate_self|2",
+      "position_zero_based": 2,
+      "gpu_cpu_full_max_abs": 1.52587890625e-05,
+      "gpu_fp64_max_abs": 1.2968463584783763e-05
+    },
+    {
+      "key": "carry12_v1:correction:0046|gate_self|2",
+      "position_zero_based": 3,
+      "gpu_cpu_full_max_abs": 1.33514404296875e-05,
+      "gpu_fp64_max_abs": 1.2037245917362327e-05
+    },
+    {
+      "key": "carry12_v1:correction:0046|gate_self|2",
+      "position_zero_based": 4,
+      "gpu_cpu_full_max_abs": 1.621246337890625e-05,
+      "gpu_fp64_max_abs": 1.3833236414129146e-05
+    },
+    {
+      "key": "carry12_v1:correction:0046|gate_self|2",
+      "position_zero_based": 5,
+      "gpu_cpu_full_max_abs": 2.288818359375e-05,
+      "gpu_fp64_max_abs": 1.7810405262608242e-05
+    },
+    {
+      "key": "carry12_v1:correction:0046|gate_self|2",
+      "position_zero_based": 6,
+      "gpu_cpu_full_max_abs": 1.33514404296875e-05,
+      "gpu_fp64_max_abs": 1.4052879809156593e-05
+    },
+    {
+      "key": "carry12_v1:correction:0046|gate_self|2",
+      "position_zero_based": 7,
+      "gpu_cpu_full_max_abs": 1.1444091796875e-05,
+      "gpu_fp64_max_abs": 9.830429693380438e-06
+    },
+    {
+      "key": "carry12_v1:correction:0046|gate_self|2",
+      "position_zero_based": 8,
+      "gpu_cpu_full_max_abs": 1.2874603271484375e-05,
+      "gpu_fp64_max_abs": 1.2150654336018363e-05
+    },
+    {
+      "key": "carry12_v1:correction:0046|gate_self|2",
+      "position_zero_based": 9,
+      "gpu_cpu_full_max_abs": 1.430511474609375e-05,
+      "gpu_fp64_max_abs": 1.1951572776780495e-05
+    },
+    {
+      "key": "carry12_v1:correction:0046|gate_self|2",
+      "position_zero_based": 10,
+      "gpu_cpu_full_max_abs": 1.52587890625e-05,
+      "gpu_fp64_max_abs": 1.2753053296066241e-05
+    },
+    {
+      "key": "carry12_v1:correction:0046|gate_self|2",
+      "position_zero_based": 11,
+      "gpu_cpu_full_max_abs": 1.239776611328125e-05,
+      "gpu_fp64_max_abs": 1.0312256962130562e-05
+    },
+    {
+      "key": "carry12_v1:correction:0046|gate_self|2",
+      "position_zero_based": 12,
+      "gpu_cpu_full_max_abs": 1.430511474609375e-05,
+      "gpu_fp64_max_abs": 1.3189264921109611e-05
+    },
+    {
+      "key": "carry12_v1:correction:0046|gate_self|2",
+      "position_zero_based": 13,
+      "gpu_cpu_full_max_abs": 1.811981201171875e-05,
+      "gpu_fp64_max_abs": 1.6361230141370697e-05
+    },
+    {
+      "key": "carry12_v1:correction:0046|gate_self|2",
+      "position_zero_based": 14,
+      "gpu_cpu_full_max_abs": 1.811981201171875e-05,
+      "gpu_fp64_max_abs": 1.4576489311579621e-05
+    },
+    {
+      "key": "carry12_v1:correction:0046|gate_self|2",
+      "position_zero_based": 15,
+      "gpu_cpu_full_max_abs": 1.52587890625e-05,
+      "gpu_fp64_max_abs": 1.1527384129905727e-05
+    },
+    {
+      "key": "carry12_v1:correction:0046|gate_self|2",
+      "position_zero_based": 16,
+      "gpu_cpu_full_max_abs": 1.52587890625e-05,
+      "gpu_fp64_max_abs": 1.433961906727177e-05
+    },
+    {
+      "key": "carry12_v1:correction:0046|gate_self|2",
+      "position_zero_based": 17,
+      "gpu_cpu_full_max_abs": 1.52587890625e-05,
+      "gpu_fp64_max_abs": 1.6478411916764912e-05
+    },
+    {
+      "key": "carry12_v1:correction:0046|gate_self|2",
+      "position_zero_based": 18,
+      "gpu_cpu_full_max_abs": 1.430511474609375e-05,
+      "gpu_fp64_max_abs": 1.2642420429642698e-05
+    },
+    {
+      "key": "carry12_v1:correction:0224|gate_self|2",
+      "position_zero_based": 0,
+      "gpu_cpu_full_max_abs": 1.430511474609375e-05,
+      "gpu_fp64_max_abs": 1.323040341816295e-05
+    },
+    {
+      "key": "carry12_v1:correction:0224|gate_self|2",
+      "position_zero_based": 1,
+      "gpu_cpu_full_max_abs": 1.52587890625e-05,
+      "gpu_fp64_max_abs": 1.1727336264755195e-05
+    },
+    {
+      "key": "carry12_v1:correction:0224|gate_self|2",
+      "position_zero_based": 2,
+      "gpu_cpu_full_max_abs": 1.33514404296875e-05,
+      "gpu_fp64_max_abs": 1.3592266533635211e-05
+    },
+    {
+      "key": "carry12_v1:correction:0224|gate_self|2",
+      "position_zero_based": 3,
+      "gpu_cpu_full_max_abs": 1.2874603271484375e-05,
+      "gpu_fp64_max_abs": 1.1385983286871237e-05
+    },
+    {
+      "key": "carry12_v1:correction:0224|gate_self|2",
+      "position_zero_based": 4,
+      "gpu_cpu_full_max_abs": 1.239776611328125e-05,
+      "gpu_fp64_max_abs": 1.1464961783502758e-05
+    },
+    {
+      "key": "carry12_v1:correction:0224|gate_self|2",
+      "position_zero_based": 5,
+      "gpu_cpu_full_max_abs": 1.239776611328125e-05,
+      "gpu_fp64_max_abs": 1.0886085775041465e-05
+    },
+    {
+      "key": "carry12_v1:correction:0224|gate_self|2",
+      "position_zero_based": 6,
+      "gpu_cpu_full_max_abs": 1.239776611328125e-05,
+      "gpu_fp64_max_abs": 1.060699270283294e-05
+    },
+    {
+      "key": "carry12_v1:correction:0224|gate_self|2",
+      "position_zero_based": 7,
+      "gpu_cpu_full_max_abs": 1.5735626220703125e-05,
+      "gpu_fp64_max_abs": 1.233930414024087e-05
+    },
+    {
+      "key": "carry12_v1:correction:0224|gate_self|2",
+      "position_zero_based": 8,
+      "gpu_cpu_full_max_abs": 1.52587890625e-05,
+      "gpu_fp64_max_abs": 1.3247427459006644e-05
+    },
+    {
+      "key": "carry12_v1:correction:0224|gate_self|2",
+      "position_zero_based": 9,
+      "gpu_cpu_full_max_abs": 1.52587890625e-05,
+      "gpu_fp64_max_abs": 1.1326971880887271e-05
+    },
+    {
+      "key": "carry12_v1:correction:0224|gate_self|2",
+      "position_zero_based": 10,
+      "gpu_cpu_full_max_abs": 1.811981201171875e-05,
+      "gpu_fp64_max_abs": 1.4779454572177997e-05
+    },
+    {
+      "key": "carry12_v1:correction:0224|gate_self|2",
+      "position_zero_based": 11,
+      "gpu_cpu_full_max_abs": 1.1444091796875e-05,
+      "gpu_fp64_max_abs": 1.2943296612277777e-05
+    },
+    {
+      "key": "carry12_v1:correction:0306|gate_self|2",
+      "position_zero_based": 0,
+      "gpu_cpu_full_max_abs": 1.621246337890625e-05,
+      "gpu_fp64_max_abs": 1.5583119978401783e-05
+    },
+    {
+      "key": "carry12_v1:correction:0306|gate_self|2",
+      "position_zero_based": 1,
+      "gpu_cpu_full_max_abs": 1.33514404296875e-05,
+      "gpu_fp64_max_abs": 1.2932389324760152e-05
+    },
+    {
+      "key": "carry12_v1:correction:0306|gate_self|2",
+      "position_zero_based": 2,
+      "gpu_cpu_full_max_abs": 1.621246337890625e-05,
+      "gpu_fp64_max_abs": 1.1652955761221051e-05
+    },
+    {
+      "key": "carry12_v1:correction:0306|gate_self|2",
+      "position_zero_based": 3,
+      "gpu_cpu_full_max_abs": 1.239776611328125e-05,
+      "gpu_fp64_max_abs": 1.1627391804047704e-05
+    },
+    {
+      "key": "carry12_v1:correction:0306|gate_self|2",
+      "position_zero_based": 4,
+      "gpu_cpu_full_max_abs": 1.239776611328125e-05,
+      "gpu_fp64_max_abs": 1.4701877248057826e-05
+    },
+    {
+      "key": "carry12_v1:correction:0306|gate_self|2",
+      "position_zero_based": 5,
+      "gpu_cpu_full_max_abs": 1.52587890625e-05,
+      "gpu_fp64_max_abs": 1.400155232822442e-05
+    },
+    {
+      "key": "carry12_v1:correction:0306|gate_self|2",
+      "position_zero_based": 6,
+      "gpu_cpu_full_max_abs": 1.33514404296875e-05,
+      "gpu_fp64_max_abs": 1.2272518963740708e-05
+    },
+    {
+      "key": "carry12_v1:correction:0306|gate_self|2",
+      "position_zero_based": 7,
+      "gpu_cpu_full_max_abs": 1.33514404296875e-05,
+      "gpu_fp64_max_abs": 1.5056569175442291e-05
+    },
+    {
+      "key": "carry12_v1:correction:0306|gate_self|2",
+      "position_zero_based": 8,
+      "gpu_cpu_full_max_abs": 1.7642974853515625e-05,
+      "gpu_fp64_max_abs": 1.5195214581709138e-05
+    },
+    {
+      "key": "carry12_v1:correction:0306|gate_self|2",
+      "position_zero_based": 9,
+      "gpu_cpu_full_max_abs": 1.1444091796875e-05,
+      "gpu_fp64_max_abs": 1.1809788517780362e-05
+    },
+    {
+      "key": "carry12_v1:correction:0306|gate_self|2",
+      "position_zero_based": 10,
+      "gpu_cpu_full_max_abs": 1.239776611328125e-05,
+      "gpu_fp64_max_abs": 1.299747294147835e-05
+    },
+    {
+      "key": "carry12_v1:correction:0306|gate_self|2",
+      "position_zero_based": 11,
+      "gpu_cpu_full_max_abs": 2.09808349609375e-05,
+      "gpu_fp64_max_abs": 1.5942755233311345e-05
+    },
+    {
+      "key": "carry12_v1:correction:0306|gate_self|2",
+      "position_zero_based": 12,
+      "gpu_cpu_full_max_abs": 1.811981201171875e-05,
+      "gpu_fp64_max_abs": 1.9895761191435213e-05
+    },
+    {
+      "key": "carry12_v1:correction:0306|gate_self|2",
+      "position_zero_based": 13,
+      "gpu_cpu_full_max_abs": 1.71661376953125e-05,
+      "gpu_fp64_max_abs": 1.671264123359606e-05
+    },
+    {
+      "key": "carry12_v1:correction:0111|gate_self|3",
+      "position_zero_based": 0,
+      "gpu_cpu_full_max_abs": 1.71661376953125e-05,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:correction:0111|gate_self|3",
+      "position_zero_based": 1,
+      "gpu_cpu_full_max_abs": 1.0013580322265625e-05,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:correction:0111|gate_self|3",
+      "position_zero_based": 2,
+      "gpu_cpu_full_max_abs": 9.5367431640625e-06,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:correction:0111|gate_self|3",
+      "position_zero_based": 3,
+      "gpu_cpu_full_max_abs": 7.62939453125e-06,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:correction:0111|gate_self|3",
+      "position_zero_based": 4,
+      "gpu_cpu_full_max_abs": 9.5367431640625e-06,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:correction:0111|gate_self|3",
+      "position_zero_based": 5,
+      "gpu_cpu_full_max_abs": 1.049041748046875e-05,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:correction:0111|gate_self|3",
+      "position_zero_based": 6,
+      "gpu_cpu_full_max_abs": 8.58306884765625e-06,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:correction:0111|gate_self|3",
+      "position_zero_based": 7,
+      "gpu_cpu_full_max_abs": 7.62939453125e-06,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:correction:0111|gate_self|3",
+      "position_zero_based": 8,
+      "gpu_cpu_full_max_abs": 9.5367431640625e-06,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:correction:0111|gate_self|3",
+      "position_zero_based": 9,
+      "gpu_cpu_full_max_abs": 8.106231689453125e-06,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:correction:0111|gate_self|3",
+      "position_zero_based": 10,
+      "gpu_cpu_full_max_abs": 9.5367431640625e-06,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:correction:0111|gate_self|3",
+      "position_zero_based": 11,
+      "gpu_cpu_full_max_abs": 9.5367431640625e-06,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:correction:0111|gate_self|3",
+      "position_zero_based": 12,
+      "gpu_cpu_full_max_abs": 7.62939453125e-06,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:correction:0111|gate_self|3",
+      "position_zero_based": 13,
+      "gpu_cpu_full_max_abs": 9.5367431640625e-06,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:correction:0111|gate_self|3",
+      "position_zero_based": 14,
+      "gpu_cpu_full_max_abs": 6.67572021484375e-06,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:correction:0111|gate_self|3",
+      "position_zero_based": 15,
+      "gpu_cpu_full_max_abs": 7.152557373046875e-06,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:correction:0111|gate_self|3",
+      "position_zero_based": 16,
+      "gpu_cpu_full_max_abs": 7.62939453125e-06,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:correction:0111|gate_self|3",
+      "position_zero_based": 17,
+      "gpu_cpu_full_max_abs": 9.5367431640625e-06,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:correction:0111|gate_self|3",
+      "position_zero_based": 18,
+      "gpu_cpu_full_max_abs": 8.58306884765625e-06,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:correction:0111|gate_self|3",
+      "position_zero_based": 19,
+      "gpu_cpu_full_max_abs": 7.152557373046875e-06,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:recall:0365|gate_self|8",
+      "position_zero_based": 0,
+      "gpu_cpu_full_max_abs": 1.239776611328125e-05,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:recall:0365|gate_self|8",
+      "position_zero_based": 1,
+      "gpu_cpu_full_max_abs": 1.33514404296875e-05,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:recall:0365|gate_self|8",
+      "position_zero_based": 2,
+      "gpu_cpu_full_max_abs": 1.621246337890625e-05,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:recall:0365|gate_self|8",
+      "position_zero_based": 3,
+      "gpu_cpu_full_max_abs": 1.239776611328125e-05,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:recall:0365|gate_self|8",
+      "position_zero_based": 4,
+      "gpu_cpu_full_max_abs": 1.71661376953125e-05,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:recall:0365|gate_self|8",
+      "position_zero_based": 5,
+      "gpu_cpu_full_max_abs": 1.811981201171875e-05,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:recall:0365|gate_self|8",
+      "position_zero_based": 6,
+      "gpu_cpu_full_max_abs": 1.239776611328125e-05,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:recall:0365|gate_self|8",
+      "position_zero_based": 7,
+      "gpu_cpu_full_max_abs": 1.52587890625e-05,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:recall:0365|gate_self|8",
+      "position_zero_based": 8,
+      "gpu_cpu_full_max_abs": 1.239776611328125e-05,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:recall:0365|gate_self|8",
+      "position_zero_based": 9,
+      "gpu_cpu_full_max_abs": 1.9073486328125e-05,
+      "gpu_fp64_max_abs": null
+    },
+    {
+      "key": "carry12_v1:recall:0365|gate_self|8",
+      "position_zero_based": 10,
+      "gpu_cpu_full_max_abs": 1.239776611328125e-05,
+      "gpu_fp64_max_abs": null
+    }
+  ],
+  "max_gpu_cpu_full_abs": 2.288818359375e-05,
+  "max_gpu_fp64_abs": 1.9895761191435213e-05,
+  "inputs_sha256": {
+    "archive": "e906a3db171fdc9b4ddfba9d2f309c6c3316a85471bac6a3a6d24c84f4b00d5e",
+    "component": "cc140ed0e2c055ca1c30bc1f6cd3d280c5c1bf9b8666f7a3a5fec1bf04c72aed",
+    "cpu_manifest": "835b1a00145a33f62b021c70fcd6cabb6618260f71661b0c684bcdd1ddb1e049",
+    "fp64_report": "39dc0f26ccd10573bdb62af0ca80fa04d0d167ba4e3e8c4b3dad7bb859c28931"
+  },
+  "source_sha256": "70be7916cc1c4c609a60770ff4c8ee8f5797acc773729386006de6252cc5d1c9"
+}
