@@ -1,0 +1,61 @@
+{
+ "status": "HF-PARITY-OK",
+ "prompt_ids": [
+  1,
+  2
+ ],
+ "continuation_ids": [
+  9,
+  9,
+  14,
+  14,
+  14,
+  14,
+  14,
+  14
+ ],
+ "mtstudio_argmax": [
+  9,
+  9,
+  14,
+  14,
+  14,
+  14,
+  14,
+  14
+ ],
+ "max_abs_logit_error": 5.960464477539063e-08,
+ "atol": 0.0002,
+ "rtol": 0.0002,
+ "spec": "/home/jonat/hf_relu_test_temp_20261031/test_actual_relu_flex_transfor0/relu.json",
+ "scope": "raw token IDs, source tensor mapping and output logits; not chat rendering",
+ "score_spec_delta": {},
+ "mapped_tensors": 29,
+ "source_prompt_tokenizer_ids_checked": true,
+ "versions": {
+  "torch": "2.8.0+cu128"
+ },
+ "sha256": {
+  "/home/jonat/pk_hf_tied_flex_20261031/tools/hf_export_verify.py": "ab43051ec23b60f2ceff6d2be8f37d57ae545a0f15e5f43ed7b91d834909309a",
+  "/home/jonat/pk_hf_tied_flex_20261031/tools/hf_export.py": "9fd5ec72380050829d9154a8d112cb10bee3e45eb3edb408d9a3baf4f84e4bed",
+  "/home/jonat/pk_hf_tied_flex_20261031/tools/llama3_bpe.py": "880b4558b66486cd099115f62571c1389a70ab3edf01327d7db5de1f97fc5b71",
+  "/home/jonat/pk_hf_tied_flex_20261031/tools/bpe.py": "25607be05b41881d0238796b616cb697031c8ebf89623bc4c4537f8aaf56de39",
+  "/home/jonat/hf_relu_test_temp_20261031/test_actual_relu_flex_transfor0/relu/relu.gguf": "b9a1f758acfd85d67e5f2416fec3459ca6eabf0708a89c8b92bec67f72e71fbd",
+  "/home/jonat/hf_relu_test_temp_20261031/test_actual_relu_flex_transfor0/relu/relu.safetensors": "1cdd4f4bdccc25ae4fda302be6f101da4020e1aaf39cfc384bca03b54cd0a352",
+  "/home/jonat/hf_relu_test_temp_20261031/test_actual_relu_flex_transfor0/relu.json": "32d3ddaad80abde57ea063f9ca9ac908c1da3c4b93ac7c01e85dabd2eaf22e83",
+  "/home/jonat/hf_relu_test_temp_20261031/test_actual_relu_flex_transfor0/relu/events.jsonl": "281d0afed10b37e592a3b66799d27a3caf16c4785013d5b82144eec971daee37",
+  "/home/jonat/pk_studio_probes_build_20261031/mtstudio": "3cba15295005af59affc1418c11c013b1ecf0f4accf8c4441df4cc6b003dd52a",
+  "/home/jonat/hf_relu_test_temp_20261031/test_actual_relu_flex_transfor0/relu/hf/config.json": "87320bcbdf461dd40e916964e4ae93c72bc79c66f9d9114868836ed10db21551",
+  "/home/jonat/hf_relu_test_temp_20261031/test_actual_relu_flex_transfor0/relu/hf/export_receipt.json": "d2e050823cb55c34728d4c4c654c4d4c9114ab6b6da250b8db3dbd438dbbc819",
+  "/home/jonat/hf_relu_test_temp_20261031/test_actual_relu_flex_transfor0/relu/hf/model.safetensors": "7d33a66db5eff82db282318d83a2b0d492b8fb5595c398427e866b1290d02ea7",
+  "/home/jonat/hf_relu_test_temp_20261031/test_actual_relu_flex_transfor0/relu/hf/tokenizer.json": "13ef6be8d382766fd67182ec04bf3ed91016491a845b6eae314a0cc5b74a4613",
+  "/home/jonat/hf_relu_test_temp_20261031/test_actual_relu_flex_transfor0/relu/hf/tokenizer_config.json": "c2f4deb7a5748324ceac9ebf596750a15bc722ee93a0ff5618b286e3467ddb8e"
+ },
+ "verification_inputs_unchanged": true,
+ "evidence": {
+  "schema": 1,
+  "file": "relu-0.json.evidence/logits.npz",
+  "bytes": 1734,
+  "sha256": "e966359cfe716c302e98343c9ce66169af59dd87d5e97b8ec660a6fc1a4b60ed"
+ }
+}

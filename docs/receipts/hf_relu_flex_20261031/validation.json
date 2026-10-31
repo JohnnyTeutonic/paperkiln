@@ -1,0 +1,61 @@
+{
+  "status": "PASS_CPU_ONLY",
+  "parent_commit": "9e3db057f",
+  "source_sha256": {
+    "tools/hf_export.py": "9fd5ec72380050829d9154a8d112cb10bee3e45eb3edb408d9a3baf4f84e4bed",
+    "tools/hf_export_verify.py": "ab43051ec23b60f2ceff6d2be8f37d57ae545a0f15e5f43ed7b91d834909309a",
+    "tests/test_hf_relu_flex.py": "b86a8c29226c0676970e6939673b6ac65eff4916bc5f7ee41a56527179403961"
+  },
+  "native_binary_sha256": "3cba15295005af59affc1418c11c013b1ecf0f4accf8c4441df4cc6b003dd52a",
+  "command": "MTSTUDIO_BIN=/home/jonat/pk_studio_probes_build_20261031/mtstudio MICROTORCH_CPU_BUILD=/home/jonat/pk_studio_probes_build_20261031 python3 -m pytest tests/test_hf_export.py tests/test_hf_export_evidence.py tests/test_hf_export_publication.py tests/test_hf_export_training_modifiers.py tests/test_hf_tied_flex.py tests/test_hf_exact_gelu.py tests/test_hf_relu_flex.py -q --basetemp=/home/jonat/hf_relu_test_temp_20261031",
+  "tests": {
+    "passed": 288,
+    "skipped": 1,
+    "failed": 0,
+    "skip_reason": "Existing independent C++ BPE parity test requires unset BPE_ENCODE_BIN.",
+    "seconds": 101.36
+  },
+  "gate": {
+    "source_activation": "relu",
+    "source_approximation": "gelu_approx must be absent",
+    "hf_activation_function": "relu",
+    "source_operator_reference": "activation_diagnostic.json and tests/test_hf_relu_flex.py: actual native ops::relu on401finite float32 inputs vs independent binary64 max(0,x), plus explicit NaN/negative-zero mismatch diagnostic",
+    "models": [
+      "untied ReLU GPT2-flavour Flex",
+      "tied ReLU GPT2-flavour Flex"
+    ],
+    "training_steps_each": 3,
+    "d": 16,
+    "layers": 2,
+    "heads": 2,
+    "d_ff": 24,
+    "prompts_each": 3,
+    "greedy_continuation_each": 8,
+    "maximum_full_logit_abs_error": 8.940696716308594e-08,
+    "saved_and_reloaded_artifacts": true,
+    "head_parameter_pointer_identity_matches_record": true,
+    "every_loaded_tensor_matches_source_mapping": true
+  },
+  "limits": [
+    "Only otherwise-plain LayerNorm/pre/pre/learned-position Flex, with native ReLU. GELU defaults unchanged; generic expressions including SiLU remain refused. Source std::max(0,x) masks NaN and clears negative zero; HF preserves these. Finite-execution numerical parity only, not universal IEEE bit equivalence.",
+    "CPU FP32 tiny-model gate, no GPU/HF-training/large-model generalisation.",
+    "Existing verifier control-token bans retained for greedy IDs; full unmasked output-logit rows also compared.",
+    "Six retained raw comparisons independently replay without either model; source model fixtures are not committed."
+  ],
+  "artifacts": {
+    "activation_diagnostic.json": "e1469fef2b8a23f822efba4fc3031b65b42890c8f820ed58bef203c367806567",
+    "tests.log": "9cff49270825c9bc83e21be8873370042a58e7c31f2f00b69c038f484c7c75a3",
+    "tied/relu-0.json": "534ca4fa4b68805c26e4b636c3a80bf492693b5f56f2d8ede83632c37c5484d4",
+    "tied/relu-2.json": "45a577b001ea8a8622b0f7c10864f28b94c6c7471d2abc9b542489bc9d3543aa",
+    "tied/relu-1.json": "bc8185fd60f16e7c5d72f340d29336b61b643bdc22ac8a95b838afc1ad16d224",
+    "untied/relu-0.json": "a3d83e84aa49788573bcc6961814615daa14be87097fe8f69f988c9d11d87e16",
+    "untied/relu-2.json": "62a0f266793dc1d4cc17ba1653c00f0f37d1fdf8ccbdf88cf38c81c1f06e9e4d",
+    "untied/relu-1.json": "0505d8b6c2e19505705f97158428ca01444fbd947df595694f9f0938e79fc43b",
+    "tied/relu-2.json.evidence/logits.npz": "0a05b620ef733ef6ccff0d04e115462476a9280288c1ab35e7a220911bc952aa",
+    "tied/relu-0.json.evidence/logits.npz": "0f8520c6b85d1618aedd39763e95e117d57e43e70e27295ee3debef5b864b79b",
+    "tied/relu-1.json.evidence/logits.npz": "15e2b2e0b8a95a87f67fc6e759b9d28e499d2ff418d6295c1186b105cf16b36f",
+    "untied/relu-2.json.evidence/logits.npz": "5463fba170fab00c1b1615f62128d948c9a89185f29809e2b546af11051e6e13",
+    "untied/relu-0.json.evidence/logits.npz": "e966359cfe716c302e98343c9ce66169af59dd87d5e97b8ec660a6fc1a4b60ed",
+    "untied/relu-1.json.evidence/logits.npz": "fac14b5796263f148e7ebce403b73603e13a15afe16b769442051fdac5ad905f"
+  }
+}
