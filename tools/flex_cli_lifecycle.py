@@ -19,6 +19,11 @@ spec=importlib.util.spec_from_file_location('cli_fixture',ROOT/'tests/test_flex_
 fixture_module=importlib.util.module_from_spec(spec);spec.loader.exec_module(fixture_module)
 
 
+def require_reference_runtime():
+    if np.__version__ != '1.26.4':
+        raise ValueError('reference runtime requires NumPy 1.26.4; found '+np.__version__)
+
+
 def sha(p):
     return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 
@@ -37,6 +42,7 @@ def validate_steps(events,layers,require_cuda,through=4):
 
 
 def run(binary,model_gate,out,require_cuda):
+    require_reference_runtime()
     binary,model_gate,out=Path(binary).resolve(),Path(model_gate).resolve(),Path(out).resolve()
     out.mkdir(exist_ok=False,parents=True)
     env={k:v for k,v in os.environ.items() if not k.startswith('MICROTORCH_')}

@@ -13,6 +13,7 @@ import flex_cli_lifecycle as contract
 from replay_flex_precision import replay as model_replay
 
 def replay(out,require_cuda=False):
+    contract.require_reference_runtime()
     out=Path(out);summary=json.loads((out/'summary.json').read_text())
     if summary.get('status')!='PASS' or summary.get('actual_cuda') is not require_cuda:raise ValueError('incomplete/wrong backend summary')
     model=model_replay(json.loads((out/'model_gradient_raw.json').read_text()),require_cuda)
