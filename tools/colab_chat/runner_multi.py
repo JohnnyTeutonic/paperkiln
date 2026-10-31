@@ -850,10 +850,28 @@ def spared_posts(st, jobs, by, needed, failed):
     return spare
 
 
+def halt_dpo_checkpoint(error):
+    marker = os.path.join(HOME, "HALTED")
+    if not os.path.exists(marker):
+        with open(marker, "x") as handle:
+            json.dump({"kind": "DPO_FULL_STATE_CHECKPOINT_FAILURE", "error": str(error)}, handle)
+            handle.flush()
+            os.fsync(handle.fileno())
+
+
 def prepare(st, commit, jobs_rel, jobs, uploads):
     """Inputs, relayed checkpoints and the boot onto a session that is up but
     not yet booted. Retried every tick until it succeeds (st.d["booted"]), so
     a failed upload never leaves a provisioned VM idle."""
+    dpo_leases = []
+    if any(j.get("dpo_full_checkpoint_v1") for j in jobs):
+        from dpo_checkpoint_transport_v1 import home_uploads
+        try:
+            extra, dpo_leases = home_uploads(jobs, ART)
+            uploads = [*uploads, *extra]
+        except (OSError, ValueError, RuntimeError, KeyError, TypeError) as error:
+            halt_dpo_checkpoint(error)
+            raise
     adopt_home(st, jobs)  # files home but state unmarked: FINISHED below, not run again
     dirs = ["/content/chat/upload"] + [f"/content/chat/upload/{j['name']}" for j in jobs]
     rc, out = exec_py(f"import os\nfor d in {dirs!r}: os.makedirs(d, exist_ok=True)\nprint('DIRS_OK')\n")
@@ -1012,12 +1030,15 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
     if full_leases:
         from sfull_checkpoint_transport_v2 import release_uploads
         release_uploads(full_leases)
+    if dpo_leases:
+        from dpo_checkpoint_transport_v1 import release_uploads
+        release_uploads(dpo_leases)
     return True
 
 
 def boot_launch_code(commit, jobs_rel, boot_script="tools/colab_chat/boot_jobs.sh"):
     """Pinned boot selection; the legacy training boot remains the default."""
-    if boot_script not in ("tools/colab_chat/boot_jobs.sh", "tools/colab_chat/boot_commands.sh", "tools/colab_chat/boot_commands_sparse.sh", "tools/colab_chat/boot_sfull_data_only_20261031.sh", "tools/colab_chat/boot_sfull_v2_20261101.sh"):
+    if boot_script not in ("tools/colab_chat/boot_jobs.sh", "tools/colab_chat/boot_commands.sh", "tools/colab_chat/boot_commands_sparse.sh", "tools/colab_chat/boot_sfull_data_only_20261031.sh", "tools/colab_chat/boot_sfull_v2_20261101.sh", "tools/colab_chat/boot_dpo_checkpoint_v1.sh"):
         raise ValueError("unsupported boot script")
     url = f"https://raw.githubusercontent.com/JohnnyTeutonic/paperkiln/{commit}/{boot_script}"
     return (
@@ -1092,7 +1113,7 @@ def main():
     ap.add_argument("--commit", required=True)
     ap.add_argument("--jobs", required=True, help="jobs JSON, path relative to the paperkiln repo root")
     ap.add_argument("--boot-script", default="tools/colab_chat/boot_jobs.sh",
-                    choices=["tools/colab_chat/boot_jobs.sh", "tools/colab_chat/boot_commands.sh", "tools/colab_chat/boot_commands_sparse.sh", "tools/colab_chat/boot_sfull_data_only_20261031.sh", "tools/colab_chat/boot_sfull_v2_20261101.sh"],
+                    choices=["tools/colab_chat/boot_jobs.sh", "tools/colab_chat/boot_commands.sh", "tools/colab_chat/boot_commands_sparse.sh", "tools/colab_chat/boot_sfull_data_only_20261031.sh", "tools/colab_chat/boot_sfull_v2_20261101.sh", "tools/colab_chat/boot_dpo_checkpoint_v1.sh"],
                     help="pinned VM boot; command-only boot skips trainer and corpus setup")
     ap.add_argument("--max-hours", type=float, default=23.5)
     ap.add_argument("--deadline-utc", type=parse_deadline_utc, default=None,
@@ -1235,9 +1256,21 @@ def main():
                         with open(os.path.join(HOME, "HALTED"), "x") as marker:
                             json.dump({"kind": "S_FULL_CHECKPOINT_V2_FAILURE", "error": str(error)}, marker)
                         raise
+                elif r[n] in ("RUNNING", "FINISHED") and not js["home"] and j.get("dpo_full_checkpoint_v1"):
+                    from dpo_checkpoint_transport_v1 import relay as dpo_relay
+                    try:
+                        relayed = dpo_relay(exec_py, download_file, st, j, ART) or relayed
+                    except (OSError, ValueError, RuntimeError, KeyError, TypeError) as error:
+                        halt_dpo_checkpoint(error)
+                        raise
                 elif r[n] == "RUNNING" and not js["home"] and "cmd" not in j:
                     relayed = relay(st, n, j.get("relay_every_steps", 0)) or relayed
                 if r[n] == "FINISHED" and not js["home"]:
+                    if j.get("dpo_full_checkpoint_v1"):
+                        from dpo_checkpoint_transport_v1 import final_home_ready
+                        if not final_home_ready(j, ART):
+                            done = False
+                            continue  # final optimizer/RNG/events bundle must land before home
                     if "cmd" in j:
                         fetch_outputs(st, n, j.get("outputs", []))
                     else:

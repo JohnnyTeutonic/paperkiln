@@ -1,0 +1,28 @@
+{
+  "status": "PASS_ACTUAL_CPU_PROVENANCE_PO_FULL_HOME_RESUME",
+  "source_commit": "75dc4497f87081a89690148aa15ef0b82f729332",
+  "binary_sha256": "9baad81203a44b9a33ee751896e281bb97ab37b8894daeb95a02a81e6c24291b",
+  "publisher_sha256": "ebc0000cdfefb88d5408774e766b960e9034c146412b14659b611ae50c8b1c1c",
+  "core_sha256": "88382d42f4c2e8837a72703f3fc1efb08e61f9097e6b36985e58d96aa3145145",
+  "script_sha256": "28a9f35f839032f739cbf8f4e62a3919e1de9de96e3458ab8272fe705f572760",
+  "raw_home": "/home/jonat/dpo_resume_proof_20261101",
+  "weights_adamw_state_bytes_identical": {
+    "model.safetensors": true,
+    "optim.safetensors": true,
+    "state.txt": true
+  },
+  "checkpoint_step": 10,
+  "final_step": 20,
+  "rng": {
+    "accum": 1,
+    "batch": 8,
+    "draws": 160,
+    "engine": "std::mt19937",
+    "initial_seed": 1000126,
+    "recipe_seed": 1
+  },
+  "fresh_sft_init_from_used": false,
+  "actual_cold_missing_optimizer_refused": true,
+  "scope": "Tiny Llama D8/L1/T4 batch8 CPU engineering fixture. Actual L4 ten-step cadence, quality and performance are unmeasured.",
+  "note": "Exploratory first fixture used LM initialization. Actual SFT initialization proof is separate actual_cpu_continuity_v2.json; raw first fixture retained."
+}
