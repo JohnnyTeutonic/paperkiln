@@ -1,0 +1,4 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+{"case":"softmax_forward_x","actual_cuda":true,"stale_operand_proved":true,"host_poison":true,"ops_disabled_before_fallback":true}
+{"case":"softmax_forward_x","quantity":"forward","normalized_max_error":0.23975226491841603,"numeric_reference_pass":false}
+CHECK failed /content/fallback_source/tests/test_fallback_materialization.cpp:96: maximum < 2e-5

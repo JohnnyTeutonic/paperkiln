@@ -1,0 +1,30 @@
+[ 56%] Built target transformer_core
+[ 96%] Built target microtorch
+[100%] Building CXX object CMakeFiles/test_gradcheck.dir/tests/test_gradcheck.cpp.o
+[100%] Linking CXX executable test_gradcheck
+[100%] Built target test_gradcheck
+[ 56%] Built target transformer_core
+[ 96%] Built target microtorch
+[ 96%] Building CXX object CMakeFiles/test_nn.dir/tests/test_nn.cpp.o
+[100%] Linking CXX executable test_nn
+[100%] Built target test_nn
+[ 56%] Built target transformer_core
+[ 96%] Built target microtorch
+[100%] Building CXX object CMakeFiles/test_thirdparty_ops.dir/tests/test_thirdparty_ops.cpp.o
+[100%] Linking CXX executable test_thirdparty_ops
+[100%] Built target test_thirdparty_ops
+[ 56%] Built target transformer_core
+[ 96%] Built target microtorch
+[ 96%] Building CXX object CMakeFiles/test_cuda_ops.dir/tests/test_cuda_ops.cpp.o
+[100%] Linking CXX executable test_cuda_ops
+[100%] Built target test_cuda_ops
+[ 56%] Built target transformer_core
+[ 96%] Built target microtorch
+[ 96%] Building CXX object CMakeFiles/test_layernorm_materialization.dir/tests/test_layernorm_materialization.cpp.o
+[100%] Linking CXX executable test_layernorm_materialization
+[100%] Built target test_layernorm_materialization
+[ 56%] Built target transformer_core
+[ 96%] Built target microtorch
+[100%] Building CXX object CMakeFiles/test_devcheck_host_read.dir/tests/test_devcheck_host_read.cpp.o
+[100%] Linking CXX executable test_devcheck_host_read
+[100%] Built target test_devcheck_host_read

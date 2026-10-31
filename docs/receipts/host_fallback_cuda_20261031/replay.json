@@ -1,0 +1,9 @@
+{
+  "pass": true,
+  "scope": "offline raw-log, command, source-manifest and numerical-proof replay",
+  "manifest_sha256": "ebd8b516be62717df029703cb714f8b24ec6a180a36318876a9d2de55955e8e5",
+  "report_sha256": "0cdf0b21ff2e4e136b538d16872340ea7ba80c51be31c33210ecb3e4bfd6700f",
+  "negative_cases": 13,
+  "control_cases": 3,
+  "fixed_cases": 16
+}

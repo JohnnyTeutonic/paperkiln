@@ -1,0 +1,3 @@
+CHECK failed test_fallback_materialization.cpp:77: maximum < 2e-5
+{"case":"gelu_forward_x","actual_cuda":true,"stale_operand_proved":true,"host_poison":true,"ops_disabled_before_fallback":true}
+{"case":"gelu_forward_x","quantity":"forward","normalized_max_error":0.1,"numeric_reference_pass":false}

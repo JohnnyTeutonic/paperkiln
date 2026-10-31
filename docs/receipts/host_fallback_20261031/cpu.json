@@ -1,0 +1,39 @@
+{
+  "pass": true,
+  "scope": "CPU independent forward/backward references and strict proof parser; no actual GPU evidence yet",
+  "source_commit": "a51018b1358116c2f309110b9ef05d999560e534",
+  "source_files": {
+    "src/ops.cpp": "21c5a0a245c65cf068b295a9eb582cda762b48ac6eec5d18d270878218e1b59a",
+    "tests/test_fallback_materialization.cpp": "3f2ebd8fa1a29882aa4a7e21fa09edc6d1a9cbadffea860dc076220e78f2870f",
+    "tools/fallback_gate.py": "b6ded7b30c13d76765a2f82ff2a08586156212908e77198edc6312a1102b23bc",
+    "tools/replay_fallback_gate.py": "96f78dd2739f6bc4be4acd6fd97740fac006cacd71c7292dabb52b8b56b59814",
+    "tests/test_fallback_gate.py": "8235685920eddf24d06d7c07553919bffc69b86a686179a7883d6807a3870e6c",
+    "CMakeLists.txt": "1e97bd18f5e668a076b0e8731e302576def927c0677e74785f411eae089e956e"
+  },
+  "cpu_cases": 16,
+  "numeric_quantities": 40,
+  "independent_reference": "binary64 formulas for tanh GELU, SiLU, sigmoid, max-subtracted row softmax, RMSNorm and grouped RMSNorm; all input and applicable shared weight gradients",
+  "maximum_normalized_error": 7.184957976229084e-08,
+  "threshold": 2e-05,
+  "parser_unit_tests": 11,
+  "ctest_passed": 6,
+  "cpu_require_cuda_exit": 2,
+  "cuda_ops_cpu_result": "explicit SKIP, not a CUDA pass",
+  "binary_sha256": "72668da6549ac33db9acbf65dc9daad695fd89d3f093324a12e35b6867f7717c",
+  "manifest_sha256": "ebd8b516be62717df029703cb714f8b24ec6a180a36318876a9d2de55955e8e5",
+  "logs": {
+    "cuda_ops_cpu.log": "5529b91b293fbfe6c6dfa4eca1621f9c8feb406f4045c532ed4be7fc3c554bcd",
+    "configure.log": "60ee9d1809688e6c253b525487e5b2770ef89be2f9dfc0547fd38ee8fdbb960f",
+    "parser_tests.log": "ce895947b8ffcb2e77addf8382970fd1c07ecab9486fbbfca209319a47c37f4f",
+    "build.log": "e30d41ffb3fb70b8384d73ae1683111c8a03625d9dd15afa898b93650c30e2f7",
+    "regression_build.log": "46ec496e4ddc5060b6876ea07c6258d5baf4e8b18ddb518b893113ff8566a0c6",
+    "regressions.log": "3de4789136440c213f206bf5e7356f2f68b425c0b48ab5d5c14445b9a10eeb01",
+    "cpu.log": "fbbe9a9194dac9366d9b9e5d06c50b1e783c6f434647e1b2c7e1b03ade539262",
+    "strict_refusal.log": "1dc6c6a1a545311acf32e9a0228e8f00f20cc8e3107a13cd5a87b0d285ddf7ee"
+  },
+  "limitations": [
+    "Conditional public runtime toggle within a deferred window; ordinary active-on operation is not alleged corrupt.",
+    "No device results, throughput, training quality or historical GRPO applicability claim.",
+    "Thirteen baseline numerical failures remain prospective until the reviewed actual-L4 run."
+  ]
+}
