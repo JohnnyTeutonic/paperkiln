@@ -1,0 +1,26 @@
+{
+  "max_parallel": 1,
+  "jobs": [
+    {
+      "name": "gpt2_precision_model_gate",
+      "cmd": [
+        "timeout",
+        "--signal=TERM",
+        "--kill-after=30",
+        "1530",
+        "python3",
+        "/content/chat/upload/gpt2_precision_gate.py",
+        "--upload",
+        "/content/chat/upload",
+        "--manifest-sha256",
+        "366c8ed09468c55ca7eb62cf615096210041813ba1f03ee5099c50bd32120bff",
+        "--out",
+        "{out}"
+      ],
+      "outputs": [
+        "gate_summary.json",
+        "out.zip"
+      ]
+    }
+  ]
+}
