@@ -1,0 +1,22 @@
+{
+  "authorisation": "ROOT_EXPLICIT_EXACT_PAIRED_EXCLUSION_V5",
+  "protocol_sha256": "a576a57a7796440b2936ede0176f748372655551d83f3a57e09ab7e1e6e8b763",
+  "source_sha256": {
+    "chat_judge_campaign_refusal_v5.py": "3ba3efbee0f602abef538b4147ac3bb85305a7cb5de89da8ec642fc0cf839d30",
+    "chat_judge_api_refusal_v5.py": "11cd8c7880356afaef631f6168d02dd75025cd4be58d4c6fc69fddb966ed0dd7",
+    "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+  },
+  "root_review": "Parent reviewed complete source diffs/inspect/pair derivation, independently verified1690valid/4350missing/4348eligible/pending0 and23targeted optimized-mode tests. Authorises exact proposed watchdog entry only, no duplicateworker.",
+  "bounds": {
+    "initial_training_attempts": 1646,
+    "initial_valid_rankings": 1690,
+    "max_new_attempts": 4348,
+    "max_usd": 200,
+    "heldout_gate_usd": 25,
+    "reserve_per_call_usd": 0.25
+  },
+  "scope": "Both registered orders of refused candidate set excluded; preserve originalHALTs, settled refusal and untouched reverse. Anynewfailure HALTED+STOPPED, no autoretry/disposition. Fullvalidcomplete remainsfalse; DPO/fixedgateblocked pendingseparatedatasetdecision.",
+  "existing_watchdog_only": true,
+  "no_frozen_protocol_mutation": true
+}
