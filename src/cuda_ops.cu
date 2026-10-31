@@ -2117,6 +2117,81 @@ bool conv1d_causal_bwd(const Matrix& x, const Matrix& w, const Matrix& dy, size_
     return true;
 }
 
+namespace {
+#include "selective_scan_kernels.cuh"
+}  // namespace
+
+bool selective_scan_fwd(const Matrix& x, const Matrix& dt, const Matrix& B, const Matrix& C,
+                        const Matrix& A, const Matrix* skip, bool softplus, size_t seq_len,
+                        Matrix& y, Matrix& states, Matrix& delta) {
+    if (!active()) return false;
+    size_t sl;
+    const size_t T = x.rows(), D = x.cols(), N = A.cols();
+    if (!selective_scan_geometry(x, dt, B, C, A, skip, seq_len, states, delta, sl) ||
+        y.rows() != T || y.cols() != D)
+        return false;
+    In ix(x.get_data(), T * D), idt(dt.get_data(), T * D), ib(B.get_data(), T * N),
+        ic(C.get_data(), T * N), ia(A.get_data(), D * N);
+    std::unique_ptr<In> isk;
+    if (skip) isk.reset(new In(skip->get_data(), D));
+    Out oy(y.get_data(), T * D), os(states.get_data(), states.rows() * N),
+        od(delta.get_data(), T * D);
+    k_selective_scan_fwd<<<ew_grid((T / sl) * D), NTHREADS>>>(ix.d, idt.d, ib.d, ic.d, ia.d,
+                                                              isk ? isk->d : nullptr, oy.d, os.d,
+                                                              od.d, T, D, N, sl, softplus);
+    cuda_check(cudaGetLastError(), "selective_scan_fwd");
+    oy.finish();
+    os.finish();
+    od.finish();
+    return true;
+}
+
+bool selective_scan_bwd(const Matrix& x, const Matrix& dt, const Matrix& B, const Matrix& C,
+                        const Matrix& A, const Matrix* skip, const Matrix& dy, const Matrix& states,
+                        const Matrix& delta, bool softplus, size_t seq_len, Matrix* dx, Matrix* ddt,
+                        Matrix* dB, Matrix* dC, Matrix* dA, Matrix* dD) {
+    if (!active()) return false;
+    size_t sl;
+    const size_t T = x.rows(), D = x.cols(), N = A.cols();
+    auto shape = [](const Matrix* m, size_t r, size_t c) {
+        return !m || (m->rows() == r && m->cols() == c);
+    };
+    if (!selective_scan_geometry(x, dt, B, C, A, skip, seq_len, states, delta, sl) ||
+        dy.rows() != T || dy.cols() != D || !shape(dx, T, D) || !shape(ddt, T, D) ||
+        !shape(dB, T, N) || !shape(dC, T, N) || !shape(dA, D, N) || !shape(dD, 1, D) ||
+        (dD && !skip))
+        return false;
+    if (!dx && !ddt && !dB && !dC && !dA && !dD) return true;
+    In ix(x.get_data(), T * D), idt(dt.get_data(), T * D), ib(B.get_data(), T * N),
+        ic(C.get_data(), T * N), ia(A.get_data(), D * N), idy(dy.get_data(), T * D),
+        is(states.get_data(), states.rows() * N), idelta(delta.get_data(), T * D);
+    std::unique_ptr<In> isk;
+    if (skip) isk.reset(new In(skip->get_data(), D));
+    Matrix* destinations[] = {dx, ddt, dB, dC, dA, dD};
+    std::unique_ptr<Out> outs[6];
+    for (size_t j = 0; j < 6; ++j)
+        if (destinations[j])
+            outs[j].reset(new Out(destinations[j]->get_data(),
+                                  destinations[j]->rows() * destinations[j]->cols()));
+    auto out = [&](size_t j) -> float* { return outs[j] ? outs[j]->d : nullptr; };
+    DBuf G(D * N);
+    std::unique_ptr<DBuf> history;
+    if (dB) history.reset(new DBuf(T * D * N));
+    k_selective_scan_bwd_channels<<<ew_grid(D), NTHREADS>>>(
+        ix.d, idt.d, ib.d, ic.d, ia.d, isk ? isk->d : nullptr, idy.d, is.d, idelta.d, G.d,
+        history ? history->d : nullptr, out(0), out(1), out(4), out(5), T, D, N, sl, softplus);
+    cuda_check(cudaGetLastError(), "selective_scan_bwd_channels");
+    if (dB || dC) {
+        k_selective_scan_bwd_BC<<<ew_grid(T * N), NTHREADS>>>(ix.d, idy.d, is.d, idelta.d,
+                                                              history ? history->d : nullptr,
+                                                              out(2), out(3), T, D, N, sl);
+        cuda_check(cudaGetLastError(), "selective_scan_bwd_BC");
+    }
+    for (auto& o : outs)
+        if (o) o->finish();
+    return true;
+}
+
 bool repeat_heads_fwd(const Matrix& x, size_t heads, size_t group, size_t head_dim, Matrix& y) {
     if (!active()) return false;
     const size_t T = x.rows();

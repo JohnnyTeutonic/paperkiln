@@ -1,0 +1,26 @@
+{
+  "max_parallel": 1,
+  "jobs": [
+    {
+      "name": "selective_scan_gate",
+      "cmd": [
+        "timeout",
+        "--signal=TERM",
+        "--kill-after=30",
+        "1530",
+        "python3",
+        "/content/chat/upload/selective_scan_gate.py",
+        "--upload",
+        "/content/chat/upload",
+        "--manifest-sha256",
+        "e9398164da6664ac788dc35732342b7b83028d4fbdc69ecb73482342ed3c3c9a",
+        "--out",
+        "{out}"
+      ],
+      "outputs": [
+        "gate_summary.json",
+        "out.zip"
+      ]
+    }
+  ]
+}

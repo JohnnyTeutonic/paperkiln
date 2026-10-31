@@ -1,0 +1,10 @@
+{
+  "pass": true,
+  "owned_pod_id": "ca1qr30amjgonx",
+  "owned_volume_id": "61adqfzijh",
+  "pod_absent": true,
+  "volume_absent": true,
+  "campaign_home": true,
+  "job_ledger_usd": 0.06924273368909403,
+  "scope": "owned resources only; no account-wide balances or unrelated resources"
+}

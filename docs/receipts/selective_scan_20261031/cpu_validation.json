@@ -1,0 +1,55 @@
+{
+  "pass": true,
+  "source_commit": "41538e61b34b35aabeb19ac00e07da76082b0ae8",
+  "baseline_source_commit": "218052fff59cfdd060072b82ffe5b2bf6931727d",
+  "scope": "CPU and CUDA compile-only validation of public selective_scan autograd operation; no actual device proof yet",
+  "cpu_cases": 220,
+  "independent_numpy_quantities": 918,
+  "independent_numpy_worst": 1.5699906400177735e-07,
+  "bound": 3e-05,
+  "finite_difference": "Independent double recurrence/backpropagation checked by central FD for all five/six inputs, excluding the tiny threshold-approximation jump; the main matrix separately checks dt=20 and both branches.",
+  "parser_tests_under_optimized_python": 15,
+  "ctests": 7,
+  "strict_cuda_cpu_refusal_exit": 2,
+  "cuda_compile_only": {
+    "toolchain": "CUDA 12.6 nvcc",
+    "architecture": "sm_89",
+    "local_gpu_used": false,
+    "object_sha256": "5f64c143353802456f7364b43fa0fb2efadd5ebc48c4ba2946564b5623bce613"
+  },
+  "preserved_host": {
+    "raw_float_bits": 2506,
+    "identical": true,
+    "dump_sha256": "750be2fd6d6a4413083a48338148364d911763c55415317a3952d8e4a5ab855c",
+    "library_sha256": {
+      "preserved": "073be7677a7f9bf6b65c401c13c532a0d4bd56d5cd33bfe8e00411bb4160ee0d",
+      "candidate": "8e7f60cc075a2a9beea40a6c52c859be62bf2f08bf14538347659c2f227337fb"
+    },
+    "dump_binary_sha256": {
+      "preserved": "29829d2fd6066e633683c0385cc8a85d90c4e3ad2d991cf9769198198cd8c0f2",
+      "candidate": "e3f33cf423dad4a5682050e3742a185b65da9e9d9d4a6594e4d4cbea5314027e"
+    },
+    "prior_library_source_binding": "Preserved host fallback library from the prior validated host-fallback build; its ops source is identical to the new branch baseline."
+  },
+  "manifest_sha256": "e9398164da6664ac788dc35732342b7b83028d4fbdc69ecb73482342ed3c3c9a",
+  "files": {
+    "cpu_replay.json": "43a3d5e74161cb6e0b285c786f89d1bd5c88345bc890a09621d96f1b0c01adb6",
+    "cpu.jsonl": "9f3887cdc096e5a27b6013dd4c5bc5e3ec652f0500c4fccf396636513528622d",
+    "independent_replay.log": "43a3d5e74161cb6e0b285c786f89d1bd5c88345bc890a09621d96f1b0c01adb6",
+    "candidate_bits.txt": "750be2fd6d6a4413083a48338148364d911763c55415317a3952d8e4a5ab855c",
+    "candidate_dump_compile.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "parser_tests.log": "f145874c001c6928bd6ddaed278e86e356f5e3277e6cdafde0790b099b35d7f6",
+    "inputs.json": "e9398164da6664ac788dc35732342b7b83028d4fbdc69ecb73482342ed3c3c9a",
+    "cuda_compile.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "regressions.log": "e8b709e09f093558789f9e5e11f8bcc1f629fd574ad56699a943becc7ad45128",
+    "preserved_bits.txt": "750be2fd6d6a4413083a48338148364d911763c55415317a3952d8e4a5ab855c",
+    "strict_refusal.log": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+    "preserved_dump_compile.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "final_build.log": "e032a0be2756539589a1d0f6428a1c4b1d9b1c38414adba423638a4aaef20b63"
+  },
+  "limits": [
+    "No parallel-in-time scan, benchmark or whole-model training claim.",
+    "Device state/gradient coherence and CUDA numerics remain prospective until the reviewed real-L4 gate.",
+    "Extra backward g-history scratch is O(T*D*N) only when B gradient is requested; adoption memory/speed have not been measured."
+  ]
+}

@@ -1,0 +1,31 @@
+[ 58%] Built target transformer_core
+[ 58%] Building CXX object CMakeFiles/microtorch.dir/src/ops.cpp.o
+[ 58%] Linking CXX static library libmicrotorch.a
+[ 95%] Built target microtorch
+[100%] Building CXX object CMakeFiles/test_selective_scan_cuda.dir/tests/test_selective_scan_cuda.cpp.o
+[100%] Linking CXX executable test_selective_scan_cuda
+[100%] Built target test_selective_scan_cuda
+[ 58%] Built target transformer_core
+[ 95%] Built target microtorch
+[100%] Linking CXX executable test_gradcheck
+[100%] Built target test_gradcheck
+[ 58%] Built target transformer_core
+[ 95%] Built target microtorch
+[ 95%] Linking CXX executable test_thirdparty_ops
+[100%] Built target test_thirdparty_ops
+[ 58%] Built target transformer_core
+[ 95%] Built target microtorch
+[100%] Linking CXX executable test_nn
+[100%] Built target test_nn
+[ 58%] Built target transformer_core
+[ 95%] Built target microtorch
+[100%] Linking CXX executable test_fallback_materialization
+[100%] Built target test_fallback_materialization
+[ 60%] Built target transformer_core
+[100%] Built target microtorch
+[100%] Linking CXX executable test_conv1d_cuda
+[100%] Built target test_conv1d_cuda
+[ 58%] Built target transformer_core
+[ 95%] Built target microtorch
+[100%] Linking CXX executable test_mamba
+[100%] Built target test_mamba

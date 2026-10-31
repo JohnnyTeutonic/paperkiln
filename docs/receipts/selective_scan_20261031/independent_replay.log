@@ -1,0 +1,9 @@
+{
+  "pass": true,
+  "actual_cuda": false,
+  "cases": 220,
+  "quantities": 918,
+  "independent_numpy_replay": true,
+  "worst_normalized_error": 1.5699906400177735e-07,
+  "bound": 3e-05
+}

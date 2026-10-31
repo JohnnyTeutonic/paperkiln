@@ -1,0 +1,144 @@
+{
+  "pass": true,
+  "scope": "selective_scan C++ autograd op; sequential time, ordered non-atomic reductions; no full model or speed claim",
+  "commands": [
+    {
+      "name": "hardware",
+      "argv": [
+        "nvidia-smi",
+        "--query-gpu=name,driver_version",
+        "--format=csv,noheader"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "nvcc",
+      "argv": [
+        "nvcc",
+        "--version"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "configure",
+      "argv": [
+        "cmake",
+        "-S",
+        "/content/selective_scan_source",
+        "-B",
+        "/content/selective_scan_build",
+        "-DCMAKE_BUILD_TYPE=Release",
+        "-DMICROTORCH_CUDA=ON",
+        "-DMICROTORCH_DEVCHECK=ON",
+        "-DMICROTORCH_BUILD_PYTHON=OFF",
+        "-DCMAKE_CUDA_ARCHITECTURES=89"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "build",
+      "argv": [
+        "cmake",
+        "--build",
+        "/content/selective_scan_build",
+        "--target",
+        "test_selective_scan_cuda",
+        "--parallel",
+        "4"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "strict",
+      "argv": [
+        "/content/selective_scan_build/test_selective_scan_cuda",
+        "--require-cuda"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "numpy_install",
+      "argv": [
+        "python3",
+        "-m",
+        "pip",
+        "install",
+        "numpy==1.26.4"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "independent_replay",
+      "argv": [
+        "python3",
+        "-O",
+        "/content/chat/upload/replay_selective_scan.py",
+        "/content/chat/selective_scan_gate/strict.log",
+        "--require-cuda"
+      ],
+      "returncode": 0
+    }
+  ],
+  "errors": [],
+  "inputs": {
+    "source_commit": "41538e61b34b35aabeb19ac00e07da76082b0ae8",
+    "files": {
+      "source.tgz": "441eacd6f12722e11c1e11f2dca82ed0362a490bdb22263c9e6db5afb08272d1",
+      "selective_scan_gate.py": "3152b5500c22dcbcfd526f233105b327f6a9d10b8b6aca80a6c18d30ec6883e4",
+      "replay_selective_scan.py": "4d5b20140b0cc421832d69fc13e750ca7cd947725c558e64c919068c17476960"
+    },
+    "source_files": {
+      "CMakeLists.txt": "6aae445b39de3a0cab8784cf04a4c451cefcb48fb2878ca205fba99c83914e0d",
+      "include/microtorch/device_cache.hpp": "65754656fa3684eb9ea44eb713da9c0b60100a8b445ffb1e7972e4211afc7a9e",
+      "src/device_cache.cpp": "1118fc115172761f4935a3a60e9efce279c11b6a83f524d6f13b036d32911c2b",
+      "src/ops.cpp": "fa6a1ef979512d145385065f320b3cbf96522966691aa875dd071e00553a0ecc",
+      "src/cuda_ops.cu": "e4c907751abed8368e7e53d9783b8f676a87119106608cc2f7b6483d29644cdd",
+      "src/selective_scan_kernels.cuh": "7ef31cca5b4a81f890f84573d559d4207dc96706919c68f3f120f8c7352da8f3",
+      "tests/test_selective_scan_cuda.cpp": "7c0cd0123401b72d4f81e8c3cc6379ca27e94ab23ee3c7b992d83484011c4d15",
+      "studio/chat.html": "bb9d2be154e274436d28f4e7fb758815ec3031071d5700a5d653659517abd4dc"
+    },
+    "cases": 220,
+    "bound": 3e-05,
+    "scope": "public selective_scan C++ autograd op only; sequential time and ordered no-atomic reductions; no parallel-scan or speed claim"
+  },
+  "binary_sha256": "7f87b6553892dd6353653cef93c7bb2e6ab55bf4b9d362748b85c05c26c66008",
+  "independent_replay": {
+    "pass": true,
+    "actual_cuda": true,
+    "cases": 220,
+    "quantities": 918,
+    "independent_numpy_replay": true,
+    "worst_normalized_error": 1.5699906400177735e-07,
+    "bound": 3e-05
+  },
+  "logs": {
+    "hardware.log": {
+      "sha256": "4d27402575c0fbfcbc714a6563f4bcc9ea0e3699ea638e7bd89db077eef291de",
+      "bytes": 21
+    },
+    "nvcc.log": {
+      "sha256": "3c71ed984d2ca98770b0cba5c23a849a87209351e105433929c3062fb66d1915",
+      "bytes": 209
+    },
+    "configure.log": {
+      "sha256": "08ceb441335a0b930e916c99a27f4e18f46feae1daf115803132376378ea82e9",
+      "bytes": 2009
+    },
+    "build.log": {
+      "sha256": "d035025f2e0e4aa764247486e61f4e5f4077bbbab1159d22073329f008dd3248",
+      "bytes": 24591
+    },
+    "strict.log": {
+      "sha256": "e4c42836dce6e41c59d8be3c318bcad89e0cd235496c9200f90c83c6b098cdb1",
+      "bytes": 353223
+    },
+    "numpy_install.log": {
+      "sha256": "f3b264195e8b0697a6e31f92bf1e832f19d80e6420ee86b4265b00fa941ac929",
+      "bytes": 1371
+    },
+    "independent_replay.log": {
+      "sha256": "3958521703953b8a80a4a5b5382a087ed4219905958d19d2d7418eb04a40bade",
+      "bytes": 185
+    }
+  }
+}

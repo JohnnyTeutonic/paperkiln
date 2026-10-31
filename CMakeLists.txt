@@ -499,3 +499,8 @@ add_executable(test_attention_precision tests/test_attention_precision.cpp)
 target_link_libraries(test_attention_precision PRIVATE microtorch)
 add_test(NAME attention_precision COMMAND test_attention_precision)
 set_tests_properties(attention_precision PROPERTIES TIMEOUT 120)
+
+add_executable(test_selective_scan_cuda tests/test_selective_scan_cuda.cpp)
+target_link_libraries(test_selective_scan_cuda PRIVATE microtorch)
+add_test(NAME selective_scan_cuda_cpu COMMAND test_selective_scan_cuda)
+set_tests_properties(selective_scan_cuda_cpu PROPERTIES TIMEOUT 120)

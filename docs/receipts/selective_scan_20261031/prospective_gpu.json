@@ -1,0 +1,25 @@
+{
+  "source_commit": "41538e61b34b35aabeb19ac00e07da76082b0ae8",
+  "stage": "/home/jonat/selective_scan_gate_stage_v1_20261031",
+  "manifest_sha256": "e9398164da6664ac788dc35732342b7b83028d4fbdc69ecb73482342ed3c3c9a",
+  "max_usd": 1,
+  "gate_max_seconds": 1500,
+  "device": "one NVIDIA L4 with CUDA+DEVCHECK and profiler counters proving actual scan forward/backward where requested",
+  "command": [
+    "python3",
+    "/content/chat/upload/selective_scan_gate.py",
+    "--upload",
+    "/content/chat/upload",
+    "--manifest-sha256",
+    "e9398164da6664ac788dc35732342b7b83028d4fbdc69ecb73482342ed3c3c9a",
+    "--out",
+    "{out}"
+  ],
+  "scope": "Public selective_scan C++ autograd operation only; ordered sequential recurrence, all parent masks and fallback transitions. No parallel scan, model quality, speed or adoption claim.",
+  "outputs": [
+    "gate_summary.json",
+    "out.zip"
+  ],
+  "transport": "existing watchdog-owned runner; no manual pod, no local GPU",
+  "launch_status": "not launched; awaiting root review"
+}

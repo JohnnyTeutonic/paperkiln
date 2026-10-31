@@ -508,6 +508,15 @@ bool repeat_heads_bwd(const Matrix& dy, size_t heads, size_t group, size_t head_
 bool conv1d_causal_fwd(const Matrix& x, const Matrix& w, const Matrix* bias, size_t seq_len, Matrix& y);
 bool conv1d_causal_bwd(const Matrix& x, const Matrix& w, const Matrix& dy, size_t seq_len,
                        Matrix* dx, Matrix* dw, Matrix* dbias);
+// Mamba selective recurrence: sequential time/state loops, no atomic reductions.
+// states is [(T + T/seq_len)*D, N], delta [T,D]; both authoritative tape caches.
+bool selective_scan_fwd(const Matrix& x, const Matrix& dt, const Matrix& B, const Matrix& C,
+                        const Matrix& A, const Matrix* Dskip, bool softplus, size_t seq_len,
+                        Matrix& y, Matrix& states, Matrix& delta);
+bool selective_scan_bwd(const Matrix& x, const Matrix& dt, const Matrix& B, const Matrix& C,
+                        const Matrix& A, const Matrix* Dskip, const Matrix& dy,
+                        const Matrix& states, const Matrix& delta, bool softplus, size_t seq_len,
+                        Matrix* dx, Matrix* ddt, Matrix* dB, Matrix* dC, Matrix* dA, Matrix* dD);
 bool slice_cols(const Matrix& x, size_t c0, size_t n, Matrix& y);
 bool place_cols(const Matrix& g, size_t c0, Matrix& dx);
 bool concat_cols(const std::vector<const Matrix*>& xs, Matrix& y);
