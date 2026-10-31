@@ -1,0 +1,17 @@
+{
+  "status": "ROOT_PROSPECTIVELY_ADOPTED_HELDOUT_POLICY_ONLY",
+  "time_utc": "2026-10-31T18:36:43.819690+00:00",
+  "adoption_sha256": "e14520a583bdb308f4c7d5fd2a6ba9036ceb6e0354292f6f31144a0383f39c2c",
+  "verification_sha256": "3c66e60a430357b2ebc9b08b29fce3c0f831721095478ccf78058ef76c4e8c9b",
+  "original_universe_sha256": "0eeefcc3d9d087a174b07f1fb26249f9b0f3f2f7ffe3abf8fcc940a41ebb3d22",
+  "before_dpo_outcomes": true,
+  "training_not_launched": true,
+  "final_dataset_source_and_weight_instance": "Deferred until complete eligible judging and actual training",
+  "original_prompts": 300,
+  "context_eligible": 288,
+  "over_context_dispositions": 12,
+  "no_refill": true,
+  "provider_calls_by_this_adoption": 0,
+  "gpu_calls_by_this_adoption": 0,
+  "all_five_original_gates_required": true
+}

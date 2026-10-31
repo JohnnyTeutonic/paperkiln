@@ -1,0 +1,70 @@
+{
+  "status": "PREPARED_NOT_ADOPTED_NO_EXECUTION",
+  "suggested_root_adoption_path": "/home/jonat/heldout_api_root_admission_20261101/heldout_adoption.json",
+  "critical_consumer_schema": {
+    "kind": "ROOT_ADOPTED_API_HELDOUT_POLICY_V1",
+    "adopted": true,
+    "before_dpo_outcomes": true,
+    "policy_file_sha256": "5181e14991c7eb326b32f9bd2d35688946f38156e4a9e1ab53375d83b751ed29",
+    "operational_source_sha256": "Exact current heldout_gate_runner_v1.source_hashes() map in proposed_heldout_adoption.json",
+    "heldout_source_data_sha256": "Exact vocab, val_split, train_split hashes in proposed record"
+  },
+  "execution_prerequisites": [
+    {
+      "step": "Root independent prospective adoption",
+      "inputs": [
+        "proposed_heldout_adoption.json",
+        "source_and_input_verification.json",
+        "original_300_universe.json",
+        "heldout_offline_tests.log"
+      ],
+      "condition": "Before any DPO outcomes; root copies/adopts record only after review; this prepared record is not actual adoption."
+    },
+    {
+      "step": "Complete eligible V8 judging",
+      "protocol": "/home/jonat/pk_api_continuation_v7_20261101/experiments/chat_general/receipts/anthropic_api_continuation_v8_20261101/full_campaign_v8_protocol.json",
+      "condition": "Exactly6036 valid eligible rankings/3018 candidate sets, preserved2failed+2unattempted paired exclusions; no pending charge, unknown retry or new automatic exclusion."
+    },
+    {
+      "step": "Immutable preference materialization",
+      "tool": "tools/posttrain/materialize_preference_v8.py",
+      "adoptions": [
+        "/home/jonat/api_v7_root_admission_20261101/dataset_adoption.json",
+        "/home/jonat/api_v8_root_admission_20261101/operational_adoption.json"
+      ],
+      "condition": "Only after eligible judging completes; unchanged agreement/word-length/actual-stop/last5percent rules. No real dataset has been materialized by this review."
+    },
+    {
+      "step": "Root exact DPO source and input freeze",
+      "tool": "tools/posttrain/build_dpo_instance_v7.py",
+      "condition": "Bind final public clean source archive, actual dataset manifest/pairs, SFT checkpoint, vocabulary, model spec, prospective heldout adoption; named atomic checkpoint owner. Exact weights/pairs/source instance does not yet exist."
+    },
+    {
+      "step": "Root serial DPO launch through existing watchdog",
+      "boot_script": "tools/colab_chat/boot_dpo_checkpoint_v1.sh",
+      "condition": "Root final instance admission and paid GPU ownership; emit source/input preflight\u2192training\u2192parity\u2192evaluation\u2192journalled sampling. Persistent volume advances within180seconds or stop; normal home relay may lag."
+    },
+    {
+      "step": "Final heldout instance/accounting admission",
+      "tool": "tools/posttrain/build_heldout_instance_v1.py",
+      "condition": "Bind final returned DPO/reference GGUFs, complete sampling receipt/summary/journal, raw eligible request file and original300 item dispositions, final immutable V8/prior ledger hashes, independent accounting. Do not freeze changing training ledger now."
+    },
+    {
+      "step": "Root heldout API launch through existing watchdog",
+      "tool": "tools/posttrain/heldout_gate_runner_v1.py",
+      "condition": "Same reviewed API profile/rubric and both orders, fresh cache/ledger, at most600 attempts/$25stage/$200cumulative; fail-stop on failed or unknown ranking; no refill or CLI imports."
+    },
+    {
+      "step": "Five-part raw evidence verdict",
+      "tool": "tools/posttrain/assess_preference_gates_v1.py",
+      "condition": "All five fixed gates must pass; incomplete evidence is no verdict; no automatic model replacement."
+    }
+  ],
+  "calls": {
+    "provider": 0,
+    "gpu": 0,
+    "credential_accesses": 0
+  },
+  "activation": false,
+  "adoption_performed": false
+}

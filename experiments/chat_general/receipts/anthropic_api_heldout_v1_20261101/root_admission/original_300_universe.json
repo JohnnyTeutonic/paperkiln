@@ -1,0 +1,2416 @@
+{
+  "kind": "REGISTERED_ORIGINAL_HELDOUT_UNIVERSE_V1",
+  "items": 300,
+  "original_items_sha256": "868035e3815a4132bd727ced31aa038604b0d729f1d59bbc3a876e405ea7f04a",
+  "source_filter_dropped": {
+    "decontaminated": 0,
+    "train_overlap": 12,
+    "markers": 0
+  },
+  "filtered_validation_items": 3129,
+  "context_eligible": 288,
+  "inventory": [
+    {
+      "original_index": 0,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#42",
+      "prompt_text_sha256": "4426354df1302b508481e68f6eb7f58b752c64e36acdefcebe878a8649db0943",
+      "prompt_tokens": 93,
+      "seed": 71,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 1,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#54",
+      "prompt_text_sha256": "fa117a9d178e6481e32bc0d870443c5f5286de456d71da4dbcf0455b6f04b39b",
+      "prompt_tokens": 91,
+      "seed": 72,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 2,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#242",
+      "prompt_text_sha256": "4daf1369afc154e4bf2cc26074e27bae977d2c2d763f69241819e3488ed5a17a",
+      "prompt_tokens": 57,
+      "seed": 73,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 3,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#282",
+      "prompt_text_sha256": "01707a15bff9911d3dfa6878f7f7d5484ab6fc183f7d8ca75f296d288ae001fd",
+      "prompt_tokens": 46,
+      "seed": 74,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 4,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#441",
+      "prompt_text_sha256": "2f66e1b1ee36fa4ccceefbbf0e12b841578d6eb788a829d0c0029eba48066e48",
+      "prompt_tokens": 41,
+      "seed": 75,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 5,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#464",
+      "prompt_text_sha256": "2b735c79892b4523788abf05e99f08746ed2f8ab22aac0fc6a31f10f0d533eff",
+      "prompt_tokens": 17,
+      "seed": 76,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 6,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#493",
+      "prompt_text_sha256": "784ed339177a42f4d04ab592440c6d3adddb2976af7523e8dfd86a141336744e",
+      "prompt_tokens": 19,
+      "seed": 77,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 7,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#545",
+      "prompt_text_sha256": "79df2a555c85ea24f3d2f2d2dd63414c8af58ab1235c28b86e92eb978cb897f1",
+      "prompt_tokens": 69,
+      "seed": 78,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 8,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#578",
+      "prompt_text_sha256": "cf9e73a125886988d7d70f46ea2b4af380f8d4bb6ff38c1b212d76375b88f119",
+      "prompt_tokens": 15,
+      "seed": 79,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 9,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#798",
+      "prompt_text_sha256": "18df6585173f43efba36d571ad7462d0e6e2ea5840fea512dd2f4d4846a679cc",
+      "prompt_tokens": 126,
+      "seed": 80,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 10,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#834",
+      "prompt_text_sha256": "7900ed5df1a90356aedf3fbaae09856bff2f84a33e9f6fdf58e47944c1288f13",
+      "prompt_tokens": 42,
+      "seed": 81,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 11,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#1034",
+      "prompt_text_sha256": "478106b942b4904f7fbbbf4b3cbd14f458841f160ceb5f588d5411a968693196",
+      "prompt_tokens": 12,
+      "seed": 82,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 12,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#1044",
+      "prompt_text_sha256": "37956ec5b96b0c07956036c3c93ecff0100c06fadf7e17abb00dd90a081b657b",
+      "prompt_tokens": 14,
+      "seed": 83,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 13,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#1186",
+      "prompt_text_sha256": "50defe69bc565ac7c94f9963809c0c98ff2c836766762125edfdb69730557743",
+      "prompt_tokens": 32,
+      "seed": 84,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 14,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#1322",
+      "prompt_text_sha256": "6ae414b1f357bbf8610b6993f8f760d5996d940940513edbadeeb4c4d3f79e9e",
+      "prompt_tokens": 108,
+      "seed": 85,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 15,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#1492",
+      "prompt_text_sha256": "d4b423a9ca9e323db321ea156b6e54d0d4bba7d763ea9d8ee22de8e407c8b82b",
+      "prompt_tokens": 129,
+      "seed": 86,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 16,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#1647",
+      "prompt_text_sha256": "037f8e1dd17a8ee5c05fd48e8b3d6a04905c6870f97bac85fa6a6f6e6b2cd213",
+      "prompt_tokens": 25,
+      "seed": 87,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 17,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#1919",
+      "prompt_text_sha256": "0cf39381b6671d901ba3bf0ce88cbc5e2cbb9b8bd66dcd7e8fc8ac6acf29cd33",
+      "prompt_tokens": 78,
+      "seed": 88,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 18,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#2362",
+      "prompt_text_sha256": "f264b1d90cde73ffa9242d39d81eb28639c1ddeabe94b216cef2e713f3149e45",
+      "prompt_tokens": 70,
+      "seed": 89,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 19,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#2368",
+      "prompt_text_sha256": "2c43ff05d42164ec9741f5d77cf83eef108a841e610d01499c672460ec03d79d",
+      "prompt_tokens": 54,
+      "seed": 90,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 20,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#2467",
+      "prompt_text_sha256": "bce37f6d3679d229b62aa9eb9588d62c030bfd98df80714798dac4e29bc2c666",
+      "prompt_tokens": 21,
+      "seed": 91,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 21,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#2613",
+      "prompt_text_sha256": "d37cda99b730177c9e0fadcc021cda47b311603f850153207b0fdc0ed5b25442",
+      "prompt_tokens": 32,
+      "seed": 92,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 22,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#2640",
+      "prompt_text_sha256": "6b6f5a99dbab4202dbc1bce53e26f610d84d011220d4f0efee4e3aaa1659b5a9",
+      "prompt_tokens": 22,
+      "seed": 93,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 23,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#2672",
+      "prompt_text_sha256": "d5c879d9db8a8482a8711053429d58eb26c8d5ec5e81af4a0dcad18a816d0790",
+      "prompt_tokens": 24,
+      "seed": 94,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 24,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#2704",
+      "prompt_text_sha256": "355a32d59db1823b46db1e1a0fbc34a64335fdba41e0052bc6eeb6a6f58214f4",
+      "prompt_tokens": 114,
+      "seed": 95,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 25,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#2947",
+      "prompt_text_sha256": "24484d794d15d887ae43cdc12a1d89080190270d654a3ab4d82054637d4b314a",
+      "prompt_tokens": 56,
+      "seed": 96,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 26,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#2955",
+      "prompt_text_sha256": "ff9f96c5d212c8fafc0f2e10fa0918b7abb7f51f4de806ca68750c9ca27393d6",
+      "prompt_tokens": 62,
+      "seed": 97,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 27,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#3220",
+      "prompt_text_sha256": "ac9c54e5e42252b47a30fb96384fbfa9e6aaab674e2c3a69210546d036fba9df",
+      "prompt_tokens": 47,
+      "seed": 98,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 28,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#3461",
+      "prompt_text_sha256": "ef469a85e5e2b734d7c8b6cbf77a5839f43cd4edac8db4f407ea6672b914fb98",
+      "prompt_tokens": 39,
+      "seed": 99,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 29,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#3827",
+      "prompt_text_sha256": "b1149e0129f2d0a121fdd23574476e5c2e3b89fc8406402c32b64b54e4166200",
+      "prompt_tokens": 59,
+      "seed": 100,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 30,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#4011",
+      "prompt_text_sha256": "3788fd9d347c28f1b4b0da1a9729fc1b7ed7d9bcbc0523fb8d651a095e6993f3",
+      "prompt_tokens": 51,
+      "seed": 101,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 31,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#4104",
+      "prompt_text_sha256": "0c02b8851a98ebf1446ac3226fdf3cae3aafe42efdb2427575d9d02f87273ce1",
+      "prompt_tokens": 42,
+      "seed": 102,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 32,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#4202",
+      "prompt_text_sha256": "d24ee2b156b3b5d50d7ac328a24c9a48c49d6db44af787475704db2e38e9aaea",
+      "prompt_tokens": 143,
+      "seed": 103,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 33,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#4463",
+      "prompt_text_sha256": "def685f5db1f8943671dee5deea07d2ca2af575dc4103e8858c7d40edecd4f77",
+      "prompt_tokens": 57,
+      "seed": 104,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 34,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#4494",
+      "prompt_text_sha256": "a39590a5be1a7c2cd7e7eb6a26016db4d9a5c9561d40dcbf648a0a3e8e1ed895",
+      "prompt_tokens": 192,
+      "seed": 105,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 35,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#4515",
+      "prompt_text_sha256": "d068ee01325cf9c1100263bc12c7bc7eaaec18991e501184699e6977b2f32cfc",
+      "prompt_tokens": 41,
+      "seed": 106,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 36,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#4918",
+      "prompt_text_sha256": "6cfe7485bb43cf2926a55ef63a1a63c3f43c0eddd6d5aa09630ecdef04c29668",
+      "prompt_tokens": 69,
+      "seed": 107,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 37,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#4937",
+      "prompt_text_sha256": "b31686290a7473ca89b524783bee1ff7227eb57dce3e445136463441d7bd3b92",
+      "prompt_tokens": 75,
+      "seed": 108,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 38,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#5184",
+      "prompt_text_sha256": "594a8415f36224893a44abd8c45ddc6df19a46b344db64c2c799751f4bfe2dcf",
+      "prompt_tokens": 260,
+      "seed": 109,
+      "pre_generation_disposition": "over_context"
+    },
+    {
+      "original_index": 39,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#5257",
+      "prompt_text_sha256": "a5feef85ab87d46644d0e6191638608187f6a9665d94c66cfee7c797e9ce58f0",
+      "prompt_tokens": 66,
+      "seed": 110,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 40,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#5297",
+      "prompt_text_sha256": "139200f1cde895036e9aa4cb527b5eb9400df36f5c685b3328e08d8d60a8be51",
+      "prompt_tokens": 23,
+      "seed": 111,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 41,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#5417",
+      "prompt_text_sha256": "0d773335ebc428405e36ad93736284e97c4fc43299e686163ab772f786593336",
+      "prompt_tokens": 51,
+      "seed": 112,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 42,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#5537",
+      "prompt_text_sha256": "2f12c60dbba37630055cedd705c49909a761cd8a326ec09bbe917f6b3301e640",
+      "prompt_tokens": 56,
+      "seed": 113,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 43,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#5546",
+      "prompt_text_sha256": "6faf02716024b995be1f3690533b323b9f896941e204f064aa4d91a5996cd167",
+      "prompt_tokens": 68,
+      "seed": 114,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 44,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#5710",
+      "prompt_text_sha256": "14e615e18fb1eb031e20b18c74e30f8d57a0aa44948a2cb9235a1cbf2dbba600",
+      "prompt_tokens": 51,
+      "seed": 115,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 45,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#5832",
+      "prompt_text_sha256": "8e3193213107bd08ece671890e90920d64d2c145132d085e7d376bcdd4c2cba7",
+      "prompt_tokens": 49,
+      "seed": 116,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 46,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#5847",
+      "prompt_text_sha256": "14a8848df8a23ddd8cee73b583536751e9e08d612478bfe50fdff8509889e89c",
+      "prompt_tokens": 20,
+      "seed": 117,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 47,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#5878",
+      "prompt_text_sha256": "7b0172d51e9f70be3ceb90760f555d366e444843af2c831652bfcb5c66a90e8a",
+      "prompt_tokens": 115,
+      "seed": 118,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 48,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#5922",
+      "prompt_text_sha256": "5319a5e9023e6028926fb79d666467311eafcc649159c70dd54225a07841779e",
+      "prompt_tokens": 173,
+      "seed": 119,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 49,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#5986",
+      "prompt_text_sha256": "e9b7f6094b562e3fca65adbc5036c7e5c02245108d9f82e031938afdcdf9a31c",
+      "prompt_tokens": 14,
+      "seed": 120,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 50,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#6273",
+      "prompt_text_sha256": "4c5f2f21af3c30bfa06564bce4e283114cfb7885ffadcb6972f2eda3deacf1cb",
+      "prompt_tokens": 54,
+      "seed": 121,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 51,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#6296",
+      "prompt_text_sha256": "19567535d4b173f5feda7fcfe34eb6685c930b9ccd7a870c878926ca27250a79",
+      "prompt_tokens": 76,
+      "seed": 122,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 52,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#6406",
+      "prompt_text_sha256": "c769f18d7f1a57c3180128968138cafb250d99dfc0705e5f784a83b63a7a7c61",
+      "prompt_tokens": 45,
+      "seed": 123,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 53,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#6462",
+      "prompt_text_sha256": "2d067cdd99eec38e37b4ae3cf77cdfdd9dfe84d7f96fe8d9120ffa459a1c3886",
+      "prompt_tokens": 66,
+      "seed": 124,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 54,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#6767",
+      "prompt_text_sha256": "d99a124d24c83c74998f1db8b7612c7f883f954875e48e843c92854ae2d5c658",
+      "prompt_tokens": 49,
+      "seed": 125,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 55,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#6794",
+      "prompt_text_sha256": "7c82ca7dbc05559d28f4f6639b4b8d811e37e37e57a6b4a5de11ebe7de02678a",
+      "prompt_tokens": 20,
+      "seed": 126,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 56,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#7301",
+      "prompt_text_sha256": "6c1fc25d090662086927a0f80afd55014d7053d30c94f083f0828d7bf4ea305b",
+      "prompt_tokens": 41,
+      "seed": 127,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 57,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#7827",
+      "prompt_text_sha256": "3f96c08da05c85551e9a077563756e9593d4b0449e3eb5940eff4e91883ccbde",
+      "prompt_tokens": 20,
+      "seed": 128,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 58,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#7869",
+      "prompt_text_sha256": "9e0c5551cb74dbc42cf5492eb71f5009dd1abd17de1353faf979e1dfb9c8d77f",
+      "prompt_tokens": 15,
+      "seed": 129,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 59,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#8035",
+      "prompt_text_sha256": "04535365739571b0e96f1a999ec530cd9570e1bc74f5ff7e0437ab4dcb5ca341",
+      "prompt_tokens": 354,
+      "seed": 130,
+      "pre_generation_disposition": "over_context"
+    },
+    {
+      "original_index": 60,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#8210",
+      "prompt_text_sha256": "9c39a37dce4422c865180119779e446284f4d968f742fc8c7c6a77d4791b36fe",
+      "prompt_tokens": 72,
+      "seed": 131,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 61,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#8389",
+      "prompt_text_sha256": "b71f01010ff8e521ad8ef667e9ab0ab4c625ac9e59cf1a2fa2262d290c69fd53",
+      "prompt_tokens": 190,
+      "seed": 132,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 62,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#8468",
+      "prompt_text_sha256": "ba5bb2510fcf6549e805ae4f063b283aadd2b6a78dbdad337b30bce1f06bf89c",
+      "prompt_tokens": 17,
+      "seed": 133,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 63,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#8554",
+      "prompt_text_sha256": "08a297557a4a5325ad4e411e0c14a2519c00666d833826d2946af815f739a6a4",
+      "prompt_tokens": 65,
+      "seed": 134,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 64,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#8615",
+      "prompt_text_sha256": "8ac98635aa1e60ee93f4b2838cf89a9357e2f2767dfd481ec572dc9a2307ac93",
+      "prompt_tokens": 19,
+      "seed": 135,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 65,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#8624",
+      "prompt_text_sha256": "a9f590d533f6c974dd235453484f51528a795772d0dae28a8169b118ee06c81e",
+      "prompt_tokens": 28,
+      "seed": 136,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 66,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#8661",
+      "prompt_text_sha256": "cc2b5d51fc7a85a2f10fea3180ba068e8a5fc147566dc54d7dc09dd57b43fa01",
+      "prompt_tokens": 179,
+      "seed": 137,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 67,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#8825",
+      "prompt_text_sha256": "944ab64d51e2e80bd3803fb239b786005860168a5514ce1bcba6555caa9c1759",
+      "prompt_tokens": 268,
+      "seed": 138,
+      "pre_generation_disposition": "over_context"
+    },
+    {
+      "original_index": 68,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#9090",
+      "prompt_text_sha256": "ea29f3499d7cf167991cf71155cce41a7d03a9db81d7c0eec3a708a925985001",
+      "prompt_tokens": 54,
+      "seed": 139,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 69,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#9182",
+      "prompt_text_sha256": "e8e3e689b63931aa9325fbfb61ec674b3a33f8944da18c794b5843cd042aa4aa",
+      "prompt_tokens": 151,
+      "seed": 140,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 70,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#9311",
+      "prompt_text_sha256": "f2e5752162f9ccb88c2a8be3be29f7b711a0f745fef5a201ea3d90a35526c34c",
+      "prompt_tokens": 42,
+      "seed": 141,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 71,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#9318",
+      "prompt_text_sha256": "f18e29255cbc68d3454dce422688e03407fd5d5394866cd8f69974d95b7cad78",
+      "prompt_tokens": 113,
+      "seed": 142,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 72,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#9424",
+      "prompt_text_sha256": "07c03ecd5275b405b8bb74c4d211b91cf6d94bbe9ca7cd842976d90c3c6ad909",
+      "prompt_tokens": 21,
+      "seed": 143,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 73,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#9564",
+      "prompt_text_sha256": "6a7a0459203575cf13570b05f47c0c05a9422df32f467576353ca966d3145d90",
+      "prompt_tokens": 81,
+      "seed": 144,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 74,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#9630",
+      "prompt_text_sha256": "cddc32c9f95e1256be64b9ae304a354d320f58d2a83b6f91d20e2ff48e76c7cc",
+      "prompt_tokens": 144,
+      "seed": 145,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 75,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#9915",
+      "prompt_text_sha256": "24214ea91f1552596c115d6c42a36b9d41d5018306a8775d88f91980734c6bfb",
+      "prompt_tokens": 74,
+      "seed": 146,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 76,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#10070",
+      "prompt_text_sha256": "68a53fa9e5471582253cf403ea75f3371eb4e9afb2ada402e2fa68854a8764b2",
+      "prompt_tokens": 9,
+      "seed": 147,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 77,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#10368",
+      "prompt_text_sha256": "7cb116d52a27b7564134adb17bb6f4e9c06d00d5850f39fbbc5037fd76fff0d2",
+      "prompt_tokens": 17,
+      "seed": 148,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 78,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#10599",
+      "prompt_text_sha256": "662f53e515460ff3475760b59eae48a3f392fde3998582a136cdfbf299d6bc51",
+      "prompt_tokens": 17,
+      "seed": 149,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 79,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#10630",
+      "prompt_text_sha256": "a33d8789bd4065c1a183589e29dcb4a1b94e771d0427f4b63069cf71e8f659ec",
+      "prompt_tokens": 181,
+      "seed": 150,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 80,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#10731",
+      "prompt_text_sha256": "8514575125c0de869060fe4d91dd586e3d77fcbe4ff4fe9b97126e32a761fd89",
+      "prompt_tokens": 76,
+      "seed": 151,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 81,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#10918",
+      "prompt_text_sha256": "3faddb65bbdf012d9e248d90715138d49b82aefa5e998104ddcbcf74d2fd2f0f",
+      "prompt_tokens": 18,
+      "seed": 152,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 82,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#11024",
+      "prompt_text_sha256": "41cb61154c41026927e1665fd3f7835fef41f9cbafd0619a613fc7f5952f8102",
+      "prompt_tokens": 16,
+      "seed": 153,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 83,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#11098",
+      "prompt_text_sha256": "a3f4239523040b475a92d87b60de76c07e5b87092bac6a8f274c329dd1e7678d",
+      "prompt_tokens": 35,
+      "seed": 154,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 84,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#11283",
+      "prompt_text_sha256": "b2ef0739bccfc027ef7732b62c7b457781d6fcc0f681514711e90770fc211f28",
+      "prompt_tokens": 43,
+      "seed": 155,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 85,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#11378",
+      "prompt_text_sha256": "1b37b3a5330680c6255ded990432fc4da75a8ac1196d34b4e1a28e45d0255f3b",
+      "prompt_tokens": 19,
+      "seed": 156,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 86,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#11427",
+      "prompt_text_sha256": "18bcf0d1c09c37829d8c530f18a77e398cc93214d5907ddcc5c0bb69e8a15b5f",
+      "prompt_tokens": 846,
+      "seed": 157,
+      "pre_generation_disposition": "over_context"
+    },
+    {
+      "original_index": 87,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#11545",
+      "prompt_text_sha256": "66a79da51a8440470af56a7b9a8a155eb4c38cd37df6b9e1a8782436ad121fb4",
+      "prompt_tokens": 423,
+      "seed": 158,
+      "pre_generation_disposition": "over_context"
+    },
+    {
+      "original_index": 88,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#11650",
+      "prompt_text_sha256": "6a3bd085c139582c028a63a4b36eba93ab3cb8fb14379072106e05aa76e41532",
+      "prompt_tokens": 26,
+      "seed": 159,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 89,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#11846",
+      "prompt_text_sha256": "c35b75fda8bf195a493c011537f3b6bdda237861f91fafa7e6df872698c1bd98",
+      "prompt_tokens": 85,
+      "seed": 160,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 90,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#11868",
+      "prompt_text_sha256": "2c527cc9b37c775082dd221386b1de98c8c1fa950276cd532ca912b14158ce17",
+      "prompt_tokens": 117,
+      "seed": 161,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 91,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#12142",
+      "prompt_text_sha256": "cc83aa65fe9f70308cc42ab34278acddf4c7272eff5974556933dea71c804bc4",
+      "prompt_tokens": 20,
+      "seed": 162,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 92,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#12512",
+      "prompt_text_sha256": "a0373b9d041414421c410555dc8ae9ba8e1a9a6c1957f8bb331589f87df772fa",
+      "prompt_tokens": 158,
+      "seed": 163,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 93,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#12589",
+      "prompt_text_sha256": "d930e485e871e6572218d75bb49df8f35f410eecc17e250151e59dc3aedf4943",
+      "prompt_tokens": 82,
+      "seed": 164,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 94,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#12590",
+      "prompt_text_sha256": "1f95122177d640443dd32c683680a5b2e45baee8b7c7363f024e5e0a889775bb",
+      "prompt_tokens": 71,
+      "seed": 165,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 95,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#12795",
+      "prompt_text_sha256": "9778b9cdb8cb2205c5918d55efc5df633244fec6d5ce19f81720539dd0e9f30a",
+      "prompt_tokens": 31,
+      "seed": 166,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 96,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#12965",
+      "prompt_text_sha256": "4ede6a192ab85ce4a99726a227614d6ff535d040a3f38fd0cf7cb1747812a9b0",
+      "prompt_tokens": 16,
+      "seed": 167,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 97,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#12984",
+      "prompt_text_sha256": "8964dfdd51db8612596af7380beb59c659f8d74cf1f19adfc0e94f52ff0d6b71",
+      "prompt_tokens": 17,
+      "seed": 168,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 98,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#12995",
+      "prompt_text_sha256": "a2b6575535a8316e8ce8c4b60034b1cbcf258c35abad10cf82f89a637daca165",
+      "prompt_tokens": 30,
+      "seed": 169,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 99,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#13066",
+      "prompt_text_sha256": "d7ad409532cd80feaca4d725b9a3a684f58f590f5166d1e7e550fda41c67fd1e",
+      "prompt_tokens": 78,
+      "seed": 170,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 100,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#13142",
+      "prompt_text_sha256": "7fa001358bd77e7687b776b95be059cda7a84c2aa7b3357b5cf28820b0116796",
+      "prompt_tokens": 29,
+      "seed": 171,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 101,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#13284",
+      "prompt_text_sha256": "5cd3ec75114aac4b5c9cf22e05e6a014c83db030d50764a55cd2fc0f4c933ed8",
+      "prompt_tokens": 16,
+      "seed": 172,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 102,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#13392",
+      "prompt_text_sha256": "9c4277a570eaca9b5fb3840ee8af2a6b35b75b37e14cf32415ffe272b8e3b8ac",
+      "prompt_tokens": 56,
+      "seed": 173,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 103,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#13544",
+      "prompt_text_sha256": "1804d1a90001ad01ce1d2024b2a52afcdfc34a84aba7a4106e74c7c82c689549",
+      "prompt_tokens": 30,
+      "seed": 174,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 104,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#13619",
+      "prompt_text_sha256": "be1bd9ed0d988be2bcb27e781db11850075a588fec9dbadc95c3966a4ef0978c",
+      "prompt_tokens": 13,
+      "seed": 175,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 105,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#13683",
+      "prompt_text_sha256": "82e47e39f9de260c7d52a8c51c6eea067c4e65bd813f9a74bea6672ab308ee74",
+      "prompt_tokens": 32,
+      "seed": 176,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 106,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#13712",
+      "prompt_text_sha256": "54030225d2281a05b3abc26c7809839f5346e4287bc2840d463993e048ee1c34",
+      "prompt_tokens": 45,
+      "seed": 177,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 107,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#13802",
+      "prompt_text_sha256": "af8839711e8c3b4833164e219257863d738c74cf15b502f139b3ac929cd7bb6d",
+      "prompt_tokens": 106,
+      "seed": 178,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 108,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#14154",
+      "prompt_text_sha256": "665497bd98c9e3a8a06bb83e166c7028b25d4565256d237decf0503730c40ceb",
+      "prompt_tokens": 14,
+      "seed": 179,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 109,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#14697",
+      "prompt_text_sha256": "d224b7616d0cef071aedcc9e08dd395fa86b1c8de4e4518142e86b9da657a278",
+      "prompt_tokens": 38,
+      "seed": 180,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 110,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#14865",
+      "prompt_text_sha256": "6d292185e8205c57127ad3983452cf7e809aa518772535e32b72c80d37115164",
+      "prompt_tokens": 55,
+      "seed": 181,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 111,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#14907",
+      "prompt_text_sha256": "17c15ce9ef86e06af895f1eb344026438f353822e0ff4b60b7c8785d287780e1",
+      "prompt_tokens": 20,
+      "seed": 182,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 112,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#15173",
+      "prompt_text_sha256": "11f4c05da4b3fb7300a1b31413b16e1ffe93ab740bfe9919b07695b6008a40ec",
+      "prompt_tokens": 154,
+      "seed": 183,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 113,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#15325",
+      "prompt_text_sha256": "c86759d146173a8a2a6d27cdc4af9f0b45647d994b873294b5e00c7827951277",
+      "prompt_tokens": 68,
+      "seed": 184,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 114,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#15616",
+      "prompt_text_sha256": "0e2691bd65cb383d8e57ad2c8395c2ee000fd7a635080970462cff1678379069",
+      "prompt_tokens": 63,
+      "seed": 185,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 115,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#15631",
+      "prompt_text_sha256": "86869ad11295b1722bef3abc138ccf816252df9f978f1dd9db988ce92e8fc72a",
+      "prompt_tokens": 178,
+      "seed": 186,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 116,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#15810",
+      "prompt_text_sha256": "d1291d397e5b5d2cc87a2d3b00cdef6aa7cbce1be98deb34b64d88b11abfc1b2",
+      "prompt_tokens": 27,
+      "seed": 187,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 117,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#15969",
+      "prompt_text_sha256": "d7dae49125d770d67a9b81415f30528f10c9a093c0b1952181090ab54de850d0",
+      "prompt_tokens": 46,
+      "seed": 188,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 118,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#16608",
+      "prompt_text_sha256": "f9074e6158637169cde7b2f1a21f1cc7d9a143a79df3a8e7ed8a093e77e89811",
+      "prompt_tokens": 59,
+      "seed": 189,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 119,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#16945",
+      "prompt_text_sha256": "fb5c2c6d68a06f8a517c525f7ea73102817e482bef69ac2eec02d8e11df18094",
+      "prompt_tokens": 40,
+      "seed": 190,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 120,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#16986",
+      "prompt_text_sha256": "b274f59d84ab73afd4e7f604d0dc0a42876049df5951b12c0030b24a974a1d20",
+      "prompt_tokens": 99,
+      "seed": 191,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 121,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#17027",
+      "prompt_text_sha256": "b66db775f831f284b362e86d96e29f636b189dc673aa35409ce55945ff640069",
+      "prompt_tokens": 22,
+      "seed": 192,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 122,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#17216",
+      "prompt_text_sha256": "da85485db5db9635c693ab78633e8e83b7ac04ce053edbeabc893810ee3e3d76",
+      "prompt_tokens": 90,
+      "seed": 193,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 123,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#17341",
+      "prompt_text_sha256": "4c4cda8d5f616146518b07e279ec625fbcd127f1ad06025ae961051163dfbbb9",
+      "prompt_tokens": 61,
+      "seed": 194,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 124,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#17381",
+      "prompt_text_sha256": "d33d899d15e1386a7c938c8b064ab36a468e80d2d49f9ee831bbfd53ea329cac",
+      "prompt_tokens": 83,
+      "seed": 195,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 125,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#17757",
+      "prompt_text_sha256": "ba524f31cce8338d6d029473a7f23c5213a79bdcb32577da915a294b1c5c400c",
+      "prompt_tokens": 32,
+      "seed": 196,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 126,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#17772",
+      "prompt_text_sha256": "b853dbcd24ea719840e3330e1c932e26ccf9b26ffc9c186b481fbbf1b17a604c",
+      "prompt_tokens": 458,
+      "seed": 197,
+      "pre_generation_disposition": "over_context"
+    },
+    {
+      "original_index": 127,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#18072",
+      "prompt_text_sha256": "9a221e85e8f25ad39ab3a57d77ff15ee96cb33550d2260e94727940f5df30dae",
+      "prompt_tokens": 79,
+      "seed": 198,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 128,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#18297",
+      "prompt_text_sha256": "6de0d1bd604eb77cc802b60da32ab403b8eb795bc32b91a5662ef4045984176c",
+      "prompt_tokens": 109,
+      "seed": 199,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 129,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#18310",
+      "prompt_text_sha256": "c1fec0112205d20110d03dbc1f84839b5abb091511cef1af2b55d9169538b63f",
+      "prompt_tokens": 40,
+      "seed": 200,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 130,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#18334",
+      "prompt_text_sha256": "eb76f5adaa2e0b0afb09a74bd4b4e103610233529abf3bd93134777c34227c74",
+      "prompt_tokens": 16,
+      "seed": 201,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 131,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#18435",
+      "prompt_text_sha256": "9de898e1756e91642cf44f26cab08ff6766b902c266311091f37e4cbc061828e",
+      "prompt_tokens": 100,
+      "seed": 202,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 132,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#18958",
+      "prompt_text_sha256": "c3251f71a782a631cbbc19c53ca8f789c1d1f9f9285e0e483ac47ae48c2bd1f5",
+      "prompt_tokens": 35,
+      "seed": 203,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 133,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#19000",
+      "prompt_text_sha256": "779f53e10058326eeaaa929021dc2c35ea8547347fa318e1ad64f9b87c80bea2",
+      "prompt_tokens": 58,
+      "seed": 204,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 134,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#19123",
+      "prompt_text_sha256": "b897615990dcdd96e9c768fed2a639142e8ad6b24fa5faa37e572ed687111703",
+      "prompt_tokens": 196,
+      "seed": 205,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 135,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#19281",
+      "prompt_text_sha256": "f9030c2530d32ebdc4457baa751e8910e205d50e346b746dd9adff07b2513a5e",
+      "prompt_tokens": 15,
+      "seed": 206,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 136,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#19306",
+      "prompt_text_sha256": "9f0e66f1a87a54e5b895133a0b7341eae49418bef881a8093b3cd686195b257b",
+      "prompt_tokens": 36,
+      "seed": 207,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 137,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#19372",
+      "prompt_text_sha256": "37d583117fbd9e509ea5151ef8486e150c30457c5370701fc6ae5c10597daa04",
+      "prompt_tokens": 96,
+      "seed": 208,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 138,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#19544",
+      "prompt_text_sha256": "dd48e4cd892a66d29e5aee709749361b550b8e871401d18e8b83373f3fed9496",
+      "prompt_tokens": 20,
+      "seed": 209,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 139,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#19634",
+      "prompt_text_sha256": "4ae6c2adef91949b94fb93b4fd99fe0dc169419c666ac1b2308d86517de0ef35",
+      "prompt_tokens": 100,
+      "seed": 210,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 140,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#19659",
+      "prompt_text_sha256": "022f6e7544b30e487e226256bcb086b6c4c01e14e9c0185d79ab143de8c69008",
+      "prompt_tokens": 277,
+      "seed": 211,
+      "pre_generation_disposition": "over_context"
+    },
+    {
+      "original_index": 141,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#19733",
+      "prompt_text_sha256": "edabeb5de62cad838fd26c8e10385d7b0715072889b9b96f95a1966b2b4de00a",
+      "prompt_tokens": 131,
+      "seed": 212,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 142,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#20002",
+      "prompt_text_sha256": "b7244959bf56127e6a05f27c708add1a889b86683e241313c926546a250014cc",
+      "prompt_tokens": 58,
+      "seed": 213,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 143,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#20059",
+      "prompt_text_sha256": "6d7194c98e7773ef6e438a2d5c90c27dc46bab0797b709ce562461b17e32c890",
+      "prompt_tokens": 56,
+      "seed": 214,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 144,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#21012",
+      "prompt_text_sha256": "9883c641b0fbc1a9316021e65658bf9eefdde4f46c2bfc48c8ce48df6b0b1559",
+      "prompt_tokens": 51,
+      "seed": 215,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 145,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#21064",
+      "prompt_text_sha256": "6ca17901552ceba965563e48ca1b53c2985d974a1b2a3f878f539219eb67a205",
+      "prompt_tokens": 241,
+      "seed": 216,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 146,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#21089",
+      "prompt_text_sha256": "ba12b1a518412dae6bc54a5ebfedb8d9d447639365b6481ad70824004a206dab",
+      "prompt_tokens": 14,
+      "seed": 217,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 147,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#21467",
+      "prompt_text_sha256": "63ad5649c5b6116021d321372764681d9c544a5bbbc7ec0886a15ac0238130cd",
+      "prompt_tokens": 98,
+      "seed": 218,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 148,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#21620",
+      "prompt_text_sha256": "ccaef1b123a758a695030283d5523a79b675351cbe7a224e0fdb987115db075f",
+      "prompt_tokens": 69,
+      "seed": 219,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 149,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#21660",
+      "prompt_text_sha256": "5f8cf899e296967a1cdf492428e5ca18112c4e646ae78a6a09f4eeb46d1301b1",
+      "prompt_tokens": 34,
+      "seed": 220,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 150,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#21875",
+      "prompt_text_sha256": "5599962138d3e684bea090b090b6f8796df8efd2fe903382473bf2955e9a858a",
+      "prompt_tokens": 562,
+      "seed": 221,
+      "pre_generation_disposition": "over_context"
+    },
+    {
+      "original_index": 151,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#21891",
+      "prompt_text_sha256": "7c402d5d648796853324289b070ea4c1c0826129b7938d94782568a833f7fdcb",
+      "prompt_tokens": 44,
+      "seed": 222,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 152,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#22238",
+      "prompt_text_sha256": "302886597e73dc08fa3804bc04a01edb6f5b407e90906c27bfe1ba4bf1214031",
+      "prompt_tokens": 24,
+      "seed": 223,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 153,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#22500",
+      "prompt_text_sha256": "f777fef1891c634b58ff6bb92d71491aa03c5dfec44d4000689289878c12f3bc",
+      "prompt_tokens": 56,
+      "seed": 224,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 154,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#22734",
+      "prompt_text_sha256": "007945b54ab1e4acec8c966615a2c9663702c2b723515421b1112a9965cf8c16",
+      "prompt_tokens": 29,
+      "seed": 225,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 155,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#22852",
+      "prompt_text_sha256": "e5f0865d32d2e2641f8b7d805c36e95d3e792c1f271d46f0911e02b50a127602",
+      "prompt_tokens": 55,
+      "seed": 226,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 156,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#22948",
+      "prompt_text_sha256": "500ddbbd14f4e53a1b869ce6201f9440c6796267bd562a5c18c7063461666387",
+      "prompt_tokens": 31,
+      "seed": 227,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 157,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#23676",
+      "prompt_text_sha256": "0f106649986043f85dba936723c81fe0a1058078f8df7798e8bbbcf6b6888a30",
+      "prompt_tokens": 68,
+      "seed": 228,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 158,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#23914",
+      "prompt_text_sha256": "8ee5ce318574df4bbdf408c163d1c7e98f711f9e3eb68b922b64a673be1c86a4",
+      "prompt_tokens": 28,
+      "seed": 229,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 159,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#24022",
+      "prompt_text_sha256": "e019f0b1f56a9e1bb943a9e53459badfd33f6f466167f45c788efeaa15e07583",
+      "prompt_tokens": 70,
+      "seed": 230,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 160,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#24055",
+      "prompt_text_sha256": "edf54389c5fc0649940af29f4f11c1a40fd52e044da209b9d279783d517d12ab",
+      "prompt_tokens": 108,
+      "seed": 231,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 161,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#24289",
+      "prompt_text_sha256": "c2b73a3d77f160477015231be18b11e820dc3a37c6d773642f5de5c792cbb695",
+      "prompt_tokens": 44,
+      "seed": 232,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 162,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#24384",
+      "prompt_text_sha256": "453f6f7140ec71c28670f7547b7972fbc451f8e6b64d843c6cfa420165ce1946",
+      "prompt_tokens": 20,
+      "seed": 233,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 163,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#24472",
+      "prompt_text_sha256": "9b23c8a1e013a7b7f2ff423fe7904d6b62e4a6eabf9930b4f659865521f8f3e2",
+      "prompt_tokens": 107,
+      "seed": 234,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 164,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#24584",
+      "prompt_text_sha256": "4424b23110cb68f00d71ab980cfa6be931cfacd9dea7b37c3b692bbedddbe5c4",
+      "prompt_tokens": 26,
+      "seed": 235,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 165,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#24587",
+      "prompt_text_sha256": "98320879dd15366f9e601110d4f5a5b9c79fbeecc6ba361bf6545dad1f31eca3",
+      "prompt_tokens": 17,
+      "seed": 236,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 166,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#25257",
+      "prompt_text_sha256": "e6f730291b28961e20222c26608f01a17d4d9664eb232a821d646bd10ca63fd2",
+      "prompt_tokens": 60,
+      "seed": 237,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 167,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#25282",
+      "prompt_text_sha256": "bbf4afe1d64a2736f1159c9d2645d2b63f4b21aa0a68e815469088c5e655fac5",
+      "prompt_tokens": 73,
+      "seed": 238,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 168,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#25310",
+      "prompt_text_sha256": "61d3d771a28e6137ae83b40a1213c0f6b5b48f12689b62ec8a8ce35cde254f42",
+      "prompt_tokens": 42,
+      "seed": 239,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 169,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#25726",
+      "prompt_text_sha256": "97cce895f908f04c9d82e31e3fedb643a42bf2a8929d2e13eb8d6d283df8f50b",
+      "prompt_tokens": 18,
+      "seed": 240,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 170,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#25797",
+      "prompt_text_sha256": "27a1713509ac07614d58c311a94387d2319fdba253c7b5e4c3d56e255bd2f222",
+      "prompt_tokens": 30,
+      "seed": 241,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 171,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#26227",
+      "prompt_text_sha256": "82e3bae920996c0e5dd8d9c2f0c2d52ca15cc6d1c5c17238de4ee9f175abf182",
+      "prompt_tokens": 11,
+      "seed": 242,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 172,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#26258",
+      "prompt_text_sha256": "c8c0f3b58a6a2469171d4f3339c1b8edac3f0184e9864817fa05f62910876c3d",
+      "prompt_tokens": 13,
+      "seed": 243,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 173,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#26303",
+      "prompt_text_sha256": "6ea828990c5687d602af5b36dddc3b5adf4437ce3060bb438095473938384c1b",
+      "prompt_tokens": 57,
+      "seed": 244,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 174,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#26949",
+      "prompt_text_sha256": "d5df73e1a4cf00a30c483be4b7d5284814e23fc448195d5f7e5e16fed2b130e7",
+      "prompt_tokens": 53,
+      "seed": 245,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 175,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#26989",
+      "prompt_text_sha256": "e28e57012769c3e4919b230b223f6bec4bde28c9eb8fde726fbec633b7cff3d8",
+      "prompt_tokens": 135,
+      "seed": 246,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 176,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#27095",
+      "prompt_text_sha256": "18e73521a768e82b048b85ec1f70a91def4af44b5b118476bc183304f6c2bafd",
+      "prompt_tokens": 33,
+      "seed": 247,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 177,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#27347",
+      "prompt_text_sha256": "95b35891f9dfbaae0a2478c7e1510b765f3e717ca179cf91dc22665c599a2b0b",
+      "prompt_tokens": 27,
+      "seed": 248,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 178,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#27463",
+      "prompt_text_sha256": "cad27e998bbf790da2f0fa09c9ceb3f20ef3f2886cb30b93f7087b9c8ee9ff31",
+      "prompt_tokens": 31,
+      "seed": 249,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 179,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#27467",
+      "prompt_text_sha256": "988384a196a31db597e293b96d067655018411ed8729d34e7ec10bd754490474",
+      "prompt_tokens": 457,
+      "seed": 250,
+      "pre_generation_disposition": "over_context"
+    },
+    {
+      "original_index": 180,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#27486",
+      "prompt_text_sha256": "5febdebd9022802997af51e62e30522101736a009a6332e58146dfe63fa64e89",
+      "prompt_tokens": 19,
+      "seed": 251,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 181,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#27513",
+      "prompt_text_sha256": "0bd707c10ccb493dcc989e19635adbdaa047a6c327e08b62b5eda07338abaa95",
+      "prompt_tokens": 119,
+      "seed": 252,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 182,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#27963",
+      "prompt_text_sha256": "07ade5ede405ea080f9a925a6cadb23cb006df4cb7b8ab6b4003bb7423ff1138",
+      "prompt_tokens": 15,
+      "seed": 253,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 183,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#28014",
+      "prompt_text_sha256": "9a191d71f0a8183c55c84cd5292915b375d41c7d1fdd25cdf49480ead8b89401",
+      "prompt_tokens": 142,
+      "seed": 254,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 184,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#28183",
+      "prompt_text_sha256": "cde916c9b5b062b7b7577fb9a3073997fd1a7c95752a1724d70935b0825862f8",
+      "prompt_tokens": 56,
+      "seed": 255,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 185,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#28279",
+      "prompt_text_sha256": "e77699bd40892adb2630689898e3617c8cb4ddabc1ef6107b9313ccc5df3a981",
+      "prompt_tokens": 24,
+      "seed": 256,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 186,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#28384",
+      "prompt_text_sha256": "3e75e03514ff02425f50062307c8c73ed296c966e9e40dc18f75c8b616ca4d71",
+      "prompt_tokens": 150,
+      "seed": 257,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 187,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#28802",
+      "prompt_text_sha256": "0d8e625d37fc84b267d9b1dc06487861468c154ec4cf4995923edea93f231468",
+      "prompt_tokens": 36,
+      "seed": 258,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 188,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#29189",
+      "prompt_text_sha256": "800f25f1d6b0bb07bcf0a89b444e230f539c2c55d68b55ed6b30fdb6a94fa57e",
+      "prompt_tokens": 79,
+      "seed": 259,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 189,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#29190",
+      "prompt_text_sha256": "a8fe9839ee021d117c1d6dbb749eeb883fd8deba85e06fd7412bc22934e88e2f",
+      "prompt_tokens": 248,
+      "seed": 260,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 190,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#29204",
+      "prompt_text_sha256": "ce88cde53f29d8d26c4f058ad95bd74e9ada8e9a64ec3b93f9a5808454082cc0",
+      "prompt_tokens": 38,
+      "seed": 261,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 191,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#29336",
+      "prompt_text_sha256": "88feed09c229796be379ebb1c357bc7737a67fd87d8afa526b76c1c7fa19f712",
+      "prompt_tokens": 63,
+      "seed": 262,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 192,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#29568",
+      "prompt_text_sha256": "90ab50a13e2ee4d130419addc8ade6909a499691733ae31deb9c656e0d1177cc",
+      "prompt_tokens": 103,
+      "seed": 263,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 193,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#29615",
+      "prompt_text_sha256": "c0395f3926b315c3c1946bb1378fe82efee85c4da573fbb1acf0a8504ff608ba",
+      "prompt_tokens": 23,
+      "seed": 264,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 194,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#29668",
+      "prompt_text_sha256": "8e12e0898e05362f411d418ee0c38695d058c4a852b783fd49f4a4492eeb4fd1",
+      "prompt_tokens": 44,
+      "seed": 265,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 195,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#29713",
+      "prompt_text_sha256": "0e78a3815ee959310fa30cfa15ea766604b9052ce1b209bf819ad9b1fabf2b9e",
+      "prompt_tokens": 11,
+      "seed": 266,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 196,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#29899",
+      "prompt_text_sha256": "f0741f31f640de12962524139664ec837cce94e849ecbc9a97352987da53b54e",
+      "prompt_tokens": 87,
+      "seed": 267,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 197,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#30044",
+      "prompt_text_sha256": "86f5ec79e62d9b8db1e51e6e4350890c741fbf565bad581d7ecbfcc4cd8f656b",
+      "prompt_tokens": 19,
+      "seed": 268,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 198,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#30065",
+      "prompt_text_sha256": "0a2cddb507bf41fad5be894cf0091fdf47450c22f5c6eb5a7190277038a3691b",
+      "prompt_tokens": 121,
+      "seed": 269,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 199,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#30472",
+      "prompt_text_sha256": "931d3c2d43b3b6273ba30425f5546015ed7c90fad3e2b27817d2f253428e14f4",
+      "prompt_tokens": 31,
+      "seed": 270,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 200,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#30502",
+      "prompt_text_sha256": "63aadd15ab5d52e00366e8d810f66c2c37d7f359818d1040c64f75e1f1d240ef",
+      "prompt_tokens": 23,
+      "seed": 271,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 201,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#30586",
+      "prompt_text_sha256": "6f202ba545a68bff03dad699022f2e2f837d48f46a831cd7541691b37681a6fb",
+      "prompt_tokens": 23,
+      "seed": 272,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 202,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#30632",
+      "prompt_text_sha256": "e8e24d8d39fe5bd06c5a916bff8ccbb6e7de3328c21c3dd9d2232577c4fadfec",
+      "prompt_tokens": 16,
+      "seed": 273,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 203,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#30676",
+      "prompt_text_sha256": "27373455642e84da4d7732d29bcb52e5016f3708c5a76dcd06593b75dc52078c",
+      "prompt_tokens": 104,
+      "seed": 274,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 204,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#30721",
+      "prompt_text_sha256": "1957a71180bcbe834bf366342a71e0eac9d6f37cb7a461d17e75c679c84b1c53",
+      "prompt_tokens": 251,
+      "seed": 275,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 205,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#30748",
+      "prompt_text_sha256": "3ab79c95811bfaab467d4fcfebccde1356b9bf86c4c001d67a50cade18017322",
+      "prompt_tokens": 216,
+      "seed": 276,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 206,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#30821",
+      "prompt_text_sha256": "b6ce97110444298f657c184847cac32a35ce51632a407438b3b36c4cdf6a6bdc",
+      "prompt_tokens": 207,
+      "seed": 277,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 207,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#30851",
+      "prompt_text_sha256": "4dce6ba13dc67759258d0f6f36fbffd927b7715314d314d426a83e918be53b1d",
+      "prompt_tokens": 24,
+      "seed": 278,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 208,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#30895",
+      "prompt_text_sha256": "980fbd919690979da2f2b8dae4124b80f69cb0f17c1cad931a5bfc3ebf093682",
+      "prompt_tokens": 63,
+      "seed": 279,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 209,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#30947",
+      "prompt_text_sha256": "fd235ee5b7b87e8004315212af3e1aeb5981e44b0fca5ad85786cb971dd7defa",
+      "prompt_tokens": 57,
+      "seed": 280,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 210,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#31162",
+      "prompt_text_sha256": "4f7ca9092b3ce079ea72d17c15d06af50de0bc284a34e0b043503144358e764e",
+      "prompt_tokens": 36,
+      "seed": 281,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 211,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#31219",
+      "prompt_text_sha256": "c005e3edbb1f4f8fb046a617cde518e43b3b121179705f30cbdc90a085674c5d",
+      "prompt_tokens": 52,
+      "seed": 282,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 212,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#31307",
+      "prompt_text_sha256": "a3d32b597c1eba686d2cab33c5e71ee961f49a99cc0faa0f9b593f8033fc9c18",
+      "prompt_tokens": 21,
+      "seed": 283,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 213,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#31940",
+      "prompt_text_sha256": "88c5d9b5ded41edaae275998f0ec0ac94b09405b3ed2dab7a48bba9aa31cf765",
+      "prompt_tokens": 34,
+      "seed": 284,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 214,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#32067",
+      "prompt_text_sha256": "fba291e9b270dfefd117b38e8ddef0f6e3dbee0bdfc36f45af63bc08305ae356",
+      "prompt_tokens": 74,
+      "seed": 285,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 215,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#32279",
+      "prompt_text_sha256": "e86dee2591da20c7b905e15c8bbf05ebe66cd904ee97b829edd854bda59fcc17",
+      "prompt_tokens": 51,
+      "seed": 286,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 216,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#32380",
+      "prompt_text_sha256": "3b657abd74f71c3e8154944c01dff8ae4e64bbf61a34245f4c8a3b27e1906f6e",
+      "prompt_tokens": 91,
+      "seed": 287,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 217,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#32694",
+      "prompt_text_sha256": "ac2447b143dd10dc921125ffc224b4837aaaac1ff528ee70dc48fa8f7d3e592d",
+      "prompt_tokens": 20,
+      "seed": 288,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 218,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#32712",
+      "prompt_text_sha256": "1caa61c99cbf25902a17d1df7b1b85551b221e19d1acb0d087fa97d265974c02",
+      "prompt_tokens": 65,
+      "seed": 289,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 219,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#32863",
+      "prompt_text_sha256": "6f413b5177a47a3f8fa2cc79dac670aca25d01ee1343ca113fb748bf11b13044",
+      "prompt_tokens": 14,
+      "seed": 290,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 220,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#32913",
+      "prompt_text_sha256": "69171aed084a559df93eaa139e0ffea6416677fae016d030b42962ea02ca1ee8",
+      "prompt_tokens": 11,
+      "seed": 291,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 221,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#33151",
+      "prompt_text_sha256": "c1d8e2512d304cebba58d60a506e57f41a1184acd19d751edacba43fc271777b",
+      "prompt_tokens": 40,
+      "seed": 292,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 222,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#33288",
+      "prompt_text_sha256": "d3d574a191d8e31f81613bd36a5626e13c9498752dff9f8a5360dadcf9850636",
+      "prompt_tokens": 76,
+      "seed": 293,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 223,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#33298",
+      "prompt_text_sha256": "6798f53d57c5b4419ac89bd03d583a7e130d93f96358919831324fe8acc4445e",
+      "prompt_tokens": 33,
+      "seed": 294,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 224,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#33342",
+      "prompt_text_sha256": "1ee0caf5a9f470533eeb40fec456ec5e94baacd0b60a70ea85b4f7cb4a660e8f",
+      "prompt_tokens": 46,
+      "seed": 295,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 225,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#33533",
+      "prompt_text_sha256": "dccc64ed77291de9feae6d63c2b5b6af771a2a89f5c3620d1e96a20f3b30db44",
+      "prompt_tokens": 56,
+      "seed": 296,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 226,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#33535",
+      "prompt_text_sha256": "112d79858b7869fcba618991f43c9bbf01f9fe180eb0e9531a11d491e9d0c870",
+      "prompt_tokens": 38,
+      "seed": 297,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 227,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#33899",
+      "prompt_text_sha256": "7142a9fdeff603b2ad9cb3dea6646505ca08e47da22a68afdb3c5ba5229c5ab9",
+      "prompt_tokens": 29,
+      "seed": 298,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 228,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#34302",
+      "prompt_text_sha256": "d19e56355284d7e1793ea42ad8279da16d9f6b929c7c7173bc2f6b48e8ca1cb0",
+      "prompt_tokens": 49,
+      "seed": 299,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 229,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#34375",
+      "prompt_text_sha256": "05eb62ad46196e9b6ccec0e054736d0887d149ed930114d1f8d5455c1dd6a246",
+      "prompt_tokens": 21,
+      "seed": 300,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 230,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#34388",
+      "prompt_text_sha256": "821394954b8fa0c34f48751fcea7f34475ea8de9be7a14704e1332dce905d609",
+      "prompt_tokens": 93,
+      "seed": 301,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 231,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#34559",
+      "prompt_text_sha256": "68a4afe9e5d96d25acaf55ef2a25361f05aa1626ca8a447b4f20d799a62fefbf",
+      "prompt_tokens": 9,
+      "seed": 302,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 232,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#34624",
+      "prompt_text_sha256": "c83044410d41d4f3c8f8d284bb41df9797e5ce6a36b2b617a7b601cf8e25f5f6",
+      "prompt_tokens": 24,
+      "seed": 303,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 233,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#34864",
+      "prompt_text_sha256": "51287765fca21ead7c09605f6df62c57aa0a9e9b5694b7525a5322e4c478aa39",
+      "prompt_tokens": 201,
+      "seed": 304,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 234,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#34988",
+      "prompt_text_sha256": "6aa9f17ded23644f6ee1ce9bf367913567646a2f71e5598191777ce07958a6dd",
+      "prompt_tokens": 122,
+      "seed": 305,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 235,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#35552",
+      "prompt_text_sha256": "11352e91f698df2228b82886419aa1570a7bb0dcfee3236f0d80a354075652ed",
+      "prompt_tokens": 16,
+      "seed": 306,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 236,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#35589",
+      "prompt_text_sha256": "3afbe2b56dff003b251c818bc6c79adc5d08265c89b8a70cad59042d97b28c96",
+      "prompt_tokens": 36,
+      "seed": 307,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 237,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#35613",
+      "prompt_text_sha256": "884a11d1b40a2af85768db13c13fcb01003513f13119c7f0fe017def0e3e3bc9",
+      "prompt_tokens": 68,
+      "seed": 308,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 238,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#35701",
+      "prompt_text_sha256": "afeb7d8dd9326b8339c030f9b262e41f261b17f982263381562e3f45b7c732ec",
+      "prompt_tokens": 62,
+      "seed": 309,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 239,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#35784",
+      "prompt_text_sha256": "5f37a08ddde8ed71ce85b77a4cf9b27f99e21a7619981d548c931a6a2309c1b2",
+      "prompt_tokens": 53,
+      "seed": 310,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 240,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#35923",
+      "prompt_text_sha256": "073bcf49dcd9ea95df5c29b8dbbf945831d579b1c09456fd0d5552db68dcbd2c",
+      "prompt_tokens": 11,
+      "seed": 311,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 241,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#36154",
+      "prompt_text_sha256": "5ffafbe1a53c14cf0fc3721a12adfc8ca208ecec8af9f060e352484ac222591e",
+      "prompt_tokens": 65,
+      "seed": 312,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 242,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#36207",
+      "prompt_text_sha256": "034639f1e7cbf00accb692f461e738ac61aa22757314817a1ea3d0379280ed8b",
+      "prompt_tokens": 21,
+      "seed": 313,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 243,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#36299",
+      "prompt_text_sha256": "15fb88d5e7cf88964cf35a997c8e6d0545205564ce52f1dace132b357b21917c",
+      "prompt_tokens": 33,
+      "seed": 314,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 244,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#36367",
+      "prompt_text_sha256": "ce8d1855e15616c6af50915c0f0e17561f8f9d16de58eae23340ca45221fb001",
+      "prompt_tokens": 22,
+      "seed": 315,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 245,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#36640",
+      "prompt_text_sha256": "973936097e4e70e52c83890524b01cc309a6de489c402219d5fd3aa056905ed1",
+      "prompt_tokens": 14,
+      "seed": 316,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 246,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#37260",
+      "prompt_text_sha256": "db27a5996d193da144d8dc62dbf1effe1e3746e4ad47a8ea0c4d3a8d2edc6120",
+      "prompt_tokens": 123,
+      "seed": 317,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 247,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#37262",
+      "prompt_text_sha256": "a0f082dd3d485344102a9585a251e77e3c837ab190a548ffda64c818bcbc4bd4",
+      "prompt_tokens": 31,
+      "seed": 318,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 248,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#37349",
+      "prompt_text_sha256": "7ea7fb118c20e10f47e05d92ba09a4ef8e4977b202210f741af7a2be8bf177f8",
+      "prompt_tokens": 112,
+      "seed": 319,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 249,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#37377",
+      "prompt_text_sha256": "126123a1851d2e21daee0095a5d501408fc8d31678872c7f4e8930796e444dcd",
+      "prompt_tokens": 46,
+      "seed": 320,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 250,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#37487",
+      "prompt_text_sha256": "7d88b739f42f23f9ff6189def43db4ad9537cbb338c3091efdc1b6f82bc1d855",
+      "prompt_tokens": 26,
+      "seed": 321,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 251,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#37607",
+      "prompt_text_sha256": "d2e70aa5053725915d7452a19c9bf74465566ba483c8ce5d8b3bd80677faa3df",
+      "prompt_tokens": 66,
+      "seed": 322,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 252,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#37706",
+      "prompt_text_sha256": "456824897e60d2b0ecf59e0a29abfb23470249d66857c7f8209aa27362b31403",
+      "prompt_tokens": 165,
+      "seed": 323,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 253,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#37752",
+      "prompt_text_sha256": "0f37c33dbde546c22cf0a57334175fbaf4aa2e456b79b92d712e4916ce883476",
+      "prompt_tokens": 49,
+      "seed": 324,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 254,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#37841",
+      "prompt_text_sha256": "49b61889e3130b64498c31d6f91ccb64b27ffdd6859ff200ce13c4c9d81aeee2",
+      "prompt_tokens": 61,
+      "seed": 325,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 255,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#37848",
+      "prompt_text_sha256": "acc73e716393ec5b921b20410970a3b08c7cb5ddf185cbf808dc5df8b5e6ace3",
+      "prompt_tokens": 116,
+      "seed": 326,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 256,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#37928",
+      "prompt_text_sha256": "ac228679334bb944db3fdd3ac606fb7855ceb34dfbc3213d7f1f1d6e06c15939",
+      "prompt_tokens": 392,
+      "seed": 327,
+      "pre_generation_disposition": "over_context"
+    },
+    {
+      "original_index": 257,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#38164",
+      "prompt_text_sha256": "c4283985118710def333fb6dbf2da3ca865ac634fb472832bd51b721fb8e655d",
+      "prompt_tokens": 224,
+      "seed": 328,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 258,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#38252",
+      "prompt_text_sha256": "b31901513065dffef5b55b7de8eac6bc48b0e5522333fe650b6623fc4d9fd30c",
+      "prompt_tokens": 49,
+      "seed": 329,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 259,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#38279",
+      "prompt_text_sha256": "035c1ea163af11a1f9fb44b6971d065064b821a2f00ebc116f639b29fbf75137",
+      "prompt_tokens": 76,
+      "seed": 330,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 260,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#38304",
+      "prompt_text_sha256": "57d4fd6d24518e440e6add5fbc6fd0f9964338374bf615bb174fca2fd257d448",
+      "prompt_tokens": 52,
+      "seed": 331,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 261,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#38924",
+      "prompt_text_sha256": "6e1215d96a894989c43970e722cd6c940a9f6f461b6738cad5a4dd2c469b53ab",
+      "prompt_tokens": 42,
+      "seed": 332,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 262,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#39078",
+      "prompt_text_sha256": "b617cb5de1d61c43d53ec13c1fb5aef92e65343670584075dbb02651d5c3180c",
+      "prompt_tokens": 41,
+      "seed": 333,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 263,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#39139",
+      "prompt_text_sha256": "ae225e1d521c7c02655368219b529db11f745cfb8be350502b13717604c2f48c",
+      "prompt_tokens": 13,
+      "seed": 334,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 264,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#39390",
+      "prompt_text_sha256": "ffcac7cd57260e8bea0cf105ac4ec0b8b86d9b4e622af2915522390769f7b89f",
+      "prompt_tokens": 35,
+      "seed": 335,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 265,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#39406",
+      "prompt_text_sha256": "eeec86c1deba515fa80256d966b9b502639f84189a8e76f37fd6078909a0d447",
+      "prompt_tokens": 74,
+      "seed": 336,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 266,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#39630",
+      "prompt_text_sha256": "88d0153dc45dff0a9265544f3321774f81d5a23f168e8b7be47c98e0b1bf6067",
+      "prompt_tokens": 68,
+      "seed": 337,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 267,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#39750",
+      "prompt_text_sha256": "4857ca05269436b0521ba2c3d71001ab6f769055d4a99c49172f859b96ebe2ff",
+      "prompt_tokens": 25,
+      "seed": 338,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 268,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#39861",
+      "prompt_text_sha256": "0698f50dabf48e8cb94906bfb36690d6fb2e60c71edca390d49aa0f232f12ab6",
+      "prompt_tokens": 135,
+      "seed": 339,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 269,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#39890",
+      "prompt_text_sha256": "303cf855ec11713701c27358fc5f309b9c50f8969b18b0e9bc6427a24d0494ac",
+      "prompt_tokens": 590,
+      "seed": 340,
+      "pre_generation_disposition": "over_context"
+    },
+    {
+      "original_index": 270,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#39906",
+      "prompt_text_sha256": "3f1731153ae0195016cd9c41a4931f8b7700c97d0c4da1794121721999de87c1",
+      "prompt_tokens": 106,
+      "seed": 341,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 271,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#40029",
+      "prompt_text_sha256": "8cc1cac926ffe01caa68ddff3561632613beabfc1a8df3fcef698c08b72e0be7",
+      "prompt_tokens": 53,
+      "seed": 342,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 272,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#40241",
+      "prompt_text_sha256": "ffffdcddc2f172c89be8308eae515cec45cfc05a71c77d1e1679fbd021bb6eb3",
+      "prompt_tokens": 141,
+      "seed": 343,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 273,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#40326",
+      "prompt_text_sha256": "f0ed7d1d8c7097ff7f3296906222f9734a377fcf0bcedb91fffc7a212a6e11bc",
+      "prompt_tokens": 120,
+      "seed": 344,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 274,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#40366",
+      "prompt_text_sha256": "6872f70128a818dcc14edabbc0fb7c6daa884d15edb6ab2f1c8bc157d3044fce",
+      "prompt_tokens": 41,
+      "seed": 345,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 275,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#40437",
+      "prompt_text_sha256": "a7510fada8d5de410a437b7e054f26cc63d14cada7d583efd3093d1f26c486e4",
+      "prompt_tokens": 63,
+      "seed": 346,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 276,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#40822",
+      "prompt_text_sha256": "ddaef871e29322e9998edbe338ff84bd12665e0d412403bf70b44a8e3800ca12",
+      "prompt_tokens": 21,
+      "seed": 347,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 277,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#40994",
+      "prompt_text_sha256": "22c51045acd00a28b7cae7d3c0054323974e1c6160d84e5d04a9a1719852da75",
+      "prompt_tokens": 122,
+      "seed": 348,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 278,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#41014",
+      "prompt_text_sha256": "b1b440cdab151d429dbd24a684c87f4a1fa20d6d7562a5e9627bacc2621450f3",
+      "prompt_tokens": 37,
+      "seed": 349,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 279,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#41042",
+      "prompt_text_sha256": "f3f1554d3f0f2d87b55469a8cce89a65c2b84459e33c300d640322c549e39311",
+      "prompt_tokens": 23,
+      "seed": 350,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 280,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#41049",
+      "prompt_text_sha256": "6c6fb71daeba4f87bfb96443dc18d611a364c1be3622ed34eb94017216f303fe",
+      "prompt_tokens": 55,
+      "seed": 351,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 281,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#41360",
+      "prompt_text_sha256": "4ec75c89d7b7ebf53c78be8ca0dbe13ba55324490f87bf3e45eb33de8a24347e",
+      "prompt_tokens": 69,
+      "seed": 352,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 282,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#41523",
+      "prompt_text_sha256": "a38e7ced4c5f354db7227b7445fbc10cf7ca9705d00e317d2add8d70078273ff",
+      "prompt_tokens": 52,
+      "seed": 353,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 283,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#41535",
+      "prompt_text_sha256": "437cf465ad2a03790d214194c52d6023155a4ce489a740259690ba51791f5636",
+      "prompt_tokens": 11,
+      "seed": 354,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 284,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#41577",
+      "prompt_text_sha256": "ab35e715c950f498aafcfa1af1fa01aecc3dd958480680d0c6c0a317048720e8",
+      "prompt_tokens": 26,
+      "seed": 355,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 285,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#41667",
+      "prompt_text_sha256": "5c4fdca5658052c94824591c51351183b3d696a5a67cf6106aeb3545547ca981",
+      "prompt_tokens": 26,
+      "seed": 356,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 286,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#41916",
+      "prompt_text_sha256": "50bad81da436778baceb62c527e880c1599fb4c1fa7e20a7e000cdfb1cb1c70e",
+      "prompt_tokens": 114,
+      "seed": 357,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 287,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#42111",
+      "prompt_text_sha256": "c44e274961f49ce38bb7ae2b7e6ae940f87420f3a1232cd9552a0c11c1affb6a",
+      "prompt_tokens": 35,
+      "seed": 358,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 288,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#42504",
+      "prompt_text_sha256": "dc254361df63a0d0e67c7ac48577100d7d03ebe7c764161e962fade1a62942e6",
+      "prompt_tokens": 42,
+      "seed": 359,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 289,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#42539",
+      "prompt_text_sha256": "0f34dd0d73a90da85548b4fb556788a55c89d7fd85a619e1069b83d8b2df383f",
+      "prompt_tokens": 39,
+      "seed": 360,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 290,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#42822",
+      "prompt_text_sha256": "be40e6b1ab3e167e435cc0d52a1829b45641dae0aa12ea52b03312d727d706d0",
+      "prompt_tokens": 35,
+      "seed": 361,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 291,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#42891",
+      "prompt_text_sha256": "0e544d296836cc66f0b6c7b71cb65049c81325e90e5a43878e61d974a9bc1847",
+      "prompt_tokens": 305,
+      "seed": 362,
+      "pre_generation_disposition": "over_context"
+    },
+    {
+      "original_index": 292,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#42922",
+      "prompt_text_sha256": "60c8f8b10291230f784acac78d05c84bea1077158bc3363c7b500110b2df9873",
+      "prompt_tokens": 49,
+      "seed": 363,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 293,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#42980",
+      "prompt_text_sha256": "dec2da9d91384b50625d05506f466575854843443a503ef163e89dd83302f8f8",
+      "prompt_tokens": 53,
+      "seed": 364,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 294,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#43187",
+      "prompt_text_sha256": "6db76c79bd93e844c79250210b4e424b2cfbade7d1be234dd15ecfc13083c6a7",
+      "prompt_tokens": 153,
+      "seed": 365,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 295,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#43520",
+      "prompt_text_sha256": "b734bea18a9a83738c51744761b2b33539afefadab07b9dd4b2a0d632ed3b430",
+      "prompt_tokens": 128,
+      "seed": 366,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 296,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#43567",
+      "prompt_text_sha256": "0346d0b9ec1dba57166c6556fb7f605c39a0dfe2c97a4a2ef1afa58859e054b5",
+      "prompt_tokens": 66,
+      "seed": 367,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 297,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#43568",
+      "prompt_text_sha256": "5bf9caa9011476b8afb35a69172c5b24897b4ff8c7274c6703a50a64840d0dd1",
+      "prompt_tokens": 28,
+      "seed": 368,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 298,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#43625",
+      "prompt_text_sha256": "c6211991579e9350ee34188ca477d893c1da583cf17387eb4c496b491c7d5af4",
+      "prompt_tokens": 105,
+      "seed": 369,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    },
+    {
+      "original_index": 299,
+      "uri": "HuggingFaceTB/smol-smoltalk@f73fe857/data/train-00000-of-00004.parquet#43781",
+      "prompt_text_sha256": "7d306575824ee822a85d9391d7cc6217940e2ba50b01ac85715749f7bd3257a2",
+      "prompt_tokens": 100,
+      "seed": 370,
+      "pre_generation_disposition": "requires_original_sampling_outcome"
+    }
+  ],
+  "no_refill": true,
+  "model_responses_generated": 0
+}
