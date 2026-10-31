@@ -1,0 +1,20 @@
+from pathlib import Path
+import subprocess,hashlib,json,resource
+root=Path("/home/jonat/pk_host_reader_audit_20261031")
+out=Path("/home/jonat/checkpoint_copy_cpu_build_20261031");out.mkdir(exist_ok=True)
+mem=int(next(x.split()[1] for x in Path("/proc/meminfo").read_text().splitlines() if x.startswith("MemAvailable:")))
+if mem<1572864: raise RuntimeError("memory admission refused")
+record={"admission_MemAvailable_KiB":mem,"compiler_address_space_bytes":1610612736,"commands":[],"libraries":{}}
+libs=["/home/jonat/pk_publication_build_20261030/libmicrotorch.a","/home/jonat/pk_publication_build_20261030/transformer_cpp/libtransformer_core.a"]
+for x in libs:record["libraries"][x]=hashlib.sha256(Path(x).read_bytes()).hexdigest()
+flags=["-O0","-g0","-DNDEBUG","-DMICROTORCH_DEVCHECK","-std=c++17","-ffp-contract=off","-fopenmp","-pthread"]
+flags += ["-I"+str(root/x) for x in ["include","third_party/transformer_cpp/include","third_party/transformer_cpp/third_party"]]
+flags += ["-I/home/jonat/pk_publication_build_20261030/_deps/json-src/include"]
+def limit():resource.setrlimit(resource.RLIMIT_AS,(1610612736,1610612736))
+for variant,source in [("old","tests/checkpoint_copy_baseline.cpp"),("fixed","src/autograd.cpp")]:
+    args=["c++",*flags,'-DCHECKPOINT_VARIANT="'+variant+'"',str(root/"tests/checkpoint_copy_gate.cpp"),str(root/source),*libs,"-o",str(out/("checkpoint_copy_"+variant))]
+    with (out/(variant+"_build.log")).open("w") as f:r=subprocess.run(args,stdout=f,stderr=subprocess.STDOUT,timeout=90,preexec_fn=limit)
+    record["commands"].append({"argv":args,"returncode":r.returncode,"sources":{n:hashlib.sha256((root/n).read_bytes()).hexdigest() for n in ["tests/checkpoint_copy_gate.cpp",source]},"binary_sha256":hashlib.sha256((out/("checkpoint_copy_"+variant)).read_bytes()).hexdigest() if r.returncode==0 else None})
+    (out/"build_identity.json").write_text(json.dumps(record,indent=2)+"\n")
+    if r.returncode:raise RuntimeError(variant+" compile failed")
+print("serial old/fixed compile passed")

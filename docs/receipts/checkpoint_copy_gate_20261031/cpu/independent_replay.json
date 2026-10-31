@@ -1,0 +1,38 @@
+[
+  {
+    "pass": true,
+    "actual_cuda": false,
+    "case": "output",
+    "variant": "old",
+    "gradient_tensors": 2,
+    "bound": 1e-06,
+    "maximum_normalized_error": 0.0
+  },
+  {
+    "pass": true,
+    "actual_cuda": false,
+    "case": "input",
+    "variant": "old",
+    "gradient_tensors": 3,
+    "bound": 1e-06,
+    "maximum_normalized_error": 0.0
+  },
+  {
+    "pass": true,
+    "actual_cuda": false,
+    "case": "output",
+    "variant": "fixed",
+    "gradient_tensors": 2,
+    "bound": 1e-06,
+    "maximum_normalized_error": 0.0
+  },
+  {
+    "pass": true,
+    "actual_cuda": false,
+    "case": "input",
+    "variant": "fixed",
+    "gradient_tensors": 3,
+    "bound": 1e-06,
+    "maximum_normalized_error": 0.0
+  }
+]

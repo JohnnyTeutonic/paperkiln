@@ -551,3 +551,11 @@ add_executable(flex_precision_factory tests/flex_precision_factory.cpp)
 target_include_directories(flex_precision_factory PRIVATE third_party/httplib "${CMAKE_CURRENT_BINARY_DIR}/generated")
 target_link_libraries(flex_precision_factory PRIVATE microtorch nlohmann_json::nlohmann_json)
 add_test(NAME flex_precision_factory_cpu COMMAND flex_precision_factory)
+
+# Checkpoint copy boundary old/fixed proof. Baseline is an exact historical Git blob.
+add_executable(checkpoint_copy_fixed tests/checkpoint_copy_gate.cpp src/autograd.cpp)
+target_link_libraries(checkpoint_copy_fixed PRIVATE microtorch)
+target_compile_definitions(checkpoint_copy_fixed PRIVATE CHECKPOINT_VARIANT="fixed")
+add_executable(checkpoint_copy_old tests/checkpoint_copy_gate.cpp tests/checkpoint_copy_baseline.cpp)
+target_link_libraries(checkpoint_copy_old PRIVATE microtorch)
+target_compile_definitions(checkpoint_copy_old PRIVATE CHECKPOINT_VARIANT="old")
