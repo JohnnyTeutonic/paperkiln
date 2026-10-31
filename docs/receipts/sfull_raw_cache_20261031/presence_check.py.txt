@@ -1,0 +1,74 @@
+"""Read-only check of a recovered cache against the frozen S-full data contract."""
+from pathlib import Path
+import hashlib
+import json
+import subprocess
+
+PACKET = Path('/home/jonat/pk_sfull_packet_20261031')
+DEST = Path('/home/jonat/pk_publication_20261030/docs/receipts/sfull_raw_cache_20261031')
+CACHE = Path('/home/jonat/r3_data/out')
+REFERENCE = PACKET / 'experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/data_reference.json'
+ARCHIVE = '7edb0ca1b252bd9332094558a478d924568f8e52'
+
+
+def sha(path):
+    with path.open('rb') as f:
+        return hashlib.file_digest(f, 'sha256').hexdigest()
+
+
+def check(path, expected):
+    result = {'path': str(path), 'expected_sha256': expected, 'exists': path.is_file()}
+    if result['exists']:
+        result.update(bytes=path.stat().st_size, sha256=sha(path))
+        result['matches'] = result['sha256'] == expected
+    return result
+
+
+def main():
+    assert sha(REFERENCE) == 'acd00d74a93299aa0614f98233f837ef3dc30d38ce9120330e9f2f5c2b982cf4'
+    ref = json.loads(REFERENCE.read_text())
+    raw = []
+    for name, expected in ref['human']['files'].items():
+        pin_name = 'corpus/hashes/' + name.split('/')[0] + '.sha256'
+        pin = subprocess.check_output(['git', '-C', str(PACKET), 'show', f'{ARCHIVE}:{pin_name}'], text=True)
+        # Each pin uses conventional "digest  filename" lines.
+        pins = {line.split()[-1]: line.split()[0] for line in pin.splitlines() if line.strip() and not line.startswith('#')}
+        assert pins['dialogues.jsonl'] == expected
+        for filename in ('dialogues.jsonl', 'text.txt'):
+            raw.append(check(CACHE / 'human' / name.split('/')[0] / filename, pins[filename]))
+    products = [check(CACHE / n, info['sha256']) for n, info in ref['outputs'].items()]
+    fw = ref['mixes']['s35']['mix_ledger']['sources']['fineweb']
+    fineweb = check(Path('/home/jonat/r3_data/fw/pretrain_train.txt'), fw['sha256'])
+    report = {
+        'status': 'ALL_REGISTERED_RAW_SOURCES_FOUND_NOT_FULL_RUNTIME_GATE',
+        'archive_commit': ARCHIVE,
+        'reference_sha256': sha(REFERENCE),
+        'checker_sha256': sha(Path(__file__)),
+        'raw': raw,
+        'raw_dialogue_matches': sum(x.get('matches', False) for x in raw if x['path'].endswith('/dialogues.jsonl')),
+        'raw_text_matches': sum(x.get('matches', False) for x in raw if x['path'].endswith('/text.txt')),
+        'products': products,
+        'fineweb_source': fineweb,
+        'original_ledger_present_in_this_cache': (CACHE / 'data.ledger.json').exists(),
+        'limits': [
+            'Read-only exact-path checks; no download, rebuilding, training or paid launch.',
+            'Raw cache identity does not prove derived products, full ledger or decontamination identity.',
+            'The small FineWeb fixture in this cache is not the registered source and must not be used for scientific reconstruction.',
+            'The original recipe, expected hashes and historical parity failures remain unchanged.',
+        ],
+    }
+    assert report['raw_dialogue_matches'] == 13
+    assert report['raw_text_matches'] == 13
+    assert not fineweb.get('matches', False)
+    assert not report['original_ledger_present_in_this_cache']
+    DEST.mkdir(parents=True, exist_ok=True)
+    out = DEST / 'presence.json'
+    assert not out.exists(), 'immutable receipt already exists'
+    (DEST / '.gitattributes').write_text('* -text\n')
+    (DEST / 'presence_check.py.txt').write_bytes(Path(__file__).read_bytes())
+    out.write_text(json.dumps(report, indent=2) + '\n')
+    print(json.dumps({'raw_dialogue_matches': report['raw_dialogue_matches'], 'raw_text_matches': report['raw_text_matches'], 'matching_products': [Path(x['path']).name for x in products if x.get('matches')], 'full_runtime_gate': False}))
+
+
+if __name__ == '__main__':
+    main()

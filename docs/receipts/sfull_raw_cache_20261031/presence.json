@@ -1,0 +1,269 @@
+{
+  "status": "ALL_REGISTERED_RAW_SOURCES_FOUND_NOT_FULL_RUNTIME_GATE",
+  "archive_commit": "7edb0ca1b252bd9332094558a478d924568f8e52",
+  "reference_sha256": "acd00d74a93299aa0614f98233f837ef3dc30d38ce9120330e9f2f5c2b982cf4",
+  "checker_sha256": "3b58c2843790c17151392f1cb05824496f7b8c5ccb91a14ed566ea17fe3a7eb2",
+  "raw": [
+    {
+      "path": "/home/jonat/r3_data/out/human/human_bst_v1/dialogues.jsonl",
+      "expected_sha256": "e66aab659918d3cfe6b0828d05ddd1a7c790507b62737690e500814a2687f75f",
+      "exists": true,
+      "bytes": 6021733,
+      "sha256": "e66aab659918d3cfe6b0828d05ddd1a7c790507b62737690e500814a2687f75f",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/human/human_bst_v1/text.txt",
+      "expected_sha256": "2724c9f20522edbbd28a23bd329d02407550f46a775b09da2f4141dd22533f8e",
+      "exists": true,
+      "bytes": 4550380,
+      "sha256": "2724c9f20522edbbd28a23bd329d02407550f46a775b09da2f4141dd22533f8e",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/human/human_convai2_v1/dialogues.jsonl",
+      "expected_sha256": "804568a4d94c545bc57b867dc1084af44f2baf2e841f51a22bb7c1f16f248654",
+      "exists": true,
+      "bytes": 11598030,
+      "sha256": "804568a4d94c545bc57b867dc1084af44f2baf2e841f51a22bb7c1f16f248654",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/human/human_convai2_v1/text.txt",
+      "expected_sha256": "194aa2b2e92ba2f5004dc199d3144c1f6ec9796b2050b7b5382b135c52f59711",
+      "exists": true,
+      "bytes": 8539241,
+      "sha256": "194aa2b2e92ba2f5004dc199d3144c1f6ec9796b2050b7b5382b135c52f59711",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/human/human_dailydialog_v1/dialogues.jsonl",
+      "expected_sha256": "c91228768e3d92876b81d132ac46ec5f0f21e7e870eea356b7f0670a1a766f6c",
+      "exists": true,
+      "bytes": 8194793,
+      "sha256": "c91228768e3d92876b81d132ac46ec5f0f21e7e870eea356b7f0670a1a766f6c",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/human/human_dailydialog_v1/text.txt",
+      "expected_sha256": "a76fcf0d2c95a12c5524eeabca2ce42c010fc9c867a6f1a988348f34fa1d4b26",
+      "exists": true,
+      "bytes": 5791888,
+      "sha256": "a76fcf0d2c95a12c5524eeabca2ce42c010fc9c867a6f1a988348f34fa1d4b26",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/human/human_dolly_v1/dialogues.jsonl",
+      "expected_sha256": "f6a8e975ae5d4dc6262cef7ade3034f094d994d1853f1f36d77a102c858de274",
+      "exists": true,
+      "bytes": 13266351,
+      "sha256": "f6a8e975ae5d4dc6262cef7ade3034f094d994d1853f1f36d77a102c858de274",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/human/human_dolly_v1/text.txt",
+      "expected_sha256": "f518002175786c096e018622edf228641c66bc19b79d57df68bd0ea40b3ef032",
+      "exists": true,
+      "bytes": 12122377,
+      "sha256": "f518002175786c096e018622edf228641c66bc19b79d57df68bd0ea40b3ef032",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/human/human_empathetic_v1/dialogues.jsonl",
+      "expected_sha256": "835f875a4771f89ee13b4056df8b22414a156e23f2267c9aad82b9810a1ef6c5",
+      "exists": true,
+      "bytes": 8463964,
+      "sha256": "835f875a4771f89ee13b4056df8b22414a156e23f2267c9aad82b9810a1ef6c5",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/human/human_empathetic_v1/text.txt",
+      "expected_sha256": "0a0174e5838e7adf49f46aa6563770c9779e0c4a51dba2704ed610bc9fea5d11",
+      "exists": true,
+      "bytes": 6136536,
+      "sha256": "0a0174e5838e7adf49f46aa6563770c9779e0c4a51dba2704ed610bc9fea5d11",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/human/human_multiwoz_v1/dialogues.jsonl",
+      "expected_sha256": "0984e5deeef4cd89efe9e32f433672864644ecfff9e6fa85840b27dc2cf0ea84",
+      "exists": true,
+      "bytes": 12454765,
+      "sha256": "0984e5deeef4cd89efe9e32f433672864644ecfff9e6fa85840b27dc2cf0ea84",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/human/human_multiwoz_v1/text.txt",
+      "expected_sha256": "300431b1e23fb84b9df7e9a592d71c84e1a49c62052c24977279d04d9579465f",
+      "exists": true,
+      "bytes": 9645420,
+      "sha256": "300431b1e23fb84b9df7e9a592d71c84e1a49c62052c24977279d04d9579465f",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/human/human_no_robots_v1/dialogues.jsonl",
+      "expected_sha256": "2c6024c99e9e70ac2a5086397f15149cbeb6c4516e39c0a3ed37b9e297dfd53e",
+      "exists": true,
+      "bytes": 12639989,
+      "sha256": "2c6024c99e9e70ac2a5086397f15149cbeb6c4516e39c0a3ed37b9e297dfd53e",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/human/human_no_robots_v1/text.txt",
+      "expected_sha256": "be0f40d1f20275739e165380c1d09476e42f750074b8c161b37a33db5459cfc8",
+      "exists": true,
+      "bytes": 11377481,
+      "sha256": "be0f40d1f20275739e165380c1d09476e42f750074b8c161b37a33db5459cfc8",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/human/human_oasst_v1/dialogues.jsonl",
+      "expected_sha256": "7a2a9934e9acf73485ffae310e5b748643c34c34e1e9f3feac9c7fa9495ca14d",
+      "exists": true,
+      "bytes": 11241421,
+      "sha256": "7a2a9934e9acf73485ffae310e5b748643c34c34e1e9f3feac9c7fa9495ca14d",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/human/human_oasst_v1/text.txt",
+      "expected_sha256": "e58ced2ce756b375ac240a442780007255cfc017ae51961300baf89bab92c2c2",
+      "exists": true,
+      "bytes": 10457372,
+      "sha256": "e58ced2ce756b375ac240a442780007255cfc017ae51961300baf89bab92c2c2",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/human/human_quac_v1/dialogues.jsonl",
+      "expected_sha256": "2476a642cdc2906deb5ff175dbbd9d186dd533d837ded26a65ec4ace22b043f7",
+      "exists": true,
+      "bytes": 14990412,
+      "sha256": "2476a642cdc2906deb5ff175dbbd9d186dd533d837ded26a65ec4ace22b043f7",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/human/human_quac_v1/text.txt",
+      "expected_sha256": "2fd924978bbf5f6e25ae6f4465175943d43dba489fd65a6c2ecda688eee1783e",
+      "exists": true,
+      "bytes": 11475127,
+      "sha256": "2fd924978bbf5f6e25ae6f4465175943d43dba489fd65a6c2ecda688eee1783e",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/human/human_self_dialogue_v1/dialogues.jsonl",
+      "expected_sha256": "2b2ba86a9aecab1d5ddebfbfcb970dca6efe7fdc40110dca899d88164037d498",
+      "exists": true,
+      "bytes": 34647146,
+      "sha256": "2b2ba86a9aecab1d5ddebfbfcb970dca6efe7fdc40110dca899d88164037d498",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/human/human_self_dialogue_v1/text.txt",
+      "expected_sha256": "2f5a38d8597f702c098b3ba4054c61380e0d6cc7c6da08793aaeb26a33f45800",
+      "exists": true,
+      "bytes": 24962152,
+      "sha256": "2f5a38d8597f702c098b3ba4054c61380e0d6cc7c6da08793aaeb26a33f45800",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/human/human_taskmaster_v1/dialogues.jsonl",
+      "expected_sha256": "c3253887c0448a688adf206360632cd0b5325d301c0120f30a0924112393abee",
+      "exists": true,
+      "bytes": 45723989,
+      "sha256": "c3253887c0448a688adf206360632cd0b5325d301c0120f30a0924112393abee",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/human/human_taskmaster_v1/text.txt",
+      "expected_sha256": "1e15540d8eef80f9c525c1f621b4addfb41a391c01884cdd6f287dc9faf0c450",
+      "exists": true,
+      "bytes": 33225982,
+      "sha256": "1e15540d8eef80f9c525c1f621b4addfb41a391c01884cdd6f287dc9faf0c450",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/human/human_topical_chat_v1/dialogues.jsonl",
+      "expected_sha256": "ffc6fe455ca8ec386b40ce38b3d9fd78f9c15d967f66a97587fe83245021418a",
+      "exists": true,
+      "bytes": 26162515,
+      "sha256": "ffc6fe455ca8ec386b40ce38b3d9fd78f9c15d967f66a97587fe83245021418a",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/human/human_topical_chat_v1/text.txt",
+      "expected_sha256": "6e3dbe5a232dda7c1094cc241cdbd3a8ce89702cb4027decd0af2d317d47b286",
+      "exists": true,
+      "bytes": 22039603,
+      "sha256": "6e3dbe5a232dda7c1094cc241cdbd3a8ce89702cb4027decd0af2d317d47b286",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/human/human_wow_v1/dialogues.jsonl",
+      "expected_sha256": "7a960abdcfe2cf75256f360986b77162b0e7a794ed81287009c5ca0d0aa2e350",
+      "exists": true,
+      "bytes": 19250269,
+      "sha256": "7a960abdcfe2cf75256f360986b77162b0e7a794ed81287009c5ca0d0aa2e350",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/human/human_wow_v1/text.txt",
+      "expected_sha256": "166976318cc43bcdbadc57d55d15b7d57b30acf1ed3ec4aa7cc97bfa2498e47b",
+      "exists": true,
+      "bytes": 15681865,
+      "sha256": "166976318cc43bcdbadc57d55d15b7d57b30acf1ed3ec4aa7cc97bfa2498e47b",
+      "matches": true
+    }
+  ],
+  "raw_dialogue_matches": 13,
+  "raw_text_matches": 13,
+  "products": [
+    {
+      "path": "/home/jonat/r3_data/out/sft_human.jsonl",
+      "expected_sha256": "4785e1494d34b81970d947e3488897afcdd36d19a8625b6670dfefcc69b42ecb",
+      "exists": true,
+      "bytes": 21579750,
+      "sha256": "4eea9bc72cb578232e2e6e4a7acde4275828e3ed59c1692098e2a9d5be32ee32",
+      "matches": false
+    },
+    {
+      "path": "/home/jonat/r3_data/out/sft_human_long4.jsonl",
+      "expected_sha256": "e03509467843d5fc55374917c30ab8da77b761c338f2370735d63920b4db02d8",
+      "exists": false
+    },
+    {
+      "path": "/home/jonat/r3_data/out/panel_fineweb.ids",
+      "expected_sha256": "c1aa6d42aafe80d8607b2d1f19235eb1539ccd94997567c506ae68f330c06e6b",
+      "exists": true,
+      "bytes": 32,
+      "sha256": "83920b718e901fd03ccb488ab3fe125890a60c17c241bf807d11b8e89f99cd42",
+      "matches": false
+    },
+    {
+      "path": "/home/jonat/r3_data/out/panel_dialogue.ids",
+      "expected_sha256": "7881aa1c196e30b692a18ba2704a49333a78d8ce059dedb98e794baa0838258a",
+      "exists": true,
+      "bytes": 4101786,
+      "sha256": "7881aa1c196e30b692a18ba2704a49333a78d8ce059dedb98e794baa0838258a",
+      "matches": true
+    },
+    {
+      "path": "/home/jonat/r3_data/out/mix_s35.ids",
+      "expected_sha256": "01b9d364ba6547544ca787e6ea49aa877f5c6bb9621002607c21bdef183c4f94",
+      "exists": false
+    }
+  ],
+  "fineweb_source": {
+    "path": "/home/jonat/r3_data/fw/pretrain_train.txt",
+    "expected_sha256": "4f3dbe8aa9bf20bf6ad68b4cdcb3eb08a0f1631da26845ec4cebb2d8ab215e66",
+    "exists": true,
+    "bytes": 72893,
+    "sha256": "4b8971ce4cbb8cc1bdf535f5c649148836ca2d1bffca4f6500ed0d7a8fb9b389",
+    "matches": false
+  },
+  "original_ledger_present_in_this_cache": false,
+  "limits": [
+    "Read-only exact-path checks; no download, rebuilding, training or paid launch.",
+    "Raw cache identity does not prove derived products, full ledger or decontamination identity.",
+    "The small FineWeb fixture in this cache is not the registered source and must not be used for scientific reconstruction.",
+    "The original recipe, expected hashes and historical parity failures remain unchanged."
+  ]
+}
