@@ -1,0 +1,24 @@
+{
+  "parent": "3dc818b2476b0957b1337b4c9af22474b76350b5",
+  "commit": "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1",
+  "manifest_sha256": "05277a13a7a87bf67785d484dde02fe41179c4a516a3062162e6433341aab275",
+  "branch": "refs/heads/codex/archived-carry12-sfull-20261031",
+  "changed_paths": [
+    "experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/.gitattributes",
+    "experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/data_reference.json",
+    "experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/historical_history_parity.json",
+    "experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/trigger_hs1_five_seed.json",
+    "experiments/tiny_chat_long_2026-10/specs/.gitattributes",
+    "experiments/tiny_chat_long_2026-10/specs/cell_Sfull.json",
+    "tools/colab_chat/.gitattributes",
+    "tools/colab_chat/boot_sfull.sh",
+    "tools/colab_chat/carry12_sfull_r1.json",
+    "tools/colab_chat/carry12_sfull_r2.json",
+    "tools/colab_chat/carry12_sfull_r3.json",
+    "tools/colab_chat/sfull_verify_inputs.py"
+  ],
+  "enabled": false,
+  "runtime_data_gate_required": true,
+  "original_launch_commit": "7edb0ca1b252bd9332094558a478d924568f8e52",
+  "amendment": "checkpoint I/O only; arithmetic and RNG statements unchanged"
+}
