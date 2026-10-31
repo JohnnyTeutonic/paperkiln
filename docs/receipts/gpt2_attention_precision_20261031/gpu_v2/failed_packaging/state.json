@@ -1,0 +1,55 @@
+{
+ "endpoint": null,
+ "launches": 1,
+ "jobs": {
+  "gpt2_precision_model_gate": {
+   "relayed_step": 0,
+   "status": "NONE",
+   "home": false,
+   "failed_seen": 0
+  }
+ },
+ "gpu": "L4",
+ "backend": "runpod",
+ "runpod": {
+  "pod": null,
+  "volume": {
+   "id": "k7jsbk303v",
+   "dc": "EU-RO-1",
+   "gb": 20,
+   "created": 1793423308.6595018
+  },
+  "retired_volumes": [],
+  "ledger": {
+   "pods": [
+    {
+     "id": "4pmr59nlt1wmud",
+     "name": "pk-gpt2-attn-model-1031",
+     "gpu": "L4",
+     "usd_per_hr": 0.59,
+     "dc": "EU-RO-1",
+     "volume": "k7jsbk303v",
+     "start": 1793423311.7084775,
+     "stop": 1793423698.9817479,
+     "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+     "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+     "stopped_by": "runner"
+    }
+   ],
+   "volumes": [
+    {
+     "id": "k7jsbk303v",
+     "dc": "EU-RO-1",
+     "gb": 20,
+     "created": 1793423308.6595018,
+     "name": "pk-gpt2-attn-model-1031-vol"
+    }
+   ]
+  },
+  "dc_fails": 0,
+  "creating": null
+ },
+ "booted": true,
+ "pending_uploads": [],
+ "gone_ticks": 0
+}

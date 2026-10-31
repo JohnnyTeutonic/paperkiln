@@ -1,0 +1,12 @@
+{
+  "pass": true,
+  "actual_runner_argparse_accepted": true,
+  "actual_sparse_boot_prefix_accepted": true,
+  "jobs_committed_exact_bytes": true,
+  "jobs_sha256": "a46c1261940172ebb53691a98256897f4e715d075b006313822475fa896ad610",
+  "numerical_uploads_unchanged": true,
+  "no_remote_requests": true,
+  "remaining_cap_usd": 0.94,
+  "cumulative_cap_usd": 1,
+  "deadline_utc": "2026-10-31T06:10:00Z"
+}

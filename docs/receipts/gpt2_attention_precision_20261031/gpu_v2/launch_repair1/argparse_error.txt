@@ -1,0 +1,9 @@
+usage: runner_multi.py [-h] --commit COMMIT --jobs JOBS
+                       [--boot-script {tools/colab_chat/boot_jobs.sh,tools/colab_chat/boot_commands.sh,tools/colab_chat/boot_commands_sparse.sh}]
+                       [--max-hours MAX_HOURS] [--deadline-utc DEADLINE_UTC]
+                       --name NAME --art ART --state-dir STATE_DIR
+                       [--upload UPLOAD] [--backend {colab,runpod}]
+                       [--gpu GPU] [--cloud {SECURE,COMMUNITY}]
+                       [--volume-gb VOLUME_GB] [--datacenter DATACENTER]
+                       [--image IMAGE] [--max-usd MAX_USD]
+runner_multi.py: error: argument --boot-script: invalid choice: '/home/jonat/pk_gpt2_precision_20261031/tools/colab_chat/boot_commands_sparse.sh' (choose from 'tools/colab_chat/boot_jobs.sh', 'tools/colab_chat/boot_commands.sh', 'tools/colab_chat/boot_commands_sparse.sh')
