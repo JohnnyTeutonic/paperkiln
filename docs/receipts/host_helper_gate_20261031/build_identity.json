@@ -1,0 +1,8 @@
+{
+  "support_library_sha256": {
+    "/home/jonat/pk_publication_build_20261030/libmicrotorch.a": "edfac74ad017bbec43c33c710409fba13ff348962b1bb557f97553794012251a",
+    "/home/jonat/pk_publication_build_20261030/transformer_cpp/libtransformer_core.a": "6ac8350f92ead2633b934e352ade2d9db90563565670822342cd1515da114cc1"
+  },
+  "probe_sha256": "2bf12eb17be2221ddc8461d288559707645ee4fbd29bb3bd5501819ad4c78e8d",
+  "scope": "CPU control only, not CUDA coherence evidence"
+}
