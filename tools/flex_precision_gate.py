@@ -186,6 +186,16 @@ def run(upload, manifest, out):
             900,
         )
         command("numpy", ["python3", "-m", "pip", "install", "numpy==1.26.4"], 90)
+        command(
+            "frozen_fixture_replay",
+            [
+                "python3",
+                "-O",
+                root / "tools/replay_flex_precision.py",
+                upload / "cpu_fixture.json",
+            ],
+            60,
+        )
         for mode in ["cpu", "cuda"]:
             args = [build / "flex_precision_gate", "--out", out / (mode + ".json")]
             if mode == "cuda":
