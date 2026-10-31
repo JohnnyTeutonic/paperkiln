@@ -1,5 +1,6 @@
 """Build an immutable, unactivated standard-watchdog DPO job after all admissions exist."""
 import argparse
+import copy
 import ast
 import hashlib
 import json
@@ -17,6 +18,10 @@ REQUIRED_SOURCE_FILES={"tools/mtstudio.cpp","src/ops.cpp","include/microtorch/op
   "tools/posttrain/dpo_vm_preflight_v7.py","tools/posttrain/materialize_preference_v8.py","tools/posttrain/chat_judge_campaign_continuation_v8.py","tools/posttrain/heldout_sample_vm_v1.py",
   "tools/posttrain/heldout_sampling_receipt_v1.py","tools/posttrain/heldout_sampling_journal_v1.py","tools/posttrain/pref_artifact_io_v1.py","tools/posttrain/assess_preference_gates_v1.py","tools/posttrain/parity_device_evidence_v1.py",
   "tools/colab_chat/chat_eval_vm.sh","tools/colab_chat/chat_parity_vm.py",
+  "tools/colab_chat/dpo_checkpoint_core_v1.py","tools/colab_chat/dpo_checkpoint_v1.py",
+  "tools/colab_chat/dpo_checkpoint_manager_v1.py","tools/colab_chat/dpo_checkpoint_transport_v1.py",
+  "tools/colab_chat/boot_dpo_checkpoint_v1.sh","tools/colab_chat/runner_multi.py","tools/colab_chat/jobs_vm.py",
+  "include/microtorch/dpo_checkpoint_bridge_v1.hpp",
   "tools/colab_chat/ensure_ember_vm.py","tools/colab_chat/tiny_chat_run.py",
   "tools/colab_chat/chat_eval_stage.py","experiments/chat_general/eval_specs/pksft.spec.json"}
 
@@ -49,6 +54,37 @@ def verify_source_admission(admission, source_root, dataset, base_spec, checkpoi
       and any(isinstance(target,ast.Name) and target.id=="EMBER_COMMIT" for target in node.targets)]
     if default!=[admission.get("ember_commit")]:raise ValueError("common Ember builder commit differs from root freeze")
     return commit
+
+
+
+def bind_checkpoint_packet(out,spec,jobs,binding,source_root):
+    """No hash cycle: contract -> jobs -> binding; source admission is independent."""
+    out=Path(out);runtime=copy.deepcopy(spec)
+    runtime.update(name='pk_dpo_v1',out_dir='/content/chat/pk_dpo_v1')
+    runtime['train']['init_from']='/content/chat/upload/pksft.safetensors'
+    contract={'kind':'DPO_FULL_STATE_CHECKPOINT_V1','source_commit':binding['source_commit'],
+      'runtime_spec':runtime,'inputs_sha256':{
+        runtime['data']['vocab']:binding['upload_sha256']['vocab.gguf'],
+        runtime['data']['pref_pairs']:binding['upload_sha256']['dpo_pairs.jsonl'],
+        runtime['train']['init_from']:binding['upload_sha256']['pksft.safetensors']},
+      'dataset_manifest_sha256':binding['dataset_manifest_sha256']}
+    cp=out/'dpo_checkpoint_contract_v1.json';cp.write_bytes(api.encoded(contract)+b'\n')
+    training=[j for j in jobs['jobs'] if 'spec' in j]
+    if len(training)!=1 or training[0]['name']!='pk_dpo_v1':raise ValueError('exactly one DPO training job required')
+    training[0]['dpo_full_checkpoint_v1']={'every_steps':10,'max_gap_seconds':180,'steps':runtime['train']['steps'],
+      'source_commit':binding['source_commit'],'seed':1,'batch':8,'accum':1,'contract_sha256':sha(cp)}
+    jp=out/'jobs_v1.json';jp.write_bytes(api.encoded(jobs)+b'\n')
+    binding.update(runtime_jobs_sha256=sha(jp),checkpoint_contract_sha256=sha(cp),
+      checkpoint_resume='DPO_FULL_STATE_CHECKPOINT_V1_ATOMIC_MODEL_ADAMW_STATE',
+      checkpoint_cadence='Persistent-volume generation advancing within180seconds while training is active; fail-stop on violation, home relay may lag.',
+      boot_script='tools/colab_chat/boot_dpo_checkpoint_v1.sh')
+    additions={'DPO_RUNTIME_JOBS_V1.json':str(jp.resolve()),'dpo_checkpoint_contract_v1.json':str(cp.resolve())}
+    binding['uploads'].update(additions);binding['upload_sha256'].update({name:sha(path) for name,path in additions.items()})
+    (out/'dpo_binding.json').write_bytes(api.encoded(binding)+b'\n')
+    # Shared owner validation checks normalized runtime spec, source HEAD and both hashes offline.
+    code="import sys;sys.path.insert(0,sys.argv[1]+'/tools/colab_chat');from dpo_checkpoint_manager_v1 import validate_jobs;validate_jobs(sys.argv[1],sys.argv[2],sys.argv[3])"
+    subprocess.run([sys.executable,'-c',code,str(Path(source_root).resolve()),str(jp.resolve()),str(out.resolve())],check=True)
+    return additions
 
 
 def build(dataset_dir,base_spec,checkpoint,vocab,source_root,source_archive,source_admission,heldout_inputs,heldout_adoption,out_dir):
@@ -88,18 +124,15 @@ def build(dataset_dir,base_spec,checkpoint,vocab,source_root,source_archive,sour
       "source_files_sha256":admission["source_files_sha256"],"steps":spec["train"]["steps"],
       "checkpoint_interval_steps":10,"checkpoint_interval_requires_measured_wall_seconds_at_most":180,
       "selected_checkpoint":"final","activated":False,"provider_or_gpu_calls":0,
-      "whole_completion_chain_ready":False,"unready_step":"held-out sampler needs a durable, bound, resumable journal or separately admitted bounded chunks"}
-    (out/"dpo_binding.json").write_bytes(api.encoded(binding)+b"\n")
-    # Standard training-job shape uses existing jobs_vm checkpoint relay and resume semantics.
+      "whole_completion_chain_ready":False,"unready_step":"Root final instance admission and serial paid launch remain separate; API heldout gate starts only from bound returned sampling evidence."}
+    # Named atomic checkpoint manager owns training; no claim about historical standard relay.
     jobs={"max_parallel":1,"jobs":[{"name":"dpo_preflight","cmd":["python3","tools/posttrain/dpo_vm_preflight_v7.py","tools/posttrain/materialize_preference_v8.py","tools/posttrain/chat_judge_campaign_continuation_v8.py","{upload}/dpo_binding.json","{upload}/pk_dpo_v1.spec.json","{out}"],"outputs":["preflight.json"]},
       {"name":"pk_dpo_v1","after":"dpo_preflight","spec":spec,"init_file":"pksft.safetensors"},
       {"name":"dpo_parity","after":"pk_dpo_v1","cmd":["python3","tools/colab_chat/chat_parity_vm.py","{out}","pk_dpo_v1","40"],"outputs":["parity_summary.json","parity_cuda.jsonl","parity_cpu.jsonl","ember_cuda.log","ember_cpu.log","ember_build.json"]},
       {"name":"dpo_eval","after":"dpo_parity","cmd":["bash","tools/colab_chat/chat_eval_vm.sh","{out}","pksft","pk_dpo_v1@pk_dpo_v1"],"outputs":["chat_eval_results.tar.gz","manifest.json"]},
       {"name":"dpo_heldout_sample","after":"dpo_eval","cmd":["python3","tools/posttrain/heldout_sample_vm_v1.py","{out}","{upload}/dpo_binding.json"],"outputs":["sampling_receipt.json","requests.jsonl","sampling_summary.json","sampling.journal.jsonl","ember_build.json"]}]}
-    sampling_job=jobs["jobs"].pop()
-    (out/"draft_heldout_sampling_job.json").write_bytes(api.encoded({"status":"UNADMITTED_MISSING_RESUMABLE_SAMPLING_CONTRACT","job":sampling_job})+b"\n")
-    (out/"jobs_v1.json").write_bytes(api.encoded(jobs)+b"\n")
-    all_uploads={**uploads,"dpo_binding.json":str((out/"dpo_binding.json").resolve()),
+    additions=bind_checkpoint_packet(out,spec,jobs,binding,source_root)
+    all_uploads={**uploads,**additions,"dpo_binding.json":str((out/"dpo_binding.json").resolve()),
       "pk_dpo_v1.spec.json":str((out/"pk_dpo_v1.spec.json").resolve())}
     (out/"upload_manifest.json").write_bytes(api.encoded({"files":all_uploads,
       "sha256":{name:sha(path) for name,path in all_uploads.items()},"activated":False})+b"\n")
