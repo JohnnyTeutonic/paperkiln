@@ -104,8 +104,10 @@ that cannot fail the build.
 ## 6. Engine
 
 - **CUDA** (records: `docs/CUDA_PHASE_B2.md`):
-  - Finish the host-read boundary audit in author-WIP ops.cpp/mtstudio/parity_model
-    and other unreviewed host loops. The audited non-WIP boundaries are wired and
+  - Finish the host-read boundary audit in ops.cpp/mtstudio and other unreviewed
+    host loops. The parity-model export subset is guarded and CPU DEVCHECK-tested
+    (docs/receipts/export_host_read_20261031/); its new device-negative leg still
+    needs actual CUDA execution. The audited non-WIP boundaries are wired and
     pass actual L4 CUDA+DEVCHECK integration (`docs/receipts/devcheck_host_read_cuda_20261030/`);
     those completed guards leave this list.
   - Coalesce loads in the transposed GEMM paths.

@@ -1,0 +1,45 @@
+{
+  "status": "PASS_CPU_DEVCHECK_ONLY",
+  "base_commit": "ba6f65970",
+  "scope": [
+    "17 GPT2 state-dictionary parameter copies",
+    "family NamedTensor copies, including linear/norm/embedding tensors",
+    "Flex learned-expression scalar/channel expansion",
+    "AttnRes query branch avoids an implicit Matrix copy before the guard"
+  ],
+  "source_sha256": {
+    "tools/parity_model.hpp": "3c501a0c75f8a1f53c31babc1cabec9f5d41da2ae799fef8429f7e933bd0ac6b",
+    "tests/test_devcheck_host_read.cpp": "9fd019b129d83083407e0b0c7af85d13f5f40ca31c8919a6c7c77d396a34c6a4"
+  },
+  "build": {
+    "cuda": false,
+    "devcheck": true,
+    "threads": 1,
+    "targets": [
+      "test_devcheck_host_read",
+      "test_devcheck_disabled",
+      "test_flex",
+      "test_gguf_export"
+    ]
+  },
+  "tests": {
+    "passed": 4,
+    "failed": 0,
+    "command": "ctest --test-dir /home/jonat/pk_host_read_final_build_20261031 -R \"^(devcheck_host_read|devcheck_disabled|flex|gguf_export)$\" --output-on-failure --timeout 120"
+  },
+  "binary_sha256": {
+    "test_devcheck_host_read": "37efee673b5be5cdf477e644886ba97157a978d23ea11a1794d0991d3c710673",
+    "test_devcheck_disabled": "d0a3712d019d52a3245514b30109b2f6c4ccbbf0f78efe4a0283ea68cff7daa6",
+    "test_flex": "1ccd9d251a6508e0a77286a5fb6f8efd1283dab3d24cb54904dd16faecbd1c46",
+    "test_gguf_export": "b4e8c69ffc1e8d8874dadc3897ebcd2032b83a083861dd33737a4be0fd892445"
+  },
+  "limits": [
+    "No automatic materialization, default macro remains OFF.",
+    "New stale/released export negatives are in the opt-in --require-cuda test but were not executed on a GPU. The CPU-only binary explicitly refuses that leg.",
+    "The wider ops.cpp/mtstudio host-read audit remains open. This is the parity-model export subset only."
+  ],
+  "execution_notes": [
+    "An initial build named a nonexistent test_family_gguf target after compiling three real targets. The command was corrected to the existing test_gguf_export; no assertions or tolerances changed.",
+    "A temporary Windows launcher had CRLF line endings; it was rewritten with LF before the successful rerun. No source semantics or test expectations changed."
+  ]
+}

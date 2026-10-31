@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 
+#include "microtorch/device_cache.hpp"
 #include "microtorch/expr.hpp"
 #include "microtorch/gguf.hpp"
 #include "microtorch/ir.hpp"
@@ -39,26 +40,43 @@ template <class Attn>
 void put_gpt2_block(std::map<std::string, Matrix>& sd, size_t b, const nn::LayerNorm& ln1, const Attn& attn,
                     const nn::LayerNorm& ln2, const nn::MLP& mlp) {
     const std::string h = "h." + std::to_string(b) + ".";
+    MT_DEVCHECK_HOST_READ(ln1.weight->data, "parity GPT2 export copy");
     sd[h + "ln_1.weight"] = ln1.weight->data;
+    MT_DEVCHECK_HOST_READ(ln1.bias->data, "parity GPT2 export copy");
     sd[h + "ln_1.bias"] = ln1.bias->data;
+    MT_DEVCHECK_HOST_READ(attn.c_attn->W->data, "parity GPT2 export copy");
     sd[h + "attn.c_attn.weight"] = attn.c_attn->W->data;
+    MT_DEVCHECK_HOST_READ(attn.c_attn->b->data, "parity GPT2 export copy");
     sd[h + "attn.c_attn.bias"] = attn.c_attn->b->data;
+    MT_DEVCHECK_HOST_READ(attn.c_proj->W->data, "parity GPT2 export copy");
     sd[h + "attn.c_proj.weight"] = attn.c_proj->W->data;
+    MT_DEVCHECK_HOST_READ(attn.c_proj->b->data, "parity GPT2 export copy");
     sd[h + "attn.c_proj.bias"] = attn.c_proj->b->data;
+    MT_DEVCHECK_HOST_READ(ln2.weight->data, "parity GPT2 export copy");
     sd[h + "ln_2.weight"] = ln2.weight->data;
+    MT_DEVCHECK_HOST_READ(ln2.bias->data, "parity GPT2 export copy");
     sd[h + "ln_2.bias"] = ln2.bias->data;
+    MT_DEVCHECK_HOST_READ(mlp.c_fc->W->data, "parity GPT2 export copy");
     sd[h + "mlp.c_fc.weight"] = mlp.c_fc->W->data;
+    MT_DEVCHECK_HOST_READ(mlp.c_fc->b->data, "parity GPT2 export copy");
     sd[h + "mlp.c_fc.bias"] = mlp.c_fc->b->data;
+    MT_DEVCHECK_HOST_READ(mlp.c_proj->W->data, "parity GPT2 export copy");
     sd[h + "mlp.c_proj.weight"] = mlp.c_proj->W->data;
+    MT_DEVCHECK_HOST_READ(mlp.c_proj->b->data, "parity GPT2 export copy");
     sd[h + "mlp.c_proj.bias"] = mlp.c_proj->b->data;
 }
 
 inline void put_gpt2_shell(std::map<std::string, Matrix>& sd, const nn::Embedding& wte, const nn::Embedding& wpe,
                            const nn::LayerNorm& ln_f, const nn::Linear& head) {
+    MT_DEVCHECK_HOST_READ(wte.weight->data, "parity GPT2 export copy");
     sd["wte.weight"] = wte.weight->data;
+    MT_DEVCHECK_HOST_READ(wpe.weight->data, "parity GPT2 export copy");
     sd["wpe.weight"] = wpe.weight->data;
+    MT_DEVCHECK_HOST_READ(ln_f.weight->data, "parity GPT2 export copy");
     sd["ln_f.weight"] = ln_f.weight->data;
+    MT_DEVCHECK_HOST_READ(ln_f.bias->data, "parity GPT2 export copy");
     sd["ln_f.bias"] = ln_f.bias->data;
+    MT_DEVCHECK_HOST_READ(head.W->data, "parity GPT2 export copy");
     sd["lm_head.weight"] = head.W->data;  // untied: its own [d, vocab] matrix
 }
 
@@ -80,6 +98,7 @@ struct FamilyExport {
 
 inline void put_tensor(std::vector<gguf::NamedTensor>& t, const std::string& name, const Matrix& m,
                        gguf::NamedTensor::Layout layout) {
+    MT_DEVCHECK_HOST_READ(m, "parity family tensor export copy");
     t.push_back({name, m, layout});
 }
 // weight [in, out] -> base.weight [out][in], bias -> base.bias.
@@ -481,8 +500,10 @@ public:
             const std::string g = "blk." + std::to_string(b) + ".";
             // Layer 0 has no query (one source); a zero row keeps every
             // block's tensor set the same, and depth_attend never reads it.
-            put_tensor(fx.tensors, g + "attnres_attn_q.weight", b == 0 ? Matrix(1, d) : stack->w[2 * b]->data,
-                       L::VEC);
+            if (b == 0)
+                put_tensor(fx.tensors, g + "attnres_attn_q.weight", Matrix(1, d), L::VEC);
+            else
+                put_tensor(fx.tensors, g + "attnres_attn_q.weight", stack->w[2 * b]->data, L::VEC);
             put_layernorm(fx.tensors, g + "attn_norm", *ln_a[b]);
             put_linear(fx.tensors, g + "attn_qkv", *attns[b]->c_attn);
             put_linear(fx.tensors, g + "attn_output", *attns[b]->c_proj);
@@ -1323,6 +1344,7 @@ public:
         // A learned expr input [1, 1] or [1, w] as its [w] tensor (a scalar repeated: the IR's scale
         // over a row of ones then gives 1 * p at every entry).
         auto put_param = [&](const std::string& name, const Var& v, size_t w) {
+            MT_DEVCHECK_HOST_READ(v->data, "Flex learned expression parameter export");
             Matrix m(1, w);
             for (size_t j = 0; j < w; ++j) m(0, j) = v->data(0, v->data.cols() == 1 ? 0 : j);
             put_tensor(fx.tensors, name, m, L::VEC);
