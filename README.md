@@ -72,8 +72,9 @@ for offline numerical replay; an existing tiny flex fixture reproduces all24 IDs
 This does not validate every architecture modifier, chat template or downstream task.
 
 Open engineering and research work is listed in [ROADMAP.md](ROADMAP.md). In particular,
-projection BF16 and the measured flash path do not imply BF16 attention-product kernels;
-modified-flex HF exports and the remaining device/host boundaries stay explicitly scoped.
+the separately validated BF16 attention op and experimental train-only GPT2 subset do not
+establish a model-level GPU or speed result; modified-flex HF exports and remaining
+device/host boundaries stay explicitly scoped.
 
 ## What makes it different
 
@@ -266,11 +267,12 @@ d384 L6 trains at 0.109 s/step on an L4 (from 6.4), and d768 L12 at 2.1-2.3 s/st
 RTX 4060. Deferred downloads work for the llama family; the gpt2 family is still open
 ([CUDA_PHASE_B2.md](docs/CUDA_PHASE_B2.md)).
 
-The Mamba causal convolution now has CUDA forward and backward kernels.
-All 120 strict L4 cases and the existing CUDA-selected Mamba regression pass,
-including deferred device data, sequence boundaries and gradient masks.
-Selective scan still uses the host, and no complete-Mamba speed gain is claimed.
-[Actual device evidence and replay](experiments/conv1d_cuda_20261031/receipts/l4_gate_v1/replay.json).
+Mamba causal convolution and ordered selective scan now have CUDA forward/backward kernels.
+The 120 convolution cases and 220 scan cases pass actual L4 CUDA + DEVCHECK gates, including
+deferred data, sequence boundaries, all gradient masks and independent raw replay. Scan time
+is still sequential; B gradients retain extra O(T*D*N) scratch. Whole-model residency and
+end-to-end speed remain unestablished. [Convolution evidence](experiments/conv1d_cuda_20261031/receipts/l4_gate_v1/replay.json);
+[scan evidence](docs/receipts/selective_scan_cuda_20261031/result.json).
 
 Deferred CUDA GRPO sampling and reference log-probabilities now materialize
 logits before their host reads. Actual L4 regressions reproduce both old failures
@@ -351,16 +353,18 @@ python tools/reproduce.py S3-lrxopt --run             # re-run a finding: REPLIC
 
 ## In progress
 
-- **Tiny chat from scratch** (above): Stage L0 evaluation on the registered 150M pick,
-  and the Carry-12 HS1 five-seed extension's remaining evaluations and final analysis.
+- **Tiny chat from scratch** (above): the size extension, unchanged-pick L0 and five-seed
+  HS1 analyses are complete. Historical parity interpretation and the registered S-full
+  control remain open; the reconstruction is a separate bounded diagnostic.
 - **The general chat model:** full candidate sampling is complete; remaining work is
-  Claude-judged preference ranking, DPO + NLL, and the fixed held-out quality/parity gates.
+  API preference ranking (running under its frozen cumulative cap), DPO + NLL, and the
+  fixed held-out quality/parity gates.
   The released `pk_sft_v1` already runs in ember and the browser chat.
-- **BF16 attention products:** the completed per-shape profile puts attention at 16–34%
-  of instrumented baseline GPU spans. Implementation, numerical/gradient parity and any
-  incremental end-to-end benefit remain to be established.
-- **Papers to models:** wire the verified LLM extractor into the Studio and expand the
-  source-checked benchmark. Architectures outside the supported grammar remain explicit refusals.
+- **BF16 attention adoption:** explicit-op numerical/gradient validation and the bounded
+  CPU train-only GPT2 integration are complete. CUDA model validation, broader integration
+  and incremental end-to-end benefit remain open.
+- **Papers to models:** expand the source-checked benchmark and improve extraction prompts.
+  Architectures outside the supported grammar remain explicit refusals.
 
 [ROADMAP.md](ROADMAP.md) has the full list.
 

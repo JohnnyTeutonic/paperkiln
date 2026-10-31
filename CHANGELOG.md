@@ -1087,3 +1087,13 @@ subset, not an exhaustive host-loop audit. Evidence: `docs/receipts/host_fallbac
   passes all 44 registered cases and independent raw replay. Existing FP32 dispatch stays
   unchanged; BF16 uses a declared straight-through surrogate with FP32 softmax/backward.
   This is not yet model adoption or a throughput/quality claim.
+
+## 31 October 2026: ordered scan and Studio corrections
+
+- Ordered selective-scan CUDA forward/backward passes 220 actual L4 cases and independent
+  raw replay with unchanged bounds. Time remains sequential, and full-model residency,
+  speed and training-quality evidence are separate gates.
+- Studio VRAM estimates now count the actual untied CLI GPT2 output head; runtime constructor
+  inventories and four actual CLI runs verify the correction. Tied Llama counts are unchanged.
+- Zero or negative evaluation/checkpoint intervals now fail during spec parsing, avoiding
+  a reproduced modulo-by-zero crash after training starts. Eleven focused CLI tests pass.

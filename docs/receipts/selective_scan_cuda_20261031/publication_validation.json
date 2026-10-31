@@ -1,0 +1,9 @@
+{
+  "source_commit": "bd7b6759bd00ba2bb82b3309f126a00ef726a50f",
+  "cpp_ctests_passed": 61,
+  "cpp_ctests_failed": 0,
+  "focused_model_cli_interval_scan_attention_python_tests_passed": 55,
+  "merged_vram_node_tests_passed": 9,
+  "node_runtime_constructor_probe_enabled": true,
+  "scope": "CPU integration of separately device-validated scan/autograd ops plus experimental CPU-validated train-only GPT2 wiring; no whole-model GPU/performance/quality claim."
+}

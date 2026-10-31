@@ -1,0 +1,59 @@
+TAP version 13
+# [matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+# Subtest: parameter inventory includes the actual tied/untied heads, norms, biases and custom FFN
+ok 1 - parameter inventory includes the actual tied/untied heads, norms, biases and custom FFN
+  ---
+  duration_ms: 1.432554
+  type: 'test'
+  ...
+# Subtest: formula breakdown is explicit and accumulation does not retain another graph
+ok 2 - formula breakdown is explicit and accumulation does not retain another graph
+  ---
+  duration_ms: 0.26424
+  type: 'test'
+  ...
+# Subtest: memory increases monotonically with microbatch/context/vocab/depth
+ok 3 - memory increases monotonically with microbatch/context/vocab/depth
+  ---
+  duration_ms: 0.554774
+  type: 'test'
+  ...
+# Subtest: exact boundary accepted; divisor proposal preserves effective batch and input
+ok 4 - exact boundary accepted; divisor proposal preserves effective batch and input
+  ---
+  duration_ms: 1.436836
+  type: 'test'
+  ...
+# Subtest: unsupported execution paths are refused
+ok 5 - unsupported execution paths are refused
+  ---
+  duration_ms: 0.78208
+  type: 'test'
+  ...
+# Subtest: invalid, unsafe and unbounded inputs fail closed
+ok 6 - invalid, unsafe and unbounded inputs fail closed
+  ---
+  duration_ms: 0.435121
+  type: 'test'
+  ...
+# Subtest: runtime integer compensation and available-byte overflow refuse
+ok 7 - runtime integer compensation and available-byte overflow refuse
+  ---
+  duration_ms: 0.764915
+  type: 'test'
+  ...
+# Subtest: parameter inventory matches CLI runtime constructors across dispatch depths
+ok 8 - parameter inventory matches CLI runtime constructors across dispatch depths
+  ---
+  duration_ms: 6.552928
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 72.265522
