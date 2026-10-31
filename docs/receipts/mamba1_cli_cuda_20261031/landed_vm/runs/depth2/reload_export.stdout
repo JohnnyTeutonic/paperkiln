@@ -1,0 +1,2 @@
+GGUF Export: Successfully wrote 23 tensors to /content/chat/mamba1_cli_gate/runs/depth2/trained/mamba1_cli_depth2.gguf
+{"arch":"paperkiln","event":"export","family":"mamba1","format":"gguf","ir":"/content/chat/mamba1_cli_gate/runs/depth2/trained/mamba1_cli_depth2.ir.json","path":"/content/chat/mamba1_cli_gate/runs/depth2/trained/mamba1_cli_depth2.gguf"}

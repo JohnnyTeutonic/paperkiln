@@ -1,0 +1,2 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+score: 3 continuations (0 over the context of 4) -> /content/chat/mamba1_cli_gate/runs/depth1/score.out.jsonl

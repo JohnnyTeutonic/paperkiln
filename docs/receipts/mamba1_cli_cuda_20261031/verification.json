@@ -1,0 +1,63 @@
+{
+  "pass": true,
+  "nested_artifact_hashes_checked": 43,
+  "raw_summary_equals_zip_summary": true,
+  "all_log_hashes_checked": true,
+  "scientific_manifest": "cc95af6e789f28aecae56bed3fc8c0749984de918cc7de6cbcc97f5eca15b311",
+  "profiles": [
+    {
+      "depth": 1,
+      "steps": [
+        {
+          "step": 1,
+          "conv_fwd": 1,
+          "conv_bwd": 3,
+          "scan_fwd": 1,
+          "scan_bwd": 1
+        },
+        {
+          "step": 2,
+          "conv_fwd": 1,
+          "conv_bwd": 3,
+          "scan_fwd": 1,
+          "scan_bwd": 1
+        },
+        {
+          "step": 3,
+          "conv_fwd": 1,
+          "conv_bwd": 3,
+          "scan_fwd": 1,
+          "scan_bwd": 1
+        }
+      ]
+    },
+    {
+      "depth": 2,
+      "steps": [
+        {
+          "step": 1,
+          "conv_fwd": 2,
+          "conv_bwd": 6,
+          "scan_fwd": 2,
+          "scan_bwd": 2
+        },
+        {
+          "step": 2,
+          "conv_fwd": 2,
+          "conv_bwd": 6,
+          "scan_fwd": 2,
+          "scan_bwd": 2
+        },
+        {
+          "step": 3,
+          "conv_fwd": 2,
+          "conv_bwd": 6,
+          "scan_fwd": 2,
+          "scan_bwd": 2
+        }
+      ]
+    }
+  ],
+  "own_pod_ledger_usd": 0.11222569948898421,
+  "scope": "Two tiny Mamba1 CLI LM cases; no SFT, quality, speed, or full residency claim."
+}

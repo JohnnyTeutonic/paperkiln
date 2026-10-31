@@ -1,0 +1,21 @@
+{
+  "T": 4,
+  "accum": 1,
+  "attention": "exact",
+  "batch": 2,
+  "best_val": 1.929190754890442,
+  "checkpoint_activations": false,
+  "d": 8,
+  "early_stopped": false,
+  "family": "mamba",
+  "final_step": 3,
+  "heads": 4,
+  "layers": 2,
+  "lr": 0.0010000000474974513,
+  "name": "mamba1_cli_depth2",
+  "params": 776,
+  "seed": 37,
+  "steps_requested": 3,
+  "tokens_per_second": 64.16618906078874,
+  "wall_seconds": 0.374028758
+}
