@@ -1,0 +1,55 @@
+{
+  "status": "RUNNING_HANDOFF_NOT_COMPLETE",
+  "observed_utc": "2026-10-31T06:30:11.035836+00:00",
+  "protocol_file_sha256": "49223afaee2b0fe746f148da2cf3bed3e04095374fd91a5be244a9eb18522c92",
+  "protocol_object_sha256": "4bdcbc21804bfa2495f6dfe22860d9efe69e27a2db302ad7e35b4eb93aed1170",
+  "source_sha256": {
+    "chat_judge_campaign_continuation_v4.py": "742e7c576304efb329a9dbaa37b3634115ed934ad135c8ea0586d2ad6298f93d",
+    "chat_judge_api_diagnostic_v3.py": "8558d9fcb0e8ae561402f0991b3270ee0746cee8ffc46ef0c50ad74dc6dffc6a",
+    "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+  },
+  "complete_batches": 9,
+  "last_complete_boundary": {
+    "v4_added": 216,
+    "valid_total": 781,
+    "missing": 5259,
+    "zero_failed_and_pending": true,
+    "last_batch_return_sha256": "b0f8a5d0b36457f94950a1277be772980e16eb0362d56dc2ffcbca3ffccc95b7"
+  },
+  "ledger_snapshot": {
+    "prefix_bytes": 1025259,
+    "prefix_sha256": "9e5e4576e4fab8cf4abed93880f1b7f1b180bec0eaef45c72bde61c658aca0e4",
+    "new_attempts": 236,
+    "new_settled": 235,
+    "unsettled_inflight_at_snapshot": 1,
+    "not_classified_unknown_while_worker_active": true
+  },
+  "all_snapshot_settled_raw_and_trace_bindings_verified": 235,
+  "verified_inventory_sha256": "7f4152751fb9dfb0fb9be8a3f12774fc17eab6a96aadc20bf7f08c6cefe2a14d",
+  "events_snapshot_prefix": {
+    "bytes": 12913,
+    "sha256": "e22d0c8c58dafe63cb772fa0751cf6aae888bbcacc08602fa313422e6dcb3018"
+  },
+  "caps": {
+    "max_new_attempts": 5475,
+    "initial_training_attempts": 520,
+    "initial_valid_rankings": 565,
+    "cumulative_usd": 200,
+    "heldout_gate_usd": 25,
+    "per_call_reserved_usd": 0.25,
+    "retained_unknown_ceiling_usd": 0.75
+  },
+  "lifecycle": {
+    "watchdog_entry_enabled": true,
+    "stop_file": "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v4/STOPPED",
+    "exact_worker_count": 1,
+    "HALTED": false,
+    "STOPPED": false,
+    "old_HALTs_and_v3_STOPPED_verified": true,
+    "source_unchanged": true,
+    "worker_kept_running": true
+  },
+  "handoff": "No retries or reservation disposition authorised. On failure preserve HALTED/STOPPED, pending/raw traces; exact root review needed before any new phase. Successful process may continue after autonomous window under watchdog/caps. Full completion requires STOPPED.full_judging_complete true and independent complete audit; current receipt is partial progress only.",
+  "historical_cause_established": false
+}
