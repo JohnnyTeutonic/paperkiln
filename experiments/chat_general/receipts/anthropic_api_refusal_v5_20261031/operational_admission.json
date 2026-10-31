@@ -1,0 +1,44 @@
+{
+  "status": "LOCAL_MEMORY_ADMISSION_FAILURE_PRESERVED_THEN_APPROVED_EXACT_ACTIVATION",
+  "first_attempt": {
+    "error_type": "OSError",
+    "errno": 12,
+    "stage": "readonly Budget.state verify_retained ledger read before config append or dispatch",
+    "v5_entry_created": false,
+    "v5_state_created": false,
+    "API_calls": 0,
+    "MemAvailable_MiB": 61,
+    "private_failure_receipt_sha256": "a224965308df9815d2d4971afe975061ac01fd70d2fc36d5961944b97b2ab2e2"
+  },
+  "resolution": {
+    "no_process_killed_or_modified": true,
+    "external_workload_ended_naturally": true,
+    "MemAvailable_MiB_observed": 6766,
+    "root_approved_admission_threshold_MiB": 1024,
+    "same_source_protocol_and_activation_retried_after_condition_met": true
+  },
+  "activation": {
+    "protocol_sha256": "a576a57a7796440b2936ede0176f748372655551d83f3a57e09ab7e1e6e8b763",
+    "source_commit": "30ae627c2",
+    "fresh_preflight": {
+      "attempts_since_start": 0,
+      "missing_rankings": 4350,
+      "valid_api_rankings": 1690,
+      "eligible_missing_rankings": 4348,
+      "preserved_failed_rankings": 1,
+      "unattempted_paired_exclusions": 1,
+      "api_actual_spend_usd": 25.388728,
+      "retained_unknown_ceiling_usd": 0.75,
+      "baseline_usd": 20.08558,
+      "gate_reserve_usd": 25.0
+    },
+    "pending_reservations": 0,
+    "old_entries_disabled": true,
+    "old_HALTs_and_settled_refusal_preserved": true,
+    "paired_reverse_unattempted_verified": true,
+    "no_preexisting_worker": true,
+    "unrelated_config_unchanged": true,
+    "watchdog_only": true
+  },
+  "interpretation": "This was a local pre-dispatch admission failure, not a provider attempt/retry. No request, usage, ranking, accounting disposition or frozen source/protocol change resulted from the failed admission."
+}
