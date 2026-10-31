@@ -164,8 +164,11 @@ ir::json Embedding::export_ir(const std::string& in, const std::string& out, con
     return {{"op", "embedding"}, {"in", ir::json::array({in})}, {"weight", w}, {"out", out}};
 }
 
-CausalSelfAttention::CausalSelfAttention(size_t d, size_t n_heads, unsigned seed, bool causal_)
-    : H(n_heads), dk(d / n_heads), causal(causal_) {
+CausalSelfAttention::CausalSelfAttention(size_t d, size_t n_heads, unsigned seed, bool causal_,
+                                       device::Precision precision)
+    : H(n_heads), dk(d / n_heads), causal(causal_), attention_precision(precision) {
+    if (precision != device::Precision::FP32 && precision != device::Precision::BF16)
+        throw std::invalid_argument("attention: unknown attention precision");
     if (d % n_heads != 0) {
         throw std::runtime_error("attention: d must divide by n_heads");
     }
@@ -185,7 +188,10 @@ Var CausalSelfAttention::forward(const Var& x, size_t seq_len) const {
         Var q = ops::slice_cols(qkv, h * dk, (h + 1) * dk);
         Var k = ops::slice_cols(qkv, d + h * dk, d + (h + 1) * dk);
         Var v = ops::slice_cols(qkv, 2 * d + h * dk, 2 * d + (h + 1) * dk);
-        heads.push_back(ops::fused_attention(q, k, v, sc, seq_len, causal));
+        if (attention_precision == device::Precision::FP32)
+            heads.push_back(ops::fused_attention(q, k, v, sc, seq_len, causal));
+        else
+            heads.push_back(ops::fused_attention_precision(q, k, v, sc, seq_len, causal, attention_precision));
     }
     return c_proj->forward(ops::concat_cols(heads));
 }

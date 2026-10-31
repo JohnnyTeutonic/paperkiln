@@ -24,7 +24,7 @@ test("exact boundary accepted; divisor proposal preserves effective batch and in
  assert.equal(planVram(s,1e-10,0).estimate,null);
 });
 test("unsupported execution paths are refused",()=>{
- for(const edit of [s=>s.arch.preset="kimi-tiny",s=>s.train.optimizer="muon",s=>s.train.precision="bf16",s=>s.train.checkpoint_activations=true,s=>s.arch.custom.norm="rmsnorm",s=>s.arch.custom.bitlinear=true,s=>s.arch.recursion={passes:2},s=>s.train.attention_kernel="flash",s=>s.arch.custom.heads=3]){const s=spec();edit(s);assert.throws(()=>estimateVram(s,0));}
+ for(const edit of [s=>s.arch.preset="kimi-tiny",s=>s.train.optimizer="muon",s=>s.train.precision="bf16",s=>s.train.attention_precision="bf16",s=>s.train.checkpoint_activations=true,s=>s.arch.custom.norm="rmsnorm",s=>s.arch.custom.bitlinear=true,s=>s.arch.recursion={passes:2},s=>s.train.attention_kernel="flash",s=>s.arch.custom.heads=3]){const s=spec();edit(s);assert.throws(()=>estimateVram(s,0));}
  const s=spec("gpt2-nano");s.arch.custom.d_ff=64;assert.throws(()=>estimateVram(s,0));
 });
 test("invalid, unsafe and unbounded inputs fail closed",()=>{
@@ -40,4 +40,10 @@ test("runtime integer compensation and available-byte overflow refuse",()=>{
  assert.throws(()=>planVram(original,8,0),/INT_MAX/);
  assert.throws(()=>planVram(spec(),Number.MAX_VALUE,0),/safe planning/);
  const nofit=planVram(spec(),1e-10,0);assert.equal(nofit.minimum.batch,1);assert.equal(nofit.minimum.accum,8);
+});
+
+test("experimental attention refuses an uncalibrated estimate; explicit FP32 is unchanged",()=>{
+ const s=spec("gpt2-nano"),base=estimateVram(s,0).total;
+ s.train.attention_precision="fp32";assert.equal(estimateVram(s,0).total,base);
+ s.train.attention_precision="bf16";assert.throws(()=>estimateVram(s,0),/uncalibrated dense/);
 });

@@ -201,6 +201,8 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
 // bias, tanh-approximation GELU MLP with biases, learned absolute
 // positions). Tokenizer and IR fields as in LlamaExportConfig.
 struct Gpt2ExportConfig {
+    // Training recipe provenance only; never changes tensor dtype or inference IR.
+    std::string train_attention_precision;
     std::string name = "microtorch-model";
     // Learned positions: position_embd has exactly this many rows, and
     // llama.cpp checks it against gpt2.context_length.

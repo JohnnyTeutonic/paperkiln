@@ -135,7 +135,10 @@ that cannot fail the build.
   baseline instrumented GPU-span time. The standalone dense MHA primitive now passes its fixed
   32-case L4 FP32/BF16 matrix and independent raw replay, with FP32 softmax/backward and an explicit
   BF16 straight-through surrogate (`docs/receipts/bf16_attention_20261031/RESULTS.md`).
-  Production wiring, model-level forward/backward parity and loss, and incremental end-to-end
+  Experimental exact two-block GPT2 LM/SFT wiring now passes CPU default-bit preservation,
+  finite BF16 model gradients/short loss, save/reload, and unchanged FP32 NumPy/Ember inference
+  (`docs/receipts/gpt2_attention_precision_20261031/RESULTS.md`). This train-only subset leaves the
+  implementation backlog; CUDA model validation, broader wiring, and incremental end-to-end
   benefit remain open. The primitive matrix, profile, noise-floor gate and launch-count work
   are complete; these results do not establish a production speed gain.
 - **Mamba:** a parallel scan and CUDA `ops::selective_scan` remain open

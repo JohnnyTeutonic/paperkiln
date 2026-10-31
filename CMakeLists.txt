@@ -495,3 +495,7 @@ add_executable(test_attention_precision tests/test_attention_precision.cpp)
 target_link_libraries(test_attention_precision PRIVATE microtorch)
 add_test(NAME attention_precision COMMAND test_attention_precision)
 set_tests_properties(attention_precision PROPERTIES TIMEOUT 120)
+
+add_executable(test_gpt2_attention_precision tests/test_gpt2_attention_precision.cpp)
+target_link_libraries(test_gpt2_attention_precision PRIVATE microtorch)
+add_test(NAME gpt2_attention_precision COMMAND test_gpt2_attention_precision)

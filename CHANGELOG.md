@@ -1,4 +1,14 @@
 # Changelog
+## Experimental train-only GPT2 attention precision (31 October 2026)
+
+Add per-instance FP32/default or BF16 attention GEMMs for the exact two-block
+GPT2 LM/SFT subset. Unsupported combinations fail before outputs; inference
+constructors and exported math stay FP32 with separate training-recipe metadata.
+Preserved default logits/full gradients, six-step checkpoint and GGUF are bit
+identical. CPU model/op gates, 14 CLI tests, NumPy/Ember inference and eight VRAM
+tests pass. CUDA model validation and speed/quality evidence remain open.
+[Evidence](docs/receipts/gpt2_attention_precision_20261031/RESULTS.md).
+
 ## Deferred GRPO CLI host readers (31 October 2026)
 
 Materialize logits before `sample_pure` and reference `log_softmax_rows` host

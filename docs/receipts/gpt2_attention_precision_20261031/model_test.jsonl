@@ -1,0 +1,2 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+{"pass":true,"default_logits_gradients_bit_equal":true,"bf16_finite_gradients":true,"fp32_reload_bit_equal":true,"steps":16,"first_loss":2.82226539,"last_loss":1.35242462}

@@ -1,0 +1,15 @@
+{
+ "cpu_readiness.json": "1035261e16ebcc8c8616b8c734dee0908d3f53e3a87cf731e872d57b225fbe59",
+ "preserved_metadata.json": "160e16e740330af498a2f62d7480cc10f9622191bc5bf592a2a8008aa22311a7",
+ "preserved_header_metadata.json": "894f1c84ce3c2721080e29939f6239e9205aeba54dcf6bb00001893a44738373",
+ "cli_tests.txt": "daa4e0b4ac655fb9fa14b7782490ca5a16a3d084983c7efb792e1b1987de42c0",
+ "model_test.jsonl": "2ee796ab0f21f64420c031b1ec6f4a2d025d09efd84b5984aa2704a9f8fd7d63",
+ "default_dump.cpp": "83999f403493fcc2d55b0685716eeda754e04778e1e3ba3f498ef44b31fb0e23",
+ "bf16_cli_replay.json": "21f5bd4c6238c6c43ef39a9c82effb5b6c3cd4d50196b476324962cb450fc1d3",
+ "op_test.jsonl": "4ce35aa506fbdf3845cfb983b4ab08f665afee910107e383fd4eee8ae7522f3a",
+ "preserved_default_dump.txt": "dcb8922abb40d5674484cc4c1f9e60fdd6d6a40cbdc5bf92fb996af8c2336310",
+ "preserved_library_metadata.json": "e67bf93c3462ce258ce70b57ce1be09b7d567ba58f61624189e8ffd0783a9bb6",
+ "candidate_default_dump.txt": "dcb8922abb40d5674484cc4c1f9e60fdd6d6a40cbdc5bf92fb996af8c2336310",
+ "RESULTS.md": "917020978b84cb0e92fdb103789ce588406e18786a8c7f7228d03d085dcbfcc1",
+ "bf16_cli_ember.json": "56598f67ad4ca6f2d5c659dbbceb950a16b7501f1b673ac9fd1307b3235d1dca"
+}

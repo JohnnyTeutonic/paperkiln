@@ -163,8 +163,12 @@ public:
     // recurrence_body (RECURRENCE only): the node's body (ir::recurrence's), null for the default.
     ParityLM(AttnKind kind, size_t vocab, size_t d, size_t n_heads, size_t n_ctx, unsigned seed,
              size_t swa_window = 64, size_t swa_sinks = 1,
-             const ir::json* recurrence_body = nullptr, size_t n_layers = 2)
+             const ir::json* recurrence_body = nullptr, size_t n_layers = 2,
+             device::Precision attention_precision = device::Precision::FP32)
         : kind_(kind) {
+        if (attention_precision != device::Precision::FP32 &&
+            (attention_precision != device::Precision::BF16 || kind != AttnKind::EXACT || n_layers != 2))
+            throw std::invalid_argument("BF16 attention is experimental exact two-block GPT2 only");
         if (n_layers == 0) throw std::runtime_error("ParityLM layers must be positive");
         wte = mod<nn::Embedding>("wte", vocab, d, seed + 1);
         wpe = mod<nn::Embedding>("wpe", n_ctx, d, seed + 2);
@@ -176,7 +180,7 @@ public:
             switch (kind) {
                 case AttnKind::EXACT:
                     exact.push_back(
-                        mod<nn::CausalSelfAttention>("attn_" + std::to_string(b), d, n_heads, s));
+                        mod<nn::CausalSelfAttention>("attn_" + std::to_string(b), d, n_heads, s, true, attention_precision));
                     break;
                 case AttnKind::KIMI:
                 case AttnKind::RECURRENCE:

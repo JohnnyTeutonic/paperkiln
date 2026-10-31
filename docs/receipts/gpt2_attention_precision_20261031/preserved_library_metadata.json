@@ -1,0 +1,10 @@
+{
+ "preserved_libmicrotorch.a": {
+  "source": "/home/jonat/pk_publication_build_20261030/libmicrotorch.a",
+  "sha256": "073be7677a7f9bf6b65c401c13c532a0d4bd56d5cd33bfe8e00411bb4160ee0d"
+ },
+ "preserved_libtransformer_core.a": {
+  "source": "/home/jonat/pk_publication_build_20261030/transformer_cpp/libtransformer_core.a",
+  "sha256": "6ac8350f92ead2633b934e352ade2d9db90563565670822342cd1515da114cc1"
+ }
+}
