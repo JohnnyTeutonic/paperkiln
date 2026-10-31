@@ -226,8 +226,12 @@ def main():
         allowed = set(mapped) | {"lm_head.weight"}
         if set(loaded) != allowed or not np.array_equal(loaded["lm_head.weight"].numpy(), loaded["model.embed_tokens.weight"].numpy()):
             raise ValueError("unexpected HF tensor inventory or untied Llama output head")
-    elif set(loaded) != set(mapped) or model.config.tie_word_embeddings:
-        raise ValueError("unexpected HF tensor inventory or tied output head")
+    else:
+        expected_tied = recorded["family"] == "flex" and recorded.get("tie_head", False)
+        if set(loaded) != set(mapped) or model.config.tie_word_embeddings is not expected_tied:
+            raise ValueError("unexpected HF tensor inventory or output-head tying")
+        if expected_tied and model.get_input_embeddings().weight.data_ptr() != model.get_output_embeddings().weight.data_ptr():
+            raise ValueError("HF did not retain shared input/output parameters")
     prompt = tok.encode(args.prompt, add_special_tokens=False).ids
     source_ids = source_prompt_ids(source_gguf, args.prompt)
     if source_ids != prompt:

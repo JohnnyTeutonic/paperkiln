@@ -1,0 +1,62 @@
+{
+ "status": "HF-PARITY-OK",
+ "prompt_ids": [
+  2,
+  14,
+  1
+ ],
+ "continuation_ids": [
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1
+ ],
+ "mtstudio_argmax": [
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1
+ ],
+ "max_abs_logit_error": 8.940696716308594e-08,
+ "atol": 0.0002,
+ "rtol": 0.0002,
+ "spec": "/tmp/pytest-of-jonat/pytest-219/test_actual_trained_tied_flex_1/tied.json",
+ "scope": "raw token IDs, source tensor mapping and output logits; not chat rendering",
+ "score_spec_delta": {},
+ "mapped_tensors": 29,
+ "source_prompt_tokenizer_ids_checked": true,
+ "versions": {
+  "torch": "2.8.0+cu128"
+ },
+ "sha256": {
+  "/home/jonat/pk_hf_tied_flex_20261031/tools/hf_export_verify.py": "ab43051ec23b60f2ceff6d2be8f37d57ae545a0f15e5f43ed7b91d834909309a",
+  "/home/jonat/pk_hf_tied_flex_20261031/tools/hf_export.py": "5916bd34b5bc0b03bc1b878b897d1a731ef7822a043cbb00fdedcedc6467f006",
+  "/home/jonat/pk_hf_tied_flex_20261031/tools/llama3_bpe.py": "880b4558b66486cd099115f62571c1389a70ab3edf01327d7db5de1f97fc5b71",
+  "/home/jonat/pk_hf_tied_flex_20261031/tools/bpe.py": "25607be05b41881d0238796b616cb697031c8ebf89623bc4c4537f8aaf56de39",
+  "/tmp/pytest-of-jonat/pytest-219/test_actual_trained_tied_flex_1/tied/tied.gguf": "4aecdea00b32a339886df47a1b9429ce151237bf512d234ccacca8b0ca604cf3",
+  "/tmp/pytest-of-jonat/pytest-219/test_actual_trained_tied_flex_1/tied/tied.safetensors": "36aed54f613994b895ef13ca044fd38df562e41c108960980a527f35031722d2",
+  "/tmp/pytest-of-jonat/pytest-219/test_actual_trained_tied_flex_1/tied.json": "d741d106861e63e2eb1273c6e41af6d40b6e4a18a76f08021c1265af10f3abe2",
+  "/tmp/pytest-of-jonat/pytest-219/test_actual_trained_tied_flex_1/tied/events.jsonl": "76ff3991e02035dce318535193d143f999dc52bfce4bbb32346240e7a130ad38",
+  "/home/jonat/pk_studio_probes_build_20261031/mtstudio": "3cba15295005af59affc1418c11c013b1ecf0f4accf8c4441df4cc6b003dd52a",
+  "/tmp/pytest-of-jonat/pytest-219/test_actual_trained_tied_flex_1/tied/hf/config.json": "d5ddc1bbd9ffc750585873cbeca841ff9c607ba42a1fb2cf5251ea348d3fd012",
+  "/tmp/pytest-of-jonat/pytest-219/test_actual_trained_tied_flex_1/tied/hf/export_receipt.json": "d2e050823cb55c34728d4c4c654c4d4c9114ab6b6da250b8db3dbd438dbbc819",
+  "/tmp/pytest-of-jonat/pytest-219/test_actual_trained_tied_flex_1/tied/hf/model.safetensors": "a8eca0b2327d0b714d3d82d749834ea56a0e22af5b00283281b1a84f8ca00061",
+  "/tmp/pytest-of-jonat/pytest-219/test_actual_trained_tied_flex_1/tied/hf/tokenizer.json": "13ef6be8d382766fd67182ec04bf3ed91016491a845b6eae314a0cc5b74a4613",
+  "/tmp/pytest-of-jonat/pytest-219/test_actual_trained_tied_flex_1/tied/hf/tokenizer_config.json": "c2f4deb7a5748324ceac9ebf596750a15bc722ee93a0ff5618b286e3467ddb8e"
+ },
+ "verification_inputs_unchanged": true,
+ "evidence": {
+  "schema": 1,
+  "file": "llama-1.json.evidence/logits.npz",
+  "bytes": 1734,
+  "sha256": "447381d7bdd0369335b59f81c5a5c3406e8c1b850ae4cf3387175da53591f9f0"
+ }
+}

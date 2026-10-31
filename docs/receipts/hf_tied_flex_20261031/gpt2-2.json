@@ -1,0 +1,64 @@
+{
+ "status": "HF-PARITY-OK",
+ "prompt_ids": [
+  1,
+  0,
+  0,
+  0,
+  0
+ ],
+ "continuation_ids": [
+  9,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1
+ ],
+ "mtstudio_argmax": [
+  9,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1
+ ],
+ "max_abs_logit_error": 5.960464477539063e-08,
+ "atol": 0.0002,
+ "rtol": 0.0002,
+ "spec": "/tmp/pytest-of-jonat/pytest-219/test_actual_trained_tied_flex_0/tied.json",
+ "scope": "raw token IDs, source tensor mapping and output logits; not chat rendering",
+ "score_spec_delta": {},
+ "mapped_tensors": 29,
+ "source_prompt_tokenizer_ids_checked": true,
+ "versions": {
+  "torch": "2.8.0+cu128"
+ },
+ "sha256": {
+  "/home/jonat/pk_hf_tied_flex_20261031/tools/hf_export_verify.py": "ab43051ec23b60f2ceff6d2be8f37d57ae545a0f15e5f43ed7b91d834909309a",
+  "/home/jonat/pk_hf_tied_flex_20261031/tools/hf_export.py": "5916bd34b5bc0b03bc1b878b897d1a731ef7822a043cbb00fdedcedc6467f006",
+  "/home/jonat/pk_hf_tied_flex_20261031/tools/llama3_bpe.py": "880b4558b66486cd099115f62571c1389a70ab3edf01327d7db5de1f97fc5b71",
+  "/home/jonat/pk_hf_tied_flex_20261031/tools/bpe.py": "25607be05b41881d0238796b616cb697031c8ebf89623bc4c4537f8aaf56de39",
+  "/tmp/pytest-of-jonat/pytest-219/test_actual_trained_tied_flex_0/tied/tied.gguf": "4230e87b8d72024dae1c1f86a942b7b16092906d533fcdc2450f76eafda5fc59",
+  "/tmp/pytest-of-jonat/pytest-219/test_actual_trained_tied_flex_0/tied/tied.safetensors": "9d5f3d11b691057e9eb6ecd6f6c317eef94050cc1f5b6c35649f95b45901f0ec",
+  "/tmp/pytest-of-jonat/pytest-219/test_actual_trained_tied_flex_0/tied.json": "62130b9b69d6f298f5423ff4414a3b7caa0abaea61963cfa5967c0ac20421b05",
+  "/tmp/pytest-of-jonat/pytest-219/test_actual_trained_tied_flex_0/tied/events.jsonl": "e0cfa41d9b109cc93dc6ecff173cccdf30f704161028f5c851d4c1a0563d9630",
+  "/home/jonat/pk_studio_probes_build_20261031/mtstudio": "3cba15295005af59affc1418c11c013b1ecf0f4accf8c4441df4cc6b003dd52a",
+  "/tmp/pytest-of-jonat/pytest-219/test_actual_trained_tied_flex_0/tied/hf/config.json": "fc95f9edfd7a9e958353c27cf75f2cab6ed05104d21e3f1f195af2965b2b16be",
+  "/tmp/pytest-of-jonat/pytest-219/test_actual_trained_tied_flex_0/tied/hf/export_receipt.json": "d2e050823cb55c34728d4c4c654c4d4c9114ab6b6da250b8db3dbd438dbbc819",
+  "/tmp/pytest-of-jonat/pytest-219/test_actual_trained_tied_flex_0/tied/hf/model.safetensors": "e4511adfc2913b52e442582e8393d0d34d90cd617537e30aa4426f47a8485784",
+  "/tmp/pytest-of-jonat/pytest-219/test_actual_trained_tied_flex_0/tied/hf/tokenizer.json": "13ef6be8d382766fd67182ec04bf3ed91016491a845b6eae314a0cc5b74a4613",
+  "/tmp/pytest-of-jonat/pytest-219/test_actual_trained_tied_flex_0/tied/hf/tokenizer_config.json": "c2f4deb7a5748324ceac9ebf596750a15bc722ee93a0ff5618b286e3467ddb8e"
+ },
+ "verification_inputs_unchanged": true,
+ "evidence": {
+  "schema": 1,
+  "file": "gpt2-2.json.evidence/logits.npz",
+  "bytes": 1734,
+  "sha256": "129afb291d6eac82d9c88d7916a833d4f783ba483b5861c2cebb446e966a6f23"
+ }
+}

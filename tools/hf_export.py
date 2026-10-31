@@ -14,7 +14,7 @@ Takes a finished plain llama, exact two-block GPT2, or plain GPT2/Llama-flavour 
                            GPT2 Conv1D weights retain [in,out]; its untied
                            output head alone is transposed. Llama-flavour flex
                            splits fused QKV, permutes q/k weights AND biases,
-                           preserves biased attention and an untied head.
+                           preserves biased attention and either a separate output head or an explicitly recorded tied token/output embedding.
     tokenizer.json (+cfg)  exact llama-BPE reconstruction from GGUF, or
                            native paperkiln byte-BPE, preserving token IDs and
                            byte decoding; legacy word-level vocabularies use
@@ -163,10 +163,24 @@ def validate_training_modifiers(m):
         raise ValueError("untied or conflicting output-head semantics are unsupported for native Llama HF export")
 
 
+def flex_tied_head(m):
+    """Only resolved Flex records may select the standard HF tied head."""
+    head = m.get("tie_head", False)
+    if type(head) is not bool:
+        raise ValueError("Flex tie_head must be a boolean")
+    if "tie_embeddings" in m and (type(m["tie_embeddings"]) is not bool or m["tie_embeddings"] != head):
+        raise ValueError("conflicting or malformed Flex output-head aliases")
+    return head
+
+
 def validate_gpt2(m):
-    """ParityLM or the exact GPT2-flavour FlexLM subset, both untied."""
+    """ParityLM or the exact GPT2-flavour FlexLM subset."""
     validate_training_modifiers(m)
     flex = m.get("family") == "flex"
+    if flex:
+        flex_tied_head(m)
+    elif any(m.get(k) for k in ("tie_head", "tie_embeddings")):
+        raise ValueError("native ParityLM tied-head exports are unsupported")
     placement = m.get("norm_placement", "pre")
     if flex:
         required = {"attention", "norm", "activation", "position", "residual", "final_norm", "norm_placement", "d_ff"}
@@ -181,10 +195,10 @@ def validate_gpt2(m):
             or m.get("residual", "residual") != "residual" or not m.get("final_norm", True)
             or not placement_ok):
         raise ValueError("HF GPT2 export requires exact attention, pre LayerNorm, tanh GELU, learned positions and residuals")
-    if any(m.get(k) for k in ("thirdparty", "qk_norm", "recursion", "attn_res", "moe", "state_tokens", "tie_head", "tie_embeddings",
+    if any(m.get(k) for k in ("thirdparty", "qk_norm", "recursion", "attn_res", "moe", "state_tokens",
                               "qkv_conv", "embed", "embed_expr", "embed_inputs", "embed_before_positions", "embed_before_pos",
                               "logits", "logits_expr", "activation_inputs", "norm_inputs", "t5_relative", "shaw_relative", "ssm")):
-        raise ValueError("modified or tied-head GPT2 exports are unsupported")
+        raise ValueError("modified GPT2 exports are unsupported")
     if m.get("gelu_approx", "tanh") != "tanh" or m.get("layer_norm_epsilon", 1e-5) != 1e-5:
         raise ValueError("GPT2 source GELU/LayerNorm constants differ from the supported mapping")
     if (any(type(m.get(k)) is not int or m[k] < 1 for k in ("d", "heads", "layers", "vocab", "T"))
@@ -195,7 +209,7 @@ def validate_gpt2(m):
 
 
 def convert_gpt2_weights(sd, m):
-    """Conv1D weights already use [in,out]; transpose only the untied head."""
+    """Conv1D uses [in,out]; a tied Flex head reads the token table directly."""
     validate_gpt2(m)
     d, vocab, ctx = m["d"], m["vocab"], m["T"]
     ff = m.get("d_ff", 4*d)
@@ -203,8 +217,10 @@ def convert_gpt2_weights(sd, m):
     layout = {"wte.weight": ("transformer.wte.weight", (vocab, d)),
               "wpe.weight": ("transformer.wpe.weight", (ctx, d)),
               "ln_f.weight": ("transformer.ln_f.weight", (1, d)),
-              "ln_f.bias": ("transformer.ln_f.bias", (1, d)),
-              "head.weight": ("lm_head.weight", (d, vocab))}
+              "ln_f.bias": ("transformer.ln_f.bias", (1, d))}
+    tied = flex and flex_tied_head(m)
+    if not tied:
+        layout["head.weight"] = ("lm_head.weight", (d, vocab))
     for b in range(m["layers"]):
         for native, hf, width_in, width_out in (("attn", "attn.c_attn", d, 3*d),
                                                 ("attn", "attn.c_proj", d, d),
@@ -230,6 +246,8 @@ def convert_gpt2_weights(sd, m):
         elif name.endswith(("ln_1.weight", "ln_2.weight", "ln_f.weight")) or key.endswith(".bias"):
             w = w.reshape(-1)
         out[name] = np.ascontiguousarray(w, dtype=np.float32)
+    if tied:
+        out["lm_head.weight"] = out["transformer.wte.weight"].copy()
     return out
 
 
@@ -247,8 +265,9 @@ def hf_model_type(m):
 
 
 def validate_flex_llama(m):
-    """Committed FlexLM has biased MHA, all-head RoPE and an untied head."""
+    """Plain FlexLM has biased MHA, all-head RoPE and an optional tied head."""
     validate_training_modifiers(m)
+    flex_tied_head(m)
     required = {"attention", "norm", "activation", "position", "residual", "final_norm", "norm_placement", "d_ff"}
     if m.get("family") != "flex" or not required <= m.keys():
         raise ValueError("Llama-flavour flex requires the complete resolved flavour record")
@@ -256,7 +275,7 @@ def validate_flex_llama(m):
             or m["attention"] != "exact" or m["residual"] != "residual" or m["final_norm"] is not True
             or m["norm_placement"] != {"attn": "pre", "ffn": "pre"}):
         raise ValueError("HF Llama-flavour flex requires exact attention, pre RMSNorm, SwiGLU, RoPE and residuals")
-    if any(m.get(k) for k in ("thirdparty", "qk_norm", "recursion", "attn_res", "moe", "state_tokens", "tie_embeddings", "tie_head",
+    if any(m.get(k) for k in ("thirdparty", "qk_norm", "recursion", "attn_res", "moe", "state_tokens",
                               "qkv_conv", "embed", "embed_expr", "embed_inputs", "embed_before_positions", "embed_before_pos",
                               "logits", "logits_expr", "activation_inputs", "norm_inputs", "t5_relative", "shaw_relative", "ssm")):
         raise ValueError("modified Llama-flavour flex exports are unsupported")
@@ -277,7 +296,10 @@ def validate_flex_llama(m):
 def convert_flex_llama_weights(sd, m):
     validate_flex_llama(m)
     d, ff, vocab, heads = m["d"], m["d_ff"], m["vocab"], m["heads"]
-    layout = {"wte.weight": (vocab, d), "norm.weight": (1, d), "head.weight": (d, vocab)}
+    tied = flex_tied_head(m)
+    layout = {"wte.weight": (vocab, d), "norm.weight": (1, d)}
+    if not tied:
+        layout["head.weight"] = (d, vocab)
     for b in range(m["layers"]):
         base = f"layers.{b}."
         layout.update({base+"norm1.weight": (1, d), base+"norm2.weight": (1, d),
@@ -291,7 +313,7 @@ def convert_flex_llama_weights(sd, m):
         if sd[key].shape != shape or not np.isfinite(sd[key]).all():
             raise ValueError("invalid Llama-flavour flex source tensor: " + key)
     out = {"model.embed_tokens.weight": sd["wte.weight"], "model.norm.weight": sd["norm.weight"].reshape(-1),
-           "lm_head.weight": sd["head.weight"].T}
+           "lm_head.weight": sd["wte.weight"].copy() if tied else sd["head.weight"].T}
     dk = d // heads
     perm = rope_perm(dk)
     for b in range(m["layers"]):
@@ -643,7 +665,7 @@ def export_model(args):
             "rms_norm_eps": 1e-5,  # ops::kRmsNormEps, including the training tape
             "rope_theta": theta,
             "hidden_act": "silu",
-            "tie_word_embeddings": m["family"] != "flex",
+            "tie_word_embeddings": m["family"] != "flex" or flex_tied_head(m),
             "attention_bias": m["family"] == "flex",
             "mlp_bias": False,
             "torch_dtype": "float32",
@@ -655,7 +677,7 @@ def export_model(args):
                "n_embd": m["d"], "n_inner": m.get("d_ff", 4*m["d"]), "n_layer": m["layers"],
                "n_head": m["heads"], "vocab_size": m["vocab"], "n_positions": m["T"], "n_ctx": m["T"],
                "activation_function": "gelu_new", "layer_norm_epsilon": 1e-5,
-               "tie_word_embeddings": False, "resid_pdrop": 0., "embd_pdrop": 0., "attn_pdrop": 0.,
+               "tie_word_embeddings": m["family"] == "flex" and flex_tied_head(m), "resid_pdrop": 0., "embd_pdrop": 0., "attn_pdrop": 0.,
                "scale_attn_weights": True, "scale_attn_by_inverse_layer_idx": False,
                "reorder_and_upcast_attn": False, "add_cross_attention": False, "torch_dtype": "float32",
                "bos_token_id": special_ids.get("tokenizer.ggml.bos_token_id", vocab.get("<s>")),

@@ -1,0 +1,67 @@
+{
+  "status": "PASS_CPU_ONLY",
+  "base_commit": "ba6f65970",
+  "source_sha256": {
+    "tools/hf_export.py": "5916bd34b5bc0b03bc1b878b897d1a731ef7822a043cbb00fdedcedc6467f006",
+    "tools/hf_export_verify.py": "ab43051ec23b60f2ceff6d2be8f37d57ae545a0f15e5f43ed7b91d834909309a",
+    "tests/test_hf_export.py": "d74aa8c8f2aa4f9d2519085da686bdacaef9bc1f830743684f3c34f85225abdf",
+    "tests/test_hf_tied_flex.py": "01dafde15ec3e5abbd95a4d2739dfd4f9d4aa724bb4a487e518072de8fdfbcfa"
+  },
+  "native_binary": {
+    "path": "/home/jonat/pk_studio_probes_build_20261031/mtstudio",
+    "sha256": "3cba15295005af59affc1418c11c013b1ecf0f4accf8c4441df4cc6b003dd52a",
+    "matched_cpp_source_sha256": {
+      "include/microtorch/ops.hpp": "c137545c6bb68fb485440cf9a010e83534ffed740412b4dab6efdd98ad42aa56",
+      "src/ops.cpp": "e3942b4564d035243be9f8084025222d7f93a01c794a2e40b3ef2e86cde0f42e",
+      "tools/mtstudio.cpp": "ed7c2f965065551221f33ab26872c197b24dfec4fb257d83ec2605778c613905",
+      "tools/parity_model.hpp": "53ee275b94e2cdfd71dc4fadcf10ae0884e6895f3a49dfb100d6d24bf227d39d"
+    }
+  },
+  "command": "MTSTUDIO_BIN=/home/jonat/pk_studio_probes_build_20261031/mtstudio python3 -m pytest tests/test_hf_export.py tests/test_hf_export_evidence.py tests/test_hf_export_publication.py tests/test_hf_export_training_modifiers.py tests/test_hf_tied_flex.py -q",
+  "tests": {
+    "passed": 263,
+    "skipped": 1,
+    "failed": 0,
+    "seconds": 54.82,
+    "skip_reason": "Existing independent C++ BPE parity test requires BPE_ENCODE_BIN; not set for this HF-head mapping gate."
+  },
+  "roundtrips": {
+    "architectures": [
+      "plain GPT2-flavour Flex",
+      "plain Llama-flavour Flex"
+    ],
+    "training_steps_each": 3,
+    "d": 16,
+    "layers": 2,
+    "heads": 2,
+    "d_ff": 24,
+    "prompts_each": 3,
+    "continuation_tokens_per_prompt": 8,
+    "saved_artifact_reload": true,
+    "shared_embedding_output_parameter_pointer_verified": true,
+    "tensor_inventory_and_values_verified": true,
+    "full_logits_and_greedy_ids_verified": true,
+    "offline_raw_evidence_replay": "tools/hf_export_verify.py --replay <architecture>-<prompt>.json"
+  },
+  "limits": [
+    "Only resolved plain Flex flavours; modified embeddings/logits/norms, exact-erf GELU, alternate positions/attention and training modifiers remain refused.",
+    "CPU FP32 tiny models; no GPU, large-model quality, HF training or general modified-Flex claim.",
+    "Existing native ParityLM and Llama tying rules remain unchanged.",
+    "Original source models/corpora are temporary test fixtures, not committed; raw numerical comparison rows retained for independent replay."
+  ],
+  "artifacts": {
+    "llama-2.json": "98988bb18aa2dab1f4c3c6b55ddae47378900d5832579aa01bdbf0d806790f1f",
+    "gpt2-1.json": "2eb3cff4f27661bcb569f296bfa8c2b8a0f2b6c7e5620dc40a11c6585bdb0ce3",
+    "llama-1.json": "27ff691c3da9467890caaedc8775a6f7f8a2aab51cc0b0237ef93491a488c4cb",
+    "llama-0.json": "711ed0c7fcfda786f825f7c34e88cc9f7a6b383815a4ede330de75a20719ad83",
+    "tests.log": "0ab5aeae38a778848e267356c8f4a62415493c9be4346d20e4f6f98c356ecd37",
+    "gpt2-2.json": "421f6372b3dd843f427f8c31f839ff52c1b80c5b70fb34caa20b6c9bf59218e3",
+    "gpt2-0.json": "005c148224ae54c2fdc92061436201713644f31236103787e92cfb329b59db7a",
+    "gpt2-2.json.evidence/logits.npz": "129afb291d6eac82d9c88d7916a833d4f783ba483b5861c2cebb446e966a6f23",
+    "llama-2.json.evidence/logits.npz": "d182dd406eb7ef8a189ea650a2d776988b37756dcc30987d1d198ab6b479c332",
+    "llama-0.json.evidence/logits.npz": "54de2bf0e482781a225985da2ee155cf8e2b41c8bb7253ce5a181127f874176c",
+    "gpt2-0.json.evidence/logits.npz": "2de0fbec970352d4495205ef0fe666ff5d325d9c84f5bca7d428213b6853996b",
+    "llama-1.json.evidence/logits.npz": "447381d7bdd0369335b59f81c5a5c3406e8c1b850ae4cf3387175da53591f9f0",
+    "gpt2-1.json.evidence/logits.npz": "6f1dd323af6d278feb326b0120060e5e70b63d9e9595ba96ba7c4d4f45797802"
+  }
+}

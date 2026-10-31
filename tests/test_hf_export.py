@@ -475,7 +475,7 @@ def test_flex_missing_resolved_flavour_record_is_refused(field):
     {"embed": {"expr": "expr:x*2"}}, {"logits": "expr:x*2"},
     {"activation_inputs": [{"kind": "up"}, {"kind": "scalar"}]},
     {"norm_inputs": [{"kind": "row"}, {"kind": "scalar"}]},
-    {"tie_head": True}, {"state_tokens": {"k": 4}}, {"recursion": {"repeats": 2}},
+    {"tie_head": "true"}, {"state_tokens": {"k": 4}}, {"recursion": {"repeats": 2}},
     {"attn_res": True}, {"moe": {"experts": 2}}, {"ssm": {"kind": "mamba1"}},
     {"d_ff": 0}, {"d_ff": True}, {"layers": 0}, {"heads": 3},
 ])
@@ -577,7 +577,7 @@ def test_flex_llama_splits_fused_qkv_and_permutes_weights_and_biases_per_head():
     {"moe": {"experts": 2}}, {"ssm": {"kind": "mamba1"}}, {"thirdparty": {"kv_heads": 1}},
     {"kv_heads": 1}, {"rope_heads": "first"}, {"rope_dims": 2}, {"rope_pairing": "neox"},
     {"rms_norm_eps": 1e-6}, {"rope_theta": float("nan")}, {"rope_theta": 0}, {"rope_theta": "10000"},
-    {"d_ff": 0}, {"d_ff": True}, {"d": 6}, {"tie_head": 1}, {"tie_head": True}, {"tie_embeddings": True},
+    {"d_ff": 0}, {"d_ff": True}, {"d": 6}, {"tie_head": 1}, {"tie_head": "true"}, {"tie_embeddings": True},
 ])
 def test_flex_llama_unmapped_semantics_are_refused(extra):
     model, _ = flex_llama_fixture()
