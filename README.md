@@ -83,8 +83,9 @@ and seven passing fixed/control cases ([raw replay](docs/receipts/embedding_fall
 This closes a conditional boundary, alongside the separately verified activation and norm fallbacks.
 
 Open engineering and research work is listed in [ROADMAP.md](ROADMAP.md). In particular,
-the separately validated BF16 attention op and experimental train-only GPT2 subset do not
-establish a model-level GPU or speed result; modified-flex HF exports and remaining
+the BF16 attention op and experimental train-only GPT2 subset pass bounded actual-L4 model
+and host NumPy/Ember correctness checks ([model receipt](docs/receipts/gpt2_attention_precision_20261031/gpu_v2/parent_model_replay.json)).
+Model quality, speed and adoption remain unestablished; modified-flex HF exports and remaining
 device/host boundaries stay explicitly scoped.
 
 ## What makes it different

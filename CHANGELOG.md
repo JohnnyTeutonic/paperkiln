@@ -1,5 +1,9 @@
 # Changelog
 
+## Bounded actual-L4 GPT2 train-only BF16 model correctness (31 October 2026)
+
+The fixed tiny forward, every-parameter gradient, profiler, default-preservation and LM/SFT CLI gates pass. Both GPU-trained exports also pass pinned host NumPy/Ember replay. Original packaging failures remain recorded. This closes the bounded correctness milestone, with no model-quality, speed or adoption claim.
+
 - Materialise computed embedding tables before the conditional CPU fallback. Actual L4 reproduces the old deferred-table error and passes all seven fixed cases; ordinary leaf tables and invalid IDs remain controls.
 
 - Added independent full-network Mamba1 CPU finite-difference checks for every parameter in two fixed tiny fixtures; merged constructor replay and 64 parser/negative tests pass. Composed CUDA, quality and residency remain separate gates.
