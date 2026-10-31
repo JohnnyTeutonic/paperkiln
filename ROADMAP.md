@@ -123,8 +123,14 @@ that cannot fail the build.
   Production wiring, model-level forward/backward parity and loss, and incremental end-to-end
   benefit remain open. The primitive matrix, profile, noise-floor gate and launch-count work
   are complete; these results do not establish a production speed gain.
-- **Mamba:** a parallel scan and device kernels for Mamba-1's `ops::conv1d_causal` and
-  `ops::selective_scan` (sequential, host only; the mamba preset's `ssm: "mamba1"`).
+- **Mamba:** a parallel scan and CUDA `ops::selective_scan` remain open
+  (currently sequential/host; the mamba preset's `ssm: "mamba1"`). The completed
+  causal-convolution forward/backward kernels leave this list: 120 actual L4
+  CUDA+DEVCHECK cases and the existing CUDA-selected Mamba regression pass,
+  including ordered float32 reductions, all gradient masks, stacked sequences,
+  deferred inputs/outputs/gradients, fallback and write-through. Evidence:
+  `experiments/conv1d_cuda_20261031/receipts/l4_gate_v1/`. This is not a fully
+  device-resident Mamba implementation or an end-to-end speed measurement.
 - **int4/NF4 quantisation.**
 - **HF export for modified flex flavours and unmapped GPT2 variants; quantised GGUFs outside the llama family.** Strictly plain GPT2- and Llama-flavour Flex now have verified HF mappings for separate or explicitly tied token/output heads (arbitrary depth/MLP width); those completed subsets leave this list. Actual saved/reloaded Transformers CPU parity is recorded in docs/receipts/hf_tied_flex_20261031/. Plain GPT2 Flex additionally supports explicitly recorded exact-erf GELU (HF gelu), tied or untied, with evidence in docs/receipts/hf_exact_gelu_20261031/. Plain GPT2 Flex ReLU also passes finite-execution HF CPU parity for tied/untied heads, with documented NaN/negative-zero differences (docs/receipts/hf_relu_flex_20261031/). Other modified flavours remain open. Every mtstudio family now exports F32 GGUF with its IR
   (`include/microtorch/ir.hpp`, Families): gpt2 and flex with the GPT-2

@@ -1,0 +1,133 @@
+{
+  "status": "REVIEW_COMPLETE_WITH_HISTORICAL_VALIDITY_BLOCKER",
+  "review_only": true,
+  "worktree": "/home/jonat/pk_sfull_packet_20261031",
+  "commit": "2fda9bb1133e6c6348ba80cd58cd11ae78793a90",
+  "requested_packet_commit": "2fda9bb11",
+  "source_sha256": {
+    "experiments/tiny_chat_long_2026-10/prepare_sfull.py": "962c3fc11833942131f02db50f7ade15167248aab3e605547fd1c8d47ab537ce",
+    "experiments/tiny_chat_long_2026-10/finalize_sfull.py": "f3b0b8a3481ea70aa1d381781a42bc1183b8e9d39a97efc07720ffc8ef13788c",
+    "experiments/tiny_chat_long_2026-10/freeze_sfull.py": "2f8e6c78b210d56a937f9430869996883c71fb646d27a40268e05a591249e143",
+    "experiments/tiny_chat_long_2026-10/test_sfull_packet.py": "2d7f97a2d97691b03d41875e125068d57325f6ac39f95079cabc456317a86e78",
+    "experiments/tiny_chat_long_2026-10/PREREGISTRATION.md": "ca45477f11326edfc5ed6e5529ea85cbf5b1625258ed45c588f49a0426e7b4e6",
+    "experiments/tiny_chat_long_2026-10/RESULTS.md": "a9c158d3e46658d60da31739f7da4b45e44d5b426ed927caf961e1584840a177",
+    "tools/colab_chat/sfull_verify_inputs.py": "59c27187e31a282fa394ccab7730a13a4bc148b86c3ce251b26a0cd7db9f979b",
+    "experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/readiness.json": "bcce9fc92d1004bb351d49f5577d1b9269e1543ad6198b995307cffab4f4bbd8",
+    "experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/source_freeze.json": "af9744e00f8da1c6809142d3363472392cc321931fdaee9ec61fb0b6c97c71a2",
+    "experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/manifest.json": "05277a13a7a87bf67785d484dde02fe41179c4a516a3062162e6433341aab275",
+    "experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/launch_pin.json": "28e21f7e183e531e7bf9f8fc98f6fa4add4491de3eab52881a27a05fcccba668",
+    "experiments/tiny_chat_long_2026-10/receipts/hs1_five_seed_20261030/history_argmax_audit.json": "da3e3880fa4eb4d3ad1ed88b908c2a4b637780860eb9438f94fc93a6a92ded9e",
+    "experiments/tiny_chat_long_2026-10/receipts/hs1_five_seed_20261030/parity_sensitivity.json": "949da222ab7a0444da55304a85f61430e89123f754bf549189cde9a210700ad3"
+  },
+  "offline_validation": {
+    "command": "python3 -m pytest experiments/tiny_chat_long_2026-10/test_sfull_packet.py -q",
+    "interpreter": "/usr/bin/python3",
+    "passed": 35,
+    "failed": 0,
+    "seconds": 4.23,
+    "no_datafetch_no_paid_work": true
+  },
+  "historical_affected_items": [
+    {
+      "cell": "B",
+      "seed": 1,
+      "id": "carry12_v1:recall:0017",
+      "gate_turn": 4,
+      "target_turn": 14,
+      "stop": "eos"
+    },
+    {
+      "cell": "B",
+      "seed": 1,
+      "id": "carry12_v1:correction:0046",
+      "gate_turn": 2,
+      "target_turn": 10,
+      "stop": "eos"
+    },
+    {
+      "cell": "B",
+      "seed": 1,
+      "id": "carry12_v1:correction:0224",
+      "gate_turn": 2,
+      "target_turn": 14,
+      "stop": "eos"
+    },
+    {
+      "cell": "B",
+      "seed": 3,
+      "id": "carry12_v1:correction:0306",
+      "gate_turn": 2,
+      "target_turn": 11,
+      "stop": "eos"
+    },
+    {
+      "cell": "Sgist",
+      "seed": 1,
+      "id": "carry12_v1:correction:0111",
+      "gate_turn": 3,
+      "target_turn": 11,
+      "stop": "eos"
+    },
+    {
+      "cell": "Sgist",
+      "seed": 4,
+      "id": "carry12_v1:recall:0365",
+      "gate_turn": 8,
+      "target_turn": 11,
+      "stop": "eos"
+    }
+  ],
+  "findings": [
+    {
+      "classification": "design_nonblocker",
+      "paths": [
+        "prepare_sfull.py:build",
+        "PREREGISTRATION.md:HS0"
+      ],
+      "finding": "Exact Sgist L8 seeds1-3 clone changes turn_state mask to causal, retaining k4 and training recipe; this addresses registered insertion-versus-mask control rather than inventing a new architecture. Unsupported make_jobs Sfull/L16 fallback is avoided."
+    },
+    {
+      "classification": "historical_validity_blocker",
+      "paths": [
+        "receipts/hs1_five_seed_20261030/history_argmax_audit.json",
+        "RESULTS.md:History-parity limitation"
+      ],
+      "finding": "Six original full-history argmax failures remain. Unknown scorer logits/margins prevent a rounding/tie explanation. New Sfull all-pass and conditional six-item sensitivity do not repair historical B/Sgist controls or bound unrecorded defects."
+    },
+    {
+      "classification": "interpretation_constraint",
+      "paths": [
+        "finalize_sfull.py:calculate",
+        "finalize_sfull.py:tick"
+      ],
+      "finding": "COMPLETE denotes source-bound complete artifact/statistical computation, not a clean scientific validity pass. Output discloses all_history_checks_pass false and interpretation_requires_parity_review true because historical controls fail. HS0 numerical verdict must retain this qualification."
+    },
+    {
+      "classification": "runtime_availability_blocker",
+      "paths": [
+        "tools/colab_chat/sfull_verify_inputs.py:verify",
+        "prepare_sfull.py:build",
+        "readiness.json"
+      ],
+      "finding": "All13 raw human sources,5products,vocabulary,evaluations and decontamination identity are checked before PT. Missing bytes are not preverified. Mismatch blocks; no fallback or automatic rerun. Unavailable data may prevent execution despite offline-ready packet."
+    },
+    {
+      "classification": "preservation_nonblocker",
+      "paths": [
+        "finalize_sfull.py:state",
+        "finalize_sfull.py:inputs",
+        "finalize_sfull.py:tick"
+      ],
+      "finding": "Prospective source inventory, exact baseline hashes, duplicate selected summaries, strict new Sfull parity, complete campaign-home evidence, observed-input latching and before/after analysis equality checks preserve original core/HS1 and reject drift. Missing inputs WAIT without partial analysis."
+    },
+    {
+      "classification": "funding_and_authorisation_constraint",
+      "paths": [
+        "readiness.json",
+        "RESULTS.md:Conditional S-full packet"
+      ],
+      "finding": "Three serial seeds,7USD each/21USD total;18-27combined GPUh estimate, distinct per-seed operational clocks.20USD is user notification threshold, not mandatory reserve;40USD offer uncredited; existing provider accessor15USD constraint separate. Review neither commits funds nor authorises launch/long-run continuation."
+    }
+  ],
+  "recommendation": "Keep packet reviewable and unlaunched. Resolve historical-control interpretation and actual runtime availability/funding review before scientific claims or execution; do not waive original failures or alter thresholds. No packet edits made."
+}

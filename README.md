@@ -56,8 +56,12 @@ is complete: under its fixed-token, eight-layer protocol, the primary carry-scor
 20M/60M/150M meets the registered practical-equivalence rule. Language-model loss improves
 with size, but this particular conversational-memory score does not. This is a scoped result,
 not a general scaling limit or a state-of-the-art comparison. Carry-12's three-seed core and
-its still-running registered follow-up are recorded separately in
+its completed five-seed HS1 follow-up are recorded separately in
 [the long-conversation results](experiments/tiny_chat_long_2026-10/RESULTS.md).
+Six historical full-history parity failures remain unresolved. The registered
+S-full control is prepared but unlaunched; its independent
+[review](docs/receipts/sfull_independent_review_20261031/review.json) distinguishes
+completed analysis from a clean scientific validity pass.
 
 HF interoperability now includes faithful native BPE and supported legacy tokenizers, complete
 source-tensor checks, greedy IDs and raw logit checks. New verifier receipts retain the rows
@@ -253,6 +257,12 @@ tiled attention, fused SwiGLU, clip and AdamW on the device, and MoE routing ker
 d384 L6 trains at 0.109 s/step on an L4 (from 6.4), and d768 L12 at 2.1-2.3 s/step on a laptop
 RTX 4060. Deferred downloads work for the llama family; the gpt2 family is still open
 ([CUDA_PHASE_B2.md](docs/CUDA_PHASE_B2.md)).
+
+The Mamba causal convolution now has CUDA forward and backward kernels.
+All 120 strict L4 cases and the existing CUDA-selected Mamba regression pass,
+including deferred device data, sequence boundaries and gradient masks.
+Selective scan still uses the host, and no complete-Mamba speed gain is claimed.
+[Actual device evidence and replay](experiments/conv1d_cuda_20261031/receipts/l4_gate_v1/replay.json).
 
 ## Quick start: C++ and Python
 

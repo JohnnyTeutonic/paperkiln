@@ -1,0 +1,18 @@
+S-full independent read-only review
+
+Commit: 2fda9bb1133e6c6348ba80cd58cd11ae78793a90
+35 offline tests passed (4.23s); no data fetch, paid work or packet edits.
+
+design_nonblocker: Exact Sgist L8 seeds1-3 clone changes turn_state mask to causal, retaining k4 and training recipe; this addresses registered insertion-versus-mask control rather than inventing a new architecture. Unsupported make_jobs Sfull/L16 fallback is avoided.
+
+historical_validity_blocker: Six original full-history argmax failures remain. Unknown scorer logits/margins prevent a rounding/tie explanation. New Sfull all-pass and conditional six-item sensitivity do not repair historical B/Sgist controls or bound unrecorded defects.
+
+interpretation_constraint: COMPLETE denotes source-bound complete artifact/statistical computation, not a clean scientific validity pass. Output discloses all_history_checks_pass false and interpretation_requires_parity_review true because historical controls fail. HS0 numerical verdict must retain this qualification.
+
+runtime_availability_blocker: All13 raw human sources,5products,vocabulary,evaluations and decontamination identity are checked before PT. Missing bytes are not preverified. Mismatch blocks; no fallback or automatic rerun. Unavailable data may prevent execution despite offline-ready packet.
+
+preservation_nonblocker: Prospective source inventory, exact baseline hashes, duplicate selected summaries, strict new Sfull parity, complete campaign-home evidence, observed-input latching and before/after analysis equality checks preserve original core/HS1 and reject drift. Missing inputs WAIT without partial analysis.
+
+funding_and_authorisation_constraint: Three serial seeds,7USD each/21USD total;18-27combined GPUh estimate, distinct per-seed operational clocks.20USD is user notification threshold, not mandatory reserve;40USD offer uncredited; existing provider accessor15USD constraint separate. Review neither commits funds nor authorises launch/long-run continuation.
+
+Keep packet reviewable and unlaunched. Resolve historical-control interpretation and actual runtime availability/funding review before scientific claims or execution; do not waive original failures or alter thresholds. No packet edits made.

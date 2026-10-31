@@ -1,4 +1,13 @@
 # Changelog
+## Mamba causal-convolution CUDA subset (31 October 2026)
+
+Add ordered forward/backward device kernels for `ops::conv1d_causal`, retaining
+CPU fallback, sequence boundaries and selective gradients. Actual L4 CUDA plus
+DEVCHECK passes 120 strict cases and the existing CUDA-selected Mamba regression;
+landed raw logs independently replay. All float32 reductions retain CPU order.
+Selective scan and a parallel scan remain open; no end-to-end speed claim.
+[Receipt](experiments/conv1d_cuda_20261031/receipts/l4_gate_v1/replay.json).
+
 ## CPU host LayerNorm indexing (31 October 2026)
 
 Replace checked per-element host access with checked contiguous pointers within
