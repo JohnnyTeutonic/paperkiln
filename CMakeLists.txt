@@ -455,3 +455,6 @@ set_tests_properties(evaluation_probes_helpers PROPERTIES TIMEOUT 120)
 add_executable(test_parity_depth tests/test_parity_depth.cpp)
 target_link_libraries(test_parity_depth PRIVATE microtorch)
 add_test(NAME parity_depth COMMAND test_parity_depth)
+
+add_executable(bench_layernorm_cpu tools/bench_layernorm_cpu.cpp)
+target_link_libraries(bench_layernorm_cpu PRIVATE microtorch)
