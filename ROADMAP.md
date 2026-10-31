@@ -99,9 +99,6 @@ that cannot fail the build.
   `papers/llm_extract_receipts/2026-10-27_bench_scores.json`). The same replies rescored by the 28 Oct
   verifier and scorer, with Mamba, Qwen3 and OLMo 2 labelled (43 papers; OLMo 2 has no reply under the
   bench's prompt): `2026-10-28_bench_scores.json` (`experiments/arxiv_chain_2026-10-28_e3/`). Open: prompt optimisation.
-- **Publish `paperkiln-fetch` 0.1.1.** Wheel and source archive are built, licensed, metadata-checked
-  and smoke-tested from an isolated installation (`docs/receipts/fetch_release_011_build_20261030.json`).
-  Publication is blocked by a missing configured PyPI API token;0.1.0 is still the public release.
 - **Grow the benchmark from 40 to 60–100 papers**, with ground truth read
   off the fetched source and never recalled. Add a reconstruction-fidelity
   task (parameter-count error per reconstructed paper) for a datasets and

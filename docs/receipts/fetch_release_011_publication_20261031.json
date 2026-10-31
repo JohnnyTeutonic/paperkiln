@@ -1,0 +1,21 @@
+{
+  "version": "0.1.1",
+  "artifact_hashes_verified": true,
+  "twine_check": "PASS",
+  "upload_returncode": 0,
+  "credential_values_recorded": false,
+  "status": "PUBLISHED_AND_HASH_VERIFIED",
+  "url": "https://pypi.org/project/paperkiln-fetch/0.1.1/",
+  "artifacts": [
+    {
+      "filename": "paperkiln_fetch-0.1.1-py3-none-any.whl",
+      "sha256": "0561e20be163b2d54af75a794af87c99bf9e0d0dbf1188672f31fef5961b4dc2"
+    },
+    {
+      "filename": "paperkiln_fetch-0.1.1.tar.gz",
+      "sha256": "1ecbacd26a2b61a0b78a9780f0070d66c22a4a4c7027ebbcf527bd9ad76008b4"
+    }
+  ],
+  "public_index_reinstall": "PASS",
+  "installed_distribution_version": "0.1.1"
+}

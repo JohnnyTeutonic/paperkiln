@@ -1027,3 +1027,7 @@ execution: native ReLU masks NaNs and clears negative zero while HF preserves
 those values. The exceptional differences are tested and documented; native
 numerics and generic-expression refusals are unchanged.
 [Validation](docs/receipts/hf_relu_flex_20261031/validation.json).
+
+## 31 October 2026: standalone fetch 0.1.1 published
+
+Published the previously prepared wheel and source archive to PyPI. Provider SHA-256 digests match the frozen release receipt. Publication evidence: `docs/receipts/fetch_release_011_publication_20261031.json`.
