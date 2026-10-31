@@ -1,0 +1,95 @@
+{
+  "status": "CPU_VALIDATED_UNLAUNCHED_API_BOUNDARY_CANDIDATE",
+  "scope": "Public policy_gradient_kl const Matrix reference consumer only, separate from previously repaired CLI reference-logit producer. No historical training-invalidity, residency, quality or speed claim.",
+  "baseline_commit": "735533d6f3693b62b6be92f0b3a2454d6de27f84",
+  "baseline_ops_blob": "2affef403911b06e67e35035cc9d9388fab4446b",
+  "baseline_ops_sha256": "a2d5110f21331a1018263e0cda9cb5c5759d59b30930a357cf1fb8359e33288c",
+  "repair": "materialize(ref_logp) and host-read guard before forward reads and by-value tape capture; arithmetic unchanged",
+  "cases": [
+    "mixed",
+    "policy_only",
+    "kl_only"
+  ],
+  "geometry": [
+    2,
+    3
+  ],
+  "logits": [
+    -0.75,
+    0.125,
+    0.5,
+    0.25,
+    -0.375,
+    1.0
+  ],
+  "reference_probabilities": [
+    0.2,
+    0.3,
+    0.5,
+    0.6,
+    0.3,
+    0.1
+  ],
+  "reference_construction": "f32 log of f32 probabilities, passed through FP32 GEMM with identity3; valid constant log-probabilities without a host-only restriction",
+  "weights": {
+    "mixed": {
+      "w": [
+        0.75,
+        -0.25
+      ],
+      "k": [
+        0.5,
+        1.0
+      ]
+    },
+    "policy_only": {
+      "w": [
+        0.75,
+        -0.25
+      ],
+      "k": [
+        0.0,
+        0.0
+      ]
+    },
+    "kl_only": {
+      "w": [
+        0.0,
+        0.0
+      ],
+      "k": [
+        0.5,
+        1.0
+      ]
+    }
+  },
+  "targets": [
+    2,
+    0
+  ],
+  "upstream": 1.5,
+  "device_causal_test": "Assert identity-GEMM reference host_stale; overwrite only stale host storage with9. Old mixed/KL-only must fail correct loss AND gradient >1e-3 and match independent all9-reference prediction within1e-6. Old policy-only remains correct at k0. Fixed must materialize and pass correct full loss/gradient. Materialize caller reference only after op returns, so it cannot repair an already-captured old tape value.",
+  "bounds": {
+    "normalized_correct_and_poison_prediction": 1e-06,
+    "old_wrong_loss_and_gradient_minimum": 0.001,
+    "reference_fixture_libm_tolerance": 2e-07
+  },
+  "profile": "Exactly one actual FP32 reference GEMM in each CUDA leg, strict CUDA+DEVCHECK+profiler and one L4.",
+  "CPU_validation": {
+    "cases": 6,
+    "gradient_elements": 36,
+    "maximum_loss_and_gradient_error": 0.0,
+    "optimized_parser_tests": 63,
+    "actual_cuda": false
+  },
+  "limits": {
+    "max_usd": 0.75,
+    "max_hours": 0.6,
+    "gate_seconds": 1500,
+    "gpus": 1,
+    "gpu": "NVIDIA L4"
+  },
+  "failure_policy": "One attempt, immutable outputs, preserve every raw failure. No retry-for-pass or tolerance changes; actual causal device proof required before shipping.",
+  "version": "v2",
+  "pre_outcome_revision": "Reject every negative or noninteger profile counter before GEMM aggregation; V1 retained unchanged/unlaunched. Production, fixtures and all numeric bounds unchanged."
+}

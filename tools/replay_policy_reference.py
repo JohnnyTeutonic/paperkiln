@@ -102,6 +102,13 @@ def replay(d, variant, case, cuda=False):
     le, ge = error(actual_loss, loss), error(actual_gradient, gradient)
     profile = d.get("profile")
     need(isinstance(profile, dict), "profile")
+    need(
+        all(
+            isinstance(key, str) and type(v) is int and v >= 0
+            for key, v in profile.items()
+        ),
+        "nonnegative integer profile counters",
+    )
     if cuda:
         need(
             sum(
