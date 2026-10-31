@@ -30,7 +30,6 @@
     "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v2"
   ],
   "protocol_sha256": "6a233561c2eb490cf7041a8005cb70a06608b33a23b107aecae62b8f9c90d8ea",
-  "source_commit": "PENDING_COMMIT",
   "initial_training_attempts": 480,
   "max_new_attempts": 5514,
   "initial_valid_rankings": 526,
@@ -40,5 +39,7 @@
   "old_HALTED_preserved": true,
   "old_source_unchanged": true,
   "no_new_model_dispatch": true,
-  "budget_completion_not_guaranteed": "Every call retains0.25 ceiling before dispatch;200cumulative/25heldout enforced by unchanged audited Budget, not promise all5514fit worst-case. No retries/automatic recovery after new failure."
+  "budget_completion_not_guaranteed": "Every call retains0.25 ceiling before dispatch;200cumulative/25heldout enforced by unchanged audited Budget, not promise all5514fit worst-case. No retries/automatic recovery after new failure.",
+  "implementation_commit": "d1155a0d7",
+  "note": "Implementation commit identifies the prepared source; frozen protocol binds exact source bytes, no self-referential current-commit claim."
 }
