@@ -82,6 +82,11 @@ The computed-table embedding host fallback now has an actual L4 old-failure repr
 and seven passing fixed/control cases ([raw replay](docs/receipts/embedding_fallback_cuda_20261031/parent_replay.json)).
 This closes a conditional boundary, alongside the separately verified activation and norm fallbacks.
 
+The NT tiled-GEMM load path passes 96 bitwise/reference cases and a prospective paired
+kernel timing gate: about 25% faster at the tested 256³ shape, with the other modes
+unchanged ([results and rejected broader version](docs/receipts/gemm_nt_cuda_20261031/RESULTS.md)).
+This is a kernel result, not whole-model throughput.
+
 Open engineering and research work is listed in [ROADMAP.md](ROADMAP.md). In particular,
 the BF16 attention op and experimental train-only GPT2 subset pass bounded actual-L4 model
 and host NumPy/Ember correctness checks ([model receipt](docs/receipts/gpt2_attention_precision_20261031/gpu_v2/parent_model_replay.json)).

@@ -1,5 +1,9 @@
 # Changelog
 
+## Scoped NT GEMM load optimisation (31 October 2026)
+
+Coalesce physical B loads only for NT. All 96 old-bit/reference cases pass; the prospective 256³ paired kernel gate records about 25% improvement, with original NN/TN/TT behaviour retained. The broader candidate’s TN regression is preserved and rejected. No full-model gain is asserted. See `docs/receipts/gemm_nt_cuda_20261031/RESULTS.md`.
+
 ## Bounded actual-L4 GPT2 train-only BF16 model correctness (31 October 2026)
 
 The fixed tiny forward, every-parameter gradient, profiler, default-preservation and LM/SFT CLI gates pass. Both GPU-trained exports also pass pinned host NumPy/Ember replay. Original packaging failures remain recorded. This closes the bounded correctness milestone, with no model-quality, speed or adoption claim.
