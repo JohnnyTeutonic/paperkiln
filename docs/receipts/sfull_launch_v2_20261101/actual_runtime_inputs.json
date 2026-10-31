@@ -1,0 +1,41 @@
+{
+  "status": "INPUTS_VERIFIED_OPERATION_UNLAUNCHED",
+  "reviewed_V2_source_sha256": "ef002f238c1d3d54aa27e6e4981ef9b5590d7930c1feeabc245ac4a607c2edf0",
+  "original_freeze_sha256": "af9744e00f8da1c6809142d3363472392cc321931fdaee9ec61fb0b6c97c71a2",
+  "original_absolute_freeze_preserved": true,
+  "validation": {
+    "verified": true,
+    "validation_version": 2,
+    "detailed_decontam_sha256": "0213ca6898f2589ac4b704b9240a70052ea5d522773f12ec65633de8cde936cf",
+    "raw_detailed_historical_byte_identity_claimed": false,
+    "path_only_overrides": {
+      "vocab_path": "/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf",
+      "human_dir": "/home/jonat/r3_data/out/human"
+    },
+    "reference_sha256": "acd00d74a93299aa0614f98233f837ef3dc30d38ce9120330e9f2f5c2b982cf4",
+    "ledger_sha256": "acd00d74a93299aa0614f98233f837ef3dc30d38ce9120330e9f2f5c2b982cf4",
+    "outputs_sha256": {
+      "sft_human.jsonl": "4785e1494d34b81970d947e3488897afcdd36d19a8625b6670dfefcc69b42ecb",
+      "sft_human_long4.jsonl": "e03509467843d5fc55374917c30ab8da77b761c338f2370735d63920b4db02d8",
+      "panel_fineweb.ids": "c1aa6d42aafe80d8607b2d1f19235eb1539ccd94997567c506ae68f330c06e6b",
+      "panel_dialogue.ids": "7881aa1c196e30b692a18ba2704a49333a78d8ce059dedb98e794baa0838258a",
+      "mix_s35.ids": "01b9d364ba6547544ca787e6ea49aa877f5c6bb9621002607c21bdef183c4f94"
+    },
+    "vocab_sha256": "0b880aa073a7e27c0770d5ecc5215b55d6d415080d20bd3dc7b169ecabadf198",
+    "raw_human_sources_verified": 13,
+    "evaluation_sources_verified": 2,
+    "no_data_mutation": true
+  },
+  "V1_markers_before_and_after": {
+    "/home/jonat/pk_sfull_data_only_1031_runner/state.json": "d81adb22c1a1b90365cc521e02aead3c8af7c16af319e6b1126d8a9d7fbfa42a",
+    "/home/jonat/pk_sfull_data_only_1031_runner/HALTED": "cce4bf0c603632f90e8bf05c4036af398d8692951bfbc8bcb0db5b4f09ab3023",
+    "/home/jonat/pk_sfull_data_only_1031_runner/admission_anchor.json": "2bfb83455ad3b6771a144f899fc77139f016de2b149ef885b4f7dac80d239da6",
+    "/home/jonat/pk_sfull_data_only_1031_runner/admission.json": "9afab9671bc9e908a8fcef1be8adb63eab81d4301f1e06bc0573a2d8d4702dd4"
+  },
+  "planned_artifact_paths_already_exist": {
+    "/mnt/c/ml_artifacts/tiny_chat/c12_Sfull_r1": false,
+    "/mnt/c/ml_artifacts/tiny_chat/c12_Sfull_r2": false,
+    "/mnt/c/ml_artifacts/tiny_chat/c12_Sfull_r3": false
+  },
+  "no_provider_or_training_call": true
+}

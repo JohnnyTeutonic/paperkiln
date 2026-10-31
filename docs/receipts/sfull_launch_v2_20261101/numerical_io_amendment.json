@@ -1,0 +1,13 @@
+{
+  "numerical_base": "7edb0ca1b252bd9332094558a478d924568f8e52",
+  "numerical_v2_commit": "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1",
+  "original_mtstudio_sha256": "2342e5e7725e99583da0c9800f0ad9422f6c5e34659db23b4d8797ab5d28e96f",
+  "amended_mtstudio_sha256": "7c874a943a8991fb363dd56ccabeb6ef8fa92d5c501a8b3d3f7ebe67225d6566",
+  "bridge_sha256": "74e3960f6645f28ceec8391ebd39301d2187295291e3330a7fdfb8336d704dfd",
+  "exact_reverse_patch_restores_original_bytes": true,
+  "changed_paths": [
+    "tools/mtstudio.cpp",
+    "include/microtorch/sfull_checkpoint_bridge_v2.hpp"
+  ],
+  "scope": "prepend include; close state stream; check stream; synchronous checkpoint publication call only. All optimizer/arithmetic/RNG/training-loop statements unchanged."
+}
