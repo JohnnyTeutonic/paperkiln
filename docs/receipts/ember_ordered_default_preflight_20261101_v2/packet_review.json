@@ -1,0 +1,46 @@
+{
+  "status": "READY_FOR_ROOT_SERIAL_ADMISSION",
+  "reviewer": "Codex independent cleanroom_review",
+  "candidate_source": "d83d00e96254be214f0b32227f1d3fea8181d148",
+  "production_source": "bca00166f75d53a01094e5ebfa599a004062a21e",
+  "manifest_sha256": "b7f50738edc08228a9be1155964d48afbbfeb482a64e1a63156b3cf56661ee88",
+  "exact_git_blob_inventory": {
+    "baseline": 3042,
+    "candidate": 3055
+  },
+  "all_upload_size_sha256_verified": true,
+  "all_upload_names_flat": true,
+  "payload_matches_candidate_archive": true,
+  "production_probe_client_checker_unchanged_from_v1": true,
+  "scientific_protocol_unchanged": true,
+  "source_packet_transport_tests": {
+    "passed": 12,
+    "seconds": 2.62
+  },
+  "admission_tests": {
+    "passed": 42,
+    "seconds": 0.42
+  },
+  "transport_reproduction": "Actual existing runner AST-generated reassembly reproduces nested omission and verifies flat two-part byte reassembly plus CMake directory materialization.",
+  "resources": {
+    "gpu": "one L4",
+    "cap_usd": 1.75,
+    "max_hours": 3,
+    "absolute_deadline": "2026-10-31T17:30:00Z",
+    "combined_campaign_cap_usd": 2,
+    "v1_spend_allowance_usd": 0.25
+  },
+  "v1_preserved": "Zero-leg setup failure, original stage/receipt/admission remain unchanged. V2 guard binds failed-home summary/transport/state and checks actual cleanup and cumulative spend allowance.",
+  "resolved_review_findings": [
+    "V1 nested part transport integration boundary corrected",
+    "Staged V2 UTC date corrected to exact original deadline; final protocol and archive match"
+  ],
+  "scope": [
+    "Candidate14 original exact rows/IDs/warm-pass/individual1.15 speed gates unchanged; baseline10 partial controls",
+    "No actual-device correctness, speed or adoption result established by this review",
+    "Root must perform exact fresh freeze and provider readiness checks before existing-watchdog admission"
+  ],
+  "provider_calls": 0,
+  "gpu_launches": 0,
+  "config_writes": 0
+}

@@ -1,0 +1,1 @@
+Source-bound ordered-default reduction validation. Full registered candidate14 and explicitly partial baseline10 controls retain original thresholds and historical failure. One L4, $1.75 maximum with prior attempt at most $0.25; combined cap $2 and the original fixed deadline. Actual-device outcome pending. This registration changes no training or production source.
