@@ -73,10 +73,11 @@ for offline numerical replay; an existing tiny flex fixture reproduces all24 IDs
 8.94e-8 maximum logit difference ([retained evidence](docs/receipts/hf_raw_evidence_20261030/README.md)).
 This does not validate every architecture modifier, chat template or downstream task.
 
-Tiny composed Mamba1 CPU checks now cover all 1,224 parameter derivatives across one- and
-two-block fixtures against independent binary64 equations and central differences
-([evidence](docs/receipts/mamba1_composed_fd_20261031/parent_replay.json)). These are
-numerical checks on fixed tiny networks; composed CUDA and residency checks remain separate.
+Tiny composed Mamba1 CPU and actual-L4 checks cover all 1,224 parameter derivatives
+across one- and two-block fixtures against independent binary64 equations and central
+differences ([CPU](docs/receipts/mamba1_composed_fd_20261031/parent_replay.json),
+[CUDA](docs/receipts/mamba1_composed_cuda_20261031/parent_replay.json)). Mixed host paths
+remain; these fixed tiny-network checks establish no quality, speed or full residency result.
 
 The computed-table embedding host fallback now has an actual L4 old-failure reproduction
 and seven passing fixed/control cases ([raw replay](docs/receipts/embedding_fallback_cuda_20261031/parent_replay.json)).
