@@ -1,0 +1,18 @@
+10-31 16:17:44 volume 5neo1oafsy created in EU-RO-1 (20 GB)
+10-31 16:17:47 pod ff18xpb86mz538 created in EU-RO-1 (L4, $0.590/h, SECURE); waiting for ssh
+10-31 16:18:08 pod ff18xpb86mz538 answers at 213.173.105.25:10879 after 21 s
+10-31 16:18:34 prelude done: thon3 -m pip install --upgrade pip | cmake version 3.31.6 | GPU 0: NVIDIA L4 (UUID: GPU-461060af-a2d0-3953-a244-c186e7009b4b) | Cuda compilation tools, release 12.4, V12.4.131 | Build cuda_12.4.r12.4/compiler.34097967_0 | host driver CUDA major: 13 | 48 |                total        used        free      shared  buff/cache   available | Mem:             503          36          85           0         382         463 | mfs#euro-2.runpod.net:9421  2.1P  1.7P  422T  81% /content | prelude done Sat Oct 31 05:18:34 UTC 2026 | debconf: delaying package configuration, since apt-utils is not installed
+10-31 16:18:35 session up, endpoint ff18xpb86mz538 (launch 1)
+10-31 16:19:40 inputs: source.tgz 10075806 gpt2_precision_gate.py 9515 inputs.json 7076 INPUTS_OK
+10-31 16:19:45 boot launched
+10-31 16:19:51 gpt2_precision_model_gate: NONE  
+10-31 16:23:58 gpt2_precision_model_gate: RUNNING  {"pass": true, "errors": []}
+10-31 16:28:04 gpt2_precision_model_gate: FINISHED  {"pass": true, "errors": []}
+10-31 16:28:15 gpt2_precision_model_gate: gate_summary.json downloaded
+10-31 16:28:27 gpt2_precision_model_gate: out.zip downloaded
+10-31 16:28:37 gpt2_precision_model_gate: ../gpt2_precision_model_gate_train.log downloaded
+10-31 16:28:37 gpt2_precision_model_gate: outputs downloaded
+10-31 16:28:37 all jobs finished and home
+10-31 16:28:38 pod ff18xpb86mz538 terminated (RunPod ledger $0.11)
+10-31 16:28:39 volume 5neo1oafsy (EU-RO-1) deleted
+10-31 16:28:39 session stopped; runner exiting
