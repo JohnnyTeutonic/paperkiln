@@ -6,7 +6,8 @@ campaigns that are home. Run by the Windows watchdog (scripts/colab_watchdog.ps1
 
 Runners (runner_multi.py --backend runpod) register their state dir in ~/.runpod/runners.json. A
 runner is alive when its runner.pid names a live process whose command line is runner_multi.py with
-that --state-dir. For each pod on the account:
+that --state-dir. The one explicitly registered source-pinned data controller is also
+recognised after its full manifest and anchored root admission validate. For each pod on the account:
   - kept when a live runner's state records it as its pod, or a live runner is creating a pod of
     that name right now (state "creating" within the last 30 minutes);
   - otherwise terminated (its runner died, e.g. kill -9, or no runner state knows it), and the stop
@@ -56,6 +57,58 @@ def save_json(path, obj):
     os.replace(tmp, path)
 
 
+# Only this source-pinned, root-admitted in-process runner is additionally known.
+# Ownership remains valid during deadline-triggered stop/relay, not just while training.
+ADMITTED_CONTROLLERS = {
+    "/home/jonat/pk_sfull_data_controller_20261031/tools/colab_chat/sfull_data_only_controller_20261031.py": {
+        "sha256": "8c582ebba3f752567fff98dd9587f75fd37a055d7bd9cab75ca725c7dea3dbe7",
+        "manifest": "/home/jonat/pk_sfull_data_controller_20261031/docs/receipts/sfull_data_only_admission_20261031/manifest.json",
+        "manifest_sha256": "3640b1595afb5847e66081b7a6fc10766caed7c4fa5b9cb61b2e3957fb1b4ea9",
+    }
+}
+
+
+def admitted_controller_alive(args, state_dir):
+    """Recognise exact reviewed code, command, state and anchored root admission."""
+    import hashlib
+    import importlib.util
+    import subprocess
+    from pathlib import Path
+
+    try:
+        if len(args) != 8 or os.path.basename(args[0]) not in {"python3", "python3.11"}:
+            return False
+        known = ADMITTED_CONTROLLERS.get(args[1])
+        if known is None:
+            return False
+        script = Path(args[1])
+        manifest = Path(known["manifest"])
+        admission = Path(state_dir) / "admission.json"
+        expected = [args[0], str(script), "--manifest", str(manifest),
+                    "--manifest-sha256", known["manifest_sha256"], "--admission", str(admission)]
+        if args != expected or hashlib.sha256(script.read_bytes()).hexdigest() != known["sha256"]:
+            return False
+        anchor = json.loads((Path(state_dir) / "admission_anchor.json").read_text())
+        if anchor != {"manifest_sha256": known["manifest_sha256"],
+                      "admission_sha256": hashlib.sha256(admission.read_bytes()).hexdigest()}:
+            return False
+        spec = importlib.util.spec_from_file_location("sweep_admitted_controller", script)
+        controller = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(controller)
+        root = script.parents[2]
+        m = controller.verify_manifest(manifest, known["manifest_sha256"], root)
+        if os.path.realpath(m["state_dir"]) != os.path.realpath(state_dir):
+            return False
+        # Revalidate the anchored launch, not wall-clock freshness. An expired launch
+        # still owns its pod while the live controller stops and relays it.
+        a = json.loads(admission.read_text())
+        controller.validate_admission(m, known["manifest_sha256"], admission,
+                                      controller.timestamp(a["admitted_at_utc"]), True)
+        return True
+    except (OSError, ValueError, TypeError, KeyError, ImportError, AttributeError, subprocess.SubprocessError):
+        return False
+
+
 def runner_alive(state_dir):
     """The runner of state_dir is running: runner.pid names a live runner_multi.py with this --state-dir."""
     try:
@@ -63,9 +116,9 @@ def runner_alive(state_dir):
         argv = open(f"/proc/{pid}/cmdline", "rb").read().split(b"\0")
     except (OSError, ValueError):
         return False
-    args = [a.decode(errors="replace") for a in argv]
+    args = [a.decode(errors="replace") for a in (argv[:-1] if argv and argv[-1] == b"" else argv)]
     if not any(a.endswith("runner_multi.py") for a in args):
-        return False
+        return admitted_controller_alive(args, state_dir)
     for i, a in enumerate(args):
         v = args[i + 1] if a == "--state-dir" and i + 1 < len(args) else (a.split("=", 1)[1]
                                                                           if a.startswith("--state-dir=") else None)
