@@ -1,5 +1,5 @@
 {
-  "_comment": "V2 operational input-verification overlay only. Seeds, model, data, training, scoring and historical numerical source unchanged; historic parity qualification retained.",
+  "_comment": "V2 reviewed input verification and checkpoint-I/O amendment: checkpoint/relay interval25, atomic full-state generations. Arithmetic, RNG statements, seeds, model, data, learning schedule and scoring unchanged; new source provenance explicit; historic parity qualification retained.",
   "max_parallel": 1,
   "max_parallel_light": 2,
   "jobs": [
