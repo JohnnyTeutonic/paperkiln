@@ -1,0 +1,25 @@
+{
+  "checkpoint": {
+    "path": "/mnt/c/ml_artifacts/general_chat/sft/pk_sft_v1.safetensors",
+    "sha256": "eae61755dc6625eb87c54ce3152774596ed4299c65c0462ed3831b0f9d7ee80e"
+  },
+  "base_spec": {
+    "path": "/mnt/c/ml_artifacts/general_chat/sft/sft_spec.json",
+    "sha256": "d5537c076b23b7ff4e86b7f3c8c18e552a8d2832c38cbd4a3ed3e62e6c86f189"
+  },
+  "vocab": {
+    "path": "/mnt/c/ml_artifacts/general_chat/sft/pk_sft_v1.gguf",
+    "sha256": "4d53c7ff236ecba3a2b34cd2d4769f08bdf0408bbc3655afa44b9ddc70929fdd"
+  },
+  "val_split": {
+    "path": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/smol_smoltalk_qa_v1/dialogues_val.jsonl",
+    "sha256": "1cf6ff83817a00f53ae57b160d9cfe8ebf4848c37a7710f61932a6cc605e9880"
+  },
+  "train_split": {
+    "path": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/smol_smoltalk_qa_v1/dialogues_train.jsonl",
+    "sha256": "75e470988070732ae4aa13fd539fa064c0095e4855d21f28ed5138d57e77b4ae"
+  },
+  "same_winner_GGUF_as_sampled_candidates": true,
+  "before_dpo_outcomes": true,
+  "provider_or_gpu_calls": 0
+}
