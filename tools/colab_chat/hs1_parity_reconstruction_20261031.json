@@ -1,0 +1,21 @@
+{
+  "max_parallel": 1,
+  "jobs": [
+    {
+      "name": "hs1_parity_reconstruction",
+      "cmd": [
+        "timeout",
+        "--signal=TERM",
+        "--kill-after=30",
+        "7200",
+        "python3",
+        "/content/chat/upload/hs1_parity_reconstruction_vm.py",
+        "{out}"
+      ],
+      "outputs": [
+        "summary.json",
+        "out.zip"
+      ]
+    }
+  ]
+}
