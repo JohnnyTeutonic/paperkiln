@@ -228,6 +228,7 @@ Var ternary_ste(const Var& w);
 Var act_quant_ste(const Var& x, int bits = 8);
 // The values alone (no tape), for export and tests: the ternary codes in
 // {-1, 0, 1} and the scale s, so ternary_ste(W) = codes / s.
+// Materializes a deferred device value before the scalar host reduction.
 float ternary_scale(const Matrix& w);  // s above
 // RoPE pairing (keramos IR_SPEC 5.14): Interleaved rotates adjacent pairs
 // (x[2j], x[2j+1]) within a head (paperkiln's own models, llama.cpp NORM);
