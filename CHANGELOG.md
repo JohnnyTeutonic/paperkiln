@@ -1,4 +1,6 @@
 # Changelog
+
+- Added independent full-network Mamba1 CPU finite-difference checks for every parameter in two fixed tiny fixtures; merged constructor replay and 64 parser/negative tests pass. Composed CUDA, quality and residency remain separate gates.
 ## Watchdog-owned API judging continuation (31 October 2026)
 
 Add a frozen, fail-stop campaign wrapper for the existing training-stage allowance.

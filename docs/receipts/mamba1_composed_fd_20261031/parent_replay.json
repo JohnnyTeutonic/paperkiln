@@ -1,0 +1,22 @@
+{
+  "pass": true,
+  "scope": "two tiny composed Mamba1 forward/all-parameter derivatives against independent binary64 equations and central differences; no quality, speed or full residency claim",
+  "merged_constructor_used": true,
+  "cases": [
+    {
+      "depth": 1,
+      "parameters": 448,
+      "forward_error": 1.147795337737706e-08,
+      "max_tensor_relative_l2": 0.00019889749833658266,
+      "max_step_stability_relative_l2": 0.00020775644557178088
+    },
+    {
+      "depth": 2,
+      "parameters": 776,
+      "forward_error": 1.2118851733390624e-08,
+      "max_tensor_relative_l2": 0.00016752329478469835,
+      "max_step_stability_relative_l2": 0.00020124672794899202
+    }
+  ],
+  "raw_sha256": "cc6cd1d81bf2c07ddc9cc2ba1edfa6c9f301ba314afde7b7b572b8ccde91c8b0"
+}

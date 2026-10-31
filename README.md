@@ -71,6 +71,11 @@ for offline numerical replay; an existing tiny flex fixture reproduces all24 IDs
 8.94e-8 maximum logit difference ([retained evidence](docs/receipts/hf_raw_evidence_20261030/README.md)).
 This does not validate every architecture modifier, chat template or downstream task.
 
+Tiny composed Mamba1 CPU checks now cover all 1,224 parameter derivatives across one- and
+two-block fixtures against independent binary64 equations and central differences
+([evidence](docs/receipts/mamba1_composed_fd_20261031/parent_replay.json)). These are
+numerical checks on fixed tiny networks; composed CUDA and residency checks remain separate.
+
 Open engineering and research work is listed in [ROADMAP.md](ROADMAP.md). In particular,
 the separately validated BF16 attention op and experimental train-only GPT2 subset do not
 establish a model-level GPU or speed result; modified-flex HF exports and remaining

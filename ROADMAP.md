@@ -28,7 +28,7 @@ where one of those documents carries a plan, this file wins.*
    `C:/ml_artifacts/pref_full/sample/`).   The CLI pilot cache remains historical evidence; its hidden settings are not assumed equivalent
    to the validated API profile. The Anthropic API transport is now validated with exact model,
    rubric and request provenance, independent cache identity and durable cost reservations.
-   The fail-stop full API campaign is running under the unchanged $200 cumulative cap,
+   The first fail-stop full API phase halted on an unknown network-unreachable dispatch. Its state is preserved; a separately reviewed continuation must retain the unknown ceiling and count the interrupted attempt under the unchanged $200 cumulative cap,
    including legacy spend, retained unknown-call ceilings and $25 reserved for the held-out gate.
    See `experiments/chat_general/receipts/anthropic_api_20261031/full_campaign_protocol.json`.
    DPO + NLL and the fixed five-part gate remain after complete judging. Completion is not
