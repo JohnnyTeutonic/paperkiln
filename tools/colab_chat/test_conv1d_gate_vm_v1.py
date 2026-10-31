@@ -66,4 +66,37 @@ class Gate(unittest.TestCase):
         root=P.parents[2]
         for name,digest in g.CRITICAL.items():self.assertEqual(g.sha(root/name),digest,name)
         self.assertIn('studio/chat.html',g.CRITICAL)
+class Replay(unittest.TestCase):
+    def load(self):
+        path=P.with_name('replay_conv1d_gate_v1.py');spec=importlib.util.spec_from_file_location('replay',path)
+        module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);return module
+    def fixture(self,directory,passed):
+        proof={k:True for k in g.PROOF_KEYS};proof['cases']=120
+        texts={'hardware':'NVIDIA L4, 555, GPU-test, 23034 MiB\n','nvcc':'Cuda compilation tools, release 12.6\n',
+               'configure':'configured\n','build':'built\n','strict':json.dumps(proof)+'\n',
+               'thirdparty':'third-party ops (CUDA device ops)\n1. conv1d_causal (K 4, 2 sequences)\n4. mamba1 (d 16, Di 32, N 4, K 4)\nall third-party op checks passed\n'}
+        for name,text in texts.items():(directory/(name+'.log')).write_text(text)
+        logs={name+'.log':{'sha256':g.sha(directory/(name+'.log')),'bytes':(directory/(name+'.log')).stat().st_size} for name in texts}
+        commands=[{'name':name,'returncode':0,'argv':[]} for name in g.LOGS]
+        commands[2]['argv']=['cmake','-DMICROTORCH_CUDA=ON','-DMICROTORCH_DEVCHECK=ON','-DMICROTORCH_BUILD_PYTHON=OFF','-DCMAKE_CUDA_ARCHITECTURES=89']
+        commands[4]['argv']=['test_conv1d_cuda','--require-cuda']
+        report={'pass':passed,'source_commit':g.SOURCE_COMMIT,'logs':logs,'errors':[] if passed else ['setup failed'],
+                'source_sha256':g.CRITICAL,'inputs':{'source_commit':g.SOURCE_COMMIT,'files':{'conv1d_source.tgz':g.ARCHIVE_SHA,'conv1d_gate_vm_v1.py':g.sha(P)}},
+                'commands':commands,'strict':proof,'thirdparty':g.check_thirdparty(texts['thirdparty']),
+                'binary_sha256':{'test_conv1d_cuda':'a'*64,'test_thirdparty_ops':'b'*64}}
+        (directory/'gate_summary.json').write_text(json.dumps(report));return report
+    def test_replay_pass_and_tamper(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d);self.fixture(p,True);self.assertTrue(self.load().replay(p)['scientific_pass'])
+            (p/'strict.log').write_text('{}')
+            with self.assertRaises(ValueError):self.load().replay(p)
+    def test_transport_success_is_not_scientific_success(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d);self.fixture(p,False);result=self.load().replay(p)
+            self.assertTrue(result['integrity']);self.assertFalse(result['scientific_pass'])
+    def test_missing_actual_invocation_refused(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d);report=self.fixture(p,True);report['commands'][4]['argv']=['test_conv1d_cuda']
+            (p/'gate_summary.json').write_text(json.dumps(report))
+            with self.assertRaises(ValueError):self.load().replay(p)
 if __name__=='__main__':unittest.main()
