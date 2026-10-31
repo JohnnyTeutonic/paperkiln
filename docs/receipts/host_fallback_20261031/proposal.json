@@ -1,0 +1,24 @@
+{
+  "source_commit": "a51018b1358116c2f309110b9ef05d999560e534",
+  "stage": "/home/jonat/host_fallback_gate_stage_v1_20261031",
+  "manifest_sha256": "ebd8b516be62717df029703cb714f8b24ec6a180a36318876a9d2de55955e8e5",
+  "source_archive_sha256": "0342948074fb09e7c51b81f7700f03d2b005c79764e9962912126e88dd4efa6f",
+  "baseline_commit": "16654d9656539ceeb8a7dbe8ec63e0c2255910ec",
+  "device": "one NVIDIA L4, strict CUDA+DEVCHECK",
+  "max_usd": 1.0,
+  "gate_max_seconds": 1500,
+  "transport": "existing watchdog-owned runner_multi.py; no hand-created pod or local GPU",
+  "command": [
+    "python3",
+    "/content/chat/upload/fallback_gate.py",
+    "--upload",
+    "/content/chat/upload",
+    "--manifest-sha256",
+    "ebd8b516be62717df029703cb714f8b24ec6a180a36318876a9d2de55955e8e5",
+    "--out",
+    "/content/fallback_receipts_v1"
+  ],
+  "expected": "13 old registered numeric failures; 3 old coherent controls; all 16 fixed independent forward/backward cases pass; exact fixed source restored",
+  "launch_status": "not launched; awaiting root source-bound review",
+  "cleanup": "owned pod and volume deleted after evidence home; retain job cost/cleanup only, no account-wide snapshots"
+}

@@ -1,0 +1,34 @@
+{
+  "source_commit": "a51018b1358116c2f309110b9ef05d999560e534",
+  "baseline_commit": "16654d9656539ceeb8a7dbe8ec63e0c2255910ec",
+  "negative_cases": [
+    "gelu_forward_x",
+    "gelu_backward_x",
+    "silu_backward_x",
+    "softmax_forward_x",
+    "softmax_backward_y",
+    "sigmoid_forward_x",
+    "sigmoid_backward_y",
+    "rmsnorm_forward_x",
+    "rmsnorm_forward_w",
+    "rmsnorm_backward_x",
+    "rmsnorm_backward_w",
+    "group_forward_w",
+    "group_backward_w"
+  ],
+  "control_cases": [
+    "silu_forward_x",
+    "group_forward_x",
+    "group_backward_x"
+  ],
+  "files": {
+    "source.tgz": "0342948074fb09e7c51b81f7700f03d2b005c79764e9962912126e88dd4efa6f",
+    "baseline_ops.cpp": "b6a65ddfd4849692635ca89967645ae8b67bd66e6aaef3915bf0ed238b9e7a6b",
+    "fallback_gate.py": "b6ded7b30c13d76765a2f82ff2a08586156212908e77198edc6312a1102b23bc"
+  },
+  "source_files": {
+    "src/ops.cpp": "21c5a0a245c65cf068b295a9eb582cda762b48ac6eec5d18d270878218e1b59a",
+    "tests/test_fallback_materialization.cpp": "3f2ebd8fa1a29882aa4a7e21fa09edc6d1a9cbadffea860dc076220e78f2870f",
+    "CMakeLists.txt": "1e97bd18f5e668a076b0e8731e302576def927c0677e74785f411eae089e956e"
+  }
+}

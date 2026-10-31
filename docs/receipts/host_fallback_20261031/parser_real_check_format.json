@@ -1,0 +1,6 @@
+{
+  "pass": true,
+  "scope": "synthetic proof parser format test with actual check.hpp subprocess exit and line format; not device evidence",
+  "returncode": 1,
+  "accepted_exact_numeric_assertion": true
+}
