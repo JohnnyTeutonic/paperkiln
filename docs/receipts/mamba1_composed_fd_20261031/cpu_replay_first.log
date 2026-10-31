@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/home/jonat/pk_mamba_composed_20261031/tools/replay_mamba1_composed.py", line 299, in <module>
+    replay(
+  File "/home/jonat/pk_mamba_composed_20261031/tools/replay_mamba1_composed.py", line 260, in replay
+    need(
+  File "/home/jonat/pk_mamba_composed_20261031/tools/replay_mamba1_composed.py", line 24, in need
+    raise ValueError(msg)
+ValueError: gradient bound layers.0.dt_proj.weight

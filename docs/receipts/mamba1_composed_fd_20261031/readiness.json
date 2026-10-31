@@ -1,0 +1,32 @@
+{
+  "pass": true,
+  "source_base": "87ccf28cf",
+  "CPU_binary_sha256": "162ce52e2dbee21fcf0b9c782fb4c2d3a4a2e7e226b3ba78eaa6dd32ce9dae94",
+  "source_files": {
+    "CMakeLists.txt": "2af7e675526db8c5950faecf4ea1b1c80cc1625d286fc394dc80e607f5f060b0",
+    "tests/test_mamba1_composed.cpp": "a060d6135daf12a240eb1eef3c5c14c19817274e8913f856c951dcddf54eac27",
+    "tools/parity_model.hpp": "7c4d9eecd8638a6c1c2aff874a0290e007e1d4682cdc909db511b68c94e6aab0",
+    "tools/replay_mamba1_composed.py": "6734219a927e0a0e3fc88912a8d3facccf5691d20da0f4a5aa25d31a39f68439",
+    "tools/mamba1_composed_gate.py": "6721182cd5724d204e68dc140c4160ae62da56ecc372f473bd774b00e426ab72",
+    "src/ops.cpp": "7550dd2a34f30f506794f466941859cde8cfa2bd647692e3f8e640a289ae502f",
+    "src/cuda_ops.cu": "e4c907751abed8368e7e53d9783b8f676a87119106608cc2f7b6483d29644cdd",
+    "src/selective_scan_kernels.cuh": "7ef31cca5b4a81f890f84573d559d4207dc96706919c68f3f120f8c7352da8f3",
+    "tests/test_mamba1_composed_replay.py": "0a1696e6bc53c68231b302fdeb07aa0428ff1ea353c550309b987d4e9b3bade7"
+  },
+  "all_parameter_elements": 1224,
+  "parameter_tensors": 36,
+  "bounds": {
+    "forward_normalized": 3e-05,
+    "gradient_normalized": 3e-05,
+    "tensor_gradient_relative_l2": 0.02,
+    "fd_stability_relative_l2": 0.02,
+    "relative_l2_floor": 1e-12
+  },
+  "worst_tensor_relative_l2": 0.00019889749833658266,
+  "worst_fd_step_stability": 0.00020775644557178088,
+  "parser_contracts": "64 tests pass under -O, including zeroing each of36 complete parameter-gradient tensors",
+  "strict_CPU_refusal": true,
+  "no_production_changes": true,
+  "no_gpu_launch": true,
+  "separate_lifecycle": "Prior tiny actual CLI CPU training/save/FP32 export/NumPy/Ember proof preserved in previous Mamba baseline packet. Composed GPU probe does not prove actual CLI training lifecycle or model quality/speed/full residency."
+}
