@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/content/pk/tools/colab_chat/sfull_verify_inputs.py", line 103, in <module>
+    main()
+  File "/content/pk/tools/colab_chat/sfull_verify_inputs.py", line 93, in main
+    r = verify(a.data, a.reference)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/pk/tools/colab_chat/sfull_verify_inputs.py", line 74, in verify
+    raise ValueError("raw decontamination report differs")
+ValueError: raw decontamination report differs

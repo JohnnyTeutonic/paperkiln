@@ -1,0 +1,97 @@
+{
+ "endpoint": null,
+ "launches": 1,
+ "jobs": {
+  "data": {
+   "relayed_step": 0,
+   "status": "FINISHED",
+   "home": true,
+   "failed_seen": 0,
+   "fetched": [
+    "data.ledger.json",
+    "human_decontam.json",
+    "sft_human.jsonl",
+    "sft_human_long4.jsonl",
+    "panel_fineweb.ids",
+    "panel_dialogue.ids",
+    "mix_s35.ids",
+    "../data_train.log"
+   ]
+  },
+  "sfull_inputs": {
+   "relayed_step": 0,
+   "status": "FAILED",
+   "home": true,
+   "failed_seen": 2,
+   "fetched": [
+    "../sfull_inputs_train.log"
+   ]
+  }
+ },
+ "gpu": "L4",
+ "backend": "runpod",
+ "runpod": {
+  "pod": null,
+  "volume": null,
+  "retired_volumes": [],
+  "ledger": {
+   "pods": [
+    {
+     "id": "rk36twad68b4ul",
+     "name": "pk-sfull-data-1031",
+     "gpu": "L4",
+     "usd_per_hr": 0.59,
+     "dc": "EU-RO-1",
+     "volume": "agoeyqf3bz",
+     "start": 1793452497.6768022,
+     "stop": 1793452546.1753492,
+     "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+     "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+     "stopped_by": "runner"
+    },
+    {
+     "id": "3vh03k3yfekqt5",
+     "name": "pk-sfull-data-1031",
+     "gpu": "L4",
+     "usd_per_hr": 0.59,
+     "dc": "EU-RO-1",
+     "volume": "agoeyqf3bz",
+     "start": 1793452788.9808962,
+     "stop": 1793452846.2633364,
+     "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+     "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+     "stopped_by": "runner"
+    },
+    {
+     "id": "dfylzt801rf6s9",
+     "name": "pk-sfull-data-1031",
+     "gpu": "L4",
+     "usd_per_hr": 0.59,
+     "dc": "EU-RO-1",
+     "volume": "agoeyqf3bz",
+     "start": 1793453089.137702,
+     "stop": 1793454544.331051,
+     "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+     "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+     "stopped_by": "runner"
+    }
+   ],
+   "volumes": [
+    {
+     "id": "agoeyqf3bz",
+     "dc": "EU-RO-1",
+     "gb": 50,
+     "created": 1793452494.8970556,
+     "name": "pk-sfull-data-1031-vol",
+     "deleted": 1793454545.1363986
+    }
+   ]
+  },
+  "dc_fails": 0,
+  "creating": null
+ },
+ "gone_ticks": 0,
+ "booted": true,
+ "pending_uploads": [],
+ "campaign_home": true
+}

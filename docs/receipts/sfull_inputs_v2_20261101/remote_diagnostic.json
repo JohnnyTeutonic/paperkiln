@@ -1,0 +1,138 @@
+{
+  "corrected_contract_result": {
+    "evaluation_sources_verified": 2,
+    "ledger_sha256": "acd00d74a93299aa0614f98233f837ef3dc30d38ce9120330e9f2f5c2b982cf4",
+    "no_data_mutation": true,
+    "outputs_sha256": {
+      "mix_s35.ids": "01b9d364ba6547544ca787e6ea49aa877f5c6bb9621002607c21bdef183c4f94",
+      "panel_dialogue.ids": "7881aa1c196e30b692a18ba2704a49333a78d8ce059dedb98e794baa0838258a",
+      "panel_fineweb.ids": "c1aa6d42aafe80d8607b2d1f19235eb1539ccd94997567c506ae68f330c06e6b",
+      "sft_human.jsonl": "4785e1494d34b81970d947e3488897afcdd36d19a8625b6670dfefcc69b42ecb",
+      "sft_human_long4.jsonl": "e03509467843d5fc55374917c30ab8da77b761c338f2370735d63920b4db02d8"
+    },
+    "raw_human_sources_verified": 13,
+    "reference_sha256": "acd00d74a93299aa0614f98233f837ef3dc30d38ce9120330e9f2f5c2b982cf4",
+    "verified": true,
+    "vocab_sha256": "0b880aa073a7e27c0770d5ecc5215b55d6d415080d20bd3dc7b169ecabadf198"
+  },
+  "detailed_lengths": {
+    "dropped": 53,
+    "eval_hits": 7,
+    "flagged": 1258
+  },
+  "diagnostic_source_sha256": "853896010b1a1e970790d1fff4871fe390071a38bfbf6cd65c7e0ef369282f39",
+  "files_or_job_states_modified": false,
+  "five_products": {
+    "mix_s35.ids": {
+      "bytes": 368128694,
+      "sha256": "01b9d364ba6547544ca787e6ea49aa877f5c6bb9621002607c21bdef183c4f94"
+    },
+    "panel_dialogue.ids": {
+      "bytes": 4101786,
+      "sha256": "7881aa1c196e30b692a18ba2704a49333a78d8ce059dedb98e794baa0838258a"
+    },
+    "panel_fineweb.ids": {
+      "bytes": 7947020,
+      "sha256": "c1aa6d42aafe80d8607b2d1f19235eb1539ccd94997567c506ae68f330c06e6b"
+    },
+    "sft_human.jsonl": {
+      "bytes": 23120799,
+      "sha256": "4785e1494d34b81970d947e3488897afcdd36d19a8625b6670dfefcc69b42ecb"
+    },
+    "sft_human_long4.jsonl": {
+      "bytes": 48809277,
+      "sha256": "e03509467843d5fc55374917c30ab8da77b761c338f2370735d63920b4db02d8"
+    }
+  },
+  "kind": "SUPPLEMENTAL_READ_ONLY_SUMMARY_SHAPE_DIAGNOSTIC_V2",
+  "only_source_change": {
+    "after": "if not isinstance(report.get(\"summary\"), dict) or normal(report[\"summary\"]) != normal(ref[\"steps\"][\"decontam\"]):",
+    "before": "if normal(report) != normal(ref[\"steps\"][\"decontam\"]):"
+  },
+  "original_gate_pass": false,
+  "original_verifier_sha256": "59c27187e31a282fa394ccab7730a13a4bc148b86c3ce251b26a0cd7db9f979b",
+  "raw_decontam_sha256": "0213ca6898f2589ac4b704b9240a70052ea5d522773f12ec65633de8cde936cf",
+  "raw_detailed_historical_byte_identity_claimed": false,
+  "raw_human_witness": {
+    "human_bst_v1/dialogues.jsonl": {
+      "actual_sha256": "e66aab659918d3cfe6b0828d05ddd1a7c790507b62737690e500814a2687f75f",
+      "expected_sha256": "e66aab659918d3cfe6b0828d05ddd1a7c790507b62737690e500814a2687f75f"
+    },
+    "human_convai2_v1/dialogues.jsonl": {
+      "actual_sha256": "804568a4d94c545bc57b867dc1084af44f2baf2e841f51a22bb7c1f16f248654",
+      "expected_sha256": "804568a4d94c545bc57b867dc1084af44f2baf2e841f51a22bb7c1f16f248654"
+    },
+    "human_dailydialog_v1/dialogues.jsonl": {
+      "actual_sha256": "c91228768e3d92876b81d132ac46ec5f0f21e7e870eea356b7f0670a1a766f6c",
+      "expected_sha256": "c91228768e3d92876b81d132ac46ec5f0f21e7e870eea356b7f0670a1a766f6c"
+    },
+    "human_dolly_v1/dialogues.jsonl": {
+      "actual_sha256": "f6a8e975ae5d4dc6262cef7ade3034f094d994d1853f1f36d77a102c858de274",
+      "expected_sha256": "f6a8e975ae5d4dc6262cef7ade3034f094d994d1853f1f36d77a102c858de274"
+    },
+    "human_empathetic_v1/dialogues.jsonl": {
+      "actual_sha256": "835f875a4771f89ee13b4056df8b22414a156e23f2267c9aad82b9810a1ef6c5",
+      "expected_sha256": "835f875a4771f89ee13b4056df8b22414a156e23f2267c9aad82b9810a1ef6c5"
+    },
+    "human_multiwoz_v1/dialogues.jsonl": {
+      "actual_sha256": "0984e5deeef4cd89efe9e32f433672864644ecfff9e6fa85840b27dc2cf0ea84",
+      "expected_sha256": "0984e5deeef4cd89efe9e32f433672864644ecfff9e6fa85840b27dc2cf0ea84"
+    },
+    "human_no_robots_v1/dialogues.jsonl": {
+      "actual_sha256": "2c6024c99e9e70ac2a5086397f15149cbeb6c4516e39c0a3ed37b9e297dfd53e",
+      "expected_sha256": "2c6024c99e9e70ac2a5086397f15149cbeb6c4516e39c0a3ed37b9e297dfd53e"
+    },
+    "human_oasst_v1/dialogues.jsonl": {
+      "actual_sha256": "7a2a9934e9acf73485ffae310e5b748643c34c34e1e9f3feac9c7fa9495ca14d",
+      "expected_sha256": "7a2a9934e9acf73485ffae310e5b748643c34c34e1e9f3feac9c7fa9495ca14d"
+    },
+    "human_quac_v1/dialogues.jsonl": {
+      "actual_sha256": "2476a642cdc2906deb5ff175dbbd9d186dd533d837ded26a65ec4ace22b043f7",
+      "expected_sha256": "2476a642cdc2906deb5ff175dbbd9d186dd533d837ded26a65ec4ace22b043f7"
+    },
+    "human_self_dialogue_v1/dialogues.jsonl": {
+      "actual_sha256": "2b2ba86a9aecab1d5ddebfbfcb970dca6efe7fdc40110dca899d88164037d498",
+      "expected_sha256": "2b2ba86a9aecab1d5ddebfbfcb970dca6efe7fdc40110dca899d88164037d498"
+    },
+    "human_taskmaster_v1/dialogues.jsonl": {
+      "actual_sha256": "c3253887c0448a688adf206360632cd0b5325d301c0120f30a0924112393abee",
+      "expected_sha256": "c3253887c0448a688adf206360632cd0b5325d301c0120f30a0924112393abee"
+    },
+    "human_topical_chat_v1/dialogues.jsonl": {
+      "actual_sha256": "ffc6fe455ca8ec386b40ce38b3d9fd78f9c15d967f66a97587fe83245021418a",
+      "expected_sha256": "ffc6fe455ca8ec386b40ce38b3d9fd78f9c15d967f66a97587fe83245021418a"
+    },
+    "human_wow_v1/dialogues.jsonl": {
+      "actual_sha256": "7a960abdcfe2cf75256f360986b77162b0e7a794ed81287009c5ca0d0aa2e350",
+      "expected_sha256": "7a960abdcfe2cf75256f360986b77162b0e7a794ed81287009c5ca0d0aa2e350"
+    }
+  },
+  "raw_report_keys": [
+    "dropped",
+    "eval_hits",
+    "flagged",
+    "summary"
+  ],
+  "source_commit": "f616a0f85447f95f67d0f9bdf6dfef513dc632a3",
+  "summary": {
+    "answer_flags": 1258,
+    "dropped_by_rule": {
+      "prompt": 53
+    },
+    "evals_hit": 7,
+    "input": "human_all.jsonl",
+    "rows_dropped": 53,
+    "rows_in": 170572,
+    "rows_kept": 170519,
+    "rules": {
+      "answer_kinds": [
+        "fact",
+        "science"
+      ],
+      "answer_window_words": 30,
+      "ngram": 13,
+      "prompt_min_words": 4,
+      "span_min_words": 8
+    }
+  }
+}

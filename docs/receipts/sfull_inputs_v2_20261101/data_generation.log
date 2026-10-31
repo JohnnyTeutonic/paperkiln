@@ -1,0 +1,31 @@
++ python3 corpus/fetchers/human_dialogue.py oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots --allow-sa --allow-nc --out-dir /content/chat/data/human
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+decontamination: frozen eval sets (carry5_v1 not used)
+human_oasst_v1: {'decontaminated': 8, 'kept': 5328, 'llm_tell': 50, 'not_english_or_not_ready': 8453, 'rows_in': 13854, 'too_short': 15, 'written': 5328}
+human_convai2_v1: {'decontaminated': 19, 'kept': 8951, 'member:./train_none_original_no_cands.txt': 1, 'perspective_duplicate': 8908, 'rows_in': 17878, 'written': 8951}
+human_wow_v1: {'decontaminated': 2, 'kept': 18428, 'leading_assistant_turns_trimmed': 9155, 'rows_in': 18430, 'written': 18428}
+human_bst_v1: {'kept': 4819, 'rows_in': 4819, 'turns_merged_same_speaker': 1, 'utterances_removed_empty_or_silence': 1, 'written': 4819}
+human_taskmaster_v1: {'decontaminated': 92, 'duplicate': 13, 'empty_turn': 4, 'held_out_split': 1540, 'kept': 28791, 'leading_assistant_turns_trimmed': 14903, 'multi_party': 13, 'rows_in': 54276, 'too_short': 66, 'turns_merged_same_speaker': 75843, 'unknown_speaker': 23757, 'utterances_removed_empty_or_silence': 66, 'written': 28791}
+human_multiwoz_v1: {'decontaminated': 132, 'duplicate': 13, 'kept': 8292, 'rows_in': 8437, 'written': 8292}
+human_self_dialogue_v1: {'duplicate': 22, 'empty_turn': 1, 'kept': 24133, 'rejected_or_blocked_worker': 84, 'rows_in': 24249, 'too_short': 9, 'written': 24133}
+human_topical_chat_v1: {'decontaminated': 23, 'kept': 8605, 'rows_in': 8628, 'written': 8605}
+human_dolly_v1: {'decontaminated': 2, 'duplicate': 17, 'kept': 14945, 'llm_tell': 47, 'rows_in': 15011, 'written': 14945}
+human_quac_v1: {'kept': 11567, 'qa_pairs_removed_cannotanswer': 14459, 'rows_in': 11567, 'written': 11567}
+human_empathetic_v1: {'kept': 17780, 'rows_in': 17844, 'too_short': 64, 'written': 17780}
+human_dailydialog_v1: {'decontaminated': 5, 'duplicate': 878, 'kept': 10235, 'rows_in': 11118, 'written': 10235}
+human_no_robots_v1: {'decontaminated': 2, 'kept': 8698, 'llm_tell': 5, 'non_alternating': 1, 'rows_in': 9500, 'system_instruction': 794, 'written': 8698}
++ /usr/bin/python3 tools/chat_data.py sft /content/chat/data/human_sft.jsonl --vocab /content/chat/upload/vocab_llama3_bpe.gguf --T 1024 --all-turns --out /content/chat/data/sft_raw.jsonl.tmp
+{"kept": 16932, "skipped": 0, "turns_kept": 92459, "turns_cut_over_T": 64, "dropped_over_T": 45, "dropped_dialogues_with_markers": 0, "out": "/content/chat/data/sft_raw.jsonl.tmp"}
++ /usr/bin/python3 tools/chat_data.py mix /content/chat/data/sft_raw.jsonl --seed 1 --out /content/chat/data/sft_human.jsonl.tmp
+{"examples": 16932, "by_source": {"sft_raw.jsonl": 16932}, "seed": 1, "out": "/content/chat/data/sft_human.jsonl.tmp"}
++ /usr/bin/python3 tools/chat_data.py mix /content/chat/data/sft_long_raw.jsonl --seed 1 --out /content/chat/data/sft_human_long4.jsonl.tmp
+{"examples": 28026, "by_source": {"sft_raw.jsonl": 28026}, "seed": 1, "out": "/content/chat/data/sft_human_long4.jsonl.tmp"}
++ /usr/bin/python3 tools/corpus_ids.py corpus/data/fineweb_edu_shard0_v1/val.txt /content/chat/upload/vocab_llama3_bpe.gguf /content/chat/data/panel_fineweb.ids.tmp --threads 6
+{"out": "/content/chat/data/panel_fineweb.ids.tmp", "tokens": 3973498, "width": 2, "vocab": 16384, "sha256": "c1aa6d42aafe80d8607b2d1f19235eb1539ccd94997567c506ae68f330c06e6b"}
++ /usr/bin/python3 tools/corpus_ids.py /content/chat/data/human_val.txt /content/chat/upload/vocab_llama3_bpe.gguf /content/chat/data/panel_dialogue.ids.tmp --threads 6
+{"out": "/content/chat/data/panel_dialogue.ids.tmp", "tokens": 2050881, "width": 2, "vocab": 16384, "sha256": "7881aa1c196e30b692a18ba2704a49333a78d8ce059dedb98e794baa0838258a"}
++ /usr/bin/python3 corpus/mix_pretrain.py /content/chat/data/mix_s35 --main fineweb=0.6500,dialogue=0.3500 --tail fineweb=0.6500,dialogue=0.3500 --tail-fraction 0 --total-bytes 800000000 --seed 1 --source fineweb=corpus/data/fineweb_edu_shard0_v1/pretrain_train.txt --source dialogue=/content/chat/data/human_pt_copies.txt
+{"main": {"bytes": 800003935, "documents": 380337}, "tail": {"bytes": 0, "documents": 0}}
++ /usr/bin/python3 tools/corpus_ids.py /content/chat/data/mix_s35.main.txt /content/chat/upload/vocab_llama3_bpe.gguf /content/chat/data/mix_s35.ids.tmp --threads 6
+{"out": "/content/chat/data/mix_s35.ids.tmp", "tokens": 184064335, "width": 2, "vocab": 16384, "sha256": "01b9d364ba6547544ca787e6ea49aa877f5c6bb9621002607c21bdef183c4f94"}
+{"mixes": {"s35": 35}, "human_pt_bytes": 149472768}

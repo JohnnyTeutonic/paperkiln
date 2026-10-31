@@ -1,0 +1,14 @@
+from pathlib import Path
+import json,hashlib,subprocess
+root=Path('/content/pk');path=root/'tools/colab_chat/sfull_verify_inputs.py';source=path.read_text()
+assert hashlib.sha256(path.read_bytes()).hexdigest()=='59c27187e31a282fa394ccab7730a13a4bc148b86c3ce251b26a0cd7db9f979b'
+assert subprocess.check_output(['git','-C',str(root),'rev-parse','HEAD'],text=True).strip()=='f616a0f85447f95f67d0f9bdf6dfef513dc632a3'
+old='if normal(report) != normal(ref["steps"]["decontam"]):'
+new='if not isinstance(report.get("summary"), dict) or normal(report["summary"]) != normal(ref["steps"]["decontam"]):'
+assert source.count(old)==1
+patched=source.replace(old,new);ns={'__name__':'diagnostic_v2','__file__':str(path)};exec(compile(patched,'diagnostic_summary_shape_v2','exec'),ns)
+data=Path('/content/chat/data');reference=root/'experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/data_reference.json'
+result=ns['verify'](data,reference)
+raw=data/'human_decontam.json';report=json.loads(raw.read_text());ref=json.loads(reference.read_text())
+witness={name:{'expected_sha256':expected,'actual_sha256':ns['sha'](data/'human'/name)} for name,expected in ref['human']['files'].items()}
+print(json.dumps({'kind':'SUPPLEMENTAL_READ_ONLY_SUMMARY_SHAPE_DIAGNOSTIC_V2','original_gate_pass':False,'source_commit':'f616a0f85447f95f67d0f9bdf6dfef513dc632a3','original_verifier_sha256':'59c27187e31a282fa394ccab7730a13a4bc148b86c3ce251b26a0cd7db9f979b','diagnostic_source_sha256':hashlib.sha256(patched.encode()).hexdigest(),'only_source_change':{'before':old,'after':new},'corrected_contract_result':result,'raw_decontam_sha256':ns['sha'](raw),'raw_report_keys':sorted(report),'summary':report['summary'],'detailed_lengths':{k:len(v) for k,v in report.items() if k!='summary'},'raw_human_witness':witness,'five_products':{name:{'sha256':ns['sha'](data/name),'bytes':(data/name).stat().st_size} for name in ref['outputs']},'raw_detailed_historical_byte_identity_claimed':False,'files_or_job_states_modified':False},sort_keys=True))

@@ -1,0 +1,10 @@
+{
+  "status": "INDEPENDENTLY_RECONSTRUCTED_EXACT_ONE_CONDITION_DIAGNOSTIC_SOURCE",
+  "V1_source_sha256": "59c27187e31a282fa394ccab7730a13a4bc148b86c3ce251b26a0cd7db9f979b",
+  "patched_source_sha256": "853896010b1a1e970790d1fff4871fe390071a38bfbf6cd65c7e0ef369282f39",
+  "matches_captured_VM_witness": true,
+  "rejected_V2_literal": "853896010b1a1e970790d1fff4871fe390071a38bfbf6cd655c7e0ef369282f39",
+  "literal_length": 65,
+  "expected_length": 64,
+  "data_status_or_source_modified": false
+}

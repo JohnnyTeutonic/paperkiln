@@ -1,0 +1,36 @@
+"""Read-only source contract reproduction with two synthetic dialogue rows."""
+from pathlib import Path
+import hashlib
+import importlib.util
+import json
+import tempfile
+
+ROOT=Path('/home/jonat/pk_sfull_data_gate_20261031')
+OUT=Path(__file__).parent
+
+def load(name,path):
+    spec=importlib.util.spec_from_file_location(name,path)
+    module=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+producer=load('frozen_decontam',ROOT/'corpus/decontam.py')
+verifier=load('frozen_verifier',ROOT/'tools/colab_chat/sfull_verify_inputs.py')
+
+class FakePatterns:
+    def check(self,users,text):
+        if 'drop this' in text:
+            return [{'rule':'prompt','eval':'synthetic:1','match':'drop this'}],[]
+        return [],[{'rule':'answer','eval':'synthetic:2','match':'keep this'}]
+
+with tempfile.TemporaryDirectory(prefix='sfull-decontam-contract-') as temp:
+    p=Path(temp);inp=p/'human_all.jsonl';kept=p/'human_clean.jsonl';report=p/'human_decontam.json'
+    inp.write_text(''.join(json.dumps({'messages':[{'role':'user','content':t}]})+'\n' for t in ['drop this','keep this']))
+    returned=producer.run(str(inp),str(kept),str(report),dc=FakePatterns())
+    detailed=json.loads(report.read_text())
+    assert detailed['summary']==returned
+    assert verifier.normal(detailed)!=verifier.normal(returned)
+    assert verifier.normal(detailed['summary'])==verifier.normal(returned)
+    result={'status':'PRODUCER_CONTRACT_BUG_REPRODUCED','synthetic_rows':2,'producer_return_type':'flat summary','report_keys':sorted(detailed),'v1_whole_container_comparison':False,'summary_comparison':True,'detailed_summary_equals_returned_ledger_value':True,'no_corpus_or_status_mutation':True,'source_sha256':{str(path.relative_to(ROOT)):hashlib.sha256(path.read_bytes()).hexdigest() for path in [ROOT/'corpus/decontam.py',ROOT/'tools/colab_chat/tiny_chat_data.py',ROOT/'tools/colab_chat/sfull_verify_inputs.py']},'scope':'Synthetic producer-contract reproduction only. Remote detailed report bytes and runtime checks were not independently fetched by this script. V1 remains failed; proposed versioned correction does not waive any earlier check or historical scientific gate.'}
+    (OUT/'review.json').write_text(json.dumps(result,indent=2)+'\n')
+    print(json.dumps(result,indent=2))

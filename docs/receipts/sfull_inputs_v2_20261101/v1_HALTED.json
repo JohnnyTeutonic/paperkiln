@@ -1,0 +1,8 @@
+{
+  "status": "HALTED_REVIEW_REQUIRED",
+  "error_type": "ValueError",
+  "phase": "relay_verification",
+  "errno": null,
+  "manifest_sha256": "3640b1595afb5847e66081b7a6fc10766caed7c4fa5b9cb61b2e3957fb1b4ea9",
+  "no_data_policy_waiver": true
+}

@@ -1,0 +1,21 @@
+{
+  "status": "PRODUCER_CONTRACT_BUG_REPRODUCED",
+  "synthetic_rows": 2,
+  "producer_return_type": "flat summary",
+  "report_keys": [
+    "dropped",
+    "eval_hits",
+    "flagged",
+    "summary"
+  ],
+  "v1_whole_container_comparison": false,
+  "summary_comparison": true,
+  "detailed_summary_equals_returned_ledger_value": true,
+  "no_corpus_or_status_mutation": true,
+  "source_sha256": {
+    "corpus/decontam.py": "a6819e5fae82b499bcb2b914e61b4ad078953dd2ba7b8154f80b40ba5ed4471c",
+    "tools/colab_chat/tiny_chat_data.py": "48df84d69ef7e309b3eee1701653584625a426bca0ea6a0b214cba82d2eef465",
+    "tools/colab_chat/sfull_verify_inputs.py": "59c27187e31a282fa394ccab7730a13a4bc148b86c3ce251b26a0cd7db9f979b"
+  },
+  "scope": "Synthetic producer-contract reproduction only. Remote detailed report bytes and runtime checks were not independently fetched by this script. V1 remains failed; proposed versioned correction does not waive any earlier check or historical scientific gate."
+}
