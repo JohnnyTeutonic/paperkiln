@@ -51,7 +51,7 @@ that cannot fail the build.
   Remaining preference execution is listed in section 1; completed corpus, verifier, SFT, GRPO,
   DPO, byte-BPE and chat-model milestones are recorded in CHANGELOG and the charter.
   Other open follow-ups whose completion is not established here:
-  - the remaining per-token host work (zero-filled Matrix construction in the profile);
+  - remaining per-token host work needs a current representative profile. CUDA/device-op outputs already avoid host zero-fill (20 Oct); a bounded tiny CPU teacher-forced score audit found no justified zero-fill change and does not close the historical CUDA follow-up (`docs/receipts/host_matrix_cpu_audit_20261031/validation.json`).
 
 - **Scale ladder, depth rung.** d=256, 4 layers, exact against SWA, as its
   own pre-registration. Deep SWA is built and gated.

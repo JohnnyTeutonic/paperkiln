@@ -1,5 +1,7 @@
 # Changelog
 
+- Audited remaining host Matrix work with current tiny CPU scoring: no production optimization justified; existing CUDA zero-fill avoidance distinguished from the still-open historical CUDA follow-up. Source, profiler and raw-report evidence: `docs/receipts/host_matrix_cpu_audit_20261031/validation.json`.
+
 ## Existing Flex compatibility work integrated (31 October 2026)
 
 Validated the preserved workspace implementation of exact GELU, tied Flex heads
