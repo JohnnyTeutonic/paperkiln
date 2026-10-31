@@ -31,7 +31,9 @@ where one of those documents carries a plan, this file wins.*
    `C:/ml_artifacts/pref_full/sample/`).   The CLI pilot cache remains historical evidence; its hidden settings are not assumed equivalent
    to the validated API profile. The Anthropic API transport is now validated with exact model,
    rubric and request provenance, independent cache identity and durable cost reservations.
-   The first fail-stop full API phase halted on an unknown network-unreachable dispatch. Its state is preserved; a separately reviewed continuation must retain the unknown ceiling and count the interrupted attempt under the unchanged $200 cumulative cap,
+   Both reviewed full API phases halted on unknown network-unreachable dispatches.
+   Successful rankings and unknown ceilings remain recorded; network diagnostics
+   must precede further reviewed execution under the unchanged $200 cumulative cap,
    including legacy spend, retained unknown-call ceilings and $25 reserved for the held-out gate.
    See `experiments/chat_general/receipts/anthropic_api_20261031/full_campaign_protocol.json`.
    DPO + NLL and the fixed five-part gate remain after complete judging. Completion is not
@@ -170,8 +172,11 @@ that cannot fail the build.
   correctness results, not full Mamba1 training quality or throughput claims.
   Two tiny composed Mamba1 CPU training/save/reload/export cases also pass independent
   NumPy/Ember full-logit and argmax checks (`docs/receipts/mamba1_composed_20261031/`);
-  all-parameter composed CPU derivatives also pass independent binary64 finite differences.
-  The actual composed CUDA model gate and residency validation remain open.
+  all-parameter composed CPU and actual-L4 derivatives also pass independent binary64
+  finite differences and required core-op profile counts
+  (`docs/receipts/mamba1_composed_cuda_20261031/`). The fixed tiny graph derivative
+  milestone leaves this list. Actual CLI CUDA lifecycle, residency, parallel-time
+  scan and end-to-end speed remain separate.
 - **int4/NF4 quantisation.**
 - **HF export for modified flex flavours and unmapped GPT2 variants; quantised GGUFs outside the llama family.** Strictly plain GPT2- and Llama-flavour Flex now have verified HF mappings for separate or explicitly tied token/output heads (arbitrary depth/MLP width); those completed subsets leave this list. Actual saved/reloaded Transformers CPU parity is recorded in docs/receipts/hf_tied_flex_20261031/. Plain GPT2 Flex additionally supports explicitly recorded exact-erf GELU (HF gelu), tied or untied, with evidence in docs/receipts/hf_exact_gelu_20261031/. Plain GPT2 Flex ReLU also passes finite-execution HF CPU parity for tied/untied heads, with documented NaN/negative-zero differences (docs/receipts/hf_relu_flex_20261031/). Other modified flavours remain open. Every mtstudio family now exports F32 GGUF with its IR
   (`include/microtorch/ir.hpp`, Families): gpt2 and flex with the GPT-2
