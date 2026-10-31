@@ -12,7 +12,15 @@ replay = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(replay)
 # Pass a receipt argument so tests bind to the actual produced fixture, not an invented expected row.
 
-RAW = Path(os.environ.get("SELECTIVE_SCAN_RAW", "/home/jonat/pk_mamba_scan_cpu.jsonl"))
+RAW = Path(
+    os.environ.get(
+        "SELECTIVE_SCAN_RAW",
+        str(
+            Path(__file__).parents[1]
+            / "docs/receipts/selective_scan_20261031/cpu.jsonl"
+        ),
+    )
+)
 
 
 class Contracts(unittest.TestCase):
