@@ -1,0 +1,21 @@
+{
+  "pass": true,
+  "source_commit": "226c5bbe2677ee66edb8d12b80f51ba2da684859",
+  "archive_sha256": "5e9a4236143a20f0ef3ec97884448d912af125eedb9ef0b12cfc389da0a12335",
+  "command": [
+    "cmake",
+    "-S",
+    "/home/jonat/grpo_archive_preflight_source_20261031",
+    "-B",
+    "/home/jonat/grpo_archive_preflight_build_20261031",
+    "-DMICROTORCH_CUDA=OFF",
+    "-DMICROTORCH_DEVCHECK=ON",
+    "-DMICROTORCH_BUILD_PYTHON=OFF"
+  ],
+  "returncode": 0,
+  "studio_in_exact_archive": true,
+  "generated_Makefile": true,
+  "configure_log": "-- The CXX compiler identification is GNU 13.3.0\n-- Detecting CXX compiler ABI info\n-- Detecting CXX compiler ABI info - done\n-- Check for working CXX compiler: /usr/bin/c++ - skipped\n-- Detecting CXX compile features\n-- Detecting CXX compile features - done\n-- transformer_core from: /home/jonat/grpo_archive_preflight_source_20261031/third_party/transformer_cpp\n-- CUDA disabled - CPU-only build\n-- Performing Test CMAKE_HAVE_LIBC_PTHREAD\n-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success\n-- Found Threads: TRUE  \n-- OpenSSL found: 3.0.13\nCMake Deprecation Warning at /home/jonat/grpo_archive_preflight_build_20261031/_deps/json-src/CMakeLists.txt:1 (cmake_minimum_required):\n  Compatibility with CMake < 3.5 will be removed from a future version of\n  CMake.\n\n  Update the VERSION argument <min> value or use a ...<max> suffix to tell\n  CMake that the project does not need compatibility with older versions.\n\n\n-- Using the multi-header code from /home/jonat/grpo_archive_preflight_build_20261031/_deps/json-src/include/\n-- Found OpenMP_CXX: -fopenmp (found version \"4.5\") \n-- Found OpenMP: TRUE (found version \"4.5\")  \n-- OpenMP enabled for optimized matmul\n-- GCC/Clang optimizations enabled: -O3 -march=native\n-- \n-- ================================\n-- CPU-Only Build:\n--   - Core transformer (no GPU)\n-- ================================\n-- \n-- Configuring done (4.9s)\n-- Generating done (0.1s)\n-- Build files have been written to: /home/jonat/grpo_archive_preflight_build_20261031\n",
+  "configure_log_sha256": "befcf06365d90591da761af163fa38dfc9a54844cf16c4368d23a3e99a47cd01",
+  "cuda_executed": false
+}

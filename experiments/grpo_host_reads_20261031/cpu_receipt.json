@@ -1,0 +1,32 @@
+{
+  "source_commit": "226c5bbe2677ee66edb8d12b80f51ba2da684859",
+  "base_commit": "6744b8c3f",
+  "scope": "two real CLI helper materialization boundaries; arithmetic and RNG unchanged",
+  "cpu_test_pass": true,
+  "cpu_stdout": "{\"pass\":true,\"case\":\"all\",\"actual_cuda\":false,\"devcheck_enabled\":true,\"no_grad_context\":true,\"cpu_reference\":true,\"stale_producer\":false,\"host_poison\":false,\"sampler_ids_logp_rng\":true,\"all_softmax_rows\":true}\n",
+  "cpu_stderr": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\n",
+  "strict_cpu_refusal_exit": 2,
+  "strict_cpu_refusal_stderr": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\nrequires actual CUDA and DEVCHECK\n",
+  "test_source_sha256": "e413b8db4f02889f20d87a4e8a2fd2bb23847078447570390715f1c9ca989d1c",
+  "fixed_mtstudio_sha256": "c50b8cfb86fcd88f8f2ee06c56e824e3ca7e82ea009f04740962b8a7eb6200ef",
+  "test_binary_sha256": "ff87b00497230a2cfa60d4f4043aedbfd696a8e12bff1c93c824c1b4ffcb9205",
+  "standalone_compile_flags": [
+    "-std=c++17",
+    "-O0",
+    "-g0",
+    "-ffp-contract=off",
+    "-DMICROTORCH_DEVCHECK",
+    "-fopenmp",
+    "-lpthread"
+  ],
+  "full_fresh_cmake_build": false,
+  "read_only_unchanged_library_reuse": true,
+  "library_directory": "/home/jonat/pk_publication_build_20261030",
+  "library_sha256": {
+    "libmicrotorch.a": "fa982e01c181e3e7e9e2350b10badea8b7713a3057f335881426afeaea4d607a",
+    "transformer_cpp/libtransformer_core.a": "6ac8350f92ead2633b934e352ade2d9db90563565670822342cd1515da114cc1"
+  },
+  "gpu_executed": false,
+  "format": "clang-format before freeze",
+  "offline_gate_tests": 6
+}
