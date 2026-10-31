@@ -1,0 +1,83 @@
+{
+  "pass": true,
+  "status": "READY_FOR_ROOT_SERIAL_ADMISSION_ONLY",
+  "manifest_sha256": "56fa371cf4d516001b812a3c6024548844a4cde3449297b34dca48213b5c0f38",
+  "source_commit": "3dc1e68b2af8ae80c5cbaa02b29289eb43a48710",
+  "source_inventory": 964,
+  "all_packet_hashes_and_git_binding": true,
+  "changed_source_files_from_v1": [
+    "tests/test_policy_reference_replay.py",
+    "tools/replay_policy_reference.py"
+  ],
+  "production_source_unchanged_from_v1": true,
+  "oracle_arithmetic_unchanged": true,
+  "wrapper_unchanged": true,
+  "protocol_delta": {
+    "version": {
+      "before": null,
+      "after": "v2"
+    },
+    "pre_outcome_revision": {
+      "before": null,
+      "after": "Reject every negative or noninteger profile counter before GEMM aggregation; V1 retained unchanged/unlaunched. Production, fixtures and all numeric bounds unchanged."
+    },
+    "CPU_validation": {
+      "before": {
+        "cases": 6,
+        "gradient_elements": 36,
+        "maximum_loss_and_gradient_error": 0.0,
+        "optimized_parser_tests": 50,
+        "actual_cuda": false
+      },
+      "after": {
+        "cases": 6,
+        "gradient_elements": 36,
+        "maximum_loss_and_gradient_error": 0.0,
+        "optimized_parser_tests": 63,
+        "actual_cuda": false
+      }
+    }
+  },
+  "negative_profile_mutant_refusals": [
+    {
+      "variant": "old",
+      "case": "mixed",
+      "refusal": "nonnegative integer profile counters"
+    },
+    {
+      "variant": "old",
+      "case": "policy_only",
+      "refusal": "nonnegative integer profile counters"
+    },
+    {
+      "variant": "old",
+      "case": "kl_only",
+      "refusal": "nonnegative integer profile counters"
+    },
+    {
+      "variant": "fixed",
+      "case": "mixed",
+      "refusal": "nonnegative integer profile counters"
+    },
+    {
+      "variant": "fixed",
+      "case": "policy_only",
+      "refusal": "nonnegative integer profile counters"
+    },
+    {
+      "variant": "fixed",
+      "case": "kl_only",
+      "refusal": "nonnegative integer profile counters"
+    }
+  ],
+  "optimized_tests": 63,
+  "limits_unchanged": {
+    "max_usd": 0.75,
+    "max_hours": 0.6,
+    "gate_seconds": 1500,
+    "gpus": 1,
+    "gpu": "NVIDIA L4"
+  },
+  "cuda_execution": false,
+  "provider_actions": false
+}
