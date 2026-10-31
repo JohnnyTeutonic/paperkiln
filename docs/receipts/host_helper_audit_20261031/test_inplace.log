@@ -1,0 +1,9 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+  [inplace] relu_: FD dA 2.652e-06  dW 2.339e-06
+  [inplace] relu_: parity loss 0.000e+00 grads 0.000e+00
+  [inplace] sigmoid_: FD dA 1.072e-06  dW 1.197e-06
+  [inplace] sigmoid_: parity loss 0.000e+00 grads 0.000e+00
+  [inplace] scale_: FD dA 3.908e-06  dW 3.745e-06
+  [inplace] scale_: parity loss 0.000e+00 grads 0.000e+00
+  [inplace] chain tape nodes: 3 out-of-place -> 1 in-place
+[PASS] all in-place tests
