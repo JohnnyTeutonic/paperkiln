@@ -1,0 +1,19 @@
+{
+  "status": "PREPARED_NOT_PAID_LAUNCH_READY",
+  "provider_calls": 0,
+  "credential_accessor_calls": 0,
+  "gpu_jobs_launched": 0,
+  "activation": false,
+  "test_exit_code": 0,
+  "test_summary": "168 passed in 16.02s",
+  "test_log_sha256": "fcef6522d55be08f659cd2de5c67b5a7c3fa101e14bdbcf2b39fe8f8c40914da",
+  "source_freeze_sha256": "e7025892454457468333337f6b0cf90115c661cb7e3ef209f22843e93ddbf7cb",
+  "input_pins_sha256": "31561ba4d467eb481dcaf82ce0cd9a5c6216112d67c8ba8491be6ae56b85e0f2",
+  "remaining_contracts": [
+    "Eligible rankings complete and immutable dataset materialized",
+    "Root prospective held-out adoption",
+    "Final source/archive/input/weight/pair admission",
+    "Held-out sampling own durable resume contract",
+    "Root paid GPU admission and serial watchdog activation"
+  ]
+}
