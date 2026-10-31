@@ -1,3 +1,4 @@
+#include "microtorch/dpo_checkpoint_bridge_v1.hpp"
 // mtstudio — the run-spec driver (STUDIO_PLAN.md M1).
 //
 //   mtstudio run spec.json          execute the spec
@@ -2386,6 +2387,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         throw std::runtime_error("spec needs data.vocab, and data.corpus for objective lm");
 
     std::filesystem::create_directories(s.out_dir);
+    dpo_checkpoint_v1::invoke("prepare", s.out_dir, 0, s.seed, s.batch, s.accum, spec_path);
     // Resuming = a checkpoint step > 0 in state.txt. A resumed run keeps the
     // RoPE coverage it was trained with (resolve_rope_heads).
     int ckpt_step = 0;
@@ -2956,6 +2958,9 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         st << step << "\n";
         st << json({{"best_val", best_val}, {"evals_flat", evals_flat}, {"adamw_t", ts}}).dump()
            << "\n";
+        st.close();
+        if (!st) throw std::runtime_error("DPO checkpoint state close failed");
+        dpo_checkpoint_v1::invoke("publish", s.out_dir, step, s.seed, s.batch, s.accum);
     };
 
     // grpo: the frozen reference (train.init_from) for the KL term.
