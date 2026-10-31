@@ -1,0 +1,20 @@
+{
+  "max_parallel": 1,
+  "jobs": [
+    {
+      "name": "flex_cli_lifecycle",
+      "cmd": [
+        "python3",
+        "-c",
+        "import pathlib,subprocess,sys,json\nout=pathlib.Path(sys.argv[1])\ncmd=['timeout','--signal=TERM','--kill-after=30','1860','python3','/content/chat/upload/flex_cli_lifecycle_vm.py','--upload','/content/chat/upload','--manifest-sha256','d7eafcbb7d6a7ad902a8a6cc15ec61200183125df4ca1f02578ed2425dba379f','--out',str(out)]\np=subprocess.run(cmd)\nout.mkdir(parents=True,exist_ok=True)\n(out/'transport_exit.json').write_text(json.dumps({'science_returncode':p.returncode,'transport_only':True})+chr(10))\nsys.exit(0 if all((out/n).is_file() for n in ['summary.json','out.zip','transport_exit.json']) else 1)\n",
+        "{out}"
+      ],
+      "outputs": [
+        "summary.json",
+        "out.zip",
+        "transport_exit.json"
+      ]
+    }
+  ],
+  "_comment": "One frozen engineering attempt. Transport relays scientific negative/incomplete evidence without promoting it to a pass."
+}
