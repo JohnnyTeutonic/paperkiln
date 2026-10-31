@@ -1,0 +1,25 @@
+diff --git a/include/microtorch/ops.hpp b/include/microtorch/ops.hpp
+index d4f6a7895..aa045d36a 100644
+--- a/include/microtorch/ops.hpp
++++ b/include/microtorch/ops.hpp
+@@ -228,6 +228,7 @@ Var ternary_ste(const Var& w);
+ Var act_quant_ste(const Var& x, int bits = 8);
+ // The values alone (no tape), for export and tests: the ternary codes in
+ // {-1, 0, 1} and the scale s, so ternary_ste(W) = codes / s.
++// Materializes a deferred device value before the scalar host reduction.
+ float ternary_scale(const Matrix& w);  // s above
+ // RoPE pairing (keramos IR_SPEC 5.14): Interleaved rotates adjacent pairs
+ // (x[2j], x[2j+1]) within a head (paperkiln's own models, llama.cpp NORM);
+diff --git a/src/ops.cpp b/src/ops.cpp
+index e17237e26..2affef403 100644
+--- a/src/ops.cpp
++++ b/src/ops.cpp
+@@ -1189,6 +1189,8 @@ Var rmsnorm(const Var& x, const Var& w) {
+ 
+ // ---- quantisation-aware training (ops.hpp: BitNet b1.58's fake quantisers) ----
+ float ternary_scale(const Matrix& w) {
++    device::materialize(w);
++    MT_DEVCHECK_HOST_READ(w, "ternary_scale input");
+     double acc = 0.0;
+     const size_t n = w.rows() * w.cols();
+     const float* p = w.get_data();
