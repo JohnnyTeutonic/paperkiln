@@ -1,0 +1,5 @@
+{
+  "status": "OFFLINE_PREFLIGHT_CHECK_CORRECTED_BEFORE_REVIEW",
+  "first_attempt": "Expected parsed deadline as ISO string; real argparse parse_deadline_utc returns Unix timestamp. Preflight comparison raised ValueError before jobs manager or any network/GPU action.",
+  "correction": "Compare to exact datetime UTC timestamp. Driver argv, guard, scientific source and thresholds unchanged. Fresh preflight then passed."
+}
