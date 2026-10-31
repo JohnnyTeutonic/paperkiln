@@ -1,0 +1,9 @@
+{
+  "pass": true,
+  "actual_cuda": false,
+  "cases": 7,
+  "independent_replay": true,
+  "old_numeric_failure_verified": false,
+  "worst_abs_error": 3.3113691511044152e-09,
+  "bound": 2e-05
+}
