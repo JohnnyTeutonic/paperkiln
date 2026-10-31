@@ -405,6 +405,12 @@ Var layernorm(const Var& x, const Var& gamma, const Var& beta, float eps) {
     // host exactly as the CPU loop leaves them (write-through), so the
     // backward below is device/CPU agnostic.
     if (!device::devops::layernorm_fwd(x->data, gamma->data, beta->data, eps, out, *xhat, *rstd)) {
+        device::materialize(x->data);
+        device::materialize(gamma->data);
+        device::materialize(beta->data);
+        MT_DEVCHECK_HOST_READ(x->data, "layernorm fallback x");
+        MT_DEVCHECK_HOST_READ(gamma->data, "layernorm fallback gamma");
+        MT_DEVCHECK_HOST_READ(beta->data, "layernorm fallback beta");
         // Acquire checked HOST-storage pointers once, not Matrix::data() (the
         // vendored CUDA Matrix may expose a device pointer there). Arithmetic
         // and reduction order are unchanged; an empty loop acquires no pointer.
@@ -448,6 +454,11 @@ Var layernorm(const Var& x, const Var& gamma, const Var& beta, float eps) {
         if (!on_dev) {
             device::materialize(self->grad);  // B2.3c: host-read below
             device::materialize(*xhat);       // the forward may have deferred it
+            if (x->requires_grad) device::materialize(g->data);
+            MT_DEVCHECK_HOST_READ(self->grad, "layernorm fallback dY");
+            MT_DEVCHECK_HOST_READ(*xhat, "layernorm fallback xhat");
+            if (x->requires_grad)
+                MT_DEVCHECK_HOST_READ(g->data, "layernorm fallback backward gamma");
             // Keep malformed gradients a checked refusal, never an unchecked
             // access through the contiguous host pointers below.
             if (R != xhat->rows() || C != xhat->cols() || g->data.rows() != 1 ||

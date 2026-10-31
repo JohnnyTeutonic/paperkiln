@@ -1,0 +1,27 @@
+{
+ "scope": "CPU-only DEVCHECK Release new four-case reference and existing host LayerNorm regression; no local GPU",
+ "base": "d960e78bc",
+ "source_sha256": {
+  "src/ops.cpp": "94e4d38b17066362dc9e40d7ea64705ccb3834b89034756f3d929453236dd81a",
+  "tests/test_layernorm_materialization.cpp": "e13d9a0cc7e8013ed908db448327dcb2e71d3abf6d050764488dbf94ea251535",
+  "CMakeLists.txt": "217b24c7e3278d723b98e0aa59ce982eac72ea66abeddbd257f33a0bb9f76550"
+ },
+ "cpu_cases": [
+  "forward_x",
+  "forward_gamma",
+  "forward_beta",
+  "backward_gamma"
+ ],
+ "cpu_case_result": "PASS",
+ "existing_host_result": "PASS empty/refusal, malformed gradients, parameter aliases, scalar gradient",
+ "require_cuda_cpu_exit_code": 2,
+ "reference": "Independent binary64 normalization and weighted-loss derivative with nonconstant gamma, beta and upstream; float-cast inputs",
+ "test_log": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\n{\"pass\":true,\"case\":\"forward_x\",\"cuda_integration\":false,\"forward_backward_reference\":true}\n{\"pass\":true,\"case\":\"forward_gamma\",\"cuda_integration\":false,\"forward_backward_reference\":true}\n{\"pass\":true,\"case\":\"forward_beta\",\"cuda_integration\":false,\"forward_backward_reference\":true}\n{\"pass\":true,\"case\":\"backward_gamma\",\"cuda_integration\":false,\"forward_backward_reference\":true}\n{\"pass\":true,\"cuda_integration\":false,\"devcheck_enabled\":true,\"cases\":4}\n[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\nPASS host LayerNorm empty/refusal, malformed gradients, parameter aliases, scalar gradient\n",
+ "cpu_refusal_log": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\nrequires actual CUDA plus DEVCHECK build\n",
+ "offline_harness_tests": {
+  "pass": true,
+  "tests": 4,
+  "includes": "Actual compiled CHECK producer for distinct registered forward and dx predicates; wrong assertion/rc/CPU/stage rejected"
+ },
+ "performance": "Not retimed; historical pointer-optimization timing remains bound to1b0102709/d960e78bc, not this added-coherence binary."
+}
