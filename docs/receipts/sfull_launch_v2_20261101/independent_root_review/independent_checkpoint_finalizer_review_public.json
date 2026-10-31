@@ -1,0 +1,56 @@
+{
+  "status": "INDEPENDENT_SOURCE_AND_CPU_REVIEW_PASS_NO_LAUNCH",
+  "reviewed_control_commit": "1af22cfd66f95cd40dcd98cf4ffae57cb3de4c61",
+  "reviewed_numeric_commit": "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1",
+  "checkpoint_tests": {
+    "passed": 43,
+    "seconds": 2.77
+  },
+  "focused_finalizer_tests": {
+    "passed": 22,
+    "seconds": 0.47
+  },
+  "actual_CPU_continuity": {
+    "objectives": [
+      "lm",
+      "sft"
+    ],
+    "checkpoint_interval": 2,
+    "intentional_stop_step": 4,
+    "final_step": 8,
+    "final_weights_optimizer_state_byte_identical": true,
+    "complete_events_manifest_hashes_verified": true,
+    "binary_and_publisher_snapshot_hashes_verified": true
+  },
+  "source_freeze": {
+    "local_anchor_count": 37,
+    "all_match": true,
+    "numeric_remote_anchor_count": 19,
+    "control_remote_anchor_count": 12,
+    "exact_depth1_fetch_and_sparse_checkout_verified": true
+  },
+  "operational_contracts_verified": [
+    "Fsynced complete weights/optimizer/state/events and manifest before atomic CURRENT replacement",
+    "INFLIGHT preserves immutable transfer generation while CURRENT advances",
+    "Remote newer complete checkpoint takes precedence over older home generation",
+    "Missing, mixed and cold optimizer resume rejected",
+    "Remote independent2second monitor checks persistent-volume CURRENT advancement against180second gap",
+    "Existing normal RunPod transfer subprocess loop enforces ledger/deadline every2seconds and kills owned transfer before runner cleanup",
+    "Finalizer exact runtime specs, missing-spec pending state and source freeze retained; original scientific calculations delegated unchanged"
+  ],
+  "preserved_review_issue": {
+    "kind": "AUDITOR_ROLE_MAPPING_ERROR",
+    "detail": "Initial reviewer assigned five host-only delegated finalizer/proof files to historical numerical checkout. Separate corrected receipt verifies their frozen absolute local files and applicable numeric/control remote paths; no source or science change."
+  },
+  "limitations": [
+    "Tiny CPU continuity does not establish production25step CUDA checkpoint cadence or performance",
+    "180seconds applies to committed persistent-volume checkpoint gap, not completed home transfer cadence",
+    "Full home relay can lag on large bundles; one canonical artifact home retained",
+    "No clean historical parity claim; six historical near-tie disagreements remain qualified",
+    "Seed2and3 need separate predecessor HOME and budget admission"
+  ],
+  "source_or_provider_changes_by_reviewer": false,
+  "receipt_binding": {
+    "independent_remote_reachability_v2.json": "2051f3cc301dbb8acd45314030e9aa29ff94bd3b834b6e731be1f00fd7bdb59b"
+  }
+}

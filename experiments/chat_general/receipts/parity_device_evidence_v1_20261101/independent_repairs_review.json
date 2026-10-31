@@ -1,0 +1,60 @@
+{
+  "status": "PASS_REPAIRS_INDEPENDENTLY_REVIEWED_NO_NEW_BLOCKER",
+  "reviewed_commits": [
+    "c37532f04fa39f6358c49c9d0209eb9fdfd11432",
+    "77f00b6815eb6eaafb9e3ab6efc93f385111d069",
+    "d47ed2931615a054c5cbaaceaad97177a5f93ec9"
+  ],
+  "source_sha256": {
+    "tools/posttrain/heldout_sampling_journal_v1.py": "31c213efe464d51328542622c910b8f2b02bc8279ef459a142a02737322d3e93",
+    "tools/posttrain/heldout_sample_vm_v1.py": "afa8afdc161c84ffe82f81014554e8db9797f4462e6155a3d9e3d6c123a67def",
+    "tools/posttrain/heldout_sampling_receipt_v1.py": "27d1b9601bf1c691abad451a08502c415da76f7c548d9999c960c711fc30db5b",
+    "tools/posttrain/heldout_gate_runner_v1.py": "1747487f4d17885120728469b1670218447288983f2809dcc17f281db7d3fbee",
+    "tools/posttrain/assess_preference_gates_v1.py": "44bc8479570cfab199895e4c0519c0265716f225022358d5fbccce03633e9d18",
+    "tools/posttrain/parity_device_evidence_v1.py": "493415f3d0c2f67812bd88c4e1526b1cb0fe720308b1bb160069eb97d1ee92ff",
+    "tools/colab_chat/chat_parity_vm.py": "fe289f1ae87be4d8a53e6a728c3ce15692bfabf6a2d1a4f6378d690995bd2451",
+    "tools/posttrain/test_heldout_sampling_journal_v1.py": "02c14aa4584799234e99edb57e1c2d5571e9a3f3bc0405974ecf3b57d1431962",
+    "tools/posttrain/test_assess_preference_gates_v1.py": "3effeaf483cec9a51d41cdd2b8fa4d63b6935d65c0fe6152c09248a2cb6a50ca",
+    "tools/posttrain/test_parity_device_evidence_v1.py": "63fb1b5c11b7687b13c7b8f32948b36ee91aa8e9738eb6ed026d1404d08da789"
+  },
+  "independent_tests": {
+    "passed": 65,
+    "seconds": 12.96,
+    "scope": [
+      "heldout sampling journal",
+      "assessor coverage",
+      "source-bound device evidence"
+    ],
+    "exact_frozen_worktree_clean_before_and_after": true,
+    "cpu_budget_cores": 1
+  },
+  "prior_findings": {
+    "PARITY_REGISTERED_COVERAGE": "RESOLVED: exact40 i/order/prompt strings and shared reference correspondence checked before aggregation; duplicate/substituted/incomplete raw evidence rejected.",
+    "PARITY_ACTUAL_BACKEND": "RESOLVED prospectively: common aa50 actualsource/binary/CUDAbuildproof plus source-bound native orIR device logs. No nonexistent health fields added."
+  },
+  "journal_contract_verified": [
+    "Header binds original item universe, context eligibility, both model hashes, Ember source, training binding and sampler/capture/journal source hashes.",
+    "Every actual request intent is hash-chained and fsynced before dispatch; result and disposition independently fsynced. Completed request bodies replay from stored results, preserving original global seed71+index and model order.",
+    "Unknown pending request prevents any new sampling dispatch and requires explicit review; torn/noncanonical/corrupt chains rejected, no outcome guessing or retry.",
+    "Both remote and home journals parsed before choosing maximal matching byte prefix; newer valid remote retained, newer complete home restored atomically; divergent and torn evidence preserved for review.",
+    "Completed original300 item dispositions and raw call sequence are re-derived by frozen sampling replay; no refill for over-context/identical/invalidUTF8 cases.",
+    "Final outputs atomically published and idempotent only for identical bytes; mismatched existing files refused.",
+    "HTTPcall timeout170seconds, fsynced result per completed call; process termination before result leaves durable intent and explicit unknown halt."
+  ],
+  "device_contract_verified": [
+    "Native effective layer count alone cannot creditCUDA; require reviewed HAS_CUDA binary/source identity, actual CUDA initialization, cuBLAS success and F32 weight loading with no fallback marker.",
+    "CPU native leg requires all layersCPU, zeroGPU and explicit GPU initialization skip.",
+    "IR route uses actual ir_->on_gpu() log; CUDA additionally requires positive allocatedweights and exactlayerKVslot count; CPU rejects deviceKVallocation.",
+    "Generator hashes identical binary before/after both legs, startup logs and exact reviewed source files; assessor replays log route and matches recorded hashes."
+  ],
+  "scope_limits": [
+    "No actual heldout sampling or new parity model run performed by reviewer; tests use source-bound offline fixtures.",
+    "DPO complete optimizer/state relay and final launch transport remain root-reviewed separate work, outside this acceptance.",
+    "LiveV8 protocol/admission preparations not reviewed as frozen commits; execution still requires new exact root source/data/policy/budget admission.",
+    "Completion journal is durable on retained physical volume; physical-volume-loss safety requires separately bound home journal transport."
+  ],
+  "provider_calls": 0,
+  "gpu_actions": 0,
+  "source_or_config_edits": false,
+  "account_or_credential_data_included": false
+}

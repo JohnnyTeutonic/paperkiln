@@ -1,0 +1,22 @@
+{
+  "event": "retain_unknown_ceiling",
+  "id": "9ec8e16cff374d32811248dc4ca16140",
+  "ceiling_usd": 0.25,
+  "reservation_sha256": "999b6abcdf88ee8b8442a1bcafaf04ea967ddc452b61a23fda404ec9bede969a",
+  "raw_request_sha256": "75b499719e2cc99b017446975ce3c721ecc42f3451b8c04172ff68f30f4d2c6b",
+  "error_sha256": "236d09b87031b783ee92064d3d8d14eb5ae0d39c13e435969828fe0d03c52c68",
+  "error_type": "URLError",
+  "authorization_sha256": "675f39abddd4a55b3a01088de7a924e4687d7b1a88e5ee711ba355d987393b69",
+  "authorization": {
+    "binding_sha256": "d36e10fd0d5708fd937d52857188de442f99ed8938a31e48a51497c2227bb6e1",
+    "error_sha256": "236d09b87031b783ee92064d3d8d14eb5ae0d39c13e435969828fe0d03c52c68",
+    "error_type": "URLError",
+    "kind": "ROOT_AUTHORISED_RETAIN_UNKNOWN_CEILING",
+    "ledger_sha256": "7406aabbb0e9be9c02d8c9cb7fe198f9142afd65d5168bbe53dd6ffa1a9f9369",
+    "pending_id": "9ec8e16cff374d32811248dc4ca16140",
+    "raw_request_sha256": "75b499719e2cc99b017446975ce3c721ecc42f3451b8c04172ff68f30f4d2c6b",
+    "reason": "Retain full0.25USD conservative ceiling for immutable V7 network-unreachable reservation; never infer zero charge or provider usage. This disposition alone authorizes no dispatch."
+  },
+  "charge": "unknown_full_ceiling_retained_not_actual_spend",
+  "reason": "Retain full0.25USD conservative ceiling for immutable V7 network-unreachable reservation; never infer zero charge or provider usage. This disposition alone authorizes no dispatch."
+}

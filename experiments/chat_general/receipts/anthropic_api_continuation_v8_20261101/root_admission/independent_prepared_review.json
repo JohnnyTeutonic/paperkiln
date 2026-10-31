@@ -1,0 +1,56 @@
+{
+  "status": "PASS_INDEPENDENT_PREPARED_V8_REVIEW_REQUIRES_ROOT_DISPOSITION_AND_ADMISSION",
+  "reviewed_commit": "05fd764ef88a4fa6189fea76fbab53f33949c544",
+  "protocol_sha256": "6dd27d1d7d653348e3a28c3bfd38d8962abee6babad5067c233fe21afb8c5a75",
+  "source_sha256": {
+    "chat_judge_campaign_continuation_v8.py": "ce3e299f51a56e2b3ddd9b5a359a514349ccda2aaeababd3df999eebcb564798",
+    "chat_judge_campaign_continuation_v7.py": "2123d45b0057773817dff9a4024751d1c0d2678050d7f5228382f54a5689ea17",
+    "chat_judge_api_refusal_v5.py": "11cd8c7880356afaef631f6168d02dd75025cd4be58d4c6fc69fddb966ed0dd7",
+    "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+  },
+  "tests": {
+    "frozen_snapshot_passed": 114,
+    "seconds": 11.54,
+    "cpu_budget_cores": 1,
+    "frozen_snapshot": "frozen05fd",
+    "initial_live_worktree_run": "113passed/1DPOinstance fixture failure during concurrent author checkpoint source/test edit; not attributed to frozen05fd. Exact frozen snapshot rerun passes unchanged."
+  },
+  "read_only_projection_sha256": "8f6df28c266cc72efc788ae7efca5716be96f8c187c2607e86baacf715af8a7a",
+  "confirmed_contract": [
+    "Fresh exception hardcodes exact pending reservation and request key, accepted mate, candidate case and original request/transport proof hashes.",
+    "Old request has no response; exact trace binds reservation/request digest and shows zeroHTTPwrite with every resolved endpoint connect failing errno101 before transmission. Changed/posted/unknownwrite proof is rejected.",
+    "Fresh root authorization binds pre-disposition ledger prefix, exact retention authorization and operational source hashes; old unknown ceiling remains charged conservatively.",
+    "First eligible todo must be exact reviewed key; first batchmax_calls1. Reserve history permits old unknown plus exactly one fresh attempt, never third. Fresh success must settle one accepted ranking under new reservation before broader continuation.",
+    "Future failure/unknown outcome halts preserved state, with no automatic retention, refund, third dispatch or new exception.",
+    "Accepted cache and ledger prefixes, original requests/profile/rubric and two paired exclusions remain immutable. Eligible6036cohort and accepted mate unchanged.",
+    "Totalcap200 includes legacyaccounting, actual settlements, every retained unknown ceiling and new reservations; training keeps heldout25 reserve. Projected retainedunknown total1 includes this oldquarter ceiling.",
+    "Inspect and reconciliation perform verification only; independent projected retention used in-memory rows and temporary authorization copies with dispatch/loadkey/http/append/atomic state writes forbidden. Watched actual ledger/cache/raw/halt evidence hashes unchanged."
+  ],
+  "readiness_conditions": [
+    "Root must explicitly retain old quarter reservation using reviewed authorization; projection did not append disposition.",
+    "Root must separately freeze/adopt operational protocol and exact fresh-dispatch authorization, hash-pinned launch/state namespace and budget before activation.",
+    "Existing V7halt and raw evidence remain unchanged; V8uses distinct campaign state.",
+    "Future posted/unknown failure requires new human review; no automatic recovery covered by this approval."
+  ],
+  "evidence_sha256": {
+    "/mnt/c/ml_artifacts/pref_api_20261031/budget.jsonl": "7406aabbb0e9be9c02d8c9cb7fe198f9142afd65d5168bbe53dd6ffa1a9f9369",
+    "/mnt/c/ml_artifacts/pref_api_20261031/api_cache.jsonl": "8f1062d90d8c00e88c00a5b1b8430a08b1ae325231ace70196f425c04a631985",
+    "/mnt/c/ml_artifacts/pref_api_20261031/api_cache.jsonl.failures.jsonl": "e0a8e1e5253f7a8fc4ba60501c18020f85fc57b094113743d5366f0e0dcf2018",
+    "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v7/HALTED": "8888daccc5f78992753db7bc583c046b299f842404d01b840515ad12adff2cf3",
+    "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v7/STOPPED": "b0f5e65f95fd54899b289229db2388f54d703075114b31aef915e5d659e53a43",
+    "/mnt/c/ml_artifacts/pref_api_20261031/budget.raw/9ec8e16cff374d32811248dc4ca16140.request.json": "75b499719e2cc99b017446975ce3c721ecc42f3451b8c04172ff68f30f4d2c6b",
+    "/mnt/c/ml_artifacts/pref_api_20261031/budget.raw/9ec8e16cff374d32811248dc4ca16140.error.json": "236d09b87031b783ee92064d3d8d14eb5ae0d39c13e435969828fe0d03c52c68",
+    "/mnt/c/ml_artifacts/pref_api_20261031/budget.raw/9ec8e16cff374d32811248dc4ca16140.transport.json": "72445f27e1e0f6c5153a70333902c4bca7de0a82276126633842a6da5c6a01fc"
+  },
+  "eligible_target_rankings": 6036,
+  "initial_valid_rankings": 2777,
+  "eligible_missing_rankings": 3259,
+  "provider_calls": 0,
+  "credentials_accessed": false,
+  "disposition_performed": false,
+  "activation": false,
+  "source_or_config_edits": false,
+  "private_account_balances_or_credential_values_included": false,
+  "concrete_remaining_source_blockers": []
+}

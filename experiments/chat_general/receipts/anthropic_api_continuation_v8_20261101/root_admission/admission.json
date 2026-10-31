@@ -1,0 +1,12 @@
+{
+  "status": "ROOT_ADMITTED_AND_WATCHDOG_ENABLED",
+  "protocol_sha256": "6dd27d1d7d653348e3a28c3bfd38d8962abee6babad5067c233fe21afb8c5a75",
+  "retention_receipt_sha256": "45b7d7d1b1d9456f71841aaec12dacb92127b86f85b74165067a333aadfea2f8",
+  "retained_unknown_total_usd": 1.0,
+  "old_ceiling_not_reinterpreted_as_zero_charge": true,
+  "eligible_valid_before": 2777,
+  "eligible_missing_before": 3259,
+  "cumulative_cap_usd": 200,
+  "heldout_reserve_usd": 25,
+  "no_GPU_or_provider_call_by_admission": true
+}
