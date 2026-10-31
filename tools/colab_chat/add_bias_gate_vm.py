@@ -2,6 +2,7 @@
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import signal
 import subprocess
@@ -29,7 +30,9 @@ def parse_proof(text, keys):
 def check_baseline(rc, text):
     if rc != 1 or '"actual_cuda":true,"stale_computed_bias":true,"host_poison":true' not in text:
         raise ValueError('baseline is not actual CUDA poisoned stale bias exit1')
-    if 'CHECK failed std::fabs(y->data(i, j) - expected)' not in text:
+    expression = 'std::fabs(y->data(i, j) - expected) / (1 + std::fabs(expected)) < 2e-5'
+    pattern = r'^CHECK failed .*test_add_bias_materialization\.cpp:[0-9]+: ' + re.escape(expression) + r'$'
+    if not re.search(pattern, text, re.MULTILINE):
         raise ValueError('baseline did not fail the registered forward numerical assertion')
 
 def run(out, upload=Path('/content/chat/upload'), root=Path('/content/bias_source'), build=Path('/content/bias_build')):
@@ -76,11 +79,15 @@ def run(out, upload=Path('/content/chat/upload'), root=Path('/content/bias_sourc
         command('configure',['cmake','-S',root,'-B',build,'-DCMAKE_BUILD_TYPE=Release','-DMICROTORCH_CUDA=ON',
                              '-DMICROTORCH_DEVCHECK=ON','-DMICROTORCH_BUILD_PYTHON=OFF','-DCMAKE_CUDA_ARCHITECTURES=89'],300)
         source.write_bytes((upload/'bias_baseline_ops.cpp').read_bytes())
+        report['baseline_ops_sha256']=sha(source)
+        if report['baseline_ops_sha256']!=BASELINE_SHA: raise ValueError('baseline phase source differs')
         command('baseline_build',['cmake','--build',build,'--target','test_add_bias_materialization','--parallel','4'],900)
         report['baseline_binary_sha256']=sha(build/'test_add_bias_materialization')
         rc,text=command('baseline',[build/'test_add_bias_materialization','--require-cuda'],120,(1,))
         check_baseline(rc,text); report['baseline_expected_numerical_failure']=True
         temporary=source.with_suffix('.restore');temporary.write_bytes(original);temporary.replace(source)
+        report['fixed_ops_sha256']=sha(source)
+        if report['fixed_ops_sha256']!=FIXED_SHA: raise ValueError('fixed phase source differs')
         command('fixed_build',['cmake','--build',build,'--target','test_add_bias_materialization','test_devcheck_host_read','--parallel','4'],900)
         report['fixed_binary_sha256']=sha(build/'test_add_bias_materialization')
         report['parity_binary_sha256']=sha(build/'test_devcheck_host_read')
