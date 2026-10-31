@@ -1,0 +1,76 @@
+{
+  "pass": true,
+  "method": "Independent binary64 weighted-loss central finite difference, step1e-5, every element of14 parameter tensors; no production implementation imported",
+  "cases": [
+    {
+      "op": "exp",
+      "gradient": "a",
+      "max_error_vs_cpu": 3.359053429855444e-08
+    },
+    {
+      "op": "div",
+      "gradient": "a",
+      "max_error_vs_cpu": 1.3695106179489837e-08
+    },
+    {
+      "op": "div",
+      "gradient": "b",
+      "max_error_vs_cpu": 1.2286956869617096e-08
+    },
+    {
+      "op": "where",
+      "gradient": "a",
+      "max_error_vs_cpu": 8.638451336781505e-09
+    },
+    {
+      "op": "where",
+      "gradient": "b",
+      "max_error_vs_cpu": 8.278398490547213e-09
+    },
+    {
+      "op": "rowsum",
+      "gradient": "a",
+      "max_error_vs_cpu": 2.2815905644156405e-12
+    },
+    {
+      "op": "rowmax",
+      "gradient": "a",
+      "max_error_vs_cpu": 1.83034658197868e-12
+    },
+    {
+      "op": "broadcast_cols",
+      "gradient": "a",
+      "max_error_vs_cpu": 3.973688207123354e-09
+    },
+    {
+      "op": "relu_",
+      "gradient": "a",
+      "max_error_vs_cpu": 8.639054718867402e-09
+    },
+    {
+      "op": "relu_",
+      "gradient": "w",
+      "max_error_vs_cpu": 1.747598345470728e-08
+    },
+    {
+      "op": "sigmoid_",
+      "gradient": "a",
+      "max_error_vs_cpu": 4.431890348936665e-09
+    },
+    {
+      "op": "sigmoid_",
+      "gradient": "w",
+      "max_error_vs_cpu": 7.085322474283707e-09
+    },
+    {
+      "op": "scale_",
+      "gradient": "a",
+      "max_error_vs_cpu": 1.963266467769477e-08
+    },
+    {
+      "op": "scale_",
+      "gradient": "w",
+      "max_error_vs_cpu": 3.4454883816674094e-08
+    }
+  ]
+}
