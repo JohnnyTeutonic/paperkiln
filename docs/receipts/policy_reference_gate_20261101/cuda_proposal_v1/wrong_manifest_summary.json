@@ -1,0 +1,9 @@
+{
+  "pass": false,
+  "errors": [
+    "manifest differs"
+  ],
+  "commands": [],
+  "scope": "public KL reference Matrix only; no historical training-invalidity, residency, quality or speed claim",
+  "artifact_sha256": {}
+}
