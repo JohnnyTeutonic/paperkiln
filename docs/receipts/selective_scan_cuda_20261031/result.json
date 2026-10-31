@@ -1,0 +1,25 @@
+{
+  "pass": true,
+  "source_commit": "41538e61b34b35aabeb19ac00e07da76082b0ae8",
+  "manifest_sha256": "e9398164da6664ac788dc35732342b7b83028d4fbdc69ecb73482342ed3c3c9a",
+  "scope": "public selective_scan C++ autograd op only; sequential time and ordered no-atomic reductions; no parallel-scan or speed claim",
+  "actual_cuda": true,
+  "independent_local_numpy_replay": {
+    "pass": true,
+    "actual_cuda": true,
+    "cases": 220,
+    "quantities": 918,
+    "independent_numpy_replay": true,
+    "worst_normalized_error": 1.5699906400177735e-07,
+    "bound": 3e-05
+  },
+  "source_and_command_hash_replay": true,
+  "raw_report_sha256": "12c1d0ec8a5ce09b8e79d55ab4a78961315c15851f6f0c6d0a74c03f3e006053",
+  "zip_sha256": "87f893e24823e556c15f9293ecae47d05dccc5216323080c83065e95ed1d61f0",
+  "binary_sha256": "7f87b6553892dd6353653cef93c7bb2e6ab55bf4b9d362748b85c05c26c66008",
+  "owned_cleanup": "recorded separately in cleanup.json",
+  "limits": [
+    "Sequential-in-time kernels only; no parallel-scan, throughput or whole-model training/quality claim.",
+    "B gradient uses extra O(T*D*N) temporary history; memory/speed adoption not measured."
+  ]
+}
