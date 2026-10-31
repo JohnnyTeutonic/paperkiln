@@ -132,3 +132,22 @@ def test_boolean_target_is_not_integer():
     d["targets"] = [2, False]
     with pytest.raises(ValueError):
         m.replay(d, "fixed", "mixed")
+
+
+@pytest.mark.parametrize("variant", ["old", "fixed"])
+@pytest.mark.parametrize("case", CASES)
+@pytest.mark.parametrize(
+    "profile", [{"gemm": 2, "gemm_negative": -1}, {"gemm": 1, "other": -1}]
+)
+def test_negative_profile_counter_cannot_cancel(variant, case, profile):
+    d = synthetic(variant, case)
+    d["profile"] = profile
+    with pytest.raises(ValueError, match="nonnegative integer"):
+        m.replay(d, variant, case, True)
+
+
+def test_cpu_profile_counters_also_nonnegative():
+    d = raw("fixed", "mixed")
+    d["profile"] = {"other": -1}
+    with pytest.raises(ValueError, match="nonnegative integer"):
+        m.replay(d, "fixed", "mixed")
