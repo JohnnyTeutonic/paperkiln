@@ -1,0 +1,25 @@
+10-31 13:41:10 volume qgjlwz8uub created in EU-RO-1 (20 GB)
+10-31 13:41:12 pod i2j4vq9yulcgve created in EU-RO-1 (L4, $0.590/h, SECURE); waiting for ssh
+10-31 13:42:05 pod i2j4vq9yulcgve answers at 213.173.105.25:11774 after 53 s
+10-31 13:42:32 prelude done: thon3 -m pip install --upgrade pip | cmake version 3.31.6 | GPU 0: NVIDIA L4 (UUID: GPU-461060af-a2d0-3953-a244-c186e7009b4b) | Cuda compilation tools, release 12.4, V12.4.131 | Build cuda_12.4.r12.4/compiler.34097967_0 | host driver CUDA major: 13 | 48 |                total        used        free      shared  buff/cache   available | Mem:             503          50          78           2         375         447 | mfs#euro-2.runpod.net:9421  2.1P  1.7P  427T  81% /content | prelude done Sat Oct 31 02:42:31 UTC 2026 | debconf: delaying package configuration, since apt-utils is not installed
+10-31 13:42:32 session up, endpoint i2j4vq9yulcgve (launch 1)
+10-31 13:43:46 inputs: grpo_gate_vm_v1.py 9575 grpo_baseline_mtstudio.cpp 314962 grpo_inputs.json 370 grpo_source.tgz 6755487 INPUTS_OK
+10-31 13:43:51 boot launched
+10-31 13:43:57 grpo_host_gate: NONE  
+10-31 13:48:04 grpo_host_gate: FINISHED  {"pass": true, "errors": []}
+10-31 13:48:14 grpo_host_gate: gate_summary.json downloaded
+10-31 13:48:25 grpo_host_gate: hardware.log downloaded
+10-31 13:48:36 grpo_host_gate: nvcc.log downloaded
+10-31 13:48:46 grpo_host_gate: configure.log downloaded
+10-31 13:48:57 grpo_host_gate: baseline_build.log downloaded
+10-31 13:49:08 grpo_host_gate: fixed_build.log downloaded
+10-31 13:49:18 grpo_host_gate: baseline_sample.log downloaded
+10-31 13:49:29 grpo_host_gate: baseline_logsoftmax.log downloaded
+10-31 13:49:39 grpo_host_gate: fixed_sample.log downloaded
+10-31 13:49:50 grpo_host_gate: fixed_logsoftmax.log downloaded
+10-31 13:50:01 grpo_host_gate: ../grpo_host_gate_train.log downloaded
+10-31 13:50:01 grpo_host_gate: outputs downloaded
+10-31 13:50:01 all jobs finished and home
+10-31 13:50:02 pod i2j4vq9yulcgve terminated (RunPod ledger $0.09)
+10-31 13:50:02 volume qgjlwz8uub (EU-RO-1) deleted
+10-31 13:50:02 session stopped; runner exiting

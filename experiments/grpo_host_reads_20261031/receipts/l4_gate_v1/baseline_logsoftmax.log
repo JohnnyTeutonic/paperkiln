@@ -1,0 +1,3 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+{"actual_cuda":true,"stale_producer":true,"host_poison":true,"no_grad_context":true,"deferred_window":true}
+CHECK failed /content/grpo_source/tests/test_studio_grpo_materialization.cpp:92: std::fabs(actual(i, j) - expected[i * 4 + j]) < 1e-6
