@@ -1,0 +1,16 @@
+{
+  "files": {
+    "archive_configure.log": "3b627b450c2b90cc82ad02119642086c481908c734dd4771c62b950516a4ddb1",
+    "audit.json": "ce2c94f32580a3ef13eb98e12ba5c5a74c8b9b9fbc8b8cd316f00e3d907d5217",
+    "devcheck_refusal.log": "9bd179841de098afdafc58a772c2581be154abf68ea4691f46bd30f1f531d539",
+    "extract.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "nvcc_production.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "nvcc_standalone.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "nvcc_without_devcheck.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "parser_tests.log": "5c98af2914a3db6b20f11d4d404ff102aa11888741828f36a9531e779af659ca",
+    "preflight.json": "fca14804a02f4d3e44af61a5f2c42d9435aa2dd7584a6d421ac73ce4f89479ee",
+    "prospective_gpu.json": "e08f61cd02240a330eb636bfdc5a719bc346bf7d9c8d1a4904998f93a2021334",
+    "refusal.json": "7884b5db159eb44c13679e3bc04642a38fb943516c51477877e758f85dc3d5e8",
+    "refusal.log": "feb5bd2f9824b8164d7bd3afaf14e6338667e76bc373311b054d5f9287b3c96c"
+  }
+}
