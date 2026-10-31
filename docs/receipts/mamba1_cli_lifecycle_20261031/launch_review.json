@@ -48,12 +48,17 @@
     "python3",
     "/home/jonat/mamba1_cli_gate_stage_v1_20261031/host_replay_guard.py",
     "--artifact",
-    "HOME/runs",
+    "/home/jonat/pk_mamba_composed_20261031/docs/receipts/mamba1_cli_cuda_20261031/landed_vm/runs",
     "--out",
-    "NEW_HOST_REPLAY",
+    "/home/jonat/pk_mamba_composed_20261031/docs/receipts/mamba1_cli_cuda_20261031/host_replay",
     "--receipt",
-    "NEW_HOST_GUARD_RECEIPT"
+    "/home/jonat/pk_mamba_composed_20261031/docs/receipts/mamba1_cli_cuda_20261031/host_guard_receipt.json"
   ],
   "host_preflight_receipt": "/home/jonat/pk_mamba_composed_20261031/docs/receipts/mamba1_cli_lifecycle_20261031/host_guard_preflight.json",
-  "scope": "Actual Mamba1 CLI three-step training/save/reload/F32 export and full-row NumPy/CPU Ember parity; mixed host breaks remain; no quality/residency/speed claim."
+  "scope": "Actual Mamba1 CLI three-step training/save/reload/F32 export and full-row NumPy/CPU Ember parity; mixed host breaks remain; no quality/residency/speed claim.",
+  "landing": {
+    "archive": "/mnt/c/ml_artifacts/devcheck/pk-mamba1-cli-1031/mamba1_cli_gate/out.zip",
+    "extract_to": "/home/jonat/pk_mamba_composed_20261031/docs/receipts/mamba1_cli_cuda_20261031/landed_vm",
+    "retain_archive": "/home/jonat/pk_mamba_composed_20261031/docs/receipts/mamba1_cli_cuda_20261031/raw/out.zip"
+  }
 }
