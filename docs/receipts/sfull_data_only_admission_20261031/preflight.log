@@ -1,0 +1,1 @@
+{"status": "SOURCE_AND_UPLOAD_PREFLIGHT_PASS", "launch_authorised": false, "requires_fresh_root_serial_admission": true, "process_local_pod_fence": 2, "global_caps_unchanged": true, "remote_commit": "f616a0f85447f95f67d0f9bdf6dfef513dc632a3"}
