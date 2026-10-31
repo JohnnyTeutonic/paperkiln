@@ -1,0 +1,169 @@
+{
+ "pass": true,
+ "scope": "Offline exact source/input/log/command/proof replay; no fresh device execution",
+ "report_sha256": "06a7eb82ef2577147d6001e857de96f9ace620f6039b267614f9fb2f399623ce",
+ "manifest_sha256": "95ced37f87ab0192ca0533e3f263e622bfd3fdbdd9b9b2e341865c88380bacdd",
+ "raw_report": {
+  "pass": true,
+  "scope": "add_bias actual stale computed bias; fixed parity export host-read guards",
+  "commands": [
+   {
+    "name": "hardware",
+    "argv": [
+     "nvidia-smi",
+     "--query-gpu=name,driver_version",
+     "--format=csv,noheader"
+    ],
+    "returncode": 0
+   },
+   {
+    "name": "nvcc",
+    "argv": [
+     "nvcc",
+     "--version"
+    ],
+    "returncode": 0
+   },
+   {
+    "name": "configure",
+    "argv": [
+     "cmake",
+     "-S",
+     "/content/bias_source",
+     "-B",
+     "/content/bias_build",
+     "-DCMAKE_BUILD_TYPE=Release",
+     "-DMICROTORCH_CUDA=ON",
+     "-DMICROTORCH_DEVCHECK=ON",
+     "-DMICROTORCH_BUILD_PYTHON=OFF",
+     "-DCMAKE_CUDA_ARCHITECTURES=89"
+    ],
+    "returncode": 0
+   },
+   {
+    "name": "baseline_build",
+    "argv": [
+     "cmake",
+     "--build",
+     "/content/bias_build",
+     "--target",
+     "test_add_bias_materialization",
+     "--parallel",
+     "4"
+    ],
+    "returncode": 0
+   },
+   {
+    "name": "baseline",
+    "argv": [
+     "/content/bias_build/test_add_bias_materialization",
+     "--require-cuda"
+    ],
+    "returncode": 1
+   },
+   {
+    "name": "fixed_build",
+    "argv": [
+     "cmake",
+     "--build",
+     "/content/bias_build",
+     "--target",
+     "test_add_bias_materialization",
+     "test_devcheck_host_read",
+     "--parallel",
+     "4"
+    ],
+    "returncode": 0
+   },
+   {
+    "name": "fixed",
+    "argv": [
+     "/content/bias_build/test_add_bias_materialization",
+     "--require-cuda"
+    ],
+    "returncode": 0
+   },
+   {
+    "name": "parity_export",
+    "argv": [
+     "/content/bias_build/test_devcheck_host_read",
+     "--require-cuda"
+    ],
+    "returncode": 0
+   }
+  ],
+  "errors": [],
+  "source_restored": true,
+  "inputs": {
+   "source_commit": "ddf8c3ec99d96aed943863b5f2488c7b0fa07e9e",
+   "job_commit": "968b40da2885cb7dde08022aebb916cbcf0b157a",
+   "files": {
+    "add_bias_gate_vm.py": "f301d920de38117645ab2d62322b3ab4b059bd49df9defbef41c5a824bd9e078",
+    "bias_baseline_ops.cpp": "e3942b4564d035243be9f8084025222d7f93a01c794a2e40b3ef2e86cde0f42e",
+    "bias_source.tgz": "f2f1169b51c9d134e4cc46397b63517344a839dacaa6e6e6669b0f1ab6bbbe38"
+   }
+  },
+  "baseline_ops_sha256": "e3942b4564d035243be9f8084025222d7f93a01c794a2e40b3ef2e86cde0f42e",
+  "baseline_binary_sha256": "b349f802c662711e6fc7390fda662db00ff3860b4c3aab04133967fd53b2ff27",
+  "baseline_expected_numerical_failure": true,
+  "fixed_ops_sha256": "4d6fe6c7041e02fcc93d1cb29f0be15f8658315f91fc64a1b89f31473956ed85",
+  "fixed_binary_sha256": "8e4a960f73ccf81587d63e3124e19492c8c937c6b589f9172313d7f319794a28",
+  "parity_binary_sha256": "3ad292a7f20f365a2252945c948fc083130bab458bf342e33ef232a102058d05",
+  "fixed": {
+   "pass": true,
+   "cuda_integration": true,
+   "devcheck_enabled": true,
+   "forward_and_backward_reference": true
+  },
+  "parity_export": {
+   "pass": true,
+   "devcheck_enabled": true,
+   "cuda_integration": true,
+   "stale_and_released_predicate_negatives": true,
+   "macro_evaluation_checked": true
+  },
+  "logs": {
+   "hardware.log": {
+    "sha256": "4d27402575c0fbfcbc714a6563f4bcc9ea0e3699ea638e7bd89db077eef291de",
+    "bytes": 21
+   },
+   "nvcc.log": {
+    "sha256": "3c71ed984d2ca98770b0cba5c23a849a87209351e105433929c3062fb66d1915",
+    "bytes": 209
+   },
+   "configure.log": {
+    "sha256": "1ae186c5d54823035f2b2299ab314523c724116c13127948fc011b29e6f9019e",
+    "bytes": 1969
+   },
+   "baseline_build.log": {
+    "sha256": "4d38343fcbcefc73296bbdd23018d0dca0e129791d9c9b62e0c612dd50ff6a2f",
+    "bytes": 23681
+   },
+   "baseline.log": {
+    "sha256": "ea91d8727e949008e8992e33294a992ba5b1b98ba112b7de4be4424a745c62f1",
+    "bytes": 270
+   },
+   "fixed_build.log": {
+    "sha256": "a2218348b077009eaada95bc0bdc34d8f824973f4635e8d7efc3f043111e2c88",
+    "bytes": 563
+   },
+   "fixed.log": {
+    "sha256": "9800327d76fdfa93c3f1a49edf7e839c886fd3b3239cb8c899c0bb61f551b13b",
+    "bytes": 221
+   },
+   "parity_export.log": {
+    "sha256": "c2d19c0865447bcc323edfcb1e26ae76e7fd5f0796f86ed19579763cf0d246dc",
+    "bytes": 194
+   }
+  }
+ },
+ "raw_test_logs": {
+  "baseline.log": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\n{\"actual_cuda\":true,\"stale_computed_bias\":true,\"host_poison\":true}\nCHECK failed /content/bias_source/tests/test_add_bias_materialization.cpp:54: std::fabs(y->data(i, j) - expected) / (1 + std::fabs(expected)) < 2e-5\n",
+  "fixed.log": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\n{\"actual_cuda\":true,\"stale_computed_bias\":true,\"host_poison\":true}\n{\"pass\":true,\"cuda_integration\":true,\"devcheck_enabled\":true,\"forward_and_backward_reference\":true}\n",
+  "parity_export.log": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\n{\"pass\":true,\"devcheck_enabled\":true,\"cuda_integration\":true,\"stale_and_released_predicate_negatives\":true,\"macro_evaluation_checked\":true}\n"
+ },
+ "limitations": [
+  "Only the stale computed bias add_bias seam and registered parity-export stale/released guards were tested.",
+  "No stale-x, arbitrary graph, model training, performance or endurance claim."
+ ]
+}

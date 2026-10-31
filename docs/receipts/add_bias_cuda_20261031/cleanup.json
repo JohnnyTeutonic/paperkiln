@@ -1,0 +1,83 @@
+{
+ "scope": "Normal watchdog relay/cleanup; first attempt failed configuration before any scientific tests; retry changed archive assets only.",
+ "attempts": [
+  {
+   "estimated_usd": 0.08274344649406863,
+   "ledger": {
+    "pods": [
+     {
+      "id": "oajtgdwl9n3yv5",
+      "name": "pk-add-bias-1031",
+      "gpu": "L4",
+      "usd_per_hr": 0.59,
+      "dc": "EU-RO-1",
+      "volume": "0m338xiyms",
+      "start": 1793411569.1987655,
+      "stop": 1793412072.4007404,
+      "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+      "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+      "stopped_by": "runner"
+     }
+    ],
+    "volumes": [
+     {
+      "id": "0m338xiyms",
+      "dc": "EU-RO-1",
+      "gb": 20,
+      "created": 1793411565.4938009,
+      "name": "pk-add-bias-1031-vol",
+      "deleted": 1793412073.218364
+     }
+    ]
+   },
+   "home": true,
+   "pod_volume_deleted": true
+  },
+  {
+   "estimated_usd": 0.07999612661881579,
+   "ledger": {
+    "pods": [
+     {
+      "id": "pxwjq8wdnapsch",
+      "name": "pk-add-bias-v2-1031",
+      "gpu": "L4",
+      "usd_per_hr": 0.59,
+      "dc": "EU-RO-1",
+      "volume": "a34jeylmxd",
+      "start": 1793412169.0325584,
+      "stop": 1793412655.5288663,
+      "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+      "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+      "stopped_by": "runner"
+     }
+    ],
+    "volumes": [
+     {
+      "id": "a34jeylmxd",
+      "dc": "EU-RO-1",
+      "gb": 20,
+      "created": 1793412166.0483465,
+      "name": "pk-add-bias-v2-1031-vol",
+      "deleted": 1793412656.283076
+     }
+    ]
+   },
+   "home": true,
+   "pod_volume_deleted": true
+  }
+ ],
+ "cumulative_estimated_usd": 0.16273957311288442,
+ "cumulative_cap_usd": 1,
+ "provider_balance_after_cleanup": 24.1548,
+ "provider_spend_per_hour_after_cleanup": 0.016,
+ "pods_after_cleanup": [],
+ "unrelated_historical_volumes": "Untouched",
+ "offline_tamper_cases_rejected": [
+  "baseline_other_assertion",
+  "cpu_fixed",
+  "wrong_rc",
+  "restoration",
+  "missing_log"
+ ],
+ "auditor_source_sha256": "cbe590b6e6895b93daf2a216792579fb583e414b8bbbabb51d9736c7004d8809"
+}
