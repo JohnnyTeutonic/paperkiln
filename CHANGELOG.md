@@ -960,3 +960,12 @@ Notable changes to microtorch. Format loosely follows
   plain FP32 AdamW dense Llama/GPT2; transparent uncalibrated allowances and
   reserve, unsupported-path refusal, tied-head parameter counts checked against
   CPU constructors. No measured peak-memory or OOM guarantee.
+
+## Parity-model export host-read boundaries (31 October 2026)
+
+Debug guards now cover GPT2 parameter copies, family tensor copies and Flex
+learned-expression expansion. The AttnRes query branch avoids copying a tensor
+before its guard. Default builds and explicit materialization policy are unchanged.
+Four CPU DEVCHECK/export tests pass; new device-negative cases require a separate
+actual CUDA run. The broader host-loop audit remains open.
+[Validation](docs/receipts/export_host_read_20261031/validation.json).

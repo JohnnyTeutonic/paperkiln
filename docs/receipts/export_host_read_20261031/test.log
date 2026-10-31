@@ -1,0 +1,14 @@
+Internal ctest changing into directory: /home/jonat/pk_host_read_final_build_20261031
+Test project /home/jonat/pk_host_read_final_build_20261031
+    Start 13: gguf_export
+1/4 Test #13: gguf_export ......................   Passed    0.00 sec
+    Start 38: flex
+2/4 Test #38: flex .............................   Passed    1.74 sec
+    Start 47: devcheck_host_read
+3/4 Test #47: devcheck_host_read ...............   Passed    0.00 sec
+    Start 48: devcheck_disabled
+4/4 Test #48: devcheck_disabled ................   Passed    0.00 sec
+
+100% tests passed, 0 tests failed out of 4
+
+Total Test time (real) =   1.75 sec
