@@ -1,0 +1,32 @@
+#!/usr/bin/env python3
+"""Retain immutable relay, validate all bindings, and execute the exact approved host replay."""
+import hashlib,json,shutil,subprocess,zipfile
+from pathlib import Path
+SOURCE=Path('/mnt/c/ml_artifacts/devcheck/pk-host-helper-1031/host_helper_gate')
+SCIENCE=Path('/home/jonat/host_helper_gate_stage_unlaunched_v3_20261031')
+DEST=Path('/home/jonat/pk_host_helper_launch_20261031/docs/receipts/host_helper_cuda_20261031')
+if DEST.exists():raise ValueError('immutable landing destination exists')
+DEST.mkdir();(DEST/'raw').mkdir()
+for p in SOURCE.iterdir():
+    if p.is_file():shutil.copyfile(p,DEST/'raw'/p.name)
+LAND=DEST/'landed_vm';LAND.mkdir()
+with zipfile.ZipFile(DEST/'raw/out.zip') as z:
+    for item in z.infolist():
+        path=Path(item.filename)
+        if path.is_absolute() or '..' in path.parts or ((item.external_attr>>16)&0o170000)==0o120000:
+            raise ValueError('unsafe ZIP member')
+    z.extractall(LAND)
+raw=json.loads((DEST/'raw/gate_summary.json').read_text())
+if (DEST/'raw/gate_summary.json').read_bytes()!=(LAND/'gate_summary.json').read_bytes():raise ValueError('summary differs across relay/ZIP')
+if raw.get('inputs')!=json.loads((SCIENCE/'inputs.json').read_text()):raise ValueError('scientific input binding differs')
+expected=raw['artifact_sha256'];observed={}
+for p in LAND.rglob('*'):
+    if p.is_file() and p.relative_to(LAND).as_posix()!='gate_summary.json':observed[p.relative_to(LAND).as_posix()]=hashlib.sha256(p.read_bytes()).hexdigest()
+if observed!=expected:raise ValueError('exact artifact inventory/hashes differ')
+if raw.get('pass') is not True or raw.get('errors'):raise ValueError('scientific gate failed; retained raw evidence')
+commands={x['name']:x for x in raw['commands']}
+if set(commands)!={'hardware','configure','build','numpy','cpu','cpu_replay','cuda','cuda_replay'} or any(x['returncode']!=0 for x in commands.values()):raise ValueError('command proof incomplete')
+subprocess.run(['python3','/home/jonat/host_helper_launch_v1_20261031/host_replay_guard.py'],check=True)
+result=json.loads((DEST/'host_replay/result.json').read_text())
+(DEST/'verification.json').write_text(json.dumps({'pass':True,'scientific_manifest_sha256':hashlib.sha256((SCIENCE/'inputs.json').read_bytes()).hexdigest(),'summary_byte_identity':True,'exact_nested_artifacts_verified':len(observed),'all_command_returncodes_zero':True,'host_replay':result,'scope':'Nine registered helper cases only; no old-failure, broad audit, speed or full-residency claim.'},indent=2)+'\n')
+print(json.dumps({'pass':True,'verified_artifacts':len(observed),'host_modes':[x['mode'] for x in result['records']]}))

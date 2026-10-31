@@ -1,0 +1,38 @@
+{
+  "pass": true,
+  "utc": "2026-10-31T10:47:08.421474+00:00",
+  "own_pod_id": "kpix0ynzkvs8zf",
+  "own_volume_id": "2yg3xif81h",
+  "owned_pod_absent": true,
+  "owned_volume_absent": true,
+  "entry_disabled": 119,
+  "all_other_entries_unchanged": true,
+  "own_ledger_gpu_usd": 0.07514843614498774,
+  "own_ledger": {
+    "pods": [
+      {
+        "id": "kpix0ynzkvs8zf",
+        "name": "pk-host-helper-1031",
+        "gpu": "L4",
+        "usd_per_hr": 0.59,
+        "dc": "EUR-IS-1",
+        "volume": "2yg3xif81h",
+        "start": 1793443137.5518885,
+        "stop": 1793443596.0847192,
+        "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+        "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+        "stopped_by": "runner"
+      }
+    ],
+    "volumes": [
+      {
+        "id": "2yg3xif81h",
+        "dc": "EUR-IS-1",
+        "gb": 20,
+        "created": 1793443134.79833,
+        "name": "pk-host-helper-1031-vol",
+        "deleted": 1793443596.9019926
+      }
+    ]
+  }
+}

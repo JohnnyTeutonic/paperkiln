@@ -1,0 +1,17 @@
+10-31 21:38:54 volume 2yg3xif81h created in EUR-IS-1 (20 GB)
+10-31 21:38:57 pod kpix0ynzkvs8zf created in EUR-IS-1 (L4, $0.590/h, SECURE); waiting for ssh
+10-31 21:39:34 pod kpix0ynzkvs8zf answers at 157.157.221.29:29621 after 37 s
+10-31 21:40:12 prelude done:  -m pip install --upgrade pip | cmake version 3.31.6 | GPU 0: NVIDIA L4 (UUID: GPU-7eb46237-feea-5ed8-a738-7c1d5cb80323) | Cuda compilation tools, release 12.4, V12.4.131 | Build cuda_12.4.r12.4/compiler.34097967_0 | host driver CUDA major: 13 | 128 |                total        used        free      shared  buff/cache   available | Mem:             503          28         135           0         339         472 | mfs#eur-is-1-2.runpod.net:9421  837T  267T  571T  32% /content | prelude done Sat Oct 31 10:40:12 UTC 2026 | debconf: delaying package configuration, since apt-utils is not installed
+10-31 21:40:13 session up, endpoint kpix0ynzkvs8zf (launch 1)
+10-31 21:41:42 inputs: source.tgz 10208312 host_helper_gate.py 6037 replay_host_helper_gate.py 5417 protocol.json 2897 inputs.json 168550 INPUTS_OK
+10-31 21:41:47 boot launched
+10-31 21:41:53 host_helper_gate: NONE  
+10-31 21:46:00 host_helper_gate: FINISHED  {"pass": true, "errors": []}
+10-31 21:46:12 host_helper_gate: gate_summary.json downloaded
+10-31 21:46:24 host_helper_gate: out.zip downloaded
+10-31 21:46:35 host_helper_gate: ../host_helper_gate_train.log downloaded
+10-31 21:46:35 host_helper_gate: outputs downloaded
+10-31 21:46:35 all jobs finished and home
+10-31 21:46:36 pod kpix0ynzkvs8zf terminated (RunPod ledger $0.08)
+10-31 21:46:36 volume 2yg3xif81h (EUR-IS-1) deleted
+10-31 21:46:36 session stopped; runner exiting
