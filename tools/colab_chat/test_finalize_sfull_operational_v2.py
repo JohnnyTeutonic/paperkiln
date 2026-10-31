@@ -45,3 +45,44 @@ def test_old_calculation_and_original_paths_remain_delegated():
     )
     assert f.old.LAUNCH == f.PROOF / "launch_pin_v2.json"
     assert f.original_launch in f.sources()
+
+
+@pytest.mark.parametrize("phase", [0, 1])
+def test_missing_runtime_proof_keeps_otherwise_complete_manifest_waiting(
+    tmp_path, monkeypatch, phase
+):
+    for seed in (1, 2, 3):
+        save(tmp_path, seed)
+    path = save(tmp_path)[phase]
+    path.unlink()
+    monkeypatch.setattr(
+        f.original_finalizer,
+        "inputs",
+        lambda self: {
+            "ready": True,
+            "pending": [],
+            "sha256": {},
+            "selected_new_pairs": [1, 2, 3],
+        },
+    )
+    obj = object.__new__(f.Finalizer)
+    obj.art = tmp_path
+    result = obj.inputs()
+    assert result["ready"] is False and str(path) in result["pending"]
+
+
+def test_empty_prelaunch_is_pending_not_error(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        f.original_finalizer,
+        "inputs",
+        lambda self: {
+            "ready": False,
+            "pending": [],
+            "sha256": {},
+            "selected_new_pairs": [],
+        },
+    )
+    obj = object.__new__(f.Finalizer)
+    obj.art = tmp_path
+    result = obj.inputs()
+    assert result["ready"] is False and len(result["pending"]) == 6
