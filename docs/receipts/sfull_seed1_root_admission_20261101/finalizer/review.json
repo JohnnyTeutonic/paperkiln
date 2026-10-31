@@ -1,0 +1,14 @@
+{
+  "kind": "FROZEN_LOCAL_FINALIZER_OWNER_REVIEW_V1",
+  "guard_sha256": "b1e412083a875d58eaa18c0a2760c50c0b48fefb92e5ffd931512ee69148ccad",
+  "launch_sha256": "464a9835b1d444affb981742be80f62064682c1c5d365d4c00b436b3fbe03903",
+  "source_anchors": 38,
+  "pins_validated": true,
+  "exact_frozen_readiness_argv": true,
+  "validation_tests_passed": 5,
+  "duplicate_protection": "Exclusive watchdog_owner.lock plus underlying frozen finalizer DriverLock and unique watchdog state match.",
+  "completion": "STOPPED records finalizer COMPLETE/HALTED; no retry on unexpected owner exit.",
+  "other_watchdog_entries_preserved": true,
+  "provider_or_GPU_control_added": false,
+  "seed2_or_seed3_admission": false
+}
