@@ -1,0 +1,15 @@
+== mtstudio: flex_precision ==
+arch: exact d=8 layers=3 heads=2 | T=8 vocab_cap=4096
+train: 3 steps batch=2 accum=1 lr=0.001 clip=1 eval_every=3 ckpt_every=3 early_stop(patience=0, min_delta=0)
+export: safetensors gguf | serve: no | out: /home/jonat/pk_flex_bf16_20261031/docs/receipts/flex_attention_precision_20261031/cpu_cli/sft/trained
+{"event":"start","name":"flex_precision","steps":3}
+{"completion_unk":0,"event":"data","examples":30,"objective":"sft","provenance":{},"tokens":145,"val_examples":1,"vocab":7}
+{"T":8,"accum":1,"activation":"gelu","attention":"exact","batch":2,"checkpoint_activations":false,"d":8,"d_ff":20,"event":"model","family":"flex","final_norm":true,"gate_bias_init":-2.0,"gelu_approx":"tanh","heads":2,"layers":3,"lr":0.0010000000474974513,"norm":"layernorm","norm_placement":{"attn":"pre","ffn":"pre"},"objective":"sft","params":2196,"position":"learned","residual":"residual","seed":37,"sinks":1,"train_attention_precision":"bf16","vocab":7,"window":64}
+{"event":"step","grad_norm":2.207178831100464,"loss":1.9559500217437744,"step":1}
+{"event":"step","grad_norm":1.989036202430725,"loss":1.9245986938476563,"step":2}
+{"event":"step","grad_norm":1.5981004238128662,"loss":1.8991994857788086,"step":3}
+{"event":"eval","step":3,"val_loss":1.8806887865066528}
+{"event":"export","format":"safetensors","path":"/home/jonat/pk_flex_bf16_20261031/docs/receipts/flex_attention_precision_20261031/cpu_cli/sft/trained/flex_precision.safetensors"}
+GGUF Export: Successfully wrote 41 tensors to /home/jonat/pk_flex_bf16_20261031/docs/receipts/flex_attention_precision_20261031/cpu_cli/sft/trained/flex_precision.gguf
+{"arch":"gpt2","event":"export","format":"gguf","ir":"/home/jonat/pk_flex_bf16_20261031/docs/receipts/flex_attention_precision_20261031/cpu_cli/sft/trained/flex_precision.ir.json","path":"/home/jonat/pk_flex_bf16_20261031/docs/receipts/flex_attention_precision_20261031/cpu_cli/sft/trained/flex_precision.gguf"}
+{"best_val":1.8806887865066528,"early_stopped":false,"event":"done","final_step":3,"wall_seconds":0.004161435}

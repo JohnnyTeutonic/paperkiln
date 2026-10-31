@@ -1,0 +1,17 @@
+In file included from /home/jonat/pk_flex_bf16_20261031/tests/flex_precision_gate.cpp:3:
+/home/jonat/pk_flex_bf16_20261031/tests/flex_precision_gate.cpp: In function ‘int main(int, char**)’:
+/home/jonat/pk_flex_bf16_20261031/tests/flex_precision_gate.cpp:126:27: error: ‘cuda_compiled’ is not a member of ‘microtorch::device’
+  126 |             CHECK(device::cuda_compiled() && device::gpu_profile_on());
+      |                           ^~~~~~~~~~~~~
+/home/jonat/pk_flex_bf16_20261031/tests/check.hpp:10:15: note: in definition of macro ‘CHECK’
+   10 |         if (!(cond)) {                                                     \
+      |               ^~~~
+/home/jonat/pk_flex_bf16_20261031/tests/flex_precision_gate.cpp:131:17: error: ‘set’ is not a member of ‘microtorch::device’
+  131 |         device::set(gpu?device::Device::CUDA:device::Device::CPU);device::set_device_ops(gpu);
+      |                 ^~~
+/home/jonat/pk_flex_bf16_20261031/tests/flex_precision_gate.cpp:131:33: error: ‘microtorch::device::Device’ has not been declared
+  131 |         device::set(gpu?device::Device::CUDA:device::Device::CPU);device::set_device_ops(gpu);
+      |                                 ^~~~~~
+/home/jonat/pk_flex_bf16_20261031/tests/flex_precision_gate.cpp:131:54: error: ‘microtorch::device::Device’ has not been declared
+  131 |         device::set(gpu?device::Device::CUDA:device::Device::CPU);device::set_device_ops(gpu);
+      |                                                      ^~~~~~

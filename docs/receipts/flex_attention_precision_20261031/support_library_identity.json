@@ -1,0 +1,12 @@
+{
+  "CMAKE_HOME_DIRECTORY": "/home/jonat/pk_publication_20261030",
+  "library_hashes": {
+    "/home/jonat/pk_publication_build_20261030/libmicrotorch.a": "edfac74ad017bbec43c33c710409fba13ff348962b1bb557f97553794012251a",
+    "/home/jonat/pk_publication_build_20261030/transformer_cpp/libtransformer_core.a": "6ac8350f92ead2633b934e352ade2d9db90563565670822342cd1515da114cc1"
+  },
+  "dependency_files_compared": 117,
+  "dependency_mismatches": [],
+  "matches_existing_public_CPU_library_receipt": true,
+  "source_base_commit": "5f489fdd7",
+  "scope": "Reuse exact public CPU libraries; only isolated header/CLI/harness objects need compilation."
+}
