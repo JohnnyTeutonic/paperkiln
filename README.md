@@ -65,7 +65,11 @@ at runner-up near-ties. The generation replay did not execute, so the complete h
 cause remains unresolved ([scorer evidence](experiments/tiny_chat_long_2026-10/receipts/parity_diagnosis_20261031/operational_attempt2/parent_replay.json)). The registered
 S-full control is prepared but unlaunched; its independent
 [review](docs/receipts/sfull_independent_review_20261031/review.json) distinguishes
-completed analysis from a clean scientific validity pass.
+completed analysis from a clean scientific validity pass. The five registered data products, full ledger,
+vocabulary, thirteen raw sources and two evaluation sources now pass a separately
+reviewed [V2 input-identity audit](docs/receipts/sfull_inputs_v2_20261101/README.md).
+The frozen V1 verifier failed by comparing a detailed report with its summary; that
+failure is preserved. No training or historical parity waiver follows from this audit.
 
 HF interoperability now includes faithful native BPE and supported legacy tokenizers, complete
 source-tensor checks, greedy IDs and raw logit checks. New verifier receipts retain the rows
