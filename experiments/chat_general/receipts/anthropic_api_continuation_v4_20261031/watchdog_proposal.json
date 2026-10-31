@@ -1,0 +1,25 @@
+{
+  "status": "ROOT_REVIEW_REQUIRED_NO_DISPATCH",
+  "entry": {
+    "name": "Paperkiln API full continuation V4 (remaining5475, same traced transport)",
+    "enabled": false,
+    "workdir": "/home/jonat/pk_api_continuation_v4_20261031",
+    "state_dir": "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v4",
+    "stop_file": "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v4/STOPPED",
+    "command": "mkdir -p /mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v4 && python3 /mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/scripts/cpu_budget.py run --session paperkiln --job api-full-continuation-v4 --cores 1 --resume 'existing watchdog full continuation V4' -- python3 /home/jonat/pk_api_continuation_v4_20261031/tools/posttrain/chat_judge_campaign_continuation_v4.py --protocol /home/jonat/pk_api_continuation_v4_20261031/experiments/chat_general/receipts/anthropic_api_continuation_v4_20261031/full_campaign_v4_protocol.json --protocol-sha256 49223afaee2b0fe746f148da2cf3bed3e04095374fd91a5be244a9eb18522c92 --state-dir /mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v4 >> /mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v4/runner.log 2>&1"
+  },
+  "protocol_sha256": "49223afaee2b0fe746f148da2cf3bed3e04095374fd91a5be244a9eb18522c92",
+  "source_sha256": {
+    "chat_judge_campaign_continuation_v4.py": "742e7c576304efb329a9dbaa37b3634115ed934ad135c8ea0586d2ad6298f93d",
+    "chat_judge_api_diagnostic_v3.py": "8558d9fcb0e8ae561402f0991b3270ee0746cee8ffc46ef0c50ad74dc6dffc6a",
+    "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+  },
+  "initial_training_attempts": 520,
+  "initial_valid_api_rankings": 565,
+  "max_new_attempts": 5475,
+  "max_usd": 200,
+  "gate_reserve_usd": 25,
+  "reserve_per_call_usd": 0.25,
+  "no_dispatch_yet": true
+}
