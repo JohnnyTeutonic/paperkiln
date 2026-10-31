@@ -1,0 +1,16 @@
+{
+  "status": "ROOT_APPROVED_ACTIVATED_EXISTING_WATCHDOG_ONLY",
+  "utc": "2026-10-31T10:38:42.565282+00:00",
+  "root_approval": "Exact review c653da66, driver guard7b9a0e4, host guarde6a524d approved; science5614/manifest3ab unchanged. MaxUSD0.75, hard deadline11:15Z, no automatic new version.",
+  "fresh_pod_count": 0,
+  "no_owned_duplicate": true,
+  "entry_index": 119,
+  "entry": {
+    "name": "Paperkiln actual L4 corrected nine-case host-helper correctness gate",
+    "enabled": true,
+    "workdir": "/home/jonat/pk_host_helper_launch_20261031",
+    "state_dir": "/home/jonat/pk_host_helper_1031_runner",
+    "command": "python3 /home/jonat/host_helper_launch_v1_20261031/host_helper_guarded_runner.py /home/jonat/pk_host_helper_launch_20261031/tools/colab_chat/runner_multi.py --backend runpod --gpu L4 --volume-gb 20 --max-usd 0.75 --max-hours 0.6 --deadline-utc 2026-10-31T11:15:00Z --name pk-host-helper-1031 --commit 2b8390943ccd94b57a5abe434d247972533e3254 --jobs tools/colab_chat/host_helper_gate_20261031.json --boot-script tools/colab_chat/boot_commands_sparse.sh --state-dir /home/jonat/pk_host_helper_1031_runner --art /mnt/c/ml_artifacts/devcheck/pk-host-helper-1031 --upload source.tgz=/home/jonat/host_helper_gate_stage_unlaunched_v3_20261031/source.tgz --upload host_helper_gate.py=/home/jonat/host_helper_gate_stage_unlaunched_v3_20261031/host_helper_gate.py --upload replay_host_helper_gate.py=/home/jonat/host_helper_gate_stage_unlaunched_v3_20261031/replay_host_helper_gate.py --upload protocol.json=/home/jonat/host_helper_gate_stage_unlaunched_v3_20261031/protocol.json --upload inputs.json=/home/jonat/host_helper_gate_stage_unlaunched_v3_20261031/inputs.json"
+  },
+  "review_sha256": "c653da66a7ec4e19ea71c923c35ad4fd014fa10b7ca809bc30929890b5a73062"
+}
