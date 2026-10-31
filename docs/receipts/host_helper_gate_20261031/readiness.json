@@ -1,0 +1,13 @@
+{
+  "status": "OFFLINE_PREPARATION_COMPLETE_NOT_AUTHORISED_FOR_LAUNCH",
+  "stage_home": "/home/jonat/host_helper_gate_stage_unlaunched_v2_20261031",
+  "archive_copy_in_git": false,
+  "scientific_source_commit": "5c329a897b816d96649f7aefb35b29a77e3bf156",
+  "no_CUDA_outcomes": true,
+  "no_paid_resources_created": true,
+  "no_watchdog_entry_created": true,
+  "validation": "Nine-case CPU control and39 optimized parser rejection tests passed; archive member/source hash verification and CPU configure passed. No additional library build.",
+  "packaging_history": "Initial offline archive omitted studio/chat.html and configure refused. Original failure log retained; V2 whitelist includes required studio files. Numerical sources unchanged.",
+  "future_launch_requires": "Fresh exact root review and operational deadline/version, committed relative jobs packaging and scoped driver ceiling. This packet missed readiness cutoff and must remain unlaunched in this window.",
+  "backlog_effect": "Preparation only; actual CUDA subset remains open. No new broad backlog item."
+}

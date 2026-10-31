@@ -1,0 +1,26 @@
+{
+  "max_parallel": 1,
+  "jobs": [
+    {
+      "name": "host_helper_gate",
+      "cmd": [
+        "timeout",
+        "--signal=TERM",
+        "--kill-after=30",
+        "1530",
+        "python3",
+        "/content/chat/upload/host_helper_gate.py",
+        "--upload",
+        "/content/chat/upload",
+        "--manifest-sha256",
+        "cf643415b3b1d3d6d7f15d411fba135ee940bc35a38a2574c1243639c8b85fd9",
+        "--out",
+        "{out}"
+      ],
+      "outputs": [
+        "gate_summary.json",
+        "out.zip"
+      ]
+    }
+  ]
+}
