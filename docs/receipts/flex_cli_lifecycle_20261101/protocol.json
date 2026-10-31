@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "status": "PROSPECTIVE_CPU_PREPARATION_NO_DEVICE_OUTCOME",
+  "base": "c3576f977053b1a27ae2a825160e00bb356bdc65",
+  "checkpoint_copy_fix_ancestor": "1e0290bd2d8bacaf35ba6caab65c5603207e4f13",
+  "scope": "canonical plain GPT2-flavour Flex CUDA CLI lifecycle only; prior frozen four-case independent full-gradient model gate rerun from new source as prerequisite",
+  "cases": [
+    {
+      "objective": "lm",
+      "layers": 1,
+      "d_ff": 12
+    },
+    {
+      "objective": "sft",
+      "layers": 3,
+      "d_ff": 20
+    }
+  ],
+  "recipe": {
+    "d": 8,
+    "heads": 2,
+    "vocab": 7,
+    "T": 8,
+    "batch": 2,
+    "seed": 37,
+    "lr": 0.001,
+    "first_steps": 3,
+    "resume_to": 4,
+    "precision": "fp32",
+    "attention_precision": "bf16",
+    "attention_kernel": "tiled",
+    "activation_checkpointing": false
+  },
+  "device_environment": {
+    "MICROTORCH_DEVICE": "cuda",
+    "MICROTORCH_DEVICE_OPS": "1",
+    "MICROTORCH_STEP_RESIDENCY": "1",
+    "MICROTORCH_DEFER_DOWNLOADS": "1",
+    "MICROTORCH_TF32": "0",
+    "MICROTORCH_GPU_PROFILE": "1"
+  },
+  "checks": [
+    "actual CUDA+DEVCHECK model gate and unchanged independent full-gradient BF16 surrogate replay",
+    "all four CLI step records unique/contiguous; finite loss and positive finite gradient norms",
+    "each actual training step gemm_bf16 count=layers*batch*6 and every profile count nonnegative integer, bool rejected",
+    "warm checkpoint with model/optimizer/state and resume step3 optimizer restored, finalstep4",
+    "saved inference uses FP32 regardless BF16/FP32 recipe and complete8x7 rows bit-identical",
+    "F32 GGUF, BF16 training metadata, independent NumPy IR normalized_element<=1e-5 and every argmax equal",
+    "actual saved-model reload/re-export byte-identical GGUF"
+  ],
+  "model_gradient_bounds": {
+    "normalized_element": 0.0003,
+    "tensor_relative_norm": 0.03,
+    "norm_floor": 1e-10
+  },
+  "failure_policy": "one scientific attempt; preserve negative and partial logs; no tolerance adjustment/retry-for-pass",
+  "limits": {
+    "gpu": "NVIDIA L4",
+    "gpus": 1,
+    "max_usd": 1,
+    "max_hours": 1,
+    "science_seconds": 1800
+  },
+  "not_claimed": [
+    "quality",
+    "speed",
+    "full residency",
+    "unsupported Flex flavours",
+    "global BF16 projection adoption",
+    "historical training validity"
+  ]
+}
