@@ -285,6 +285,13 @@ d384 L6 trains at 0.109 s/step on an L4 (from 6.4), and d768 L12 at 2.1-2.3 s/st
 RTX 4060. Deferred downloads work for the llama family; the gpt2 family is still open
 ([CUDA_PHASE_B2.md](docs/CUDA_PHASE_B2.md)).
 
+For experimental BF16 attention training on a plain **two-block GPT2** LM/SFT spec,
+set `train.attention_precision` to `"bf16"`, keep `train.precision: "fp32"` and the tiled
+attention kernel. Other model paths, Flash and activation checkpointing are refused.
+Saved scoring, chat and exports use FP32 attention. The fixed tiny actual-L4 gate
+passes correctness; quality and speed benefits remain unestablished.
+[Recipe, restrictions and evidence](docs/receipts/gpt2_attention_precision_20261031/RESULTS.md).
+
 Mamba causal convolution and ordered selective scan now have CUDA forward/backward kernels.
 The 120 convolution cases and 220 scan cases pass actual L4 CUDA + DEVCHECK gates, including
 deferred data, sequence boundaries, all gradient masks and independent raw replay. Scan time
