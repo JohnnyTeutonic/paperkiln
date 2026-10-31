@@ -1,0 +1,546 @@
+{
+  "status": "BOUNDED_REVIEW_COMPLETE_RUNTIME_APPLICABILITY_UNRESOLVED",
+  "commit": "188f96381658dae1b923a63f1f8306cdb2c217d1",
+  "scope": "Tracked GRPO pathglob plus known chat_general and posttrain PT4/PT4b/smoke receipts/specs; no fulltree search or local artifact/credential crawl. Not exhaustive of untracked/private history.",
+  "source_hashes": {
+    "tools/mtstudio.cpp": "c50b8cfb86fcd88f8f2ee06c56e824e3ca7e82ea009f04740962b8a7eb6200ef",
+    "tests/test_mtstudio_grpo.py": "777f6274264d5e9e37bd638029d4f48b1b3768746e9e2da2b28a7e639da6e178",
+    "experiments/posttrain_pt4/run_pt4.py": "89cab7b3d103411ee9c33421a83e09dda53f29cb70d77a36ae949c86c39e1ab1",
+    "experiments/posttrain_pt4/RESULTS.md": "be417f237bc9c3bb0ca732afcfe6fe464c2ffa0002fab359e00eb9984fa72551",
+    "experiments/posttrain_pt4b/RESULTS.md": "04be5c1c603a5df947a667a27042f64fefc11b12ce875bcf6566e153eb866862"
+  },
+  "tracked_spec_inventory": [
+    {
+      "path": "experiments/chat_general/eval_specs/bigsft.spec.json",
+      "sha256": "618f29c7550afd452e32572f5adbbbe20705cde5e0b41de72f0e26321ede7ed5",
+      "objective": "next_token_default"
+    },
+    {
+      "path": "experiments/chat_general/eval_specs/ctrlsft.spec.json",
+      "sha256": "688216977715ffba0b1e4bb2a9027ffd2f4d174048adaf7d9714074bc85362b9",
+      "objective": "next_token_default"
+    },
+    {
+      "path": "experiments/chat_general/eval_specs/live.spec.json",
+      "sha256": "866bb53a49a5cf833bc558d48cd7cb7da4be1ec38dfbd761d42a8a2c67e27113",
+      "objective": "next_token_default"
+    },
+    {
+      "path": "experiments/chat_general/eval_specs/moesft.spec.json",
+      "sha256": "35580630a72423695d6b9a2ab931079175a9e70b81345a0353ea84aa8452546a",
+      "objective": "next_token_default"
+    },
+    {
+      "path": "experiments/chat_general/eval_specs/pksft.spec.json",
+      "sha256": "237f44e2249b962f31faf1491c847e34f7110b6e0a4ee0a5b7412a942ac6be06",
+      "objective": "next_token_default"
+    },
+    {
+      "path": "experiments/chat_general/receipts/chat_fwmix_refeval.json",
+      "sha256": "d55727c90a78bafe8a825526937c356d8073ee9ce32984e2559e680d178f0c1f",
+      "objective": "sft"
+    },
+    {
+      "path": "experiments/chat_general/receipts/chat_fwsft_refeval.json",
+      "sha256": "6cf706a4145a52832e4c2e2b53642c9289771988f80a77ac8c76d5b4aef6c764",
+      "objective": "sft"
+    },
+    {
+      "path": "experiments/chat_general/receipts/chat_live_refeval.json",
+      "sha256": "4f00624a2ea7c3501ff97276374e05b5117e5b833afd57c46c4be45bdb352849",
+      "objective": "sft"
+    },
+    {
+      "path": "experiments/chat_general/receipts/chat_v2_1027/sft_spec.json",
+      "sha256": "6602d2cb2b7793e561bf7e43806ac2c561ae1e7e2e3d1d3ddc5d6b5b7ee5f61c",
+      "objective": "sft"
+    },
+    {
+      "path": "experiments/chat_general/receipts/general_chat_1025/sft/sft_spec.json",
+      "sha256": "d5537c076b23b7ff4e86b7f3c8c18e552a8d2832c38cbd4a3ed3e62e6c86f189",
+      "objective": "sft"
+    },
+    {
+      "path": "experiments/chat_general/receipts/hf_flex_gpt2_roundtrip_2026-10-30/spec.json",
+      "sha256": "c8cf2e0b36f20c7a8619b5d876961c59e366471b20903ab7bdd4379cb8107eb7",
+      "objective": "next_token_default"
+    },
+    {
+      "path": "experiments/chat_general/receipts/hf_flex_llama_roundtrip_2026-10-30/spec.json",
+      "sha256": "cdce617dfe1fabf74114ac352ace49fc5016a1c8ffc0f1b1a30b1e21423ba955",
+      "objective": "next_token_default"
+    },
+    {
+      "path": "experiments/chat_general/specs/pksft_v1.spec.json",
+      "sha256": "6be46de70a26ee346bf7e3e696042d396a60890d1ea39fd984d6f0f40319b904",
+      "objective": "next_token_default"
+    },
+    {
+      "path": "experiments/posttrain_pt4/receipts/seed_201/base_spec.json",
+      "sha256": "93536f49e97e90c71dc725359c6405351882e13076b1af523f061a5fb904f0b5",
+      "objective": "lm"
+    },
+    {
+      "path": "experiments/posttrain_pt4/receipts/seed_201/closed_spec.json",
+      "sha256": "a953d70902f0253c5eafa2d7a8cbea884e24a931b3b53769cf4ba4f0cb260dfa",
+      "objective": "grpo"
+    },
+    {
+      "path": "experiments/posttrain_pt4/receipts/seed_201/open_spec.json",
+      "sha256": "e826ea31bbaa5ee5e51632c0f9f597b047ea2373df3383423eebd9a2456af060",
+      "objective": "grpo"
+    },
+    {
+      "path": "experiments/posttrain_pt4/receipts/seed_202/base_spec.json",
+      "sha256": "e9da89afb3a6640ad1a54bf94aa5cf36863add7aa777058d2fa31c865bc31c74",
+      "objective": "lm"
+    },
+    {
+      "path": "experiments/posttrain_pt4/receipts/seed_202/closed_spec.json",
+      "sha256": "b2965ec72f1e2aac8fb15cd890ac8696e377343ab1121c75aed72dcb0c69e06d",
+      "objective": "grpo"
+    },
+    {
+      "path": "experiments/posttrain_pt4/receipts/seed_202/open_spec.json",
+      "sha256": "03432ca5339beaddd18ec3200b74f2485a415b404c224e0c80e4c440d665a7cd",
+      "objective": "grpo"
+    },
+    {
+      "path": "experiments/posttrain_pt4/receipts/seed_203/base_spec.json",
+      "sha256": "1be25b31bc55336904f35889ca303c7b6dc6c8f754c553010ae941c45b70d6e7",
+      "objective": "lm"
+    },
+    {
+      "path": "experiments/posttrain_pt4/receipts/seed_203/closed_spec.json",
+      "sha256": "aae6696f4fe2024a359c06a84c118a521a397577c70d5fb316bc551db6f4555f",
+      "objective": "grpo"
+    },
+    {
+      "path": "experiments/posttrain_pt4/receipts/seed_203/open_spec.json",
+      "sha256": "a194e3451fa2dbb2f13871679f0b91fd4d611045cfeaec389323b743af8d61bf",
+      "objective": "grpo"
+    },
+    {
+      "path": "experiments/posttrain_pt4/receipts/seed_204/base_spec.json",
+      "sha256": "c55906317ca76ef0176b1969e2527d2ec88395f3da74e918e01ad706ef89fe09",
+      "objective": "lm"
+    },
+    {
+      "path": "experiments/posttrain_pt4/receipts/seed_204/closed_spec.json",
+      "sha256": "f1b8a855d2dfb657fceadb87edbd89a1e343a533c7ae458dc5b205f50985079b",
+      "objective": "grpo"
+    },
+    {
+      "path": "experiments/posttrain_pt4/receipts/seed_204/open_spec.json",
+      "sha256": "5d05a9ac905d08dd8248e347e96b5bea19e76dc14fd00a6f61652632bb31c42e",
+      "objective": "grpo"
+    },
+    {
+      "path": "experiments/posttrain_pt4/receipts/seed_205/base_spec.json",
+      "sha256": "fcdee98bbde22a336657f314a7c618ebbab1caef47ab2e7e18e5909f651ad628",
+      "objective": "lm"
+    },
+    {
+      "path": "experiments/posttrain_pt4/receipts/seed_205/closed_spec.json",
+      "sha256": "c2c22c4f76bd1b97cfe3e3128a9d9afdd7f5a42c3c089569dcc1b4cee25b8b6b",
+      "objective": "grpo"
+    },
+    {
+      "path": "experiments/posttrain_pt4/receipts/seed_205/open_spec.json",
+      "sha256": "8a125c9efd8d5c4dea6c567c9580e8ec873e6dd7386e490eb97cf7da7257907d",
+      "objective": "grpo"
+    },
+    {
+      "path": "experiments/posttrain_pt4b/receipts/seed_211/base_spec.json",
+      "sha256": "1e5578016afdb5a2f32ba4b989552089a00469d80ca36a396a728f210999e502",
+      "objective": "lm"
+    },
+    {
+      "path": "experiments/posttrain_pt4b/receipts/seed_211/closed_spec.json",
+      "sha256": "3088204812a596a9e70e73a4ce42259bc0b758610221f9d109e220547ce053be",
+      "objective": "grpo"
+    },
+    {
+      "path": "experiments/posttrain_pt4b/receipts/seed_211/open_spec.json",
+      "sha256": "abfc71fb013045f5a84831e925959e7bbc2d0c083625af0eeca9ba6162716010",
+      "objective": "grpo"
+    },
+    {
+      "path": "experiments/posttrain_pt4b/receipts/seed_212/base_spec.json",
+      "sha256": "fc81dbab5d8b28ebe41c4a28e3c5c4d3c59240af8660c8089e072eb7345eec3b",
+      "objective": "lm"
+    },
+    {
+      "path": "experiments/posttrain_pt4b/receipts/seed_212/closed_spec.json",
+      "sha256": "356928932da4253320ab35acbbe63e5bb6b8422f3f036ec35a6745cf338d246c",
+      "objective": "grpo"
+    },
+    {
+      "path": "experiments/posttrain_pt4b/receipts/seed_212/open_spec.json",
+      "sha256": "9809284ac4a0d5ec747dbb8c4825acedf0a2afec9a0be6509919c467e3bae277",
+      "objective": "grpo"
+    },
+    {
+      "path": "experiments/posttrain_pt4b/receipts/seed_213/base_spec.json",
+      "sha256": "99248d29c82e93f6e76b8f7b6386354cfc40376c7b5032560a7d50ebbcc4e91d",
+      "objective": "lm"
+    },
+    {
+      "path": "experiments/posttrain_pt4b/receipts/seed_213/closed_spec.json",
+      "sha256": "f951d5daae00bd49e039448715d1381fa6f736638dd4d807b9654634600c088d",
+      "objective": "grpo"
+    },
+    {
+      "path": "experiments/posttrain_pt4b/receipts/seed_213/open_spec.json",
+      "sha256": "59886ff28b3abe1f5b5e38b4c7d9728778de579d91a457bef32ea67e4e6b78ff",
+      "objective": "grpo"
+    },
+    {
+      "path": "experiments/posttrain_pt4b/receipts/seed_214/base_spec.json",
+      "sha256": "1984de956ca3b3d137d615023027e0bdc960a12ea41a3353aab1fae63f2b667c",
+      "objective": "lm"
+    },
+    {
+      "path": "experiments/posttrain_pt4b/receipts/seed_214/closed_spec.json",
+      "sha256": "39bf5572a3a858398a0bdda939f321f45d3767cff254984db0749acfb9b5d2ca",
+      "objective": "grpo"
+    },
+    {
+      "path": "experiments/posttrain_pt4b/receipts/seed_214/open_spec.json",
+      "sha256": "891595301cc32e532616b33d99d78f0bed40bb09bd305b41e42eac05c0fae1ba",
+      "objective": "grpo"
+    },
+    {
+      "path": "experiments/posttrain_pt4b/receipts/seed_215/base_spec.json",
+      "sha256": "c22076677e93b03d5df8004a30d227ee0caf35976e072b2f964f45027ced102d",
+      "objective": "lm"
+    },
+    {
+      "path": "experiments/posttrain_pt4b/receipts/seed_215/closed_spec.json",
+      "sha256": "f82f2dce62d4c502d5e19911bfff6e10d257366f43236007e1178d54e3b52b5b",
+      "objective": "grpo"
+    },
+    {
+      "path": "experiments/posttrain_pt4b/receipts/seed_215/open_spec.json",
+      "sha256": "4e32ec2ca704bb278d01f74ea70336944f2f3000a54d2e2ab47661cc4d0e5554",
+      "objective": "grpo"
+    },
+    {
+      "path": "experiments/posttrain_smoke/smoke_r20.json",
+      "sha256": "9f4b91a0c4d35b0e288e564898d25494f67f9faf795ff88a4768eae461423169",
+      "objective": "next_token_default"
+    }
+  ],
+  "grpo_run_inventory": [
+    {
+      "spec": "experiments/posttrain_pt4/receipts/seed_201/closed_spec.json",
+      "sha256": "a953d70902f0253c5eafa2d7a8cbea884e24a931b3b53769cf4ba4f0cb260dfa",
+      "arch": {
+        "preset": "llama-tiny"
+      },
+      "seed": 201,
+      "objective": "grpo",
+      "events": "experiments/posttrain_pt4/receipts/seed_201/closed/events.jsonl",
+      "events_sha256": "a815b936a55e78a2b9265aa1f222268d0f06b3abfd55a912f147500b5c4d7f63",
+      "classification": "INSUFFICIENT_RUNTIME_METADATA",
+      "reason": "Llama biasless GRPO is recorded; actual CUDA build/device selection/deviceops/deferred-download environment not retained in selected tracked spec/events/results. Inherited environment cannot be reconstructed from driver."
+    },
+    {
+      "spec": "experiments/posttrain_pt4/receipts/seed_201/open_spec.json",
+      "sha256": "e826ea31bbaa5ee5e51632c0f9f597b047ea2373df3383423eebd9a2456af060",
+      "arch": {
+        "preset": "llama-tiny"
+      },
+      "seed": 201,
+      "objective": "grpo",
+      "events": "experiments/posttrain_pt4/receipts/seed_201/open/events.jsonl",
+      "events_sha256": "c7b5888c975893168bf0761bd3ba32e832d9a9a7c16c364d4a2a61866d54a0b0",
+      "classification": "INSUFFICIENT_RUNTIME_METADATA",
+      "reason": "Llama biasless GRPO is recorded; actual CUDA build/device selection/deviceops/deferred-download environment not retained in selected tracked spec/events/results. Inherited environment cannot be reconstructed from driver."
+    },
+    {
+      "spec": "experiments/posttrain_pt4/receipts/seed_202/closed_spec.json",
+      "sha256": "b2965ec72f1e2aac8fb15cd890ac8696e377343ab1121c75aed72dcb0c69e06d",
+      "arch": {
+        "preset": "llama-tiny"
+      },
+      "seed": 202,
+      "objective": "grpo",
+      "events": "experiments/posttrain_pt4/receipts/seed_202/closed/events.jsonl",
+      "events_sha256": "4e7cec222662bef1e04d944f15296329dc4ec81923b4ad1302f8c5ec66527387",
+      "classification": "INSUFFICIENT_RUNTIME_METADATA",
+      "reason": "Llama biasless GRPO is recorded; actual CUDA build/device selection/deviceops/deferred-download environment not retained in selected tracked spec/events/results. Inherited environment cannot be reconstructed from driver."
+    },
+    {
+      "spec": "experiments/posttrain_pt4/receipts/seed_202/open_spec.json",
+      "sha256": "03432ca5339beaddd18ec3200b74f2485a415b404c224e0c80e4c440d665a7cd",
+      "arch": {
+        "preset": "llama-tiny"
+      },
+      "seed": 202,
+      "objective": "grpo",
+      "events": "experiments/posttrain_pt4/receipts/seed_202/open/events.jsonl",
+      "events_sha256": "c7211b6904528ec706edf57e03e178b76728aa48f7fe2d20c8d3fbfcb90edebc",
+      "classification": "INSUFFICIENT_RUNTIME_METADATA",
+      "reason": "Llama biasless GRPO is recorded; actual CUDA build/device selection/deviceops/deferred-download environment not retained in selected tracked spec/events/results. Inherited environment cannot be reconstructed from driver."
+    },
+    {
+      "spec": "experiments/posttrain_pt4/receipts/seed_203/closed_spec.json",
+      "sha256": "aae6696f4fe2024a359c06a84c118a521a397577c70d5fb316bc551db6f4555f",
+      "arch": {
+        "preset": "llama-tiny"
+      },
+      "seed": 203,
+      "objective": "grpo",
+      "events": "experiments/posttrain_pt4/receipts/seed_203/closed/events.jsonl",
+      "events_sha256": "46671087a142594d02162d984c18df88da92b25153e9b4819fa29fbd299f99bc",
+      "classification": "INSUFFICIENT_RUNTIME_METADATA",
+      "reason": "Llama biasless GRPO is recorded; actual CUDA build/device selection/deviceops/deferred-download environment not retained in selected tracked spec/events/results. Inherited environment cannot be reconstructed from driver."
+    },
+    {
+      "spec": "experiments/posttrain_pt4/receipts/seed_203/open_spec.json",
+      "sha256": "a194e3451fa2dbb2f13871679f0b91fd4d611045cfeaec389323b743af8d61bf",
+      "arch": {
+        "preset": "llama-tiny"
+      },
+      "seed": 203,
+      "objective": "grpo",
+      "events": "experiments/posttrain_pt4/receipts/seed_203/open/events.jsonl",
+      "events_sha256": "78b6ab5cf21f7c692ee7f3ef25febe2575d5fb92985bf8ef3658d7b83c9a76cd",
+      "classification": "INSUFFICIENT_RUNTIME_METADATA",
+      "reason": "Llama biasless GRPO is recorded; actual CUDA build/device selection/deviceops/deferred-download environment not retained in selected tracked spec/events/results. Inherited environment cannot be reconstructed from driver."
+    },
+    {
+      "spec": "experiments/posttrain_pt4/receipts/seed_204/closed_spec.json",
+      "sha256": "f1b8a855d2dfb657fceadb87edbd89a1e343a533c7ae458dc5b205f50985079b",
+      "arch": {
+        "preset": "llama-tiny"
+      },
+      "seed": 204,
+      "objective": "grpo",
+      "events": "experiments/posttrain_pt4/receipts/seed_204/closed/events.jsonl",
+      "events_sha256": "3f34c87d98d97251735c30cbf9bb0b3d457369f2ddc4e9261cb1c9fe102514a0",
+      "classification": "INSUFFICIENT_RUNTIME_METADATA",
+      "reason": "Llama biasless GRPO is recorded; actual CUDA build/device selection/deviceops/deferred-download environment not retained in selected tracked spec/events/results. Inherited environment cannot be reconstructed from driver."
+    },
+    {
+      "spec": "experiments/posttrain_pt4/receipts/seed_204/open_spec.json",
+      "sha256": "5d05a9ac905d08dd8248e347e96b5bea19e76dc14fd00a6f61652632bb31c42e",
+      "arch": {
+        "preset": "llama-tiny"
+      },
+      "seed": 204,
+      "objective": "grpo",
+      "events": "experiments/posttrain_pt4/receipts/seed_204/open/events.jsonl",
+      "events_sha256": "cd93e66cb2f67a5706639cfba0bb7bd9ced83b3bdd8ee3a67fa1f313bbf71fa3",
+      "classification": "INSUFFICIENT_RUNTIME_METADATA",
+      "reason": "Llama biasless GRPO is recorded; actual CUDA build/device selection/deviceops/deferred-download environment not retained in selected tracked spec/events/results. Inherited environment cannot be reconstructed from driver."
+    },
+    {
+      "spec": "experiments/posttrain_pt4/receipts/seed_205/closed_spec.json",
+      "sha256": "c2c22c4f76bd1b97cfe3e3128a9d9afdd7f5a42c3c089569dcc1b4cee25b8b6b",
+      "arch": {
+        "preset": "llama-tiny"
+      },
+      "seed": 205,
+      "objective": "grpo",
+      "events": "experiments/posttrain_pt4/receipts/seed_205/closed/events.jsonl",
+      "events_sha256": "99bba0b43fde61f0156451dfd97495683ab3f6173cf64c3523fef15b333ff742",
+      "classification": "INSUFFICIENT_RUNTIME_METADATA",
+      "reason": "Llama biasless GRPO is recorded; actual CUDA build/device selection/deviceops/deferred-download environment not retained in selected tracked spec/events/results. Inherited environment cannot be reconstructed from driver."
+    },
+    {
+      "spec": "experiments/posttrain_pt4/receipts/seed_205/open_spec.json",
+      "sha256": "8a125c9efd8d5c4dea6c567c9580e8ec873e6dd7386e490eb97cf7da7257907d",
+      "arch": {
+        "preset": "llama-tiny"
+      },
+      "seed": 205,
+      "objective": "grpo",
+      "events": "experiments/posttrain_pt4/receipts/seed_205/open/events.jsonl",
+      "events_sha256": "0f099df9b3bc921dd1ddb64b7f491ae75a088683203212e5bee7773536191781",
+      "classification": "INSUFFICIENT_RUNTIME_METADATA",
+      "reason": "Llama biasless GRPO is recorded; actual CUDA build/device selection/deviceops/deferred-download environment not retained in selected tracked spec/events/results. Inherited environment cannot be reconstructed from driver."
+    },
+    {
+      "spec": "experiments/posttrain_pt4b/receipts/seed_211/closed_spec.json",
+      "sha256": "3088204812a596a9e70e73a4ce42259bc0b758610221f9d109e220547ce053be",
+      "arch": {
+        "preset": "llama-tiny"
+      },
+      "seed": 211,
+      "objective": "grpo",
+      "events": "experiments/posttrain_pt4b/receipts/seed_211/closed/events.jsonl",
+      "events_sha256": "9a481691e5bd1d6f049e1326c4c6d1f434985747961360d1588bbdccbc68bbfd",
+      "classification": "INSUFFICIENT_RUNTIME_METADATA",
+      "reason": "Llama biasless GRPO is recorded; actual CUDA build/device selection/deviceops/deferred-download environment not retained in selected tracked spec/events/results. Inherited environment cannot be reconstructed from driver."
+    },
+    {
+      "spec": "experiments/posttrain_pt4b/receipts/seed_211/open_spec.json",
+      "sha256": "abfc71fb013045f5a84831e925959e7bbc2d0c083625af0eeca9ba6162716010",
+      "arch": {
+        "preset": "llama-tiny"
+      },
+      "seed": 211,
+      "objective": "grpo",
+      "events": "experiments/posttrain_pt4b/receipts/seed_211/open/events.jsonl",
+      "events_sha256": "9a0aa52fd4dfded67a6509ab69814ead98fcd37a7d64ea749e0277030346d50d",
+      "classification": "INSUFFICIENT_RUNTIME_METADATA",
+      "reason": "Llama biasless GRPO is recorded; actual CUDA build/device selection/deviceops/deferred-download environment not retained in selected tracked spec/events/results. Inherited environment cannot be reconstructed from driver."
+    },
+    {
+      "spec": "experiments/posttrain_pt4b/receipts/seed_212/closed_spec.json",
+      "sha256": "356928932da4253320ab35acbbe63e5bb6b8422f3f036ec35a6745cf338d246c",
+      "arch": {
+        "preset": "llama-tiny"
+      },
+      "seed": 212,
+      "objective": "grpo",
+      "events": "experiments/posttrain_pt4b/receipts/seed_212/closed/events.jsonl",
+      "events_sha256": "59bdb6f35dfd595a9f2619592f4a9410c09c4ef26df2fb755fd4d04f481dc188",
+      "classification": "INSUFFICIENT_RUNTIME_METADATA",
+      "reason": "Llama biasless GRPO is recorded; actual CUDA build/device selection/deviceops/deferred-download environment not retained in selected tracked spec/events/results. Inherited environment cannot be reconstructed from driver."
+    },
+    {
+      "spec": "experiments/posttrain_pt4b/receipts/seed_212/open_spec.json",
+      "sha256": "9809284ac4a0d5ec747dbb8c4825acedf0a2afec9a0be6509919c467e3bae277",
+      "arch": {
+        "preset": "llama-tiny"
+      },
+      "seed": 212,
+      "objective": "grpo",
+      "events": "experiments/posttrain_pt4b/receipts/seed_212/open/events.jsonl",
+      "events_sha256": "84faa3e928dc880ba41f9cc1adb6567edc4db72acb7bdb4827be6b8ddb86a871",
+      "classification": "INSUFFICIENT_RUNTIME_METADATA",
+      "reason": "Llama biasless GRPO is recorded; actual CUDA build/device selection/deviceops/deferred-download environment not retained in selected tracked spec/events/results. Inherited environment cannot be reconstructed from driver."
+    },
+    {
+      "spec": "experiments/posttrain_pt4b/receipts/seed_213/closed_spec.json",
+      "sha256": "f951d5daae00bd49e039448715d1381fa6f736638dd4d807b9654634600c088d",
+      "arch": {
+        "preset": "llama-tiny"
+      },
+      "seed": 213,
+      "objective": "grpo",
+      "events": "experiments/posttrain_pt4b/receipts/seed_213/closed/events.jsonl",
+      "events_sha256": "bbfff97af1c1eacaac07a6730076bf0eabcc5083bf9523127cf940cddc41af72",
+      "classification": "INSUFFICIENT_RUNTIME_METADATA",
+      "reason": "Llama biasless GRPO is recorded; actual CUDA build/device selection/deviceops/deferred-download environment not retained in selected tracked spec/events/results. Inherited environment cannot be reconstructed from driver."
+    },
+    {
+      "spec": "experiments/posttrain_pt4b/receipts/seed_213/open_spec.json",
+      "sha256": "59886ff28b3abe1f5b5e38b4c7d9728778de579d91a457bef32ea67e4e6b78ff",
+      "arch": {
+        "preset": "llama-tiny"
+      },
+      "seed": 213,
+      "objective": "grpo",
+      "events": "experiments/posttrain_pt4b/receipts/seed_213/open/events.jsonl",
+      "events_sha256": "19ef9c6a9abf34a3546d42694ab7bffd4976ad069ee17692680642d654ea9bcb",
+      "classification": "INSUFFICIENT_RUNTIME_METADATA",
+      "reason": "Llama biasless GRPO is recorded; actual CUDA build/device selection/deviceops/deferred-download environment not retained in selected tracked spec/events/results. Inherited environment cannot be reconstructed from driver."
+    },
+    {
+      "spec": "experiments/posttrain_pt4b/receipts/seed_214/closed_spec.json",
+      "sha256": "39bf5572a3a858398a0bdda939f321f45d3767cff254984db0749acfb9b5d2ca",
+      "arch": {
+        "preset": "llama-tiny"
+      },
+      "seed": 214,
+      "objective": "grpo",
+      "events": "experiments/posttrain_pt4b/receipts/seed_214/closed/events.jsonl",
+      "events_sha256": "2e93780cfbad83fd3397a0bdfa3fe47cbcf02a1a8978b2afe592625715684e30",
+      "classification": "INSUFFICIENT_RUNTIME_METADATA",
+      "reason": "Llama biasless GRPO is recorded; actual CUDA build/device selection/deviceops/deferred-download environment not retained in selected tracked spec/events/results. Inherited environment cannot be reconstructed from driver."
+    },
+    {
+      "spec": "experiments/posttrain_pt4b/receipts/seed_214/open_spec.json",
+      "sha256": "891595301cc32e532616b33d99d78f0bed40bb09bd305b41e42eac05c0fae1ba",
+      "arch": {
+        "preset": "llama-tiny"
+      },
+      "seed": 214,
+      "objective": "grpo",
+      "events": "experiments/posttrain_pt4b/receipts/seed_214/open/events.jsonl",
+      "events_sha256": "c10733f4140107de9589641578a2ac23c8090897969ffbd7274ea452bde245e8",
+      "classification": "INSUFFICIENT_RUNTIME_METADATA",
+      "reason": "Llama biasless GRPO is recorded; actual CUDA build/device selection/deviceops/deferred-download environment not retained in selected tracked spec/events/results. Inherited environment cannot be reconstructed from driver."
+    },
+    {
+      "spec": "experiments/posttrain_pt4b/receipts/seed_215/closed_spec.json",
+      "sha256": "f82f2dce62d4c502d5e19911bfff6e10d257366f43236007e1178d54e3b52b5b",
+      "arch": {
+        "preset": "llama-tiny"
+      },
+      "seed": 215,
+      "objective": "grpo",
+      "events": "experiments/posttrain_pt4b/receipts/seed_215/closed/events.jsonl",
+      "events_sha256": "d3ff66b4c8d8da5233b8ef40b1a38b3cf81b63f25b46690e0ee0aa9bcc3781e8",
+      "classification": "INSUFFICIENT_RUNTIME_METADATA",
+      "reason": "Llama biasless GRPO is recorded; actual CUDA build/device selection/deviceops/deferred-download environment not retained in selected tracked spec/events/results. Inherited environment cannot be reconstructed from driver."
+    },
+    {
+      "spec": "experiments/posttrain_pt4b/receipts/seed_215/open_spec.json",
+      "sha256": "4e32ec2ca704bb278d01f74ea70336944f2f3000a54d2e2ab47661cc4d0e5554",
+      "arch": {
+        "preset": "llama-tiny"
+      },
+      "seed": 215,
+      "objective": "grpo",
+      "events": "experiments/posttrain_pt4b/receipts/seed_215/open/events.jsonl",
+      "events_sha256": "4c919ce06fb9199f1ff6171e0731eb36ae01cd3985fb44a0048aff392dc6335f",
+      "classification": "INSUFFICIENT_RUNTIME_METADATA",
+      "reason": "Llama biasless GRPO is recorded; actual CUDA build/device selection/deviceops/deferred-download environment not retained in selected tracked spec/events/results. Inherited environment cannot be reconstructed from driver."
+    }
+  ],
+  "grpo_spec_count": 20,
+  "historical_licence_source_bindings": {
+    "d70bbcd": {
+      "src/cuda_ops.cu": {
+        "sha256": "a16e2d368cb56fce8fba237264c3b3fd0c04223a45f2e4efd3f1237e76fc27b1",
+        "deferred_keyword_present": true,
+        "step_begin_present": false
+      },
+      "src/device.cpp": {
+        "sha256": "3a0885b6ce532f8bed6045afa2e7ef4b0b75936a5296ae651ae563627faa2d4f",
+        "deferred_keyword_present": true,
+        "step_begin_present": false
+      },
+      "tools/mtstudio.cpp": {
+        "sha256": "639f5e6d8edd51c8deab04a78ecdb79d40a47c55e9ebe0c9d444b363f0692160",
+        "deferred_keyword_present": false,
+        "step_begin_present": true
+      }
+    },
+    "00327d4": {
+      "src/cuda_ops.cu": {
+        "sha256": "a16e2d368cb56fce8fba237264c3b3fd0c04223a45f2e4efd3f1237e76fc27b1",
+        "deferred_keyword_present": true,
+        "step_begin_present": false
+      },
+      "src/device.cpp": {
+        "sha256": "3a0885b6ce532f8bed6045afa2e7ef4b0b75936a5296ae651ae563627faa2d4f",
+        "deferred_keyword_present": true,
+        "step_begin_present": false
+      },
+      "tools/mtstudio.cpp": {
+        "sha256": "38de52e08b1e6e971808c40bb465089c372bec62a0c35a84e61d3ff4b3a3235e",
+        "deferred_keyword_present": false,
+        "step_begin_present": true
+      }
+    }
+  },
+  "findings": [
+    "No selected recorded past run proves the full conjunction CUDA + deviceops + deferred openstep + sampled GRPO/reference.",
+    "PT4/PT4b runs prove biasless Llama GRPO objective but omit runtime mode/environment; source already supported deferral at their licence pins, so chronology alone cannot prove unaffected.",
+    "chat_general selected tracked specs/receipts showed no GRPO objective. Non-GRPO runs are outside this particular GRPO helper applicability question; that is not general correctness validation.",
+    "CPU/nondeferred/biased-head paths are configuration-level unaffected explanations for this seam, but merely CPU-intended tests or absent flags do not establish actual historical run mode.",
+    "Future fix/gate cannot validate or revoke prior numerical results by itself. Recover actual build/device/env logs or record unresolved applicability; no blanket invalidity claim."
+  ],
+  "actions": {
+    "reruns": 0,
+    "paid_jobs": 0,
+    "datafetch": false,
+    "prior_receipts_changed": false
+  }
+}

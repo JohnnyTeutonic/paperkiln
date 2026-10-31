@@ -1,0 +1,149 @@
+{
+  "source_commit": "6744b8c3f",
+  "source_sha256": {
+    "src/ops.cpp": "166569d24c4baf5e5c1c94e42592186f4ef878676e151da48b49b4fa79243a31",
+    "tools/mtstudio.cpp": "15b0fbc8ceb5f48a10d53b62b755c3c26cd8ac5e041c90b8b8f613ba40b5fb7d",
+    "src/cuda_ops.cu": "9559249aae0f7698cb5ccb98acf1e030437e94bb19e3296eeca7709e9c4b89d7",
+    "src/device.cpp": "d8dbfd25e811706cb1425399fea968369d461abef026d2472bfd2011bc167b7e",
+    "src/cuda_resident.cu": "4c5b5995551d680b3b53936d028c2c24358573054e49d53cab12cde34503ffab",
+    "src/llama.cpp": "d360d2ef78245147b3dc25cea06937806b8afb3c14086d892c06d50cf7b41a9e",
+    "src/nn.cpp": "45922cd1e5ed18a46601948458558e5922c4dab0949be7617592138289fd5bbc"
+  },
+  "method": "bounded read-only source/control-flow audit; no runtime reproduction or numerical validation for residual findings",
+  "not_exhaustive": true,
+  "active_on_cli_findings": [
+    {
+      "path": "tools/mtstudio.cpp",
+      "lines": [
+        1264,
+        1275,
+        1282,
+        1294,
+        2964,
+        2998
+      ],
+      "problem": "sample_pure consumes device-fresh logits inside GRPO training open deferred step under NoGrad",
+      "reachability": "dense biasless/tied-head Llama returns matmul output; public GRPO config is accepted; no mode toggle needed",
+      "candidate_fix": "226c5bbe2677ee66edb8d12b80f51ba2da684859; actual-device gate in progress"
+    },
+    {
+      "path": "tools/mtstudio.cpp",
+      "lines": [
+        1606,
+        3046
+      ],
+      "problem": "reference log_softmax_rows consumes ref_fwd(...)->data in same open deferred training step",
+      "reachability": "NoGrad drops tape closure, not value-cache authority; later policy_gradient_kl materializes policy logits only",
+      "candidate_fix": "226c5bbe2677ee66edb8d12b80f51ba2da684859; actual-device gate in progress"
+    }
+  ],
+  "conditional_public_op_findings": [
+    {
+      "ops": [
+        "gelu forward",
+        "softmax_row forward",
+        "sigmoid forward",
+        "rmsnorm forward"
+      ],
+      "path": "src/ops.cpp",
+      "lines": [
+        214,
+        250,
+        1091,
+        1787
+      ],
+      "trigger": "CUDA/device ops/residency/defer enabled -> step_begin -> z=slice_cols(x,0,C) -> set_device_ops(false) -> op(z); rmsnorm can also receive computed w",
+      "reason": "fallback reads x (and rmsnorm w) without materializing; devops active() returns false after toggle, but setter does not materialize existing values",
+      "limitation": "ordinary active-on valid geometry uses supported device kernels, so missing host materialization is not evidence of default active-on corruption"
+    },
+    {
+      "ops": [
+        "gelu backward",
+        "silu backward",
+        "rmsnorm backward"
+      ],
+      "path": "src/ops.cpp",
+      "lines": [
+        228,
+        1047,
+        1122
+      ],
+      "trigger": "device-produced z used by op while active -> loss=mean(op(z)) -> set_device_ops(false) -> backward(loss)",
+      "reason": "CPU fallback materializes dy (and rms inverse) but not saved device-fresh x; rmsnorm may additionally read computed w",
+      "limitation": "host-forward branch already materializes x for silu; plain host-fresh leaf inputs do not expose saved-input gap"
+    },
+    {
+      "ops": [
+        "softmax_row backward",
+        "sigmoid backward"
+      ],
+      "path": "src/ops.cpp",
+      "lines": [
+        263,
+        1797
+      ],
+      "trigger": "s=op(x), c constant nonuniform; loss=mean(mul(s,c)) with ops active, then disable ops before backward(loss)",
+      "reason": "GPU mul keeps s output stale; fallback backward materializes dy but reads saved s/self->data without materialization; mean(s) alone hides gap by downloading s",
+      "limitation": "weighted composed graph matters; ordinary mean directly on s may already make s coherent"
+    },
+    {
+      "ops": [
+        "rmsnorm_group forward",
+        "rmsnorm_group backward"
+      ],
+      "path": "src/ops.cpp",
+      "lines": [
+        1293,
+        1316,
+        1338
+      ],
+      "trigger": "computed weight w=slice_cols(w0,0,group) left stale, then disable ops before forward or backward",
+      "reason": "group fallback materializes x (and backward inverse/dy), but still reads w raw; public API requires geometry, not leaf weights",
+      "limitation": "normal module leaf weights are host-fresh, so classify as computed-parameter/mode-switch case"
+    }
+  ],
+  "coherent_or_explicitly_unsupported": [
+    {
+      "path": "src/ops.cpp",
+      "examples": [
+        "add_bias",
+        "mul_row",
+        "mul_col",
+        "slice_cols",
+        "transpose",
+        "conv1d_causal"
+      ],
+      "reason": "relevant host operands materialized before CPU reads; forward-host paths keep immutable tape inputs coherent into backward"
+    },
+    {
+      "path": "src/ops.cpp",
+      "examples": [
+        "swiglu device-forward then disabled backward"
+      ],
+      "reason": "throws explicit device backward unavailable; unsupported transition is not a silent stale host read"
+    },
+    {
+      "path": "tools/mtstudio.cpp",
+      "examples": [
+        "grad_map at training call",
+        "score packed batch result",
+        "evaluation probe logits"
+      ],
+      "reason": "want_gm forces step_end before grad_map; packed score closes batch window before consumer; probes explicitly materialize logits"
+    },
+    {
+      "path": "tools/mtstudio.cpp",
+      "examples": [
+        "standalone sample/chat last_logits",
+        "sample-set",
+        "GRPO held-out sampler after update"
+      ],
+      "reason": "current call paths have no open deferred step; CUDA write-through gives fresh host values, so merely missing macros is insufficient to label corruption"
+    }
+  ],
+  "assumptions": [
+    "No optimizer parameter update or caller mutation before corresponding backward; such mutation invalidates standard tape assumptions and was not used as a bug argument.",
+    "Public runtime device-op toggle is accepted by setters and lacks a no-toggle-inside-window precondition; conditional cases remain distinct from active-on production paths.",
+    "No additional paid run or automatic fixes are recommended within the current window."
+  ]
+}

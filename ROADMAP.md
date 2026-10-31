@@ -53,6 +53,13 @@ that cannot fail the build.
   Other open follow-ups whose completion is not established here:
   - remaining per-token host work needs a current representative profile. CUDA/device-op outputs already avoid host zero-fill (20 Oct); a bounded tiny CPU teacher-forced score audit found no justified zero-fill change and does not close the historical CUDA follow-up (`docs/receipts/host_matrix_cpu_audit_20261031/validation.json`).
 
+- **Historical GRPO runtime applicability.** Recover actual build/device/deferred-mode
+  evidence for the 20 tracked PT4/PT4b GRPO runs. Their saved specs/events do not
+  establish exposure to, or exemption from, the repaired deferred host-reader path.
+  Original outcomes are unchanged; neither validity nor invalidity follows from
+  the metadata gap. Source-bound inventory and hash replay:
+  `docs/receipts/host_read_followup_20261031/grpo_historical_applicability_20261031.json`.
+
 - **Scale ladder, depth rung.** d=256, 4 layers, exact against SWA, as its
   own pre-registration. Deep SWA is built and gated.
 - **Atlas Stages 5–6.** Architectural fingerprints, neighbours, and the
@@ -111,7 +118,15 @@ that cannot fail the build.
     and leave this list. The isolated LayerNorm host-fallback subset is also
     complete (`docs/receipts/layernorm_coherence_cuda_20261031/`): stale x/gamma/beta
     forward and stale-gamma backward reproduce original failures and pass after
-    materialization. The audited non-WIP boundaries are wired and
+    materialization. GRPO sampling and reference log-softmax consumers also leave
+    this list: both original numerical failures and fixed references pass actual
+    L4 NoGrad/deferred-window checks
+    (`experiments/grpo_host_reads_20261031/receipts/l4_gate_v1/`).
+    Remaining conditional saved-input/computed-parameter fallback cases are
+    inventoried in `docs/receipts/host_read_followup_20261031/`; GELU/SiLU,
+    softmax/sigmoid and RMSNorm/group cases still need device reproductions.
+    That bounded source audit is not a runtime pass or an exhaustive audit.
+    The audited non-WIP boundaries are wired and
     pass actual L4 CUDA+DEVCHECK integration (`docs/receipts/devcheck_host_read_cuda_20261030/`);
     those completed guards leave this list.
   - Coalesce loads in the transposed GEMM paths.

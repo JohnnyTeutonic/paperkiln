@@ -1,0 +1,13 @@
+{
+  "pass": true,
+  "method": "Independent git show commit:path byte-hash replay",
+  "bindings_checked": 102,
+  "historical_grpo_runs": 20,
+  "runtime_exposure": "UNRESOLVED",
+  "model_result_validity": "NOT_ESTABLISHED_OR_REVOKED_BY_THIS_REVIEW",
+  "review_sha256": {
+    "paperkiln_host_read_audit_20261031.json": "5550c4bc6edbb7f578059c52a64e6ba16bcffd3f70c0f7bf0a0aa4aec4a15005",
+    "grpo_historical_applicability_20261031.json": "47592024885fc84ebf9bd377baf627b9bd08250168a99a2b36c58a09ce51c63b"
+  },
+  "limits": "Static bounded source review and historical metadata inventory only; residual operation findings are not runtime reproductions. Historical results and receipts are unchanged."
+}

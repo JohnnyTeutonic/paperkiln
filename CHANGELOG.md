@@ -1,4 +1,15 @@
 # Changelog
+## Deferred GRPO CLI host readers (31 October 2026)
+
+Materialize logits before `sample_pure` and reference `log_softmax_rows` host
+loops, with debug host-read assertions. The actual CLI helpers pass independent
+probability/ID/RNG references in a real L4 NoGrad/deferred step; both original
+numeric failures are retained and landed logs independently replay. Source and
+arithmetic are otherwise unchanged. This is a reader-correctness result, not
+full GPU GRPO training validation or a model-quality gain. Historical run-mode
+applicability remains unresolved where runtime metadata were not retained.
+[Receipt](experiments/grpo_host_reads_20261031/receipts/l4_gate_v1/replay.json).
+
 ## Mamba causal-convolution CUDA subset (31 October 2026)
 
 Add ordered forward/backward device kernels for `ops::conv1d_causal`, retaining

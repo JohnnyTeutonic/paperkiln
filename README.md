@@ -270,6 +270,14 @@ including deferred device data, sequence boundaries and gradient masks.
 Selective scan still uses the host, and no complete-Mamba speed gain is claimed.
 [Actual device evidence and replay](experiments/conv1d_cuda_20261031/receipts/l4_gate_v1/replay.json).
 
+Deferred CUDA GRPO sampling and reference log-probabilities now materialize
+logits before their host reads. Actual L4 regressions reproduce both old failures
+and verify the repaired CLI helpers, including sampled IDs and RNG advancement.
+[Device evidence](experiments/grpo_host_reads_20261031/receipts/l4_gate_v1/replay.json).
+This establishes the two reader fixes, not a training-quality improvement;
+[historical runtime applicability](docs/receipts/host_read_followup_20261031/grpo_historical_applicability_20261031.json)
+remains unresolved where the old metadata are missing.
+
 ## Quick start: C++ and Python
 
 ```cpp
