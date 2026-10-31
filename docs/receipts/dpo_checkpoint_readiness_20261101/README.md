@@ -41,7 +41,7 @@ with uniform weighting, beta.1, NLL.2, FP32, batch8, seed1, total20 steps and fi
 checkpoint10. Uninterrupted versus interrupted at10/full-home/fresh-output/resume20
 had byte-identical weights, AdamW and state, with160 reconstructed RNG draws.
 An actual partial-flat missing-optimizer run refused before training. Raw paths,
-binary/source hashes and scope are in actual_cpu_continuity_v3.json. This tiny
+binary/source hashes and scope are in actual_cpu_continuity_v4.json. This tiny
 fixture does not establish L4 cadence, training quality or throughput. The final fixture uses six distinct preference-pair rows so batch RNG affects
 gradient selection. Earlier repeated-pair and LM-initialized engineering fixtures
 are retained and explicitly distinguished.
