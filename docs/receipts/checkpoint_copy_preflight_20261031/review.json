@@ -1,0 +1,78 @@
+{
+  "reviewer": "independent cleanroom_review agent",
+  "reviewed_utc": "2026-10-31T12:43:22.591349+00:00",
+  "recommendation": "READY_FOR_ROOT_AUTHORIZATION_CHECKPOINT_HELPER_CUDA_GATE",
+  "tip": "7db68a935dcf8b6fd59a8670f9849b47ea2748e3",
+  "fix_commit": "9735c7f3eb733a061678c5bc838fc6c9a76db4bf",
+  "packet_source": "f753dc5bef76afdc00d1a5d546cc76afd7dd0c88",
+  "manifest_sha256": "f56cfdccf17eb65f0d609b64de1a88783cacd3df9a33e3974ae4581f79f6cc1f",
+  "archive_sha256": "b193856904a4f7d076a8e0cfcf13d6d6c9f967bc2e07c7c5803224f2713234cd",
+  "wrapper_sha256": "82729ff85a1bfd55dd375a56951601fd0a05b8a7531192c2c6b504d0765a31f8",
+  "protocol_sha256": "e61485a469056fb8b78c2268d2869a828e7c8b73259fed8635adfdbe4b2f33fb",
+  "source_files_verified": 959,
+  "baseline_exact_historical_git_blob": true,
+  "repair_exactly_two_materializations_existing_guards_retained": true,
+  "CPU_binary_sha256": {
+    "checkpoint_copy_old": "f398a9fb3b91076766bec611002008f3ad956926b987d674cac29f1f9ce235b7",
+    "checkpoint_copy_fixed": "f09dd2d5a785543139d40f1c4ad122ae5debdb50043c1dead5f8e4ed20e79b3c"
+  },
+  "CPU_cases": [
+    {
+      "pass": true,
+      "actual_cuda": false,
+      "case": "output",
+      "variant": "old",
+      "gradient_tensors": 2,
+      "bound": 1e-06,
+      "maximum_normalized_error": 0.0
+    },
+    {
+      "pass": true,
+      "actual_cuda": false,
+      "case": "input",
+      "variant": "old",
+      "gradient_tensors": 3,
+      "bound": 1e-06,
+      "maximum_normalized_error": 0.0
+    },
+    {
+      "pass": true,
+      "actual_cuda": false,
+      "case": "output",
+      "variant": "fixed",
+      "gradient_tensors": 2,
+      "bound": 1e-06,
+      "maximum_normalized_error": 0.0
+    },
+    {
+      "pass": true,
+      "actual_cuda": false,
+      "case": "input",
+      "variant": "fixed",
+      "gradient_tensors": 3,
+      "bound": 1e-06,
+      "maximum_normalized_error": 0.0
+    }
+  ],
+  "CPU_gradient_tensors": 10,
+  "fresh_CPU_output_matches_preserved_raw": true,
+  "CPU_cannot_substitute_CUDA": "All four actual CPU require-cuda outputs rejected by CUDA checker",
+  "offline_tests": ".................................................                        [100%]\n=============================== warnings summary ===============================\n../.local/lib/python3.12/site-packages/_pytest/config/__init__.py:1310\n  /home/jonat/.local/lib/python3.12/site-packages/_pytest/config/__init__.py:1310: PytestConfigWarning: assertions not in test modules or plugins will be ignored because assert statements are not executed by the underlying Python interpreter (are you using python -O?)\n  \n    self._warn_about_missing_assertion(mode)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n49 passed, 1 warning in 0.06s",
+  "offline_tests_log_sha256": "4981eced971777b973a917a70fb48ecc8dfc58d8bd2fe603d9e9915b727f23e3",
+  "blockers": [],
+  "findings": [
+    "External deferred residency is keyed separately from Matrix host storage; copying Matrix does not synchronize that state. Both new calls precede the existing host-read guards without arithmetic or guard removal.",
+    "Two deterministic legal callbacks isolate deferred output copy versus backward input copy. Input callback materializes only z; v remains device fresh until checkpoint backward.",
+    "Independent stdlib binary64 analytic forward/loss and full x/w or a/b/w gradients are checked with fixed exact binary-fraction fixtures, registered1e-6 normalized bound.",
+    "Old CUDA cases must fail at exact distinct DEVCHECK messages with actual stale observations and NoGrad stage evidence; fixed cases must pass full arrays/gradients and positive actual CUDA GEMM profile.",
+    "Release checks survive NDEBUG; actual L4/CUDA/DEVCHECK/profiler required. Old/fixed autograd translation units explicitly override static archive symbols.",
+    "Immutable output, cumulative1500s internal deadline, before/after source inventory checks and preserved failed logs/summary/ZIP. Root owns external.75USD/.6hour cap and serial admission."
+  ],
+  "limits": [
+    "No actual CUDA compile/run or heavy build by reviewer.",
+    "CPU proof does not establish stale CUDA reproduction; the prospective gate will test it.",
+    "Scope is two checkpoint copy boundaries, no historical training invalidity, full residency, model quality or speed claim.",
+    "External controller must enforce spending/deadline and no retry-for-pass; wrapper does not meter provider billing."
+  ],
+  "no_GPU_config_paid_or_defaultbranch_action": true
+}

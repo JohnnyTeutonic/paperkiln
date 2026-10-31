@@ -1,0 +1,1 @@
+Independently reviewed checkpoint copy-boundary old/fixed helper gate. Actual L4 outcome pending. Exact source and legal callback controls are bound in the feature packet; no historical training invalidity or speed claim. Transport relay keeps scientific failures distinct.
