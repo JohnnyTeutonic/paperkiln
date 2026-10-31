@@ -1,0 +1,10 @@
+{
+  "files_sha256": {
+    "docs/receipts/sfull_owner_recognition_20261101/README.md": "582c4b5e4da7f572359bdc059621a78fa1b1df103e84391e105b43089a50e161",
+    "docs/receipts/sfull_owner_recognition_20261101/review.json": "bb617a1733ccc950f97e488ad00a0adff7663d54219f9a041180db4010326c91",
+    "docs/receipts/sfull_owner_recognition_20261101/portable_tests.log": "e3ae2fcf69433e253bdd5e4238f23a98b55213e2b1f1c56f077fe853185bcb8d",
+    "docs/receipts/sfull_owner_recognition_20261101/real_binding_tests.log": "9bfab09556805f373fba69edb7557a0185e9efaa5cb755b0ca736956c671fbaf",
+    "docs/receipts/sfull_owner_recognition_20261101/real_binding_matrix.py.txt": "f56ffbba98b8113512a1107e15697293767a87360436114c7fd3c26b5d0ee07d",
+    "tools/colab_chat/test_runpod_sfull_owner_20261101.py": "7cb06c2626c5661cb246ea210d8f21ee24cc75e0abd40358cbf2e67f786902a9"
+  }
+}
