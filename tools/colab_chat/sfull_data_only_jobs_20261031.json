@@ -1,0 +1,64 @@
+{
+  "_comment": "Data-only runtime identity gate. No model build, CUDA gate, training, evaluation or S-full scientific outcome. Exact frozen S-full data command and verifier; original full-ledger failure remains a failure.",
+  "jobs": [
+    {
+      "name": "data",
+      "light": true,
+      "cmd": [
+        "python3",
+        "tools/colab_chat/tiny_chat_data.py",
+        "--out",
+        "{out}",
+        "--vocab",
+        "/content/chat/upload/vocab_llama3_bpe.gguf",
+        "--fineweb",
+        "corpus/data/fineweb_edu_shard0_v1",
+        "--shares",
+        "35",
+        "--mix-bytes",
+        "800000000",
+        "--max-epochs",
+        "4",
+        "--T",
+        "1024",
+        "--seed",
+        "1",
+        "--human-fetch",
+        "python3 corpus/fetchers/human_dialogue.py oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots --allow-sa --allow-nc --out-dir {human}",
+        "--sources",
+        "oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots",
+        "--require-pinned",
+        "--carry12",
+        "--long-sft",
+        "10:4"
+      ],
+      "outputs": [
+        "data.ledger.json",
+        "human_decontam.json",
+        "sft_human.jsonl",
+        "sft_human_long4.jsonl",
+        "panel_fineweb.ids",
+        "panel_dialogue.ids",
+        "mix_s35.ids"
+      ]
+    },
+    {
+      "name": "sfull_inputs",
+      "light": true,
+      "after": "data",
+      "cmd": [
+        "python3",
+        "tools/colab_chat/sfull_verify_inputs.py",
+        "--data",
+        "/content/chat/data",
+        "--reference",
+        "experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/data_reference.json",
+        "--out",
+        "{out}"
+      ],
+      "outputs": [
+        "verified_inputs.json"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "authorisation": "UNAPPROVED_TEMPLATE_DO_NOT_LAUNCH",
+  "manifest_sha256": "3640b1595afb5847e66081b7a6fc10766caed7c4fa5b9cb61b2e3957fb1b4ea9",
+  "published_remote_commit": "f616a0f85447f95f67d0f9bdf6dfef513dc632a3",
+  "manual_balance_accessor_checked": false,
+  "provider_cleanup_checked": false,
+  "admitted_at_utc": null,
+  "manual_balance_checked_utc": null,
+  "deadline_utc": null,
+  "serial_predecessors": [
+    {
+      "path": "/home/jonat/pk_ternary_scale_1031_runner/state.json",
+      "sha256": null
+    },
+    {
+      "path": "/home/jonat/ember_e10_integrated_20261031_runner/state.json",
+      "sha256": null
+    }
+  ]
+}

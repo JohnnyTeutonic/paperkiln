@@ -1009,7 +1009,7 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
 
 def boot_launch_code(commit, jobs_rel, boot_script="tools/colab_chat/boot_jobs.sh"):
     """Pinned boot selection; the legacy training boot remains the default."""
-    if boot_script not in ("tools/colab_chat/boot_jobs.sh", "tools/colab_chat/boot_commands.sh", "tools/colab_chat/boot_commands_sparse.sh"):
+    if boot_script not in ("tools/colab_chat/boot_jobs.sh", "tools/colab_chat/boot_commands.sh", "tools/colab_chat/boot_commands_sparse.sh", "tools/colab_chat/boot_sfull_data_only_20261031.sh"):
         raise ValueError("unsupported boot script")
     url = f"https://raw.githubusercontent.com/JohnnyTeutonic/paperkiln/{commit}/{boot_script}"
     return (
@@ -1084,7 +1084,7 @@ def main():
     ap.add_argument("--commit", required=True)
     ap.add_argument("--jobs", required=True, help="jobs JSON, path relative to the paperkiln repo root")
     ap.add_argument("--boot-script", default="tools/colab_chat/boot_jobs.sh",
-                    choices=["tools/colab_chat/boot_jobs.sh", "tools/colab_chat/boot_commands.sh", "tools/colab_chat/boot_commands_sparse.sh"],
+                    choices=["tools/colab_chat/boot_jobs.sh", "tools/colab_chat/boot_commands.sh", "tools/colab_chat/boot_commands_sparse.sh", "tools/colab_chat/boot_sfull_data_only_20261031.sh"],
                     help="pinned VM boot; command-only boot skips trainer and corpus setup")
     ap.add_argument("--max-hours", type=float, default=23.5)
     ap.add_argument("--deadline-utc", type=parse_deadline_utc, default=None,

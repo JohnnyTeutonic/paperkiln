@@ -1,0 +1,31 @@
+{
+  "enabled": false,
+  "name": "S-full frozen data-only gate; root admission required; cap $1.25 / 75 minutes",
+  "command": [
+    "python3",
+    "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/scripts/cpu_budget.py",
+    "run",
+    "--session",
+    "sfull-data-only",
+    "--job",
+    "Frozen data input verification",
+    "--cores",
+    "1",
+    "--resume",
+    "Resume only through existing watchdog with same manifest and admission deadline",
+    "--",
+    "python3",
+    "/home/jonat/pk_sfull_data_controller_20261031/tools/colab_chat/sfull_data_only_controller_20261031.py",
+    "--manifest",
+    "/home/jonat/pk_sfull_data_controller_20261031/docs/receipts/sfull_data_only_admission_20261031/manifest.json",
+    "--manifest-sha256",
+    "3640b1595afb5847e66081b7a6fc10766caed7c4fa5b9cb61b2e3957fb1b4ea9",
+    "--admission",
+    "/home/jonat/pk_sfull_data_only_1031_runner/admission.json"
+  ],
+  "stop_file": "/home/jonat/pk_sfull_data_only_1031_runner/HALTED",
+  "state_dir": "/home/jonat/pk_sfull_data_only_1031_runner",
+  "launch_authorised": false,
+  "process_local_max_pods": 2,
+  "global_caps_unchanged": true
+}
