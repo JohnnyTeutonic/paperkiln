@@ -1,0 +1,27 @@
+{
+  "status": "PASS_CPU_ONLY",
+  "source_commit": "f790e006e400f952a9becb28be45d19975d7ea76",
+  "source_sha256": {
+    "src/ops.cpp": "4d6fe6c7041e02fcc93d1cb29f0be15f8658315f91fc64a1b89f31473956ed85",
+    "tools/mtstudio.cpp": "15b0fbc8ceb5f48a10d53b62b755c3c26cd8ac5e041c90b8b8f613ba40b5fb7d",
+    "tools/parity_model.hpp": "fec0ee958df6e3e36596a13d51ceb9a36fd93fba0e38d83418283e71047e815f",
+    "tools/hf_export.py": "9fd5ec72380050829d9154a8d112cb10bee3e45eb3edb408d9a3baf4f84e4bed",
+    "tools/hf_export_verify.py": "ab43051ec23b60f2ceff6d2be8f37d57ae545a0f15e5f43ed7b91d834909309a",
+    "tests/test_hf_tied_flex.py": "01dafde15ec3e5abbd95a4d2739dfd4f9d4aa724bb4a487e518072de8fdfbcfa",
+    "tests/test_hf_exact_gelu.py": "9156c6f9e38026200a87c6bfc7c1cf9daf34edbd8a8fd5ca420ed593bf51b2e0",
+    "tests/test_hf_relu_flex.py": "b86a8c29226c0676970e6939673b6ac65eff4916bc5f7ee41a56527179403961",
+    "tests/test_evaluation_probes_cli.py": "4a1942e091aabf493a4941b29b311bb4420a34d3e79e1d47b09acbc47d7655c3"
+  },
+  "binary_sha256": "332f9721aef9fb9fab151db35362a36d67d95f44596fac513950a1f173ca6c70",
+  "library_sha256": "fd29e6520977c26a073d911701e6276aefcc08767450597242013d8ab1a5857d",
+  "tests": {
+    "passed": 302,
+    "skipped": 1,
+    "failed": 0,
+    "seconds": 101.16,
+    "skip": "Existing optional independent C++ BPE encoder comparison; BPE_ENCODE_BIN is not configured."
+  },
+  "command": "MTSTUDIO_BIN=/home/jonat/pk_host_read_final_build_20261031/mtstudio MICROTORCH_CPU_BUILD=/home/jonat/pk_host_read_final_build_20261031 python3 -m pytest tests/test_hf_export.py tests/test_hf_export_evidence.py tests/test_hf_export_publication.py tests/test_hf_export_training_modifiers.py tests/test_hf_tied_flex.py tests/test_hf_exact_gelu.py tests/test_hf_relu_flex.py tests/test_evaluation_probes_cli.py -q",
+  "scope": "Combined saved/reloaded actual HF CPU models, literal probe CLI/HTTP, and ReLU finite/exceptional diagnostics against the rebuilt integration binary. No GPU execution or model-quality claim.",
+  "tests_log_sha256": "04ff9697d335caf22a70306281aa0ec1ca6b6740d7fb407b4219fa632f2cb9b1"
+}
