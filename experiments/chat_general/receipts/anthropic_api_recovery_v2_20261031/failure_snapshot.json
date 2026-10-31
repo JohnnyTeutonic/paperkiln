@@ -1,0 +1,18 @@
+{
+  "status": "V2_HALTED_NEW_UNKNOWN_NO_AUTOMATIC_RECOVERY",
+  "new_attempts": 16,
+  "new_valid_rankings": 15,
+  "pending_id": "7ef677f4605a4b489f00c4bfde5b625c",
+  "error": {
+    "charge": "unknown_reservation_retained",
+    "errno": 101,
+    "error_type": "URLError",
+    "reason_type": "OSError"
+  },
+  "response_exists": false,
+  "old_HALTED_unchanged": true,
+  "new_HALTED_sha256": "38bd276794365ebea271f2725c81a50964501650459350a5387c3ee577e5b5b9",
+  "ledger_sha256": "8a803bd8a332cee7246a8eaf20656ba90f3ead4c618576c3949104d32118451a",
+  "request_sha256": "35130f97e8e8f72df0e21405927362c88d3f5bd2787ff7435cdf04717f11803e",
+  "error_sha256": "43421e1bee3edca98777b365b01b962b99d689cc2de3eaf8459af860d276102b"
+}
