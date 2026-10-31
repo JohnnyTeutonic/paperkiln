@@ -79,7 +79,7 @@
     "cases": 6,
     "gradient_elements": 36,
     "maximum_loss_and_gradient_error": 0.0,
-    "optimized_parser_tests": 49,
+    "optimized_parser_tests": 50,
     "actual_cuda": false
   },
   "limits": {
