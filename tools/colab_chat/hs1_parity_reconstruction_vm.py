@@ -1,6 +1,7 @@
 """Bounded historical-source reconstruction; never rewrites historical research results."""
 
 import datetime
+import gzip
 import hashlib
 import json
 import os
@@ -35,6 +36,7 @@ def run(
     upload=Path("/content/chat/upload"),
     root=Path("/content/hs1_source"),
     build=Path("/content/hs1_build"),
+    expected_manifest_sha=None,
 ):
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
@@ -82,7 +84,14 @@ def run(
             raise ValueError(name + " failed")
 
     try:
+        if (
+            expected_manifest_sha is None
+            or sha(upload / "hs1_inputs.json") != expected_manifest_sha
+        ):
+            raise ValueError("prospective manifest SHA differs or absent")
         m = json.loads((upload / "hs1_inputs.json").read_text())
+        if sha(Path(__file__)) != m["files"].get(Path(__file__).name):
+            raise ValueError("executing wrapper hash differs")
         report["input_manifest_sha256"] = sha(upload / "hs1_inputs.json")
         (out / "input_manifest.json").write_text(json.dumps(m, indent=2) + "\n")
         (out / "diagnostic_source.cpp").write_bytes(
@@ -97,6 +106,14 @@ def run(
             if sha(upload / model["weights_upload"]) != model["weights_sha256"]:
                 raise ValueError("checkpoint hash differs")
         env.update(m["runtime_env"])
+        for model in m["models"].values():
+            original_spec = json.loads((upload / model["original_spec"]).read_text())
+            remote_spec = json.loads((upload / model["spec"]).read_text())
+            original_spec["out_dir"] = remote_spec["out_dir"]
+            original_spec["data"]["vocab"] = remote_spec["data"]["vocab"]
+            if original_spec != remote_spec:
+                raise ValueError("runtime spec delta is not path-only")
+        report["spec_delta_path_only_verified"] = True
         root.mkdir(exist_ok=True)
         if any(root.iterdir()):
             raise ValueError("source destination not empty")
@@ -109,6 +126,60 @@ def run(
                 ):
                     raise ValueError("unsafe source archive")
             archive.extractall(root)
+        command(
+            "tokenizer_dependency",
+            [sys.executable, "-m", "pip", "install", "tokenizers==0.23.3"],
+            120,
+        )
+        sys.path.insert(0, str(root / "tools"))
+        import carry12_eval as historical
+
+        corpus = [
+            json.loads(x)
+            for x in (root / "corpus/eval/carry12_v1.jsonl").read_text().splitlines()
+        ]
+        for model in m["models"].values():
+            gens = {
+                x["id"]: x
+                for x in map(
+                    json.loads,
+                    gzip.decompress((upload / model["gen_archive"]).read_bytes())
+                    .decode()
+                    .splitlines(),
+                )
+            }
+            tok = historical.ce.Tok(str(upload / "vocab.gguf"))
+            spec = json.loads((upload / model["original_spec"]).read_text())
+            st = spec["arch"].get("state_tokens")
+            tok.state = (16384, st["k"]) if st else None
+            selected = {x["index"]: x for x in model["chunks"]}
+            buffer, index = [], 0
+            for item in corpus:
+                for request in historical.requests(
+                    [item], tok, {item["id"]: gens[item["id"]]}
+                ):
+                    buffer.append(request)
+                    if len(buffer) == 256:
+                        if index in selected:
+                            data = "".join(
+                                json.dumps(
+                                    {"key": k, "prompt_ids": a, "continuation_ids": b}
+                                )
+                                + "\n"
+                                for k, a, b in buffer
+                            ).encode()
+                            if (
+                                hashlib.sha256(data).hexdigest()
+                                != selected[index]["sha256"]
+                            ):
+                                raise ValueError(
+                                    "historical chunk reconstruction differs"
+                                )
+                        buffer, index = [], index + 1
+            # 46,464 requests give181 complete chunks plus one128-row tail.
+            if index != 181 or len(buffer) != 128:
+                raise ValueError("historical full request inventory differs")
+        report["exact_historical_chunk_reconstruction_verified"] = True
         original = source.read_bytes()
         if sha(source) != m["source_original_mtstudio_sha256"]:
             raise ValueError("original scorer source differs")
@@ -293,11 +364,16 @@ def run(
                 ],
                 600,
             )
+            if (
+                "CUDA Enabled. Will define HAS_CUDA"
+                not in (out / "ember_configure.log").read_text()
+            ):
+                raise ValueError("Ember configure did not enable CUDA")
             report["generation_binary_sha256"] = sha(ember / "build/tinyllama_server")
             for run_name, model in m["models"].items():
                 directory = out / (run_name + "_ember")
                 directory.mkdir()
-                (directory / "debugging.log").symlink_to("/dev/null")
+                # Retain original runtime logs for an explicit selected-CUDA proof.
                 www = directory / "www"
                 www.mkdir()
                 argv = [
@@ -336,6 +412,11 @@ def run(
                         upload / (model["model_name"] + ".gguf")
                     ):
                         raise ValueError("generation health identity differs")
+                    if health.get("deterministic") is not True:
+                        raise ValueError(
+                            "generation health did not confirm deterministic mode"
+                        )
+                    report["models"][run_name]["health"] = health
                     responses = []
                     for case in model["cases"]:
                         for repeat in range(2):
@@ -384,6 +465,21 @@ def run(
                     (out / (run_name + "_generation.json")).write_text(
                         json.dumps(responses, indent=2) + "\n"
                     )
+                    logs = "\n".join(
+                        p.read_text(errors="replace") for p in directory.glob("*.log")
+                    )
+                    if not any(
+                        marker in logs
+                        for marker in (
+                            "IR interpreter (CUDA",
+                            "Prefill: Processing GPU layers",
+                            "[Batch Prefill] Processing GPU layers",
+                        )
+                    ):
+                        raise ValueError(
+                            "generation runtime did not explicitly prove selected CUDA"
+                        )
+                    report["models"][run_name]["selected_cuda_runtime_proved"] = True
                     report["models"][run_name]["generation_reconstruction"] = responses
                 finally:
                     child.terminate()
@@ -429,4 +525,6 @@ if __name__ == "__main__":
         signal.SIGTERM,
         lambda *_: (_ for _ in ()).throw(InterruptedError("termination")),
     )
-    raise SystemExit(run(sys.argv[1]))
+    if len(sys.argv) != 3:
+        raise SystemExit("OUT and prospective MANIFEST_SHA required")
+    raise SystemExit(run(sys.argv[1], expected_manifest_sha=sys.argv[2]))

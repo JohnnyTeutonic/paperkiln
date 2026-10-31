@@ -10,7 +10,8 @@
         "7200",
         "python3",
         "/content/chat/upload/hs1_parity_reconstruction_vm.py",
-        "{out}"
+        "{out}",
+        "21365c44511f3b96c4ef42d56dbf9e77b17d173584fdaf90f6fb8a753d7e4f3b"
       ],
       "outputs": [
         "summary.json",
