@@ -1,0 +1,23 @@
+{
+  "scope": "Isolated subprocess-only module import alias makes original API/campaign tests exercise NEW diagnostic API. No production source/global monkeypatch, API calls or credentials.",
+  "changes": [
+    "test_chat_judge_api.py: fake post accepts ignored diagnostic-only trace keyword, no assertion changes",
+    "test_chat_judge_campaign.py: broken transport accepts ignored trace keyword",
+    "test_chat_judge_campaign_v2.py: fixed test-only repository fixture root for copied stopfile test"
+  ],
+  "argv": [
+    "python3",
+    "-m",
+    "pytest",
+    "-q",
+    "/home/jonat/api_halt_diagnosis_20261031/offline_all_legacy_diagnostic_tests"
+  ],
+  "returncode": 0,
+  "files_sha256": {
+    "test_chat_judge_campaign_v2.py": "675553113d2be7863185b7dc199b28973039be9fda5c6955db6a71d867dafa61",
+    "test_chat_judge_campaign.py": "fbf2c89978461935cd55fa38d74592a215e983f64e0b030f0cfee75bfcdd8637",
+    "test_chat_judge_api.py": "edd1690646a2bba0b96ff609f3e5b293f6ed257417f5fb01f8cd74a1de99a300",
+    "tests.log": "4af49eb2f29d8e0cc599903fab6af53d2b5893989a5445a55ae080bc7ec6a511",
+    "conftest.py": "6cb3b3c9e574ed5c7db70efebdc0336b87e3bc2385243af6e2547423ae4d4e9c"
+  }
+}

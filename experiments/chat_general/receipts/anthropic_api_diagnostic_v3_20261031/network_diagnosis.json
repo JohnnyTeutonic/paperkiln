@@ -1,0 +1,36 @@
+{
+  "scope": "Read-only no-authDNS/TCP/TLS diagnosis;0APIHTTPrequests/credentials. Current tests do not recover historical endpoint failure causes.",
+  "wsl_ipv4_successes": 20,
+  "wsl_ipv4_failures": 0,
+  "wsl_ipv6_errno101": 20,
+  "wsl_ipv6_route": "link-local only; no default route",
+  "wsl_networking_mode": "mirrored",
+  "windows_resolved_families": [
+    "InterNetwork"
+  ],
+  "windows_TCP_TLS_success": true,
+  "proxy_environment_names_present_WSL": [],
+  "proxy_environment_names_present_Windows": [],
+  "historical_failure_artifact_mtime_deltas": [
+    {
+      "id": "aafafd1531f74959936e5422388ff30e",
+      "request_mtime_ns": 1793423096870341600,
+      "error_mtime_ns": 1793423096940266900,
+      "delta_seconds": 0.0699253,
+      "caveat": "filesystem timestamps only; not a recorded transport timer"
+    },
+    {
+      "id": "7ef677f4605a4b489f00c4bfde5b625c",
+      "request_mtime_ns": 1793424632428752600,
+      "error_mtime_ns": 1793424632566803900,
+      "delta_seconds": 0.1380513,
+      "caveat": "filesystem timestamps only; not a recorded transport timer"
+    }
+  ],
+  "interpretation": "IPv6is currentlyunrouted, but normalgetaddrinfofallbackcurrentlyselectsworkingIPv4; lastIPv6errno101 maymaskearlierIPv4failure.20IPv4successes do notproveIPv6causedoldfailures. No forcedIPv4/proxy/profilechange adopted.",
+  "private_raw_capture_sha256": {
+    "network_probe_wsl_v1.json": "c70325e0212c15d10bb5231e6fade9fc01c9f29d11bd95f1fc971fb9d305f9b9",
+    "network_probe_wsl_20.json": "0d34a144a857a429c69b0f464f852d7abd162d9f1e0608c6624a0664abac12ef",
+    "api_network_windows_v1.json": "2953e78a17ec4af15075c199ebe753c8e8fc8407c04fb1581ab6794db3548898"
+  }
+}

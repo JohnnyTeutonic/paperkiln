@@ -1,0 +1,11 @@
+{
+  "kind": "ROOT_AUTHORISED_RETAIN_UNKNOWN_CEILING",
+  "pending_id": "7ef677f4605a4b489f00c4bfde5b625c",
+  "ledger_sha256": "8a803bd8a332cee7246a8eaf20656ba90f3ead4c618576c3949104d32118451a",
+  "binding_sha256": "d36e10fd0d5708fd937d52857188de442f99ed8938a31e48a51497c2227bb6e1",
+  "raw_request_sha256": "35130f97e8e8f72df0e21405927362c88d3f5bd2787ff7435cdf04717f11803e",
+  "error_sha256": "43421e1bee3edca98777b365b01b962b99d689cc2de3eaf8459af860d276102b",
+  "error_type": "URLError",
+  "reason": "Root authorises permanent retention of this full unknown-call ceiling, with the attempt counted and all prior halted states/raw records preserved. Current network probes do not establish the historical connection cause. No usage, ranking or zero-charge claim is invented. This disposition alone authorises neither a model dispatch nor any automatic retry; a separately frozen diagnostic phase with at most24 new HTTP attempts requires root review before launch. CumulativeUSD200 and heldoutUSD25 remain unchanged.",
+  "source_commit": "d1155a0d7"
+}
