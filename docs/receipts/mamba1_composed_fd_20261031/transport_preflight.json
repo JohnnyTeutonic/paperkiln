@@ -1,0 +1,27 @@
+{
+  "pass": true,
+  "scope": "actual jobs_vm executes the real frozen wrapper in local expected-bad-manifest mode; no CUDA runtime, nvidia-smi, network or allocation invoked",
+  "job_relative_path": "tools/colab_chat/mamba1_composed_20261031.json",
+  "manager_returncode": 0,
+  "manager_status": "FINISHED",
+  "expected_gate_pass": false,
+  "expected_error": "Manifest pin differs",
+  "gate_commands_run": [],
+  "production_argv_only_relocated_for_local_upload_and_out": true,
+  "boot_syntax": {
+    "argv": [
+      "bash",
+      "-n",
+      "/home/jonat/pk_mamba_composed_20261031/tools/colab_chat/boot_commands_sparse.sh"
+    ],
+    "returncode": 0
+  },
+  "runner_help": {
+    "argv": [
+      "python3",
+      "/home/jonat/pk_mamba_composed_20261031/tools/colab_chat/runner_multi.py",
+      "--help"
+    ],
+    "returncode": 0
+  }
+}

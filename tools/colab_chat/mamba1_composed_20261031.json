@@ -1,0 +1,26 @@
+{
+  "max_parallel": 1,
+  "jobs": [
+    {
+      "name": "mamba1_composed_gate",
+      "cmd": [
+        "timeout",
+        "--signal=TERM",
+        "--kill-after=30",
+        "1530",
+        "python3",
+        "/content/chat/upload/mamba1_composed_gate.py",
+        "--upload",
+        "/content/chat/upload",
+        "--manifest-sha256",
+        "40a628bee3c2732360a62b72a6a92aa71eb76cd9182febcae036783fd2540733",
+        "--out",
+        "{out}"
+      ],
+      "outputs": [
+        "gate_summary.json",
+        "out.zip"
+      ]
+    }
+  ]
+}

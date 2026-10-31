@@ -1,0 +1,24 @@
+{
+  "pass": true,
+  "source_commit": "eba9aeaea10e175ed02be8cf7217ca3916a2053b",
+  "stage": "/home/jonat/mamba1_composed_gate_stage_v1_20261031",
+  "manifest_sha256": "40a628bee3c2732360a62b72a6a92aa71eb76cd9182febcae036783fd2540733",
+  "archive_sha256": "cda86d4f0b50158eaf0da99ea0f1b90d86a6143485e34a60983e00d82d330ad8",
+  "archive_bytes": 10183370,
+  "archive_files": 1395,
+  "configure_argv": [
+    "cmake",
+    "-S",
+    "/home/jonat/mamba1_composed_archive_preflight_20261031",
+    "-B",
+    "/home/jonat/mamba1_composed_archive_build_20261031",
+    "-DMICROTORCH_CUDA=OFF",
+    "-DMICROTORCH_DEVCHECK=ON",
+    "-DMICROTORCH_BUILD_PYTHON=OFF"
+  ],
+  "configure_returncode": 0,
+  "status": "unlaunched, root review required",
+  "maximum_usd": 1,
+  "gate_seconds": 1500,
+  "watchdog_owned_only": true
+}

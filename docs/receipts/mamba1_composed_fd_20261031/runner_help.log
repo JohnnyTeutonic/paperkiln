@@ -1,0 +1,40 @@
+usage: runner_multi.py [-h] --commit COMMIT --jobs JOBS
+                       [--boot-script {tools/colab_chat/boot_jobs.sh,tools/colab_chat/boot_commands.sh,tools/colab_chat/boot_commands_sparse.sh}]
+                       [--max-hours MAX_HOURS] [--deadline-utc DEADLINE_UTC]
+                       --name NAME --art ART --state-dir STATE_DIR
+                       [--upload UPLOAD] [--backend {colab,runpod}]
+                       [--gpu GPU] [--cloud {SECURE,COMMUNITY}]
+                       [--volume-gb VOLUME_GB] [--datacenter DATACENTER]
+                       [--image IMAGE] [--max-usd MAX_USD]
+
+Reclaim-resilient Colab (or RunPod) driver for a session of several training
+jobs.
+
+options:
+  -h, --help            show this help message and exit
+  --commit COMMIT
+  --jobs JOBS           jobs JSON, path relative to the paperkiln repo root
+  --boot-script {tools/colab_chat/boot_jobs.sh,tools/colab_chat/boot_commands.sh,tools/colab_chat/boot_commands_sparse.sh}
+                        pinned VM boot; command-only boot skips trainer and
+                        corpus setup
+  --max-hours MAX_HOURS
+  --deadline-utc DEADLINE_UTC
+                        absolute timezone-aware ISO8601 ceiling, preserved
+                        across watchdog restarts
+  --name NAME           Colab session name (this run's own)
+  --art ART             local artifact directory
+  --state-dir STATE_DIR
+                        runner state, pid file and log
+  --upload UPLOAD       KEY=LOCAL_PATH, sent to /content/chat/upload/KEY
+  --backend {colab,runpod}
+  --gpu GPU             GPU type (both backends; L4 is the study GPU)
+  --cloud {SECURE,COMMUNITY}
+                        RunPod cloud
+  --volume-gb VOLUME_GB
+                        RunPod network volume size
+  --datacenter DATACENTER
+                        RunPod data centre (default: one with the GPU in
+                        stock)
+  --image IMAGE         RunPod image (default: runpod_transport.IMAGE)
+  --max-usd MAX_USD     RunPod: stop and create nothing once this runner's
+                        ledger passes this many dollars
