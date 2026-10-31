@@ -1,0 +1,82 @@
+{
+  "pass": true,
+  "fixed": {
+    "pass": true,
+    "actual_cuda": true,
+    "cases": 7,
+    "independent_replay": true,
+    "old_numeric_failure_verified": false,
+    "worst_abs_error": 3.3113691511044152e-09,
+    "bound": 2e-05
+  },
+  "old_failure": {
+    "pass": true,
+    "actual_cuda": true,
+    "cases": 1,
+    "independent_replay": true,
+    "old_numeric_failure_verified": true,
+    "worst_abs_error": 0.75,
+    "bound": 2e-05
+  },
+  "baseline_controls": {
+    "deferred_device": {
+      "pass": true,
+      "actual_cuda": true,
+      "cases": 1,
+      "independent_replay": true,
+      "old_numeric_failure_verified": false,
+      "worst_abs_error": 3.3113691511044152e-09,
+      "bound": 2e-05
+    },
+    "write_through_fallback": {
+      "pass": true,
+      "actual_cuda": true,
+      "cases": 1,
+      "independent_replay": true,
+      "old_numeric_failure_verified": false,
+      "worst_abs_error": 3.3113691511044152e-09,
+      "bound": 2e-05
+    },
+    "leaf_fallback": {
+      "pass": true,
+      "actual_cuda": true,
+      "cases": 1,
+      "independent_replay": true,
+      "old_numeric_failure_verified": false,
+      "worst_abs_error": 3.3113691511044152e-09,
+      "bound": 2e-05
+    },
+    "empty_ids": {
+      "pass": true,
+      "actual_cuda": true,
+      "cases": 1,
+      "independent_replay": true,
+      "old_numeric_failure_verified": false,
+      "worst_abs_error": 0,
+      "bound": 2e-05
+    },
+    "negative_id": {
+      "pass": true,
+      "actual_cuda": true,
+      "cases": 1,
+      "independent_replay": true,
+      "old_numeric_failure_verified": false,
+      "worst_abs_error": 0,
+      "bound": 2e-05
+    },
+    "large_id": {
+      "pass": true,
+      "actual_cuda": true,
+      "cases": 1,
+      "independent_replay": true,
+      "old_numeric_failure_verified": false,
+      "worst_abs_error": 0,
+      "bound": 2e-05
+    }
+  },
+  "all_raw_log_hashes_verified": true,
+  "archive_sha256": "0fbae94356053cae66d960104dbf35b69d8b74688cca2f1d34df9baedd6f0047",
+  "source_commit": "18069783ffedd3573bcc2e76b4816c575c02eea5",
+  "manifest_sha256": "c6e702f8473f612f214b710ca8673f1d1df63f0e95b116fa222314b8d3414af3",
+  "scope": "conditional computed-table embedding host fallback only; no ordinary leaf-table corruption claim"
+}

@@ -1,0 +1,6 @@
+[ 60%] Built target transformer_core
+[ 60%] Building CXX object CMakeFiles/microtorch.dir/src/ops.cpp.o
+[ 60%] Linking CXX static library libmicrotorch.a
+[ 96%] Built target microtorch
+[100%] Linking CXX executable test_embedding_fallback
+[100%] Built target test_embedding_fallback
