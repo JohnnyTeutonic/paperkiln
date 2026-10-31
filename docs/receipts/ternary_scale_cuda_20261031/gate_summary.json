@@ -1,0 +1,146 @@
+{
+  "pass": true,
+  "errors": [],
+  "commands": [
+    {
+      "name": "hardware",
+      "argv": [
+        "nvidia-smi",
+        "--query-gpu=name,driver_version",
+        "--format=csv,noheader"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "configure",
+      "argv": [
+        "cmake",
+        "-S",
+        "/content/ternary_boundary_source",
+        "-B",
+        "/content/ternary_boundary_build",
+        "-DCMAKE_BUILD_TYPE=Release",
+        "-DMICROTORCH_CUDA=ON",
+        "-DMICROTORCH_DEVCHECK=ON",
+        "-DMICROTORCH_BUILD_PYTHON=OFF",
+        "-DCMAKE_CUDA_ARCHITECTURES=89"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "old_build",
+      "argv": [
+        "cmake",
+        "--build",
+        "/content/ternary_boundary_build",
+        "--target",
+        "test_ternary_scale_boundary",
+        "--parallel",
+        "4"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "old_cpu",
+      "argv": [
+        "/content/ternary_boundary_build/test_ternary_scale_boundary"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "old_cuda",
+      "argv": [
+        "/content/ternary_boundary_build/test_ternary_scale_boundary",
+        "--cuda"
+      ],
+      "returncode": 1
+    },
+    {
+      "name": "fixed_build",
+      "argv": [
+        "cmake",
+        "--build",
+        "/content/ternary_boundary_build",
+        "--target",
+        "test_ternary_scale_boundary",
+        "--parallel",
+        "4"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "fixed_cpu",
+      "argv": [
+        "/content/ternary_boundary_build/test_ternary_scale_boundary"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "fixed_cuda",
+      "argv": [
+        "/content/ternary_boundary_build/test_ternary_scale_boundary",
+        "--cuda"
+      ],
+      "returncode": 0
+    }
+  ],
+  "scope": "public ternary_scale direct helper only; full-object old/fixed CPU and actual CUDA; no QAT/model/speed claim",
+  "inputs": {
+    "status": "UNLAUNCHED",
+    "source_commit": "96487688af7a104638a9ef3e0b2b967531ff5f37",
+    "old_base": "5f489fdd7c5c05eb16434b4f6c96e84252d28dee",
+    "files": {
+      "old_ops.cpp": "80cbbddf0fe43867cdb3aaae45eac68f33d9ee5b0ace3356b0ef67ca89f24170",
+      "ternary_scale_boundary_gate.py": "9365a4cab5de4051d2d87721b71635e4cc7f3717bd26b5476490e74de73b2247",
+      "source.tgz": "24d2c135b164d77e4543a132e675f1c5986f0a0d23d291b3c171642d3fb9cc07",
+      "protocol.json": "c825e52b0ff921d12c91f5efcab582e7e37a3a168eb1d4f3e8991391c0f76180"
+    },
+    "source_files": {
+      "src/ops.cpp": "a2d5110f21331a1018263e0cda9cb5c5759d59b30930a357cf1fb8359e33288c",
+      "include/microtorch/ops.hpp": "9db1581b296093793a6d6e4cd2fec59ed6a4edfe660f8ac3e525236d6629914d",
+      "tests/test_ternary_scale_boundary.cpp": "2fc1c6985efc17a035064a03ce3c22408f36442a6c7b1514916d919c61a12c59",
+      "CMakeLists.txt": "02653e3a502a9e4e66dac21e8c87318c9dd13200827257bddd0fdd757645159a",
+      "tools/replay_ternary_scale_boundary.py": "3870eadaec2d7bcaeb103de7381b4612465758201aa12d1066c414beef699c4b",
+      "studio/chat.html": "bb9d2be154e274436d28f4e7fb758815ec3031071d5700a5d653659517abd4dc"
+    },
+    "safe_archive_members": 976,
+    "packaging_revision": "v2_required_cmake_html_only",
+    "previous_manifest_sha256": "bb65a5cba3b9db0c20fce916915d9434ba91d3dcba13876238df15839fb84d02"
+  },
+  "replays": [
+    {
+      "verified": true,
+      "actual_cuda": false,
+      "mode": "old"
+    },
+    {
+      "verified": true,
+      "actual_cuda": true,
+      "mode": "old",
+      "full_tensor_values_checked": 6,
+      "expected_old_failure": true
+    },
+    {
+      "verified": true,
+      "actual_cuda": false,
+      "mode": "fixed"
+    },
+    {
+      "verified": true,
+      "actual_cuda": true,
+      "mode": "fixed",
+      "full_tensor_values_checked": 6,
+      "expected_old_failure": false
+    }
+  ],
+  "artifact_sha256": {
+    "fixed_cuda.log": "7f97d7a2247d2d1fe178ab9c72d181d2792348d1c803656cc8386014a67021fa",
+    "fixed_cpu.log": "ab705c22b2ce1cf80a03e2434ea51c614d6938f46f56f74e12f119fb30fd8370",
+    "fixed_build.log": "15ee9df85b300ee61dfffe610cdd93e5f8f05fa848c1741be947a2e4d4a8cf59",
+    "old_cuda.log": "6800d11ab1f0e3671c29dcf257bf8fe3e90e098767d54eba77e1d7958c9649a4",
+    "old_cpu.log": "ab705c22b2ce1cf80a03e2434ea51c614d6938f46f56f74e12f119fb30fd8370",
+    "old_build.log": "e2d7306e655fbb54752b6d2863d98f4281b2980dd8ce0b5fa0517c873f21902f",
+    "configure.log": "afc155796e82847e4a72bfb84eac908cf2548a98dd403bf083ab74aeaf52b58a",
+    "hardware.log": "4d27402575c0fbfcbc714a6563f4bcc9ea0e3699ea638e7bd89db077eef291de"
+  }
+}

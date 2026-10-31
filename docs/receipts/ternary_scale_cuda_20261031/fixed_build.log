@@ -1,0 +1,6 @@
+[ 62%] Built target transformer_core
+[ 62%] Building CXX object CMakeFiles/microtorch.dir/src/ops.cpp.o
+[ 66%] Linking CXX static library libmicrotorch.a
+[100%] Built target microtorch
+[100%] Linking CXX executable test_ternary_scale_boundary
+[100%] Built target test_ternary_scale_boundary

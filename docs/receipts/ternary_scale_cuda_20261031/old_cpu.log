@@ -1,0 +1,3 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+TERNARY_BOUNDARY_JSON {"kind":"fresh","scale":1.4545455,"zero_scale":100000}
+ternary_scale boundary controls PASS

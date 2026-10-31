@@ -1,0 +1,5 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+TERNARY_BOUNDARY_JSON {"kind":"fresh","scale":1.4545455,"zero_scale":100000}
+actual_cuda=true expected=1.4545455 actual=100000
+TERNARY_BOUNDARY_JSON {"kind":"deferred","actual_cuda":true,"scale":100000,"host_stale_before":true,"host_stale_after":true,"values":[0,0,0,0,0,0]}
+CHECK failed /content/ternary_boundary_source/tests/test_ternary_scale_boundary.cpp:85: same_bits(actual, expected)
