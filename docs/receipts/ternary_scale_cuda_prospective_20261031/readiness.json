@@ -1,0 +1,22 @@
+{
+  "status": "UNLAUNCHED_PENDING_PARENT_REVIEW",
+  "stage": "/home/jonat/ternary_scale_cuda_stage_v1_20261031",
+  "manifest_sha256": "bb65a5cba3b9db0c20fce916915d9434ba91d3dcba13876238df15839fb84d02",
+  "source_commit": "96487688af7a104638a9ef3e0b2b967531ff5f37",
+  "archive_sha256": "01f3d98dcef8c47c1efa0814416a8b2b6c3321c01e71bcf8ce72271c0532f3c3",
+  "safe_members": 975,
+  "source_files": {
+    "src/ops.cpp": "a2d5110f21331a1018263e0cda9cb5c5759d59b30930a357cf1fb8359e33288c",
+    "include/microtorch/ops.hpp": "9db1581b296093793a6d6e4cd2fec59ed6a4edfe660f8ac3e525236d6629914d",
+    "tests/test_ternary_scale_boundary.cpp": "2fc1c6985efc17a035064a03ce3c22408f36442a6c7b1514916d919c61a12c59",
+    "CMakeLists.txt": "02653e3a502a9e4e66dac21e8c87318c9dd13200827257bddd0fdd757645159a",
+    "tools/replay_ternary_scale_boundary.py": "3870eadaec2d7bcaeb103de7381b4612465758201aa12d1066c414beef699c4b"
+  },
+  "validation": "24 parser/mutation tests -O pass; ruff and clang-format pass; no local full-object build, no CUDA execution",
+  "caps": {
+    "max_usd": 0.75,
+    "max_hours": 0.75,
+    "numerical_seconds": 2400
+  },
+  "parent_next": "Review packet; choose absolute deadline and publish feature transport commit. Validate runner argparse and boot/jobs relative-path acceptance, source/archive extraction configure preflight, then existing watchdog ownership and launch only after approval. No readiness claim for unfinished operational driver binding."
+}
