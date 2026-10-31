@@ -147,3 +147,21 @@ def test_new_unknown_halts_and_restart_cannot_retry(tmp_path):
     assert campaign.campaign(p, state, dispatch, inspect) == 2
     assert campaign.campaign(p, state, dispatch, inspect) == 2 and len(calls) == 1
     assert (state / "HALTED").exists()
+
+
+def test_watchdog_stop_file_is_exact_new_state_halt():
+    import json
+
+    path = (
+        Path(__file__).resolve().parents[2]
+        / "experiments/chat_general/receipts/anthropic_api_recovery_v2_20261031/watchdog_proposal.json"
+    )
+    entry = json.loads(path.read_text())["entry"]
+    assert entry["stop_file"] == entry["state_dir"] + "/HALTED"
+    assert (
+        entry["state_dir"] == "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v2"
+    )
+    assert (
+        entry["stop_file"]
+        != "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign/HALTED"
+    )

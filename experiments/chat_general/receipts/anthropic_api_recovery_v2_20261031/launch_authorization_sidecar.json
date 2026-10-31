@@ -1,0 +1,14 @@
+{
+  "kind": "ROOT_AGENT_AUTHORISES_REVIEWED_API_PHASE_V2",
+  "authoriser": "/root",
+  "basis": "Parent explicitly reviewed source/protocol/recovery pins and authorised exact continuation after stop_file/freshinspection/tests; no human-signature claim.",
+  "protocol_sha256": "6a233561c2eb490cf7041a8005cb70a06608b33a23b107aecae62b8f9c90d8ea",
+  "campaign_source_sha256": "3b1517f32eddc6cb98c9b5d19e4950376e40d1fa80b78fd77f899100fce2c42f",
+  "max_new_attempts": 5514,
+  "initial_training_attempts": 480,
+  "max_usd": 200,
+  "heldout_gate_usd": 25,
+  "stop_file": "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v2/HALTED",
+  "old_HALTED_must_remain": true,
+  "one_watchdog_worker_only": true
+}
