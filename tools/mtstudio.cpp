@@ -250,7 +250,7 @@ struct Spec {
     // Precision) and train.attention_kernel "tiled" | "flash" (ops::AttnKernel).
     std::string precision = "fp32";
     std::string attention_kernel = "tiled";
-    // Experimental TRAIN-ONLY exact two-block GPT2 attention GEMMs.
+    // Experimental TRAIN-ONLY GPT2 or canonical plain Flex attention GEMMs.
     std::string attention_precision = "fp32";
     // The fused LM head + cross-entropy (26 Oct 2026; opt-in, off by default,
     // and off is the unfused step bit for bit): train.fused_head true runs the
@@ -317,6 +317,8 @@ std::string gguf_quant_of(const std::string& fmt) {
                                  "gguf_q4_k_s, safetensors)");
     return q;
 }
+
+parity::FlexConfig flex_config(const Spec& s, size_t vocab);
 
 Spec parse_spec(const std::string& path) {
     std::ifstream f(path);
@@ -835,12 +837,37 @@ Spec parse_spec(const std::string& path) {
     s.attention_precision = tr.value("attention_precision", s.attention_precision);
     if (s.attention_precision != "fp32" && s.attention_precision != "bf16")
         throw std::runtime_error("train.attention_precision must be fp32 or bf16");
-    if (s.attention_precision == "bf16" &&
-        (s.family != "gpt2" || s.attention != "exact" || s.layers != 2 || s.state_k != 0 ||
-         s.precision != "fp32" || s.attention_kernel != "tiled" || s.ckpt_act ||
-         (s.objective != "lm" && s.objective != "sft")))
-        throw std::runtime_error("train.attention_precision bf16 is experimental exact two-block GPT2 lm/sft only; "
-                                 "FP32 projections, tiled attention, no state tokens or activation checkpointing");
+    if (s.attention_precision == "bf16") {
+        // Do not let JSON-to-size_t conversion turn negative/fractional
+        // dimensions into a different supported BF16 recipe.
+        auto positive_integer = [](const json& value) {
+            return value.is_number_integer() &&
+                   (value.is_number_unsigned() ? value.get<uint64_t>() > 0
+                                               : value.get<int64_t>() > 0);
+        };
+        const json custom = arch.value("custom", json::object());
+        for (const char* key : {"d", "heads", "layers", "d_ff"})
+            if (custom.contains(key) && !positive_integer(custom[key]))
+                throw std::runtime_error(
+                    std::string(
+                        "train.attention_precision bf16 needs positive integer arch.custom.") +
+                    key);
+        if (data.contains("T") && !positive_integer(data["T"]))
+            throw std::runtime_error(
+                "train.attention_precision bf16 needs positive integer data.T");
+        const bool plain_gpt2 = s.family == "gpt2" && s.attention == "exact" && s.layers == 2;
+        const bool plain_flex =
+            s.family == "flex" &&
+            flex_config(s, 1).attention_precision_problem(device::Precision::BF16).empty();
+        if ((!plain_gpt2 && !plain_flex) || s.state_k != 0 || s.precision != "fp32" ||
+            s.attention_kernel != "tiled" || s.ckpt_act ||
+            (s.objective != "lm" && s.objective != "sft"))
+            throw std::runtime_error(
+                "train.attention_precision bf16 needs exact two-block GPT2 or canonical plain "
+                "Flex lm/sft: layernorm, GELU, learned positions, pre-norm residual blocks, "
+                "final norm and untied head; FP32 projections, tiled attention, no state tokens, "
+                "custom attention, expressions or activation checkpointing");
+    }
     if (s.precision != "fp32" && s.precision != "bf16")
         throw std::runtime_error("train.precision must be fp32 or bf16 (got " + s.precision + ")");
     if (s.attention_kernel != "tiled" && s.attention_kernel != "flash")
@@ -2290,6 +2317,15 @@ parity::FlexConfig flex_config(const Spec& s, size_t vocab) {
     return fc;
 }
 
+// Only the training constructor receives the opt-in precision. LoadedLM,
+// saved scoring and export reconstruct FP32 inference even from a BF16 recipe.
+std::shared_ptr<parity::FlexLM> make_flex(const Spec& s, size_t vocab, bool training = false) {
+    return std::make_shared<parity::FlexLM>(flex_config(s, vocab), s.seed,
+                                            training && s.attention_precision == "bf16"
+                                                ? device::Precision::BF16
+                                                : device::Precision::FP32);
+}
+
 // export.draft_table (defined with the child-process helpers below).
 std::string draft_table_tool();
 void write_draft_table(const Spec& s, const std::string& out_dir, const std::function<void(const json&)>& emit);
@@ -2591,7 +2627,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                                      " (residual | highway | plain)");
         if (fc.attention != "exact" && fc.attention != "swa")
             throw std::runtime_error("flex attention must be exact or swa, got " + fc.attention);
-        flex = std::make_shared<parity::FlexLM>(fc, s.seed);
+        flex = make_flex(s, tokens.size(), true);
         if (s.ckpt_act)
             throw std::runtime_error(
                 "train.checkpoint_activations requires the llama family for now");
@@ -3786,8 +3822,7 @@ struct LoadedLM {
         if (s.family == "mamba") {
             mamba = std::make_shared<parity::MambaLM>(tokens.size(), s.d, s.layers, s.d_state, s.seed, s.mamba1());
         } else if (s.family == "flex") {
-            const parity::FlexConfig fc = flex_config(s, tokens.size());
-            flex = std::make_shared<parity::FlexLM>(fc, s.seed);
+            flex = make_flex(s, tokens.size());
         } else if (s.attention == "attnres") {
             attnres = std::make_shared<parity::AttnResLM>(tokens.size(), s.d, s.heads, s.T, s.seed,
                                                           s.layers);

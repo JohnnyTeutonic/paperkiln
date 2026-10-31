@@ -529,3 +529,14 @@ endif()
 add_executable(test_host_helper_gate tests/test_host_helper_gate.cpp)
 target_link_libraries(test_host_helper_gate PRIVATE microtorch nlohmann_json::nlohmann_json)
 add_test(NAME host_helper_gate_cpu COMMAND test_host_helper_gate)
+
+# Bounded plain Flex attention precision semantic/model harness.
+add_executable(flex_precision_gate tests/flex_precision_gate.cpp)
+target_link_libraries(flex_precision_gate PRIVATE microtorch nlohmann_json::nlohmann_json)
+add_test(NAME flex_precision_cpu COMMAND flex_precision_gate)
+
+# Test-only CLI factory/LoadedLM precision provenance, never a product flag.
+add_executable(flex_precision_factory tests/flex_precision_factory.cpp)
+target_include_directories(flex_precision_factory PRIVATE third_party/httplib "${CMAKE_CURRENT_BINARY_DIR}/generated")
+target_link_libraries(flex_precision_factory PRIVATE microtorch nlohmann_json::nlohmann_json)
+add_test(NAME flex_precision_factory_cpu COMMAND flex_precision_factory)
