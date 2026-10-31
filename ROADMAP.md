@@ -19,7 +19,11 @@ where one of those documents carries a plan, this file wins.*
    and unchanged original/diagnostic scoring fields. Generation replay did not execute;
    original positions/cache trajectory and complete historical cause remain unresolved.
    Its registered S-full condition is numerically true, but no control has launched;
-   parity evidence, recipe and spending require review. The broader programme remains open.
+   parity evidence, recipe and spending require review. The broader programme remains open. All thirteen raw human
+   sources and companion text files now match the frozen archive pins in a recovered
+   local cache (`docs/receipts/sfull_raw_cache_20261031/`); the five-product, complete
+   ledger and decontamination runtime gate remains open. The cached FineWeb fixture
+   is not the registered source and cannot substitute for it.
    The complete three-seed Carry-12 core is analysed in `experiments/tiny_chat_long_2026-10/RESULTS.md`:
    HT-SFT SUPPORTED, other primary tests unresolved at three seeds. The separate five-seed
    HS1 result now activates the S-full condition. The registered size
