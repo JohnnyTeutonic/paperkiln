@@ -32,6 +32,11 @@ def load_contract(path):
         raise ValueError("DPO contract fields differ")
     spec = contract["runtime_spec"]
     train = spec["train"]
+    if any(
+        type(train[k]) is not int
+        for k in ["seed", "batch", "accum", "steps", "checkpoint_every"]
+    ):
+        raise ValueError("integer DPO runtime recipe required")
     if (
         train["objective"] != "provenance_po"
         or train["optimizer"] != "adamw"
@@ -83,6 +88,19 @@ def prepare(contract, digest, out):
             _, manifest = core.current_unlocked(locked)
             if manifest["operational_contract_sha256"] != digest:
                 raise ValueError("DPO resumed contract differs")
+            t = contract["runtime_spec"]["train"]
+            if (
+                any(
+                    manifest["rng"][k] != t[v]
+                    for k, v in [
+                        ("recipe_seed", "seed"),
+                        ("batch", "batch"),
+                        ("accum", "accum"),
+                    ]
+                )
+                or manifest["step"] > t["steps"]
+            ):
+                raise ValueError("DPO resumed generation recipe/budget differs")
         core.restore_flat(root, out, contract["source_commit"])
     elif any(
         (Path(out) / name).exists()
