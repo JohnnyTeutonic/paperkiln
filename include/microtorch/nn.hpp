@@ -122,7 +122,8 @@ public:
 // -1e9 mask; DiT passes false, since patches attend bidirectionally.
 class CausalSelfAttention : public Module {
 public:
-    CausalSelfAttention(size_t d, size_t n_heads, unsigned seed = 0, bool causal = true);
+    CausalSelfAttention(size_t d, size_t n_heads, unsigned seed = 0, bool causal = true,
+                        device::Precision attention_precision = device::Precision::FP32);
     // x: [T, d] for one sequence, or [B*T, d] for a stacked mini-batch
     // with seq_len = T (sequences are isolated by a block-diagonal mask;
     // seq_len 0 = single sequence spanning all rows).
@@ -135,6 +136,8 @@ public:
     std::shared_ptr<Linear> c_attn, c_proj;
     size_t H, dk;
     bool causal;
+    // Experimental training recipe only. Exported IR retains FP32 inference semantics.
+    const device::Precision attention_precision;
 };
 
 // Sparse-phase S1 baseline: sliding-window attention with sinks.

@@ -49,6 +49,8 @@ rather than finite differences of the discontinuous quantized forward.
 | **From papers** | **LLM extractor** (`papers/llm_extract.py`): one Claude call reads the paper's LaTeX and returns the architecture as an IR op graph, new operations as runtime-defined `expr` ops, and a verbatim quote for every value; a deterministic verifier checks each quote against the source before anything trains. On the 40-paper benchmark (27 Oct prompt): flavours 81 correct, 11 abstain, 0 wrong, against the rule-based extractor's 73 / 19 / 0; sizes 569 / 2 / 71 against 136 / 8 / 498. The rule-based extractor (`papers/fetch.py` / `pip install paperkiln-fetch`, no API key) stays as the offline path |
 | **Research tooling** | the Architecture Atlas (designed experiments, multi-seed cells, a findings registry with retractions), falsifiers built into the modules, one-command replication |
 
+Experimental GPT2 training can opt into `train.attention_precision: "bf16"` for exact two-block `gpt2-nano` LM/SFT with FP32 projections. This is a per-model training recipe: score, sample, chat and exported inference remain FP32. CPU default-bit, gradient, save/reload and NumPy/Ember inference checks pass; CUDA model validation and performance remain open. The VRAM planner refuses this uncalibrated mode. [Scope and evidence](docs/receipts/gpt2_attention_precision_20261031/RESULTS.md).
+
 ## Current results and limits
 
 The [registered five-seed size comparison](experiments/tiny_chat_2026-10/size/RESULTS.md)

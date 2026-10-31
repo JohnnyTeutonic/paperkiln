@@ -1116,9 +1116,11 @@ function estimateVram(spec, reserveGiB) {
   const presets = {"llama-tiny":[128,2,4],"gpt2-nano":[128,2,4],"gpt2-small":[256,4,8]};
   if (spec.evaluation_probes!==undefined) validateProbeConfig(spec.evaluation_probes);
   const a=spec.arch||{}, tr=spec.train||{}, data=spec.data||{}, c=a.custom||{};
+  if ((tr.attention_precision||"fp32")!=="fp32")
+    fail("Unsupported: experimental BF16 attention uses uncalibrated dense (batch * T)^2 workspaces; no VRAM estimate is available.");
   if (Object.keys(spec).some(k=>!["name","arch","data","train","export","serve","out_dir","evaluation_probes"].includes(k)) ||
       Object.keys(data).some(k=>!["corpus","vocab","vocab_cap","T"].includes(k)) ||
-      Object.keys(tr).some(k=>!["steps","lr","optimizer","batch","accum","checkpoint_activations","eval_every","checkpoint_every","gradmap_every","early_stopping","precision","attention_kernel"].includes(k)) ||
+      Object.keys(tr).some(k=>!["steps","lr","optimizer","batch","accum","checkpoint_activations","eval_every","checkpoint_every","gradmap_every","early_stopping","precision","attention_kernel","attention_precision"].includes(k)) ||
       !presets[a.preset] || Object.keys(a).some(k=>!["preset","custom"].includes(k)) ||
       Object.keys(c).some(k=>!["d","layers","heads","d_ff"].includes(k)) ||
       (tr.optimizer||"adamw")!=="adamw" || (tr.precision||"fp32")!=="fp32" ||

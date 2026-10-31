@@ -1015,6 +1015,8 @@ void export_gguf_gpt2(const std::string& path, const std::map<std::string, Matri
     writer.write_metadata_uint32(a + ".attention.head_count", cfg.head_count);
     writer.write_metadata_float32(a + ".attention.layer_norm_epsilon", cfg.layer_norm_eps);
     writer.write_metadata_uint32(a + ".vocab_size", cfg.vocab_size);
+    if (!cfg.train_attention_precision.empty())
+        writer.write_metadata_string("paperkiln.train.attention_precision", cfg.train_attention_precision);
     write_tokenizer(writer, cfg);
     write_ir(writer, cfg.ir, who);
 

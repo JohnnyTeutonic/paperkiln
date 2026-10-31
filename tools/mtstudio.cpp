@@ -250,6 +250,8 @@ struct Spec {
     // Precision) and train.attention_kernel "tiled" | "flash" (ops::AttnKernel).
     std::string precision = "fp32";
     std::string attention_kernel = "tiled";
+    // Experimental TRAIN-ONLY exact two-block GPT2 attention GEMMs.
+    std::string attention_precision = "fp32";
     // The fused LM head + cross-entropy (26 Oct 2026; opt-in, off by default,
     // and off is the unfused step bit for bit): train.fused_head true runs the
     // training step's head and loss as ops::linear_cross_entropy over
@@ -830,6 +832,15 @@ Spec parse_spec(const std::string& path) {
     s.muon_lr = tr.value("muon_lr", s.muon_lr);
     s.precision = tr.value("precision", s.precision);
     s.attention_kernel = tr.value("attention_kernel", s.attention_kernel);
+    s.attention_precision = tr.value("attention_precision", s.attention_precision);
+    if (s.attention_precision != "fp32" && s.attention_precision != "bf16")
+        throw std::runtime_error("train.attention_precision must be fp32 or bf16");
+    if (s.attention_precision == "bf16" &&
+        (s.family != "gpt2" || s.attention != "exact" || s.layers != 2 || s.state_k != 0 ||
+         s.precision != "fp32" || s.attention_kernel != "tiled" || s.ckpt_act ||
+         (s.objective != "lm" && s.objective != "sft")))
+        throw std::runtime_error("train.attention_precision bf16 is experimental exact two-block GPT2 lm/sft only; "
+                                 "FP32 projections, tiled attention, no state tokens or activation checkpointing");
     if (s.precision != "fp32" && s.precision != "bf16")
         throw std::runtime_error("train.precision must be fp32 or bf16 (got " + s.precision + ")");
     if (s.attention_kernel != "tiled" && s.attention_kernel != "flash")
@@ -1213,11 +1224,13 @@ parity::AttnKind attn_kind(const std::string& s) {
 
 // The gpt2-family parity model; attention "recurrence" passes arch.custom.recurrence (the node's
 // body, IR_SPEC.md 6.10) as the IR's ordered json, or nothing for the default body.
-std::shared_ptr<parity::ParityLM> make_parity(const Spec& s, size_t vocab) {
+std::shared_ptr<parity::ParityLM> make_parity(const Spec& s, size_t vocab, bool training = false) {
     const ir::json body = s.recurrence.is_null() ? ir::json() : ir::json::parse(s.recurrence.dump());
     return std::make_shared<parity::ParityLM>(attn_kind(s.attention), vocab, s.d, s.heads, s.T,
                                               s.seed, s.window, s.sinks,
-                                              s.recurrence.is_null() ? nullptr : &body, s.layers);
+                                              s.recurrence.is_null() ? nullptr : &body, s.layers,
+                                              training && s.attention_precision == "bf16"
+                                                  ? device::Precision::BF16 : device::Precision::FP32);
 }
 
 // Per-module L2 gradient norms, grouped by the first dotted-path segment
@@ -2044,6 +2057,7 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, 
                   {"reason", "the gpt2 export is F32 only"}});
         if (!s.exp_gguf) return;
         gguf::Gpt2ExportConfig gc;
+        if (s.attention_precision != "fp32") gc.train_attention_precision = s.attention_precision;
         gc.name = s.name;
         gc.context_length = (uint32_t)s.T;  // = the learned position table's rows
         gc.embedding_length = (uint32_t)s.d;
@@ -2607,7 +2621,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         llama = std::make_shared<nn::Llama>(lc, s.seed);
         llama->checkpoint_blocks = s.ckpt_act;
     } else {
-        gpt = make_parity(s, tokens.size());
+        gpt = make_parity(s, tokens.size(), /*training=*/true);
         if (s.ckpt_act) {
             throw std::runtime_error(
                 "train.checkpoint_activations requires the llama family for now");
@@ -2729,6 +2743,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     // at the defaults, so FP32 tiled runs' events are unchanged.
     device::set_matmul_precision(s.precision == "bf16" ? device::Precision::BF16 : device::Precision::FP32);
     ops::set_attention_kernel(s.attention_kernel == "flash" ? ops::AttnKernel::Flash : ops::AttnKernel::Tiled);
+    if (s.attention_precision != "fp32") model_ev["train_attention_precision"] = s.attention_precision;
     if (s.precision != "fp32") model_ev["precision"] = s.precision;
     if (s.attention_kernel != "tiled") model_ev["attention_kernel"] = s.attention_kernel;
     if (s.fused_head) model_ev["fused_head"] = true;  // absent when off: events unchanged
@@ -3499,6 +3514,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                                                               static_cast<double>(s.batch) *
                                                               s.accum * s.T / wall_s
                                                         : 0.0}};
+        if (s.attention_precision != "fp32") result["train_attention_precision"] = s.attention_precision;
         if (s.precision != "fp32") result["precision"] = s.precision;
         if (s.attention_kernel != "tiled") result["attention_kernel"] = s.attention_kernel;
         if (s.fused_head) result["fused_head"] = true;

@@ -140,19 +140,21 @@ that cannot fail the build.
   baseline instrumented GPU-span time. The standalone dense MHA primitive now passes its fixed
   32-case L4 FP32/BF16 matrix and independent raw replay, with FP32 softmax/backward and an explicit
   BF16 straight-through surrogate (`docs/receipts/bf16_attention_20261031/RESULTS.md`).
-  The explicit autograd op now also passes a 44-case actual L4 forward/backward matrix,
-  independent raw NumPy replay and unchanged default FP32 CPU output/gradient bits
-  (`docs/receipts/attention_precision_cuda_20261031/RESULTS.md`). Train-only model/CLI wiring,
-  model-level loss and incremental end-to-end benefit remain open. The completed primitive,
-  explicit op, profile and launch-count work leave this list; they establish no speed gain.
-- **Mamba:** a parallel scan and CUDA `ops::selective_scan` remain open
-  (currently sequential/host; the mamba preset's `ssm: "mamba1"`). The completed
-  causal-convolution forward/backward kernels leave this list: 120 actual L4
-  CUDA+DEVCHECK cases and the existing CUDA-selected Mamba regression pass,
-  including ordered float32 reductions, all gradient masks, stacked sequences,
-  deferred inputs/outputs/gradients, fallback and write-through. Evidence:
-  `experiments/conv1d_cuda_20261031/receipts/l4_gate_v1/`. This is not a fully
-  device-resident Mamba implementation or an end-to-end speed measurement.
+  The explicit autograd op also passes a 44-case actual L4 forward/backward matrix and
+  independent raw replay (`docs/receipts/attention_precision_cuda_20261031/RESULTS.md`).
+  Experimental exact two-block GPT2 LM/SFT wiring passes CPU default-bit preservation,
+  finite BF16 model gradients/short loss, save/reload and unchanged FP32 NumPy/Ember inference
+  (`docs/receipts/gpt2_attention_precision_20261031/RESULTS.md`). These completed subsets
+  leave the implementation backlog; CUDA model validation, broader wiring, and incremental
+  end-to-end benefit remain open. They establish no production speed or quality gain.
+- **Mamba:** parallel-time scan, composed-model residency validation and end-to-end speed
+  remain open. Ordered CUDA `ops::selective_scan` forward/backward is now complete:
+  220 actual L4 CUDA+DEVCHECK cases, all gradient masks, both softplus modes, deferred
+  poisoned host storage and mixed fallbacks pass unchanged bounds and independent replay
+  (`docs/receipts/selective_scan_cuda_20261031/`). Time remains sequential; B gradients
+  retain O(T*D*N) scratch. Causal convolution is also complete (120 actual L4 cases in
+  `experiments/conv1d_cuda_20261031/receipts/l4_gate_v1/`). These are operation-level
+  correctness results, not full Mamba1 training quality or throughput claims.
 - **int4/NF4 quantisation.**
 - **HF export for modified flex flavours and unmapped GPT2 variants; quantised GGUFs outside the llama family.** Strictly plain GPT2- and Llama-flavour Flex now have verified HF mappings for separate or explicitly tied token/output heads (arbitrary depth/MLP width); those completed subsets leave this list. Actual saved/reloaded Transformers CPU parity is recorded in docs/receipts/hf_tied_flex_20261031/. Plain GPT2 Flex additionally supports explicitly recorded exact-erf GELU (HF gelu), tied or untied, with evidence in docs/receipts/hf_exact_gelu_20261031/. Plain GPT2 Flex ReLU also passes finite-execution HF CPU parity for tied/untied heads, with documented NaN/negative-zero differences (docs/receipts/hf_relu_flex_20261031/). Other modified flavours remain open. Every mtstudio family now exports F32 GGUF with its IR
   (`include/microtorch/ir.hpp`, Families): gpt2 and flex with the GPT-2

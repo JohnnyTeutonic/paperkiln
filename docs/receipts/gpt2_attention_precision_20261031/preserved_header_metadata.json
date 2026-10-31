@@ -1,0 +1,4 @@
+{
+ "include/microtorch/nn.hpp": "35357ebc204c088127fdb93eb50577bbb7a4038b024fe4ba8ede3e6067eb2db3",
+ "tools/parity_model.hpp": "fec0ee958df6e3e36596a13d51ceb9a36fd93fba0e38d83418283e71047e815f"
+}
