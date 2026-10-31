@@ -95,7 +95,7 @@ def test_unsupported_is_rejected_before_output(tmp_path, change):
     elif change == "flex":
         s["arch"]["custom"]["activation"] = "relu"
     elif change == "depth":
-        s["arch"]["custom"]["layers"] = 3
+        s["arch"]["custom"]["layers"] = 0
     elif change in ("swa", "kimi"):
         s["arch"]["custom"]["attention"] = change
     elif change == "flash":
