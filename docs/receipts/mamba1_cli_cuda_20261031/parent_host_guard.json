@@ -1,0 +1,29 @@
+{
+  "argv": [
+    "/home/jonat/pk_bf16_replay_20261031/bin/python",
+    "-O",
+    "/home/jonat/mamba1_cli_gate_stage_v1_20261031/mamba1_cli_lifecycle.py",
+    "replay",
+    "--artifact",
+    "/home/jonat/pk_mamba_composed_20261031/docs/receipts/mamba1_cli_cuda_20261031/landed_vm/runs",
+    "--ember",
+    "/home/jonat/ember_publication_build_20261030/ir_logits",
+    "--out",
+    "/home/jonat/mamba_cli_parent_host_replay_20261031"
+  ],
+  "source_root": "/home/jonat/mamba1_cli_archive_preflight_20261031",
+  "before": {
+    "tools/mamba1_cli_lifecycle.py": "84e925cc67d4344ccfeeef4238f947401ff852e3cbe4d77a922a70cf153c281b",
+    "spec/tools/ir_numpy.py": "52fb2e8ad1c87b837f90416cf67fefa58d820230248c2891ca8c4b92f445e868",
+    "spec/tools/ir_check.py": "384a99810d5b675b212da1b2ab6a05f79ecc6bd6bb746e07c90eea7f748ec878"
+  },
+  "after": {
+    "tools/mamba1_cli_lifecycle.py": "84e925cc67d4344ccfeeef4238f947401ff852e3cbe4d77a922a70cf153c281b",
+    "spec/tools/ir_numpy.py": "52fb2e8ad1c87b837f90416cf67fefa58d820230248c2891ca8c4b92f445e868",
+    "spec/tools/ir_check.py": "384a99810d5b675b212da1b2ab6a05f79ecc6bd6bb746e07c90eea7f748ec878"
+  },
+  "returncode": 0,
+  "stdout": "{\"pass\": true, \"actual_cli_cuda\": true, \"identity\": {\"ember_binary_sha256\": \"1f877524c3b59e1cdbf3ca29ab6d4e0ed216900516e1bcb28d5ec7e7e21b9a0f\", \"host_reference_sources\": {\"spec/tools/ir_numpy.py\": \"52fb2e8ad1c87b837f90416cf67fefa58d820230248c2891ca8c4b92f445e868\", \"spec/tools/ir_check.py\": \"384a99810d5b675b212da1b2ab6a05f79ecc6bd6bb746e07c90eea7f748ec878\", \"tools/mamba1_cli_lifecycle.py\": \"84e925cc67d4344ccfeeef4238f947401ff852e3cbe4d77a922a70cf153c281b\"}, \"numpy\": \"1.26.4\"}, \"bound\": 1e-05, \"cases\": [{\"depth\": 1, \"source_numpy_normalized_error\": 2.2351741790771484e-08, \"ember_numpy_normalized_error\": {\"prefill\": 1.4901161193847656e-08, \"decode\": 1.4901161193847656e-08}, \"all_full_rows_argmax_agree\": true, \"score_shape\": [8, 7], \"F32_export_sha256\": \"5bac516753feb22551853000a70c1ded4700adb6de073b8125da1e09c577f55b\", \"actual_cli_cuda\": true}, {\"depth\": 2, \"source_numpy_normalized_error\": 1.4901161193847656e-08, \"ember_numpy_normalized_error\": {\"prefill\": 1.4901161193847656e-08, \"decode\": 1.4901161193847656e-08}, \"all_full_rows_argmax_agree\": true, \"score_shape\": [8, 7], \"F32_export_sha256\": \"adc8a8bfe2c214d4f9e0e7ef35f16139913664f8e00e41bb121b77e823b995f3\", \"actual_cli_cuda\": true}], \"scope\": \"two tiny LM three-step CLI training/save/reload/F32 export and full-row NumPy/Ember prefill/decode replay; no quality/speed/full residency claim\"}\n",
+  "stderr": "",
+  "pass": true
+}
