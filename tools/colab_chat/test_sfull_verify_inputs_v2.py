@@ -346,3 +346,77 @@ def test_frozen_digest_literals_match_captured_diagnostic_contract():
         v2.VM_PATCHED_SOURCE_SHA
         == "853896010b1a1e970790d1fff4871fe390071a38bfbf6cd65c7e0ef369282f39"
     )
+
+
+def cli_fixture(tmp_path, monkeypatch):
+    import sys
+
+    out = tmp_path / "new_supplement.json"
+    result = {"status": "TEST_PUBLICATION_ONLY", "scientific_outcome": False}
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "sfull_verify_inputs_v2.py",
+            "--data",
+            "unused_data",
+            "--reference",
+            "unused_reference",
+            "--out",
+            str(out),
+        ],
+    )
+    monkeypatch.setattr(v2, "verify", lambda *args, **kwargs: result)
+    return out, result
+
+
+def test_cli_publishes_new_complete_json_atomically(tmp_path, monkeypatch, capsys):
+    out, result = cli_fixture(tmp_path, monkeypatch)
+    v2.main()
+    assert json.loads(out.read_text()) == result
+    assert json.loads(capsys.readouterr().out) == result
+    assert not list(tmp_path.glob("*.tmp.*"))
+
+
+def test_cli_existing_output_refuses_before_verification_and_preserves_bytes(
+    tmp_path, monkeypatch
+):
+    out, _ = cli_fixture(tmp_path, monkeypatch)
+    historical = b"preserved original report bytes\n"
+    out.write_bytes(historical)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("verification must not run when output exists")
+
+    monkeypatch.setattr(v2, "verify", forbidden)
+    with pytest.raises(SystemExit) as exc:
+        v2.main()
+    assert exc.value.code == 2
+    assert out.read_bytes() == historical
+    assert not list(tmp_path.glob("*.tmp.*"))
+
+
+def test_cli_publication_race_never_overwrites_concurrent_result(tmp_path, monkeypatch):
+    out, _ = cli_fixture(tmp_path, monkeypatch)
+    link = v2.os.link
+
+    def racing_link(source, target):
+        Path(target).write_bytes(b"concurrent original")
+        return link(source, target)
+
+    monkeypatch.setattr(v2.os, "link", racing_link)
+    with pytest.raises(FileExistsError):
+        v2.main()
+    assert out.read_bytes() == b"concurrent original"
+
+
+def test_cli_failed_fsync_does_not_publish_result(tmp_path, monkeypatch):
+    out, _ = cli_fixture(tmp_path, monkeypatch)
+
+    def failure(fd):
+        raise OSError("synthetic storage failure")
+
+    monkeypatch.setattr(v2.os, "fsync", failure)
+    with pytest.raises(OSError):
+        v2.main()
+    assert not out.exists()
