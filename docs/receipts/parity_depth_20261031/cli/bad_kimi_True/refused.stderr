@@ -1,0 +1,2 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+mtstudio: [json.exception.type_error.302] type must be number, but is boolean

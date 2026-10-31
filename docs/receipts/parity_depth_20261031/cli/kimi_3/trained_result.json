@@ -1,0 +1,21 @@
+{
+  "T": 12,
+  "accum": 1,
+  "attention": "kimi",
+  "batch": 1,
+  "best_val": 1.8900136947631836,
+  "checkpoint_activations": false,
+  "d": 16,
+  "early_stopped": false,
+  "family": "gpt2",
+  "final_step": 3,
+  "heads": 2,
+  "layers": 3,
+  "lr": 0.0010000000474974513,
+  "name": "depth_gate",
+  "params": 10288,
+  "seed": 9,
+  "steps_requested": 3,
+  "tokens_per_second": 5909.451445320502,
+  "wall_seconds": 0.006091936
+}

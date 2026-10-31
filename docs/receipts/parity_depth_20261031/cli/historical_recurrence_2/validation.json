@@ -1,0 +1,66 @@
+{
+  "status": "PASS_CPU_BITWISE",
+  "attention": "recurrence",
+  "layers": 2,
+  "steps": 3,
+  "identity": {
+    "current": "7d6a9dad9e1f41ca82e75a9e3ac2c7a17592461edf3ee12591c8fbb98b23a5a7",
+    "baseline": "3cba15295005af59affc1418c11c013b1ecf0f4accf8c4441df4cc6b003dd52a",
+    "sources": {
+      "tools/parity_model.hpp": "fec0ee958df6e3e36596a13d51ceb9a36fd93fba0e38d83418283e71047e815f",
+      "tools/mtstudio.cpp": "15b0fbc8ceb5f48a10d53b62b755c3c26cd8ac5e041c90b8b8f613ba40b5fb7d",
+      "src/ops.cpp": "e3942b4564d035243be9f8084025222d7f93a01c794a2e40b3ef2e86cde0f42e"
+    }
+  },
+  "tensor_count": 29,
+  "tensor_raw_sha256": {
+    "attn_0.c_attn.bias": "02aed17f3a06db20cce53f239abd1e9a6d94575d1cefe39016a8369d8b995144",
+    "attn_0.c_attn.weight": "e0c765fa9013b8c9b3fbc0715b9a089c1a88a0f423e083273cb156a33a704573",
+    "attn_0.c_proj.bias": "997edbea20e682982c0b6c8b570881c5109c8d77dfad2504671f09bc3d5341fb",
+    "attn_0.c_proj.weight": "0848d5d359d4a08095fb86f0d9fc0d1e37c338fddf920019a585dec5d451490a",
+    "attn_1.c_attn.bias": "568ca8e190487899781ee1b0f36e02e5b3e38737ede349a8790f0509efe25e5b",
+    "attn_1.c_attn.weight": "111a107a5eb503e64583757e0d7c1a74bb9cbcae1740365e869e7eaeff652f57",
+    "attn_1.c_proj.bias": "9fbb6b289fa676bc147c58a3ee0b192f6414ef60969837445a5526c605995bf0",
+    "attn_1.c_proj.weight": "7ba4493c7b45758a5a93b820c6abb255079757439127972eba30a9e3e2e27e02",
+    "head.weight": "ec83254f5629c2bc9ae58d72777fa8efabcf51ccfb3b7e5809de732d1406270e",
+    "ln1_0.bias": "f78573af5da307ce3301b989bbbb4b33a452fff8fad3b995b2e769c4db6111a5",
+    "ln1_0.weight": "5491fa08da8c087fec962bdca23b42bc591ddc9c1951fef0bd87c0adc2af4a9c",
+    "ln1_1.bias": "50e857243d2ebf4f21d0a9aa71e91edb15be5746f529d1c5afe0d09255cb3e30",
+    "ln1_1.weight": "9db813824027ce6b048e0b71ba26b558c6e858d4a7a55b58bb845d5e68cbcfc7",
+    "ln2_0.bias": "696d47845fea6210f55f95adb73d9861762a445ea6944574040db39b3204cf4e",
+    "ln2_0.weight": "a51ff355e4a24a2f8fdecf6b32ca1bd98766085b14b7771ad440d1c638d1a647",
+    "ln2_1.bias": "54f4d984b40fe4440d193980ebfa96c5c432d18385e0b3315349de3fd8202ef1",
+    "ln2_1.weight": "3807be5cce2fd8367d88005007071eb37ec64e14456c218d2e6ba2668c96dca4",
+    "ln_f.bias": "3ddb7b9ab56bc387626e565c2fa8083a8b525e835d492645d47e384d3ffcccf4",
+    "ln_f.weight": "2490b3bff055d3d043610f37d54e63b5d5aa88b39e465d12377462ee9ece4d5a",
+    "mlp_0.c_fc.bias": "ea5999effaec27891b80595bb319a018fb919a2199c89419b1f0105076f9c78f",
+    "mlp_0.c_fc.weight": "c599518435855b999679b0ec95c64f0333bfd1c61277e28788ff318aec6dfbe1",
+    "mlp_0.c_proj.bias": "aff4bf131514051f263b0d2d60587c714a73937ac965547312883b4b0dc9ceba",
+    "mlp_0.c_proj.weight": "30df6a25e5edb13d20180c7cbbeda6b316c534e847775e78333125a795102494",
+    "mlp_1.c_fc.bias": "f857da97271829f8ebaad13b598538b9717b9e6c66563d9d841a1118bbc0c089",
+    "mlp_1.c_fc.weight": "7a1f307466bfc01ab049ebca3b30c1adbd1452a4b9a37e0f431c53a4aa9e2840",
+    "mlp_1.c_proj.bias": "7e05bfd4acfaf8d97cddb14d3a03bfbd3788ba8d4fd52d1f7902287146c2a191",
+    "mlp_1.c_proj.weight": "d7dbd136a8ee27ef432b62c1d5ccb93ce98d4e491d381e526d6dd11d58f77d5f",
+    "wpe.weight": "fdba2fc6150d18abbd5bbdec5ea5434b53f19457b65784723bf96f52336a7d90",
+    "wte.weight": "cb7e3a3885492f3ba8a00179139e25bbb843a85708db40b539b85d1eef2b14dd"
+  },
+  "all_named_tensor_dtype_shape_and_value_bytes_equal": true,
+  "full_score_row_bits_equal": true,
+  "greedy_score_row_bits_equal": true,
+  "greedy_ids_and_float64_logprob_bits_equal": true,
+  "scored_full_rows": 10,
+  "greedy_sequences": 3,
+  "new_tokens_each": 3,
+  "gpu_calls": 0,
+  "provider_calls": 0,
+  "before": {
+    "spec_sha256": "9a63d92383faa4e5b85d4c4a9551c4322f8ffb90de9919b3bf33b0808ec22ee4",
+    "gguf_sha256": "f80b95b468f9c940203b12274cf392e48a68c401b987196022578590b989b02a",
+    "safetensors_sha256": "86d965e236a23471570027621a42e7b8fca9a9fb68750e645c46a00f4a20d013"
+  },
+  "after": {
+    "spec_sha256": "96ebe58a89580b4addcddad2093350e1755d8cc81db800c68c9c679b84737f44",
+    "gguf_sha256": "f80b95b468f9c940203b12274cf392e48a68c401b987196022578590b989b02a",
+    "safetensors_sha256": "86d965e236a23471570027621a42e7b8fca9a9fb68750e645c46a00f4a20d013"
+  }
+}

@@ -1,0 +1,149 @@
+{
+  "schema": "paperkiln.model_card/1",
+  "name": "depth_gate",
+  "generated_by": "tools/model_card.py",
+  "sources": [
+    "events.jsonl",
+    "result.json",
+    "/home/jonat/pk_depth_cli_artifacts_20261031/srd_3/spec.json"
+  ],
+  "architecture": {
+    "family": "gpt2",
+    "attention": "srd",
+    "d": 16,
+    "layers": 3,
+    "heads": 2,
+    "T": 12,
+    "d_ff": 64,
+    "norm": "layernorm",
+    "activation": "gelu",
+    "position": "learned",
+    "residual": "residual",
+    "optimizer": "adamw",
+    "window": 64,
+    "sinks": 1
+  },
+  "what_it_is": {
+    "summary": "This is a small GPT-2-style decoder, the classic layout behind the first widely known text generators: 3 layers stacked one on another, each word held as a list of 16 numbers, 2 attention heads looking at the text in parallel. It reads at most 12 words at a time; anything earlier is invisible to it. It departs from the standard GPT-2 layout in 1 place, explained below.",
+    "components": [
+      {
+        "slot": "family",
+        "name": "Family",
+        "value": "gpt2",
+        "label": "gpt2",
+        "default": true,
+        "part_of_family": false,
+        "recognised": true,
+        "plain": "a small GPT-2-style decoder, the classic layout behind the first widely known text generators",
+        "technical": "",
+        "from_paper": false
+      },
+      {
+        "slot": "attention",
+        "name": "Attention",
+        "value": "srd",
+        "label": "surprise-routed",
+        "default": false,
+        "part_of_family": false,
+        "recognised": true,
+        "plain": "a small predictor guesses each word in advance; words it finds surprising get full attention and predictable ones take a cheaper summarising path",
+        "technical": "the softmax-normalised query-key similarities that mix values",
+        "from_paper": false
+      },
+      {
+        "slot": "position",
+        "name": "Word positions",
+        "value": "learned",
+        "label": "learned",
+        "default": true,
+        "part_of_family": false,
+        "recognised": true,
+        "plain": "the model learns one marker for each position in the text",
+        "technical": "the function of index that tells attention where tokens are",
+        "from_paper": false
+      },
+      {
+        "slot": "norm",
+        "name": "Normalisation",
+        "value": "layernorm",
+        "label": "LayerNorm",
+        "default": true,
+        "part_of_family": false,
+        "recognised": true,
+        "plain": "each word's internal numbers are re-centred and rescaled to keep them in a stable range (layer normalisation)",
+        "technical": "per-token normalisation of activations",
+        "from_paper": false
+      },
+      {
+        "slot": "activation",
+        "name": "Feed-forward switch",
+        "value": "gelu",
+        "label": "GELU",
+        "default": true,
+        "part_of_family": false,
+        "recognised": true,
+        "plain": "the feed-forward layers use a smooth on/off switch (GELU) to decide which internal features fire",
+        "technical": "the per-token feed-forward block, read as a key-value memory",
+        "from_paper": false
+      },
+      {
+        "slot": "residual",
+        "name": "Layer shortcuts",
+        "value": "residual",
+        "label": "residual",
+        "default": true,
+        "part_of_family": false,
+        "recognised": true,
+        "plain": "each layer adds its result on top of what came in, so information can pass straight through (a residual shortcut)",
+        "technical": "the additive skip pathway every block writes into",
+        "from_paper": false
+      },
+      {
+        "slot": "optimizer",
+        "name": "Optimiser",
+        "value": "adamw",
+        "label": "AdamW",
+        "default": true,
+        "part_of_family": false,
+        "recognised": true,
+        "plain": "trained with AdamW, the standard optimiser, which adjusts each weight with its own step size",
+        "technical": "the per-parameter moment estimates kept during training",
+        "from_paper": false
+      }
+    ],
+    "paper": null
+  },
+  "size_and_training": {
+    "params": 10732,
+    "params_plain": "11 thousand parameters",
+    "corpus": {
+      "kind": "generic",
+      "name": "an unlabelled text corpus",
+      "path": "/home/jonat/pk_depth_cli_artifacts_20261031/srd_3/corpus.txt",
+      "file": "corpus.txt",
+      "bytes": 2500,
+      "tokens": 700
+    },
+    "vocab": 7,
+    "steps": 3,
+    "steps_requested": 3,
+    "early_stopped": false,
+    "best_val_loss": 1.8909671306610107,
+    "perplexity": 6.625773572135096,
+    "wall_seconds": 0.008882574,
+    "context": 12
+  },
+  "what_to_expect": {
+    "source": "heuristic",
+    "summary": "Text in the style of its training corpus; how coherent it is depends on the corpus, which this card could not identify. Its best validation loss of 1.89 suggests mostly grammatical short phrases within its domain (a rough guide only: loss is not comparable across corpora or vocabularies). With 11 thousand parameters it is tiny: the assistants people chat with every day are at least a thousand times larger.",
+    "can": [
+      "continue text in the style of its training data"
+    ],
+    "cannot": [
+      "answer factual questions reliably",
+      "do arithmetic",
+      "follow instructions"
+    ]
+  },
+  "probe": null
+}

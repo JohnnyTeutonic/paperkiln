@@ -1,0 +1,15 @@
+== mtstudio: depth_gate ==
+arch: srd d=16 layers=3 heads=2 | T=12 vocab_cap=4096
+train: 3 steps batch=1 accum=1 lr=0.001 clip=1 eval_every=3 ckpt_every=3 early_stop(patience=0, min_delta=0)
+export: safetensors gguf | serve: no | out: /home/jonat/pk_depth_cli_artifacts_20261031/srd_3/trained
+{"event":"start","name":"depth_gate","steps":3}
+{"event":"data","tokens":700,"val_tokens":35,"vocab":7}
+{"T":12,"accum":1,"activation":"gelu","attention":"srd","batch":1,"checkpoint_activations":false,"d":16,"d_ff":64,"event":"model","family":"gpt2","final_norm":true,"gate_bias_init":-2.0,"heads":2,"layers":3,"lr":0.0010000000474974513,"norm":"layernorm","norm_placement":"pre","params":10732,"position":"learned","residual":"residual","seed":9,"sinks":1,"vocab":7,"window":64}
+{"event":"step","gate":0.951217532157898,"grad_norm":2.3697946071624756,"loss":2.017463445663452,"step":1}
+{"event":"step","gate":0.9512664079666138,"grad_norm":2.0516345500946045,"loss":1.9358668327331543,"step":2}
+{"event":"step","gate":0.9510308504104614,"grad_norm":1.7728351354599,"loss":1.9320003986358643,"step":3}
+{"event":"eval","step":3,"val_loss":1.8909671604633331}
+{"event":"export","format":"safetensors","path":"/home/jonat/pk_depth_cli_artifacts_20261031/srd_3/trained/depth_gate.safetensors"}
+GGUF Export: Successfully wrote 53 tensors to /home/jonat/pk_depth_cli_artifacts_20261031/srd_3/trained/depth_gate.gguf
+{"arch":"paperkiln","event":"export","family":"srd","format":"gguf","ir":"/home/jonat/pk_depth_cli_artifacts_20261031/srd_3/trained/depth_gate.ir.json","path":"/home/jonat/pk_depth_cli_artifacts_20261031/srd_3/trained/depth_gate.gguf"}
+{"best_val":1.8909671306610107,"early_stopped":false,"event":"done","final_step":3,"wall_seconds":0.008882574}

@@ -1,0 +1,21 @@
+{
+  "T": 12,
+  "accum": 1,
+  "attention": "srd",
+  "batch": 1,
+  "best_val": 1.8912590742111206,
+  "checkpoint_activations": false,
+  "d": 16,
+  "early_stopped": false,
+  "family": "gpt2",
+  "final_step": 3,
+  "heads": 2,
+  "layers": 2,
+  "lr": 0.0010000000474974513,
+  "name": "depth_gate",
+  "params": 7304,
+  "seed": 9,
+  "steps_requested": 3,
+  "tokens_per_second": 5496.610347277368,
+  "wall_seconds": 0.006549491
+}

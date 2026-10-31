@@ -1,0 +1,78 @@
+{
+  "status": "PASS_CPU_ONLY",
+  "attention": "srd",
+  "layers": 1,
+  "steps": 3,
+  "params": 3876,
+  "spec_sha256": "1223c843e674fbe935b6d0f499ad8a12e3a8dd0952a1c48f29c76f799c4c3232",
+  "gguf_sha256": "02fe5809f1c551e32696e86730c806f434614921d4eb43fd4969b3e5a0780226",
+  "ir_sha256": "54058dba2f8bc174658f14716f8a25ab568a9f3778198f473f6144eed861e226",
+  "identity": {
+    "mtstudio": "7d6a9dad9e1f41ca82e75a9e3ac2c7a17592461edf3ee12591c8fbb98b23a5a7",
+    "ember": "1f877524c3b59e1cdbf3ca29ab6d4e0ed216900516e1bcb28d5ec7e7e21b9a0f",
+    "sources": {
+      "tools/parity_model.hpp": "fec0ee958df6e3e36596a13d51ceb9a36fd93fba0e38d83418283e71047e815f",
+      "tools/mtstudio.cpp": "15b0fbc8ceb5f48a10d53b62b755c3c26cd8ac5e041c90b8b8f613ba40b5fb7d",
+      "src/ops.cpp": "e3942b4564d035243be9f8084025222d7f93a01c794a2e40b3ef2e86cde0f42e"
+    }
+  },
+  "numpy_source": 2.2351741790771484e-08,
+  "numpy_ember": {
+    "prefill": 1.4901161193847656e-08,
+    "decode": 1.4901161193847656e-08
+  },
+  "source_greedy_rows": 2.2351741790771484e-08,
+  "ember_free_running_greedy": {
+    "prefill": 3,
+    "decode": 3
+  },
+  "greedy_sequences": 3,
+  "new_tokens_each": 3,
+  "state_shapes": [
+    {
+      "lin": {
+        "0": {
+          "num": [
+            2,
+            8
+          ],
+          "den": [
+            2,
+            8
+          ]
+        }
+      }
+    },
+    {
+      "lin": {
+        "0": {
+          "num": [
+            2,
+            8
+          ],
+          "den": [
+            2,
+            8
+          ]
+        }
+      }
+    },
+    {
+      "lin": {
+        "0": {
+          "num": [
+            2,
+            8
+          ],
+          "den": [
+            2,
+            8
+          ]
+        }
+      }
+    }
+  ],
+  "rows_each_mode": 10,
+  "gpu_calls": 0,
+  "provider_calls": 0
+}

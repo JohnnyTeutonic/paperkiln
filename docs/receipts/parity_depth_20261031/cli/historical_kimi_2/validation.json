@@ -1,0 +1,66 @@
+{
+  "status": "PASS_CPU_BITWISE",
+  "attention": "kimi",
+  "layers": 2,
+  "steps": 3,
+  "identity": {
+    "current": "7d6a9dad9e1f41ca82e75a9e3ac2c7a17592461edf3ee12591c8fbb98b23a5a7",
+    "baseline": "3cba15295005af59affc1418c11c013b1ecf0f4accf8c4441df4cc6b003dd52a",
+    "sources": {
+      "tools/parity_model.hpp": "fec0ee958df6e3e36596a13d51ceb9a36fd93fba0e38d83418283e71047e815f",
+      "tools/mtstudio.cpp": "15b0fbc8ceb5f48a10d53b62b755c3c26cd8ac5e041c90b8b8f613ba40b5fb7d",
+      "src/ops.cpp": "e3942b4564d035243be9f8084025222d7f93a01c794a2e40b3ef2e86cde0f42e"
+    }
+  },
+  "tensor_count": 29,
+  "tensor_raw_sha256": {
+    "attn_0.c_attn.bias": "10fa96d28a7209df3883196639102068415d5d9d211640fb3e976e749fafd979",
+    "attn_0.c_attn.weight": "db1e2c8262b9b965629b79fa9aa169ce446dce1d7e29e52275b2f75ebc201ebe",
+    "attn_0.c_proj.bias": "7be2ceb876b10769045cfef9655c6786ba8f2f1ce4a154ce49bf8216d0ffbb93",
+    "attn_0.c_proj.weight": "d807e339ed9d0691f44ff079cee7526df825db74e6d35ceadace40c6cb2174f8",
+    "attn_1.c_attn.bias": "f640beb92f325a2665eb2bfb04ef74f518fc92829580baef2580c1c11883f4fe",
+    "attn_1.c_attn.weight": "2c21e62432fad4849488f7a6102dcf29b155a328b5bec9bb4f6aedd6519a9c67",
+    "attn_1.c_proj.bias": "eb3dbf7e54b9c89b2b9178f569b630a117ea233c2a3e62551d0e3b5e289151db",
+    "attn_1.c_proj.weight": "9a9c66834d0d489a446fc69f49b7cd521441445bff71df8c20ad26d9ddc4f137",
+    "head.weight": "dc7c038ac3cb0b7b84a294845321c56e27ede2d98604108b4a14d47ff99b22d3",
+    "ln1_0.bias": "eafd64cbac1a1278db9fb0ff6ed46b4d37883bc639f484d9a8868227f73f8b58",
+    "ln1_0.weight": "5491fa08da8c087fec962bdca23b42bc591ddc9c1951fef0bd87c0adc2af4a9c",
+    "ln1_1.bias": "2ce07e57500e973887b90328355c9574986de3ff45100c57f0e4a2716e516142",
+    "ln1_1.weight": "9db813824027ce6b048e0b71ba26b558c6e858d4a7a55b58bb845d5e68cbcfc7",
+    "ln2_0.bias": "48ce581e7eda887946432d7f81ff63d8f94161fd1a6ec762d891c70004cddfa7",
+    "ln2_0.weight": "a51ff355e4a24a2f8fdecf6b32ca1bd98766085b14b7771ad440d1c638d1a647",
+    "ln2_1.bias": "a6df16a8d11fd63ba2e0675bce6bf2719061adc968af0b30533e86bdfaa2dc01",
+    "ln2_1.weight": "3807be5cce2fd8367d88005007071eb37ec64e14456c218d2e6ba2668c96dca4",
+    "ln_f.bias": "cae32fe311f3f7c423f230885c8c9364bdf06decd2614fe6b17b466109f6616c",
+    "ln_f.weight": "2490b3bff055d3d043610f37d54e63b5d5aa88b39e465d12377462ee9ece4d5a",
+    "mlp_0.c_fc.bias": "a431dc6eb3fe8d39af4c31b58cd273dbac05cde3619074d2b21f0c775b6a924a",
+    "mlp_0.c_fc.weight": "6543ea848787853ecf24dbe33abf916e6be8da6d758e5d6fa6fe51449c3900be",
+    "mlp_0.c_proj.bias": "adac56268888ba6baeeabeb1269f7f42fa14364a58692563cca8a9d55816a0f4",
+    "mlp_0.c_proj.weight": "971cc0f52ca22ecfb56f0d9615885cfd27a44b001c93cdd2bf38bd7586bd98c4",
+    "mlp_1.c_fc.bias": "e28b7af09bbe79bd9fbb03ddf791ed3cc9489b54b3b076cd5495ae68c5330d10",
+    "mlp_1.c_fc.weight": "f0d408556b0031cd16182a77503048c225d8816396c76d7355e5e4472bc32d30",
+    "mlp_1.c_proj.bias": "5addc8466c5b00ed894ed3c6258825892ba5c3c957674bf8ce5c90a9d3e31c5c",
+    "mlp_1.c_proj.weight": "8dd4a8d88da558dfe3cb6a8bbf45318be63e074812586c6b92d10a8dc687d187",
+    "wpe.weight": "450c1d69838d67a722b9c81736c74ce49ef8c2500a3a39df89db5cd23f59d448",
+    "wte.weight": "b3171b8386d8f34cdb539ba4165e141e5ec6064405e33ce6695735ef10ea8ee7"
+  },
+  "all_named_tensor_dtype_shape_and_value_bytes_equal": true,
+  "full_score_row_bits_equal": true,
+  "greedy_score_row_bits_equal": true,
+  "greedy_ids_and_float64_logprob_bits_equal": true,
+  "scored_full_rows": 10,
+  "greedy_sequences": 3,
+  "new_tokens_each": 3,
+  "gpu_calls": 0,
+  "provider_calls": 0,
+  "before": {
+    "spec_sha256": "8324311f94a7049e087ee68be5be1ad003c07360654dd73741787813bba4b6f4",
+    "gguf_sha256": "fcfa42d5125cd5367242a46e15db1cabc9a3c4dfbf47a3f44ff977371d8b103e",
+    "safetensors_sha256": "f9a55f5f65bf63ce805f382e81ab39666b58a38c2fc9ce2ffea3f636c44b48e0"
+  },
+  "after": {
+    "spec_sha256": "8b993b2bd5391b4c3f8e38e4f359dc795f27709b9df089d33b4c1b985e947cff",
+    "gguf_sha256": "fcfa42d5125cd5367242a46e15db1cabc9a3c4dfbf47a3f44ff977371d8b103e",
+    "safetensors_sha256": "f9a55f5f65bf63ce805f382e81ab39666b58a38c2fc9ce2ffea3f636c44b48e0"
+  }
+}

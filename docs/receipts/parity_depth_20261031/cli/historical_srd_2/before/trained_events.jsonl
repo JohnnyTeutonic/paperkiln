@@ -1,0 +1,10 @@
+{"event":"start","name":"depth_gate","steps":3}
+{"event":"data","tokens":700,"val_tokens":35,"vocab":7}
+{"T":12,"accum":1,"activation":"gelu","attention":"srd","batch":1,"checkpoint_activations":false,"d":16,"d_ff":64,"event":"model","family":"gpt2","final_norm":true,"gate_bias_init":-2.0,"heads":2,"layers":2,"lr":0.0010000000474974513,"norm":"layernorm","norm_placement":"pre","params":7304,"position":"learned","residual":"residual","seed":9,"sinks":1,"vocab":7,"window":64}
+{"event":"step","gate":0.9511696100234985,"grad_norm":2.1968994140625,"loss":2.010530471801758,"step":1}
+{"event":"step","gate":0.9511755704879761,"grad_norm":1.9083235263824463,"loss":1.9276803731918335,"step":2}
+{"event":"step","gate":0.9508681297302246,"grad_norm":1.7582416534423828,"loss":1.9356130361557007,"step":3}
+{"event":"eval","step":3,"val_loss":1.8912590742111206}
+{"event":"export","format":"safetensors","path":"/home/jonat/pk_depth_cli_artifacts_20261031/historical_srd_2/before/trained/depth_gate.safetensors"}
+{"arch":"paperkiln","event":"export","family":"srd","format":"gguf","ir":"/home/jonat/pk_depth_cli_artifacts_20261031/historical_srd_2/before/trained/depth_gate.ir.json","path":"/home/jonat/pk_depth_cli_artifacts_20261031/historical_srd_2/before/trained/depth_gate.gguf"}
+{"best_val":1.8912590742111206,"early_stopped":false,"event":"done","final_step":3,"wall_seconds":0.007333398}

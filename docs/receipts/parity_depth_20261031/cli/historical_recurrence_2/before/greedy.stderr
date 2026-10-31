@@ -1,0 +1,2 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+score: 3 continuations (0 over the context of 12) -> /home/jonat/pk_depth_cli_artifacts_20261031/historical_recurrence_2/before/greedy.out.jsonl

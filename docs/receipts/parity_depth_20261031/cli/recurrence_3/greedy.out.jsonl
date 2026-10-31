@@ -1,0 +1,3 @@
+{"argmax":[3,3,3],"continuation_ids":[3,3,3],"i":0,"logits_rows":3,"logprobs":[-1.8703169731651919,-1.8324779781166396,-1.8922914418714136],"over_ctx":false,"prompt_tokens":1,"sum":-5.595086393153245}
+{"argmax":[3,3,4],"continuation_ids":[3,3,4],"i":1,"logits_rows":3,"logprobs":[-1.8876149591275713,-1.8781835427102198,-1.8322490115210532],"over_ctx":false,"prompt_tokens":3,"sum":-5.5980475133588445}
+{"argmax":[5,1,5],"continuation_ids":[5,1,5],"i":2,"logits_rows":3,"logprobs":[-1.827282631219784,-1.8532286664681543,-1.8357384430094796],"over_ctx":false,"prompt_tokens":6,"sum":-5.516249740697418}

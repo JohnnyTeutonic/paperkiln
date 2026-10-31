@@ -1,0 +1,34 @@
+{
+  "name": "depth_gate",
+  "arch": {
+    "preset": "gpt2-nano",
+    "custom": {
+      "d": 16,
+      "heads": 2,
+      "layers": 1.5,
+      "attention": "recurrence"
+    }
+  },
+  "data": {
+    "vocab": "/home/jonat/pk_depth_cli_artifacts_20261031/bad_recurrence_1_5/vocab.gguf",
+    "corpus": "/home/jonat/pk_depth_cli_artifacts_20261031/bad_recurrence_1_5/corpus.txt",
+    "T": 12,
+    "max_tokens": 0
+  },
+  "train": {
+    "steps": 3,
+    "batch": 1,
+    "seed": 9,
+    "lr": 0.001,
+    "eval_every": 3,
+    "checkpoint_every": 3,
+    "gradmap_every": 0
+  },
+  "export": {
+    "formats": [
+      "safetensors",
+      "gguf"
+    ]
+  },
+  "out_dir": "/home/jonat/pk_depth_cli_artifacts_20261031/bad_recurrence_1_5/trained"
+}

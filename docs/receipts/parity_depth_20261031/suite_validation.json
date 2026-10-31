@@ -1,0 +1,39 @@
+{
+  "status": "PASS_CPU_DEVCHECK_ONLY",
+  "source_parent": "0a9a55545f831b09211ddfe6f83b88c0702551f3",
+  "source_sha256": {
+    "CMakeLists.txt": "693bfb12f50478806070057624916c1a5e448670592373171d33c9a236867021",
+    "tools/parity_model.hpp": "fec0ee958df6e3e36596a13d51ceb9a36fd93fba0e38d83418283e71047e815f",
+    "tools/mtstudio.cpp": "15b0fbc8ceb5f48a10d53b62b755c3c26cd8ac5e041c90b8b8f613ba40b5fb7d",
+    "src/ops.cpp": "e3942b4564d035243be9f8084025222d7f93a01c794a2e40b3ef2e86cde0f42e",
+    "tests/test_parity_depth.cpp": "012068ad79228ae80bb2cb49d30e49e60e11c047694e2d1c80e3bfc8017ddaee",
+    "tests/test_parity_depth_cli.py": "342fc348a81b1cdd95522df90d03730dbc75507a56c40fd4a1867d599e23ee88"
+  },
+  "binary_sha256": {
+    "mtstudio": "7d6a9dad9e1f41ca82e75a9e3ac2c7a17592461edf3ee12591c8fbb98b23a5a7",
+    "test_parity_depth": "a4c120e94dc76e6c4812c94747d89914792c44ba4b986ea8a0dc5f8ca07b09fa"
+  },
+  "logs_sha256": {
+    "depth_configure.log": "d05a42c650dec76e431e34d9c172117db69cf318252493db5e8d43803eb12a58",
+    "depth_build.log": "870165846345e35a3208fef6023d9c87a0c0ae258f8e5710d73b7ce01b000561",
+    "depth_test_initial_wrong_ir_path.log": "5ac508edbd509015d501abe7f0b19ea70a8ae8be5d3c3ae5905beb4c9925b7e3",
+    "depth_test.log": "307b00791f870af336f5cf8bf9a4c38907fecdfd917001f7364669e6c58e79ad",
+    "depth_full_build.log": "b93659ac28c84ef90803ed1bbb2d59ff9801f01598b400498d6f5d427875284e",
+    "depth_full_test.log": "f376379316aa0b4c24cd81c27ebff3fbbf8eed6a1993df624a57244f2f5127c0"
+  },
+  "tests": {
+    "ctest_pass": 52,
+    "ctest_fail": 0,
+    "ctest_skip": 0,
+    "whole_model_fd_coordinates": 36,
+    "cli_current_depth_cases": 18,
+    "cli_historical_default_cases": 3
+  },
+  "correction": "Initial unit assertion read n_layers at IR document root instead of document.model.n_layers; corrected fixture path, with failed log preserved. No production arithmetic or tolerance changed.",
+  "limits": [
+    "CPU only; no CUDA execution, throughput, convergence or model-quality claim.",
+    "C++ default constructor equivalence is current API/manual composition; actual historical default2 preservation is separately established by the pinned baseline-binary CLI comparison.",
+    "Depths1/2/3/4 are exercised by native units; actual three-step exported models are exercised at1/3 and historical default2."
+  ],
+  "runtime_proof": "cli_validation.json and raw result records under cli/"
+}
