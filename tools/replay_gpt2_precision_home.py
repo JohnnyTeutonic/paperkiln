@@ -21,6 +21,28 @@ def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def validate_ember_rows(actual, expected):
+    """Reject broadcasting and nonfinite values before any reduction or comparison."""
+    require = model_gate.require
+    expected = np.asarray(expected, dtype=np.float64)
+    require(
+        expected.ndim == 2 and expected.size > 0 and np.isfinite(expected).all(),
+        "invalid expected inference rows",
+    )
+    errors = {}
+    for mode in ("prefill", "decode"):
+        rows = np.asarray(actual[mode], dtype=np.float64)
+        require(rows.shape == expected.shape, "host Ember " + mode + " shape differs")
+        require(np.isfinite(rows).all(), "host Ember " + mode + " has nonfinite values")
+        error = float(np.max(np.abs(rows - expected)))
+        require(
+            np.isfinite(error) and error <= 3e-5,
+            "host Ember " + mode + " FP32 inference bound",
+        )
+        errors[mode] = error
+    return errors
+
+
 def replay(home, manifest_sha, ember, ember_sha):
     require = model_gate.require
     require(sha(ember) == ember_sha, "pinned host Ember binary changed")
@@ -102,11 +124,7 @@ def replay(home, manifest_sha, ember, ember_sha):
         )
         require(completed.returncode == 0, "pinned CPU Ember replay failed")
         actual = json.loads(completed.stdout)[0]
-        errors = {
-            mode: float(np.max(np.abs(np.asarray(actual[mode]) - expected)))
-            for mode in ("prefill", "decode")
-        }
-        require(max(errors.values()) <= 3e-5, "host Ember FP32 inference bound")
+        errors = validate_ember_rows(actual, expected)
         inference[label] = {
             "gguf_sha256": sha(gguf),
             "ir_sha256": sha(ir),

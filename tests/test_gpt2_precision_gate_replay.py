@@ -137,3 +137,36 @@ def test_vm_manifest_mismatch_cannot_reach_hardware_or_subprocess(
         and result["commands"] == []
         and (out / "out.zip").exists()
     )
+
+
+@pytest.mark.parametrize("mode", ["prefill", "decode"])
+@pytest.mark.parametrize("mutation", ["nan", "infinity", "scalar", "wrong_shape"])
+def test_host_ember_each_mode_rejects_nonfinite_or_broadcastable_rows(mode, mutation):
+    import sys
+    import numpy as np
+
+    sys.path.insert(0, str(ROOT / "tools"))
+    import replay_gpt2_precision_home as home
+
+    expected = np.zeros((3, 7))
+    actual = {name: expected.tolist() for name in ("prefill", "decode")}
+    if mutation == "scalar":
+        actual[mode] = 0.0
+    elif mutation == "wrong_shape":
+        actual[mode] = [[0.0] * 7]
+    else:
+        actual[mode][0][0] = float("nan") if mutation == "nan" else float("inf")
+    with pytest.raises(ValueError):
+        home.validate_ember_rows(actual, expected)
+
+
+def test_host_ember_finite_exact_shape_outputs_pass():
+    import sys
+    import numpy as np
+
+    sys.path.insert(0, str(ROOT / "tools"))
+    import replay_gpt2_precision_home as home
+
+    expected = np.arange(21, dtype=float).reshape(3, 7)
+    actual = {name: expected.tolist() for name in ("prefill", "decode")}
+    assert home.validate_ember_rows(actual, expected) == {"prefill": 0.0, "decode": 0.0}
