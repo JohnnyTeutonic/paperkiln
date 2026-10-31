@@ -1,0 +1,16 @@
+Internal ctest changing into directory: /home/jonat/pk_host_read_final_build_20261031
+Test project /home/jonat/pk_host_read_final_build_20261031
+    Start 52: parity_depth
+1/1 Test #52: parity_depth .....................Subprocess aborted***Exception:   0.05 sec
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+terminate called after throwing an instance of 'nlohmann::json_abi_v3_11_2::detail::out_of_range'
+  what():  [json.exception.out_of_range.403] key 'n_layers' not found
+
+
+0% tests passed, 1 tests failed out of 1
+
+Total Test time (real) =   0.05 sec
+
+The following tests FAILED:
+	 52 - parity_depth (Subprocess aborted)
+Errors while running CTest

@@ -1,0 +1,102 @@
+[  1%] Built target test_chat_template
+[ 17%] Built target transformer_core
+[ 18%] Built target bpe_encode
+[ 19%] Built target llama3_encode
+[ 20%] Built target test_devcheck_disabled
+[ 31%] Built target microtorch
+[ 32%] Built target test_nn
+[ 33%] Built target test_gradcheck
+[ 34%] Built target test_resident_parity
+[ 34%] Building CXX object CMakeFiles/test_step_residency.dir/tests/test_step_residency.cpp.o
+[ 34%] Building CXX object CMakeFiles/bench_b2.dir/tools/bench_b2.cpp.o
+[ 35%] Linking CXX executable test_step_residency
+[ 35%] Linking CXX executable bench_b2
+[ 35%] Built target test_step_residency
+[ 36%] Built target test_cuda_ops
+[ 36%] Building CXX object CMakeFiles/test_highway.dir/tests/test_highway.cpp.o
+[ 36%] Built target bench_b2
+[ 38%] Building CXX object CMakeFiles/test_deep_swa.dir/tests/test_deep_swa.cpp.o
+[ 39%] Linking CXX executable test_highway
+[ 39%] Built target test_highway
+[ 39%] Building CXX object CMakeFiles/test_thirdparty_ops.dir/tests/test_thirdparty_ops.cpp.o
+[ 39%] Linking CXX executable test_deep_swa
+[ 39%] Built target test_deep_swa
+[ 40%] Built target test_fused_head
+[ 41%] Built target test_score_batch
+[ 42%] Built target test_kimi_linear
+[ 43%] Built target test_cerebellum
+[ 44%] Built target test_mamba
+[ 45%] Built target test_train_utils
+[ 46%] Built target test_gguf_export
+[ 47%] Built target test_gguf_q8
+[ 48%] Built target test_gguf_q4
+[ 50%] Built target test_attention_blocked
+[ 51%] Built target test_device_rope
+[ 52%] Built target test_posttrain_losses
+[ 53%] Built target test_verifier
+[ 54%] Built target test_lora_quant
+[ 55%] Built target test_bitlinear
+[ 56%] Built target test_llama
+[ 57%] Built target test_llama_attnres
+[ 58%] Built target test_recursion
+[ 59%] Built target test_mor
+[ 60%] Built target test_pooled_gemm
+[ 61%] Built target test_kv_cache
+[ 63%] Built target test_state_tokens
+[ 64%] Built target test_mixed_precision
+[ 64%] Built target test_moe
+[ 65%] Built target test_moe_device
+[ 66%] Built target test_rope_heads
+[ 66%] Building CXX object CMakeFiles/test_batching.dir/tests/test_batching.cpp.o
+[ 67%] Linking CXX executable test_thirdparty_ops
+[ 67%] Built target test_thirdparty_ops
+[ 67%] Built target test_checkpointing
+[ 68%] Built target test_muon
+[ 69%] Built target test_inplace
+[ 70%] Building CXX object CMakeFiles/test_flex.dir/tests/test_flex.cpp.o
+[ 71%] Linking CXX executable test_batching
+[ 71%] Built target test_batching
+[ 72%] Built target test_shaw_attention
+[ 73%] Building CXX object CMakeFiles/test_gpt2_device.dir/tests/test_gpt2_device.cpp.o
+[ 73%] Linking CXX executable test_gpt2_device
+[ 73%] Built target test_gpt2_device
+[ 75%] Building CXX object CMakeFiles/test_expr.dir/tests/test_expr.cpp.o
+[ 75%] Linking CXX executable test_flex
+[ 75%] Built target test_flex
+[ 76%] Built target expr_eval
+[ 77%] Building CXX object CMakeFiles/test_recurrence_op.dir/tests/test_recurrence_op.cpp.o
+[ 77%] Linking CXX executable test_expr
+[ 77%] Built target test_expr
+[ 78%] Built target ir_eval
+[ 79%] Built target test_ir_digest
+[ 79%] Building CXX object CMakeFiles/test_swa.dir/tests/test_swa.cpp.o
+[ 79%] Linking CXX executable test_recurrence_op
+[ 79%] Built target test_recurrence_op
+[ 80%] Built target test_attn_res
+[ 81%] Built target test_srd
+[ 82%] Built target gpt2_parity
+[ 83%] Built target qwen_parity
+[ 84%] Built target benchmark_attention
+[ 85%] Built target benchmark_mamba
+[ 86%] Built target phase3_integration
+[ 88%] Built target gguf_roundtrip
+[ 89%] Built target make_timing_gguf
+[ 90%] Built target srd_parity
+[ 90%] Building CXX object CMakeFiles/srd_needle.dir/tools/srd_needle.cpp.o
+[ 91%] Linking CXX executable test_swa
+[ 91%] Built target test_swa
+[ 92%] Built target posttrain_verify
+[ 93%] Built target mtstudio
+[ 94%] Building CXX object CMakeFiles/test_devcheck_host_read.dir/tests/test_devcheck_host_read.cpp.o
+/home/jonat/pk_host_read_final_20261031/tools/srd_needle.cpp: In lambda function:
+/home/jonat/pk_host_read_final_20261031/tools/srd_needle.cpp:219:20: warning: ignoring return value of ‘int system(const char*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+  219 |         std::system(("mkdir -p " + ckpt_dir).c_str());
+      |         ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[ 94%] Linking CXX executable test_devcheck_host_read
+[ 94%] Built target test_devcheck_host_read
+[ 95%] Built target test_word_tokenizer
+[ 96%] Built target test_kimi_noncausal
+[ 97%] Built target test_evaluation_probes_helpers
+[ 98%] Built target test_parity_depth
+[100%] Linking CXX executable srd_needle
+[100%] Built target srd_needle

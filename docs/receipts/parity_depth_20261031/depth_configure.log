@@ -1,0 +1,23 @@
+-- transformer_core from: /home/jonat/pk_host_read_final_20261031/third_party/transformer_cpp
+-- CUDA disabled - CPU-only build
+-- OpenSSL found: 3.0.13
+CMake Deprecation Warning at /home/jonat/pk_host_read_final_build_20261031/_deps/json-src/CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 3.5 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value or use a ...<max> suffix to tell
+  CMake that the project does not need compatibility with older versions.
+
+
+-- Using the multi-header code from /home/jonat/pk_host_read_final_build_20261031/_deps/json-src/include/
+-- OpenMP enabled for optimized matmul
+-- GCC/Clang optimizations enabled: -O3 -march=native
+-- 
+-- ================================
+-- CPU-Only Build:
+--   - Core transformer (no GPU)
+-- ================================
+-- 
+-- Configuring done (0.1s)
+-- Generating done (0.1s)
+-- Build files have been written to: /home/jonat/pk_host_read_final_build_20261031

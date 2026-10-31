@@ -1,0 +1,8 @@
+Internal ctest changing into directory: /home/jonat/pk_host_read_final_build_20261031
+Test project /home/jonat/pk_host_read_final_build_20261031
+    Start 52: parity_depth
+1/1 Test #52: parity_depth .....................   Passed    0.02 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =   0.03 sec

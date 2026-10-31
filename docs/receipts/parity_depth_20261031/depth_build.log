@@ -1,0 +1,10 @@
+[ 57%] Built target transformer_core
+[ 96%] Built target microtorch
+[100%] Building CXX object CMakeFiles/mtstudio.dir/tools/mtstudio.cpp.o
+[100%] Linking CXX executable mtstudio
+[100%] Built target mtstudio
+[ 57%] Built target transformer_core
+[ 96%] Built target microtorch
+[100%] Building CXX object CMakeFiles/test_parity_depth.dir/tests/test_parity_depth.cpp.o
+[100%] Linking CXX executable test_parity_depth
+[100%] Built target test_parity_depth
