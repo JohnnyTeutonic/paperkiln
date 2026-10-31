@@ -1130,9 +1130,10 @@ function estimateVram(spec, reserveGiB) {
   const T=data.T,V=data.vocab_cap,B=tr.batch,A=tr.accum;
   if ([d,L,H,F,T,V,B,A].some(x=>!Number.isSafeInteger(x)||x<=0) || d%H || (llama && (d/H)%2) ||
       !Number.isFinite(reserveGiB)||reserveGiB<0) fail("Positive integer dimensions/batch/accum/vocab cap and valid head geometry are required; reserve must be finite and nonnegative.");
-  // Both covered plain families tie their token/head weights. Llama has RMS scales; GPT2 includes biases.
+  // Llama ties token/head weights. The CLI GPT2 ParityLM/FlexLM paths have an untied head.
+  // GPT2 also includes learned positions, LayerNorm scales/biases and projection biases.
   const params=llama ? V*d+L*(4*d*d+3*d*F+2*d)+d :
-    V*d+T*d+L*(4*d*d+2*d*F+9*d+F)+2*d;
+    2*V*d+T*d+L*(4*d*d+2*d*F+9*d+F)+2*d;
   if (B>2147483647 || A>2147483647) fail("Batch and accumulation must fit the runtime signed 32-bit integer fields.");
   const N=B*T;
   const parts={parameters:32*params,activations:4*L*N*(40*d+12*F),

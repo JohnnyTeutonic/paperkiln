@@ -1,0 +1,138 @@
+[
+  {
+    "layers": 1,
+    "model_events": [
+      {
+        "T": 4,
+        "accum": 1,
+        "activation": "gelu",
+        "attention": "exact",
+        "batch": 2,
+        "checkpoint_activations": false,
+        "d": 8,
+        "d_ff": 32,
+        "event": "model",
+        "family": "flex",
+        "final_norm": true,
+        "gate_bias_init": -2.0,
+        "gelu_approx": "tanh",
+        "heads": 2,
+        "layers": 1,
+        "lr": 0.009999999776482582,
+        "norm": "layernorm",
+        "norm_placement": {
+          "attn": "pre",
+          "ffn": "pre"
+        },
+        "params": 1032,
+        "position": "learned",
+        "residual": "residual",
+        "seed": 17,
+        "sinks": 1,
+        "vocab": 7,
+        "window": 64
+      }
+    ]
+  },
+  {
+    "layers": 2,
+    "model_events": [
+      {
+        "T": 4,
+        "accum": 1,
+        "activation": "gelu",
+        "attention": "exact",
+        "batch": 2,
+        "checkpoint_activations": false,
+        "d": 8,
+        "d_ff": 32,
+        "event": "model",
+        "family": "gpt2",
+        "final_norm": true,
+        "gate_bias_init": -2.0,
+        "heads": 2,
+        "layers": 2,
+        "lr": 0.009999999776482582,
+        "norm": "layernorm",
+        "norm_placement": "pre",
+        "params": 1904,
+        "position": "learned",
+        "residual": "residual",
+        "seed": 17,
+        "sinks": 1,
+        "vocab": 7,
+        "window": 64
+      }
+    ]
+  },
+  {
+    "layers": 3,
+    "model_events": [
+      {
+        "T": 4,
+        "accum": 1,
+        "activation": "gelu",
+        "attention": "exact",
+        "batch": 2,
+        "checkpoint_activations": false,
+        "d": 8,
+        "d_ff": 32,
+        "event": "model",
+        "family": "flex",
+        "final_norm": true,
+        "gate_bias_init": -2.0,
+        "gelu_approx": "tanh",
+        "heads": 2,
+        "layers": 3,
+        "lr": 0.009999999776482582,
+        "norm": "layernorm",
+        "norm_placement": {
+          "attn": "pre",
+          "ffn": "pre"
+        },
+        "params": 2776,
+        "position": "learned",
+        "residual": "residual",
+        "seed": 17,
+        "sinks": 1,
+        "vocab": 7,
+        "window": 64
+      }
+    ]
+  },
+  {
+    "layers": 4,
+    "model_events": [
+      {
+        "T": 4,
+        "accum": 1,
+        "activation": "gelu",
+        "attention": "exact",
+        "batch": 2,
+        "checkpoint_activations": false,
+        "d": 8,
+        "d_ff": 32,
+        "event": "model",
+        "family": "flex",
+        "final_norm": true,
+        "gate_bias_init": -2.0,
+        "gelu_approx": "tanh",
+        "heads": 2,
+        "layers": 4,
+        "lr": 0.009999999776482582,
+        "norm": "layernorm",
+        "norm_placement": {
+          "attn": "pre",
+          "ffn": "pre"
+        },
+        "params": 3648,
+        "position": "learned",
+        "residual": "residual",
+        "seed": 17,
+        "sinks": 1,
+        "vocab": 7,
+        "window": 64
+      }
+    ]
+  }
+]
