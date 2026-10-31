@@ -303,6 +303,13 @@ and adoption remain open.
 [CPU evidence](docs/receipts/flex_attention_precision_20261031/README.md) and
 [actual-L4 model receipt](docs/receipts/flex_attention_precision_20261031/actual_l4_v1/README.md).
 
+The public checkpoint helper now materializes both copy boundaries before reading
+host storage. An actual-L4 old/fixed gate reproduces two distinct stale-host guard
+failures and checks every fixed input/parameter gradient against an independent
+reference. [Checkpoint boundary evidence](docs/receipts/checkpoint_copy_gate_20261031/actual_l4_v1/README.md).
+This is a helper correctness result; it does not establish historical training
+invalidity, whole-model residency or a speed gain.
+
 Nine registered host-helper cases now pass an actual L4 CUDA + DEVCHECK gate:
 `exp`, `div`, `where`, `rowsum`, `rowmax`, `broadcast_cols`, `relu_`, `sigmoid_`
 and `scale_`. Poison checks exercise deferred inputs and upstream gradients;

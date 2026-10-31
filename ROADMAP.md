@@ -247,3 +247,5 @@ that cannot fail the build.
     (`kda_reference.py`) is not in this repo.
 
 31 October: the public ternary_scale host reduction now materializes its input and checks the host-read boundary. Actual L4 old/fixed builds reproduce the stale-host defect and verify the repair, with fresh/zero controls and independent raw-log replay. Evidence: docs/receipts/ternary_scale_cuda_20261031/. The broader host-reader audit remains open; no default QAT or model-performance claim follows.
+
+1 November: checkpoint output-copy and backward input-copy host boundaries now materialize before their existing checks. The actual-L4 old/fixed gate independently replays all eight legs: distinct old CUDA guard failures and complete fixed gradients. Evidence: docs/receipts/checkpoint_copy_gate_20261031/actual_l4_v1/. This closes these two helper boundaries, not the wider audit or any historical-training/performance claim.
