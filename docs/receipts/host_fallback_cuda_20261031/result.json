@@ -1,0 +1,23 @@
+{
+  "pass": true,
+  "scope": "actual L4 conditional public runtime-mode fallback coherence, not ordinary active-on corruption, model quality or speed",
+  "source_commit": "a51018b1358116c2f309110b9ef05d999560e534",
+  "baseline_commit": "16654d9656539ceeb8a7dbe8ec63e0c2255910ec",
+  "transport_commit": "97e6960fe9468e101c80a8b7ad6f8c9c5deac999",
+  "old_numeric_failures": 13,
+  "old_coherent_controls": 3,
+  "fixed_cases": 16,
+  "fixed_numeric_quantities": 40,
+  "maximum_fixed_normalized_error": 7.184957976229084e-08,
+  "threshold": 2e-05,
+  "raw_report_sha256": "0cdf0b21ff2e4e136b538d16872340ea7ba80c51be31c33210ecb3e4bfd6700f",
+  "replay_sha256": "1cb868c5fd62be41caa7d320f4a4397660b62ab5d71bc1d072dfbd491ba8563f",
+  "source_restored": true,
+  "owned_pod_id": "6kfc1ihaltzwlj",
+  "owned_volume_id": "l70vzovhty",
+  "resource_cleanup": "recorded separately in cleanup.json",
+  "limitations": [
+    "Conditional deferred-window runtime toggle and computed-operand cases only; no claim about ordinary module leaf weights or default active-on runs.",
+    "No historical GRPO runtime applicability, whole-model training, BF16 adoption, throughput or endurance conclusion."
+  ]
+}

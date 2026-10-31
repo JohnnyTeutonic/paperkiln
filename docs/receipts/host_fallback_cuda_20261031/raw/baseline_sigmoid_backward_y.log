@@ -1,0 +1,5 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+{"case":"sigmoid_backward_y","actual_cuda":true,"stale_operand_proved":true,"host_poison":true,"ops_disabled_before_fallback":true}
+{"case":"sigmoid_backward_y","quantity":"forward","normalized_max_error":3.2694546742350134e-08,"numeric_reference_pass":true}
+{"case":"sigmoid_backward_y","quantity":"input_gradient","normalized_max_error":0.024335699684558374,"numeric_reference_pass":false}
+CHECK failed /content/fallback_source/tests/test_fallback_materialization.cpp:96: maximum < 2e-5

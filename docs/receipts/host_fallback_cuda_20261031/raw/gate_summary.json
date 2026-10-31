@@ -1,0 +1,666 @@
+{
+  "pass": true,
+  "commands": [
+    {
+      "name": "hardware",
+      "argv": [
+        "nvidia-smi",
+        "--query-gpu=name,driver_version",
+        "--format=csv,noheader"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "nvcc",
+      "argv": [
+        "nvcc",
+        "--version"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "configure",
+      "argv": [
+        "cmake",
+        "-S",
+        "/content/fallback_source",
+        "-B",
+        "/content/fallback_build",
+        "-DCMAKE_BUILD_TYPE=Release",
+        "-DMICROTORCH_CUDA=ON",
+        "-DMICROTORCH_DEVCHECK=ON",
+        "-DMICROTORCH_BUILD_PYTHON=OFF",
+        "-DCMAKE_CUDA_ARCHITECTURES=89"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "baseline_build",
+      "argv": [
+        "cmake",
+        "--build",
+        "/content/fallback_build",
+        "--target",
+        "test_fallback_materialization",
+        "--parallel",
+        "4"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "baseline_gelu_forward_x",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "gelu_forward_x"
+      ],
+      "returncode": 1
+    },
+    {
+      "name": "baseline_gelu_backward_x",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "gelu_backward_x"
+      ],
+      "returncode": 1
+    },
+    {
+      "name": "baseline_silu_backward_x",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "silu_backward_x"
+      ],
+      "returncode": 1
+    },
+    {
+      "name": "baseline_softmax_forward_x",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "softmax_forward_x"
+      ],
+      "returncode": 1
+    },
+    {
+      "name": "baseline_softmax_backward_y",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "softmax_backward_y"
+      ],
+      "returncode": 1
+    },
+    {
+      "name": "baseline_sigmoid_forward_x",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "sigmoid_forward_x"
+      ],
+      "returncode": 1
+    },
+    {
+      "name": "baseline_sigmoid_backward_y",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "sigmoid_backward_y"
+      ],
+      "returncode": 1
+    },
+    {
+      "name": "baseline_rmsnorm_forward_x",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "rmsnorm_forward_x"
+      ],
+      "returncode": 1
+    },
+    {
+      "name": "baseline_rmsnorm_forward_w",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "rmsnorm_forward_w"
+      ],
+      "returncode": 1
+    },
+    {
+      "name": "baseline_rmsnorm_backward_x",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "rmsnorm_backward_x"
+      ],
+      "returncode": 1
+    },
+    {
+      "name": "baseline_rmsnorm_backward_w",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "rmsnorm_backward_w"
+      ],
+      "returncode": 1
+    },
+    {
+      "name": "baseline_group_forward_w",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "group_forward_w"
+      ],
+      "returncode": 1
+    },
+    {
+      "name": "baseline_group_backward_w",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "group_backward_w"
+      ],
+      "returncode": 1
+    },
+    {
+      "name": "control_silu_forward_x",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "silu_forward_x"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "control_group_forward_x",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "group_forward_x"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "control_group_backward_x",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "group_backward_x"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "fixed_build",
+      "argv": [
+        "cmake",
+        "--build",
+        "/content/fallback_build",
+        "--target",
+        "test_fallback_materialization",
+        "--parallel",
+        "4"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "fixed_gelu_forward_x",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "gelu_forward_x"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "fixed_gelu_backward_x",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "gelu_backward_x"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "fixed_silu_backward_x",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "silu_backward_x"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "fixed_softmax_forward_x",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "softmax_forward_x"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "fixed_softmax_backward_y",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "softmax_backward_y"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "fixed_sigmoid_forward_x",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "sigmoid_forward_x"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "fixed_sigmoid_backward_y",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "sigmoid_backward_y"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "fixed_rmsnorm_forward_x",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "rmsnorm_forward_x"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "fixed_rmsnorm_forward_w",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "rmsnorm_forward_w"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "fixed_rmsnorm_backward_x",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "rmsnorm_backward_x"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "fixed_rmsnorm_backward_w",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "rmsnorm_backward_w"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "fixed_group_forward_w",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "group_forward_w"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "fixed_group_backward_w",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "group_backward_w"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "fixed_silu_forward_x",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "silu_forward_x"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "fixed_group_forward_x",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "group_forward_x"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "fixed_group_backward_x",
+      "argv": [
+        "/content/fallback_build/test_fallback_materialization",
+        "--require-cuda",
+        "--case",
+        "group_backward_x"
+      ],
+      "returncode": 0
+    }
+  ],
+  "errors": [],
+  "source_restored": true,
+  "scope": "conditional runtime device-op fallback only; no default-on corruption or performance claim",
+  "inputs": {
+    "source_commit": "a51018b1358116c2f309110b9ef05d999560e534",
+    "baseline_commit": "16654d9656539ceeb8a7dbe8ec63e0c2255910ec",
+    "negative_cases": [
+      "gelu_forward_x",
+      "gelu_backward_x",
+      "silu_backward_x",
+      "softmax_forward_x",
+      "softmax_backward_y",
+      "sigmoid_forward_x",
+      "sigmoid_backward_y",
+      "rmsnorm_forward_x",
+      "rmsnorm_forward_w",
+      "rmsnorm_backward_x",
+      "rmsnorm_backward_w",
+      "group_forward_w",
+      "group_backward_w"
+    ],
+    "control_cases": [
+      "silu_forward_x",
+      "group_forward_x",
+      "group_backward_x"
+    ],
+    "files": {
+      "source.tgz": "0342948074fb09e7c51b81f7700f03d2b005c79764e9962912126e88dd4efa6f",
+      "baseline_ops.cpp": "b6a65ddfd4849692635ca89967645ae8b67bd66e6aaef3915bf0ed238b9e7a6b",
+      "fallback_gate.py": "b6ded7b30c13d76765a2f82ff2a08586156212908e77198edc6312a1102b23bc"
+    },
+    "source_files": {
+      "src/ops.cpp": "21c5a0a245c65cf068b295a9eb582cda762b48ac6eec5d18d270878218e1b59a",
+      "tests/test_fallback_materialization.cpp": "3f2ebd8fa1a29882aa4a7e21fa09edc6d1a9cbadffea860dc076220e78f2870f",
+      "CMakeLists.txt": "1e97bd18f5e668a076b0e8731e302576def927c0677e74785f411eae089e956e"
+    }
+  },
+  "baseline_source_sha256": "b6a65ddfd4849692635ca89967645ae8b67bd66e6aaef3915bf0ed238b9e7a6b",
+  "baseline_binary_sha256": "bcaa742a1de580008bc8365669d4afea38a17c06db31a3a935cc67b50347c1d1",
+  "baseline": {
+    "gelu_forward_x": {
+      "registered_numerical_failure": true
+    },
+    "gelu_backward_x": {
+      "registered_numerical_failure": true
+    },
+    "silu_backward_x": {
+      "registered_numerical_failure": true
+    },
+    "softmax_forward_x": {
+      "registered_numerical_failure": true
+    },
+    "softmax_backward_y": {
+      "registered_numerical_failure": true
+    },
+    "sigmoid_forward_x": {
+      "registered_numerical_failure": true
+    },
+    "sigmoid_backward_y": {
+      "registered_numerical_failure": true
+    },
+    "rmsnorm_forward_x": {
+      "registered_numerical_failure": true
+    },
+    "rmsnorm_forward_w": {
+      "registered_numerical_failure": true
+    },
+    "rmsnorm_backward_x": {
+      "registered_numerical_failure": true
+    },
+    "rmsnorm_backward_w": {
+      "registered_numerical_failure": true
+    },
+    "group_forward_w": {
+      "registered_numerical_failure": true
+    },
+    "group_backward_w": {
+      "registered_numerical_failure": true
+    }
+  },
+  "fixed_source_sha256": "21c5a0a245c65cf068b295a9eb582cda762b48ac6eec5d18d270878218e1b59a",
+  "fixed_binary_sha256": "05f165de65ffd53047e38cbdc77107aea37b8fcb91a8fc961f20c1cd670514aa",
+  "fixed": {
+    "gelu_forward_x": {
+      "independent_forward_backward": true
+    },
+    "gelu_backward_x": {
+      "independent_forward_backward": true
+    },
+    "silu_backward_x": {
+      "independent_forward_backward": true
+    },
+    "softmax_forward_x": {
+      "independent_forward_backward": true
+    },
+    "softmax_backward_y": {
+      "independent_forward_backward": true
+    },
+    "sigmoid_forward_x": {
+      "independent_forward_backward": true
+    },
+    "sigmoid_backward_y": {
+      "independent_forward_backward": true
+    },
+    "rmsnorm_forward_x": {
+      "independent_forward_backward": true
+    },
+    "rmsnorm_forward_w": {
+      "independent_forward_backward": true
+    },
+    "rmsnorm_backward_x": {
+      "independent_forward_backward": true
+    },
+    "rmsnorm_backward_w": {
+      "independent_forward_backward": true
+    },
+    "group_forward_w": {
+      "independent_forward_backward": true
+    },
+    "group_backward_w": {
+      "independent_forward_backward": true
+    },
+    "silu_forward_x": {
+      "independent_forward_backward": true
+    },
+    "group_forward_x": {
+      "independent_forward_backward": true
+    },
+    "group_backward_x": {
+      "independent_forward_backward": true
+    }
+  },
+  "logs": {
+    "hardware.log": {
+      "sha256": "4d27402575c0fbfcbc714a6563f4bcc9ea0e3699ea638e7bd89db077eef291de",
+      "bytes": 21
+    },
+    "nvcc.log": {
+      "sha256": "3c71ed984d2ca98770b0cba5c23a849a87209351e105433929c3062fb66d1915",
+      "bytes": 209
+    },
+    "configure.log": {
+      "sha256": "3eabfeee6538fc266d76a6d2c59befad73cd9d460aff9f2586d7fc0c9709a381",
+      "bytes": 1985
+    },
+    "baseline_build.log": {
+      "sha256": "977f6606f459a9b09a49ae4a6b7160c99a47aa2463a535e3e6f18244ff4741bf",
+      "bytes": 24053
+    },
+    "baseline_gelu_forward_x.log": {
+      "sha256": "28e3f88f0a60e027ab07cccb82060d9a2aaedf8ff131730855c896164380876b",
+      "bytes": 400
+    },
+    "baseline_gelu_backward_x.log": {
+      "sha256": "28588bb9a4f4c518805b0c00af2009d4d1e831bd34b87d788d319cb3aa8117ce",
+      "bytes": 534
+    },
+    "baseline_silu_backward_x.log": {
+      "sha256": "7737429e65be0fadaf712401b9390e8a196a91df01a493e6fad6cbbc58092d0a",
+      "bytes": 534
+    },
+    "baseline_softmax_forward_x.log": {
+      "sha256": "e8ed8feea129863f96f24edd5503fc47c216b61aabe0e00ba042bbc0412acf16",
+      "bytes": 406
+    },
+    "baseline_softmax_backward_y.log": {
+      "sha256": "624d0a80551bbd19f12d15c3aef1bb9423aa7d16e782654d0910f2cf9cd17b2a",
+      "bytes": 543
+    },
+    "baseline_sigmoid_forward_x.log": {
+      "sha256": "978ad7fb3ea3bf8768ff6ef45f4f0b0b08fc74ae7d18f9dea9c35e56bc198b44",
+      "bytes": 406
+    },
+    "baseline_sigmoid_backward_y.log": {
+      "sha256": "3bb9e21b2cfc0cc8a13bbe92ce297bfd2a063f6b505644899e76c68d7b7254a6",
+      "bytes": 543
+    },
+    "baseline_rmsnorm_forward_x.log": {
+      "sha256": "cb57588e52ee1fb97ede6cbbad39091d809d43a018d45d13d0fc24842b34078f",
+      "bytes": 406
+    },
+    "baseline_rmsnorm_forward_w.log": {
+      "sha256": "aa7da743e09656fa356aa300bde2a0baec6b6251ffe1ec0b5195676690867bf0",
+      "bytes": 406
+    },
+    "baseline_rmsnorm_backward_x.log": {
+      "sha256": "79740dfc4d0e970169989c45eb28bee3fe817ae0bb07d344216f0d4206973d03",
+      "bytes": 542
+    },
+    "baseline_rmsnorm_backward_w.log": {
+      "sha256": "74319f9ec35af100424cda839c0f04c8ed77ef5ac58c7aa04f3893cb99c71b17",
+      "bytes": 543
+    },
+    "baseline_group_forward_w.log": {
+      "sha256": "53320a644a0fff37210c77abf8e3e2ed8aba55e0166b8ce13be5e08d67fbbdff",
+      "bytes": 402
+    },
+    "baseline_group_backward_w.log": {
+      "sha256": "9165fc9de6a5bd095ea12e0bdb0130d25a9215270500164925f99c275e3b964d",
+      "bytes": 536
+    },
+    "control_silu_forward_x.log": {
+      "sha256": "c043768b4ab504f01d76a0ff6c623927561e13bf3dd91140df2a0bcc5f8bff37",
+      "bytes": 595
+    },
+    "control_group_forward_x.log": {
+      "sha256": "ee5bd1fd5470b8e070046df82037f4d0f9348ef6458c91e6ec9f5825bc42363c",
+      "bytes": 731
+    },
+    "control_group_backward_x.log": {
+      "sha256": "944ec6afb2158fbd7206d6d2b8a883a9855884bdf073e6abf1dcdd8668cec57a",
+      "bytes": 736
+    },
+    "fixed_build.log": {
+      "sha256": "83aa1d9cb8aff19585834ea8cc7760503b1100e2ada37737c56a6b0d08192873",
+      "bytes": 295
+    },
+    "fixed_gelu_forward_x.log": {
+      "sha256": "878653bb98f685707426208ce91bf8e017160a5f1a05eb1048fc8aa2cf732a0d",
+      "bytes": 595
+    },
+    "fixed_gelu_backward_x.log": {
+      "sha256": "451fe1a620a413bc1bd8bc98aefb5ec4dac5779e681b9bc0ce662295958684b2",
+      "bytes": 599
+    },
+    "fixed_silu_backward_x.log": {
+      "sha256": "fd9d056400dbe8b573a600892b56650f75f0d94e6e336630c48762ed5feffce5",
+      "bytes": 599
+    },
+    "fixed_softmax_forward_x.log": {
+      "sha256": "0eedc5e47fe70370def49142f863067c00a85f92ceee3e9ff2d4c1210f856794",
+      "bytes": 607
+    },
+    "fixed_softmax_backward_y.log": {
+      "sha256": "5994b24d291127974e213206e830b99f87234e0ef404917a22b639599c9adc91",
+      "bytes": 611
+    },
+    "fixed_sigmoid_forward_x.log": {
+      "sha256": "d96463fd29b6b76537549e737af931d0707ffc6d50b37ad903713755e4262069",
+      "bytes": 607
+    },
+    "fixed_sigmoid_backward_y.log": {
+      "sha256": "56d6e5e06a87c7bd6bdfa12f49b3f1b57aa12fca92293d61d23f6afd6ef135ba",
+      "bytes": 611
+    },
+    "fixed_rmsnorm_forward_x.log": {
+      "sha256": "b14373af439aa3492b8c0403124053ebddacc3ae8d6dd6d6dc43699aa53bfea8",
+      "bytes": 741
+    },
+    "fixed_rmsnorm_forward_w.log": {
+      "sha256": "4f72948f95e8ae2b6772482fb3f537a3bb2a0b3b34ce90af530dae713b587a64",
+      "bytes": 741
+    },
+    "fixed_rmsnorm_backward_x.log": {
+      "sha256": "420435aa948537e18a04989e6ac9634fba376fa8957bfa8725acd15e29510dc6",
+      "bytes": 746
+    },
+    "fixed_rmsnorm_backward_w.log": {
+      "sha256": "da946e49d4d2f90e55bff63a367e2722f4a2707aed4238fa9dd1c62ce710424c",
+      "bytes": 746
+    },
+    "fixed_group_forward_w.log": {
+      "sha256": "14558a1fb960cd83df8139add893bc3bbc249053d1e3f7187e0959469192e9ef",
+      "bytes": 731
+    },
+    "fixed_group_backward_w.log": {
+      "sha256": "b716544db8cdc1479263ee70c2f82ec1b009b51767cdc94605210241d8ad5f86",
+      "bytes": 736
+    },
+    "fixed_silu_forward_x.log": {
+      "sha256": "c043768b4ab504f01d76a0ff6c623927561e13bf3dd91140df2a0bcc5f8bff37",
+      "bytes": 595
+    },
+    "fixed_group_forward_x.log": {
+      "sha256": "ee5bd1fd5470b8e070046df82037f4d0f9348ef6458c91e6ec9f5825bc42363c",
+      "bytes": 731
+    },
+    "fixed_group_backward_x.log": {
+      "sha256": "944ec6afb2158fbd7206d6d2b8a883a9855884bdf073e6abf1dcdd8668cec57a",
+      "bytes": 736
+    }
+  }
+}

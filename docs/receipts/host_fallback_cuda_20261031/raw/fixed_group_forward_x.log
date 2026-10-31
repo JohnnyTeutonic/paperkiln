@@ -1,0 +1,7 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+{"case":"group_forward_x","actual_cuda":true,"stale_operand_proved":true,"host_poison":true,"ops_disabled_before_fallback":true}
+{"case":"group_forward_x","quantity":"forward","normalized_max_error":5.2028422570878471e-08,"numeric_reference_pass":true}
+{"case":"group_forward_x","quantity":"input_gradient","normalized_max_error":2.1839536873524465e-08,"numeric_reference_pass":true}
+{"case":"group_forward_x","quantity":"weight_gradient","normalized_max_error":1.3933043864053524e-08,"numeric_reference_pass":true}
+{"pass":true,"case":"group_forward_x","actual_cuda":true,"independent_forward_backward":true}
+{"pass":true,"actual_cuda":true,"devcheck_enabled":true,"cases":1}

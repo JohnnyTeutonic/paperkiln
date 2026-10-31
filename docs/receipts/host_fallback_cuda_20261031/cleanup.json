@@ -1,0 +1,10 @@
+{
+  "pass": true,
+  "owned_pod_id": "6kfc1ihaltzwlj",
+  "owned_volume_id": "l70vzovhty",
+  "pod_absent": true,
+  "volume_absent": true,
+  "campaign_home": true,
+  "job_ledger_usd": 0.13156891517372413,
+  "scope": "owned resource cleanup only; account-wide balances and unrelated resources omitted"
+}
