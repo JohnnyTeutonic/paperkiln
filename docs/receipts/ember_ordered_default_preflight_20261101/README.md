@@ -1,0 +1,1 @@
+Source-bound ordered-default reduction validation. Full registered candidate14 and explicitly partial baseline10 controls retain original thresholds and historical failure. One L4, $2 maximum, at most three hours; admission-owned fresh fixed deadline. Actual-device outcome pending. This registration changes no training or production source.
