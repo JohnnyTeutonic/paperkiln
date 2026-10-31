@@ -1,0 +1,13 @@
+{
+  "pass": true,
+  "scientific_manifest_sha256": "cc95af6e789f28aecae56bed3fc8c0749984de918cc7de6cbcc97f5eca15b311",
+  "frozen_guard_reexecuted_fresh_outputs": true,
+  "actual_cli_cuda": true,
+  "vm_manifest_matches_frozen": true,
+  "all_vm_log_and_artifact_hashes_verified": true,
+  "both_depth_three_step_profiles_replayed": true,
+  "owned_pod_absent_fresh_accessor": true,
+  "owned_volume_absent_fresh_accessor": true,
+  "scope": "Two tiny actual CUDA Mamba1 LM lifecycle cases plus independently repeated pinned CPU Ember/NumPy full-row replay. No SFT, quality, speed or full residency claim.",
+  "no_paid_launch": true
+}
