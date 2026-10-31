@@ -48,9 +48,13 @@ int main(int argc, char** argv) {
     auto m = fixture();
     const float expected = 16.f / 11.f;  // Independent exact-rational fixture mean: 11/16.
     CHECK(same_bits(reference(m), expected));
-    CHECK(same_bits(ops::ternary_scale(m), expected));
+    const float fresh_scale = ops::ternary_scale(m);
+    CHECK(same_bits(fresh_scale, expected));
     Matrix zero(2, 3);
-    CHECK(same_bits(ops::ternary_scale(zero), reference(zero)));
+    const float zero_scale = ops::ternary_scale(zero);
+    CHECK(same_bits(zero_scale, reference(zero)));
+    std::printf("TERNARY_BOUNDARY_JSON {\"kind\":\"fresh\",\"scale\":%.9g,\"zero_scale\":%.9g}\n",
+                fresh_scale, zero_scale);
     if (gpu) {
         device::set(device::Device::CUDA);
         device::set_device_ops(true);
@@ -65,8 +69,19 @@ int main(int argc, char** argv) {
             // Only overwrite non-authoritative host bytes; the GPU value stays intact.
             std::fill(y->data.get_data(), y->data.get_data() + 6, 0.f);
             CHECK(device::host_stale(y->data));
+            const bool stale_before = device::host_stale(y->data);
             const float actual = ops::ternary_scale(y->data);
             std::printf("actual_cuda=true expected=%.9g actual=%.9g\n", expected, actual);
+            std::printf(
+                "TERNARY_BOUNDARY_JSON "
+                "{\"kind\":\"deferred\",\"actual_cuda\":true,\"scale\":%.9g,\"host_stale_before\":%"
+                "s,\"host_stale_after\":%s,\"values\":[",
+                actual, stale_before ? "true" : "false",
+                device::host_stale(y->data) ? "true" : "false");
+            for (size_t i = 0; i < 6; ++i)
+                std::printf("%s%.9g", i ? "," : "", y->data.get_data()[i]);
+            std::puts("]}");
+            std::fflush(stdout);
             CHECK(same_bits(actual, expected));
             CHECK(!device::host_stale(y->data));
             for (size_t i = 0; i < 6; ++i) CHECK(y->data.get_data()[i] == values[i]);

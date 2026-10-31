@@ -1,0 +1,23 @@
+{
+  "review": "independent prelaunch source reading, no execution or paid calls",
+  "base": "7edb0ca1",
+  "sha256": {
+    "tools/colab_chat/sfull_data_only_jobs_20261031.json": "d08028cf1ab99c20013812375495289e024f980cfc04ff62a3207003eb482c38",
+    "tools/colab_chat/boot_sfull_data_only_20261031.sh": "5b7248ec8b87f0ea3ca6dcc35a3b539fe53526454fd37fc10bed070a2f635473",
+    "tools/colab_chat/tiny_chat_data.py": "48df84d69ef7e309b3eee1701653584625a426bca0ea6a0b214cba82d2eef465",
+    "tools/colab_chat/sfull_verify_inputs.py": "59c27187e31a282fa394ccab7730a13a4bc148b86c3ce251b26a0cd7db9f979b",
+    "corpus/fetchers/fineweb_edu.py": "8ff1b50e2ebe5e98221fa99e41fa4b2eeec906baf4fbc263c6f421ab08b0eb7f",
+    "corpus/fetchers/human_dialogue.py": "56ea158ad5ab847da61fe6c25399589c72185dd6c3989f1ac17318f6df2bfa8c",
+    "corpus/hashes/fineweb_edu_shard0_v1.sha256": "c28ace30c76851ffea7ad05c5d4e3816218e0432c63791272bc2a67ff4a47035",
+    "experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/data_reference.json": "acd00d74a93299aa0614f98233f837ef3dc30d38ce9120330e9f2f5c2b982cf4"
+  },
+  "finding": "Boot global FINISHED follows jobs_vm exit0 even if per-job status FAILED. Require exact STATUS_data and STATUS_sfull_inputs FINISHED before global success. Parent will fix and rebind final bytes.",
+  "ledger_path_preserved": "/content/chat/data",
+  "science_and_expected_pins_unchanged": true,
+  "scope": "data plus original verifier only, no model build/training/evaluation",
+  "risks": [
+    "75min ceiling is not completion guarantee for2.15GB parquet plus13externalfetches and800MB tokenization",
+    "unpinned huggingface_hub/pandas/pyarrow may drift or fail; exact output/fullledger verifier prevents false identity success",
+    "unmatched local FineWeb cache is a testfixture and must not enter packet"
+  ]
+}
