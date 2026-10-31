@@ -1,0 +1,23 @@
+{
+  "pass": true,
+  "actual_cuda": false,
+  "argv": [
+    "cmake",
+    "-S",
+    "/home/jonat/checkpoint_copy_archive_preflight_v1_20261031/source",
+    "-B",
+    "/home/jonat/checkpoint_copy_archive_preflight_v1_20261031/build",
+    "-DMICROTORCH_CUDA=OFF",
+    "-DMICROTORCH_DEVCHECK=ON",
+    "-DMICROTORCH_BUILD_PYTHON=OFF",
+    "-DFETCHCONTENT_SOURCE_DIR_JSON=/home/jonat/pk_publication_build_20261030/_deps/json-src"
+  ],
+  "returncode": 0,
+  "source_commit": "f753dc5bef76afdc00d1a5d546cc76afd7dd0c88",
+  "manifest_sha256": "f56cfdccf17eb65f0d609b64de1a88783cacd3df9a33e3974ae4581f79f6cc1f",
+  "archive_sha256": "b193856904a4f7d076a8e0cfcf13d6d6c9f967bc2e07c7c5803224f2713234cd",
+  "exact_source_inventory": 959,
+  "baseline_exact_git_blob": true,
+  "studio_chat_present": true,
+  "no_compilation": true
+}
