@@ -170,8 +170,12 @@ that cannot fail the build.
   leave the implementation backlog. The fixed tiny actual-L4 model/CLI gate also passes:
   every parameter gradient, BF16 counter checks, unchanged default control, LM/SFT
   export and required pinned host NumPy/Ember replay
-  (`docs/receipts/gpt2_attention_precision_20261031/gpu_v2/`). Broader wiring, model
-  quality, throughput and adoption remain open.
+  (`docs/receipts/gpt2_attention_precision_20261031/gpu_v2/`). Canonical plain Flex
+  train-only wiring now also passes four tiny actual-L4 model cases, all 116 gradient
+  tensors and exact BF16 GEMM counts against the frozen reference
+  (`docs/receipts/flex_attention_precision_20261031/actual_l4_v1/`). CPU LM/SFT lifecycle
+  and FP32 inference controls pass separately. Flex CUDA CLI lifecycle, broader
+  variants, model quality, throughput and adoption remain open.
 - **Mamba:** parallel-time scan, composed-model residency validation and end-to-end speed
   remain open. Ordered CUDA `ops::selective_scan` forward/backward is now complete:
   220 actual L4 CUDA+DEVCHECK cases, all gradient masks, both softplus modes, deferred
