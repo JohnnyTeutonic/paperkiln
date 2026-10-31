@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/home/jonat/pk_mamba_composed_20261031/tools/mamba1_cli_lifecycle.py", line 469, in <module>
+    else replay(args.artifact, args.ember, args.out)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jonat/pk_mamba_composed_20261031/tools/mamba1_cli_lifecycle.py", line 391, in replay
+    need(
+  File "/home/jonat/pk_mamba_composed_20261031/tools/mamba1_cli_lifecycle.py", line 27, in need
+    raise ValueError(message)
+ValueError: score registered rows/argmax

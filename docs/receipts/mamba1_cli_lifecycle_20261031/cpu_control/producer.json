@@ -1,0 +1,116 @@
+{
+  "remote_or_CPU_producer_pass": true,
+  "actual_cli_cuda": false,
+  "binary_sha256": "fa434bad12bda7a57dd6de1c2fa65913befd4db170e5682a5d0893b05bd66748",
+  "cases": [
+    {
+      "depth": 1,
+      "actual_cli_cuda": false,
+      "LM_steps": 3,
+      "parameter_elements": 448,
+      "F32_export_sha256": "f6bc13b70ce68e8d691f09ff39d04b8803d2b5a868a2ab91c955bd1a4017c262",
+      "reload_export_byte_identical": true,
+      "score_shape": [
+        8,
+        7
+      ],
+      "training_steps": [
+        {
+          "event": "step",
+          "grad_norm": 1.5253709554672241,
+          "loss": 1.9424537420272827,
+          "step": 1
+        },
+        {
+          "event": "step",
+          "grad_norm": 1.217912197113037,
+          "loss": 1.9334349632263184,
+          "step": 2
+        },
+        {
+          "event": "step",
+          "grad_norm": 1.5129280090332031,
+          "loss": 1.944642424583435,
+          "step": 3
+        }
+      ]
+    },
+    {
+      "depth": 2,
+      "actual_cli_cuda": false,
+      "LM_steps": 3,
+      "parameter_elements": 776,
+      "F32_export_sha256": "5a6ab0d881d57886ddac9bf0308588ddd218fb8549b41e768f6ee149e4b6ac12",
+      "reload_export_byte_identical": true,
+      "score_shape": [
+        8,
+        7
+      ],
+      "training_steps": [
+        {
+          "event": "step",
+          "grad_norm": 1.5233222246170044,
+          "loss": 1.9424829483032227,
+          "step": 1
+        },
+        {
+          "event": "step",
+          "grad_norm": 1.2170172929763794,
+          "loss": 1.9334461688995361,
+          "step": 2
+        },
+        {
+          "event": "step",
+          "grad_norm": 1.5119315385818481,
+          "loss": 1.9445761442184448,
+          "step": 3
+        }
+      ]
+    }
+  ],
+  "artifact_sha256": {
+    "depth2/reload_export.stdout": "4d7b890aba310c39e99b1761e844ed77fe57789c673b5140be87431b43b42bde",
+    "depth2/score.in.jsonl": "4e4e757c6a0a78f9a6f7622bbc73e7047b131ab9459a831fce812d207eb93384",
+    "depth2/corpus.txt": "e477d11bcf7b8fd680c1ba907bf42cfcfa816c8b6d4851389af3d58cc8bf8167",
+    "depth2/score.out.jsonl": "694f60f8836210d9c51341bcee2eec01958dd453f52d2091ca6b31b38b207cc0",
+    "depth2/spec.json": "7fe208235e091670fd7a872932a8b9bbd0a6f69f6f03de5cc297ff2c4fdad4b4",
+    "depth2/saved_score.stderr": "9202691d2c3ae8144cd46678710a55d77a37f3cb3d6447865ec1211d03b6666d",
+    "depth2/saved_score.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "depth2/train.stderr": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+    "depth2/reload_export.stderr": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+    "depth2/vocab.gguf": "724b813ad2905e3cd133909a14283726bc735497653ee9eb2c220bbbfcb0f12d",
+    "depth2/score.rows.f32": "e600e5a4c67cbfa029e361f435f6b0995411b3f8571b3bf24161c766c88c6818",
+    "depth2/train.stdout": "2390d03bcc9418d211f93683ee47e8bdf9c7820c75f47eb2dad784cae996b45c",
+    "depth2/trained/events.jsonl": "adc3cf4b8d25ba3e156d2e950c74de577c1a4e70f982ce3be447c06d53dc4694",
+    "depth2/trained/model.safetensors": "2ee8dcc90e2cdc21609cfd59042ac7faeda66b74330865b90116613f4e02d0ab",
+    "depth2/trained/mamba1_cli_depth2.safetensors": "2ee8dcc90e2cdc21609cfd59042ac7faeda66b74330865b90116613f4e02d0ab",
+    "depth2/trained/mamba1_cli_depth2.ir.json": "14eb853f35ce50561236caf05434be6a66a59b63be9d2abbcd5ce7aa8bf32eab",
+    "depth2/trained/result.json": "17fc07495e554093a14af108926cdf0b1e74534230f731653727d139dd26b755",
+    "depth2/trained/spec.json": "7fe208235e091670fd7a872932a8b9bbd0a6f69f6f03de5cc297ff2c4fdad4b4",
+    "depth2/trained/mamba1_cli_depth2.gguf": "5a6ab0d881d57886ddac9bf0308588ddd218fb8549b41e768f6ee149e4b6ac12",
+    "depth2/trained/state.txt": "8c76a50b89d95b020374b3074de4a095b0f566ac6709ac162754d17e3ed8b319",
+    "depth2/trained/optim.safetensors": "797eb4c45b90e66b885ad398277a7f28813bbf3646ad43b5f7d3ebc42398838a",
+    "depth1/reload_export.stdout": "6ccd90ec18d87133c81ade15bdaaaf60466a1edb7bc5c55178630800917e3a40",
+    "depth1/score.in.jsonl": "4e4e757c6a0a78f9a6f7622bbc73e7047b131ab9459a831fce812d207eb93384",
+    "depth1/corpus.txt": "e477d11bcf7b8fd680c1ba907bf42cfcfa816c8b6d4851389af3d58cc8bf8167",
+    "depth1/score.out.jsonl": "c03a301f64a03afa1a8c26fb5ca0eec6eca21e23b6424583fbb743ea4cb5462f",
+    "depth1/spec.json": "a50b81b879c37c6200cfce55a33b5a4985b4e800b32d614a6399c9edcfd06244",
+    "depth1/saved_score.stderr": "f80fb8245e32c310c151f94e54874c86571a96472015310e037b0e474314b342",
+    "depth1/saved_score.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "depth1/train.stderr": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+    "depth1/reload_export.stderr": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+    "depth1/vocab.gguf": "724b813ad2905e3cd133909a14283726bc735497653ee9eb2c220bbbfcb0f12d",
+    "depth1/score.rows.f32": "2b0ed64b809e191b67b8b14cb36053485740c17dc513a68a2ff3833bac1cdc78",
+    "depth1/train.stdout": "3e138f4841ffa97d0c8413601c2b7a91cb078f85f08972659e9959981a2c2fe5",
+    "depth1/trained/events.jsonl": "da1adde4899945d5ed74c0c4e341a82ba4118b72cc64755cfff7235c900a01ba",
+    "depth1/trained/mamba1_cli_depth1.gguf": "f6bc13b70ce68e8d691f09ff39d04b8803d2b5a868a2ab91c955bd1a4017c262",
+    "depth1/trained/model.safetensors": "d881c3dac77b8fcd23fad6390a0c4aab596063529571028b97dd0f4a118d4e29",
+    "depth1/trained/result.json": "1080512556e73e11c48906f5859838ee03b36c6e0ae5ebdee813f8fa076984ac",
+    "depth1/trained/spec.json": "a50b81b879c37c6200cfce55a33b5a4985b4e800b32d614a6399c9edcfd06244",
+    "depth1/trained/mamba1_cli_depth1.safetensors": "d881c3dac77b8fcd23fad6390a0c4aab596063529571028b97dd0f4a118d4e29",
+    "depth1/trained/mamba1_cli_depth1.ir.json": "a5a221cc8397a96fb7d3bd78d9572671247458249d559b3f1f31671e36223a6e",
+    "depth1/trained/state.txt": "d317454a2e308323764c67c953708c75b0cc70494f2c2bcca71139564f4cf5a3",
+    "depth1/trained/optim.safetensors": "2f31a1e13514f2ca8cb5635ad2d69742e02ed5ea8e0458186618a5225290d365"
+  },
+  "scope": "LM three-step CLI lifecycle only; host independent logits/Ember replay still required, no quality/speed/full residency claim"
+}

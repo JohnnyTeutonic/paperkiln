@@ -1,0 +1,15 @@
+== mtstudio: mamba1_cli_depth2 ==
+arch: exact d=8 layers=2 heads=4 | T=4 vocab_cap=4096
+train: 3 steps batch=2 accum=1 lr=0.001 clip=1 eval_every=3 ckpt_every=3 early_stop(patience=0, min_delta=0)
+export: safetensors gguf | serve: no | out: /home/jonat/pk_mamba_composed_20261031/docs/receipts/mamba1_cli_lifecycle_20261031/cpu_control/depth2/trained
+{"event":"start","name":"mamba1_cli_depth2","steps":3}
+{"event":"data","tokens":700,"val_tokens":35,"vocab":7}
+{"T":4,"accum":1,"activation":"gelu","attention":"exact","batch":2,"checkpoint_activations":false,"d":8,"d_ff":32,"event":"model","family":"mamba","final_norm":true,"gate_bias_init":-2.0,"heads":4,"layers":2,"lr":0.0010000000474974513,"norm":"layernorm","norm_placement":"pre","params":776,"position":"none","residual":"residual","seed":37,"sinks":1,"ssm":{"d_conv":3,"d_state":2,"dt_rank":2,"expand":1,"kind":"mamba1"},"vocab":7,"window":64}
+{"event":"step","grad_norm":1.5233222246170044,"loss":1.9424829483032227,"step":1}
+{"event":"step","grad_norm":1.2170172929763794,"loss":1.9334461688995361,"step":2}
+{"event":"step","grad_norm":1.5119315385818481,"loss":1.9445761442184448,"step":3}
+{"event":"eval","step":3,"val_loss":1.9291907250881195}
+{"event":"export","format":"safetensors","path":"/home/jonat/pk_mamba_composed_20261031/docs/receipts/mamba1_cli_lifecycle_20261031/cpu_control/depth2/trained/mamba1_cli_depth2.safetensors"}
+GGUF Export: Successfully wrote 23 tensors to /home/jonat/pk_mamba_composed_20261031/docs/receipts/mamba1_cli_lifecycle_20261031/cpu_control/depth2/trained/mamba1_cli_depth2.gguf
+{"arch":"paperkiln","event":"export","family":"mamba1","format":"gguf","ir":"/home/jonat/pk_mamba_composed_20261031/docs/receipts/mamba1_cli_lifecycle_20261031/cpu_control/depth2/trained/mamba1_cli_depth2.ir.json","path":"/home/jonat/pk_mamba_composed_20261031/docs/receipts/mamba1_cli_lifecycle_20261031/cpu_control/depth2/trained/mamba1_cli_depth2.gguf"}
+{"best_val":1.929190754890442,"early_stopped":false,"event":"done","final_step":3,"wall_seconds":0.001139255}

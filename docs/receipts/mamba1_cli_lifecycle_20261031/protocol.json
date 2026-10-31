@@ -1,0 +1,78 @@
+{
+  "status": "PROSPECTIVE_UNLAUNCHED",
+  "scope": "LM only, three actualCLI CUDA steps atdepth1/2, savedscore/checkpoint/reload F32 export, frozen hostNumPy+Emberfullrows afterhome",
+  "geometry": {
+    "depths": [
+      1,
+      2
+    ],
+    "batch": 2,
+    "T": 4,
+    "d": 8,
+    "vocab": 7,
+    "d_state": 2,
+    "expand": 1,
+    "dt_rank": 2,
+    "conv": 3,
+    "seed": 37,
+    "steps": 3,
+    "lr": 0.001
+  },
+  "required_per_step_device_profile": [
+    "conv1d_causal_fwd",
+    "conv1d_causal_bwd",
+    "selective_scan_fwd",
+    "selective_scan_bwd"
+  ],
+  "profile_contract": "integer counts at leastdepth and finite nonnegative timing for each ofall3steps; CPU substitution rejects",
+  "score_sequences": [
+    [
+      1
+    ],
+    [
+      1,
+      2,
+      3
+    ],
+    [
+      6,
+      5,
+      4,
+      3
+    ]
+  ],
+  "rows_per_model": [
+    8,
+    7
+  ],
+  "bound": 1e-05,
+  "bound_formula": "max absolute full-row error / max(1,max abs reference); exact raw all-vocabulary argmax agreement",
+  "score_JSON_semantics": "CLI generation argmax bans<unk> id0; separately checked as1..6. Rawlogits and NumPy/Ember compare all7 logits/argmax.",
+  "lifecycle_contract": "threeorderedLMsteps, finite positive gradientnorm, model+optimizer+state saved, checkpoint reload export byte-identical F32, source saved score exact8x7 finite",
+  "host": {
+    "numpy": "1.26.4",
+    "ember_binary": "/home/jonat/ember_publication_build_20261030/ir_logits",
+    "ember_sha256": "1f877524c3b59e1cdbf3ca29ab6d4e0ed216900516e1bcb28d5ec7e7e21b9a0f",
+    "reference_sources": [
+      "spec/tools/ir_numpy.py",
+      "spec/tools/ir_check.py",
+      "tools/mamba1_cli_lifecycle.py"
+    ]
+  },
+  "control": "fresh matching CPU actualCLI3step lifecycle and NumPy/Ember replay; no equality claim forCPU/GPU optimization trajectories",
+  "caps": {
+    "maximum_usd": 0.75,
+    "gate_seconds": 1500,
+    "deadline_utc": "2026-10-31T06:20:00Z",
+    "max_hours": 0.6,
+    "max_remote_pods": 2,
+    "watchdog_owned_only": true,
+    "root_review_before_launch": true
+  },
+  "limits": [
+    "No SFT in this bounded LM protocol.",
+    "A() exp/scale, embedding-gradient hostscatter, scalar loss and CLI parameter close retain host work.",
+    "No quality, speed or fullresidency claim."
+  ],
+  "preflight_note": "Initial JSONargmax assumption rejected onCPU; corrected toexisting scoregeneration-ban semantics beforeanyGPUoutcome, original failurelogretained."
+}

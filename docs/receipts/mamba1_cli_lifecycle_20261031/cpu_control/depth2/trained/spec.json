@@ -1,0 +1,36 @@
+{
+  "name": "mamba1_cli_depth2",
+  "arch": {
+    "preset": "mamba-tiny",
+    "custom": {
+      "d": 8,
+      "layers": 2,
+      "d_state": 2,
+      "ssm": "mamba1",
+      "d_conv": 3,
+      "expand": 1,
+      "dt_rank": 2
+    }
+  },
+  "data": {
+    "vocab": "/home/jonat/pk_mamba_composed_20261031/docs/receipts/mamba1_cli_lifecycle_20261031/cpu_control/depth2/vocab.gguf",
+    "corpus": "/home/jonat/pk_mamba_composed_20261031/docs/receipts/mamba1_cli_lifecycle_20261031/cpu_control/depth2/corpus.txt",
+    "T": 4
+  },
+  "train": {
+    "steps": 3,
+    "batch": 2,
+    "seed": 37,
+    "lr": 0.001,
+    "eval_every": 3,
+    "checkpoint_every": 3,
+    "gradmap_every": 0
+  },
+  "export": {
+    "formats": [
+      "safetensors",
+      "gguf"
+    ]
+  },
+  "out_dir": "/home/jonat/pk_mamba_composed_20261031/docs/receipts/mamba1_cli_lifecycle_20261031/cpu_control/depth2/trained"
+}
