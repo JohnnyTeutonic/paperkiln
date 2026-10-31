@@ -14,7 +14,10 @@ where one of those documents carries a plan, this file wins.*
    pick is complete and home (single-pick descriptive result in the long-carry RESULTS).
    Carry-12's registered HS1 extension is complete and all four
    new B/S-gist runs are home: the five-seed S-gist minus B contrast is SUPPORTED
-   (-12.668 points), with six recorded full-history parity mismatches now under review.
+   (-12.668 points). A new historical-source CUDA scorer reproduces all six recorded
+   full-history reply disagreements at runner-up near-ties, with exact model re-exports
+   and unchanged original/diagnostic scoring fields. Generation replay did not execute;
+   original positions/cache trajectory and complete historical cause remain unresolved.
    Its registered S-full condition is numerically true, but no control has launched;
    parity evidence, recipe and spending require review. The broader programme remains open.
    The complete three-seed Carry-12 core is analysed in `experiments/tiny_chat_long_2026-10/RESULTS.md`:

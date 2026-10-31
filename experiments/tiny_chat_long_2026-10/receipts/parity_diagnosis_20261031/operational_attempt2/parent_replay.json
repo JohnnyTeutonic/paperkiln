@@ -1,0 +1,12 @@
+{
+  "pass": true,
+  "component_only": true,
+  "overall_status": "ERROR",
+  "requests_numerically_identical": 1536,
+  "raw_rows": 89,
+  "exports_exact": 4,
+  "full_auditor_refusal_retained": true,
+  "independent_replay_equal_to_agent_receipt": true,
+  "merged_parser_tests": 26,
+  "scope": "No generation replay, historical-cause conclusion, full validity pass or parity waiver."
+}

@@ -60,7 +60,9 @@ with size, but this particular conversational-memory score does not. This is a s
 not a general scaling limit or a state-of-the-art comparison. Carry-12's three-seed core and
 its completed five-seed HS1 follow-up are recorded separately in
 [the long-conversation results](experiments/tiny_chat_long_2026-10/RESULTS.md).
-Six historical full-history parity failures remain unresolved. The registered
+A new historical-source CUDA scorer reproduces all six full-history reply disagreements
+at runner-up near-ties. The generation replay did not execute, so the complete historical
+cause remains unresolved ([scorer evidence](experiments/tiny_chat_long_2026-10/receipts/parity_diagnosis_20261031/operational_attempt2/parent_replay.json)). The registered
 S-full control is prepared but unlaunched; its independent
 [review](docs/receipts/sfull_independent_review_20261031/review.json) distinguishes
 completed analysis from a clean scientific validity pass.
