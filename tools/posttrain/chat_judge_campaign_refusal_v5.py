@@ -189,6 +189,7 @@ def inspect(protocol):
     return requests, {
         "attempts_since_start": attempts,
         "missing_rankings": todo,
+        "valid_api_rankings": len(done),
         "eligible_missing_rankings": todo - 2,
         "preserved_failed_rankings": 1,
         "unattempted_paired_exclusions": 1,

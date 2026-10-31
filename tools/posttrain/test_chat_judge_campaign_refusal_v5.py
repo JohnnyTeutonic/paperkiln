@@ -35,6 +35,7 @@ def test_all24_success_stop_never_continues_full_judging(tmp_path):
     def inspect(_):
         return [], {
             "missing_rankings": 4350 - len(calls),
+            "valid_api_rankings": 1690 + len(calls),
             "eligible_missing_rankings": 4348 - len(calls),
             "attempts_since_start": len(calls),
         }
@@ -58,6 +59,7 @@ def test_all24_success_stop_never_continues_full_judging(tmp_path):
     assert stopped["eligible_judging_complete"] is True
     assert stopped["full_judging_complete"] is False
     assert stopped["missing_rankings"] == 2
+    assert stopped["valid_api_rankings"] == 6038
     assert not (state / "COMPLETE").exists()
     assert campaign.campaign(p, state, dispatch, inspect) == 0 and len(calls) == 4348
 
@@ -69,6 +71,7 @@ def test_partial_success_then_restart_only_remaining_reviewed_attempts(tmp_path)
     def inspect(_):
         return [], {
             "missing_rankings": 4350 - len(calls),
+            "valid_api_rankings": 1690 + len(calls),
             "eligible_missing_rankings": 4348 - len(calls),
             "attempts_since_start": len(calls),
         }

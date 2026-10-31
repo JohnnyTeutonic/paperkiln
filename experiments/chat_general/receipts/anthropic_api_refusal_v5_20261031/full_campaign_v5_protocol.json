@@ -1,7 +1,7 @@
 {
   "kind": "FROZEN_FAILSTOP_API_REFUSAL_V5_4348",
   "source_sha256": {
-    "chat_judge_campaign_refusal_v5.py": "6b5d8fbea3311527697897ac982ee12a90e01d889149b83f0d88b1eac2c0f307",
+    "chat_judge_campaign_refusal_v5.py": "3ba3efbee0f602abef538b4147ac3bb85305a7cb5de89da8ec642fc0cf839d30",
     "chat_judge_api_refusal_v5.py": "11cd8c7880356afaef631f6168d02dd75025cd4be58d4c6fc69fddb966ed0dd7",
     "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
     "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"

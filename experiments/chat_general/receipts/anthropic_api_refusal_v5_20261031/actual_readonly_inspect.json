@@ -1,6 +1,7 @@
 {
   "attempts_since_start": 0,
   "missing_rankings": 4350,
+  "valid_api_rankings": 1690,
   "eligible_missing_rankings": 4348,
   "preserved_failed_rankings": 1,
   "unattempted_paired_exclusions": 1,
