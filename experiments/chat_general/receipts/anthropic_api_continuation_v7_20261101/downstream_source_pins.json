@@ -1,0 +1,15 @@
+{
+  "status": "PREPARATION_ONLY_NOT_TRAINING_SOURCE_FREEZE",
+  "root": "/home/jonat/pk_api_continuation_v7_20261101",
+  "files": {
+    "experiments/chat_general/PLAN.md": "db54814836fe9cb062c5480e8528260ec5aac5b3c8ae1661a1f126a0d36aa578",
+    "tools/posttrain/chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0",
+    "tools/posttrain/chat_judge_api_refusal_v5.py": "11cd8c7880356afaef631f6168d02dd75025cd4be58d4c6fc69fddb966ed0dd7",
+    "tools/posttrain/dpo_pairs.py": "eb232b68bbb6b423ccbe5441867fac6df0980375bd44204e6847fee193a2f7ec",
+    "tools/posttrain/side_by_side.py": "0e03195c88b663d271e64f0ac03806031296debe3068ce79adb4869e527882c0",
+    "tools/posttrain/preference_dataset_gate_v7.py": "ef6867f1eda71b2390cf89384bcf29ba1983e8b88783737b1c6bc4e4ddfce9e8",
+    "tools/mtstudio.cpp": "3dc2af66c2aa22c745fb6797ff44b9e305132fab98f133cf3bce3345ff6cbeda",
+    "tools/posttrain/test_chat_judge_campaign_continuation_v7.py": "9516ecaf6285df89c4a1c48c4b6ac4dadb799b05f4435e32c2d26c809e826247"
+  },
+  "training_source_blocker": "Root must complete and merge the actual-device KL-reference Matrix repair before freezing DPO source."
+}

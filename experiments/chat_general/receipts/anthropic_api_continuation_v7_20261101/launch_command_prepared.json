@@ -1,0 +1,17 @@
+{
+  "status": "PREPARED_NOT_ACTIVATED",
+  "argv": [
+    "python3",
+    "/home/jonat/pk_api_continuation_v7_20261101/tools/posttrain/chat_judge_campaign_continuation_v7.py",
+    "--protocol",
+    "/home/jonat/pk_api_continuation_v7_20261101/experiments/chat_general/receipts/anthropic_api_continuation_v7_20261101/full_campaign_v7_protocol.json",
+    "--protocol-sha256",
+    "5d0a8cd291614db69118dc2c12f404257ee474e8f5f636f8be606a2ffba3ed23",
+    "--state-dir",
+    "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v7"
+  ],
+  "protocol_file_sha256": "5d0a8cd291614db69118dc2c12f404257ee474e8f5f636f8be606a2ffba3ed23",
+  "wrapper_sha256": "2123d45b0057773817dff9a4024751d1c0d2678050d7f5228382f54a5689ea17",
+  "dataset_decision_sha256": "bd2b3f8aa687829450b248199c3c0667788cba5b1ea7ad5e6c6ae1dd6041170f",
+  "no_paid_calls_or_config_activation": true
+}
