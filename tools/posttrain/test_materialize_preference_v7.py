@@ -88,7 +88,7 @@ def test_training_instance_requires_bound_root_freeze_and_emits_serial_standard_
     jobs=json.loads((out/'jobs_v1.json').read_text())
     assert jobs['max_parallel']==1 and jobs['jobs'][1]['after']=='dpo_preflight'
     assert jobs['jobs'][1]['spec']['train']['steps']==26 and binding['activated'] is False
-    assert set(json.loads((out/'upload_manifest.json').read_text())['files'])=={'pksft.safetensors','vocab.gguf','dpo_pairs.jsonl','training_source.tar','dpo_binding.json','pk_dpo_v1.spec.json','dialogues_val.jsonl','dialogues_train.jsonl'}
+    assert set(json.loads((out/'upload_manifest.json').read_text())['files'])=={'pksft.safetensors','vocab.gguf','dpo_pairs.jsonl','training_source.tar','dpo_binding.json','pk_dpo_v1.spec.json','dialogues_val.jsonl','dialogues_train.jsonl','DPO_RUNTIME_JOBS_V1.json','dpo_checkpoint_contract_v1.json'}
     bad=copy.deepcopy(admission);bad['checkpoint_sha256']='wrong'
     with pytest.raises(ValueError):b.verify_source_admission(bad,source,dataset/'dataset_manifest.json',base,checkpoint,vocab,archive)
     (source/'tools/mtstudio.cpp').write_text('modified')
