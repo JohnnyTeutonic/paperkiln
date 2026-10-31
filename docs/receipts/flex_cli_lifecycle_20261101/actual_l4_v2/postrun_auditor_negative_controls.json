@@ -1,0 +1,31 @@
+{
+  "status": "PASS",
+  "controls": [
+    {
+      "mutation": "remote_bound",
+      "rejected": true,
+      "reason": "remote derived error outside original bound"
+    },
+    {
+      "mutation": "gradnorm",
+      "rejected": true,
+      "reason": "exact event/summary gradient mismatch"
+    },
+    {
+      "mutation": "launchcount",
+      "rejected": true,
+      "reason": "exact event/summary launch-count mismatch"
+    },
+    {
+      "mutation": "missing_step",
+      "rejected": true,
+      "reason": "missing/repeated/reordered CLI steps"
+    },
+    {
+      "mutation": "nonfinite_raw",
+      "rejected": true,
+      "reason": "nonfinite export rows"
+    }
+  ],
+  "original_raw_modified": false
+}
