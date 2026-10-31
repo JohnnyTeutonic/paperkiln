@@ -68,8 +68,6 @@
  ],
  "cumulative_estimated_usd": 0.16273957311288442,
  "cumulative_cap_usd": 1,
- "provider_balance_after_cleanup": 24.1548,
- "provider_spend_per_hour_after_cleanup": 0.016,
  "pods_after_cleanup": [],
  "unrelated_historical_volumes": "Untouched",
  "offline_tamper_cases_rejected": [
@@ -79,5 +77,6 @@
   "restoration",
   "missing_log"
  ],
- "auditor_source_sha256": "cbe590b6e6895b93daf2a216792579fb583e414b8bbbabb51d9736c7004d8809"
+ "auditor_source_sha256": "cbe590b6e6895b93daf2a216792579fb583e414b8bbbabb51d9736c7004d8809",
+ "account_fields_omitted": true
 }

@@ -1,0 +1,115 @@
+{
+  "pass": true,
+  "source_commit": "effdbb1f4d08b1b2fc30f609e908f3157c0e6b1d",
+  "source_sha256": {
+    "CMakeLists.txt": "882464b0ea1b19ecc620a25e198c80078c01b1d4ef02d5d90c445033d25fc765",
+    "src/ops.cpp": "b6a65ddfd4849692635ca89967645ae8b67bd66e6aaef3915bf0ed238b9e7a6b",
+    "src/cuda_ops.cu": "9559249aae0f7698cb5ccb98acf1e030437e94bb19e3296eeca7709e9c4b89d7",
+    "src/conv1d_kernels.cuh": "056f3c40e0ed9558216156ea37c56a997cbe17392d22ef6e72a6d16f0738754e",
+    "tests/test_add_bias_materialization.cpp": "3c3dcb65ce8006ff2721fe3e145550c33448c1be97179945fcd55fc6ccf53383",
+    "tests/test_layernorm_host.cpp": "88e3a1fce30d317ea4253d7aaea457ff255ecb90b58e511ba069b17fb057c205",
+    "tests/test_layernorm_materialization.cpp": "e13d9a0cc7e8013ed908db448327dcb2e71d3abf6d050764488dbf94ea251535",
+    "tests/test_conv1d_cuda.cpp": "9002d77bcdeba5e702b409515bb3019978733caa5f039b7d7d3f054921993833",
+    "tools/mtstudio.cpp": "c50b8cfb86fcd88f8f2ee06c56e824e3ca7e82ea009f04740962b8a7eb6200ef",
+    "tests/test_studio_grpo_materialization.cpp": "e413b8db4f02889f20d87a4e8a2fd2bb23847078447570390715f1c9ca989d1c"
+  },
+  "commands": [
+    {
+      "name": "configure",
+      "argv": [
+        "cmake",
+        "-S",
+        "/home/jonat/pk_publication_20261030",
+        "-B",
+        "/home/jonat/pk_publication_build_20261030",
+        "-DMICROTORCH_CUDA=OFF",
+        "-DMICROTORCH_DEVCHECK=ON",
+        "-DMICROTORCH_BUILD_PYTHON=OFF"
+      ],
+      "returncode": 0,
+      "log_sha256": "75ce9565d4f2237f7285d52cf264ba625cf26745adefbf7c4df99fc728aababc"
+    },
+    {
+      "name": "build",
+      "argv": [
+        "cmake",
+        "--build",
+        "/home/jonat/pk_publication_build_20261030",
+        "--parallel",
+        "2"
+      ],
+      "returncode": 0,
+      "log_sha256": "82f72420b7866d1e148cbaf64d63b312a938d7950416f858b28f9e974bb0a2a1"
+    },
+    {
+      "name": "ctest",
+      "argv": [
+        "ctest",
+        "--test-dir",
+        "/home/jonat/pk_publication_build_20261030",
+        "--output-on-failure",
+        "-j",
+        "1"
+      ],
+      "returncode": 0,
+      "log_sha256": "dc855209d095abde0401d9a897f1d9d604227029d055754180d95fe42fe78e5e"
+    },
+    {
+      "name": "python",
+      "argv": [
+        "python3",
+        "-m",
+        "pytest",
+        "tests/test_hf_export.py",
+        "tests/test_hf_export_evidence.py",
+        "tests/test_hf_export_publication.py",
+        "tests/test_hf_export_training_modifiers.py",
+        "tests/test_hf_tied_flex.py",
+        "tests/test_hf_exact_gelu.py",
+        "tests/test_hf_relu_flex.py",
+        "tests/test_evaluation_probes_cli.py",
+        "-q"
+      ],
+      "returncode": 0,
+      "log_sha256": "070a82034503367b02608d040f7f15ceb46d261fbaf6dbf0e354705f9bc4e20e"
+    },
+    {
+      "name": "grpo",
+      "argv": [
+        "python3",
+        "-m",
+        "pytest",
+        "tests/test_mtstudio_grpo.py",
+        "-q"
+      ],
+      "returncode": 0,
+      "log_sha256": "8acfad608c59deeef33cc3a51595b05c2835b5973a5b0217032a341115e66709"
+    }
+  ],
+  "limits": "CPU integration only; actual CUDA and timing claims remain bound to separate receipts.",
+  "current_layernorm_bits": {
+    "equal_to_frozen_baseline": true,
+    "raw_sha256": "2150e8b3b4e2c21353d985f7fb519b241b092110125633863395bd7a9708ff31",
+    "frozen_raw_sha256": "2150e8b3b4e2c21353d985f7fb519b241b092110125633863395bd7a9708ff31",
+    "cases": 321,
+    "models": 3
+  },
+  "ctest_passed": 57,
+  "python_passed": 302,
+  "python_skipped": 1,
+  "grpo_end_to_end_passed": 6,
+  "binary_sha256": {
+    "mtstudio": "994aa089f33ff5b3ee8830a3fc82fc3ada5eab33f7f764906eb366261801b7f0",
+    "test_add_bias_materialization": "e97f21c840571b37cd7d1647796d0e68f0d81d0cc16a55562191724c953f5d0f",
+    "test_layernorm_host": "fa3bea7cb088f3392b757316b8442fc408a5e03808e5455747253ee91df7457d",
+    "test_layernorm_materialization": "532d5145e5c13c7ad1bcaeb36a9720acb41c9b5662813366e57d8bcd5a282ba7",
+    "test_conv1d_cuda": "a23355ea93cb02239796b7f524b7dcd569c55cf0f04e8b18c10feb952bcf307d",
+    "test_studio_grpo_materialization": "53eddf1209fbc83ef02cd3c010b682fed6db4b0d625458648ae3b671caafc6e4",
+    "bench_layernorm_cpu": "c752c6a64d47d1cdee8f6ba27ae5c4cca18c62fc99df05f2d6cecae4c0569151"
+  },
+  "public_receipt_notes": [
+    "CPU integration and current LayerNorm bit identity only; separate actual-device receipts retain their source bindings.",
+    "Initial resource audit matched only array commands; the preserved failure is superseded by the verified string-command check.",
+    "Account-wide billing snapshots are omitted from public resource summaries; job-specific costs remain with each experiment."
+  ]
+}

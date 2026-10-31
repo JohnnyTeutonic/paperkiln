@@ -1,0 +1,10 @@
+{
+  "pass": false,
+  "checked_at_utc": "2026-10-31T02:56:14.658747+00:00",
+  "owned_pods_remaining": [],
+  "owned_volumes_remaining": [],
+  "owned_watchdog_entries": [],
+  "scope": "Read-only provider and owned-driver check; historical volumes and unrelated entries untouched.",
+  "account_fields_omitted": true,
+  "audit_failure_reason": "Initial scanner assumed array commands; watchdog stores string commands. Corrected and rechecked in resources_final.json. No provider resources remained in either observation."
+}

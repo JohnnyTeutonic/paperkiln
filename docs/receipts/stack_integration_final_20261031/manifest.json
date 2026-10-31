@@ -1,0 +1,15 @@
+{
+  "pass": true,
+  "scope": "Final CPU integration and owned-resource closure; no new timing or model-quality claim.",
+  "files": {
+    "build.log": "82f72420b7866d1e148cbaf64d63b312a938d7950416f858b28f9e974bb0a2a1",
+    "configure.log": "75ce9565d4f2237f7285d52cf264ba625cf26745adefbf7c4df99fc728aababc",
+    "ctest.log": "dc855209d095abde0401d9a897f1d9d604227029d055754180d95fe42fe78e5e",
+    "grpo.log": "8acfad608c59deeef33cc3a51595b05c2835b5973a5b0217032a341115e66709",
+    "python.log": "070a82034503367b02608d040f7f15ceb46d261fbaf6dbf0e354705f9bc4e20e",
+    "resources_final.json": "0cbb2c2691098c613759d575363b72ca11aa7fd540181b23fc4ea9ac1d123bb5",
+    "resources_initial_schema_failure.json": "1810928d31f726f1190886a2aabab11681613192f2ccc384c6a92e8a61527a0f",
+    "run_checks.py": "8c30c676906efbbc730957a6e6c184cc6979c9f71beb04cce6518bb4e378c49d",
+    "validation.json": "d44eab325e4af83b5288e790e8f9ac8919e3bd39f5c88cedbdf824c3ec7a58a4"
+  }
+}

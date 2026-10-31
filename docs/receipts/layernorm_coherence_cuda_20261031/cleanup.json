@@ -32,8 +32,6 @@
  "estimated_usd": 0.08955340231443627,
  "cap_usd": 0.8,
  "provider_bill_not_asserted": true,
- "provider_balance_after_cleanup": 24.012,
- "provider_spend_per_hour_after_cleanup": 0.016,
  "provider_pods_after_cleanup": [],
  "unrelated_historical_volumes": "Untouched",
  "auditor_source_sha256": "4616af8f5908a278a5eea907230f7d9b566ff784ae95673beb79a523f120d354",
@@ -44,5 +42,6 @@
   "bool_case_count",
   "missing_case_command",
   "restoration_false"
- ]
+ ],
+ "account_fields_omitted": true
 }

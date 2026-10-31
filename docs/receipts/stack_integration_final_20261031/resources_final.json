@@ -1,0 +1,30 @@
+{
+  "pass": true,
+  "checked_at_utc": "2026-10-31T02:57:08.093171+00:00",
+  "owned_pods_remaining": [],
+  "owned_volumes_remaining": [],
+  "owned_watchdog_entries": [
+    {
+      "name": "Paperkiln actual L4 stale-bias and export guard gate",
+      "enabled": false
+    },
+    {
+      "name": "Paperkiln actual L4 stale-bias gate (operational archive correction)",
+      "enabled": false
+    },
+    {
+      "name": "Paperkiln actual L4 ordered causal convolution gate",
+      "enabled": false
+    },
+    {
+      "name": "Paperkiln actual L4 four-case LayerNorm fallback coherence",
+      "enabled": false
+    },
+    {
+      "name": "Paperkiln actual L4 GRPO CLI host-reader gate",
+      "enabled": false
+    }
+  ],
+  "scope": "Read-only provider and owned-driver check; historical volumes and unrelated entries untouched.",
+  "account_fields_omitted": true
+}
