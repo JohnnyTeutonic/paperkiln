@@ -1,0 +1,26 @@
+{
+  "max_parallel": 1,
+  "jobs": [
+    {
+      "name": "ternary_scale_gate",
+      "cmd": [
+        "timeout",
+        "--signal=TERM",
+        "--kill-after=30",
+        "2430",
+        "python3",
+        "/content/chat/upload/ternary_scale_boundary_gate.py",
+        "--upload",
+        "/content/chat/upload",
+        "--manifest-sha256",
+        "bb65a5cba3b9db0c20fce916915d9434ba91d3dcba13876238df15839fb84d02",
+        "--out",
+        "{out}"
+      ],
+      "outputs": [
+        "gate_summary.json",
+        "out.zip"
+      ]
+    }
+  ]
+}
