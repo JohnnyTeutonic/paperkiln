@@ -1,0 +1,11 @@
+{
+  "status": "EXACT_REVERSE_PATCH_RESTORES_ORIGINAL_CLI_BYTES",
+  "base_commit": "d642b0601e76501c56d35a14b3961562367de9a5",
+  "original_cli_sha256": "e292b94e53b179ccab5c9bfae6dd3a261a581fd5149a722601bf781f0e33bf42",
+  "amended_cli_sha256": "7f6f1ce21f511a2f8ec184bcd7db0616e6ce5843eb66d4eed7c752b6b3d806e2",
+  "reverse_cli_sha256": "e292b94e53b179ccab5c9bfae6dd3a261a581fd5149a722601bf781f0e33bf42",
+  "arithmetic_optimizer_rng_loop_statement_changes": false,
+  "source_core_reference": "Reviewed S-full atomic checkpoint design copied into separate DPO module, not a change to frozen S-full code.",
+  "reviewed_core_reference_sha256": "bba056e61d94c554f0dcc96b8ed75086ae32b86a6baff7221909aeea1832cea2",
+  "new_core_extra_binding": "operational_contract_sha256 is required in every immutable generation and source/recipe/contract identity is checked on subsequent publish/import."
+}
