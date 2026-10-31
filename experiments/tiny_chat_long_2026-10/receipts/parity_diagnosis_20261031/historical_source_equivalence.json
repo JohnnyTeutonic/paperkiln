@@ -1,0 +1,54 @@
+{
+  "status": "SCIENTIFIC_COMPONENTS_BYTE_IDENTICAL",
+  "reason": "Sgist4 records7baf while B1/B3/Sgist1 record3dc. These compile/evaluation/component objects are exactly identical, supporting one3dc native source reconstruction. Different jobs/operational manifests do not imply changed scientific source.",
+  "git_object_bindings": {
+    "CMakeLists.txt": {
+      "3dc818b2476b0957b1337b4c9af22474b76350b5": "145163b197af2075cd8d41857e2e8ddcc5b2da5b",
+      "7baf6d95f79b9cc543705e9b510bcbfeb5c18a63": "145163b197af2075cd8d41857e2e8ddcc5b2da5b"
+    },
+    "include": {
+      "3dc818b2476b0957b1337b4c9af22474b76350b5": "b6771269c7fb941753c978355da2151586535b11",
+      "7baf6d95f79b9cc543705e9b510bcbfeb5c18a63": "b6771269c7fb941753c978355da2151586535b11"
+    },
+    "src": {
+      "3dc818b2476b0957b1337b4c9af22474b76350b5": "560b553b8a3bc3687d73d3eddd2159c63906cf43",
+      "7baf6d95f79b9cc543705e9b510bcbfeb5c18a63": "560b553b8a3bc3687d73d3eddd2159c63906cf43"
+    },
+    "third_party": {
+      "3dc818b2476b0957b1337b4c9af22474b76350b5": "2acb59637f991fc825fe090c1d0cdd26e922ecd9",
+      "7baf6d95f79b9cc543705e9b510bcbfeb5c18a63": "2acb59637f991fc825fe090c1d0cdd26e922ecd9"
+    },
+    "tools/mtstudio.cpp": {
+      "3dc818b2476b0957b1337b4c9af22474b76350b5": "7d184b3d1d0477cb866e5e16025f55707cf67d47",
+      "7baf6d95f79b9cc543705e9b510bcbfeb5c18a63": "7d184b3d1d0477cb866e5e16025f55707cf67d47"
+    },
+    "tools/parity_model.hpp": {
+      "3dc818b2476b0957b1337b4c9af22474b76350b5": "d0282c3b60bb28d8eea0a4b5f862240683d4883a",
+      "7baf6d95f79b9cc543705e9b510bcbfeb5c18a63": "d0282c3b60bb28d8eea0a4b5f862240683d4883a"
+    },
+    "tools/carry12_eval.py": {
+      "3dc818b2476b0957b1337b4c9af22474b76350b5": "d73afbde7dc8571ea3731fcb1282b839ac384c28",
+      "7baf6d95f79b9cc543705e9b510bcbfeb5c18a63": "d73afbde7dc8571ea3731fcb1282b839ac384c28"
+    },
+    "tools/carry5_eval.py": {
+      "3dc818b2476b0957b1337b4c9af22474b76350b5": "4f56ed058b00ad49f9d24a742ed9c50938e1342f",
+      "7baf6d95f79b9cc543705e9b510bcbfeb5c18a63": "4f56ed058b00ad49f9d24a742ed9c50938e1342f"
+    },
+    "tools/state_tokens.py": {
+      "3dc818b2476b0957b1337b4c9af22474b76350b5": "2b7a8027266e9cd9bbef44c8a88d9a0682faef13",
+      "7baf6d95f79b9cc543705e9b510bcbfeb5c18a63": "2b7a8027266e9cd9bbef44c8a88d9a0682faef13"
+    },
+    "tools/llama3_bpe.py": {
+      "3dc818b2476b0957b1337b4c9af22474b76350b5": "da12663f0249a0dd6e839a42a1f47526952883dc",
+      "7baf6d95f79b9cc543705e9b510bcbfeb5c18a63": "da12663f0249a0dd6e839a42a1f47526952883dc"
+    },
+    "tools/chat_eval.py": {
+      "3dc818b2476b0957b1337b4c9af22474b76350b5": "cf077a4f8b6d5e2561dfabd39911d809ea2cc60f",
+      "7baf6d95f79b9cc543705e9b510bcbfeb5c18a63": "cf077a4f8b6d5e2561dfabd39911d809ea2cc60f"
+    },
+    "tools/colab_chat/jobs_vm.py": {
+      "3dc818b2476b0957b1337b4c9af22474b76350b5": "cc3bbe541a7bee8832cf3da3bc9b25262a35af6c",
+      "7baf6d95f79b9cc543705e9b510bcbfeb5c18a63": "cc3bbe541a7bee8832cf3da3bc9b25262a35af6c"
+    }
+  }
+}
