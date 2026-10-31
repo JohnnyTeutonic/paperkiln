@@ -1,0 +1,5 @@
+Actual L4 checkpoint-copy gate passed all eight frozen legs. Four CPU old/fixed controls pass all ten complete gradient tensors. The two old CUDA legs reject at the distinct existing DEVCHECK output-copy and backward input-copy guards with the required stale-state observations. The two fixed CUDA legs pass full forward/loss and all five gradient tensors against the independent standard-library binary64 analytic reference at the unchanged 1e-6 normalized bound.
+
+`out.zip` retains the complete raw reports and logs once. Archive CRC, every declared artifact hash, exact landed/archived summary and the frozen 959-file source inventory were independently verified. `independent_replay.json` includes the eight replay verdicts and phase/staleness observations. `review.json` binds source, reference and output identities.
+
+Scope is two deterministic legal checkpoint callbacks. This makes no historical training-invalidity, model quality, full-residency or speed claim. The unrelated, unlaunched KL candidate is outside this source-bound receipt.
