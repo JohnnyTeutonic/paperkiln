@@ -1,0 +1,8 @@
+{
+ "network_calls": 0,
+ "checks": {
+  "cached_ranking": "rejected",
+  "raw_usage": "rejected",
+  "retained_ceiling": "rejected"
+ }
+}
