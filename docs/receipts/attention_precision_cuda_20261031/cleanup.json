@@ -1,0 +1,7 @@
+{
+  "pod": "b8hyifts6zrxwp",
+  "volume": "tgcp2tj5jh",
+  "provider_verified_absent": true,
+  "watchdog_disabled": true,
+  "note": "Runner cleanup logged transient network failure; independent provider queries confirmed both owned resources absent."
+}

@@ -1,0 +1,7 @@
+{
+  "pass": true,
+  "cases": 44,
+  "actual_cuda": true,
+  "independent_numpy_replay": true,
+  "worst_normalized_error": 3.293902099352775e-08
+}

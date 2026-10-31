@@ -1,0 +1,145 @@
+{
+  "pass": true,
+  "scope": "explicit C++ autograd attention op; no CLI model adoption, training quality or performance claim",
+  "commands": [
+    {
+      "name": "hardware",
+      "argv": [
+        "nvidia-smi",
+        "--query-gpu=name,driver_version",
+        "--format=csv,noheader"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "nvcc",
+      "argv": [
+        "nvcc",
+        "--version"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "configure",
+      "argv": [
+        "cmake",
+        "-S",
+        "/content/attention_precision_source",
+        "-B",
+        "/content/attention_precision_build",
+        "-DCMAKE_BUILD_TYPE=Release",
+        "-DMICROTORCH_CUDA=ON",
+        "-DMICROTORCH_DEVCHECK=ON",
+        "-DMICROTORCH_BUILD_PYTHON=OFF",
+        "-DCMAKE_CUDA_ARCHITECTURES=89"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "build",
+      "argv": [
+        "cmake",
+        "--build",
+        "/content/attention_precision_build",
+        "--target",
+        "test_attention_precision",
+        "--parallel",
+        "4"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "strict",
+      "argv": [
+        "/content/attention_precision_build/test_attention_precision",
+        "--require-cuda"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "numpy_install",
+      "argv": [
+        "python3",
+        "-m",
+        "pip",
+        "install",
+        "numpy==1.26.4"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "independent_replay",
+      "argv": [
+        "python3",
+        "-O",
+        "/content/chat/upload/replay_attention_precision.py",
+        "/content/chat/attention_precision_gate/strict.log",
+        "--require-cuda"
+      ],
+      "returncode": 0
+    }
+  ],
+  "errors": [],
+  "inputs": {
+    "source_commit": "fd45dafe30e293b1162452294630f7ca4bb4a7bd",
+    "files": {
+      "attention_precision_gate.py": "764dafd0c2d83ce93fc9b7b95b960f73e79aae915fd0d53e3a7ef44165767a3e",
+      "replay_attention_precision.py": "e0d76c083b4d821e3354f0b27fa9a14fc5a02f1449acb4bf29fccd9ef7a9911f",
+      "source.tgz": "4475ee72ad70c5583255dd2e13fcdd993ec13e0ddfd33e6d4b09b93c8e10907e"
+    },
+    "source_files": {
+      "CMakeLists.txt": "1fa4eddedfe5090f1a70be140988d5164403b7abe35cc201f0b7de9a21307bd2",
+      "include/microtorch/ops.hpp": "e6efd5098cbfc3484ee7651d12281ca940dd0a3c089740153b4d4c6f4e37da1a",
+      "src/ops.cpp": "6d11e03a6bb9ddbc3d4ae6f58e1ed7bb9b9a69fd5ec96a8d0e63499954aae1c0",
+      "src/device.cpp": "d8dbfd25e811706cb1425399fea968369d461abef026d2472bfd2011bc167b7e",
+      "src/cuda_resident.cu": "4c5b5995551d680b3b53936d028c2c24358573054e49d53cab12cde34503ffab",
+      "src/cuda_ops.cu": "9559249aae0f7698cb5ccb98acf1e030437e94bb19e3296eeca7709e9c4b89d7",
+      "tests/test_attention_precision.cpp": "3e6e673735d3f5aaa838fb019b7c6b41a60c66a1ed0b92d67589537239250c39",
+      "studio/chat.html": "bb9d2be154e274436d28f4e7fb758815ec3031071d5700a5d653659517abd4dc"
+    },
+    "case_count": 44,
+    "bounds": {
+      "fp32": 3e-05,
+      "bf16_surrogate": 0.005
+    },
+    "adoption_claim": false
+  },
+  "binary_sha256": "54cd280c639ed00e1ec283db1ed3a4de0c21b4ef2c2656629c319436495526a1",
+  "independent_replay": {
+    "pass": true,
+    "cases": 44,
+    "actual_cuda": true,
+    "independent_numpy_replay": true,
+    "worst_normalized_error": 3.293902099352775e-08
+  },
+  "logs": {
+    "hardware.log": {
+      "sha256": "4d27402575c0fbfcbc714a6563f4bcc9ea0e3699ea638e7bd89db077eef291de",
+      "bytes": 21
+    },
+    "nvcc.log": {
+      "sha256": "3c71ed984d2ca98770b0cba5c23a849a87209351e105433929c3062fb66d1915",
+      "bytes": 209
+    },
+    "configure.log": {
+      "sha256": "e44509495e9ee651e88b873da6d89edbc6211f3bb7659aeb8ab9a4d0181c99d8",
+      "bytes": 2029
+    },
+    "build.log": {
+      "sha256": "01e3f63d876ddf78589df01b9a17d226ef7d2a9f7f2e985bd52a1db2472a19d6",
+      "bytes": 25056
+    },
+    "strict.log": {
+      "sha256": "5a9a94cb07af5ddfc93ed152eb83d52c038180daf886ea96cd1fb1b89b7ae05f",
+      "bytes": 233763
+    },
+    "numpy_install.log": {
+      "sha256": "ef1d8cf3e8b67f2effd1db14318750adc48bbdc6535419764fae4d046b01086f",
+      "bytes": 1372
+    },
+    "independent_replay.log": {
+      "sha256": "1a95ea573631a3a6381e04fac4c2e3b9605b46b1b6da8f0bc928b47d9277c799",
+      "bytes": 144
+    }
+  }
+}
