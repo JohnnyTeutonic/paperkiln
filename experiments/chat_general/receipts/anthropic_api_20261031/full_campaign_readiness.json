@@ -1,0 +1,27 @@
+{
+ "status": {
+  "attempts_since_start": 0,
+  "missing_rankings": 5993,
+  "api_actual_spend_usd": 0.683552,
+  "retained_unknown_ceiling_usd": 0.25,
+  "baseline_usd": 20.08558,
+  "gate_reserve_usd": 25.0
+ },
+ "network_calls": 0,
+ "binding_migration_required": false,
+ "existing_training_stage_attempt_limit": 6040,
+ "prospective_new_attempt_limit": 5993,
+ "argv": [
+  "python3",
+  "/home/jonat/pk_api_judge_20261031/tools/posttrain/chat_judge_campaign.py",
+  "--protocol",
+  "/home/jonat/pk_api_judge_20261031/experiments/chat_general/receipts/anthropic_api_20261031/full_campaign_protocol.json",
+  "--protocol-sha256",
+  "6170b3830d6bb4acfeac972d050241076219e98b0ce3f8eb2a1ea32873ab2724",
+  "--state-dir",
+  "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign"
+ ],
+ "windows_stop_file": "C:/ml_artifacts/pref_api_20261031/full_campaign/HALTED",
+ "watchdog_match": "chat_judge_campaign.py.*full_campaign",
+ "launch_authorised": false
+}

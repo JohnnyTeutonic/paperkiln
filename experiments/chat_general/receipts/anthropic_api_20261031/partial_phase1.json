@@ -1,0 +1,17 @@
+{
+ "phase": 1,
+ "attempts": 6,
+ "known_settled_calls": 5,
+ "known_actual_cost_usd": 0.06842,
+ "unknown_reservation_ceiling_usd": 0.25,
+ "unknown_error_type": "URLError",
+ "unknown_provider_usage": null,
+ "exit": {
+  "exit_code": 1,
+  "wall_seconds": 24.871381044387817,
+  "command_protocol_sha256": "480b0ec897427dbf1b3a5326a3cc94abeb8ca34b9d0f8dda1b629cb153e5c031"
+ },
+ "profile_unchanged": "a6bf0769bf5d7688c970df16f53c97efd67750313e59c6d49a8760cefd45bee8",
+ "initial_protocol_sha256": "480b0ec897427dbf1b3a5326a3cc94abeb8ca34b9d0f8dda1b629cb153e5c031",
+ "no_retry_or_profile_tuning": true
+}

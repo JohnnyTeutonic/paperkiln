@@ -1,4 +1,23 @@
 # Changelog
+## Watchdog-owned API judging continuation (31 October 2026)
+
+Add a frozen, fail-stop campaign wrapper for the existing training-stage allowance.
+It replays ledger/cache provenance on restart, checkpoints progress in bounded
+batches and leaves HALTED on unknown charges, failed rankings or budget stops.
+No automated recovery, profile tuning or allowance increase. Clean checkpoint
+restarts reuse only verified API rankings. Fifteen offline lifecycle tests join
+the 90 transport/CLI/sidecar tests; no campaign launch is included.
+
+## Prospective Anthropic judge accounting and calibration (31 October 2026)
+
+Add a separate exact-model Messages API transport with durable cache/ledger binding,
+raw receipts, all-token cost accounting, historical spend and held-out reserves.
+A frozen 48-attempt calibration returned 47 valid rankings; one network-unknown
+charge keeps its full ceiling under an explicit audited recovery. Independent
+receipt replay and 90 focused tests pass. This establishes operational readiness
+for reviewed continuation, not CLI equivalence or a model-quality result.
+[Calibration and limits](experiments/chat_general/receipts/anthropic_api_20261031/CALIBRATION.md).
+
 ## Deferred GRPO CLI host readers (31 October 2026)
 
 Materialize logits before `sample_pure` and reference `log_softmax_rows` host
