@@ -1,0 +1,9 @@
+{
+  "name": "S-full V2 frozen local finalizer only; no GPU/provider control",
+  "enabled": true,
+  "workdir": "/home/jonat/pk_sfull_operation_v2_20261101",
+  "state_dir": "/home/jonat/sfull_v2_finalizer_20261101",
+  "stop_file": "/home/jonat/sfull_v2_finalizer_20261101/STOPPED",
+  "match": "--state-dir /home/jonat/sfull_v2_finalizer_20261101",
+  "command": "python3 /home/jonat/sfull_v2_finalizer_launch_20261101/guard.py --launch /home/jonat/sfull_v2_finalizer_launch_20261101/launch.json --launch-sha256 464a9835b1d444affb981742be80f62064682c1c5d365d4c00b436b3fbe03903 --state-dir /home/jonat/sfull_v2_finalizer_20261101"
+}

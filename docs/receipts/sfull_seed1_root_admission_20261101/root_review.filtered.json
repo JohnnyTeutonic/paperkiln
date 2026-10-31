@@ -1,0 +1,16 @@
+{
+  "status": "ROOT_SERIAL_ADMITTED_SEED1_ONLY",
+  "time_utc": "2026-10-31T18:26:20.917888+00:00",
+  "admission_sha256": "579cc75c2be8e1821e043b4c7dda3286a67020d533a51192a59f7e2af9a4851b",
+  "guard_sha256": "d4fe41271c7aaf4325dd019fdc2886098d54490f0f61e28f78bdc8a13132e69a",
+  "remote_review_sha256": "2051f3cc301dbb8acd45314030e9aa29ff94bd3b834b6e731be1f00fd7bdb59b",
+  "per_seed_usd": 7,
+  "aggregate_usd": 21,
+  "deadline_utc": "2026-11-01T05:26:20Z",
+  "prior_profile_home_and_runner_exited": true,
+  "source_and_complete_optimizer_resume_reviewed": true,
+  "actual_L4_checkpoint25_cadence": "Prospective independent180s persistent-volume monitor; not claimed measured",
+  "historical_parity_qualification_preserved": true,
+  "seeds2_and3_enabled": false,
+  "private_account_fields_omitted": true
+}

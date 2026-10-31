@@ -1,0 +1,12 @@
+{
+  "observed_utc": "2026-10-31T18:30:35.204164+00:00",
+  "owner": "existing Colab driver watchdog",
+  "state_status": "WAITING",
+  "source_anchors_including_freeze": 38,
+  "guard_running": true,
+  "frozen_finalizer_child_running": true,
+  "duplicate_guard_or_child_observed": false,
+  "startup_scope": "Local waiting/analysis only; no provider control or seed2/3 admission.",
+  "guard_sha256": "b1e412083a875d58eaa18c0a2760c50c0b48fefb92e5ffd931512ee69148ccad",
+  "launch_sha256": "464a9835b1d444affb981742be80f62064682c1c5d365d4c00b436b3fbe03903"
+}
