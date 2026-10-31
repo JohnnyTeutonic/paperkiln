@@ -1,0 +1,7 @@
+{
+  "pass": true,
+  "scope": "whole production translation unit local NVCC compile only; actual L4 harness extracts exact same kernels",
+  "source_sha256": "fe1222083a38f6002a8bb96350dd8df41a536e6184d8a6b6503eebc7b6591713",
+  "object_sha256": "43f7f0e4e01137eacbf1acd61f37a2dd7f02f954be605d37043848ca2d9fdaa9",
+  "local_gpu_used": false
+}
