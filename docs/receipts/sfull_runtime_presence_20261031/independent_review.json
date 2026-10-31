@@ -1,0 +1,141 @@
+{
+  "pass": true,
+  "reference_sha256": "acd00d74a93299aa0614f98233f837ef3dc30d38ce9120330e9f2f5c2b982cf4",
+  "raw_matches": 8,
+  "raw_scoped_absent": [
+    "human_convai2_v1/dialogues.jsonl",
+    "human_multiwoz_v1/dialogues.jsonl",
+    "human_taskmaster_v1/dialogues.jsonl",
+    "human_topical_chat_v1/dialogues.jsonl",
+    "human_wow_v1/dialogues.jsonl"
+  ],
+  "raw_checks": [
+    {
+      "name": "human_bst_v1/dialogues.jsonl",
+      "path": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/human_bst_v1/dialogues.jsonl",
+      "present": true,
+      "sha256": "e66aab659918d3cfe6b0828d05ddd1a7c790507b62737690e500814a2687f75f"
+    },
+    {
+      "name": "human_convai2_v1/dialogues.jsonl",
+      "path": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/human_convai2_v1/dialogues.jsonl",
+      "present": false
+    },
+    {
+      "name": "human_dailydialog_v1/dialogues.jsonl",
+      "path": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/human_dailydialog_v1/dialogues.jsonl",
+      "present": true,
+      "sha256": "c91228768e3d92876b81d132ac46ec5f0f21e7e870eea356b7f0670a1a766f6c"
+    },
+    {
+      "name": "human_dolly_v1/dialogues.jsonl",
+      "path": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/human_dolly_v1/dialogues.jsonl",
+      "present": true,
+      "sha256": "f6a8e975ae5d4dc6262cef7ade3034f094d994d1853f1f36d77a102c858de274"
+    },
+    {
+      "name": "human_empathetic_v1/dialogues.jsonl",
+      "path": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/human_empathetic_v1/dialogues.jsonl",
+      "present": true,
+      "sha256": "835f875a4771f89ee13b4056df8b22414a156e23f2267c9aad82b9810a1ef6c5"
+    },
+    {
+      "name": "human_multiwoz_v1/dialogues.jsonl",
+      "path": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/human_multiwoz_v1/dialogues.jsonl",
+      "present": false
+    },
+    {
+      "name": "human_no_robots_v1/dialogues.jsonl",
+      "path": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/human_no_robots_v1/dialogues.jsonl",
+      "present": true,
+      "sha256": "2c6024c99e9e70ac2a5086397f15149cbeb6c4516e39c0a3ed37b9e297dfd53e"
+    },
+    {
+      "name": "human_oasst_v1/dialogues.jsonl",
+      "path": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/human_oasst_v1/dialogues.jsonl",
+      "present": true,
+      "sha256": "7a2a9934e9acf73485ffae310e5b748643c34c34e1e9f3feac9c7fa9495ca14d"
+    },
+    {
+      "name": "human_quac_v1/dialogues.jsonl",
+      "path": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/human_quac_v1/dialogues.jsonl",
+      "present": true,
+      "sha256": "2476a642cdc2906deb5ff175dbbd9d186dd533d837ded26a65ec4ace22b043f7"
+    },
+    {
+      "name": "human_self_dialogue_v1/dialogues.jsonl",
+      "path": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/human_self_dialogue_v1/dialogues.jsonl",
+      "present": true,
+      "sha256": "2b2ba86a9aecab1d5ddebfbfcb970dca6efe7fdc40110dca899d88164037d498"
+    },
+    {
+      "name": "human_taskmaster_v1/dialogues.jsonl",
+      "path": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/human_taskmaster_v1/dialogues.jsonl",
+      "present": false
+    },
+    {
+      "name": "human_topical_chat_v1/dialogues.jsonl",
+      "path": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/human_topical_chat_v1/dialogues.jsonl",
+      "present": false
+    },
+    {
+      "name": "human_wow_v1/dialogues.jsonl",
+      "path": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/human_wow_v1/dialogues.jsonl",
+      "present": false
+    }
+  ],
+  "products_at_exact_two_roots": [
+    {
+      "name": "sft_human.jsonl",
+      "path": "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r1/data/sft_human.jsonl",
+      "present": false
+    },
+    {
+      "name": "sft_human.jsonl",
+      "path": "/mnt/c/ml_artifacts/tiny_chat/c12_s0/data/sft_human.jsonl",
+      "present": false
+    },
+    {
+      "name": "sft_human_long4.jsonl",
+      "path": "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r1/data/sft_human_long4.jsonl",
+      "present": false
+    },
+    {
+      "name": "sft_human_long4.jsonl",
+      "path": "/mnt/c/ml_artifacts/tiny_chat/c12_s0/data/sft_human_long4.jsonl",
+      "present": false
+    },
+    {
+      "name": "panel_fineweb.ids",
+      "path": "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r1/data/panel_fineweb.ids",
+      "present": false
+    },
+    {
+      "name": "panel_fineweb.ids",
+      "path": "/mnt/c/ml_artifacts/tiny_chat/c12_s0/data/panel_fineweb.ids",
+      "present": false
+    },
+    {
+      "name": "panel_dialogue.ids",
+      "path": "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r1/data/panel_dialogue.ids",
+      "present": false
+    },
+    {
+      "name": "panel_dialogue.ids",
+      "path": "/mnt/c/ml_artifacts/tiny_chat/c12_s0/data/panel_dialogue.ids",
+      "present": false
+    },
+    {
+      "name": "mix_s35.ids",
+      "path": "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r1/data/mix_s35.ids",
+      "present": false
+    },
+    {
+      "name": "mix_s35.ids",
+      "path": "/mnt/c/ml_artifacts/tiny_chat/c12_s0/data/mix_s35.ids",
+      "present": false
+    }
+  ],
+  "vocab_sha256": "0b880aa073a7e27c0770d5ecc5215b55d6d415080d20bd3dc7b169ecabadf198",
+  "limits": "Exact registered paths only. No global absence, complete data/decontamination runtime gate, reconstruction, download or worker execution is attested."
+}
