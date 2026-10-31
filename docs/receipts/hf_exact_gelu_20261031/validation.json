@@ -1,0 +1,59 @@
+{
+  "status": "PASS_CPU_ONLY",
+  "parent_commit": "c7e80a15b",
+  "source_sha256": {
+    "tools/hf_export.py": "f6d63ab74e5304665bf93ce0e1509d921caa60ed03d80b23b639f32cc2cffa82",
+    "tools/hf_export_verify.py": "ab43051ec23b60f2ceff6d2be8f37d57ae545a0f15e5f43ed7b91d834909309a",
+    "tests/test_hf_exact_gelu.py": "9156c6f9e38026200a87c6bfc7c1cf9daf34edbd8a8fd5ca420ed593bf51b2e0"
+  },
+  "native_binary_sha256": "3cba15295005af59affc1418c11c013b1ecf0f4accf8c4441df4cc6b003dd52a",
+  "command": "MTSTUDIO_BIN=/home/jonat/pk_studio_probes_build_20261031/mtstudio python3 -m pytest tests/test_hf_export.py tests/test_hf_export_evidence.py tests/test_hf_export_publication.py tests/test_hf_export_training_modifiers.py tests/test_hf_tied_flex.py tests/test_hf_exact_gelu.py -q --basetemp=/home/jonat/hf_erf_test_temp_20261031",
+  "tests": {
+    "passed": 273,
+    "skipped": 1,
+    "failed": 0,
+    "skip_reason": "Existing independent C++ BPE parity test requires unset BPE_ENCODE_BIN."
+  },
+  "gate": {
+    "source_activation": "gelu_erf",
+    "source_approximation": "none explicitly required",
+    "hf_activation_function": "gelu",
+    "source_operator_reference": "../author_flex_20261031/flex.log retains binary64/finite-difference GELU checks; same native source and binary as ../hf_tied_flex_20261031/validation.json",
+    "models": [
+      "untied exact-erf GPT2-flavour Flex",
+      "tied exact-erf GPT2-flavour Flex"
+    ],
+    "training_steps_each": 3,
+    "d": 16,
+    "layers": 2,
+    "heads": 2,
+    "d_ff": 24,
+    "prompts_each": 3,
+    "greedy_continuation_each": 8,
+    "maximum_full_logit_abs_error": 5.960464477539063e-08,
+    "saved_and_reloaded_artifacts": true,
+    "head_parameter_pointer_identity_matches_record": true,
+    "every_loaded_tensor_matches_source_mapping": true
+  },
+  "limits": [
+    "Only otherwise-plain LayerNorm/pre/pre/learned-position Flex, with explicit erf activation and none approximation. Tanh default unchanged; unknown/missing approximation and other modified flavours refused.",
+    "CPU FP32 tiny-model gate, no GPU/HF-training/large-model generalisation.",
+    "Existing verifier control-token bans retained for greedy IDs; full unmasked output-logit rows also compared.",
+    "Six retained raw comparisons independently replay without either model; source model fixtures are not committed."
+  ],
+  "artifacts": {
+    "tests.log": "e3bd1c90bd9292a5c4ad92f87135b3088c3b1e019b27a9f54b7e643a83fd359e",
+    "tied/erf-2.json": "3f4ff4bf9506540fcfcc48fef11645f1c2f9a106d9703e792a85b6d4ca70a3e0",
+    "tied/erf-1.json": "5a8655097cea50fc25b771f23f1e2898d482ee2591745f7efd2359814d772f8d",
+    "tied/erf-0.json": "f3c719fd7828c7d8bf82fd9dc5dd48fc46401fc621e6645e86c8414663699359",
+    "untied/erf-2.json": "d2a0cd52597b4c1ad3cd49364f24d205e766bf5cd2cf0ba9d4ba64e349197cdf",
+    "untied/erf-1.json": "29b461ca004a4c4895ec5e1de8fabd84b886d92f23c18642aa35fa4367458dca",
+    "untied/erf-0.json": "72fb1335ee74c478ce21a3f750bd1495d5d716f854ab2f29a3f23c8556cafeb6",
+    "tied/erf-1.json.evidence/logits.npz": "02fd3aa546b289006d83327405992d70d9fd85209a7087bf11b7e5bcd0830600",
+    "tied/erf-2.json.evidence/logits.npz": "5b32aa652b33d5b5aee910409f90cdbbb9a43871e8bc4975ff114f5c971558f3",
+    "tied/erf-0.json.evidence/logits.npz": "ec28e0349016e7ddca8b389077af7c2f70ea97fcce84da9bdaff0b8b491b302c",
+    "untied/erf-1.json.evidence/logits.npz": "11767ddb6e974670a2012c600ca1decc5344ddb545900bf12b6093fd16e6a553",
+    "untied/erf-2.json.evidence/logits.npz": "ce42e2651ba32274dfe5f1a114dbc7adaf75625e53799a2711c98db0eebe7b84",
+    "untied/erf-0.json.evidence/logits.npz": "299a0c426b00f46e3edc51d13a00f9a450f370ac4e17f57a5eb447dcc2644907"
+  }
+}

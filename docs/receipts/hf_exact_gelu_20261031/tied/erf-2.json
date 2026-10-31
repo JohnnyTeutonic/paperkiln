@@ -1,0 +1,64 @@
+{
+ "status": "HF-PARITY-OK",
+ "prompt_ids": [
+  1,
+  0,
+  0,
+  0,
+  0
+ ],
+ "continuation_ids": [
+  9,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1
+ ],
+ "mtstudio_argmax": [
+  9,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1
+ ],
+ "max_abs_logit_error": 2.9802322387695312e-08,
+ "atol": 0.0002,
+ "rtol": 0.0002,
+ "spec": "/home/jonat/hf_erf_test_temp_20261031/test_actual_exact_gelu_flex_tr1/erf.json",
+ "scope": "raw token IDs, source tensor mapping and output logits; not chat rendering",
+ "score_spec_delta": {},
+ "mapped_tensors": 29,
+ "source_prompt_tokenizer_ids_checked": true,
+ "versions": {
+  "torch": "2.8.0+cu128"
+ },
+ "sha256": {
+  "/home/jonat/pk_hf_tied_flex_20261031/tools/hf_export_verify.py": "ab43051ec23b60f2ceff6d2be8f37d57ae545a0f15e5f43ed7b91d834909309a",
+  "/home/jonat/pk_hf_tied_flex_20261031/tools/hf_export.py": "f6d63ab74e5304665bf93ce0e1509d921caa60ed03d80b23b639f32cc2cffa82",
+  "/home/jonat/pk_hf_tied_flex_20261031/tools/llama3_bpe.py": "880b4558b66486cd099115f62571c1389a70ab3edf01327d7db5de1f97fc5b71",
+  "/home/jonat/pk_hf_tied_flex_20261031/tools/bpe.py": "25607be05b41881d0238796b616cb697031c8ebf89623bc4c4537f8aaf56de39",
+  "/home/jonat/hf_erf_test_temp_20261031/test_actual_exact_gelu_flex_tr1/erf/erf.gguf": "7dc7ca605bfa3f53799f5a826c1019762cda9ea7cb549d60c472fa80358bff29",
+  "/home/jonat/hf_erf_test_temp_20261031/test_actual_exact_gelu_flex_tr1/erf/erf.safetensors": "2574ff560b73c2427994bc810344c6aafd1687a5255f4055f3b5f4829d800b12",
+  "/home/jonat/hf_erf_test_temp_20261031/test_actual_exact_gelu_flex_tr1/erf.json": "054cf763d8da9e31ef560b5abe7ccf105bc188a0947cc9cca35030b787d8d5c8",
+  "/home/jonat/hf_erf_test_temp_20261031/test_actual_exact_gelu_flex_tr1/erf/events.jsonl": "1b4f77333e29bf09af57be49347cd694eb47637be27fd654f4bf17defe714679",
+  "/home/jonat/pk_studio_probes_build_20261031/mtstudio": "3cba15295005af59affc1418c11c013b1ecf0f4accf8c4441df4cc6b003dd52a",
+  "/home/jonat/hf_erf_test_temp_20261031/test_actual_exact_gelu_flex_tr1/erf/hf/config.json": "191dd2e533318b2621ee0776a2caa8c0ace332c3fe6759a582af64bcfbb36bd6",
+  "/home/jonat/hf_erf_test_temp_20261031/test_actual_exact_gelu_flex_tr1/erf/hf/export_receipt.json": "d2e050823cb55c34728d4c4c654c4d4c9114ab6b6da250b8db3dbd438dbbc819",
+  "/home/jonat/hf_erf_test_temp_20261031/test_actual_exact_gelu_flex_tr1/erf/hf/model.safetensors": "c0c06730fa6637144bba76b71663a5300be872b79a8e353ac58046bc9a9296ec",
+  "/home/jonat/hf_erf_test_temp_20261031/test_actual_exact_gelu_flex_tr1/erf/hf/tokenizer.json": "13ef6be8d382766fd67182ec04bf3ed91016491a845b6eae314a0cc5b74a4613",
+  "/home/jonat/hf_erf_test_temp_20261031/test_actual_exact_gelu_flex_tr1/erf/hf/tokenizer_config.json": "c2f4deb7a5748324ceac9ebf596750a15bc722ee93a0ff5618b286e3467ddb8e"
+ },
+ "verification_inputs_unchanged": true,
+ "evidence": {
+  "schema": 1,
+  "file": "erf-2.json.evidence/logits.npz",
+  "bytes": 1734,
+  "sha256": "5b32aa652b33d5b5aee910409f90cdbbb9a43871e8bc4975ff114f5c971558f3"
+ }
+}

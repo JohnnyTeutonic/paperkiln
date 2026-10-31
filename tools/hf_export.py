@@ -191,15 +191,16 @@ def validate_gpt2(m):
     else:
         placement_ok = placement == "pre"
     if (m.get("attention", "exact") != "exact" or m.get("norm", "layernorm") != "layernorm"
-            or m.get("activation", "gelu") != "gelu" or m.get("position", "learned") != "learned"
+            or m.get("activation", "gelu") not in (("gelu", "gelu_erf") if flex else ("gelu",)) or m.get("position", "learned") != "learned"
             or m.get("residual", "residual") != "residual" or not m.get("final_norm", True)
             or not placement_ok):
-        raise ValueError("HF GPT2 export requires exact attention, pre LayerNorm, tanh GELU, learned positions and residuals")
+        raise ValueError("HF GPT2 export requires exact attention, pre LayerNorm, resolved tanh/exact GELU, learned positions and residuals")
     if any(m.get(k) for k in ("thirdparty", "qk_norm", "recursion", "attn_res", "moe", "state_tokens",
                               "qkv_conv", "embed", "embed_expr", "embed_inputs", "embed_before_positions", "embed_before_pos",
                               "logits", "logits_expr", "activation_inputs", "norm_inputs", "t5_relative", "shaw_relative", "ssm")):
         raise ValueError("modified GPT2 exports are unsupported")
-    if m.get("gelu_approx", "tanh") != "tanh" or m.get("layer_norm_epsilon", 1e-5) != 1e-5:
+    exact = flex and m.get("activation") == "gelu_erf"
+    if m.get("gelu_approx", "tanh") != ("none" if exact else "tanh") or m.get("layer_norm_epsilon", 1e-5) != 1e-5:
         raise ValueError("GPT2 source GELU/LayerNorm constants differ from the supported mapping")
     if (any(type(m.get(k)) is not int or m[k] < 1 for k in ("d", "heads", "layers", "vocab", "T"))
             or m["d"] % m["heads"] or (not flex and m["layers"] != 2)
@@ -257,7 +258,7 @@ def hf_model_type(m):
         return m["family"]
     if m.get("family") == "flex":
         flavour = (m.get("norm"), m.get("activation"), m.get("position"))
-        if flavour == ("layernorm", "gelu", "learned"):
+        if flavour in (("layernorm", "gelu", "learned"), ("layernorm", "gelu_erf", "learned")):
             return "gpt2"
         if flavour == ("rmsnorm", "swiglu", "rope"):
             return "llama"
@@ -676,7 +677,7 @@ def export_model(args):
         cfg = {"architectures": ["GPT2LMHeadModel"], "model_type": "gpt2",
                "n_embd": m["d"], "n_inner": m.get("d_ff", 4*m["d"]), "n_layer": m["layers"],
                "n_head": m["heads"], "vocab_size": m["vocab"], "n_positions": m["T"], "n_ctx": m["T"],
-               "activation_function": "gelu_new", "layer_norm_epsilon": 1e-5,
+               "activation_function": "gelu" if m.get("activation") == "gelu_erf" else "gelu_new", "layer_norm_epsilon": 1e-5,
                "tie_word_embeddings": m["family"] == "flex" and flex_tied_head(m), "resid_pdrop": 0., "embd_pdrop": 0., "attn_pdrop": 0.,
                "scale_attn_weights": True, "scale_attn_by_inverse_layer_idx": False,
                "reorder_and_upcast_attn": False, "add_cross_attention": False, "torch_dtype": "float32",
