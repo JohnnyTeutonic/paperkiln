@@ -1189,6 +1189,8 @@ Var rmsnorm(const Var& x, const Var& w) {
 
 // ---- quantisation-aware training (ops.hpp: BitNet b1.58's fake quantisers) ----
 float ternary_scale(const Matrix& w) {
+    device::materialize(w);
+    MT_DEVCHECK_HOST_READ(w, "ternary_scale input");
     double acc = 0.0;
     const size_t n = w.rows() * w.cols();
     const float* p = w.get_data();
