@@ -1,0 +1,51 @@
+{
+ "kind": "PROSPECTIVE_CALIBRATION_PROTOCOL_FROZEN_BEFORE_FIRST_OUTCOME",
+ "source_commit": "93def5dd813055ec3f2c0cfb7118cd07e6403870",
+ "root_review": "Approved only 48 attempts / $2, first 24 fixed candidates in both directions; no tuning or full launch.",
+ "command_argv": [
+  "python3",
+  "/home/jonat/pk_api_judge_20261031/tools/posttrain/chat_judge_api.py",
+  "run",
+  "--requests",
+  "/mnt/c/ml_artifacts/pref_full/sample/candidates.jsonl",
+  "--cache",
+  "/mnt/c/ml_artifacts/pref_api_20261031/api_cache.jsonl",
+  "--legacy-cache",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/experiments/chat_general/judge/judge_cache.jsonl",
+  "--rubric",
+  "/home/jonat/pk_api_judge_20261031/tools/posttrain/rubrics/chat_v1.txt",
+  "--ledger",
+  "/mnt/c/ml_artifacts/pref_api_20261031/budget.jsonl",
+  "--prior-api-ledger",
+  "/home/jonat/pk_api_judge_20261031/experiments/chat_general/receipts/anthropic_api_20261031/budget.jsonl",
+  "--env-file",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/.env",
+  "--max-calls",
+  "48",
+  "--stage",
+  "calibration",
+  "--max-usd",
+  "200",
+  "--gate-reserve-usd",
+  "25",
+  "--reserve-per-call",
+  "0.25"
+ ],
+ "files": {
+  "/home/jonat/pk_api_judge_20261031/tools/posttrain/chat_judge_api.py": "03a52693954266e42dc31f93c138af3248eaf5f7350ebe47f9165270354e3d13",
+  "/home/jonat/pk_api_judge_20261031/tools/posttrain/test_chat_judge_api.py": "63cb4cfa2397656aa6e78658c8ab9dd61c1a24a52a7982228a97a6fc3e079b29",
+  "/home/jonat/pk_api_judge_20261031/tools/posttrain/rubrics/chat_v1.txt": "cb04edd3543d0906aedc3d82a1d829586272da874182775c6d7c9826e28d937a",
+  "/mnt/c/ml_artifacts/pref_full/sample/candidates.jsonl": "9ced3660e8755516e108637bc798280ca0a335c2c5e99f3760d9f04a9ed67c8c",
+  "/home/jonat/pk_api_judge_20261031/experiments/chat_general/receipts/anthropic_api_20261031/prospective_readiness.json": "b16c76d623e039e898fb56dd7be9ed22c937f2bb6ed076c8b3ca8112e9f3fbf1",
+  "/home/jonat/pk_api_judge_20261031/experiments/chat_general/receipts/anthropic_api_20261031/budget.jsonl": "3129a10275232e5af1d153dc716158120bf1110396a9d26165f2a7d8bd508902"
+ },
+ "profile_sha256": "a6bf0769bf5d7688c970df16f53c97efd67750313e59c6d49a8760cefd45bee8",
+ "limits": {
+  "calibration_attempts_total": 48,
+  "calibration_cost_usd": 2,
+  "heldout_gate_reserve_usd": 25,
+  "campaign_cumulative_cap_usd": 200,
+  "calibration_order": "first 24 candidate requests, both directions"
+ },
+ "reporting": "Actual calls, cost, usage, stops, parsing and agreement are descriptive; no post-outcome gate selection."
+}

@@ -1,0 +1,110 @@
+{
+ "kind": "PROSPECTIVE_API_CALIBRATION_NOT_LAUNCHED",
+ "source_commit": "93def5dd813055ec3f2c0cfb7118cd07e6403870",
+ "plan": {
+  "requests": 3020,
+  "calls_needed": 6040,
+  "judge_id": "claude-opus-5-5@anthropic-messages/a6bf0769bf5d7688",
+  "profile": {
+   "provider": "anthropic",
+   "endpoint": "https://api.anthropic.com/v1/messages",
+   "api_version": "2026-10-21",
+   "model": "claude-opus-5-5",
+   "max_tokens": 1024,
+   "thinking": {
+    "type": "adaptive"
+   },
+   "output_config": {
+    "effort": "medium"
+   },
+   "service_tier": "standard_only",
+   "inference_geo": "global",
+   "temperature": "omitted_model_default",
+   "tools": "none",
+   "stream": false,
+   "automatic_retries": 0,
+   "price_usd_per_million": {
+    "input": 4,
+    "output": 20,
+    "cache_read": 0.2,
+    "cache_write_5m": 5,
+    "cache_write_1h": 8
+   },
+   "compatibility": "CLI equivalence unestablished; disjoint profile/cache; no CLI verdict reuse"
+  },
+  "legacy_accounting": {
+   "known_spend_usd": 20.072988,
+   "unknown_failure_reserve_usd": 0.0,
+   "unknown_cost_records": 0,
+   "prior_api_spend_usd": 0.012592,
+   "prior_api_unknown_reserve_usd": 0.0,
+   "prior_api_files": {
+    "/home/jonat/pk_api_judge_20261031/experiments/chat_general/receipts/anthropic_api_20261031/budget.raw/f2e622f7b71148659e703876836775be.response.json": "f08d5634aa1e2e3d67bec8bfaaafd40686d017e456635d3d83803b36b76d91c0",
+    "/home/jonat/pk_api_judge_20261031/experiments/chat_general/receipts/anthropic_api_20261031/budget.raw/f2e622f7b71148659e703876836775be.request.json": "f400611d3c88f082b8517be2b744aca8fdc2e9ab1958dd16c67ca55eff0128b0",
+    "/home/jonat/pk_api_judge_20261031/experiments/chat_general/receipts/anthropic_api_20261031/budget.jsonl": "3129a10275232e5af1d153dc716158120bf1110396a9d26165f2a7d8bd508902"
+   },
+   "files": {
+    "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/experiments/chat_general/judge/judge_cache.jsonl": "879742b1ed53098097c52e308bbbc98bfbdecb2b093c03d55a2a1b0481e7e041",
+    "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/experiments/chat_general/judge/judge_cache.jsonl.failures.jsonl": "ebfcf2704ed5c5cd5c79eb20dc15cfb08033233f57d89c00edb0b4b724aa3bba"
+   }
+  },
+  "historical_verdict_reuse": false
+ },
+ "prospective_command_argv": [
+  "python3",
+  "/home/jonat/pk_api_judge_20261031/tools/posttrain/chat_judge_api.py",
+  "run",
+  "--requests",
+  "/mnt/c/ml_artifacts/pref_full/sample/candidates.jsonl",
+  "--cache",
+  "/mnt/c/ml_artifacts/pref_api_20261031/api_cache.jsonl",
+  "--legacy-cache",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/experiments/chat_general/judge/judge_cache.jsonl",
+  "--rubric",
+  "/home/jonat/pk_api_judge_20261031/tools/posttrain/rubrics/chat_v1.txt",
+  "--ledger",
+  "/mnt/c/ml_artifacts/pref_api_20261031/budget.jsonl",
+  "--prior-api-ledger",
+  "/home/jonat/pk_api_judge_20261031/experiments/chat_general/receipts/anthropic_api_20261031/budget.jsonl",
+  "--env-file",
+  "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/.env",
+  "--max-calls",
+  "48",
+  "--stage",
+  "calibration",
+  "--max-usd",
+  "200",
+  "--gate-reserve-usd",
+  "25",
+  "--reserve-per-call",
+  "0.25"
+ ],
+ "limits": {
+  "calibration_attempts_total": 48,
+  "calibration_cost_usd": 2,
+  "heldout_gate_reserve_usd": 25,
+  "campaign_cumulative_cap_usd": 200,
+  "calibration_order": "first 24 candidate requests, both directions"
+ },
+ "scientific_compatibility": {
+  "same_exact_model": true,
+  "same_rubric": true,
+  "same_rendered_requests": true,
+  "CLI_settings_equivalence_proven": false,
+  "CLI_rankings_reused": false,
+  "availability_probe_ranking_reused": false,
+  "availability_probe_cost_imported_and_verified": true,
+  "heldout_gate_stage_registration": "not yet implemented; reserve cannot be consumed by this runner"
+ },
+ "tests": {
+  "targeted_passed": 79,
+  "ruff": "pass"
+ },
+ "cost_reading": {
+  "one_probe_cost_usd": 0.012592,
+  "all_6040_calls_at_that_single_probe_rate_usd": 76.05568000000001,
+  "qualification": "One probe is not a representative calibration or guaranteed total; hard reservations enforce stopping."
+ },
+ "full_judging_launched": false,
+ "calibration_launched": false
+}
