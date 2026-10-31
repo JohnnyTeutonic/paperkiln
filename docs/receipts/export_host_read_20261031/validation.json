@@ -41,5 +41,14 @@
   "execution_notes": [
     "An initial build named a nonexistent test_family_gguf target after compiling three real targets. The command was corrected to the existing test_gguf_export; no assertions or tolerances changed.",
     "A temporary Windows launcher had CRLF line endings; it was rewritten with LF before the successful rerun. No source semantics or test expectations changed."
-  ]
+  ],
+  "full_cpu_suite": {
+    "devcheck": true,
+    "passed": 51,
+    "failed": 0,
+    "seconds": 11.29,
+    "timeout_seconds": 120,
+    "validated_commit": "8a13a7f08",
+    "mtstudio_sha256": "6e61dd73673eb2f0117a1489b4ab231bfdff71b92b0f707c5eb58d31a906834c"
+  }
 }
