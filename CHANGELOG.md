@@ -1060,3 +1060,14 @@ checks reproduce 13 original numerical failures, preserve three coherent control
 and pass all 16 fixed forward/backward references. Independent landed-log replay
 and all 58 combined CPU CTests pass. This is the bounded conditional fallback
 subset, not an exhaustive host-loop audit. Evidence: `docs/receipts/host_fallback_cuda_20261031/`.
+
+## 31 October 2026: API judging and explicit attention precision
+
+- Validated a separately identified Anthropic API preference-judge transport, durable raw
+  request/response provenance, conservative unknown-cost reservations, bound cache/ledger
+  identity and a fail-stop campaign wrapper. The full campaign is running under its frozen
+  cumulative cap; judging and downstream training are not complete.
+- Integrated explicit C++ autograd attention precision. The actual L4 CUDA + DEVCHECK gate
+  passes all 44 registered cases and independent raw replay. Existing FP32 dispatch stays
+  unchanged; BF16 uses a declared straight-through surrogate with FP32 softmax/backward.
+  This is not yet model adoption or a throughput/quality claim.

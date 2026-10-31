@@ -25,11 +25,14 @@ where one of those documents carries a plan, this file wins.*
 1. **The chat model (LOCAL_LLM_WORK.md E2).** Full preference judging at 256 new tokens
    with the rubric unchanged, then DPO + NLL and the five-part gate in `experiments/chat_general/PLAN.md`.
    The winner, both pilots and full sampling are complete (3,020 candidate rows home in
-   `C:/ml_artifacts/pref_full/sample/`). The read-only readiness plan needs 5,660 more rankings
-   with the existing cache (`receipts/pref_full_readiness_20261030.json` in the chat experiment).
-   The delegated 28 Oct decision is recorded in
-   `experiments/chat_general/RESULTS.md`, "The full run" (00ecd0d4); judging and training remain pending,
-   with the recorded $200 total cap including the cache and held-out side-by-side gate.
+   `C:/ml_artifacts/pref_full/sample/`).   The CLI pilot cache remains historical evidence; its hidden settings are not assumed equivalent
+   to the validated API profile. The Anthropic API transport is now validated with exact model,
+   rubric and request provenance, independent cache identity and durable cost reservations.
+   The fail-stop full API campaign is running under the unchanged $200 cumulative cap,
+   including legacy spend, retained unknown-call ceilings and $25 reserved for the held-out gate.
+   See `experiments/chat_general/receipts/anthropic_api_20261031/full_campaign_protocol.json`.
+   DPO + NLL and the fixed five-part gate remain after complete judging. Completion is not
+   guaranteed by the cap; unknown outcomes and any accounting drift stop for review.
 
 The 30 Oct publication integration passes all 49 CPU CTests and 65 targeted Python
 integration tests. Changed C++ ranges pass clang-format 18 checks, but 17 files
@@ -137,9 +140,11 @@ that cannot fail the build.
   baseline instrumented GPU-span time. The standalone dense MHA primitive now passes its fixed
   32-case L4 FP32/BF16 matrix and independent raw replay, with FP32 softmax/backward and an explicit
   BF16 straight-through surrogate (`docs/receipts/bf16_attention_20261031/RESULTS.md`).
-  Production wiring, model-level forward/backward parity and loss, and incremental end-to-end
-  benefit remain open. The primitive matrix, profile, noise-floor gate and launch-count work
-  are complete; these results do not establish a production speed gain.
+  The explicit autograd op now also passes a 44-case actual L4 forward/backward matrix,
+  independent raw NumPy replay and unchanged default FP32 CPU output/gradient bits
+  (`docs/receipts/attention_precision_cuda_20261031/RESULTS.md`). Train-only model/CLI wiring,
+  model-level loss and incremental end-to-end benefit remain open. The completed primitive,
+  explicit op, profile and launch-count work leave this list; they establish no speed gain.
 - **Mamba:** a parallel scan and CUDA `ops::selective_scan` remain open
   (currently sequential/host; the mamba preset's `ssm: "mamba1"`). The completed
   causal-convolution forward/backward kernels leave this list: 120 actual L4

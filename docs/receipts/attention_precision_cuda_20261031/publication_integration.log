@@ -1,0 +1,383 @@
+-- transformer_core from: /home/jonat/pk_publication_20261030/third_party/transformer_cpp
+-- CUDA disabled - CPU-only build
+-- OpenSSL found: 3.0.13
+CMake Deprecation Warning at /home/jonat/pk_publication_build_20261030/_deps/json-src/CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 3.5 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value or use a ...<max> suffix to tell
+  CMake that the project does not need compatibility with older versions.
+
+
+-- Using the multi-header code from /home/jonat/pk_publication_build_20261030/_deps/json-src/include/
+-- OpenMP enabled for optimized matmul
+-- GCC/Clang optimizations enabled: -O3 -march=native
+-- 
+-- ================================
+-- CPU-Only Build:
+--   - Core transformer (no GPU)
+-- ================================
+-- 
+-- Configuring done (0.2s)
+-- Generating done (0.2s)
+-- Build files have been written to: /home/jonat/pk_publication_build_20261030
+[  1%] Built target test_chat_template
+[  2%] Built target bpe_encode
+[ 17%] Built target transformer_core
+[ 18%] Built target llama3_encode
+[ 19%] Built target test_devcheck_disabled
+[ 19%] Building CXX object CMakeFiles/microtorch.dir/src/ops.cpp.o
+[ 19%] Building CXX object CMakeFiles/microtorch.dir/src/expr.cpp.o
+[ 20%] Building CXX object CMakeFiles/microtorch.dir/src/recurrence.cpp.o
+[ 20%] Building CXX object CMakeFiles/microtorch.dir/src/nn.cpp.o
+[ 21%] Building CXX object CMakeFiles/microtorch.dir/src/quant.cpp.o
+[ 21%] Building CXX object CMakeFiles/microtorch.dir/src/llama.cpp.o
+[ 22%] Building CXX object CMakeFiles/microtorch.dir/src/llama_attnres.cpp.o
+[ 22%] Building CXX object CMakeFiles/microtorch.dir/src/depth_attend.cpp.o
+[ 23%] Building CXX object CMakeFiles/microtorch.dir/src/moe.cpp.o
+[ 24%] Building CXX object CMakeFiles/microtorch.dir/src/srd.cpp.o
+[ 24%] Building CXX object CMakeFiles/microtorch.dir/src/cerebellum.cpp.o
+[ 25%] Building CXX object CMakeFiles/microtorch.dir/src/mamba.cpp.o
+[ 25%] Linking CXX static library libmicrotorch.a
+[ 29%] Built target microtorch
+[ 29%] Building CXX object CMakeFiles/test_gradcheck.dir/tests/test_gradcheck.cpp.o
+[ 29%] Building CXX object CMakeFiles/test_nn.dir/tests/test_nn.cpp.o
+[ 30%] Linking CXX executable test_nn
+[ 31%] Linking CXX executable test_gradcheck
+[ 31%] Built target test_nn
+[ 31%] Linking CXX executable test_resident_parity
+[ 31%] Built target test_gradcheck
+[ 31%] Building CXX object CMakeFiles/test_step_residency.dir/tests/test_step_residency.cpp.o
+[ 32%] Built target test_resident_parity
+[ 32%] Building CXX object CMakeFiles/bench_b2.dir/tools/bench_b2.cpp.o
+[ 33%] Linking CXX executable test_step_residency
+[ 33%] Linking CXX executable bench_b2
+[ 33%] Built target test_step_residency
+[ 34%] Building CXX object CMakeFiles/test_cuda_ops.dir/tests/test_cuda_ops.cpp.o
+[ 34%] Built target bench_b2
+[ 34%] Building CXX object CMakeFiles/test_highway.dir/tests/test_highway.cpp.o
+[ 34%] Linking CXX executable test_cuda_ops
+[ 34%] Built target test_cuda_ops
+[ 35%] Building CXX object CMakeFiles/test_deep_swa.dir/tests/test_deep_swa.cpp.o
+[ 36%] Linking CXX executable test_highway
+[ 36%] Built target test_highway
+[ 37%] Building CXX object CMakeFiles/test_thirdparty_ops.dir/tests/test_thirdparty_ops.cpp.o
+[ 37%] Linking CXX executable test_deep_swa
+[ 37%] Built target test_deep_swa
+[ 38%] Building CXX object CMakeFiles/test_fused_head.dir/tests/test_fused_head.cpp.o
+[ 38%] Linking CXX executable test_fused_head
+[ 38%] Linking CXX executable test_thirdparty_ops
+[ 38%] Built target test_fused_head
+[ 39%] Building CXX object CMakeFiles/test_score_batch.dir/tests/test_score_batch.cpp.o
+[ 39%] Built target test_thirdparty_ops
+[ 39%] Linking CXX executable test_kimi_linear
+[ 40%] Built target test_kimi_linear
+[ 40%] Building CXX object CMakeFiles/test_cerebellum.dir/tests/test_cerebellum.cpp.o
+[ 40%] Linking CXX executable test_score_batch
+[ 41%] Linking CXX executable test_cerebellum
+[ 41%] Built target test_score_batch
+[ 41%] Building CXX object CMakeFiles/test_mamba.dir/tests/test_mamba.cpp.o
+[ 41%] Built target test_cerebellum
+[ 43%] Building CXX object CMakeFiles/test_train_utils.dir/tests/test_train_utils.cpp.o
+[ 43%] Linking CXX executable test_mamba
+[ 43%] Linking CXX executable test_train_utils
+[ 43%] Built target test_mamba
+[ 43%] Linking CXX executable test_gguf_export
+[ 43%] Built target test_train_utils
+[ 43%] Linking CXX executable test_gguf_q8
+[ 44%] Built target test_gguf_export
+[ 44%] Linking CXX executable test_gguf_q4
+[ 45%] Built target test_gguf_q8
+[ 46%] Building CXX object CMakeFiles/test_attention_blocked.dir/tests/test_attention_blocked.cpp.o
+[ 47%] Built target test_gguf_q4
+[ 47%] Building CXX object CMakeFiles/test_device_rope.dir/tests/test_device_rope.cpp.o
+[ 47%] Linking CXX executable test_attention_blocked
+[ 47%] Built target test_attention_blocked
+[ 47%] Building CXX object CMakeFiles/test_posttrain_losses.dir/tests/test_posttrain_losses.cpp.o
+[ 48%] Linking CXX executable test_device_rope
+[ 48%] Built target test_device_rope
+[ 48%] Linking CXX executable test_verifier
+[ 49%] Built target test_verifier
+[ 49%] Building CXX object CMakeFiles/test_lora_quant.dir/tests/test_lora_quant.cpp.o
+[ 49%] Linking CXX executable test_posttrain_losses
+[ 49%] Built target test_posttrain_losses
+[ 49%] Building CXX object CMakeFiles/test_bitlinear.dir/tests/test_bitlinear.cpp.o
+[ 50%] Linking CXX executable test_lora_quant
+[ 50%] Built target test_lora_quant
+[ 50%] Building CXX object CMakeFiles/test_llama.dir/tests/test_llama.cpp.o
+[ 51%] Linking CXX executable test_bitlinear
+[ 52%] Linking CXX executable test_llama
+[ 52%] Built target test_bitlinear
+[ 52%] Building CXX object CMakeFiles/test_llama_attnres.dir/tests/test_llama_attnres.cpp.o
+[ 52%] Built target test_llama
+[ 53%] Building CXX object CMakeFiles/test_recursion.dir/tests/test_recursion.cpp.o
+[ 53%] Linking CXX executable test_recursion
+[ 53%] Built target test_recursion
+[ 54%] Building CXX object CMakeFiles/test_mor.dir/tests/test_mor.cpp.o
+[ 55%] Linking CXX executable test_llama_attnres
+[ 55%] Built target test_llama_attnres
+[ 55%] Building CXX object CMakeFiles/test_pooled_gemm.dir/tests/test_pooled_gemm.cpp.o
+[ 56%] Linking CXX executable test_pooled_gemm
+[ 56%] Built target test_pooled_gemm
+[ 58%] Building CXX object CMakeFiles/test_kv_cache.dir/tests/test_kv_cache.cpp.o
+[ 58%] Linking CXX executable test_mor
+[ 58%] Linking CXX executable test_kv_cache
+[ 58%] Built target test_mor
+[ 58%] Building CXX object CMakeFiles/test_state_tokens.dir/tests/test_state_tokens.cpp.o
+[ 58%] Built target test_kv_cache
+[ 59%] Building CXX object CMakeFiles/test_mixed_precision.dir/tests/test_mixed_precision.cpp.o
+[ 59%] Linking CXX executable test_mixed_precision
+[ 59%] Built target test_mixed_precision
+[ 60%] Building CXX object CMakeFiles/test_moe.dir/tests/test_moe.cpp.o
+[ 61%] Linking CXX executable test_state_tokens
+[ 61%] Built target test_state_tokens
+[ 62%] Building CXX object CMakeFiles/test_moe_device.dir/tests/test_moe_device.cpp.o
+[ 62%] Linking CXX executable test_moe
+[ 62%] Built target test_moe
+[ 63%] Building CXX object CMakeFiles/test_rope_heads.dir/tests/test_rope_heads.cpp.o
+[ 63%] Linking CXX executable test_moe_device
+[ 63%] Built target test_moe_device
+[ 63%] Building CXX object CMakeFiles/test_batching.dir/tests/test_batching.cpp.o
+[ 63%] Linking CXX executable test_rope_heads
+[ 63%] Built target test_rope_heads
+[ 63%] Building CXX object CMakeFiles/test_checkpointing.dir/tests/test_checkpointing.cpp.o
+[ 63%] Linking CXX executable test_checkpointing
+[ 63%] Built target test_checkpointing
+[ 63%] Building CXX object CMakeFiles/test_muon.dir/tests/test_muon.cpp.o
+[ 64%] Linking CXX executable test_muon
+[ 64%] Built target test_muon
+[ 64%] Building CXX object CMakeFiles/test_inplace.dir/tests/test_inplace.cpp.o
+[ 65%] Linking CXX executable test_batching
+[ 66%] Linking CXX executable test_inplace
+[ 66%] Built target test_batching
+[ 67%] Building CXX object CMakeFiles/test_flex.dir/tests/test_flex.cpp.o
+[ 67%] Built target test_inplace
+[ 67%] Building CXX object CMakeFiles/test_shaw_attention.dir/tests/test_shaw_attention.cpp.o
+[ 68%] Linking CXX executable test_shaw_attention
+[ 68%] Built target test_shaw_attention
+[ 68%] Building CXX object CMakeFiles/test_gpt2_device.dir/tests/test_gpt2_device.cpp.o
+[ 69%] Linking CXX executable test_gpt2_device
+[ 69%] Built target test_gpt2_device
+[ 69%] Building CXX object CMakeFiles/test_expr.dir/tests/test_expr.cpp.o
+[ 69%] Linking CXX executable test_flex
+[ 69%] Built target test_flex
+[ 70%] Linking CXX executable expr_eval
+[ 70%] Built target expr_eval
+[ 72%] Building CXX object CMakeFiles/test_recurrence_op.dir/tests/test_recurrence_op.cpp.o
+[ 73%] Linking CXX executable test_expr
+[ 73%] Built target test_expr
+[ 73%] Building CXX object CMakeFiles/ir_eval.dir/tools/ir_eval.cpp.o
+[ 73%] Linking CXX executable test_recurrence_op
+[ 73%] Built target test_recurrence_op
+[ 73%] Linking CXX executable test_ir_digest
+[ 73%] Built target test_ir_digest
+[ 74%] Building CXX object CMakeFiles/test_swa.dir/tests/test_swa.cpp.o
+[ 74%] Linking CXX executable ir_eval
+[ 74%] Linking CXX executable test_swa
+[ 74%] Built target ir_eval
+[ 75%] Building CXX object CMakeFiles/test_attn_res.dir/tests/test_attn_res.cpp.o
+[ 75%] Built target test_swa
+[ 75%] Building CXX object CMakeFiles/test_srd.dir/tests/test_srd.cpp.o
+[ 75%] Linking CXX executable test_attn_res
+[ 75%] Built target test_attn_res
+[ 75%] Building CXX object CMakeFiles/gpt2_parity.dir/tools/gpt2_parity.cpp.o
+[ 76%] Linking CXX executable test_srd
+[ 76%] Built target test_srd
+[ 77%] Building CXX object CMakeFiles/qwen_parity.dir/tools/qwen_parity.cpp.o
+[ 78%] Linking CXX executable gpt2_parity
+[ 78%] Linking CXX executable qwen_parity
+[ 78%] Built target gpt2_parity
+[ 79%] Building CXX object CMakeFiles/benchmark_attention.dir/tools/benchmark_attention.cpp.o
+[ 79%] Built target qwen_parity
+[ 80%] Building CXX object CMakeFiles/benchmark_mamba.dir/tools/benchmark_mamba.cpp.o
+[ 80%] Linking CXX executable benchmark_attention
+[ 80%] Linking CXX executable benchmark_mamba
+[ 80%] Built target benchmark_attention
+[ 81%] Building CXX object CMakeFiles/phase3_integration.dir/tools/phase3_integration_test.cpp.o
+[ 81%] Built target benchmark_mamba
+[ 82%] Linking CXX executable gguf_roundtrip
+[ 82%] Built target gguf_roundtrip
+[ 82%] Linking CXX executable make_timing_gguf
+[ 82%] Linking CXX executable phase3_integration
+[ 83%] Built target make_timing_gguf
+[ 83%] Building CXX object CMakeFiles/srd_parity.dir/tools/srd_parity.cpp.o
+[ 83%] Built target phase3_integration
+[ 83%] Building CXX object CMakeFiles/srd_needle.dir/tools/srd_needle.cpp.o
+/home/jonat/pk_publication_20261030/tools/srd_parity.cpp: In lambda function:
+/home/jonat/pk_publication_20261030/tools/srd_parity.cpp:311:20: warning: ignoring return value of ‘int system(const char*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+  311 |         std::system(("mkdir -p " + ckpt_dir).c_str());
+      |         ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[ 84%] Linking CXX executable srd_parity
+/home/jonat/pk_publication_20261030/tools/srd_needle.cpp: In lambda function:
+/home/jonat/pk_publication_20261030/tools/srd_needle.cpp:219:20: warning: ignoring return value of ‘int system(const char*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+  219 |         std::system(("mkdir -p " + ckpt_dir).c_str());
+      |         ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[ 84%] Built target srd_parity
+[ 84%] Linking CXX executable posttrain_verify
+[ 86%] Built target posttrain_verify
+[ 87%] Building CXX object CMakeFiles/mtstudio.dir/tools/mtstudio.cpp.o
+[ 88%] Linking CXX executable srd_needle
+[ 88%] Built target srd_needle
+[ 88%] Building CXX object CMakeFiles/test_devcheck_host_read.dir/tests/test_devcheck_host_read.cpp.o
+[ 89%] Linking CXX executable test_devcheck_host_read
+[ 89%] Built target test_devcheck_host_read
+[ 90%] Linking CXX executable test_word_tokenizer
+[ 90%] Built target test_word_tokenizer
+[ 91%] Building CXX object CMakeFiles/test_kimi_noncausal.dir/tests/test_kimi_noncausal.cpp.o
+[ 91%] Linking CXX executable test_kimi_noncausal
+[ 91%] Built target test_kimi_noncausal
+[ 92%] Linking CXX executable test_evaluation_probes_helpers
+[ 92%] Built target test_evaluation_probes_helpers
+[ 92%] Building CXX object CMakeFiles/test_parity_depth.dir/tests/test_parity_depth.cpp.o
+[ 93%] Linking CXX executable test_parity_depth
+[ 93%] Built target test_parity_depth
+[ 94%] Building CXX object CMakeFiles/test_add_bias_materialization.dir/tests/test_add_bias_materialization.cpp.o
+[ 94%] Linking CXX executable test_add_bias_materialization
+[ 94%] Built target test_add_bias_materialization
+[ 95%] Building CXX object CMakeFiles/bench_layernorm_cpu.dir/tools/bench_layernorm_cpu.cpp.o
+[ 95%] Linking CXX executable bench_layernorm_cpu
+[ 95%] Built target bench_layernorm_cpu
+[ 96%] Building CXX object CMakeFiles/test_layernorm_host.dir/tests/test_layernorm_host.cpp.o
+[ 96%] Linking CXX executable test_layernorm_host
+[ 96%] Built target test_layernorm_host
+[ 97%] Building CXX object CMakeFiles/test_conv1d_cuda.dir/tests/test_conv1d_cuda.cpp.o
+[ 97%] Linking CXX executable test_conv1d_cuda
+[ 97%] Built target test_conv1d_cuda
+[ 97%] Building CXX object CMakeFiles/test_layernorm_materialization.dir/tests/test_layernorm_materialization.cpp.o
+[ 98%] Linking CXX executable test_layernorm_materialization
+[ 98%] Built target test_layernorm_materialization
+[ 98%] Building CXX object CMakeFiles/test_studio_grpo_materialization.dir/tests/test_studio_grpo_materialization.cpp.o
+[ 98%] Linking CXX executable test_studio_grpo_materialization
+[ 98%] Built target test_studio_grpo_materialization
+[ 98%] Building CXX object CMakeFiles/test_fallback_materialization.dir/tests/test_fallback_materialization.cpp.o
+[ 98%] Linking CXX executable test_fallback_materialization
+[ 98%] Built target test_fallback_materialization
+[100%] Building CXX object CMakeFiles/test_attention_precision.dir/tests/test_attention_precision.cpp.o
+[100%] Linking CXX executable test_attention_precision
+[100%] Built target test_attention_precision
+[100%] Linking CXX executable mtstudio
+[100%] Built target mtstudio
+Internal ctest changing into directory: /home/jonat/pk_publication_build_20261030
+Test project /home/jonat/pk_publication_build_20261030
+      Start 30: mixed_precision
+      Start 15: gguf_q4
+ 1/59 Test #15: gguf_q4 ..........................   Passed    2.38 sec
+      Start 38: flex
+ 2/59 Test #30: mixed_precision ..................   Passed    3.52 sec
+      Start 19: verifier
+ 3/59 Test #38: flex .............................   Passed    2.13 sec
+      Start  6: fused_head
+ 4/59 Test #19: verifier .........................   Passed    1.02 sec
+      Start 32: moe_device
+ 5/59 Test #32: moe_device .......................   Passed    0.68 sec
+      Start 17: device_rope
+ 6/59 Test  #6: fused_head .......................   Passed    1.44 sec
+      Start 28: state_tokens
+ 7/59 Test #17: device_rope ......................   Passed    0.76 sec
+      Start 24: recursion
+ 8/59 Test #24: recursion ........................   Passed    0.32 sec
+      Start 23: llama_attnres
+ 9/59 Test #28: state_tokens .....................   Passed    0.50 sec
+      Start 25: mor
+10/59 Test #23: llama_attnres ....................   Passed    0.31 sec
+      Start 21: bitlinear
+11/59 Test #25: mor ..............................   Passed    0.32 sec
+      Start 27: kv_cache
+12/59 Test #21: bitlinear ........................   Passed    0.20 sec
+      Start  8: nn
+13/59 Test #27: kv_cache .........................   Passed    0.08 sec
+      Start 31: moe
+14/59 Test #31: moe ..............................   Passed    0.13 sec
+      Start 40: gpt2_device
+15/59 Test  #8: nn ...............................   Passed    0.25 sec
+      Start  4: deep_swa
+16/59 Test #40: gpt2_device ......................   Passed    0.13 sec
+      Start  7: score_batch
+17/59 Test  #7: score_batch ......................   Passed    0.13 sec
+      Start 45: attn_res
+18/59 Test #45: attn_res .........................   Passed    0.11 sec
+      Start 22: llama
+19/59 Test #22: llama ............................   Passed    0.05 sec
+      Start 26: pooled_gemm
+20/59 Test #26: pooled_gemm ......................   Passed    0.05 sec
+      Start 18: posttrain_losses
+21/59 Test #18: posttrain_losses .................   Passed    0.12 sec
+      Start 41: expr
+22/59 Test  #4: deep_swa .........................   Passed    0.56 sec
+      Start 43: ir_digest
+23/59 Test #41: expr .............................   Passed    0.06 sec
+      Start 52: parity_depth
+24/59 Test #43: ir_digest ........................   Passed    0.03 sec
+      Start 16: attention_blocked
+25/59 Test #52: parity_depth .....................   Passed    0.02 sec
+      Start 35: checkpointing
+26/59 Test #16: attention_blocked ................   Passed    0.04 sec
+      Start 44: swa
+27/59 Test #35: checkpointing ....................   Passed    0.05 sec
+      Start 42: recurrence_op
+28/59 Test #44: swa ..............................   Passed    0.05 sec
+      Start 55: conv1d_cuda_cpu
+29/59 Test #42: recurrence_op ....................   Passed    0.05 sec
+      Start 11: mamba
+30/59 Test #55: conv1d_cuda_cpu ..................   Passed    0.02 sec
+      Start  5: thirdparty_ops
+31/59 Test #11: mamba ............................   Passed    0.03 sec
+      Start 34: batching
+32/59 Test  #5: thirdparty_ops ...................   Passed    0.04 sec
+      Start 10: cerebellum
+33/59 Test #34: batching .........................   Passed    0.04 sec
+      Start 51: evaluation_probes_helpers
+34/59 Test #10: cerebellum .......................   Passed    0.03 sec
+      Start  2: step_residency
+35/59 Test #51: evaluation_probes_helpers ........   Passed    0.01 sec
+      Start 36: muon
+36/59 Test  #2: step_residency ...................   Passed    0.03 sec
+      Start 39: shaw_attention
+37/59 Test #36: muon .............................   Passed    0.03 sec
+      Start 58: fallback_materialization
+38/59 Test #58: fallback_materialization .........   Passed    0.00 sec
+      Start 29: chat_template
+39/59 Test #29: chat_template ....................   Passed    0.01 sec
+      Start  3: highway
+40/59 Test  #3: highway ..........................   Passed    0.01 sec
+      Start 57: studio_grpo_materialization
+41/59 Test #57: studio_grpo_materialization ......   Passed    0.00 sec
+      Start 56: layernorm_materialization
+42/59 Test #56: layernorm_materialization ........   Passed    0.00 sec
+      Start 50: kimi_noncausal
+43/59 Test #39: shaw_attention ...................   Passed    0.03 sec
+      Start 46: srd
+44/59 Test #50: kimi_noncausal ...................   Passed    0.00 sec
+      Start  1: gradcheck
+45/59 Test #46: srd ..............................   Passed    0.01 sec
+      Start 20: lora_quant
+46/59 Test  #1: gradcheck ........................   Passed    0.01 sec
+      Start 54: layernorm_host
+47/59 Test #20: lora_quant .......................   Passed    0.00 sec
+      Start 53: add_bias_materialization
+48/59 Test #54: layernorm_host ...................   Passed    0.00 sec
+      Start 33: rope_heads
+49/59 Test #53: add_bias_materialization .........   Passed    0.00 sec
+      Start 14: gguf_q8
+50/59 Test #33: rope_heads .......................   Passed    0.00 sec
+      Start 37: inplace
+51/59 Test #14: gguf_q8 ..........................   Passed    0.00 sec
+      Start 12: train_utils
+52/59 Test #37: inplace ..........................   Passed    0.00 sec
+      Start 13: gguf_export
+53/59 Test #12: train_utils ......................   Passed    0.00 sec
+      Start  9: kimi_linear
+54/59 Test #13: gguf_export ......................   Passed    0.00 sec
+      Start 47: devcheck_host_read
+55/59 Test  #9: kimi_linear ......................   Passed    0.00 sec
+      Start 48: devcheck_disabled
+56/59 Test #47: devcheck_host_read ...............   Passed    0.00 sec
+      Start 49: word_tokenizer
+57/59 Test #48: devcheck_disabled ................   Passed    0.00 sec
+      Start 59: attention_precision
+58/59 Test #49: word_tokenizer ...................   Passed    0.00 sec
+59/59 Test #59: attention_precision ..............   Passed    0.01 sec
+
+100% tests passed, 0 tests failed out of 59
+
+Total Test time (real) =   7.94 sec

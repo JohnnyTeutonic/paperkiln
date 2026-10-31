@@ -1,0 +1,12 @@
+{
+  "source_commit": "8780a77b17e7623f8b8ffe38309fa5add63512d7",
+  "cpp_ctests": {
+    "passed": 59,
+    "failed": 0
+  },
+  "api_cli_sidecar_python_tests": {
+    "passed": 105,
+    "failed": 0
+  },
+  "scope": "Merged CPU integration; actual CUDA raw gate remains separately source-bound. No all-workflows CI claim."
+}
