@@ -1,0 +1,25 @@
+{
+  "status": {
+    "attempts_since_start": 0,
+    "missing_rankings": 3472,
+    "valid_api_rankings": 2568,
+    "eligible_missing_rankings": 3468,
+    "preserved_failed_rankings": 2,
+    "unattempted_paired_exclusions": 2,
+    "api_actual_spend_usd": 38.740996,
+    "retained_unknown_ceiling_usd": 0.75,
+    "baseline_usd": 20.08558,
+    "gate_reserve_usd": 25.0
+  },
+  "provider_calls": 0,
+  "credential_accessor_calls": 0,
+  "prior_state_unchanged": true,
+  "protocol_file_sha256": "5d0a8cd291614db69118dc2c12f404257ee474e8f5f636f8be606a2ffba3ed23",
+  "dataset_decision_sha256": "bd2b3f8aa687829450b248199c3c0667788cba5b1ea7ad5e6c6ae1dd6041170f",
+  "source_sha256": {
+    "chat_judge_campaign_continuation_v7.py": "2123d45b0057773817dff9a4024751d1c0d2678050d7f5228382f54a5689ea17",
+    "chat_judge_api_refusal_v5.py": "11cd8c7880356afaef631f6168d02dd75025cd4be58d4c6fc69fddb966ed0dd7",
+    "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+  }
+}

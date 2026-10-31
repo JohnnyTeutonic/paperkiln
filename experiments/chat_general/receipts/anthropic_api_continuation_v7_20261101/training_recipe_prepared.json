@@ -1,0 +1,32 @@
+{
+  "status": "PREPARED_RECIPE_NOT_RUNNABLE_JOB",
+  "source_freeze": null,
+  "pair_file": null,
+  "policy_checkpoint": null,
+  "reference_checkpoint": "same hash as pk_sft_v1 policy start, frozen",
+  "vocab": "exact winner vocabulary, must be bound by hash before launch",
+  "name": "pk_dpo_v1",
+  "objective": "provenance_po",
+  "data": {
+    "T": 512,
+    "pref_pairs": "pending eligible dataset completion, adoption and immutable pair extraction"
+  },
+  "train": {
+    "batch": 8,
+    "po": {
+      "weight_mode": "uniform",
+      "beta": 0.1,
+      "nll": 0.2
+    },
+    "optimizer": "AdamW",
+    "lr": 2e-06,
+    "warmup_steps": 20,
+    "schedule": "cosine",
+    "lr_min_multiplier": 0.1,
+    "precision": "FP32",
+    "steps_rule": "ceil(2 * train_pairs / 8), explicitly frozen after unchanged last-five-percent validation split",
+    "checkpoint_selection": "final"
+  },
+  "launch_owner": "root only; serial GPU scheduling and fresh exact-source packet required",
+  "heldout_profile": "same reviewed API profile, rubric, both orders; separate heldout-stage accounting migration required"
+}

@@ -1,0 +1,63 @@
+{
+  "kind": "PROPOSED_SYMMETRIC_FAILED_SET_EXCLUSION_V7",
+  "status": "PREPARED_REQUIRES_ROOT_ADOPTION",
+  "selection_rule": "Remove the entire candidate set when a settled registered order fails the unchanged complete-permutation parser. Exclude both planned orders regardless of ranking direction, score, rationale or completion status; no replacement or retry. No further failure auto-excluded.",
+  "requests_sha256": "a69673d5307413214cfb631bc6ee58adbcf5b3020da31db79d6e8a8b952b825f",
+  "profile_sha256": "a6bf0769bf5d7688c970df16f53c97efd67750313e59c6d49a8760cefd45bee8",
+  "rubric_sha256": "cb04edd3543d0906aedc3d82a1d829586272da874182775c6d7c9826e28d937a",
+  "failure_file_sha256": "e0a8e1e5253f7a8fc4ba60501c18020f85fc57b094113743d5366f0e0dcf2018",
+  "reviewed_failure_exclusions": [
+    {
+      "key": "5bc86514bca85e5299e967378ad87cc23ad98e29942f9937c3a7fe755675790d",
+      "reservation_id": "c53a3cd31a1f4b719b0e6d03938b7f16",
+      "paired_unattempted_key": "078c6b9cc209e59b4fc8c9c829fbd6388560dc37ba54ade31cedf11cabc8a07c",
+      "candidate_case_sha256": "0e84706f5e9373c775e07af08186b3991ed84e01d59f427afcb8b8e4a3f3f40b",
+      "planned_orders": [
+        [
+          0,
+          1,
+          2,
+          3
+        ],
+        [
+          3,
+          2,
+          1,
+          0
+        ]
+      ],
+      "policy": "Exclude entire candidate set symmetrically because one registered ranking failed. No success outcome or model preference selects exclusion; preserve failed record and leave reverse order untouched."
+    },
+    {
+      "key": "1c3475b012a27949a19fcaba735a7cdd9c6762ed384647d5b3470137dfd1933c",
+      "reservation_id": "3f8cf81ed96e49a9893e495bc20051a0",
+      "paired_unattempted_key": "38a75c7d516b83a672f8383fc1396e11db58b0d3829e07922b68ddce9c8223d4",
+      "candidate_case_sha256": "5310a5121dde33638f4351c5ee1e8a92ff3518caa26fe8511462aad3fc4cfec6",
+      "planned_orders": [
+        [
+          0,
+          1,
+          2,
+          3
+        ],
+        [
+          3,
+          2,
+          1,
+          0
+        ]
+      ],
+      "policy": "Exclude entire candidate set symmetrically because one registered ranking failed. No success outcome or model preference selects exclusion; preserve failed record and leave reverse order untouched."
+    }
+  ],
+  "original_target_rankings": 6040,
+  "original_candidate_sets": 3020,
+  "eligible_target_rankings": 6036,
+  "eligible_candidate_sets": 3018,
+  "valid_at_preparation": 2568,
+  "remaining_at_preparation": 3468,
+  "original_full_valid_completeness": false,
+  "downstream_condition": "Only after6036 unique eligible API rankings reconcile to immutable settlements, with exactlytwo preserved failures andtwo unattempted reverse exclusions; root dataset adoption separately required. Pairs use all unchanged agreement/word-length filters, with finished replies only reported as breakdown. No CLI rankings imported. No training/gate thresholds changed.",
+  "bias_limitation": "Failure-driven exclusions alter the original target population; symmetric orders prevent order cherry-picking, not missingness bias. Report both failure reasons and counts; no claim of fullvalid judging or originalpopulation completeness.",
+  "no_paid_calls_or_activation": true
+}
