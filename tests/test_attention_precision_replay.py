@@ -73,6 +73,37 @@ class ReplayContracts(unittest.TestCase):
             lambda r: next(x for x in r if x.get("case")).update(worst=float("inf"))
         )
 
+    def test_smaller_self_consistent_shape_is_refused(self):
+        def shrink(rows):
+            raw = next(
+                x for x in rows if x.get("raw_case") and x["seq"] == 7 and x["bf16"]
+            )
+            for field in ("q", "k", "v", "upstream_before_mean", "y", "dq", "dk", "dv"):
+                raw[field] = [[0.0] for _ in range(7)]
+            metric = next(
+                x for x in rows if x.get("case") and x["seq"] == 7 and x["bf16"]
+            )
+            metric.update(d=1, dv=1, worst=0.0)
+
+        self.mutate(shrink)
+
+    def test_zero_substitute_with_registered_shape_is_refused(self):
+        def zero(rows):
+            raw = next(
+                x for x in rows if x.get("raw_case") and x["seq"] == 7 and x["bf16"]
+            )
+            for field in ("q", "k", "v", "upstream_before_mean", "y", "dq", "dk", "dv"):
+                raw[field] = [[0.0 for _ in line] for line in raw[field]]
+            metric = next(
+                x for x in rows if x.get("case") and x["seq"] == 7 and x["bf16"]
+            )
+            metric.update(worst=0.0)
+
+        self.mutate(zero)
+
+    def test_metric_width_is_bound(self):
+        self.mutate(lambda rows: next(x for x in rows if x.get("case")).update(d=999))
+
     def test_independent_rounding_ties(self):
         import numpy as np
 

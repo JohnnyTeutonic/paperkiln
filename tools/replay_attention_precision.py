@@ -87,6 +87,51 @@ def oracle(row):
     }
 
 
+def fixture(rows, cols, seed):
+    return np.array(
+        [
+            [
+                0.37 * math.sin((i + 1) * (j + 3) + seed)
+                + 0.21 * math.cos(i * 3 + j + seed)
+                for j in range(cols)
+            ]
+            for i in range(rows)
+        ],
+        dtype=np.float32,
+    )
+
+
+def registered_shape(row, metric):
+    shapes = {
+        (1, 1): (3, 2),
+        (7, 1): (5, 3),
+        (4, 2): (8, 5),
+        (17, 2): (9, 7),
+        (3, 2): (5, 4),
+    }
+    require(type(row["seq"]) is int and type(row["batch"]) is int, "shape types differ")
+    key = (row["seq"], row["batch"])
+    require(key in shapes, "unregistered sequence/batch shape")
+    d, dv = shapes[key]
+    require(metric.get("d") == d and metric.get("dv") == dv, "registered widths differ")
+    n = row["seq"] * row["batch"]
+    for field, cols, seed in [
+        ("q", d, 1),
+        ("k", d, 5),
+        ("v", dv, 9),
+        ("upstream_before_mean", dv, 13),
+    ]:
+        actual = np.asarray(row[field], dtype=np.float64)
+        require(
+            actual.shape == (n, cols) and np.isfinite(actual).all(),
+            "registered raw shape differs",
+        )
+        require(
+            np.max(np.abs(actual - fixture(n, cols, seed).astype(np.float64))) < 1e-7,
+            "raw input differs from registered fixture",
+        )
+
+
 def replay(log, require_cuda=False):
     rows = [
         json.loads(line)
@@ -111,6 +156,7 @@ def replay(log, require_cuda=False):
     keys = set()
     worst = 0
     for r, m in zip(raw, metrics):
+        registered_shape(r, m)
         key = tuple((r[x] for x in ("seq", "batch", "causal", "bf16", "grad_mask")))
         require(key not in keys, "attention replay contract failed")
         keys.add(key)

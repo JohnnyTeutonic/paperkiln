@@ -1,0 +1,12 @@
+{
+  "review_finding": "v2 replay accepted a self-consistent smaller width; no device job had launched",
+  "fix": "Bind complete registered (sequence,batch,d,dv), metric widths, all raw input shapes and deterministic fixture values",
+  "production_cpp_changed": false,
+  "numerical_bounds_changed": false,
+  "tamper_contracts_under_optimized_python": 15,
+  "independent_reviewer_retest": "original width exploit, same-shape zero replacement and wrong metric width all rejected",
+  "supersedes_unlaunched_manifests": [
+    "f03285674bc94ee0e086a31094ec0c8b0ff5db7a968527ebf5e57725c193c5ef",
+    "2647f73c9ae9d183bcc27e1aaf18a701011fcde51562f7825766b0fe367c60b7"
+  ]
+}
