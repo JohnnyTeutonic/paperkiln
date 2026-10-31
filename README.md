@@ -291,6 +291,14 @@ is still sequential; B gradients retain extra O(T*D*N) scratch. Whole-model resi
 end-to-end speed remain unestablished. [Convolution evidence](experiments/conv1d_cuda_20261031/receipts/l4_gate_v1/replay.json);
 [scan evidence](docs/receipts/selective_scan_cuda_20261031/result.json).
 
+The two tiny composed `parity::MambaLM` Mamba1 graphs (depths 1 and 2, batch 2 × 4,
+width 8) also pass an actual L4 CUDA + DEVCHECK gate. All 1,224 parameter gradients
+agree with independent binary64 NumPy equations and central differences; required
+GEMM, RMSNorm, convolution and scan profile counts are present. This is a composed
+graph derivative check: CLI GPU training/save/export, quality, whole-model residency
+and speed remain open. `A()` exp/scale and initial embedding-gradient scatter still
+use host paths. [Composed Mamba1 evidence](docs/receipts/mamba1_composed_cuda_20261031/result.json).
+
 Deferred CUDA GRPO sampling and reference log-probabilities now materialize
 logits before their host reads. Actual L4 regressions reproduce both old failures
 and verify the repaired CLI helpers, including sampled IDs and RNG advancement.
