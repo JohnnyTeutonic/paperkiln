@@ -1,0 +1,10 @@
+10-31 16:08:28 volume k7jsbk303v created in EU-RO-1 (20 GB)
+10-31 16:08:31 pod 4pmr59nlt1wmud created in EU-RO-1 (L4, $0.590/h, SECURE); waiting for ssh
+10-31 16:09:08 pod 4pmr59nlt1wmud answers at 213.173.105.14:17992 after 37 s
+10-31 16:09:34 prelude done: thon3 -m pip install --upgrade pip | cmake version 3.31.6 | GPU 0: NVIDIA L4 (UUID: GPU-810b2957-0be1-28bc-9b19-367aed06b75a) | Cuda compilation tools, release 12.4, V12.4.131 | Build cuda_12.4.r12.4/compiler.34097967_0 | host driver CUDA major: 13 | 48 |                total        used        free      shared  buff/cache   available | Mem:             503          63         290           0         149         437 | mfs#euro-2.runpod.net:9421  2.1P  1.7P  423T  81% /content | prelude done Sat Oct 31 05:09:34 UTC 2026 | debconf: delaying package configuration, since apt-utils is not installed
+10-31 16:09:35 session up, endpoint 4pmr59nlt1wmud (launch 1)
+10-31 16:10:40 inputs: source.tgz 10075806 gpt2_precision_gate.py 9515 inputs.json 7076 INPUTS_OK
+10-31 16:10:45 boot launched
+10-31 16:10:51 gpt2_precision_model_gate: NONE  
+10-31 16:14:58 pod 4pmr59nlt1wmud terminated (RunPod ledger $0.06)
+10-31 16:14:58 session stopped; runner exiting

@@ -1,0 +1,240 @@
+[  3%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/architecture.cpp.o
+[  6%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/logger.cpp.o
+[  6%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/config.cpp.o
+[  6%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/lora.cpp.o
+[ 10%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/scope_logger.cpp.o
+[ 10%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/components.cpp.o
+[ 10%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/matrix.cpp.o
+[ 13%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/matmul_optimized.cpp.o
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/components.cpp:11:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 13%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/tensor.cpp.o
+[ 16%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/utils.cpp.o
+[ 16%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/vector_ops.cpp.o
+[ 16%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/embeddings.cpp.o
+[ 20%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/layer_norm.cpp.o
+[ 20%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/feed_forward.cpp.o
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/gpt2_precision_source/third_party/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/gpt2_precision_source/third_party/transformer_cpp/src/../include/utils.hpp:4,
+                 from /content/gpt2_precision_source/third_party/transformer_cpp/src/utils.cpp:1:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/utils.cpp:21:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/../include/debug.hpp:85:21: warning: backslash-newline at end of file
+   85 | #define SCOPE_LOG() \
+      |                      
+/content/gpt2_precision_source/third_party/transformer_cpp/src/../include/debug.hpp:85: warning: "SCOPE_LOG" redefined
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/utils.cpp:3:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/../include/scope_logger.hpp:47: note: this is the location of the previous definition
+   47 | #define SCOPE_LOG() debug::ScopeLogger scope_logger_instance = debug::ScopeLogger(__FUNCTION__, __FILE__, __LINE__)
+      | 
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/feed_forward.cpp:5:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 23%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/transformer_layer.cpp.o
+[ 23%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/attention.cpp.o
+[ 26%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/transformer.cpp.o
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/gpt2_precision_source/third_party/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/gpt2_precision_source/third_party/transformer_cpp/src/transformer_layer.cpp:1:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/gpt2_precision_source/third_party/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/gpt2_precision_source/third_party/transformer_cpp/src/attention.cpp:15:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/gpt2_precision_source/third_party/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/gpt2_precision_source/third_party/transformer_cpp/src/transformer.cpp:1:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 26%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/lm_head.cpp.o
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/transformer.cpp:5:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/../include/cuda/cublas_check.cuh:6:100: warning: backslash-newline at end of file
+    6 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+/content/gpt2_precision_source/third_party/transformer_cpp/src/../include/cuda/cublas_check.cuh:6: warning: "CUBLAS_CHECK" redefined
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/gpt2_precision_source/third_party/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/gpt2_precision_source/third_party/transformer_cpp/src/transformer.cpp:1:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/../include/cuda/cuda_check.cuh:18: note: this is the location of the previous definition
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      | 
+[ 26%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/router.cpp.o
+[ 30%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/moe.cpp.o
+[ 30%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/gqa.cpp.o
+[ 33%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/vocabulary.cpp.o
+[ 33%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/tiktoken_tokenizer.cpp.o
+[ 33%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/gradient_checkpoint.cpp.o
+[ 36%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/cache.cpp.o
+[ 36%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/quantization.cpp.o
+[ 40%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/quantization_api.cpp.o
+[ 40%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/model_saver.cpp.o
+[ 43%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/gguf_export.cpp.o
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/gpt2_precision_source/third_party/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/gpt2_precision_source/third_party/transformer_cpp/src/../include/quantization.hpp:3,
+                 from /content/gpt2_precision_source/third_party/transformer_cpp/src/quantization.cpp:1:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/gpt2_precision_source/third_party/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/gpt2_precision_source/third_party/transformer_cpp/src/../include/quantization.hpp:3,
+                 from /content/gpt2_precision_source/third_party/transformer_cpp/src/../include/quantization_api.hpp:3,
+                 from /content/gpt2_precision_source/third_party/transformer_cpp/src/quantization_api.cpp:1:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/gpt2_precision_source/third_party/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/gpt2_precision_source/third_party/transformer_cpp/src/../include/model_saver.hpp:4,
+                 from /content/gpt2_precision_source/third_party/transformer_cpp/src/model_saver.cpp:1:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/gpt2_precision_source/third_party/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/gpt2_precision_source/third_party/transformer_cpp/src/gguf_export.cpp:7:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 43%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/safetensors_export.cpp.o
+[ 43%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/cuda_matrix.cu.o
+[ 46%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/swiglu_kernels.cu.o
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/cuda_matrix.cu:4:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/gpt2_precision_source/third_party/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/gpt2_precision_source/third_party/transformer_cpp/src/safetensors_export.cpp:19:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/swiglu_kernels.cu:4:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/cuda_matrix.cu:4:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 46%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/quantization_kernels.cu.o
+[ 50%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/matrix_ops.cu.o
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/swiglu_kernels.cu:4:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 50%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/fused_attention_kernels.cu.o
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/quantization_kernels.cu:2:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/fused_attention_kernels.cu:2:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/matrix_ops.cu:4:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 50%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/moe_kernel.cu.o
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/fused_attention_kernels.cu:2:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/quantization_kernels.cu:2:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+/content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/fused_attention_kernels.cu(71): warning #177-D: variable "score_idx" was declared but never referenced
+      int score_idx = head_idx * (batch_size * seq_len * batch_size * seq_len) +
+          ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/fused_attention_kernels.cu(279): warning #177-D: variable "grid_size" was declared but never referenced
+      int grid_size = (total_seq * hidden_size + block_size - 1) / block_size;
+          ^
+
+[ 53%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/router_kernel.cu.o
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/matrix_ops.cu:4:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 53%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/layernorm_cuda.cu.o
+/content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/layernorm_cuda.cu:1: warning: "USE_CUDA" redefined
+    1 | #define USE_CUDA
+      | 
+<command-line>: note: this is the location of the previous definition
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/layernorm_cuda.cu:2:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 56%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/loss_kernels.cu.o
+/content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/layernorm_cuda.cu:1: warning: "USE_CUDA" redefined
+    1 | #define USE_CUDA
+      | 
+<command-line>: note: this is the location of the previous definition
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/layernorm_cuda.cu:2:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/loss_kernels.cu:2:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/loss_kernels.cu:2:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 56%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/attention_ops.cu.o
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/attention_ops.cu:4:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/attention_ops.cu:4:
+/content/gpt2_precision_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 60%] Linking CXX static library libtransformer_core.a
+[ 60%] Built target transformer_core
+[ 63%] Building CXX object CMakeFiles/microtorch.dir/src/ops.cpp.o
+[ 63%] Building CXX object CMakeFiles/microtorch.dir/src/expr.cpp.o
+[ 66%] Building CXX object CMakeFiles/microtorch.dir/src/autograd.cpp.o
+[ 66%] Building CXX object CMakeFiles/microtorch.dir/src/recurrence.cpp.o
+[ 66%] Building CXX object CMakeFiles/microtorch.dir/src/nn.cpp.o
+[ 70%] Building CXX object CMakeFiles/microtorch.dir/src/device.cpp.o
+[ 70%] Building CXX object CMakeFiles/microtorch.dir/src/device_cache.cpp.o
+[ 73%] Building CXX object CMakeFiles/microtorch.dir/src/safetensors.cpp.o
+[ 73%] Building CXX object CMakeFiles/microtorch.dir/src/gguf.cpp.o
+[ 73%] Building CXX object CMakeFiles/microtorch.dir/src/quant.cpp.o
+[ 76%] Building CXX object CMakeFiles/microtorch.dir/src/ir.cpp.o
+[ 76%] Building CXX object CMakeFiles/microtorch.dir/src/llama.cpp.o
+[ 80%] Building CXX object CMakeFiles/microtorch.dir/src/llama_attnres.cpp.o
+[ 80%] Building CXX object CMakeFiles/microtorch.dir/src/depth_attend.cpp.o
+[ 80%] Building CXX object CMakeFiles/microtorch.dir/src/moe.cpp.o
+[ 83%] Building CXX object CMakeFiles/microtorch.dir/src/kimi_linear.cpp.o
+[ 83%] Building CXX object CMakeFiles/microtorch.dir/src/srd.cpp.o
+[ 86%] Building CXX object CMakeFiles/microtorch.dir/src/cerebellum.cpp.o
+[ 86%] Building CXX object CMakeFiles/microtorch.dir/src/mamba.cpp.o
+[ 90%] Building CXX object CMakeFiles/microtorch.dir/src/posttrain/verifier.cpp.o
+[ 90%] Building CUDA object CMakeFiles/microtorch.dir/src/cuda_resident.cu.o
+[ 90%] Building CUDA object CMakeFiles/microtorch.dir/src/cuda_ops.cu.o
+[ 93%] Building CUDA object CMakeFiles/microtorch.dir/src/cuda_depth_attend.cu.o
+[ 93%] Building CUDA object CMakeFiles/microtorch.dir/src/cuda_flash.cu.o
+[ 96%] Linking CXX static library libmicrotorch.a
+[ 96%] Built target microtorch
+[ 96%] Building CXX object CMakeFiles/gpt2_precision_gate.dir/tests/gpt2_precision_gate.cpp.o
+[100%] Linking CXX executable gpt2_precision_gate
+[100%] Built target gpt2_precision_gate
