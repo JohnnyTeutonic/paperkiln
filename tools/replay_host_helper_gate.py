@@ -138,6 +138,10 @@ def replay(doc, require_cuda=False):
             "stale input proof",
         )
         need(row["stale_gradient_poisoned"] is gpu, "stale gradient proof")
+        need(
+            row.get("stale_loss_operand_poisoned") is gpu,
+            "stale weighted loss operand proof",
+        )
         records.append(
             {"op": op, "gradient_names": sorted(grads), "output_shape": list(y.shape)}
         )
