@@ -1,28 +1,36 @@
 {
   "status": "PREPARED_REQUIRES_EXACT_ROOT_REVIEW_NO_DISPATCH",
   "entry": {
-    "name": "Paperkiln API V5 remaining4349 (preserve exact settled refusal)",
+    "name": "Paperkiln API V5 remaining4348 (exclude refused candidate-set pair)",
     "enabled": false,
     "workdir": "/home/jonat/pk_api_refusal_continuation_v5_20261031",
     "state_dir": "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v5",
     "stop_file": "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v5/STOPPED",
-    "command": "mkdir -p /mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v5 && python3 /mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/scripts/cpu_budget.py run --session paperkiln --job api-refusal-continuation-v5 --cores 1 --resume 'existing watchdog V5 never rejudge preserved refusal' -- python3 /home/jonat/pk_api_refusal_continuation_v5_20261031/tools/posttrain/chat_judge_campaign_refusal_v5.py --protocol /home/jonat/pk_api_refusal_continuation_v5_20261031/experiments/chat_general/receipts/anthropic_api_refusal_v5_20261031/full_campaign_v5_protocol.json --protocol-sha256 8ac320152790c221a02a2819743dbc1310b14ed872d7baa76f67cedae4cbca5e --state-dir /mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v5 >> /mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v5/runner.log 2>&1"
+    "command": "mkdir -p /mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v5 && python3 /mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/scripts/cpu_budget.py run --session paperkiln --job api-refusal-continuation-v5 --cores 1 --resume 'existing watchdog V5 never rejudge preserved refusal' -- python3 /home/jonat/pk_api_refusal_continuation_v5_20261031/tools/posttrain/chat_judge_campaign_refusal_v5.py --protocol /home/jonat/pk_api_refusal_continuation_v5_20261031/experiments/chat_general/receipts/anthropic_api_refusal_v5_20261031/full_campaign_v5_protocol.json --protocol-sha256 e207f599b7978e0367c6824314c8fee7ba7c52daf1fab48ad2b25e8aa8fd617e --state-dir /mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v5 >> /mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v5/runner.log 2>&1"
   },
-  "protocol_sha256": "8ac320152790c221a02a2819743dbc1310b14ed872d7baa76f67cedae4cbca5e",
+  "protocol_sha256": "e207f599b7978e0367c6824314c8fee7ba7c52daf1fab48ad2b25e8aa8fd617e",
   "source_sha256": {
-    "chat_judge_campaign_refusal_v5.py": "2cbd1141cd1a645bcd8d61be6c07537e9221269183ae0961f2abe1a4beb33977",
-    "chat_judge_api_refusal_v5.py": "8c4bf438d080b181628195246e801426f493802060304e63ff8ec21713418926",
+    "chat_judge_campaign_refusal_v5.py": "6b5d8fbea3311527697897ac982ee12a90e01d889149b83f0d88b1eac2c0f307",
+    "chat_judge_api_refusal_v5.py": "11cd8c7880356afaef631f6168d02dd75025cd4be58d4c6fc69fddb966ed0dd7",
     "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
     "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
   },
-  "max_new_attempts": 4349,
+  "max_new_attempts": 4348,
   "initial_training_attempts": 1646,
   "initial_valid_rankings": 1690,
   "preserved_failed_key": "5bc86514bca85e5299e967378ad87cc23ad98e29942f9937c3a7fe755675790d",
-  "expected_valid_count_if_all_eligible_succeed": 6039,
+  "expected_valid_count_if_all_eligible_succeed": 6038,
   "full_valid_completeness_possible_in_this_phase": false,
   "max_usd": 200,
   "heldout_gate_usd": 25,
   "per_call_reserved_usd": 0.25,
-  "automatic_retries": 0
+  "automatic_retries": 0,
+  "paired_unattempted_exclusion": "078c6b9cc209e59b4fc8c9c829fbd6388560dc37ba54ade31cedf11cabc8a07c",
+  "terminal_expected": {
+    "valid": 6038,
+    "refused": 1,
+    "unattempted_paired_exclusion": 1,
+    "full_valid_complete": false
+  },
+  "DPO_and_fixed_gate_blocked_pending_separate_dataset_decision": true
 }

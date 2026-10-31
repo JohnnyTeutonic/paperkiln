@@ -489,7 +489,7 @@ def reconcile(cache, ledger, requests, rsha, version):
 
 
 def run(requests, cache, legacy_cache, rubric, ledger, env_file, max_calls, reserve=.25,
-        cap=200, gate_reserve=25, stage="training_judge", post=None, prior_api_ledgers=(), stop_on_failure=False, excluded_failed_keys=()):
+        cap=200, gate_reserve=25, stage="training_judge", post=None, prior_api_ledgers=(), stop_on_failure=False, excluded_failed_keys=(), excluded_unattempted_keys=()):
     """Serial API execution; profile/campaign compatibility needs prospective review."""
     if max_calls < 0 or stage not in ("probe", "calibration", "training_judge"):
         raise ValueError("invalid call count/stage")
@@ -515,7 +515,14 @@ def run(requests, cache, legacy_cache, rubric, ledger, env_file, max_calls, rese
         failure_keys = {r["key"] for r in rows(str(cache) + ".failures.jsonl")}
         if excluded != failure_keys or excluded & done:
             raise ValueError("reviewed failure exclusions differ from preserved failures")
-        done |= excluded
+        unattempted = set(excluded_unattempted_keys)
+        attempted = {r["key"] for r in rows(ledger) if r.get("event") == "reserve"}
+        campaign_keys = {judge.key_of(r["prompt"], r["candidates"], o, jid, version)
+                         for r, o in judge.jobs(requests)}
+        if (unattempted & (done | attempted | excluded)
+                or not unattempted <= campaign_keys):
+            raise ValueError("reviewed unattempted exclusions differ from fixed campaign")
+        done |= excluded | unattempted
         for request, order in judge.jobs(requests):
             semantic_key = judge.key_of(request["prompt"], request["candidates"], order, MODEL, version)
             cache_key = judge.key_of(request["prompt"], request["candidates"], order, jid, version)
