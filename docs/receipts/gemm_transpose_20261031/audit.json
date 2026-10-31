@@ -1,0 +1,98 @@
+{
+  "scope": "Source and offline preflight only; prospective CUDA numerical/bitwise proof has not run",
+  "source_commit": "b65568079843fcb40f7c56559f1c3d23990366f5",
+  "baseline_commit": "87ccf28cf",
+  "baseline_source_sha256": "4c5b5995551d680b3b53936d028c2c24358573054e49d53cab12cde34503ffab",
+  "baseline_exact_git_blob": true,
+  "changes": [
+    "TA physical rows load coalesced into As[tx][ty], with transpose-only shared padding.",
+    "TB physical rows load coalesced into Bs[tx][ty], with transpose-only shared padding.",
+    "Compute/FMA order, accumulator initial value, NN loads and dispatch remain unchanged."
+  ],
+  "prospective_matrix": {
+    "flags": [
+      "NN",
+      "NT",
+      "TN",
+      "TT"
+    ],
+    "shapes": [
+      [
+        1,
+        1,
+        0
+      ],
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        2,
+        3,
+        7
+      ],
+      [
+        31,
+        33,
+        35
+      ],
+      [
+        32,
+        32,
+        32
+      ],
+      [
+        33,
+        31,
+        65
+      ],
+      [
+        64,
+        96,
+        64
+      ],
+      [
+        65,
+        67,
+        63
+      ]
+    ],
+    "modes": [
+      "assign zero initial accumulator",
+      "accumulate existing nonzero C",
+      "two split-K calls with packed operands and existing C"
+    ],
+    "cases": 96,
+    "bound": 3e-05,
+    "comparisons": [
+      "Raw candidate vs preserved old float bits for every output",
+      "Independent binary CPU double reduction",
+      "Independent NumPy binary64 full-array reference with exact deterministic input fixture reconstruction"
+    ]
+  },
+  "timing": {
+    "shape": [
+      256,
+      256,
+      256
+    ],
+    "pairs_per_flag": 7,
+    "warmup_launches_per_leg": 3,
+    "timed_repetitions_per_leg": 10,
+    "order": "alternating old/candidate order per pair",
+    "scope": "Descriptive CUDA-event kernel timings only; no whole-model or dispatch speed claim"
+  },
+  "offline": [
+    "NVCC12.6 compile of complete production translation unit and standalone harness passed.",
+    "Eleven tests passed under Python -O; production parser uses explicit exceptions. Tests use synthetic arrays solely to test parser contracts, not to claim CUDA kernel correctness.",
+    "Actual no-explicit-CUDA and missing-DEVCHECK subprocess refusals passed without local CUDA runtime/device use.",
+    "Full frozen source archive CPU CMake configure passed."
+  ],
+  "limits": [
+    "No local GPU run.",
+    "No paid launch yet.",
+    "No cuBLAS, BF16 or dispatch changes.",
+    "No speed claim before outcomes or full-model performance claim from kernel timings."
+  ]
+}

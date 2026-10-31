@@ -1,0 +1,5 @@
+{
+  "returncode": 1,
+  "pass": true,
+  "scope": "no CUDA runtime/device call permitted without explicit CUDA request"
+}
