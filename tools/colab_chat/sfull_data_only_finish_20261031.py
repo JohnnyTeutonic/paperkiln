@@ -12,7 +12,10 @@ def finish(root, jobs_exit):
         reasons.append(f'jobs_vm exit {jobs_exit}')
     for job in ('data', 'sfull_inputs'):
         p = root / ('STATUS_' + job)
-        status = p.read_text().strip() if p.is_file() else 'MISSING'
+        try:
+            status = p.read_text().strip() if p.is_file() else 'MISSING'
+        except (OSError, UnicodeError) as error:
+            status = 'UNREADABLE_' + type(error).__name__
         if status != 'FINISHED':
             reasons.append(f'{job}: {status}')
     try:

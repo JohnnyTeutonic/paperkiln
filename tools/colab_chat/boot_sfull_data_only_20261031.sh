@@ -22,4 +22,4 @@ if pgrep -f "[j]obs_vm.py" >/dev/null; then
   exit 1
 fi
 echo RUNNING > /content/chat/STATUS
-nohup bash -c 'python3 -u tools/colab_chat/jobs_vm.py "$1" > /content/chat/jobs.log 2>&1; rc=$?; python3 tools/colab_chat/sfull_data_only_finish_20261031.py --jobs-exit "$rc"' gate "$JOBS" >/dev/null 2>&1 &
+nohup bash -c 'python3 -u tools/colab_chat/jobs_vm.py "$1" > /content/chat/jobs.log 2>&1; rc=$?; python3 tools/colab_chat/sfull_data_only_finish_20261031.py --jobs-exit "$rc" || { printf "JOBS_FAILED\n" > /content/chat/STATUS; exit 1; }' gate "$JOBS" >/dev/null 2>&1 &
