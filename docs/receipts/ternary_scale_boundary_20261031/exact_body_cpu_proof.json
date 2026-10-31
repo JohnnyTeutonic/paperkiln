@@ -1,0 +1,113 @@
+{
+  "base": "5f489fdd7c5c05eb16434b4f6c96e84252d28dee",
+  "validation": "exact production function bodies only; full-object/CUDA validation pending",
+  "cuda_executed": false,
+  "runs": {
+    "old_fresh": {
+      "command": [
+        "c++",
+        "-std=c++17",
+        "-O0",
+        "-ffp-contract=off",
+        "-DMICROTORCH_DEVCHECK",
+        "-Dternary_scale=boundary_ternary_scale",
+        "-I/home/jonat/pk_host_reader_audit_20261031b/include",
+        "-I/home/jonat/pk_host_reader_audit_20261031b/third_party/transformer_cpp/include",
+        "-I/home/jonat/pk_host_reader_audit_20261031b/tests",
+        "/home/jonat/ternary_scale_boundary_proof_20261031/old.cpp",
+        "/home/jonat/pk_host_reader_audit_20261031b/tests/test_ternary_scale_boundary.cpp",
+        "/home/jonat/pk_publication_build_20261030/libmicrotorch.a",
+        "/home/jonat/pk_publication_build_20261030/transformer_cpp/libtransformer_core.a",
+        "-fopenmp",
+        "-o",
+        "/home/jonat/ternary_scale_boundary_proof_20261031/old_fresh"
+      ],
+      "returncode": 0,
+      "stdout": "ternary_scale boundary controls PASS\n",
+      "stderr": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\n"
+    },
+    "old_emulated": {
+      "command": [
+        "c++",
+        "-std=c++17",
+        "-O0",
+        "-ffp-contract=off",
+        "-DMICROTORCH_DEVCHECK",
+        "-Dternary_scale=boundary_ternary_scale",
+        "-I/home/jonat/pk_host_reader_audit_20261031b/include",
+        "-I/home/jonat/pk_host_reader_audit_20261031b/third_party/transformer_cpp/include",
+        "-I/home/jonat/pk_host_reader_audit_20261031b/tests",
+        "/home/jonat/ternary_scale_boundary_proof_20261031/old.cpp",
+        "/home/jonat/pk_host_reader_audit_20261031b/tests/test_ternary_scale_boundary.cpp",
+        "/home/jonat/pk_publication_build_20261030/libmicrotorch.a",
+        "/home/jonat/pk_publication_build_20261030/transformer_cpp/libtransformer_core.a",
+        "-fopenmp",
+        "-o",
+        "/home/jonat/ternary_scale_boundary_proof_20261031/old_emulated",
+        "-DTERNARY_BOUNDARY_WRAP=1",
+        "-Wl,--wrap=_ZN10microtorch6device11materializeERK6Matrix"
+      ],
+      "returncode": 1,
+      "stdout": "synthetic_cpu_boundary=true expected=1.4545455 actual=100000 materializations=0\n",
+      "stderr": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\nCHECK failed /home/jonat/pk_host_reader_audit_20261031b/tests/test_ternary_scale_boundary.cpp:88: same_bits(actual, expected)\n"
+    },
+    "fixed_fresh": {
+      "command": [
+        "c++",
+        "-std=c++17",
+        "-O0",
+        "-ffp-contract=off",
+        "-DMICROTORCH_DEVCHECK",
+        "-Dternary_scale=boundary_ternary_scale",
+        "-I/home/jonat/pk_host_reader_audit_20261031b/include",
+        "-I/home/jonat/pk_host_reader_audit_20261031b/third_party/transformer_cpp/include",
+        "-I/home/jonat/pk_host_reader_audit_20261031b/tests",
+        "/home/jonat/ternary_scale_boundary_proof_20261031/fixed.cpp",
+        "/home/jonat/pk_host_reader_audit_20261031b/tests/test_ternary_scale_boundary.cpp",
+        "/home/jonat/pk_publication_build_20261030/libmicrotorch.a",
+        "/home/jonat/pk_publication_build_20261030/transformer_cpp/libtransformer_core.a",
+        "-fopenmp",
+        "-o",
+        "/home/jonat/ternary_scale_boundary_proof_20261031/fixed_fresh"
+      ],
+      "returncode": 0,
+      "stdout": "ternary_scale boundary controls PASS\n",
+      "stderr": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\n"
+    },
+    "fixed_emulated": {
+      "command": [
+        "c++",
+        "-std=c++17",
+        "-O0",
+        "-ffp-contract=off",
+        "-DMICROTORCH_DEVCHECK",
+        "-Dternary_scale=boundary_ternary_scale",
+        "-I/home/jonat/pk_host_reader_audit_20261031b/include",
+        "-I/home/jonat/pk_host_reader_audit_20261031b/third_party/transformer_cpp/include",
+        "-I/home/jonat/pk_host_reader_audit_20261031b/tests",
+        "/home/jonat/ternary_scale_boundary_proof_20261031/fixed.cpp",
+        "/home/jonat/pk_host_reader_audit_20261031b/tests/test_ternary_scale_boundary.cpp",
+        "/home/jonat/pk_publication_build_20261030/libmicrotorch.a",
+        "/home/jonat/pk_publication_build_20261030/transformer_cpp/libtransformer_core.a",
+        "-fopenmp",
+        "-o",
+        "/home/jonat/ternary_scale_boundary_proof_20261031/fixed_emulated",
+        "-DTERNARY_BOUNDARY_WRAP=1",
+        "-Wl,--wrap=_ZN10microtorch6device11materializeERK6Matrix"
+      ],
+      "returncode": 0,
+      "stdout": "synthetic_cpu_boundary=true expected=1.4545455 actual=1.4545455 materializations=1\nternary_scale boundary controls PASS\n",
+      "stderr": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\n"
+    }
+  },
+  "hashes": {
+    "/home/jonat/pk_publication_build_20261030/libmicrotorch.a": "edfac74ad017bbec43c33c710409fba13ff348962b1bb557f97553794012251a",
+    "/home/jonat/pk_publication_build_20261030/transformer_cpp/libtransformer_core.a": "6ac8350f92ead2633b934e352ade2d9db90563565670822342cd1515da114cc1",
+    "/home/jonat/pk_host_reader_audit_20261031b/tests/test_ternary_scale_boundary.cpp": "3d1d609798a52b9a27de241e7dff533dc21ac9746af27df9486c8ad487ab5f06",
+    "old_full_ops": "80cbbddf0fe43867cdb3aaae45eac68f33d9ee5b0ace3356b0ef67ca89f24170",
+    "/home/jonat/ternary_scale_boundary_proof_20261031/old.cpp": "2120832606b65180c2a31a4d1608116dfe4c3434084717aa4b37419fbca6efa3",
+    "fixed_full_ops": "a2d5110f21331a1018263e0cda9cb5c5759d59b30930a357cf1fb8359e33288c",
+    "/home/jonat/ternary_scale_boundary_proof_20261031/fixed.cpp": "415f755a93eb399afde551d322035618ce478273bd4635e3599488d2159b3bcb"
+  },
+  "proof_script_sha256": "f7cada1b93137ea05a02672ea7281a14001d411c897452d13cb0913040dca534"
+}
