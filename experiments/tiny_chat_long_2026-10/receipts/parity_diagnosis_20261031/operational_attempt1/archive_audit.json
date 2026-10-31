@@ -1,0 +1,8 @@
+{
+  "status": "OPERATIONAL_ERROR_ARCHIVE_VERIFIED",
+  "archive_sha256": "60e4ac471bc9fc416efb3f5ab4c7800879099204f88056e6c2d05fe9dd612844",
+  "all_file_hashes_verified": true,
+  "scientific_outcomes": 0,
+  "cause": "Historical CMake references tests excluded from original archive",
+  "strict_historical_parity_flags_unchanged": true
+}
