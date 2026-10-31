@@ -211,7 +211,8 @@ an existing model.
   scheme vocabulary tokenise in llama.cpp, Ollama and LM Studio too.
 - `python tools/hf_export.py <run> --hf-dir <dir>` writes folders that
   `transformers.from_pretrained` opens for supported plain Llama, GPT-2 and plain
-  Llama/GPT-2 Flex mappings, including explicitly tied Flex output heads. Unsupported modifiers refuse rather than silently approximate.
+  Llama/GPT-2 Flex mappings, including explicitly tied Flex output heads
+  and explicitly recorded exact GELU in GPT2 Flex. Unsupported modifiers refuse rather than silently approximate.
   Exports stage completely before publication; replacing managed files requires `--overwrite`.
   Unrelated files are preserved. Replacement of an existing export is rollback-protected,
   not crash-atomic; stale shards or loader overrides refuse rather than being silently deleted.

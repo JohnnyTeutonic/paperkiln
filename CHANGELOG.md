@@ -969,3 +969,11 @@ before its guard. Default builds and explicit materialization policy are unchang
 Four CPU DEVCHECK/export tests pass; new device-negative cases require a separate
 actual CUDA run. The broader host-loop audit remains open.
 [Validation](docs/receipts/export_host_read_20261031/validation.json).
+
+## Exact-GELU GPT2 Flex Hugging Face export (31 October 2026)
+
+The explicitly recorded exact-erf activation now maps to HF GPT2's exact GELU,
+for separate and tied Flex heads. Tanh remains the default; missing or conflicting
+approximation records refuse. Actual trained, saved/reloaded CPU models pass
+full-row logits and greedy checks, with independent raw replay retained.
+[Validation](docs/receipts/hf_exact_gelu_20261031/validation.json).
