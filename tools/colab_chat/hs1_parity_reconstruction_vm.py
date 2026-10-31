@@ -25,6 +25,14 @@ def sha(path):
     return h.hexdigest()
 
 
+def verify_source_inventory(root, expected):
+    if not expected:
+        raise ValueError("source archive inventory absent")
+    actual = {str(p.relative_to(root)): sha(p) for p in root.rglob("*") if p.is_file()}
+    if actual != expected:
+        raise ValueError("extracted historical source inventory differs")
+
+
 def instrumented_equivalent(original, diagnostic):
     """The tap may add a raw-logit file only; every JSON numerical result must agree."""
     if original != diagnostic:
@@ -126,6 +134,8 @@ def run(
                 ):
                     raise ValueError("unsafe source archive")
             archive.extractall(root)
+        verify_source_inventory(root, m.get("source_archive_inventory"))
+        report["exact_source_inventory_verified"] = True
         command(
             "tokenizer_dependency",
             [sys.executable, "-m", "pip", "install", "tokenizers==0.23.3"],

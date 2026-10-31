@@ -57,3 +57,22 @@ def test_missing_inputs_leave_durable_negative(tmp_path):
     assert report["status"] == "ERROR" and report["errors"]
     assert (out / "out.zip").is_file()
     assert report["commands"] == []
+
+
+def test_source_inventory_refuses_missing_extra_or_changed(tmp_path):
+    p = tmp_path / "source.cpp"
+    p.write_bytes(b"exact historical bytes")
+    expected = {"source.cpp": g.sha(p)}
+    g.verify_source_inventory(tmp_path, expected)
+    with pytest.raises(ValueError, match="absent"):
+        g.verify_source_inventory(tmp_path, {})
+    p.write_bytes(b"changed")
+    with pytest.raises(ValueError, match="differs"):
+        g.verify_source_inventory(tmp_path, expected)
+    p.write_bytes(b"exact historical bytes")
+    (tmp_path / "extra.cpp").write_bytes(b"extra")
+    with pytest.raises(ValueError, match="differs"):
+        g.verify_source_inventory(tmp_path, expected)
+    p.unlink()
+    with pytest.raises(ValueError, match="differs"):
+        g.verify_source_inventory(tmp_path, expected)
