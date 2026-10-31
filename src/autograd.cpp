@@ -143,6 +143,7 @@ Var checkpoint(const std::function<Var(const Var&)>& fn, const Var& x) {
     {
         NoGrad ng;
         const Var inner = fn(x);  // inner tape never exists
+        device::materialize(inner->data);
         MT_DEVCHECK_HOST_READ(inner->data, "checkpoint output copy");
         out_data = inner->data;
     }
@@ -156,6 +157,7 @@ Var checkpoint(const std::function<Var(const Var&)>& fn, const Var& x) {
     out->backward_fn = [self, fn_copy]() {
         const Var& xin = self->parents[0];
         // Recompute the segment on a detached leaf copy of the input.
+        device::materialize(xin->data);
         MT_DEVCHECK_HOST_READ(xin->data, "checkpoint input copy");
         Var x2 = make_var(xin->data, /*requires_grad=*/true);
         Var y2 = fn_copy(x2);
