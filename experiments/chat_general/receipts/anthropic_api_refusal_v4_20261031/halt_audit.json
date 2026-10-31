@@ -1,0 +1,91 @@
+{
+  "status": "AUDITED_HALTED_EXPLICIT_REFUSAL",
+  "observed_utc": "2026-10-31T10:37:03.223385+00:00",
+  "v4_protocol_file_sha256": "49223afaee2b0fe746f148da2cf3bed3e04095374fd91a5be244a9eb18522c92",
+  "v4_source_sha256": {
+    "chat_judge_campaign_continuation_v4.py": "742e7c576304efb329a9dbaa37b3634115ed934ad135c8ea0586d2ad6298f93d",
+    "chat_judge_api_diagnostic_v3.py": "8558d9fcb0e8ae561402f0991b3270ee0746cee8ffc46ef0c50ad74dc6dffc6a",
+    "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+  },
+  "v4_new_attempts": 1126,
+  "v4_valid_rankings_added": 1125,
+  "training_attempts_total": 1646,
+  "valid_rankings_total": 1690,
+  "missing_valid_rankings": 4350,
+  "remaining_never_attempted_rankings": 4349,
+  "pending_reservations": 0,
+  "retained_unknown_ceiling_usd": 0.75,
+  "api_actual_settled_usd": 25.388728,
+  "v4_new_actual_settled_usd": 16.9904,
+  "failure": {
+    "key": "5bc86514bca85e5299e967378ad87cc23ad98e29942f9937c3a7fe755675790d",
+    "reservation_id": "c53a3cd31a1f4b719b0e6d03938b7f16",
+    "order": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "http_status": 200,
+    "stop_reason": "refusal",
+    "content_block_count": 0,
+    "usage": {
+      "input_tokens": 1891,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 0
+      },
+      "output_tokens": 0,
+      "service_tier": "standard",
+      "inference_geo": "global",
+      "speed": "standard"
+    },
+    "cost_usd": 0.007564,
+    "request_sha256": "31b1146d7358a7495df4bee5e59d5e87cf298a07edb2d63faf0516f05330bdad",
+    "response_sha256": "5cb9c56433e832ad34afaa8006e223df536c69f5ce017ed0829ce27973b97433",
+    "trace_sha256": "0c36315dcb6451006cfe59387f67db66e58cad74b1404a80d37d3be36a840050",
+    "trace": {
+      "attempts": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443,
+          "tcp_connected": true
+        }
+      ],
+      "binding": {
+        "request_sha256": "31b1146d7358a7495df4bee5e59d5e87cf298a07edb2d63faf0516f05330bdad",
+        "reservation_id": "c53a3cd31a1f4b719b0e6d03938b7f16"
+      },
+      "dns": [
+        {
+          "family": 2,
+          "ip": "160.79.104.10",
+          "port": 443
+        },
+        {
+          "family": 10,
+          "ip": "2607:6bc0::10",
+          "port": 443
+        }
+      ],
+      "http_write_started": true,
+      "schema": 1,
+      "stage": "http_write_may_begin"
+    }
+  },
+  "verified_v4_trace_count": 1126,
+  "verified_v4_trace_inventory_sha256": "11800f24090f33687fe1f55020a76df74f3586232564dfe1af22647d5fb1cf0d",
+  "full_cache_failure_ledger_reconcile": "PASS",
+  "ledger_snapshot": {
+    "bytes": 2285219,
+    "sha256": "d93bc5f8f6c851cb99ea558451aaad10edb400dddb56e1a4dc645e7354c8adc8"
+  },
+  "failure_file_sha256": "7bfabb246403ca7b38d434178236175cac59f36189287eec55caf03935fec8a5",
+  "v4_HALT_sha256": "b5da140dc71748ebfffce1c24a4b441ea3372b31aaa45851aab629250704c573",
+  "v4_STOPPED_sha256": "ff50f45869cc54dea20b917ce9f4a0a91ee5fb369476eb8338a32fc8bdb8a495",
+  "interpretation": "Provider explicit refusal; no reason content returned. Successful TCP/HTTP trace does not establish refusal cause. Failure settled with actual usage, no unknown charge or disposition needed. No retry/rejudging. One invalid ranking remains even if all other jobs later finish."
+}
