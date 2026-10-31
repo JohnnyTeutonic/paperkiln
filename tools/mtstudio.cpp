@@ -1,3 +1,4 @@
+#include "microtorch/sfull_checkpoint_bridge_v2.hpp"
 // mtstudio — the run-spec driver (STUDIO_PLAN.md M1).
 //
 //   mtstudio run spec.json          execute the spec
@@ -2759,6 +2760,9 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         st << step << "\n";
         st << json({{"best_val", best_val}, {"evals_flat", evals_flat}, {"adamw_t", ts}}).dump()
            << "\n";
+        st.close();
+        if (!st) throw std::runtime_error("checkpoint V2 state close failed");
+        sfull_checkpoint_v2::publish(s.out_dir, step, s.seed, s.batch, s.accum);
     };
 
     // grpo: the frozen reference (train.init_from) for the KL term.
