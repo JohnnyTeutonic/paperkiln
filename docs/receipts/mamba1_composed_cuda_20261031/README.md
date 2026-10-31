@@ -1,0 +1,3 @@
+Actual L4 gate for two tiny composed Mamba1 graphs, with all 1,224 parameter derivatives checked against an independent binary64 NumPy forward and central finite differences. The frozen derivative, step-stability and provenance bounds passed without changes after device outcomes.
+
+`result.json` records local independent replay and cleanup. `raw/` preserves source-bound hardware, build, full weight/gradient arrays and remote replay logs. `matched_cpu_gpu.json` supplements the independent oracle with a direct comparison at identical frozen weights. No CLI GPU training/save/export, model quality, speed or complete device residency is established. A() exp/scale, initial embedding-gradient scatter and scalar loss handling retain host work.
