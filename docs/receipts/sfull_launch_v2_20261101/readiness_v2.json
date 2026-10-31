@@ -1,9 +1,9 @@
 {
   "status": "UNLAUNCHED_REQUIRES_ROOT_ADMISSION",
-  "source_control_commit": "125bf039682ec55d74428f987cd7ff7f417f6117",
+  "source_control_commit": "1af22cfd66f95cd40dcd98cf4ffae57cb3de4c61",
   "numerical_checkpoint_io_commit": "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1",
   "numerical_original_parent": "7edb0ca1b252bd9332094558a478d924568f8e52",
-  "source_freeze_sha256": "84574218053bd52db370d861b4b71e82ad186164bd5e986cdc7b6649d5676679",
+  "source_freeze_sha256": "7b84e7e6145826efd0253fa52d6e05d5619266d9ba0a51055851211fb14361cb",
   "campaigns": [
     {
       "seed": 1,
@@ -24,7 +24,7 @@
         "--image",
         "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
         "--commit",
-        "125bf039682ec55d74428f987cd7ff7f417f6117",
+        "1af22cfd66f95cd40dcd98cf4ffae57cb3de4c61",
         "--jobs",
         "tools/colab_chat/carry12_sfull_v2_r1.json",
         "--boot-script",
@@ -62,7 +62,7 @@
         "--image",
         "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
         "--commit",
-        "125bf039682ec55d74428f987cd7ff7f417f6117",
+        "1af22cfd66f95cd40dcd98cf4ffae57cb3de4c61",
         "--jobs",
         "tools/colab_chat/carry12_sfull_v2_r2.json",
         "--boot-script",
@@ -100,7 +100,7 @@
         "--image",
         "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
         "--commit",
-        "125bf039682ec55d74428f987cd7ff7f417f6117",
+        "1af22cfd66f95cd40dcd98cf4ffae57cb3de4c61",
         "--jobs",
         "tools/colab_chat/carry12_sfull_v2_r3.json",
         "--boot-script",
@@ -134,7 +134,7 @@
     "status": "NOT_YET_PROVED_BLOCKS_LAUNCH",
     "required_refs": {
       "refs/heads/codex/sfull-checkpoint-io-v2-20261101": "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1",
-      "refs/heads/codex/sfull-operational-v2-20261101": "125bf039682ec55d74428f987cd7ff7f417f6117"
+      "refs/heads/codex/sfull-operational-v2-20261101": "1af22cfd66f95cd40dcd98cf4ffae57cb3de4c61"
     },
     "root_action": "Push explicit immutable source refs, verify ls-remote hashes, then isolated depth1 fetch each exact SHA and compare checkout source hashes. Do not merge historical numerical branch over modern master."
   },
