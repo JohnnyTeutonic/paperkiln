@@ -1,0 +1,19 @@
+{
+  "status": "FRESH_PRELAUNCH_INSPECT_PASS_NO_DISPATCH",
+  "protocol_sha256": "6a233561c2eb490cf7041a8005cb70a06608b33a23b107aecae62b8f9c90d8ea",
+  "source_hashes": {
+    "chat_judge_campaign_v2.py": "3b1517f32eddc6cb98c9b5d19e4950376e40d1fa80b78fd77f899100fce2c42f",
+    "chat_judge_api.py": "2b5b01c4b68be1d18e30fec85f1ccc2cb490e4142f208f4e1197a3e6da662d87",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+  },
+  "inspection": {
+    "attempts_since_start": 0,
+    "missing_rankings": 5514,
+    "api_actual_spend_usd": 7.793092,
+    "retained_unknown_ceiling_usd": 0.5,
+    "baseline_usd": 20.08558,
+    "gate_reserve_usd": 25.0
+  },
+  "new_model_dispatches": 0,
+  "new_state_exists": false
+}
