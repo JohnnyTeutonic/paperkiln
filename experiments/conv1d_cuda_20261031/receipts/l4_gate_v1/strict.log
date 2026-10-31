@@ -1,0 +1,2 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+{"pass":true,"actual_cuda":true,"devcheck_enabled":true,"cases":120,"dense_binary64":true,"finite_difference":true,"f32_order_bitwise":true,"all_gradient_masks":true,"poisoned_stale_inputs":true,"deferred_outputs":true,"deferred_gradients":true,"device_to_host_backward_fallback":true,"public_autograd_traversal":true,"write_through":true}
