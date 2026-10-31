@@ -1,0 +1,36 @@
+{
+  "pass": true,
+  "scope": "Independent prelaunch review only; no model dispatch, charge disposition, config enable or source edits.",
+  "protocol_sha256": "49223afaee2b0fe746f148da2cf3bed3e04095374fd91a5be244a9eb18522c92",
+  "source_sha256": {
+    "chat_judge_campaign_continuation_v4.py": "742e7c576304efb329a9dbaa37b3634115ed934ad135c8ea0586d2ad6298f93d",
+    "chat_judge_api_diagnostic_v3.py": "8558d9fcb0e8ae561402f0991b3270ee0746cee8ffc46ef0c50ad74dc6dffc6a",
+    "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+  },
+  "watchdog_proposal_sha256": "3737800e4db02465da0c22fc7499fae4b649b4934d1d4dc2f9c2c573fcdc4bc9",
+  "source_api_transport_judge_identical_to_reviewed_v3": true,
+  "actual_readonly_inspect_pass": true,
+  "initial_training_attempts": 520,
+  "initial_valid_rankings": 565,
+  "max_new_attempts": 5475,
+  "missing_rankings_at_review": 5475,
+  "pending_at_review": 0,
+  "api_actual_spend_at_review_usd": 8.398328,
+  "unknown_ceiling_usd": 0.75,
+  "baseline_usd": 20.08558,
+  "cumulative_cap_usd": 200,
+  "heldout_reserve_usd": 25,
+  "per_call_reserve_usd": 0.25,
+  "independently_run_offline_tests": 23,
+  "request_bytes_profile_rubric_binding_unchanged": true,
+  "anchors_verified": [
+    "old HALTED and protocol",
+    "V2 HALTED and protocol",
+    "V3 STOPPED and protocol/outcome",
+    "complete prior cache/ledger prefixes",
+    "latest unknown retention/raw request/error"
+  ],
+  "stop_contract": "STOPPED.full_judging_complete must be inspected; process exit alone is not completion. Every failure stops for review and retains unresolved charges. No automatic HTTP retry.",
+  "limitation": "V3 success does not establish that tracing fixed earlier transient network failures."
+}

@@ -1,0 +1,154 @@
+{
+  "pass": true,
+  "no_dispatch": true,
+  "source_pins_verified": {
+    "chat_judge_campaign_diagnostic_v3.py": "01a67510a0df814a662f5e32098a1aaa2a2779dbf5ed269dbede49177c501d00",
+    "chat_judge_api_diagnostic_v3.py": "8558d9fcb0e8ae561402f0991b3270ee0746cee8ffc46ef0c50ad74dc6dffc6a",
+    "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+  },
+  "protocol_file_sha256": "fb5c0433440609bb47406790a4010f0e8c4707c515bbd832110008e3ea3175fc",
+  "protocol_identity_sha256": "ad9e3085017b8d0b582128e612649adbfbc6811bc3d928aaad26c3f4628a6dfb",
+  "new_settled_rankings": 24,
+  "all_trace_hash_request_reservation_bindings_verified": true,
+  "all24_http200_end_turn_exact_model": true,
+  "all24_durable_http_fence_true": true,
+  "endpoint_counts": [
+    {
+      "dns_candidates": 2,
+      "tcp_attempts": 1,
+      "tcp_connected": 1
+    },
+    {
+      "dns_candidates": 2,
+      "tcp_attempts": 1,
+      "tcp_connected": 1
+    },
+    {
+      "dns_candidates": 2,
+      "tcp_attempts": 1,
+      "tcp_connected": 1
+    },
+    {
+      "dns_candidates": 2,
+      "tcp_attempts": 1,
+      "tcp_connected": 1
+    },
+    {
+      "dns_candidates": 2,
+      "tcp_attempts": 1,
+      "tcp_connected": 1
+    },
+    {
+      "dns_candidates": 2,
+      "tcp_attempts": 1,
+      "tcp_connected": 1
+    },
+    {
+      "dns_candidates": 2,
+      "tcp_attempts": 1,
+      "tcp_connected": 1
+    },
+    {
+      "dns_candidates": 2,
+      "tcp_attempts": 1,
+      "tcp_connected": 1
+    },
+    {
+      "dns_candidates": 2,
+      "tcp_attempts": 1,
+      "tcp_connected": 1
+    },
+    {
+      "dns_candidates": 2,
+      "tcp_attempts": 1,
+      "tcp_connected": 1
+    },
+    {
+      "dns_candidates": 2,
+      "tcp_attempts": 1,
+      "tcp_connected": 1
+    },
+    {
+      "dns_candidates": 2,
+      "tcp_attempts": 1,
+      "tcp_connected": 1
+    },
+    {
+      "dns_candidates": 2,
+      "tcp_attempts": 1,
+      "tcp_connected": 1
+    },
+    {
+      "dns_candidates": 2,
+      "tcp_attempts": 1,
+      "tcp_connected": 1
+    },
+    {
+      "dns_candidates": 2,
+      "tcp_attempts": 1,
+      "tcp_connected": 1
+    },
+    {
+      "dns_candidates": 2,
+      "tcp_attempts": 1,
+      "tcp_connected": 1
+    },
+    {
+      "dns_candidates": 2,
+      "tcp_attempts": 1,
+      "tcp_connected": 1
+    },
+    {
+      "dns_candidates": 2,
+      "tcp_attempts": 1,
+      "tcp_connected": 1
+    },
+    {
+      "dns_candidates": 2,
+      "tcp_attempts": 1,
+      "tcp_connected": 1
+    },
+    {
+      "dns_candidates": 2,
+      "tcp_attempts": 1,
+      "tcp_connected": 1
+    },
+    {
+      "dns_candidates": 2,
+      "tcp_attempts": 1,
+      "tcp_connected": 1
+    },
+    {
+      "dns_candidates": 2,
+      "tcp_attempts": 1,
+      "tcp_connected": 1
+    },
+    {
+      "dns_candidates": 2,
+      "tcp_attempts": 1,
+      "tcp_connected": 1
+    },
+    {
+      "dns_candidates": 2,
+      "tcp_attempts": 1,
+      "tcp_connected": 1
+    }
+  ],
+  "new_actual_cost_usd": 0.369276,
+  "usage": {
+    "input_tokens": 37649,
+    "output_tokens": 10934
+  },
+  "status": {
+    "attempts_since_start": 24,
+    "missing_rankings": 5475,
+    "api_actual_spend_usd": 8.398328,
+    "retained_unknown_ceiling_usd": 0.75,
+    "baseline_usd": 20.08558,
+    "gate_reserve_usd": 25.0
+  },
+  "stop_file_sha256": "5271ea7dc5953998b975ac3d3e81399fd2b98ec3bd6b2d640d4da39f8d255b3f",
+  "pending": 0,
+  "old_HALTs_preserved": true
+}

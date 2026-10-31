@@ -1,0 +1,29 @@
+{
+  "scope": "Previously verified GitHub CI checkpoint; no extra queries for this receipt.",
+  "commit": "8fcc29913ff01b47808e78cd4c518f4e817b5c49",
+  "gtest_run": 41173075928,
+  "passed_jobs": {
+    "Studio research-mode contracts": 124454943054,
+    "Memory Safety (Valgrind)": 124454943195,
+    "Static Analysis": 124454943196,
+    "Build & Test": 124454943210,
+    "Code Coverage": 124456172189
+  },
+  "documentation_pass": true,
+  "benchmark_pass": true,
+  "format_failure": {
+    "path": "include/microtorch/bpe_tokenizer.hpp",
+    "first_reported_lines": [
+      17,
+      33
+    ],
+    "target_job": 124454942953,
+    "baseline_commit": "42823c8191d6f4188ffebf8aa565565d56de9fd2",
+    "baseline_job": 124453940944,
+    "identical_git_blob": "92fbabd7f4a87b61e1f9d6d27e7516ec796c3f7a"
+  },
+  "new_gpt2_cpp_whole_file_format_check": "Both tests/gpt2_precision_gate.cpp and tests/test_gpt2_attention_precision.cpp pass clang-format 18.1.8.",
+  "overall_ci_green": false,
+  "new_failure_identified": false,
+  "source_changes_made": false
+}
