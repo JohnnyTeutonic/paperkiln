@@ -1,0 +1,69 @@
+{
+  "recommendation": "READY_FOR_PARENT_AUTHORIZATION_MODEL_ONLY_CUDA_GATE",
+  "reviewed_utc": "2026-10-31T12:27:22.866681+00:00",
+  "tip": "d1a0467635ea3dd8097a07efb7b1344fee047242",
+  "implementation_commit": "5bf2863becae677a9521ab26f9567bdfaea848d9",
+  "science_commit": "3db619690a0f08051224fa174484a2a22dc1f98a",
+  "cuda_source_commit": "82f3c07c43cf205707d15b218f2ab62bf4a0bafe",
+  "manifest_sha256": "89f0f62b8812789dd9dd2af3ac479e49511ada120183f3188babb1b11edebd66",
+  "archive_sha256": "b8ce1f077410a08d8d454bd556eb90eb66e9adcbcb577f07a018e13c6cb3c18c",
+  "wrapper_sha256": "65ed0930a781a10d429a4cf6e844912b63a7635eeba066fa810b847ba41e99ec",
+  "protocol_sha256": "d2566a5bad9d3489cc5393a15c1e2c197d3b888c327b27051fa9ac81da4c3572",
+  "raw_cpu_fixture_sha256": "9634672eabc8d5af2e39ec99847ebca24e2d92191a3d47d01985553ad4753d3a",
+  "verified_source_file_count": 952,
+  "independent_complete_gradient_tensors": 116,
+  "fresh_CPU_replay": "PASS; equal to preserved complete replay",
+  "factory_runtime": "PASS; default FP32 inference and IR controls",
+  "CPU_require_cuda": "REFUSED as required, no output",
+  "offline_tests": {
+    "reference_and_packet": "388 passed, 1 pytest optimization warning,5.26s",
+    "CLI": "49 passed, 1 pytest optimization warning,.46s"
+  },
+  "binary_sha256": {
+    "mtstudio": "932ed3f01f2109a07c7df0c2b63adf161fc7391973c1e69f324affaeb6ef4d94",
+    "flex_precision_gate": "56a004eb1fed344b30cc7f5a8c5cc94296170d57036e1b71644828f1f8931009",
+    "flex_precision_factory": "d93453c0a9cd0674147685aea1b71866bc0cbda4703bfdae84e9320f58048cf0"
+  },
+  "log_sha256": {
+    "reference_and_packet.log": "2638618ea54c037393a9f4a6276d41716ea783e8dd9ddd4649769e1551baae12",
+    "cli.log": "47d303ac04ecf6589563b16094f93c568a6174fef778b781a8087aee00d38107",
+    "factory.log": "d114764ab91ad116eade4207976f416b9cf3ca7a289d00c1ed3bd536f068a9b0",
+    "cpu_cuda_refusal.log": "08e9fef87037cbdc04940418bf0957b8fa3a8402abc2494ea2174f78f1bb3602"
+  },
+  "blockers": [],
+  "provenance_clarification": "Resolved by signed provenance_addendum; earlier build identities preserved.",
+  "production_findings": [
+    "Per-instance precision only, FP32 default preserved, no operator arithmetic/global GEMM precision edit.",
+    "Training factory alone opts into BF16. LoadedLM saved scoring/export reconstruct FP32 with unchanged inference IR.",
+    "Noncanonical Flex features explicitly refused; tests cover both production parser and model factories."
+  ],
+  "reference_findings": [
+    "Independent full NumPy reverse graph covers all116 tensors at two depths/widths and two precisions with fixed independently regenerated parameters.",
+    "Exact quantized-input GEMMs: QK,PV,dV,dP,dQ,dK; stored FP32 probability/softmax derivative between them. Surrogate, not derivative of rounding.",
+    "Full tensor shape/inventory/finiteness, normalized element and relative norm bounds preserved. Mutations exercise every missing/zero/NaN gradient. FP32 reference finite differences check every tensor."
+  ],
+  "packet_findings": [
+    "All952 source-file and exact archive/upload/wrapper hashes match frozen manifest; bounds unchanged.",
+    "One actualL4 hardware check, CUDA+DEVCHECK and actual resident CUDA sixBF16-GEMM per-layer/head profiler counts required. CPU cannot substitute.",
+    "Immutable nonempty-output refusal,1500s cumulative internal deadline, failure logs/summary/ZIP retained. Parent owns1USD/1hour cap and serial one-attempt registration."
+  ],
+  "limits": [
+    "No actual CUDA execution or local heavy build in review.",
+    "Model-only four tiny cases; no CUDA CLI lifecycle, quality,speed or general architecture adoption proof.",
+    "Historical CPU saved inference/Ember receipts reviewed as evidence, not independently rerun here.",
+    "External watchdog must meter dollars/hour and pin manifest; wrapper does not independently meter spending."
+  ],
+  "no_GPU_launch_no_config_no_heavy_build": true,
+  "provenance_addendum": {
+    "reviewer": "independent cleanroom_review agent",
+    "reviewed_utc": "2026-10-31T12:28:21.304056+00:00",
+    "status": "RESOLVED_FINAL_BINARY_BINDING_VERIFIED",
+    "source_receipts_sha256": {
+      "final_binary_identity.json": "b3a3027540efc23add969a58c95d21e15ead03344910652b6219c6bfca67c230",
+      "cpu_cli_final/lm/replay.json": "b3a64a1c008e1d294208060f57cd902723f7236420e702964c46717b745b2d2f",
+      "cpu_cli_final/sft/replay.json": "35bb91f33ead9a337c5dc18351f07208bc232aec6423ac20b568b0c6e0809b66"
+    },
+    "current_mtstudio_sha256": "932ed3f01f2109a07c7df0c2b63adf161fc7391973c1e69f324affaeb6ef4d94",
+    "statement": "Final binary identity and both final LM/SFT replay receipts bind the actual current binary. Older formatted_harness_build_identity is retained historical evidence. Builder reports the later generic build_identity was overwritten by the factory-only build, so no separate final CLI compile-identity JSON survived; the preserved recipe/logs and final binary/replay hashes establish the stated runtime binding. No new build or frozen-evidence edit performed."
+  }
+}
