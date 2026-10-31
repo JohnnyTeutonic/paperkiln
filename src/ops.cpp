@@ -1524,58 +1524,107 @@ Var conv1d_causal(const Var& x, const Var& w, const Var& bias, size_t seq_len) {
     });
 }
 
-Var selective_scan(const Var& x, const Var& dt, const Var& B, const Var& C, const Var& A, const Var& Dskip,
-                   bool dt_softplus, size_t seq_len) {
+Var selective_scan(const Var& x, const Var& dt, const Var& B, const Var& C, const Var& A,
+                   const Var& Dskip, bool dt_softplus, size_t seq_len) {
     const size_t T = x->data.rows(), D = x->data.cols(), N = A->data.cols();
-    if (dt->data.rows() != T || dt->data.cols() != D) throw std::runtime_error("selective_scan: dt must be x's shape");
-    if (A->data.rows() != D || N == 0) throw std::runtime_error("selective_scan: A must be [cols(x), N]");
+    if (dt->data.rows() != T || dt->data.cols() != D)
+        throw std::runtime_error("selective_scan: dt must be x's shape");
+    if (A->data.rows() != D || N == 0)
+        throw std::runtime_error("selective_scan: A must be [cols(x), N]");
     if (B->data.rows() != T || B->data.cols() != N || C->data.rows() != T || C->data.cols() != N)
         throw std::runtime_error("selective_scan: B and C must be [rows(x), N]");
     if (Dskip && (Dskip->data.rows() != 1 || Dskip->data.cols() != D))
         throw std::runtime_error("selective_scan: Dskip must be [1, cols(x)]");
     const size_t sl = seq_rows(T, seq_len, "selective_scan");
-    for (const Var* v : {&x, &dt, &B, &C, &A}) device::materialize((*v)->data);
-    if (Dskip) device::materialize(Dskip->data);
     // States after every row, per sequence: S[(t + 1) D N] is s after row t,
     // S[0..D N) the zero start (the backward reads s_{t-1} and s_t).
-    auto S = std::make_shared<std::vector<float>>((T + T / sl) * D * N, 0.0f);
-    auto delta = std::make_shared<Matrix>(T, D);
-    Matrix y(T, D);
+    auto S = cached(device::out_matrix((T + T / sl) * D, N));
+    auto delta = cached(device::out_matrix(T, D));
+    Matrix y = device::out_matrix(T, D);
     const size_t DN = D * N;
-    for (size_t r0 = 0, q = 0; r0 < T; r0 += sl, ++q) {
-        float* base = S->data() + (r0 + q) * DN;  // sequence q's sl + 1 states
-        for (size_t t = 0; t < sl; ++t) {
-            const size_t row = r0 + t;
-            const float* sp = base + t * DN;
-            float* sn = base + (t + 1) * DN;
-            for (size_t c = 0; c < D; ++c) {
-                const float dl = dt_softplus ? softplus20(dt->data(row, c)) : dt->data(row, c);
-                (*delta)(row, c) = dl;
-                const float xd = x->data(row, c) * dl;
-                float acc = 0.0f;
-                for (size_t n = 0; n < N; ++n) {
-                    const float a = std::exp(dl * A->data(c, n));
-                    const float s = sp[c * N + n] * a + B->data(row, n) * xd;
-                    sn[c * N + n] = s;
-                    acc = acc + s * C->data(row, n);
+    if (!device::devops::selective_scan_fwd(x->data, dt->data, B->data, C->data, A->data,
+                                            Dskip ? &Dskip->data : nullptr, dt_softplus, sl, y, *S,
+                                            *delta)) {
+        for (const Var* v : {&x, &dt, &B, &C, &A}) {
+            device::materialize((*v)->data);
+            MT_DEVCHECK_HOST_READ((*v)->data, "selective_scan fallback operand");
+        }
+        if (Dskip) {
+            device::materialize(Dskip->data);
+            MT_DEVCHECK_HOST_READ(Dskip->data, "selective_scan fallback skip");
+        }
+        std::fill(S->get_data(), S->get_data() + S->rows() * S->cols(), 0.0f);
+        for (size_t r0 = 0, q = 0; r0 < T; r0 += sl, ++q) {
+            float* base = S->get_data() + (r0 + q) * DN;  // sequence q's sl + 1 states
+            for (size_t t = 0; t < sl; ++t) {
+                const size_t row = r0 + t;
+                const float* sp = base + t * DN;
+                float* sn = base + (t + 1) * DN;
+                for (size_t c = 0; c < D; ++c) {
+                    const float dl = dt_softplus ? softplus20(dt->data(row, c)) : dt->data(row, c);
+                    (*delta)(row, c) = dl;
+                    const float xd = x->data(row, c) * dl;
+                    float acc = 0.0f;
+                    for (size_t n = 0; n < N; ++n) {
+                        const float a = std::exp(dl * A->data(c, n));
+                        const float s = sp[c * N + n] * a + B->data(row, n) * xd;
+                        sn[c * N + n] = s;
+                        acc = acc + s * C->data(row, n);
+                    }
+                    y(row, c) = Dskip ? acc + x->data(row, c) * Dskip->data(0, c) : acc;
                 }
-                y(row, c) = Dskip ? acc + x->data(row, c) * Dskip->data(0, c) : acc;
             }
         }
-    }
+    }  // host fallback
     std::vector<Var> parents = {x, dt, B, C, A};
     if (Dskip) parents.push_back(Dskip);
     return record(std::move(y), parents, [S, delta, sl, dt_softplus](Variable* self) {
-        const Var &x = self->parents[0], &dt = self->parents[1], &B = self->parents[2], &C = self->parents[3],
-                  &A = self->parents[4];
+        const Var &x = self->parents[0], &dt = self->parents[1], &B = self->parents[2],
+                  &C = self->parents[3], &A = self->parents[4];
         const Var* Dk = self->parents.size() > 5 ? &self->parents[5] : nullptr;
-        device::materialize(self->grad);
         const Matrix& dy = self->grad;
+        if (device::get() == device::Device::CUDA && device::device_ops_enabled()) {
+            Matrix dx, ddt, dB, dC, dA, dD;
+            if (x->requires_grad) dx = device::out_matrix(x->data.rows(), x->data.cols());
+            if (dt->requires_grad) ddt = device::out_matrix(dt->data.rows(), dt->data.cols());
+            if (B->requires_grad) dB = device::out_matrix(B->data.rows(), B->data.cols());
+            if (C->requires_grad) dC = device::out_matrix(C->data.rows(), C->data.cols());
+            if (A->requires_grad) dA = device::out_matrix(A->data.rows(), A->data.cols());
+            if (Dk && (*Dk)->requires_grad) dD = device::out_matrix(1, x->data.cols());
+            if (device::devops::selective_scan_bwd(
+                    x->data, dt->data, B->data, C->data, A->data, Dk ? &(*Dk)->data : nullptr, dy,
+                    *S, *delta, dt_softplus, sl, x->requires_grad ? &dx : nullptr,
+                    dt->requires_grad ? &ddt : nullptr, B->requires_grad ? &dB : nullptr,
+                    C->requires_grad ? &dC : nullptr, A->requires_grad ? &dA : nullptr,
+                    Dk && (*Dk)->requires_grad ? &dD : nullptr)) {
+                if (x->requires_grad) x->accumulate(std::move(dx));
+                if (dt->requires_grad) dt->accumulate(std::move(ddt));
+                if (B->requires_grad) B->accumulate(std::move(dB));
+                if (C->requires_grad) C->accumulate(std::move(dC));
+                if (A->requires_grad) A->accumulate(std::move(dA));
+                if (Dk && (*Dk)->requires_grad) (*Dk)->accumulate(std::move(dD));
+                return;
+            }
+        }
+        device::materialize(self->grad);
+        device::materialize(*S);
+        device::materialize(*delta);
+        for (const Var* v : {&x, &dt, &B, &C, &A}) {
+            device::materialize((*v)->data);
+            MT_DEVCHECK_HOST_READ((*v)->data, "selective_scan fallback backward operand");
+        }
+        if (Dk) {
+            device::materialize((*Dk)->data);
+            MT_DEVCHECK_HOST_READ((*Dk)->data, "selective_scan fallback backward skip");
+        }
+        MT_DEVCHECK_HOST_READ(self->grad, "selective_scan fallback gradient");
+        MT_DEVCHECK_HOST_READ(*S, "selective_scan fallback states");
+        MT_DEVCHECK_HOST_READ(*delta, "selective_scan fallback deltas");
         const size_t T = dy.rows(), D = dy.cols(), N = A->data.cols(), DN = D * N;
         Matrix dx(T, D), ddt(T, D), dB(T, N), dC(T, N), dA(D, N), dD(1, D);
         std::vector<float> G(DN);  // d loss / d s_t through s_{t+1}: g_{t+1} * a_{t+1}
         for (size_t r0 = 0, q = 0; r0 < T; r0 += sl, ++q) {
-            const float* base = S->data() + (r0 + q) * DN;
+            const float* base = S->get_data() + (r0 + q) * DN;
             std::fill(G.begin(), G.end(), 0.0f);
             for (size_t t = sl; t-- > 0;) {
                 const size_t row = r0 + t;
@@ -1601,7 +1650,9 @@ Var selective_scan(const Var& x, const Var& dt, const Var& B, const Var& C, cons
                     dx(row, c) = dxd * dl + (Dk ? dyv * (*Dk)->data(0, c) : 0.0f);
                     if (Dk) dD(0, c) += dyv * xv;
                     const float v = dt->data(row, c);
-                    ddt(row, c) = dt_softplus && v <= 20.0f ? ddelta * (1.0f / (1.0f + std::exp(-v))) : ddelta;
+                    ddt(row, c) = dt_softplus && v <= 20.0f
+                                      ? ddelta * (1.0f / (1.0f + std::exp(-v)))
+                                      : ddelta;
                 }
             }
         }

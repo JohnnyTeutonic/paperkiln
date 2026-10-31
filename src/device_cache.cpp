@@ -91,6 +91,11 @@ bool conv1d_causal_fwd(const Matrix&, const Matrix&, const Matrix*, size_t, Matr
 bool conv1d_causal_bwd(const Matrix&, const Matrix&, const Matrix&, size_t, Matrix*, Matrix*, Matrix*) {
     return false;
 }
+bool selective_scan_fwd(const Matrix&, const Matrix&, const Matrix&, const Matrix&, const Matrix&,
+                        const Matrix*, bool, size_t, Matrix&, Matrix&, Matrix&) { return false; }
+bool selective_scan_bwd(const Matrix&, const Matrix&, const Matrix&, const Matrix&, const Matrix&,
+                        const Matrix*, const Matrix&, const Matrix&, const Matrix&, bool, size_t,
+                        Matrix*, Matrix*, Matrix*, Matrix*, Matrix*, Matrix*) { return false; }
 bool add(const Matrix&, const Matrix&, Matrix&) {
     return false;
 }
