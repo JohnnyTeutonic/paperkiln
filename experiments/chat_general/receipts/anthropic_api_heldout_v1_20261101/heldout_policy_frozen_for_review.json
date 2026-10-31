@@ -1,0 +1,85 @@
+{
+  "kind": "PROSPECTIVE_API_HELDOUT_GATE_V1",
+  "status": "FROZEN_FOR_ROOT_REVIEW_BEFORE_DPO_OUTCOMES_NOT_ACTIVATED",
+  "source_sha256": {
+    "chat_judge_api_heldout_v1.py": "cc41814c327fdd347970ad4988620f064f6c9a57d80a33ac20d70caaa3407016",
+    "chat_judge_api_refusal_v5.py": "11cd8c7880356afaef631f6168d02dd75025cd4be58d4c6fc69fddb966ed0dd7",
+    "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0",
+    "side_by_side.py": "0e03195c88b663d271e64f0ac03806031296debe3068ce79adb4869e527882c0",
+    "sample_candidates.py": "666020fdb901568c7ef48d87e08377bb92468070da3ca490aa292d852c13b8a5"
+  },
+  "profile_sha256": "a6bf0769bf5d7688c970df16f53c97efd67750313e59c6d49a8760cefd45bee8",
+  "judge_id": "claude-opus-5-5@anthropic-messages/a6bf0769bf5d7688",
+  "rubric_path": "/home/jonat/pk_api_judge_20261031/tools/posttrain/rubrics/chat_v1.txt",
+  "rubric_sha256": "cb04edd3543d0906aedc3d82a1d829586272da874182775c6d7c9826e28d937a",
+  "registered_rule_source": {
+    "path": "/home/jonat/pk_api_continuation_v7_20261101/experiments/chat_general/PLAN.md",
+    "sha256": "db54814836fe9cb062c5480e8528260ec5aac5b3c8ae1661a1f126a0d36aa578"
+  },
+  "sampling": {
+    "prompt_universe": "First 300 file-order items from original S.prompts validation filters; do not refill skipped items or select based on model outcomes. Preserve all 300 item dispositions.",
+    "requested_prompts": 300,
+    "split": "smol-smoltalk validation",
+    "temperature": 0.7,
+    "seed_rule": "71 + original prompt index",
+    "max_new_tokens": 256,
+    "ctx": 512,
+    "top_k": 0,
+    "top_p": 1.0,
+    "ember_deterministic": true,
+    "TF32": false,
+    "unchanged_skips": [
+      "over_context",
+      "identical",
+      "invalid_utf8"
+    ],
+    "no_resampling_or_replacement": true
+  },
+  "judging": {
+    "orders": "Both unchanged planner orders for every generated eligible request",
+    "max_requests": 300,
+    "max_calls": 600,
+    "batch_calls": 24,
+    "max_usd_stage": 25,
+    "cumulative_cap_usd": 200,
+    "future_gate_reserve_usd": 0,
+    "reserve_per_call_usd": 0.25,
+    "http_retries": 0,
+    "sdk_retries": 0,
+    "stage": "heldout_gate",
+    "cache": "/mnt/c/ml_artifacts/pref_api_heldout_v1/heldout_cache.jsonl",
+    "ledger": "/mnt/c/ml_artifacts/pref_api_heldout_v1/heldout_budget.jsonl",
+    "binding": "Fresh held-out dataset/cache/ledger/profile binding, distinct from training and CLI caches",
+    "unknown_or_failed_ranking": "Stop and preserve raw evidence and reservation; no automatic exclusion, fabricated rank, tie or retry"
+  },
+  "budget_migration": {
+    "legacy_cache": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/experiments/chat_general/judge/judge_cache.jsonl",
+    "prior_api_ledgers": [
+      "/home/jonat/pk_api_judge_20261031/experiments/chat_general/receipts/anthropic_api_20261031/budget.jsonl",
+      "/mnt/c/ml_artifacts/pref_api_20261031/budget.jsonl"
+    ],
+    "rule": "Before held-out binding, independently replay completed training and both prior ledgers. Count actual costs and retained unknown ceilings from each disjoint ledger once, plus original legacy CLI known costs and unknown ceilings. Freeze final hashes in a separately adopted instance manifest. Never add the training ledger contract legacy subtotal a second time. Stage allowance is at most $25 and cumulative costs remain at most $200. No future reserve remains because this is the originally reserved gate."
+  },
+  "verdict": {
+    "source": "Unchanged side_by_side.count and Wilson calculation",
+    "win": "Both orders agree on same model; otherwise an order-disagreement tie",
+    "adopt": "DPO share of decided prompts exceeds 0.5 and Wilson 95% lower bound exceeds 0.5, and all other four frozen gates pass",
+    "incomplete_judging": "Not a gate verdict; halt and retain evidence",
+    "report": "Registered 300-item universe, every skip, eligible requests, both-order coverage, wins/ties/decided denominator, interval and failures"
+  },
+  "allowed_later_instance_bindings": [
+    "Exact policy and reference checkpoint hashes",
+    "Exact vocabulary and model specification hashes",
+    "Exact eligible sampled request file and original 300-item disposition receipt hashes",
+    "Final immutable training and prior ledger hashes and independently replayed cumulative accounting",
+    "Fresh cache/ledger binding and exact source-bound operational runner/admission receipt"
+  ],
+  "scientific_or_profile_changes_after_outcomes": "Forbidden without separately named amendment preserving this frozen policy and original verdict",
+  "remaining_before_dispatch": [
+    "Root independent review and adoption before DPO outcomes",
+    "Actual completed preference training and all registered sample outputs",
+    "Separately source-bound operational runner with fail-stop/memory controls and tests; no launch interface is supplied by this stage core",
+    "Final instance and accounting migration review through root; existing watchdog owns launch"
+  ]
+}

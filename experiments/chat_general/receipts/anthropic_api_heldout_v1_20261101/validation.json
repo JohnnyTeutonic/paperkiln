@@ -1,0 +1,12 @@
+{
+  "provider_calls": 0,
+  "credential_accessor_calls": 0,
+  "config_activation": false,
+  "tests_returncode": 0,
+  "tests_summary": "10 passed in 1.86s",
+  "tests_log_sha256": "11cc3b331395c3d402493de3b4035d385735348dc3f0e22a9159bde5cf1e0eec",
+  "core_sha256": "cc41814c327fdd347970ad4988620f064f6c9a57d80a33ac20d70caaa3407016",
+  "policy_sha256": "5181e14991c7eb326b32f9bd2d35688946f38156e4a9e1ab53375d83b751ed29",
+  "source_freeze_before_dpo_outcomes": true,
+  "no_model_outputs_inspected": true
+}
