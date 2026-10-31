@@ -185,7 +185,7 @@ prompts take the original nonpacked path. An untouched historical scorer ran fir
 a separately rebuilt output-only logit tap then reproduced **every numerical JSON
 field for all 1,536 requests**. Independent verification checked all 89 selected
 raw logit rows and their argmax IDs. The four regenerated GGUF files byte-match the
-original recorded exports. Compiled components are identical between the two
+original recorded exports. All compiled source subtrees are byte-identical between the two
 historical source pins, although this is a new compiler/toolkit/runtime build.
 
 | Reply | New token index (zero based) | Saved ID → CUDA scorer ID | Positive leading gap |
@@ -230,7 +230,7 @@ remain unchanged. This diagnostic does not clear complete history parity, author
 S-full or establish model quality. The first packaging failure is also preserved;
 its only repair added the exact historical test sources required by CMake. Both
 attempts are home, their entries disabled and their pods/volumes deleted according
-to driver records; combined GPU ledger cost is $0.7551. No further paid retry ran.
+to driver records; combined GPU ledger cost is about $0.755. No further paid retry ran.
 
 [Per-position CPU/FP64 evidence](receipts/parity_diagnosis_20261031/),
 [partial scorer audit](receipts/parity_diagnosis_20261031/operational_attempt2/scorer_component_audit.json),
