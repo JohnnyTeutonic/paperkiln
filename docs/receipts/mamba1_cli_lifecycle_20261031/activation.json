@@ -1,0 +1,14 @@
+{
+  "root_authorization": "Exact launch review9da5d133 and shimdd85acbc approved by root; sciencecc95 unchanged; $.75/06:20 deadline; fresh pods0/no owned duplicate.",
+  "utc": "2026-10-31T05:56:23.797936+00:00",
+  "launch_review_sha256": "9da5d13339fa54461a696529bbcf3b82fa2e57859421a6bbcd624ff7bb607f74",
+  "shim_sha256": "dd85acbc70938880d2432b171919a3a4324749448a5edf1ba1e0fec9bff077ea",
+  "entry_index": 117,
+  "entry": {
+    "name": "Paperkiln actual L4 Mamba1 CLI lifecycle gate",
+    "enabled": true,
+    "workdir": "/home/jonat/pk_mamba_composed_20261031",
+    "state_dir": "/home/jonat/pk_mamba1_cli_1031_runner",
+    "command": "python3 /home/jonat/mamba1_cli_gate_stage_v1_20261031/mamba1_cli_guarded_runner.py /home/jonat/pk_mamba_composed_20261031/tools/colab_chat/runner_multi.py --backend runpod --gpu L4 --volume-gb 20 --max-usd 0.75 --max-hours 0.6 --deadline-utc 2026-10-31T06:20:00Z --name pk-mamba1-cli-1031 --commit 8c9e0b24219b6e7068950a429abaafc202ca24da --jobs tools/colab_chat/mamba1_cli_lifecycle_20261031.json --boot-script tools/colab_chat/boot_commands_sparse.sh --state-dir /home/jonat/pk_mamba1_cli_1031_runner --art /mnt/c/ml_artifacts/devcheck/pk-mamba1-cli-1031 --upload source.tgz=/home/jonat/mamba1_cli_gate_stage_v1_20261031/source.tgz --upload mamba1_cli_gate.py=/home/jonat/mamba1_cli_gate_stage_v1_20261031/mamba1_cli_gate.py --upload mamba1_cli_lifecycle.py=/home/jonat/mamba1_cli_gate_stage_v1_20261031/mamba1_cli_lifecycle.py --upload protocol.json=/home/jonat/mamba1_cli_gate_stage_v1_20261031/protocol.json --upload host_pins.json=/home/jonat/mamba1_cli_gate_stage_v1_20261031/host_pins.json --upload inputs.json=/home/jonat/mamba1_cli_gate_stage_v1_20261031/inputs.json"
+  }
+}
