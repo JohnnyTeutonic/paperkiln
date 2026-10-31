@@ -488,7 +488,7 @@ def reconcile(cache, ledger, requests, rsha, version):
 
 
 def run(requests, cache, legacy_cache, rubric, ledger, env_file, max_calls, reserve=.25,
-        cap=200, gate_reserve=25, stage="training_judge", post=None, prior_api_ledgers=()):
+        cap=200, gate_reserve=25, stage="training_judge", post=None, prior_api_ledgers=(), stop_on_failure=False):
     """Serial API execution; profile/campaign compatibility needs prospective review."""
     if max_calls < 0 or stage not in ("probe", "calibration", "training_judge"):
         raise ValueError("invalid call count/stage")
@@ -572,6 +572,8 @@ def run(requests, cache, legacy_cache, rubric, ledger, env_file, max_calls, rese
             if ranking is None:
                 append(str(cache) + ".failures.jsonl", record)
                 failures += 1
+                if stop_on_failure:
+                    break
             else:
                 append(cache, dict(record, ranking=ranking, rationale=why))
                 done.add(cache_key)

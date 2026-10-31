@@ -1,4 +1,13 @@
 # Changelog
+## Watchdog-owned API judging continuation (31 October 2026)
+
+Add a frozen, fail-stop campaign wrapper for the existing training-stage allowance.
+It replays ledger/cache provenance on restart, checkpoints progress in bounded
+batches and leaves HALTED on unknown charges, failed rankings or budget stops.
+No automated recovery, profile tuning or allowance increase. Clean checkpoint
+restarts reuse only verified API rankings. Fifteen offline lifecycle tests join
+the 90 transport/CLI/sidecar tests; no campaign launch is included.
+
 ## Prospective Anthropic judge accounting and calibration (31 October 2026)
 
 Add a separate exact-model Messages API transport with durable cache/ledger binding,
