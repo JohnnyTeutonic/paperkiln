@@ -1,0 +1,53 @@
+{
+  "status": "DOWNSTREAM_INTEGRATION_OFFLINE_REVIEW_READY",
+  "prior_integration_commit": "74e263e3bc514aad9c3a60ea737087ea3c56fc05",
+  "tested_head": "5fe95ddde76b6d94c98d58e9aa5248aa2821ed96",
+  "imported_commits": {
+    "05fd764ef": "689830525",
+    "031919848": "5fe95ddde"
+  },
+  "scope": "V8 explicitly untransmitted continuation plus separately bound DPO atomic builder. No launch, source adoption, credential read, provider call or watchdog activation by this integration.",
+  "validation": {
+    "combined_offline_pytest": {
+      "passed": 505,
+      "seconds": 34.02,
+      "includes": "normal runner, RunPod ownership/admission/deadline/transfer, both checkpoint families, strict finalizer/input verification, V8 continuation/materialization, DPO builder/actual owner validator, heldout journal/gates/assessor, parity device evidence"
+    },
+    "git_diff_check": "PASS",
+    "checkpoint_integration_python_ruff": "previously PASS unchanged",
+    "imported_frozen_source_ruff": {
+      "status": "STYLE_FAILURE_RECORDED_NO_FORMAT_MUTATION",
+      "diagnostics": 136,
+      "codes": {
+        "E721": 3,
+        "E701": 78,
+        "E702": 51,
+        "F401": 2,
+        "E401": 2
+      },
+      "files": [
+        "tools/posttrain/chat_judge_campaign_continuation_v8.py",
+        "tools/posttrain/materialize_preference_v8.py",
+        "tools/posttrain/build_dpo_instance_v7.py",
+        "tools/posttrain/test_chat_judge_campaign_continuation_v8.py",
+        "tools/posttrain/test_materialize_preference_v8.py",
+        "tools/posttrain/test_build_dpo_checkpoint_packet_v1.py"
+      ],
+      "qualification": "These exact imported source bytes carry frozen/prospective provenance. No blanket formatting or active-source rewrite was performed."
+    }
+  },
+  "ember_contract": {
+    "common_builder_commit": "aa50a6112dfd706078e5c7849070f8ca5af620b4",
+    "source_admission_requires_same_default": true,
+    "modern_ce3_substitution": false,
+    "common_builder_files_unchanged_by_import": true
+  },
+  "historical_source_qualification": {
+    "sfull_original_anchors_reverified": 37,
+    "sfull_freeze_copy_byte_identical": true,
+    "sfull_finalizer_executes_isolated_frozen_source": true,
+    "actual_V8_watchdog_source": "Root-owned private frozen cleanroom V8 files; not rebound to this integrated checkout.",
+    "old_frozen_proofs_modified": false
+  },
+  "remaining": "Root independent merge review/public FF after owned profile GPU cleanup; exact DPO source/dataset/weights/vocab/heldout adoption admission before any DPO outcomes."
+}
