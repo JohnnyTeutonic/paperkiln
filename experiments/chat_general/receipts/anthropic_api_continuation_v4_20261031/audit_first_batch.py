@@ -1,0 +1,11 @@
+from pathlib import Path
+import json,sys
+W=Path('/home/jonat/pk_api_continuation_v4_20261031');sys.path.insert(0,str(W/'tools/posttrain'));import chat_judge_campaign_continuation_v4 as c
+f=W/'experiments/chat_general/receipts/anthropic_api_continuation_v4_20261031';p=json.loads((f/'full_campaign_v4_protocol.json').read_text());d=Path(p['state_dir']);events=c.api.rows(d/'campaign_events.jsonl');b=next(x for x in events if x['event']=='batch_return');assert b['result']['calls']==b['result']['rankings_added']==24;assert b['result']['pending_reservations']==b['result']['failed_rankings']==0
+rows=[json.loads(x) for x in Path(p['ledger']).read_bytes()[p['ledger_prefix_bytes']:].splitlines()];settled=[r for r in rows if r['event']=='settle'][:24];assert len(settled)==24;traces=[]
+for r in settled:
+ q=r['receipt'];t=json.loads(Path(q['transport_trace']).read_text());assert c.api.file_hash(q['transport_trace'])==q['transport_trace_sha256'];assert t['binding']=={'reservation_id':r['id'],'request_sha256':q['request_sha256']};assert t['http_write_started'] and q['http_status']==200
+ for n in ('request','response'):assert c.api.file_hash(q[n])==q[n+'_sha256']
+ traces.append({'id':r['id'],'request_sha256':q['request_sha256'],'response_sha256':q['response_sha256'],'trace_sha256':q['transport_trace_sha256'],'http_status':200,'attempts':t['attempts']})
+assert not(d/'HALTED').exists() and not(d/'STOPPED').exists();c.verify_recovery_anchors(p);assert c.source_hashes()==p['source_sha256']
+r={'status':'RUNNING_FIRST_BATCH_VERIFIED_NOT_FULL_COMPLETION','source_sha256':c.source_hashes(),'protocol_file_sha256':c.api.file_hash(f/'full_campaign_v4_protocol.json'),'first_batch_return':b,'first_batch_return_sha256':c.api.digest(b),'first24_traces':traces,'first_batch_settled_usd':sum(x['cost_usd'] for x in settled),'valid_rankings_at_first_batch_end':589,'missing_at_first_batch_end':5451,'zero_pending_at_first_batch_end':True,'worker_continues_later_batches':True,'old_HALTs_V3_STOPPED_preserved':True,'full_judging_complete':False,'interpretation':'Healthy24-call first batch only. No historical network-cause conclusion; future failure must stop/preserve pending without retry.'};(f/'first_batch_runtime.json').write_text(json.dumps(r,indent=2)+'\n');print('first batch24 verified; continuation running')
