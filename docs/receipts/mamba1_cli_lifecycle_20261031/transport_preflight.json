@@ -1,0 +1,11 @@
+{
+  "pass": true,
+  "actual_manager_executed_real_frozen_wrapper": true,
+  "expected_gate_pass": false,
+  "expected_error": "Manifest pin differs",
+  "commands_executed": [],
+  "manager_returncode": 0,
+  "no_network_or_localGPU": true,
+  "relative_jobs": "tools/colab_chat/mamba1_cli_lifecycle_20261031.json",
+  "source_root_handling": "frozenhelper CPUreplay with explicit MAMBA1_CLI_SOURCE_ROOT already passed"
+}
