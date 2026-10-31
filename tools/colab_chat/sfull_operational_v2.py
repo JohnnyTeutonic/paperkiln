@@ -20,7 +20,7 @@ def sha(path):
 def expected_jobs(original, seed, control="/content/sfull_control"):
     jobs = json.loads(json.dumps(original))
     jobs["_comment"] = (
-        "V2 operational input-verification overlay only. Seeds, model, data, training, scoring and historical numerical source unchanged; historic parity qualification retained."
+        "V2 reviewed input verification and checkpoint-I/O amendment: checkpoint/relay interval25, atomic full-state generations. Arithmetic, RNG statements, seeds, model, data, learning schedule and scoring unchanged; new source provenance explicit; historic parity qualification retained."
     )
     for job in jobs["jobs"]:
         if job["name"] == "sfull_inputs":
