@@ -217,6 +217,8 @@ Var gelu(const Var& x) {
     // CPU, unchanged.
     Matrix out = device::out_matrix(x->data.rows(), x->data.cols());
     if (!device::devops::gelu_fwd(x->data, out)) {
+        device::materialize(x->data);
+        MT_DEVCHECK_HOST_READ(x->data, "gelu fallback input");
         out = x->data;
         apply_gelu_one_chunk(out);
     }
@@ -229,7 +231,10 @@ Var gelu(const Var& x) {
         //   d  = cdf(u) + x * 0.5 sech^2(u) * u'
         Matrix dx = device::out_matrix(self->grad.rows(), self->grad.cols());
         if (!device::devops::gelu_bwd(x->data, self->grad, dx)) {
+            device::materialize(x->data);
+            MT_DEVCHECK_HOST_READ(x->data, "gelu fallback saved input");
             device::materialize(self->grad);  // B2.3c: host-read below
+            MT_DEVCHECK_HOST_READ(self->grad, "gelu fallback gradient");
             constexpr float k = 0.7978845608028654f;
             dx = self->grad;
             for (size_t i = 0; i < dx.rows(); ++i) {
@@ -252,6 +257,8 @@ Var softmax_row(const Var& x) {
     // vendored apply_softmax on host.
     Matrix out(x->data.rows(), x->data.cols());
     if (!device::devops::softmax_fwd(x->data, out)) {
+        device::materialize(x->data);
+        MT_DEVCHECK_HOST_READ(x->data, "softmax fallback input");
         out = x->data;
         out.apply_softmax();
     }
@@ -264,7 +271,10 @@ Var softmax_row(const Var& x) {
         const Matrix& dY = self->grad;
         Matrix dX(S.rows(), S.cols());
         if (!device::devops::softmax_bwd(S, dY, dX)) {
+            device::materialize(self->data);
+            MT_DEVCHECK_HOST_READ(self->data, "softmax fallback saved output");
             device::materialize(self->grad);  // B2.3c: host-read below
+            MT_DEVCHECK_HOST_READ(self->grad, "softmax_row fallback gradient");
             for (size_t i = 0; i < S.rows(); ++i) {
                 float dot = 0.0f;
                 for (size_t j = 0; j < S.cols(); ++j) dot += dY(i, j) * S(i, j);
@@ -1046,6 +1056,7 @@ Var silu(const Var& x) {
     Matrix out = device::out_matrix(x->data.rows(), x->data.cols());
     if (!device::devops::silu_fwd(x->data, out)) {
         device::materialize(x->data);
+        MT_DEVCHECK_HOST_READ(x->data, "silu fallback input");
         out = x->data;
         for (size_t i = 0; i < out.rows(); ++i)
             for (size_t j = 0; j < out.cols(); ++j) {
@@ -1059,7 +1070,10 @@ Var silu(const Var& x) {
         // d/dx [x s(x)] = s(x) (1 + x (1 - s(x)))
         Matrix dx = device::out_matrix(self->grad.rows(), self->grad.cols());
         if (!device::devops::silu_bwd(x->data, self->grad, dx)) {
+            device::materialize(x->data);
+            MT_DEVCHECK_HOST_READ(x->data, "silu fallback saved input");
             device::materialize(self->grad);  // B2.3c: host-read below
+            MT_DEVCHECK_HOST_READ(self->grad, "silu fallback gradient");
             dx = self->grad;
             for (size_t i = 0; i < dx.rows(); ++i)
                 for (size_t j = 0; j < dx.cols(); ++j) {
@@ -1113,6 +1127,10 @@ Var rmsnorm(const Var& x, const Var& w) {
     const float eps = kRmsNormEps;
     // B2.1a seam: kernel computes out + rms_inv.
     if (!device::devops::rmsnorm_fwd(x->data, w->data, eps, out, *rms_inv)) {
+        device::materialize(x->data);
+        device::materialize(w->data);
+        MT_DEVCHECK_HOST_READ(x->data, "rmsnorm fallback input");
+        MT_DEVCHECK_HOST_READ(w->data, "rmsnorm fallback weight");
         for (size_t i = 0; i < R; ++i) {
             float rms_sq = 0.0f;
             for (size_t j = 0; j < C; ++j) rms_sq += x->data(i, j) * x->data(i, j);
@@ -1133,6 +1151,12 @@ Var rmsnorm(const Var& x, const Var& w) {
         if (!on_dev) {
             device::materialize(self->grad);  // B2.3c: host-read below
             device::materialize(*rms_inv);
+            device::materialize(w->data);
+            MT_DEVCHECK_HOST_READ(w->data, "rmsnorm fallback backward weight");
+            device::materialize(x->data);
+            MT_DEVCHECK_HOST_READ(x->data, "rmsnorm fallback backward input");
+            MT_DEVCHECK_HOST_READ(*rms_inv, "rmsnorm fallback inverse");
+            MT_DEVCHECK_HOST_READ(self->grad, "rmsnorm fallback gradient");
         }
         if (w->requires_grad) {
             if (!on_dev) {
@@ -1312,6 +1336,9 @@ Var rmsnorm_group(const Var& x, const Var& w, size_t group, float eps) {
     Matrix out = device::out_matrix(R, C);
     if (!device::devops::rmsnorm_group_fwd(x->data, w->data, g, eps, out, *rms_inv)) {
         device::materialize(x->data);
+        device::materialize(w->data);
+        MT_DEVCHECK_HOST_READ(x->data, "rmsnorm_group fallback input");
+        MT_DEVCHECK_HOST_READ(w->data, "rmsnorm_group fallback weight");
         for (size_t i = 0; i < R; ++i)
             for (size_t q = 0; q < G; ++q) {
                 const size_t o = q * g;
@@ -1334,6 +1361,11 @@ Var rmsnorm_group(const Var& x, const Var& w, size_t group, float eps) {
             device::materialize(self->grad);  // B2.3c: host-read below
             device::materialize(*rms_inv);
             device::materialize(x->data);
+            device::materialize(w->data);
+            MT_DEVCHECK_HOST_READ(w->data, "rmsnorm_group fallback backward weight");
+            MT_DEVCHECK_HOST_READ(x->data, "rmsnorm_group fallback backward input");
+            MT_DEVCHECK_HOST_READ(*rms_inv, "rmsnorm_group fallback inverse");
+            MT_DEVCHECK_HOST_READ(self->grad, "rmsnorm_group fallback gradient");
         }
         if (w->requires_grad) {
             if (!on_dev) {
@@ -1799,6 +1831,8 @@ Var sigmoid(const Var& x) {
     // B2.1a seam (highway gates route through here on the flex path).
     Matrix out(x->data.rows(), x->data.cols());
     if (!device::devops::sigmoid_fwd(x->data, out)) {
+        device::materialize(x->data);
+        MT_DEVCHECK_HOST_READ(x->data, "sigmoid fallback input");
         out = x->data;
         for (size_t i = 0; i < out.rows(); ++i)
             for (size_t j = 0; j < out.cols(); ++j)
@@ -1809,7 +1843,10 @@ Var sigmoid(const Var& x) {
         if (!x->requires_grad) return;
         Matrix dx(self->grad.rows(), self->grad.cols());
         if (!device::devops::sigmoid_bwd(self->data, self->grad, dx)) {
+            device::materialize(self->data);
+            MT_DEVCHECK_HOST_READ(self->data, "sigmoid fallback saved output");
             device::materialize(self->grad);  // B2.3c: host-read below
+            MT_DEVCHECK_HOST_READ(self->grad, "sigmoid fallback gradient");
             dx = self->grad;
             for (size_t i = 0; i < dx.rows(); ++i)
                 for (size_t j = 0; j < dx.cols(); ++j) {

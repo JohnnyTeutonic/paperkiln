@@ -490,3 +490,8 @@ if(WIN32)
 endif()
 add_test(NAME studio_grpo_materialization COMMAND test_studio_grpo_materialization)
 set_tests_properties(studio_grpo_materialization PROPERTIES TIMEOUT 120)
+
+add_executable(test_fallback_materialization tests/test_fallback_materialization.cpp)
+target_link_libraries(test_fallback_materialization PRIVATE microtorch)
+add_test(NAME fallback_materialization COMMAND test_fallback_materialization)
+set_tests_properties(fallback_materialization PROPERTIES TIMEOUT 120)
