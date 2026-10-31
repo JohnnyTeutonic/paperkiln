@@ -1031,3 +1031,13 @@ numerics and generic-expression refusals are unchanged.
 ## 31 October 2026: standalone fetch 0.1.1 published
 
 Published the previously prepared wheel and source archive to PyPI. Provider SHA-256 digests match the frozen release receipt. Publication evidence: `docs/receipts/fetch_release_011_publication_20261031.json`.
+
+## 31 October 2026: conditional activation and RMSNorm fallback coherence
+
+Switching device operations off while cached tensors remained device-fresh could
+make activation and normalisation host fallbacks read stale data. Materialize the
+required saved inputs, outputs and parameters before those host loops. Actual L4
+checks reproduce 13 original numerical failures, preserve three coherent controls
+and pass all 16 fixed forward/backward references. Independent landed-log replay
+and all 58 combined CPU CTests pass. This is the bounded conditional fallback
+subset, not an exhaustive host-loop audit. Evidence: `docs/receipts/host_fallback_cuda_20261031/`.

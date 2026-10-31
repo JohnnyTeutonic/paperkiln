@@ -119,10 +119,12 @@ that cannot fail the build.
     this list: both original numerical failures and fixed references pass actual
     L4 NoGrad/deferred-window checks
     (`experiments/grpo_host_reads_20261031/receipts/l4_gate_v1/`).
-    Remaining conditional saved-input/computed-parameter fallback cases are
-    inventoried in `docs/receipts/host_read_followup_20261031/`; GELU/SiLU,
-    softmax/sigmoid and RMSNorm/group cases still need device reproductions.
-    That bounded source audit is not a runtime pass or an exhaustive audit.
+    The identified GELU/SiLU, softmax/sigmoid and RMSNorm/group conditional
+    fallback subset is complete: actual L4 CUDA+DEVCHECK reproduces 13 old
+    numerical failures, retains three coherent controls, and passes all 16
+    fixed forward/backward references (`docs/receipts/host_fallback_cuda_20261031/`).
+    Broader unreviewed host loops and historical runtime applicability remain;
+    the completed bounded subsets do not establish an exhaustive audit.
     The audited non-WIP boundaries are wired and
     pass actual L4 CUDA+DEVCHECK integration (`docs/receipts/devcheck_host_read_cuda_20261030/`);
     those completed guards leave this list.
