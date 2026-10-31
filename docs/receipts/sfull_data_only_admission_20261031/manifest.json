@@ -1,0 +1,52 @@
+{
+  "kind": "SFULL_DATA_ONLY_REVIEWED_CONTROLLER_V1",
+  "controller_base": "d95664546b12535735024c9c244693627cf9bbae",
+  "controller_root": "/home/jonat/pk_sfull_data_controller_20261031",
+  "remote_commit": "f616a0f85447f95f67d0f9bdf6dfef513dc632a3",
+  "source_sha256": {
+    "tools/colab_chat/runner_multi.py": "2ec1a48f1ea38acdbc2d2503d104390b7017bba3d52f2de2a8a6bf151b2091a2",
+    "tools/colab_chat/runpod_api.py": "e0812f37b743e7c60a20c18a9b97b63b5a2fe692541ec3a6442bb361e5065e3b",
+    "tools/colab_chat/runpod_transport.py": "4e9e99b1642f1e0b88edc6a8180fadef91cf0bd73749898e541429cb1ae70690",
+    "tools/colab_chat/runpod_prelude.sh": "2342a73c51702814676636fe60c30419921edead0ce4edff68485bff9006fe71",
+    "tools/colab_chat/sfull_data_only_controller_20261031.py": "8c582ebba3f752567fff98dd9587f75fd37a055d7bd9cab75ca725c7dea3dbe7",
+    "tools/colab_chat/boot_sfull_data_only_20261031.sh": "35eb033a795996c8d6a08e6cf7b2c4dd999667cf3da09f97edb7e18cd7718437",
+    "tools/colab_chat/sfull_data_only_finish_20261031.py": "ab53d5300c94cef7111a88267712282868e33d66d0259c945dc69a68e8e7f2e8",
+    "tools/colab_chat/sfull_data_only_jobs_20261031.json": "d08028cf1ab99c20013812375495289e024f980cfc04ff62a3207003eb482c38",
+    "tools/colab_chat/test_sfull_data_only_finish_20261031.py": "2fee91d166ac37a5555a8839032abfe9a980df365c7830dc45f23ee65db43f90"
+  },
+  "vocab_path": "/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf",
+  "state_dir": "/home/jonat/pk_sfull_data_only_1031_runner",
+  "art_root": "/mnt/c/ml_artifacts/sfull_data_only_20261031/ART",
+  "runner_argv": [
+    "--commit",
+    "f616a0f85447f95f67d0f9bdf6dfef513dc632a3",
+    "--jobs",
+    "tools/colab_chat/sfull_data_only_jobs_20261031.json",
+    "--boot-script",
+    "tools/colab_chat/boot_sfull_data_only_20261031.sh",
+    "--backend",
+    "runpod",
+    "--gpu",
+    "L4",
+    "--cloud",
+    "SECURE",
+    "--volume-gb",
+    "50",
+    "--max-hours",
+    "1.25",
+    "--max-usd",
+    "1.25",
+    "--name",
+    "pk-sfull-data-1031",
+    "--art",
+    "/mnt/c/ml_artifacts/sfull_data_only_20261031/ART",
+    "--state-dir",
+    "/home/jonat/pk_sfull_data_only_1031_runner",
+    "--upload",
+    "vocab_llama3_bpe.gguf=/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf"
+  ],
+  "required_predecessor_states": [
+    "/home/jonat/pk_ternary_scale_1031_runner/state.json",
+    "/home/jonat/ember_e10_integrated_20261031_runner/state.json"
+  ]
+}
