@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Named DPO-only boot. Dynamic runtime jobs are a separately hash-bound upload.
 set -Eeuo pipefail
-COMMIT=${1:?full commit}; LOCAL_JOBS=${2:?local runtime jobs marker}
-[[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]]
-[[ "$LOCAL_JOBS" =~ ^[A-Za-z0-9_./-]+[.]json$ ]]
+COMMIT=${1:-}; LOCAL_JOBS=${2:-}
 mkdir -p /content/chat/upload
 exec >> /content/chat/boot.log 2>&1
 trap 'echo "DPO checkpoint boot failed at line $LINENO"; echo BOOT_FAILED > /content/chat/STATUS' ERR
+[[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]]
+[[ "$LOCAL_JOBS" =~ ^[A-Za-z0-9_./-]+[.]json$ ]]
 if [ ! -d /content/pk/.git ]; then
  git init -q /content/pk
  git -C /content/pk remote add origin https://github.com/JohnnyTeutonic/paperkiln.git
