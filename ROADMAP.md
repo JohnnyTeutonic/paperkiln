@@ -155,6 +155,9 @@ that cannot fail the build.
   retain O(T*D*N) scratch. Causal convolution is also complete (120 actual L4 cases in
   `experiments/conv1d_cuda_20261031/receipts/l4_gate_v1/`). These are operation-level
   correctness results, not full Mamba1 training quality or throughput claims.
+  Two tiny composed Mamba1 CPU training/save/reload/export cases also pass independent
+  NumPy/Ember full-logit and argmax checks (`docs/receipts/mamba1_composed_20261031/`);
+  the all-parameter composed backward reference and actual CUDA model gate remain open.
 - **int4/NF4 quantisation.**
 - **HF export for modified flex flavours and unmapped GPT2 variants; quantised GGUFs outside the llama family.** Strictly plain GPT2- and Llama-flavour Flex now have verified HF mappings for separate or explicitly tied token/output heads (arbitrary depth/MLP width); those completed subsets leave this list. Actual saved/reloaded Transformers CPU parity is recorded in docs/receipts/hf_tied_flex_20261031/. Plain GPT2 Flex additionally supports explicitly recorded exact-erf GELU (HF gelu), tied or untied, with evidence in docs/receipts/hf_exact_gelu_20261031/. Plain GPT2 Flex ReLU also passes finite-execution HF CPU parity for tied/untied heads, with documented NaN/negative-zero differences (docs/receipts/hf_relu_flex_20261031/). Other modified flavours remain open. Every mtstudio family now exports F32 GGUF with its IR
   (`include/microtorch/ir.hpp`, Families): gpt2 and flex with the GPT-2

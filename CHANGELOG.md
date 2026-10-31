@@ -1097,3 +1097,12 @@ subset, not an exhaustive host-loop audit. Evidence: `docs/receipts/host_fallbac
   inventories and four actual CLI runs verify the correction. Tied Llama counts are unchanged.
 - Zero or negative evaluation/checkpoint intervals now fail during spec parsing, avoiding
   a reproduced modulo-by-zero crash after training starts. Eleven focused CLI tests pass.
+
+## 31 October 2026: composed Mamba1 CPU baseline
+
+Two tiny one/two-layer Mamba1 CLI cases pass three CPU training steps, save/reload,
+byte-identical FP32 export, and independent NumPy/Ember full-logit and argmax checks.
+Parent replay verifies all raw artifact hashes and both inference modes. A source audit
+identifies guarded host exp/scale in A() and CLI parameter-close transfers as residency
+breaks. This is CPU composition evidence; full composed backward and CUDA validation,
+parallel-time scan and whole-model speed remain open.

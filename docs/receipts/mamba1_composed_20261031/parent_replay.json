@@ -1,0 +1,25 @@
+{
+  "pass": true,
+  "raw_hash_inventory_verified": 56,
+  "independent_parent_numpy_replay": [
+    {
+      "depth": 1,
+      "errors": {
+        "source": 1.4901161193847656e-08,
+        "prefill": 7.450580596923828e-09,
+        "decode": 7.450580596923828e-09
+      },
+      "rows": 10
+    },
+    {
+      "depth": 2,
+      "errors": {
+        "source": 1.7695128917694092e-08,
+        "prefill": 1.4901161193847656e-08,
+        "decode": 1.4901161193847656e-08
+      },
+      "rows": 10
+    }
+  ],
+  "scope": "CPU composition only; no composed CUDA or complete independent backward claim"
+}
