@@ -1,0 +1,20 @@
+{
+  "root_approval_received_utc": "2026-10-31T05:26:17Z",
+  "science_manifest": "40a628bee3c2732360a62b72a6a92aa71eb76cd9182febcae036783fd2540733",
+  "review_sha256": "0bad88f38c799c8c81ca2335ebb1883e204a036fc350e1f67d6428853eff6dc0",
+  "root_independent_checks": "all1395 archive Git blobs, uploads and frozen weights equal CPU proof; science and operational review approved",
+  "enable_conditions": [
+    "GPT2 ff18 pod absent",
+    "NT pod exists",
+    "fresh account pod count below2"
+  ],
+  "caps": {
+    "maximum_usd": 1,
+    "maximum_hours": 0.6,
+    "gate_seconds": 1500,
+    "deadline_utc": "2026-10-31T06:25:00Z",
+    "max_account_remote_pods": 2
+  },
+  "launcher": "existing watchdog entry114 only, no manual duplicate",
+  "pinned_launch_review_unchanged": true
+}
