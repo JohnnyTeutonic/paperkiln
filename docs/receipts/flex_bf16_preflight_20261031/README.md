@@ -1,0 +1,1 @@
+Independently reviewed four-case model-only CUDA packet. Actual GPU outcome pending; no CUDA CLI lifecycle, quality, speed or adoption claim. The registered transport job preserves scientific return status and relays failure artifacts without treating them as numeric success.
