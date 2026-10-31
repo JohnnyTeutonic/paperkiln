@@ -1,0 +1,51 @@
+{
+  "status": "PASS_ACTUAL_CPU_LM_SFT_UNINTERRUPTED_VS_HOME_RESTORED",
+  "source_commit": "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1",
+  "binary_sha256": "048c11d87de35a5482f14d2ac1cc645766afcd7c3bed0ef0c81a920f64ae6afa",
+  "publisher_sha256": "4a6b5a85224b19d7dc4a8d402f20231e7dfbdfe31510698c720cc0ec9cc9fdc2",
+  "proof_script_sha256": "050d96c3d00b46fe4c0d8e8a40c2bcc81d3626c0c69f2f07fffb0bcf8367b7f3",
+  "raw_home": "/home/jonat/sfull_v2_resume_continuity_v2_20261101",
+  "results": [
+    {
+      "objective": "lm",
+      "intentional_interruption_returncode": 1,
+      "checkpoint_step": 4,
+      "final_step": 8,
+      "full_model_optimizer_state_bytes_identical": {
+        "model.safetensors": true,
+        "optim.safetensors": true,
+        "state.txt": true
+      },
+      "rng_reconstruction": {
+        "accum": 1,
+        "batch": 2,
+        "draws": 16,
+        "engine": "std::mt19937",
+        "initial_seed": 17000174,
+        "recipe_seed": 17
+      },
+      "checkpoint_manifest_sha256": "f609a1ce712af8b659c225a9b0a9f5e1cb281f68ac321eae895a4d510a9f020f"
+    },
+    {
+      "objective": "sft",
+      "intentional_interruption_returncode": 1,
+      "checkpoint_step": 4,
+      "final_step": 8,
+      "full_model_optimizer_state_bytes_identical": {
+        "model.safetensors": true,
+        "optim.safetensors": true,
+        "state.txt": true
+      },
+      "rng_reconstruction": {
+        "accum": 1,
+        "batch": 2,
+        "draws": 16,
+        "engine": "std::mt19937",
+        "initial_seed": 17000174,
+        "recipe_seed": 17
+      },
+      "checkpoint_manifest_sha256": "4fe8b56156bcae52a2afcd4588f56918f38caf30fc12ba72ad728ea3fd1a8029"
+    }
+  ],
+  "scope": "Tiny actual Llama LM/SFT only; checkpoint2/stop4/final8 engineering fixture. Production25/L4/cadence and performance not validated."
+}
