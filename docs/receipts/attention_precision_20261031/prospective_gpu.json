@@ -1,0 +1,19 @@
+{
+  "source_commit": "64ab8a0e0cb7433dcee8be414ac01a0aa9ee8849",
+  "manifest_sha256": "f03285674bc94ee0e086a31094ec0c8b0ff5db7a968527ebf5e57725c193c5ef",
+  "max_usd": 1,
+  "gate_max_seconds": 1500,
+  "scope": "Explicit C++ fused_attention_precision autograd API. Defaults and CLI/model dispatch unchanged. No model-quality/loss or speed/adoption claim.",
+  "stage": "/home/jonat/attention_precision_gate_stage_v1_20261031",
+  "device": "one NVIDIA L4,CUDA+DEVCHECK,profilecounts prove all six attentionGEMMs precision path",
+  "command": [
+    "python3",
+    "/content/chat/upload/attention_precision_gate.py",
+    "--upload",
+    "/content/chat/upload",
+    "--manifest-sha256",
+    "f03285674bc94ee0e086a31094ec0c8b0ff5db7a968527ebf5e57725c193c5ef",
+    "--out",
+    "{out}"
+  ]
+}
