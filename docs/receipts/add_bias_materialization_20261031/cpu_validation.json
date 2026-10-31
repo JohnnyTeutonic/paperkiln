@@ -1,0 +1,28 @@
+{
+  "status": "PASS_CPU_DEVCHECK_GPU_PENDING",
+  "base_commit": "4c0ba9997",
+  "source_sha256": {
+    "src/ops.cpp": "4d6fe6c7041e02fcc93d1cb29f0be15f8658315f91fc64a1b89f31473956ed85",
+    "tests/test_add_bias_materialization.cpp": "3c3dcb65ce8006ff2721fe3e145550c33448c1be97179945fcd55fc6ccf53383",
+    "CMakeLists.txt": "b406da7371bc32ca8517ab4a543b772e34a6e2b4650c271ffe4b5e81d550ab65"
+  },
+  "baseline_ops_sha256": "e3942b4564d035243be9f8084025222d7f93a01c794a2e40b3ef2e86cde0f42e",
+  "cpu_tests": {
+    "passed": 53,
+    "failed": 0,
+    "seconds": 12.11,
+    "timeout_seconds": 120,
+    "cuda": false,
+    "devcheck": true
+  },
+  "test_binary_sha256": "112d4634943f930eab25e5f6d8952c9f42cda35babf392be9134bd8a629425f2",
+  "scope": [
+    "add_bias materializes the computed bias before reading its host values",
+    "independent binary64 tanh-GELU forward and both gradients, CPU execution",
+    "new strict actual-CUDA test creates a deferred computed bias and poisons stale host storage without changing authoritative device data"
+  ],
+  "limits": [
+    "CPU checks cannot reproduce a device-stale value; actual L4 before/after execution is pending.",
+    "No global auto-materialization policy, GPU speed, released-value or endurance claim."
+  ]
+}

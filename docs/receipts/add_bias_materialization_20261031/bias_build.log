@@ -1,0 +1,144 @@
+[  1%] Built target test_chat_template
+[  2%] Built target bpe_encode
+[ 18%] Built target transformer_core
+[ 19%] Built target llama3_encode
+[ 20%] Built target test_devcheck_disabled
+[ 21%] Building CXX object CMakeFiles/microtorch.dir/src/ops.cpp.o
+[ 22%] Linking CXX static library libmicrotorch.a
+[ 31%] Built target microtorch
+[ 32%] Linking CXX executable test_nn
+[ 32%] Linking CXX executable test_gradcheck
+[ 33%] Built target test_gradcheck
+[ 33%] Built target test_nn
+[ 33%] Linking CXX executable test_resident_parity
+[ 33%] Linking CXX executable test_step_residency
+[ 34%] Built target test_resident_parity
+[ 35%] Built target test_step_residency
+[ 35%] Linking CXX executable bench_b2
+[ 35%] Linking CXX executable test_cuda_ops
+[ 36%] Built target test_cuda_ops
+[ 36%] Built target bench_b2
+[ 36%] Linking CXX executable test_highway
+[ 36%] Linking CXX executable test_deep_swa
+[ 37%] Built target test_highway
+[ 38%] Built target test_deep_swa
+[ 38%] Linking CXX executable test_thirdparty_ops
+[ 39%] Linking CXX executable test_fused_head
+[ 39%] Built target test_fused_head
+[ 40%] Built target test_thirdparty_ops
+[ 40%] Linking CXX executable test_score_batch
+[ 40%] Linking CXX executable test_kimi_linear
+[ 41%] Built target test_kimi_linear
+[ 43%] Built target test_score_batch
+[ 43%] Linking CXX executable test_cerebellum
+[ 44%] Linking CXX executable test_mamba
+[ 45%] Built target test_cerebellum
+[ 45%] Built target test_mamba
+[ 46%] Linking CXX executable test_train_utils
+[ 47%] Linking CXX executable test_gguf_export
+[ 47%] Built target test_train_utils
+[ 47%] Built target test_gguf_export
+[ 49%] Linking CXX executable test_gguf_q4
+[ 49%] Linking CXX executable test_gguf_q8
+[ 49%] Built target test_gguf_q4
+[ 49%] Built target test_gguf_q8
+[ 50%] Linking CXX executable test_attention_blocked
+[ 50%] Linking CXX executable test_device_rope
+[ 51%] Built target test_attention_blocked
+[ 51%] Built target test_device_rope
+[ 52%] Linking CXX executable test_posttrain_losses
+[ 53%] Linking CXX executable test_verifier
+[ 53%] Built target test_verifier
+[ 53%] Built target test_posttrain_losses
+[ 53%] Linking CXX executable test_lora_quant
+[ 53%] Linking CXX executable test_bitlinear
+[ 54%] Built target test_lora_quant
+[ 55%] Built target test_bitlinear
+[ 55%] Linking CXX executable test_llama
+[ 55%] Linking CXX executable test_llama_attnres
+[ 56%] Built target test_llama
+[ 58%] Built target test_llama_attnres
+[ 58%] Linking CXX executable test_recursion
+[ 59%] Linking CXX executable test_mor
+[ 60%] Built target test_recursion
+[ 60%] Built target test_mor
+[ 61%] Linking CXX executable test_pooled_gemm
+[ 61%] Linking CXX executable test_kv_cache
+[ 62%] Built target test_kv_cache
+[ 62%] Built target test_pooled_gemm
+[ 62%] Linking CXX executable test_state_tokens
+[ 63%] Linking CXX executable test_mixed_precision
+[ 63%] Built target test_mixed_precision
+[ 64%] Built target test_state_tokens
+[ 65%] Linking CXX executable test_moe
+[ 66%] Linking CXX executable test_moe_device
+[ 66%] Built target test_moe_device
+[ 66%] Built target test_moe
+[ 66%] Linking CXX executable test_rope_heads
+[ 66%] Linking CXX executable test_batching
+[ 67%] Built target test_rope_heads
+[ 68%] Built target test_batching
+[ 68%] Linking CXX executable test_checkpointing
+[ 69%] Linking CXX executable test_muon
+[ 69%] Built target test_muon
+[ 70%] Built target test_checkpointing
+[ 70%] Linking CXX executable test_inplace
+[ 72%] Linking CXX executable test_flex
+[ 73%] Built target test_inplace
+[ 73%] Built target test_flex
+[ 73%] Linking CXX executable test_shaw_attention
+[ 73%] Linking CXX executable test_gpt2_device
+[ 74%] Built target test_shaw_attention
+[ 74%] Built target test_gpt2_device
+[ 75%] Linking CXX executable test_expr
+[ 75%] Linking CXX executable expr_eval
+[ 76%] Built target expr_eval
+[ 76%] Built target test_expr
+[ 76%] Linking CXX executable test_recurrence_op
+[ 76%] Linking CXX executable ir_eval
+[ 77%] Built target ir_eval
+[ 77%] Built target test_recurrence_op
+[ 77%] Linking CXX executable test_ir_digest
+[ 77%] Linking CXX executable test_swa
+[ 78%] Built target test_ir_digest
+[ 79%] Built target test_swa
+[ 79%] Linking CXX executable test_srd
+[ 79%] Linking CXX executable test_attn_res
+[ 81%] Built target test_attn_res
+[ 81%] Built target test_srd
+[ 81%] Linking CXX executable gpt2_parity
+[ 82%] Linking CXX executable qwen_parity
+[ 82%] Built target qwen_parity
+[ 83%] Built target gpt2_parity
+[ 83%] Linking CXX executable benchmark_attention
+[ 83%] Linking CXX executable benchmark_mamba
+[ 84%] Built target benchmark_mamba
+[ 86%] Built target benchmark_attention
+[ 87%] Linking CXX executable phase3_integration
+[ 87%] Linking CXX executable gguf_roundtrip
+[ 88%] Built target gguf_roundtrip
+[ 88%] Built target phase3_integration
+[ 88%] Linking CXX executable make_timing_gguf
+[ 89%] Linking CXX executable srd_parity
+[ 90%] Built target make_timing_gguf
+[ 90%] Built target srd_parity
+[ 91%] Linking CXX executable srd_needle
+[ 92%] Linking CXX executable posttrain_verify
+[ 92%] Built target posttrain_verify
+[ 92%] Building CXX object CMakeFiles/mtstudio.dir/tools/mtstudio.cpp.o
+[ 92%] Built target srd_needle
+[ 93%] Linking CXX executable test_devcheck_host_read
+[ 93%] Built target test_devcheck_host_read
+[ 94%] Linking CXX executable test_word_tokenizer
+[ 94%] Built target test_word_tokenizer
+[ 94%] Linking CXX executable test_kimi_noncausal
+[ 95%] Built target test_kimi_noncausal
+[ 96%] Linking CXX executable test_evaluation_probes_helpers
+[ 96%] Built target test_evaluation_probes_helpers
+[ 97%] Linking CXX executable test_parity_depth
+[ 97%] Built target test_parity_depth
+[ 98%] Building CXX object CMakeFiles/test_add_bias_materialization.dir/tests/test_add_bias_materialization.cpp.o
+[ 98%] Linking CXX executable test_add_bias_materialization
+[ 98%] Built target test_add_bias_materialization
+[100%] Linking CXX executable mtstudio
+[100%] Built target mtstudio
