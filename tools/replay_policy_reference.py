@@ -87,6 +87,11 @@ def replay(d, variant, case, cuda=False):
         and d.get("upstream") == 1.5,
         "registered recipe",
     )
+    need(
+        all(type(v) in (float, int) for v in d["w"] + d["k"])
+        and all(type(v) is int for v in d["targets"]),
+        "recipe numeric types",
+    )
     logits = [-0.75, 0.125, 0.5, 0.25, -0.375, 1.0]
     ref = [f32(math.log(f32(x))) for x in [0.2, 0.3, 0.5, 0.6, 0.3, 0.1]]
     need(values(d["logits"], [2, 3]) == logits, "logit fixture")
