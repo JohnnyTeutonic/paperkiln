@@ -1,0 +1,44 @@
+{
+ "status": "OPERATIONAL_CONFIGURE_FAILURE_NO_SCIENTIFIC_TEST",
+ "canonical_artifacts": "/mnt/c/ml_artifacts/devcheck/pk-add-bias-1031/add_bias_gate",
+ "raw_report_sha256": "13bb6579d446fcf247c70e5151e74cf949be7598c84e37dc0f153fad2d1ec6e2",
+ "reason": "Subset source archive omitted studio/chat.html required at configure time; normal complete relay and cleanup followed.",
+ "scientific_outcomes": null,
+ "source_restored": true,
+ "logs_independently_verified": {
+  "hardware.log": {
+   "sha256": "4d27402575c0fbfcbc714a6563f4bcc9ea0e3699ea638e7bd89db077eef291de",
+   "bytes": 21
+  },
+  "nvcc.log": {
+   "sha256": "3c71ed984d2ca98770b0cba5c23a849a87209351e105433929c3062fb66d1915",
+   "bytes": 209
+  },
+  "configure.log": {
+   "sha256": "9e4d27a22035dbbeee837e1815304bbd832c25956f5f955c625459b09bbe74d3",
+   "bytes": 2051
+  },
+  "baseline_build.log": {
+   "sha256": "b0b978b79d5085555087a7a95fa550f0019515d6b376f745cc2411d56976a88d",
+   "bytes": 8
+  },
+  "baseline.log": {
+   "sha256": "b0b978b79d5085555087a7a95fa550f0019515d6b376f745cc2411d56976a88d",
+   "bytes": 8
+  },
+  "fixed_build.log": {
+   "sha256": "b0b978b79d5085555087a7a95fa550f0019515d6b376f745cc2411d56976a88d",
+   "bytes": 8
+  },
+  "fixed.log": {
+   "sha256": "b0b978b79d5085555087a7a95fa550f0019515d6b376f745cc2411d56976a88d",
+   "bytes": 8
+  },
+  "parity_export.log": {
+   "sha256": "b0b978b79d5085555087a7a95fa550f0019515d6b376f745cc2411d56976a88d",
+   "bytes": 8
+  }
+ },
+ "ledger_estimate_usd": 0.08274344649406863,
+ "pod_and_volume_deleted": true
+}
