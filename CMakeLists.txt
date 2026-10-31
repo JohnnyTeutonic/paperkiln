@@ -490,3 +490,8 @@ if(WIN32)
 endif()
 add_test(NAME studio_grpo_materialization COMMAND test_studio_grpo_materialization)
 set_tests_properties(studio_grpo_materialization PROPERTIES TIMEOUT 120)
+
+add_executable(test_attention_precision tests/test_attention_precision.cpp)
+target_link_libraries(test_attention_precision PRIVATE microtorch)
+add_test(NAME attention_precision COMMAND test_attention_precision)
+set_tests_properties(attention_precision PROPERTIES TIMEOUT 120)

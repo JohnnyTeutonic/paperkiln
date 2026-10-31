@@ -1,0 +1,29 @@
+{
+  "scope": "Explicit autograd fused-attention precision only; default model dispatch unchanged; CLI/model-loss/performance adoption remain open",
+  "cpu_cases": 44,
+  "independent_numpy_replay": {
+    "pass": true,
+    "cases": 44,
+    "actual_cuda": false,
+    "independent_numpy_replay": true,
+    "worst_normalized_error": 3.797419060236825e-08
+  },
+  "existing_cpu_regression_ctests": 7,
+  "cpu_require_cuda_exit": 2,
+  "source_files": {
+    "src/ops.cpp": "6d11e03a6bb9ddbc3d4ae6f58e1ed7bb9b9a69fd5ec96a8d0e63499954aae1c0",
+    "include/microtorch/ops.hpp": "e6efd5098cbfc3484ee7651d12281ca940dd0a3c089740153b4d4c6f4e37da1a",
+    "tests/test_attention_precision.cpp": "3e6e673735d3f5aaa838fb019b7c6b41a60c66a1ed0b92d67589537239250c39",
+    "tools/replay_attention_precision.py": "2f11f815b343874045891f775cefdb544e61adc3b9e029e261c0fd137023c1b2",
+    "tools/colab_chat/attention_precision_gate.py": "d8166c7a05396efe511013714d8573355d478a6d172c690031167f716edc5a9c"
+  },
+  "binary_sha256": "896061fe4be280a432b688f051ac1af611a03ce63e533b4869431e58266f298d",
+  "receipts": {
+    "cpu_replay.json": "ee49f680144b669274bd78a5cc32dc477333df499f035c97848f05f5a5813e47",
+    "cpu.jsonl": "e19fa049fe7c72cabe801c71f7c76d05ad2fe5de9a606cc5569b5d8bb18ec7b7",
+    "default_candidate.txt": "36bdb787d1dfb14d9b1fc613ffdeb700876e45c7d4378f14d3782f7f5710e4f5",
+    "default_equivalence.json": "e9701305e453f1f0decb0e3532299d0324c685c33c776be5ffc03434356eb249",
+    "default_preserved.txt": "36bdb787d1dfb14d9b1fc613ffdeb700876e45c7d4378f14d3782f7f5710e4f5",
+    "cpu_regressions.log": "018ac9a3e4df0e69428a7bfd316b06d9883d30213e8a4de90b2297a6c71f57ff"
+  }
+}
