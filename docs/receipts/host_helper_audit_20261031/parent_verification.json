@@ -1,0 +1,10 @@
+{
+  "pass": true,
+  "all_receipt_hashes_verified": true,
+  "all_source_hashes_match_frozen_Git_blobs": true,
+  "current_audited_ops_headers_and_controls_unchanged": true,
+  "cuda_authority_code_outside_NT_kernel_region_unchanged": true,
+  "root_read_inplace_and_resident_mutation_contracts": true,
+  "merged_inplace_and_expr_ctests_pass": true,
+  "scope": "listed host helpers only; CPU controls and source inspection, no exhaustive CUDA audit or new correctness fix"
+}

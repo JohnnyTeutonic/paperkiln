@@ -116,7 +116,11 @@ that cannot fail the build.
 
 - **CUDA** (records: `docs/CUDA_PHASE_B2.md`):
   - Finish the host-read boundary audit in ops.cpp/mtstudio and other unreviewed
-    host loops. Completed parity-model export and stale-computed-bias add_bias
+    host loops outside the listed helper audit (`docs/receipts/host_helper_audit_20261031/`).
+    Generic unary/binary host wrappers, selection/reduction/broadcast and supported
+    fresh-result in-place paths have source-bound inspection and CPU controls; this
+    does not extend their mutation contracts or establish exhaustive CUDA coverage.
+    Completed parity-model export and stale-computed-bias add_bias
     subsets pass actual L4 CUDA+DEVCHECK checks, including the unpatched numerical
     failure and fixed forward/backward reference (`docs/receipts/add_bias_cuda_20261031/`),
     and leave this list. The isolated LayerNorm host-fallback subset is also
