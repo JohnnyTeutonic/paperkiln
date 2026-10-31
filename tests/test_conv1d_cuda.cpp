@@ -103,7 +103,7 @@ static void run_case(bool gpu,size_t T,size_t C,size_t K,size_t sl,bool bias,int
     // only stale host backing buffers to prove that the CUDA body reads cache.
     auto computed=[&](Var v) {
         if(!gpu)return v;
-        Var q=ops::scale(v,1.0f);
+        Var q=ops::slice_cols(v,0,v->data.cols());
         CHECK(device::host_stale(q->data));
         for(size_t i=0;i<q->data.rows();++i)for(size_t j=0;j<q->data.cols();++j)q->data(i,j)=-7777;
         return q;
