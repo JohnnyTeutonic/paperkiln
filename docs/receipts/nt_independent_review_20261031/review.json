@@ -1,0 +1,27 @@
+{
+  "pass": true,
+  "reviewed_public_commit": "2e82b28ff2fba1b0c2b22a16f1f4d7b139af6740",
+  "frozen_numerical_source_commit": "c1c0539029515cd2718931437ec17a5f939fe1c9",
+  "baseline_commit": "87ccf28cf",
+  "production_source_sha256": "fe1222083a38f6002a8bb96350dd8df41a536e6184d8a6b6503eebc7b6591713",
+  "archive_members_verified": 1481,
+  "all_manifest_source_and_upload_hashes_verified": true,
+  "baseline_fixture_exact_git_blob": true,
+  "production_source_matches_frozen_and_whole_nvcc_receipt": true,
+  "raw_archive_and_manifest_hashes_verified": true,
+  "review_findings": [
+    "Only NT (TB&&!TA) changes B shared tile width and cooperative load; NN/TN/TT preserve original code paths. Both assign and accumulated kernels preserve FMA order and initialization.",
+    "NT cooperative write Bs[tx][ty]=B[(blockN+ty)*K+(tileK+tx)] is read as Bs[k][tx], exactly B[(blockN+tx)*K+(tileK+k)]; edge predicate zero-fills the same logical elements.",
+    "Standalone harness includes exact extracted production kernel region, baseline region differs only by renamed symbols. No counters or instrumentation modify either timed kernel; both use identical launch helper, three warmups, ten timed repetitions and seven alternating pairs.",
+    "Independent Python -O replay verifies all96raw cases and unchanged normalized3e-5bound, including all4flags/8shapes/3assign-existingC-splitK modes, old/candidate exactbits and full NumPy arrays.",
+    "V1 TN regression remains preserved and rejected. V2 is explicitly versioned and freezes narrower NT-only branch plus prospective engineering acceptance. No quiet correctness weakening or general model-throughput claim found."
+  ],
+  "limitations": [
+    "Timing is one actual L4 at256cubed with7matched pairs; an engineering adoption threshold, not an inferential study or whole-model benchmark.",
+    "Full production translation-unit compile is compile-only evidence, while actual-device harness covers the exact extracted kernels; neither establishes whole-model speedup.",
+    "No new paid or local GPU execution in this independent review."
+  ],
+  "negative_v1_receipt": "../gemm_transpose_cuda_20261031/",
+  "paid_calls": 0,
+  "local_gpu_calls": 0
+}
