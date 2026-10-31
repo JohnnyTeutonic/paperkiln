@@ -1,0 +1,56 @@
+{
+  "status": "ERROR",
+  "scope": "New source-bound reconstruction; not recovered historical logits",
+  "commands": [
+    {
+      "name": "tokenizer_dependency",
+      "argv": [
+        "/usr/bin/python3",
+        "-m",
+        "pip",
+        "install",
+        "tokenizers==0.23.3"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "hardware",
+      "argv": [
+        "nvidia-smi",
+        "--query-gpu=name,uuid,driver_version",
+        "--format=csv,noheader"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "configure",
+      "argv": [
+        "cmake",
+        "-S",
+        "/content/hs1_source",
+        "-B",
+        "/content/hs1_build",
+        "-DCMAKE_BUILD_TYPE=Release",
+        "-DMICROTORCH_CUDA=ON",
+        "-DCUDA_ENABLED=ON",
+        "-DCMAKE_CUDA_ARCHITECTURES=89"
+      ],
+      "returncode": 1
+    }
+  ],
+  "models": {},
+  "errors": [
+    "configure failed"
+  ],
+  "input_manifest_sha256": "21365c44511f3b96c4ef42d56dbf9e77b17d173584fdaf90f6fb8a753d7e4f3b",
+  "spec_delta_path_only_verified": true,
+  "exact_historical_chunk_reconstruction_verified": true,
+  "original_source_restored": true,
+  "files_sha256": {
+    "configure.log": "c2253b81788fd0fa22e53947b0ca681ef9d17b8a69e905a83d06d459c1394587",
+    "hardware.log": "788a9a15f147d0fc87af36a0745760033bc3bb418cb5b3f539790c765be95075",
+    "tokenizer_dependency.log": "6a3af2fc9c712866560278c77edae2ad7d648ae17e483521edd02f1178f6ae17",
+    "diagnostic_source.cpp": "c106d5465492f2ab81522cf2898e28df9a6959cf223d6081e8ec4231938185ab",
+    "input_manifest.json": "21365c44511f3b96c4ef42d56dbf9e77b17d173584fdaf90f6fb8a753d7e4f3b"
+  }
+}

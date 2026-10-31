@@ -1,0 +1,21 @@
+from pathlib import Path
+import tarfile,subprocess,io,json,hashlib,shutil
+base=Path('/home/jonat/hs1_parity_diagnosis_20261031');repo=Path('/home/jonat/pk_hs1_parity_diagnosis_20261031'); old=base/'stage';new=base/'stage_v2';new.mkdir(exist_ok=True)
+for p in old.iterdir():
+ if p.name not in ('paperkiln_3dc818b2.tar','hs1_inputs.json'): shutil.copyfile(p,new/p.name)
+raw=subprocess.check_output(['git','-C',str(repo),'archive','3dc818b2476b0957b1337b4c9af22474b76350b5','tests'])
+with tarfile.open(old/'paperkiln_3dc818b2.tar') as a,tarfile.open(fileobj=io.BytesIO(raw)) as b,tarfile.open(new/'paperkiln_3dc818b2.tar','w') as out:
+ for source in (a,b):
+  for m in source.getmembers():out.addfile(m,source.extractfile(m) if m.isfile() else None)
+inventory={}
+with tarfile.open(new/'paperkiln_3dc818b2.tar') as a:
+ for m in a.getmembers():
+  if not(m.isfile() or m.isdir()) or m.name.startswith('/') or '..' in Path(m.name).parts:raise ValueError(m.name)
+  if m.isfile():
+   data=a.extractfile(m).read();canonical=subprocess.check_output(['git','-C',str(repo),'show','3dc818b2476b0957b1337b4c9af22474b76350b5:'+m.name]);assert data==canonical,m.name
+   inventory[m.name]=hashlib.sha256(data).hexdigest()
+ a.extractall(base/'source_check_v2')
+sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+m=json.loads((old/'hs1_inputs.json').read_text());m['source_archive_sha256']=sha(new/'paperkiln_3dc818b2.tar');m['files']['paperkiln_3dc818b2.tar']=m['source_archive_sha256'];(new/'hs1_inputs.json').write_text(json.dumps(m,indent=2)+'\n')
+r={'status':'PACKAGING_REPAIR_PENDING_PREFLIGHT','source':'3dc818b2476b0957b1337b4c9af22474b76350b5','original_manifest_sha256':sha(old/'hs1_inputs.json'),'new_manifest_sha256':sha(new/'hs1_inputs.json'),'old_archive_sha256':sha(old/'paperkiln_3dc818b2.tar'),'new_archive_sha256':sha(new/'paperkiln_3dc818b2.tar'),'archive_inventory':inventory,'added_paths':sorted(p for p in inventory if p.startswith('tests/')),'unchanged_scientific_files':True,'wrapper_sha256':sha(new/'hs1_parity_reconstruction_vm.py')}
+(base/'operational_repair_v2.json').write_text(json.dumps(r,indent=2)+'\n');print({k:v for k,v in r.items() if k not in ('archive_inventory','added_paths')});print('added',len(r['added_paths']),'allfiles',len(inventory))
