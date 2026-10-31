@@ -1,0 +1,37 @@
+{
+  "created_utc": "2026-10-31T02:12:19.513730+00:00",
+  "source_commit": "1ae3472e9fbd247cfb15ae60ca1899fc95ea0a9a",
+  "job_commit": "a10f7de7fd5f23d94ba5b3c8cd764acf25a630ca",
+  "proposal_sha256": "c5ea09b65dfe821d265576f43b19174e90e1c155e1a98e3adedf83264dbd503b",
+  "staged_files": {
+    "conv1d_gate_vm_v1.py": {
+      "bytes": 7936,
+      "sha256": "4ba21e86d11fb79b32183cd11eae0d342b1171d795af6f9807d98945da4614a0"
+    },
+    "conv1d_inputs.json": {
+      "bytes": 272,
+      "sha256": "f9f71d2c0db2219da19188c6f62dd93dcc221ebb6b6ff48b0839f1ac406175b2"
+    },
+    "conv1d_source.tgz": {
+      "bytes": 6731433,
+      "sha256": "d2d27b08d2e2886a93c8a027024247a4d6a72120868dc90ea7f026933421e644"
+    }
+  },
+  "method": "existing Colab driver watchdog scheduled task, dedicated RunPod command job",
+  "bias_cleanup_verified_before_enable": true,
+  "own_watchdog_entry": "Paperkiln actual L4 ordered causal convolution gate",
+  "own_state_directory": "/home/jonat/pk_conv1d_1031_runner",
+  "artifact_directory": "/mnt/c/ml_artifacts/devcheck/pk-conv1d-1031",
+  "owned_pod_id": "75dqn756vk5djg",
+  "owned_volume_id": "fqiwwlwo5e",
+  "maximum_usd": 1,
+  "maximum_hours": 0.75,
+  "absolute_deadline_utc": "2026-10-31T03:00:00Z",
+  "scientific_pass": true,
+  "cleanup_complete": true,
+  "automatic_scientific_retry_authorized": false,
+  "watchdog_enabled": false,
+  "scientific_receipt": "gate_summary.json",
+  "offline_replay": "replay.json",
+  "cleanup_receipt": "cleanup.json"
+}

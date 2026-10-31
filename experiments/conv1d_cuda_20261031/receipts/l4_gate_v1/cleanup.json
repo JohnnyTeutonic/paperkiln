@@ -1,0 +1,44 @@
+{
+  "campaign_home": true,
+  "all_outputs_home": true,
+  "pod": null,
+  "volume": null,
+  "provider_check": {
+    "owned_pod_absent_from_provider": true,
+    "owned_volume_absent_from_provider": true,
+    "audit": "read-only provider listing; no resources mutated"
+  },
+  "own_watchdog_disabled": true,
+  "ledger_usd_estimate": 0.07765982003086878,
+  "ledger": {
+    "pods": [
+      {
+        "id": "75dqn756vk5djg",
+        "name": "pk-conv1d-1031",
+        "gpu": "L4",
+        "usd_per_hr": 0.59,
+        "dc": "EU-RO-1",
+        "volume": "fqiwwlwo5e",
+        "start": 1793412716.9778347,
+        "stop": 1793413189.2657673,
+        "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+        "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+        "stopped_by": "runner"
+      }
+    ],
+    "volumes": [
+      {
+        "id": "fqiwwlwo5e",
+        "dc": "EU-RO-1",
+        "gb": 20,
+        "created": 1793412714.1828399,
+        "name": "pk-conv1d-1031-vol",
+        "deleted": 1793413190.1397948
+      }
+    ]
+  },
+  "launches": 1,
+  "retry_count": 0,
+  "source_numerical_changes_after_frozen_gate": false,
+  "transport_proof": "transport.log; normal HOME followed by owned pod termination and volume deletion"
+}

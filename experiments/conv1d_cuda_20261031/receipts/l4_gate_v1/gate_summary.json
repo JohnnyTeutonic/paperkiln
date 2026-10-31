@@ -1,0 +1,143 @@
+{
+  "pass": true,
+  "source_commit": "1ae3472e9fbd247cfb15ae60ca1899fc95ea0a9a",
+  "scope": "ordered conv1d_causal CUDA seam only",
+  "commands": [
+    {
+      "name": "hardware",
+      "argv": [
+        "nvidia-smi",
+        "--query-gpu=name,driver_version,uuid,memory.total",
+        "--format=csv,noheader"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "nvcc",
+      "argv": [
+        "nvcc",
+        "--version"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "configure",
+      "argv": [
+        "cmake",
+        "-S",
+        "/content/conv1d_source",
+        "-B",
+        "/content/conv1d_build",
+        "-DCMAKE_BUILD_TYPE=Release",
+        "-DMICROTORCH_CUDA=ON",
+        "-DMICROTORCH_DEVCHECK=ON",
+        "-DMICROTORCH_BUILD_PYTHON=OFF",
+        "-DCMAKE_CUDA_ARCHITECTURES=89"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "build",
+      "argv": [
+        "cmake",
+        "--build",
+        "/content/conv1d_build",
+        "--target",
+        "test_conv1d_cuda",
+        "test_thirdparty_ops",
+        "--parallel",
+        "4"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "strict",
+      "argv": [
+        "/content/conv1d_build/test_conv1d_cuda",
+        "--require-cuda"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "thirdparty",
+      "argv": [
+        "/content/conv1d_build/test_thirdparty_ops"
+      ],
+      "returncode": 0
+    }
+  ],
+  "errors": [],
+  "selective_scan_device_claim": false,
+  "speedup_claim": false,
+  "inputs": {
+    "source_commit": "1ae3472e9fbd247cfb15ae60ca1899fc95ea0a9a",
+    "files": {
+      "conv1d_source.tgz": "d2d27b08d2e2886a93c8a027024247a4d6a72120868dc90ea7f026933421e644",
+      "conv1d_gate_vm_v1.py": "4ba21e86d11fb79b32183cd11eae0d342b1171d795af6f9807d98945da4614a0"
+    }
+  },
+  "source_sha256": {
+    "CMakeLists.txt": "6b4bf87dc7ef3691a7e2487eeb1420eb8a286ec08e5dd2f25fdadfefa88aa455",
+    "include/microtorch/device_cache.hpp": "e92273a45e095a0d60b65b4ce50f2346a6fa54101ed79071709a8aeac54b70e6",
+    "include/microtorch/ops.hpp": "f48cad0682eff17302f5dfc9b274f9ef042207a52257b0fe3257a0f5ccaacd87",
+    "src/cuda_ops.cu": "9559249aae0f7698cb5ccb98acf1e030437e94bb19e3296eeca7709e9c4b89d7",
+    "src/conv1d_kernels.cuh": "056f3c40e0ed9558216156ea37c56a997cbe17392d22ef6e72a6d16f0738754e",
+    "src/device_cache.cpp": "ddbadf767defdac314553b0256ef5e3a80481bce293225dc5497040843106b4b",
+    "src/ops.cpp": "c11303411bcf217702635a06d6047db6e1c65779dad917da628ebbe28c9ac3f9",
+    "tests/test_conv1d_cuda.cpp": "9002d77bcdeba5e702b409515bb3019978733caa5f039b7d7d3f054921993833",
+    "tests/test_thirdparty_ops.cpp": "70944525d77fb52d1fd06230c3f7321b2d55eb88847619757822285e010fc2c2",
+    "studio/chat.html": "bb9d2be154e274436d28f4e7fb758815ec3031071d5700a5d653659517abd4dc"
+  },
+  "binary_sha256": {
+    "test_conv1d_cuda": "3fbf1aec8a438e4c0aa827b171254b35bff68aaa7c30c04351cd946efc9e7401",
+    "test_thirdparty_ops": "19064b19d3741e8f7732777f2294da0e3eed19a4ba5541b45484d5b1c087154b"
+  },
+  "strict": {
+    "pass": true,
+    "actual_cuda": true,
+    "devcheck_enabled": true,
+    "cases": 120,
+    "dense_binary64": true,
+    "finite_difference": true,
+    "f32_order_bitwise": true,
+    "all_gradient_masks": true,
+    "poisoned_stale_inputs": true,
+    "deferred_outputs": true,
+    "deferred_gradients": true,
+    "device_to_host_backward_fallback": true,
+    "public_autograd_traversal": true,
+    "write_through": true
+  },
+  "thirdparty": {
+    "pass": true,
+    "cuda_device_selected": true,
+    "mamba_regression": true,
+    "selective_scan_device_claim": false
+  },
+  "logs": {
+    "hardware.log": {
+      "sha256": "6c4ab53df87016e782d290bd70b1d5d998c0139c7a8dc63110a8fc74c2f2d21f",
+      "bytes": 74
+    },
+    "nvcc.log": {
+      "sha256": "3c71ed984d2ca98770b0cba5c23a849a87209351e105433929c3062fb66d1915",
+      "bytes": 209
+    },
+    "configure.log": {
+      "sha256": "b9a4be7c16a053e10e1d29eea61cdfbc274713f02a567bec4abc5715305de79f",
+      "bytes": 1977
+    },
+    "build.log": {
+      "sha256": "a2602e53f84af0d058aec39777afe99ea6373cde44aa399966dd5c53df79dde4",
+      "bytes": 24067
+    },
+    "strict.log": {
+      "sha256": "095a4766cfab7cff4ec336fdedbb339f2f26c1efd9a2fac04dbbe34e65422466",
+      "bytes": 394
+    },
+    "thirdparty.log": {
+      "sha256": "855827372cd640a5023913e0b22a16a3d4d9dbfd382097b5bac99640e270d0cb",
+      "bytes": 1595
+    }
+  }
+}

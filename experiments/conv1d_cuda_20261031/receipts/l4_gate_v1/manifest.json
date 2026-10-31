@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "scientific_pass": true,
+  "files_sha256": {
+    "cleanup.json": "947ec82d20688992dd5ca8cd6b93537c6cfd43b37b23117549332d9e6c08e0c5",
+    "configure.log": "b9a4be7c16a053e10e1d29eea61cdfbc274713f02a567bec4abc5715305de79f",
+    "strict.log": "095a4766cfab7cff4ec336fdedbb339f2f26c1efd9a2fac04dbbe34e65422466",
+    "build.log": "a2602e53f84af0d058aec39777afe99ea6373cde44aa399966dd5c53df79dde4",
+    "nvcc.log": "3c71ed984d2ca98770b0cba5c23a849a87209351e105433929c3062fb66d1915",
+    "launch.json": "7c2283f7187d82e5094d6d2135bd246f4d9cb484dd75b27493bf3d4293179da3",
+    "hardware.log": "6c4ab53df87016e782d290bd70b1d5d998c0139c7a8dc63110a8fc74c2f2d21f",
+    "transport.log": "6b6e353db62c649d6f6004dc09d6200ea0b234f4ca0a7345e6015993f39b934f",
+    "replay.json": "e62101243e26b3bceca1a80e8722c1951d2c4737d4c54c7d9d661589a2802135",
+    "gate_summary.json": "1387fb6ca53d0c54ac00622ca0ff02d3931a571e8e6c065b99666b188ea25b5c",
+    "thirdparty.log": "855827372cd640a5023913e0b22a16a3d4d9dbfd382097b5bac99640e270d0cb"
+  },
+  "scope": "conv1d_causal CUDA seam; no selective_scan device or speedup claim"
+}
