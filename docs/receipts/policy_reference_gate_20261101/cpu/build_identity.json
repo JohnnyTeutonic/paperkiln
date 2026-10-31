@@ -1,0 +1,70 @@
+{
+  "admission_MemAvailable_KiB": 7389040,
+  "compiler_address_space_bytes": 1610612736,
+  "commands": [
+    {
+      "argv": [
+        "c++",
+        "-O0",
+        "-g0",
+        "-DNDEBUG",
+        "-DMICROTORCH_DEVCHECK",
+        "-std=c++17",
+        "-ffp-contract=off",
+        "-fopenmp",
+        "-pthread",
+        "-I/home/jonat/pk_host_reader_audit_20261031/include",
+        "-I/home/jonat/pk_host_reader_audit_20261031/third_party/transformer_cpp/include",
+        "-I/home/jonat/pk_host_reader_audit_20261031/third_party/transformer_cpp/third_party",
+        "-I/home/jonat/pk_publication_build_20261030/_deps/json-src/include",
+        "-DPOLICY_REFERENCE_VARIANT=\"old\"",
+        "/home/jonat/pk_host_reader_audit_20261031/tests/policy_reference_gate.cpp",
+        "/home/jonat/pk_host_reader_audit_20261031/tests/policy_reference_baseline.cpp",
+        "/home/jonat/pk_publication_build_20261030/libmicrotorch.a",
+        "/home/jonat/pk_publication_build_20261030/transformer_cpp/libtransformer_core.a",
+        "-o",
+        "/home/jonat/policy_reference_cpu_build_20261101/policy_reference_old"
+      ],
+      "returncode": 0,
+      "sources": {
+        "tests/policy_reference_gate.cpp": "d7e219a6da752c503c027bfa0fbdd442b2a46ae4363d6f3be93554f41c3d58f1",
+        "tests/policy_reference_baseline.cpp": "a2d5110f21331a1018263e0cda9cb5c5759d59b30930a357cf1fb8359e33288c"
+      },
+      "binary_sha256": "294ee54719877ef2a3bbf3d8b9da8883d87d5ce81cb119022be92948f971169d"
+    },
+    {
+      "argv": [
+        "c++",
+        "-O0",
+        "-g0",
+        "-DNDEBUG",
+        "-DMICROTORCH_DEVCHECK",
+        "-std=c++17",
+        "-ffp-contract=off",
+        "-fopenmp",
+        "-pthread",
+        "-I/home/jonat/pk_host_reader_audit_20261031/include",
+        "-I/home/jonat/pk_host_reader_audit_20261031/third_party/transformer_cpp/include",
+        "-I/home/jonat/pk_host_reader_audit_20261031/third_party/transformer_cpp/third_party",
+        "-I/home/jonat/pk_publication_build_20261030/_deps/json-src/include",
+        "-DPOLICY_REFERENCE_VARIANT=\"fixed\"",
+        "/home/jonat/pk_host_reader_audit_20261031/tests/policy_reference_gate.cpp",
+        "/home/jonat/pk_host_reader_audit_20261031/src/ops.cpp",
+        "/home/jonat/pk_publication_build_20261030/libmicrotorch.a",
+        "/home/jonat/pk_publication_build_20261030/transformer_cpp/libtransformer_core.a",
+        "-o",
+        "/home/jonat/policy_reference_cpu_build_20261101/policy_reference_fixed"
+      ],
+      "returncode": 0,
+      "sources": {
+        "tests/policy_reference_gate.cpp": "d7e219a6da752c503c027bfa0fbdd442b2a46ae4363d6f3be93554f41c3d58f1",
+        "src/ops.cpp": "e5455d13ac8d3b8a1b19bd1eba3d4f2eacc32724738579c7a07e2dba6c36bf2a"
+      },
+      "binary_sha256": "fc9c72a6bfebbf543c4f1487ba80e94d3b8919e186309cda2f6d8a53090d049a"
+    }
+  ],
+  "libraries": {
+    "/home/jonat/pk_publication_build_20261030/libmicrotorch.a": "edfac74ad017bbec43c33c710409fba13ff348962b1bb557f97553794012251a",
+    "/home/jonat/pk_publication_build_20261030/transformer_cpp/libtransformer_core.a": "6ac8350f92ead2633b934e352ade2d9db90563565670822342cd1515da114cc1"
+  }
+}
