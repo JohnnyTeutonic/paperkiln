@@ -108,7 +108,10 @@ that cannot fail the build.
     host loops. Completed parity-model export and stale-computed-bias add_bias
     subsets pass actual L4 CUDA+DEVCHECK checks, including the unpatched numerical
     failure and fixed forward/backward reference (`docs/receipts/add_bias_cuda_20261031/`),
-    and leave this list. The audited non-WIP boundaries are wired and
+    and leave this list. The isolated LayerNorm host-fallback subset is also
+    complete (`docs/receipts/layernorm_coherence_cuda_20261031/`): stale x/gamma/beta
+    forward and stale-gamma backward reproduce original failures and pass after
+    materialization. The audited non-WIP boundaries are wired and
     pass actual L4 CUDA+DEVCHECK integration (`docs/receipts/devcheck_host_read_cuda_20261030/`);
     those completed guards leave this list.
   - Coalesce loads in the transposed GEMM paths.

@@ -657,3 +657,33 @@ host-read audit: existing author work in ops.cpp, mtstudio and parity_model was
 preserved, and other host loops remain unreviewed. The open coverage item stays
 open until those remaining paths are audited. The device evidence for the boundaries
 instrumented here is home and passes; that bounded implementation leaves the roadmap.
+
+
+### LayerNorm fallback coherence (31 October 2026)
+
+Disabling the device-op set changes dispatch but does not flush existing deferred
+values. Consequently, a public graph could produce x, gamma or beta on CUDA,
+disable device ops inside the same open step, then read stale host storage in
+LayerNorm's CPU fallback. GPU forward followed by host backward likewise read
+stale gamma in dX. Matrix access does not materialize values implicitly.
+
+The fallback now materializes x/gamma/beta before forward host pointers, and
+preserves the existing dY/xhat materialization while materializing gamma when dX
+requires it. Debug host-read guards cover these accesses. Arithmetic, allocation
+order and the prior contiguous-pointer optimization remain unchanged.
+
+Four separate actual L4 CUDA+DEVCHECK cells use real full-width device slice
+producers, prove staleness, poison only stale host storage, then disable device
+ops without ending the step. The three original forward cells fail their exact
+registered output assertion; the original backward-gamma cell fails its dX
+assertion after correct GPU forward. All four fixed cells pass independent
+double-reference forward and weighted-loss gradient checks. This is a bounded
+fallback-coherence result, not a whole-model, endurance or performance gate.
+Historical CPU speed measurements remain bound to their original measured
+revision; this added-materialization binary was not retimed.
+
+Raw log hashes, source/binary identities, exact commands and test logs are in
+`docs/receipts/layernorm_coherence_cuda_20261031/validation.json`; cleanup and six
+strict offline tamper checks are in its `cleanup.json`. Replay with
+`python3 tools/colab_chat/audit_layernorm_gate.py --home RAW_HOME --stage STAGE`.
+The normal watchdog fetched every artifact and deleted the owned pod and volume.

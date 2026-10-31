@@ -231,12 +231,18 @@ export and independent Ember/NumPy parity are checked at one and three layers.
 Here Kimi denotes the existing channelwise ELU mixer, not the published KDA
 architecture. [Depth validation](docs/receipts/parity_depth_20261031/cli_validation.json).
 
-On an Intel i9-13905H under WSL2 with one CPU thread, contiguous host LayerNorm
+At measured revision `1b0102709` (integrated as `d960e78bc`), on an Intel
+i9-13905H under WSL2 with one CPU thread, contiguous host LayerNorm
 indexing measured a 3.66x geometric mean speedup over a fixed 16-case operation
 set and 1.279x on a tiny d16, L2, T16 teacher-forced scoring workload (eight ABBA
 blocks). Operation outputs, gradients, SGD updates and score logits remained
 bit-identical. These measurements do not establish general training or GPU speed.
 [Validation and replay evidence](docs/receipts/cpu_layernorm_20261031/validation.json).
+The subsequent LayerNorm fallback coherence fix materializes stale x/gamma/beta
+before host reads, including backward gamma when dX needs it. Four isolated L4
+CUDA+DEVCHECK cases reproduce the original failures and pass after the fix. This
+newer binary has not been retimed; the figures above belong to the measured
+revision. [Coherence evidence](docs/receipts/layernorm_coherence_cuda_20261031/validation.json).
 
 ## Quick start: GPU
 

@@ -1,0 +1,280 @@
+{
+ "pass": true,
+ "scope": "Offline registered four-case source/manifest/log/command/proof replay; no fresh device work",
+ "report_sha256": "53979ce331b4bec31a85a955a589898572ee6979a98eb671f6238d11496c5fad",
+ "manifest_sha256": "2e8ce91a9212cd74328ee15430de5a5846321420510d49e047b39b3ee9401b05",
+ "raw_report": {
+  "pass": true,
+  "scope": "LayerNorm fallback stale x/gamma/beta forward and stale gamma backward",
+  "commands": [
+   {
+    "name": "hardware",
+    "argv": [
+     "nvidia-smi",
+     "--query-gpu=name,driver_version",
+     "--format=csv,noheader"
+    ],
+    "returncode": 0
+   },
+   {
+    "name": "nvcc",
+    "argv": [
+     "nvcc",
+     "--version"
+    ],
+    "returncode": 0
+   },
+   {
+    "name": "configure",
+    "argv": [
+     "cmake",
+     "-S",
+     "/content/layernorm_source",
+     "-B",
+     "/content/layernorm_build",
+     "-DCMAKE_BUILD_TYPE=Release",
+     "-DMICROTORCH_CUDA=ON",
+     "-DMICROTORCH_DEVCHECK=ON",
+     "-DMICROTORCH_BUILD_PYTHON=OFF",
+     "-DCMAKE_CUDA_ARCHITECTURES=89"
+    ],
+    "returncode": 0
+   },
+   {
+    "name": "baseline_build",
+    "argv": [
+     "cmake",
+     "--build",
+     "/content/layernorm_build",
+     "--target",
+     "test_layernorm_materialization",
+     "--parallel",
+     "4"
+    ],
+    "returncode": 0
+   },
+   {
+    "name": "baseline_forward_x",
+    "argv": [
+     "/content/layernorm_build/test_layernorm_materialization",
+     "--require-cuda",
+     "--case",
+     "forward_x"
+    ],
+    "returncode": 1
+   },
+   {
+    "name": "baseline_forward_gamma",
+    "argv": [
+     "/content/layernorm_build/test_layernorm_materialization",
+     "--require-cuda",
+     "--case",
+     "forward_gamma"
+    ],
+    "returncode": 1
+   },
+   {
+    "name": "baseline_forward_beta",
+    "argv": [
+     "/content/layernorm_build/test_layernorm_materialization",
+     "--require-cuda",
+     "--case",
+     "forward_beta"
+    ],
+    "returncode": 1
+   },
+   {
+    "name": "baseline_backward_gamma",
+    "argv": [
+     "/content/layernorm_build/test_layernorm_materialization",
+     "--require-cuda",
+     "--case",
+     "backward_gamma"
+    ],
+    "returncode": 1
+   },
+   {
+    "name": "fixed_build",
+    "argv": [
+     "cmake",
+     "--build",
+     "/content/layernorm_build",
+     "--target",
+     "test_layernorm_materialization",
+     "--parallel",
+     "4"
+    ],
+    "returncode": 0
+   },
+   {
+    "name": "fixed_forward_x",
+    "argv": [
+     "/content/layernorm_build/test_layernorm_materialization",
+     "--require-cuda",
+     "--case",
+     "forward_x"
+    ],
+    "returncode": 0
+   },
+   {
+    "name": "fixed_forward_gamma",
+    "argv": [
+     "/content/layernorm_build/test_layernorm_materialization",
+     "--require-cuda",
+     "--case",
+     "forward_gamma"
+    ],
+    "returncode": 0
+   },
+   {
+    "name": "fixed_forward_beta",
+    "argv": [
+     "/content/layernorm_build/test_layernorm_materialization",
+     "--require-cuda",
+     "--case",
+     "forward_beta"
+    ],
+    "returncode": 0
+   },
+   {
+    "name": "fixed_backward_gamma",
+    "argv": [
+     "/content/layernorm_build/test_layernorm_materialization",
+     "--require-cuda",
+     "--case",
+     "backward_gamma"
+    ],
+    "returncode": 0
+   }
+  ],
+  "errors": [],
+  "source_restored": true,
+  "inputs": {
+   "source_commit": "0d80e2eeaa45d4e0e738cf48c34ecca76df39ebe",
+   "job_commit": "0d80e2eeaa45d4e0e738cf48c34ecca76df39ebe",
+   "baseline_commit": "d960e78bc",
+   "files": {
+    "layernorm_baseline_ops.cpp": "9578ee8cfc3cd5c98f201df71834291a37b73585a114733a335cf7779ccf2abd",
+    "layernorm_source.tgz": "69735b9cbc592ab0f7a84ae8e3a3006986db2f6792b44f54df875c5507506d5e",
+    "layernorm_gate_vm.py": "1b45517187f6b958671ddc6fd5191c71a34cadafbebfa316de6374d7f7a186ca"
+   }
+  },
+  "baseline_ops_sha256": "9578ee8cfc3cd5c98f201df71834291a37b73585a114733a335cf7779ccf2abd",
+  "baseline_binary_sha256": "88babd8625e964067333d1b52a17f9f651a638b37158d3094828b1d530cd1afa",
+  "baseline": {
+   "forward_x": {
+    "returncode": 1,
+    "registered_numerical_failure": true
+   },
+   "forward_gamma": {
+    "returncode": 1,
+    "registered_numerical_failure": true
+   },
+   "forward_beta": {
+    "returncode": 1,
+    "registered_numerical_failure": true
+   },
+   "backward_gamma": {
+    "returncode": 1,
+    "registered_numerical_failure": true
+   }
+  },
+  "baseline_expected_numerical_failure": true,
+  "fixed_ops_sha256": "94e4d38b17066362dc9e40d7ea64705ccb3834b89034756f3d929453236dd81a",
+  "fixed_binary_sha256": "4b0f8e39cfd9f4c0795c068550ff19e9a4bfeccbcffde43aab3512a9af787318",
+  "fixed": {
+   "forward_x": {
+    "pass": true,
+    "cuda_integration": true,
+    "devcheck_enabled": true,
+    "cases": 1
+   },
+   "forward_gamma": {
+    "pass": true,
+    "cuda_integration": true,
+    "devcheck_enabled": true,
+    "cases": 1
+   },
+   "forward_beta": {
+    "pass": true,
+    "cuda_integration": true,
+    "devcheck_enabled": true,
+    "cases": 1
+   },
+   "backward_gamma": {
+    "pass": true,
+    "cuda_integration": true,
+    "devcheck_enabled": true,
+    "cases": 1
+   }
+  },
+  "logs": {
+   "hardware.log": {
+    "sha256": "4d27402575c0fbfcbc714a6563f4bcc9ea0e3699ea638e7bd89db077eef291de",
+    "bytes": 21
+   },
+   "nvcc.log": {
+    "sha256": "3c71ed984d2ca98770b0cba5c23a849a87209351e105433929c3062fb66d1915",
+    "bytes": 209
+   },
+   "configure.log": {
+    "sha256": "c3cbb1288ecd928f1cdfacccf01cac84f3bcc471bbcda6fa96d5f09cceba0cc6",
+    "bytes": 1989
+   },
+   "baseline_build.log": {
+    "sha256": "0e3ac6281e7e8603dfb27dc09cf48ce9511e62caeb5633fda9cb0578afe225b6",
+    "bytes": 24150
+   },
+   "fixed_build.log": {
+    "sha256": "b027dde15440f019dc093ce0e6ea4c0c05b3169f04de32c3a6102f6b430e2cd9",
+    "bytes": 297
+   },
+   "baseline_forward_x.log": {
+    "sha256": "3e63f75842fc46a5b2682697bc67710ce10ae2be1d121bfd21e859c33f376dea",
+    "bytes": 354
+   },
+   "baseline_forward_gamma.log": {
+    "sha256": "936f005d3725fde7ce1f0a114dadfb565b67c4aea913c1202abd4aedbea60d08",
+    "bytes": 358
+   },
+   "baseline_forward_beta.log": {
+    "sha256": "e39221f97319517423009b6788b3eddf6c0e1703a5d2bda8640b5fad82ef187d",
+    "bytes": 357
+   },
+   "baseline_backward_gamma.log": {
+    "sha256": "277024f60207b7d779cb5edfcd5049c4287c14f55ab68a8b5ca752472c12b836",
+    "bytes": 349
+   },
+   "fixed_forward_x.log": {
+    "sha256": "94e5847b15aabb7b2d8587aeeeaba45da6eef6a8b0aa75a2d81012360d3a596a",
+    "bytes": 340
+   },
+   "fixed_forward_gamma.log": {
+    "sha256": "4e4f2b972b60169ac611ae4d6a4fc6bcefa30a0b0c365072c2347904cc58a5d9",
+    "bytes": 348
+   },
+   "fixed_forward_beta.log": {
+    "sha256": "ec49c27db3123765578ce08e0d8f59078d5b2662a62b703f0640a9ec7dc930b8",
+    "bytes": 346
+   },
+   "fixed_backward_gamma.log": {
+    "sha256": "333c27dbf79e86da4946a6d8e80abd35f3fefd26a943cd9b9361d9ef11b3fe40",
+    "bytes": 350
+   }
+  }
+ },
+ "raw_test_logs": {
+  "baseline_backward_gamma.log": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\n{\"case\":\"backward_gamma\",\"actual_cuda\":true,\"stale_operand_proved\":true,\"host_poison\":true,\"ops_disabled_before_fallback\":true}\nCHECK failed /content/layernorm_source/tests/test_layernorm_materialization.cpp:104: std::fabs(x0->grad(i, j) - dx[i * C + j]) / (1 + std::fabs(dx[i * C + j])) < 2e-5\n",
+  "baseline_forward_beta.log": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\n{\"case\":\"forward_beta\",\"actual_cuda\":true,\"stale_operand_proved\":true,\"host_poison\":true,\"ops_disabled_before_fallback\":true}\nCHECK failed /content/layernorm_source/tests/test_layernorm_materialization.cpp:95: std::fabs(y->data(i, j) - expected[i * C + j]) / (1 + std::fabs(expected[i * C + j])) < 2e-5\n",
+  "baseline_forward_gamma.log": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\n{\"case\":\"forward_gamma\",\"actual_cuda\":true,\"stale_operand_proved\":true,\"host_poison\":true,\"ops_disabled_before_fallback\":true}\nCHECK failed /content/layernorm_source/tests/test_layernorm_materialization.cpp:95: std::fabs(y->data(i, j) - expected[i * C + j]) / (1 + std::fabs(expected[i * C + j])) < 2e-5\n",
+  "baseline_forward_x.log": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\n{\"case\":\"forward_x\",\"actual_cuda\":true,\"stale_operand_proved\":true,\"host_poison\":true,\"ops_disabled_before_fallback\":true}\nCHECK failed /content/layernorm_source/tests/test_layernorm_materialization.cpp:95: std::fabs(y->data(i, j) - expected[i * C + j]) / (1 + std::fabs(expected[i * C + j])) < 2e-5\n",
+  "fixed_backward_gamma.log": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\n{\"case\":\"backward_gamma\",\"actual_cuda\":true,\"stale_operand_proved\":true,\"host_poison\":true,\"ops_disabled_before_fallback\":true}\n{\"pass\":true,\"case\":\"backward_gamma\",\"cuda_integration\":true,\"forward_backward_reference\":true}\n{\"pass\":true,\"cuda_integration\":true,\"devcheck_enabled\":true,\"cases\":1}\n",
+  "fixed_forward_beta.log": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\n{\"case\":\"forward_beta\",\"actual_cuda\":true,\"stale_operand_proved\":true,\"host_poison\":true,\"ops_disabled_before_fallback\":true}\n{\"pass\":true,\"case\":\"forward_beta\",\"cuda_integration\":true,\"forward_backward_reference\":true}\n{\"pass\":true,\"cuda_integration\":true,\"devcheck_enabled\":true,\"cases\":1}\n",
+  "fixed_forward_gamma.log": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\n{\"case\":\"forward_gamma\",\"actual_cuda\":true,\"stale_operand_proved\":true,\"host_poison\":true,\"ops_disabled_before_fallback\":true}\n{\"pass\":true,\"case\":\"forward_gamma\",\"cuda_integration\":true,\"forward_backward_reference\":true}\n{\"pass\":true,\"cuda_integration\":true,\"devcheck_enabled\":true,\"cases\":1}\n",
+  "fixed_forward_x.log": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\n{\"case\":\"forward_x\",\"actual_cuda\":true,\"stale_operand_proved\":true,\"host_poison\":true,\"ops_disabled_before_fallback\":true}\n{\"pass\":true,\"case\":\"forward_x\",\"cuda_integration\":true,\"forward_backward_reference\":true}\n{\"pass\":true,\"cuda_integration\":true,\"devcheck_enabled\":true,\"cases\":1}\n"
+ },
+ "limitations": [
+  "Only explicitly isolated LayerNorm fallback cells were tested; broad host-loop coherence audit remains open.",
+  "No training, whole-model, throughput or endurance claim. Historical pointer-loop timing belongs to1b0102709/d960e78bc; this materialization binary has not been retimed."
+ ]
+}
