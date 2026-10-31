@@ -1,5 +1,14 @@
 # Changelog
 
+## Tied-head Flex Hugging Face export (31 October 2026)
+
+Plain GPT2- and Llama-flavour Flex now export either separate or explicitly tied
+token/output heads. Actual trained models are saved, reloaded through Transformers,
+and checked for full-row logits, greedy IDs, tensor inventory and shared parameters.
+Modified flavour combinations remain refused. CPU validation and raw replay evidence:
+[receipt](docs/receipts/hf_tied_flex_20261031/validation.json).
+
+
 ## Existing Flex compatibility work integrated (31 October 2026)
 
 Validated the preserved workspace implementation of exact GELU, tied Flex heads

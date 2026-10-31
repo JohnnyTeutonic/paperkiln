@@ -123,7 +123,7 @@ that cannot fail the build.
 - **Mamba:** a parallel scan and device kernels for Mamba-1's `ops::conv1d_causal` and
   `ops::selective_scan` (sequential, host only; the mamba preset's `ssm: "mamba1"`).
 - **int4/NF4 quantisation.**
-- **HF export for modified flex flavours and unmapped GPT2 variants; quantised GGUFs outside the llama family.** Strictly plain GPT2-flavour and untied Llama-flavour flex now have verified HF mappings (arbitrary depth/MLP width); those completed subsets leave this list. Tied-head Flex runtime and IR export are now CPU-validated; its HF mapping remains unsupported pending a separate parity gate. Every mtstudio family now exports F32 GGUF with its IR
+- **HF export for modified flex flavours and unmapped GPT2 variants; quantised GGUFs outside the llama family.** Strictly plain GPT2- and Llama-flavour Flex now have verified HF mappings for separate or explicitly tied token/output heads (arbitrary depth/MLP width); those completed subsets leave this list. Actual saved/reloaded Transformers CPU parity is recorded in docs/receipts/hf_tied_flex_20261031/. Modified flavours remain open. Every mtstudio family now exports F32 GGUF with its IR
   (`include/microtorch/ir.hpp`, Families): gpt2 and flex with the GPT-2
   flavour in llama.cpp's `gpt2` layout, as are kimi and plain-residual flex
   of that flavour (the IR alone carries what differs); srd, attnres, mamba
