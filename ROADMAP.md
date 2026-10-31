@@ -31,14 +31,16 @@ where one of those documents carries a plan, this file wins.*
    `C:/ml_artifacts/pref_full/sample/`).   The CLI pilot cache remains historical evidence; its hidden settings are not assumed equivalent
    to the validated API profile. The Anthropic API transport is now validated with exact model,
    rubric and request provenance, independent cache identity and durable cost reservations.
-   Both reviewed full API phases halted on unknown network-unreachable dispatches.
-   Successful rankings and unknown ceilings remain recorded. A separate traced V3
-   diagnostic passed all 24 calls; reviewed full continuation V4 is running through
-   the existing watchdog with the same API profile and no HTTP retries, under the unchanged $200 cumulative cap,
-   including legacy spend, retained unknown-call ceilings and $25 reserved for the held-out gate.
-   See `experiments/chat_general/receipts/anthropic_api_20261031/full_campaign_protocol.json`.
-   DPO + NLL and the fixed five-part gate remain after complete judging. Completion is not
-   guaranteed by the cap; unknown outcomes and any accounting drift stop for review.
+   Earlier full phases halted on unknown network dispatches; their records and
+   conservative ceilings remain intact. V4 later halted on an explicit settled model
+   refusal, retaining 1,690 valid rankings with no pending reservation. Reviewed V5
+   continues only 4,348 untouched jobs and excludes both orders of that candidate set,
+   with the same profile, rubric, no HTTP retries, $200 cumulative cap and $25 held-out
+   reserve. Its maximum result is 6,038 valid rankings, one refusal and one unattempted
+   paired exclusion: full-valid completeness remains false. DPO + NLL and the fixed
+   gate are blocked pending a separate dataset decision. Any new failure still stops
+   for review. Evidence and exact protocol:
+   `experiments/chat_general/receipts/anthropic_api_refusal_v5_20261031/`.
 
 The 30 Oct publication integration passes all 49 CPU CTests and 65 targeted Python
 integration tests. Changed C++ ranges pass clang-format 18 checks, but 17 files
@@ -121,8 +123,11 @@ that cannot fail the build.
   - Finish the host-read boundary audit in ops.cpp/mtstudio and other unreviewed
     host loops outside the listed helper audit (`docs/receipts/host_helper_audit_20261031/`).
     Generic unary/binary host wrappers, selection/reduction/broadcast and supported
-    fresh-result in-place paths have source-bound inspection and CPU controls; this
-    does not extend their mutation contracts or establish exhaustive CUDA coverage.
+    fresh-result in-place paths have source-bound inspection and CPU controls. The
+    registered nine-case subset now also passes actual L4 CUDA/DEVCHECK, all 14
+    gradient tensors, independent host replay and finite differences
+    (`docs/receipts/host_helper_cuda_20261031/`); this closes that prepared gate.
+    It does not extend mutation contracts or establish exhaustive formula/CUDA coverage.
     Completed parity-model export and stale-computed-bias add_bias
     subsets pass actual L4 CUDA+DEVCHECK checks, including the unpatched numerical
     failure and fixed forward/backward reference (`docs/receipts/add_bias_cuda_20261031/`),
