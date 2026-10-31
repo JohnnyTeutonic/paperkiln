@@ -5,7 +5,8 @@
     "enabled": false,
     "workdir": "/home/jonat/pk_api_recovery_v2_20261031",
     "state_dir": "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v2",
-    "command": "mkdir -p /mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v2 && python3 /mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/scripts/cpu_budget.py run --session paperkiln --job full-api-preference-judge-v2 --cores 1 --resume 'existing watchdog with frozen full_campaign_v2_protocol.json' -- python3 /home/jonat/pk_api_recovery_v2_20261031/tools/posttrain/chat_judge_campaign_v2.py --protocol /home/jonat/pk_api_recovery_v2_20261031/experiments/chat_general/receipts/anthropic_api_recovery_v2_20261031/full_campaign_v2_protocol.json --protocol-sha256 6a233561c2eb490cf7041a8005cb70a06608b33a23b107aecae62b8f9c90d8ea --state-dir /mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v2 >> /mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v2/runner.log 2>&1"
+    "command": "mkdir -p /mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v2 && python3 /mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/scripts/cpu_budget.py run --session paperkiln --job full-api-preference-judge-v2 --cores 1 --resume 'existing watchdog with frozen full_campaign_v2_protocol.json' -- python3 /home/jonat/pk_api_recovery_v2_20261031/tools/posttrain/chat_judge_campaign_v2.py --protocol /home/jonat/pk_api_recovery_v2_20261031/experiments/chat_general/receipts/anthropic_api_recovery_v2_20261031/full_campaign_v2_protocol.json --protocol-sha256 6a233561c2eb490cf7041a8005cb70a06608b33a23b107aecae62b8f9c90d8ea --state-dir /mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v2 >> /mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v2/runner.log 2>&1",
+    "stop_file": "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v2/HALTED"
   },
   "argv": [
     "python3",
