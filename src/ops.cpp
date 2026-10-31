@@ -611,6 +611,8 @@ Var policy_gradient_kl(const Var& logits, const std::vector<int>& targets, const
     if (ref_logp.rows() != R || ref_logp.cols() != C)
         throw std::runtime_error("policy_gradient_kl: ref_logp must match logits");
     device::materialize(logits->data);
+    device::materialize(ref_logp);
+    MT_DEVCHECK_HOST_READ(ref_logp, "policy_gradient_kl reference copy");
     // log-softmax in double per row, cached for the backward.
     auto LP = cached(Matrix(R, C));
     auto kl = std::make_shared<std::vector<double>>(R, 0.0);
