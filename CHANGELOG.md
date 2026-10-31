@@ -22,6 +22,13 @@ receipt replay and 90 focused tests pass. This establishes operational readiness
 for reviewed continuation, not CLI equivalence or a model-quality result.
 [Calibration and limits](experiments/chat_general/receipts/anthropic_api_20261031/CALIBRATION.md).
 
+## Validate both Ember replay modes before reduction (31 October 2026)
+
+Require exact output shapes and finite prefill/decode arrays, then check each
+finite error individually. This blocks broadcasting and NaNs hidden by max
+across modes. All 82 offline model-gate mutation/binding tests pass; V2 replaces
+an unlaunched packet and preserves V1. No paid outcome was observed.
+
 ## Prospective GPT2 precision model gate (31 October 2026)
 
 Prepare a test-only production-CLI embedding, independent full-model NumPy

@@ -1,0 +1,105 @@
+{
+ "kind": "PROSPECTIVE_SINGLE_L4_TRAIN_ONLY_MODEL_GATE_V2",
+ "launch_authorised": false,
+ "actual_gpu_model_results": null,
+ "limits": {
+  "max_usd": 1,
+  "max_wrapper_seconds": 1500,
+  "one_gpu": "NVIDIA L4",
+  "max_parallel": 1,
+  "automatic_retries": 0
+ },
+ "shape": {
+  "vocab": 16,
+  "d": 8,
+  "heads": 2,
+  "layers": 2,
+  "sequence_length": 4,
+  "stacked_sequences": 2,
+  "seed": 31,
+  "ids": [
+   1,
+   2,
+   3,
+   4,
+   1,
+   2,
+   3,
+   4
+  ],
+  "targets": [
+   2,
+   3,
+   4,
+   1,
+   2,
+   3,
+   4,
+   1
+  ],
+  "steps": 16,
+  "optimizer": "AdamW",
+  "lr": 0.01
+ },
+ "precision": {
+  "attention": "bf16 six GEMMs per head",
+  "projections_and_masters": "fp32",
+  "softmax_and_its_backward": "fp32",
+  "training_only": true,
+  "loaded_inference": "fp32"
+ },
+ "bounds": {
+  "independent_full_model_bf16_forward_normalized_max": 0.005,
+  "cpu_cuda_full_gradient_normalized_max": 0.03,
+  "per_parameter_tensor_relative_gradient_norm_max": 0.03,
+  "gradient_norm_denominator_floor": 1e-08,
+  "each_expected_nonzero_gradient_tensor_must_be_nonzero": true,
+  "full_parameter_names_shapes_required": true,
+  "loss_trace_cpu_cuda_absolute_max": 0.05,
+  "loaded_fp32_numpy_ember_absolute_max": 3e-05,
+  "same_cuda_arithmetic_default_preserved_composition_logits_and_full_gradients": "bit identical"
+ },
+ "profile": {
+  "initial_bf16_attention_gemms_exact": 24,
+  "sixteen_step_bf16_attention_gemms_exact": 384,
+  "loaded_bf16_gemms_exact": 0,
+  "loaded_fp32_gemms": "positive",
+  "actual_cli_training_attention_bf16_and_projection_fp32": "positive in every logged lm/sft step"
+ },
+ "cli": {
+  "source": "test-only embedding of unmodified production CLI main/constructors",
+  "embedding_optimization": "-O0 -g0; linked library Release -O3; contraction off",
+  "lm_steps": 6,
+  "sft_steps": 3,
+  "saved_bf16_recipe_vs_fp32_inference_score_rows": "bit equal",
+  "bf16_and_fp32_recipe_export_tensor_bytes_and_IR": "identical"
+ },
+ "two_part_completion": [
+  "VM CUDA+DEVCHECK/profiler and independent raw model replay",
+  "REQUIRED host pinned CPU Ember+NumPy prefill/decode of both landed GPU-trained models"
+ ],
+ "host_ember_sha256": "1f877524c3b59e1cdbf3ca29ab6d4e0ed216900516e1bcb28d5ec7e7e21b9a0f",
+ "failure_policy": "Preserve all raw logs/models/receipts. No numerical/source/bound tuning or paid retry without a new reviewed protocol. A VM-only pass is not overall completion.",
+ "interpretation": "Tiny fixed execution/surrogate/inference gate only. No learning-improvement criterion, model-quality, speed or adoption claim.",
+ "source_sha256": {
+  "tests/gpt2_precision_gate.cpp": "1c4afaa220591c205a94acbbc7ea707d0168f973955b1714125f45c340e0ed68",
+  "tools/replay_gpt2_precision_gate.py": "a0ac198d810490683ae83d373375f4f2bd595f00c9d01dfbaa85c1460a5fa9cd",
+  "tools/replay_gpt2_precision_home.py": "ed427066cc623713118ab163129c96c6dd5cedd9a29e980ac4a423ee03aa6e48",
+  "tools/colab_chat/gpt2_precision_gate.py": "ad243fcc6ad94661d3318c22dc13d37a82a6f79b53b1bcd0c220393b601ead59",
+  "tests/test_gpt2_attention_precision_cli.py": "062eef635d06841fd788c44c79463b38796ceb84a46a766fd7ec7f2f2fb5c107"
+ },
+ "offline_validation": {
+  "mutation_and_binding_tests_passed": 82,
+  "independent_cpu_full_model_error": 1.4901161193847656e-08,
+  "lm_sft_host_cpu_inference_preflight": "passed; raw host_cpu_inference_preflight.json",
+  "raw_cpu_model_replayed_after_final_cpp_format_and_exact_counter_changes": "byte identical",
+  "new_cpp_format": "clang-format18.1.8 dry run passes",
+  "unique_model_test_tempfile": true
+ },
+ "supersedes_unlaunched": "V1/sourcec4be1c743; retained unchanged in stagev1 and Git",
+ "host_output_validation": {
+  "each_prefill_and_decode_shape": "exact expected matrix shape; no broadcasting",
+  "each_array": "allfinite before subtraction",
+  "each_mode_error": "finite and individually <=3e-5"
+ }
+}
