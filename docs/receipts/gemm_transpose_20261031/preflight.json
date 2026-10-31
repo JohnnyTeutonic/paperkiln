@@ -1,0 +1,78 @@
+{
+  "pass": true,
+  "commands": [
+    {
+      "name": "extract",
+      "argv": [
+        "python3",
+        "/home/jonat/pk_gemm_loads_20261031/tools/prepare_gemm_transpose.py",
+        "--out",
+        "/home/jonat/pk_gemm_loads_build_20261031"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "nvcc_standalone",
+      "argv": [
+        "/usr/local/cuda-12.6/bin/nvcc",
+        "-std=c++17",
+        "-O3",
+        "-arch=sm_89",
+        "-DMICROTORCH_DEVCHECK",
+        "-I/home/jonat/pk_gemm_loads_build_20261031",
+        "-I/home/jonat/pk_gemm_loads_20261031/tests",
+        "/home/jonat/pk_gemm_loads_20261031/tests/test_gemm_transpose_loads.cu",
+        "-o",
+        "/home/jonat/pk_gemm_loads_build_20261031/test_gemm_transpose_loads"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "nvcc_production",
+      "argv": [
+        "/usr/local/cuda-12.6/bin/nvcc",
+        "-std=c++17",
+        "-O3",
+        "-arch=sm_89",
+        "-DMICROTORCH_CUDA",
+        "-DMICROTORCH_DEVCHECK",
+        "-I/home/jonat/pk_gemm_loads_20261031/include",
+        "-I/home/jonat/pk_gemm_loads_20261031/third_party/transformer_cpp/include",
+        "-c",
+        "/home/jonat/pk_gemm_loads_20261031/src/cuda_resident.cu",
+        "-o",
+        "/home/jonat/pk_gemm_loads_build_20261031/cuda_resident.o"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "nvcc_without_devcheck",
+      "argv": [
+        "/usr/local/cuda-12.6/bin/nvcc",
+        "-std=c++17",
+        "-O3",
+        "-arch=sm_89",
+        "-I/home/jonat/pk_gemm_loads_build_20261031",
+        "-I/home/jonat/pk_gemm_loads_20261031/tests",
+        "/home/jonat/pk_gemm_loads_20261031/tests/test_gemm_transpose_loads.cu",
+        "-o",
+        "/home/jonat/pk_gemm_loads_build_20261031/without_devcheck"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "parser_tests",
+      "argv": [
+        "/home/jonat/pk_bf16_replay_20261031/bin/python",
+        "-O",
+        "-m",
+        "pytest",
+        "-q",
+        "/home/jonat/pk_gemm_loads_20261031/tools/test_replay_gemm_transpose.py"
+      ],
+      "returncode": 0
+    }
+  ],
+  "devcheck_refusal_returncode": 1,
+  "local_gpu_used": false
+}

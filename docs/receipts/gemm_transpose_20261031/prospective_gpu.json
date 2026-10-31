@@ -1,0 +1,26 @@
+{
+  "pass": true,
+  "source_commit": "b65568079843fcb40f7c56559f1c3d23990366f5",
+  "stage": "/home/jonat/gemm_transpose_gate_stage_v1_20261031",
+  "manifest_sha256": "28e125ef951a0dc617276494e58254c3edff9470da233faee2d73f13fd10f496",
+  "source_archive_sha256": "bdf2d5be7e996d17ecf52a9aa6c874725c970b950f56b1e3e512db70f1f65799",
+  "archive_files": 5682,
+  "configure_argv": [
+    "cmake",
+    "-S",
+    "/home/jonat/gemm_transpose_archive_preflight_20261031",
+    "-B",
+    "/home/jonat/gemm_transpose_archive_build_20261031",
+    "-DMICROTORCH_CUDA=OFF",
+    "-DMICROTORCH_DEVCHECK=ON",
+    "-DMICROTORCH_BUILD_PYTHON=OFF"
+  ],
+  "configure_returncode": 0,
+  "launch_status": "not launched; requires root independent review",
+  "budget": {
+    "maximum_usd": 1,
+    "gate_seconds": 1500,
+    "device": "one actual L4",
+    "transport": "watchdog owned with bounded upload/execution/download/cleanup"
+  }
+}
