@@ -1,0 +1,11 @@
+{
+ "kind": "ROOT_AUTHORISED_RETAIN_UNKNOWN_CEILING",
+ "pending_id": "d575bb3839b7444fb7f3cd2d207e158e",
+ "ledger_sha256": "404f48d4c86814d0354a75b4a79e4981ed0fe28293c799d06901a326268c8bae",
+ "binding_sha256": "d36e10fd0d5708fd937d52857188de442f99ed8938a31e48a51497c2227bb6e1",
+ "raw_request_sha256": "2459cbb9c566c30aeb697cdfa35e63973822f9e5abc489c7b2c6f775329be62f",
+ "error_sha256": "d54b8a6b605de25552992724c21b98505b581592f4b29a1e3cf2f32ef5e4a7d1",
+ "error_type": "URLError",
+ "reason": "Root explicitly approved retaining the sixth unknown ceiling permanently, counting its attempt, then at most 42 further attempts under the unchanged 48-attempt/$2 calibration. No actual usage/verdict is invented.",
+ "source_commit": "ab603af1db48929fd5732cbda76cdffb351d0b91"
+}
