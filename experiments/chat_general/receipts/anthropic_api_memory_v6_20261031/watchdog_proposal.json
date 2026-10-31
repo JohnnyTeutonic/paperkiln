@@ -1,0 +1,47 @@
+{
+  "status": "PREPARED_NO_DISPATCH_REQUIRES_EXACT_ROOT_REVIEW",
+  "entry": {
+    "name": "Paperkiln API V6 remaining4252 (memory admission, paired exclusion)",
+    "enabled": false,
+    "workdir": "/home/jonat/pk_api_memory_continuation_v6_20261031",
+    "state_dir": "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v6",
+    "stop_file": "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v6/STOPPED",
+    "command": "mkdir -p /mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v6 && python3 /mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/scripts/cpu_budget.py run --session paperkiln --job api-memory-continuation-v6 --cores 1 --resume 'existing watchdog V6 memory admission, no retry' -- python3 /home/jonat/pk_api_memory_continuation_v6_20261031/tools/posttrain/chat_judge_campaign_memory_v6.py --protocol /home/jonat/pk_api_memory_continuation_v6_20261031/experiments/chat_general/receipts/anthropic_api_memory_v6_20261031/full_campaign_v6_protocol.json --protocol-sha256 84076595529351aa6e8500e0eca7e546735f764ab5cac85355f396b935f36e77 --state-dir /mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v6 >> /mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v6/runner.log 2>&1"
+  },
+  "protocol_sha256": "84076595529351aa6e8500e0eca7e546735f764ab5cac85355f396b935f36e77",
+  "source_sha256": {
+    "chat_judge_campaign_memory_v6.py": "be873a85b84eb7630d21989bbbc0ada3ed8ebc201f745f991871965719594a2e",
+    "chat_judge_api_refusal_v5.py": "11cd8c7880356afaef631f6168d02dd75025cd4be58d4c6fc69fddb966ed0dd7",
+    "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+  },
+  "max_new_attempts": 4252,
+  "initial_training_attempts": 1742,
+  "initial_valid_rankings": 1786,
+  "caps": {
+    "cumulative_usd": 200,
+    "heldout_gate_usd": 25,
+    "percall_reserved_usd": 0.25,
+    "retained_unknown_ceiling_usd": 0.75
+  },
+  "memory_admission": {
+    "minimum_available_bytes": 1073741824,
+    "poll_seconds": 10,
+    "boundaries": [
+      "before_inspect",
+      "before_dispatch"
+    ],
+    "waiting_status": "WAITING_MEMORY",
+    "does_not_manage_other_processes": true,
+    "does_not_retry_provider_calls": true,
+    "limitation": "Admission is a point-in-time check, not an exclusive memory reservation; later pressure can still cause a fail-stop."
+  },
+  "terminal_expected": {
+    "valid": 6038,
+    "refused": 1,
+    "unattempted_paired_exclusion": 1,
+    "full_valid_complete": false
+  },
+  "DPO_and_fixed_gate": "BLOCKED_PENDING_SEPARATE_DATASET_DECISION",
+  "provider_retries": 0
+}

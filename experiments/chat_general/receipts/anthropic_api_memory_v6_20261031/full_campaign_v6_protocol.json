@@ -1,0 +1,159 @@
+{
+  "kind": "FROZEN_FAILSTOP_API_MEMORY_V6_4252",
+  "source_sha256": {
+    "chat_judge_campaign_memory_v6.py": "be873a85b84eb7630d21989bbbc0ada3ed8ebc201f745f991871965719594a2e",
+    "chat_judge_api_refusal_v5.py": "11cd8c7880356afaef631f6168d02dd75025cd4be58d4c6fc69fddb966ed0dd7",
+    "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+  },
+  "profile_sha256": "a6bf0769bf5d7688c970df16f53c97efd67750313e59c6d49a8760cefd45bee8",
+  "max_new_attempts": 4252,
+  "max_usd": 200,
+  "gate_reserve_usd": 25,
+  "reserve_per_call_usd": 0.25,
+  "batch_calls": 24,
+  "cache": "/mnt/c/ml_artifacts/pref_api_20261031/api_cache.jsonl",
+  "ledger": "/mnt/c/ml_artifacts/pref_api_20261031/budget.jsonl",
+  "requests": "/mnt/c/ml_artifacts/pref_full/sample/candidates.jsonl",
+  "rubric": "/home/jonat/pk_api_judge_20261031/tools/posttrain/rubrics/chat_v1.txt",
+  "legacy_cache": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/experiments/chat_general/judge/judge_cache.jsonl",
+  "env_file": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/.env",
+  "prior_api_ledgers": [
+    "/home/jonat/pk_api_judge_20261031/experiments/chat_general/receipts/anthropic_api_20261031/budget.jsonl"
+  ],
+  "binding_sha256": "d36e10fd0d5708fd937d52857188de442f99ed8938a31e48a51497c2227bb6e1",
+  "ledger_prefix_bytes": 2421004,
+  "ledger_prefix_sha256": "f265c8a5389a85d4e22dc12f3590270a7882c135c63ddcb4d41f4626daf64db9",
+  "requests_sha256": "a69673d5307413214cfb631bc6ee58adbcf5b3020da31db79d6e8a8b952b825f",
+  "rubric_sha256": "cb04edd3543d0906aedc3d82a1d829586272da874182775c6d7c9826e28d937a",
+  "initial_training_attempts": 1742,
+  "state_dir": "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v6",
+  "initial_valid_api_rankings": 1786,
+  "policy": "Prepared V6 operational continuation of4252 untouched eligible jobs. V5 settled96successes and then recorded localOSError in inspect/progress-publication region; exacterrno/stack were not retained. Initial1742trainingattempts/1786valid; no pending. Preserve original settled refusal and unattempted paired order, no reranking. API/HTTP/profile/trace/judge bytes unchanged; cumulative200/heldout25/percall0.25/unknownceilings0.75. Before read-heavy inspection and batch dispatch, wait for1GiBMemAvailable; no provider calls during waiting and no process management. Any future failure records fixedphase/numericerrno without exceptiontext and preserves HALTED/STOPPED/pending. No retry/disposition. Exhausting eligible work still means6038valid/1refused/1unattemptedpaired exclusion; fullvalidfalse and DPO/fixedgateblocked pendingseparatedatasetdecision.",
+  "authorised_by": "Preparation only; exact source/protocol review required before any launch.",
+  "recovery_anchors": {
+    "old_protocol": {
+      "path": "/home/jonat/pk_api_transport_diagnostic_20261031/experiments/chat_general/receipts/anthropic_api_recovery_v2_20261031/original_full_campaign_protocol.json",
+      "sha256": "6170b3830d6bb4acfeac972d050241076219e98b0ce3f8eb2a1ea32873ab2724"
+    },
+    "old_halt": {
+      "path": "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign/HALTED",
+      "sha256": "0ee5f79a2d1e09bc2a46663d9bbd59c1bababb428bc8a52b145057065f868bc9"
+    },
+    "v2_protocol": {
+      "path": "/home/jonat/pk_api_transport_diagnostic_20261031/experiments/chat_general/receipts/anthropic_api_recovery_v2_20261031/full_campaign_v2_protocol.json",
+      "sha256": "6a233561c2eb490cf7041a8005cb70a06608b33a23b107aecae62b8f9c90d8ea"
+    },
+    "v2_halt": {
+      "path": "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v2/HALTED",
+      "sha256": "38bd276794365ebea271f2725c81a50964501650459350a5387c3ee577e5b5b9"
+    },
+    "first_retention_receipt": {
+      "path": "/home/jonat/pk_api_transport_diagnostic_20261031/experiments/chat_general/receipts/anthropic_api_recovery_v2_20261031/retention_receipt.json",
+      "sha256": "6cd77dfcf01d293ea9a72eb054a9ab07d9eb5b354adca0cc475bdbdc91ad4cae"
+    },
+    "cache_prefix_bytes": 3749232,
+    "cache_prefix_sha256": "769d7ad37a7d64777d5a6e98c61c77c9f8c7d3323fba433ada554d7f7b94daea",
+    "v3_protocol": {
+      "path": "/home/jonat/pk_api_continuation_v4_20261031/experiments/chat_general/receipts/anthropic_api_diagnostic_v3_20261031/diagnostic_v3_protocol.json",
+      "sha256": "fb5c0433440609bb47406790a4010f0e8c4707c515bbd832110008e3ea3175fc"
+    },
+    "v3_stopped": {
+      "path": "/mnt/c/ml_artifacts/pref_api_20261031/diagnostic_campaign_v3/STOPPED",
+      "sha256": "5271ea7dc5953998b975ac3d3e81399fd2b98ec3bd6b2d640d4da39f8d255b3f"
+    },
+    "v3_outcome": {
+      "path": "/home/jonat/pk_api_continuation_v4_20261031/experiments/chat_general/receipts/anthropic_api_diagnostic_v3_20261031/bounded_outcome.json",
+      "sha256": "17c7be7398eb99b2ab5baa7cb478f94b55d7428ba168d6b9c9ca0b595f579fa0"
+    },
+    "v4_protocol": {
+      "path": "/home/jonat/pk_api_refusal_continuation_v5_20261031/experiments/chat_general/receipts/anthropic_api_continuation_v4_20261031/full_campaign_v4_protocol.json",
+      "sha256": "49223afaee2b0fe746f148da2cf3bed3e04095374fd91a5be244a9eb18522c92"
+    },
+    "v4_halt": {
+      "path": "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v4/HALTED",
+      "sha256": "b5da140dc71748ebfffce1c24a4b441ea3372b31aaa45851aab629250704c573"
+    },
+    "v4_stopped": {
+      "path": "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v4/STOPPED",
+      "sha256": "ff50f45869cc54dea20b917ce9f4a0a91ee5fb369476eb8338a32fc8bdb8a495"
+    },
+    "v4_halt_audit": {
+      "path": "/home/jonat/pk_api_refusal_continuation_v5_20261031/experiments/chat_general/receipts/anthropic_api_refusal_v4_20261031/halt_audit.json",
+      "sha256": "54b279a23f89857da812e83274057a1ef3167b8e08ac58c1b22303abfd7fd4c1"
+    },
+    "v5_protocol": {
+      "path": "/home/jonat/pk_api_refusal_continuation_v5_20261031/experiments/chat_general/receipts/anthropic_api_refusal_v5_20261031/full_campaign_v5_protocol.json",
+      "sha256": "a576a57a7796440b2936ede0176f748372655551d83f3a57e09ab7e1e6e8b763"
+    },
+    "v5_halt": {
+      "path": "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v5/HALTED",
+      "sha256": "36b90d4e1351e7d8641bed53adebf846c6cef6631bdc5d738997b7bdb235b363"
+    },
+    "v5_stopped": {
+      "path": "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v5/STOPPED",
+      "sha256": "a76db07dd3a03a5388d9de24c0845059f22b20a0fa2025de960b0e16d5f20d8b"
+    },
+    "v5_halt_audit": {
+      "path": "/home/jonat/pk_api_memory_continuation_v6_20261031/experiments/chat_general/receipts/anthropic_api_memory_v5_20261031/halt_audit.json",
+      "sha256": "bf8b0e05e2f5edc2cce99158a10db21c6e3ff2e2cfafce9f9a44a0a56e9e6e9a"
+    }
+  },
+  "pending_disposition_gate": {
+    "pending_id": "7ef677f4605a4b489f00c4bfde5b625c",
+    "retention_event_sha256": "8214578fe465873b02c3f1e5c5cd4001af778c0d5c7fa34e5164e64754ed4813",
+    "request": {
+      "path": "/mnt/c/ml_artifacts/pref_api_20261031/budget.raw/7ef677f4605a4b489f00c4bfde5b625c.request.json",
+      "sha256": "35130f97e8e8f72df0e21405927362c88d3f5bd2787ff7435cdf04717f11803e"
+    },
+    "error": {
+      "path": "/mnt/c/ml_artifacts/pref_api_20261031/budget.raw/7ef677f4605a4b489f00c4bfde5b625c.error.json",
+      "sha256": "43421e1bee3edca98777b365b01b962b99d689cc2de3eaf8459af860d276102b"
+    }
+  },
+  "transport_diagnostic": {
+    "source_sha256": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+    "fsync_preflight_sha256": "e34e52bea6f9cc1c70a240a309bb0146ff8e054e096474ff3d0737af7758a3b1",
+    "http_retries": 0,
+    "sdk_retries": 0,
+    "same_profile_sha256": "a6bf0769bf5d7688c970df16f53c97efd67750313e59c6d49a8760cefd45bee8",
+    "logs": "resolved endpoint family/IP/type/errno and durable HTTP-write fence; no headers/body/key/exceptiontext",
+    "prior_charge_reinterpretation": false
+  },
+  "reviewed_failure_exclusion": {
+    "key": "5bc86514bca85e5299e967378ad87cc23ad98e29942f9937c3a7fe755675790d",
+    "reservation_id": "c53a3cd31a1f4b719b0e6d03938b7f16",
+    "failure_file_sha256": "7bfabb246403ca7b38d434178236175cac59f36189287eec55caf03935fec8a5",
+    "policy": "Preserve settled refusal and exclude untouched registered reverse order of the same candidate set. Never rerank refused content by changing order. Exact case and both orders derived from pinned judge.jobs. Any new failure HALTS. Full valid completeness remains false.",
+    "paired_unattempted_key": "078c6b9cc209e59b4fc8c9c829fbd6388560dc37ba54ade31cedf11cabc8a07c",
+    "candidate_case_sha256": "0e84706f5e9373c775e07af08186b3991ed84e01d59f427afcb8b8e4a3f3f40b",
+    "planned_orders": [
+      [
+        0,
+        1,
+        2,
+        3
+      ],
+      [
+        3,
+        2,
+        1,
+        0
+      ]
+    ],
+    "planner_source_sha256": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+  },
+  "minimum_mem_available_bytes": 1073741824,
+  "memory_admission": {
+    "minimum_available_bytes": 1073741824,
+    "poll_seconds": 10,
+    "boundaries": [
+      "before_inspect",
+      "before_dispatch"
+    ],
+    "waiting_status": "WAITING_MEMORY",
+    "does_not_manage_other_processes": true,
+    "does_not_retry_provider_calls": true,
+    "limitation": "Admission is a point-in-time check, not an exclusive memory reservation; later pressure can still cause a fail-stop."
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "attempts_since_start": 0,
+  "missing_rankings": 4254,
+  "valid_api_rankings": 1786,
+  "eligible_missing_rankings": 4252,
+  "preserved_failed_rankings": 1,
+  "unattempted_paired_exclusions": 1,
+  "api_actual_spend_usd": 26.847668,
+  "retained_unknown_ceiling_usd": 0.75,
+  "baseline_usd": 20.08558,
+  "gate_reserve_usd": 25.0
+}

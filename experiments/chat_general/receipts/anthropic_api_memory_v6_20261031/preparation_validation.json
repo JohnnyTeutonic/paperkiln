@@ -1,0 +1,48 @@
+{
+  "status": "PREPARED_REQUIRES_EXACT_ROOT_REVIEW_NO_DISPATCH",
+  "base_public_commit": "d95664546",
+  "V5_audit_commit": "e0c0dfef3",
+  "V5_auditor_sha256": "7101064d08400d0ad69b2481d11040e3a45a432faf3781c29374348639a45985",
+  "protocol_sha256": "84076595529351aa6e8500e0eca7e546735f764ab5cac85355f396b935f36e77",
+  "source_sha256": {
+    "chat_judge_campaign_memory_v6.py": "be873a85b84eb7630d21989bbbc0ada3ed8ebc201f745f991871965719594a2e",
+    "chat_judge_api_refusal_v5.py": "11cd8c7880356afaef631f6168d02dd75025cd4be58d4c6fc69fddb966ed0dd7",
+    "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+  },
+  "unchanged_API_transport_judge_bytes": true,
+  "actual_readonly_inspect": {
+    "attempts_since_start": 0,
+    "missing_rankings": 4254,
+    "valid_api_rankings": 1786,
+    "eligible_missing_rankings": 4252,
+    "preserved_failed_rankings": 1,
+    "unattempted_paired_exclusions": 1,
+    "api_actual_spend_usd": 26.847668,
+    "retained_unknown_ceiling_usd": 0.75,
+    "baseline_usd": 20.08558,
+    "gate_reserve_usd": 25.0
+  },
+  "pending_reservations": 0,
+  "tests": {
+    "command": "python3 -m pytest -q tools/posttrain/test_chat_judge_campaign_memory_v6.py",
+    "passed": 26,
+    "elapsed_seconds": 15.2,
+    "log_sha256": "a6c92e3f72b33c8691d80d20702efccc3b828f36b6b513892a5558bb43798573",
+    "scope": "Fake dispatch only; exact low-memory no-dispatch, threshold, inspect/progress/dispatch/launch phase+errno, unknown pending preservation/no retry, frozen paired-case and terminal-status regressions. No model/network/GPU work."
+  },
+  "ruff": "PASS",
+  "unchanged_legacy_API_tests": "Not rerun: API/transport/judge bytes exactly match prior reviewed V5 evidence; no new broader test claim.",
+  "no_new_state_or_enabled_entry": true,
+  "old_markers_and_failure_rows_preserved": true,
+  "ledger_cache_prefixes_still_exact": true,
+  "no_provider_calls_or_disposition_by_preparation": true,
+  "memory_admission_limitation": "MemAvailable is point-in-time headroom, not an exclusive reservation or proof that future host pressure cannot cause a fail-stop.",
+  "terminal_expected": {
+    "valid": 6038,
+    "refused": 1,
+    "unattempted_paired_exclusion": 1,
+    "full_valid_complete": false
+  },
+  "DPO_and_fixed_gate": "BLOCKED_PENDING_SEPARATE_DATASET_DECISION"
+}
