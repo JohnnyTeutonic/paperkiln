@@ -1,0 +1,39 @@
+{
+  "pass": true,
+  "scope": "Independent prelaunch source/helper/CPU controls and operational review; no paid launch.",
+  "scientific_source_commit": "87051a06b7ca42e0447a280ea3ffd314ef45f20c",
+  "transport_commit": "8c9e0b24219b6e7068950a429abaafc202ca24da",
+  "manifest_sha256": "cc95af6e789f28aecae56bed3fc8c0749984de918cc7de6cbcc97f5eca15b311",
+  "launch_review_sha256": "9da5d13339fa54461a696529bbcf3b82fa2e57859421a6bbcd624ff7bb607f74",
+  "guarded_runner_sha256": "dd85acbc70938880d2432b171919a3a4324749448a5edf1ba1e0fec9bff077ea",
+  "host_guard_sha256": "2bd08768a03f41d91b3efb0a2f2eaecd31b9a180ba2d4c5b53c2487d0bf55f1f",
+  "archive_safe_members": 1589,
+  "manifest_source_files_verified": 1474,
+  "upload_hashes_verified": true,
+  "actual_argparse_and_sparse_boot_prefix_accepted": true,
+  "committed_relative_jobs_match": true,
+  "scoped_ceiling_same_transport_api_module": true,
+  "independent_python_optimized_tests_passed": 22,
+  "cpu_host_replay": "mamba_cpu_replay.json",
+  "host_reference_pins_before_after_verified": true,
+  "checks": [
+    "LM only, depth 1/2, three ordered steps with finite positive gradient norm",
+    "Every step requires conv1d and selective scan forward/backward CUDA counters",
+    "Saved model, optimizer and state; checkpoint-loaded F32 re-export bytes identical",
+    "Exact finite 8 by 7 source logits; independent full-vocabulary NumPy and pinned Ember prefill/decode shape, finite, bound and argmax checks",
+    "Score JSON excludes unknown token by existing generation convention; raw logits oracle checks all seven tokens",
+    "External host guard binds helper/reference/Ember sources before and after, exact full training recipe and NumPy 1.26.4"
+  ],
+  "caps": {
+    "maximum_usd": 0.75,
+    "gate_seconds": 1500,
+    "max_hours": 0.6,
+    "deadline_utc": "2026-10-31T06:20:00Z",
+    "max_remote_pods_for_driver": 2
+  },
+  "completion_requirement": "Actual VM lifecycle pass plus required frozen host full-row replay after raw outputs land.",
+  "limitations": [
+    "No SFT, model-quality, speed or full-residency claim.",
+    "Initial independent replay with system NumPy 2.3.3 correctly refused identity before numerical comparison; corrected pinned interpreter passed and original empty failure directory retained."
+  ]
+}
