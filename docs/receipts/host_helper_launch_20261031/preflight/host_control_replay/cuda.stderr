@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/home/jonat/host_helper_gate_stage_unlaunched_v3_20261031/replay_host_helper_gate.py", line 163, in <module>
+    print(json.dumps(replay(json.loads(a.raw.read_text()), a.require_cuda)))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jonat/host_helper_gate_stage_unlaunched_v3_20261031/replay_host_helper_gate.py", line 46, in replay
+    need(type(gpu) is bool and (not require_cuda or gpu), "required backend")
+  File "/home/jonat/host_helper_gate_stage_unlaunched_v3_20261031/replay_host_helper_gate.py", line 24, in need
+    raise ValueError(message)
+ValueError: required backend

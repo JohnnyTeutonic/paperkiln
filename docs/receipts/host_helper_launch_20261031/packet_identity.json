@@ -1,0 +1,11 @@
+{
+  "status": "UNAPPROVED_UNLAUNCHED_NO_WATCHDOG_ENTRY",
+  "scientific_manifest_sha256": "3ab069e1f144aae1461a1a0c6bb3c1bfd584b25d8f1e6fe41d7caba1a7458ed7",
+  "operational_files": {
+    "launch_review.json": "c653da66a7ec4e19ea71c923c35ad4fd014fa10b7ca809bc30929890b5a73062",
+    "host_helper_guarded_runner.py": "7b9a0e4e707d85d16f0286009d76b4ab429c724f6988c437a56d49e6b911c119",
+    "host_replay_guard.py": "e6a524d1af6f05c91a4ceee8928e35e770210cda66096a5d5d1aa76006b32b4e",
+    "preflight.py": "d9630e3f9dff84addccbeb1244ce9be488e25df7a4e6752269d1cdc3fa5e5fd4"
+  },
+  "preflight_result_sha256": "f48b3d8ab2e31b7de55cc709c422306a347e6cc58fc87936829bc9ccdca1470f"
+}

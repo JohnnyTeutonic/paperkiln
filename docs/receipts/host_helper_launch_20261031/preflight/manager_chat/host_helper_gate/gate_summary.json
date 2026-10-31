@@ -1,0 +1,9 @@
+{
+  "pass": false,
+  "errors": [
+    "manifest differs"
+  ],
+  "commands": [],
+  "scope": "nine named helper correctness cases only, no expected old failure, speed or broad audit closure",
+  "artifact_sha256": {}
+}
