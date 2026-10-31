@@ -1,4 +1,14 @@
 # Changelog
+## CPU host LayerNorm indexing (31 October 2026)
+
+Replace checked per-element host access with checked contiguous pointers within
+LayerNorm only, preserving accumulation order and device dispatch. The fixed
+one-thread i9-13905H comparison measured 3.66x over 16 operation cases and 1.279x
+on tiny d16/L2/T16 teacher-forced scoring; both block-bootstrap intervals exclude
+1. All 321 operation cases, three whole-model gradient/update cases and every
+score/logit artifact stayed bit-identical. CPU CTest: 53/53 passed. This is a scoped
+CPU measurement, not a general training or GPU claim.
+[Receipt and replay](docs/receipts/cpu_layernorm_20261031/validation.json).
 
 ## Tied-head Flex Hugging Face export (31 October 2026)
 

@@ -1,4 +1,4 @@
-# microtorch — autograd tape + nn API over transformer_core's primitives.
+# microtorch â€” autograd tape + nn API over transformer_core's primitives.
 #
 # The seam docs/DESIGN.md section 1 proposed: consume transformer_cpp via
 # add_subdirectory and link the existing transformer_core STATIC target.
@@ -133,7 +133,7 @@ target_link_libraries(test_resident_parity PRIVATE microtorch)
 add_executable(test_step_residency tests/test_step_residency.cpp)
 target_link_libraries(test_step_residency PRIVATE microtorch)
 
-# B2 adoption-gate benchmark (a measurement, not a test — no add_test).
+# B2 adoption-gate benchmark (a measurement, not a test â€” no add_test).
 add_executable(bench_b2 tools/bench_b2.cpp)
 target_link_libraries(bench_b2 PRIVATE microtorch)
 
@@ -460,3 +460,10 @@ add_test(NAME parity_depth COMMAND test_parity_depth)
 add_executable(test_add_bias_materialization tests/test_add_bias_materialization.cpp)
 target_link_libraries(test_add_bias_materialization PRIVATE microtorch)
 add_test(NAME add_bias_materialization COMMAND test_add_bias_materialization)
+add_executable(bench_layernorm_cpu tools/bench_layernorm_cpu.cpp)
+target_link_libraries(bench_layernorm_cpu PRIVATE microtorch)
+
+add_executable(test_layernorm_host tests/test_layernorm_host.cpp)
+target_link_libraries(test_layernorm_host PRIVATE microtorch)
+add_test(NAME layernorm_host COMMAND test_layernorm_host)
+set_tests_properties(layernorm_host PROPERTIES TIMEOUT 120)

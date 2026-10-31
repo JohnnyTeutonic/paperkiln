@@ -1,0 +1,75 @@
+[  0%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/config.cpp.o
+[  3%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/architecture.cpp.o
+[  3%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/lora.cpp.o
+[  7%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/logger.cpp.o
+[  7%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/scope_logger.cpp.o
+[ 11%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/components.cpp.o
+[ 11%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/matrix.cpp.o
+[ 15%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/matmul_optimized.cpp.o
+[ 15%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/tensor.cpp.o
+[ 19%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/utils.cpp.o
+In file included from /home/jonat/pk_cpu_layernorm_20261031/third_party/transformer_cpp/src/utils.cpp:21:
+/home/jonat/pk_cpu_layernorm_20261031/third_party/transformer_cpp/src/../include/debug.hpp:85:21: warning: backslash-newline at end of file
+   85 | #define SCOPE_LOG() \
+      |                      
+/home/jonat/pk_cpu_layernorm_20261031/third_party/transformer_cpp/src/../include/debug.hpp:85: warning: "SCOPE_LOG" redefined
+In file included from /home/jonat/pk_cpu_layernorm_20261031/third_party/transformer_cpp/src/utils.cpp:3:
+/home/jonat/pk_cpu_layernorm_20261031/third_party/transformer_cpp/src/../include/scope_logger.hpp:47: note: this is the location of the previous definition
+   47 | #define SCOPE_LOG() debug::ScopeLogger scope_logger_instance = debug::ScopeLogger(__FUNCTION__, __FILE__, __LINE__)
+      | 
+[ 19%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/vector_ops.cpp.o
+[ 19%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/embeddings.cpp.o
+[ 23%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/layer_norm.cpp.o
+[ 23%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/feed_forward.cpp.o
+[ 26%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/attention.cpp.o
+[ 26%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/transformer_layer.cpp.o
+[ 30%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/transformer.cpp.o
+[ 30%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/lm_head.cpp.o
+[ 34%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/router.cpp.o
+[ 34%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/moe.cpp.o
+[ 38%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/gqa.cpp.o
+[ 38%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/vocabulary.cpp.o
+[ 42%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/tiktoken_tokenizer.cpp.o
+[ 42%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/gradient_checkpoint.cpp.o
+[ 46%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/cache.cpp.o
+[ 46%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/quantization.cpp.o
+[ 50%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/quantization_api.cpp.o
+[ 50%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/model_saver.cpp.o
+[ 53%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/gguf_export.cpp.o
+[ 53%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/safetensors_export.cpp.o
+[ 57%] Linking CXX static library libtransformer_core.a
+[ 57%] Built target transformer_core
+[ 57%] Building CXX object CMakeFiles/microtorch.dir/src/autograd.cpp.o
+[ 61%] Building CXX object CMakeFiles/microtorch.dir/src/ops.cpp.o
+[ 61%] Building CXX object CMakeFiles/microtorch.dir/src/expr.cpp.o
+[ 65%] Building CXX object CMakeFiles/microtorch.dir/src/recurrence.cpp.o
+[ 65%] Building CXX object CMakeFiles/microtorch.dir/src/nn.cpp.o
+[ 69%] Building CXX object CMakeFiles/microtorch.dir/src/device.cpp.o
+[ 69%] Building CXX object CMakeFiles/microtorch.dir/src/device_cache.cpp.o
+[ 73%] Building CXX object CMakeFiles/microtorch.dir/src/safetensors.cpp.o
+[ 73%] Building CXX object CMakeFiles/microtorch.dir/src/gguf.cpp.o
+[ 76%] Building CXX object CMakeFiles/microtorch.dir/src/quant.cpp.o
+[ 76%] Building CXX object CMakeFiles/microtorch.dir/src/ir.cpp.o
+[ 80%] Building CXX object CMakeFiles/microtorch.dir/src/llama.cpp.o
+[ 80%] Building CXX object CMakeFiles/microtorch.dir/src/llama_attnres.cpp.o
+[ 84%] Building CXX object CMakeFiles/microtorch.dir/src/depth_attend.cpp.o
+[ 84%] Building CXX object CMakeFiles/microtorch.dir/src/moe.cpp.o
+[ 88%] Building CXX object CMakeFiles/microtorch.dir/src/kimi_linear.cpp.o
+[ 88%] Building CXX object CMakeFiles/microtorch.dir/src/srd.cpp.o
+[ 88%] Building CXX object CMakeFiles/microtorch.dir/src/cerebellum.cpp.o
+[ 92%] Building CXX object CMakeFiles/microtorch.dir/src/mamba.cpp.o
+[ 92%] Building CXX object CMakeFiles/microtorch.dir/src/posttrain/verifier.cpp.o
+[ 96%] Linking CXX static library libmicrotorch.a
+[ 96%] Built target microtorch
+[100%] Building CXX object CMakeFiles/bench_layernorm_cpu.dir/tools/bench_layernorm_cpu.cpp.o
+/home/jonat/pk_cpu_layernorm_20261031/tools/bench_layernorm_cpu.cpp: In function ‘int main(int, char**)’:
+/home/jonat/pk_cpu_layernorm_20261031/tools/bench_layernorm_cpu.cpp:175:13: error: ‘set’ is not a member of ‘microtorch::device’
+  175 |     device::set(device::Device::CPU);
+      |             ^~~
+/home/jonat/pk_cpu_layernorm_20261031/tools/bench_layernorm_cpu.cpp:175:25: error: ‘microtorch::device::Device’ has not been declared
+  175 |     device::set(device::Device::CPU);
+      |                         ^~~~~~
+gmake[3]: *** [CMakeFiles/bench_layernorm_cpu.dir/build.make:76: CMakeFiles/bench_layernorm_cpu.dir/tools/bench_layernorm_cpu.cpp.o] Error 1
+gmake[2]: *** [CMakeFiles/Makefile2:2187: CMakeFiles/bench_layernorm_cpu.dir/all] Error 2
+gmake[1]: *** [CMakeFiles/Makefile2:2194: CMakeFiles/bench_layernorm_cpu.dir/rule] Error 2
+gmake: *** [Makefile:1057: bench_layernorm_cpu] Error 2

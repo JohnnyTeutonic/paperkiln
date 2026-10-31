@@ -1,0 +1,15 @@
+{
+  "sources": {
+    "src/ops.cpp": "3c44fe8453612ca356686bcce7d0907f08825176accee3e15f1f7dbd8b4a940c",
+    "tools/bench_layernorm_cpu.cpp": "e5e40e1e80703000339e3badeddbda83d6db62c0190ae4ddab5313d2e7d00e60",
+    "tools/compare_layernorm_cpu.py": "d1f54f86346765b30dccb3705f9fff1a96114996b3ad87c29df6908c9cd188e3",
+    "CMakeLists.txt": "85ba4430924eaa7272b2263da9ddbabac6ecfde6365856ac1e4b01821e892896"
+  },
+  "binary_sha256": {
+    "mtstudio": "841438806b58082515080f67a64472f28c66e02f2b169fe94703e99d1f4e32c0",
+    "bench_layernorm_cpu": "3d3e4b9676f1abbfd59c293da3dfb3f307bc18aaa74ae91b905544b469bb3882"
+  },
+  "bitdump_sha256": "39250b995e16125c22eab6def485f7233f97829547be90416fcbdf0ef2284593",
+  "cases": 321,
+  "models": 3
+}

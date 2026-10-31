@@ -1,0 +1,81 @@
+{
+  "status": "PROSPECTIVE_BEFORE_TIMINGS",
+  "base_commit": "4c0ba9997",
+  "change": "Only host fallback layernorm forward/backward: replace repeated Matrix operator access with checked host-storage pointer acquisition and contiguous indexing; retain arithmetic/loop order, allocation, materialization, all original device dispatch. No restrict or fast-math/FMA changes.",
+  "baseline_source_sha256": "e3942b4564d035243be9f8084025222d7f93a01c794a2e40b3ef2e86cde0f42e",
+  "harness_sha256": "e5e40e1e80703000339e3badeddbda83d6db62c0190ae4ddab5313d2e7d00e60",
+  "blocks": 8,
+  "order_per_block": [
+    "A",
+    "B",
+    "B",
+    "A"
+  ],
+  "threads": 1,
+  "operation_shapes": [
+    [
+      1,
+      16
+    ],
+    [
+      16,
+      16
+    ],
+    [
+      1,
+      128
+    ],
+    [
+      16,
+      128
+    ],
+    [
+      1,
+      320
+    ],
+    [
+      16,
+      320
+    ],
+    [
+      1,
+      768
+    ],
+    [
+      16,
+      768
+    ]
+  ],
+  "operation_modes": [
+    "forward",
+    "forward+backward"
+  ],
+  "warmup_calls": 32,
+  "timed_calls": 1024,
+  "actual_score": {
+    "model": "single baseline-trained Flex GPT2 d16 L2 H2 FF24 T16,3steps,one model home",
+    "requests": 12000,
+    "prompt_ids": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "continuation_ids": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "warmup_processes_each": 1,
+    "mode": "CPU teacher-forced scoring, no KV; startup included in process wall time"
+  },
+  "correctness_gate": "Bitwise baseline/candidate dump equality for operation outputs/all gradients/alias cases and3whole-model forward/backward/SGD updates; identical score+rawlogit hash on alltimed trials. Malformed gradient refusals retained. Existing CPU CTests pass.",
+  "statistic": "Per block, speedup is mean(A time)/mean(B time). Operation aggregate is geometric mean of sixteen per-case speedups. Bootstrap whole blocks with replacement,10000resamples,seed20261031,percentile95%CI.",
+  "adoption": "Both operation aggregate and actualscore bootstrap95%lower bound must exceed1; every correctnessgate mustpass. Otherwise retainnegative report and do notadopt productionchange. No selective case removal, repeat trials, thresholdchanges or earlystop.",
+  "maximum_local_work": "One baseline freshCPUbuild, onecandidateincrementalbuild;32operationbenchprocesses+32actualscoreprocesses; benchmarktimeout120s/process. Interruptonlyforcorrectness/operationalfailure, preservefailure. No GPU/paidjobs."
+}

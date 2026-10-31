@@ -1,0 +1,130 @@
+{
+  "status": "VERIFIED_ADOPT",
+  "base_commit": "4c0ba9997",
+  "prospective_protocol_commits": [
+    "4be29d66a",
+    "b382f3959",
+    "86c22f798"
+  ],
+  "hardware": {
+    "cpu": "13th Gen Intel(R) Core(TM) i9-13905H",
+    "environment": "WSL2 Linux CPU-only",
+    "kernel": "6.18.54.1-microsoft-standard-WSL2",
+    "available_logical_cpus": 4,
+    "benchmark_threads": 1,
+    "affinity_pinned": false
+  },
+  "checks": {
+    "operation_cases_byte_identical": 321,
+    "wholemodel_forward_gradient_sgd_bit_identical": 3,
+    "all32score_json_and_raw_logits_hash_equal": true,
+    "ctest_passed": 53,
+    "ctest_failed": 0,
+    "ctest_timeout_seconds": 120,
+    "new_empty_gradient_shape_and_alias_refusals_passed": true
+  },
+  "result": {
+    "status": "COMPLETE",
+    "adopt": true,
+    "operation_aggregate": {
+      "block_ratios": [
+        3.6354262458102986,
+        3.2345648923695367,
+        3.972516582821732,
+        3.766674841159992,
+        3.7236362075122535,
+        3.5085172376498055,
+        3.8669275245764716,
+        3.6254015075048835
+      ],
+      "geometric_mean": 3.6603785982834536,
+      "bootstrap95_ci": [
+        3.5015712337321316,
+        3.802299032086212
+      ]
+    },
+    "actual_score": {
+      "block_ratios": [
+        1.3588695562528088,
+        1.160153796071145,
+        1.348783897278804,
+        1.287292990538323,
+        1.2822797390134728,
+        1.2522375264480883,
+        1.2655272124819563,
+        1.285882097834348
+      ],
+      "geometric_mean": 1.2788125965254877,
+      "bootstrap95_ci": [
+        1.236289445950128,
+        1.3165763314282448
+      ]
+    },
+    "trials": 32,
+    "sources": {
+      "src/ops.cpp": "3c44fe8453612ca356686bcce7d0907f08825176accee3e15f1f7dbd8b4a940c",
+      "tools/bench_layernorm_cpu.cpp": "e5e40e1e80703000339e3badeddbda83d6db62c0190ae4ddab5313d2e7d00e60",
+      "tools/compare_layernorm_cpu.py": "d1f54f86346765b30dccb3705f9fff1a96114996b3ad87c29df6908c9cd188e3",
+      "CMakeLists.txt": "85ba4430924eaa7272b2263da9ddbabac6ecfde6365856ac1e4b01821e892896"
+    },
+    "protocol_sha256": "b944e18372bac7486f5d8be674bea609603cbc9b5665ba1710fe095f806946b3",
+    "trials_sha256": "1acaf075ccaf919e90b1c421dad034277255ba9db27a2764c4b4159a462282f8",
+    "limits": "Tiny CPU teacher-forced score, startup included; fixed equal-weight operation cases. Contiguous blocks may be correlated; no general Transformer or GPU claim."
+  },
+  "final_sources_sha256": {
+    "src/ops.cpp": "3c44fe8453612ca356686bcce7d0907f08825176accee3e15f1f7dbd8b4a940c",
+    "tools/bench_layernorm_cpu.cpp": "e5e40e1e80703000339e3badeddbda83d6db62c0190ae4ddab5313d2e7d00e60",
+    "tools/compare_layernorm_cpu.py": "d1f54f86346765b30dccb3705f9fff1a96114996b3ad87c29df6908c9cd188e3",
+    "tools/replay_layernorm_cpu.py": "d682de87631f120f7bc70c6f682d6ecaff2fa32e07fffbbbff7c07a31a8159d9",
+    "tests/test_layernorm_host.cpp": "88e3a1fce30d317ea4253d7aaea457ff255ecb90b58e511ba069b17fb057c205",
+    "CMakeLists.txt": "b351d4bb89b2d60f22c8c71e4fd82b45cd5032788e9a2cd4c6bdff5183a7d35b"
+  },
+  "final_binary_matches_timed_candidate": {
+    "mtstudio": "841438806b58082515080f67a64472f28c66e02f2b169fe94703e99d1f4e32c0",
+    "bench_layernorm_cpu": "3d3e4b9676f1abbfd59c293da3dfb3f307bc18aaa74ae91b905544b469bb3882"
+  },
+  "timing_artifact_home": "/home/jonat/cpu_layernorm_comparison_20261031",
+  "single_model_fixture_manifest": {
+    "spec": "/home/jonat/cpu_layernorm_comparison_20261031/fixture/model.json",
+    "sha256": {
+      "/home/jonat/cpu_layernorm_comparison_20261031/fixture/model.json": "fda7bf8ed7bb2cce290774918d5123a5086c34ed74f300d43079e4c85c5c9982",
+      "/home/jonat/cpu_layernorm_comparison_20261031/requests.jsonl": "f0b0ebcfed60dd4d528590f8bc504df22a4e646c3fe35e0b9ed496d68257a481",
+      "/home/jonat/cpu_layernorm_comparison_20261031/fixture/model/model.safetensors": "f163c8614a28094c6b16bb0bd2c89c69b24b3a9323bc1149c291da5edd2411a4",
+      "/home/jonat/cpu_layernorm_comparison_20261031/fixture/v.gguf": "879b0dcb5995b7d79c9b0b72779416d9fe54fb9a4bb223424feee827605ea48a",
+      "/home/jonat/cpu_layernorm_comparison_20261031/fixture/c.txt": "05520e251e21f033ed7c75eeefb9cf3a484f37ffcb154d954c4bba8771f09390"
+    }
+  },
+  "after_timing_delta": "Only permanent host-contract test + its CMake registration, replay tool and result documentation were added. Measured src/ops.cpp, benchmark harness, mtstudio and benchmark binary bytes are unchanged; full CTest uses those same candidate binaries.",
+  "replay_command": "python tools/replay_layernorm_cpu.py docs/receipts/cpu_layernorm_20261031",
+  "commands": {
+    "baseline_config": "cmake -S . -B /home/jonat/pk_cpu_layernorm_build_20261031 -DCMAKE_BUILD_TYPE=Release -DMICROTORCH_CUDA=OFF -DCUDA_ENABLED=OFF -DFETCHCONTENT_SOURCE_DIR_JSON=/home/jonat/pk_studio_probes_build_20261031/_deps/json-src",
+    "baseline_prepare": "python tools/compare_layernorm_cpu.py prepare --build /home/jonat/pk_cpu_layernorm_build_20261031 --art /home/jonat/cpu_layernorm_comparison_20261031",
+    "fixed_comparison": "python tools/compare_layernorm_cpu.py compare --build /home/jonat/pk_cpu_layernorm_build_20261031 --art /home/jonat/cpu_layernorm_comparison_20261031",
+    "final_tests": "cmake --build /home/jonat/pk_cpu_layernorm_build_20261031 --parallel 1; ctest --output-on-failure --timeout 120 -j1"
+  },
+  "limitations": [
+    "Fixed tiny d16L2H2FF24T16 teacher-forced CPU scoring workload and16equally weighted operation shapes/modes on this laptop/WSL configuration. Not general training, large-model, autoregressive KV or GPU performance.",
+    "Bootstrap resamples eight contiguous ABBA blocks; they may remain correlated. CPU affinity/frequency/OS background activity were not controlled. All predeclared cases/trials were retained, no timing repeats or adaptive exclusions.",
+    "CUDA dispatch/kernel/coherence policy unchanged and untested here; host storage pointers use checked operator(0,0), not Matrix::data(), preserving vendored GPU-pointer distinctions.",
+    "Existing Matrix constructors reject empty output caches; empty and malformed-gradient refusals are retained. No new nonempty restriction introduced.",
+    "The first baseline harness build failed for one missing header before any timings; corrected prospectively and original failure log retained."
+  ],
+  "artifacts_sha256": {
+    "initial_harness_build_failure.log": "c0c50501e489e76e81409de18dbdb20fe5504296d1eea145841b04407452c139",
+    "candidate_identity.json": "e0236c3b2b080bbc13ea86a7b9fd9b6a6d422638a86380c468fffdcb03c2c790",
+    "baseline_build.log": "5600530125932f75934e876dbe240d8555c741bfa9adbb35ba8c6327af646cb0",
+    "canonical_scores.jsonl.gz": "ba393b01a81ff0bb431a701c7f677f39ca629dc71b9598fce327364e7c7c8b1b",
+    "trials.jsonl": "1acaf075ccaf919e90b1c421dad034277255ba9db27a2764c4b4159a462282f8",
+    "candidate_bits.json.gz": "39250b995e16125c22eab6def485f7233f97829547be90416fcbdf0ef2284593",
+    "baseline_identity.json": "25ef5d810c3b2ee3b3366edfaa45e7c3445aea9f0fa6b430ae1027cf0015cb50",
+    "ctest.log": "64ac734703d8bd344f511ec3853650ff6a2e9baf135e8bdd43975a68924d6f02",
+    "full_build.log": "f26debe7f0e67b4d8433eec9737604feca4af861a28f1509ed8c8177634da171",
+    "canonical_logits.f32.gz": "cf8a8a6cd0aed48827f243d802e49ec7e70d59b568596233976e43f11ff700a6",
+    "baseline_bits.json.gz": "39250b995e16125c22eab6def485f7233f97829547be90416fcbdf0ef2284593",
+    "protocol.json": "b944e18372bac7486f5d8be674bea609603cbc9b5665ba1710fe095f806946b3",
+    "results.json": "c0039d7ddaa465d8c7875268b1845f3ef72ead7845981e7580520a37d5c65961",
+    "candidate_build.log": "8042f16e28d74f9d88ad0a9828613a05307a52b1465303c2226949ef2508527b",
+    "final_config.log": "ac57c5db4b7c5f7ae9f7b39525cee393e3f73048bd8edbd99da16ea8a8c6e086",
+    "baseline_config.log": "7503a9abd31046ac4620782f72025b2283be547513b5869b5af943fc56086641"
+  }
+}
