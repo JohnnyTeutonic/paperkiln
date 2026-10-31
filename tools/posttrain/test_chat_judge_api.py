@@ -188,7 +188,7 @@ def test_changed_legacy_snapshot_blocks_resume(files):
 def test_profiles_cannot_silently_mix(files):
     api.Budget(files['ledger'], api.legacy_account(files['legacy_cache']))
     api.append(files['cache'], {'judge_id': api.MODEL, 'key': 'legacy'})
-    with pytest.raises(ValueError, match='different'):
+    with pytest.raises(ValueError, match='binding'):
         api.run(requests(), **files, max_calls=1, post=fake())
 
 
@@ -221,13 +221,168 @@ def test_probe_is_one_request_under_quarter_dollar(files):
 def test_existing_api_cache_cannot_restart_with_empty_budget(files):
     api.append(files['cache'], {'judge_id': api.profile_id(), 'key': 'test',
                              'transport_profile_sha256': api.digest(api.PROFILE)})
-    with pytest.raises(ValueError, match='original cumulative'):
+    with pytest.raises(ValueError, match='binding'):
         api.run(requests(), **files, max_calls=1, post=fake())
 
 
 def test_probe_restart_stays_within_total_quarter_dollar(files):
     post = fake()
     api.run(requests(), **files, max_calls=1, stage='probe', post=post)
-    with pytest.raises(ValueError, match='availability-probe'):
+    with pytest.raises(ValueError, match='stage attempt'):
         api.run(requests(), **files, max_calls=1, stage='probe', post=post)
     assert len(post.calls) == 1
+
+
+def rewrite(path, records):
+    import json
+    Path(path).write_text(''.join(json.dumps(r)+'\n' for r in records))
+
+
+def test_new_existing_empty_ledger_cannot_reset_api_cost(files):
+    post = fake()
+    api.run(requests(), **files, max_calls=1, post=post)
+    other = files['ledger'].with_name('other.jsonl')
+    other.touch()
+    changed = dict(files, ledger=other)
+    with pytest.raises(ValueError, match='binding'):
+        api.run(requests(), **changed, max_calls=1, post=post)
+    assert len(post.calls) == 1
+    assert api.Budget(files['ledger'], api.legacy_account(files['legacy_cache'])).state()[1] == .016
+
+
+def test_same_ledger_cannot_silently_switch_cache(files):
+    post = fake()
+    api.run(requests(), **files, max_calls=1, post=post)
+    changed = dict(files, cache=files['cache'].with_name('other-cache.jsonl'))
+    with pytest.raises(ValueError, match='binding'):
+        api.run(requests(), **changed, max_calls=1, post=post)
+    assert len(post.calls) == 1
+
+
+def test_truncated_or_reset_ledger_cannot_dispatch_with_existing_cache(files):
+    post = fake()
+    api.run(requests(), **files, max_calls=1, post=post)
+    files['ledger'].write_text('')
+    with pytest.raises(ValueError, match='settled reservation'):
+        api.run(requests(), **files, max_calls=1, post=post)
+    assert len(post.calls) == 1
+
+
+def test_deleted_cache_does_not_erase_paid_journal_history(files):
+    post = fake()
+    api.run(requests(), **files, max_calls=1, post=post)
+    files['cache'].unlink()
+    with pytest.raises(ValueError, match='missing cache'):
+        api.run(requests(), **files, max_calls=1, post=post)
+    assert len(post.calls) == 1
+    assert api.Budget(files['ledger'], api.legacy_account(files['legacy_cache'])).state()[1] == .016
+
+
+@pytest.mark.parametrize('field,value', [('cost_usd', 0), ('budget_reservation_id', 'not-reserved'),
+    ('transport_profile_sha256', 'different'), ('rubric_sha256', 'different'),
+    ('response_sha256', 'different'), ('key', 'different'), ('ranking', [1, 0])])
+def test_cached_rows_replay_against_paid_raw_receipts(files, field, value):
+    post = fake()
+    api.run(requests(), **files, max_calls=1, post=post)
+    recs = api.rows(files['cache'])
+    recs[0][field] = value
+    rewrite(files['cache'], recs)
+    with pytest.raises(ValueError):
+        api.run(requests(), **files, max_calls=1, post=post)
+    assert len(post.calls) == 1
+
+
+def test_failed_rows_are_also_bound_to_settlements(files):
+    post = fake(response(stop_reason='max_tokens'))
+    api.run(requests(), **files, max_calls=1, post=post)
+    failures = str(files['cache'])+'.failures.jsonl'
+    recs = api.rows(failures)
+    recs[0]['cost_usd'] = 0
+    rewrite(failures, recs)
+    with pytest.raises(ValueError, match='cost'):
+        api.run(requests(), **files, max_calls=1, post=post)
+    assert len(post.calls) == 1
+
+
+def test_raw_provider_changes_are_detected(files):
+    post = fake()
+    api.run(requests(), **files, max_calls=1, post=post)
+    record = api.rows(files['cache'])[0]
+    Path(record['transport_receipt']['response']).write_bytes(api.encoded(response(usage={'input_tokens': 1, 'output_tokens': 1})))
+    with pytest.raises(ValueError, match='hash'):
+        api.run(requests(), **files, max_calls=1, post=post)
+    assert len(post.calls) == 1
+
+
+def test_campaign_requests_and_rubric_cannot_drift(files):
+    post = fake()
+    api.run(requests(), **files, max_calls=1, post=post)
+    altered = requests()
+    altered[0]['candidates'][0] = 'different answer'
+    with pytest.raises(ValueError, match='binding'):
+        api.run(altered, **files, max_calls=1, post=post)
+    files['rubric'].write_text('different rubric')
+    with pytest.raises(ValueError, match='binding'):
+        api.run(requests(), **files, max_calls=1, post=post)
+    assert len(post.calls) == 1
+
+
+def test_cache_lock_is_shared_even_when_ledger_argument_differs(files):
+    with api.exclusive(str(files['cache'])+'.lock'):
+        with pytest.raises(BlockingIOError):
+            api.run(requests(), **files, max_calls=1, post=fake())
+        with pytest.raises(BlockingIOError):
+            api.run(requests(), **dict(files, ledger=files['ledger'].with_name('other.jsonl')),
+                    max_calls=1, post=fake())
+
+
+def many_requests():
+    return [{'prompt': f'<|user|>Hello {i}<|assistant|>',
+             'candidates': ['Hello.', 'Goodbye.'], 'uri': str(i)} for i in range(25)]
+
+
+def test_calibration_48_attempt_bound_persists_across_restarts(files):
+    post = fake()
+    result = api.run(many_requests(), **files, max_calls=48, stage='calibration', post=post)
+    assert result['calls'] == 48
+    with pytest.raises(ValueError, match='stage attempt'):
+        api.run(many_requests(), **files, max_calls=48, stage='calibration', post=post)
+    assert len(post.calls) == 48
+
+
+def test_calibration_two_dollar_bound_covers_failures(files):
+    post = fake(response(stop_reason='max_tokens', usage={'input_tokens': 45000, 'output_tokens': 1000}))
+    with pytest.raises(ValueError, match='stage dollar'):
+        api.run(many_requests(), **files, max_calls=48, stage='calibration', post=post)
+    assert len(post.calls) == 9
+    assert api.Budget(files['ledger'], api.legacy_account(files['legacy_cache'])).state()[1] == pytest.approx(1.8)
+
+
+def test_prior_api_probe_cost_is_verified_and_imported(files, tmp_path):
+    post = fake()
+    api.run(requests(), **files, max_calls=1, stage='probe', post=post)
+    new = dict(files, cache=tmp_path/'new-cache.jsonl', ledger=tmp_path/'new-budget.jsonl')
+    result = api.run(requests(), **new, max_calls=1, stage='calibration',
+                     prior_api_ledgers=[files['ledger']], post=post)
+    assert result['legacy_spend_and_reserve_usd'] == pytest.approx(20.089)
+    assert result['api_actual_spend_usd'] == pytest.approx(.016)
+    actual = api.legacy_account(files['legacy_cache'], [files['ledger']])
+    assert actual['prior_api_spend_usd'] == pytest.approx(.016)
+
+
+def test_tampered_prior_api_cost_cannot_be_imported(files):
+    api.run(requests(), **files, max_calls=1, post=fake())
+    history = api.rows(files['ledger'])
+    history[-1]['cost_usd'] = 0
+    rewrite(files['ledger'], history)
+    with pytest.raises(ValueError, match='replayed'):
+        api.legacy_account(files['legacy_cache'], [files['ledger']])
+
+
+def test_future_heldout_reserve_cannot_be_spent_via_unregistered_stage(files):
+    with pytest.raises(ValueError, match='stage'):
+        api.run(requests(), **files, max_calls=1, stage='heldout_gate', post=fake())
+
+def test_larger_historical_unknown_reserve_is_not_reduced(files):
+    api.append(str(files['legacy_cache'])+'.failures.jsonl', {'reserved_cost_usd': 33})
+    assert api.legacy_account(files['legacy_cache'])['unknown_failure_reserve_usd'] == 33

@@ -140,7 +140,7 @@ def file_hash(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def legacy_account(cache):
+def legacy_account(cache, prior_api_ledgers=()):
     """Unknown historical costs retain a dearest-call reserve of at least $0.25."""
     if not Path(cache).is_file():
         raise ValueError("designated historical legacy cache is missing")
@@ -148,10 +148,49 @@ def legacy_account(cache):
     records = [r for p in paths for r in rows(p)]
     known = [nonnegative(r["cost_usd"], "legacy cost") for r in records if r.get("cost_usd") is not None]
     ceiling = max(known + [.25])
-    unknown = sum(r.get("cost_usd") is None for r in records)
-    return {"known_spend_usd": math.fsum(known), "unknown_failure_reserve_usd": unknown * ceiling,
-            "unknown_cost_records": unknown,
+    unknown_records = [r for r in records if r.get("cost_usd") is None]
+    unknown = len(unknown_records)
+    historical_reserve = math.fsum(max([ceiling] + [nonnegative(r[k], "historical failed-call reserve")
+                        for k in ("reserved_usd", "reserve_usd", "cost_reservation_usd", "reserved_cost_usd") if k in r])
+                        for r in unknown_records)
+    prior_paid, prior_reserve, prior_files = [], [], {}
+    for ledger in prior_api_ledgers:
+        ledger = Path(ledger)
+        history = rows(ledger)
+        if not history or history[0].get("event") != "contract":
+            raise ValueError("prior API ledger lacks its contract")
+        profile = history[0]["contract"]["profile"]
+        if profile != PROFILE:
+            raise ValueError("prior API pricing/profile requires a separate audited migration")
+        reserved = {}
+        for row in history[1:]:
+            if row["event"] == "reserve":
+                if row["id"] in reserved:
+                    raise ValueError("duplicate prior API reservation")
+                reserved[row["id"]] = row
+            elif row["event"] == "settle":
+                before = reserved.pop(row["id"])
+                receipt = row["receipt"]
+                raw_path = Path(receipt["response"])
+                raw = raw_path.read_bytes()
+                if hashlib.sha256(raw).hexdigest() != receipt["response_sha256"]:
+                    raise ValueError("prior API raw response hash mismatch")
+                actual = usage_cost(json.loads(raw))
+                if actual != row["cost_usd"] or actual > before["reserve_usd"]:
+                    raise ValueError("prior API cost cannot be replayed")
+                prior_paid.append(actual)
+                prior_files[str(raw_path.resolve())] = file_hash(raw_path)
+                request_path = Path(receipt["request"])
+                prior_files[str(request_path.resolve())] = file_hash(request_path)
+            else:
+                raise ValueError("unknown prior API event")
+        prior_reserve.extend(nonnegative(r["reserve_usd"], "prior API reserve") for r in reserved.values())
+        prior_files[str(ledger.resolve())] = file_hash(ledger)
+    return {"known_spend_usd": math.fsum(known), "unknown_failure_reserve_usd": historical_reserve,
+            "unknown_cost_records": unknown, "prior_api_spend_usd": math.fsum(prior_paid),
+            "prior_api_unknown_reserve_usd": math.fsum(prior_reserve), "prior_api_files": prior_files,
             "files": {str(p.resolve()): file_hash(p) for p in paths if p.exists()}}
+
 
 
 def append(path, record):
@@ -182,20 +221,25 @@ def exclusive(path):
 
 
 class Budget:
-    def __init__(self, path, baseline, cap=200, gate_reserve=25):
+    def __init__(self, path, baseline, cap=200, gate_reserve=25, binding=None):
         self.path = Path(path)
         self.cap = nonnegative(cap, "cap")
         self.gate = nonnegative(gate_reserve, "held-out gate reserve")
         if self.cap > 200 or self.gate == 0:
             raise ValueError("campaign cap must be <=200 with a positive future gate reserve")
         records = rows(path)
-        contract = {"profile": PROFILE, "legacy": baseline, "cap_usd": self.cap, "gate_reserve_usd": self.gate}
+        if records and binding is None:
+            binding = records[0]["contract"].get("binding")
+        self.binding = binding
+        contract = {"profile": PROFILE, "legacy": baseline, "cap_usd": self.cap,
+                    "gate_reserve_usd": self.gate, "binding": binding}
         if records:
             if records[0].get("contract") != contract:
                 raise ValueError("budget/profile/legacy snapshot changed; audit before resuming")
         else:
             append(path, {"event": "contract", "contract": contract})
-        self.legacy = baseline["known_spend_usd"] + baseline["unknown_failure_reserve_usd"]
+        self.legacy = math.fsum(baseline.get(k, 0) for k in (
+            "known_spend_usd", "unknown_failure_reserve_usd", "prior_api_spend_usd", "prior_api_unknown_reserve_usd"))
 
     def state(self):
         pending, paid = {}, []
@@ -223,14 +267,19 @@ class Budget:
         pending, paid = self.state()
         if pending:
             raise ValueError("unresolved call remains reserved; reconcile before another dispatch")
-        if stage == "probe":
-            history = rows(self.path)[1:]
-            stages = {r["id"]: r["stage"] for r in history if r["event"] == "reserve"}
-            previous = math.fsum(r["cost_usd"] for r in history
-                                 if r["event"] == "settle" and stages[r["id"]] == "probe")
-            if previous + amount > .25 + 1e-12:
-                raise ValueError("cumulative availability-probe allowance would exceed $0.25")
-        keep = 0 if stage == "heldout_gate" else self.gate
+        history = rows(self.path)[1:]
+        stages = {r["id"]: r["stage"] for r in history if r["event"] == "reserve"}
+        previous = math.fsum(r["cost_usd"] for r in history
+                            if r["event"] == "settle" and stages[r["id"]] == stage)
+        attempts = sum(r["event"] == "reserve" and r["stage"] == stage for r in history)
+        limits = (self.binding or {}).get("stage_limits", {"probe": {"attempts": 1, "usd": .25}})
+        if stage not in limits:
+            raise ValueError("stage is not prospectively registered")
+        if attempts >= limits[stage]["attempts"]:
+            raise ValueError("registered stage attempt limit reached")
+        if previous + amount > limits[stage]["usd"] + 1e-12:
+            raise ValueError("registered stage dollar allowance would be exceeded")
+        keep = self.gate
         if self.legacy + paid + amount + keep > self.cap + 1e-12:
             raise ValueError("cumulative cap/future gate reserve would be exceeded")
         ident = uuid.uuid4().hex
@@ -245,16 +294,129 @@ class Budget:
         append(self.path, {"event": "settle", "id": ident, "cost_usd": cost, "receipt": receipt})
 
 
+def binding_identity(cache, ledger, requests, rsha, version):
+    return {"schema": 1, "cache": str(cache.resolve()), "ledger": str(ledger.resolve()),
+            "profile_sha256": digest(PROFILE), "requests_sha256": digest(requests), "rubric_sha256": rsha,
+            "rubric_version": version,
+            "stage_limits": {"probe": {"attempts": 1, "usd": .25},
+                             "calibration": {"attempts": 48, "usd": 2},
+                             "training_judge": {"attempts": 2 * len(requests), "usd": 200}},
+            "heldout_gate": "reserved; new held-out dataset/transport needs explicit reviewed stage migration"}
+
+
+def verified_binding(cache, ledger, requests, rsha, version):
+    expected = binding_identity(cache, ledger, requests, rsha, version)
+    path = Path(str(cache) + ".binding.json")
+    if not path.is_file() or json.loads(path.read_text()) != expected:
+        raise ValueError("immutable cache/ledger/request/rubric binding differs; reviewed migration required")
+    return expected
+
+
+def bind_cache(cache, ledger, requests, rsha, version):
+    """Called under both path locks before any journal or cache operation."""
+    path = Path(str(cache) + ".binding.json")
+    if path.exists():
+        return verified_binding(cache, ledger, requests, rsha, version)
+    if rows(cache) or rows(str(cache) + ".failures.jsonl") or rows(ledger):
+        raise ValueError("existing cache or ledger lacks verified binding; reviewed migration required")
+    identity = binding_identity(cache, ledger, requests, rsha, version)
+    atomic_blob(path, encoded(identity))
+    return identity
+
+
+def reconcile(cache, ledger, requests, rsha, version):
+    """Every scientific cache row must have one durable, replayable paid settlement."""
+    records = rows(ledger)
+    if not records or records[0].get("event") != "contract":
+        raise ValueError("ledger lacks budget contract")
+    binding = records[0]["contract"].get("binding")
+    if not binding or binding["cache"] != str(cache.resolve()) or binding["ledger"] != str(ledger.resolve()):
+        raise ValueError("ledger and cache are not bound")
+    reserves, settled = {}, {}
+    for row in records[1:]:
+        if row["event"] == "reserve":
+            if row["id"] in reserves:
+                raise ValueError("duplicate reservation identity")
+            reserves[row["id"]] = row
+        elif row["event"] == "settle":
+            if row["id"] in settled or row["id"] not in reserves:
+                raise ValueError("duplicate/unreserved settlement identity")
+            settled[row["id"]] = row
+        else:
+            raise ValueError("unknown journal event")
+    valid = {(judge.key_of(r["prompt"], r["candidates"], o, MODEL, version), tuple(o)): r
+             for r, o in judge.jobs(requests)}
+    used = set()
+    accepted_rows = [(True, row) for row in rows(cache)]
+    failed_rows = [(False, row) for row in rows(str(cache) + ".failures.jsonl")]
+    for accepted, row in accepted_rows + failed_rows:
+        ident = row.get("budget_reservation_id")
+        if ident in used or ident not in settled:
+            raise ValueError("cached/failed row has no unique settled reservation")
+        used.add(ident)
+        settlement, reservation = settled[ident], reserves[ident]
+        receipt = settlement["receipt"]
+        if (row.get("judge_id") != profile_id() or row.get("transport_profile_sha256") != digest(PROFILE)
+                or row.get("rubric_sha256") != rsha or row.get("rubric_version") != version
+                or row.get("key") != reservation["key"]
+                or row.get("cost_usd") != settlement["cost_usd"] or row.get("transport_receipt") != receipt):
+            raise ValueError("cache/settlement profile, cost, key or receipt mismatch")
+        request_path, response_path = Path(receipt["request"]), Path(receipt["response"])
+        expected = ledger.with_suffix(".raw")
+        if (request_path != expected / (ident + ".request.json")
+                or response_path != expected / (ident + ".response.json")):
+            raise ValueError("receipt path escapes bound journal namespace")
+        raw_request, raw_response = request_path.read_bytes(), response_path.read_bytes()
+        if (hashlib.sha256(raw_request).hexdigest() != receipt["request_sha256"]
+                or hashlib.sha256(raw_response).hexdigest() != receipt["response_sha256"]):
+            raise ValueError("raw request/response hash mismatch")
+        req = json.loads(raw_request)
+        if (req["profile"] != PROFILE or req["cache_key"] != row["key"]
+                or req["rubric_sha256"] != rsha or req["semantic_request_key"] != row["semantic_request_key"]):
+            raise ValueError("raw request identity mismatch")
+        body = req["body"]
+        if hashlib.sha256(body["system"].encode()).hexdigest() != rsha:
+            raise ValueError("raw system prompt differs from bound rubric")
+        order = row["order"]
+        original = valid.get((row["semantic_request_key"], tuple(order)))
+        if original is None:
+            raise ValueError("raw request is not a member of the fixed campaign")
+        if (body != request_body(body["system"], judge.render(original["prompt"], original["candidates"], order))
+                or judge.key_of(original["prompt"], original["candidates"], order, profile_id(), row["rubric_version"])
+                != row["key"]):
+            raise ValueError("payload differs from fixed request rendering")
+        response = json.loads(raw_response)
+        if (usage_cost(response) != settlement["cost_usd"] or response["usage"] != receipt["usage"]
+                or settlement["cost_usd"] > reservation["reserve_usd"]
+                or receipt["http_status"] != 200 or receipt["model_returned"] != response["model"]
+                or receipt["stop_reason"] != response.get("stop_reason")
+                or receipt["message_id"] != response.get("id")):
+            raise ValueError("provider usage/cost/metadata replay mismatch")
+        text = "".join(b["text"] for b in response.get("content", []) if b.get("type") == "text")
+        try:
+            ranking, why = judge.parse_ranking(text, order)
+        except (ValueError, TypeError, AttributeError):
+            ranking, why = None, ""
+        if hashlib.sha256(text.encode()).hexdigest() != row["response_sha256"]:
+            raise ValueError("cached text hash differs from raw response")
+        if accepted:
+            if (response.get("stop_reason") != "end_turn" or ranking != row.get("ranking")
+                    or not ranking or why != row.get("rationale")):
+                raise ValueError("cached ranking differs from raw provider response")
+        elif "ranking" in row or (ranking is not None and response.get("stop_reason") == "end_turn"):
+            raise ValueError("failure row does not represent a failed ranking")
+    if used != set(settled):
+        raise ValueError("settled call missing cache/failure record; recover from raw receipt before dispatch")
+
+
 def run(requests, cache, legacy_cache, rubric, ledger, env_file, max_calls, reserve=.25,
-        cap=200, gate_reserve=25, stage="training_judge", post=None):
+        cap=200, gate_reserve=25, stage="training_judge", post=None, prior_api_ledgers=()):
     """Serial API execution; profile/campaign compatibility needs prospective review."""
-    if max_calls < 0 or stage not in ("probe", "training_judge", "heldout_gate"):
+    if max_calls < 0 or stage not in ("probe", "calibration", "training_judge"):
         raise ValueError("invalid call count/stage")
     if stage == "probe" and (max_calls > 1 or reserve > .25):
         raise ValueError("availability probe is at most one request/reservation <=$0.25")
     cache, ledger = Path(cache), Path(ledger)
-    if rows(cache) and not ledger.is_file():
-        raise ValueError("existing API cache requires its original cumulative budget ledger")
     if cache.resolve() == Path(legacy_cache).resolve():
         raise ValueError("API and historical CLI caches must be separate")
     cache.parent.mkdir(parents=True, exist_ok=True)
@@ -263,14 +425,13 @@ def run(requests, cache, legacy_cache, rubric, ledger, env_file, max_calls, rese
     blobs.mkdir(exist_ok=True)
     system, version, rsha = judge.rubric_identity(str(rubric))
     jid = profile_id()
-    for record in rows(cache):
-        if record.get("judge_id") != jid or record.get("transport_profile_sha256") != digest(PROFILE):
-            raise ValueError("API cache contains a different/unproven transport profile")
-    done = {r["key"] for r in rows(cache)}
     key = None
     calls = accepted = failures = 0
-    with exclusive(str(ledger) + ".lock"):
-        budget = Budget(ledger, legacy_account(legacy_cache), cap, gate_reserve)
+    with exclusive(str(cache) + ".lock"), exclusive(str(ledger) + ".lock"):
+        binding = bind_cache(cache, ledger, requests, rsha, version)
+        budget = Budget(ledger, legacy_account(legacy_cache, prior_api_ledgers), cap, gate_reserve, binding)
+        reconcile(cache, ledger, requests, rsha, version)
+        done = {r["key"] for r in rows(cache)}
         for request, order in judge.jobs(requests):
             semantic_key = judge.key_of(request["prompt"], request["candidates"], order, MODEL, version)
             cache_key = judge.key_of(request["prompt"], request["candidates"], order, jid, version)
@@ -311,6 +472,7 @@ def run(requests, cache, legacy_cache, rubric, ledger, env_file, max_calls, rese
             except (ValueError, TypeError, KeyError):
                 raise RuntimeError("API usage/model/pricing unverifiable; reservation retained") from None
             receipt = {"request": str(request_path), "response": str(response_path), "http_status": status,
+                       "request_sha256": file_hash(request_path),
                        "response_sha256": hashlib.sha256(raw).hexdigest(), "credential_redacted": redacted != raw,
                        "model_returned": response["model"], "message_id": response.get("id"),
                        "usage": response["usage"], "stop_reason": response.get("stop_reason")}
@@ -349,31 +511,40 @@ def main():
     ap.add_argument("--legacy-cache", required=True)
     ap.add_argument("--rubric", required=True)
     ap.add_argument("--ledger")
+    ap.add_argument("--prior-api-ledger", action="append", default=[])
     ap.add_argument("--env-file")
     ap.add_argument("--max-calls", type=int, default=0)
     ap.add_argument("--reserve-per-call", type=float, default=.25)
     ap.add_argument("--max-usd", type=float, default=200)
     ap.add_argument("--gate-reserve-usd", type=float, default=25)
-    ap.add_argument("--stage", choices=("probe", "training_judge", "heldout_gate"), default="training_judge")
+    ap.add_argument("--stage", choices=("probe", "calibration", "training_judge"), default="training_judge")
     ap.add_argument("--out")
     a = ap.parse_args()
     requests = rows(a.requests)
     if a.cmd == "plan":
-        _, version, _ = judge.rubric_identity(a.rubric)
+        _, version, rsha = judge.rubric_identity(a.rubric)
+        if rows(a.cache) or rows(a.cache + ".failures.jsonl"):
+            if not a.ledger:
+                ap.error("existing API state needs --ledger for verified planning")
+            verified_binding(Path(a.cache), Path(a.ledger), requests, rsha, version)
+            reconcile(Path(a.cache), Path(a.ledger), requests, rsha, version)
         done = {r["key"] for r in rows(a.cache)}
         todo = sum(judge.key_of(r["prompt"], r["candidates"], o, profile_id(), version) not in done
                    for r, o in judge.jobs(requests))
         result = {"requests": len(requests), "calls_needed": todo, "judge_id": profile_id(), "profile": PROFILE,
-                  "legacy_accounting": legacy_account(a.legacy_cache), "historical_verdict_reuse": False}
+                  "legacy_accounting": legacy_account(a.legacy_cache, a.prior_api_ledger), "historical_verdict_reuse": False}
     elif a.cmd == "pairs":
-        if not a.out:
-            ap.error("pairs needs --out")
+        if not a.out or not a.ledger:
+            ap.error("pairs needs --out and --ledger for verified cache provenance")
+        _, version, rsha = judge.rubric_identity(a.rubric)
+        verified_binding(Path(a.cache), Path(a.ledger), requests, rsha, version)
+        reconcile(Path(a.cache), Path(a.ledger), requests, rsha, version)
         result = judge.pairs(requests, a.cache, profile_id(), a.rubric, a.out)
     else:
         if not a.env_file or not a.ledger:
             ap.error("run needs --env-file and --ledger")
         result = run(requests, a.cache, a.legacy_cache, a.rubric, a.ledger, a.env_file, a.max_calls,
-                     a.reserve_per_call, a.max_usd, a.gate_reserve_usd, a.stage)
+                     a.reserve_per_call, a.max_usd, a.gate_reserve_usd, a.stage, prior_api_ledgers=a.prior_api_ledger)
     print(json.dumps(result, indent=1))
 
 
