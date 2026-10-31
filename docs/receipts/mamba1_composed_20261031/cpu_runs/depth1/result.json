@@ -1,0 +1,19 @@
+{
+  "depth": 1,
+  "ssm": "mamba1",
+  "steps": 3,
+  "batch": 2,
+  "source_numpy": 1.4901161193847656e-08,
+  "ember_numpy": {
+    "prefill": 7.450580596923828e-09,
+    "decode": 7.450580596923828e-09
+  },
+  "f32_export_sha256": "931a78e2053eddea49ff7ce570b97069af83a00937bad1108ce155a79da2b4ad",
+  "reexport_bytes_equal": true,
+  "parameters": 736,
+  "IR_states": [
+    "conv1d_causal",
+    "selective_scan"
+  ],
+  "score_rows": 10
+}

@@ -1,0 +1,37 @@
+{
+  "status": "prospectus only; not launch ready; no launch authorized by this packet",
+  "budget": {
+    "device": "one L4",
+    "maximum_usd": 1,
+    "gate_seconds": 1500,
+    "transport": "watchdog-owned bounded upload, execution, download and cleanup",
+    "local_gpu": false
+  },
+  "prerequisites": [
+    "Implement and independently review composed forward/loss/all-parameter-gradient comparison at shared frozen weights; register shapes, seeds, parent gradients and finite tolerances before device outcomes.",
+    "Keep fixed CPU reference and primitive double/finite-difference evidence distinct; do not call CPU/CUDA agreement an independent backward oracle.",
+    "Freeze source archive, manifest, helper and parser, add tamper tests and strict refusal subprocess tests, then obtain root review before launch.",
+    "Require actual L4, CUDA and DEVCHECK, refuse CPU fallback, require profile counts for RMSNorm/conv/scan forward and backward and expected projection GEMMs.",
+    "Define host A() phase evidence separately because GPU counters do not observe host exp/scale."
+  ],
+  "proposed_cases": [
+    {
+      "gate": "composed shared-weight probe",
+      "scope": "Depths one and two, batch two, short stacked sequences; dump full logits, loss and every parameter gradient for CPU and CUDA against independently specified reference. Include A_log, conv weights/bias, Dskip, x_proj, dt_proj and RMSNorm gradients."
+    },
+    {
+      "gate": "actual CLI lifecycle",
+      "scope": "Tiny three-step ssm:mamba1 GPU training, finite nonzero gradients, save/reload and byte-identical FP32 reexport; compare full exported logits and argmax with NumPy and Ember prefill/decode at that run own weights. This does not establish identical CPU/GPU optimization trajectory."
+    },
+    {
+      "gate": "residency audit",
+      "scope": "Capture CLI profile operation counts plus source-bound host A() and parameter-close boundaries. Record remaining transfers; no speed conclusion."
+    }
+  ],
+  "cleanup": "Preserve failure and raw logs without scientific retry; delete only owned pod/volume, verify absence and disable only owned watchdog entry.",
+  "excluded": [
+    "No parallel-time scan algorithm change.",
+    "No broad model-quality benchmark.",
+    "No performance or full-device-residency claim."
+  ]
+}

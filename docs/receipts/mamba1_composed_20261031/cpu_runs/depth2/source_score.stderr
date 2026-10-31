@@ -1,0 +1,2 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+score: 3 continuations (0 over the context of 8) -> /home/jonat/pk_mamba_scan_20261031/docs/receipts/mamba1_composed_20261031/cpu_runs/depth2/score.out.jsonl

@@ -1,0 +1,55 @@
+{
+  "pass": true,
+  "scope": "two tiny CPU Mamba1 CLI training/save/export/reload and NumPy/Ember forward baselines; no CUDA, speed or model-quality claim",
+  "identity": {
+    "mtstudio": "7d99d5805894469cb51dd710a1f12d2401dd36db5eac6d7b657316e3cb2ea159",
+    "ember": "1f877524c3b59e1cdbf3ca29ab6d4e0ed216900516e1bcb28d5ec7e7e21b9a0f",
+    "sources": {
+      "tools/parity_model.hpp": "fec0ee958df6e3e36596a13d51ceb9a36fd93fba0e38d83418283e71047e815f",
+      "tools/mtstudio.cpp": "c50b8cfb86fcd88f8f2ee06c56e824e3ca7e82ea009f04740962b8a7eb6200ef",
+      "src/ops.cpp": "fa6a1ef979512d145385065f320b3cbf96522966691aa875dd071e00553a0ecc",
+      "src/selective_scan_kernels.cuh": "7ef31cca5b4a81f890f84573d559d4207dc96706919c68f3f120f8c7352da8f3",
+      "tools/mamba1_composed_baseline.py": "886c659f9cf038a9e9eb0e33f818c1280c42c5eeea6f57a2ca71ab1894b2c2f5"
+    }
+  },
+  "cases": [
+    {
+      "depth": 1,
+      "ssm": "mamba1",
+      "steps": 3,
+      "batch": 2,
+      "source_numpy": 1.4901161193847656e-08,
+      "ember_numpy": {
+        "prefill": 7.450580596923828e-09,
+        "decode": 7.450580596923828e-09
+      },
+      "f32_export_sha256": "931a78e2053eddea49ff7ce570b97069af83a00937bad1108ce155a79da2b4ad",
+      "reexport_bytes_equal": true,
+      "parameters": 736,
+      "IR_states": [
+        "conv1d_causal",
+        "selective_scan"
+      ],
+      "score_rows": 10
+    },
+    {
+      "depth": 2,
+      "ssm": "mamba1",
+      "steps": 3,
+      "batch": 2,
+      "source_numpy": 1.7695128917694092e-08,
+      "ember_numpy": {
+        "prefill": 1.4901161193847656e-08,
+        "decode": 1.4901161193847656e-08
+      },
+      "f32_export_sha256": "02ba75ef8bb9253b658f62e7bcd75a6d154d01018879fc912316c882c96816ed",
+      "reexport_bytes_equal": true,
+      "parameters": 1352,
+      "IR_states": [
+        "conv1d_causal",
+        "selective_scan"
+      ],
+      "score_rows": 10
+    }
+  ]
+}

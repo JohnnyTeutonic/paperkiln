@@ -1,0 +1,2 @@
+GGUF Export: Successfully wrote 13 tensors to /home/jonat/pk_mamba_scan_20261031/docs/receipts/mamba1_composed_20261031/cpu_runs/depth1/trained/mamba1_cpu_depth1.gguf
+{"arch":"paperkiln","event":"export","family":"mamba1","format":"gguf","ir":"/home/jonat/pk_mamba_scan_20261031/docs/receipts/mamba1_composed_20261031/cpu_runs/depth1/trained/mamba1_cpu_depth1.ir.json","path":"/home/jonat/pk_mamba_scan_20261031/docs/receipts/mamba1_composed_20261031/cpu_runs/depth1/trained/mamba1_cpu_depth1.gguf"}

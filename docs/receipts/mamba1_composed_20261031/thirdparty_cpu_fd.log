@@ -1,0 +1,18 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+third-party ops (host)
+1. rope interleaved          vs float64 2.34e-07, host-loop bits equal, fd 1.03e-04
+1. rope neox                 vs float64 1.91e-07, host-loop bits equal, fd 2.04e-04
+1. rope neox n_rot 4         vs float64 1.01e-07, host-loop bits equal, fd 6.52e-05
+1. rope interleaved n_rot 6  vs float64 1.40e-07, host-loop bits equal, fd 7.94e-05
+1. rmsnorm_group (4 x 3) vs float64 1.84e-07, fd x 1.39e-04 w 3.17e-05, one group == rmsnorm bit for bit
+1. repeat_heads (2 kv heads x 3): copies exact, backward the group sums, fd 1.24e-04
+1. conv1d_causal (K 4, 2 sequences) vs float64 1.26e-07, fd x 3.97e-05 w 7.09e-05 b 3.10e-05
+1. selective_scan (D 4, N 3, 2 sequences) vs float64 7.68e-08 of the range, fd worst 3.54e-04 (no softplus 8.36e-05)
+3. defaults == plain llama bit for bit; GQA (4 q / 2 kv heads) == MHA with repeated kv columns, max diff 0.0e+00
+3. GQA + neox + rope_dims 4 + qk_norm: cached decode vs forward 5.96e-08, batch vs singles 8.9e-08 (the plain llama's 6.0e-08)
+3. finite differences through k_proj and the q/k norms (15 spots): worst 4.44e-05
+3b. qk_temp: t = 1 == qk_norm bit for bit; head scaling exact; fd t 4.07e-05 x 1.92e-05; cached decode 8.94e-08, batch vs singles 4.5e-08
+3b. finite differences through q_temp (8 spots): worst 1.55e-05
+4. mamba1 (d 16, Di 32, N 4, K 4): batch == singles 0.0e+00
+4. finite differences through A_log, conv1d, D, x_proj and dt_proj's bias (15 spots): worst 2.42e-05
+all third-party op checks passed

@@ -1,0 +1,45 @@
+{
+  "status": "static audit and CPU baseline only",
+  "source_commit": "a7b08f8d8",
+  "cpu_result": "cpu_runs/result.json",
+  "production_changes": false,
+  "findings": [
+    {
+      "path": "tools/parity_model.hpp",
+      "symbols": [
+        "Mamba1Block::A",
+        "Mamba1Block::forward",
+        "MambaLM",
+        "mamba1_export"
+      ],
+      "finding": "Actual ssm:mamba1 composes RMSNorm, projections, causal convolution, SiLU, selective_scan, gating and residuals. A() performs host exp followed by host scale. Device scan dA downloads through their backward paths. These guarded materializations are a residency break, not demonstrated stale numerical reads."
+    },
+    {
+      "path": "tools/mtstudio.cpp",
+      "finding": "Actual CLI constructs parity::MambaLM with mamba1 config. Retained device parameters are enabled only for llama, so ordinary Mamba parameters close to host before evaluation, save and export. Step events expose gpu_ms and gpu_n counters."
+    },
+    {
+      "path": "tools/parity_model.hpp",
+      "symbol": "put_tensor",
+      "finding": "Export copies guarded host tensors; caller must close/materialize parameters. The ordinary CLI closes parameters before export."
+    },
+    {
+      "path": "src/ops.cpp",
+      "symbol": "embedding",
+      "finding": "Host forward fallback lacks materialize(table). A computed device table combined with an ops toggle is a conditional candidate. No numerical reproduction or ordinary active-on Mamba CLI corruption established; no production fix made."
+    },
+    {
+      "path": "tests/test_mamba.cpp",
+      "finding": "Uses old S4 scaffold and is not proof of composed Mamba1."
+    },
+    {
+      "path": "tests/test_thirdparty_ops.cpp",
+      "finding": "Existing two-layer CPU Mamba1 stacked/single equivalence and 15 parameter finite-difference spots passed. Observed worst relative error 2.42e-5 at unchanged 2e-2 threshold; this is selected spots, not all-parameter independent gradients."
+    }
+  ],
+  "limits": [
+    "No actual composed Mamba1 CUDA run in this packet.",
+    "No full-model device residency, parallel-time scan, speed or model-quality claim.",
+    "Independent NumPy/Ember forward comparisons cover the two tiny trained CPU fixtures; all-parameter independent composed backward reference remains to be implemented."
+  ]
+}

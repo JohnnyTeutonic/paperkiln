@@ -1,0 +1,15 @@
+== mtstudio: mamba1_cpu_depth2 ==
+arch: exact d=8 layers=2 heads=4 | T=8 vocab_cap=4096
+train: 3 steps batch=2 accum=1 lr=0.001 clip=1 eval_every=3 ckpt_every=3 early_stop(patience=0, min_delta=0)
+export: safetensors gguf | serve: no | out: /home/jonat/pk_mamba_scan_20261031/docs/receipts/mamba1_composed_20261031/cpu_runs/depth2/trained
+{"event":"start","name":"mamba1_cpu_depth2","steps":3}
+{"event":"data","tokens":700,"val_tokens":35,"vocab":7}
+{"T":8,"accum":1,"activation":"gelu","attention":"exact","batch":2,"checkpoint_activations":false,"d":8,"d_ff":32,"event":"model","family":"mamba","final_norm":true,"gate_bias_init":-2.0,"heads":4,"layers":2,"lr":0.0010000000474974513,"norm":"layernorm","norm_placement":"pre","params":1352,"position":"none","residual":"residual","seed":9,"sinks":1,"ssm":{"d_conv":3,"d_state":2,"dt_rank":1,"expand":2,"kind":"mamba1"},"vocab":7,"window":64}
+{"event":"step","grad_norm":1.3742066621780396,"loss":1.9422818422317505,"step":1}
+{"event":"step","grad_norm":1.3521159887313843,"loss":1.927451491355896,"step":2}
+{"event":"step","grad_norm":1.4028503894805908,"loss":1.9130723476409912,"step":3}
+{"event":"eval","step":3,"val_loss":1.9047928750514984}
+{"event":"export","format":"safetensors","path":"/home/jonat/pk_mamba_scan_20261031/docs/receipts/mamba1_composed_20261031/cpu_runs/depth2/trained/mamba1_cpu_depth2.safetensors"}
+GGUF Export: Successfully wrote 23 tensors to /home/jonat/pk_mamba_scan_20261031/docs/receipts/mamba1_composed_20261031/cpu_runs/depth2/trained/mamba1_cpu_depth2.gguf
+{"arch":"paperkiln","event":"export","family":"mamba1","format":"gguf","ir":"/home/jonat/pk_mamba_scan_20261031/docs/receipts/mamba1_composed_20261031/cpu_runs/depth2/trained/mamba1_cpu_depth2.ir.json","path":"/home/jonat/pk_mamba_scan_20261031/docs/receipts/mamba1_composed_20261031/cpu_runs/depth2/trained/mamba1_cpu_depth2.gguf"}
+{"best_val":1.9047929048538208,"early_stopped":false,"event":"done","final_step":3,"wall_seconds":0.003842426}
