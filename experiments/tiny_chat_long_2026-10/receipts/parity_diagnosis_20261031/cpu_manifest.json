@@ -1,0 +1,50 @@
+{
+  "scope": "New CPU full-context and KV diagnostics of six historically flagged reply requests; no original GPU token-position/logit recovery",
+  "banned_ids": [
+    0
+  ],
+  "banned_id_basis": "The matched16k vocabulary contains <unk>id0; the scorer banned aliases <s>,</s>,<pad> are absent. EOTid1 is allowed.",
+  "source_commit": "16654d9656539ceeb8a7dbe8ec63e0c2255910ec",
+  "binary_sha256": "994aa089f33ff5b3ee8830a3fc82fc3ada5eab33f7f764906eb366261801b7f0",
+  "replay_source_sha256": "2aa110819bda59e3ef8521015f314dccaea0978fa75f60e0e8548002b01c2edb",
+  "files_sha256": {
+    "c12_Sgist_r1_full.log": "e36e69e6164b141d3626c5cc555e79a38bc673ae9b5a043865d8d7f87928051e",
+    "c12_B_r1_full.logits.f32.gz": "046f903dfcfcc7faf75e36f807ee41d94579f477d14ba665d00b2c03bf9b0c02",
+    "c12_B_r3_kv.log": "ffeaba5976084962a2ed2657bea029083731e913e1d4c17aac8b5857afe21150",
+    "c12_B_r1_kv.logits.f32.gz": "7dcd3f48d818a01cf70ccc131afa147800227f3bf91302d36afe01c499137d4d",
+    "c12_B_r1_full.log": "c9854449072b135e20d3611c061b9abc6643f76ab74582f940dd095baa4fb152",
+    "c12_Sgist_r4_full.scores.jsonl": "5100681651e906b41bc3a9d55633eb5d5225fdf6a260c1743f2e36a1470ba7c3",
+    "chunk_reconstruction_source.py": "52f7da9cdc9dd4d879e9d82ae00c97bcc046fc472fc3e5590d4078979479e99c",
+    "c12_B_r3_kv.scores.jsonl": "6ee5fafaebc31eff1d7dc50fcdc4a624923e2d92da911f5ae04a2d2ce90798f7",
+    "c12_Sgist_r4_kv.log": "9d216c137251c98579f610e33068746998ac012ba3edaefa036143c39860f157",
+    "c12_Sgist_r4_full.log": "0072f829125a9c7cf7c620920cf1e90cc65f1985716f9a195404047d4cff45fc",
+    "c12_B_r3_full.logits.f32.gz": "c29479d730404f204b07439788324d18e70797de0adef5d7094e4f7ddaf7e6ba",
+    "requests.json": "5e05d7dba9433ca346c8e039243c025f8347f99202f04e90508fddb4ed6c6b54",
+    "chunk_inventory.json": "3c45d4f2ad0750f55310db4877a186919e587c5b6bf8643a32a3fe06258cb9f9",
+    "cpu_run_source.py": "fa5a87aa520e14f496a6e2d4f3145fb6600c79e64b7d66c958a86501bc3cd147",
+    "c12_Sgist_r4_full.logits.f32.gz": "ccea67e2db4c5f2e743cda6534d129a5bca3e39157ec3514a40057de6da962d5",
+    "c12_Sgist_r4_kv.scores.jsonl": "3ee63c70429eacc4ae535117d7791f05a54a75324edfd53125a4c6e340a67c46",
+    "c12_Sgist_r1_full.scores.jsonl": "e641c868c9936d441fd3d9a1cf810b84d316fea030ad9c2eea49c960fa0233c5",
+    "c12_Sgist_r1_kv.logits.f32.gz": "e1502d898be993ed74866547e6b42cb212b742cfa6e7230cae85a3d6dd128de2",
+    "inventory.json": "6f060bb3df3b98a2b3e3450041002bdc580b84db8814e33828780bf4bc312f89",
+    "c12_B_r3_kv.logits.f32.gz": "5f720a8079999a109c5dbf7dfafe3f71930453246508b47b5a1be361afcbbae7",
+    "c12_B_r1_full.scores.jsonl": "55dbd44cb78a724166a7e810cea7ec15f431b431a6df0add91e9bcde4697ef35",
+    "c12_B_r3_full.scores.jsonl": "c859bbb32212cbb42db108e2b18b84c6b1646abee548e104b1402f5b5c9dc030",
+    "c12_Sgist_r1_kv.scores.jsonl": "b72c1aa1032c01874996ef567c3a76fbae946fe3d912288c7ec729abb6f73861",
+    "initial_prepare_source.py": "f99b296e795b28d8065b6efb28c9341d4ceec485cc79380e1614d71f8b8728b4",
+    "c12_B_r1_kv.log": "aa54531f5ab4d21a2c64639a0c55c11ea74a70506e89e6a8ed853bc96eb0a329",
+    "c12_Sgist_r4_kv.logits.f32.gz": "ccea67e2db4c5f2e743cda6534d129a5bca3e39157ec3514a40057de6da962d5",
+    "c12_Sgist_r1_kv.log": "1d2979f33848c46ff0a9e637f40b64b955a5605e502420fb1d568b81ac03af89",
+    "c12_Sgist_r1_full.logits.f32.gz": "e1502d898be993ed74866547e6b42cb212b742cfa6e7230cae85a3d6dd128de2",
+    "c12_B_r1_kv.scores.jsonl": "9739b407b469e4acabd41e5d6f97fb5d0d3a9ecebc0e84bf88a5d4b47b35a3fa",
+    "cpu_per_position.json": "778b3b6fa49a2180e8e8bd85d5ef40b466451e0d1c6d3e1518c47ddf46e194f6",
+    "cpu_diagnostic_progress.json": "b6b5a55f7cd6051caf08650bc681a9d1414211a71c4bfd312f06e46bf7b50817",
+    "c12_B_r3_full.log": "8c90fb6538f56ff2526062d9da77ba4bb1fd00ff90f9806179c619644e28d067"
+  },
+  "limitations": [
+    "Original score chunk results and per-position failed locations are not retained. New CPU disagreement positions are not established historical GPU failed positions.",
+    "B original runtime packed up to16384tokens with original256requestchunks; isolated CPU full/KV diagnostics do not reconstruct that geometry. State-token self prompts are nonpackable in the frozen source.",
+    "Full model weights and originalGGUF are retained once in canonical external artifacts and hashed, not copied intoGit.",
+    "No registered result, historical history, parity criterion, S-full launch or training changed."
+  ]
+}

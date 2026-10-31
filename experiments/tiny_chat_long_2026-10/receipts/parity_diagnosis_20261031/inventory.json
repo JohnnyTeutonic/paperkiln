@@ -1,0 +1,71 @@
+{
+  "sources_sha256": {
+    "/home/jonat/pk_hs1_parity_diagnosis_20261031/experiments/tiny_chat_long_2026-10/receipts/hs1_five_seed_20261030/history_argmax_audit.json": "da3e3880fa4eb4d3ad1ed88b908c2a4b637780860eb9438f94fc93a6a92ded9e",
+    "/home/jonat/pk_hs1_parity_diagnosis_20261031/corpus/eval/carry12_v1.jsonl": "de24f2c726a1006e8e61542dd3b2dfbf8677b9e6fe689277cca035305bd32797",
+    "tools/carry12_eval.py": "6630aa9a7327f14d5d16b2526dc06a08370deb00ecde7f67e3b187fbebd9a9b5",
+    "tools/carry5_eval.py": "f9d729af90bdf884fc4f299fc53ef3443867d441396d1cc2da8889e2a77df30f",
+    "tools/chat_eval.py": "cdde9a4a2d3534414dc7107fd2006bd42abf2b7162e54f4a0ed82722e2eb58a8",
+    "tools/state_tokens.py": "d79491e1a131817b2e9fe9aaaf323ee781ebb071094a906fd391923120c4a627",
+    "tools/llama3_bpe.py": "880b4558b66486cd099115f62571c1389a70ab3edf01327d7db5de1f97fc5b71"
+  },
+  "runs": {
+    "c12_B_r1": {
+      "spec": "/home/jonat/hs1_parity_diagnosis_20261031/c12_B_r1.spec.json",
+      "original_spec": "/mnt/c/ml_artifacts/tiny_chat/c12_B_r1/post_c12_B_r1/sft_spec.json",
+      "gen": "/mnt/c/ml_artifacts/tiny_chat/c12_B_r1/post_c12_B_r1/carry12/m/gen.jsonl",
+      "gguf": "/mnt/c/ml_artifacts/tiny_chat/c12_B_r1/post_c12_B_r1/sft/tc_sft_B_r1.gguf",
+      "weights": "/mnt/c/ml_artifacts/tiny_chat/c12_B_r1/post_c12_B_r1/sft/tc_sft_B_r1.safetensors",
+      "sources_sha256": {
+        "/mnt/c/ml_artifacts/tiny_chat/c12_B_r1/post_c12_B_r1/sft_spec.json": "4ed55872f46c776b5b0ca38f429808caaf30d022e6a384a04101d7ba5cc28396",
+        "/mnt/c/ml_artifacts/tiny_chat/c12_B_r1/post_c12_B_r1/carry12/m/gen.jsonl": "02e214ae599f9214335356217a65d28712cb8242c81c570d33455ab6a992b3ad",
+        "/mnt/c/ml_artifacts/tiny_chat/c12_B_r1/post_c12_B_r1/sft/tc_sft_B_r1.gguf": "290d37a3b6043e19ead788551f98961d47a4b68d835ff4e27394981e23f61fe3",
+        "/mnt/c/ml_artifacts/tiny_chat/c12_B_r1/post_c12_B_r1/sft/tc_sft_B_r1.safetensors": "eba6eadebbfbc5af02f1c2d22e9d8d3f155cff8d072f15ef374095cbf5ad66a5",
+        "/mnt/c/ml_artifacts/tiny_chat/c12_B_r1/post_c12_B_r1/gen_engine.json": "3a5e84448d57210f170df8d078ae831d9ddb22c87df255f31a7b44ddaf26db79"
+      }
+    },
+    "c12_B_r3": {
+      "spec": "/home/jonat/hs1_parity_diagnosis_20261031/c12_B_r3.spec.json",
+      "original_spec": "/mnt/c/ml_artifacts/tiny_chat/c12_B_r3/post_c12_B_r3/sft_spec.json",
+      "gen": "/mnt/c/ml_artifacts/tiny_chat/c12_B_r3/post_c12_B_r3/carry12/m/gen.jsonl",
+      "gguf": "/mnt/c/ml_artifacts/tiny_chat/c12_B_r3/post_c12_B_r3/sft/tc_sft_B_r3.gguf",
+      "weights": "/mnt/c/ml_artifacts/tiny_chat/c12_B_r3/post_c12_B_r3/sft/tc_sft_B_r3.safetensors",
+      "sources_sha256": {
+        "/mnt/c/ml_artifacts/tiny_chat/c12_B_r3/post_c12_B_r3/sft_spec.json": "bbb964d5874de63515b1404dfff8adc4b906e50ac96ad2956f2195b21b42f1fe",
+        "/mnt/c/ml_artifacts/tiny_chat/c12_B_r3/post_c12_B_r3/carry12/m/gen.jsonl": "f6de3eba9d834982b5f1e4eec45bdc9878840bb5d17b080cd3e5d462a8849549",
+        "/mnt/c/ml_artifacts/tiny_chat/c12_B_r3/post_c12_B_r3/sft/tc_sft_B_r3.gguf": "115b4136db34dbcbbfd9da4b5ffe8e545628caaa18d1430126197c52feb8dd26",
+        "/mnt/c/ml_artifacts/tiny_chat/c12_B_r3/post_c12_B_r3/sft/tc_sft_B_r3.safetensors": "c98f2cedacfdddbf9136d46be545cdd46cffb48e18a3363ffdd9bdc9762997ce",
+        "/mnt/c/ml_artifacts/tiny_chat/c12_B_r3/post_c12_B_r3/gen_engine.json": "17fb1c00f13faed18310ccda55b38989281575372da3822cb53f60c0f96a1dbb"
+      }
+    },
+    "c12_Sgist_r1": {
+      "spec": "/home/jonat/hs1_parity_diagnosis_20261031/c12_Sgist_r1.spec.json",
+      "original_spec": "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r1/post_c12_Sgist_r1/sft_spec.json",
+      "gen": "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r1/post_c12_Sgist_r1/carry12/m/gen.jsonl",
+      "gguf": "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r1/post_c12_Sgist_r1/sft/tc_sft_Sgist_r1.gguf",
+      "weights": "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r1/post_c12_Sgist_r1/sft/tc_sft_Sgist_r1.safetensors",
+      "sources_sha256": {
+        "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r1/post_c12_Sgist_r1/sft_spec.json": "d43d98a5c7ab4bed2250b49977628f50a4f4f2a259571bd40ac58a8632a83c41",
+        "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r1/post_c12_Sgist_r1/carry12/m/gen.jsonl": "d5c8a2a755d68c003a69dc08b428822699c7e034c6617cb9e208dda5e3daaa63",
+        "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r1/post_c12_Sgist_r1/sft/tc_sft_Sgist_r1.gguf": "1effc37018942d3f5ce95ec21154261f3aeabadbdbee1e18d013e8ed5a238ce4",
+        "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r1/post_c12_Sgist_r1/sft/tc_sft_Sgist_r1.safetensors": "c98f652b6ae1c963a3692ef68b397ba2e7026147a95e2209daf55919f7e57655",
+        "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r1/post_c12_Sgist_r1/gen_engine.json": "9467bf810d8c3eb99eb8ce67055d11225d4167900abcfef289997b20039ea3a5"
+      }
+    },
+    "c12_Sgist_r4": {
+      "spec": "/home/jonat/hs1_parity_diagnosis_20261031/c12_Sgist_r4.spec.json",
+      "original_spec": "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r4/post_c12_Sgist_r4/sft_spec.json",
+      "gen": "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r4/post_c12_Sgist_r4/carry12/m/gen.jsonl",
+      "gguf": "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r4/post_c12_Sgist_r4/sft/tc_sft_Sgist_r4.gguf",
+      "weights": "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r4/post_c12_Sgist_r4/sft/tc_sft_Sgist_r4.safetensors",
+      "sources_sha256": {
+        "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r4/post_c12_Sgist_r4/sft_spec.json": "710030691de7dc7864789bf1f833fcb3b2319b7e139cb9b9f2bc9fb0a6609f0b",
+        "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r4/post_c12_Sgist_r4/carry12/m/gen.jsonl": "6a42427b24737a772bcf737403a8317e80408d1e1b3fd4cb3b7345cf10dcfff5",
+        "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r4/post_c12_Sgist_r4/sft/tc_sft_Sgist_r4.gguf": "d9749df011cb53f91784181b0cbe8f66190b4520575ab7a9be6d2805f6a842ae",
+        "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r4/post_c12_Sgist_r4/sft/tc_sft_Sgist_r4.safetensors": "5811a2e8124ee6191f5d36173605ef893d0e48d9968285633938e9d4f6036e12",
+        "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r4/post_c12_Sgist_r4/gen_engine.json": "45d6494af5a1cab4434b569ce2bcb7bca2292e9774cf610eb1b6efb5b816d9d2"
+      }
+    }
+  },
+  "missing_historical_score_chunks": true,
+  "no_history_or_result_changes": true
+}

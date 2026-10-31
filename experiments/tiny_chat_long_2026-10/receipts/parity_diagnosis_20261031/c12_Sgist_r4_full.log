@@ -1,0 +1,2 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+score: 1 continuations (0 over the context of 1024) -> /home/jonat/hs1_parity_diagnosis_20261031/c12_Sgist_r4_full.scores.jsonl
