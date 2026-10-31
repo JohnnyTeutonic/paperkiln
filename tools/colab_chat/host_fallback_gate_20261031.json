@@ -1,0 +1,62 @@
+{
+  "max_parallel": 1,
+  "jobs": [
+    {
+      "name": "host_fallback_gate",
+      "cmd": [
+        "timeout",
+        "--signal=TERM",
+        "--kill-after=30",
+        "1530",
+        "python3",
+        "/content/chat/upload/fallback_gate.py",
+        "--upload",
+        "/content/chat/upload",
+        "--manifest-sha256",
+        "ebd8b516be62717df029703cb714f8b24ec6a180a36318876a9d2de55955e8e5",
+        "--out",
+        "{out}"
+      ],
+      "outputs": [
+        "gate_summary.json",
+        "hardware.log",
+        "nvcc.log",
+        "configure.log",
+        "baseline_build.log",
+        "baseline_gelu_forward_x.log",
+        "baseline_gelu_backward_x.log",
+        "baseline_silu_backward_x.log",
+        "baseline_softmax_forward_x.log",
+        "baseline_softmax_backward_y.log",
+        "baseline_sigmoid_forward_x.log",
+        "baseline_sigmoid_backward_y.log",
+        "baseline_rmsnorm_forward_x.log",
+        "baseline_rmsnorm_forward_w.log",
+        "baseline_rmsnorm_backward_x.log",
+        "baseline_rmsnorm_backward_w.log",
+        "baseline_group_forward_w.log",
+        "baseline_group_backward_w.log",
+        "control_silu_forward_x.log",
+        "control_group_forward_x.log",
+        "control_group_backward_x.log",
+        "fixed_build.log",
+        "fixed_gelu_forward_x.log",
+        "fixed_gelu_backward_x.log",
+        "fixed_silu_backward_x.log",
+        "fixed_softmax_forward_x.log",
+        "fixed_softmax_backward_y.log",
+        "fixed_sigmoid_forward_x.log",
+        "fixed_sigmoid_backward_y.log",
+        "fixed_rmsnorm_forward_x.log",
+        "fixed_rmsnorm_forward_w.log",
+        "fixed_rmsnorm_backward_x.log",
+        "fixed_rmsnorm_backward_w.log",
+        "fixed_group_forward_w.log",
+        "fixed_group_backward_w.log",
+        "fixed_silu_forward_x.log",
+        "fixed_group_forward_x.log",
+        "fixed_group_backward_x.log"
+      ]
+    }
+  ]
+}
