@@ -1,0 +1,3 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+{"actual_cuda":true,"stale_producer":true,"host_poison":true,"no_grad_context":true,"deferred_window":true}
+{"pass":true,"case":"logsoftmax","actual_cuda":true,"devcheck_enabled":true,"no_grad_context":true,"cpu_reference":true,"stale_producer":true,"host_poison":true,"sampler_ids_logp_rng":false,"all_softmax_rows":true}

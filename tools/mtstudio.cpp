@@ -1269,6 +1269,8 @@ Sampled sample_pure(F&& forward, const std::vector<int>& prompt, size_t T, size_
         std::vector<int> ctx = ids;
         if (ctx.size() > T) ctx.assign(ids.end() - T, ids.end());
         Var logits = forward(ctx);
+        device::materialize(logits->data);
+        MT_DEVCHECK_HOST_READ(logits->data, "sample_pure logits");
         const size_t last = logits->data.rows() - 1;
         double m1 = -1e300, mt = -1e300;
         for (size_t j = 0; j < V; ++j) {
@@ -1604,6 +1606,8 @@ SftSet load_sft(const Spec& s, const std::map<std::string, int>& vocab) {
 // Row-wise log-softmax in double, returned as float (grpo's reference
 // log-probabilities and its KL/entropy monitors).
 Matrix log_softmax_rows(const Matrix& L) {
+    device::materialize(L);
+    MT_DEVCHECK_HOST_READ(L, "log_softmax_rows logits");
     Matrix out(L.rows(), L.cols());
     for (size_t i = 0; i < L.rows(); ++i) {
         double mx = -1e300, z = 0.0;

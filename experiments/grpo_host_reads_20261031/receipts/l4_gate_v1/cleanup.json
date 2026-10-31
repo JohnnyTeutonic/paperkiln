@@ -1,0 +1,41 @@
+{
+  "campaign_home": true,
+  "all_outputs_home": true,
+  "pod": null,
+  "volume": null,
+  "owned_pod_absent_from_provider": true,
+  "owned_volume_absent_from_provider": true,
+  "watchdog_enabled": false,
+  "ledger_usd_estimate": 0.08702800528149544,
+  "ledger": {
+    "pods": [
+      {
+        "id": "i2j4vq9yulcgve",
+        "name": "pk-grpo-host-1031",
+        "gpu": "L4",
+        "usd_per_hr": 0.59,
+        "dc": "EU-RO-1",
+        "volume": "qgjlwz8uub",
+        "start": 1793414472.844881,
+        "stop": 1793415002.106722,
+        "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+        "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+        "stopped_by": "runner"
+      }
+    ],
+    "volumes": [
+      {
+        "id": "qgjlwz8uub",
+        "dc": "EU-RO-1",
+        "gb": 20,
+        "created": 1793414470.0060341,
+        "name": "pk-grpo-host-1031-vol",
+        "deleted": 1793415002.9771826
+      }
+    ]
+  },
+  "launches": 1,
+  "retry_count": 0,
+  "source_restored": true,
+  "gate_criteria_unchanged": true
+}

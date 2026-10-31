@@ -1,0 +1,29 @@
+{
+  "max_parallel": 1,
+  "jobs": [
+    {
+      "name": "grpo_host_gate",
+      "cmd": [
+        "timeout",
+        "--signal=TERM",
+        "--kill-after=30",
+        "1500",
+        "python3",
+        "/content/chat/upload/grpo_gate_vm_v1.py",
+        "{out}"
+      ],
+      "outputs": [
+        "gate_summary.json",
+        "hardware.log",
+        "nvcc.log",
+        "configure.log",
+        "baseline_build.log",
+        "fixed_build.log",
+        "baseline_sample.log",
+        "baseline_logsoftmax.log",
+        "fixed_sample.log",
+        "fixed_logsoftmax.log"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+[ 62%] Built target transformer_core
+[ 96%] Built target microtorch
+[ 96%] Building CXX object CMakeFiles/test_studio_grpo_materialization.dir/tests/test_studio_grpo_materialization.cpp.o
+[100%] Linking CXX executable test_studio_grpo_materialization
+[100%] Built target test_studio_grpo_materialization

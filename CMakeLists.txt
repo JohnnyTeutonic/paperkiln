@@ -476,3 +476,17 @@ add_executable(test_layernorm_materialization tests/test_layernorm_materializati
 target_link_libraries(test_layernorm_materialization PRIVATE microtorch)
 add_test(NAME layernorm_materialization COMMAND test_layernorm_materialization)
 set_tests_properties(layernorm_materialization PROPERTIES TIMEOUT 120)
+
+# Compile the real CLI helpers into an isolated materialization regression.
+add_executable(test_studio_grpo_materialization tests/test_studio_grpo_materialization.cpp)
+target_link_libraries(test_studio_grpo_materialization PRIVATE microtorch nlohmann_json::nlohmann_json Threads::Threads)
+target_include_directories(test_studio_grpo_materialization PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/httplib ${CMAKE_BINARY_DIR}/generated)
+# This test embeds the full CLI; avoid optimizing unrelated HTTP/training code.
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(test_studio_grpo_materialization PRIVATE -O0 -g0)
+endif()
+if(WIN32)
+    target_link_libraries(test_studio_grpo_materialization PRIVATE ws2_32)
+endif()
+add_test(NAME studio_grpo_materialization COMMAND test_studio_grpo_materialization)
+set_tests_properties(studio_grpo_materialization PROPERTIES TIMEOUT 120)

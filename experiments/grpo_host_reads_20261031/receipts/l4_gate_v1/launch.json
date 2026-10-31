@@ -1,0 +1,41 @@
+{
+  "created_utc": "2026-10-31T02:42:11.781533+00:00",
+  "source_commit": "226c5bbe2677ee66edb8d12b80f51ba2da684859",
+  "job_commit": "188f96381658dae1b923a63f1f8306cdb2c217d1",
+  "proposal_sha256": "b5a2e02a0efa5bad32da9536ecbee06ae6911db4d04f13b59d63c4b409a897f3",
+  "staged_files": {
+    "grpo_gate_vm_v1.py": {
+      "bytes": 9575,
+      "sha256": "7aa81d88ecb6906bed2078ad2f074ea6f309de353c06fe271493b4fd7abd784c"
+    },
+    "grpo_baseline_mtstudio.cpp": {
+      "bytes": 314962,
+      "sha256": "15b0fbc8ceb5f48a10d53b62b755c3c26cd8ac5e041c90b8b8f613ba40b5fb7d"
+    },
+    "grpo_inputs.json": {
+      "bytes": 370,
+      "sha256": "6ee75836acd47cbd752d5fda7475e8c9d399257f0844a5afcd29d676c84ecec0"
+    },
+    "grpo_source.tgz": {
+      "bytes": 6755487,
+      "sha256": "5e9a4236143a20f0ef3ec97884448d912af125eedb9ef0b12cfc389da0a12335"
+    }
+  },
+  "method": "existing watchdog, dedicated one-off command job",
+  "LN_cleanup_verified_before_enable": true,
+  "own_watchdog_entry": "Paperkiln actual L4 GRPO CLI host-reader gate",
+  "own_state_directory": "/home/jonat/pk_grpo_host_1031_runner",
+  "artifact_directory": "/mnt/c/ml_artifacts/devcheck/pk-grpo-host-1031",
+  "owned_pod_id": "i2j4vq9yulcgve",
+  "owned_volume_id": "qgjlwz8uub",
+  "maximum_usd": 0.6,
+  "maximum_hours": 0.4166666666666667,
+  "absolute_deadline_utc": "2026-10-31T03:05:00Z",
+  "scientific_pass": true,
+  "cleanup_complete": true,
+  "retry_authorized": false,
+  "watchdog_enabled": false,
+  "scientific_receipt": "gate_summary.json",
+  "offline_replay": "replay.json",
+  "cleanup_receipt": "cleanup.json"
+}

@@ -1,0 +1,195 @@
+{
+ "pass": true,
+ "scope": "sample_pure and log_softmax_rows host boundaries only; no training-quality claim",
+ "commands": [
+  {
+   "name": "hardware",
+   "argv": [
+    "nvidia-smi",
+    "--query-gpu=name,driver_version",
+    "--format=csv,noheader"
+   ],
+   "returncode": 0
+  },
+  {
+   "name": "nvcc",
+   "argv": [
+    "nvcc",
+    "--version"
+   ],
+   "returncode": 0
+  },
+  {
+   "name": "configure",
+   "argv": [
+    "cmake",
+    "-S",
+    "/content/grpo_source",
+    "-B",
+    "/content/grpo_build",
+    "-DCMAKE_BUILD_TYPE=Release",
+    "-DMICROTORCH_CUDA=ON",
+    "-DMICROTORCH_DEVCHECK=ON",
+    "-DMICROTORCH_BUILD_PYTHON=OFF",
+    "-DCMAKE_CUDA_ARCHITECTURES=89"
+   ],
+   "returncode": 0
+  },
+  {
+   "name": "baseline_build",
+   "argv": [
+    "cmake",
+    "--build",
+    "/content/grpo_build",
+    "--target",
+    "test_studio_grpo_materialization",
+    "--parallel",
+    "4"
+   ],
+   "returncode": 0
+  },
+  {
+   "name": "baseline_sample",
+   "argv": [
+    "/content/grpo_build/test_studio_grpo_materialization",
+    "--require-cuda",
+    "--case",
+    "sample"
+   ],
+   "returncode": 1
+  },
+  {
+   "name": "baseline_logsoftmax",
+   "argv": [
+    "/content/grpo_build/test_studio_grpo_materialization",
+    "--require-cuda",
+    "--case",
+    "logsoftmax"
+   ],
+   "returncode": 1
+  },
+  {
+   "name": "fixed_build",
+   "argv": [
+    "cmake",
+    "--build",
+    "/content/grpo_build",
+    "--target",
+    "test_studio_grpo_materialization",
+    "--parallel",
+    "4"
+   ],
+   "returncode": 0
+  },
+  {
+   "name": "fixed_sample",
+   "argv": [
+    "/content/grpo_build/test_studio_grpo_materialization",
+    "--require-cuda",
+    "--case",
+    "sample"
+   ],
+   "returncode": 0
+  },
+  {
+   "name": "fixed_logsoftmax",
+   "argv": [
+    "/content/grpo_build/test_studio_grpo_materialization",
+    "--require-cuda",
+    "--case",
+    "logsoftmax"
+   ],
+   "returncode": 0
+  }
+ ],
+ "errors": [],
+ "source_restored": true,
+ "inputs": {
+  "source_commit": "226c5bbe2677ee66edb8d12b80f51ba2da684859",
+  "files": {
+   "grpo_source.tgz": "5e9a4236143a20f0ef3ec97884448d912af125eedb9ef0b12cfc389da0a12335",
+   "grpo_baseline_mtstudio.cpp": "15b0fbc8ceb5f48a10d53b62b755c3c26cd8ac5e041c90b8b8f613ba40b5fb7d",
+   "grpo_gate_vm_v1.py": "7aa81d88ecb6906bed2078ad2f074ea6f309de353c06fe271493b4fd7abd784c"
+  }
+ },
+ "source_commit": "226c5bbe2677ee66edb8d12b80f51ba2da684859",
+ "baseline_mtstudio_sha256": "15b0fbc8ceb5f48a10d53b62b755c3c26cd8ac5e041c90b8b8f613ba40b5fb7d",
+ "baseline_binary_sha256": "48196cede77d1c0980597bc4c0316bf169dd0d3d14a3142f3ff5dbb755231a42",
+ "baseline": {
+  "sample": {
+   "returncode": 1,
+   "registered_numerical_failure": true
+  },
+  "logsoftmax": {
+   "returncode": 1,
+   "registered_numerical_failure": true
+  }
+ },
+ "baseline_expected_numerical_failure": true,
+ "fixed_mtstudio_sha256": "c50b8cfb86fcd88f8f2ee06c56e824e3ca7e82ea009f04740962b8a7eb6200ef",
+ "fixed_binary_sha256": "4131a7e0d5eebfafb474daa2ccac76b8756a021ae18cf6211948d2b7b462b1fa",
+ "fixed": {
+  "sample": {
+   "pass": true,
+   "case": "sample",
+   "actual_cuda": true,
+   "devcheck_enabled": true,
+   "no_grad_context": true,
+   "cpu_reference": true,
+   "stale_producer": true,
+   "host_poison": true,
+   "sampler_ids_logp_rng": true,
+   "all_softmax_rows": false
+  },
+  "logsoftmax": {
+   "pass": true,
+   "case": "logsoftmax",
+   "actual_cuda": true,
+   "devcheck_enabled": true,
+   "no_grad_context": true,
+   "cpu_reference": true,
+   "stale_producer": true,
+   "host_poison": true,
+   "sampler_ids_logp_rng": false,
+   "all_softmax_rows": true
+  }
+ },
+ "logs": {
+  "hardware.log": {
+   "sha256": "4d27402575c0fbfcbc714a6563f4bcc9ea0e3699ea638e7bd89db077eef291de",
+   "bytes": 21
+  },
+  "nvcc.log": {
+   "sha256": "3c71ed984d2ca98770b0cba5c23a849a87209351e105433929c3062fb66d1915",
+   "bytes": 209
+  },
+  "configure.log": {
+   "sha256": "99b9e0cc4a1fddf8c26c576ad536985874cf004f8436f9cf1c8f8c62429df4d0",
+   "bytes": 1969
+  },
+  "baseline_build.log": {
+   "sha256": "18eb9eb15a6108dbfc3cdcbc69974f62175547924efd7b506b6715b6a4fd125d",
+   "bytes": 23693
+  },
+  "fixed_build.log": {
+   "sha256": "3efdd5bc0ffc5a6cb8df51b26e54312865ba5519f20bbd025b458ec2e8665ca4",
+   "bytes": 304
+  },
+  "baseline_sample.log": {
+   "sha256": "1c8f541468d74fb0a7480474df079e655da9886478cdc0a51bc714ddf7f48b80",
+   "bytes": 290
+  },
+  "baseline_logsoftmax.log": {
+   "sha256": "96a02ea58ae7d2f442f83ff63149e2fcd02d80ee46efe2cfbf7695bb3554440b",
+   "bytes": 296
+  },
+  "fixed_sample.log": {
+   "sha256": "1726bb6216b45e2ef3721ced37ed390f23ed4e26df8e91e8130a12937b9119be",
+   "bytes": 373
+  },
+  "fixed_logsoftmax.log": {
+   "sha256": "6ce3ae8ebbfa98a95b76f3067a17a3fe3c93204d3d6c25cfffc6467d37954316",
+   "bytes": 377
+  }
+ }
+}

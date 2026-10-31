@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "scientific_pass": true,
+  "scope": "two CLI host consumers only; no training-quality claim",
+  "files_sha256": {
+    "cleanup.json": "3debfca7180a0d8ec98faa0e2991f7ae35cd21089097e04d38077b95ec2bfb5b",
+    "configure.log": "99b9e0cc4a1fddf8c26c576ad536985874cf004f8436f9cf1c8f8c62429df4d0",
+    "fixed_sample.log": "1726bb6216b45e2ef3721ced37ed390f23ed4e26df8e91e8130a12937b9119be",
+    "baseline_build.log": "18eb9eb15a6108dbfc3cdcbc69974f62175547924efd7b506b6715b6a4fd125d",
+    "fixed_build.log": "3efdd5bc0ffc5a6cb8df51b26e54312865ba5519f20bbd025b458ec2e8665ca4",
+    "fixed_logsoftmax.log": "6ce3ae8ebbfa98a95b76f3067a17a3fe3c93204d3d6c25cfffc6467d37954316",
+    "nvcc.log": "3c71ed984d2ca98770b0cba5c23a849a87209351e105433929c3062fb66d1915",
+    "launch.json": "82b4b951bf82234b09ad582a0b03047d2e1b4bf5fbf21674e0b7ecadd3c79056",
+    "hardware.log": "4d27402575c0fbfcbc714a6563f4bcc9ea0e3699ea638e7bd89db077eef291de",
+    "transport.log": "5d274ff733c6dc755e889e93ee7a8289a8fd73400e26770cbb2eeccce43f2cca",
+    "replay.json": "f2aa31663a872e6470275bce9bc2d027c22094d073cd3453e06e571c81431349",
+    "gate_summary.json": "a40fccb7a966bb2606698992a8813b7d643c011e55bad0ba0346a7dbd8e65b4a",
+    "baseline_logsoftmax.log": "96a02ea58ae7d2f442f83ff63149e2fcd02d80ee46efe2cfbf7695bb3554440b",
+    "baseline_sample.log": "1c8f541468d74fb0a7480474df079e655da9886478cdc0a51bc714ddf7f48b80"
+  }
+}

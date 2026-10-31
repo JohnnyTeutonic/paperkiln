@@ -1,0 +1,39 @@
+{
+  "integrity": true,
+  "scientific_pass": true,
+  "scope": "two real CLI host consumers only; no training-quality claim",
+  "reported_errors": [],
+  "source_commit": "226c5bbe2677ee66edb8d12b80f51ba2da684859",
+  "original_numeric_failures": [
+    "sample",
+    "logsoftmax"
+  ],
+  "fixed": {
+    "sample": {
+      "pass": true,
+      "case": "sample",
+      "actual_cuda": true,
+      "devcheck_enabled": true,
+      "no_grad_context": true,
+      "cpu_reference": true,
+      "stale_producer": true,
+      "host_poison": true,
+      "sampler_ids_logp_rng": true,
+      "all_softmax_rows": false
+    },
+    "logsoftmax": {
+      "pass": true,
+      "case": "logsoftmax",
+      "actual_cuda": true,
+      "devcheck_enabled": true,
+      "no_grad_context": true,
+      "cpu_reference": true,
+      "stale_producer": true,
+      "host_poison": true,
+      "sampler_ids_logp_rng": false,
+      "all_softmax_rows": true
+    }
+  },
+  "binary_binding": "recorded executable SHA256; binary bytes are not downloaded",
+  "tampered_raw_log_refused": true
+}
