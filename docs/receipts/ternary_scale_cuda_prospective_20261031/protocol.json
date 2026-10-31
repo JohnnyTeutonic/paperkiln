@@ -1,0 +1,42 @@
+{
+  "status": "UNLAUNCHED",
+  "old_base": "5f489fdd7c5c05eb16434b4f6c96e84252d28dee",
+  "source_pins": {
+    "src/ops.cpp": "a2d5110f21331a1018263e0cda9cb5c5759d59b30930a357cf1fb8359e33288c",
+    "include/microtorch/ops.hpp": "9db1581b296093793a6d6e4cd2fec59ed6a4edfe660f8ac3e525236d6629914d",
+    "tests/test_ternary_scale_boundary.cpp": "2fc1c6985efc17a035064a03ce3c22408f36442a6c7b1514916d919c61a12c59",
+    "tools/ternary_scale_boundary_gate.py": "9365a4cab5de4051d2d87721b71635e4cc7f3717bd26b5476490e74de73b2247",
+    "tools/replay_ternary_scale_boundary.py": "3870eadaec2d7bcaeb103de7381b4612465758201aa12d1066c414beef699c4b",
+    "CMakeLists.txt": "02653e3a502a9e4e66dac21e8c87318c9dd13200827257bddd0fdd757645159a"
+  },
+  "bounds": {
+    "max_usd": 0.75,
+    "max_vm_seconds": 2700,
+    "max_numerical_seconds": 2400,
+    "gpu": "single NVIDIA L4"
+  },
+  "design": "One complete fixed-source archive; replace only src/ops.cpp with exact old base bytes for full-object old build. Run identical fresh-host/all-zero controls and real CUDA producer. Restore pinned fixed ops.cpp bytes and rebuild actual full object. Same harness and parser both modes.",
+  "fixture": {
+    "shape": [
+      2,
+      3
+    ],
+    "values": [
+      -0.25,
+      0.5,
+      1,
+      -1.5,
+      0.75,
+      -0.125
+    ],
+    "exact_mean_abs": "11/16",
+    "scale": "float32(16/11)"
+  },
+  "old_required": "CPU controls exit0. Actual CUDA run exit1, after real slice_cols and proven stale host poison: scale100000, host still stale, six host zeros. No arbitrary nonzero exit accepted.",
+  "fixed_required": "CPU controls exit0. Actual CUDA run exit0, same producer/poison, scale float32(16/11), host no longer stale, all six original values restored.",
+  "interpretation": "Public direct scalar helper only. Internal QAT fallback already materializes. No default QAT failure, historical invalidity, backward, model quality, speed or broader audit closure claim.",
+  "transport": "Existing runner/watchdog only; root approval and fresh account accessor before enable. No manual driver or numerical retry. Semantic failures retained in gate_summary and raw logs; wrapper exits0 solely to relay immutable failure archive, not to assert success.",
+  "landing": "Retain raw out.zip and logs. Independently rerun strict parser on all four logs using recorded returncodes and verify uploaded manifest/source/hash bindings before declaring actual CUDA validation.",
+  "cleanup": "Track only owned pod/volume IDs; after landing verify both absent and disable only owned watchdog entry. Failure stops for review; no automatic new numerical attempt.",
+  "validation": "24 -O parser/mutation tests pass; extracted-body CPU proof only. Full-object CPU controls explicitly move to remote old/fixed builds due unrelated local WSL memory pressure."
+}
