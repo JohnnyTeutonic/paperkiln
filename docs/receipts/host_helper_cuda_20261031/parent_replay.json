@@ -1,0 +1,226 @@
+{
+  "pass": true,
+  "all_artifact_hashes_verified": 10,
+  "manifest_sha256": "3ab069e1f144aae1461a1a0c6bb3c1bfd584b25d8f1e6fe41d7caba1a7458ed7",
+  "replayer_sha256": "8d7d7962a88372734cf6af31539ca8254d3954db708d503646122a9797e722a0",
+  "numpy": "1.26.4",
+  "records": [
+    {
+      "mode": "cpu",
+      "raw_sha256": "d3cf7f1f873e0053208203a71f5fb51043cb286fc40ee857515fdae5921a2fdf",
+      "replay": {
+        "pass": true,
+        "actual_cuda": false,
+        "cases": [
+          {
+            "op": "exp",
+            "gradient_names": [
+              "a"
+            ],
+            "output_shape": [
+              2,
+              3
+            ]
+          },
+          {
+            "op": "div",
+            "gradient_names": [
+              "a",
+              "b"
+            ],
+            "output_shape": [
+              2,
+              3
+            ]
+          },
+          {
+            "op": "where",
+            "gradient_names": [
+              "a",
+              "b"
+            ],
+            "output_shape": [
+              2,
+              3
+            ]
+          },
+          {
+            "op": "rowsum",
+            "gradient_names": [
+              "a"
+            ],
+            "output_shape": [
+              2,
+              1
+            ]
+          },
+          {
+            "op": "rowmax",
+            "gradient_names": [
+              "a"
+            ],
+            "output_shape": [
+              2,
+              1
+            ]
+          },
+          {
+            "op": "broadcast_cols",
+            "gradient_names": [
+              "a"
+            ],
+            "output_shape": [
+              2,
+              3
+            ]
+          },
+          {
+            "op": "relu_",
+            "gradient_names": [
+              "a",
+              "w"
+            ],
+            "output_shape": [
+              2,
+              3
+            ]
+          },
+          {
+            "op": "sigmoid_",
+            "gradient_names": [
+              "a",
+              "w"
+            ],
+            "output_shape": [
+              2,
+              3
+            ]
+          },
+          {
+            "op": "scale_",
+            "gradient_names": [
+              "a",
+              "w"
+            ],
+            "output_shape": [
+              2,
+              3
+            ]
+          }
+        ],
+        "maximum_normalized_error": 3.445527538945451e-08,
+        "bound": 3e-05,
+        "scope": "nine named helper cases only; no expected-old-failure, speed or broad audit closure"
+      }
+    },
+    {
+      "mode": "cuda",
+      "raw_sha256": "442fcf5a32d3482ed05de941c5acf59d1a41bd88dbc379def05a3d2ada9ea75e",
+      "replay": {
+        "pass": true,
+        "actual_cuda": true,
+        "cases": [
+          {
+            "op": "exp",
+            "gradient_names": [
+              "a"
+            ],
+            "output_shape": [
+              2,
+              3
+            ]
+          },
+          {
+            "op": "div",
+            "gradient_names": [
+              "a",
+              "b"
+            ],
+            "output_shape": [
+              2,
+              3
+            ]
+          },
+          {
+            "op": "where",
+            "gradient_names": [
+              "a",
+              "b"
+            ],
+            "output_shape": [
+              2,
+              3
+            ]
+          },
+          {
+            "op": "rowsum",
+            "gradient_names": [
+              "a"
+            ],
+            "output_shape": [
+              2,
+              1
+            ]
+          },
+          {
+            "op": "rowmax",
+            "gradient_names": [
+              "a"
+            ],
+            "output_shape": [
+              2,
+              1
+            ]
+          },
+          {
+            "op": "broadcast_cols",
+            "gradient_names": [
+              "a"
+            ],
+            "output_shape": [
+              2,
+              3
+            ]
+          },
+          {
+            "op": "relu_",
+            "gradient_names": [
+              "a",
+              "w"
+            ],
+            "output_shape": [
+              2,
+              3
+            ]
+          },
+          {
+            "op": "sigmoid_",
+            "gradient_names": [
+              "a",
+              "w"
+            ],
+            "output_shape": [
+              2,
+              3
+            ]
+          },
+          {
+            "op": "scale_",
+            "gradient_names": [
+              "a",
+              "w"
+            ],
+            "output_shape": [
+              2,
+              3
+            ]
+          }
+        ],
+        "maximum_normalized_error": 3.445527538945451e-08,
+        "bound": 3e-05,
+        "scope": "nine named helper cases only; no expected-old-failure, speed or broad audit closure"
+      }
+    }
+  ],
+  "scope": "Nine named helper forward/full-gradient cases only; no production repair, exhaustive audit, performance or residency claim"
+}
