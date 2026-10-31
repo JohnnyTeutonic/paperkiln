@@ -226,32 +226,39 @@ float* window_operand(const Matrix& m, DevState** slot, bool& owned) {
 
 // Transpose-flag GEMM: logical C(M,N) = op(A) * op(B). TA/TB pick the
 // index math (TA: A stored (K,M); TB: B stored (N,K)). Same 32x32
-// shared-memory tiling as gemm_tiled; the transposed loads are strided
-// rather than coalesced — correctness first, coalescing is a measured
-// optimization for later (docs/CUDA_PHASE_B2.md non-goals).
+// shared-memory tiling as gemm_tiled. Transposed operands load contiguous
+// physical rows and transpose into padded shared tiles; compute order is unchanged.
 template <bool TA, bool TB>
 __global__ void gemm_tiled_ops(const float* __restrict__ A,
                                const float* __restrict__ B,
                                float* __restrict__ C,
                                int M, int N, int K) {
-    __shared__ float As[TILE][TILE];
-    __shared__ float Bs[TILE][TILE];
+    __shared__ float As[TILE][TILE + (TA ? 1 : 0)];
+    __shared__ float Bs[TILE][TILE + (TB ? 1 : 0)];
     const int row = blockIdx.y * TILE + threadIdx.y;
     const int col = blockIdx.x * TILE + threadIdx.x;
     float acc = 0.0f;
     for (int t = 0; t < (K + TILE - 1) / TILE; ++t) {
         const int ak = t * TILE + threadIdx.x;
         const int bk = t * TILE + threadIdx.y;
-        As[threadIdx.y][threadIdx.x] =
-            (row < M && ak < K)
-                ? (TA ? A[static_cast<size_t>(ak) * M + row]
-                      : A[static_cast<size_t>(row) * K + ak])
-                : 0.0f;
-        Bs[threadIdx.y][threadIdx.x] =
-            (bk < K && col < N)
-                ? (TB ? B[static_cast<size_t>(col) * K + bk]
-                      : B[static_cast<size_t>(bk) * N + col])
-                : 0.0f;
+        if constexpr (TA) {
+            const int ar = blockIdx.y * TILE + threadIdx.x;
+            const int at = t * TILE + threadIdx.y;
+            As[threadIdx.x][threadIdx.y] =
+                (ar < M && at < K) ? A[static_cast<size_t>(at) * M + ar] : 0.0f;
+        } else {
+            As[threadIdx.y][threadIdx.x] =
+                (row < M && ak < K) ? A[static_cast<size_t>(row) * K + ak] : 0.0f;
+        }
+        if constexpr (TB) {
+            const int bc = blockIdx.x * TILE + threadIdx.y;
+            const int bt = t * TILE + threadIdx.x;
+            Bs[threadIdx.x][threadIdx.y] =
+                (bc < N && bt < K) ? B[static_cast<size_t>(bc) * K + bt] : 0.0f;
+        } else {
+            Bs[threadIdx.y][threadIdx.x] =
+                (bk < K && col < N) ? B[static_cast<size_t>(bk) * N + col] : 0.0f;
+        }
         __syncthreads();
 #pragma unroll
         for (int k = 0; k < TILE; ++k)
@@ -272,24 +279,32 @@ __global__ void gemm_tiled_acc(const float* __restrict__ A,
                                const float* __restrict__ B,
                                float* __restrict__ C,
                                int M, int N, int K) {
-    __shared__ float As[TILE][TILE];
-    __shared__ float Bs[TILE][TILE];
+    __shared__ float As[TILE][TILE + (TA ? 1 : 0)];
+    __shared__ float Bs[TILE][TILE + (TB ? 1 : 0)];
     const int row = blockIdx.y * TILE + threadIdx.y;
     const int col = blockIdx.x * TILE + threadIdx.x;
     float acc = (row < M && col < N) ? C[static_cast<size_t>(row) * N + col] : 0.0f;
     for (int t = 0; t < (K + TILE - 1) / TILE; ++t) {
         const int ak = t * TILE + threadIdx.x;
         const int bk = t * TILE + threadIdx.y;
-        As[threadIdx.y][threadIdx.x] =
-            (row < M && ak < K)
-                ? (TA ? A[static_cast<size_t>(ak) * M + row]
-                      : A[static_cast<size_t>(row) * K + ak])
-                : 0.0f;
-        Bs[threadIdx.y][threadIdx.x] =
-            (bk < K && col < N)
-                ? (TB ? B[static_cast<size_t>(col) * K + bk]
-                      : B[static_cast<size_t>(bk) * N + col])
-                : 0.0f;
+        if constexpr (TA) {
+            const int ar = blockIdx.y * TILE + threadIdx.x;
+            const int at = t * TILE + threadIdx.y;
+            As[threadIdx.x][threadIdx.y] =
+                (ar < M && at < K) ? A[static_cast<size_t>(at) * M + ar] : 0.0f;
+        } else {
+            As[threadIdx.y][threadIdx.x] =
+                (row < M && ak < K) ? A[static_cast<size_t>(row) * K + ak] : 0.0f;
+        }
+        if constexpr (TB) {
+            const int bc = blockIdx.x * TILE + threadIdx.y;
+            const int bt = t * TILE + threadIdx.x;
+            Bs[threadIdx.x][threadIdx.y] =
+                (bc < N && bt < K) ? B[static_cast<size_t>(bc) * K + bt] : 0.0f;
+        } else {
+            Bs[threadIdx.y][threadIdx.x] =
+                (bk < K && col < N) ? B[static_cast<size_t>(bk) * N + col] : 0.0f;
+        }
         __syncthreads();
 #pragma unroll
         for (int k = 0; k < TILE; ++k)
