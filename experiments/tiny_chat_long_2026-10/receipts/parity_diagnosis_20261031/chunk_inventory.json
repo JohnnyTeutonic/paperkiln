@@ -1,0 +1,92 @@
+[
+  {
+    "run": "c12_B_r1",
+    "all_requests": 46464,
+    "chunk_size": 256,
+    "score_batch_tokens": 16384,
+    "state_unpacked": false,
+    "selected_chunks": [
+      {
+        "chunk_index": 1,
+        "requests": 256,
+        "target_keys": [
+          "carry12_v1:recall:0017|gate_self|4"
+        ],
+        "file": "/home/jonat/hs1_parity_diagnosis_20261031/c12_B_r1.chunk0001.requests.jsonl",
+        "sha256": "4cf2f6c1ae84f1ae813650ae1e8ad6be53bdbe8ae621cde766316f35b66a4f04"
+      },
+      {
+        "chunk_index": 65,
+        "requests": 256,
+        "target_keys": [
+          "carry12_v1:correction:0046|gate_self|2"
+        ],
+        "file": "/home/jonat/hs1_parity_diagnosis_20261031/c12_B_r1.chunk0065.requests.jsonl",
+        "sha256": "3c0ccbec63d8f20cb0f5658912b2e5275a3a6600e02836a5674187bb94db419d"
+      },
+      {
+        "chunk_index": 87,
+        "requests": 256,
+        "target_keys": [
+          "carry12_v1:correction:0224|gate_self|2"
+        ],
+        "file": "/home/jonat/hs1_parity_diagnosis_20261031/c12_B_r1.chunk0087.requests.jsonl",
+        "sha256": "7fb21aea4bbc26e9171bfba329168d89d7e8a5353798e0c84de24b0b2b8ed575"
+      }
+    ]
+  },
+  {
+    "run": "c12_B_r3",
+    "all_requests": 46464,
+    "chunk_size": 256,
+    "score_batch_tokens": 16384,
+    "state_unpacked": false,
+    "selected_chunks": [
+      {
+        "chunk_index": 98,
+        "requests": 256,
+        "target_keys": [
+          "carry12_v1:correction:0306|gate_self|2"
+        ],
+        "file": "/home/jonat/hs1_parity_diagnosis_20261031/c12_B_r3.chunk0098.requests.jsonl",
+        "sha256": "5f809bd8043976ee17636d7cf6dcf055006e94df407519d69ddb1a2b2c89538e"
+      }
+    ]
+  },
+  {
+    "run": "c12_Sgist_r1",
+    "all_requests": 46464,
+    "chunk_size": 256,
+    "score_batch_tokens": 16384,
+    "state_unpacked": true,
+    "selected_chunks": [
+      {
+        "chunk_index": 73,
+        "requests": 256,
+        "target_keys": [
+          "carry12_v1:correction:0111|gate_self|3"
+        ],
+        "file": "/home/jonat/hs1_parity_diagnosis_20261031/c12_Sgist_r1.chunk0073.requests.jsonl",
+        "sha256": "34c44b8965d7e5318f3c499b9446a9e28bef1480bee20aae50af7ba5b05cb3f0"
+      }
+    ]
+  },
+  {
+    "run": "c12_Sgist_r4",
+    "all_requests": 46464,
+    "chunk_size": 256,
+    "score_batch_tokens": 16384,
+    "state_unpacked": true,
+    "selected_chunks": [
+      {
+        "chunk_index": 45,
+        "requests": 256,
+        "target_keys": [
+          "carry12_v1:recall:0365|gate_self|8"
+        ],
+        "file": "/home/jonat/hs1_parity_diagnosis_20261031/c12_Sgist_r4.chunk0045.requests.jsonl",
+        "sha256": "09b3c6f024ab2043c6b0b76bc0c3e67207edd04c2897fecc44764483e2c3bb45"
+      }
+    ]
+  }
+]

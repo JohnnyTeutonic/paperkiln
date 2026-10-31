@@ -1,0 +1,139 @@
+{
+  "status": "CPU_DIAGNOSTIC_COMPLETE_GPU_RECONSTRUCTION_PENDING",
+  "source_commit": "16654d9656539ceeb8a7dbe8ec63e0c2255910ec",
+  "exact_historical_evaluator_helpers_verified": true,
+  "historical_scientific_pin": "3dc818b2476b0957b1337b4c9af22474b76350b5",
+  "cpu_mode": "CPU,deviceops0,stepresidency0,deferred0,onecore; full-context and KV flag diagnostics",
+  "requests": 6,
+  "scored_positions_per_mode": 89,
+  "summary": [
+    {
+      "key": "carry12_v1:recall:0017|gate_self|4",
+      "run": "c12_B_r1",
+      "original_failed_token_position": null,
+      "minimum_full_margin": 2.86102294921875e-06,
+      "minimum_kv_margin": 6.67572021484375e-06,
+      "full_disagreements": [],
+      "kv_disagreements": []
+    },
+    {
+      "key": "carry12_v1:correction:0046|gate_self|2",
+      "run": "c12_B_r1",
+      "original_failed_token_position": null,
+      "minimum_full_margin": 3.814697265625e-06,
+      "minimum_kv_margin": 6.67572021484375e-06,
+      "full_disagreements": [],
+      "kv_disagreements": []
+    },
+    {
+      "key": "carry12_v1:correction:0224|gate_self|2",
+      "run": "c12_B_r1",
+      "original_failed_token_position": null,
+      "minimum_full_margin": 3.814697265625e-06,
+      "minimum_kv_margin": 5.7220458984375e-06,
+      "full_disagreements": [],
+      "kv_disagreements": []
+    },
+    {
+      "key": "carry12_v1:correction:0306|gate_self|2",
+      "run": "c12_B_r3",
+      "original_failed_token_position": null,
+      "minimum_full_margin": 9.5367431640625e-07,
+      "minimum_kv_margin": 6.67572021484375e-06,
+      "full_disagreements": [
+        {
+          "position_zero_based": 11,
+          "saved_chosen_id": 3842,
+          "argmax_id": 17,
+          "runner_up_id": 3842,
+          "argmax_logit": 9.461474418640137,
+          "runner_up_logit": 9.46147346496582,
+          "saved_chosen_logit": 9.46147346496582,
+          "top2_margin": 9.5367431640625e-07,
+          "argmax_minus_saved_chosen": 9.5367431640625e-07,
+          "saved_chosen_matches": false
+        }
+      ],
+      "kv_disagreements": [
+        {
+          "position_zero_based": 11,
+          "saved_chosen_id": 3842,
+          "argmax_id": 17,
+          "runner_up_id": 3842,
+          "argmax_logit": 9.461478233337402,
+          "runner_up_logit": 9.461471557617188,
+          "saved_chosen_logit": 9.461471557617188,
+          "top2_margin": 6.67572021484375e-06,
+          "argmax_minus_saved_chosen": 6.67572021484375e-06,
+          "saved_chosen_matches": false
+        }
+      ]
+    },
+    {
+      "key": "carry12_v1:correction:0111|gate_self|3",
+      "run": "c12_Sgist_r1",
+      "original_failed_token_position": null,
+      "minimum_full_margin": 5.7220458984375e-06,
+      "minimum_kv_margin": 5.7220458984375e-06,
+      "full_disagreements": [
+        {
+          "position_zero_based": 18,
+          "saved_chosen_id": 17,
+          "argmax_id": 8191,
+          "runner_up_id": 17,
+          "argmax_logit": 12.120409965515137,
+          "runner_up_logit": 12.120404243469238,
+          "saved_chosen_logit": 12.120404243469238,
+          "top2_margin": 5.7220458984375e-06,
+          "argmax_minus_saved_chosen": 5.7220458984375e-06,
+          "saved_chosen_matches": false
+        }
+      ],
+      "kv_disagreements": [
+        {
+          "position_zero_based": 18,
+          "saved_chosen_id": 17,
+          "argmax_id": 8191,
+          "runner_up_id": 17,
+          "argmax_logit": 12.120409965515137,
+          "runner_up_logit": 12.120404243469238,
+          "saved_chosen_logit": 12.120404243469238,
+          "top2_margin": 5.7220458984375e-06,
+          "argmax_minus_saved_chosen": 5.7220458984375e-06,
+          "saved_chosen_matches": false
+        }
+      ]
+    },
+    {
+      "key": "carry12_v1:recall:0365|gate_self|8",
+      "run": "c12_Sgist_r4",
+      "original_failed_token_position": null,
+      "minimum_full_margin": 1.9073486328125e-06,
+      "minimum_kv_margin": 1.9073486328125e-06,
+      "full_disagreements": [],
+      "kv_disagreements": []
+    }
+  ],
+  "interpretation": "All six replies have a near-tie in new CPU logits. Four match original generated IDs throughout; two disagree at one position each. This supports a numerical sensitivity hypothesis but does not establish the original GPU cause or original failed token locations. Original packed B scoring geometry differs from these isolated CPU calls.",
+  "original_score_chunks_retained": false,
+  "original_margins_retained": false,
+  "runtime_reconstruction_prepared": {
+    "original_request_total_per_model": 46464,
+    "original_chunk_size": 256,
+    "score_batch_tokens": 16384,
+    "selected_chunks": 6,
+    "selected_requests": 1536,
+    "source_branch_commit": "1e5b7584454ad1681025a6e5e994725a86595f6b",
+    "no_scientific_result_changes": true
+  },
+  "checks": {
+    "independent_raw_float_replay": "PASS",
+    "offline_replay_and_wrapper_tests": 7,
+    "ruff": "PASS",
+    "historical_diagnostic_tap_cpp_syntax": "PASS"
+  },
+  "replay_command": "python3 tools/hs1_parity_cpu_replay.py experiments/tiny_chat_long_2026-10/receipts/parity_diagnosis_20261031",
+  "test_command": "python3 -m pytest tests/test_hs1_parity_cpu_replay.py tools/colab_chat/test_hs1_parity_reconstruction_vm.py -q",
+  "replay_source_sha256": "2aa110819bda59e3ef8521015f314dccaea0978fa75f60e0e8548002b01c2edb",
+  "preservation": "Canonical flags/metrics, six original failed histories, tolerances and S-full packet unchanged. No new training."
+}
