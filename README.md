@@ -296,9 +296,12 @@ Canonical plain Flex also has opt-in train-only `attention_precision: "bf16"` wi
 exact attention, learned positions, LayerNorm/tanh-GELU, pre-norm residual blocks
 with final norm and an untied head. Other Flex variants are refused initially.
 CPU model controls check all gradients independently at depths 1 and 3, with FFN widths 12 and 20;
-LM/SFT save/reload and FP32 NumPy/CPU Ember score parity pass. This extension has
-no actual CUDA integration result, quality, speed or adoption evidence yet.
-[CPU evidence and exact limitations](docs/receipts/flex_attention_precision_20261031/README.md).
+LM/SFT save/reload and FP32 NumPy/CPU Ember score parity pass on CPU. The fixed
+actual-L4 model gate also passes all 116 gradient tensors and the required BF16
+GEMM counters against the frozen reference. CUDA CLI lifecycle, quality, speed
+and adoption remain open.
+[CPU evidence](docs/receipts/flex_attention_precision_20261031/README.md) and
+[actual-L4 model receipt](docs/receipts/flex_attention_precision_20261031/actual_l4_v1/README.md).
 
 Nine registered host-helper cases now pass an actual L4 CUDA + DEVCHECK gate:
 `exp`, `div`, `where`, `rowsum`, `rowmax`, `broadcast_cols`, `relu_`, `sigmoid_`
