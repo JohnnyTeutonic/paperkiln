@@ -1,8 +1,8 @@
 {
   "status": "PREPARED_NO_DISPATCH_EXACT_ROOT_REVIEW_REQUIRED",
-  "protocol_sha256": "e207f599b7978e0367c6824314c8fee7ba7c52daf1fab48ad2b25e8aa8fd617e",
+  "protocol_sha256": "a576a57a7796440b2936ede0176f748372655551d83f3a57e09ab7e1e6e8b763",
   "source_sha256": {
-    "chat_judge_campaign_refusal_v5.py": "6b5d8fbea3311527697897ac982ee12a90e01d889149b83f0d88b1eac2c0f307",
+    "chat_judge_campaign_refusal_v5.py": "3ba3efbee0f602abef538b4147ac3bb85305a7cb5de89da8ec642fc0cf839d30",
     "chat_judge_api_refusal_v5.py": "11cd8c7880356afaef631f6168d02dd75025cd4be58d4c6fc69fddb966ed0dd7",
     "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
     "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
@@ -10,19 +10,21 @@
   "actual_readonly_inspect": {
     "attempts_since_start": 0,
     "missing_rankings": 4350,
+    "valid_api_rankings": 1690,
     "eligible_missing_rankings": 4348,
     "preserved_failed_rankings": 1,
     "unattempted_paired_exclusions": 1,
     "api_actual_spend_usd": 25.388728,
     "retained_unknown_ceiling_usd": 0.75,
     "baseline_usd": 20.08558,
-    "gate_reserve_usd": 25.0
+    "gate_reserve_usd": 25.0,
+    "pending_reservations": 0
   },
   "tests": {
     "new_and_transport": {
       "command": "python3 -m pytest -q tools/posttrain/test_chat_judge_campaign_refusal_v5.py tools/posttrain/test_chat_judge_api_refusal_v5.py tools/posttrain/test_chat_judge_transport_diagnostic.py",
       "passed": 34,
-      "elapsed_seconds": 11.63
+      "elapsed_seconds": 9.7
     },
     "adapted_legacy_against_new_API": {
       "command": "python3 -m pytest -q /home/jonat/api_v5_legacy_offline_tests_20261031",
@@ -31,7 +33,7 @@
       "adaptation": "Existing100 adapted V3 legacy tests unchanged; isolated conftest aliases chat_judge_api to chat_judge_api_refusal_v5 from this worktree. Same direct fake callback trace adaptations as V3; no production alias/monkeypatch."
     },
     "ruff": "PASS",
-    "new_tests.log_sha256": "dadd03b16cb32592e777a6a24759abed15173b72f880bbb0b4a81c32b7602180",
+    "new_tests.log_sha256": "cfe64153591c864f6288c927051f414bacb96183e91fba0b9cca9e65acd1d865",
     "legacy_tests.log_sha256": "2797c439d53b6ab798d6b1c3b52c92bcffe39c8bfe00af69417e65c6ab6a0a9a"
   },
   "unchanged_originals": true,
