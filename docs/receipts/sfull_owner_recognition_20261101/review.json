@@ -1,0 +1,40 @@
+{
+  "status": "PASS",
+  "production_source_sha256": "fde06d796f408a8297fb00e0964cc0c8d79aeb1661f50ab9f4e6c9e2dade17e7",
+  "actual_watchdog_copy_sha256": "fde06d796f408a8297fb00e0964cc0c8d79aeb1661f50ab9f4e6c9e2dade17e7",
+  "actual_watchdog_copy_matches_tested_source": true,
+  "old_watchdog_backup_sha256": "421d2c72d1675a3cfbbb4ef8fed7b7f1895c4043a6e07045106a7f8a923da764",
+  "actual_live_pid_check": {
+    "backup_owner_recognised": false,
+    "fixed_owner_recognised": true
+  },
+  "actual_live_pid": 19954,
+  "frozen_controller_sha256": "8c582ebba3f752567fff98dd9587f75fd37a055d7bd9cab75ca725c7dea3dbe7",
+  "manifest_sha256": "3640b1595afb5847e66081b7a6fc10766caed7c4fa5b9cb61b2e3957fb1b4ea9",
+  "portable_tests": {
+    "command": "python3 -m pytest -q tools/colab_chat/test_runpod_sfull_owner_20261101.py",
+    "result": "26 passed in 0.12s"
+  },
+  "real_binding_tests": {
+    "command": "python3 -m pytest -q /home/jonat/test_sfull_sweeper_independent_20261031.py",
+    "result": "24 passed in 4.95s"
+  },
+  "coverage": [
+    "known exact live controller",
+    "dead PID and empty zombie cmdline",
+    "unknown script and same basename elsewhere",
+    "known script passed as data",
+    "wrong/duplicate/extra/empty argv",
+    "controller and manifest source drift",
+    "source inventory drift",
+    "wrong or absent admission anchor",
+    "admission content drift",
+    "hash-anchored unapproved launch",
+    "manifest state differs from queried owner",
+    "ordinary runner separate and equals state-dir forms",
+    "ordinary wrong state",
+    "Git subprocess failure",
+    "live cleanup remains owned after launch deadline"
+  ],
+  "limits": "Source-bound ownership recognition only. No provider API call, provider mutation, driver/config change, training, timing or scientific validity claim in this independent review. Portable fixtures test the outer owner contract; the real-binding matrix separately exercises the actual frozen controller, source inventory, Git tree, anchored admission and live PID. Standard runner recognition, cleanup rules and budget caps are unchanged."
+}
