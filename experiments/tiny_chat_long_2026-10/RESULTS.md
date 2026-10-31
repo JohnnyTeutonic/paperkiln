@@ -171,6 +171,80 @@ Canonical [analysis](receipts/hs1_five_seed_20261030/analysis_hs1.json),
 The single raw-artifact home remains `C:/ml_artifacts/tiny_chat/`.
 
 
+## Six-history argmax diagnostic reconstruction (31 October 2026)
+
+A new historical-source CUDA scorer reconstruction reproduces a disagreement with
+saved generation at exactly one token in **each of the six selected affected replies**.
+This is not a fresh estimate of the full experiment's failure rate. The original
+per-token failed positions and logits were not retained, so the positions below are
+new reconstruction observations, not recovered original token-level evidence.
+
+The original 256-request chunk order and `--batch-tokens 16384` geometry were rebuilt
+from the frozen evaluator and original histories. B uses packed scoring; the state
+prompts take the original nonpacked path. An untouched historical scorer ran first;
+a separately rebuilt output-only logit tap then reproduced **every numerical JSON
+field for all 1,536 requests**. Independent verification checked all 89 selected
+raw logit rows and their argmax IDs. The four regenerated GGUF files byte-match the
+original recorded exports. Compiled components are identical between the two
+historical source pins, although this is a new compiler/toolkit/runtime build.
+
+| Reply | New token index (zero based) | Saved ID → CUDA scorer ID | Positive leading gap |
+|---|---:|---:|---:|
+| B1 recall 0017, turn 4 | 8 | 224 → 521 | 0.0000076294 |
+| B1 correction 0046, turn 2 | 1 | 871 → 465 | 0.0000009537 |
+| B1 correction 0224, turn 2 | 6 | 261 → 1141 | 0.0000028610 |
+| B3 correction 0306, turn 2 | 11 | 3842 → 17 | 0.0000104904 |
+| S-gist1 correction 0111, turn 3 | 18 | 17 → 8191 | 0.0000009537 |
+| S-gist4 recall 0365, turn 8 | 8 | 2654 → 2339 | 0.0000038147 |
+
+In every case the saved token is the reconstructed scorer's runner-up; these are
+narrow positive gaps, not exact ties. The other 83 selected positions agree with
+saved generation. A separate current CPU reconstruction agrees with the saved ID
+in four replies and disagrees in B3 correction 0306 and S-gist1 correction 0111.
+The largest GPU/current-CPU full-row difference across these 89 positions is
+0.0000228882. This demonstrates arithmetic-sensitive leading order in this new
+comparison and makes numerical sensitivity a concrete explanation to investigate;
+it does not establish the complete historical cause or rule out other defects.
+
+An independent binary64 mathematical forward from the stored FP32 weights was
+limited prospectively to the four B replies (58 positions). All 54 ordinary positions
+(native leading gap above 0.001) agree with the CPU argmax; maximum full-row
+CPU/binary64 difference is 0.0000124524. Binary64 favors the saved ID at the three
+B1 narrow positions and favors ID17 at B3's narrow position. Its transcendental
+functions and accumulation are explicitly different from the original FP32 runtime;
+it is not a golden historical oracle. GPU/binary64 maximum full-row difference over
+those 58 positions is 0.0000198958.
+
+**The reconstruction job remains ERROR.** Its historical Ember checkout exceeded
+a 30-second operational timeout after native scoring and exports completed; no
+new generation-server responses were produced. The unchanged full auditor refuses
+this artifact. A separate retrospective auditor verifies only the completed native
+scorer component, preserving that overall failure and the missing generation leg.
+Even a future fresh/repeated generation call would not recreate the original
+preceding KV/prefix-cache trajectory: the old server defaults prefix reuse on,
+while its original explicit environment setting and preceding cache state were
+not retained. Exact source, GGUF and prompt IDs alone cannot recover that state.
+
+All historical strict failures, HS1 calculations and the six-item sensitivity bound
+remain unchanged. This diagnostic does not clear complete history parity, authorize
+S-full or establish model quality. The first packaging failure is also preserved;
+its only repair added the exact historical test sources required by CMake. Both
+attempts are home, their entries disabled and their pods/volumes deleted according
+to driver records; combined GPU ledger cost is $0.7551. No further paid retry ran.
+
+[Per-position CPU/FP64 evidence](receipts/parity_diagnosis_20261031/),
+[partial scorer audit](receipts/parity_diagnosis_20261031/operational_attempt2/scorer_component_audit.json),
+[complete joined position table](receipts/parity_diagnosis_20261031/operational_attempt2/reconstruction_comparison.json),
+[raw scorer archive](receipts/parity_diagnosis_20261031/operational_attempt2/out.zip),
+[full-gate refusal and validation](receipts/parity_diagnosis_20261031/operational_attempt2/validation.json)
+and [cleanup evidence](receipts/parity_diagnosis_20261031/operational_attempt2/home_receipt.json)
+retain the source/input hashes and operational limits. Replay the partial component
+with `python tools/hs1_parity_scorer_component_audit.py --archive PATH/out.zip --stage RETAINED_STAGE --output NEW.json`;
+then `tools/hs1_parity_compare.py` joins the audited CPU, binary64 and GPU reports.
+The retained stage is `/home/jonat/hs1_parity_diagnosis_20261031/stage_v2/`;
+no models or corpora are copied into the public receipt.
+
+
 ## Stage L0 on the original 150M pick
 
 The last pending 150M pick evaluation is complete and home, with no training or

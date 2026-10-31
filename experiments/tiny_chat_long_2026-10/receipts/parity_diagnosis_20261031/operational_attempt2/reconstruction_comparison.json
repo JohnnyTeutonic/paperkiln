@@ -1,0 +1,4103 @@
+{
+  "scope": "New CPU/GPU/FP64 reconstructions only. Original failed positions/logits remain unavailable; historical strict failures remain unchanged. Generation engine fresh/repeated calls do not recreate original preceding cache trajectory.",
+  "gpu_audit_status": "SCORER_COMPONENT_AUDITED_OVERALL_ERROR",
+  "overall_run_status": "ERROR",
+  "overall_run_errors": [
+    "ember_checkout timed out"
+  ],
+  "positions": 89,
+  "rows": [
+    {
+      "run": "c12_B_r1",
+      "key": "carry12_v1:recall:0017|gate_self|4",
+      "positions": [
+        {
+          "position_zero_based": 0,
+          "saved_generation_id": 1079,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 1079,
+            "runner_up_id": 44,
+            "argmax_logit": 13.26518440246582,
+            "runner_up_logit": 13.051721572875977,
+            "top2_margin": 0.21346282958984375,
+            "saved_chosen_logit": 13.26518440246582,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 1079,
+            "runner_up_id": 44,
+            "argmax_logit": 13.265182495117188,
+            "runner_up_logit": 13.051721572875977,
+            "top2_margin": 0.21346092224121094,
+            "saved_chosen_logit": 13.265182495117188,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 0,
+            "saved_generation_id": 1079,
+            "reconstructed_scorer_argmax": 1079,
+            "runner_up": 44,
+            "argmax_logit": 13.265182495117188,
+            "runner_up_logit": 13.051706314086914,
+            "saved_chosen_logit": 13.265182495117188,
+            "top2_margin": 0.21347618103027344,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 0,
+            "saved_chosen": 1079,
+            "native_argmax": 1079,
+            "fp64_argmax": 1079,
+            "fp64_runner_up": 44,
+            "fp64_top2_gap": 0.21347028034328908,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.21346282958984375,
+            "ordinary": true,
+            "max_abs_error": 7.001417611451899e-06
+          }
+        },
+        {
+          "position_zero_based": 1,
+          "saved_generation_id": 796,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 796,
+            "runner_up_id": 321,
+            "argmax_logit": 13.096884727478027,
+            "runner_up_logit": 12.586180686950684,
+            "top2_margin": 0.5107040405273438,
+            "saved_chosen_logit": 13.096884727478027,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 796,
+            "runner_up_id": 321,
+            "argmax_logit": 13.09688663482666,
+            "runner_up_logit": 12.58618450164795,
+            "top2_margin": 0.5107021331787109,
+            "saved_chosen_logit": 13.09688663482666,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 1,
+            "saved_generation_id": 796,
+            "reconstructed_scorer_argmax": 796,
+            "runner_up": 321,
+            "argmax_logit": 13.09688663482666,
+            "runner_up_logit": 12.586177825927734,
+            "saved_chosen_logit": 13.09688663482666,
+            "top2_margin": 0.5107088088989258,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 1,
+            "saved_chosen": 796,
+            "native_argmax": 796,
+            "fp64_argmax": 796,
+            "fp64_runner_up": 321,
+            "fp64_top2_gap": 0.5107041815923488,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.5107040405273438,
+            "ordinary": true,
+            "max_abs_error": 6.323928112728083e-06
+          }
+        },
+        {
+          "position_zero_based": 2,
+          "saved_generation_id": 313,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 313,
+            "runner_up_id": 981,
+            "argmax_logit": 13.480975151062012,
+            "runner_up_logit": 10.957345962524414,
+            "top2_margin": 2.5236291885375977,
+            "saved_chosen_logit": 13.480975151062012,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 313,
+            "runner_up_id": 981,
+            "argmax_logit": 13.480978012084961,
+            "runner_up_logit": 10.95734977722168,
+            "top2_margin": 2.5236282348632812,
+            "saved_chosen_logit": 13.480978012084961,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 2,
+            "saved_generation_id": 313,
+            "reconstructed_scorer_argmax": 313,
+            "runner_up": 981,
+            "argmax_logit": 13.480978012084961,
+            "runner_up_logit": 10.957340240478516,
+            "saved_chosen_logit": 13.480978012084961,
+            "top2_margin": 2.5236377716064453,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 2,
+            "saved_chosen": 313,
+            "native_argmax": 313,
+            "fp64_argmax": 313,
+            "fp64_runner_up": 981,
+            "fp64_top2_gap": 2.5236297720311605,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 2.5236291885375977,
+            "ordinary": true,
+            "max_abs_error": 7.209638694050113e-06
+          }
+        },
+        {
+          "position_zero_based": 3,
+          "saved_generation_id": 3260,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 3260,
+            "runner_up_id": 224,
+            "argmax_logit": 10.486213684082031,
+            "runner_up_logit": 9.698951721191406,
+            "top2_margin": 0.787261962890625,
+            "saved_chosen_logit": 10.486213684082031,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 3260,
+            "runner_up_id": 224,
+            "argmax_logit": 10.486210823059082,
+            "runner_up_logit": 9.698954582214355,
+            "top2_margin": 0.7872562408447266,
+            "saved_chosen_logit": 10.486210823059082,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 3,
+            "saved_generation_id": 3260,
+            "reconstructed_scorer_argmax": 3260,
+            "runner_up": 224,
+            "argmax_logit": 10.486209869384766,
+            "runner_up_logit": 9.698960304260254,
+            "saved_chosen_logit": 10.486209869384766,
+            "top2_margin": 0.7872495651245117,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 3,
+            "saved_chosen": 3260,
+            "native_argmax": 3260,
+            "fp64_argmax": 3260,
+            "fp64_runner_up": 224,
+            "fp64_top2_gap": 0.7872532158293666,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.787261962890625,
+            "ordinary": true,
+            "max_abs_error": 8.153729179838365e-06
+          }
+        },
+        {
+          "position_zero_based": 4,
+          "saved_generation_id": 330,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 330,
+            "runner_up_id": 291,
+            "argmax_logit": 14.289063453674316,
+            "runner_up_logit": 14.211954116821289,
+            "top2_margin": 0.07710933685302734,
+            "saved_chosen_logit": 14.289063453674316,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 330,
+            "runner_up_id": 291,
+            "argmax_logit": 14.28905963897705,
+            "runner_up_logit": 14.211953163146973,
+            "top2_margin": 0.07710647583007812,
+            "saved_chosen_logit": 14.28905963897705,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 4,
+            "saved_generation_id": 330,
+            "reconstructed_scorer_argmax": 330,
+            "runner_up": 291,
+            "argmax_logit": 14.289070129394531,
+            "runner_up_logit": 14.211952209472656,
+            "saved_chosen_logit": 14.289070129394531,
+            "top2_margin": 0.077117919921875,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 4,
+            "saved_chosen": 330,
+            "native_argmax": 330,
+            "fp64_argmax": 330,
+            "fp64_runner_up": 291,
+            "fp64_top2_gap": 0.07710786489971255,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.07710933685302734,
+            "ordinary": true,
+            "max_abs_error": 8.142474143824074e-06
+          }
+        },
+        {
+          "position_zero_based": 5,
+          "saved_generation_id": 4141,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 4141,
+            "runner_up_id": 449,
+            "argmax_logit": 12.665160179138184,
+            "runner_up_logit": 12.542577743530273,
+            "top2_margin": 0.12258243560791016,
+            "saved_chosen_logit": 12.665160179138184,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 4141,
+            "runner_up_id": 449,
+            "argmax_logit": 12.665163040161133,
+            "runner_up_logit": 12.542579650878906,
+            "top2_margin": 0.12258338928222656,
+            "saved_chosen_logit": 12.665163040161133,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 5,
+            "saved_generation_id": 4141,
+            "reconstructed_scorer_argmax": 4141,
+            "runner_up": 449,
+            "argmax_logit": 12.66517448425293,
+            "runner_up_logit": 12.542577743530273,
+            "saved_chosen_logit": 12.66517448425293,
+            "top2_margin": 0.12259674072265625,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 5,
+            "saved_chosen": 4141,
+            "native_argmax": 4141,
+            "fp64_argmax": 4141,
+            "fp64_runner_up": 449,
+            "fp64_top2_gap": 0.12258929065696123,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.12258243560791016,
+            "ordinary": true,
+            "max_abs_error": 1.102608536385219e-05
+          }
+        },
+        {
+          "position_zero_based": 6,
+          "saved_generation_id": 1188,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 1188,
+            "runner_up_id": 585,
+            "argmax_logit": 13.334112167358398,
+            "runner_up_logit": 12.158915519714355,
+            "top2_margin": 1.175196647644043,
+            "saved_chosen_logit": 13.334112167358398,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 1188,
+            "runner_up_id": 585,
+            "argmax_logit": 13.334117889404297,
+            "runner_up_logit": 12.158918380737305,
+            "top2_margin": 1.1751995086669922,
+            "saved_chosen_logit": 13.334117889404297,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 6,
+            "saved_generation_id": 1188,
+            "reconstructed_scorer_argmax": 1188,
+            "runner_up": 585,
+            "argmax_logit": 13.33413314819336,
+            "runner_up_logit": 12.158921241760254,
+            "saved_chosen_logit": 13.33413314819336,
+            "top2_margin": 1.1752119064331055,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 6,
+            "saved_chosen": 1188,
+            "native_argmax": 1188,
+            "fp64_argmax": 1188,
+            "fp64_runner_up": 585,
+            "fp64_top2_gap": 1.1752025119103546,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 1.175196647644043,
+            "ordinary": true,
+            "max_abs_error": 1.0986979393834417e-05
+          }
+        },
+        {
+          "position_zero_based": 7,
+          "saved_generation_id": 291,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 291,
+            "runner_up_id": 17,
+            "argmax_logit": 14.494345664978027,
+            "runner_up_logit": 12.944539070129395,
+            "top2_margin": 1.5498065948486328,
+            "saved_chosen_logit": 14.494345664978027,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 291,
+            "runner_up_id": 17,
+            "argmax_logit": 14.494343757629395,
+            "runner_up_logit": 12.944540977478027,
+            "top2_margin": 1.5498027801513672,
+            "saved_chosen_logit": 14.494343757629395,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 7,
+            "saved_generation_id": 291,
+            "reconstructed_scorer_argmax": 291,
+            "runner_up": 17,
+            "argmax_logit": 14.494355201721191,
+            "runner_up_logit": 12.944533348083496,
+            "saved_chosen_logit": 14.494355201721191,
+            "top2_margin": 1.5498218536376953,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 7,
+            "saved_chosen": 291,
+            "native_argmax": 291,
+            "fp64_argmax": 291,
+            "fp64_runner_up": 17,
+            "fp64_top2_gap": 1.5498142846394085,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 1.5498065948486328,
+            "ordinary": true,
+            "max_abs_error": 6.96563042490439e-06
+          }
+        },
+        {
+          "position_zero_based": 8,
+          "saved_generation_id": 224,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 224,
+            "runner_up_id": 521,
+            "argmax_logit": 12.945747375488281,
+            "runner_up_logit": 12.945744514465332,
+            "top2_margin": 2.86102294921875e-06,
+            "saved_chosen_logit": 12.945747375488281,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 224,
+            "runner_up_id": 521,
+            "argmax_logit": 12.945747375488281,
+            "runner_up_logit": 12.945740699768066,
+            "top2_margin": 6.67572021484375e-06,
+            "saved_chosen_logit": 12.945747375488281,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 8,
+            "saved_generation_id": 224,
+            "reconstructed_scorer_argmax": 521,
+            "runner_up": 224,
+            "argmax_logit": 12.94575023651123,
+            "runner_up_logit": 12.9457426071167,
+            "saved_chosen_logit": 12.9457426071167,
+            "top2_margin": 7.62939453125e-06,
+            "argmax_minus_saved": 7.62939453125e-06,
+            "matches_saved_generation": false
+          },
+          "new_fp64_math": {
+            "position": 8,
+            "saved_chosen": 224,
+            "native_argmax": 224,
+            "fp64_argmax": 224,
+            "fp64_runner_up": 521,
+            "fp64_top2_gap": 9.17189247928718e-06,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 2.86102294921875e-06,
+            "ordinary": false,
+            "max_abs_error": 9.068313502780256e-06
+          }
+        },
+        {
+          "position_zero_based": 9,
+          "saved_generation_id": 25,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 25,
+            "runner_up_id": 24,
+            "argmax_logit": 11.35500431060791,
+            "runner_up_logit": 11.14428424835205,
+            "top2_margin": 0.21072006225585938,
+            "saved_chosen_logit": 11.35500431060791,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 25,
+            "runner_up_id": 24,
+            "argmax_logit": 11.354999542236328,
+            "runner_up_logit": 11.144281387329102,
+            "top2_margin": 0.21071815490722656,
+            "saved_chosen_logit": 11.354999542236328,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 9,
+            "saved_generation_id": 25,
+            "reconstructed_scorer_argmax": 25,
+            "runner_up": 24,
+            "argmax_logit": 11.354994773864746,
+            "runner_up_logit": 11.144286155700684,
+            "saved_chosen_logit": 11.354994773864746,
+            "top2_margin": 0.2107086181640625,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 9,
+            "saved_chosen": 25,
+            "native_argmax": 25,
+            "fp64_argmax": 25,
+            "fp64_runner_up": 24,
+            "fp64_top2_gap": 0.21071639683433574,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.21072006225585938,
+            "ordinary": true,
+            "max_abs_error": 1.2452402730289691e-05
+          }
+        },
+        {
+          "position_zero_based": 10,
+          "saved_generation_id": 2542,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 2542,
+            "runner_up_id": 16,
+            "argmax_logit": 12.76625919342041,
+            "runner_up_logit": 12.718240737915039,
+            "top2_margin": 0.048018455505371094,
+            "saved_chosen_logit": 12.76625919342041,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 2542,
+            "runner_up_id": 16,
+            "argmax_logit": 12.766267776489258,
+            "runner_up_logit": 12.71823787689209,
+            "top2_margin": 0.04802989959716797,
+            "saved_chosen_logit": 12.766267776489258,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 10,
+            "saved_generation_id": 2542,
+            "reconstructed_scorer_argmax": 2542,
+            "runner_up": 16,
+            "argmax_logit": 12.766265869140625,
+            "runner_up_logit": 12.718236923217773,
+            "saved_chosen_logit": 12.766265869140625,
+            "top2_margin": 0.04802894592285156,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 10,
+            "saved_chosen": 2542,
+            "native_argmax": 2542,
+            "fp64_argmax": 2542,
+            "fp64_runner_up": 16,
+            "fp64_top2_gap": 0.048026230744749654,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.048018455505371094,
+            "ordinary": true,
+            "max_abs_error": 7.702068179682442e-06
+          }
+        },
+        {
+          "position_zero_based": 11,
+          "saved_generation_id": 17,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 17,
+            "runner_up_id": 15,
+            "argmax_logit": 15.370706558227539,
+            "runner_up_logit": 11.941166877746582,
+            "top2_margin": 3.429539680480957,
+            "saved_chosen_logit": 15.370706558227539,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 17,
+            "runner_up_id": 15,
+            "argmax_logit": 15.370709419250488,
+            "runner_up_logit": 11.941165924072266,
+            "top2_margin": 3.4295434951782227,
+            "saved_chosen_logit": 15.370709419250488,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 11,
+            "saved_generation_id": 17,
+            "reconstructed_scorer_argmax": 17,
+            "runner_up": 15,
+            "argmax_logit": 15.37070083618164,
+            "runner_up_logit": 11.941176414489746,
+            "saved_chosen_logit": 15.37070083618164,
+            "top2_margin": 3.4295244216918945,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 11,
+            "saved_chosen": 17,
+            "native_argmax": 17,
+            "fp64_argmax": 17,
+            "fp64_runner_up": 15,
+            "fp64_top2_gap": 3.4295419922656674,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 3.429539680480957,
+            "ordinary": true,
+            "max_abs_error": 9.371468031815766e-06
+          }
+        },
+        {
+          "position_zero_based": 12,
+          "saved_generation_id": 1,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 1,
+            "runner_up_id": 311,
+            "argmax_logit": 16.074838638305664,
+            "runner_up_logit": 14.091691970825195,
+            "top2_margin": 1.9831466674804688,
+            "saved_chosen_logit": 16.074838638305664,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 1,
+            "runner_up_id": 311,
+            "argmax_logit": 16.07484245300293,
+            "runner_up_logit": 14.091691970825195,
+            "top2_margin": 1.9831504821777344,
+            "saved_chosen_logit": 16.07484245300293,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 12,
+            "saved_generation_id": 1,
+            "reconstructed_scorer_argmax": 1,
+            "runner_up": 311,
+            "argmax_logit": 16.0748348236084,
+            "runner_up_logit": 14.091693878173828,
+            "saved_chosen_logit": 16.0748348236084,
+            "top2_margin": 1.9831409454345703,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 12,
+            "saved_chosen": 1,
+            "native_argmax": 1,
+            "fp64_argmax": 1,
+            "fp64_runner_up": 311,
+            "fp64_top2_gap": 1.9831466932260131,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 1.9831466674804688,
+            "ordinary": true,
+            "max_abs_error": 9.054108301320696e-06
+          }
+        }
+      ],
+      "new_cpu_full_disagreements": [],
+      "new_gpu_disagreements": [
+        8
+      ]
+    },
+    {
+      "run": "c12_B_r1",
+      "key": "carry12_v1:correction:0046|gate_self|2",
+      "positions": [
+        {
+          "position_zero_based": 0,
+          "saved_generation_id": 44,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 44,
+            "runner_up_id": 1940,
+            "argmax_logit": 15.243001937866211,
+            "runner_up_logit": 13.796936988830566,
+            "top2_margin": 1.4460649490356445,
+            "saved_chosen_logit": 15.243001937866211,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 44,
+            "runner_up_id": 1940,
+            "argmax_logit": 15.243000984191895,
+            "runner_up_logit": 13.796940803527832,
+            "top2_margin": 1.4460601806640625,
+            "saved_chosen_logit": 15.243000984191895,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 0,
+            "saved_generation_id": 44,
+            "reconstructed_scorer_argmax": 44,
+            "runner_up": 1940,
+            "argmax_logit": 15.242999076843262,
+            "runner_up_logit": 13.796941757202148,
+            "saved_chosen_logit": 15.242999076843262,
+            "top2_margin": 1.4460573196411133,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 0,
+            "saved_chosen": 44,
+            "native_argmax": 44,
+            "fp64_argmax": 44,
+            "fp64_runner_up": 1940,
+            "fp64_top2_gap": 1.4460650231951586,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 1.4460649490356445,
+            "ordinary": true,
+            "max_abs_error": 6.496000008127112e-06
+          }
+        },
+        {
+          "position_zero_based": 1,
+          "saved_generation_id": 871,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 871,
+            "runner_up_id": 465,
+            "argmax_logit": 12.172605514526367,
+            "runner_up_logit": 12.172601699829102,
+            "top2_margin": 3.814697265625e-06,
+            "saved_chosen_logit": 12.172605514526367,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 871,
+            "runner_up_id": 465,
+            "argmax_logit": 12.172606468200684,
+            "runner_up_logit": 12.172599792480469,
+            "top2_margin": 6.67572021484375e-06,
+            "saved_chosen_logit": 12.172606468200684,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 1,
+            "saved_generation_id": 871,
+            "reconstructed_scorer_argmax": 465,
+            "runner_up": 871,
+            "argmax_logit": 12.172597885131836,
+            "runner_up_logit": 12.17259693145752,
+            "saved_chosen_logit": 12.17259693145752,
+            "top2_margin": 9.5367431640625e-07,
+            "argmax_minus_saved": 9.5367431640625e-07,
+            "matches_saved_generation": false
+          },
+          "new_fp64_math": {
+            "position": 1,
+            "saved_chosen": 871,
+            "native_argmax": 871,
+            "fp64_argmax": 871,
+            "fp64_runner_up": 465,
+            "fp64_top2_gap": 5.339711535157221e-06,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 3.814697265625e-06,
+            "ordinary": false,
+            "max_abs_error": 6.407696398369467e-06
+          }
+        },
+        {
+          "position_zero_based": 2,
+          "saved_generation_id": 261,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 261,
+            "runner_up_id": 2827,
+            "argmax_logit": 12.197169303894043,
+            "runner_up_logit": 12.157827377319336,
+            "top2_margin": 0.03934192657470703,
+            "saved_chosen_logit": 12.197169303894043,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 261,
+            "runner_up_id": 2827,
+            "argmax_logit": 12.197168350219727,
+            "runner_up_logit": 12.157824516296387,
+            "top2_margin": 0.039343833923339844,
+            "saved_chosen_logit": 12.197168350219727,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 2,
+            "saved_generation_id": 261,
+            "reconstructed_scorer_argmax": 261,
+            "runner_up": 2827,
+            "argmax_logit": 12.19716739654541,
+            "runner_up_logit": 12.157824516296387,
+            "saved_chosen_logit": 12.19716739654541,
+            "top2_margin": 0.03934288024902344,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 2,
+            "saved_chosen": 261,
+            "native_argmax": 261,
+            "fp64_argmax": 261,
+            "fp64_runner_up": 2827,
+            "fp64_top2_gap": 0.03934178471342875,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.03934192657470703,
+            "ordinary": true,
+            "max_abs_error": 7.65150547721305e-06
+          }
+        },
+        {
+          "position_zero_based": 3,
+          "saved_generation_id": 787,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 787,
+            "runner_up_id": 1471,
+            "argmax_logit": 11.751980781555176,
+            "runner_up_logit": 11.716562271118164,
+            "top2_margin": 0.03541851043701172,
+            "saved_chosen_logit": 11.751980781555176,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 787,
+            "runner_up_id": 1471,
+            "argmax_logit": 11.751981735229492,
+            "runner_up_logit": 11.71656322479248,
+            "top2_margin": 0.03541851043701172,
+            "saved_chosen_logit": 11.751981735229492,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 3,
+            "saved_generation_id": 787,
+            "reconstructed_scorer_argmax": 787,
+            "runner_up": 1471,
+            "argmax_logit": 11.751980781555176,
+            "runner_up_logit": 11.716559410095215,
+            "saved_chosen_logit": 11.751980781555176,
+            "top2_margin": 0.03542137145996094,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 3,
+            "saved_chosen": 787,
+            "native_argmax": 787,
+            "fp64_argmax": 787,
+            "fp64_runner_up": 1471,
+            "fp64_top2_gap": 0.03542132965146649,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.03541851043701172,
+            "ordinary": true,
+            "max_abs_error": 5.5355867475404e-06
+          }
+        },
+        {
+          "position_zero_based": 4,
+          "saved_generation_id": 1056,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 1056,
+            "runner_up_id": 636,
+            "argmax_logit": 12.405007362365723,
+            "runner_up_logit": 11.004683494567871,
+            "top2_margin": 1.4003238677978516,
+            "saved_chosen_logit": 12.405007362365723,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 1056,
+            "runner_up_id": 636,
+            "argmax_logit": 12.405009269714355,
+            "runner_up_logit": 11.004677772521973,
+            "top2_margin": 1.4003314971923828,
+            "saved_chosen_logit": 12.405009269714355,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 4,
+            "saved_generation_id": 1056,
+            "reconstructed_scorer_argmax": 1056,
+            "runner_up": 636,
+            "argmax_logit": 12.405004501342773,
+            "runner_up_logit": 11.00467300415039,
+            "saved_chosen_logit": 12.405004501342773,
+            "top2_margin": 1.4003314971923828,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 4,
+            "saved_chosen": 1056,
+            "native_argmax": 1056,
+            "fp64_argmax": 1056,
+            "fp64_runner_up": 636,
+            "fp64_top2_gap": 1.4003310770203115,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 1.4003238677978516,
+            "ordinary": true,
+            "max_abs_error": 8.034282291902173e-06
+          }
+        },
+        {
+          "position_zero_based": 5,
+          "saved_generation_id": 15,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 15,
+            "runner_up_id": 330,
+            "argmax_logit": 12.406949996948242,
+            "runner_up_logit": 11.157482147216797,
+            "top2_margin": 1.2494678497314453,
+            "saved_chosen_logit": 12.406949996948242,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 15,
+            "runner_up_id": 330,
+            "argmax_logit": 12.40694808959961,
+            "runner_up_logit": 11.157479286193848,
+            "top2_margin": 1.2494688034057617,
+            "saved_chosen_logit": 12.40694808959961,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 5,
+            "saved_generation_id": 15,
+            "reconstructed_scorer_argmax": 15,
+            "runner_up": 330,
+            "argmax_logit": 12.40695858001709,
+            "runner_up_logit": 11.157483100891113,
+            "saved_chosen_logit": 12.40695858001709,
+            "top2_margin": 1.2494754791259766,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 5,
+            "saved_chosen": 15,
+            "native_argmax": 15,
+            "fp64_argmax": 15,
+            "fp64_runner_up": 330,
+            "fp64_top2_gap": 1.2494599324943447,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 1.2494678497314453,
+            "ordinary": true,
+            "max_abs_error": 1.1854405768119136e-05
+          }
+        },
+        {
+          "position_zero_based": 6,
+          "saved_generation_id": 311,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 311,
+            "runner_up_id": 624,
+            "argmax_logit": 10.752869606018066,
+            "runner_up_logit": 10.429742813110352,
+            "top2_margin": 0.32312679290771484,
+            "saved_chosen_logit": 10.752869606018066,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 311,
+            "runner_up_id": 624,
+            "argmax_logit": 10.752870559692383,
+            "runner_up_logit": 10.429744720458984,
+            "top2_margin": 0.32312583923339844,
+            "saved_chosen_logit": 10.752870559692383,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 6,
+            "saved_generation_id": 311,
+            "reconstructed_scorer_argmax": 311,
+            "runner_up": 624,
+            "argmax_logit": 10.752870559692383,
+            "runner_up_logit": 10.429749488830566,
+            "saved_chosen_logit": 10.752870559692383,
+            "top2_margin": 0.3231210708618164,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 6,
+            "saved_chosen": 311,
+            "native_argmax": 311,
+            "fp64_argmax": 311,
+            "fp64_runner_up": 624,
+            "fp64_top2_gap": 0.32312564873036465,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.32312679290771484,
+            "ordinary": true,
+            "max_abs_error": 6.309515351077266e-06
+          }
+        },
+        {
+          "position_zero_based": 7,
+          "saved_generation_id": 570,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 570,
+            "runner_up_id": 618,
+            "argmax_logit": 12.406636238098145,
+            "runner_up_logit": 11.83010196685791,
+            "top2_margin": 0.5765342712402344,
+            "saved_chosen_logit": 12.406636238098145,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 570,
+            "runner_up_id": 618,
+            "argmax_logit": 12.406637191772461,
+            "runner_up_logit": 11.830102920532227,
+            "top2_margin": 0.5765342712402344,
+            "saved_chosen_logit": 12.406637191772461,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 7,
+            "saved_generation_id": 570,
+            "reconstructed_scorer_argmax": 570,
+            "runner_up": 618,
+            "argmax_logit": 12.406643867492676,
+            "runner_up_logit": 11.830097198486328,
+            "saved_chosen_logit": 12.406643867492676,
+            "top2_margin": 0.5765466690063477,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 7,
+            "saved_chosen": 570,
+            "native_argmax": 570,
+            "fp64_argmax": 570,
+            "fp64_runner_up": 618,
+            "fp64_top2_gap": 0.5765371700746069,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.5765342712402344,
+            "ordinary": true,
+            "max_abs_error": 6.0464876385779576e-06
+          }
+        },
+        {
+          "position_zero_based": 8,
+          "saved_generation_id": 289,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 289,
+            "runner_up_id": 349,
+            "argmax_logit": 12.550883293151855,
+            "runner_up_logit": 10.663968086242676,
+            "top2_margin": 1.8869152069091797,
+            "saved_chosen_logit": 12.550883293151855,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 289,
+            "runner_up_id": 349,
+            "argmax_logit": 12.550882339477539,
+            "runner_up_logit": 10.663965225219727,
+            "top2_margin": 1.8869171142578125,
+            "saved_chosen_logit": 12.550882339477539,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 8,
+            "saved_generation_id": 289,
+            "reconstructed_scorer_argmax": 289,
+            "runner_up": 349,
+            "argmax_logit": 12.550888061523438,
+            "runner_up_logit": 10.663957595825195,
+            "saved_chosen_logit": 12.550888061523438,
+            "top2_margin": 1.8869304656982422,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 8,
+            "saved_chosen": 289,
+            "native_argmax": 289,
+            "fp64_argmax": 289,
+            "fp64_runner_up": 349,
+            "fp64_top2_gap": 1.8869131513374793,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 1.8869152069091797,
+            "ordinary": true,
+            "max_abs_error": 5.597390481781872e-06
+          }
+        },
+        {
+          "position_zero_based": 9,
+          "saved_generation_id": 3342,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 3342,
+            "runner_up_id": 465,
+            "argmax_logit": 10.990242004394531,
+            "runner_up_logit": 10.910613059997559,
+            "top2_margin": 0.07962894439697266,
+            "saved_chosen_logit": 10.990242004394531,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 3342,
+            "runner_up_id": 465,
+            "argmax_logit": 10.990241050720215,
+            "runner_up_logit": 10.910612106323242,
+            "top2_margin": 0.07962894439697266,
+            "saved_chosen_logit": 10.990241050720215,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 9,
+            "saved_generation_id": 3342,
+            "reconstructed_scorer_argmax": 3342,
+            "runner_up": 465,
+            "argmax_logit": 10.990242004394531,
+            "runner_up_logit": 10.910614967346191,
+            "saved_chosen_logit": 10.990242004394531,
+            "top2_margin": 0.07962703704833984,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 9,
+            "saved_chosen": 3342,
+            "native_argmax": 3342,
+            "fp64_argmax": 3342,
+            "fp64_runner_up": 465,
+            "fp64_top2_gap": 0.0796343174402061,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.07962894439697266,
+            "ordinary": true,
+            "max_abs_error": 5.934340636670754e-06
+          }
+        },
+        {
+          "position_zero_based": 10,
+          "saved_generation_id": 265,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 265,
+            "runner_up_id": 8162,
+            "argmax_logit": 10.582382202148438,
+            "runner_up_logit": 10.169544219970703,
+            "top2_margin": 0.4128379821777344,
+            "saved_chosen_logit": 10.582382202148438,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 265,
+            "runner_up_id": 8162,
+            "argmax_logit": 10.58238410949707,
+            "runner_up_logit": 10.16954517364502,
+            "top2_margin": 0.4128389358520508,
+            "saved_chosen_logit": 10.58238410949707,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 10,
+            "saved_generation_id": 265,
+            "reconstructed_scorer_argmax": 265,
+            "runner_up": 8162,
+            "argmax_logit": 10.582389831542969,
+            "runner_up_logit": 10.169548034667969,
+            "saved_chosen_logit": 10.582389831542969,
+            "top2_margin": 0.412841796875,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 10,
+            "saved_chosen": 265,
+            "native_argmax": 265,
+            "fp64_argmax": 265,
+            "fp64_runner_up": 8162,
+            "fp64_top2_gap": 0.41284397224899294,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.4128379821777344,
+            "ordinary": true,
+            "max_abs_error": 8.132608495081683e-06
+          }
+        },
+        {
+          "position_zero_based": 11,
+          "saved_generation_id": 4800,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 4800,
+            "runner_up_id": 5098,
+            "argmax_logit": 9.282434463500977,
+            "runner_up_logit": 8.702369689941406,
+            "top2_margin": 0.5800647735595703,
+            "saved_chosen_logit": 9.282434463500977,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 4800,
+            "runner_up_id": 5098,
+            "argmax_logit": 9.282434463500977,
+            "runner_up_logit": 8.702372550964355,
+            "top2_margin": 0.5800619125366211,
+            "saved_chosen_logit": 9.282434463500977,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 11,
+            "saved_generation_id": 4800,
+            "reconstructed_scorer_argmax": 4800,
+            "runner_up": 5098,
+            "argmax_logit": 9.282434463500977,
+            "runner_up_logit": 8.702370643615723,
+            "saved_chosen_logit": 9.282434463500977,
+            "top2_margin": 0.5800638198852539,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 11,
+            "saved_chosen": 4800,
+            "native_argmax": 4800,
+            "fp64_argmax": 4800,
+            "fp64_runner_up": 5098,
+            "fp64_top2_gap": 0.5800613254042748,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.5800647735595703,
+            "ordinary": true,
+            "max_abs_error": 5.9914478667266735e-06
+          }
+        },
+        {
+          "position_zero_based": 12,
+          "saved_generation_id": 3498,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 3498,
+            "runner_up_id": 1,
+            "argmax_logit": 14.200468063354492,
+            "runner_up_logit": 7.4798054695129395,
+            "top2_margin": 6.720662593841553,
+            "saved_chosen_logit": 14.200468063354492,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 3498,
+            "runner_up_id": 1,
+            "argmax_logit": 14.200467109680176,
+            "runner_up_logit": 7.479804515838623,
+            "top2_margin": 6.720662593841553,
+            "saved_chosen_logit": 14.200467109680176,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 12,
+            "saved_generation_id": 3498,
+            "reconstructed_scorer_argmax": 3498,
+            "runner_up": 1,
+            "argmax_logit": 14.200469970703125,
+            "runner_up_logit": 7.479796409606934,
+            "saved_chosen_logit": 14.200469970703125,
+            "top2_margin": 6.720673561096191,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 12,
+            "saved_chosen": 3498,
+            "native_argmax": 3498,
+            "fp64_argmax": 3498,
+            "fp64_runner_up": 1,
+            "fp64_top2_gap": 6.720666240194905,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 6.720662593841553,
+            "ordinary": true,
+            "max_abs_error": 6.3556547953425024e-06
+          }
+        },
+        {
+          "position_zero_based": 13,
+          "saved_generation_id": 15,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 15,
+            "runner_up_id": 17,
+            "argmax_logit": 12.422557830810547,
+            "runner_up_logit": 12.20388126373291,
+            "top2_margin": 0.21867656707763672,
+            "saved_chosen_logit": 12.422557830810547,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 15,
+            "runner_up_id": 17,
+            "argmax_logit": 12.422557830810547,
+            "runner_up_logit": 12.20388126373291,
+            "top2_margin": 0.21867656707763672,
+            "saved_chosen_logit": 12.422557830810547,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 13,
+            "saved_generation_id": 15,
+            "reconstructed_scorer_argmax": 15,
+            "runner_up": 17,
+            "argmax_logit": 12.422565460205078,
+            "runner_up_logit": 12.20388126373291,
+            "saved_chosen_logit": 12.422565460205078,
+            "top2_margin": 0.21868419647216797,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 13,
+            "saved_chosen": 15,
+            "native_argmax": 15,
+            "fp64_argmax": 15,
+            "fp64_runner_up": 17,
+            "fp64_top2_gap": 0.21868220198838273,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.21867656707763672,
+            "ordinary": true,
+            "max_abs_error": 7.203571573022316e-06
+          }
+        },
+        {
+          "position_zero_based": 14,
+          "saved_generation_id": 624,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 624,
+            "runner_up_id": 662,
+            "argmax_logit": 10.5917387008667,
+            "runner_up_logit": 10.496330261230469,
+            "top2_margin": 0.09540843963623047,
+            "saved_chosen_logit": 10.5917387008667,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 624,
+            "runner_up_id": 662,
+            "argmax_logit": 10.591734886169434,
+            "runner_up_logit": 10.496328353881836,
+            "top2_margin": 0.09540653228759766,
+            "saved_chosen_logit": 10.591734886169434,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 14,
+            "saved_generation_id": 624,
+            "reconstructed_scorer_argmax": 624,
+            "runner_up": 662,
+            "argmax_logit": 10.591743469238281,
+            "runner_up_logit": 10.49632453918457,
+            "saved_chosen_logit": 10.591743469238281,
+            "top2_margin": 0.09541893005371094,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 14,
+            "saved_chosen": 624,
+            "native_argmax": 624,
+            "fp64_argmax": 624,
+            "fp64_runner_up": 662,
+            "fp64_top2_gap": 0.09540949872606141,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.09540843963623047,
+            "ordinary": true,
+            "max_abs_error": 7.0170045827211425e-06
+          }
+        },
+        {
+          "position_zero_based": 15,
+          "saved_generation_id": 521,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 521,
+            "runner_up_id": 465,
+            "argmax_logit": 17.058475494384766,
+            "runner_up_logit": 12.734440803527832,
+            "top2_margin": 4.324034690856934,
+            "saved_chosen_logit": 17.058475494384766,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 521,
+            "runner_up_id": 465,
+            "argmax_logit": 17.058469772338867,
+            "runner_up_logit": 12.7344388961792,
+            "top2_margin": 4.324030876159668,
+            "saved_chosen_logit": 17.058469772338867,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 15,
+            "saved_generation_id": 521,
+            "reconstructed_scorer_argmax": 521,
+            "runner_up": 465,
+            "argmax_logit": 17.058473587036133,
+            "runner_up_logit": 12.734442710876465,
+            "saved_chosen_logit": 17.058473587036133,
+            "top2_margin": 4.324030876159668,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 15,
+            "saved_chosen": 521,
+            "native_argmax": 521,
+            "fp64_argmax": 521,
+            "fp64_runner_up": 465,
+            "fp64_top2_gap": 4.3240286802855845,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 4.324034690856934,
+            "ordinary": true,
+            "max_abs_error": 8.474446579143091e-06
+          }
+        },
+        {
+          "position_zero_based": 16,
+          "saved_generation_id": 319,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 319,
+            "runner_up_id": 2231,
+            "argmax_logit": 17.058338165283203,
+            "runner_up_logit": 15.47176742553711,
+            "top2_margin": 1.5865707397460938,
+            "saved_chosen_logit": 17.058338165283203,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 319,
+            "runner_up_id": 2231,
+            "argmax_logit": 17.05833625793457,
+            "runner_up_logit": 15.47176742553711,
+            "top2_margin": 1.586568832397461,
+            "saved_chosen_logit": 17.05833625793457,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 16,
+            "saved_generation_id": 319,
+            "reconstructed_scorer_argmax": 319,
+            "runner_up": 2231,
+            "argmax_logit": 17.0583438873291,
+            "runner_up_logit": 15.471770286560059,
+            "saved_chosen_logit": 17.0583438873291,
+            "top2_margin": 1.586573600769043,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 16,
+            "saved_chosen": 319,
+            "native_argmax": 319,
+            "fp64_argmax": 319,
+            "fp64_runner_up": 2231,
+            "fp64_top2_gap": 1.5865737794741062,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 1.5865707397460938,
+            "ordinary": true,
+            "max_abs_error": 6.419372189370165e-06
+          }
+        },
+        {
+          "position_zero_based": 17,
+          "saved_generation_id": 34,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 34,
+            "runner_up_id": 1,
+            "argmax_logit": 18.801715850830078,
+            "runner_up_logit": 15.40302562713623,
+            "top2_margin": 3.3986902236938477,
+            "saved_chosen_logit": 18.801715850830078,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 34,
+            "runner_up_id": 1,
+            "argmax_logit": 18.80172348022461,
+            "runner_up_logit": 15.403026580810547,
+            "top2_margin": 3.3986968994140625,
+            "saved_chosen_logit": 18.80172348022461,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 17,
+            "saved_generation_id": 34,
+            "reconstructed_scorer_argmax": 34,
+            "runner_up": 1,
+            "argmax_logit": 18.801719665527344,
+            "runner_up_logit": 15.40302848815918,
+            "saved_chosen_logit": 18.801719665527344,
+            "top2_margin": 3.398691177368164,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 17,
+            "saved_chosen": 34,
+            "native_argmax": 34,
+            "fp64_argmax": 34,
+            "fp64_runner_up": 1,
+            "fp64_top2_gap": 3.3986894679425497,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 3.3986902236938477,
+            "ordinary": true,
+            "max_abs_error": 7.006310058343956e-06
+          }
+        },
+        {
+          "position_zero_based": 18,
+          "saved_generation_id": 1,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 1,
+            "runner_up_id": 34,
+            "argmax_logit": 18.328920364379883,
+            "runner_up_logit": 11.781599998474121,
+            "top2_margin": 6.547320365905762,
+            "saved_chosen_logit": 18.328920364379883,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 1,
+            "runner_up_id": 34,
+            "argmax_logit": 18.328922271728516,
+            "runner_up_logit": 11.781599998474121,
+            "top2_margin": 6.5473222732543945,
+            "saved_chosen_logit": 18.328922271728516,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 18,
+            "saved_generation_id": 1,
+            "reconstructed_scorer_argmax": 1,
+            "runner_up": 34,
+            "argmax_logit": 18.32892417907715,
+            "runner_up_logit": 11.781588554382324,
+            "saved_chosen_logit": 18.32892417907715,
+            "top2_margin": 6.547335624694824,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 18,
+            "saved_chosen": 1,
+            "native_argmax": 1,
+            "fp64_argmax": 1,
+            "fp64_runner_up": 34,
+            "fp64_top2_gap": 6.547316641808287,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 6.547320365905762,
+            "ordinary": true,
+            "max_abs_error": 8.827723164017698e-06
+          }
+        }
+      ],
+      "new_cpu_full_disagreements": [],
+      "new_gpu_disagreements": [
+        1
+      ]
+    },
+    {
+      "run": "c12_B_r1",
+      "key": "carry12_v1:correction:0224|gate_self|2",
+      "positions": [
+        {
+          "position_zero_based": 0,
+          "saved_generation_id": 1027,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 1027,
+            "runner_up_id": 44,
+            "argmax_logit": 14.434209823608398,
+            "runner_up_logit": 13.507061958312988,
+            "top2_margin": 0.9271478652954102,
+            "saved_chosen_logit": 14.434209823608398,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 1027,
+            "runner_up_id": 44,
+            "argmax_logit": 14.434211730957031,
+            "runner_up_logit": 13.507061004638672,
+            "top2_margin": 0.9271507263183594,
+            "saved_chosen_logit": 14.434211730957031,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 0,
+            "saved_generation_id": 1027,
+            "reconstructed_scorer_argmax": 1027,
+            "runner_up": 44,
+            "argmax_logit": 14.434219360351562,
+            "runner_up_logit": 13.507068634033203,
+            "saved_chosen_logit": 14.434219360351562,
+            "top2_margin": 0.9271507263183594,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 0,
+            "saved_chosen": 1027,
+            "native_argmax": 1027,
+            "fp64_argmax": 1027,
+            "fp64_runner_up": 44,
+            "fp64_top2_gap": 0.9271501719044117,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.9271478652954102,
+            "ordinary": true,
+            "max_abs_error": 6.216295409311456e-06
+          }
+        },
+        {
+          "position_zero_based": 1,
+          "saved_generation_id": 414,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 414,
+            "runner_up_id": 1265,
+            "argmax_logit": 14.70631217956543,
+            "runner_up_logit": 12.543776512145996,
+            "top2_margin": 2.1625356674194336,
+            "saved_chosen_logit": 14.70631217956543,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 414,
+            "runner_up_id": 1265,
+            "argmax_logit": 14.706310272216797,
+            "runner_up_logit": 12.54377269744873,
+            "top2_margin": 2.1625375747680664,
+            "saved_chosen_logit": 14.706310272216797,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 1,
+            "saved_generation_id": 414,
+            "reconstructed_scorer_argmax": 414,
+            "runner_up": 1265,
+            "argmax_logit": 14.706313133239746,
+            "runner_up_logit": 12.543780326843262,
+            "saved_chosen_logit": 14.706313133239746,
+            "top2_margin": 2.1625328063964844,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 1,
+            "saved_chosen": 414,
+            "native_argmax": 414,
+            "fp64_argmax": 414,
+            "fp64_runner_up": 1265,
+            "fp64_top2_gap": 2.162537962843473,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 2.1625356674194336,
+            "ordinary": true,
+            "max_abs_error": 6.383821303579396e-06
+          }
+        },
+        {
+          "position_zero_based": 2,
+          "saved_generation_id": 11492,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 11492,
+            "runner_up_id": 2733,
+            "argmax_logit": 11.85846996307373,
+            "runner_up_logit": 11.64672565460205,
+            "top2_margin": 0.2117443084716797,
+            "saved_chosen_logit": 11.85846996307373,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 11492,
+            "runner_up_id": 2733,
+            "argmax_logit": 11.858470916748047,
+            "runner_up_logit": 11.64672565460205,
+            "top2_margin": 0.2117452621459961,
+            "saved_chosen_logit": 11.858470916748047,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 2,
+            "saved_generation_id": 11492,
+            "reconstructed_scorer_argmax": 11492,
+            "runner_up": 2733,
+            "argmax_logit": 11.858471870422363,
+            "runner_up_logit": 11.64671802520752,
+            "saved_chosen_logit": 11.858471870422363,
+            "top2_margin": 0.21175384521484375,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 2,
+            "saved_chosen": 11492,
+            "native_argmax": 11492,
+            "fp64_argmax": 11492,
+            "fp64_runner_up": 2733,
+            "fp64_top2_gap": 0.2117453014723374,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.2117443084716797,
+            "ordinary": true,
+            "max_abs_error": 5.962872002385211e-06
+          }
+        },
+        {
+          "position_zero_based": 3,
+          "saved_generation_id": 17,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 17,
+            "runner_up_id": 4,
+            "argmax_logit": 15.12830638885498,
+            "runner_up_logit": 14.407438278198242,
+            "top2_margin": 0.7208681106567383,
+            "saved_chosen_logit": 15.12830638885498,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 17,
+            "runner_up_id": 4,
+            "argmax_logit": 15.128310203552246,
+            "runner_up_logit": 14.407441139221191,
+            "top2_margin": 0.7208690643310547,
+            "saved_chosen_logit": 15.128310203552246,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 3,
+            "saved_generation_id": 17,
+            "reconstructed_scorer_argmax": 17,
+            "runner_up": 4,
+            "argmax_logit": 15.128310203552246,
+            "runner_up_logit": 14.407434463500977,
+            "saved_chosen_logit": 15.128310203552246,
+            "top2_margin": 0.7208757400512695,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 3,
+            "saved_chosen": 17,
+            "native_argmax": 17,
+            "fp64_argmax": 17,
+            "fp64_runner_up": 4,
+            "fp64_top2_gap": 0.7208730100973852,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.7208681106567383,
+            "ordinary": true,
+            "max_abs_error": 6.184206764459077e-06
+          }
+        },
+        {
+          "position_zero_based": 4,
+          "saved_generation_id": 311,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 311,
+            "runner_up_id": 1066,
+            "argmax_logit": 14.071003913879395,
+            "runner_up_logit": 12.713218688964844,
+            "top2_margin": 1.3577852249145508,
+            "saved_chosen_logit": 14.071003913879395,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 311,
+            "runner_up_id": 1066,
+            "argmax_logit": 14.071002960205078,
+            "runner_up_logit": 12.713218688964844,
+            "top2_margin": 1.3577842712402344,
+            "saved_chosen_logit": 14.071002960205078,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 4,
+            "saved_generation_id": 311,
+            "reconstructed_scorer_argmax": 311,
+            "runner_up": 1066,
+            "argmax_logit": 14.071002960205078,
+            "runner_up_logit": 12.713207244873047,
+            "saved_chosen_logit": 14.071002960205078,
+            "top2_margin": 1.3577957153320312,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 4,
+            "saved_chosen": 311,
+            "native_argmax": 311,
+            "fp64_argmax": 311,
+            "fp64_runner_up": 1066,
+            "fp64_top2_gap": 1.3577833608883019,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 1.3577852249145508,
+            "ordinary": true,
+            "max_abs_error": 7.2675953894929535e-06
+          }
+        },
+        {
+          "position_zero_based": 5,
+          "saved_generation_id": 618,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 618,
+            "runner_up_id": 692,
+            "argmax_logit": 13.147372245788574,
+            "runner_up_logit": 12.64539623260498,
+            "top2_margin": 0.5019760131835938,
+            "saved_chosen_logit": 13.147372245788574,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 618,
+            "runner_up_id": 692,
+            "argmax_logit": 13.147370338439941,
+            "runner_up_logit": 12.645394325256348,
+            "top2_margin": 0.5019760131835938,
+            "saved_chosen_logit": 13.147370338439941,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 5,
+            "saved_generation_id": 618,
+            "reconstructed_scorer_argmax": 618,
+            "runner_up": 692,
+            "argmax_logit": 13.147372245788574,
+            "runner_up_logit": 12.64539623260498,
+            "saved_chosen_logit": 13.147372245788574,
+            "top2_margin": 0.5019760131835938,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 5,
+            "saved_chosen": 618,
+            "native_argmax": 618,
+            "fp64_argmax": 618,
+            "fp64_runner_up": 692,
+            "fp64_top2_gap": 0.5019790336773937,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.5019760131835938,
+            "ordinary": true,
+            "max_abs_error": 5.446932659580739e-06
+          }
+        },
+        {
+          "position_zero_based": 6,
+          "saved_generation_id": 261,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 261,
+            "runner_up_id": 1141,
+            "argmax_logit": 11.768911361694336,
+            "runner_up_logit": 11.76890754699707,
+            "top2_margin": 3.814697265625e-06,
+            "saved_chosen_logit": 11.768911361694336,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 261,
+            "runner_up_id": 1141,
+            "argmax_logit": 11.768914222717285,
+            "runner_up_logit": 11.768908500671387,
+            "top2_margin": 5.7220458984375e-06,
+            "saved_chosen_logit": 11.768914222717285,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 6,
+            "saved_generation_id": 261,
+            "reconstructed_scorer_argmax": 1141,
+            "runner_up": 261,
+            "argmax_logit": 11.768915176391602,
+            "runner_up_logit": 11.768912315368652,
+            "saved_chosen_logit": 11.768912315368652,
+            "top2_margin": 2.86102294921875e-06,
+            "argmax_minus_saved": 2.86102294921875e-06,
+            "matches_saved_generation": false
+          },
+          "new_fp64_math": {
+            "position": 6,
+            "saved_chosen": 261,
+            "native_argmax": 261,
+            "fp64_argmax": 261,
+            "fp64_runner_up": 1141,
+            "fp64_top2_gap": 6.561877942345973e-06,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 3.814697265625e-06,
+            "ordinary": false,
+            "max_abs_error": 5.921648561724169e-06
+          }
+        },
+        {
+          "position_zero_based": 7,
+          "saved_generation_id": 1731,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 1731,
+            "runner_up_id": 2339,
+            "argmax_logit": 9.93963623046875,
+            "runner_up_logit": 9.739956855773926,
+            "top2_margin": 0.19967937469482422,
+            "saved_chosen_logit": 9.93963623046875,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 1731,
+            "runner_up_id": 2339,
+            "argmax_logit": 9.939634323120117,
+            "runner_up_logit": 9.73995590209961,
+            "top2_margin": 0.1996784210205078,
+            "saved_chosen_logit": 9.939634323120117,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 7,
+            "saved_generation_id": 1731,
+            "reconstructed_scorer_argmax": 1731,
+            "runner_up": 2339,
+            "argmax_logit": 9.93964672088623,
+            "runner_up_logit": 9.73995590209961,
+            "saved_chosen_logit": 9.93964672088623,
+            "top2_margin": 0.1996908187866211,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 7,
+            "saved_chosen": 1731,
+            "native_argmax": 1731,
+            "fp64_argmax": 1731,
+            "fp64_runner_up": 2339,
+            "fp64_top2_gap": 0.19967861808348886,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.19967937469482422,
+            "ordinary": true,
+            "max_abs_error": 6.270346272430061e-06
+          }
+        },
+        {
+          "position_zero_based": 8,
+          "saved_generation_id": 340,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 340,
+            "runner_up_id": 1283,
+            "argmax_logit": 17.8865909576416,
+            "runner_up_logit": 11.7847261428833,
+            "top2_margin": 6.101864814758301,
+            "saved_chosen_logit": 17.8865909576416,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 340,
+            "runner_up_id": 1283,
+            "argmax_logit": 17.886585235595703,
+            "runner_up_logit": 11.784725189208984,
+            "top2_margin": 6.101860046386719,
+            "saved_chosen_logit": 17.886585235595703,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 8,
+            "saved_generation_id": 340,
+            "reconstructed_scorer_argmax": 340,
+            "runner_up": 1283,
+            "argmax_logit": 17.88658905029297,
+            "runner_up_logit": 11.784727096557617,
+            "saved_chosen_logit": 17.88658905029297,
+            "top2_margin": 6.101861953735352,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 8,
+            "saved_chosen": 340,
+            "native_argmax": 340,
+            "fp64_argmax": 340,
+            "fp64_runner_up": 1283,
+            "fp64_top2_gap": 6.101862328854768,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 6.101864814758301,
+            "ordinary": true,
+            "max_abs_error": 6.478570645285231e-06
+          }
+        },
+        {
+          "position_zero_based": 9,
+          "saved_generation_id": 13981,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 13981,
+            "runner_up_id": 572,
+            "argmax_logit": 15.535811424255371,
+            "runner_up_logit": 11.88999080657959,
+            "top2_margin": 3.6458206176757812,
+            "saved_chosen_logit": 15.535811424255371,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 13981,
+            "runner_up_id": 572,
+            "argmax_logit": 15.535807609558105,
+            "runner_up_logit": 11.88999080657959,
+            "top2_margin": 3.6458168029785156,
+            "saved_chosen_logit": 15.535807609558105,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 9,
+            "saved_generation_id": 13981,
+            "reconstructed_scorer_argmax": 13981,
+            "runner_up": 572,
+            "argmax_logit": 15.535796165466309,
+            "runner_up_logit": 11.889992713928223,
+            "saved_chosen_logit": 15.535796165466309,
+            "top2_margin": 3.645803451538086,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 9,
+            "saved_chosen": 13981,
+            "native_argmax": 13981,
+            "fp64_argmax": 13981,
+            "fp64_runner_up": 572,
+            "fp64_top2_gap": 3.645813321746008,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 3.6458206176757812,
+            "ordinary": true,
+            "max_abs_error": 9.420055510744874e-06
+          }
+        },
+        {
+          "position_zero_based": 10,
+          "saved_generation_id": 17,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 17,
+            "runner_up_id": 3165,
+            "argmax_logit": 11.966611862182617,
+            "runner_up_logit": 10.249018669128418,
+            "top2_margin": 1.7175931930541992,
+            "saved_chosen_logit": 11.966611862182617,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 17,
+            "runner_up_id": 3165,
+            "argmax_logit": 11.966612815856934,
+            "runner_up_logit": 10.249016761779785,
+            "top2_margin": 1.7175960540771484,
+            "saved_chosen_logit": 11.966612815856934,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 10,
+            "saved_generation_id": 17,
+            "reconstructed_scorer_argmax": 17,
+            "runner_up": 3165,
+            "argmax_logit": 11.966611862182617,
+            "runner_up_logit": 10.249022483825684,
+            "saved_chosen_logit": 11.966611862182617,
+            "top2_margin": 1.7175893783569336,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 10,
+            "saved_chosen": 17,
+            "native_argmax": 17,
+            "fp64_argmax": 17,
+            "fp64_runner_up": 3165,
+            "fp64_top2_gap": 1.717592279100943,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 1.7175931930541992,
+            "ordinary": true,
+            "max_abs_error": 8.694085675386987e-06
+          }
+        },
+        {
+          "position_zero_based": 11,
+          "saved_generation_id": 1,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 1,
+            "runner_up_id": 311,
+            "argmax_logit": 15.24887466430664,
+            "runner_up_logit": 13.906585693359375,
+            "top2_margin": 1.3422889709472656,
+            "saved_chosen_logit": 15.24887466430664,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 1,
+            "runner_up_id": 311,
+            "argmax_logit": 15.248875617980957,
+            "runner_up_logit": 13.906588554382324,
+            "top2_margin": 1.3422870635986328,
+            "saved_chosen_logit": 15.248875617980957,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 11,
+            "saved_generation_id": 1,
+            "reconstructed_scorer_argmax": 1,
+            "runner_up": 311,
+            "argmax_logit": 15.248875617980957,
+            "runner_up_logit": 13.906585693359375,
+            "saved_chosen_logit": 15.248875617980957,
+            "top2_margin": 1.342289924621582,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 11,
+            "saved_chosen": 1,
+            "native_argmax": 1,
+            "fp64_argmax": 1,
+            "fp64_runner_up": 311,
+            "fp64_top2_gap": 1.3422886645889722,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 1.3422889709472656,
+            "ordinary": true,
+            "max_abs_error": 5.376165219672657e-06
+          }
+        }
+      ],
+      "new_cpu_full_disagreements": [],
+      "new_gpu_disagreements": [
+        6
+      ]
+    },
+    {
+      "run": "c12_B_r3",
+      "key": "carry12_v1:correction:0306|gate_self|2",
+      "positions": [
+        {
+          "position_zero_based": 0,
+          "saved_generation_id": 1526,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 1526,
+            "runner_up_id": 44,
+            "argmax_logit": 13.65156364440918,
+            "runner_up_logit": 11.080086708068848,
+            "top2_margin": 2.571476936340332,
+            "saved_chosen_logit": 13.65156364440918,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 1526,
+            "runner_up_id": 44,
+            "argmax_logit": 13.651561737060547,
+            "runner_up_logit": 11.080089569091797,
+            "top2_margin": 2.57147216796875,
+            "saved_chosen_logit": 13.651561737060547,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 0,
+            "saved_generation_id": 1526,
+            "reconstructed_scorer_argmax": 1526,
+            "runner_up": 44,
+            "argmax_logit": 13.651562690734863,
+            "runner_up_logit": 11.080090522766113,
+            "saved_chosen_logit": 13.651562690734863,
+            "top2_margin": 2.57147216796875,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 0,
+            "saved_chosen": 1526,
+            "native_argmax": 1526,
+            "fp64_argmax": 1526,
+            "fp64_runner_up": 44,
+            "fp64_top2_gap": 2.571476454229014,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 2.571476936340332,
+            "ordinary": true,
+            "max_abs_error": 5.274747583605688e-06
+          }
+        },
+        {
+          "position_zero_based": 1,
+          "saved_generation_id": 390,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 390,
+            "runner_up_id": 726,
+            "argmax_logit": 14.058890342712402,
+            "runner_up_logit": 11.66120719909668,
+            "top2_margin": 2.3976831436157227,
+            "saved_chosen_logit": 14.058890342712402,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 390,
+            "runner_up_id": 726,
+            "argmax_logit": 14.058892250061035,
+            "runner_up_logit": 11.661212921142578,
+            "top2_margin": 2.397679328918457,
+            "saved_chosen_logit": 14.058892250061035,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 1,
+            "saved_generation_id": 390,
+            "reconstructed_scorer_argmax": 390,
+            "runner_up": 726,
+            "argmax_logit": 14.058894157409668,
+            "runner_up_logit": 11.661200523376465,
+            "saved_chosen_logit": 14.058894157409668,
+            "top2_margin": 2.397693634033203,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 1,
+            "saved_chosen": 390,
+            "native_argmax": 390,
+            "fp64_argmax": 390,
+            "fp64_runner_up": 726,
+            "fp64_top2_gap": 2.3976864008484835,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 2.3976831436157227,
+            "ordinary": true,
+            "max_abs_error": 5.297056441477821e-06
+          }
+        },
+        {
+          "position_zero_based": 2,
+          "saved_generation_id": 693,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 693,
+            "runner_up_id": 2897,
+            "argmax_logit": 13.747722625732422,
+            "runner_up_logit": 10.921710968017578,
+            "top2_margin": 2.8260116577148438,
+            "saved_chosen_logit": 13.747722625732422,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 693,
+            "runner_up_id": 2897,
+            "argmax_logit": 13.747723579406738,
+            "runner_up_logit": 10.921712875366211,
+            "top2_margin": 2.8260107040405273,
+            "saved_chosen_logit": 13.747723579406738,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 2,
+            "saved_generation_id": 693,
+            "reconstructed_scorer_argmax": 693,
+            "runner_up": 2897,
+            "argmax_logit": 13.747720718383789,
+            "runner_up_logit": 10.921706199645996,
+            "saved_chosen_logit": 13.747720718383789,
+            "top2_margin": 2.826014518737793,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 2,
+            "saved_chosen": 693,
+            "native_argmax": 693,
+            "fp64_argmax": 693,
+            "fp64_runner_up": 2897,
+            "fp64_top2_gap": 2.8260104490656595,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 2.8260116577148438,
+            "ordinary": true,
+            "max_abs_error": 8.045168826242843e-06
+          }
+        },
+        {
+          "position_zero_based": 3,
+          "saved_generation_id": 261,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 261,
+            "runner_up_id": 349,
+            "argmax_logit": 12.38772964477539,
+            "runner_up_logit": 11.489158630371094,
+            "top2_margin": 0.8985710144042969,
+            "saved_chosen_logit": 12.38772964477539,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 261,
+            "runner_up_id": 349,
+            "argmax_logit": 12.38772964477539,
+            "runner_up_logit": 11.489157676696777,
+            "top2_margin": 0.8985719680786133,
+            "saved_chosen_logit": 12.38772964477539,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 3,
+            "saved_generation_id": 261,
+            "reconstructed_scorer_argmax": 261,
+            "runner_up": 349,
+            "argmax_logit": 12.387738227844238,
+            "runner_up_logit": 11.489161491394043,
+            "saved_chosen_logit": 12.387738227844238,
+            "top2_margin": 0.8985767364501953,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 3,
+            "saved_chosen": 261,
+            "native_argmax": 261,
+            "fp64_argmax": 261,
+            "fp64_runner_up": 349,
+            "fp64_top2_gap": 0.8985722276249071,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.8985710144042969,
+            "ordinary": true,
+            "max_abs_error": 5.674937977317995e-06
+          }
+        },
+        {
+          "position_zero_based": 4,
+          "saved_generation_id": 14119,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 14119,
+            "runner_up_id": 299,
+            "argmax_logit": 10.318573951721191,
+            "runner_up_logit": 9.805486679077148,
+            "top2_margin": 0.513087272644043,
+            "saved_chosen_logit": 10.318573951721191,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 14119,
+            "runner_up_id": 299,
+            "argmax_logit": 10.318575859069824,
+            "runner_up_logit": 9.805484771728516,
+            "top2_margin": 0.5130910873413086,
+            "saved_chosen_logit": 10.318575859069824,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 4,
+            "saved_generation_id": 14119,
+            "reconstructed_scorer_argmax": 14119,
+            "runner_up": 299,
+            "argmax_logit": 10.318573951721191,
+            "runner_up_logit": 9.8054780960083,
+            "saved_chosen_logit": 10.318573951721191,
+            "top2_margin": 0.5130958557128906,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 4,
+            "saved_chosen": 14119,
+            "native_argmax": 14119,
+            "fp64_argmax": 14119,
+            "fp64_runner_up": 299,
+            "fp64_top2_gap": 0.5130920547729438,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.513087272644043,
+            "ordinary": true,
+            "max_abs_error": 5.892233179594086e-06
+          }
+        },
+        {
+          "position_zero_based": 5,
+          "saved_generation_id": 290,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 290,
+            "runner_up_id": 368,
+            "argmax_logit": 11.632491111755371,
+            "runner_up_logit": 11.427867889404297,
+            "top2_margin": 0.20462322235107422,
+            "saved_chosen_logit": 11.632491111755371,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 290,
+            "runner_up_id": 368,
+            "argmax_logit": 11.632492065429688,
+            "runner_up_logit": 11.427868843078613,
+            "top2_margin": 0.20462322235107422,
+            "saved_chosen_logit": 11.632492065429688,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 5,
+            "saved_generation_id": 290,
+            "reconstructed_scorer_argmax": 290,
+            "runner_up": 368,
+            "argmax_logit": 11.632495880126953,
+            "runner_up_logit": 11.42786979675293,
+            "saved_chosen_logit": 11.632495880126953,
+            "top2_margin": 0.20462608337402344,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 5,
+            "saved_chosen": 290,
+            "native_argmax": 290,
+            "fp64_argmax": 290,
+            "fp64_runner_up": 368,
+            "fp64_top2_gap": 0.2046222966184299,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.20462322235107422,
+            "ordinary": true,
+            "max_abs_error": 7.83059246423079e-06
+          }
+        },
+        {
+          "position_zero_based": 6,
+          "saved_generation_id": 261,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 261,
+            "runner_up_id": 9127,
+            "argmax_logit": 11.103902816772461,
+            "runner_up_logit": 10.113487243652344,
+            "top2_margin": 0.9904155731201172,
+            "saved_chosen_logit": 11.103902816772461,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 261,
+            "runner_up_id": 9127,
+            "argmax_logit": 11.103899955749512,
+            "runner_up_logit": 10.113487243652344,
+            "top2_margin": 0.990412712097168,
+            "saved_chosen_logit": 11.103899955749512,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 6,
+            "saved_generation_id": 261,
+            "reconstructed_scorer_argmax": 261,
+            "runner_up": 9127,
+            "argmax_logit": 11.103910446166992,
+            "runner_up_logit": 10.113490104675293,
+            "saved_chosen_logit": 11.103910446166992,
+            "top2_margin": 0.9904203414916992,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 6,
+            "saved_chosen": 261,
+            "native_argmax": 261,
+            "fp64_argmax": 261,
+            "fp64_runner_up": 9127,
+            "fp64_top2_gap": 0.9904272930268565,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.9904155731201172,
+            "ordinary": true,
+            "max_abs_error": 7.220736476298839e-06
+          }
+        },
+        {
+          "position_zero_based": 7,
+          "saved_generation_id": 14119,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 14119,
+            "runner_up_id": 15133,
+            "argmax_logit": 12.136777877807617,
+            "runner_up_logit": 9.130941390991211,
+            "top2_margin": 3.0058364868164062,
+            "saved_chosen_logit": 12.136777877807617,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 14119,
+            "runner_up_id": 15133,
+            "argmax_logit": 12.136780738830566,
+            "runner_up_logit": 9.130939483642578,
+            "top2_margin": 3.0058412551879883,
+            "saved_chosen_logit": 12.136780738830566,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 7,
+            "saved_generation_id": 14119,
+            "reconstructed_scorer_argmax": 14119,
+            "runner_up": 15133,
+            "argmax_logit": 12.13677978515625,
+            "runner_up_logit": 9.130945205688477,
+            "saved_chosen_logit": 12.13677978515625,
+            "top2_margin": 3.0058345794677734,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 7,
+            "saved_chosen": 14119,
+            "native_argmax": 14119,
+            "fp64_argmax": 14119,
+            "fp64_runner_up": 15133,
+            "fp64_top2_gap": 3.0058326291526622,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 3.0058364868164062,
+            "ordinary": true,
+            "max_abs_error": 5.557159520108712e-06
+          }
+        },
+        {
+          "position_zero_based": 8,
+          "saved_generation_id": 289,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 289,
+            "runner_up_id": 17,
+            "argmax_logit": 14.333728790283203,
+            "runner_up_logit": 12.623908042907715,
+            "top2_margin": 1.7098207473754883,
+            "saved_chosen_logit": 14.333728790283203,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 289,
+            "runner_up_id": 17,
+            "argmax_logit": 14.333733558654785,
+            "runner_up_logit": 12.623908996582031,
+            "top2_margin": 1.709824562072754,
+            "saved_chosen_logit": 14.333733558654785,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 8,
+            "saved_generation_id": 289,
+            "reconstructed_scorer_argmax": 289,
+            "runner_up": 17,
+            "argmax_logit": 14.333731651306152,
+            "runner_up_logit": 12.623917579650879,
+            "saved_chosen_logit": 14.333731651306152,
+            "top2_margin": 1.7098140716552734,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 8,
+            "saved_chosen": 289,
+            "native_argmax": 289,
+            "fp64_argmax": 289,
+            "fp64_runner_up": 17,
+            "fp64_top2_gap": 1.709822673337671,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 1.7098207473754883,
+            "ordinary": true,
+            "max_abs_error": 7.321930510784114e-06
+          }
+        },
+        {
+          "position_zero_based": 9,
+          "saved_generation_id": 745,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 745,
+            "runner_up_id": 2245,
+            "argmax_logit": 10.658644676208496,
+            "runner_up_logit": 10.279890060424805,
+            "top2_margin": 0.3787546157836914,
+            "saved_chosen_logit": 10.658644676208496,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 745,
+            "runner_up_id": 2245,
+            "argmax_logit": 10.65864372253418,
+            "runner_up_logit": 10.279889106750488,
+            "top2_margin": 0.3787546157836914,
+            "saved_chosen_logit": 10.65864372253418,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 9,
+            "saved_generation_id": 745,
+            "reconstructed_scorer_argmax": 745,
+            "runner_up": 2245,
+            "argmax_logit": 10.658642768859863,
+            "runner_up_logit": 10.279891014099121,
+            "saved_chosen_logit": 10.658642768859863,
+            "top2_margin": 0.3787517547607422,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 9,
+            "saved_chosen": 745,
+            "native_argmax": 745,
+            "fp64_argmax": 745,
+            "fp64_runner_up": 2245,
+            "fp64_top2_gap": 0.37875516536858456,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.3787546157836914,
+            "ordinary": true,
+            "max_abs_error": 6.4263189987201486e-06
+          }
+        },
+        {
+          "position_zero_based": 10,
+          "saved_generation_id": 349,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 349,
+            "runner_up_id": 265,
+            "argmax_logit": 11.054728507995605,
+            "runner_up_logit": 11.02284049987793,
+            "top2_margin": 0.03188800811767578,
+            "saved_chosen_logit": 11.054728507995605,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 349,
+            "runner_up_id": 265,
+            "argmax_logit": 11.054728507995605,
+            "runner_up_logit": 11.022841453552246,
+            "top2_margin": 0.031887054443359375,
+            "saved_chosen_logit": 11.054728507995605,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 10,
+            "saved_generation_id": 349,
+            "reconstructed_scorer_argmax": 349,
+            "runner_up": 265,
+            "argmax_logit": 11.054728507995605,
+            "runner_up_logit": 11.022846221923828,
+            "saved_chosen_logit": 11.054728507995605,
+            "top2_margin": 0.031882286071777344,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 10,
+            "saved_chosen": 349,
+            "native_argmax": 349,
+            "fp64_argmax": 349,
+            "fp64_runner_up": 265,
+            "fp64_top2_gap": 0.031889899522308696,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.03188800811767578,
+            "ordinary": true,
+            "max_abs_error": 6.372370467744304e-06
+          }
+        },
+        {
+          "position_zero_based": 11,
+          "saved_generation_id": 3842,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 17,
+            "runner_up_id": 3842,
+            "argmax_logit": 9.461474418640137,
+            "runner_up_logit": 9.46147346496582,
+            "top2_margin": 9.5367431640625e-07,
+            "saved_chosen_logit": 9.46147346496582,
+            "argmax_minus_saved_chosen": 9.5367431640625e-07,
+            "saved_chosen_matches": false
+          },
+          "new_cpu_kv": {
+            "argmax_id": 17,
+            "runner_up_id": 3842,
+            "argmax_logit": 9.461478233337402,
+            "runner_up_logit": 9.461471557617188,
+            "top2_margin": 6.67572021484375e-06,
+            "saved_chosen_logit": 9.461471557617188,
+            "argmax_minus_saved_chosen": 6.67572021484375e-06,
+            "saved_chosen_matches": false
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 11,
+            "saved_generation_id": 3842,
+            "reconstructed_scorer_argmax": 17,
+            "runner_up": 3842,
+            "argmax_logit": 9.461483001708984,
+            "runner_up_logit": 9.461472511291504,
+            "saved_chosen_logit": 9.461472511291504,
+            "top2_margin": 1.049041748046875e-05,
+            "argmax_minus_saved": 1.049041748046875e-05,
+            "matches_saved_generation": false
+          },
+          "new_fp64_math": {
+            "position": 11,
+            "saved_chosen": 3842,
+            "native_argmax": 17,
+            "fp64_argmax": 17,
+            "fp64_runner_up": 3842,
+            "fp64_top2_gap": 8.789974152989544e-07,
+            "fp64_argmax_minus_saved": 8.789974152989544e-07,
+            "native_top2_gap": 9.5367431640625e-07,
+            "ordinary": false,
+            "max_abs_error": 9.136707172174852e-06
+          }
+        },
+        {
+          "position_zero_based": 12,
+          "saved_generation_id": 17,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 17,
+            "runner_up_id": 289,
+            "argmax_logit": 13.663065910339355,
+            "runner_up_logit": 13.4100980758667,
+            "top2_margin": 0.25296783447265625,
+            "saved_chosen_logit": 13.663065910339355,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 17,
+            "runner_up_id": 289,
+            "argmax_logit": 13.663060188293457,
+            "runner_up_logit": 13.410101890563965,
+            "top2_margin": 0.2529582977294922,
+            "saved_chosen_logit": 13.663060188293457,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 12,
+            "saved_generation_id": 17,
+            "reconstructed_scorer_argmax": 17,
+            "runner_up": 289,
+            "argmax_logit": 13.663067817687988,
+            "runner_up_logit": 13.41009521484375,
+            "saved_chosen_logit": 13.663067817687988,
+            "top2_margin": 0.2529726028442383,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 12,
+            "saved_chosen": 17,
+            "native_argmax": 17,
+            "fp64_argmax": 17,
+            "fp64_runner_up": 289,
+            "fp64_top2_gap": 0.25296423933289525,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 0.25296783447265625,
+            "ordinary": true,
+            "max_abs_error": 7.231147261421711e-06
+          }
+        },
+        {
+          "position_zero_based": 13,
+          "saved_generation_id": 1,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 1,
+            "runner_up_id": 571,
+            "argmax_logit": 14.609652519226074,
+            "runner_up_logit": 13.004679679870605,
+            "top2_margin": 1.6049728393554688,
+            "saved_chosen_logit": 14.609652519226074,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 1,
+            "runner_up_id": 571,
+            "argmax_logit": 14.609652519226074,
+            "runner_up_logit": 13.004678726196289,
+            "top2_margin": 1.6049737930297852,
+            "saved_chosen_logit": 14.609652519226074,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 13,
+            "saved_generation_id": 1,
+            "reconstructed_scorer_argmax": 1,
+            "runner_up": 571,
+            "argmax_logit": 14.609663009643555,
+            "runner_up_logit": 13.004684448242188,
+            "saved_chosen_logit": 14.609663009643555,
+            "top2_margin": 1.6049785614013672,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": {
+            "position": 13,
+            "saved_chosen": 1,
+            "native_argmax": 1,
+            "fp64_argmax": 1,
+            "fp64_runner_up": 571,
+            "fp64_top2_gap": 1.6049748463976652,
+            "fp64_argmax_minus_saved": 0.0,
+            "native_top2_gap": 1.6049728393554688,
+            "ordinary": true,
+            "max_abs_error": 7.31529365616268e-06
+          }
+        }
+      ],
+      "new_cpu_full_disagreements": [
+        11
+      ],
+      "new_gpu_disagreements": [
+        11
+      ]
+    },
+    {
+      "run": "c12_Sgist_r1",
+      "key": "carry12_v1:correction:0111|gate_self|3",
+      "positions": [
+        {
+          "position_zero_based": 0,
+          "saved_generation_id": 44,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 44,
+            "runner_up_id": 49,
+            "argmax_logit": 14.531793594360352,
+            "runner_up_logit": 14.08108901977539,
+            "top2_margin": 0.45070457458496094,
+            "saved_chosen_logit": 14.531793594360352,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 44,
+            "runner_up_id": 49,
+            "argmax_logit": 14.531793594360352,
+            "runner_up_logit": 14.08108901977539,
+            "top2_margin": 0.45070457458496094,
+            "saved_chosen_logit": 14.531793594360352,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 0,
+            "saved_generation_id": 44,
+            "reconstructed_scorer_argmax": 44,
+            "runner_up": 49,
+            "argmax_logit": 14.531787872314453,
+            "runner_up_logit": 14.081082344055176,
+            "saved_chosen_logit": 14.531787872314453,
+            "top2_margin": 0.45070552825927734,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 1,
+          "saved_generation_id": 618,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 618,
+            "runner_up_id": 1417,
+            "argmax_logit": 13.552433967590332,
+            "runner_up_logit": 13.499058723449707,
+            "top2_margin": 0.053375244140625,
+            "saved_chosen_logit": 13.552433967590332,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 618,
+            "runner_up_id": 1417,
+            "argmax_logit": 13.552433967590332,
+            "runner_up_logit": 13.499058723449707,
+            "top2_margin": 0.053375244140625,
+            "saved_chosen_logit": 13.552433967590332,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 1,
+            "saved_generation_id": 618,
+            "reconstructed_scorer_argmax": 618,
+            "runner_up": 1417,
+            "argmax_logit": 13.552434921264648,
+            "runner_up_logit": 13.499059677124023,
+            "saved_chosen_logit": 13.552434921264648,
+            "top2_margin": 0.053375244140625,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 2,
+          "saved_generation_id": 451,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 451,
+            "runner_up_id": 546,
+            "argmax_logit": 14.74252986907959,
+            "runner_up_logit": 13.055196762084961,
+            "top2_margin": 1.687333106994629,
+            "saved_chosen_logit": 14.74252986907959,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 451,
+            "runner_up_id": 546,
+            "argmax_logit": 14.74252986907959,
+            "runner_up_logit": 13.055196762084961,
+            "top2_margin": 1.687333106994629,
+            "saved_chosen_logit": 14.74252986907959,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 2,
+            "saved_generation_id": 451,
+            "reconstructed_scorer_argmax": 451,
+            "runner_up": 546,
+            "argmax_logit": 14.742532730102539,
+            "runner_up_logit": 13.055201530456543,
+            "saved_chosen_logit": 14.742532730102539,
+            "top2_margin": 1.687331199645996,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 3,
+          "saved_generation_id": 1141,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 1141,
+            "runner_up_id": 897,
+            "argmax_logit": 12.934551239013672,
+            "runner_up_logit": 12.783794403076172,
+            "top2_margin": 0.1507568359375,
+            "saved_chosen_logit": 12.934551239013672,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 1141,
+            "runner_up_id": 897,
+            "argmax_logit": 12.934551239013672,
+            "runner_up_logit": 12.783794403076172,
+            "top2_margin": 0.1507568359375,
+            "saved_chosen_logit": 12.934551239013672,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 3,
+            "saved_generation_id": 1141,
+            "reconstructed_scorer_argmax": 1141,
+            "runner_up": 897,
+            "argmax_logit": 12.934553146362305,
+            "runner_up_logit": 12.783791542053223,
+            "saved_chosen_logit": 12.934553146362305,
+            "top2_margin": 0.15076160430908203,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 4,
+          "saved_generation_id": 657,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 657,
+            "runner_up_id": 624,
+            "argmax_logit": 14.225080490112305,
+            "runner_up_logit": 12.694284439086914,
+            "top2_margin": 1.5307960510253906,
+            "saved_chosen_logit": 14.225080490112305,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 657,
+            "runner_up_id": 624,
+            "argmax_logit": 14.225080490112305,
+            "runner_up_logit": 12.694284439086914,
+            "top2_margin": 1.5307960510253906,
+            "saved_chosen_logit": 14.225080490112305,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 4,
+            "saved_generation_id": 657,
+            "reconstructed_scorer_argmax": 657,
+            "runner_up": 624,
+            "argmax_logit": 14.225082397460938,
+            "runner_up_logit": 12.694282531738281,
+            "saved_chosen_logit": 14.225082397460938,
+            "top2_margin": 1.5307998657226562,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 5,
+          "saved_generation_id": 319,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 319,
+            "runner_up_id": 311,
+            "argmax_logit": 12.448037147521973,
+            "runner_up_logit": 12.198927879333496,
+            "top2_margin": 0.24910926818847656,
+            "saved_chosen_logit": 12.448037147521973,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 319,
+            "runner_up_id": 311,
+            "argmax_logit": 12.448037147521973,
+            "runner_up_logit": 12.198927879333496,
+            "top2_margin": 0.24910926818847656,
+            "saved_chosen_logit": 12.448037147521973,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 5,
+            "saved_generation_id": 319,
+            "reconstructed_scorer_argmax": 319,
+            "runner_up": 311,
+            "argmax_logit": 12.448041915893555,
+            "runner_up_logit": 12.198929786682129,
+            "saved_chosen_logit": 12.448041915893555,
+            "top2_margin": 0.24911212921142578,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 6,
+          "saved_generation_id": 761,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 761,
+            "runner_up_id": 364,
+            "argmax_logit": 13.959953308105469,
+            "runner_up_logit": 12.74496841430664,
+            "top2_margin": 1.2149848937988281,
+            "saved_chosen_logit": 13.959953308105469,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 761,
+            "runner_up_id": 364,
+            "argmax_logit": 13.959953308105469,
+            "runner_up_logit": 12.74496841430664,
+            "top2_margin": 1.2149848937988281,
+            "saved_chosen_logit": 13.959953308105469,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 6,
+            "saved_generation_id": 761,
+            "reconstructed_scorer_argmax": 761,
+            "runner_up": 364,
+            "argmax_logit": 13.959957122802734,
+            "runner_up_logit": 12.744969367980957,
+            "saved_chosen_logit": 13.959957122802734,
+            "top2_margin": 1.2149877548217773,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 7,
+          "saved_generation_id": 261,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 261,
+            "runner_up_id": 5474,
+            "argmax_logit": 10.529417037963867,
+            "runner_up_logit": 10.495523452758789,
+            "top2_margin": 0.033893585205078125,
+            "saved_chosen_logit": 10.529417037963867,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 261,
+            "runner_up_id": 5474,
+            "argmax_logit": 10.529417037963867,
+            "runner_up_logit": 10.495523452758789,
+            "top2_margin": 0.033893585205078125,
+            "saved_chosen_logit": 10.529417037963867,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 7,
+            "saved_generation_id": 261,
+            "reconstructed_scorer_argmax": 261,
+            "runner_up": 5474,
+            "argmax_logit": 10.52942180633545,
+            "runner_up_logit": 10.495529174804688,
+            "saved_chosen_logit": 10.52942180633545,
+            "top2_margin": 0.03389263153076172,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 8,
+          "saved_generation_id": 3288,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 3288,
+            "runner_up_id": 976,
+            "argmax_logit": 11.791105270385742,
+            "runner_up_logit": 9.055956840515137,
+            "top2_margin": 2.7351484298706055,
+            "saved_chosen_logit": 11.791105270385742,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 3288,
+            "runner_up_id": 976,
+            "argmax_logit": 11.791105270385742,
+            "runner_up_logit": 9.055956840515137,
+            "top2_margin": 2.7351484298706055,
+            "saved_chosen_logit": 11.791105270385742,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 8,
+            "saved_generation_id": 3288,
+            "reconstructed_scorer_argmax": 3288,
+            "runner_up": 976,
+            "argmax_logit": 11.79110336303711,
+            "runner_up_logit": 9.055959701538086,
+            "saved_chosen_logit": 11.79110336303711,
+            "top2_margin": 2.7351436614990234,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 9,
+          "saved_generation_id": 994,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 994,
+            "runner_up_id": 8111,
+            "argmax_logit": 12.803369522094727,
+            "runner_up_logit": 10.618687629699707,
+            "top2_margin": 2.1846818923950195,
+            "saved_chosen_logit": 12.803369522094727,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 994,
+            "runner_up_id": 8111,
+            "argmax_logit": 12.803369522094727,
+            "runner_up_logit": 10.618687629699707,
+            "top2_margin": 2.1846818923950195,
+            "saved_chosen_logit": 12.803369522094727,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 9,
+            "saved_generation_id": 994,
+            "reconstructed_scorer_argmax": 994,
+            "runner_up": 8111,
+            "argmax_logit": 12.803367614746094,
+            "runner_up_logit": 10.618680953979492,
+            "saved_chosen_logit": 12.803367614746094,
+            "top2_margin": 2.1846866607666016,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 10,
+          "saved_generation_id": 17,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 17,
+            "runner_up_id": 15,
+            "argmax_logit": 13.860214233398438,
+            "runner_up_logit": 12.917366981506348,
+            "top2_margin": 0.9428472518920898,
+            "saved_chosen_logit": 13.860214233398438,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 17,
+            "runner_up_id": 15,
+            "argmax_logit": 13.860214233398438,
+            "runner_up_logit": 12.917366981506348,
+            "top2_margin": 0.9428472518920898,
+            "saved_chosen_logit": 13.860214233398438,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 10,
+            "saved_generation_id": 17,
+            "reconstructed_scorer_argmax": 17,
+            "runner_up": 15,
+            "argmax_logit": 13.860208511352539,
+            "runner_up_logit": 12.917362213134766,
+            "saved_chosen_logit": 13.860208511352539,
+            "top2_margin": 0.9428462982177734,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 11,
+          "saved_generation_id": 967,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 967,
+            "runner_up_id": 899,
+            "argmax_logit": 12.375757217407227,
+            "runner_up_logit": 11.680938720703125,
+            "top2_margin": 0.6948184967041016,
+            "saved_chosen_logit": 12.375757217407227,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 967,
+            "runner_up_id": 899,
+            "argmax_logit": 12.375757217407227,
+            "runner_up_logit": 11.680938720703125,
+            "top2_margin": 0.6948184967041016,
+            "saved_chosen_logit": 12.375757217407227,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 11,
+            "saved_generation_id": 967,
+            "reconstructed_scorer_argmax": 967,
+            "runner_up": 899,
+            "argmax_logit": 12.375762939453125,
+            "runner_up_logit": 11.680933952331543,
+            "saved_chosen_logit": 12.375762939453125,
+            "top2_margin": 0.694828987121582,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 12,
+          "saved_generation_id": 364,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 364,
+            "runner_up_id": 761,
+            "argmax_logit": 14.40498161315918,
+            "runner_up_logit": 14.169886589050293,
+            "top2_margin": 0.23509502410888672,
+            "saved_chosen_logit": 14.40498161315918,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 364,
+            "runner_up_id": 761,
+            "argmax_logit": 14.40498161315918,
+            "runner_up_logit": 14.169886589050293,
+            "top2_margin": 0.23509502410888672,
+            "saved_chosen_logit": 14.40498161315918,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 12,
+            "saved_generation_id": 364,
+            "reconstructed_scorer_argmax": 364,
+            "runner_up": 761,
+            "argmax_logit": 14.404989242553711,
+            "runner_up_logit": 14.169894218444824,
+            "saved_chosen_logit": 14.404989242553711,
+            "top2_margin": 0.23509502410888672,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 13,
+          "saved_generation_id": 261,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 261,
+            "runner_up_id": 976,
+            "argmax_logit": 10.290185928344727,
+            "runner_up_logit": 10.211979866027832,
+            "top2_margin": 0.07820606231689453,
+            "saved_chosen_logit": 10.290185928344727,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 261,
+            "runner_up_id": 976,
+            "argmax_logit": 10.290185928344727,
+            "runner_up_logit": 10.211979866027832,
+            "top2_margin": 0.07820606231689453,
+            "saved_chosen_logit": 10.290185928344727,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 13,
+            "saved_generation_id": 261,
+            "reconstructed_scorer_argmax": 261,
+            "runner_up": 976,
+            "argmax_logit": 10.290183067321777,
+            "runner_up_logit": 10.211979866027832,
+            "saved_chosen_logit": 10.290183067321777,
+            "top2_margin": 0.07820320129394531,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 14,
+          "saved_generation_id": 976,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 976,
+            "runner_up_id": 3288,
+            "argmax_logit": 9.899999618530273,
+            "runner_up_logit": 9.63332748413086,
+            "top2_margin": 0.26667213439941406,
+            "saved_chosen_logit": 9.899999618530273,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 976,
+            "runner_up_id": 3288,
+            "argmax_logit": 9.899999618530273,
+            "runner_up_logit": 9.63332748413086,
+            "top2_margin": 0.26667213439941406,
+            "saved_chosen_logit": 9.899999618530273,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 14,
+            "saved_generation_id": 976,
+            "reconstructed_scorer_argmax": 976,
+            "runner_up": 3288,
+            "argmax_logit": 9.89999771118164,
+            "runner_up_logit": 9.63332462310791,
+            "saved_chosen_logit": 9.89999771118164,
+            "top2_margin": 0.26667308807373047,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 15,
+          "saved_generation_id": 1979,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 1979,
+            "runner_up_id": 10206,
+            "argmax_logit": 12.9345064163208,
+            "runner_up_logit": 10.940510749816895,
+            "top2_margin": 1.9939956665039062,
+            "saved_chosen_logit": 12.9345064163208,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 1979,
+            "runner_up_id": 10206,
+            "argmax_logit": 12.9345064163208,
+            "runner_up_logit": 10.940510749816895,
+            "top2_margin": 1.9939956665039062,
+            "saved_chosen_logit": 12.9345064163208,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 15,
+            "saved_generation_id": 1979,
+            "reconstructed_scorer_argmax": 1979,
+            "runner_up": 10206,
+            "argmax_logit": 12.934511184692383,
+            "runner_up_logit": 10.940507888793945,
+            "saved_chosen_logit": 12.934511184692383,
+            "top2_margin": 1.9940032958984375,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 16,
+          "saved_generation_id": 1383,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 1383,
+            "runner_up_id": 8191,
+            "argmax_logit": 12.791374206542969,
+            "runner_up_logit": 11.643560409545898,
+            "top2_margin": 1.1478137969970703,
+            "saved_chosen_logit": 12.791374206542969,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 1383,
+            "runner_up_id": 8191,
+            "argmax_logit": 12.791374206542969,
+            "runner_up_logit": 11.643560409545898,
+            "top2_margin": 1.1478137969970703,
+            "saved_chosen_logit": 12.791374206542969,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 16,
+            "saved_generation_id": 1383,
+            "reconstructed_scorer_argmax": 1383,
+            "runner_up": 8191,
+            "argmax_logit": 12.791378021240234,
+            "runner_up_logit": 11.643566131591797,
+            "saved_chosen_logit": 12.791378021240234,
+            "top2_margin": 1.1478118896484375,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 17,
+          "saved_generation_id": 3288,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 3288,
+            "runner_up_id": 1383,
+            "argmax_logit": 13.87827205657959,
+            "runner_up_logit": 10.02005386352539,
+            "top2_margin": 3.858218193054199,
+            "saved_chosen_logit": 13.87827205657959,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 3288,
+            "runner_up_id": 1383,
+            "argmax_logit": 13.87827205657959,
+            "runner_up_logit": 10.02005386352539,
+            "top2_margin": 3.858218193054199,
+            "saved_chosen_logit": 13.87827205657959,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 17,
+            "saved_generation_id": 3288,
+            "reconstructed_scorer_argmax": 3288,
+            "runner_up": 1383,
+            "argmax_logit": 13.878278732299805,
+            "runner_up_logit": 10.020060539245605,
+            "saved_chosen_logit": 13.878278732299805,
+            "top2_margin": 3.858218193054199,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 18,
+          "saved_generation_id": 17,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 8191,
+            "runner_up_id": 17,
+            "argmax_logit": 12.120409965515137,
+            "runner_up_logit": 12.120404243469238,
+            "top2_margin": 5.7220458984375e-06,
+            "saved_chosen_logit": 12.120404243469238,
+            "argmax_minus_saved_chosen": 5.7220458984375e-06,
+            "saved_chosen_matches": false
+          },
+          "new_cpu_kv": {
+            "argmax_id": 8191,
+            "runner_up_id": 17,
+            "argmax_logit": 12.120409965515137,
+            "runner_up_logit": 12.120404243469238,
+            "top2_margin": 5.7220458984375e-06,
+            "saved_chosen_logit": 12.120404243469238,
+            "argmax_minus_saved_chosen": 5.7220458984375e-06,
+            "saved_chosen_matches": false
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 18,
+            "saved_generation_id": 17,
+            "reconstructed_scorer_argmax": 8191,
+            "runner_up": 17,
+            "argmax_logit": 12.12041187286377,
+            "runner_up_logit": 12.120410919189453,
+            "saved_chosen_logit": 12.120410919189453,
+            "top2_margin": 9.5367431640625e-07,
+            "argmax_minus_saved": 9.5367431640625e-07,
+            "matches_saved_generation": false
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 19,
+          "saved_generation_id": 1,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 1,
+            "runner_up_id": 967,
+            "argmax_logit": 15.18613052368164,
+            "runner_up_logit": 13.46529769897461,
+            "top2_margin": 1.7208328247070312,
+            "saved_chosen_logit": 15.18613052368164,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 1,
+            "runner_up_id": 967,
+            "argmax_logit": 15.18613052368164,
+            "runner_up_logit": 13.46529769897461,
+            "top2_margin": 1.7208328247070312,
+            "saved_chosen_logit": 15.18613052368164,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 19,
+            "saved_generation_id": 1,
+            "reconstructed_scorer_argmax": 1,
+            "runner_up": 967,
+            "argmax_logit": 15.186126708984375,
+            "runner_up_logit": 13.465299606323242,
+            "saved_chosen_logit": 15.186126708984375,
+            "top2_margin": 1.7208271026611328,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        }
+      ],
+      "new_cpu_full_disagreements": [
+        18
+      ],
+      "new_gpu_disagreements": [
+        18
+      ]
+    },
+    {
+      "run": "c12_Sgist_r4",
+      "key": "carry12_v1:recall:0365|gate_self|8",
+      "positions": [
+        {
+          "position_zero_based": 0,
+          "saved_generation_id": 44,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 44,
+            "runner_up_id": 1225,
+            "argmax_logit": 15.323572158813477,
+            "runner_up_logit": 13.586806297302246,
+            "top2_margin": 1.7367658615112305,
+            "saved_chosen_logit": 15.323572158813477,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 44,
+            "runner_up_id": 1225,
+            "argmax_logit": 15.323572158813477,
+            "runner_up_logit": 13.586806297302246,
+            "top2_margin": 1.7367658615112305,
+            "saved_chosen_logit": 15.323572158813477,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 0,
+            "saved_generation_id": 44,
+            "reconstructed_scorer_argmax": 44,
+            "runner_up": 1225,
+            "argmax_logit": 15.323575019836426,
+            "runner_up_logit": 13.586795806884766,
+            "saved_chosen_logit": 15.323575019836426,
+            "top2_margin": 1.7367792129516602,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 1,
+          "saved_generation_id": 3068,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 3068,
+            "runner_up_id": 537,
+            "argmax_logit": 12.609612464904785,
+            "runner_up_logit": 12.04672908782959,
+            "top2_margin": 0.5628833770751953,
+            "saved_chosen_logit": 12.609612464904785,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 3068,
+            "runner_up_id": 537,
+            "argmax_logit": 12.609612464904785,
+            "runner_up_logit": 12.04672908782959,
+            "top2_margin": 0.5628833770751953,
+            "saved_chosen_logit": 12.609612464904785,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 1,
+            "saved_generation_id": 3068,
+            "reconstructed_scorer_argmax": 3068,
+            "runner_up": 537,
+            "argmax_logit": 12.609611511230469,
+            "runner_up_logit": 12.046728134155273,
+            "saved_chosen_logit": 12.609611511230469,
+            "top2_margin": 0.5628833770751953,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 2,
+          "saved_generation_id": 311,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 311,
+            "runner_up_id": 319,
+            "argmax_logit": 12.316499710083008,
+            "runner_up_logit": 11.491561889648438,
+            "top2_margin": 0.8249378204345703,
+            "saved_chosen_logit": 12.316499710083008,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 311,
+            "runner_up_id": 319,
+            "argmax_logit": 12.316499710083008,
+            "runner_up_logit": 11.491561889648438,
+            "top2_margin": 0.8249378204345703,
+            "saved_chosen_logit": 12.316499710083008,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 2,
+            "saved_generation_id": 311,
+            "reconstructed_scorer_argmax": 311,
+            "runner_up": 319,
+            "argmax_logit": 12.316502571105957,
+            "runner_up_logit": 11.491561889648438,
+            "saved_chosen_logit": 12.316502571105957,
+            "top2_margin": 0.8249406814575195,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 3,
+          "saved_generation_id": 537,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 537,
+            "runner_up_id": 390,
+            "argmax_logit": 13.683024406433105,
+            "runner_up_logit": 12.97839641571045,
+            "top2_margin": 0.7046279907226562,
+            "saved_chosen_logit": 13.683024406433105,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 537,
+            "runner_up_id": 390,
+            "argmax_logit": 13.683024406433105,
+            "runner_up_logit": 12.97839641571045,
+            "top2_margin": 0.7046279907226562,
+            "saved_chosen_logit": 13.683024406433105,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 3,
+            "saved_generation_id": 537,
+            "reconstructed_scorer_argmax": 537,
+            "runner_up": 390,
+            "argmax_logit": 13.68302059173584,
+            "runner_up_logit": 12.978400230407715,
+            "saved_chosen_logit": 13.68302059173584,
+            "top2_margin": 0.704620361328125,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 4,
+          "saved_generation_id": 17,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 17,
+            "runner_up_id": 435,
+            "argmax_logit": 11.23992919921875,
+            "runner_up_logit": 10.972193717956543,
+            "top2_margin": 0.26773548126220703,
+            "saved_chosen_logit": 11.23992919921875,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 17,
+            "runner_up_id": 435,
+            "argmax_logit": 11.23992919921875,
+            "runner_up_logit": 10.972193717956543,
+            "top2_margin": 0.26773548126220703,
+            "saved_chosen_logit": 11.23992919921875,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 4,
+            "saved_generation_id": 17,
+            "reconstructed_scorer_argmax": 17,
+            "runner_up": 435,
+            "argmax_logit": 11.239928245544434,
+            "runner_up_logit": 10.972198486328125,
+            "saved_chosen_logit": 11.239928245544434,
+            "top2_margin": 0.2677297592163086,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 5,
+          "saved_generation_id": 311,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 311,
+            "runner_up_id": 1,
+            "argmax_logit": 13.98946475982666,
+            "runner_up_logit": 13.482417106628418,
+            "top2_margin": 0.5070476531982422,
+            "saved_chosen_logit": 13.98946475982666,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 311,
+            "runner_up_id": 1,
+            "argmax_logit": 13.98946475982666,
+            "runner_up_logit": 13.482417106628418,
+            "top2_margin": 0.5070476531982422,
+            "saved_chosen_logit": 13.98946475982666,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 5,
+            "saved_generation_id": 311,
+            "reconstructed_scorer_argmax": 311,
+            "runner_up": 1,
+            "argmax_logit": 13.98945140838623,
+            "runner_up_logit": 13.48240852355957,
+            "saved_chosen_logit": 13.98945140838623,
+            "top2_margin": 0.5070428848266602,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 6,
+          "saved_generation_id": 751,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 751,
+            "runner_up_id": 537,
+            "argmax_logit": 13.009333610534668,
+            "runner_up_logit": 11.737580299377441,
+            "top2_margin": 1.2717533111572266,
+            "saved_chosen_logit": 13.009333610534668,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 751,
+            "runner_up_id": 537,
+            "argmax_logit": 13.009333610534668,
+            "runner_up_logit": 11.737580299377441,
+            "top2_margin": 1.2717533111572266,
+            "saved_chosen_logit": 13.009333610534668,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 6,
+            "saved_generation_id": 751,
+            "reconstructed_scorer_argmax": 751,
+            "runner_up": 537,
+            "argmax_logit": 13.009332656860352,
+            "runner_up_logit": 11.73758316040039,
+            "saved_chosen_logit": 13.009332656860352,
+            "top2_margin": 1.271749496459961,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 7,
+          "saved_generation_id": 261,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 261,
+            "runner_up_id": 507,
+            "argmax_logit": 11.006120681762695,
+            "runner_up_logit": 10.259331703186035,
+            "top2_margin": 0.7467889785766602,
+            "saved_chosen_logit": 11.006120681762695,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 261,
+            "runner_up_id": 507,
+            "argmax_logit": 11.006120681762695,
+            "runner_up_logit": 10.259331703186035,
+            "top2_margin": 0.7467889785766602,
+            "saved_chosen_logit": 11.006120681762695,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 7,
+            "saved_generation_id": 261,
+            "reconstructed_scorer_argmax": 261,
+            "runner_up": 507,
+            "argmax_logit": 11.006125450134277,
+            "runner_up_logit": 10.259334564208984,
+            "saved_chosen_logit": 11.006125450134277,
+            "top2_margin": 0.746790885925293,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 8,
+          "saved_generation_id": 2654,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 2654,
+            "runner_up_id": 2339,
+            "argmax_logit": 9.194074630737305,
+            "runner_up_logit": 9.194072723388672,
+            "top2_margin": 1.9073486328125e-06,
+            "saved_chosen_logit": 9.194074630737305,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 2654,
+            "runner_up_id": 2339,
+            "argmax_logit": 9.194074630737305,
+            "runner_up_logit": 9.194072723388672,
+            "top2_margin": 1.9073486328125e-06,
+            "saved_chosen_logit": 9.194074630737305,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 8,
+            "saved_generation_id": 2654,
+            "reconstructed_scorer_argmax": 2339,
+            "runner_up": 2654,
+            "argmax_logit": 9.194066047668457,
+            "runner_up_logit": 9.194062232971191,
+            "saved_chosen_logit": 9.194062232971191,
+            "top2_margin": 3.814697265625e-06,
+            "argmax_minus_saved": 3.814697265625e-06,
+            "matches_saved_generation": false
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 9,
+          "saved_generation_id": 17,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 17,
+            "runner_up_id": 15,
+            "argmax_logit": 12.322315216064453,
+            "runner_up_logit": 11.828548431396484,
+            "top2_margin": 0.49376678466796875,
+            "saved_chosen_logit": 12.322315216064453,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 17,
+            "runner_up_id": 15,
+            "argmax_logit": 12.322315216064453,
+            "runner_up_logit": 11.828548431396484,
+            "top2_margin": 0.49376678466796875,
+            "saved_chosen_logit": 12.322315216064453,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 9,
+            "saved_generation_id": 17,
+            "reconstructed_scorer_argmax": 17,
+            "runner_up": 15,
+            "argmax_logit": 12.322306632995605,
+            "runner_up_logit": 11.828544616699219,
+            "saved_chosen_logit": 12.322306632995605,
+            "top2_margin": 0.4937620162963867,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        },
+        {
+          "position_zero_based": 10,
+          "saved_generation_id": 1,
+          "original_failed_position_unknown": true,
+          "new_cpu_full": {
+            "argmax_id": 1,
+            "runner_up_id": 311,
+            "argmax_logit": 14.590313911437988,
+            "runner_up_logit": 12.9291353225708,
+            "top2_margin": 1.6611785888671875,
+            "saved_chosen_logit": 14.590313911437988,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_cpu_kv": {
+            "argmax_id": 1,
+            "runner_up_id": 311,
+            "argmax_logit": 14.590313911437988,
+            "runner_up_logit": 12.9291353225708,
+            "top2_margin": 1.6611785888671875,
+            "saved_chosen_logit": 14.590313911437988,
+            "argmax_minus_saved_chosen": 0.0,
+            "saved_chosen_matches": true
+          },
+          "new_gpu_original_geometry": {
+            "position_zero_based": 10,
+            "saved_generation_id": 1,
+            "reconstructed_scorer_argmax": 1,
+            "runner_up": 311,
+            "argmax_logit": 14.590319633483887,
+            "runner_up_logit": 12.929136276245117,
+            "saved_chosen_logit": 14.590319633483887,
+            "top2_margin": 1.6611833572387695,
+            "argmax_minus_saved": 0.0,
+            "matches_saved_generation": true
+          },
+          "new_fp64_math": null
+        }
+      ],
+      "new_cpu_full_disagreements": [],
+      "new_gpu_disagreements": [
+        8
+      ]
+    }
+  ],
+  "generation": [],
+  "generation_skip_reason": "NOT_EXECUTED: historical Ember checkout timed out before configure/build/server",
+  "inputs_sha256": {
+    "cpu": "778b3b6fa49a2180e8e8bd85d5ef40b466451e0d1c6d3e1518c47ddf46e194f6",
+    "fp64": "39dc0f26ccd10573bdb62af0ca80fa04d0d167ba4e3e8c4b3dad7bb859c28931",
+    "gpu": "cc140ed0e2c055ca1c30bc1f6cd3d280c5c1bf9b8666f7a3a5fec1bf04c72aed"
+  },
+  "source_sha256": "038b6ab516ac26c8127f52ac45b8921d668e052b4aef96abf62ec2630e04a195"
+}

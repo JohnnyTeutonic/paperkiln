@@ -1,0 +1,25 @@
+{
+  "attempts": [
+    {
+      "state_dir": "/home/jonat/pk_hs1_parity_reconstruction_runner_20261031",
+      "state_sha256": "572e1c7a50bb9d7891272e2f8b8cfcb38f81ee317ae18ea2279eb96b0d3c37cc",
+      "runner_log_sha256": "be3963f0a4473280c182a14ec12c8b52866131a2fb9c981d064812aae3b8a26e",
+      "jobs_home": true,
+      "pod_and_volume_absent_in_state": true,
+      "ledger_gpu_usd": 0.32386203160484633,
+      "scope": "driver-recorded cleanup; not separate provider inventory query"
+    },
+    {
+      "state_dir": "/home/jonat/pk_hs1_parity_reconstruction_v2_runner_20261031",
+      "state_sha256": "13fa4243a33a9d95439d8f1cdb87a1c199d26f3ca0b3981c0651b980563de0aa",
+      "runner_log_sha256": "4c3037ec9315fdba536cfab430b5a09c5821ab0dc536ac0e51dc8312a63142db",
+      "jobs_home": true,
+      "pod_and_volume_absent_in_state": true,
+      "ledger_gpu_usd": 0.43115903271304235,
+      "scope": "driver-recorded cleanup; not separate provider inventory query"
+    }
+  ],
+  "both_entries_disabled": true,
+  "combined_own_gpu_ledger_usd": 0.7550210643178887,
+  "no_new_paid_retry": true
+}

@@ -64,3 +64,18 @@ def test_reject_operational_or_identity_mismatch(mutation):
         gpu["rows"][0]["positions"][0]["saved_generation_id"] += 1
     with pytest.raises(ValueError):
         g.compare(cpu, fp64, gpu)
+
+
+def test_partial_audit_preserves_error_and_absent_generation():
+    cpu, fp64, gpu = fixtures()
+    gpu.update(
+        status="SCORER_COMPONENT_AUDITED_OVERALL_ERROR",
+        overall_run_status="ERROR",
+        overall_run_errors=["ember_checkout timed out"],
+    )
+    result = g.compare(cpu, fp64, gpu)
+    assert result["overall_run_status"] == "ERROR"
+    assert result["generation"] == []
+    gpu["overall_run_status"] = "COMPLETE"
+    with pytest.raises(ValueError):
+        g.compare(cpu, fp64, gpu)
