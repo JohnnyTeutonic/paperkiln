@@ -1,0 +1,1 @@
+Reviewed synthetic integrated device-selector correctness packet. GPU execution remains pending. The exact registered job runs the source-bound Ember packet; it does not close registered-model, repeatability, performance or adoption gates.
