@@ -1,0 +1,39 @@
+{
+  "status": "UNLAUNCHED_ROOT_REVIEW_REQUIRED",
+  "source_commit": "82f3c07c43cf205707d15b218f2ab62bf4a0bafe",
+  "science_commit": "3db619690a0f08051224fa174484a2a22dc1f98a",
+  "stage": "/home/jonat/flex_precision_gate_stage_v2_20261031",
+  "manifest_sha256": "89f0f62b8812789dd9dd2af3ac479e49511ada120183f3188babb1b11edebd66",
+  "limits": {
+    "max_usd": 1,
+    "max_hours": 1,
+    "gate_seconds": 1500,
+    "gpus": 1,
+    "gpu": "NVIDIA L4",
+    "serial_after_existing_gates": true
+  },
+  "remote_argv": [
+    "python3",
+    "/content/upload/flex_precision_gate.py",
+    "--upload",
+    "/content/upload",
+    "--manifest-sha256",
+    "89f0f62b8812789dd9dd2af3ac479e49511ada120183f3188babb1b11edebd66",
+    "--out",
+    "/content/flex_precision_result_v2"
+  ],
+  "mandatory_landed_replay": [
+    "python3",
+    "-O",
+    "tools/replay_flex_precision.py",
+    "LANDED_OUTPUT/cuda.json",
+    "--require-cuda"
+  ],
+  "source_inventory_files": 952,
+  "wrapper_sha256": "65ed0930a781a10d429a4cf6e844912b63a7635eeba066fa810b847ba41e99ec",
+  "archive_sha256": "b8ce1f077410a08d8d454bd556eb90eb66e9adcbcb577f07a018e13c6cb3c18c",
+  "scope": "Four tiny model-only forward/backward cases, 116 gradient tensors; explicit BF16 six-GEMM surrogate. CUDA CLI lifecycle, quality, speed, broader model adoption remain unproven.",
+  "operational_owner": "Root registers reviewed watchdog job and sets a concrete deadline/landing path before any launch. No config entry or paid action prepared by this branch.",
+  "failure_policy": "One attempt, immutable nonempty-output refusal; preserve gate_summary/logs/out.zip on semantic or operational failure. No retry-for-pass or bound changes.",
+  "remote_dependencies": "Existing L4 CUDA toolchain/CMake; fetch fixed nlohmann JSON release through CMake and install NumPy1.26.4. Exact source/fixture uploads bound; local fresh configure used existing JSON cache only."
+}
