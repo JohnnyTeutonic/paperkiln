@@ -1,0 +1,39 @@
+{
+  "reviewer": "independent cleanroom_review agent",
+  "reviewed_utc": "2026-10-31T13:15:09.796691+00:00",
+  "status": "PASS_ACTUAL_L4_OLD_DISTINCT_GUARDS_FIXED_FULL_GRADIENTS",
+  "implementation_commit": "9735c7f3eb733a061678c5bc838fc6c9a76db4bf",
+  "execution_source_commit": "f753dc5bef76afdc00d1a5d546cc76afd7dd0c88",
+  "baseline_commit": "735533d6f3693b62b6be92f0b3a2454d6de27f84",
+  "manifest_sha256": "f56cfdccf17eb65f0d609b64de1a88783cacd3df9a33e3974ae4581f79f6cc1f",
+  "archive_sha256": "b193856904a4f7d076a8e0cfcf13d6d6c9f967bc2e07c7c5803224f2713234cd",
+  "wrapper_sha256": "82729ff85a1bfd55dd375a56951601fd0a05b8a7531192c2c6b504d0765a31f8",
+  "reference_sha256": "411925b51096b6e787bfa0bafbb8d6f39d1346fb7afafdd30d92d839d798fca6",
+  "protocol_sha256": "e61485a469056fb8b78c2268d2869a828e7c8b73259fed8635adfdbe4b2f33fb",
+  "raw_output_archive_sha256": "ddd4550e23e469e48961a2897ce2d9d562661a76ba2ccb0f3b36bb3a4fb1456d",
+  "raw_output_archive_bytes": 59077,
+  "actual_device": "NVIDIA L4, 595.91.07",
+  "CRC_and_all_artifact_hashes": "PASS",
+  "landed_and_archived_summary_identical": true,
+  "exact_archive_source_inventory_verified": 959,
+  "baseline_exact_original_git_blob": true,
+  "runtime_legs": 8,
+  "CPU_controls": 4,
+  "CPU_full_gradient_tensors": 10,
+  "CUDA_old_exact_guard_refusals": [
+    "checkpoint output copy",
+    "checkpoint input copy"
+  ],
+  "CUDA_fixed_cases": 2,
+  "CUDA_fixed_full_gradient_tensors": 5,
+  "bound_unchanged": 1e-06,
+  "max_normalized_error": 0.0,
+  "cleanup": "Root reports owned pod and volume deleted13:14:20UTC; no provider call by reviewer.",
+  "limitations": [
+    "Two deterministic legal helper callbacks only: output-copy and backward input-copy.",
+    "Demonstrates these deferred CUDA boundary failures on old source and complete independent fixed forward/loss/gradients; no historical training-invalidity claim.",
+    "No model/PT/quality, performance, full residency, or universal host-reader audit claim.",
+    "No unlaunched KL candidate source/evidence is part of this receipt; execution is bound to sourcef753dc5."
+  ],
+  "no_provider_GPU_config_or_production_edit_by_reviewer": true
+}

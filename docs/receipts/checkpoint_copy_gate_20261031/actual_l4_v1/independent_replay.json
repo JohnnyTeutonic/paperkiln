@@ -1,0 +1,226 @@
+{
+  "pass": true,
+  "legs": [
+    {
+      "pass": true,
+      "actual_cuda": false,
+      "case": "output",
+      "variant": "old",
+      "gradient_tensors": 2,
+      "bound": 1e-06,
+      "maximum_normalized_error": 0.0
+    },
+    {
+      "pass": true,
+      "actual_cuda": false,
+      "case": "input",
+      "variant": "old",
+      "gradient_tensors": 3,
+      "bound": 1e-06,
+      "maximum_normalized_error": 0.0
+    },
+    {
+      "pass": true,
+      "actual_cuda": false,
+      "case": "output",
+      "variant": "fixed",
+      "gradient_tensors": 2,
+      "bound": 1e-06,
+      "maximum_normalized_error": 0.0
+    },
+    {
+      "pass": true,
+      "actual_cuda": false,
+      "case": "input",
+      "variant": "fixed",
+      "gradient_tensors": 3,
+      "bound": 1e-06,
+      "maximum_normalized_error": 0.0
+    },
+    {
+      "pass": true,
+      "expected_old_guard": "output",
+      "actual_cuda": true
+    },
+    {
+      "pass": true,
+      "expected_old_guard": "input",
+      "actual_cuda": true
+    },
+    {
+      "pass": true,
+      "actual_cuda": true,
+      "case": "output",
+      "variant": "fixed",
+      "gradient_tensors": 2,
+      "bound": 1e-06,
+      "maximum_normalized_error": 0.0
+    },
+    {
+      "pass": true,
+      "actual_cuda": true,
+      "case": "input",
+      "variant": "fixed",
+      "gradient_tensors": 3,
+      "bound": 1e-06,
+      "maximum_normalized_error": 0.0
+    }
+  ],
+  "observations": {
+    "old_output_cpu": {
+      "pass": true,
+      "observations": [
+        {
+          "grad_enabled": false,
+          "input_stale": false,
+          "output_stale_before_local_materialize": false,
+          "output_stale_on_return": false
+        },
+        {
+          "grad_enabled": true,
+          "input_stale": false,
+          "output_stale_before_local_materialize": false,
+          "output_stale_on_return": false
+        }
+      ],
+      "input_stale_before_checkpoint": false,
+      "input_stale_before_backward": false,
+      "profile": {}
+    },
+    "old_input_cpu": {
+      "pass": true,
+      "observations": [
+        {
+          "grad_enabled": false,
+          "input_stale": false,
+          "output_stale_before_local_materialize": false,
+          "output_stale_on_return": false
+        },
+        {
+          "grad_enabled": true,
+          "input_stale": false,
+          "output_stale_before_local_materialize": false,
+          "output_stale_on_return": false
+        }
+      ],
+      "input_stale_before_checkpoint": false,
+      "input_stale_before_backward": false,
+      "profile": {}
+    },
+    "fixed_output_cpu": {
+      "pass": true,
+      "observations": [
+        {
+          "grad_enabled": false,
+          "input_stale": false,
+          "output_stale_before_local_materialize": false,
+          "output_stale_on_return": false
+        },
+        {
+          "grad_enabled": true,
+          "input_stale": false,
+          "output_stale_before_local_materialize": false,
+          "output_stale_on_return": false
+        }
+      ],
+      "input_stale_before_checkpoint": false,
+      "input_stale_before_backward": false,
+      "profile": {}
+    },
+    "fixed_input_cpu": {
+      "pass": true,
+      "observations": [
+        {
+          "grad_enabled": false,
+          "input_stale": false,
+          "output_stale_before_local_materialize": false,
+          "output_stale_on_return": false
+        },
+        {
+          "grad_enabled": true,
+          "input_stale": false,
+          "output_stale_before_local_materialize": false,
+          "output_stale_on_return": false
+        }
+      ],
+      "input_stale_before_checkpoint": false,
+      "input_stale_before_backward": false,
+      "profile": {}
+    },
+    "old_output_cuda": {
+      "pass": false,
+      "observations": [
+        {
+          "grad_enabled": false,
+          "input_stale": false,
+          "output_stale_before_local_materialize": true,
+          "output_stale_on_return": true
+        }
+      ],
+      "input_stale_before_checkpoint": false,
+      "error": "DEVCHECK: host read of device-stale tensor at checkpoint output copy"
+    },
+    "old_input_cuda": {
+      "pass": false,
+      "observations": [
+        {
+          "grad_enabled": false,
+          "input_stale": true,
+          "output_stale_before_local_materialize": true,
+          "output_stale_on_return": false
+        }
+      ],
+      "input_stale_before_checkpoint": true,
+      "error": "DEVCHECK: host read of device-stale tensor at checkpoint input copy",
+      "input_stale_before_backward": true
+    },
+    "fixed_output_cuda": {
+      "pass": true,
+      "observations": [
+        {
+          "grad_enabled": false,
+          "input_stale": false,
+          "output_stale_before_local_materialize": true,
+          "output_stale_on_return": true
+        },
+        {
+          "grad_enabled": true,
+          "input_stale": false,
+          "output_stale_before_local_materialize": true,
+          "output_stale_on_return": true
+        }
+      ],
+      "input_stale_before_checkpoint": false,
+      "input_stale_before_backward": false,
+      "profile": {
+        "axpy": 1,
+        "fill": 1,
+        "gemm": 4
+      }
+    },
+    "fixed_input_cuda": {
+      "pass": true,
+      "observations": [
+        {
+          "grad_enabled": false,
+          "input_stale": true,
+          "output_stale_before_local_materialize": true,
+          "output_stale_on_return": false
+        },
+        {
+          "grad_enabled": true,
+          "input_stale": false,
+          "output_stale_before_local_materialize": true,
+          "output_stale_on_return": false
+        }
+      ],
+      "input_stale_before_checkpoint": true,
+      "input_stale_before_backward": true,
+      "profile": {
+        "axpy": 1,
+        "fill": 1,
+        "gemm": 7
+      }
+    }
+  }
+}
