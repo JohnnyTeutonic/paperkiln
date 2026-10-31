@@ -850,6 +850,18 @@ def spared_posts(st, jobs, by, needed, failed):
     return spare
 
 
+def validate_checkpoint_families(jobs, boot_script):
+    """Each named boot admits one opt-in contract, never mixed campaigns."""
+    sfull = any("full_checkpoint_v2" in j for j in jobs)
+    dpo = any("dpo_full_checkpoint_v1" in j for j in jobs)
+    if sfull and dpo:
+        raise ValueError("mixed S-full/DPO checkpoint campaigns are unsupported")
+    expected = ("tools/colab_chat/boot_sfull_v2_20261101.sh" if sfull else
+                "tools/colab_chat/boot_dpo_checkpoint_v1.sh" if dpo else None)
+    if expected is not None and boot_script != expected:
+        raise ValueError("checkpoint family requires its separately admitted named boot")
+
+
 def halt_dpo_checkpoint(error):
     marker = os.path.join(HOME, "HALTED")
     if not os.path.exists(marker):
@@ -863,6 +875,7 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
     """Inputs, relayed checkpoints and the boot onto a session that is up but
     not yet booted. Retried every tick until it succeeds (st.d["booted"]), so
     a failed upload never leaves a provisioned VM idle."""
+    validate_checkpoint_families(jobs, BOOT_SCRIPT)
     dpo_leases = []
     if any(j.get("dpo_full_checkpoint_v1") for j in jobs):
         from dpo_checkpoint_transport_v1 import home_uploads
@@ -1141,6 +1154,7 @@ def main():
     os.makedirs(ART, exist_ok=True)
     repo = os.path.dirname(os.path.dirname(HERE))
     jobs = json.load(open(os.path.join(repo, a.jobs)))["jobs"]
+    validate_checkpoint_families(jobs, a.boot_script)
     uploads = [tuple(u.split("=", 1)) for u in a.upload]
     for k, src in uploads:
         if not os.path.exists(src):
