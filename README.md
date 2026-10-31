@@ -292,6 +292,14 @@ Saved scoring, chat and exports use FP32 attention. The fixed tiny actual-L4 gat
 passes correctness; quality and speed benefits remain unestablished.
 [Recipe, restrictions and evidence](docs/receipts/gpt2_attention_precision_20261031/RESULTS.md).
 
+Nine registered host-helper cases now pass an actual L4 CUDA + DEVCHECK gate:
+`exp`, `div`, `where`, `rowsum`, `rowmax`, `broadcast_cols`, `relu_`, `sigmoid_`
+and `scale_`. Poison checks exercise deferred inputs and upstream gradients;
+the same-build CPU control and independent full-array replay cover nine outputs
+and fourteen gradient tensors (maximum normalized error 3.45e-8, fixed bound 3e-5).
+This is a bounded correctness subset, with no old-failure, broad audit closure,
+speed or complete-residency claim. [Evidence](docs/receipts/host_helper_cuda_20261031/README.md).
+
 Mamba causal convolution and ordered selective scan now have CUDA forward/backward kernels.
 The 120 convolution cases and 220 scan cases pass actual L4 CUDA + DEVCHECK gates, including
 deferred data, sequence boundaries, all gradient masks and independent raw replay. Scan time
