@@ -22,6 +22,8 @@ parity::ParityLM make(Precision p) {
     return parity::ParityLM(parity::AttnKind::EXACT,16,8,2,4,31,64,1,nullptr,2,p);
 }
 int main() {
+    gguf::Gpt2ExportConfig legacy{"legacy-name"};
+    CHECK(legacy.name=="legacy-name" && legacy.train_attention_precision.empty());
     device::set_matmul_precision(Precision::FP32);
     const std::vector<int> ids={1,2,3,4,1,2,3,4}, labels={2,3,4,1,2,3,4,1};
     parity::ParityLM original(parity::AttnKind::EXACT,16,8,2,4,31);

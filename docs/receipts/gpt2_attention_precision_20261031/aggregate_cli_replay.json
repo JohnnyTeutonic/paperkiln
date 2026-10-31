@@ -1,0 +1,12 @@
+{
+ "pass": true,
+ "bf16_recipe_score_equals_fp32_score_bitwise": true,
+ "fp32_export_tensor_bytes_identical": true,
+ "numpy_max_abs": 5.960464477539063e-08,
+ "ember_max_abs": {
+  "prefill": 2.9802322387695312e-08,
+  "decode": 2.9802322387695312e-08
+ },
+ "actual_cuda": false,
+ "binary_sha256": "4ccf3d0787dd7526d35024bf11b37d9c33c5e78ae5a61c8d8741c0dbb7a04c8e"
+}
