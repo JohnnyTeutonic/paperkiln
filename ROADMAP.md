@@ -59,7 +59,6 @@ that cannot fail the build.
   Other open follow-ups whose completion is not established here:
   - remaining per-token host work needs a current representative profile. CUDA/device-op outputs already avoid host zero-fill (20 Oct); a bounded tiny CPU teacher-forced score audit found no justified zero-fill change and does not close the historical CUDA follow-up (`docs/receipts/host_matrix_cpu_audit_20261031/validation.json`).
 
-- The computed-table embedding host fallback is repaired and complete: actual L4 old-failure reproduction, six coherent controls and seven fixed cases pass unchanged numerical checks with independent replay (`docs/receipts/embedding_fallback_cuda_20261031/`). Ordinary leaf embedding tables are controls; this does not establish corruption in historical Mamba CLI runs. The broader host-reader audit remains open.
 
 - **Historical GRPO runtime applicability.** Recover actual build/device/deferred-mode
   evidence for the 20 tracked PT4/PT4b GRPO runs. Their saved specs/events do not
@@ -131,6 +130,9 @@ that cannot fail the build.
     fallback subset is complete: actual L4 CUDA+DEVCHECK reproduces 13 old
     numerical failures, retains three coherent controls, and passes all 16
     fixed forward/backward references (`docs/receipts/host_fallback_cuda_20261031/`).
+    The conditional computed-table embedding fallback also leaves this list: actual L4
+    reproduces the old error, passes six baseline controls and seven fixed cases
+    (`docs/receipts/embedding_fallback_cuda_20261031/`). Ordinary leaf tables are controls.
     Broader unreviewed host loops and historical runtime applicability remain;
     the completed bounded subsets do not establish an exhaustive audit.
     The audited non-WIP boundaries are wired and
@@ -150,8 +152,11 @@ that cannot fail the build.
   Experimental exact two-block GPT2 LM/SFT wiring passes CPU default-bit preservation,
   finite BF16 model gradients/short loss, save/reload and unchanged FP32 NumPy/Ember inference
   (`docs/receipts/gpt2_attention_precision_20261031/RESULTS.md`). These completed subsets
-  leave the implementation backlog; CUDA model validation, broader wiring, and incremental
-  end-to-end benefit remain open. They establish no production speed or quality gain.
+  leave the implementation backlog. The fixed tiny actual-L4 model/CLI gate also passes:
+  every parameter gradient, BF16 counter checks, unchanged default control, LM/SFT
+  export and required pinned host NumPy/Ember replay
+  (`docs/receipts/gpt2_attention_precision_20261031/gpu_v2/`). Broader wiring, model
+  quality, throughput and adoption remain open.
 - **Mamba:** parallel-time scan, composed-model residency validation and end-to-end speed
   remain open. Ordered CUDA `ops::selective_scan` forward/backward is now complete:
   220 actual L4 CUDA+DEVCHECK cases, all gradient masks, both softplus modes, deferred
@@ -162,7 +167,8 @@ that cannot fail the build.
   correctness results, not full Mamba1 training quality or throughput claims.
   Two tiny composed Mamba1 CPU training/save/reload/export cases also pass independent
   NumPy/Ember full-logit and argmax checks (`docs/receipts/mamba1_composed_20261031/`);
-  the all-parameter composed backward reference and actual CUDA model gate remain open.
+  all-parameter composed CPU derivatives also pass independent binary64 finite differences.
+  The actual composed CUDA model gate and residency validation remain open.
 - **int4/NF4 quantisation.**
 - **HF export for modified flex flavours and unmapped GPT2 variants; quantised GGUFs outside the llama family.** Strictly plain GPT2- and Llama-flavour Flex now have verified HF mappings for separate or explicitly tied token/output heads (arbitrary depth/MLP width); those completed subsets leave this list. Actual saved/reloaded Transformers CPU parity is recorded in docs/receipts/hf_tied_flex_20261031/. Plain GPT2 Flex additionally supports explicitly recorded exact-erf GELU (HF gelu), tied or untied, with evidence in docs/receipts/hf_exact_gelu_20261031/. Plain GPT2 Flex ReLU also passes finite-execution HF CPU parity for tied/untied heads, with documented NaN/negative-zero differences (docs/receipts/hf_relu_flex_20261031/). Other modified flavours remain open. Every mtstudio family now exports F32 GGUF with its IR
   (`include/microtorch/ir.hpp`, Families): gpt2 and flex with the GPT-2
