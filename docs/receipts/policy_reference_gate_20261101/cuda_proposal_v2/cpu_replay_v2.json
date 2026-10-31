@@ -1,0 +1,68 @@
+[
+  {
+    "pass": true,
+    "actual_cuda": false,
+    "variant": "old",
+    "case": "mixed",
+    "expected_old_numeric_failure": false,
+    "correct_loss_error": 0.0,
+    "correct_gradient_error": 0.0,
+    "bound": 1e-06,
+    "scope": "public constant-reference Matrix consumer only; no historical CLI invalidity claim"
+  },
+  {
+    "pass": true,
+    "actual_cuda": false,
+    "variant": "old",
+    "case": "policy_only",
+    "expected_old_numeric_failure": false,
+    "correct_loss_error": 0.0,
+    "correct_gradient_error": 0.0,
+    "bound": 1e-06,
+    "scope": "public constant-reference Matrix consumer only; no historical CLI invalidity claim"
+  },
+  {
+    "pass": true,
+    "actual_cuda": false,
+    "variant": "old",
+    "case": "kl_only",
+    "expected_old_numeric_failure": false,
+    "correct_loss_error": 0.0,
+    "correct_gradient_error": 0.0,
+    "bound": 1e-06,
+    "scope": "public constant-reference Matrix consumer only; no historical CLI invalidity claim"
+  },
+  {
+    "pass": true,
+    "actual_cuda": false,
+    "variant": "fixed",
+    "case": "mixed",
+    "expected_old_numeric_failure": false,
+    "correct_loss_error": 0.0,
+    "correct_gradient_error": 0.0,
+    "bound": 1e-06,
+    "scope": "public constant-reference Matrix consumer only; no historical CLI invalidity claim"
+  },
+  {
+    "pass": true,
+    "actual_cuda": false,
+    "variant": "fixed",
+    "case": "policy_only",
+    "expected_old_numeric_failure": false,
+    "correct_loss_error": 0.0,
+    "correct_gradient_error": 0.0,
+    "bound": 1e-06,
+    "scope": "public constant-reference Matrix consumer only; no historical CLI invalidity claim"
+  },
+  {
+    "pass": true,
+    "actual_cuda": false,
+    "variant": "fixed",
+    "case": "kl_only",
+    "expected_old_numeric_failure": false,
+    "correct_loss_error": 0.0,
+    "correct_gradient_error": 0.0,
+    "bound": 1e-06,
+    "scope": "public constant-reference Matrix consumer only; no historical CLI invalidity claim"
+  }
+]

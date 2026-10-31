@@ -1,0 +1,24 @@
+{
+  "pass": true,
+  "actual_cuda": false,
+  "argv": [
+    "cmake",
+    "-S",
+    "/home/jonat/policy_reference_archive_preflight_v2_20261101/source",
+    "-B",
+    "/home/jonat/policy_reference_archive_preflight_v2_20261101/build",
+    "-DMICROTORCH_CUDA=OFF",
+    "-DMICROTORCH_DEVCHECK=ON",
+    "-DMICROTORCH_BUILD_PYTHON=OFF",
+    "-DFETCHCONTENT_SOURCE_DIR_JSON=/home/jonat/pk_publication_build_20261030/_deps/json-src"
+  ],
+  "source_commit": "3dc1e68b2af8ae80c5cbaa02b29289eb43a48710",
+  "manifest_sha256": "56fa371cf4d516001b812a3c6024548844a4cde3449297b34dca48213b5c0f38",
+  "archive_sha256": "65795025c57898177554970567b7bb5184f7b949c5e73600d9a903a6b0d7e429",
+  "exact_source_inventory": 964,
+  "every_source_git_blob_verified": true,
+  "baseline_exact_git_blob": true,
+  "studio_chat_present": true,
+  "no_compilation": true,
+  "v1_manifest_unchanged": true
+}

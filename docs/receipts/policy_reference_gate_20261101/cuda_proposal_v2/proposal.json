@@ -1,0 +1,38 @@
+{
+  "status": "UNLAUNCHED_ROOT_REVIEW_REQUIRED",
+  "source_commit": "3dc1e68b2af8ae80c5cbaa02b29289eb43a48710",
+  "stage": "/home/jonat/policy_reference_gate_stage_v2_20261101",
+  "manifest_sha256": "56fa371cf4d516001b812a3c6024548844a4cde3449297b34dca48213b5c0f38",
+  "limits": {
+    "max_usd": 0.75,
+    "max_hours": 0.6,
+    "gate_seconds": 1500,
+    "gpus": 1,
+    "gpu": "NVIDIA L4"
+  },
+  "remote_argv": [
+    "python3",
+    "/content/upload/policy_reference_gate.py",
+    "--upload",
+    "/content/upload",
+    "--manifest-sha256",
+    "56fa371cf4d516001b812a3c6024548844a4cde3449297b34dca48213b5c0f38",
+    "--out",
+    "/content/policy_reference_result_v2"
+  ],
+  "scope": "12 legs: CPU old/fixed mixed/policy-only/KL-only controls; CUDA old/fixed same cases. Old mixed/KL-only must show causal wrong-reference numeric failure; old k0 control stays correct. Fixed full loss/all6gradient elements must pass. No historical CLI invalidity claim.",
+  "root_owns": "Final operational controller, absolute deadline, landing argv and any launch. No config or paid actions by this feature.",
+  "mandatory_landed_replay_template": [
+    "python3",
+    "-O",
+    "tools/replay_policy_reference.py",
+    "LANDED_RAW.json",
+    "--variant",
+    "old_or_fixed",
+    "--case",
+    "mixed_or_policy_only_or_kl_only",
+    "--require-cuda"
+  ],
+  "failure_policy": "Retain every failure; no automatic rerun/tolerance changes.",
+  "revision": "V2 rejects all negative/noninteger counters before aggregation; production/fixtures/bounds unchanged; V1 retained unlaunched."
+}

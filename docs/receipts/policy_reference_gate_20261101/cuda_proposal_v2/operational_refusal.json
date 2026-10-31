@@ -1,0 +1,17 @@
+{
+  "pass": true,
+  "argv": [
+    "python3",
+    "/home/jonat/policy_reference_gate_stage_v2_20261101/policy_reference_gate.py",
+    "--upload",
+    "/home/jonat/policy_reference_gate_stage_v2_20261101",
+    "--manifest-sha256",
+    "0000000000000000000000000000000000000000000000000000000000000000",
+    "--out",
+    "/home/jonat/policy_reference_archive_preflight_v2_20261101/wrong_manifest"
+  ],
+  "returncode": 1,
+  "stdout": "{\"pass\": false, \"errors\": [\"manifest differs\"]}\n",
+  "hardware_commands_run": false,
+  "failure_zip_preserved": true
+}

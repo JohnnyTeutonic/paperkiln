@@ -1,0 +1,13 @@
+{
+  "status": "SYNTHETIC_OFFLINE_PARSER_PROOF_NO_CUDA_EXECUTION",
+  "old_parser_sha256": "387152a2bd255c92fca66a1c1a2f29848436d5dc0412b0d9eb375fc029074898",
+  "v2_parser_sha256": "334e2b5128c5183c6d293fee776b1bb86b014e88d4649691648c71e14ef7d9ff",
+  "synthetic_profile": {
+    "gemm": 2,
+    "gemm_negative": -1
+  },
+  "v1_accepted": true,
+  "v2_rejected": true,
+  "v2_error": "nonnegative integer profile counters",
+  "actual_device_executed": false
+}
