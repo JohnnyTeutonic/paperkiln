@@ -1,0 +1,2 @@
+GGUF Export: Successfully wrote 17 tensors to /home/jonat/pk_flex_bf16_20261031/docs/receipts/flex_attention_precision_20261031/cpu_cli_final/lm/explicit_fp32_export/flex_precision.gguf
+{"arch":"gpt2","event":"export","format":"gguf","ir":"/home/jonat/pk_flex_bf16_20261031/docs/receipts/flex_attention_precision_20261031/cpu_cli_final/lm/explicit_fp32_export/flex_precision.ir.json","path":"/home/jonat/pk_flex_bf16_20261031/docs/receipts/flex_attention_precision_20261031/cpu_cli_final/lm/explicit_fp32_export/flex_precision.gguf"}

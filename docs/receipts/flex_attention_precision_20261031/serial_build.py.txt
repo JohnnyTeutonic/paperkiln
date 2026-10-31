@@ -1,0 +1,40 @@
+from pathlib import Path
+import hashlib,json,os,subprocess,time
+ROOT=Path('/home/jonat/pk_flex_bf16_20261031')
+BUILD=Path('/home/jonat/pk_flex_bf16_build_20261031')
+BUILD.mkdir(exist_ok=True)
+RECEIPT=ROOT/'docs/receipts/flex_attention_precision_20261031'
+LIBS=json.loads((RECEIPT/'support_library_identity.json').read_text())['library_hashes']
+def pins():
+ for name,want in LIBS.items():
+  with Path(name).open('rb') as f:got=hashlib.file_digest(f,'sha256').hexdigest()
+  if got!=want:raise ValueError('support library identity drift')
+pins()
+record={'status':'RUNNING','max_compiler_address_space_bytes':1610612736,'minimum_admission_MemAvailable_KiB':1572864,'source_root':str(ROOT),'commands':[],'support_libraries':LIBS,'threads':1,'optimization':'O0 correctness-only, no performance claim'}
+checkpoint=BUILD/'build_checkpoint.json'
+def save():
+ t=checkpoint.with_suffix('.tmp');t.write_text(json.dumps(record,indent=2)+'\n');t.replace(checkpoint)
+configure=['prlimit','--as=1610612736','--','cmake','-S',str(ROOT),'-B',str(BUILD),'-DMICROTORCH_CUDA=OFF','-DMICROTORCH_DEVCHECK=ON','-DMICROTORCH_BUILD_PYTHON=OFF','-DFETCHCONTENT_SOURCE_DIR_JSON=/home/jonat/pk_publication_build_20261030/_deps/json-src']
+memory={l.split(':')[0]:int(l.split()[1]) for l in Path('/proc/meminfo').read_text().splitlines()}
+if memory['MemAvailable']<1572864:raise SystemExit('configure admission refused below1.5GiB')
+with (BUILD/'configure.log').open('w') as f:configured=subprocess.run(configure,stdout=f,stderr=subprocess.STDOUT)
+record['configure']={'argv':configure,'returncode':configured.returncode}
+if configured.returncode:record['status']='CONFIGURE_FAILED';save();raise SystemExit(configured.returncode)
+flags=['-O0','-g0','-DNDEBUG','-DMICROTORCH_DEVCHECK','-std=c++17','-ffp-contract=off','-fopenmp','-pthread']
+for include in [ROOT/'third_party/httplib',BUILD/'generated',ROOT/'include',ROOT/'third_party/transformer_cpp/include',ROOT/'third_party/transformer_cpp/third_party',Path('/home/jonat/pk_publication_build_20261030/_deps/json-src/include')]:flags+=['-I',str(include)]
+for label,source in [('mtstudio',ROOT/'tools/mtstudio.cpp')]:
+ memory={l.split(':')[0]:int(l.split()[1]) for l in Path('/proc/meminfo').read_text().splitlines()}
+ if memory['MemAvailable']<1572864:
+  record.update(status='REFUSED_MEMORY_ADMISSION',MemAvailable_KiB=memory['MemAvailable']);save();raise SystemExit('compiler admission refused below1.5GiB MemAvailable')
+ argv=['prlimit','--as=1610612736','--','/usr/bin/c++',*flags,str(source),*LIBS,'-o',str(BUILD/label)]
+ print('COMPILING '+label,flush=True)
+ item={'label':label,'argv':argv,'MemAvailable_KiB':memory['MemAvailable'],'started_epoch':time.time()};record['commands'].append(item);save()
+ with (BUILD/(label+'.build.log')).open('w') as f:p=subprocess.run(argv,stdout=f,stderr=subprocess.STDOUT)
+ item.update(returncode=p.returncode,ended_epoch=time.time());save()
+ print('COMPILER_EXIT '+label+' '+str(p.returncode),flush=True)
+ if p.returncode:record['status']='COMPILER_FAILED_UNDER_FIXED_LIMIT';save();raise SystemExit(p.returncode)
+ item['binary_sha256']=hashlib.sha256((BUILD/label).read_bytes()).hexdigest();save()
+pins();record['status']='PASS';save();(RECEIPT/'build_identity.json').write_text(json.dumps(record,indent=2)+'\n')
+for name in ['flex_precision_gate.build.log','mtstudio.build.log','configure.log']:(RECEIPT/name).write_bytes((BUILD/name).read_bytes())
+checkpoint.unlink()
+print('PASS serial correctness-only build with exact library pins and fixed1.5GiB compiler cap')

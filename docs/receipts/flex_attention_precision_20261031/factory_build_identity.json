@@ -1,0 +1,70 @@
+{
+  "status": "PASS",
+  "max_compiler_address_space_bytes": 1610612736,
+  "minimum_admission_MemAvailable_KiB": 1572864,
+  "source_root": "/home/jonat/pk_flex_bf16_20261031",
+  "commands": [
+    {
+      "label": "flex_precision_factory",
+      "argv": [
+        "prlimit",
+        "--as=1610612736",
+        "--",
+        "/usr/bin/c++",
+        "-O0",
+        "-g0",
+        "-DNDEBUG",
+        "-DMICROTORCH_DEVCHECK",
+        "-std=c++17",
+        "-ffp-contract=off",
+        "-fopenmp",
+        "-pthread",
+        "-I",
+        "/home/jonat/pk_flex_bf16_20261031/third_party/httplib",
+        "-I",
+        "/home/jonat/pk_flex_bf16_build_20261031/generated",
+        "-I",
+        "/home/jonat/pk_flex_bf16_20261031/include",
+        "-I",
+        "/home/jonat/pk_flex_bf16_20261031/third_party/transformer_cpp/include",
+        "-I",
+        "/home/jonat/pk_flex_bf16_20261031/third_party/transformer_cpp/third_party",
+        "-I",
+        "/home/jonat/pk_publication_build_20261030/_deps/json-src/include",
+        "/home/jonat/pk_flex_bf16_20261031/tests/flex_precision_factory.cpp",
+        "/home/jonat/pk_publication_build_20261030/libmicrotorch.a",
+        "/home/jonat/pk_publication_build_20261030/transformer_cpp/libtransformer_core.a",
+        "-o",
+        "/home/jonat/pk_flex_bf16_build_20261031/flex_precision_factory"
+      ],
+      "MemAvailable_KiB": 7561688,
+      "started_epoch": 1793447768.346052,
+      "returncode": 0,
+      "ended_epoch": 1793447791.3534882,
+      "binary_sha256": "d93453c0a9cd0674147685aea1b71866bc0cbda4703bfdae84e9320f58048cf0"
+    }
+  ],
+  "support_libraries": {
+    "/home/jonat/pk_publication_build_20261030/libmicrotorch.a": "edfac74ad017bbec43c33c710409fba13ff348962b1bb557f97553794012251a",
+    "/home/jonat/pk_publication_build_20261030/transformer_cpp/libtransformer_core.a": "6ac8350f92ead2633b934e352ade2d9db90563565670822342cd1515da114cc1"
+  },
+  "threads": 1,
+  "optimization": "O0 correctness-only, no performance claim",
+  "configure": {
+    "argv": [
+      "prlimit",
+      "--as=1610612736",
+      "--",
+      "cmake",
+      "-S",
+      "/home/jonat/pk_flex_bf16_20261031",
+      "-B",
+      "/home/jonat/pk_flex_bf16_build_20261031",
+      "-DMICROTORCH_CUDA=OFF",
+      "-DMICROTORCH_DEVCHECK=ON",
+      "-DMICROTORCH_BUILD_PYTHON=OFF",
+      "-DFETCHCONTENT_SOURCE_DIR_JSON=/home/jonat/pk_publication_build_20261030/_deps/json-src"
+    ],
+    "returncode": 0
+  }
+}
