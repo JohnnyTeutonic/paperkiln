@@ -125,3 +125,10 @@ def test_exact_two_line_patch():
         assert fixed.count(line) == 1
         fixed = fixed.replace(line, "")
     assert fixed == old
+
+
+def test_boolean_target_is_not_integer():
+    d = raw("fixed", "mixed")
+    d["targets"] = [2, False]
+    with pytest.raises(ValueError):
+        m.replay(d, "fixed", "mixed")
