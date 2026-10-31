@@ -1,0 +1,16 @@
+{
+  "files_sha256": {
+    "fp64_report.json": "39dc0f26ccd10573bdb62af0ca80fa04d0d167ba4e3e8c4b3dad7bb859c28931",
+    "c12_B_r1_0017_gate_self_4.fp64.f64.gz": "5617e640c493bd2ca86a68de5106ce27514179757067fdd4d71599fed0d607fa",
+    "c12_B_r1_0046_gate_self_2.fp64.f64.gz": "304d1ff15b49ecc8c4c0c3820688a6465a92d364b3a94815b2a528bd47346a3a",
+    "c12_B_r1_0224_gate_self_2.fp64.f64.gz": "8e890c442e7511fc3c871ee85363ae716ac1aacb2e89bf594396602514824552",
+    "c12_B_r3_0306_gate_self_2.fp64.f64.gz": "dffeed41ae37c08fbdda116c9ed8d416ac93e2db47997e2264048c530a2f9725",
+    "c12_B_r1_full.logits.f32.gz": "046f903dfcfcc7faf75e36f807ee41d94579f477d14ba665d00b2c03bf9b0c02",
+    "c12_B_r3_full.logits.f32.gz": "c29479d730404f204b07439788324d18e70797de0adef5d7094e4f7ddaf7e6ba"
+  },
+  "forward_source_sha256": "26deef318e4e30cbd7087abeb4a7acc3fcee9bb60e8766ce6efa2da03e1f58f7",
+  "replay_source_sha256": "2f74bb1af3b5eeadd61fcbe07eaf66bd267902ce83486b1e78be92a42f2dd9f7",
+  "command": "python3 tools/hs1_parity_fp64.py --art ORIGINAL_ART --output NEW_REPORT.json",
+  "replay_command": "python3 tools/hs1_parity_fp64_replay.py experiments/tiny_chat_long_2026-10/receipts/parity_diagnosis_20261031",
+  "scope": "New binary64 numerical sensitivity reference only, no historical oracle or threshold waiver"
+}
