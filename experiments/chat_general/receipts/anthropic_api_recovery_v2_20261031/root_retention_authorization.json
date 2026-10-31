@@ -1,0 +1,11 @@
+{
+  "kind": "ROOT_AUTHORISED_RETAIN_UNKNOWN_CEILING",
+  "pending_id": "aafafd1531f74959936e5422388ff30e",
+  "ledger_sha256": "1c05dbc60f65328e1dcef0f4ae53520c38c577b9db3f6a62ba73f8e6211311fd",
+  "binding_sha256": "d36e10fd0d5708fd937d52857188de442f99ed8938a31e48a51497c2227bb6e1",
+  "raw_request_sha256": "57a93c7a7bbff20be98183734c4e6fc1a36ad06878021d6c7226a6adc22953ea",
+  "error_sha256": "43421e1bee3edca98777b365b01b962b99d689cc2de3eaf8459af860d276102b",
+  "error_type": "URLError",
+  "reason": "Root authorises permanent retention of the full unknown dispatch ceiling, with this attempt counted. Preserve the old halted campaign, raw request and error. A separately reviewed new phase may continue only under the unchanged cumulative USD200 cap, USD25 held-out gate reserve, same profile/cache/rubric and training attempt limit. No verdict, response or actual usage is invented. No automatic retry is authorised.",
+  "source_commit": "47426d92b"
+}
