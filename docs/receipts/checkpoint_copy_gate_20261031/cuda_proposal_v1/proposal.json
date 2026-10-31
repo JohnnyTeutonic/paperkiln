@@ -1,0 +1,38 @@
+{
+  "status": "UNLAUNCHED_ROOT_REVIEW_REQUIRED",
+  "stage": "/home/jonat/checkpoint_copy_gate_stage_v1_20261031",
+  "source_commit": "f753dc5bef76afdc00d1a5d546cc76afd7dd0c88",
+  "manifest_sha256": "f56cfdccf17eb65f0d609b64de1a88783cacd3df9a33e3974ae4581f79f6cc1f",
+  "limits": {
+    "max_usd": 0.75,
+    "max_hours": 0.6,
+    "gate_seconds": 1500,
+    "gpus": 1,
+    "gpu": "NVIDIA L4"
+  },
+  "remote_argv": [
+    "python3",
+    "/content/upload/checkpoint_copy_gate.py",
+    "--upload",
+    "/content/upload",
+    "--manifest-sha256",
+    "f56cfdccf17eb65f0d609b64de1a88783cacd3df9a33e3974ae4581f79f6cc1f",
+    "--out",
+    "/content/checkpoint_copy_result_v1"
+  ],
+  "operational_owner": "Root reviews final registration/deadline/landing paths and owns any paid launch. No watchdog config edited.",
+  "gate": "Eight runtime legs: CPU old/fixed output/input controls, CUDA old exact expected guards output/input and CUDA fixed full-gradient references. Replay each raw independently; strict source hashes before/after, L4 hardware, DEVCHECK/profiler, fresh immutable output and failure ZIP.",
+  "raw_replay_command_template": [
+    "python3",
+    "-O",
+    "tools/replay_checkpoint_copy.py",
+    "LANDED_RAW.json",
+    "--variant",
+    "old_or_fixed",
+    "--case",
+    "output_or_input",
+    "--require-cuda"
+  ],
+  "no_outcome_driven_changes": true,
+  "local_cuda_run": false
+}
