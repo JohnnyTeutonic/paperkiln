@@ -1,0 +1,20 @@
+{
+  "max_parallel": 1,
+  "jobs": [
+    {
+      "name": "checkpoint_copy_gate",
+      "cmd": [
+        "python3",
+        "-c",
+        "import pathlib,subprocess,sys,json\nout=pathlib.Path(sys.argv[1])\ncmd=['timeout','--signal=TERM','--kill-after=30','1560','python3','/content/chat/upload/checkpoint_copy_gate.py','--upload','/content/chat/upload','--manifest-sha256','f56cfdccf17eb65f0d609b64de1a88783cacd3df9a33e3974ae4581f79f6cc1f','--out',str(out)]\np=subprocess.run(cmd)\nout.mkdir(parents=True,exist_ok=True)\n(out/'transport_exit.json').write_text(json.dumps({'science_returncode':p.returncode,'transport_only':True})+'\\n')\nsys.exit(0 if all((out/n).is_file() for n in ['gate_summary.json','out.zip']) else 1)\n",
+        "{out}"
+      ],
+      "outputs": [
+        "gate_summary.json",
+        "out.zip",
+        "transport_exit.json"
+      ]
+    }
+  ],
+  "_comment": "Model-independent checkpoint boundary only. Expected old CUDA guard failures and fixed full gradients. Transport success permits relay of either scientific outcome, never counts as a numerical pass."
+}
