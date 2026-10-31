@@ -21,6 +21,9 @@ import subprocess
 import sys
 import time
 import urllib.request
+from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"posttrain"))
+import parity_device_evidence_v1 as device
 
 C = "/content/chat"
 REPO = "/content/pk"
@@ -93,10 +96,11 @@ def main():
         sys.exit("ember build failed")
     eb = json.load(open(f"{out}/ember_build.json"))
     ember_bin = eb["bin"]
+    device_build=device.build_proof(eb)
     parity = os.path.join(os.path.dirname(os.path.dirname(ember_bin)), "src", "tools", "chat_parity.py")
     base_env = {k: v for k, v in os.environ.items() if not k.startswith("MICROTORCH_")}
     procs = []
-    summary = {"model": name, "gguf": gguf, "gguf_sha256": sha256(gguf), "ember": eb,
+    summary = {"device_build":device_build,"model": name, "gguf": gguf, "gguf_sha256": sha256(gguf), "ember": eb,
                "paperkiln_commit": subprocess.run(["git", "-C", REPO, "rev-parse", "HEAD"], capture_output=True,
                                                   text=True).stdout.strip(),
                "prompts": PROMPTS, "n": n, "max_new": 60, "mtstudio": "CPU, full recompute"}
@@ -109,6 +113,7 @@ def main():
         summary["mtstudio_health"] = hm
         for leg, layers in (("cuda", "-1"), ("cpu", "0")):
             t0 = time.time()
+            if sha256(ember_bin)!=device_build["binary_sha256"]:raise ValueError("parity binary changed before leg")
             pe, he = start([ember_bin, gguf, str(PE), "127.0.0.1", "-", layers], PE, f"{out}/ember_{leg}.log",
                            {**base_env, "EMBER_GEMM_TF32": "0"})
             if os.path.realpath(he.get("model", "")) != os.path.realpath(gguf):
@@ -139,7 +144,9 @@ def main():
                             f.write(json.dumps(x) + "\n")
             finally:
                 stop(pe)
-            summary[leg] = {"n": len(rows), "health": he, "seconds": round(time.time() - t0, 1),
+            if sha256(ember_bin)!=device_build["binary_sha256"]:raise ValueError("parity binary changed during leg")
+            actual_route=device.route(Path(f"{out}/ember_{leg}.log").read_text(),leg,he["layers"])
+            summary[leg] = {"device_evidence":{"binary_sha256":device_build["binary_sha256"],"startup_log_sha256":sha256(f"{out}/ember_{leg}.log"),"actual_route":actual_route},"n": len(rows), "health": he, "seconds": round(time.time() - t0, 1),
                             "reply_identical": sum(x["ember"] == x["mtstudio"] for x in rows),
                             "token_count": sum(x["ember_tokens"] == x["mts_tokens"] for x in rows),
                             "stop_reason": sum(x["ember_stop"] == x["mts_stop"] for x in rows),

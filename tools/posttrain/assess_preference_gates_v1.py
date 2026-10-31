@@ -6,6 +6,7 @@ import sys
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 from pref_artifact_io_v1 import sha
 import heldout_gate_runner_v1 as heldout
+import parity_device_evidence_v1 as device
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import chat_eval
 import qa_eval
@@ -94,6 +95,7 @@ def extract(evaluation_dir,parity_dir,binding,instance,heldout_state,vocab_path)
         rows=heldout.api.rows(R/'qa'/(name+'_qa.jsonl'));indices=[r['prompt_index'] for r in rows]
         if len(indices)!=60 or set(indices)!=set(range(60)):raise ValueError('simple QA coverage incomplete')
         correct[label]=sum(qa_eval.correct(r['completion'],qs[r['prompt_index']]['answers']) for r in rows)
+    device.verify(parity_summary,P,binding['ember_commit'])
     parity=parity_coverage(heldout.api.rows(P/'parity_cuda.jsonl'),heldout.api.rows(P/'parity_cpu.jsonl'),frozen[:40])
     _,_,status=heldout.inspect(instance)
     if status['missing_rankings']:raise ValueError('held-out eligible judging incomplete')

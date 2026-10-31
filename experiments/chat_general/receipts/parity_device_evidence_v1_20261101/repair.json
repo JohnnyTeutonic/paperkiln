@@ -1,0 +1,45 @@
+{
+  "kind": "SOURCE_BOUND_PARITY_DEVICE_EVIDENCE_V1",
+  "status": "PREPARED_FOR_ROOT_REVIEW_NOT_ACTIVATED",
+  "source_sha256": {
+    "tools/posttrain/parity_device_evidence_v1.py": "493415f3d0c2f67812bd88c4e1526b1cb0fe720308b1bb160069eb97d1ee92ff",
+    "tools/posttrain/test_parity_device_evidence_v1.py": "63fb1b5c11b7687b13c7b8f32948b36ee91aa8e9738eb6ed026d1404d08da789",
+    "tools/posttrain/assess_preference_gates_v1.py": "44bc8479570cfab199895e4c0519c0265716f225022358d5fbccce03633e9d18",
+    "tools/posttrain/build_dpo_instance_v7.py": "5c32a396614ab7400fc2c9f37fa4c7cf9251662a101d0669057dfa970fd0fd17",
+    "tools/posttrain/heldout_gate_runner_v1.py": "1747487f4d17885120728469b1670218447288983f2809dcc17f281db7d3fbee",
+    "tools/colab_chat/chat_parity_vm.py": "fe289f1ae87be4d8a53e6a728c3ce15692bfabf6a2d1a4f6378d690995bd2451"
+  },
+  "reviewed_ember_commit": "aa50a6112dfd706078e5c7849070f8ca5af620b4",
+  "reviewed_ember_source_sha256": {
+    "api.cpp": "9c08ba7dbb220ece062c63a4c833431be16e2fd5e9529db2b59ffb8672936f59",
+    "model.cpp": "ee9d5e4ada84a20ccf00e9d3bb5330deee0fd6f8fa84be89c081712c06bfaed6",
+    "gpu_initialization.cpp": "33f154bf2a3ed9cde4100ca5494397ce2f0169a08c6eabfc31935a231d96b668",
+    "server.cpp": "59d467ad253e063d6cb2d7202f2f7f05523e27b0820047947a1871da452e6f39",
+    "graph_ir.cpp": "43c2d5b70b5d4510284a53a8afa0c703538fa508b76d757b92f938ec180c58cd",
+    "weight_management.cpp": "e0f93a8b653ef925f068be8b01d210f9b82c21003557adc6adc91fc9968d3710",
+    "CMakeLists.txt": "928e8a02f7b73772c779309151ea4b407edd2136228f9e635d1024a1057a317d"
+  },
+  "evidence": [
+    "Actual clean checkout equals reviewed commit and source hashes",
+    "CUDA build record and HAS_CUDA compile definition",
+    "Per-leg binary SHA before and after generation",
+    "Per-leg complete startup logs and SHA",
+    "IR actual on_gpu route; CUDA weight/KV allocation log or explicit CPU route",
+    "Native effective layers, CUDA resources, cuBLAS and successful GPU F32 weights or explicit CPU zero-offload skip"
+  ],
+  "tests": {
+    "command": "python3 -m pytest -q tools/posttrain/test_parity_device_evidence_v1.py tools/posttrain/test_assess_preference_gates_v1.py tools/posttrain/test_heldout_gate_runner_v1.py",
+    "passed": 66,
+    "negative_cases": [
+      "Requested GPU layers alone",
+      "CPU fallback in CUDA leg",
+      "Missing cuBLAS/weights/allocation",
+      "Wrong layer count",
+      "Wrong actual IR route",
+      "Unbound source/commit/build/binary/log"
+    ]
+  },
+  "gpu_or_provider_calls": 0,
+  "actual_device_validation_run": false,
+  "activation": false
+}
