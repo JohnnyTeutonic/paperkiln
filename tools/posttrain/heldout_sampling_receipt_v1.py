@@ -7,7 +7,7 @@ import side_by_side as sbs
 import chat_judge_api_heldout_v1 as api
 
 
-def capture(items,send_a,send_b,encode,ember_commit):
+def capture(items,send_a,send_b,encode,ember_commit,disposition_sink=None):
     items=list(items);raw=[];records=[];dispositions=[]
     def tracked(which,send):
         def call(body):
@@ -19,6 +19,7 @@ def capture(items,send_a,send_b,encode,ember_commit):
     config={'models':['pk_sft_v1','pk_dpo_v1'],'ember_commit':ember_commit,'temp':.7,'seed':71,
       'max_new_tokens':256,'ctx':512,'utf8_rule':sbs.S.UTF8_RULE}
     for index,(record,why) in enumerate(sbs.sample(items,a,b,.7,71,256,encode,512)):
+        if disposition_sink is not None:disposition_sink(index,record,why)
         dispositions.append({'prompt_index':index,'uri':items[index][0],'status':why})
         if why=='ok':
             record['sampler'].update(models=config['models'],config=config)

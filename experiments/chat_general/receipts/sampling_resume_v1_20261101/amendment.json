@@ -1,0 +1,31 @@
+{
+  "kind": "HELDOUT_SAMPLING_OPERATIONAL_AMENDMENT_V1",
+  "status": "PREPARED_FOR_ROOT_REVIEW_NOT_ACTIVATED",
+  "source_sha256": {
+    "build_dpo_instance_v7.py": "ab26fa3e5ba50c738ca2d61afdcdf93df18f8e398370778a5307947eee0f3642",
+    "build_heldout_instance_v1.py": "18e490df3b0eca73860c00b48ba475a34abada4febce118118b9b22873e3fdf1",
+    "heldout_gate_runner_v1.py": "956e2c5f12e0dcc0cf0e018c960216fefb4869aa2161171d006d5f81e8a54159",
+    "heldout_sample_vm_v1.py": "afa8afdc161c84ffe82f81014554e8db9797f4462e6155a3d9e3d6c123a67def",
+    "heldout_sampling_receipt_v1.py": "27d1b9601bf1c691abad451a08502c415da76f7c548d9999c960c711fc30db5b",
+    "heldout_sampling_journal_v1.py": "31c213efe464d51328542622c910b8f2b02bc8279ef459a142a02737322d3e93",
+    "test_heldout_sampling_journal_v1.py": "02c14aa4584799234e99edb57e1c2d5571e9a3f3bc0405974ecf3b57d1431962"
+  },
+  "tests": {
+    "command": "python3 -m pytest -q tools/posttrain/test_heldout_sampling_journal_v1.py tools/posttrain/test_heldout_sample_vm_v1.py tools/posttrain/test_heldout_gate_runner_v1.py",
+    "passed": 24
+  },
+  "scientific_policy_unchanged": true,
+  "policy_sha256": "5181e14991c7eb326b32f9bd2d35688946f38156e4a9e1ab53375d83b751ed29",
+  "journal_remote": "<persistent RunPod output directory>/sampling.journal.jsonl",
+  "journal_home_restore_upload": "/content/chat/upload/heldout_sampling.journal.jsonl",
+  "restore_rule": "Validate both complete canonical hash chains and bindings; longest exact prefix wins; divergence, corruption or torn lines refuse; any unresolved intent refuses generation.",
+  "durability": "Fsync intent before dispatch, result immediately after response, and every original item disposition. Request timeout 170 seconds. Persistent volume progress is authoritative; home transfer may lag.",
+  "remaining_dependencies": [
+    "Root review and prospective operational source adoption",
+    "DPO full-state checkpoint/relay repair and source admission",
+    "6036 eligible valid API rankings",
+    "Separate parity inventory and backend evidence repair"
+  ],
+  "paid_calls": 0,
+  "activation": false
+}
