@@ -1,0 +1,79 @@
+{
+  "kind": "FROZEN_FAILSTOP_API_DIAGNOSTIC_V3_MAX24",
+  "source_sha256": {
+    "chat_judge_campaign_diagnostic_v3.py": "01a67510a0df814a662f5e32098a1aaa2a2779dbf5ed269dbede49177c501d00",
+    "chat_judge_api_diagnostic_v3.py": "8558d9fcb0e8ae561402f0991b3270ee0746cee8ffc46ef0c50ad74dc6dffc6a",
+    "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+  },
+  "profile_sha256": "a6bf0769bf5d7688c970df16f53c97efd67750313e59c6d49a8760cefd45bee8",
+  "max_new_attempts": 24,
+  "max_usd": 200,
+  "gate_reserve_usd": 25,
+  "reserve_per_call_usd": 0.25,
+  "batch_calls": 24,
+  "cache": "/mnt/c/ml_artifacts/pref_api_20261031/api_cache.jsonl",
+  "ledger": "/mnt/c/ml_artifacts/pref_api_20261031/budget.jsonl",
+  "requests": "/mnt/c/ml_artifacts/pref_full/sample/candidates.jsonl",
+  "rubric": "/home/jonat/pk_api_judge_20261031/tools/posttrain/rubrics/chat_v1.txt",
+  "legacy_cache": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/experiments/chat_general/judge/judge_cache.jsonl",
+  "env_file": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/.env",
+  "prior_api_ledgers": [
+    "/home/jonat/pk_api_judge_20261031/experiments/chat_general/receipts/anthropic_api_20261031/budget.jsonl"
+  ],
+  "binding_sha256": "d36e10fd0d5708fd937d52857188de442f99ed8938a31e48a51497c2227bb6e1",
+  "ledger_prefix_bytes": 658692,
+  "ledger_prefix_sha256": "297503be4cc9cbfadafeaddecac3ae23cb238f6a6905668ab77c3e3fcc6e135b",
+  "requests_sha256": "a69673d5307413214cfb631bc6ee58adbcf5b3020da31db79d6e8a8b952b825f",
+  "rubric_sha256": "cb04edd3543d0906aedc3d82a1d829586272da874182775c6d7c9826e28d937a",
+  "initial_training_attempts": 496,
+  "state_dir": "/mnt/c/ml_artifacts/pref_api_20261031/diagnostic_campaign_v3",
+  "initial_valid_api_rankings": 541,
+  "policy": "Bounded diagnostic24HTTPattempts only, initial496. SameAPIprofile/requests/rubric/cache/ledger, cumulative200/heldout25, per-call0.25reserve. Exactexplicitroot V2unknown disposition retainedfull0.25, totalunknownceilings0.75; no inventedusage/ranking. OrderedstdlibDNSfallback recorded, noHTTP/SDKretry/globalmonkeypatch. Anynewfailure HALTS+STOPPED;24success STOPPEDrequiresnewreviewbeforefull5499continuation. Preserve bothpriorHALTEDstates; tracingdoesnotretroactivelyproveoldcharges.",
+  "authorised_by": "Root authorised preparation and exact accounting disposition only. Model dispatch for this max24diagnostic requires separate source/protocol/argv review.",
+  "recovery_anchors": {
+    "old_protocol": {
+      "path": "/home/jonat/pk_api_transport_diagnostic_20261031/experiments/chat_general/receipts/anthropic_api_recovery_v2_20261031/original_full_campaign_protocol.json",
+      "sha256": "6170b3830d6bb4acfeac972d050241076219e98b0ce3f8eb2a1ea32873ab2724"
+    },
+    "old_halt": {
+      "path": "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign/HALTED",
+      "sha256": "0ee5f79a2d1e09bc2a46663d9bbd59c1bababb428bc8a52b145057065f868bc9"
+    },
+    "v2_protocol": {
+      "path": "/home/jonat/pk_api_transport_diagnostic_20261031/experiments/chat_general/receipts/anthropic_api_recovery_v2_20261031/full_campaign_v2_protocol.json",
+      "sha256": "6a233561c2eb490cf7041a8005cb70a06608b33a23b107aecae62b8f9c90d8ea"
+    },
+    "v2_halt": {
+      "path": "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v2/HALTED",
+      "sha256": "38bd276794365ebea271f2725c81a50964501650459350a5387c3ee577e5b5b9"
+    },
+    "first_retention_receipt": {
+      "path": "/home/jonat/pk_api_transport_diagnostic_20261031/experiments/chat_general/receipts/anthropic_api_recovery_v2_20261031/retention_receipt.json",
+      "sha256": "6cd77dfcf01d293ea9a72eb054a9ab07d9eb5b354adca0cc475bdbdc91ad4cae"
+    },
+    "cache_prefix_bytes": 1055260,
+    "cache_prefix_sha256": "b695f80113be5ff42f2a9c0eebe1c8c9a88517afab566aec96b2a331b84a0b0c"
+  },
+  "pending_disposition_gate": {
+    "pending_id": "7ef677f4605a4b489f00c4bfde5b625c",
+    "retention_event_sha256": "8214578fe465873b02c3f1e5c5cd4001af778c0d5c7fa34e5164e64754ed4813",
+    "request": {
+      "path": "/mnt/c/ml_artifacts/pref_api_20261031/budget.raw/7ef677f4605a4b489f00c4bfde5b625c.request.json",
+      "sha256": "35130f97e8e8f72df0e21405927362c88d3f5bd2787ff7435cdf04717f11803e"
+    },
+    "error": {
+      "path": "/mnt/c/ml_artifacts/pref_api_20261031/budget.raw/7ef677f4605a4b489f00c4bfde5b625c.error.json",
+      "sha256": "43421e1bee3edca98777b365b01b962b99d689cc2de3eaf8459af860d276102b"
+    }
+  },
+  "transport_diagnostic": {
+    "source_sha256": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+    "fsync_preflight_sha256": "e34e52bea6f9cc1c70a240a309bb0146ff8e054e096474ff3d0737af7758a3b1",
+    "http_retries": 0,
+    "sdk_retries": 0,
+    "same_profile_sha256": "a6bf0769bf5d7688c970df16f53c97efd67750313e59c6d49a8760cefd45bee8",
+    "logs": "resolved endpoint family/IP/type/errno and durable HTTP-write fence; no headers/body/key/exceptiontext",
+    "prior_charge_reinterpretation": false
+  }
+}

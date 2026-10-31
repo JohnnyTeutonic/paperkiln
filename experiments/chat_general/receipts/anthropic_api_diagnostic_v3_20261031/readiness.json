@@ -1,0 +1,22 @@
+{
+  "status": "READY_FOR_ROOT_MAX24_REVIEW_NO_DISPATCH",
+  "protocol_sha256": "fb5c0433440609bb47406790a4010f0e8c4707c515bbd832110008e3ea3175fc",
+  "source_sha256": {
+    "chat_judge_campaign_diagnostic_v3.py": "01a67510a0df814a662f5e32098a1aaa2a2779dbf5ed269dbede49177c501d00",
+    "chat_judge_api_diagnostic_v3.py": "8558d9fcb0e8ae561402f0991b3270ee0746cee8ffc46ef0c50ad74dc6dffc6a",
+    "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+  },
+  "inspection": {
+    "attempts_since_start": 0,
+    "missing_rankings": 5499,
+    "api_actual_spend_usd": 8.029052,
+    "retained_unknown_ceiling_usd": 0.75,
+    "baseline_usd": 20.08558,
+    "gate_reserve_usd": 25.0
+  },
+  "pending_reservations": 0,
+  "new_model_dispatches": 0,
+  "both_old_HALTED_preserved": true,
+  "new_state_exists": false
+}

@@ -1,0 +1,12 @@
+{
+  "scope": "EXACT filesystem preflight; no paid request/reservation, no network/credentials/ledger mutation",
+  "root": "/mnt/c/ml_artifacts/pref_api_20261031/transport_diagnostic_preflight_20261031",
+  "source_sha256": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+  "status": "PASS",
+  "file_fsync": true,
+  "parent_directory_fsync": true,
+  "atomic_replace": true,
+  "existing_file_refused": true,
+  "final_sha256": "db496b665ad86413a3198269ba8e4923590274690d61f729b5b04ea3753d00ad",
+  "http_writes": 0
+}

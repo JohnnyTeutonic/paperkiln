@@ -1,0 +1,48 @@
+{
+  "status": "ROOT_REVIEW_REQUIRED_NO_DISPATCH",
+  "entry": {
+    "name": "Paperkiln API transport diagnostic V3 (max24, no full continuation)",
+    "enabled": false,
+    "workdir": "/home/jonat/pk_api_transport_diagnostic_20261031",
+    "state_dir": "/mnt/c/ml_artifacts/pref_api_20261031/diagnostic_campaign_v3",
+    "stop_file": "/mnt/c/ml_artifacts/pref_api_20261031/diagnostic_campaign_v3/STOPPED",
+    "command": "mkdir -p /mnt/c/ml_artifacts/pref_api_20261031/diagnostic_campaign_v3 && python3 /mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/scripts/cpu_budget.py run --session paperkiln --job api-transport-diagnostic-v3-max24 --cores 1 --resume 'existing watchdog diagnostic V3 max24 only' -- python3 /home/jonat/pk_api_transport_diagnostic_20261031/tools/posttrain/chat_judge_campaign_diagnostic_v3.py --protocol /home/jonat/pk_api_transport_diagnostic_20261031/experiments/chat_general/receipts/anthropic_api_diagnostic_v3_20261031/diagnostic_v3_protocol.json --protocol-sha256 fb5c0433440609bb47406790a4010f0e8c4707c515bbd832110008e3ea3175fc --state-dir /mnt/c/ml_artifacts/pref_api_20261031/diagnostic_campaign_v3 >> /mnt/c/ml_artifacts/pref_api_20261031/diagnostic_campaign_v3/runner.log 2>&1"
+  },
+  "argv": [
+    "python3",
+    "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/scripts/cpu_budget.py",
+    "run",
+    "--session",
+    "paperkiln",
+    "--job",
+    "api-transport-diagnostic-v3-max24",
+    "--cores",
+    "1",
+    "--resume",
+    "existing watchdog diagnostic V3 max24 only",
+    "--",
+    "python3",
+    "/home/jonat/pk_api_transport_diagnostic_20261031/tools/posttrain/chat_judge_campaign_diagnostic_v3.py",
+    "--protocol",
+    "/home/jonat/pk_api_transport_diagnostic_20261031/experiments/chat_general/receipts/anthropic_api_diagnostic_v3_20261031/diagnostic_v3_protocol.json",
+    "--protocol-sha256",
+    "fb5c0433440609bb47406790a4010f0e8c4707c515bbd832110008e3ea3175fc",
+    "--state-dir",
+    "/mnt/c/ml_artifacts/pref_api_20261031/diagnostic_campaign_v3"
+  ],
+  "protocol_sha256": "fb5c0433440609bb47406790a4010f0e8c4707c515bbd832110008e3ea3175fc",
+  "source_sha256": {
+    "chat_judge_campaign_diagnostic_v3.py": "01a67510a0df814a662f5e32098a1aaa2a2779dbf5ed269dbede49177c501d00",
+    "chat_judge_api_diagnostic_v3.py": "8558d9fcb0e8ae561402f0991b3270ee0746cee8ffc46ef0c50ad74dc6dffc6a",
+    "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+  },
+  "max_new_attempts": 24,
+  "initial_training_attempts": 496,
+  "initial_valid_rankings": 541,
+  "missing_rankings": 5499,
+  "cumulative_cap_usd": 200,
+  "heldout_reserve_usd": 25,
+  "retained_unknown_ceiling_usd": 0.75,
+  "full_continuation_authorised": false
+}

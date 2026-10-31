@@ -1,0 +1,63 @@
+{
+  "status": "REVIEW_READY_NO_MODEL_DISPATCH",
+  "protocol_sha256": "fb5c0433440609bb47406790a4010f0e8c4707c515bbd832110008e3ea3175fc",
+  "source_sha256": {
+    "chat_judge_campaign_diagnostic_v3.py": "01a67510a0df814a662f5e32098a1aaa2a2779dbf5ed269dbede49177c501d00",
+    "chat_judge_api_diagnostic_v3.py": "8558d9fcb0e8ae561402f0991b3270ee0746cee8ffc46ef0c50ad74dc6dffc6a",
+    "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+  },
+  "new_tests": "23PASS",
+  "adapted_existing_API_campaign_tests": "100PASS against diagnosticAPIcopy in isolatedsubprocess",
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/posttrain/test_chat_judge_transport_diagnostic.py",
+        "tools/posttrain/test_chat_judge_api_diagnostic_v3.py",
+        "tools/posttrain/test_chat_judge_campaign_diagnostic_v3.py"
+      ],
+      "rc": 0,
+      "log": "new_tests.log"
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "ruff",
+        "check",
+        "tools/posttrain/chat_judge_transport_diagnostic.py",
+        "tools/posttrain/chat_judge_api_diagnostic_v3.py",
+        "tools/posttrain/chat_judge_campaign_diagnostic_v3.py",
+        "tools/posttrain/test_chat_judge_transport_diagnostic.py",
+        "tools/posttrain/test_chat_judge_api_diagnostic_v3.py",
+        "tools/posttrain/test_chat_judge_campaign_diagnostic_v3.py"
+      ],
+      "rc": 0,
+      "log": "ruff.log"
+    }
+  ],
+  "exact_target_filesystem_preflight": "PASS",
+  "independent_review": "paperkiln read-only source/protocol/retention/actualinspect passed",
+  "no_new_phase_config_enabled": true,
+  "files_sha256": {
+    "diagnostic_v3_protocol.json": "fb5c0433440609bb47406790a4010f0e8c4707c515bbd832110008e3ea3175fc",
+    "new_tests.log": "63d4e9fc47d14facd854ebea7f4a8c6032499c689e648b277f1ed8b9c9dd7940",
+    "v2_retention_receipt.json": "11fb6ab1d1820770b5430b88039c9aa063b82e716193383eba30569bec84962d",
+    "readiness.json": "4c49d173a32011498bdfe1150a7038d805426663904f135dbe8a7df410684043",
+    "network_diagnosis.json": "692597f92fc1c338d298ad9a7509defe77955a5cd6bc9917c980643d55a9b1b0",
+    "exact_filesystem_preflight.json": "e34e52bea6f9cc1c70a240a309bb0146ff8e054e096474ff3d0737af7758a3b1",
+    "watchdog_proposal.json": "14863eb319c56370099526929aa1d5477d525e3146de5cd951f03488da5a9796",
+    "root_v2_retention_authorization.json": "410050b49d16f05889d2cad24aa3aaa5bf65580c88d69496c467b8da9c191732",
+    "ruff.log": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+    "adapted_legacy_tests/test_chat_judge_campaign_v2.py": "675553113d2be7863185b7dc199b28973039be9fda5c6955db6a71d867dafa61",
+    "adapted_legacy_tests/test_chat_judge_campaign.py": "fbf2c89978461935cd55fa38d74592a215e983f64e0b030f0cfee75bfcdd8637",
+    "adapted_legacy_tests/test_chat_judge_api.py": "edd1690646a2bba0b96ff609f3e5b293f6ed257417f5fb01f8cd74a1de99a300",
+    "adapted_legacy_tests/tests.log": "4af49eb2f29d8e0cc599903fab6af53d2b5893989a5445a55ae080bc7ec6a511",
+    "adapted_legacy_tests/conftest.py": "6cb3b3c9e574ed5c7db70efebdc0336b87e3bc2385243af6e2547423ae4d4e9c",
+    "adapted_legacy_tests/receipt.json": "bbac0554105dcc7cc1c70204fa36b8dfe3a884592984105c8319595aed945125"
+  }
+}
