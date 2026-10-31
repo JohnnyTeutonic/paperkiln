@@ -1,0 +1,21 @@
+{
+  "max_parallel": 1,
+  "jobs": [
+    {
+      "name": "ordered_default_gate",
+      "cmd": [
+        "python3",
+        "-c",
+        "import pathlib,subprocess,sys,json\nout=pathlib.Path(sys.argv[1])\ncmd=['timeout','--signal=TERM','--kill-after=30','9660','python3','/content/chat/upload/ordered_vm.py','--upload','/content/chat/upload','--manifest-sha256','b7f50738edc08228a9be1155964d48afbbfeb482a64e1a63156b3cf56661ee88','--out',str(out)]\np=subprocess.run(cmd)\nout.mkdir(parents=True,exist_ok=True)\n(out/'transport_exit.json').write_text(json.dumps({'science_returncode':p.returncode,'transport_only':True})+'\\n')\nsys.exit(0 if all((out/n).is_file() for n in ['summary.json','out.zip','vm.log']) else 1)\n",
+        "{out}"
+      ],
+      "outputs": [
+        "summary.json",
+        "out.zip",
+        "vm.log",
+        "transport_exit.json"
+      ]
+    }
+  ],
+  "_comment": "One actual L4; full frozen candidate14 registered gate plus declared baseline10, component correctness/timing and isolated release launch traps. Negative or incomplete scientific outcomes are relayed without promotion; transport success is not science PASS."
+}
