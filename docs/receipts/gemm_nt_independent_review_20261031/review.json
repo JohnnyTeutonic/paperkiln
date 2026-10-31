@@ -1,0 +1,20 @@
+{
+  "pass": true,
+  "source_commit": "c1c0539029515cd2718931437ec17a5f939fe1c9",
+  "manifest_sha256": "214c7f6147624c0660de5dd12c7b51c067b979ee5a380cd70c7796a30d2eb8ee",
+  "archive_files_match_manifest_and_git": 1382,
+  "upload_helpers_match_source": true,
+  "baseline_exact_git_blob": true,
+  "production_review": "A loads/shared tile original; B loads original except compile-time TB&&!TA with correct swapped bounds/padded tile; accumulator/FMA loops unchanged. NN/TN/TT original source paths and layout restored.",
+  "adoption_review": "Same96 rawbit/NumPy checks; wrapper requires --adoption and adoption.pass. Per-pair median old/new>=1.05 and at least5/7 NT wins; controls>=0.90. No whole-model inference.",
+  "parser_test_argv": [
+    "/home/jonat/pk_bf16_replay_20261031/bin/python",
+    "-O",
+    "-m",
+    "pytest",
+    "-q",
+    "/home/jonat/pk_gemm_nt_only_20261031/tools/test_replay_gemm_transpose.py"
+  ],
+  "parser_test_returncode": 0,
+  "scope": "Independent prospective packet review only; no device outcome reviewed."
+}
