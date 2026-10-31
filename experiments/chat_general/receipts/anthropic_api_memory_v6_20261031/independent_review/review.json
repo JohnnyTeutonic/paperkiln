@@ -1,0 +1,49 @@
+{
+  "recommendation": "READY_FOR_ROOT_AUTHORIZATION",
+  "reviewed_utc": "2026-10-31T11:57:47.040305+00:00",
+  "commit": "da700e6ae0402eccb9d5604ca6ea11f77f958da3",
+  "protocol_sha256": "84076595529351aa6e8500e0eca7e546735f764ab5cac85355f396b935f36e77",
+  "source_sha256": {
+    "chat_judge_campaign_memory_v6.py": "be873a85b84eb7630d21989bbbc0ada3ed8ebc201f745f991871965719594a2e",
+    "chat_judge_api_refusal_v5.py": "11cd8c7880356afaef631f6168d02dd75025cd4be58d4c6fc69fddb966ed0dd7",
+    "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+  },
+  "unchanged_provider_sources_against_public_base": true,
+  "exact_recovery_anchor_and_binding_checks": "PASS via actual inspect",
+  "actual_readonly_inspect": {
+    "attempts_since_start": 0,
+    "missing_rankings": 4254,
+    "valid_api_rankings": 1786,
+    "eligible_missing_rankings": 4252,
+    "preserved_failed_rankings": 1,
+    "unattempted_paired_exclusions": 1,
+    "api_actual_spend_usd": 26.847668,
+    "retained_unknown_ceiling_usd": 0.75,
+    "baseline_usd": 20.08558,
+    "gate_reserve_usd": 25.0
+  },
+  "pending_reservations": 0,
+  "v6_state_absent": true,
+  "offline_tests": "..........................                                               [100%]\n26 passed in 14.24s",
+  "test_log_sha256": "aa34ff186321f9df7c86681ea9da10f378c4ec945f5f79c0fdce329374bf1360",
+  "review_findings": [],
+  "limitations": [
+    "MemAvailable is point-in-time admission, not reservation; OOM or filesystem failure can still halt.",
+    "Audit does not recover exact prior OSError errno or prove it was caused by memory.",
+    "Refusal and paired exclusion preserve full-valid incomplete status; DPO and fixed gate remain blocked pending separate dataset decision."
+  ],
+  "no_provider_calls_no_env_or_key_reads_no_launch_or_configuration_changes": true,
+  "reviewed_controls": [
+    "Wrapper dispatch arguments identical to V5 except unchanged initial counts/new continuation limits.",
+    "Source/protocol hashes, prior markers, cache and ledger prefixes, request/rubric/binding identities revalidated.",
+    "Cumulative cap200, heldout25, percall0.25 and retained unknown0.75 preserved.",
+    "Offline tests cover waiting, threshold fence, phase/errno redaction, stop markers, partial restart, paired exclusions and no full-complete claim."
+  ],
+  "independent_v5_audit_replay": {
+    "audit_sha256": "bf8b0e05e2f5edc2cce99158a10db21c6e3ff2e2cfafce9f9a44a0a56e9e6e9a",
+    "settled_calls": 96,
+    "transport_traces_checked": 96,
+    "prior_markers_events_and_ledger_snapshot": "PASS"
+  }
+}
