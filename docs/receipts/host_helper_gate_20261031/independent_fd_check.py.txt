@@ -1,0 +1,50 @@
+"""Independent binary64 central differences of all fixed helper fixture gradients.
+Run with NumPy installed: python this_file.py /absolute/path/to/repository
+No production implementation is imported. Output is JSON on stdout.
+"""
+import json
+from pathlib import Path
+import sys
+import numpy as np
+root=Path(sys.argv[1])
+doc=json.loads((root/'tests/fixtures/host_helper_gate_cpu.json').read_text())
+def matrix(raw):
+    return np.array(raw['values'], dtype=np.float64).reshape(raw['shape'])
+records=[]
+for row in doc['cases']:
+    inputs={key:matrix(raw) for key,raw in row['inputs'].items()}
+    op=row['op']
+    upstream=inputs['upstream_weights']
+    def loss(values):
+        a=values['a']
+        if op=='exp': y=np.exp(a)
+        elif op=='div': y=a/values['b']
+        elif op=='where': y=np.where(values['c']>0,a,values['b'])
+        elif op=='rowsum': y=a.sum(1,keepdims=True)
+        elif op=='rowmax': y=a.max(1,keepdims=True)
+        elif op=='broadcast_cols': y=np.repeat(a,3,axis=1)
+        else:
+            x=a@values['w']
+            if op=='relu_': y=np.maximum(x,0)
+            elif op=='sigmoid_': y=1/(1+np.exp(-x))
+            elif op=='scale_': y=x*float(np.float32(1.7))
+            else: raise ValueError('unknown operation')
+        return (y*upstream).mean()
+    for name,raw in row['gradients'].items():
+        actual=matrix(raw)
+        fd=np.zeros_like(actual)
+        h=1e-5
+        for index in np.ndindex(actual.shape):
+            value=inputs[name][index]
+            inputs[name][index]=value+h
+            plus=loss(inputs)
+            inputs[name][index]=value-h
+            minus=loss(inputs)
+            inputs[name][index]=value
+            fd[index]=(plus-minus)/(2*h)
+        error=float(np.max(np.abs(fd-actual)/(1+np.abs(fd))))
+        if not np.isfinite(error) or error>=3e-5:
+            raise ValueError((op,name,error))
+        records.append({'op':op,'gradient':name,'max_error_vs_cpu':error})
+if len(records)!=14: raise ValueError('expected14 gradient tensors')
+print(json.dumps({'pass':True,'method':'Independent binary64 weighted-loss central finite difference, step1e-5, every element of14 parameter tensors; no production implementation imported','cases':records},indent=2))
