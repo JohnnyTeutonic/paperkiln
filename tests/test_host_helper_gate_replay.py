@@ -92,3 +92,9 @@ def test_every_gradient_tensor_is_required_nonzero(raw, case, name, mutation):
         item[name]["values"] = [0] * len(item[name]["values"])
     with pytest.raises(ValueError):
         replay(raw)
+
+
+def test_weighted_loss_staleness_proof_required(raw):
+    raw["cases"][0]["stale_loss_operand_poisoned"] = True
+    with pytest.raises(ValueError):
+        replay(raw)

@@ -113,7 +113,16 @@ J run(const std::string& op, bool gpu) {
         }
         original();
     };
-    auto loss = ops::mean(ops::mul(y, make_var(weights)));
+    auto loss_weights = make_var(weights);
+    bool stale_loss_operand = false;
+    if (gpu) {
+        loss_weights = ops::slice_cols(loss_weights, 0, weights.cols());
+        poison(loss_weights->data);
+        stale_loss_operand = true;
+    }
+    // mul selects its device path only when an operand is device-fresh.
+    // The nongrad weights keep that path live after the host helper returns.
+    auto loss = ops::mean(ops::mul(y, loss_weights));
     backward(loss);
     device::materialize(y->data);
     J gradients = J::object();
@@ -125,6 +134,7 @@ J run(const std::string& op, bool gpu) {
              {"actual_cuda", gpu},
              {"stale_inputs_poisoned", stale_inputs},
              {"stale_gradient_poisoned", stale_gradient},
+             {"stale_loss_operand_poisoned", stale_loss_operand},
              {"inputs", inputs},
              {"output", dump(y->data)},
              {"gradients", gradients}};
