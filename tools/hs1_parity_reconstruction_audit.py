@@ -187,6 +187,11 @@ def audit(archive, stage):
         or sum(len(x["positions"]) for x in result) != 89
     ):
         raise ValueError("complete reconstruction scope differs")
+    if (
+        manifest.get("source_archive_inventory")
+        and summary.get("exact_source_inventory_verified") is not True
+    ):
+        raise ValueError("strict extracted source inventory not verified")
     generation = []
     if "generation_skipped" not in summary:
         if (
