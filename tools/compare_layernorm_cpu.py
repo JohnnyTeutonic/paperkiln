@@ -196,6 +196,7 @@ def compare(build, art):
         if canonical != (v["score_sha256"], v["logits_sha256"]):
             raise ValueError("actual score/logits bit mismatch")
     trials = []
+    checksums = None
     with (art / "trials.jsonl").open("x") as journal:
         for block in range(plan["blocks"]):
             for position, variant in enumerate(plan["order_per_block"]):
@@ -210,10 +211,27 @@ def compare(build, art):
                         or a["warmup"] != 32
                         or not math.isfinite(a["ns_per_call"])
                         or a["ns_per_call"] <= 0
+                        or not math.isfinite(a["checksum"])
                         for a in op
                     )
                 ):
                     raise ValueError("invalid operation trial")
+                observed_checksums = {
+                    (a["rows"], a["cols"], a["backward"]): a["checksum"] for a in op
+                }
+                if checksums is None:
+                    checksums = observed_checksums
+                if observed_checksums != checksums:
+                    store(
+                        art / "HALTED.json",
+                        {
+                            "reason": "operation checksum drift",
+                            "block": block,
+                            "position": position,
+                            "operation": op,
+                        },
+                    )
+                    raise ValueError("operation checksum mismatch")
                 scored = score(name, f"b{block}-p{position}")
                 if canonical != (scored["score_sha256"], scored["logits_sha256"]):
                     raise ValueError("trial numerical drift")
@@ -228,6 +246,12 @@ def compare(build, art):
                 journal.flush()
                 os.fsync(journal.fileno())
                 trials.append(record)
+    for name in ["baseline", "candidate"]:
+        identity = json.loads((art / name / "identity.json").read_text())
+        if any(sha(art / name / p) != h for p, h in identity["binary_sha256"].items()):
+            raise ValueError("binary drift during trials")
+    if any(sha(p) != h for p, h in fixture["sha256"].items()):
+        raise ValueError("fixture drift during trials")
     if sources != snapshot():
         raise ValueError("source drift during trials")
     ratios = []
