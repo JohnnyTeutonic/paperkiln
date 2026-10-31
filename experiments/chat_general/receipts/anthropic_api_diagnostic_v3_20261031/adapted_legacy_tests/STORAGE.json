@@ -1,0 +1,21 @@
+{
+  "reason": "These are exact source snapshots of an isolated completed test run, not active tests or pytest configuration. Text suffixes prevent accidental collection and process-wide import aliasing. Original receipt and source bytes are unchanged.",
+  "original_to_stored": {
+    "conftest.py": {
+      "stored_as": "conftest.py.txt",
+      "sha256": "6cb3b3c9e574ed5c7db70efebdc0336b87e3bc2385243af6e2547423ae4d4e9c"
+    },
+    "test_chat_judge_api.py": {
+      "stored_as": "test_chat_judge_api.py.txt",
+      "sha256": "edd1690646a2bba0b96ff609f3e5b293f6ed257417f5fb01f8cd74a1de99a300"
+    },
+    "test_chat_judge_campaign.py": {
+      "stored_as": "test_chat_judge_campaign.py.txt",
+      "sha256": "fbf2c89978461935cd55fa38d74592a215e983f64e0b030f0cfee75bfcdd8637"
+    },
+    "test_chat_judge_campaign_v2.py": {
+      "stored_as": "test_chat_judge_campaign_v2.py.txt",
+      "sha256": "675553113d2be7863185b7dc199b28973039be9fda5c6955db6a71d867dafa61"
+    }
+  }
+}
