@@ -1,0 +1,9 @@
+# Actual L4 host-helper correctness subset
+
+The corrected, pre-outcome frozen nine-case harness passed on one actual L4 with CUDA and DEVCHECK enabled. It covers exp, div, where, rowsum, rowmax, broadcast_cols, relu_, sigmoid_ and scale_. Each CUDA case asserted deferred input storage before and after poisoning only nonauthoritative host bytes. The fresh weighted-loss operand also passed that proof; every helper callback asserted and poisoned an actually deferred upstream gradient before running its backward. The three inplace cases use only fresh identity-matmul outputs with no prior consumer and no DevState slot.
+
+The same-build CPU control and CUDA results both passed the unchanged independent NumPy full-array gate: maximum normalized error 3.445527538945451e-8 against the prospectively fixed 3e-5 bound, covering all nine outputs and fourteen complete gradient tensors. The two backends produced numerically identical registered arrays. The previously reviewed binary64 central-difference check also passed every element of the fourteen actual CUDA gradient tensors; its executable source snapshot and results are retained.
+
+The raw ZIP, exact scientific input identity, all ten artifact hashes, mandatory pinned host replay, command logs and cleanup proof are retained. The host replay verified its source pins before and after execution. The owned pod and volume were deleted, and only its watchdog entry was disabled. The original harness flaw, which constructed a host-fresh upstream gradient, was caught and corrected before any device outcome and remains recorded in the earlier review.
+
+This closes only these nine registered helper correctness cases. No production patch was made by this campaign. It does not demonstrate an expected failure of old kernels, complete derivative coverage, broad host-read audit closure, performance improvement, or complete device residency.

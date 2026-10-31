@@ -1,0 +1,5 @@
+{
+  "output_and_all14gradient_max_absolute_difference": 0.0,
+  "all_registered_arrays_numerically_identical": true,
+  "scope": "Descriptive same-build comparison; acceptance remains frozen independent NumPy gate."
+}
