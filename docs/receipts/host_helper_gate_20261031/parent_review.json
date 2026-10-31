@@ -1,0 +1,29 @@
+{
+  "status": "UNLAUNCHED_PROSPECTIVE_OFFLINE_ONLY",
+  "parent_review": true,
+  "source_commit": "9b99bedd6026ef80f00d56ca2637818f62edd674",
+  "cpu_target": "/home/jonat/pk_publication_build_20261030/test_host_helper_gate",
+  "checks": {
+    "merged_cpu_target_build": true,
+    "ctest_host_helper_gate_cpu": true,
+    "independent_numpy_full_inventory_replay": true,
+    "optimized_parser_tests": 39,
+    "ruff": true,
+    "clang_format_18": true
+  },
+  "maximum_cpu_normalized_error": 3.445527538945451e-08,
+  "bound": 3e-05,
+  "actual_cuda": false,
+  "limits": [
+    "No paid launch or watchdog entry",
+    "No production change",
+    "Only nine named helper cases; no exhaustive formula coverage",
+    "No CUDA, performance or quality result"
+  ],
+  "source_sha256": {
+    "tests/test_host_helper_gate.cpp": "cdaf3adf11eb4ee89f5b92dc69faf5ce917ec40dc1fc6d6487e3d58e4e9b95ac",
+    "tools/replay_host_helper_gate.py": "f3acb34dda2632894a2259be2c6a2327fbc81ef2908fbdd2f224ebfd02c49097",
+    "tools/host_helper_gate.py": "4d0049082b89976388749101a64e205f748c587719363baac0ad48c8fced9422",
+    "tests/test_host_helper_gate_replay.py": "6fef4791f12fb83681d232d229e066624d0ff703e5d12e196cf6ff9e7f79dff5"
+  }
+}
