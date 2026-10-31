@@ -18,5 +18,13 @@
     "max_hours": 0.75,
     "numerical_seconds": 2400
   },
-  "parent_next": "Review packet; choose absolute deadline and publish feature transport commit. Validate runner argparse and boot/jobs relative-path acceptance, source/archive extraction configure preflight, then existing watchdog ownership and launch only after approval. No readiness claim for unfinished operational driver binding."
+  "parent_next": "Review packet; choose absolute deadline and publish feature transport commit. Validate runner argparse and boot/jobs relative-path acceptance, source/archive extraction configure preflight, then existing watchdog ownership and launch only after approval. No readiness claim for unfinished operational driver binding.",
+  "packaging_v2": {
+    "status": "CLEAN_CPU_CONFIGURE_PASS_NOT_LAUNCHED",
+    "manifest_sha256": "23defd7a3e47a792b148fd84e78191e8487c72f8fe28683c50e6c4694e062062",
+    "stage": "/home/jonat/ternary_scale_cuda_stage_v2_20261031",
+    "new_path_only": "studio/chat.html",
+    "all_previous_payloads_identical": true,
+    "preflight": "archive_preflight_v2.json"
+  }
 }
