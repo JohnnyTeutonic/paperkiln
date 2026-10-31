@@ -1,0 +1,32 @@
+from pathlib import Path
+import json,math,zipfile,hashlib,importlib.util,sys
+root=Path('/home/jonat/policy_reference_independent_actual_v3_20261101');root.mkdir()
+art=Path('/mnt/c/ml_artifacts/policy_reference_1101_v3/policy_reference_gate');archive=art/'out.zip';sha=lambda p:hashlib.sha256(Path(p).read_bytes()).hexdigest()
+validator=Path('/home/jonat/policy_reference_archive_preflight_v2_20261101/source/tools/replay_policy_reference.py');spec=importlib.util.spec_from_file_location('registered_kl_replay',validator);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+def objective(xs,rf,w,k):
+ total=0.0
+ for r,target in enumerate([2,0]):
+  v=xs[3*r:3*r+3];mx=max(v);den=mx+math.log(math.fsum(math.exp(a-mx) for a in v));lp=[a-den for a in v]
+  total+=-w[r]*lp[target]+k[r]*math.fsum(math.exp(a)*(a-rf[3*r+j]) for j,a in enumerate(lp))
+ return total
+def errors(a,b):return max(abs(x-y)/(1+abs(y)) for x,y in zip(a,b))
+records=[]
+with zipfile.ZipFile(archive) as z:
+ assert z.testzip() is None; assert len(set(z.namelist()))==len(z.namelist())
+ summary=json.loads(z.read('gate_summary.json'));assert summary['pass'] is True and summary['errors']==[]
+ hashes={n:hashlib.sha256(z.read(n)).hexdigest() for n in z.namelist()}
+ for n,h in summary['artifact_sha256'].items():assert hashes[n]==h
+ for variant in ['old','fixed']:
+  for case in ['mixed','policy_only','kl_only']:
+   for cuda in [False,True]:
+    n=f'{variant}_{case}_{"cuda" if cuda else "cpu"}.json';raw=json.loads(z.read(n));registered=m.replay(raw,variant,case,cuda)
+    x=raw['logits']['values'];rf=[9.0]*6 if cuda and variant=='old' else raw['reference']['values'];w,k=raw['w'],raw['k'];loss=objective(x,rf,w,k);gradient=[];h=1e-5
+    for i in range(6):
+     up=x.copy();dn=x.copy();up[i]+=h;dn[i]-=h;gradient.append(1.5*(objective(up,rf,w,k)-objective(dn,rf,w,k))/(2*h))
+    le=errors(raw['loss']['values'],[loss]);ge=errors(raw['gradient']['values'],gradient)
+    assert le<=1e-6 and ge<=1e-6,(n,le,ge)
+    records.append({'member':n,'registered_replay':registered,'independent_binary64_objective_error':le,'independent_central_difference_gradient_error':ge,'central_difference_step':h})
+ body={'status':'INDEPENDENT_RAW_AND_FINITE_DIFFERENCE_REPLAY_PASS','archive_sha256':sha(archive),'archive_bytes':archive.stat().st_size,'raw_member_sha256':hashes,'cases':records,'cases_count':len(records),'actual_cuda_cases':6,'gradient_elements':72,'frozen_replay_sha256':sha(validator),'transport_science_returncode':json.loads((art/'transport_exit.json').read_text())['science_returncode'],'scope':'Public constant-reference Matrix policy_gradient_kl boundary; actual old poisoned-loss/full-gradient failures and fixed output/gradient recovery. Central differences independently check the continuous binary64 objective, not a derivative of float rounding. No historical DPO/GRPO invalidity or speed claim.'}
+ assert body['transport_science_returncode']==0
+(root/'independent_replay.json').write_text(json.dumps(body,indent=2)+'\n')
+print(json.dumps({k:v for k,v in body.items() if k not in ['cases','raw_member_sha256']}))

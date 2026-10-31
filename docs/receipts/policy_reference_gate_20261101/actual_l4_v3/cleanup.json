@@ -1,0 +1,9 @@
+{
+  "status": "OWNED_RESOURCES_REMOVED",
+  "campaign_home": true,
+  "all_jobs_home": true,
+  "pod_absent": true,
+  "volume_absent": true,
+  "unrelated_volumes_preserved": true,
+  "watchdog_entry_disabled": true
+}

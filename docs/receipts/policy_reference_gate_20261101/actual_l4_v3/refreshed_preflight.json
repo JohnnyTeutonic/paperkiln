@@ -1,0 +1,75 @@
+{
+  "schema": 1,
+  "status": "REFRESHED_OFFLINE_READY_ROOT_ADMISSION_REQUIRED",
+  "source_commit": "3dc1e68b2af8ae80c5cbaa02b29289eb43a48710",
+  "api_fix_ancestor": "596aed248",
+  "manifest_sha256": "56fa371cf4d516001b812a3c6024548844a4cde3449297b34dca48213b5c0f38",
+  "immutable_v2_files": {
+    "policy_reference_gate.py": {
+      "path": "/home/jonat/policy_reference_gate_stage_v2_20261101/policy_reference_gate.py",
+      "sha256": "13ea1cb77c43bcdfd96a20e6e85486094fa25afe0ac93ffe65377403c8cad050",
+      "regular_resolved": true
+    },
+    "source.tgz": {
+      "path": "/home/jonat/policy_reference_gate_stage_v2_20261101/source.tgz",
+      "sha256": "65795025c57898177554970567b7bb5184f7b949c5e73600d9a903a6b0d7e429",
+      "regular_resolved": true
+    },
+    "protocol.json": {
+      "path": "/home/jonat/policy_reference_gate_stage_v2_20261101/protocol.json",
+      "sha256": "e73bcda7525c4c3799654e7dd8d63fbc6865e9ef3abcb902bda60b1df45bbe7f",
+      "regular_resolved": true
+    }
+  },
+  "source_inventory": 964,
+  "CPU_cases": [
+    {
+      "variant": "old",
+      "case": "mixed",
+      "raw_sha256": "2119e659aff1365560529965dcefc881efe86239925da86e47aeb9083e47f5b4"
+    },
+    {
+      "variant": "old",
+      "case": "policy_only",
+      "raw_sha256": "c44160c15ee7f0784fa73928fdcdaa8e8636373416d623689dad3f86b0b4d5da"
+    },
+    {
+      "variant": "old",
+      "case": "kl_only",
+      "raw_sha256": "8cf3d91007a1b1a03d913aec995afac58c64001f1649d2d53f61dc215ddb0c80"
+    },
+    {
+      "variant": "fixed",
+      "case": "mixed",
+      "raw_sha256": "3a486071c0b6f0c3b9b7bb42208b28c4992a23001211018bbbee74c223a50e1f"
+    },
+    {
+      "variant": "fixed",
+      "case": "policy_only",
+      "raw_sha256": "4c3f2b97ef4ba9d8e3ce76e23b8d4f332f1cc4113daf09c41f0401caa3cdb84c"
+    },
+    {
+      "variant": "fixed",
+      "case": "kl_only",
+      "raw_sha256": "c7181ca80ecaad36fda6d3a5d9ef9347695dab5ef153a2cc96ce12789beb2b91"
+    }
+  ],
+  "parser_tests": {
+    "passed": 63,
+    "log": "/home/jonat/policy_reference_refresh_20261101/parser_tests_with_bound_fixtures.log",
+    "test_and_parser_identical_to_archive": true
+  },
+  "first_parser_attempt": "Failed only because intentionally limited source archive omits docs CPU fixtures; original failure log preserved. Exact same test/parser bytes pass against existing immutable CPU fixtures. No gate or raw outcome change.",
+  "prior_admission_deadline_expired": true,
+  "fresh_absolute_deadline": "ROOT_FINAL_ADMISSION_REQUIRED",
+  "limits": {
+    "max_usd": 0.75,
+    "max_hours": 0.6,
+    "gate_seconds": 1500,
+    "gpus": 1,
+    "gpu": "NVIDIA L4"
+  },
+  "source_scientific_changes": false,
+  "provider_calls": 0,
+  "config_writes": 0
+}
