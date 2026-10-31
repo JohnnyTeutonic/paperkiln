@@ -1,0 +1,33 @@
+{
+  "status": "PASS_INDEPENDENT_HOST_REPLAY",
+  "results": [
+    {
+      "verified": true,
+      "actual_cuda": false,
+      "mode": "old"
+    },
+    {
+      "verified": true,
+      "actual_cuda": true,
+      "mode": "old",
+      "full_tensor_values_checked": 6,
+      "expected_old_failure": true
+    },
+    {
+      "verified": true,
+      "actual_cuda": false,
+      "mode": "fixed"
+    },
+    {
+      "verified": true,
+      "actual_cuda": true,
+      "mode": "fixed",
+      "full_tensor_values_checked": 6,
+      "expected_old_failure": false
+    }
+  ],
+  "out_zip_sha256": "9a1a82127d4f79a7fe28e8e05f96b800977a827bf3ce0b6feed269aad82356d2",
+  "raw_artifact_hashes_verified": 8,
+  "owned_pod_absent": true,
+  "owned_volume_absent": true
+}

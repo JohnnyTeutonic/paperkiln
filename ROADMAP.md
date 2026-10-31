@@ -241,3 +241,5 @@ that cannot fail the build.
   - multi-token prediction.
   - The KDA reference that `python/attn_res_reference.py` mentions
     (`kda_reference.py`) is not in this repo.
+
+31 October: the public ternary_scale host reduction now materializes its input and checks the host-read boundary. Actual L4 old/fixed builds reproduce the stale-host defect and verify the repair, with fresh/zero controls and independent raw-log replay. Evidence: docs/receipts/ternary_scale_cuda_20261031/. The broader host-reader audit remains open; no default QAT or model-performance claim follows.
