@@ -1,0 +1,9 @@
+{
+  "compiler_cores": 1,
+  "compiler_address_space_limit_bytes": 1610612736,
+  "minimum_admission_MemAvailable_KiB": 1572864,
+  "no_cap_loosening": true,
+  "ordinary_first_failures": "Missing device.hpp in new harness and missing httplib path in manually reused CLI flags; retained logs. Both fixed before final successful controls, neither was a memory-limit failure.",
+  "coordination_note": "A last test-wrapper compile began before a fresh acknowledgment from the other compiler owner. A brief overlap may have occurred; both fixed-cap one-core jobs completed after memory had cleared. Root and other owner were informed; future compiles require explicit fresh slot acknowledgment.",
+  "no_local_GPU_or_paid_launch": true
+}

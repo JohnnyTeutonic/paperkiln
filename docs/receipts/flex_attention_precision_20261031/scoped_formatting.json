@@ -1,0 +1,58 @@
+{
+  "formatter": "/home/jonat/.local/bin/clang-format",
+  "new_harness_fully_formatted": true,
+  "production_changed_line_ranges": {
+    "tools/parity_model.hpp": [
+      [
+        676,
+        690
+      ],
+      [
+        812,
+        812
+      ],
+      [
+        815,
+        816
+      ],
+      [
+        857,
+        857
+      ],
+      [
+        1027,
+        1029
+      ],
+      [
+        1049,
+        1049
+      ]
+    ],
+    "tools/mtstudio.cpp": [
+      [
+        253,
+        253
+      ],
+      [
+        321,
+        322
+      ],
+      [
+        840,
+        850
+      ],
+      [
+        2300,
+        2306
+      ],
+      [
+        2608,
+        2608
+      ],
+      [
+        3803,
+        3803
+      ]
+    ]
+  }
+}

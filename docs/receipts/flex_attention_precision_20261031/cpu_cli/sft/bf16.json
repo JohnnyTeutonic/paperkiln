@@ -1,0 +1,38 @@
+{
+  "name": "flex_precision",
+  "arch": {
+    "preset": "gpt2-nano",
+    "custom": {
+      "d": 8,
+      "heads": 2,
+      "layers": 3,
+      "d_ff": 20,
+      "norm": "layernorm"
+    }
+  },
+  "data": {
+    "vocab": "/home/jonat/pk_flex_bf16_20261031/docs/receipts/flex_attention_precision_20261031/cpu_cli/sft/v.gguf",
+    "corpus": "/home/jonat/pk_flex_bf16_20261031/docs/receipts/flex_attention_precision_20261031/cpu_cli/sft/corpus.txt",
+    "T": 8,
+    "sft_examples": "/home/jonat/pk_flex_bf16_20261031/docs/receipts/flex_attention_precision_20261031/cpu_cli/sft/examples.jsonl"
+  },
+  "train": {
+    "steps": 3,
+    "batch": 2,
+    "seed": 37,
+    "lr": 0.001,
+    "eval_every": 3,
+    "checkpoint_every": 3,
+    "eval_windows": 2,
+    "gradmap_every": 0,
+    "attention_precision": "bf16",
+    "objective": "sft"
+  },
+  "export": {
+    "formats": [
+      "safetensors",
+      "gguf"
+    ]
+  },
+  "out_dir": "/home/jonat/pk_flex_bf16_20261031/docs/receipts/flex_attention_precision_20261031/cpu_cli/sft/trained"
+}

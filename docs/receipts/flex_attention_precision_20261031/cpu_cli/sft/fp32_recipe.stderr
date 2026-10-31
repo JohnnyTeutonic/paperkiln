@@ -1,0 +1,2 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+score: 3 continuations (0 over the context of 8) -> /home/jonat/pk_flex_bf16_20261031/docs/receipts/flex_attention_precision_20261031/cpu_cli/sft/fp32_recipe.jsonl
