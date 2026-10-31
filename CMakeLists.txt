@@ -455,3 +455,8 @@ set_tests_properties(evaluation_probes_helpers PROPERTIES TIMEOUT 120)
 add_executable(test_parity_depth tests/test_parity_depth.cpp)
 target_link_libraries(test_parity_depth PRIVATE microtorch)
 add_test(NAME parity_depth COMMAND test_parity_depth)
+
+# Computed bias host materialization: CPU reference plus opt-in real CUDA regression.
+add_executable(test_add_bias_materialization tests/test_add_bias_materialization.cpp)
+target_link_libraries(test_add_bias_materialization PRIVATE microtorch)
+add_test(NAME add_bias_materialization COMMAND test_add_bias_materialization)

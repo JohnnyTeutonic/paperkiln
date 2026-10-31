@@ -166,6 +166,9 @@ Var add_bias(const Var& x, const Var& b) {
         throw std::runtime_error("add_bias: bias must be [1, cols(x)]");
     }
     device::materialize(x->data);
+    device::materialize(b->data);
+    MT_DEVCHECK_HOST_READ(x->data, "add_bias input");
+    MT_DEVCHECK_HOST_READ(b->data, "add_bias bias");
     Matrix out = x->data;
     for (size_t i = 0; i < out.rows(); ++i)
         for (size_t j = 0; j < out.cols(); ++j) out(i, j) += b->data(0, j);

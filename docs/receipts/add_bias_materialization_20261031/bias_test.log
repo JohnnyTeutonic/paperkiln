@@ -1,0 +1,112 @@
+Internal ctest changing into directory: /home/jonat/pk_host_read_final_build_20261031
+Test project /home/jonat/pk_host_read_final_build_20261031
+      Start  1: gradcheck
+ 1/53 Test  #1: gradcheck ........................   Passed    0.01 sec
+      Start  2: step_residency
+ 2/53 Test  #2: step_residency ...................   Passed    0.02 sec
+      Start  3: highway
+ 3/53 Test  #3: highway ..........................   Passed    0.01 sec
+      Start  4: deep_swa
+ 4/53 Test  #4: deep_swa .........................   Passed    0.08 sec
+      Start  5: thirdparty_ops
+ 5/53 Test  #5: thirdparty_ops ...................   Passed    0.03 sec
+      Start  6: fused_head
+ 6/53 Test  #6: fused_head .......................   Passed    0.98 sec
+      Start  7: score_batch
+ 7/53 Test  #7: score_batch ......................   Passed    0.08 sec
+      Start  8: nn
+ 8/53 Test  #8: nn ...............................   Passed    0.18 sec
+      Start  9: kimi_linear
+ 9/53 Test  #9: kimi_linear ......................   Passed    0.00 sec
+      Start 10: cerebellum
+10/53 Test #10: cerebellum .......................   Passed    0.03 sec
+      Start 11: mamba
+11/53 Test #11: mamba ............................   Passed    0.03 sec
+      Start 12: train_utils
+12/53 Test #12: train_utils ......................   Passed    0.00 sec
+      Start 13: gguf_export
+13/53 Test #13: gguf_export ......................   Passed    0.00 sec
+      Start 14: gguf_q8
+14/53 Test #14: gguf_q8 ..........................   Passed    0.00 sec
+      Start 15: gguf_q4
+15/53 Test #15: gguf_q4 ..........................   Passed    2.22 sec
+      Start 16: attention_blocked
+16/53 Test #16: attention_blocked ................   Passed    0.04 sec
+      Start 17: device_rope
+17/53 Test #17: device_rope ......................   Passed    0.52 sec
+      Start 18: posttrain_losses
+18/53 Test #18: posttrain_losses .................   Passed    0.05 sec
+      Start 19: verifier
+19/53 Test #19: verifier .........................   Passed    0.93 sec
+      Start 20: lora_quant
+20/53 Test #20: lora_quant .......................   Passed    0.00 sec
+      Start 21: bitlinear
+21/53 Test #21: bitlinear ........................   Passed    0.13 sec
+      Start 22: llama
+22/53 Test #22: llama ............................   Passed    0.04 sec
+      Start 23: llama_attnres
+23/53 Test #23: llama_attnres ....................   Passed    0.20 sec
+      Start 24: recursion
+24/53 Test #24: recursion ........................   Passed    0.25 sec
+      Start 25: mor
+25/53 Test #25: mor ..............................   Passed    0.25 sec
+      Start 26: pooled_gemm
+26/53 Test #26: pooled_gemm ......................   Passed    0.04 sec
+      Start 27: kv_cache
+27/53 Test #27: kv_cache .........................   Passed    0.07 sec
+      Start 28: state_tokens
+28/53 Test #28: state_tokens .....................   Passed    0.35 sec
+      Start 29: chat_template
+29/53 Test #29: chat_template ....................   Passed    0.01 sec
+      Start 30: mixed_precision
+30/53 Test #30: mixed_precision ..................   Passed    2.91 sec
+      Start 31: moe
+31/53 Test #31: moe ..............................   Passed    0.08 sec
+      Start 32: moe_device
+32/53 Test #32: moe_device .......................   Passed    0.55 sec
+      Start 33: rope_heads
+33/53 Test #33: rope_heads .......................   Passed    0.00 sec
+      Start 34: batching
+34/53 Test #34: batching .........................   Passed    0.03 sec
+      Start 35: checkpointing
+35/53 Test #35: checkpointing ....................   Passed    0.04 sec
+      Start 36: muon
+36/53 Test #36: muon .............................   Passed    0.02 sec
+      Start 37: inplace
+37/53 Test #37: inplace ..........................   Passed    0.00 sec
+      Start 38: flex
+38/53 Test #38: flex .............................   Passed    1.52 sec
+      Start 39: shaw_attention
+39/53 Test #39: shaw_attention ...................   Passed    0.02 sec
+      Start 40: gpt2_device
+40/53 Test #40: gpt2_device ......................   Passed    0.10 sec
+      Start 41: expr
+41/53 Test #41: expr .............................   Passed    0.05 sec
+      Start 42: recurrence_op
+42/53 Test #42: recurrence_op ....................   Passed    0.04 sec
+      Start 43: ir_digest
+43/53 Test #43: ir_digest ........................   Passed    0.03 sec
+      Start 44: swa
+44/53 Test #44: swa ..............................   Passed    0.04 sec
+      Start 45: attn_res
+45/53 Test #45: attn_res .........................   Passed    0.07 sec
+      Start 46: srd
+46/53 Test #46: srd ..............................   Passed    0.01 sec
+      Start 47: devcheck_host_read
+47/53 Test #47: devcheck_host_read ...............   Passed    0.00 sec
+      Start 48: devcheck_disabled
+48/53 Test #48: devcheck_disabled ................   Passed    0.00 sec
+      Start 49: word_tokenizer
+49/53 Test #49: word_tokenizer ...................   Passed    0.00 sec
+      Start 50: kimi_noncausal
+50/53 Test #50: kimi_noncausal ...................   Passed    0.00 sec
+      Start 51: evaluation_probes_helpers
+51/53 Test #51: evaluation_probes_helpers ........   Passed    0.01 sec
+      Start 52: parity_depth
+52/53 Test #52: parity_depth .....................   Passed    0.02 sec
+      Start 53: add_bias_materialization
+53/53 Test #53: add_bias_materialization .........   Passed    0.00 sec
+
+100% tests passed, 0 tests failed out of 53
+
+Total Test time (real) =  12.11 sec
