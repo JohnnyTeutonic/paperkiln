@@ -1,0 +1,8 @@
+{
+  "owned_pod_absent": true,
+  "volume_unattached": true,
+  "owned_volume_deleted": "k7jsbk303v",
+  "numerical_job_not_started": true,
+  "proof": "sparse boot path rejected before logging; remote boot/jobs/status absent; runner terminated",
+  "root_authorised_delete": true
+}
