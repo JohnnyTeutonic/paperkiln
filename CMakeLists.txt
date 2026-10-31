@@ -510,3 +510,7 @@ set_tests_properties(selective_scan_cuda_cpu PROPERTIES TIMEOUT 120)
 add_executable(test_gpt2_attention_precision tests/test_gpt2_attention_precision.cpp)
 target_link_libraries(test_gpt2_attention_precision PRIVATE microtorch)
 add_test(NAME gpt2_attention_precision COMMAND test_gpt2_attention_precision)
+
+add_executable(test_embedding_fallback tests/test_embedding_fallback.cpp)
+target_link_libraries(test_embedding_fallback PRIVATE microtorch nlohmann_json::nlohmann_json)
+add_test(NAME embedding_fallback COMMAND test_embedding_fallback)

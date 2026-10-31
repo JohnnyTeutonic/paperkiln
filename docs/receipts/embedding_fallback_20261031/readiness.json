@@ -1,0 +1,19 @@
+{
+  "status": "CPU_READY_UNLAUNCHED",
+  "cases": 7,
+  "parser_mutation_tests": 23,
+  "cpu_raw_bytes_preserved_after_dead_branch_cleanup": true,
+  "baseline_commit": "87ccf28cf",
+  "baseline_ops_sha256": "7550dd2a34f30f506794f466941859cde8cfa2bd647692e3f8e640a289ae502f",
+  "bound": 2e-05,
+  "scope": "conditional computed device table -> disabled embedding device op fallback; ordinary leaf/write-through/device-enabled paths are coherent controls",
+  "limits": [
+    "No GPU result yet",
+    "No ordinary Mamba CLI leaf-table corruption claim",
+    "Empty IDs retain existing Matrix zero-dimension rejection"
+  ],
+  "review_fixes": [
+    "Old-failure replay mode requires exact deferred_fallback case and actual CUDA; control-mode false attestation rejected",
+    "Empty-ID control preserves existing rejection semantics; original incomplete CPU preflight retained"
+  ]
+}

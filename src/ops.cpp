@@ -528,6 +528,8 @@ Var embedding(const Var& table, const std::vector<int>& ids) {
     // resident); host loop as fallback. Backward scatter-add stays host
     // until B2.3 (table grad is host-authoritative).
     if (!device::devops::embed_gather(table->data, ids.data(), ids.size(), out)) {
+        device::materialize(table->data);
+        MT_DEVCHECK_HOST_READ(table->data, "embedding fallback table");
         for (size_t i = 0; i < ids.size(); ++i)
             for (size_t j = 0; j < d; ++j) out(i, j) = table->data(ids[i], j);
     }
