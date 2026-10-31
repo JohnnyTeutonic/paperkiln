@@ -467,3 +467,8 @@ add_executable(test_layernorm_host tests/test_layernorm_host.cpp)
 target_link_libraries(test_layernorm_host PRIVATE microtorch)
 add_test(NAME layernorm_host COMMAND test_layernorm_host)
 set_tests_properties(layernorm_host PROPERTIES TIMEOUT 120)
+
+add_executable(test_layernorm_materialization tests/test_layernorm_materialization.cpp)
+target_link_libraries(test_layernorm_materialization PRIVATE microtorch)
+add_test(NAME layernorm_materialization COMMAND test_layernorm_materialization)
+set_tests_properties(layernorm_materialization PROPERTIES TIMEOUT 120)

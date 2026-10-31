@@ -1,0 +1,34 @@
+{
+ "_comment": "Short actual L4 CUDA+DEVCHECK four isolated LayerNorm fallback baselineFAIL/fixedPASS cells. Diagnostic summary determines verdict, not transport exit0. No models or training.",
+ "max_parallel": 1,
+ "jobs": [
+  {
+   "name": "layernorm_gate",
+   "cmd": [
+    "timeout",
+    "--signal=TERM",
+    "--kill-after=30",
+    "1500",
+    "python3",
+    "/content/chat/upload/layernorm_gate_vm.py",
+    "{out}"
+   ],
+   "outputs": [
+    "gate_summary.json",
+    "hardware.log",
+    "nvcc.log",
+    "configure.log",
+    "baseline_build.log",
+    "fixed_build.log",
+    "baseline_forward_x.log",
+    "baseline_forward_gamma.log",
+    "baseline_forward_beta.log",
+    "baseline_backward_gamma.log",
+    "fixed_forward_x.log",
+    "fixed_forward_gamma.log",
+    "fixed_forward_beta.log",
+    "fixed_backward_gamma.log"
+   ]
+  }
+ ]
+}
