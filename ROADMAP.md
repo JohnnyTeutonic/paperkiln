@@ -138,7 +138,6 @@ that cannot fail the build.
     The audited non-WIP boundaries are wired and
     pass actual L4 CUDA+DEVCHECK integration (`docs/receipts/devcheck_host_read_cuda_20261030/`);
     those completed guards leave this list.
-  - Coalesce loads in the transposed GEMM paths.
   - Re-measure the speedup on the op-set configuration over a full run
     before any paper quotes it. The 21x and 30.5x figures were measured
     over nine steps with deferral on.
