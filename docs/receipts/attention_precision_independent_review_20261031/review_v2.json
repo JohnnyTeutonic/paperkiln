@@ -1,0 +1,29 @@
+{
+  "reviewer": "independent Codex agent",
+  "scope": "explicit C++ fused_attention_precision autograd API and prospective L4 proof packet only",
+  "production_commit": "64ab8a0e0cb7433dcee8be414ac01a0aa9ee8849",
+  "packet_source_commit": "8e5839a5c5635a4ff28f2db21ef8c716e4a9a017",
+  "manifest_sha256": "2647f73c9ae9d183bcc27e1aaf18a701011fcde51562f7825766b0fe367c60b7",
+  "launch_ready": false,
+  "checks_passed": [
+    "Read complete production diff, C++ binary64 oracle and fixture matrix, NumPy oracle/replay, actual-device profile-counter implementation and gate wrapper.",
+    "All twelve replay tests independently pass under Python -O.",
+    "Independently checked manifest, every uploaded file, archive critical source hashes, unchanged production/C++ source at original commit and safe archive members including Studio chat asset.",
+    "Verified both preserved/default dumps contain the same 1764 raw float bit lines.",
+    "Six explicit precision arguments and captured backward precision match the intended rounded-GEMM surrogate; default FP32 overload and blocked dispatch remain unchanged."
+  ],
+  "blockers": [
+    {
+      "severity": "must fix before launch",
+      "path": "tools/replay_attention_precision.py",
+      "problem": "Independent replay does not enforce registered input/value widths or metric d/dv; a shape-substituted all-zero case passes.",
+      "reproduction": "Replace the BF16 seq=7,batch=1,d=5,dv=3 raw arrays q,k,v,upstream,y,dq,dk,dv with 7x1 zero arrays, and metric d=dv=1,worst=0. Replay still reports pass with 44 cases under -O.",
+      "required": "Bind full registered shape map and matching metadata/gradient shapes; add a shape-substitution tamper negative. Source-bound input fixture reconstruction also strengthens the raw evidence contract."
+    }
+  ],
+  "limits": [
+    "No new GPU execution, production-model dispatch, model-loss, quality, throughput or adoption claim.",
+    "Default-library build provenance was inspected from supplied receipts; the preserved old library was not rebuilt by this reviewer."
+  ],
+  "status": "Owner confirmed blocker and is preparing a fresh prospective v3 packet before any device outcome."
+}
