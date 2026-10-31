@@ -1,0 +1,66 @@
+[  0%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/config.cpp.o
+[  0%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/architecture.cpp.o
+[  4%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/lora.cpp.o
+[  4%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/logger.cpp.o
+[  8%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/scope_logger.cpp.o
+[  8%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/components.cpp.o
+[ 12%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/matrix.cpp.o
+[ 12%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/matmul_optimized.cpp.o
+[ 16%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/tensor.cpp.o
+[ 16%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/utils.cpp.o
+In file included from /home/jonat/pk_host_fallback_20261031/third_party/transformer_cpp/src/utils.cpp:21:
+/home/jonat/pk_host_fallback_20261031/third_party/transformer_cpp/src/../include/debug.hpp:85:21: warning: backslash-newline at end of file
+   85 | #define SCOPE_LOG() \
+      |                      
+/home/jonat/pk_host_fallback_20261031/third_party/transformer_cpp/src/../include/debug.hpp:85: warning: "SCOPE_LOG" redefined
+In file included from /home/jonat/pk_host_fallback_20261031/third_party/transformer_cpp/src/utils.cpp:3:
+/home/jonat/pk_host_fallback_20261031/third_party/transformer_cpp/src/../include/scope_logger.hpp:47: note: this is the location of the previous definition
+   47 | #define SCOPE_LOG() debug::ScopeLogger scope_logger_instance = debug::ScopeLogger(__FUNCTION__, __FILE__, __LINE__)
+      | 
+[ 16%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/vector_ops.cpp.o
+[ 20%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/embeddings.cpp.o
+[ 20%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/layer_norm.cpp.o
+[ 24%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/feed_forward.cpp.o
+[ 24%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/attention.cpp.o
+[ 28%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/transformer_layer.cpp.o
+[ 28%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/transformer.cpp.o
+[ 32%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/lm_head.cpp.o
+[ 32%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/router.cpp.o
+[ 36%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/moe.cpp.o
+[ 36%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/gqa.cpp.o
+[ 36%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/vocabulary.cpp.o
+[ 40%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/tiktoken_tokenizer.cpp.o
+[ 40%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/gradient_checkpoint.cpp.o
+[ 44%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/cache.cpp.o
+[ 44%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/quantization.cpp.o
+[ 48%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/quantization_api.cpp.o
+[ 48%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/model_saver.cpp.o
+[ 52%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/gguf_export.cpp.o
+[ 52%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/safetensors_export.cpp.o
+[ 56%] Linking CXX static library libtransformer_core.a
+[ 56%] Built target transformer_core
+[ 60%] Building CXX object CMakeFiles/microtorch.dir/src/autograd.cpp.o
+[ 60%] Building CXX object CMakeFiles/microtorch.dir/src/ops.cpp.o
+[ 64%] Building CXX object CMakeFiles/microtorch.dir/src/expr.cpp.o
+[ 64%] Building CXX object CMakeFiles/microtorch.dir/src/recurrence.cpp.o
+[ 64%] Building CXX object CMakeFiles/microtorch.dir/src/nn.cpp.o
+[ 68%] Building CXX object CMakeFiles/microtorch.dir/src/device.cpp.o
+[ 68%] Building CXX object CMakeFiles/microtorch.dir/src/device_cache.cpp.o
+[ 72%] Building CXX object CMakeFiles/microtorch.dir/src/safetensors.cpp.o
+[ 72%] Building CXX object CMakeFiles/microtorch.dir/src/gguf.cpp.o
+[ 76%] Building CXX object CMakeFiles/microtorch.dir/src/quant.cpp.o
+[ 76%] Building CXX object CMakeFiles/microtorch.dir/src/ir.cpp.o
+[ 80%] Building CXX object CMakeFiles/microtorch.dir/src/llama.cpp.o
+[ 80%] Building CXX object CMakeFiles/microtorch.dir/src/llama_attnres.cpp.o
+[ 84%] Building CXX object CMakeFiles/microtorch.dir/src/depth_attend.cpp.o
+[ 84%] Building CXX object CMakeFiles/microtorch.dir/src/moe.cpp.o
+[ 84%] Building CXX object CMakeFiles/microtorch.dir/src/kimi_linear.cpp.o
+[ 88%] Building CXX object CMakeFiles/microtorch.dir/src/srd.cpp.o
+[ 88%] Building CXX object CMakeFiles/microtorch.dir/src/cerebellum.cpp.o
+[ 92%] Building CXX object CMakeFiles/microtorch.dir/src/mamba.cpp.o
+[ 92%] Building CXX object CMakeFiles/microtorch.dir/src/posttrain/verifier.cpp.o
+[ 96%] Linking CXX static library libmicrotorch.a
+[ 96%] Built target microtorch
+[100%] Building CXX object CMakeFiles/test_fallback_materialization.dir/tests/test_fallback_materialization.cpp.o
+[100%] Linking CXX executable test_fallback_materialization
+[100%] Built target test_fallback_materialization

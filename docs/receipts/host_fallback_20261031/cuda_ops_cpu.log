@@ -1,0 +1,2 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+SKIP test_cuda_ops: CUDA build + MICROTORCH_DEVICE=cuda required (CPU-only build or device is cpu)
