@@ -1,0 +1,118 @@
+{
+  "pass": true,
+  "source_commit": "b65568079843fcb40f7c56559f1c3d23990366f5",
+  "manifest_sha256": "28e125ef951a0dc617276494e58254c3edff9470da233faee2d73f13fd10f496",
+  "raw_log_hashes_verified": true,
+  "commands_verified": true,
+  "local_replay_argv": [
+    "/home/jonat/pk_bf16_replay_20261031/bin/python",
+    "-O",
+    "/home/jonat/gemm_transpose_gate_stage_v1_20261031/replay_gemm_transpose.py",
+    "/home/jonat/pk_gemm_loads_20261031/docs/receipts/gemm_transpose_cuda_20261031/raw/strict.log",
+    "--timing",
+    "/home/jonat/pk_gemm_loads_20261031/docs/receipts/gemm_transpose_cuda_20261031/raw/timing.log"
+  ],
+  "independent_replay": {
+    "pass": true,
+    "cases": 96,
+    "maximum_normalized_error": 8.421124916750777e-07,
+    "bound": 3e-05,
+    "timing": {
+      "scope": "descriptive CUDA-event kernel timing only; 256 cubed; alternating matched pairs; no whole-model speed claim",
+      "flags": {
+        "0": {
+          "old": [
+            0.0281760003,
+            0.0281888004,
+            0.0281888004,
+            0.0282207988,
+            0.0282175988,
+            0.0281664021,
+            0.0281632002
+          ],
+          "candidate": [
+            0.0282591991,
+            0.0281472001,
+            0.0281888004,
+            0.028246399,
+            0.0282175988,
+            0.0282207988,
+            0.0281919986
+          ]
+        },
+        "1": {
+          "old": [
+            0.0347007997,
+            0.0347103998,
+            0.0346719995,
+            0.0346687995,
+            0.0347328,
+            0.0346719995,
+            0.0346975997
+          ],
+          "candidate": [
+            0.0277312007,
+            0.0277312007,
+            0.0276607983,
+            0.0276640002,
+            0.0276607983,
+            0.0276351981,
+            0.027657602
+          ]
+        },
+        "2": {
+          "old": [
+            0.0351455994,
+            0.0351391993,
+            0.0351295993,
+            0.0351423994,
+            0.0351519994,
+            0.0351647995,
+            0.0351455994
+          ],
+          "candidate": [
+            0.0405983999,
+            0.0406016,
+            0.0405727997,
+            0.0405759998,
+            0.0405631997,
+            0.0405887999,
+            0.0405599996
+          ]
+        },
+        "3": {
+          "old": [
+            0.0420127995,
+            0.0419839993,
+            0.0420031995,
+            0.0419488028,
+            0.0419967994,
+            0.0419711992,
+            0.0419807993
+          ],
+          "candidate": [
+            0.040342398,
+            0.0404063985,
+            0.0404096022,
+            0.0403935984,
+            0.0404224023,
+            0.0404383987,
+            0.0403903984
+          ]
+        }
+      }
+    }
+  },
+  "scope": "Exact extracted production tiled GEMM kernels only; no dispatch, cuBLAS, BF16 or whole-model speed claim.",
+  "timing_limitation": "TN is slower at frozen256cubed matched-pair benchmark; descriptive results are mixed, not universal improvement.",
+  "cleanup": {
+    "pass": true,
+    "pod": "1hn5en13ppe0yc",
+    "volume": "alkmay0x0p",
+    "pod_absent_accessor_verified": true,
+    "volume_absent_accessor_verified": true,
+    "owned_watchdog_entry_disabled": true,
+    "estimated_own_job_usd": 0.15197466229610604,
+    "time_utc": "2026-10-31T05:06:56Z"
+  }
+}
