@@ -8,17 +8,18 @@ from pref_artifact_io_v1 import sha
 import chat_judge_api_heldout_v1 as api
 import chat_judge_campaign_continuation_v7 as memory
 import heldout_sampling_receipt_v1 as sampling
+import heldout_sampling_journal_v1 as durable
 
 HERE=Path(__file__).resolve().parent
 
 def source_hashes():
-    return {name:sha(HERE/name) for name in ['heldout_gate_runner_v1.py','heldout_sampling_receipt_v1.py','heldout_sample_vm_v1.py','chat_judge_api_heldout_v1.py','chat_judge_campaign_continuation_v7.py','pref_artifact_io_v1.py','side_by_side.py','sample_candidates.py','chat_judge.py','judge_sidecar.py','chat_judge_transport_diagnostic.py','chat_judge_api_refusal_v5.py','assess_preference_gates_v1.py','../chat_eval.py','../qa_eval.py','../chat_template.py','../bpe.py','../llama3_bpe.py','../chat_sample_ember.py','../../corpus/decontam.py','../../corpus/eval/simple_qa_v1.jsonl','../../corpus/eval/tinychat_hf_prompts_v1.jsonl','../../corpus/eval/chat_prompts_v1.jsonl']}
+    return {name:sha(HERE/name) for name in ['heldout_gate_runner_v1.py','heldout_sampling_receipt_v1.py','heldout_sampling_journal_v1.py','heldout_sample_vm_v1.py','chat_judge_api_heldout_v1.py','chat_judge_campaign_continuation_v7.py','pref_artifact_io_v1.py','side_by_side.py','sample_candidates.py','chat_judge.py','judge_sidecar.py','chat_judge_transport_diagnostic.py','chat_judge_api_refusal_v5.py','assess_preference_gates_v1.py','../chat_eval.py','../qa_eval.py','../chat_template.py','../bpe.py','../llama3_bpe.py','../chat_sample_ember.py','../../corpus/decontam.py','../../corpus/eval/simple_qa_v1.jsonl','../../corpus/eval/tinychat_hf_prompts_v1.jsonl','../../corpus/eval/chat_prompts_v1.jsonl']}
 
 
 def load_inputs(instance):
     if instance.get('kind')!='BOUND_HELDOUT_API_INSTANCE_V1' or instance['source_sha256']!=source_hashes():
         raise ValueError('held-out instance/source differs')
-    for name in ['policy','adoption','sampling_receipt','sampling_summary','requests','vocab','val_split','train_split']:
+    for name in ['policy','adoption','sampling_receipt','sampling_summary','sampling_journal','training_binding','requests','vocab','val_split','train_split']:
         if sha(instance[name]['path'])!=instance[name]['sha256']:raise ValueError('held-out bound input differs: '+name)
     policy=json.loads(Path(instance['policy']['path']).read_text())
     adoption=json.loads(Path(instance['adoption']['path']).read_text())
@@ -45,6 +46,15 @@ def load_inputs(instance):
         or summary['original_items']!=300 or summary['model_sha256'][0]!=instance['vocab']['sha256']
         or summary['ember_commit']!=receipt['ember_commit'] or summary['dispositions']!=receipt['dispositions']
         or summary['eligible_requests']!=len(receipt['requests'])):raise ValueError('held-out model/sampling summary binding differs')
+    expected_binding=durable.binding_for(items[:300],vocab.encode,summary['model_sha256'],receipt['ember_commit'],
+      instance['training_binding']['sha256'],sha(HERE/'heldout_sample_vm_v1.py'),sha(sampling.__file__),sha(durable.__file__))
+    if summary.get('journal_complete') is not True or summary.get('journal_sha256')!=instance['sampling_journal']['sha256'] or summary.get('journal_binding')!=expected_binding:
+        raise ValueError('sampling journal source/model/request binding differs')
+    journal=durable.parse(Path(instance['sampling_journal']['path']).read_bytes(),expected_binding)
+    raw_calls=[{key:r[key] for key in ['model','body','response']} for r in journal['results'].values()]
+    dispositions=[{'prompt_index':i,'uri':items[i][0],'status':r['status']} for i,r in journal['items'].items()]
+    if journal['pending'] is not None or len(journal['items'])!=300 or raw_calls!=receipt['raw_calls'] or dispositions!=receipt['dispositions']:
+        raise ValueError('sampling journal is incomplete or differs from final capture')
     requests=sampling.replay(receipt,vocab.encode,items[:300])
     if requests!=api.rows(instance['requests']['path']):raise ValueError('held-out requests differ from complete sampling replay')
     prior=policy['budget_migration']['prior_api_ledgers']

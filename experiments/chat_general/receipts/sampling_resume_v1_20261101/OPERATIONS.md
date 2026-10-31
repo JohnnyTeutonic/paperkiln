@@ -1,0 +1,5 @@
+The sampler preserves the original 300 prompt dispositions, seeds and skip rules. It records every request intent before dispatch and each result and item disposition with fsync on the persistent RunPod volume. Completed requests are replayed; unknown outcomes stop for review and are never resampled.
+
+On restore, the remote and optional home journals must have matching source/model/request bindings and one must be an exact prefix of the other. The longer valid chain wins. Divergent, corrupt or torn records stop without replacing evidence. The home journal is uploaded as heldout_sampling.journal.jsonl; normal home transfer may lag. There is no requirement to pull the full home artifact every three minutes.
+
+This amends operational source bindings only. The original 300 prompt universe, both-order API judging, no refill, $25 heldout reserve and $200 cumulative ceiling remain frozen. Root review and adoption are required before activation. The DPO standard runner full-state claim is not established by this packet; its atomic checkpoint/relay repair is being prepared separately.
