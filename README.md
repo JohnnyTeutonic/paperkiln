@@ -222,6 +222,12 @@ an existing model.
   recomputes the retained numerical/greedy checks using NumPy, without loading models.
   Offline replay checks those saved rows; it does not repeat model execution or validate chat rendering.
 
+The Kimi/SRD/recurrence presets accept positive `arch.custom.layers` values;
+the two-layer default and existing checkpoints are preserved. CPU training,
+export and independent Ember/NumPy parity are checked at one and three layers.
+Here Kimi denotes the existing channelwise ELU mixer, not the published KDA
+architecture. [Depth validation](docs/receipts/parity_depth_20261031/cli_validation.json).
+
 ## Quick start: GPU
 
 ```bash

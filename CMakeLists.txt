@@ -450,3 +450,8 @@ add_executable(test_evaluation_probes_helpers tests/test_evaluation_probes_helpe
 target_link_libraries(test_evaluation_probes_helpers PRIVATE microtorch)
 add_test(NAME evaluation_probes_helpers COMMAND test_evaluation_probes_helpers)
 set_tests_properties(evaluation_probes_helpers PROPERTIES TIMEOUT 120)
+
+# Shared parity model depth: preserve the historical two-block default.
+add_executable(test_parity_depth tests/test_parity_depth.cpp)
+target_link_libraries(test_parity_depth PRIVATE microtorch)
+add_test(NAME parity_depth COMMAND test_parity_depth)

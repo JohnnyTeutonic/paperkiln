@@ -1,6 +1,6 @@
 #pragma once
-// Shared 4-lane parity model for the SRD experiments (srd_parity.cpp,
-// srd_needle.cpp): 2 pre-LN blocks, learned positional embeddings,
+// Shared parity model for the SRD experiments (srd_parity.cpp,
+// srd_needle.cpp): configurable pre-LN depth (default two), learned positional embeddings,
 // attention flavor pluggable. Kept identical across experiments so results
 // compare across runs.
 #include <algorithm>
@@ -162,12 +162,14 @@ public:
     // swa_window/swa_sinks are read only for AttnKind::SWA (S1 baseline).
     // recurrence_body (RECURRENCE only): the node's body (ir::recurrence's), null for the default.
     ParityLM(AttnKind kind, size_t vocab, size_t d, size_t n_heads, size_t n_ctx, unsigned seed,
-             size_t swa_window = 64, size_t swa_sinks = 1, const ir::json* recurrence_body = nullptr)
+             size_t swa_window = 64, size_t swa_sinks = 1,
+             const ir::json* recurrence_body = nullptr, size_t n_layers = 2)
         : kind_(kind) {
+        if (n_layers == 0) throw std::runtime_error("ParityLM layers must be positive");
         wte = mod<nn::Embedding>("wte", vocab, d, seed + 1);
         wpe = mod<nn::Embedding>("wpe", n_ctx, d, seed + 2);
-        for (int b = 0; b < 2; ++b) {
-            const unsigned s = seed + 10 * (b + 1);
+        for (size_t b = 0; b < n_layers; ++b) {
+            const unsigned s = seed + 10 * static_cast<unsigned>(b + 1);
             ln1.push_back(mod<nn::LayerNorm>("ln1_" + std::to_string(b), d));
             ln2.push_back(mod<nn::LayerNorm>("ln2_" + std::to_string(b), d));
             mlp.push_back(mod<nn::MLP>("mlp_" + std::to_string(b), d, 4 * d, s + 3));
@@ -215,7 +217,7 @@ public:
         std::vector<int> pos(ids.size());
         for (size_t i = 0; i < pos.size(); ++i) pos[i] = static_cast<int>(i % sl);
         Var h = ops::add(wte->forward(ids), wpe->forward(pos));
-        for (int b = 0; b < 2; ++b) {
+        for (size_t b = 0; b < ln1.size(); ++b) {
             Var a;
             Var n1 = ln1[b]->forward(h);
             switch (kind_) {
@@ -261,7 +263,7 @@ public:
         if (!gpt2_export_blocker().empty()) throw std::runtime_error("ParityLM export_ir: " + gpt2_export_blocker());
         std::vector<ir::json> blocks;
         const size_t ctx = wpe->weight->data.rows();
-        for (int b = 0; b < 2; ++b)
+        for (size_t b = 0; b < ln1.size(); ++b)
             blocks.push_back(windowed() ? nn::gpt2_block_ir(*ln1[b], *swa[b], *ln2[b], *mlp[b], ctx)
                                         : nn::gpt2_block_ir(*ln1[b], *exact[b], *ln2[b], *mlp[b], ctx));
         return nn::gpt2_ir(*wte, *wpe, blocks, *ln_f, head.get());
@@ -270,7 +272,7 @@ public:
         if (!gpt2_export_blocker().empty()) throw std::runtime_error("ParityLM gpt2_state_dict: " + gpt2_export_blocker());
         std::map<std::string, Matrix> sd;
         put_gpt2_shell(sd, *wte, *wpe, *ln_f, *head);
-        for (int b = 0; b < 2; ++b) {
+        for (size_t b = 0; b < ln1.size(); ++b) {
             if (windowed())
                 put_gpt2_block(sd, b, *ln1[b], *swa[b], *ln2[b], *mlp[b]);
             else
@@ -332,12 +334,16 @@ public:
         }
         n.push_back(ir::binary("add", "x", "o", "x"));
         gpt2_ffn_ir(n, *ln2[0], *mlp[0]);
-        fx.ir = family_doc(kind_ == AttnKind::KIMI ? "kimi" : kind_ == AttnKind::SRD ? "srd" : "recurrence", vocab, d,
-                           2, ctx, /*positions=*/true, gpt2_embed_ir(*wte), state, n, gpt2_head_ir(*ln_f, *head));
+        fx.ir = family_doc(kind_ == AttnKind::KIMI  ? "kimi"
+                           : kind_ == AttnKind::SRD ? "srd"
+                                                    : "recurrence",
+                           vocab, d, ln1.size(), ctx, /*positions=*/true, gpt2_embed_ir(*wte),
+                           state, n, gpt2_head_ir(*ln_f, *head));
         if (kind_ == AttnKind::KIMI || kind_ == AttnKind::RECURRENCE) {
             fx.arch = "gpt2";
             put_gpt2_shell(fx.gpt2_sd, *wte, *wpe, *ln_f, *head);
-            for (int b = 0; b < 2; ++b) put_gpt2_block(fx.gpt2_sd, b, *ln1[b], *kimi[b], *ln2[b], *mlp[b]);
+            for (size_t b = 0; b < ln1.size(); ++b)
+                put_gpt2_block(fx.gpt2_sd, b, *ln1[b], *kimi[b], *ln2[b], *mlp[b]);
             fx.warning = std::string(kind_ == AttnKind::KIMI ? "kimi linear attention" : "the recurrence") +
                          " lives in the embedded IR only: the file's architecture is paperkiln (gpt2's tensors), "
                          "which llama.cpp refuses rather than computing softmax attention";
@@ -347,7 +353,7 @@ public:
         using L = gguf::NamedTensor::Layout;
         put_tensor(fx.tensors, "token_embd.weight", wte->weight->data, L::ROWS);
         put_tensor(fx.tensors, "position_embd.weight", wpe->weight->data, L::ROWS);
-        for (int b = 0; b < 2; ++b) {
+        for (size_t b = 0; b < ln1.size(); ++b) {
             const std::string g = "blk." + std::to_string(b) + ".";
             const auto& a = *srd[b];
             put_layernorm(fx.tensors, g + "attn_norm", *ln1[b]);
@@ -365,7 +371,10 @@ public:
     }
 
     Var mean_gate() const {
-        return ops::scale(ops::add(ops::mean(srd[0]->gate()), ops::mean(srd[1]->gate())), 0.5f);
+        if (srd.empty()) throw std::runtime_error("mean_gate requires SRD attention");
+        Var total = ops::mean(srd[0]->gate());
+        for (size_t b = 1; b < srd.size(); ++b) total = ops::add(total, ops::mean(srd[b]->gate()));
+        return ops::scale(total, 1.0f / static_cast<float>(srd.size()));
     }
     void set_falsifier(bool on) {
         for (auto& s : srd) s->shuffle_predictor = on;

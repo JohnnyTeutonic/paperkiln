@@ -619,18 +619,19 @@ Spec parse_spec(const std::string& path) {
                 "exact or swa attention; kimi/srd/attnres are their own presets");
         s.family = "flex";
     }
-    // The 2-block ParityLM cannot honor depth; flex CAN, and with
-    // layernorm/gelu/learned it is the same block bit-for-bit (the
-    // tests/test_flex.cpp equivalence pin). Promote rather than
-    // silently truncate. kimi/srd stay 2-block and must say so.
-    if (s.family == "gpt2" && s.layers != 2) {
-        // exact AND swa promote to flex (deep SWA, ROADMAP 1a); kimi/srd
-        // remain 2-block parity models.
-        if (s.attention == "exact" || s.attention == "swa")
-            s.family = "flex";
-        else if (s.attention == "kimi" || s.attention == "srd" || s.attention == "recurrence")
-            throw std::runtime_error(
-                "kimi/srd/recurrence are 2-block parity models (layers must be 2)");
+    // Keep exact/SWA's established deep-Flex mapping. Kimi/SRD/recurrence
+    // now pass the requested positive depth to the shared parity model.
+    if (s.family == "gpt2" && s.layers != 2 && (s.attention == "exact" || s.attention == "swa"))
+        s.family = "flex";
+    if (s.family == "gpt2" &&
+        (s.attention == "kimi" || s.attention == "srd" || s.attention == "recurrence")) {
+        const json custom = arch.value("custom", json::object());
+        if (s.layers == 0 ||
+            (custom.contains("layers") &&
+             (!custom["layers"].is_number_integer() ||
+              (custom["layers"].is_number_unsigned() ? custom["layers"].get<uint64_t>() == 0
+                                                     : custom["layers"].get<int64_t>() <= 0))))
+            throw std::runtime_error("ParityLM layers must be a positive integer");
     }
 
     if (s.flex_only_keys && s.family != "flex")
@@ -1212,8 +1213,9 @@ parity::AttnKind attn_kind(const std::string& s) {
 // body, IR_SPEC.md 6.10) as the IR's ordered json, or nothing for the default body.
 std::shared_ptr<parity::ParityLM> make_parity(const Spec& s, size_t vocab) {
     const ir::json body = s.recurrence.is_null() ? ir::json() : ir::json::parse(s.recurrence.dump());
-    return std::make_shared<parity::ParityLM>(attn_kind(s.attention), vocab, s.d, s.heads, s.T, s.seed, s.window,
-                                              s.sinks, s.recurrence.is_null() ? nullptr : &body);
+    return std::make_shared<parity::ParityLM>(attn_kind(s.attention), vocab, s.d, s.heads, s.T,
+                                              s.seed, s.window, s.sinks,
+                                              s.recurrence.is_null() ? nullptr : &body, s.layers);
 }
 
 // Per-module L2 gradient norms, grouped by the first dotted-path segment
@@ -2326,12 +2328,6 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     if (plan_only) return 0;
     if (s.vocab_gguf.empty() || (s.objective == "lm" && s.corpus.empty()))
         throw std::runtime_error("spec needs data.vocab, and data.corpus for objective lm");
-    // Only the kimi/srd parity lanes are depth-fixed; flex and llama take
-    // any depth, and attnres wires s.layers into its stack.
-    if (s.family == "gpt2" && s.attention != "attnres" && s.layers != 2)
-        throw std::runtime_error(
-            "kimi/srd parity lanes: layers must be 2 "
-            "(exact/swa at depth ride the flex family)");
 
     std::filesystem::create_directories(s.out_dir);
     // Resuming = a checkpoint step > 0 in state.txt. A resumed run keeps the

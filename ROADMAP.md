@@ -133,7 +133,6 @@ that cannot fail the build.
   variants are refused by name. The window and sinks live in the IR only
   (family_hint `gpt2_swa`), so llama.cpp loads a sliding-window file but
   computes dense attention.
-- **Kimi and SRD in mtstudio beyond two-block parity models.**
 - **The taxonomy's "stream" lattice slot.**
 
 ## 7. Studio, chat and distribution

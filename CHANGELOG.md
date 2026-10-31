@@ -977,3 +977,13 @@ for separate and tied Flex heads. Tanh remains the default; missing or conflicti
 approximation records refuse. Actual trained, saved/reloaded CPU models pass
 full-row logits and greedy checks, with independent raw replay retained.
 [Validation](docs/receipts/hf_exact_gelu_20261031/validation.json).
+
+## Configurable Kimi/SRD/recurrence depth (31 October 2026)
+
+The shared parity model now honours positive requested depth in Studio training,
+reload, exports and SRD mean-gate diagnostics. The default remains two blocks.
+Actual old/new binary comparisons retain identical two-block trained tensors and
+score bits; deeper models pass whole-model gradient and independent IR/Ember
+prefill/decode checks. This is CPU validation of the existing architectures, not
+GPU performance or model-quality evidence. The completed depth item leaves ROADMAP.
+[Actual CLI and historical comparison](docs/receipts/parity_depth_20261031/cli_validation.json).
