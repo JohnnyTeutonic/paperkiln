@@ -1,0 +1,24 @@
+{
+  "manifest_sha256": "bb65a5cba3b9db0c20fce916915d9434ba91d3dcba13876238df15839fb84d02",
+  "members": 975,
+  "source_hashes_verified": {
+    "src/ops.cpp": "a2d5110f21331a1018263e0cda9cb5c5759d59b30930a357cf1fb8359e33288c",
+    "include/microtorch/ops.hpp": "9db1581b296093793a6d6e4cd2fec59ed6a4edfe660f8ac3e525236d6629914d",
+    "tests/test_ternary_scale_boundary.cpp": "2fc1c6985efc17a035064a03ce3c22408f36442a6c7b1514916d919c61a12c59",
+    "CMakeLists.txt": "02653e3a502a9e4e66dac21e8c87318c9dd13200827257bddd0fdd757645159a",
+    "tools/replay_ternary_scale_boundary.py": "3870eadaec2d7bcaeb103de7381b4612465758201aa12d1066c414beef699c4b"
+  },
+  "configure_argv": [
+    "cmake",
+    "-S",
+    "/home/jonat/ternary_scale_archive_preflight_20261031/source",
+    "-B",
+    "/home/jonat/ternary_scale_archive_preflight_20261031/build",
+    "-DMICROTORCH_CUDA=OFF",
+    "-DMICROTORCH_DEVCHECK=ON",
+    "-DCMAKE_BUILD_TYPE=Release",
+    "-DMICROTORCH_BUILD_PYTHON=OFF"
+  ],
+  "configure_returncode": 1,
+  "scope": "Clean archive extraction and CPU configure only; no compile, GPU execution or paid launch."
+}
