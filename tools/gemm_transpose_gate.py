@@ -1,4 +1,4 @@
-"""One-shot source-bound L4 validation of explicit transpose GEMM loads, not adoption timing."""
+"""One-shot source-bound L4 validation of explicit transpose GEMM loads, NT-only prospective adoption criterion."""
 
 import argparse
 import hashlib
@@ -26,7 +26,7 @@ def run(upload, manifest_sha, out):
     build = Path("/content/gemm_transpose_build")
     report = {
         "pass": False,
-        "scope": "transpose GEMM loads only; bitwise old comparison and descriptive kernel timings; no model speed claim",
+        "scope": "NT-only GEMM load change; bitwise comparison and prospective kernel-only criterion; no model speed claim",
         "commands": [],
         "errors": [],
     }
@@ -158,12 +158,15 @@ def run(upload, manifest_sha, out):
                 out / "strict.log",
                 "--timing",
                 out / "timing.log",
+                "--adoption",
             ],
             60,
         )
         result = json.loads((out / "independent_replay.log").read_text())
         if result.get("pass") is not True or result.get("cases") != 96:
             raise ValueError("Missing strict replay proof")
+        if result.get("adoption", {}).get("pass") is not True:
+            raise ValueError("Missing prospective adoption proof")
         report["independent_replay"] = result
         report["pass"] = True
     except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as e:

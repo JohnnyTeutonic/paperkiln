@@ -1,0 +1,26 @@
+{
+  "status": "PROSPECTIVE_UNLAUNCHED",
+  "reason": "V1 exploratory timing improved NT but regressed TN; restore original NN/TN/TT kernels and retain only NT B coalescing",
+  "unchanged_correctness": {
+    "cases": 96,
+    "old_candidate_bitwise_equal": true,
+    "independent_full_array_normalized_bound": 3e-05
+  },
+  "adoption": {
+    "shape": [
+      256,
+      256,
+      256
+    ],
+    "pairs": 7,
+    "alternating_order": true,
+    "NT_paired_median_old_over_new_min": 1.05,
+    "NT_pair_wins_min": 5,
+    "NN_TN_TT_paired_median_old_over_new_min": 0.9
+  },
+  "scope": "kernel engineering gate, not model speed or general statistical claim",
+  "max_additional_usd": 0.84,
+  "prior_actual_usd_approx": 0.152,
+  "cumulative_gemm_max_usd": 1.0,
+  "deadline_utc": "2026-10-31T06:25:00Z"
+}

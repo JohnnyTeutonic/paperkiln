@@ -139,12 +139,41 @@ def timings(text):
     }
 
 
+def adoption_gate(timing):
+    """Prospective V2 engineering criterion, not an inferential speed claim."""
+    import statistics
+
+    ratios = {}
+    for flag in range(4):
+        d = timing["flags"][str(flag)]
+        old, new = d["old"], d["candidate"]
+        require(len(old) == len(new) == 7, "seven matched timing pairs required")
+        ratio = [a / b for a, b in zip(old, new)]
+        ratios[str(flag)] = statistics.median(ratio)
+        if flag == 1:
+            require(ratios[str(flag)] >= 1.05, "NT median improvement below 5 percent")
+            require(sum(x > 1 for x in ratio) >= 5, "NT fewer than five paired wins")
+        else:
+            require(
+                ratios[str(flag)] >= 0.90,
+                "control median regression exceeds 10 percent",
+            )
+    return {
+        "pass": True,
+        "paired_median_old_over_new": ratios,
+        "scope": "256 cubed, seven alternating CUDA-event pairs; engineering adoption gate only",
+    }
+
+
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("log", type=Path)
     p.add_argument("--timing", type=Path)
+    p.add_argument("--adoption", action="store_true")
     a = p.parse_args()
     result = replay(a.log.read_text())
     if a.timing:
         result["timing"] = timings(a.timing.read_text())
+        if a.adoption:
+            result["adoption"] = adoption_gate(result["timing"])
     print(json.dumps(result))

@@ -90,3 +90,20 @@ def test_timing():
     ):
         with pytest.raises(ValueError):
             q.timings(bad)
+
+
+def test_prospective_adoption():
+    d = {
+        "flags": {
+            str(f): {"old": [1.0] * 7, "candidate": [0.8 if f == 1 else 1.0] * 7}
+            for f in range(4)
+        }
+    }
+    assert q.adoption_gate(d)["pass"]
+    import copy
+
+    for flag, values in [(1, [1.0] * 7), (2, [1.2] * 7), (1, [0.1] * 3 + [1.01] * 4)]:
+        bad = copy.deepcopy(d)
+        bad["flags"][str(flag)]["candidate"] = values
+        with pytest.raises(ValueError):
+            q.adoption_gate(bad)
