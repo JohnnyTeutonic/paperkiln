@@ -1,0 +1,42 @@
+{
+  "kind": "READONLY_V8_PREPARED_PROJECTION",
+  "status": "PASS",
+  "source_sha256": {
+    "chat_judge_campaign_continuation_v8.py": "ce3e299f51a56e2b3ddd9b5a359a514349ccda2aaeababd3df999eebcb564798",
+    "chat_judge_campaign_continuation_v7.py": "2123d45b0057773817dff9a4024751d1c0d2678050d7f5228382f54a5689ea17",
+    "chat_judge_api_refusal_v5.py": "11cd8c7880356afaef631f6168d02dd75025cd4be58d4c6fc69fddb966ed0dd7",
+    "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+  },
+  "protocol_sha256": "6dd27d1d7d653348e3a28c3bfd38d8962abee6babad5067c233fe21afb8c5a75",
+  "evidence_sha256": {
+    "/mnt/c/ml_artifacts/pref_api_20261031/budget.jsonl": "7406aabbb0e9be9c02d8c9cb7fe198f9142afd65d5168bbe53dd6ffa1a9f9369",
+    "/mnt/c/ml_artifacts/pref_api_20261031/api_cache.jsonl": "8f1062d90d8c00e88c00a5b1b8430a08b1ae325231ace70196f425c04a631985",
+    "/mnt/c/ml_artifacts/pref_api_20261031/api_cache.jsonl.failures.jsonl": "e0a8e1e5253f7a8fc4ba60501c18020f85fc57b094113743d5366f0e0dcf2018",
+    "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v7/HALTED": "8888daccc5f78992753db7bc583c046b299f842404d01b840515ad12adff2cf3",
+    "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v7/STOPPED": "b0f5e65f95fd54899b289229db2388f54d703075114b31aef915e5d659e53a43",
+    "/mnt/c/ml_artifacts/pref_api_20261031/budget.raw/9ec8e16cff374d32811248dc4ca16140.request.json": "75b499719e2cc99b017446975ce3c721ecc42f3451b8c04172ff68f30f4d2c6b",
+    "/mnt/c/ml_artifacts/pref_api_20261031/budget.raw/9ec8e16cff374d32811248dc4ca16140.error.json": "236d09b87031b783ee92064d3d8d14eb5ae0d39c13e435969828fe0d03c52c68",
+    "/mnt/c/ml_artifacts/pref_api_20261031/budget.raw/9ec8e16cff374d32811248dc4ca16140.transport.json": "72445f27e1e0f6c5153a70333902c4bca7de0a82276126633842a6da5c6a01fc"
+  },
+  "projected_retention_only_not_appended": true,
+  "actual_state_unchanged": true,
+  "explicit_first_dispatch_remaining": true,
+  "projected_status": {
+    "explicit_fresh_dispatch_remaining": true,
+    "attempts_since_start": 0,
+    "missing_rankings": 3263,
+    "valid_api_rankings": 2777,
+    "eligible_missing_rankings": 3259,
+    "preserved_failed_rankings": 2,
+    "unattempted_paired_exclusions": 2,
+    "api_actual_spend_usd": 41.874124,
+    "retained_unknown_ceiling_usd": 1.0,
+    "baseline_usd": 20.08558,
+    "gate_reserve_usd": 25.0
+  },
+  "provider_calls": 0,
+  "credential_accesses": 0,
+  "disposition_performed": false,
+  "activation": false
+}
