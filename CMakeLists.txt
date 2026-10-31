@@ -458,3 +458,8 @@ add_test(NAME parity_depth COMMAND test_parity_depth)
 
 add_executable(bench_layernorm_cpu tools/bench_layernorm_cpu.cpp)
 target_link_libraries(bench_layernorm_cpu PRIVATE microtorch)
+
+add_executable(test_layernorm_host tests/test_layernorm_host.cpp)
+target_link_libraries(test_layernorm_host PRIVATE microtorch)
+add_test(NAME layernorm_host COMMAND test_layernorm_host)
+set_tests_properties(layernorm_host PROPERTIES TIMEOUT 120)

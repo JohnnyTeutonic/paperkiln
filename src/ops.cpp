@@ -402,22 +402,30 @@ Var layernorm(const Var& x, const Var& gamma, const Var& beta, float eps) {
     // host exactly as the CPU loop leaves them (write-through), so the
     // backward below is device/CPU agnostic.
     if (!device::devops::layernorm_fwd(x->data, gamma->data, beta->data, eps, out, *xhat, *rstd)) {
+        // Acquire checked HOST-storage pointers once, not Matrix::data() (the
+        // vendored CUDA Matrix may expose a device pointer there). Arithmetic
+        // and reduction order are unchanged; an empty loop acquires no pointer.
+        const float* X = R && C ? &x->data(0, 0) : nullptr;
+        const float* G = C ? &gamma->data(0, 0) : nullptr;
+        const float* B = C ? &beta->data(0, 0) : nullptr;
+        float* XH = R && C ? &(*xhat)(0, 0) : nullptr;
+        float* O = R && C ? &out(0, 0) : nullptr;
         for (size_t i = 0; i < R; ++i) {
             float mu = 0.0f;
-            for (size_t j = 0; j < C; ++j) mu += x->data(i, j);
+            for (size_t j = 0; j < C; ++j) mu += X[i * C + j];
             mu /= static_cast<float>(C);
             float var = 0.0f;
             for (size_t j = 0; j < C; ++j) {
-                const float d = x->data(i, j) - mu;
+                const float d = X[i * C + j] - mu;
                 var += d * d;
             }
             var /= static_cast<float>(C);
             const float rs = 1.0f / std::sqrt(var + eps);
             (*rstd)[i] = rs;
             for (size_t j = 0; j < C; ++j) {
-                const float xh = (x->data(i, j) - mu) * rs;
-                (*xhat)(i, j) = xh;
-                out(i, j) = gamma->data(0, j) * xh + beta->data(0, j);
+                const float xh = (X[i * C + j] - mu) * rs;
+                XH[i * C + j] = xh;
+                O[i * C + j] = G[j] * xh + B[j];
             }
         }
     }
@@ -433,17 +441,28 @@ Var layernorm(const Var& x, const Var& gamma, const Var& beta, float eps) {
         Matrix dg(1, C), db(1, C), dx(R, C);
         const bool on_dev = device::devops::layernorm_bwd(dY, *xhat, *rstd, g->data, want_dgb, &dg,
                                                           &db, x->requires_grad, &dx);
+        const float *DY = nullptr, *XH = nullptr, *G = nullptr;
         if (!on_dev) {
             device::materialize(self->grad);  // B2.3c: host-read below
             device::materialize(*xhat);       // the forward may have deferred it
+            // Keep malformed gradients a checked refusal, never an unchecked
+            // access through the contiguous host pointers below.
+            if (R != xhat->rows() || C != xhat->cols() || g->data.rows() != 1 ||
+                g->data.cols() != C)
+                throw std::runtime_error("layernorm: backward gradient shape mismatch");
+            DY = R && C ? &dY(0, 0) : nullptr;
+            XH = R && C ? &(*xhat)(0, 0) : nullptr;
+            G = C ? &g->data(0, 0) : nullptr;
         }
 
         if (want_dgb) {
             if (!on_dev) {
+                float* DG = C ? &dg(0, 0) : nullptr;
+                float* DB = C ? &db(0, 0) : nullptr;
                 for (size_t i = 0; i < R; ++i)
                     for (size_t j = 0; j < C; ++j) {
-                        dg(0, j) += dY(i, j) * (*xhat)(i, j);
-                        db(0, j) += dY(i, j);
+                        DG[j] += DY[i * C + j] * XH[i * C + j];
+                        DB[j] += DY[i * C + j];
                     }
             }
             if (g->requires_grad) g->accumulate(std::move(dg));
@@ -452,18 +471,19 @@ Var layernorm(const Var& x, const Var& gamma, const Var& beta, float eps) {
         if (!x->requires_grad) return;
         // dx = rstd * (dxhat - mean(dxhat) - xhat * mean(dxhat .* xhat))
         if (!on_dev) {
+            float* DX = R && C ? &dx(0, 0) : nullptr;
             for (size_t i = 0; i < R; ++i) {
                 float m1 = 0.0f, m2 = 0.0f;
                 for (size_t j = 0; j < C; ++j) {
-                    const float dxh = dY(i, j) * g->data(0, j);
+                    const float dxh = DY[i * C + j] * G[j];
                     m1 += dxh;
-                    m2 += dxh * (*xhat)(i, j);
+                    m2 += dxh * XH[i * C + j];
                 }
                 m1 /= static_cast<float>(C);
                 m2 /= static_cast<float>(C);
                 for (size_t j = 0; j < C; ++j) {
-                    const float dxh = dY(i, j) * g->data(0, j);
-                    dx(i, j) = (*rstd)[i] * (dxh - m1 - (*xhat)(i, j) * m2);
+                    const float dxh = DY[i * C + j] * G[j];
+                    DX[i * C + j] = (*rstd)[i] * (dxh - m1 - XH[i * C + j] * m2);
                 }
             }
         }

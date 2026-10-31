@@ -1,0 +1,10 @@
+[ 57%] Built target transformer_core
+[ 61%] Building CXX object CMakeFiles/microtorch.dir/src/ops.cpp.o
+[ 65%] Linking CXX static library libmicrotorch.a
+[ 96%] Built target microtorch
+[ 96%] Linking CXX executable bench_layernorm_cpu
+[100%] Built target bench_layernorm_cpu
+[ 57%] Built target transformer_core
+[ 96%] Built target microtorch
+[100%] Linking CXX executable mtstudio
+[100%] Built target mtstudio

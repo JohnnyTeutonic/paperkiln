@@ -1,0 +1,48 @@
+{
+  "status": "COMPLETE",
+  "adopt": true,
+  "operation_aggregate": {
+    "block_ratios": [
+      3.6354262458102986,
+      3.2345648923695367,
+      3.972516582821732,
+      3.766674841159992,
+      3.7236362075122535,
+      3.5085172376498055,
+      3.8669275245764716,
+      3.6254015075048835
+    ],
+    "geometric_mean": 3.6603785982834536,
+    "bootstrap95_ci": [
+      3.5015712337321316,
+      3.802299032086212
+    ]
+  },
+  "actual_score": {
+    "block_ratios": [
+      1.3588695562528088,
+      1.160153796071145,
+      1.348783897278804,
+      1.287292990538323,
+      1.2822797390134728,
+      1.2522375264480883,
+      1.2655272124819563,
+      1.285882097834348
+    ],
+    "geometric_mean": 1.2788125965254877,
+    "bootstrap95_ci": [
+      1.236289445950128,
+      1.3165763314282448
+    ]
+  },
+  "trials": 32,
+  "sources": {
+    "src/ops.cpp": "3c44fe8453612ca356686bcce7d0907f08825176accee3e15f1f7dbd8b4a940c",
+    "tools/bench_layernorm_cpu.cpp": "e5e40e1e80703000339e3badeddbda83d6db62c0190ae4ddab5313d2e7d00e60",
+    "tools/compare_layernorm_cpu.py": "d1f54f86346765b30dccb3705f9fff1a96114996b3ad87c29df6908c9cd188e3",
+    "CMakeLists.txt": "85ba4430924eaa7272b2263da9ddbabac6ecfde6365856ac1e4b01821e892896"
+  },
+  "protocol_sha256": "b944e18372bac7486f5d8be674bea609603cbc9b5665ba1710fe095f806946b3",
+  "trials_sha256": "1acaf075ccaf919e90b1c421dad034277255ba9db27a2764c4b4159a462282f8",
+  "limits": "Tiny CPU teacher-forced score, startup included; fixed equal-weight operation cases. Contiguous blocks may be correlated; no general Transformer or GPU claim."
+}
