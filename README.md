@@ -307,6 +307,15 @@ graph derivative check: CLI GPU training/save/export, quality, whole-model resid
 and speed remain open. `A()` exp/scale and initial embedding-gradient scatter still
 use host paths. [Composed Mamba1 evidence](docs/receipts/mamba1_composed_cuda_20261031/result.json).
 
+The same two tiny geometries also pass an actual L4 `mtstudio` LM lifecycle:
+three training steps, checkpoint save/reload, byte-identical F32 export, and saved
+scoring. Every step records convolution and selective-scan forward/backward kernel
+counts. Frozen NumPy and CPU Ember prefill/decode replay checks all 8 × 7 score
+rows per case: maximum error 2.24e-8 against a fixed 1e-5 bound, with all argmaxes
+matching. This is a bounded CLI lifecycle proof; mixed host/device boundaries
+remain, and SFT, quality, complete residency and speed are not established.
+[CLI lifecycle evidence](docs/receipts/mamba1_cli_cuda_20261031/README.md).
+
 Deferred CUDA GRPO sampling and reference log-probabilities now materialize
 logits before their host reads. Actual L4 regressions reproduce both old failures
 and verify the repaired CLI helpers, including sampled IDs and RNG advancement.
