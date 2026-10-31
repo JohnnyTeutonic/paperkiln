@@ -1,0 +1,42 @@
+{
+  "status": "READY_FOR_ROOT_SERIAL_ADMISSION",
+  "reviewer": "Codex independent cleanroom_review",
+  "candidate_source": "e64c5461fd54d72c5364251748f55d6f26319661",
+  "production_source": "bca00166f75d53a01094e5ebfa599a004062a21e",
+  "baseline_source": "1b2789e656dda996efb79490cf689d0eff45eefe",
+  "manifest_sha256": "6ba3b8cdb313cf1dbca6963dff7c72beb61c59911d6121bf7454769d83200dfe",
+  "archive_git_blob_inventory": {
+    "baseline": 3042,
+    "candidate": 3053
+  },
+  "all_upload_bytes_sha256_verified": true,
+  "payload_equals_candidate_archive": true,
+  "source_packet_tests": {
+    "passed": 10,
+    "seconds": 2.22
+  },
+  "guard_tests": {
+    "passed": 23,
+    "seconds": 0.21
+  },
+  "scope": [
+    "Full candidate14; baseline10 partial controls only",
+    "Unchanged exact row/ID/warm-pass and both individual1.15 speed criteria; PARTS0",
+    "Default health false and inherited environment cleared; deterministic speed separate",
+    "Independent finite binary64 component references/full raw rows and isolated actual release trap probes",
+    "Source only admission readiness; no actual GPU result or adoption claim"
+  ],
+  "resolved_review_findings": [
+    "Nonfinite semantic outputs explicitly rejected and NaN mutation tested",
+    "Component numerical rows retained for independent replay",
+    "Correct tinyllama_server build target/path"
+  ],
+  "limits": [
+    "HTTP seed0/IDs do not prove full RNG state advancement equivalence",
+    "Final root registration/freeze, fresh provider inventory, fixed absolute deadline and $2/max3h fences remain required",
+    "Historical baseline instability and failed speed gate remain preserved"
+  ],
+  "provider_calls": 0,
+  "config_writes": 0,
+  "gpu_launches": 0
+}
