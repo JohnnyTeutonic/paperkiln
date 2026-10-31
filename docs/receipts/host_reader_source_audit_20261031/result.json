@@ -1,0 +1,42 @@
+{
+  "status": "SOURCE_ONLY_BOUNDED_AUDIT",
+  "source_commit": "735533d6f3693b62b6be92f0b3a2454d6de27f84",
+  "files": {
+    "src/ops.cpp": "a2d5110f21331a1018263e0cda9cb5c5759d59b30930a357cf1fb8359e33288c",
+    "src/autograd.cpp": "1f43e97883ba23786efaecc2bb75acfe601feb7fe33078bfb10f6182e10e9c6c",
+    "src/cuda_resident.cu": "fe1222083a38f6002a8bb96350dd8df41a536e6184d8a6b6503eebc7b6591713",
+    "include/microtorch/autograd.hpp": "1b265eff977c9e1d3b9eb4a41a31a1b8e8a19e452a5d15df45556498d3a387ab",
+    "include/microtorch/ops.hpp": "9db1581b296093793a6d6e4cd2fec59ed6a4edfe660f8ac3e525236d6629914d",
+    "src/llama.cpp": "d360d2ef78245147b3dc25cea06937806b8afb3c14086d892c06d50cf7b41a9e",
+    "tests/test_checkpointing.cpp": "3b03e183a53ac11ebcd61b5c769b78649052f8e255eca50ed81bdf9a5b7ca62d"
+  },
+  "ranges": [
+    {
+      "file": "src/ops.cpp",
+      "first_line": 2930,
+      "last_line": 3157,
+      "sha256": "a8c0513aa69d10e89732ac1ee784fff1966ce1f853fc8df325dd61106d4a6865"
+    },
+    {
+      "file": "src/ops.cpp",
+      "first_line": 3174,
+      "last_line": 3266,
+      "sha256": "2ce977aa47cce5400b156b25fac43eb8bbc45b1ad45f160e159d6969fd995d95"
+    },
+    {
+      "file": "src/autograd.cpp",
+      "first_line": 139,
+      "last_line": 178,
+      "sha256": "a0fe10cc0e53f54d14229877ed70dadf813545d188a7301a42502b33b0637404"
+    },
+    {
+      "file": "src/cuda_resident.cu",
+      "first_line": 96,
+      "last_line": 100,
+      "sha256": "832e84928ed4bacf8df16dc40f2284e16df04ec80a38d481a7c5f868538f0a8f"
+    }
+  ],
+  "actual_cuda": false,
+  "build_executed": false,
+  "production_edited": false
+}
