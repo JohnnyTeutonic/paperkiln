@@ -1,0 +1,76 @@
+{
+  "cpu_replay": {
+    "pass": true,
+    "actual_cuda": false,
+    "cases": 7,
+    "independent_replay": true,
+    "old_numeric_failure_verified": false,
+    "worst_abs_error": 3.3113691511044152e-09,
+    "bound": 2e-05
+  },
+  "exact_two_line_patch_vs_public_git_blob": true,
+  "baseline_sha256": "7550dd2a34f30f506794f466941859cde8cfa2bd647692e3f8e640a289ae502f",
+  "review_status": "reviewed corrections pass; frozen byte review pending",
+  "empty_control": {
+    "actual_cuda": false,
+    "case": "empty_ids",
+    "computed_table": true,
+    "deferred": true,
+    "empty_rejected": true,
+    "host_poison": false,
+    "ids": [],
+    "input": [
+      -0.75,
+      -0.625,
+      -0.5,
+      -0.375,
+      -0.25,
+      -0.125,
+      0.0,
+      0.125,
+      0.25,
+      0.375,
+      0.5,
+      0.625
+    ],
+    "input_shape": [
+      4,
+      3
+    ],
+    "ops_enabled": false,
+    "pass": true,
+    "stale_operand_proved": false
+  },
+  "attacks": [
+    {
+      "case": "empty_ids",
+      "rejected": true,
+      "reason": "old failure mode requires exact deferred fallback"
+    },
+    {
+      "case": "negative_id",
+      "rejected": true,
+      "reason": "old failure mode requires exact deferred fallback"
+    },
+    {
+      "case": "large_id",
+      "rejected": true,
+      "reason": "old failure mode requires exact deferred fallback"
+    }
+  ],
+  "files": {
+    "src/ops.cpp": "80cbbddf0fe43867cdb3aaae45eac68f33d9ee5b0ace3356b0ef67ca89f24170",
+    "tests/test_embedding_fallback.cpp": "19cc519bf44bb602f8ad17cee512d3cf18a2ff50b62b4e8af0ae1977ee881630",
+    "tools/replay_embedding_fallback.py": "af50513d222bd14b541615345d145278e771b89f94b60efa83f7cb0ac96a1192",
+    "tools/colab_chat/embedding_fallback_gate.py": "9690e07ad6a1a0fec6fda1eb1d98db7d1d00a358263ee233fe33fe441342ebab"
+  },
+  "independent_review_conclusions": [
+    "Production materialize/guard is confined to host fallback and preserves gather/scatter arithmetic.",
+    "Computed slice creates device-backed table distinct from source; stale host bytes are deliberately poisoned and device freshness asserted. Ordinary leaf table remains a coherent control.",
+    "Duplicate ids exercise additive gradient scatter; independently reconstructed weights/9 and expected gradients match all outputs.",
+    "Wrapper enforces exact candidate-to-old two-line byte patch and restores candidate source hash.",
+    "Initial CPU empty-input assumption and expected-failure parser bypass were reported; corrected source independently retested successfully."
+  ],
+  "python_optimized_replay": "Independent python -O invocation on cpu_fixed.log passed all seven cases.",
+  "remaining_review": "Frozen packet source/archive byte match pending; no actual CUDA outcome reviewed yet."
+}
