@@ -1,0 +1,56 @@
+{
+  "finding": "Exact source, weights and prompt IDs do not recover the historical generation KV-cache trajectory.",
+  "generation_source": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+  "api_cpp_sha256": "100a6f7a157d7d20c53f44bc3548a1c0ac76776c29cc0aac1ce44019db9f7ee5",
+  "source_lines": {
+    "prefix_reuse_default_and_resume": "api.cpp:864-884",
+    "prior_cache_clear_or_reuse": "api.cpp:898-907"
+  },
+  "prefix_reuse_policy": "EMBER_PREFIX_REUSE defaults ON unless environment value is exactly0. The prior request cached prompt and reply; common leading tokens are reused, leaving at least the last prompt token recomputed.",
+  "historical_prefix_reuse_environment": "Not recorded explicitly in selected gen_engine receipts; source default alone is not proof of actual original environment.",
+  "original_call_order_source": {
+    "commit": "3dc818b2476b0957b1337b4c9af22474b76350b5",
+    "path": "tools/carry12_eval.py:generate/play",
+    "sha256": "6630aa9a7327f14d5d16b2526dc06a08370deb00ecde7f67e3b187fbebd9a9b5"
+  },
+  "affected_cases": [
+    {
+      "key": "carry12_v1:recall:0017|gate_self|4",
+      "prior_self_turn": 3,
+      "original_previous_request": "Previous self-turn in the same conversation; prior actual cached trajectory is not retained."
+    },
+    {
+      "key": "carry12_v1:correction:0046|gate_self|2",
+      "prior_self_turn": 1,
+      "original_previous_request": "Previous self-turn in the same conversation; prior actual cached trajectory is not retained."
+    },
+    {
+      "key": "carry12_v1:correction:0224|gate_self|2",
+      "prior_self_turn": 1,
+      "original_previous_request": "Previous self-turn in the same conversation; prior actual cached trajectory is not retained."
+    },
+    {
+      "key": "carry12_v1:correction:0306|gate_self|2",
+      "prior_self_turn": 1,
+      "original_previous_request": "Previous self-turn in the same conversation; prior actual cached trajectory is not retained."
+    },
+    {
+      "key": "carry12_v1:correction:0111|gate_self|3",
+      "prior_self_turn": 2,
+      "original_previous_request": "Previous self-turn in the same conversation; prior actual cached trajectory is not retained."
+    },
+    {
+      "key": "carry12_v1:recall:0365|gate_self|8",
+      "prior_self_turn": 7,
+      "original_previous_request": "Previous self-turn in the same conversation; prior actual cached trajectory is not retained."
+    }
+  ],
+  "new_frozen_reconstruction": {
+    "commit": "1e5b7584454ad1681025a6e5e994725a86595f6b",
+    "calls": "Directly supply each saved full history twice; the first call may be fresh or share a prefix with a different replayed case; the second repeats the same history.",
+    "limitation": "These are newly measured trajectories, not an exact replay of original preceding calls/cache state. Any repeated output agreement or disagreement must retain this distinction.",
+    "no_active_inputs_changed": true
+  },
+  "scorer_scope": "Untouched historical native scorer uses reconstructed original256request chunks/packed16384geometry. Its source-bound reconstruction is separate from generation cache-trajectory qualification.",
+  "preservation": "No prefix-reuse flag silently disabled; no23krequest rerun, original history/tolerance/flag changes or S-full launch."
+}
