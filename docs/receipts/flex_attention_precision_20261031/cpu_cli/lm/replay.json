@@ -1,0 +1,13 @@
+{
+  "pass": true,
+  "objective": "lm",
+  "layers": 1,
+  "d_ff": 12,
+  "actual_cuda": false,
+  "steps": 3,
+  "all_8x7_rows_error": 1.3618892680256067e-08,
+  "all_argmax_agree": true,
+  "reload_F32_GGUF_byte_identical": true,
+  "saved_inference_recipe_precision_bit_equal": true,
+  "binary_sha256": "00fb812f2a716eb2fa540bb2da30cb42772aa57e25e1b545cd1f3cab629e9df0"
+}

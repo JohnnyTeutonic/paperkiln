@@ -1,0 +1,4 @@
+/home/jonat/pk_flex_bf16_20261031/tools/mtstudio.cpp:41:10: fatal error: httplib.h: No such file or directory
+   41 | #include "httplib.h"
+      |          ^~~~~~~~~~~
+compilation terminated.

@@ -292,6 +292,14 @@ Saved scoring, chat and exports use FP32 attention. The fixed tiny actual-L4 gat
 passes correctness; quality and speed benefits remain unestablished.
 [Recipe, restrictions and evidence](docs/receipts/gpt2_attention_precision_20261031/RESULTS.md).
 
+Canonical plain Flex also has opt-in train-only `attention_precision: "bf16"` wiring:
+exact attention, learned positions, LayerNorm/tanh-GELU, pre-norm residual blocks
+with final norm and an untied head. Other Flex variants are refused initially.
+CPU model controls check all gradients independently at depths 1 and 3, with FFN widths 12 and 20;
+LM/SFT save/reload and FP32 NumPy/CPU Ember score parity pass. This extension has
+no actual CUDA integration result, quality, speed or adoption evidence yet.
+[CPU evidence and exact limitations](docs/receipts/flex_attention_precision_20261031/README.md).
+
 Nine registered host-helper cases now pass an actual L4 CUDA + DEVCHECK gate:
 `exp`, `div`, `where`, `rowsum`, `rowmax`, `broadcast_cols`, `relu_`, `sigmoid_`
 and `scale_`. Poison checks exercise deferred inputs and upstream gradients;

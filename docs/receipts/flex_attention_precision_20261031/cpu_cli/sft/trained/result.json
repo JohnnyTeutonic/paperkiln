@@ -1,0 +1,22 @@
+{
+  "T": 8,
+  "accum": 1,
+  "attention": "exact",
+  "batch": 2,
+  "best_val": 1.8806887865066528,
+  "checkpoint_activations": false,
+  "d": 8,
+  "early_stopped": false,
+  "family": "flex",
+  "final_step": 3,
+  "heads": 2,
+  "layers": 3,
+  "lr": 0.0010000000474974513,
+  "name": "flex_precision",
+  "params": 2196,
+  "seed": 37,
+  "steps_requested": 3,
+  "tokens_per_second": 11534.482696473693,
+  "train_attention_precision": "bf16",
+  "wall_seconds": 0.004161435
+}

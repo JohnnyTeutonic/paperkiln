@@ -1,0 +1,97 @@
+{
+  "status": "CPU_VALIDATED_ACTUAL_CUDA_UNLAUNCHED",
+  "source_base_commit": "5f489fdd7",
+  "implementation_scope": "Opt-in train.attention_precision=bf16 for canonical plain Flex only; per-instance CausalSelfAttention precision, default FP32 and saved scoring/export FP32. Existing exact two-block GPT2 remains supported. No operator arithmetic/global projection precision changes.",
+  "supported_plain_Flex": "Positive integer dimensions/depth; exact attention; learned positions; layernorm and tanh-GELU; pre-norm residual stream with final norm; untied head; FP32 projections and tiled attention. No custom expressions, RoPE/relative attention, SWA, QK norm, QKV convolution, state tokens, activation checkpointing or other objectives beyond LM/SFT.",
+  "model_cases": [
+    {
+      "layers": 1,
+      "d_ff": 12
+    },
+    {
+      "layers": 3,
+      "d_ff": 20
+    }
+  ],
+  "fixed_model_geometry": {
+    "vocab": 7,
+    "d": 8,
+    "heads": 2,
+    "seq_len": 4,
+    "batch": 2,
+    "precisions": [
+      "fp32",
+      "bf16"
+    ]
+  },
+  "token_ids": [
+    1,
+    2,
+    3,
+    4,
+    6,
+    5,
+    2,
+    1
+  ],
+  "targets": [
+    2,
+    3,
+    4,
+    1,
+    5,
+    2,
+    1,
+    6
+  ],
+  "parameter_fixture": "FNV-1a uint32 over exact parameter name, bucket=((hash+17*flat_index) mod2^32) mod37-18. LayerNorm gains1+bucket/512; all other parameters bucket/64, exact F32. Independently reconstructed and required in parser.",
+  "independent_reference": "NumPy-only full forward and explicit reverse graph: embeddings/positions, layernorm, FP32 projections, six-GEMM BF16 attention surrogate, GELU/MLP, residuals, final norm/head and cross entropy. No production implementation/IR interpreter import in model-gradient reference.",
+  "derivative_reference_control": "Promoted the FP32 reference to binary64; central finite differences h = 1e-5 at three positions in every depth-one parameter tensor. This is not a finite difference of discontinuous BF16 rounding.",
+  "full_gradient_tensors_across_model_cases": 116,
+  "prospective_device_bounds": {
+    "normalized_element": 0.0003,
+    "tensor_relative_norm": 0.03,
+    "norm_floor": 1e-10
+  },
+  "prospective_CUDA_profile_requirement": "CUDA+DEVCHECK+profiler required; exactly six BF16 GEMMs per layer/head in BF16 cases, zero in FP32 controls. CPU binary must refuse require-cuda. No device outcome exists.",
+  "CLI_controls": {
+    "LM": {
+      "layers": 1,
+      "d_ff": 12
+    },
+    "SFT": {
+      "layers": 3,
+      "d_ff": 20
+    },
+    "d": 8,
+    "heads": 2,
+    "vocab": 7,
+    "T": 8,
+    "batch": 2,
+    "seed": 37,
+    "steps": 3,
+    "lr": 0.001,
+    "saved_full_rows": [
+      8,
+      7
+    ],
+    "saved_FP32_normalized_bound": 1e-05,
+    "default_omitted_vs_explicit_FP32": "Bit-identical model/optimizer checkpoints and F32 GGUF; real LoadedLM and production factory checked via test-only embedding."
+  },
+  "validation": {
+    "optimized_parser_reference_tests": 369,
+    "CLI_tests_including_existing_GPT2": 49,
+    "CPU_model_max_forward_normalized_error": 1.7634860479332437e-07,
+    "CPU_model_max_gradient_tensor_relative_error": 1.2375106724755685e-06,
+    "CPU_Ember_max_normalized_error": 2.0497296386109374e-08,
+    "actual_cuda": false
+  },
+  "limits": [
+    "No actual CUDA integration outcome, no CUDA CLI lifecycle, no quality/speed/adoption claim.",
+    "Only two tiny canonical configurations have full-array/model-gradient evidence; generic positive depth/width wiring is structurally uniform, not an exhaustive architecture audit.",
+    "BF16 backward is the declared quantized-GEMM surrogate, not the mathematical derivative of rounding.",
+    "CPU binaries compiled O0 correctness-only against source-verified pinned public CPU libraries; no performance measurement.",
+    "No paid resource or watchdog edit is part of this work."
+  ],
+  "source_commit": "5bf2863be"
+}

@@ -1,0 +1,7 @@
+{
+  "pass": true,
+  "returncode": 1,
+  "stdout": "",
+  "stderr": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\nCHECK failed /home/jonat/pk_flex_bf16_20261031/tests/flex_precision_gate.cpp:218: device::cuda_compiled() && device::gpu_profile_on()\n",
+  "no_CUDA_output_created": true
+}

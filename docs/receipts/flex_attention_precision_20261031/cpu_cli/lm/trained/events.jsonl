@@ -1,0 +1,10 @@
+{"event":"start","name":"flex_precision","steps":3}
+{"event":"data","tokens":2800,"val_tokens":140,"vocab":7}
+{"T":8,"accum":1,"activation":"gelu","attention":"exact","batch":2,"checkpoint_activations":false,"d":8,"d_ff":12,"event":"model","family":"flex","final_norm":true,"gate_bias_init":-2.0,"gelu_approx":"tanh","heads":2,"layers":1,"lr":0.0010000000474974513,"norm":"layernorm","norm_placement":{"attn":"pre","ffn":"pre"},"params":724,"position":"learned","residual":"residual","seed":37,"sinks":1,"train_attention_precision":"bf16","vocab":7,"window":64}
+{"event":"step","grad_norm":1.2714147567749023,"loss":1.9560593366622925,"step":1}
+{"event":"step","grad_norm":1.1255805492401123,"loss":1.942887306213379,"step":2}
+{"event":"step","grad_norm":1.1650110483169556,"loss":1.9382719993591309,"step":3}
+{"event":"eval","step":3,"val_loss":1.9096834659576416}
+{"event":"export","format":"safetensors","path":"/home/jonat/pk_flex_bf16_20261031/docs/receipts/flex_attention_precision_20261031/cpu_cli/lm/trained/flex_precision.safetensors"}
+{"arch":"gpt2","event":"export","format":"gguf","ir":"/home/jonat/pk_flex_bf16_20261031/docs/receipts/flex_attention_precision_20261031/cpu_cli/lm/trained/flex_precision.ir.json","path":"/home/jonat/pk_flex_bf16_20261031/docs/receipts/flex_attention_precision_20261031/cpu_cli/lm/trained/flex_precision.gguf"}
+{"best_val":1.9096834659576416,"early_stopped":false,"event":"done","final_step":3,"wall_seconds":0.002684971}

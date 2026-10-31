@@ -1,0 +1,83 @@
+{
+  "status": "COMPILER_FAILED_UNDER_FIXED_LIMIT",
+  "max_compiler_address_space_bytes": 1610612736,
+  "minimum_admission_MemAvailable_KiB": 1572864,
+  "source_root": "/home/jonat/pk_flex_bf16_20261031",
+  "commands": [
+    {
+      "label": "flex_precision_gate",
+      "argv": [
+        "prlimit",
+        "--as=1610612736",
+        "--",
+        "/usr/bin/c++",
+        "-O0",
+        "-g0",
+        "-DNDEBUG",
+        "-DMICROTORCH_DEVCHECK",
+        "-std=c++17",
+        "-ffp-contract=off",
+        "-fopenmp",
+        "-pthread",
+        "-I",
+        "/home/jonat/pk_flex_bf16_20261031/include",
+        "-I",
+        "/home/jonat/pk_flex_bf16_20261031/third_party/transformer_cpp/include",
+        "-I",
+        "/home/jonat/pk_flex_bf16_20261031/third_party/transformer_cpp/third_party",
+        "-I",
+        "/home/jonat/pk_publication_build_20261030/_deps/json-src/include",
+        "/home/jonat/pk_flex_bf16_20261031/tests/flex_precision_gate.cpp",
+        "/home/jonat/pk_publication_build_20261030/libmicrotorch.a",
+        "/home/jonat/pk_publication_build_20261030/transformer_cpp/libtransformer_core.a",
+        "-o",
+        "/home/jonat/pk_flex_bf16_build_20261031/flex_precision_gate"
+      ],
+      "MemAvailable_KiB": 7645248,
+      "started_epoch": 1793446700.0607667,
+      "returncode": 0,
+      "ended_epoch": 1793446703.1831212,
+      "binary_sha256": "a9b3c232a2aef1e4f0c6e6c650195ebe2075f78882080c14cd6b6acf63937475"
+    },
+    {
+      "label": "mtstudio",
+      "argv": [
+        "prlimit",
+        "--as=1610612736",
+        "--",
+        "/usr/bin/c++",
+        "-O0",
+        "-g0",
+        "-DNDEBUG",
+        "-DMICROTORCH_DEVCHECK",
+        "-std=c++17",
+        "-ffp-contract=off",
+        "-fopenmp",
+        "-pthread",
+        "-I",
+        "/home/jonat/pk_flex_bf16_20261031/include",
+        "-I",
+        "/home/jonat/pk_flex_bf16_20261031/third_party/transformer_cpp/include",
+        "-I",
+        "/home/jonat/pk_flex_bf16_20261031/third_party/transformer_cpp/third_party",
+        "-I",
+        "/home/jonat/pk_publication_build_20261030/_deps/json-src/include",
+        "/home/jonat/pk_flex_bf16_20261031/tools/mtstudio.cpp",
+        "/home/jonat/pk_publication_build_20261030/libmicrotorch.a",
+        "/home/jonat/pk_publication_build_20261030/transformer_cpp/libtransformer_core.a",
+        "-o",
+        "/home/jonat/pk_flex_bf16_build_20261031/mtstudio"
+      ],
+      "MemAvailable_KiB": 7525176,
+      "started_epoch": 1793446703.1856372,
+      "returncode": 1,
+      "ended_epoch": 1793446703.2785628
+    }
+  ],
+  "support_libraries": {
+    "/home/jonat/pk_publication_build_20261030/libmicrotorch.a": "edfac74ad017bbec43c33c710409fba13ff348962b1bb557f97553794012251a",
+    "/home/jonat/pk_publication_build_20261030/transformer_cpp/libtransformer_core.a": "6ac8350f92ead2633b934e352ade2d9db90563565670822342cd1515da114cc1"
+  },
+  "threads": 1,
+  "optimization": "O0 correctness-only, no performance claim"
+}

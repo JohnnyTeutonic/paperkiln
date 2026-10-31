@@ -1,0 +1,77 @@
+{
+  "pass": true,
+  "actual_cuda": false,
+  "binary_sha256": "d93453c0a9cd0674147685aea1b71866bc0cbda4703bfdae84e9320f58048cf0",
+  "records": [
+    {
+      "mode": "selftest",
+      "returncode": 0,
+      "stdout": "{\"pass\":true,\"four_constructor_modes\":true,\"no_inference_BF16\":true}\n",
+      "stderr": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\n"
+    },
+    {
+      "objective": "lm",
+      "recipe": "bf16",
+      "returncode": 0,
+      "stdout": "{\"actual_saved_model_loaded\":true,\"global_projection_precision\":\"fp32\",\"inference_IR_equal\":true,\"layers\":1,\"pass\":true,\"saved_attention_precision\":\"fp32\",\"training_attention_precision\":\"bf16\"}\n",
+      "stderr": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\n",
+      "result": {
+        "actual_saved_model_loaded": true,
+        "global_projection_precision": "fp32",
+        "inference_IR_equal": true,
+        "layers": 1,
+        "pass": true,
+        "saved_attention_precision": "fp32",
+        "training_attention_precision": "bf16"
+      }
+    },
+    {
+      "objective": "lm",
+      "recipe": "fp32_inference",
+      "returncode": 0,
+      "stdout": "{\"actual_saved_model_loaded\":true,\"global_projection_precision\":\"fp32\",\"inference_IR_equal\":true,\"layers\":1,\"pass\":true,\"saved_attention_precision\":\"fp32\",\"training_attention_precision\":\"fp32\"}\n",
+      "stderr": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\n",
+      "result": {
+        "actual_saved_model_loaded": true,
+        "global_projection_precision": "fp32",
+        "inference_IR_equal": true,
+        "layers": 1,
+        "pass": true,
+        "saved_attention_precision": "fp32",
+        "training_attention_precision": "fp32"
+      }
+    },
+    {
+      "objective": "sft",
+      "recipe": "bf16",
+      "returncode": 0,
+      "stdout": "{\"actual_saved_model_loaded\":true,\"global_projection_precision\":\"fp32\",\"inference_IR_equal\":true,\"layers\":3,\"pass\":true,\"saved_attention_precision\":\"fp32\",\"training_attention_precision\":\"bf16\"}\n",
+      "stderr": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\n",
+      "result": {
+        "actual_saved_model_loaded": true,
+        "global_projection_precision": "fp32",
+        "inference_IR_equal": true,
+        "layers": 3,
+        "pass": true,
+        "saved_attention_precision": "fp32",
+        "training_attention_precision": "bf16"
+      }
+    },
+    {
+      "objective": "sft",
+      "recipe": "fp32_inference",
+      "returncode": 0,
+      "stdout": "{\"actual_saved_model_loaded\":true,\"global_projection_precision\":\"fp32\",\"inference_IR_equal\":true,\"layers\":3,\"pass\":true,\"saved_attention_precision\":\"fp32\",\"training_attention_precision\":\"fp32\"}\n",
+      "stderr": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\n",
+      "result": {
+        "actual_saved_model_loaded": true,
+        "global_projection_precision": "fp32",
+        "inference_IR_equal": true,
+        "layers": 3,
+        "pass": true,
+        "saved_attention_precision": "fp32",
+        "training_attention_precision": "fp32"
+      }
+    }
+  ]
+}
