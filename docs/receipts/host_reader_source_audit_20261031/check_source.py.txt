@@ -1,0 +1,37 @@
+"""Reproduce a bounded source inventory; this is not a CUDA execution test."""
+import hashlib
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1]).resolve()
+files = ["src/ops.cpp", "src/autograd.cpp", "src/cuda_resident.cu", "include/microtorch/autograd.hpp", "include/microtorch/ops.hpp", "src/llama.cpp", "tests/test_checkpointing.cpp"]
+sources = {name: (root / name).read_text() for name in files}
+
+def need(ok, message):
+    if not ok:
+        raise ValueError(message)
+
+def interval(name, start, end):
+    text = sources[name]
+    a = text.index(start)
+    b = text.index(end, a)
+    return {"file": name, "first_line": text.count("\n", 0, a) + 1, "last_line": text.count("\n", 0, b) + 1, "sha256": hashlib.sha256(text[a:b].encode()).hexdigest()}
+
+ops = sources["src/ops.cpp"]
+unary = ops[ops.index("Var unary_host("):ops.index("void same_shape(")]
+binary = ops[ops.index("Var binary_host("):ops.index("Var exp(")]
+need("device::materialize(x->data);" in unary and "device::materialize(self->grad);" in unary, "unary boundary drift")
+need(all(s in binary for s in ["device::materialize(a->data);", "device::materialize(b->data);", "device::materialize(self->grad);"]), "binary boundary drift")
+ck = sources["src/autograd.cpp"]
+ck = ck[ck.index("Var checkpoint("):ck.index("void zero_grad(")]
+need('MT_DEVCHECK_HOST_READ(inner->data, "checkpoint output copy");' in ck, "output guard drift")
+need('MT_DEVCHECK_HOST_READ(xin->data, "checkpoint input copy");' in ck, "input guard drift")
+need("device::materialize(inner->data)" not in ck and "device::materialize(xin->data)" not in ck, "finding changed: reassess source")
+need("out_data = inner->data;" in ck and "make_var(xin->data" in ck, "copy boundary drift")
+cu = sources["src/cuda_resident.cu"]
+need("return g_defer_downloads && g_in_step && device_ops_enabled();" in cu, "deferral condition drift")
+need("fn must be RECOMPUTATION-DETERMINISTIC" in sources["include/microtorch/autograd.hpp"], "checkpoint contract drift")
+result = {"status": "SOURCE_ONLY_BOUNDED_AUDIT", "source_commit": subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip(), "files": {n: hashlib.sha256((root / n).read_bytes()).hexdigest() for n in files}, "ranges": [interval("src/ops.cpp", "// ---- runtime-defined ops", "std::vector<int> t5_position_buckets"), interval("src/ops.cpp", "Var relpos_attention(", "Var shaw_attention("), interval("src/autograd.cpp", "Var checkpoint(", "void zero_grad("), interval("src/cuda_resident.cu", "bool defer_active()", "constexpr int TILE")], "actual_cuda": False, "build_executed": False, "production_edited": False}
+print(json.dumps(result, indent=2))

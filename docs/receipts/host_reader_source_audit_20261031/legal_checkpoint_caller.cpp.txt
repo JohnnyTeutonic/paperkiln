@@ -1,0 +1,16 @@
+// Proposed real-CUDA reproduction, NOT compiled or executed by this audit.
+// Run only inside an approved strict CUDA+DEVCHECK gate.
+// Establish CUDA device, device ops, step residency and deferred downloads.
+// Use nontrivial finite x and w, deterministic fn, and an open step window.
+device::step_begin();
+auto y = checkpoint([w](const Var& v) { return ops::matmul(v, w); }, x);
+// Old source: expected DEVCHECK at checkpoint output copy, before output exists.
+// Fixed proposal: materialize before that guard; compare all y values and
+// full x/w gradients against independent double matmul/analytic gradients.
+// Separate input-copy isolate: x = ops::matmul(a, b) (host_stale true),
+// fn(v) = ops::add_scalar(v, 0.f), whose forward materializes v; this alone
+// clears x, so it is NOT a valid backward-input-only reproduction.
+// Instead select a deterministic device-only fn and arrange forward-output
+// copy materialization only (a test-only baseline patch) to expose the second
+// checkpoint boundary. Do not treat one early forward rejection as proof
+// that both independent copy sites were executed.
