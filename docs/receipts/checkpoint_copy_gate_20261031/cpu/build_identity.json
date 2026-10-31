@@ -1,0 +1,70 @@
+{
+  "admission_MemAvailable_KiB": 7385528,
+  "compiler_address_space_bytes": 1610612736,
+  "commands": [
+    {
+      "argv": [
+        "c++",
+        "-O0",
+        "-g0",
+        "-DNDEBUG",
+        "-DMICROTORCH_DEVCHECK",
+        "-std=c++17",
+        "-ffp-contract=off",
+        "-fopenmp",
+        "-pthread",
+        "-I/home/jonat/pk_host_reader_audit_20261031/include",
+        "-I/home/jonat/pk_host_reader_audit_20261031/third_party/transformer_cpp/include",
+        "-I/home/jonat/pk_host_reader_audit_20261031/third_party/transformer_cpp/third_party",
+        "-I/home/jonat/pk_publication_build_20261030/_deps/json-src/include",
+        "-DCHECKPOINT_VARIANT=\"old\"",
+        "/home/jonat/pk_host_reader_audit_20261031/tests/checkpoint_copy_gate.cpp",
+        "/home/jonat/pk_host_reader_audit_20261031/tests/checkpoint_copy_baseline.cpp",
+        "/home/jonat/pk_publication_build_20261030/libmicrotorch.a",
+        "/home/jonat/pk_publication_build_20261030/transformer_cpp/libtransformer_core.a",
+        "-o",
+        "/home/jonat/checkpoint_copy_cpu_build_20261031/checkpoint_copy_old"
+      ],
+      "returncode": 0,
+      "sources": {
+        "tests/checkpoint_copy_gate.cpp": "139e413a798610dc6eee2bfbe1fa1657ea1bd89a3d03ce582ddd63ac10f6f59a",
+        "tests/checkpoint_copy_baseline.cpp": "1f43e97883ba23786efaecc2bb75acfe601feb7fe33078bfb10f6182e10e9c6c"
+      },
+      "binary_sha256": "f398a9fb3b91076766bec611002008f3ad956926b987d674cac29f1f9ce235b7"
+    },
+    {
+      "argv": [
+        "c++",
+        "-O0",
+        "-g0",
+        "-DNDEBUG",
+        "-DMICROTORCH_DEVCHECK",
+        "-std=c++17",
+        "-ffp-contract=off",
+        "-fopenmp",
+        "-pthread",
+        "-I/home/jonat/pk_host_reader_audit_20261031/include",
+        "-I/home/jonat/pk_host_reader_audit_20261031/third_party/transformer_cpp/include",
+        "-I/home/jonat/pk_host_reader_audit_20261031/third_party/transformer_cpp/third_party",
+        "-I/home/jonat/pk_publication_build_20261030/_deps/json-src/include",
+        "-DCHECKPOINT_VARIANT=\"fixed\"",
+        "/home/jonat/pk_host_reader_audit_20261031/tests/checkpoint_copy_gate.cpp",
+        "/home/jonat/pk_host_reader_audit_20261031/src/autograd.cpp",
+        "/home/jonat/pk_publication_build_20261030/libmicrotorch.a",
+        "/home/jonat/pk_publication_build_20261030/transformer_cpp/libtransformer_core.a",
+        "-o",
+        "/home/jonat/checkpoint_copy_cpu_build_20261031/checkpoint_copy_fixed"
+      ],
+      "returncode": 0,
+      "sources": {
+        "tests/checkpoint_copy_gate.cpp": "139e413a798610dc6eee2bfbe1fa1657ea1bd89a3d03ce582ddd63ac10f6f59a",
+        "src/autograd.cpp": "eff07572cb70cccdfde386ccec1d716f0cfb2b9fb06f9c5a59eeacc76646930e"
+      },
+      "binary_sha256": "f09dd2d5a785543139d40f1c4ad122ae5debdb50043c1dead5f8e4ed20e79b3c"
+    }
+  ],
+  "libraries": {
+    "/home/jonat/pk_publication_build_20261030/libmicrotorch.a": "edfac74ad017bbec43c33c710409fba13ff348962b1bb557f97553794012251a",
+    "/home/jonat/pk_publication_build_20261030/transformer_cpp/libtransformer_core.a": "6ac8350f92ead2633b934e352ade2d9db90563565670822342cd1515da114cc1"
+  }
+}

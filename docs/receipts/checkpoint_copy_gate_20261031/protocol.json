@@ -1,0 +1,31 @@
+{
+  "status": "CPU_VALIDATED_ACTUAL_CUDA_UNLAUNCHED",
+  "scope": "Two checkpoint host-copy boundaries only; no historical training-invalidity, residency, speed or model-quality claim.",
+  "baseline_commit": "735533d6f3693b62b6be92f0b3a2454d6de27f84",
+  "baseline_autograd_blob": "8584b8f045064e3fd67626a9b38169dc61a98f8d",
+  "baseline_autograd_sha256": "1f43e97883ba23786efaecc2bb75acfe601feb7fe33078bfb10f6182e10e9c6c",
+  "repair": "Materialize inner->data and xin->data immediately before existing checkpoint host-copy DEVCHECK guards; no arithmetic change.",
+  "cases": {
+    "output": "Host x[2,4], w[4,2]; checkpoint callback returns deferred matmul output. Old CUDA must reject at output-copy guard. Fixed must pass full x/w gradients.",
+    "input": "Deferred x=matmul(a[2,3],b[3,4]); callback materializes only matmul(v,w[4,2]) output. Input remains deferred until checkpoint backward. Old CUDA must reject at input-copy guard. Fixed must pass full a/b/w gradients."
+  },
+  "fixture": "Parameter element[(i*c+j)] = (((i*c+j)*7+seed)%19-9)/8, seeds a1,b2,w3,x4. Fixed loss mean(y * [[.5,-.25],[.75,1.25]]). Exact binary fractions.",
+  "independent_reference": "Python standard-library binary64 matrix products and analytic full gradients; no production imports/framework autograd.",
+  "prospective_normalized_element_bound": 1e-06,
+  "CUDA_contract": "Actual NVIDIA L4; CUDA compiled, DEVCHECK and profiler required, source hashes exact. All four CPU old/fixed controls pass; both old CUDA cases must reject at their exact distinct guards with explicit stale observations. Both fixed CUDA cases must pass independent forward/loss and every parameter gradient, with actual GEMM profile counts positive.",
+  "failures": "Immutable outputs, one attempt; retain semantic/operational failures. No retry for pass or bound changes.",
+  "limits": {
+    "max_usd": 0.75,
+    "max_hours": 0.6,
+    "gate_seconds": 1500,
+    "gpus": 1,
+    "gpu": "NVIDIA L4"
+  },
+  "CPU_validation": {
+    "cases": 4,
+    "full_gradient_tensors": 10,
+    "maximum_normalized_error": 0,
+    "optimized_parser_tests": 49,
+    "actual_cuda": false
+  }
+}

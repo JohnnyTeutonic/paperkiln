@@ -541,3 +541,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT MICROTORCH_CUDA)
         "-Wl,--wrap=_ZN10microtorch6device11materializeERK6Matrix")
     add_test(NAME ternary_scale_boundary_emulated COMMAND test_ternary_scale_boundary_emulated)
 endif()
+
+# Checkpoint copy boundary old/fixed proof. Baseline is an exact historical Git blob.
+add_executable(checkpoint_copy_fixed tests/checkpoint_copy_gate.cpp src/autograd.cpp)
+target_link_libraries(checkpoint_copy_fixed PRIVATE microtorch)
+target_compile_definitions(checkpoint_copy_fixed PRIVATE CHECKPOINT_VARIANT="fixed")
+add_executable(checkpoint_copy_old tests/checkpoint_copy_gate.cpp tests/checkpoint_copy_baseline.cpp)
+target_link_libraries(checkpoint_copy_old PRIVATE microtorch)
+target_compile_definitions(checkpoint_copy_old PRIVATE CHECKPOINT_VARIANT="old")
