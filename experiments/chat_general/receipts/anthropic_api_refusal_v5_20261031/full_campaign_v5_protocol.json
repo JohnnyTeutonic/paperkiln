@@ -1,13 +1,13 @@
 {
-  "kind": "FROZEN_FAILSTOP_API_REFUSAL_V5_4349",
+  "kind": "FROZEN_FAILSTOP_API_REFUSAL_V5_4348",
   "source_sha256": {
-    "chat_judge_campaign_refusal_v5.py": "2cbd1141cd1a645bcd8d61be6c07537e9221269183ae0961f2abe1a4beb33977",
-    "chat_judge_api_refusal_v5.py": "8c4bf438d080b181628195246e801426f493802060304e63ff8ec21713418926",
+    "chat_judge_campaign_refusal_v5.py": "6b5d8fbea3311527697897ac982ee12a90e01d889149b83f0d88b1eac2c0f307",
+    "chat_judge_api_refusal_v5.py": "11cd8c7880356afaef631f6168d02dd75025cd4be58d4c6fc69fddb966ed0dd7",
     "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
     "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
   },
   "profile_sha256": "a6bf0769bf5d7688c970df16f53c97efd67750313e59c6d49a8760cefd45bee8",
-  "max_new_attempts": 4349,
+  "max_new_attempts": 4348,
   "max_usd": 200,
   "gate_reserve_usd": 25,
   "reserve_per_call_usd": 0.25,
@@ -29,7 +29,7 @@
   "initial_training_attempts": 1646,
   "state_dir": "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v5",
   "initial_valid_api_rankings": 1690,
-  "policy": "Prepared V5 continuation of4349 never-attempted jobs only; preserve/refuse to rejudge exact single settled refusal. Initial1646trainingattempts/1690valid. Identical API profile/body/pricing/rubric/requests/cache/trace, cumulative200/heldout25/percall0.25, retainedunknown0.75. Only API dispatch selection changes by exact frozen failed-key exclusion; any new failure HALTED+STOPPED, no automatic recovery. Eligible completion would leave6039valid/1refusal; full_judging_complete must remain false. No downstream pairing/coverage-policy change authorised.",
+  "policy": "Prepared V5 of4348 other never-attempted jobs. Preserve exact settled refusal plus prospectively exclude its untouched reverse order; same candidate set is never rejudged. Initial1646attempts/1690valid. Same HTTP/profile/body/pricing/rubric/requests/cache/trace; cumulative200/heldout25/percall0.25/retainedunknown0.75. Any new failure HALTED+STOPPED. Eligible completion yields6038valid/1refused/1unattemptedpaired exclusion; full_judging_complete false. DPO and fixed-gate work remain blocked pending separate dataset/coverage decision.",
   "authorised_by": "Preparation only; separate exact root source/protocol review required before dispatch.",
   "recovery_anchors": {
     "old_protocol": {
@@ -108,6 +108,23 @@
     "key": "5bc86514bca85e5299e967378ad87cc23ad98e29942f9937c3a7fe755675790d",
     "reservation_id": "c53a3cd31a1f4b719b0e6d03938b7f16",
     "failure_file_sha256": "7bfabb246403ca7b38d434178236175cac59f36189287eec55caf03935fec8a5",
-    "policy": "Preserve exact settled refusal; never rejudge this key, never manufacture ranking. Any new failure HALTS. Exhausting eligible jobs is not full valid completeness."
+    "policy": "Preserve settled refusal and exclude untouched registered reverse order of the same candidate set. Never rerank refused content by changing order. Exact case and both orders derived from pinned judge.jobs. Any new failure HALTS. Full valid completeness remains false.",
+    "paired_unattempted_key": "078c6b9cc209e59b4fc8c9c829fbd6388560dc37ba54ade31cedf11cabc8a07c",
+    "candidate_case_sha256": "0e84706f5e9373c775e07af08186b3991ed84e01d59f427afcb8b8e4a3f3f40b",
+    "planned_orders": [
+      [
+        0,
+        1,
+        2,
+        3
+      ],
+      [
+        3,
+        2,
+        1,
+        0
+      ]
+    ],
+    "planner_source_sha256": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
   }
 }

@@ -79,18 +79,44 @@ def verify_recovery_anchors(protocol):
     # raw hashes, absence of a response and full unknown ceiling; no inferred usage.
 
 
+def verify_reviewed_pair(protocol, requests, version, history, done):
+    """Derive both orders from the frozen planner; never rerank refused content."""
+    gate = protocol["reviewed_failure_exclusion"]
+    matches = [r for r in requests if api.digest(r) == gate["candidate_case_sha256"]]
+    if len(matches) != 1:
+        raise ValueError("reviewed candidate case differs from fixed requests")
+    planned = [
+        (
+            order,
+            api.judge.key_of(
+                r["prompt"], r["candidates"], order, api.profile_id(), version
+            ),
+        )
+        for r, order in api.judge.jobs(matches)
+    ]
+    if (
+        len(planned) != 2
+        or {key for _, key in planned} != {gate["key"], gate["paired_unattempted_key"]}
+        or [order for order, _ in planned] != gate["planned_orders"]
+    ):
+        raise ValueError("reviewed paired exclusions differ from frozen planner")
+    attempted = {r["key"] for r in history if r.get("event") == "reserve"}
+    if gate["paired_unattempted_key"] in attempted | done:
+        raise ValueError("paired exclusion was already attempted or ranked")
+
+
 def inspect(protocol):
     """Replay every settlement before any new dispatch, including restart."""
     p = protocol
     if (
-        p.get("kind") != "FROZEN_FAILSTOP_API_REFUSAL_V5_4349"
+        p.get("kind") != "FROZEN_FAILSTOP_API_REFUSAL_V5_4348"
         or source_hashes() != p["source_sha256"]
     ):
         raise ValueError("campaign/source protocol differs")
     if p["profile_sha256"] != api.digest(api.PROFILE):
         raise ValueError("campaign profile differs")
     if (
-        p["max_new_attempts"] != 4349
+        p["max_new_attempts"] != 4348
         or p["initial_training_attempts"] != 1646
         or p["initial_valid_api_rankings"] != 1690
         or p["max_usd"] != 200
@@ -131,10 +157,14 @@ def inspect(protocol):
     reviewed = p["reviewed_failure_exclusion"]
     if (
         len(failures) != 1
-        or api.file_hash(str(cache) + ".failures.jsonl") != reviewed["failure_file_sha256"]
+        or api.file_hash(str(cache) + ".failures.jsonl")
+        != reviewed["failure_file_sha256"]
         or failures[0]["key"] != reviewed["key"]
         or failures[0]["budget_reservation_id"] != reviewed["reservation_id"]
-        or reviewed["key"] != "5bc86514bca85e5299e967378ad87cc23ad98e29942f9937c3a7fe755675790d"
+        or reviewed["key"]
+        != "5bc86514bca85e5299e967378ad87cc23ad98e29942f9937c3a7fe755675790d"
+        or reviewed["paired_unattempted_key"]
+        != "078c6b9cc209e59b4fc8c9c829fbd6388560dc37ba54ade31cedf11cabc8a07c"
     ):
         raise ValueError("preserved reviewed failure changed; no automatic recovery")
     history = api.rows(ledger)
@@ -147,6 +177,7 @@ def inspect(protocol):
     if not 0 <= attempts <= p["max_new_attempts"]:
         raise ValueError("campaign training attempt count changed")
     done = {r["key"] for r in api.rows(cache)}
+    verify_reviewed_pair(p, requests, version, history, done)
     todo = sum(
         api.judge.key_of(r["prompt"], r["candidates"], o, api.profile_id(), version)
         not in done
@@ -158,8 +189,9 @@ def inspect(protocol):
     return requests, {
         "attempts_since_start": attempts,
         "missing_rankings": todo,
-        "eligible_missing_rankings": todo - 1,
+        "eligible_missing_rankings": todo - 2,
         "preserved_failed_rankings": 1,
+        "unattempted_paired_exclusions": 1,
         "api_actual_spend_usd": paid,
         "retained_unknown_ceiling_usd": retained,
         "baseline_usd": budget.legacy,
@@ -205,7 +237,10 @@ def campaign(protocol, state_dir, dispatch=None, inspector=None):
                             protocol_sha256=identity,
                             kind="REFUSAL_CONTINUATION_V5_STOPPED",
                             full_judging_complete=status["missing_rankings"] == 0,
-                            eligible_judging_complete=status["eligible_missing_rankings"] == 0,
+                            eligible_judging_complete=status[
+                                "eligible_missing_rankings"
+                            ]
+                            == 0,
                         ),
                     )
                     print(
@@ -237,7 +272,14 @@ def campaign(protocol, state_dir, dispatch=None, inspector=None):
                         "training_judge",
                         prior_api_ledgers=protocol["prior_api_ledgers"],
                         stop_on_failure=True,
-                        excluded_failed_keys=(protocol["reviewed_failure_exclusion"]["key"],),
+                        excluded_failed_keys=(
+                            protocol["reviewed_failure_exclusion"]["key"],
+                        ),
+                        excluded_unattempted_keys=(
+                            protocol["reviewed_failure_exclusion"][
+                                "paired_unattempted_key"
+                            ],
+                        ),
                     )
                 api.append(
                     state / "campaign_events.jsonl",
