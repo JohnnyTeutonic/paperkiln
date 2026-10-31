@@ -141,12 +141,32 @@ static void nonfinite_padding(bool gpu) {
     device::materialize(y->data);
     for(size_t i=0;i<3;++i)CHECK(std::isnan(y->data(i,0)));
 }
+static void empty_fallback() {
+    // External-storage constructors can represent empty dimensions, but the
+    // legacy output Matrix constructor rejects them. Keep that exact behavior
+    // rather than inventing a stricter convolution-specific shape rule.
+    float dummy=0;
+    for(auto shape:std::vector<std::pair<size_t,size_t>>{{0,2},{4,0}}) {
+        Matrix xm(shape.first,shape.second,&dummy);
+        Matrix wm=shape.second?Matrix(shape.second,3):Matrix(0,3,&dummy);
+        Matrix bm=shape.second?Matrix(1,shape.second):Matrix(1,0,&dummy);
+        auto x=make_var(std::move(xm)),w=make_var(std::move(wm)),b=make_var(std::move(bm));
+        Matrix sentinel(1,1);sentinel(0,0)=123;
+        CHECK(!device::devops::conv1d_causal_fwd(x->data,w->data,&b->data,2,sentinel));
+        CHECK(!device::devops::conv1d_causal_bwd(x->data,w->data,x->data,2,&sentinel,nullptr,nullptr));
+        CHECK(sentinel(0,0)==123);
+        bool threw=false;
+        try {ops::conv1d_causal(x,w,b,2);}
+        catch(const std::runtime_error& e) {threw=std::string(e.what())=="Matrix dimensions cannot be zero";}
+        CHECK(threw);
+    }
+}
 static void invalid() {
     auto bad=[](size_t T,size_t C,size_t W,size_t K,size_t B,size_t sl) {
         bool threw=false;try {ops::conv1d_causal(make_var(Matrix(T,C)),make_var(Matrix(W,K)),make_var(Matrix(1,B)),sl);}
         catch(const std::runtime_error&){threw=true;} CHECK(threw);
     };
-    bad(0,2,2,3,2,0);bad(4,0,0,3,0,0);bad(4,2,3,3,2,0);
+    bad(0,2,2,3,2,0);bad(4,2,3,3,2,0);
     bad(4,2,2,1,2,0);bad(4,2,2,3,3,0);bad(4,2,2,3,2,3);bad(4,2,2,3,2,8);
     Matrix x(4,2),w(2,3),out(4,2);out(0,0)=123;
     CHECK(!device::devops::conv1d_causal_fwd(x,w,nullptr,3,out));CHECK(out(0,0)==123);
@@ -161,7 +181,7 @@ int main(int argc,char** argv) {
 #endif
     if(gpu&&!device::cuda_compiled()){std::fprintf(stderr,"requires real CUDA\n");return 2;}
     device::set(device::Device::CPU);device::set_device_ops(false);
-    finite_difference();invalid();nonfinite_padding(false);
+    finite_difference();invalid();nonfinite_padding(false);empty_fallback();
     if(gpu) {
         device::set(device::Device::CUDA);device::set_device_ops(true);
         device::set_step_residency(true);device::set_defer_downloads(true);
@@ -174,7 +194,7 @@ int main(int argc,char** argv) {
             if(gpu)device::step_end();++cases;
         }
     if(gpu) {
-        device::step_begin();invalid();nonfinite_padding(true);run_case(true,6,3,7,2,true,7,true);device::step_end();
+        device::step_begin();invalid();nonfinite_padding(true);empty_fallback();run_case(true,6,3,7,2,true,7,true);device::step_end();
 
     }
     // Exercise the public autograd traversal as well as the isolated VJP.

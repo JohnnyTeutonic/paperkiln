@@ -10,8 +10,8 @@
     "src/cuda_ops.cu": "9559249aae0f7698cb5ccb98acf1e030437e94bb19e3296eeca7709e9c4b89d7",
     "src/conv1d_kernels.cuh": "056f3c40e0ed9558216156ea37c56a997cbe17392d22ef6e72a6d16f0738754e",
     "src/device_cache.cpp": "ddbadf767defdac314553b0256ef5e3a80481bce293225dc5497040843106b4b",
-    "src/ops.cpp": "0acab04f770a65059572bee0a4ba93596dc52302e5371b125986aac9a4ed1294",
-    "tests/test_conv1d_cuda.cpp": "bbd260801c053f0c46a7886e4d00852eb71ec987af0a5de958aead0cf13ce845"
+    "src/ops.cpp": "c11303411bcf217702635a06d6047db6e1c65779dad917da628ebbe28c9ac3f9",
+    "tests/test_conv1d_cuda.cpp": "5233b505a302b083a08f15f50d0fcc63652994e13f8e0c4f030d2b8fa38929fd"
   },
   "cpu": {
     "cmake_options": [
@@ -33,7 +33,29 @@
     "nonfinite_padding": true,
     "invalid_geometry": true,
     "full_public_autograd_traversal": true,
-    "strict_cuda_refusal_exit": 2
+    "strict_cuda_refusal_exit": 2,
+    "legacy_empty_shapes": {
+      "base_f790e006e_rejection_verified": true,
+      "current_rejection_verified": true,
+      "shapes": [
+        [
+          0,
+          2
+        ],
+        [
+          4,
+          0
+        ]
+      ],
+      "seq_len": 2,
+      "construction": "Matrix external-storage constructor (allows empty metadata)",
+      "legacy_exception": "Matrix dimensions cannot be zero",
+      "source_probe": "experiments/conv1d_cuda_20261031/legacy_empty_probe.cpp",
+      "devops_empty_refusal_and_untouched_sentinel": true,
+      "probe_sha256": "452381d1b7c598622a00f275b5ae0413bcbaae0f20832c1c507ad66e0dd63b31",
+      "baseline_exit": 0,
+      "baseline_stdout": "legacy empty shape rejection pass"
+    }
   },
   "cuda_compile_only": {
     "nvcc": "12.6.85",

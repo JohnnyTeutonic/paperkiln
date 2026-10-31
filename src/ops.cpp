@@ -1376,7 +1376,6 @@ size_t seq_rows(size_t T, size_t seq_len, const char* what) {
 
 Var conv1d_causal(const Var& x, const Var& w, const Var& bias, size_t seq_len) {
     const size_t T = x->data.rows(), C = x->data.cols(), K = w->data.cols();
-    if (T == 0 || C == 0) throw std::runtime_error("conv1d_causal: x must be nonempty");
     if (w->data.rows() != C || K < 2) throw std::runtime_error("conv1d_causal: w must be [cols(x), K] with K >= 2");
     if (bias && (bias->data.rows() != 1 || bias->data.cols() != C))
         throw std::runtime_error("conv1d_causal: bias must be [1, cols(x)]");
