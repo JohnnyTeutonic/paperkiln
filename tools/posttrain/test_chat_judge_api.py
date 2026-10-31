@@ -386,3 +386,90 @@ def test_future_heldout_reserve_cannot_be_spent_via_unregistered_stage(files):
 def test_larger_historical_unknown_reserve_is_not_reduced(files):
     api.append(str(files['legacy_cache'])+'.failures.jsonl', {'reserved_cost_usd': 33})
     assert api.legacy_account(files['legacy_cache'])['unknown_failure_reserve_usd'] == 33
+
+
+def authorize_unknown(files):
+    budget = api.Budget(files['ledger'], api.legacy_account(files['legacy_cache']))
+    pending, _ = budget.state()
+    ident = next(iter(pending))
+    rawdir = files['ledger'].with_suffix('.raw')
+    return {'kind': 'ROOT_AUTHORISED_RETAIN_UNKNOWN_CEILING', 'pending_id': ident,
+            'ledger_sha256': api.file_hash(files['ledger']), 'binding_sha256': api.digest(budget.binding),
+            'raw_request_sha256': api.file_hash(rawdir/(ident+'.request.json')),
+            'error_sha256': api.file_hash(rawdir/(ident+'.error.json')), 'error_type': 'TimeoutError',
+            'reason': 'Independent fixture approval: retain full unknown ceiling permanently.'}
+
+
+def uncertain_call(files):
+    def timeout(key, body):
+        raise TimeoutError('fixture')
+    with pytest.raises(RuntimeError):
+        api.run(requests(), **files, max_calls=1, stage='calibration', post=timeout)
+
+
+def test_explicit_unknown_recovery_retains_money_and_attempt(files):
+    uncertain_call(files)
+    auth = authorize_unknown(files)
+    budget = api.Budget(files['ledger'], api.legacy_account(files['legacy_cache']))
+    event = budget.retain_unknown(auth)
+    assert event['ceiling_usd'] == .25
+    assert budget.state() == ({}, 0)
+    assert api.rows(files['cache']) == []
+    post = fake()
+    out = api.run(requests(), **files, max_calls=1, stage='calibration', post=post)
+    assert out['api_retained_unknown_ceiling_usd'] == .25
+    assert out['api_actual_spend_usd'] == .016
+    assert len([r for r in api.rows(files['ledger']) if r['event'] == 'reserve']) == 2
+
+
+def test_retained_ceiling_still_blocks_cap(files):
+    uncertain_call(files)
+    budget = api.Budget(files['ledger'], api.legacy_account(files['legacy_cache']))
+    budget.retain_unknown(authorize_unknown(files))
+    # Global contract still includes the retained amount in the available funds.
+    budget.cap = 45.4
+    with pytest.raises(ValueError, match='cumulative'):
+        budget.reserve('another', .25, 'calibration')
+
+
+def test_unknown_recovery_cannot_double_resolve_or_settle_actual(files):
+    uncertain_call(files)
+    auth = authorize_unknown(files)
+    budget = api.Budget(files['ledger'], api.legacy_account(files['legacy_cache']))
+    budget.retain_unknown(auth)
+    with pytest.raises(ValueError):
+        budget.retain_unknown(auth)
+    with pytest.raises(ValueError):
+        budget.settle(auth['pending_id'], 0, {})
+
+
+@pytest.mark.parametrize('field,value', [('raw_request_sha256', 'wrong'), ('error_sha256', 'wrong'),
+    ('error_type', 'wrong'), ('pending_id', 'wrong'), ('ledger_sha256', 'wrong'), ('kind', 'wrong')])
+def test_unknown_recovery_requires_exact_authorised_evidence(files, field, value):
+    uncertain_call(files)
+    auth = authorize_unknown(files)
+    auth[field] = value
+    budget = api.Budget(files['ledger'], api.legacy_account(files['legacy_cache']))
+    with pytest.raises((ValueError, KeyError)):
+        budget.retain_unknown(auth)
+    assert len(budget.state()[0]) == 1
+
+
+def test_retained_ceiling_tamper_is_detected_on_resume(files):
+    uncertain_call(files)
+    budget = api.Budget(files['ledger'], api.legacy_account(files['legacy_cache']))
+    budget.retain_unknown(authorize_unknown(files))
+    history = api.rows(files['ledger'])
+    history[-1]['ceiling_usd'] = 0
+    rewrite(files['ledger'], history)
+    with pytest.raises(ValueError, match='retained unknown'):
+        api.run(requests(), **files, max_calls=1, post=fake())
+
+
+def test_retained_unknown_is_included_in_new_audited_baseline(files, tmp_path):
+    uncertain_call(files)
+    budget = api.Budget(files['ledger'], api.legacy_account(files['legacy_cache']))
+    budget.retain_unknown(authorize_unknown(files))
+    baseline = api.legacy_account(files['legacy_cache'], [files['ledger']])
+    assert baseline['prior_api_unknown_reserve_usd'] == .25
+    assert baseline['prior_api_spend_usd'] == 0

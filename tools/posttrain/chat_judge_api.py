@@ -182,6 +182,10 @@ def legacy_account(cache, prior_api_ledgers=()):
                 prior_files[str(raw_path.resolve())] = file_hash(raw_path)
                 request_path = Path(receipt["request"])
                 prior_files[str(request_path.resolve())] = file_hash(request_path)
+            elif row["event"] == "retain_unknown_ceiling":
+                before = reserved.pop(row["id"])
+                verify_retained(row, before, ledger)
+                prior_reserve.append(row["ceiling_usd"])
             else:
                 raise ValueError("unknown prior API event")
         prior_reserve.extend(nonnegative(r["reserve_usd"], "prior API reserve") for r in reserved.values())
@@ -207,6 +211,35 @@ def atomic_blob(path, raw):
         f.flush()
         os.fsync(f.fileno())
     os.replace(tmp, path)
+
+
+def verify_retained(row, reservation, ledger):
+    ident = row["id"]
+    rawdir = Path(ledger).with_suffix(".raw")
+    request, error = rawdir / (ident + ".request.json"), rawdir / (ident + ".error.json")
+    authorization = row.get("authorization") or {}
+    prefix = bytearray()
+    for line in Path(ledger).read_bytes().splitlines(keepends=True):
+        event = json.loads(line)
+        if event.get("event") == "retain_unknown_ceiling" and event.get("id") == ident:
+            break
+        prefix.extend(line)
+    contract = rows(ledger)[0]["contract"]
+    if (authorization.get("kind") != "ROOT_AUTHORISED_RETAIN_UNKNOWN_CEILING"
+            or digest(authorization) != row.get("authorization_sha256")
+            or authorization.get("ledger_sha256") != hashlib.sha256(prefix).hexdigest()
+            or authorization.get("binding_sha256") != digest(contract.get("binding"))
+            or authorization.get("pending_id") != ident
+            or row.get("reservation_sha256") != digest(reservation)
+            or row.get("ceiling_usd") != reservation["reserve_usd"]
+            or row.get("raw_request_sha256") != file_hash(request)
+            or row.get("error_sha256") != file_hash(error)
+            or row.get("error_type") != json.loads(error.read_text()).get("error_type")
+            or (rawdir / (ident + ".response.json")).exists()
+            or row.get("charge") != "unknown_full_ceiling_retained_not_actual_spend"
+            or not row.get("authorization_sha256")):
+        raise ValueError("retained unknown charge no longer matches its authorised evidence")
+
 
 
 @contextmanager
@@ -242,11 +275,12 @@ class Budget:
             "known_spend_usd", "unknown_failure_reserve_usd", "prior_api_spend_usd", "prior_api_unknown_reserve_usd"))
 
     def state(self):
-        pending, paid = {}, []
+        pending, paid, seen = {}, [], set()
         for row in rows(self.path)[1:]:
             if row["event"] == "reserve":
-                if row["id"] in pending:
+                if row["id"] in seen:
                     raise ValueError("duplicate budget reservation")
+                seen.add(row["id"])
                 pending[row["id"]] = row
             elif row["event"] == "settle":
                 if row["id"] not in pending:
@@ -256,6 +290,11 @@ class Budget:
                 if cost > reservation["reserve_usd"] + 1e-12:
                     raise ValueError("actual cost exceeded reservation; stop and reconcile")
                 paid.append(cost)
+            elif row["event"] == "retain_unknown_ceiling":
+                if row["id"] not in pending:
+                    raise ValueError("unknown-charge resolution is duplicate or lacks pending reservation")
+                reservation = pending.pop(row["id"])
+                verify_retained(row, reservation, self.path)
             else:
                 raise ValueError("unknown budget event")
         return pending, math.fsum(paid)
@@ -269,8 +308,10 @@ class Budget:
             raise ValueError("unresolved call remains reserved; reconcile before another dispatch")
         history = rows(self.path)[1:]
         stages = {r["id"]: r["stage"] for r in history if r["event"] == "reserve"}
-        previous = math.fsum(r["cost_usd"] for r in history
-                            if r["event"] == "settle" and stages[r["id"]] == stage)
+        retained = math.fsum(r["ceiling_usd"] for r in history if r["event"] == "retain_unknown_ceiling")
+        previous = math.fsum((r["cost_usd"] if r["event"] == "settle" else r["ceiling_usd"])
+                            for r in history if r["event"] in ("settle", "retain_unknown_ceiling")
+                            and stages[r["id"]] == stage)
         attempts = sum(r["event"] == "reserve" and r["stage"] == stage for r in history)
         limits = (self.binding or {}).get("stage_limits", {"probe": {"attempts": 1, "usd": .25}})
         if stage not in limits:
@@ -280,7 +321,7 @@ class Budget:
         if previous + amount > limits[stage]["usd"] + 1e-12:
             raise ValueError("registered stage dollar allowance would be exceeded")
         keep = self.gate
-        if self.legacy + paid + amount + keep > self.cap + 1e-12:
+        if self.legacy + paid + retained + amount + keep > self.cap + 1e-12:
             raise ValueError("cumulative cap/future gate reserve would be exceeded")
         ident = uuid.uuid4().hex
         append(self.path, {"event": "reserve", "id": ident, "key": key, "stage": stage,
@@ -292,6 +333,38 @@ class Budget:
         if ident not in pending or nonnegative(cost, "cost") > pending[ident]["reserve_usd"] + 1e-12:
             raise ValueError("invalid settlement; reservation retained")
         append(self.path, {"event": "settle", "id": ident, "cost_usd": cost, "receipt": receipt})
+
+
+    def retain_unknown(self, authorization):
+        """Explicit reviewed disposition; retain money, never invent usage or verdict."""
+        if authorization.get("kind") != "ROOT_AUTHORISED_RETAIN_UNKNOWN_CEILING":
+            raise ValueError("explicit root-authorised recovery receipt required")
+        if (authorization.get("ledger_sha256") != file_hash(self.path)
+                or authorization.get("binding_sha256") != digest(self.binding)):
+            raise ValueError("recovery authorization does not bind this exact pending ledger")
+        pending, _ = self.state()
+        ident = authorization["pending_id"]
+        if set(pending) != {ident}:
+            raise ValueError("authorization does not identify the one unresolved call")
+        reservation = pending[ident]
+        rawdir = self.path.with_suffix(".raw")
+        error = json.loads((rawdir / (ident + ".error.json")).read_text())
+        event = {"event": "retain_unknown_ceiling", "id": ident, "ceiling_usd": reservation["reserve_usd"],
+                 "reservation_sha256": digest(reservation),
+                 "raw_request_sha256": file_hash(rawdir / (ident + ".request.json")),
+                 "error_sha256": file_hash(rawdir / (ident + ".error.json")),
+                 "error_type": error.get("error_type"), "authorization_sha256": digest(authorization),
+                 "authorization": authorization,
+                 "charge": "unknown_full_ceiling_retained_not_actual_spend",
+                 "reason": authorization.get("reason", "")}
+        if (event["raw_request_sha256"] != authorization.get("raw_request_sha256")
+                or event["error_sha256"] != authorization.get("error_sha256")
+                or event["error_type"] != authorization.get("error_type")
+                or not event["reason"]):
+            raise ValueError("recovery authorization evidence differs")
+        verify_retained(event, reservation, self.path)
+        append(self.path, event)
+        return event
 
 
 def binding_identity(cache, ledger, requests, rsha, version):
@@ -332,16 +405,21 @@ def reconcile(cache, ledger, requests, rsha, version):
     binding = records[0]["contract"].get("binding")
     if not binding or binding["cache"] != str(cache.resolve()) or binding["ledger"] != str(ledger.resolve()):
         raise ValueError("ledger and cache are not bound")
-    reserves, settled = {}, {}
+    reserves, settled, retained = {}, {}, {}
     for row in records[1:]:
         if row["event"] == "reserve":
             if row["id"] in reserves:
                 raise ValueError("duplicate reservation identity")
             reserves[row["id"]] = row
         elif row["event"] == "settle":
-            if row["id"] in settled or row["id"] not in reserves:
+            if row["id"] in settled or row["id"] in retained or row["id"] not in reserves:
                 raise ValueError("duplicate/unreserved settlement identity")
             settled[row["id"]] = row
+        elif row["event"] == "retain_unknown_ceiling":
+            if row["id"] in settled or row["id"] in retained or row["id"] not in reserves:
+                raise ValueError("duplicate/unreserved unknown-charge resolution")
+            verify_retained(row, reserves[row["id"]], ledger)
+            retained[row["id"]] = row
         else:
             raise ValueError("unknown journal event")
     valid = {(judge.key_of(r["prompt"], r["candidates"], o, MODEL, version), tuple(o)): r
@@ -456,8 +534,10 @@ def run(requests, cache, legacy_cache, rubric, ledger, env_file, max_calls, rese
                 status, raw = (post or http_post)(key, body)
                 calls += 1
             except Exception as error:
+                cause = getattr(error, "reason", None)
                 atomic_blob(blobs / (ident + ".error.json"), encoded({"error_type": type(error).__name__,
-                                                                     "charge": "unknown_reservation_retained"}))
+                            "reason_type": type(cause).__name__, "errno": getattr(cause, "errno", None),
+                            "charge": "unknown_reservation_retained"}))
                 raise RuntimeError("API dispatch outcome unknown; reservation retained") from None
             redacted = raw.replace(key.encode(), b"[REDACTED_CREDENTIAL]")
             response_path = blobs / (ident + ".response.json")
@@ -500,17 +580,20 @@ def run(requests, cache, legacy_cache, rubric, ledger, env_file, max_calls, rese
     return {"calls": calls, "rankings_added": accepted, "failed_rankings": failures,
             "api_actual_spend_usd": paid, "legacy_spend_and_reserve_usd": budget.legacy,
             "pending_reservations": len(pending), "heldout_gate_reserve_usd": gate_reserve,
+            "api_retained_unknown_ceiling_usd": math.fsum(r["ceiling_usd"] for r in rows(ledger)
+                                                         if r.get("event") == "retain_unknown_ceiling"),
             "profile": PROFILE, "judge_id": jid}
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("cmd", choices=("plan", "run", "pairs"))
+    ap.add_argument("cmd", choices=("plan", "run", "pairs", "retain-unknown"))
     ap.add_argument("--requests", required=True)
     ap.add_argument("--cache", required=True)
     ap.add_argument("--legacy-cache", required=True)
     ap.add_argument("--rubric", required=True)
     ap.add_argument("--ledger")
+    ap.add_argument("--authorization-file")
     ap.add_argument("--prior-api-ledger", action="append", default=[])
     ap.add_argument("--env-file")
     ap.add_argument("--max-calls", type=int, default=0)
@@ -533,6 +616,16 @@ def main():
                    for r, o in judge.jobs(requests))
         result = {"requests": len(requests), "calls_needed": todo, "judge_id": profile_id(), "profile": PROFILE,
                   "legacy_accounting": legacy_account(a.legacy_cache, a.prior_api_ledger), "historical_verdict_reuse": False}
+    elif a.cmd == "retain-unknown":
+        if not a.ledger or not a.authorization_file:
+            ap.error("retain-unknown needs --ledger and --authorization-file")
+        _, version, rsha = judge.rubric_identity(a.rubric)
+        with exclusive(a.cache + ".lock"), exclusive(a.ledger + ".lock"):
+            binding = verified_binding(Path(a.cache), Path(a.ledger), requests, rsha, version)
+            budget = Budget(a.ledger, legacy_account(a.legacy_cache, a.prior_api_ledger),
+                            a.max_usd, a.gate_reserve_usd, binding)
+            reconcile(Path(a.cache), Path(a.ledger), requests, rsha, version)
+            result = budget.retain_unknown(json.loads(Path(a.authorization_file).read_text()))
     elif a.cmd == "pairs":
         if not a.out or not a.ledger:
             ap.error("pairs needs --out and --ledger for verified cache provenance")
