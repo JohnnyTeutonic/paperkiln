@@ -201,8 +201,6 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
 // bias, tanh-approximation GELU MLP with biases, learned absolute
 // positions). Tokenizer and IR fields as in LlamaExportConfig.
 struct Gpt2ExportConfig {
-    // Training recipe provenance only; never changes tensor dtype or inference IR.
-    std::string train_attention_precision;
     std::string name = "microtorch-model";
     // Learned positions: position_embd has exactly this many rows, and
     // llama.cpp checks it against gpt2.context_length.
@@ -233,6 +231,8 @@ struct Gpt2ExportConfig {
     // sinks, linear attention, a recurrence, no skip connections: keramos IR_SPEC 3.1, rule 38, revision
     // 1.3). "paperkiln" needs the IR.
     std::string architecture = "gpt2";
+    // Training recipe provenance only; never changes tensor dtype or inference IR.
+    std::string train_attention_precision;
 };
 
 // Export a GPT-2 state_dict (HF GPT-2 names; every 2-D projection in the

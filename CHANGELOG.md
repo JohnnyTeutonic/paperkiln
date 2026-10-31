@@ -17,6 +17,13 @@ charge keeps its full ceiling under an explicit audited recovery. Independent
 receipt replay and 90 focused tests pass. This establishes operational readiness
 for reviewed continuation, not CLI equivalence or a model-quality result.
 [Calibration and limits](experiments/chat_general/receipts/anthropic_api_20261031/CALIBRATION.md).
+## Preserve GPT2 export aggregate initialization (31 October 2026)
+
+Append the optional training-recipe field after existing Gpt2ExportConfig
+members, preserving positional initialization. A legacy-name runtime regression
+and all 14 focused CLI/export checks pass on the corrected source. Earlier raw
+CPU receipts remain unchanged.
+
 ## Experimental train-only GPT2 attention precision (31 October 2026)
 
 Add per-instance FP32/default or BF16 attention GEMMs for the exact two-block

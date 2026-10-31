@@ -1,0 +1,10 @@
+{
+ "pass": true,
+ "public_aggregate_first_member_remains_name": true,
+ "legacy_positional_initialization_runtime_checked": true,
+ "actual_cli_tests_passed": 14,
+ "candidate_binary_sha256": "4ccf3d0787dd7526d35024bf11b37d9c33c5e78ae5a61c8d8741c0dbb7a04c8e",
+ "gguf_header_sha256": "a023297fa0a7fa085ce044086f32702db4468d4e22706eb6cdf6859549edaef1",
+ "prior_raw_cpu_receipts": "preserved unchanged; source53575d726",
+ "actual_cuda": false
+}
