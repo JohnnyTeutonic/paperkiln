@@ -1,0 +1,13 @@
+{
+  "pass": true,
+  "argv": [
+    "/home/jonat/pk_flex_bf16_build_20261031/flex_precision_gate",
+    "--require-cuda",
+    "--out",
+    "/home/jonat/flex_precision_archive_preflight_v1_20261031/must_not_exist_cuda.json"
+  ],
+  "returncode": 1,
+  "stdout": "",
+  "stderr": "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\nCHECK failed /home/jonat/pk_flex_bf16_20261031/tests/flex_precision_gate.cpp:218: device::cuda_compiled() && device::gpu_profile_on()\n",
+  "raw_output_absent": true
+}

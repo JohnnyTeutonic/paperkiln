@@ -1,0 +1,22 @@
+{
+  "pass": true,
+  "actual_cuda": false,
+  "argv": [
+    "cmake",
+    "-S",
+    "/home/jonat/flex_precision_archive_preflight_v1_20261031/source",
+    "-B",
+    "/home/jonat/flex_precision_archive_preflight_v1_20261031/build",
+    "-DMICROTORCH_CUDA=OFF",
+    "-DMICROTORCH_DEVCHECK=ON",
+    "-DMICROTORCH_BUILD_PYTHON=OFF",
+    "-DFETCHCONTENT_SOURCE_DIR_JSON=/home/jonat/pk_publication_build_20261030/_deps/json-src"
+  ],
+  "returncode": 0,
+  "archive_sha256": "3872067ed41698a67e184c7638ff748aca66ca460af3a1089a6f8a5285542a51",
+  "manifest_sha256": "b196aaf1f09ed979475d60e1a0d5aeb52773a85f598d2089e31890a5ae9a8c26",
+  "exact_archive_inventory": 952,
+  "studio_chat_present": true,
+  "no_library_compilation": true,
+  "cached_json_for_local_configure_only": "/home/jonat/pk_publication_build_20261030/_deps/json-src"
+}

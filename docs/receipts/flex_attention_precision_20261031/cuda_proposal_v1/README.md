@@ -1,0 +1,1 @@
+Superseded before any CUDA outcome by cuda_proposal_v2. V1 did not explicitly replay its uploaded CPU fixture inside the VM; its local frozen-fixture replay passed. All V1 stages and logs remain unlaunched and preserved.
