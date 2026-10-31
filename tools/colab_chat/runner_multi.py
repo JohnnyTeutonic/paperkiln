@@ -940,6 +940,11 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
     if rung_up is None:
         log("prepare: rung snapshot check got no reply; will retry")
         return False
+    full_leases = []
+    if any(j.get("full_checkpoint_v2") for j in jobs):
+        from sfull_checkpoint_transport_v2 import home_uploads
+        extra, full_leases = home_uploads(jobs, ART)
+        uploads = [*uploads, *extra]
     try:
         for key, src in uploads:
             upload_file(src, f"/content/chat/upload/{key}")
@@ -1004,12 +1009,15 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
     st.d["booted"] = True
     st.save()
     log("boot launched")
+    if full_leases:
+        from sfull_checkpoint_transport_v2 import release_uploads
+        release_uploads(full_leases)
     return True
 
 
 def boot_launch_code(commit, jobs_rel, boot_script="tools/colab_chat/boot_jobs.sh"):
     """Pinned boot selection; the legacy training boot remains the default."""
-    if boot_script not in ("tools/colab_chat/boot_jobs.sh", "tools/colab_chat/boot_commands.sh", "tools/colab_chat/boot_commands_sparse.sh", "tools/colab_chat/boot_sfull_data_only_20261031.sh"):
+    if boot_script not in ("tools/colab_chat/boot_jobs.sh", "tools/colab_chat/boot_commands.sh", "tools/colab_chat/boot_commands_sparse.sh", "tools/colab_chat/boot_sfull_data_only_20261031.sh", "tools/colab_chat/boot_sfull_v2_20261101.sh"):
         raise ValueError("unsupported boot script")
     url = f"https://raw.githubusercontent.com/JohnnyTeutonic/paperkiln/{commit}/{boot_script}"
     return (
@@ -1084,7 +1092,7 @@ def main():
     ap.add_argument("--commit", required=True)
     ap.add_argument("--jobs", required=True, help="jobs JSON, path relative to the paperkiln repo root")
     ap.add_argument("--boot-script", default="tools/colab_chat/boot_jobs.sh",
-                    choices=["tools/colab_chat/boot_jobs.sh", "tools/colab_chat/boot_commands.sh", "tools/colab_chat/boot_commands_sparse.sh", "tools/colab_chat/boot_sfull_data_only_20261031.sh"],
+                    choices=["tools/colab_chat/boot_jobs.sh", "tools/colab_chat/boot_commands.sh", "tools/colab_chat/boot_commands_sparse.sh", "tools/colab_chat/boot_sfull_data_only_20261031.sh", "tools/colab_chat/boot_sfull_v2_20261101.sh"],
                     help="pinned VM boot; command-only boot skips trainer and corpus setup")
     ap.add_argument("--max-hours", type=float, default=23.5)
     ap.add_argument("--deadline-utc", type=parse_deadline_utc, default=None,
@@ -1219,7 +1227,15 @@ def main():
                     log(f"{n}: {r[n]}  {r.get(n + '_tail', '')[-120:]}")
                     js["status"] = r[n]
                     st.save()
-                if r[n] == "RUNNING" and not js["home"] and "cmd" not in j:
+                if r[n] == "RUNNING" and not js["home"] and j.get("full_checkpoint_v2"):
+                    from sfull_checkpoint_transport_v2 import relay as full_relay
+                    try:
+                        relayed = full_relay(exec_py, download_file, st, j, ART) or relayed
+                    except (OSError, ValueError, RuntimeError, KeyError, TypeError) as error:
+                        with open(os.path.join(HOME, "HALTED"), "x") as marker:
+                            json.dump({"kind": "S_FULL_CHECKPOINT_V2_FAILURE", "error": str(error)}, marker)
+                        raise
+                elif r[n] == "RUNNING" and not js["home"] and "cmd" not in j:
                     relayed = relay(st, n, j.get("relay_every_steps", 0)) or relayed
                 if r[n] == "FINISHED" and not js["home"]:
                     if "cmd" in j:
