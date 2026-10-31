@@ -31,3 +31,10 @@ def test_vm_prior_evidence_not_overwritten(tmp_path):
  out=tmp_path/'out';out.mkdir();proof=out/'summary.json';proof.write_text('negative evidence')
  p=subprocess.run([sys.executable,str(ROOT/'tools/flex_cli_lifecycle_vm.py'),'--upload',str(tmp_path),'--manifest-sha256','wrong','--out',str(out)],capture_output=True)
  assert p.returncode!=0 and proof.read_text()=='negative evidence' and len(list(out.iterdir()))==1
+
+
+def test_reference_runtime_binding(monkeypatch):
+ monkeypatch.setattr(gate.np,'__version__','2.3.3')
+ with pytest.raises(ValueError,match='requires NumPy 1.26.4'):gate.require_reference_runtime()
+ monkeypatch.setattr(gate.np,'__version__','1.26.4')
+ gate.require_reference_runtime()
