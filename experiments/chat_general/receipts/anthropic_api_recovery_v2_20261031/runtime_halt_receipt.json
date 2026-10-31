@@ -1,0 +1,20 @@
+{
+  "status": "HALTED_NEW_UNKNOWN_NO_RETRY",
+  "new_training_attempts": 16,
+  "new_valid_rankings": 15,
+  "total_valid_api_rankings": 541,
+  "pending_id": "7ef677f4605a4b489f00c4bfde5b625c",
+  "new_settled_actual_usd": 0.23596,
+  "pending_ceiling_usd": 0.25,
+  "prior_retained_unknown_ceiling_usd": 0.5,
+  "no_usage_or_verdict_invented": true,
+  "old_HALTED_preserved": true,
+  "old_HALTED_sha256": "0ee5f79a2d1e09bc2a46663d9bbd59c1bababb428bc8a52b145057065f868bc9",
+  "new_HALTED_sha256": "38bd276794365ebea271f2725c81a50964501650459350a5387c3ee577e5b5b9",
+  "ledger_prefix_preserved": true,
+  "ledger_sha256": "8a803bd8a332cee7246a8eaf20656ba90f3ead4c618576c3949104d32118451a",
+  "both_entries_disabled": true,
+  "new_worker_exited": true,
+  "source_hashes_unchanged": true,
+  "protocol_sha256": "6a233561c2eb490cf7041a8005cb70a06608b33a23b107aecae62b8f9c90d8ea"
+}
