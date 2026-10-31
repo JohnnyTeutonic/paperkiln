@@ -97,3 +97,20 @@ def test_changed_input_refused(contract):
     Path(record["runtime_spec"]["train"]["init_from"]).write_text("changed")
     with pytest.raises(ValueError, match="input differs"):
         dpo.prepare(record, core.sha(path), out)
+
+
+def test_direct_cli_resume_checks_generation_recipe_not_just_contract_hash(contract):
+    path, record, out = contract
+    flat(out, 10)
+    digest = core.sha(path)
+    core.publish(out, 10, 2, 8, 1, "a" * 40, digest)
+    with pytest.raises(ValueError, match="generation recipe"):
+        dpo.prepare(record, digest, out)
+
+
+def test_boolean_seed_not_integer_recipe(contract):
+    path, record, out = contract
+    record["runtime_spec"]["train"]["seed"] = True
+    path.write_text(json.dumps(record))
+    with pytest.raises(ValueError, match="integer"):
+        dpo.load_contract(path)
