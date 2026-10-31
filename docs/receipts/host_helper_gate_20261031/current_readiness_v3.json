@@ -1,0 +1,13 @@
+{
+  "status": "UNLAUNCHED_OFFLINE_ONLY_CURRENT_V3",
+  "scientific_source_commit": "5614bf1fef4b7d24bbb6c476d2870a88682388d6",
+  "stage_home": "/home/jonat/host_helper_gate_stage_unlaunched_v3_20261031",
+  "manifest_sha256": "3ab069e1f144aae1461a1a0c6bb3c1bfd584b25d8f1e6fe41d7caba1a7458ed7",
+  "supersedes": "V2 packaging and original test construction for future launch. Old receipts retained as prospective history.",
+  "correction": "Proven device-fresh nongrad weighted-loss operand now forces the device mul branch after host helper forward, before the existing stale upstream-gradient assertion.",
+  "validation": "Corrected CPU full-array replay passes3.45e-8;40 optimized rejection tests pass; V3 source hashes/safe members and CPU archive configure pass. No additional library build.",
+  "no_CUDA_result": true,
+  "no_paid_resources": true,
+  "no_watchdog_entry": true,
+  "future_root_review_and_new_deadline_required": true
+}
