@@ -45,6 +45,27 @@ def coverage(rows,prompts,encode,max_new=64):
     if not expected:raise ValueError('empty evaluation denominator')
 
 
+
+def parity_coverage(cuda,cpu,prompts):
+    """Recompute registered forty-prompt evidence, including the shared CPU reference."""
+    if len(prompts)!=40:raise ValueError('registered parity inventory differs')
+    reference_fields=['mtstudio','mts_tokens','mts_stop','bpe_py_prompt_tokens']
+    required=['i','prompt','ember','mtstudio','ember_tokens','mts_tokens','ember_stop','mts_stop','ember_prompt_tokens','bpe_py_prompt_tokens']
+    for rows in [cuda,cpu]:
+        if len(rows)!=40:raise ValueError('parity prompt coverage incomplete')
+        for i,(row,prompt) in enumerate(zip(rows,prompts)):
+            if (any(key not in row for key in required) or type(row['i']) is not int or row['i']!=i
+                or row['prompt']!=prompt['prompt']):raise ValueError('parity registered prompt order/identity differs')
+            if any(type(row[k]) is not int or row[k]<0 for k in ['ember_tokens','mts_tokens','ember_prompt_tokens','bpe_py_prompt_tokens']):raise ValueError('parity token evidence differs')
+            if any(type(row[k]) is not str for k in ['ember','mtstudio','ember_stop','mts_stop']):raise ValueError('parity textual evidence differs')
+    for left,right in zip(cuda,cpu):
+        if any(left[k]!=right[k] for k in reference_fields) or right.get('ember_cuda')!=left['ember']:
+            raise ValueError('parity CPU/CUDA reference correspondence differs')
+    return {leg:{'n':len(rows),'reply_identical':sum(r['ember']==r['mtstudio'] for r in rows),
+      'token_count':sum(r['ember_tokens']==r['mts_tokens'] for r in rows),'stop_reason':sum(r['ember_stop']==r['mts_stop'] for r in rows),
+      'prompt_tokens':sum(r['ember_prompt_tokens']==r['bpe_py_prompt_tokens'] for r in rows)} for leg,rows in [('cuda',cuda),('cpu',cpu)]}
+
+
 def extract(evaluation_dir,parity_dir,binding,instance,heldout_state,vocab_path):
     R,P=Path(evaluation_dir),Path(parity_dir);root=Path(__file__).resolve().parents[2]
     import bpe
@@ -53,6 +74,7 @@ def extract(evaluation_dir,parity_dir,binding,instance,heldout_state,vocab_path)
     manifest=json.loads((R/'manifest.json').read_text());parity_summary=json.loads((P/'parity_summary.json').read_text())
     if manifest['ember']['commit']!=binding['ember_commit'] or parity_summary['ember']['commit']!=binding['ember_commit']:raise ValueError('evaluation/parity common build differs')
     if manifest['models']['pksft']['gguf_sha256']!=binding['upload_sha256']['vocab.gguf'] or manifest['models']['pk_dpo_v1']['gguf_sha256']!=parity_summary['gguf_sha256']:raise ValueError('evaluated model identity differs')
+    if type(parity_summary.get('n')) is not int or parity_summary['n']!=40 or parity_summary.get('max_new')!=60:raise ValueError('parity registered generation extent differs')
     frozen=heldout.api.rows(root/'corpus/eval/tinychat_hf_prompts_v1.jsonl')[:100]
     prompts=heldout.api.rows(root/'corpus/eval/chat_prompts_v1.jsonl')[:200]
     all_rows={}
@@ -72,12 +94,7 @@ def extract(evaluation_dir,parity_dir,binding,instance,heldout_state,vocab_path)
         rows=heldout.api.rows(R/'qa'/(name+'_qa.jsonl'));indices=[r['prompt_index'] for r in rows]
         if len(indices)!=60 or set(indices)!=set(range(60)):raise ValueError('simple QA coverage incomplete')
         correct[label]=sum(qa_eval.correct(r['completion'],qs[r['prompt_index']]['answers']) for r in rows)
-    parity={}
-    for leg in ['cuda','cpu']:
-        rows=heldout.api.rows(P/('parity_'+leg+'.jsonl'))
-        parity[leg]={'n':len(rows),'reply_identical':sum(r['ember']==r['mtstudio'] for r in rows),
-          'token_count':sum(r['ember_tokens']==r['mts_tokens'] for r in rows),'stop_reason':sum(r['ember_stop']==r['mts_stop'] for r in rows),
-          'prompt_tokens':sum(r['ember_prompt_tokens']==r['bpe_py_prompt_tokens'] for r in rows)}
+    parity=parity_coverage(heldout.api.rows(P/'parity_cuda.jsonl'),heldout.api.rows(P/'parity_cpu.jsonl'),frozen[:40])
     _,_,status=heldout.inspect(instance)
     if status['missing_rankings']:raise ValueError('held-out eligible judging incomplete')
     stopped=json.loads((Path(heldout_state)/'STOPPED').read_text())
