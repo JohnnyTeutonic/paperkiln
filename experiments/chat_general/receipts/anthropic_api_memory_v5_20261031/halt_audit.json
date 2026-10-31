@@ -1,0 +1,114 @@
+{
+  "status": "AUDITED_LOCAL_OSERROR_AFTER_FOUR_SUCCESSFUL_BATCHES",
+  "observed_utc": "2026-10-31T11:43:01.666422+00:00",
+  "protocol_file_sha256": "a576a57a7796440b2936ede0176f748372655551d83f3a57e09ab7e1e6e8b763",
+  "protocol_object_sha256": "29656afc6eaa5c3b289d754592dc84ed1c0ec493f57ebb9fe0b5ce00a26f3708",
+  "source_sha256": {
+    "chat_judge_campaign_refusal_v5.py": "3ba3efbee0f602abef538b4147ac3bb85305a7cb5de89da8ec642fc0cf839d30",
+    "chat_judge_api_refusal_v5.py": "11cd8c7880356afaef631f6168d02dd75025cd4be58d4c6fc69fddb966ed0dd7",
+    "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+  },
+  "terminal_snapshots": {
+    "HALTED": {
+      "sha256": "36b90d4e1351e7d8641bed53adebf846c6cef6631bdc5d738997b7bdb235b363",
+      "value": {
+        "error_type": "OSError",
+        "protocol_sha256": "29656afc6eaa5c3b289d754592dc84ed1c0ec493f57ebb9fe0b5ce00a26f3708",
+        "reason": "review ledger and raw receipts; exception text and stderr suppressed",
+        "requires_review": true,
+        "stderr_present_content_suppressed": false
+      }
+    },
+    "STOPPED": {
+      "sha256": "a76db07dd3a03a5388d9de24c0845059f22b20a0fa2025de960b0e16d5f20d8b",
+      "value": {
+        "kind": "HALTED_REVIEW_REQUIRED",
+        "protocol_sha256": "29656afc6eaa5c3b289d754592dc84ed1c0ec493f57ebb9fe0b5ce00a26f3708"
+      }
+    },
+    "progress.json": {
+      "sha256": "200f8d13a863ec982bacd286a51b262dd25ebb05cf610752be4b0e1d6da25f72",
+      "value": {
+        "api_actual_spend_usd": 26.494952,
+        "attempts_since_start": 72,
+        "baseline_usd": 20.08558,
+        "checked_unix": 1793445711.7472842,
+        "eligible_missing_rankings": 4276,
+        "gate_reserve_usd": 25.0,
+        "missing_rankings": 4278,
+        "preserved_failed_rankings": 1,
+        "protocol_sha256": "29656afc6eaa5c3b289d754592dc84ed1c0ec493f57ebb9fe0b5ce00a26f3708",
+        "retained_unknown_ceiling_usd": 0.75,
+        "unattempted_paired_exclusions": 1,
+        "valid_api_rankings": 1762
+      }
+    }
+  },
+  "actual_readonly_inspect": {
+    "attempts_since_start": 96,
+    "missing_rankings": 4254,
+    "valid_api_rankings": 1786,
+    "eligible_missing_rankings": 4252,
+    "preserved_failed_rankings": 1,
+    "unattempted_paired_exclusions": 1,
+    "api_actual_spend_usd": 26.847668,
+    "retained_unknown_ceiling_usd": 0.75,
+    "baseline_usd": 20.08558,
+    "gate_reserve_usd": 25.0
+  },
+  "new_reservations": 96,
+  "new_settlements": 96,
+  "new_valid_rankings": 96,
+  "global_pending_reservations": 0,
+  "valid_api_rankings_total": 1786,
+  "training_attempts_total": 1742,
+  "preserved_refusals": 1,
+  "unattempted_paired_exclusions": 1,
+  "never_attempted_eligible_remaining": 4252,
+  "new_API_errors_or_failures": 0,
+  "full_cache_failure_raw_accounting_reconcile": "PASS",
+  "verified_V5_trace_count": 96,
+  "verified_V5_inventory_sha256": "f5896099417d978c9c9eb5e3aaacbb93e1849c3a37c1e5da2541e65aa631f6cc",
+  "ledger_snapshot": {
+    "bytes": 2421004,
+    "sha256": "f265c8a5389a85d4e22dc12f3590270a7882c135c63ddcb4d41f4626daf64db9"
+  },
+  "events_snapshot": {
+    "bytes": 6123,
+    "sha256": "012569639ca1f8ba248ba4aa530c92c616ccb747031c3768d74a7d4abc72839c"
+  },
+  "failure_file_sha256": "7bfabb246403ca7b38d434178236175cac59f36189287eec55caf03935fec8a5",
+  "halt_phase_bound": {
+    "last_event": "batch_return",
+    "last_batch_calls": 24,
+    "last_batch_valid": 24,
+    "last_batch_pending": 0,
+    "stale_progress_attempts": 72,
+    "settled_attempts": 96,
+    "next_batch_reservations": 0,
+    "possible_source_region": "next read-only inspect or progress publication before the next batch_start",
+    "source_lines": {
+      "requests, status = inspector(protocol)": 227,
+      "state / \"progress.json\"": 229,
+      "\"event\": \"batch_start\"": 255,
+      "\"event\": \"batch_return\"": 288
+    },
+    "exact_errno_retained": false,
+    "exact_stack_retained": false,
+    "OSError_cause": "not conclusively recoverable from preserved wrapper diagnostics; reported host memory pressure is context, not recovered errno proof"
+  },
+  "watchdog_entry_disabled": true,
+  "old_HALTs_and_paired_exclusion_preserved": true,
+  "full_valid_complete": false,
+  "DPO_and_fixed_gate": "BLOCKED_PENDING_SEPARATE_DATASET_DECISION",
+  "proposed_continuation_counts": {
+    "initial_training_attempts": 1742,
+    "initial_valid_rankings": 1786,
+    "max_new_attempts": 4252,
+    "maximum_valid_if_eligible_succeed": 6038,
+    "refused": 1,
+    "unattempted_paired_exclusion": 1
+  },
+  "no_dispatch_or_disposition_by_audit": true
+}
