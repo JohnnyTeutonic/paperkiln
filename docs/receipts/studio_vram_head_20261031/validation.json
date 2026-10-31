@@ -1,0 +1,13 @@
+{
+  "node_tests_passed": 8,
+  "node_tests_skipped": 0,
+  "runtime_constructor_cases": 8,
+  "actual_cli_depths": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "production_change": "Add the untied CLI head to GPT2 parameter storage; Llama and activation formulas unchanged",
+  "separate_observation": "An initial smoke input used zero evaluation/checkpoint intervals and hit a pre-existing CLI modulo-by-zero. Valid positive-interval runs were then used; parser validation is separate work."
+}

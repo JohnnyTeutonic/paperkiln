@@ -4,9 +4,9 @@ const html=fs.readFileSync(path.join(__dirname,"../studio/index.html"),"utf8");
 const ctx={};vm.runInNewContext(html.split("// BEGIN STUDIO_VRAM_CORE")[1].split("// END STUDIO_VRAM_CORE")[0]+"\nthis.api={estimateVram,planVram}",ctx);
 const {estimateVram,planVram}=ctx.api;
 function spec(preset="llama-tiny"){return {arch:{preset,custom:{d:16,layers:2,heads:2}},data:{T:8,vocab_cap:64},train:{optimizer:"adamw",batch:4,accum:2}};}
-test("parameter inventory includes tied heads/norms/biases and custom FFN",()=>{
+test("parameter inventory includes the actual tied/untied heads, norms, biases and custom FFN",()=>{
  assert.equal(estimateVram(spec(),0).params,7760);
- assert.equal(estimateVram(spec("gpt2-nano"),0).params,7744);
+ assert.equal(estimateVram(spec("gpt2-nano"),0).params,8768);
  const s=spec();s.arch.custom.d_ff=64;assert.equal(estimateVram(s,0).params,9296);
 });
 test("formula breakdown is explicit and accumulation does not retain another graph",()=>{
@@ -40,4 +40,15 @@ test("runtime integer compensation and available-byte overflow refuse",()=>{
  assert.throws(()=>planVram(original,8,0),/INT_MAX/);
  assert.throws(()=>planVram(spec(),Number.MAX_VALUE,0),/safe planning/);
  const nofit=planVram(spec(),1e-10,0);assert.equal(nofit.minimum.batch,1);assert.equal(nofit.minimum.accum,8);
+});
+
+test("parameter inventory matches CLI runtime constructors across dispatch depths", {skip:!process.env.STUDIO_VRAM_PARAMETER_PROBE}, ()=>{
+ const cp=require("node:child_process"), rows=JSON.parse(cp.execFileSync(process.env.STUDIO_VRAM_PARAMETER_PROBE,{encoding:"utf8"}));
+ assert.equal(rows.length,8);
+ for(const row of rows){
+  const s=spec(row.preset);s.arch.custom={d:row.d,layers:row.layers,heads:row.heads};
+  s.data.T=row.T;s.data.vocab_cap=row.vocab;
+  if(row.d_ff!==undefined)s.arch.custom.d_ff=row.d_ff;
+  assert.equal(estimateVram(s,0).params,row.params,JSON.stringify(row));
+ }
 });
