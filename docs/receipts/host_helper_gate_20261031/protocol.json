@@ -16,7 +16,7 @@
   ],
   "scope": "Only these nine concrete helper cases. exp and div represent common generic helper materialization, not every unary/binary derivative formula.",
   "fixtures": "Fixed nonboundary 2x3 matrices; reductions2x1; broadcast2x1 to2x3; fresh matmul identity for each inplace case. Exact input bytes independently checked.",
-  "gpu_proof": "Single actual L4 plus CUDA/DEVCHECK compile. All inputs produced under active deferred GPU ops; CHECK host_stale before/after poisoning only non-authoritative host bytes. Weighted-loss backward proves stale upstream gradient and poisons only host bytes before helper backward.",
+  "gpu_proof": "Single actual L4 plus CUDA/DEVCHECK compile. All helper inputs produced under active deferred GPU ops; CHECK host_stale before/after poisoning only non-authoritative host bytes. A separately proven device-fresh nongrad slice of weighted-loss weights is poisoned, forcing ops::mul device dispatch after the host helper. Backward CHECK proves stale upstream gradient before its host-only poisoning.",
   "inplace_contract": "Only fresh matmul output, no other consumer, no explicit resident mutation; matmul output DevState must be null before inplace.",
   "numeric_gate": {
     "normalized_element_error": "abs(actual-reference)/(1+abs(reference))",
@@ -40,12 +40,13 @@
   "validation": {
     "cpu_control_pass": true,
     "maximum_cpu_normalized_error": 3.445527538945451e-08,
-    "optimized_parser_mutation_tests": 39,
+    "optimized_parser_mutation_tests": 40,
     "cpu_binary_cuda_substitution_refused": true,
     "cpu_binary_cuda_refusal_returncode": 1
   },
   "limits": [
     "No CUDA result exists yet; nine-case CUDA host-helper subset remains open.",
     "No performance, residency improvement, quality or exhaustive audit claim."
-  ]
+  ],
+  "prospective_control_flow_correction": "Original unlaunched draft used host-fresh loss weights with a host-fresh helper output, which would select host mul and fail the stale-gradient CHECK. Independent source review found this before any CUDA outcome. Corrected only test construction, without changing production or bounds."
 }
