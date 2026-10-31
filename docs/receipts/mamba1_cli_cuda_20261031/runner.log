@@ -1,0 +1,18 @@
+10-31 16:56:34 volume x8askc9m49 created in EU-RO-1 (20 GB)
+10-31 16:56:37 pod bssabhju5prj05 created in EU-RO-1 (L4, $0.590/h, SECURE); waiting for ssh
+10-31 16:56:58 pod bssabhju5prj05 answers at 213.173.105.21:18927 after 21 s
+10-31 16:57:24 prelude done: thon3 -m pip install --upgrade pip | cmake version 3.31.6 | GPU 0: NVIDIA L4 (UUID: GPU-840aebdc-e7ed-a443-3d3c-a8377790e47f) | Cuda compilation tools, release 12.4, V12.4.131 | Build cuda_12.4.r12.4/compiler.34097967_0 | host driver CUDA major: 13 | 48 |                total        used        free      shared  buff/cache   available | Mem:             503          40         264           0         198         459 | mfs#euro-2.runpod.net:9421  2.1P  1.7P  421T  81% /content | prelude done Sat Oct 31 05:57:24 UTC 2026 | debconf: delaying package configuration, since apt-utils is not installed
+10-31 16:57:25 session up, endpoint bssabhju5prj05 (launch 1)
+10-31 16:59:03 inputs: source.tgz 10226595 mamba1_cli_gate.py 6874 mamba1_cli_lifecycle.py 17129 protocol.json 2441 host_pins.json 518 inputs.json 176111 INPUTS_OK
+10-31 16:59:08 boot launched
+10-31 16:59:14 mamba1_cli_gate: NONE  
+10-31 17:03:20 mamba1_cli_gate: RUNNING  
+10-31 17:07:26 mamba1_cli_gate: FINISHED  {"pass": true, "errors": []}
+10-31 17:07:38 mamba1_cli_gate: gate_summary.json downloaded
+10-31 17:07:50 mamba1_cli_gate: out.zip downloaded
+10-31 17:08:01 mamba1_cli_gate: ../mamba1_cli_gate_train.log downloaded
+10-31 17:08:01 mamba1_cli_gate: outputs downloaded
+10-31 17:08:01 all jobs finished and home
+10-31 17:08:02 pod bssabhju5prj05 terminated (RunPod ledger $0.11)
+10-31 17:08:02 volume x8askc9m49 (EU-RO-1) deleted
+10-31 17:08:02 session stopped; runner exiting

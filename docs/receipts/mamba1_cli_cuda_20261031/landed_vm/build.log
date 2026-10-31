@@ -1,0 +1,240 @@
+[  3%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/config.cpp.o
+[  3%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/lora.cpp.o
+[  3%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/logger.cpp.o
+[  3%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/architecture.cpp.o
+[  7%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/scope_logger.cpp.o
+[  7%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/components.cpp.o
+[ 10%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/matrix.cpp.o
+[ 10%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/matmul_optimized.cpp.o
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/components.cpp:11:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 10%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/tensor.cpp.o
+[ 14%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/utils.cpp.o
+[ 14%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/vector_ops.cpp.o
+[ 17%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/embeddings.cpp.o
+[ 17%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/layer_norm.cpp.o
+[ 17%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/feed_forward.cpp.o
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/mamba1_cli_source/third_party/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/mamba1_cli_source/third_party/transformer_cpp/src/../include/utils.hpp:4,
+                 from /content/mamba1_cli_source/third_party/transformer_cpp/src/utils.cpp:1:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/utils.cpp:21:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/../include/debug.hpp:85:21: warning: backslash-newline at end of file
+   85 | #define SCOPE_LOG() \
+      |                      
+/content/mamba1_cli_source/third_party/transformer_cpp/src/../include/debug.hpp:85: warning: "SCOPE_LOG" redefined
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/utils.cpp:3:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/../include/scope_logger.hpp:47: note: this is the location of the previous definition
+   47 | #define SCOPE_LOG() debug::ScopeLogger scope_logger_instance = debug::ScopeLogger(__FUNCTION__, __FILE__, __LINE__)
+      | 
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/feed_forward.cpp:5:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 21%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/transformer_layer.cpp.o
+[ 21%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/attention.cpp.o
+[ 25%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/transformer.cpp.o
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/mamba1_cli_source/third_party/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/mamba1_cli_source/third_party/transformer_cpp/src/transformer_layer.cpp:1:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/mamba1_cli_source/third_party/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/mamba1_cli_source/third_party/transformer_cpp/src/attention.cpp:15:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/mamba1_cli_source/third_party/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/mamba1_cli_source/third_party/transformer_cpp/src/transformer.cpp:1:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 25%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/lm_head.cpp.o
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/transformer.cpp:5:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/../include/cuda/cublas_check.cuh:6:100: warning: backslash-newline at end of file
+    6 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+/content/mamba1_cli_source/third_party/transformer_cpp/src/../include/cuda/cublas_check.cuh:6: warning: "CUBLAS_CHECK" redefined
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/mamba1_cli_source/third_party/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/mamba1_cli_source/third_party/transformer_cpp/src/transformer.cpp:1:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/../include/cuda/cuda_check.cuh:18: note: this is the location of the previous definition
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      | 
+[ 25%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/router.cpp.o
+[ 28%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/moe.cpp.o
+[ 28%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/gqa.cpp.o
+[ 32%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/vocabulary.cpp.o
+[ 32%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/tiktoken_tokenizer.cpp.o
+[ 35%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/gradient_checkpoint.cpp.o
+[ 35%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/cache.cpp.o
+[ 35%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/quantization.cpp.o
+[ 39%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/quantization_api.cpp.o
+[ 39%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/model_saver.cpp.o
+[ 42%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/gguf_export.cpp.o
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/mamba1_cli_source/third_party/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/mamba1_cli_source/third_party/transformer_cpp/src/../include/quantization.hpp:3,
+                 from /content/mamba1_cli_source/third_party/transformer_cpp/src/quantization.cpp:1:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/mamba1_cli_source/third_party/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/mamba1_cli_source/third_party/transformer_cpp/src/../include/quantization.hpp:3,
+                 from /content/mamba1_cli_source/third_party/transformer_cpp/src/../include/quantization_api.hpp:3,
+                 from /content/mamba1_cli_source/third_party/transformer_cpp/src/quantization_api.cpp:1:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/mamba1_cli_source/third_party/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/mamba1_cli_source/third_party/transformer_cpp/src/../include/model_saver.hpp:4,
+                 from /content/mamba1_cli_source/third_party/transformer_cpp/src/model_saver.cpp:1:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 42%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/safetensors_export.cpp.o
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/mamba1_cli_source/third_party/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/mamba1_cli_source/third_party/transformer_cpp/src/gguf_export.cpp:7:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 42%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/cuda_matrix.cu.o
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/mamba1_cli_source/third_party/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/mamba1_cli_source/third_party/transformer_cpp/src/safetensors_export.cpp:19:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 46%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/swiglu_kernels.cu.o
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/cuda_matrix.cu:4:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/cuda_matrix.cu:4:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/swiglu_kernels.cu:4:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 46%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/quantization_kernels.cu.o
+[ 50%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/matrix_ops.cu.o
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/swiglu_kernels.cu:4:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 50%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/fused_attention_kernels.cu.o
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/quantization_kernels.cu:2:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/fused_attention_kernels.cu:2:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/matrix_ops.cu:4:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 50%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/moe_kernel.cu.o
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/quantization_kernels.cu:2:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/fused_attention_kernels.cu:2:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+/content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/fused_attention_kernels.cu(71): warning #177-D: variable "score_idx" was declared but never referenced
+      int score_idx = head_idx * (batch_size * seq_len * batch_size * seq_len) +
+          ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/fused_attention_kernels.cu(279): warning #177-D: variable "grid_size" was declared but never referenced
+      int grid_size = (total_seq * hidden_size + block_size - 1) / block_size;
+          ^
+
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/matrix_ops.cu:4:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 53%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/router_kernel.cu.o
+[ 53%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/layernorm_cuda.cu.o
+/content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/layernorm_cuda.cu:1: warning: "USE_CUDA" redefined
+    1 | #define USE_CUDA
+      | 
+<command-line>: note: this is the location of the previous definition
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/layernorm_cuda.cu:2:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 57%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/loss_kernels.cu.o
+/content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/layernorm_cuda.cu:1: warning: "USE_CUDA" redefined
+    1 | #define USE_CUDA
+      | 
+<command-line>: note: this is the location of the previous definition
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/layernorm_cuda.cu:2:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/loss_kernels.cu:2:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/loss_kernels.cu:2:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 57%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/attention_ops.cu.o
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/attention_ops.cu:4:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/attention_ops.cu:4:
+/content/mamba1_cli_source/third_party/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 60%] Linking CXX static library libtransformer_core.a
+[ 60%] Built target transformer_core
+[ 64%] Building CXX object CMakeFiles/microtorch.dir/src/ops.cpp.o
+[ 64%] Building CXX object CMakeFiles/microtorch.dir/src/expr.cpp.o
+[ 67%] Building CXX object CMakeFiles/microtorch.dir/src/autograd.cpp.o
+[ 67%] Building CXX object CMakeFiles/microtorch.dir/src/recurrence.cpp.o
+[ 67%] Building CXX object CMakeFiles/microtorch.dir/src/nn.cpp.o
+[ 71%] Building CXX object CMakeFiles/microtorch.dir/src/device.cpp.o
+[ 71%] Building CXX object CMakeFiles/microtorch.dir/src/device_cache.cpp.o
+[ 71%] Building CXX object CMakeFiles/microtorch.dir/src/safetensors.cpp.o
+[ 75%] Building CXX object CMakeFiles/microtorch.dir/src/gguf.cpp.o
+[ 75%] Building CXX object CMakeFiles/microtorch.dir/src/quant.cpp.o
+[ 78%] Building CXX object CMakeFiles/microtorch.dir/src/ir.cpp.o
+[ 78%] Building CXX object CMakeFiles/microtorch.dir/src/llama.cpp.o
+[ 78%] Building CXX object CMakeFiles/microtorch.dir/src/llama_attnres.cpp.o
+[ 82%] Building CXX object CMakeFiles/microtorch.dir/src/depth_attend.cpp.o
+[ 82%] Building CXX object CMakeFiles/microtorch.dir/src/moe.cpp.o
+[ 85%] Building CXX object CMakeFiles/microtorch.dir/src/kimi_linear.cpp.o
+[ 85%] Building CXX object CMakeFiles/microtorch.dir/src/srd.cpp.o
+[ 89%] Building CXX object CMakeFiles/microtorch.dir/src/cerebellum.cpp.o
+[ 89%] Building CXX object CMakeFiles/microtorch.dir/src/mamba.cpp.o
+[ 89%] Building CXX object CMakeFiles/microtorch.dir/src/posttrain/verifier.cpp.o
+[ 92%] Building CUDA object CMakeFiles/microtorch.dir/src/cuda_resident.cu.o
+[ 92%] Building CUDA object CMakeFiles/microtorch.dir/src/cuda_ops.cu.o
+[ 96%] Building CUDA object CMakeFiles/microtorch.dir/src/cuda_depth_attend.cu.o
+[ 96%] Building CUDA object CMakeFiles/microtorch.dir/src/cuda_flash.cu.o
+[ 96%] Linking CXX static library libmicrotorch.a
+[ 96%] Built target microtorch
+[100%] Building CXX object CMakeFiles/mtstudio.dir/tools/mtstudio.cpp.o
+[100%] Linking CXX executable mtstudio
+[100%] Built target mtstudio
