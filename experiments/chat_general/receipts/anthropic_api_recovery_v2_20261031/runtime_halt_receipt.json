@@ -16,5 +16,10 @@
   "both_entries_disabled": true,
   "new_worker_exited": true,
   "source_hashes_unchanged": true,
-  "protocol_sha256": "6a233561c2eb490cf7041a8005cb70a06608b33a23b107aecae62b8f9c90d8ea"
+  "protocol_sha256": "6a233561c2eb490cf7041a8005cb70a06608b33a23b107aecae62b8f9c90d8ea",
+  "initial_training_attempts_for_future_review": 496,
+  "missing_rankings": 5499,
+  "pending_ceiling_reserved_not_disposed": true,
+  "pending_retention_authorised": false,
+  "no_third_phase_enabled": true
 }
