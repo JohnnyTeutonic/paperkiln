@@ -1,0 +1,82 @@
+{
+  "reviewer": "independent cleanroom_review agent",
+  "reviewed_utc": "2026-10-31T13:03:28.877725+00:00",
+  "status": "PASS_ACTUAL_L4_MODEL_ONLY_FULL_GRADIENT_REPLAY",
+  "scope": "Four tiny canonical plain Flex configurations on actual L4; explicit quantized-input six-GEMM surrogate gradients, not derivative of rounding. No CUDA CLI lifecycle, quality, speed or broad adoption claim.",
+  "implementation_commit": "5bf2863becae677a9521ab26f9567bdfaea848d9",
+  "packet_source_commit": "82f3c07c43cf205707d15b218f2ab62bf4a0bafe",
+  "science_commit": "3db619690a0f08051224fa174484a2a22dc1f98a",
+  "manifest_sha256": "89f0f62b8812789dd9dd2af3ac479e49511ada120183f3188babb1b11edebd66",
+  "source_archive_sha256": "b8ce1f077410a08d8d454bd556eb90eb66e9adcbcb577f07a018e13c6cb3c18c",
+  "wrapper_sha256": "65ed0930a781a10d429a4cf6e844912b63a7635eeba066fa810b847ba41e99ec",
+  "reference_sha256": "b2198c415cd4e1fd90994f6b335bb863f79bfd0308053165faf88da513901e0d",
+  "protocol_sha256": "d2566a5bad9d3489cc5393a15c1e2c197d3b888c327b27051fa9ac81da4c3572",
+  "raw_output_archive_sha256": "76b570ff8ee284d42e83a3becbedd42534054e0c1dbae4dadebe7af8d620cc0e",
+  "raw_output_archive_bytes": 181426,
+  "CRC_and_complete_unique_artifact_hash_inventory": "PASS",
+  "landed_summary_matches_archived_summary": true,
+  "exact_frozen_source_and_upload_manifest": "PASS",
+  "actual_device": "NVIDIA L4, 595.91.07",
+  "CPU_cases": 4,
+  "CUDA_cases": 4,
+  "full_gradient_tensors_each_backend": 116,
+  "full_gradient_tensors_total": 232,
+  "CUDA_BF16_GEMM_profiles": [
+    {
+      "layers": 1,
+      "d_ff": 12,
+      "precision": "fp32",
+      "gemm_bf16": 0
+    },
+    {
+      "layers": 1,
+      "d_ff": 12,
+      "precision": "bf16",
+      "gemm_bf16": 12
+    },
+    {
+      "layers": 3,
+      "d_ff": 20,
+      "precision": "fp32",
+      "gemm_bf16": 0
+    },
+    {
+      "layers": 3,
+      "d_ff": 20,
+      "precision": "bf16",
+      "gemm_bf16": 36
+    }
+  ],
+  "independent_replay": {
+    "cpu": {
+      "pass": true,
+      "actual_cuda": false,
+      "max_forward_error": 1.7572580027286702e-07,
+      "max_gradient_element_error": 1.622936386990226e-07,
+      "max_gradient_relative_norm_error": 1.8997632431955631e-06
+    },
+    "cuda": {
+      "pass": true,
+      "actual_cuda": true,
+      "max_forward_error": 2.2783300023349286e-07,
+      "max_gradient_element_error": 1.4699460706185612e-07,
+      "max_gradient_relative_norm_error": 1.3989169505824727e-06
+    }
+  },
+  "frozen_CPU_fixture_independent_replay": "PASS",
+  "bounds_unchanged": {
+    "normalized_element": 0.0003,
+    "tensor_relative_norm": 0.03,
+    "norm_floor": 1e-10
+  },
+  "default_controls": "Every model case verifies old FP32 logits/all gradients bitwise, precision-independent inference IR and reload FP32 equality; source factory CPU proof remains separate.",
+  "cleanup": "Root reports owned pod and volume deleted; reviewer made no provider call.",
+  "limitations": [
+    "Tiny d8,heads2,vocab7,batch2,seq4 cases only, depths1/3 and FFN12/20.",
+    "Standalone model forward/backward, not CUDA mtstudio LM/SFT lifecycle.",
+    "No quality, timing, speed, universal architecture or broader adoption conclusion.",
+    "Surrogate uses BF16-input GEMMs QK,PV,dV,dP,dQ,dK with FP32 softmax/intermediates; not derivative of BF16 rounding."
+  ],
+  "no_provider_GPU_or_config_action_by_reviewer": true,
+  "source_archive_all_member_hashes_independently_verified": 952
+}
