@@ -1,0 +1,26 @@
+{
+  "max_parallel": 1,
+  "jobs": [
+    {
+      "name": "gemm_transpose_gate",
+      "cmd": [
+        "timeout",
+        "--signal=TERM",
+        "--kill-after=30",
+        "1530",
+        "python3",
+        "/content/chat/upload/gemm_transpose_gate.py",
+        "--upload",
+        "/content/chat/upload",
+        "--manifest-sha256",
+        "28e125ef951a0dc617276494e58254c3edff9470da233faee2d73f13fd10f496",
+        "--out",
+        "{out}"
+      ],
+      "outputs": [
+        "gate_summary.json",
+        "out.zip"
+      ]
+    }
+  ]
+}
