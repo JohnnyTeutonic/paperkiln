@@ -1,0 +1,28 @@
+{
+  "status": "PASS",
+  "actual_generated_wrapper_executed": true,
+  "four_outcome_transport_controls": [
+    {
+      "science_rc": 0,
+      "archive_exists": true,
+      "transport_rc": 0
+    },
+    {
+      "science_rc": 1,
+      "archive_exists": true,
+      "transport_rc": 0
+    },
+    {
+      "science_rc": 0,
+      "archive_exists": false,
+      "transport_rc": 1
+    },
+    {
+      "science_rc": 1,
+      "archive_exists": false,
+      "transport_rc": 1
+    }
+  ],
+  "JSON_parsing_verified": true,
+  "no_provider_or_GPU": true
+}

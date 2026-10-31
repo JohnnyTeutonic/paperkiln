@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/home/jonat/pk_publication_20261030/tools/replay_flex_cli_lifecycle.py", line 44, in <module>
+    p=argparse.ArgumentParser();p.add_argument('out');p.add_argument('--require-cuda',action='store_true');a=p.parse_args();print(json.dumps(replay(a.out,a.require_cuda),indent=2))
+                                                                                                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jonat/pk_publication_20261030/tools/replay_flex_cli_lifecycle.py", line 40, in replay
+    if recorded['all_8x7_export_row_error']!=error or recorded['step_grad_norms']!=[e['grad_norm'] for e in steps]:raise ValueError('summary/raw mismatch')
+                                                                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: summary/raw mismatch

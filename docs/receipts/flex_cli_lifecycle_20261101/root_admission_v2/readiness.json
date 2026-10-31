@@ -1,0 +1,20 @@
+{
+  "source_commit": "bde18e8d074d9eac05c81201d65cd4f8dd0a201a",
+  "manifest_sha256": "d7eafcbb7d6a7ad902a8a6cc15ec61200183125df4ca1f02578ed2425dba379f",
+  "archive_sha256": "36f217ccb92b43785f48bfab263b43457401bc139bac8dbeaa6c1ebb6a3e60ea",
+  "source_inventory": 989,
+  "exact_archive_cpu_configure_returncode": 0,
+  "configure_log": "/home/jonat/flex_cli_archive_preflight_v2_20261101/configure.log",
+  "CPU_lifecycle_proof": "/home/jonat/flex_cli_cpu_proof_v3_20261101/summary.json",
+  "CPU_replay_proof": "/home/jonat/flex_cli_cpu_proof_v3_20261101/independent_replay.json",
+  "offline_tests_passed": 12,
+  "limits": {
+    "max_usd": 1,
+    "max_hours": 1,
+    "science_seconds": 1800,
+    "gpu": "NVIDIA L4",
+    "gpus": 1
+  },
+  "actual_cuda": false,
+  "launch_status": "ROOT_REVIEW_REQUIRED_NOT_LAUNCHED"
+}

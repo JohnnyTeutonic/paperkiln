@@ -1,0 +1,12 @@
+{
+  "status": "ROOT_SERIAL_ADMITTED",
+  "deadline_utc": "2026-10-31T18:34:32.366770Z",
+  "review_sha256": "6ca13a4ac5e858a56fc465ca576987bc4c0bb610587378f30bce49c7881f9530",
+  "source_commit": "bde18e8d074d9eac05c81201d65cd4f8dd0a201a",
+  "manifest_sha256": "d7eafcbb7d6a7ad902a8a6cc15ec61200183125df4ca1f02578ed2425dba379f",
+  "budget_usd": 1,
+  "GPU_slots": 1,
+  "active_GPU_pods_before": 0,
+  "colab_sessions_before": 0,
+  "API_worker_allowed": true
+}
