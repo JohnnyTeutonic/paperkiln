@@ -1,0 +1,26 @@
+{
+  "max_parallel": 1,
+  "jobs": [
+    {
+      "name": "embedding_fallback_gate",
+      "cmd": [
+        "timeout",
+        "--signal=TERM",
+        "--kill-after=30",
+        "1530",
+        "python3",
+        "/content/chat/upload/embedding_fallback_gate.py",
+        "--upload",
+        "/content/chat/upload",
+        "--manifest-sha256",
+        "c6e702f8473f612f214b710ca8673f1d1df63f0e95b116fa222314b8d3414af3",
+        "--out",
+        "{out}"
+      ],
+      "outputs": [
+        "gate_summary.json",
+        "out.zip"
+      ]
+    }
+  ]
+}

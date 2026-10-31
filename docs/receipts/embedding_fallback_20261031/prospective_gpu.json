@@ -1,0 +1,15 @@
+{
+  "status": "FROZEN_UNLAUNCHED_PENDING_INDEPENDENT_REVIEW",
+  "source_commit": "18069783ffedd3573bcc2e76b4816c575c02eea5",
+  "manifest_sha256": "c6e702f8473f612f214b710ca8673f1d1df63f0e95b116fa222314b8d3414af3",
+  "archive_sha256": "2cc2494d3e9517485c70450c6072a16daf344d1e5123ef0a2d596fd266d7ead4",
+  "archive_files": 1378,
+  "full_archive_cpu_configure_pass": true,
+  "device": "one L4",
+  "max_usd": 1,
+  "max_seconds": 1500,
+  "expected_old_numeric_failure": "deferred_fallback",
+  "old_coherent_controls": 6,
+  "fixed_cases": 7,
+  "scope": "computed device table -> disabled embedding device op host fallback; ordinary leaf tables are controls"
+}
