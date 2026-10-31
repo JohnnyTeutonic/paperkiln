@@ -59,6 +59,8 @@ that cannot fail the build.
   Other open follow-ups whose completion is not established here:
   - remaining per-token host work needs a current representative profile. CUDA/device-op outputs already avoid host zero-fill (20 Oct); a bounded tiny CPU teacher-forced score audit found no justified zero-fill change and does not close the historical CUDA follow-up (`docs/receipts/host_matrix_cpu_audit_20261031/validation.json`).
 
+- The computed-table embedding host fallback is repaired and complete: actual L4 old-failure reproduction, six coherent controls and seven fixed cases pass unchanged numerical checks with independent replay (`docs/receipts/embedding_fallback_cuda_20261031/`). Ordinary leaf embedding tables are controls; this does not establish corruption in historical Mamba CLI runs. The broader host-reader audit remains open.
+
 - **Historical GRPO runtime applicability.** Recover actual build/device/deferred-mode
   evidence for the 20 tracked PT4/PT4b GRPO runs. Their saved specs/events do not
   establish exposure to, or exemption from, the repaired deferred host-reader path.

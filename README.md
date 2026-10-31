@@ -78,6 +78,10 @@ two-block fixtures against independent binary64 equations and central difference
 ([evidence](docs/receipts/mamba1_composed_fd_20261031/parent_replay.json)). These are
 numerical checks on fixed tiny networks; composed CUDA and residency checks remain separate.
 
+The computed-table embedding host fallback now has an actual L4 old-failure reproduction
+and seven passing fixed/control cases ([raw replay](docs/receipts/embedding_fallback_cuda_20261031/parent_replay.json)).
+This closes a conditional boundary, alongside the separately verified activation and norm fallbacks.
+
 Open engineering and research work is listed in [ROADMAP.md](ROADMAP.md). In particular,
 the separately validated BF16 attention op and experimental train-only GPT2 subset do not
 establish a model-level GPU or speed result; modified-flex HF exports and remaining
