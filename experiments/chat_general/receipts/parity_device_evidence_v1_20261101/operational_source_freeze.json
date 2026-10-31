@@ -1,0 +1,43 @@
+{
+  "status": "PREPARED_FOR_ROOT_PROSPECTIVE_ADOPTION_NOT_ACTIVATED",
+  "operational_source_sha256": {
+    "heldout_gate_runner_v1.py": "1747487f4d17885120728469b1670218447288983f2809dcc17f281db7d3fbee",
+    "heldout_sampling_receipt_v1.py": "27d1b9601bf1c691abad451a08502c415da76f7c548d9999c960c711fc30db5b",
+    "heldout_sampling_journal_v1.py": "31c213efe464d51328542622c910b8f2b02bc8279ef459a142a02737322d3e93",
+    "heldout_sample_vm_v1.py": "afa8afdc161c84ffe82f81014554e8db9797f4462e6155a3d9e3d6c123a67def",
+    "chat_judge_api_heldout_v1.py": "cc41814c327fdd347970ad4988620f064f6c9a57d80a33ac20d70caaa3407016",
+    "chat_judge_campaign_continuation_v7.py": "2123d45b0057773817dff9a4024751d1c0d2678050d7f5228382f54a5689ea17",
+    "pref_artifact_io_v1.py": "3e28d16e49be83ea3bb57267797b1bcbb23e79750d09d247e88ce44bfd78fccf",
+    "side_by_side.py": "0e03195c88b663d271e64f0ac03806031296debe3068ce79adb4869e527882c0",
+    "sample_candidates.py": "666020fdb901568c7ef48d87e08377bb92468070da3ca490aa292d852c13b8a5",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0",
+    "judge_sidecar.py": "54174ba8f0d49c3018aa5f2ac3a4647311855adfb5cf5696d1b8ebf419562485",
+    "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+    "chat_judge_api_refusal_v5.py": "11cd8c7880356afaef631f6168d02dd75025cd4be58d4c6fc69fddb966ed0dd7",
+    "assess_preference_gates_v1.py": "44bc8479570cfab199895e4c0519c0265716f225022358d5fbccce03633e9d18",
+    "parity_device_evidence_v1.py": "493415f3d0c2f67812bd88c4e1526b1cb0fe720308b1bb160069eb97d1ee92ff",
+    "../chat_eval.py": "cdde9a4a2d3534414dc7107fd2006bd42abf2b7162e54f4a0ed82722e2eb58a8",
+    "../qa_eval.py": "3fbe4a497d2396287dcb60193e4dda79f0a85833ba76338e659398088b32dc47",
+    "../chat_template.py": "83a7c6ba95f3bdefd62ccc316793fb61102f75a774c54fc70abecebab25834e2",
+    "../bpe.py": "25607be05b41881d0238796b616cb697031c8ebf89623bc4c4537f8aaf56de39",
+    "../llama3_bpe.py": "880b4558b66486cd099115f62571c1389a70ab3edf01327d7db5de1f97fc5b71",
+    "../chat_sample_ember.py": "259be9d5dc476cba4328125288b6ed6456bf5a177465a69a080857d1fd4d527d",
+    "../../corpus/decontam.py": "a6819e5fae82b499bcb2b914e61b4ad078953dd2ba7b8154f80b40ba5ed4471c",
+    "../../corpus/eval/simple_qa_v1.jsonl": "fb330d2afaaaaed8e5e9bca638e4962ebdad7b108c4f4c3e00fad63e18f962bd",
+    "../../corpus/eval/tinychat_hf_prompts_v1.jsonl": "a906b25aaf9f32848f83e8b87c8ad95e7eb8d5802129635f7e55fc62a68b3132",
+    "../../corpus/eval/chat_prompts_v1.jsonl": "7272020cadc6a8f50c73aecb72fae3034a5385a33760a75dc99b2b86ac4b0e8c"
+  },
+  "heldout_source_data_sha256": {
+    "vocab": "4d53c7ff236ecba3a2b34cd2d4769f08bdf0408bbc3655afa44b9ddc70929fdd",
+    "val_split": "1cf6ff83817a00f53ae57b160d9cfe8ebf4848c37a7710f61932a6cc605e9880",
+    "train_split": "75e470988070732ae4aa13fd539fa064c0095e4855d21f28ed5138d57e77b4ae"
+  },
+  "whole_completion_chain_ready": false,
+  "remaining_dependencies": [
+    "Root review/adoption of sampler journal and parity operational amendments",
+    "DPO atomic full-state checkpoint/relay implementation, source freeze and instance binding",
+    "6036 eligible valid API rankings",
+    "Root serial launch with no duplicate controllers"
+  ],
+  "scientific_policy_sha256": "5181e14991c7eb326b32f9bd2d35688946f38156e4a9e1ab53375d83b751ed29"
+}

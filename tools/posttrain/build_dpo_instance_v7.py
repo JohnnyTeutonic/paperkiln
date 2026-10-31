@@ -15,7 +15,7 @@ FROZEN_HELDOUT_POLICY=Path(__file__).resolve().parents[2]/"experiments/chat_gene
 
 REQUIRED_SOURCE_FILES={"tools/mtstudio.cpp","src/ops.cpp","include/microtorch/ops.hpp",
   "tools/posttrain/dpo_vm_preflight_v7.py","tools/posttrain/heldout_sample_vm_v1.py",
-  "tools/posttrain/heldout_sampling_receipt_v1.py","tools/posttrain/heldout_sampling_journal_v1.py","tools/posttrain/pref_artifact_io_v1.py","tools/posttrain/assess_preference_gates_v1.py",
+  "tools/posttrain/heldout_sampling_receipt_v1.py","tools/posttrain/heldout_sampling_journal_v1.py","tools/posttrain/pref_artifact_io_v1.py","tools/posttrain/assess_preference_gates_v1.py","tools/posttrain/parity_device_evidence_v1.py",
   "tools/colab_chat/chat_eval_vm.sh","tools/colab_chat/chat_parity_vm.py",
   "tools/colab_chat/ensure_ember_vm.py","tools/colab_chat/tiny_chat_run.py",
   "tools/colab_chat/chat_eval_stage.py","experiments/chat_general/eval_specs/pksft.spec.json"}
@@ -93,7 +93,7 @@ def build(dataset_dir,base_spec,checkpoint,vocab,source_root,source_archive,sour
     # Standard training-job shape uses existing jobs_vm checkpoint relay and resume semantics.
     jobs={"max_parallel":1,"jobs":[{"name":"dpo_preflight","cmd":["python3","tools/posttrain/dpo_vm_preflight_v7.py","{upload}/dpo_binding.json","{upload}/pk_dpo_v1.spec.json","{out}"],"outputs":["preflight.json"]},
       {"name":"pk_dpo_v1","after":"dpo_preflight","spec":spec,"init_file":"pksft.safetensors"},
-      {"name":"dpo_parity","after":"pk_dpo_v1","cmd":["python3","tools/colab_chat/chat_parity_vm.py","{out}","pk_dpo_v1","40"],"outputs":["parity_summary.json","parity_cuda.jsonl","parity_cpu.jsonl"]},
+      {"name":"dpo_parity","after":"pk_dpo_v1","cmd":["python3","tools/colab_chat/chat_parity_vm.py","{out}","pk_dpo_v1","40"],"outputs":["parity_summary.json","parity_cuda.jsonl","parity_cpu.jsonl","ember_cuda.log","ember_cpu.log","ember_build.json"]},
       {"name":"dpo_eval","after":"dpo_parity","cmd":["bash","tools/colab_chat/chat_eval_vm.sh","{out}","pksft","pk_dpo_v1@pk_dpo_v1"],"outputs":["chat_eval_results.tar.gz","manifest.json"]},
       {"name":"dpo_heldout_sample","after":"dpo_eval","cmd":["python3","tools/posttrain/heldout_sample_vm_v1.py","{out}","{upload}/dpo_binding.json"],"outputs":["sampling_receipt.json","requests.jsonl","sampling_summary.json","sampling.journal.jsonl","ember_build.json"]}]}
     sampling_job=jobs["jobs"].pop()

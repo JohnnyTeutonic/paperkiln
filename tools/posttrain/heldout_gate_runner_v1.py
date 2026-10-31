@@ -13,7 +13,7 @@ import heldout_sampling_journal_v1 as durable
 HERE=Path(__file__).resolve().parent
 
 def source_hashes():
-    return {name:sha(HERE/name) for name in ['heldout_gate_runner_v1.py','heldout_sampling_receipt_v1.py','heldout_sampling_journal_v1.py','heldout_sample_vm_v1.py','chat_judge_api_heldout_v1.py','chat_judge_campaign_continuation_v7.py','pref_artifact_io_v1.py','side_by_side.py','sample_candidates.py','chat_judge.py','judge_sidecar.py','chat_judge_transport_diagnostic.py','chat_judge_api_refusal_v5.py','assess_preference_gates_v1.py','../chat_eval.py','../qa_eval.py','../chat_template.py','../bpe.py','../llama3_bpe.py','../chat_sample_ember.py','../../corpus/decontam.py','../../corpus/eval/simple_qa_v1.jsonl','../../corpus/eval/tinychat_hf_prompts_v1.jsonl','../../corpus/eval/chat_prompts_v1.jsonl']}
+    return {name:sha(HERE/name) for name in ['heldout_gate_runner_v1.py','heldout_sampling_receipt_v1.py','heldout_sampling_journal_v1.py','heldout_sample_vm_v1.py','chat_judge_api_heldout_v1.py','chat_judge_campaign_continuation_v7.py','pref_artifact_io_v1.py','side_by_side.py','sample_candidates.py','chat_judge.py','judge_sidecar.py','chat_judge_transport_diagnostic.py','chat_judge_api_refusal_v5.py','assess_preference_gates_v1.py','parity_device_evidence_v1.py','../chat_eval.py','../qa_eval.py','../chat_template.py','../bpe.py','../llama3_bpe.py','../chat_sample_ember.py','../../corpus/decontam.py','../../corpus/eval/simple_qa_v1.jsonl','../../corpus/eval/tinychat_hf_prompts_v1.jsonl','../../corpus/eval/chat_prompts_v1.jsonl']}
 
 
 def load_inputs(instance):
