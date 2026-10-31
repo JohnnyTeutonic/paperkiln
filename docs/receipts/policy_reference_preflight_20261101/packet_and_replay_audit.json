@@ -1,0 +1,85 @@
+{
+  "manifest_sha256": "784ae2260a5dfce1d43b38d0b49bf42b8a67f2a8daa78d03d81f5dd725da577c",
+  "file_count": 964,
+  "packet_exact_inventory_and_hashes": true,
+  "baseline_exact_public_blob_and_two_line_delta": true,
+  "cpu_replays": [
+    {
+      "pass": true,
+      "actual_cuda": false,
+      "variant": "old",
+      "case": "mixed",
+      "expected_old_numeric_failure": false,
+      "correct_loss_error": 0.0,
+      "correct_gradient_error": 0.0,
+      "bound": 1e-06,
+      "scope": "public constant-reference Matrix consumer only; no historical CLI invalidity claim"
+    },
+    {
+      "pass": true,
+      "actual_cuda": false,
+      "variant": "old",
+      "case": "policy_only",
+      "expected_old_numeric_failure": false,
+      "correct_loss_error": 0.0,
+      "correct_gradient_error": 0.0,
+      "bound": 1e-06,
+      "scope": "public constant-reference Matrix consumer only; no historical CLI invalidity claim"
+    },
+    {
+      "pass": true,
+      "actual_cuda": false,
+      "variant": "old",
+      "case": "kl_only",
+      "expected_old_numeric_failure": false,
+      "correct_loss_error": 0.0,
+      "correct_gradient_error": 0.0,
+      "bound": 1e-06,
+      "scope": "public constant-reference Matrix consumer only; no historical CLI invalidity claim"
+    },
+    {
+      "pass": true,
+      "actual_cuda": false,
+      "variant": "fixed",
+      "case": "mixed",
+      "expected_old_numeric_failure": false,
+      "correct_loss_error": 0.0,
+      "correct_gradient_error": 0.0,
+      "bound": 1e-06,
+      "scope": "public constant-reference Matrix consumer only; no historical CLI invalidity claim"
+    },
+    {
+      "pass": true,
+      "actual_cuda": false,
+      "variant": "fixed",
+      "case": "policy_only",
+      "expected_old_numeric_failure": false,
+      "correct_loss_error": 0.0,
+      "correct_gradient_error": 0.0,
+      "bound": 1e-06,
+      "scope": "public constant-reference Matrix consumer only; no historical CLI invalidity claim"
+    },
+    {
+      "pass": true,
+      "actual_cuda": false,
+      "variant": "fixed",
+      "case": "kl_only",
+      "expected_old_numeric_failure": false,
+      "correct_loss_error": 0.0,
+      "correct_gradient_error": 0.0,
+      "bound": 1e-06,
+      "scope": "public constant-reference Matrix consumer only; no historical CLI invalidity claim"
+    }
+  ],
+  "negative_profile_mutant_accepted": {
+    "pass": true,
+    "actual_cuda": true,
+    "variant": "fixed",
+    "case": "mixed",
+    "expected_old_numeric_failure": false,
+    "correct_loss_error": 0.0,
+    "correct_gradient_error": 0.0,
+    "bound": 1e-06,
+    "scope": "public constant-reference Matrix consumer only; no historical CLI invalidity claim"
+  }
+}
