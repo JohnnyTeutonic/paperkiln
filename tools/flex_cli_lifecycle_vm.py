@@ -52,6 +52,8 @@ def main():
         if actual!=set(m['source_files']):raise ValueError('source inventory')
         for name,h in m['source_files'].items():
             if sha(src/name)!=h:raise ValueError('source pin '+name)
+        if sha(src/'tools/flex_cli_lifecycle_vm.py')!=sha(a.upload/'flex_cli_lifecycle_vm.py') or sha(__file__)!=m['files']['flex_cli_lifecycle_vm.py']:raise ValueError('executing/source VM mismatch')
+        if sha(src/'docs/receipts/flex_cli_lifecycle_20261101/protocol.json')!=sha(a.upload/'protocol.json'):raise ValueError('source/upload protocol mismatch')
         (out/'inputs.json').write_bytes((a.upload/'inputs.json').read_bytes())
         command('hardware',['nvidia-smi','--query-gpu=name,driver_version','--format=csv,noheader'],30)
         lines=(out/'hardware.log').read_text().strip().splitlines()
