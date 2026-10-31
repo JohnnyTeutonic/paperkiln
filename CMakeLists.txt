@@ -495,3 +495,7 @@ add_executable(test_fallback_materialization tests/test_fallback_materialization
 target_link_libraries(test_fallback_materialization PRIVATE microtorch)
 add_test(NAME fallback_materialization COMMAND test_fallback_materialization)
 set_tests_properties(fallback_materialization PROPERTIES TIMEOUT 120)
+add_executable(test_attention_precision tests/test_attention_precision.cpp)
+target_link_libraries(test_attention_precision PRIVATE microtorch)
+add_test(NAME attention_precision COMMAND test_attention_precision)
+set_tests_properties(attention_precision PROPERTIES TIMEOUT 120)

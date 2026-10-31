@@ -409,6 +409,13 @@ Var relu(const Var& x);             // out-of-place sibling (parity + FD anchor)
 // gradient; FD-checked in test_gradcheck.
 Var fused_attention(const Var& q, const Var& k, const Var& v, float scale, size_t seq_len,
                     bool causal);
+// Explicit opt-in training-op precision. All six attention GEMMs round inputs
+// to BF16 and return/accumulate FP32; softmax and its backward stay FP32.
+// Backward is the rounded-GEMM straight-through surrogate, not a derivative
+// of discontinuous rounding. Default fused_attention and model dispatch are
+// unchanged. BF16 uses the dense masked path, including stacked sequences.
+Var fused_attention_precision(const Var& q, const Var& k, const Var& v, float scale, size_t seq_len,
+                              bool causal, device::Precision precision);
 
 // Sliding-window causal attention + attention sinks (sparse phase S1
 // baseline): query i sees the first `sinks` positions of its block plus

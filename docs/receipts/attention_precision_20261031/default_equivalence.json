@@ -1,0 +1,19 @@
+{
+  "pass": true,
+  "default_fp32_preserved_library_bit_comparison": [
+    {
+      "name": "preserved",
+      "binary_sha256": "793c631bbb7e505c63fb0e3701b2a8bd1e4995a78beebec442a7a27a100d3ffc",
+      "library_sha256": "e310455ba48c417593e7b5549024043cbbe3bf6913effa0aeaf4f947bc7928c7",
+      "dump_sha256": "36bdb787d1dfb14d9b1fc613ffdeb700876e45c7d4378f14d3782f7f5710e4f5",
+      "dump_lines": 1764
+    },
+    {
+      "name": "candidate",
+      "binary_sha256": "ae79824d2f8cfea1a18e3ebb03fd4cdcc549dfd58afd9d90bc463235384209aa",
+      "library_sha256": "f49e99178fca981a579e4c49f5db1bb8f8c39d855c1cd231dc0db50b3de333f7",
+      "dump_sha256": "36bdb787d1dfb14d9b1fc613ffdeb700876e45c7d4378f14d3782f7f5710e4f5",
+      "dump_lines": 1764
+    }
+  ]
+}

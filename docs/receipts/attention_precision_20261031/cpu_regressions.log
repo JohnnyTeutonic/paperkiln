@@ -1,0 +1,50 @@
+[ 56%] Built target transformer_core
+[ 96%] Built target microtorch
+[100%] Building CXX object CMakeFiles/test_gradcheck.dir/tests/test_gradcheck.cpp.o
+[100%] Linking CXX executable test_gradcheck
+[100%] Built target test_gradcheck
+[ 58%] Built target transformer_core
+[100%] Built target microtorch
+[100%] Building CXX object CMakeFiles/test_attention_blocked.dir/tests/test_attention_blocked.cpp.o
+[100%] Linking CXX executable test_attention_blocked
+[100%] Built target test_attention_blocked
+[ 56%] Built target transformer_core
+[ 96%] Built target microtorch
+[100%] Building CXX object CMakeFiles/test_mixed_precision.dir/tests/test_mixed_precision.cpp.o
+[100%] Linking CXX executable test_mixed_precision
+[100%] Built target test_mixed_precision
+[ 58%] Built target transformer_core
+[100%] Built target microtorch
+[100%] Building CXX object CMakeFiles/test_gpt2_device.dir/tests/test_gpt2_device.cpp.o
+[100%] Linking CXX executable test_gpt2_device
+[100%] Built target test_gpt2_device
+[ 56%] Built target transformer_core
+[ 96%] Built target microtorch
+[100%] Building CXX object CMakeFiles/test_swa.dir/tests/test_swa.cpp.o
+[100%] Linking CXX executable test_swa
+[100%] Built target test_swa
+[ 58%] Built target transformer_core
+[100%] Built target microtorch
+[100%] Building CXX object CMakeFiles/test_llama.dir/tests/test_llama.cpp.o
+[100%] Linking CXX executable test_llama
+[100%] Built target test_llama
+Internal ctest changing into directory: /home/jonat/pk_bf16_production_build_20261031
+Test project /home/jonat/pk_bf16_production_build_20261031
+    Start  1: gradcheck
+1/7 Test  #1: gradcheck ........................   Passed    0.00 sec
+    Start 16: attention_blocked
+2/7 Test #16: attention_blocked ................   Passed    0.03 sec
+    Start 22: llama
+3/7 Test #22: llama ............................   Passed    0.03 sec
+    Start 30: mixed_precision
+4/7 Test #30: mixed_precision ..................   Passed    2.45 sec
+    Start 40: gpt2_device
+5/7 Test #40: gpt2_device ......................   Passed    0.07 sec
+    Start 44: swa
+6/7 Test #44: swa ..............................   Passed    0.03 sec
+    Start 58: attention_precision
+7/7 Test #58: attention_precision ..............   Passed    0.01 sec
+
+100% tests passed, 0 tests failed out of 7
+
+Total Test time (real) =   2.62 sec

@@ -2418,20 +2418,28 @@ Var fused_attention_blocked(const Var& q, const Var& k, const Var& v, float scal
 
 Var fused_attention(const Var& q, const Var& k, const Var& v, float scale, size_t seq_len,
                     bool causal) {
+    return fused_attention_precision(q, k, v, scale, seq_len, causal, device::Precision::FP32);
+}
+
+Var fused_attention_precision(const Var& q, const Var& k, const Var& v, float scale, size_t seq_len,
+                              bool causal, device::Precision precision) {
+    if (precision != device::Precision::FP32 && precision != device::Precision::BF16)
+        throw std::invalid_argument("fused_attention_precision: unknown precision");
     const size_t T = q->data.rows();
     if (k->data.rows() != T || v->data.rows() != T || q->data.cols() != k->data.cols()) {
         throw std::runtime_error("fused_attention: shape mismatch");
     }
     const size_t sl = seq_len == 0 ? T : seq_len;
     if (T % sl != 0) throw std::runtime_error("fused_attention: rows not a multiple of seq_len");
-    if (sl < T && blocked_attention_enabled()) return fused_attention_blocked(q, k, v, scale, sl, causal);
+    if (precision == device::Precision::FP32 && sl < T && blocked_attention_enabled())
+        return fused_attention_blocked(q, k, v, scale, sl, causal);
 
     // GEMM, then scale+mask+softmax fused in-place: A starts as the raw
     // scores and ends as the attention weights. Masked entries are never
     // exponentiated — they are written as hard zeros, which is exactly
     // what the -1e9 additive mask produces after float32 underflow.
     auto A = cached(
-        device::gemm(q->data, &q->dev, device::Trans::N, k->data, &k->dev, device::Trans::T));
+        device::gemm(q->data, &q->dev, device::Trans::N, k->data, &k->dev, device::Trans::T, precision));
     // B2.2: masked softmax on-device when available (under deferral the
     // [T,T] scores then never cross the bus inside a step); otherwise
     // download the (possibly deferred) gemm scores and run the host loop.
@@ -2459,16 +2467,16 @@ Var fused_attention(const Var& q, const Var& k, const Var& v, float scale, size_
             }
         }
     }
-    Matrix y = device::gemm(*A, nullptr, device::Trans::N, v->data, &v->dev, device::Trans::N);
+    Matrix y = device::gemm(*A, nullptr, device::Trans::N, v->data, &v->dev, device::Trans::N, precision);
 
-    return record(std::move(y), {q, k, v}, [A, scale, sl, causal](Variable* self) {
+    return record(std::move(y), {q, k, v}, [A, scale, sl, causal, precision](Variable* self) {
         const Var& q = self->parents[0];
         const Var& k = self->parents[1];
         const Var& v = self->parents[2];
         const size_t T = q->data.rows();
         if (v->requires_grad) {
             v->accumulate(
-                device::gemm(*A, nullptr, device::Trans::T, self->grad, nullptr, device::Trans::N));
+                device::gemm(*A, nullptr, device::Trans::T, self->grad, nullptr, device::Trans::N, precision));
         }
         if (!q->requires_grad && !k->requires_grad) {
             device::discard(*A);
@@ -2478,7 +2486,7 @@ Var fused_attention(const Var& q, const Var& k, const Var& v, float scale, size_
         // in place on dA (masked entries have A == 0, so ds is 0 there and
         // no mask bookkeeping is needed).
         Matrix ds =
-            device::gemm(self->grad, nullptr, device::Trans::N, v->data, &v->dev, device::Trans::T);
+            device::gemm(self->grad, nullptr, device::Trans::N, v->data, &v->dev, device::Trans::T, precision);
         // B2.2: shared masked-softmax backward on-device (masked entries
         // carry A == 0, so the full-row dot equals the visible dot).
         if (!device::devops::attn_softmax_bwd_inplace(ds, *A, scale)) {
@@ -2497,10 +2505,10 @@ Var fused_attention(const Var& q, const Var& k, const Var& v, float scale, size_
         }
         if (q->requires_grad)
             q->accumulate(
-                device::gemm(ds, nullptr, device::Trans::N, k->data, &k->dev, device::Trans::N));
+                device::gemm(ds, nullptr, device::Trans::N, k->data, &k->dev, device::Trans::N, precision));
         if (k->requires_grad)
             k->accumulate(
-                device::gemm(ds, nullptr, device::Trans::T, q->data, &q->dev, device::Trans::N));
+                device::gemm(ds, nullptr, device::Trans::T, q->data, &q->dev, device::Trans::N, precision));
         // ds dies HERE while its deferred entry would still be stale;
         // A is never host-read again. Discard both or step_end() D2Hs
         // into freed memory (the leg-4 heap-corruption bug, 30 Aug).

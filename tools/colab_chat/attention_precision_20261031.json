@@ -1,0 +1,33 @@
+{
+  "max_parallel": 1,
+  "jobs": [
+    {
+      "name": "attention_precision_gate",
+      "cmd": [
+        "timeout",
+        "--signal=TERM",
+        "--kill-after=30",
+        "1530",
+        "python3",
+        "/content/chat/upload/attention_precision_gate.py",
+        "--upload",
+        "/content/chat/upload",
+        "--manifest-sha256",
+        "1e043e40d81c2ae50f19c8c2beb3d84084c824fa75466c75e8757483c160c98d",
+        "--out",
+        "{out}"
+      ],
+      "outputs": [
+        "gate_summary.json",
+        "out.zip",
+        "strict.log",
+        "hardware.log",
+        "nvcc.log",
+        "configure.log",
+        "build.log",
+        "numpy_install.log",
+        "independent_replay.log"
+      ]
+    }
+  ]
+}
