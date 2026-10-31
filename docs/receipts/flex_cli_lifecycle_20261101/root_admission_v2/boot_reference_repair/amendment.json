@@ -1,0 +1,7 @@
+{
+  "status": "ROOT_APPROVED_SAME_STATE_RESTART_WIRING_ONLY",
+  "existing_process_left_running": true,
+  "existing_ledger_and_deadline_preserved": true,
+  "full_commit_validation_added": true,
+  "review_sha256": "ec1e2c1a3f1e3c919ef7c48510821aecec6483f265adae1601e41f3fd0838cd2"
+}

@@ -1,0 +1,12 @@
+{
+  "status": "ROOT_APPROVED_SAME_POD_BOOT_REFERENCE_REPAIR",
+  "original_review_sha256": "6ca13a4ac5e858a56fc465ca576987bc4c0bb610587378f30bce49c7881f9530",
+  "original_short_commit": "9317417cd",
+  "full_same_commit": "9317417cd67ea7cc5946522adbb1f596feda86ee",
+  "source_and_scientific_payload_unchanged": true,
+  "no_science_started_before_repair": true,
+  "same_state_ledger_cap_and_deadline": true,
+  "max_usd": 1,
+  "deadline_utc": "2026-10-31T18:34:32.366770Z",
+  "change": "Invoke the already hash-verified boot script with the full identifier of the same registered commit. Preserve original no-boot evidence and initial root wiring mistake. No resource restart or new pod."
+}

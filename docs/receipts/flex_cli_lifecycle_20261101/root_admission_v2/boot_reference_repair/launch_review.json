@@ -1,0 +1,99 @@
+{
+  "status": "APPROVED_ONE_ATTEMPT_AFTER_SERIAL_ADMISSION",
+  "driver_argv": [
+    "python3",
+    "/home/jonat/pk_publication_20261030/tools/colab_chat/runner_multi.py",
+    "--backend",
+    "runpod",
+    "--gpu",
+    "L4",
+    "--cloud",
+    "SECURE",
+    "--volume-gb",
+    "20",
+    "--image",
+    "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+    "--max-usd",
+    "1",
+    "--max-hours",
+    "1",
+    "--deadline-utc",
+    "2026-10-31T18:34:32.366770Z",
+    "--name",
+    "pk-flex-cli-lifecycle-1101",
+    "--commit",
+    "9317417cd67ea7cc5946522adbb1f596feda86ee",
+    "--jobs",
+    "tools/colab_chat/flex_cli_lifecycle_20261101_v2.json",
+    "--boot-script",
+    "tools/colab_chat/boot_commands_sparse.sh",
+    "--state-dir",
+    "/home/jonat/pk_flex_cli_lifecycle_1101_runner",
+    "--art",
+    "/mnt/c/ml_artifacts/flex_cli_lifecycle_1101",
+    "--upload",
+    "source.tgz=/home/jonat/flex_cli_lifecycle_stage_v2_20261101/source.tgz",
+    "--upload",
+    "flex_cli_lifecycle_vm.py=/home/jonat/flex_cli_lifecycle_stage_v2_20261101/flex_cli_lifecycle_vm.py",
+    "--upload",
+    "protocol.json=/home/jonat/flex_cli_lifecycle_stage_v2_20261101/protocol.json",
+    "--upload",
+    "inputs.json=/home/jonat/flex_cli_lifecycle_stage_v2_20261101/inputs.json"
+  ],
+  "source_commit": "bde18e8d074d9eac05c81201d65cd4f8dd0a201a",
+  "manifest_sha256": "d7eafcbb7d6a7ad902a8a6cc15ec61200183125df4ca1f02578ed2425dba379f",
+  "bounds": {
+    "max_usd": 1,
+    "max_hours": 1,
+    "scientific_seconds": 1800,
+    "deadline_utc": "2026-10-31T18:34:32.366770Z",
+    "process_local_max_pods": 1
+  },
+  "pins": {
+    "/home/jonat/pk_publication_20261030/tools/colab_chat/runner_multi.py": "2ec1a48f1ea38acdbc2d2503d104390b7017bba3d52f2de2a8a6bf151b2091a2",
+    "/home/jonat/pk_publication_20261030/tools/colab_chat/runpod_api.py": "e0812f37b743e7c60a20c18a9b97b63b5a2fe692541ec3a6442bb361e5065e3b",
+    "/home/jonat/pk_publication_20261030/tools/colab_chat/runpod_transport.py": "4e9e99b1642f1e0b88edc6a8180fadef91cf0bd73749898e541429cb1ae70690",
+    "/home/jonat/pk_publication_20261030/tools/colab_chat/boot_commands_sparse.sh": "9bc4abc080b2b6bb0ac1811b54db57da245450e11ef453752c39b0c2ff08cfe6",
+    "/home/jonat/pk_publication_20261030/tools/colab_chat/jobs_vm.py": "db8c6c3d9370cda09723b6421a4363d707d6fa2ba8c1fc3deeb87c23f8b558ae",
+    "/home/jonat/flex_cli_lifecycle_stage_v2_20261101/source.tgz": "36f217ccb92b43785f48bfab263b43457401bc139bac8dbeaa6c1ebb6a3e60ea",
+    "/home/jonat/flex_cli_lifecycle_stage_v2_20261101/flex_cli_lifecycle_vm.py": "7113d21c86f73b87e55516e98735342727250800222338f81de88623f9365947",
+    "/home/jonat/flex_cli_lifecycle_stage_v2_20261101/protocol.json": "2f92334d08b3b25284ad0e0810645fbcd3a0304d0e7136adbeaffc1e216073d0",
+    "/home/jonat/flex_cli_lifecycle_stage_v2_20261101/inputs.json": "d7eafcbb7d6a7ad902a8a6cc15ec61200183125df4ca1f02578ed2425dba379f",
+    "/home/jonat/pk_publication_20261030/tools/colab_chat/flex_cli_lifecycle_20261101_v2.json": "f9aa714f2066e41b15b631fc6846522427f7901788515fb26cdc827801713789"
+  },
+  "registered_job_path": "/home/jonat/pk_publication_20261030/tools/colab_chat/flex_cli_lifecycle_20261101_v2.json",
+  "registered_job_sha256": "f9aa714f2066e41b15b631fc6846522427f7901788515fb26cdc827801713789",
+  "transport_controls": {
+    "status": "PASS",
+    "actual_generated_wrapper_executed": true,
+    "four_outcome_transport_controls": [
+      {
+        "science_rc": 0,
+        "archive_exists": true,
+        "transport_rc": 0
+      },
+      {
+        "science_rc": 1,
+        "archive_exists": true,
+        "transport_rc": 0
+      },
+      {
+        "science_rc": 0,
+        "archive_exists": false,
+        "transport_rc": 1
+      },
+      {
+        "science_rc": 1,
+        "archive_exists": false,
+        "transport_rc": 1
+      }
+    ],
+    "JSON_parsing_verified": true,
+    "no_provider_or_GPU": true
+  },
+  "scope": "Tiny canonical plain Flex CLI LM/SFT training, exact optimizer resume and saved FP32 export; independent existing model gradients. No quality/speed/default/full-residency claim.",
+  "source_base_note": "Frozen CLI source predates KL production fix but includes checkpoint-copy fix; LM/SFT packet does not touch policy-reference paths.",
+  "root_review": "Full lifecycle, replay, VM and protocol reviewed; 12 offline tests and independent CPU replay in exact NumPy1.26.4 PASS. Wrong NumPy2.3.3 replay failure preserved and prospectively guarded. No numerical bound changed. Prior KL resources verified absent; no active Colab sessions. API V7 may continue independently.",
+  "same_commit_boot_amendment": "/home/jonat/flex_cli_boot_reference_repair_20261101/review.json",
+  "bounds_and_accounting_unchanged": true
+}
