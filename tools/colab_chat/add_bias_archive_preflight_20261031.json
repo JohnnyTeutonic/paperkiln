@@ -1,0 +1,10 @@
+{
+ "scope": "Extract exact corrected staged archive; local CPU configure/generate only, no CUDA/device claim",
+ "source_commit": "ddf8c3ec99d96aed943863b5f2488c7b0fa07e9e",
+ "archive_sha256": "f2f1169b51c9d134e4cc46397b63517344a839dacaa6e6e6669b0f1ab6bbbe38",
+ "archive_bytes": 6724012,
+ "studio_chat_sha256": "bb9d2be154e274436d28f4e7fb758815ec3031071d5700a5d653659517abd4dc",
+ "configure_log_sha256": "86a62d62c24ea451d55d025a2b9ed68b5264d0c9fd526f812e97b3de826bcc35",
+ "configure_log": "-- The CXX compiler identification is GNU 13.3.0\n-- Detecting CXX compiler ABI info\n-- Detecting CXX compiler ABI info - done\n-- Check for working CXX compiler: /usr/bin/c++ - skipped\n-- Detecting CXX compile features\n-- Detecting CXX compile features - done\n-- transformer_core from: /home/jonat/add_bias_archive_preflight_20261031/source/third_party/transformer_cpp\n-- CUDA disabled - CPU-only build\n-- Performing Test CMAKE_HAVE_LIBC_PTHREAD\n-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success\n-- Found Threads: TRUE  \n-- OpenSSL found: 3.0.13\nCMake Deprecation Warning at /home/jonat/pk_host_read_final_build_20261031/_deps/json-src/CMakeLists.txt:1 (cmake_minimum_required):\n  Compatibility with CMake < 3.5 will be removed from a future version of\n  CMake.\n\n  Update the VERSION argument <min> value or use a ...<max> suffix to tell\n  CMake that the project does not need compatibility with older versions.\n\n\n-- Using the multi-header code from /home/jonat/pk_host_read_final_build_20261031/_deps/json-src/include/\n-- Found OpenMP_CXX: -fopenmp (found version \"4.5\") \n-- Found OpenMP: TRUE (found version \"4.5\")  \n-- OpenMP enabled for optimized matmul\n-- GCC/Clang optimizations enabled: -O3 -march=native\n-- \n-- ================================\n-- CPU-Only Build:\n--   - Core transformer (no GPU)\n-- ================================\n-- \n-- Configuring done (4.6s)\n-- Generating done (0.2s)\n-- Build files have been written to: /home/jonat/add_bias_archive_preflight_20261031/build\n",
+ "pass": true
+}
