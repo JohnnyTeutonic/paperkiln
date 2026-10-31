@@ -8,6 +8,7 @@ and checked for full-row logits, greedy IDs, tensor inventory and shared paramet
 Modified flavour combinations remain refused. CPU validation and raw replay evidence:
 [receipt](docs/receipts/hf_tied_flex_20261031/validation.json).
 
+- Audited remaining host Matrix work with current tiny CPU scoring: no production optimization justified; existing CUDA zero-fill avoidance distinguished from the still-open historical CUDA follow-up. Source, profiler and raw-report evidence: `docs/receipts/host_matrix_cpu_audit_20261031/validation.json`.
 
 ## Existing Flex compatibility work integrated (31 October 2026)
 
@@ -987,3 +988,12 @@ score bits; deeper models pass whole-model gradient and independent IR/Ember
 prefill/decode checks. This is CPU validation of the existing architectures, not
 GPU performance or model-quality evidence. The completed depth item leaves ROADMAP.
 [Actual CLI and historical comparison](docs/receipts/parity_depth_20261031/cli_validation.json).
+
+## ReLU GPT2 Flex Hugging Face export (31 October 2026)
+
+Plain GPT2 Flex supports ReLU with tied or separate output heads, with actual
+trained-model CPU reload parity and raw replay. This mapping is scoped to finite
+execution: native ReLU masks NaNs and clears negative zero while HF preserves
+those values. The exceptional differences are tested and documented; native
+numerics and generic-expression refusals are unchanged.
+[Validation](docs/receipts/hf_relu_flex_20261031/validation.json).

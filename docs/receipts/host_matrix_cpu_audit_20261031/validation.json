@@ -1,0 +1,66 @@
+{
+  "status": "DESCRIPTIVE_CPU_AUDIT_NO_OPTIMIZATION",
+  "command": "OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 timeout 120 perf record -e cpu-clock:u -F 499 --call-graph dwarf -o perf.data -- /home/jonat/pk_studio_probes_build_20261031/mtstudio score /home/jonat/hf_erf_test_temp_20261031/test_actual_exact_gelu_flex_tr0/erf.json --in ../requests.jsonl --out scores.jsonl",
+  "budget": {
+    "cores": 1,
+    "timeout_seconds": 120
+  },
+  "model": {
+    "family": "plain GPT2-flavour Flex, exact erf GELU, untied",
+    "d": 16,
+    "layers": 2,
+    "heads": 2,
+    "d_ff": 24,
+    "T": 16,
+    "training_steps_before_audit": 3
+  },
+  "checks": {
+    "requests": 12000,
+    "continuation_rows": 96000,
+    "over_context": 0,
+    "nonfinite_logprobs": 0,
+    "cpu_clock_samples": 622,
+    "lost_samples": 0
+  },
+  "inputs_sha256": {
+    "/home/jonat/hf_erf_test_temp_20261031/test_actual_exact_gelu_flex_tr0/erf.json": "1a7889bc38505a799430afefa206eae63f37415fedefb267991e57d75451364a",
+    "/home/jonat/hf_erf_test_temp_20261031/test_actual_exact_gelu_flex_tr0/erf/erf.safetensors": "077954914eae7ad7c53ad7a9493a0ecd7bc1cf4b5134aba4572b9105db52bebb",
+    "/home/jonat/hf_erf_test_temp_20261031/test_actual_exact_gelu_flex_tr0/v.gguf": "879b0dcb5995b7d79c9b0b72779416d9fe54fb9a4bb223424feee827605ea48a",
+    "/home/jonat/pk_studio_probes_build_20261031/mtstudio": "3cba15295005af59affc1418c11c013b1ecf0f4accf8c4441df4cc6b003dd52a",
+    "/home/jonat/host_matrix_profile_20261031/requests.jsonl": "f0b0ebcfed60dd4d528590f8bc504df22a4e646c3fe35e0b9ed496d68257a481",
+    "/home/jonat/host_matrix_profile_20261031/valid/scores.jsonl": "e0c83dbc1f3a6128db43dfda4ec5b95e8cc1683402f9078c78ff43d1ac0229b6",
+    "/home/jonat/host_matrix_profile_20261031/valid/perf.data": "34b405092cba2d172d169bc9b051ad128ba5c8c92c4e3077c78cac04aa31d191"
+  },
+  "profiler": {
+    "path": "/usr/lib/linux-tools/6.18.54.1-microsoft-standard-WSL2/bin/perf",
+    "sha256": "d6118ccbdd1d9ad234359bd87596b8be2c02ef3006ebd7fbdba21a7d8fb7786c",
+    "symbol_resolution": "perf report raw ELF offsets resolved through addr2line -f -C -e exactnativebinary; raw percentages retained",
+    "addr2line_sha256": "e43ace7e4b089a1c097034838d722d6519715c4a265fde346fbd793f7ff01fed"
+  },
+  "source_sha256": {
+    "src/device.cpp": "d8dbfd25e811706cb1425399fea968369d461abef026d2472bfd2011bc167b7e",
+    "src/ops.cpp": "e3942b4564d035243be9f8084025222d7f93a01c794a2e40b3ef2e86cde0f42e",
+    "tools/mtstudio.cpp": "ed7c2f965065551221f33ab26872c197b24dfec4fb257d83ec2605778c613905",
+    "tools/parity_model.hpp": "53ee275b94e2cdfd71dc4fadcf10ae0884e6895f3a49dfb100d6d24bf227d39d",
+    "third_party/transformer_cpp/include/matrix.hpp": "32a47dd2f94d0eaafa1469dc573be3187d999753973e360a80e381f85b6be834",
+    "third_party/transformer_cpp/src/components.cpp": "fddd714927acf4863e7fef178574f889383c3f04fa9d31af6d86120491e54fac"
+  },
+  "findings": [
+    "device::out_matrix already avoids host zero-fill for CUDA/device-op full outputs; Matrix::uninitialized was introduced in commit5237f4bbb (20Oct). This audit does not retest its CUDA throughput.",
+    "CPU ordinary Matrix constructor still initializes vector storage. Matrix::transpose and CPU GELU fallback contain full-output writes/copies where allocations can be considered only after relevant current measurement.",
+    "Current tiny CPU teacher-forced scoring self samples: Matrix::operator()29.42%, matmul_micro_kernel23.45%, layernorm8.50%; vector fill insertion0.64%. No production optimization justified by this sample."
+  ],
+  "limitations": [
+    "Self samples are not inclusive constructor/allocator costs. Minimal WSL perf lacks libunwind/libdw: recorded DWARF stacks cannot be reliably unwound here.",
+    "622samples are small and temporally correlated.0.64% is about4samples; even an independent-binomial approximation gives SE~0.32percentagepoints, before workload and profiler biases.",
+    "This is teacher-forced CPU scoring, not autoregressive KV decode, large-model throughput or the historical CUDA host-work profile. Historical followup remains open and needs current representative evidence.",
+    "perf.data and raw model/score artifacts have one home outsideGit; retained paths+hashes identify them, compact raw report enables symbol-resolution review.",
+    "A preceding startup attempt referenced a misspelled spec path and failed before scoring; it is retained beside the valid run and excluded from analysis."
+  ],
+  "artifacts": {
+    "perf_report.txt": "2b091e5b13afd1d17e444fe046422815e250db1441fa6d53e178f747a3b7e4d6",
+    "perf.log": "f9fedfed8630412f4d371817ee9d2a22f724a31f800ee3823f0ca63dbfdca41d",
+    "resolved_self_samples.json": "c98729170d1883835258b5ddf55568bf6c5871d311533461aa5bd9f45030f3b0"
+  },
+  "working_directory": "/home/jonat/host_matrix_profile_20261031/valid"
+}

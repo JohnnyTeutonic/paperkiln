@@ -1,0 +1,4 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+score: 12000 continuations (0 over the context of 16) -> scores.jsonl
+[ perf record: Woken up 21 times to write data ]
+[ perf record: Captured and wrote 5.014 MB perf.data (622 samples) ]

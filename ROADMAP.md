@@ -51,7 +51,7 @@ that cannot fail the build.
   Remaining preference execution is listed in section 1; completed corpus, verifier, SFT, GRPO,
   DPO, byte-BPE and chat-model milestones are recorded in CHANGELOG and the charter.
   Other open follow-ups whose completion is not established here:
-  - the remaining per-token host work (zero-filled Matrix construction in the profile);
+  - remaining per-token host work needs a current representative profile. CUDA/device-op outputs already avoid host zero-fill (20 Oct); a bounded tiny CPU teacher-forced score audit found no justified zero-fill change and does not close the historical CUDA follow-up (`docs/receipts/host_matrix_cpu_audit_20261031/validation.json`).
 
 - **Scale ladder, depth rung.** d=256, 4 layers, exact against SWA, as its
   own pre-registration. Deep SWA is built and gated.
@@ -125,7 +125,7 @@ that cannot fail the build.
 - **Mamba:** a parallel scan and device kernels for Mamba-1's `ops::conv1d_causal` and
   `ops::selective_scan` (sequential, host only; the mamba preset's `ssm: "mamba1"`).
 - **int4/NF4 quantisation.**
-- **HF export for modified flex flavours and unmapped GPT2 variants; quantised GGUFs outside the llama family.** Strictly plain GPT2- and Llama-flavour Flex now have verified HF mappings for separate or explicitly tied token/output heads (arbitrary depth/MLP width); those completed subsets leave this list. Actual saved/reloaded Transformers CPU parity is recorded in docs/receipts/hf_tied_flex_20261031/. Plain GPT2 Flex additionally supports explicitly recorded exact-erf GELU (HF gelu), tied or untied, with evidence in docs/receipts/hf_exact_gelu_20261031/. Other modified flavours remain open. Every mtstudio family now exports F32 GGUF with its IR
+- **HF export for modified flex flavours and unmapped GPT2 variants; quantised GGUFs outside the llama family.** Strictly plain GPT2- and Llama-flavour Flex now have verified HF mappings for separate or explicitly tied token/output heads (arbitrary depth/MLP width); those completed subsets leave this list. Actual saved/reloaded Transformers CPU parity is recorded in docs/receipts/hf_tied_flex_20261031/. Plain GPT2 Flex additionally supports explicitly recorded exact-erf GELU (HF gelu), tied or untied, with evidence in docs/receipts/hf_exact_gelu_20261031/. Plain GPT2 Flex ReLU also passes finite-execution HF CPU parity for tied/untied heads, with documented NaN/negative-zero differences (docs/receipts/hf_relu_flex_20261031/). Other modified flavours remain open. Every mtstudio family now exports F32 GGUF with its IR
   (`include/microtorch/ir.hpp`, Families): gpt2 and flex with the GPT-2
   flavour in llama.cpp's `gpt2` layout, as are kimi and plain-residual flex
   of that flavour (the IR alone carries what differs); srd, attnres, mamba
