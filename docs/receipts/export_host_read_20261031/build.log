@@ -1,0 +1,10 @@
+[ 59%] Built target transformer_core
+[ 96%] Built target microtorch
+[100%] Built target test_devcheck_host_read
+[100%] Built target test_devcheck_disabled
+[ 59%] Built target transformer_core
+[ 96%] Built target microtorch
+[100%] Built target test_flex
+[ 59%] Built target transformer_core
+[ 96%] Built target microtorch
+[100%] Built target test_gguf_export
