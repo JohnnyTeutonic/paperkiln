@@ -37,3 +37,31 @@ def test_context_eligibility_is_replayed_and_no_missing_or_duplicate_sample():
     a.coverage([{'prompt_index':0}],prompts,encode)
     for rows in [[],[{'prompt_index':0},{'prompt_index':0}],[{'prompt_index':1}]]:
         with pytest.raises(ValueError):a.coverage(rows,prompts,encode)
+
+
+def parity_rows():
+    prompts=[{'prompt':'registered '+str(i)} for i in range(40)]
+    cuda=[dict(i=i,prompt=p['prompt'],ember='reply '+str(i),mtstudio='reply '+str(i),ember_tokens=3,mts_tokens=3,ember_stop='eos',mts_stop='eos',ember_prompt_tokens=5,bpe_py_prompt_tokens=5) for i,p in enumerate(prompts)]
+    cpu=[dict(r,ember_cuda=r['ember']) for r in cuda]
+    return cuda,cpu,prompts
+
+
+def test_registered_raw_parity_inventory_passes():
+    cuda,cpu,prompts=parity_rows()
+    assert a.parity_coverage(cuda,cpu,prompts)==metrics()['parity']
+
+
+@pytest.mark.parametrize('defect',['duplicate','missing','reorder','substitute','crossleg_reference','crossleg_cuda','wrong_index','missing_field','bool_token'])
+@pytest.mark.parametrize('leg',['cuda','cpu'])
+def test_raw_parity_coverage_rejects_evidence_substitution(defect,leg):
+    cuda,cpu,prompts=parity_rows();rows=cuda if leg=='cuda' else cpu
+    if defect=='duplicate':rows[:]=[copy.deepcopy(rows[0]) for _ in range(40)]
+    if defect=='missing':rows.pop()
+    if defect=='reorder':rows[0],rows[1]=rows[1],rows[0]
+    if defect=='substitute':rows[0]['prompt']='unregistered'
+    if defect=='crossleg_reference':rows[0]['mtstudio']='different reference'
+    if defect=='crossleg_cuda':cpu[0]['ember_cuda']='different CUDA'
+    if defect=='wrong_index':rows[0]['i']=True
+    if defect=='missing_field':del rows[0]['mts_stop']
+    if defect=='bool_token':rows[0]['mts_tokens']=True
+    with pytest.raises(ValueError):a.parity_coverage(cuda,cpu,prompts)

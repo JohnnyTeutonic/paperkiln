@@ -1,0 +1,35 @@
+{
+  "kind": "PARITY_RAW_COVERAGE_REPAIR_V1",
+  "status": "PREPARED_FOR_ROOT_REVIEW_NOT_ACTIVATED",
+  "source_sha256": {
+    "assess_preference_gates_v1.py": "62affc5c5940b270dbbdce861d8415f3fe2d4dd1dc9e4cdee737b0a4bf2fa8ad",
+    "test_assess_preference_gates_v1.py": "3effeaf483cec9a51d41cdd2b8fa4d63b6935d65c0fe6152c09248a2cb6a50ca"
+  },
+  "registered_inventory": "first40 corpus/eval/tinychat_hf_prompts_v1.jsonl in original order; i0 through39",
+  "inventory_file_sha256": "a906b25aaf9f32848f83e8b87c8ad95e7eb8d5802129635f7e55fc62a68b3132",
+  "checks": [
+    "Exact prompt strings and ordered integer indices in both legs",
+    "Required text and nonnegative integer token metadata",
+    "CPU/CUDA mtstudio reference text, tokens, stop and tokenizer prompt counts equal",
+    "CPU ember_cuda links to original CUDA reply",
+    "Summary n40 and max_new60"
+  ],
+  "tests": {
+    "focused_passed": 30,
+    "related_passed": 64,
+    "negative_cases": [
+      "40 copies of one row",
+      "missing row",
+      "reordered rows",
+      "substituted prompt",
+      "reference mismatch",
+      "CUDA reply link mismatch",
+      "boolean index/token",
+      "missing required field"
+    ]
+  },
+  "gate_thresholds_unchanged": true,
+  "remaining_deviceproof_dependency": "Current Ember health schema contains no GPU residency/backend fields. Positive CUDA routing evidence requires separately reviewed source-bound health or startup-log proof before claiming this dependency satisfied.",
+  "paid_calls": 0,
+  "activation": false
+}
