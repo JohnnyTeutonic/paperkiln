@@ -6,6 +6,7 @@
 #include <iostream>
 #include <limits>
 #include <nlohmann/json.hpp>
+#include "microtorch/device.hpp"
 #include "microtorch/ops.hpp"
 #include "parity_model.hpp"
 using namespace microtorch;
