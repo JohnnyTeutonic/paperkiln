@@ -1,0 +1,26 @@
+{
+  "status": "PREPARED_UNLAUNCHED_REQUIRES_ROOT_ADMISSION",
+  "tests": {
+    "command": "python3 -m pytest -q tools/colab_chat/test_sfull_data_only_controller_20261031.py tools/colab_chat/test_sfull_data_only_finish_20261031.py",
+    "result": "36 passed in 0.33s",
+    "log_sha256": "e238da73433ee387b565aef1c1a525e4fb17b4fb3252c5ecead948568c298d8b"
+  },
+  "preflight": {
+    "command": [
+      "python3",
+      "tools/colab_chat/sfull_data_only_controller_20261031.py",
+      "--manifest",
+      "/home/jonat/pk_sfull_data_controller_20261031/docs/receipts/sfull_data_only_admission_20261031/manifest.json",
+      "--manifest-sha256",
+      "3640b1595afb5847e66081b7a6fc10766caed7c4fa5b9cb61b2e3957fb1b4ea9",
+      "--check"
+    ],
+    "returncode": 0,
+    "log_sha256": "d0fb64fd74bc71f0c8e40215f37d1796914079315b59856df076aa31939fd846"
+  },
+  "test_source_sha256": "caf1d1f8bb4ee5e159ff13892b8adf63a52e987b61e4242e8c2455e63576ab74",
+  "manifest_sha256": "3640b1595afb5847e66081b7a6fc10766caed7c4fa5b9cb61b2e3957fb1b4ea9",
+  "provider_calls": 0,
+  "watchdog_changes": false,
+  "launch_authorised": false
+}

@@ -1,0 +1,18 @@
+{
+  "scope": "Independent read-only final boot/finish-helper failure-stop review only; not a repeat of full frozen data/source verification",
+  "source_sha256": {
+    "boot_sfull_data_only_20261031.sh": "35eb033a795996c8d6a08e6cf7b2c4dd999667cf3da09f97edb7e18cd7718437",
+    "sfull_data_only_finish_20261031.py": "ab53d5300c94cef7111a88267712282868e33d66d0259c945dc69a68e8e7f2e8",
+    "test_sfull_data_only_finish_20261031.py": "2fee91d166ac37a5555a8839032abfe9a980df365c7830dc45f23ee65db43f90"
+  },
+  "status": "PASS_NO_CONCRETE_REMAINING_BLOCKER_IN_REVIEWED_SCOPE",
+  "closed_issue": "Status read OSError previously escaped and left RUNNING; now guarded, with shell fallback on unexpected helper failure/startup failure. Only helper can publish global FINISHED after both FINISHED job statuses and exact original-verifier identities/counts.",
+  "independent_tests": {
+    "command": "python3 -m pytest -q /home/jonat/pk_sfull_data_gate_20261031/tools/colab_chat/test_sfull_data_only_finish_20261031.py",
+    "passed": 26,
+    "elapsed_seconds": 0.08,
+    "includes": "Injected status-read OSError12 and actual boot shell fragment with missing entry points"
+  },
+  "no_edits_or_launch": true,
+  "limitation": "Successful data-only finishing is not a training result or waiver of original runtime hash/ledger/decontamination gates."
+}
