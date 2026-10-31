@@ -1,0 +1,14 @@
+{
+  "pass": true,
+  "status": "UNLAUNCHED_ONLY",
+  "manifest_sha256": "3ab069e1f144aae1461a1a0c6bb3c1bfd584b25d8f1e6fe41d7caba1a7458ed7",
+  "source_commit": "5614bf1fef4b7d24bbb6c476d2870a88682388d6",
+  "archive_safe_regular_members": 1439,
+  "archive_bytes": 10208312,
+  "all_source_hashes_verified": true,
+  "archive_cpu_configure_pass": true,
+  "no_library_build": true,
+  "no_paid_launch": true,
+  "no_watchdog_entry": true,
+  "future_root_review_and_new_deadline_required": true
+}
