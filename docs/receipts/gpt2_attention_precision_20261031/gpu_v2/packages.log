@@ -1,0 +1,27 @@
+Collecting numpy==1.26.4
+  Downloading numpy-1.26.4-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (61 kB)
+Collecting pytest==9.0.3
+  Downloading pytest-9.0.3-py3-none-any.whl.metadata (7.6 kB)
+Collecting iniconfig>=1.0.1 (from pytest==9.0.3)
+  Downloading iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
+Requirement already satisfied: packaging>=22 in /usr/local/lib/python3.11/dist-packages (from pytest==9.0.3) (24.1)
+Collecting pluggy<2,>=1.5 (from pytest==9.0.3)
+  Downloading pluggy-1.7.0-py3-none-any.whl.metadata (5.0 kB)
+Requirement already satisfied: pygments>=2.7.2 in /usr/local/lib/python3.11/dist-packages (from pytest==9.0.3) (2.18.0)
+Downloading numpy-1.26.4-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (18.3 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 18.3/18.3 MB 75.6 MB/s eta 0:00:00
+Downloading pytest-9.0.3-py3-none-any.whl (375 kB)
+Downloading iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+Downloading pluggy-1.7.0-py3-none-any.whl (27 kB)
+Installing collected packages: pluggy, numpy, iniconfig, pytest
+  Attempting uninstall: numpy
+    Found existing installation: numpy 2.4.6
+    Uninstalling numpy-2.4.6:
+      Successfully uninstalled numpy-2.4.6
+ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+pandas 3.1.0 requires numpy>=2.0.2; python_version < "3.14", but you have numpy 1.26.4 which is incompatible.
+Successfully installed iniconfig-2.3.1 numpy-1.26.4 pluggy-1.7.0 pytest-9.0.3
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable.It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+
+[notice] A new release of pip is available: 24.2 -> 26.2.2
+[notice] To update, run: python3 -m pip install --upgrade pip
