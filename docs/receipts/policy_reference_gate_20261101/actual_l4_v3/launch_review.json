@@ -1,0 +1,82 @@
+{
+  "status": "APPROVED_ONE_ATTEMPT_AFTER_SERIAL_ADMISSION",
+  "authorised_by": "Jonathan explicitly authorised S-full, preference training and the proposed engineering jobs on 1 Nov 2026; root owns serial GPU admission",
+  "refreshed_offline_readiness_sha256": "a19b82d847927af9d8526db58f1c86f79f83023d4ecba40d95e54719fe50346a",
+  "driver_argv": [
+    "python3",
+    "/home/jonat/pk_publication_20261030/tools/colab_chat/runner_multi.py",
+    "--backend",
+    "runpod",
+    "--gpu",
+    "L4",
+    "--cloud",
+    "SECURE",
+    "--volume-gb",
+    "20",
+    "--image",
+    "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+    "--max-usd",
+    "0.75",
+    "--max-hours",
+    "0.6",
+    "--deadline-utc",
+    "2026-10-31T17:45:00Z",
+    "--name",
+    "pk-policy-reference-v3-1101",
+    "--commit",
+    "c3576f977053b1a27ae2a825160e00bb356bdc65",
+    "--jobs",
+    "tools/colab_chat/policy_reference_gate_20261101.json",
+    "--boot-script",
+    "tools/colab_chat/boot_commands_sparse.sh",
+    "--state-dir",
+    "/home/jonat/pk_policy_reference_v3_1101_runner",
+    "--art",
+    "/mnt/c/ml_artifacts/policy_reference_1101_v3",
+    "--upload",
+    "source.tgz=/home/jonat/policy_reference_gate_stage_v2_20261101/source.tgz",
+    "--upload",
+    "policy_reference_gate.py=/home/jonat/policy_reference_gate_stage_v2_20261101/policy_reference_gate.py",
+    "--upload",
+    "protocol.json=/home/jonat/policy_reference_gate_stage_v2_20261101/protocol.json",
+    "--upload",
+    "inputs.json=/home/jonat/policy_reference_gate_stage_v2_20261101/inputs.json"
+  ],
+  "source_commit": "3dc1e68b2af8ae80c5cbaa02b29289eb43a48710",
+  "manifest_sha256": "56fa371cf4d516001b812a3c6024548844a4cde3449297b34dca48213b5c0f38",
+  "independent_review_sha256": "41b164eeea11378fd0bb7771b7d77ddd0aba2bc69ca031b4e9c96c16febee335",
+  "bounds": {
+    "max_usd": 0.75,
+    "max_hours": 0.6,
+    "deadline_utc": "2026-10-31T17:45:00Z",
+    "scientific_seconds": 1500,
+    "process_local_max_pods": 1
+  },
+  "transport_controls": [
+    {
+      "science_rc": 0,
+      "archive_exists": true,
+      "transport_rc": 0,
+      "dispatches": 1
+    },
+    {
+      "science_rc": 1,
+      "archive_exists": true,
+      "transport_rc": 0,
+      "dispatches": 1
+    },
+    {
+      "science_rc": 0,
+      "archive_exists": false,
+      "transport_rc": 1,
+      "dispatches": 1
+    },
+    {
+      "science_rc": 1,
+      "archive_exists": false,
+      "transport_rc": 1,
+      "dispatches": 1
+    }
+  ],
+  "scope": "Actual L4 public constant-reference Matrix boundary: old poisoned-reference loss and gradient predictions, fixed full gradients, k-zero controls; no historical invalidity or speed claim."
+}

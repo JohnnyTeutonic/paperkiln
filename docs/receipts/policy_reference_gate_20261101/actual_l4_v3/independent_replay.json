@@ -1,0 +1,259 @@
+{
+  "status": "INDEPENDENT_RAW_AND_FINITE_DIFFERENCE_REPLAY_PASS",
+  "archive_sha256": "744426e996923b04e7b917c114975a6ac3dc6121cbb355c46c30e9f8225d37c9",
+  "archive_bytes": 64537,
+  "raw_member_sha256": {
+    "gate_summary.json": "d51527705882bd665f1547206ccaf0b97c7991047208871383bb4707adcfa518",
+    "fixed_kl_only_cuda_replay.log": "d97c30a044edbb166eefbedc0222120686929688e3c2d4c37666f458de76745e",
+    "fixed_kl_only_cuda.json": "01d763e1cec11be8152a130628a595a4c8f5b51019cd28cacb65434ed5fae634",
+    "fixed_kl_only_cuda.log": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+    "fixed_policy_only_cuda_replay.log": "5d6055334a59bd98275005325cc0c1254a4f23ba9c639e7f236d1791bb30eb5b",
+    "fixed_policy_only_cuda.json": "98c87181b6fbe9739c9c3240f754cd700adec177f32a908d6178e782939d2119",
+    "fixed_policy_only_cuda.log": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+    "fixed_mixed_cuda_replay.log": "4b7df5afb1077982f3cf007804227f8ff7e0ce07c3cec604fd564b9ddfd723ab",
+    "fixed_mixed_cuda.json": "b1316b1ee846c1dd8f75a41788566f6d7c28afefa559aea69541c50a0407633f",
+    "fixed_mixed_cuda.log": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+    "old_kl_only_cuda_replay.log": "68bef0f4c4b736f8f45fe02d2ba0fb29ca282b88f82664988a0254c60d60aa01",
+    "old_kl_only_cuda.json": "16d97f032f5e8adc0ab061fd0085b9e5d6857beda81a9a7d142af34bd2491c6d",
+    "old_kl_only_cuda.log": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+    "old_policy_only_cuda_replay.log": "fc355241efc67efda04f66fd15e0ebc3354acec3bf1b337aa1f9759db39701ea",
+    "old_policy_only_cuda.json": "aac82127fe2a299a21012aeb1065b05d160e1c0bee3dff97171b9e03ec8fb36a",
+    "old_policy_only_cuda.log": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+    "old_mixed_cuda_replay.log": "419d82e762ca967162687fe02f44733054370ead7b2658dab85d54688a781b1b",
+    "old_mixed_cuda.json": "b4fea8e0ea38ab1b9db5c8405943ad8940f96105202e086031544e4bd647c0f4",
+    "old_mixed_cuda.log": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+    "fixed_kl_only_cpu_replay.log": "d57c0cc69e5b9e355f109fee9b2c23fb3b004faec180c9db2b67bf5808cb2ca6",
+    "fixed_kl_only_cpu.json": "c7181ca80ecaad36fda6d3a5d9ef9347695dab5ef153a2cc96ce12789beb2b91",
+    "fixed_kl_only_cpu.log": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+    "fixed_policy_only_cpu_replay.log": "60b0579c4e69bcff8930aa9846c40f0cbdf85a46f043f685e0d5fbd7a717cf16",
+    "fixed_policy_only_cpu.json": "4c3f2b97ef4ba9d8e3ce76e23b8d4f332f1cc4113daf09c41f0401caa3cdb84c",
+    "fixed_policy_only_cpu.log": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+    "fixed_mixed_cpu_replay.log": "e72aeacd90840ef0ca05c9fe2e3ea887accadd9bd80613edc164eef7d186f8ee",
+    "fixed_mixed_cpu.json": "3a486071c0b6f0c3b9b7bb42208b28c4992a23001211018bbbee74c223a50e1f",
+    "fixed_mixed_cpu.log": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+    "old_kl_only_cpu_replay.log": "0e14de3fa477f91c54bb1a79af601d3c5e88905d72368dfca09bfdad7dc909b9",
+    "old_kl_only_cpu.json": "8cf3d91007a1b1a03d913aec995afac58c64001f1649d2d53f61dc215ddb0c80",
+    "old_kl_only_cpu.log": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+    "old_policy_only_cpu_replay.log": "9c4f5780e529dbb7401d302a7a6af8abdff0dd0b7b5662fafda3ec8e49ed7f7c",
+    "old_policy_only_cpu.json": "c44160c15ee7f0784fa73928fdcdaa8e8636373416d623689dad3f86b0b4d5da",
+    "old_policy_only_cpu.log": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+    "old_mixed_cpu_replay.log": "c66a0f2b7ffc49d47897bd2614ffd0c656c29576fcc79a8eb3628644555549d0",
+    "old_mixed_cpu.json": "2119e659aff1365560529965dcefc881efe86239925da86e47aeb9083e47f5b4",
+    "old_mixed_cpu.log": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+    "build.log": "7c631aafea382dc8331c123132c02d09ef75b97b5525319c0017c0139391a6be",
+    "configure.log": "913a008eca754c3ee320454cb9abee27b8c451ef69fb4e325da05c34e5faa02b",
+    "hardware.log": "4d27402575c0fbfcbc714a6563f4bcc9ea0e3699ea638e7bd89db077eef291de"
+  },
+  "cases": [
+    {
+      "member": "old_mixed_cpu.json",
+      "registered_replay": {
+        "pass": true,
+        "actual_cuda": false,
+        "variant": "old",
+        "case": "mixed",
+        "expected_old_numeric_failure": false,
+        "correct_loss_error": 0.0,
+        "correct_gradient_error": 0.0,
+        "bound": 1e-06,
+        "scope": "public constant-reference Matrix consumer only; no historical CLI invalidity claim"
+      },
+      "independent_binary64_objective_error": 3.7211431578279954e-10,
+      "independent_central_difference_gradient_error": 4.828644468722493e-09,
+      "central_difference_step": 1e-05
+    },
+    {
+      "member": "old_mixed_cuda.json",
+      "registered_replay": {
+        "pass": true,
+        "actual_cuda": true,
+        "variant": "old",
+        "case": "mixed",
+        "expected_old_numeric_failure": true,
+        "correct_loss_error": 8.277943175620294,
+        "correct_gradient_error": 0.35027260812295585,
+        "bound": 1e-06,
+        "scope": "public constant-reference Matrix consumer only; no historical CLI invalidity claim"
+      },
+      "independent_binary64_objective_error": 2.47638137841294e-08,
+      "independent_central_difference_gradient_error": 1.5052438692801514e-08,
+      "central_difference_step": 1e-05
+    },
+    {
+      "member": "old_policy_only_cpu.json",
+      "registered_replay": {
+        "pass": true,
+        "actual_cuda": false,
+        "variant": "old",
+        "case": "policy_only",
+        "expected_old_numeric_failure": false,
+        "correct_loss_error": 0.0,
+        "correct_gradient_error": 0.0,
+        "bound": 1e-06,
+        "scope": "public constant-reference Matrix consumer only; no historical CLI invalidity claim"
+      },
+      "independent_binary64_objective_error": 1.775424930393515e-08,
+      "independent_central_difference_gradient_error": 1.0062422290193276e-08,
+      "central_difference_step": 1e-05
+    },
+    {
+      "member": "old_policy_only_cuda.json",
+      "registered_replay": {
+        "pass": true,
+        "actual_cuda": true,
+        "variant": "old",
+        "case": "policy_only",
+        "expected_old_numeric_failure": false,
+        "correct_loss_error": 0.0,
+        "correct_gradient_error": 0.0,
+        "bound": 1e-06,
+        "scope": "public constant-reference Matrix consumer only; no historical CLI invalidity claim"
+      },
+      "independent_binary64_objective_error": 1.775424930393515e-08,
+      "independent_central_difference_gradient_error": 1.0062422290193276e-08,
+      "central_difference_step": 1e-05
+    },
+    {
+      "member": "old_kl_only_cpu.json",
+      "registered_replay": {
+        "pass": true,
+        "actual_cuda": false,
+        "variant": "old",
+        "case": "kl_only",
+        "expected_old_numeric_failure": false,
+        "correct_loss_error": 0.0,
+        "correct_gradient_error": 0.0,
+        "bound": 1e-06,
+        "scope": "public constant-reference Matrix consumer only; no historical CLI invalidity claim"
+      },
+      "independent_binary64_objective_error": 1.193997542308332e-08,
+      "independent_central_difference_gradient_error": 8.238365178524919e-09,
+      "central_difference_step": 1e-05
+    },
+    {
+      "member": "old_kl_only_cuda.json",
+      "registered_replay": {
+        "pass": true,
+        "actual_cuda": true,
+        "variant": "old",
+        "case": "kl_only",
+        "expected_old_numeric_failure": true,
+        "correct_loss_error": 9.18173854904737,
+        "correct_gradient_error": 0.2950271415705624,
+        "bound": 1e-06,
+        "scope": "public constant-reference Matrix consumer only; no historical CLI invalidity claim"
+      },
+      "independent_binary64_objective_error": 2.916911221664779e-08,
+      "independent_central_difference_gradient_error": 1.0761886957537053e-08,
+      "central_difference_step": 1e-05
+    },
+    {
+      "member": "fixed_mixed_cpu.json",
+      "registered_replay": {
+        "pass": true,
+        "actual_cuda": false,
+        "variant": "fixed",
+        "case": "mixed",
+        "expected_old_numeric_failure": false,
+        "correct_loss_error": 0.0,
+        "correct_gradient_error": 0.0,
+        "bound": 1e-06,
+        "scope": "public constant-reference Matrix consumer only; no historical CLI invalidity claim"
+      },
+      "independent_binary64_objective_error": 3.7211431578279954e-10,
+      "independent_central_difference_gradient_error": 4.828644468722493e-09,
+      "central_difference_step": 1e-05
+    },
+    {
+      "member": "fixed_mixed_cuda.json",
+      "registered_replay": {
+        "pass": true,
+        "actual_cuda": true,
+        "variant": "fixed",
+        "case": "mixed",
+        "expected_old_numeric_failure": false,
+        "correct_loss_error": 0.0,
+        "correct_gradient_error": 0.0,
+        "bound": 1e-06,
+        "scope": "public constant-reference Matrix consumer only; no historical CLI invalidity claim"
+      },
+      "independent_binary64_objective_error": 3.7211431578279954e-10,
+      "independent_central_difference_gradient_error": 4.828644468722493e-09,
+      "central_difference_step": 1e-05
+    },
+    {
+      "member": "fixed_policy_only_cpu.json",
+      "registered_replay": {
+        "pass": true,
+        "actual_cuda": false,
+        "variant": "fixed",
+        "case": "policy_only",
+        "expected_old_numeric_failure": false,
+        "correct_loss_error": 0.0,
+        "correct_gradient_error": 0.0,
+        "bound": 1e-06,
+        "scope": "public constant-reference Matrix consumer only; no historical CLI invalidity claim"
+      },
+      "independent_binary64_objective_error": 1.775424930393515e-08,
+      "independent_central_difference_gradient_error": 1.0062422290193276e-08,
+      "central_difference_step": 1e-05
+    },
+    {
+      "member": "fixed_policy_only_cuda.json",
+      "registered_replay": {
+        "pass": true,
+        "actual_cuda": true,
+        "variant": "fixed",
+        "case": "policy_only",
+        "expected_old_numeric_failure": false,
+        "correct_loss_error": 0.0,
+        "correct_gradient_error": 0.0,
+        "bound": 1e-06,
+        "scope": "public constant-reference Matrix consumer only; no historical CLI invalidity claim"
+      },
+      "independent_binary64_objective_error": 1.775424930393515e-08,
+      "independent_central_difference_gradient_error": 1.0062422290193276e-08,
+      "central_difference_step": 1e-05
+    },
+    {
+      "member": "fixed_kl_only_cpu.json",
+      "registered_replay": {
+        "pass": true,
+        "actual_cuda": false,
+        "variant": "fixed",
+        "case": "kl_only",
+        "expected_old_numeric_failure": false,
+        "correct_loss_error": 0.0,
+        "correct_gradient_error": 0.0,
+        "bound": 1e-06,
+        "scope": "public constant-reference Matrix consumer only; no historical CLI invalidity claim"
+      },
+      "independent_binary64_objective_error": 1.193997542308332e-08,
+      "independent_central_difference_gradient_error": 8.238365178524919e-09,
+      "central_difference_step": 1e-05
+    },
+    {
+      "member": "fixed_kl_only_cuda.json",
+      "registered_replay": {
+        "pass": true,
+        "actual_cuda": true,
+        "variant": "fixed",
+        "case": "kl_only",
+        "expected_old_numeric_failure": false,
+        "correct_loss_error": 0.0,
+        "correct_gradient_error": 0.0,
+        "bound": 1e-06,
+        "scope": "public constant-reference Matrix consumer only; no historical CLI invalidity claim"
+      },
+      "independent_binary64_objective_error": 1.193997542308332e-08,
+      "independent_central_difference_gradient_error": 8.238365178524919e-09,
+      "central_difference_step": 1e-05
+    }
+  ],
+  "cases_count": 12,
+  "actual_cuda_cases": 6,
+  "gradient_elements": 72,
+  "frozen_replay_sha256": "334e2b5128c5183c6d293fee776b1bb86b014e88d4649691648c71e14ef7d9ff",
+  "transport_science_returncode": 0,
+  "scope": "Public constant-reference Matrix policy_gradient_kl boundary; actual old poisoned-loss/full-gradient failures and fixed output/gradient recovery. Central differences independently check the continuous binary64 objective, not a derivative of float rounding. No historical DPO/GRPO invalidity or speed claim."
+}

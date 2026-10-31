@@ -314,6 +314,12 @@ reference. [Checkpoint boundary evidence](docs/receipts/checkpoint_copy_gate_202
 This is a helper correctness result; it does not establish historical training
 invalidity, whole-model residency or a speed gain.
 
+The public `policy_gradient_kl` constant-reference Matrix boundary now materializes
+device-fresh references before forward reads and tape capture. Actual L4 old/fixed
+loss and complete-gradient checks pass, with separate binary64 finite-difference
+replay. [Boundary evidence](docs/receipts/policy_reference_gate_20261101/actual_l4_v3/README.md).
+This does not establish applicability to historical training or a speed gain.
+
 Nine registered host-helper cases now pass an actual L4 CUDA + DEVCHECK gate:
 `exp`, `div`, `where`, `rowsum`, `rowmax`, `broadcast_cols`, `relu_`, `sigmoid_`
 and `scale_`. Poison checks exercise deferred inputs and upstream gradients;

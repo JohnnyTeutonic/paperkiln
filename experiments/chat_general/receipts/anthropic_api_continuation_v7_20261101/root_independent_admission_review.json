@@ -1,0 +1,48 @@
+{
+  "status": "ROOT_INDEPENDENT_READONLY_REVIEW_PASS",
+  "protocol_sha256": "5d0a8cd291614db69118dc2c12f404257ee474e8f5f636f8be606a2ffba3ed23",
+  "source_pins": {
+    "chat_judge_campaign_continuation_v7.py": "2123d45b0057773817dff9a4024751d1c0d2678050d7f5228382f54a5689ea17",
+    "chat_judge_api_refusal_v5.py": "11cd8c7880356afaef631f6168d02dd75025cd4be58d4c6fc69fddb966ed0dd7",
+    "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+  },
+  "inspected_status": {
+    "attempts_since_start": 0,
+    "missing_rankings": 3472,
+    "valid_api_rankings": 2568,
+    "eligible_missing_rankings": 3468,
+    "preserved_failed_rankings": 2,
+    "unattempted_paired_exclusions": 2,
+    "api_actual_spend_usd": 38.740996,
+    "retained_unknown_ceiling_usd": 0.75,
+    "baseline_usd": 20.08558,
+    "gate_reserve_usd": 25.0
+  },
+  "preserved_prior_anchors": {
+    "/home/jonat/pk_api_transport_diagnostic_20261031/experiments/chat_general/receipts/anthropic_api_recovery_v2_20261031/original_full_campaign_protocol.json": "6170b3830d6bb4acfeac972d050241076219e98b0ce3f8eb2a1ea32873ab2724",
+    "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign/HALTED": "0ee5f79a2d1e09bc2a46663d9bbd59c1bababb428bc8a52b145057065f868bc9",
+    "/home/jonat/pk_api_transport_diagnostic_20261031/experiments/chat_general/receipts/anthropic_api_recovery_v2_20261031/full_campaign_v2_protocol.json": "6a233561c2eb490cf7041a8005cb70a06608b33a23b107aecae62b8f9c90d8ea",
+    "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v2/HALTED": "38bd276794365ebea271f2725c81a50964501650459350a5387c3ee577e5b5b9",
+    "/home/jonat/pk_api_transport_diagnostic_20261031/experiments/chat_general/receipts/anthropic_api_recovery_v2_20261031/retention_receipt.json": "6cd77dfcf01d293ea9a72eb054a9ab07d9eb5b354adca0cc475bdbdc91ad4cae",
+    "/home/jonat/pk_api_continuation_v4_20261031/experiments/chat_general/receipts/anthropic_api_diagnostic_v3_20261031/diagnostic_v3_protocol.json": "fb5c0433440609bb47406790a4010f0e8c4707c515bbd832110008e3ea3175fc",
+    "/mnt/c/ml_artifacts/pref_api_20261031/diagnostic_campaign_v3/STOPPED": "5271ea7dc5953998b975ac3d3e81399fd2b98ec3bd6b2d640d4da39f8d255b3f",
+    "/home/jonat/pk_api_continuation_v4_20261031/experiments/chat_general/receipts/anthropic_api_diagnostic_v3_20261031/bounded_outcome.json": "17c7be7398eb99b2ab5baa7cb478f94b55d7428ba168d6b9c9ca0b595f579fa0",
+    "/home/jonat/pk_api_refusal_continuation_v5_20261031/experiments/chat_general/receipts/anthropic_api_continuation_v4_20261031/full_campaign_v4_protocol.json": "49223afaee2b0fe746f148da2cf3bed3e04095374fd91a5be244a9eb18522c92",
+    "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v4/HALTED": "b5da140dc71748ebfffce1c24a4b441ea3372b31aaa45851aab629250704c573",
+    "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v4/STOPPED": "ff50f45869cc54dea20b917ce9f4a0a91ee5fb369476eb8338a32fc8bdb8a495",
+    "/home/jonat/pk_api_refusal_continuation_v5_20261031/experiments/chat_general/receipts/anthropic_api_refusal_v4_20261031/halt_audit.json": "54b279a23f89857da812e83274057a1ef3167b8e08ac58c1b22303abfd7fd4c1",
+    "/home/jonat/pk_api_refusal_continuation_v5_20261031/experiments/chat_general/receipts/anthropic_api_refusal_v5_20261031/full_campaign_v5_protocol.json": "a576a57a7796440b2936ede0176f748372655551d83f3a57e09ab7e1e6e8b763",
+    "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v5/HALTED": "36b90d4e1351e7d8641bed53adebf846c6cef6631bdc5d738997b7bdb235b363",
+    "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v5/STOPPED": "a76db07dd3a03a5388d9de24c0845059f22b20a0fa2025de960b0e16d5f20d8b",
+    "/home/jonat/pk_api_memory_continuation_v6_20261031/experiments/chat_general/receipts/anthropic_api_memory_v5_20261031/halt_audit.json": "bf8b0e05e2f5edc2cce99158a10db21c6e3ff2e2cfafce9f9a44a0a56e9e6e9a",
+    "/home/jonat/pk_api_memory_continuation_v6_20261031/experiments/chat_general/receipts/anthropic_api_memory_v6_20261031/full_campaign_v6_protocol.json": "84076595529351aa6e8500e0eca7e546735f764ab5cac85355f396b935f36e77",
+    "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v6/HALTED": "610c2f73597ab8b7d95217b57c556ee7ebc5fa8576957a12a825f5553fb59e76",
+    "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v6/STOPPED": "67bf0575ec3d7e06d34da54bc073cd17dc7ed143e62fa3ea67271b374d8d2142",
+    "/home/jonat/api_v6_halt_review_20261101/review.json": "49946811c3ce4589103954f2f703734be5f2f92f7b58daf11c4eb4bde764d22c"
+  },
+  "api_state_unchanged": true,
+  "provider_calls": 0,
+  "credential_accesses": 0,
+  "dataset_adoption_sha256": "418d65b335ab2af87faaaf6e7e6fbc403cc318ab0e3ead7fd2cb8b0656b0568d"
+}
