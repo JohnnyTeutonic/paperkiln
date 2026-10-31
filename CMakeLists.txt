@@ -525,3 +525,7 @@ endif()
 if(WIN32)
     target_link_libraries(gpt2_precision_gate PRIVATE ws2_32)
 endif()
+
+add_executable(test_host_helper_gate tests/test_host_helper_gate.cpp)
+target_link_libraries(test_host_helper_gate PRIVATE microtorch nlohmann_json::nlohmann_json)
+add_test(NAME host_helper_gate_cpu COMMAND test_host_helper_gate)

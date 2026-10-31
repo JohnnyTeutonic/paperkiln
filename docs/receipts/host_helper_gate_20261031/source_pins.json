@@ -1,0 +1,9 @@
+{
+  "src/ops.cpp": "80cbbddf0fe43867cdb3aaae45eac68f33d9ee5b0ace3356b0ef67ca89f24170",
+  "src/cuda_resident.cu": "fe1222083a38f6002a8bb96350dd8df41a536e6184d8a6b6503eebc7b6591713",
+  "include/microtorch/ops.hpp": "e6efd5098cbfc3484ee7651d12281ca940dd0a3c089740153b4d4c6f4e37da1a",
+  "tests/test_host_helper_gate.cpp": "cdaf3adf11eb4ee89f5b92dc69faf5ce917ec40dc1fc6d6487e3d58e4e9b95ac",
+  "tools/replay_host_helper_gate.py": "f3acb34dda2632894a2259be2c6a2327fbc81ef2908fbdd2f224ebfd02c49097",
+  "tools/host_helper_gate.py": "4d0049082b89976388749101a64e205f748c587719363baac0ad48c8fced9422",
+  "tests/test_host_helper_gate_replay.py": "6fef4791f12fb83681d232d229e066624d0ff703e5d12e196cf6ff9e7f79dff5"
+}

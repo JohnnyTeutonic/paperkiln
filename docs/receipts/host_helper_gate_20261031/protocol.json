@@ -1,0 +1,51 @@
+{
+  "status": "UNLAUNCHED_PROSPECTIVE_OFFLINE_ONLY",
+  "source_base_commit": "e08482c788a35ef1dc8054713a059040ebdb52d2",
+  "no_production_patch": true,
+  "no_expected_old_failure": true,
+  "cases": [
+    "exp",
+    "div",
+    "where",
+    "rowsum",
+    "rowmax",
+    "broadcast_cols",
+    "relu_",
+    "sigmoid_",
+    "scale_"
+  ],
+  "scope": "Only these nine concrete helper cases. exp and div represent common generic helper materialization, not every unary/binary derivative formula.",
+  "fixtures": "Fixed nonboundary 2x3 matrices; reductions2x1; broadcast2x1 to2x3; fresh matmul identity for each inplace case. Exact input bytes independently checked.",
+  "gpu_proof": "Single actual L4 plus CUDA/DEVCHECK compile. All inputs produced under active deferred GPU ops; CHECK host_stale before/after poisoning only non-authoritative host bytes. Weighted-loss backward proves stale upstream gradient and poisons only host bytes before helper backward.",
+  "inplace_contract": "Only fresh matmul output, no other consumer, no explicit resident mutation; matmul output DevState must be null before inplace.",
+  "numeric_gate": {
+    "normalized_element_error": "abs(actual-reference)/(1+abs(reference))",
+    "bound": 3e-05,
+    "full_gradient_tensors": 14,
+    "all_outputs_and_gradients": "Exact named shape/inventory, all finite; every expected nonzero gradient tensor nonzero.",
+    "reference": "Independent NumPy64 formulas from fixed f32 fixtures; no production op import.",
+    "required_backends": [
+      "same-build CPU control",
+      "actual CUDA"
+    ]
+  },
+  "caps": {
+    "maximum_usd": 0.75,
+    "gate_seconds": 1500,
+    "max_hours": 0.6,
+    "historical_requested_deadline_utc": "2026-10-31T06:25:00Z",
+    "max_remote_pods_for_driver": 2
+  },
+  "launch_control": "Missed06:12 readiness cutoff; NEVER enabled, no paid outcome. Root explicitly agreed offline preparation only. Future launch needs new exact root review and fresh operational deadline/version; no existing watchdog entry is created.",
+  "validation": {
+    "cpu_control_pass": true,
+    "maximum_cpu_normalized_error": 3.445527538945451e-08,
+    "optimized_parser_mutation_tests": 39,
+    "cpu_binary_cuda_substitution_refused": true,
+    "cpu_binary_cuda_refusal_returncode": 1
+  },
+  "limits": [
+    "No CUDA result exists yet; nine-case CUDA host-helper subset remains open.",
+    "No performance, residency improvement, quality or exhaustive audit claim."
+  ]
+}
