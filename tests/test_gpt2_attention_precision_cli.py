@@ -236,6 +236,10 @@ def test_bf16_training_reloads_as_fp32_inference_and_exports(tmp_path):
 
 
 def test_sft_recipe_trains_and_saves(tmp_path):
+    proof = os.environ.get("GPT2_PRECISION_PROOF_DIR")
+    if proof:
+        tmp_path = Path(proof) / "sft_cli"
+        tmp_path.mkdir(parents=True, exist_ok=False)
     s = fixture(tmp_path)
     examples = tmp_path / "examples.jsonl"
     examples.write_text(
@@ -264,3 +268,31 @@ def test_sft_recipe_trains_and_saves(tmp_path):
     assert result["final_step"] == 3 and np.isfinite(result["best_val"])
     assert result["train_attention_precision"] == "bf16"
     assert (out / "precision.safetensors").is_file()
+
+    same = copy.deepcopy(s)
+    same["train"].pop("attention_precision")
+    fp = save(tmp_path, same, "sft_inference_fp32")
+    req = tmp_path / "req.jsonl"
+    req.write_text(
+        json.dumps({"prompt_ids": [1], "continuation_ids": [2, 3, 4]}) + "\n"
+    )
+    for label, spec_path in [("sft_recipe", tmp_path / "sft.json"), ("sft_fp32", fp)]:
+        scored = run(
+            [
+                BIN,
+                "score",
+                spec_path,
+                "--in",
+                req,
+                "--out",
+                tmp_path / (label + ".jsonl"),
+                "--logits",
+                tmp_path / (label + ".f32"),
+            ],
+            tmp_path,
+            label,
+        )
+        assert scored.returncode == 0, scored.stdout + scored.stderr
+    assert (tmp_path / "sft_recipe.f32").read_bytes() == (
+        tmp_path / "sft_fp32.f32"
+    ).read_bytes()

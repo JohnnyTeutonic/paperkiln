@@ -1,0 +1,181 @@
+{
+ "root_commit": "68c2eca41167bd7b4a05c1a46073c02cbeca8183",
+ "constructor_cases": 8,
+ "actual_cli_cases": 4,
+ "all_counts_match": true,
+ "network_calls": 0,
+ "formula_gpt2": "2*V*d+T*d+L*(4*d*d+2*d*F+9*d+F)+2*d",
+ "formula_llama": "V*d+L*(4*d*d+3*d*F+2*d)+d",
+ "raw_recomputed_rows": [
+  {
+   "kind": "constructor",
+   "inputs": {
+    "T": 4,
+    "d": 8,
+    "heads": 2,
+    "layers": 2,
+    "params": 1904,
+    "preset": "gpt2-nano",
+    "vocab": 7
+   },
+   "recomputed": 1904,
+   "difference": 0
+  },
+  {
+   "kind": "constructor",
+   "inputs": {
+    "T": 8,
+    "d": 16,
+    "heads": 2,
+    "layers": 1,
+    "params": 5488,
+    "preset": "gpt2-nano",
+    "vocab": 64
+   },
+   "recomputed": 5488,
+   "difference": 0
+  },
+  {
+   "kind": "constructor",
+   "inputs": {
+    "T": 8,
+    "d": 16,
+    "heads": 2,
+    "layers": 2,
+    "params": 8768,
+    "preset": "gpt2-nano",
+    "vocab": 64
+   },
+   "recomputed": 8768,
+   "difference": 0
+  },
+  {
+   "kind": "constructor",
+   "inputs": {
+    "T": 8,
+    "d": 16,
+    "heads": 2,
+    "layers": 3,
+    "params": 12048,
+    "preset": "gpt2-nano",
+    "vocab": 64
+   },
+   "recomputed": 12048,
+   "difference": 0
+  },
+  {
+   "kind": "constructor",
+   "inputs": {
+    "T": 9,
+    "d": 16,
+    "heads": 4,
+    "layers": 4,
+    "params": 15376,
+    "preset": "gpt2-nano",
+    "vocab": 65
+   },
+   "recomputed": 15376,
+   "difference": 0
+  },
+  {
+   "kind": "constructor",
+   "inputs": {
+    "T": 7,
+    "d": 12,
+    "heads": 3,
+    "layers": 5,
+    "params": 9984,
+    "preset": "gpt2-nano",
+    "vocab": 19
+   },
+   "recomputed": 9984,
+   "difference": 0
+  },
+  {
+   "kind": "constructor",
+   "inputs": {
+    "T": 8,
+    "d": 16,
+    "d_ff": 48,
+    "heads": 2,
+    "layers": 2,
+    "params": 7760,
+    "preset": "llama-tiny",
+    "vocab": 64
+   },
+   "recomputed": 7760,
+   "difference": 0
+  },
+  {
+   "kind": "constructor",
+   "inputs": {
+    "T": 8,
+    "d": 16,
+    "d_ff": 64,
+    "heads": 2,
+    "layers": 2,
+    "params": 9296,
+    "preset": "llama-tiny",
+    "vocab": 64
+   },
+   "recomputed": 9296,
+   "difference": 0
+  },
+  {
+   "kind": "actual_cli",
+   "inputs": {
+    "vocab": 7,
+    "d": 8,
+    "T": 4,
+    "heads": 2,
+    "layers": 1,
+    "params": 1032,
+    "family": "flex"
+   },
+   "recomputed": 1032,
+   "difference": 0
+  },
+  {
+   "kind": "actual_cli",
+   "inputs": {
+    "vocab": 7,
+    "d": 8,
+    "T": 4,
+    "heads": 2,
+    "layers": 2,
+    "params": 1904,
+    "family": "gpt2"
+   },
+   "recomputed": 1904,
+   "difference": 0
+  },
+  {
+   "kind": "actual_cli",
+   "inputs": {
+    "vocab": 7,
+    "d": 8,
+    "T": 4,
+    "heads": 2,
+    "layers": 3,
+    "params": 2776,
+    "family": "flex"
+   },
+   "recomputed": 2776,
+   "difference": 0
+  },
+  {
+   "kind": "actual_cli",
+   "inputs": {
+    "vocab": 7,
+    "d": 8,
+    "T": 4,
+    "heads": 2,
+    "layers": 4,
+    "params": 3648,
+    "family": "flex"
+   },
+   "recomputed": 3648,
+   "difference": 0
+  }
+ ]
+}
