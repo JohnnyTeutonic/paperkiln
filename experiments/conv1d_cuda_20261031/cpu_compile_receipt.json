@@ -11,7 +11,7 @@
     "src/conv1d_kernels.cuh": "056f3c40e0ed9558216156ea37c56a997cbe17392d22ef6e72a6d16f0738754e",
     "src/device_cache.cpp": "ddbadf767defdac314553b0256ef5e3a80481bce293225dc5497040843106b4b",
     "src/ops.cpp": "c11303411bcf217702635a06d6047db6e1c65779dad917da628ebbe28c9ac3f9",
-    "tests/test_conv1d_cuda.cpp": "5233b505a302b083a08f15f50d0fcc63652994e13f8e0c4f030d2b8fa38929fd"
+    "tests/test_conv1d_cuda.cpp": "8f3081449256653a6077a2ad91a3cbf379c7b2e2e51920d8ad968ab3d8d37084"
   },
   "cpu": {
     "cmake_options": [

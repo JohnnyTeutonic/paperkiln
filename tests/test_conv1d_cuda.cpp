@@ -176,7 +176,10 @@ static void invalid() {
 int main(int argc,char** argv) {
     const bool gpu=argc==2&&std::string(argv[1])=="--require-cuda";
     if(argc>2||(argc==2&&!gpu))return 2;
-#ifndef MICROTORCH_DEVCHECK
+#ifdef MICROTORCH_DEVCHECK
+    constexpr bool devcheck=true;
+#else
+    constexpr bool devcheck=false;
     if(gpu){std::fprintf(stderr,"requires MICROTORCH_DEVCHECK=ON\n");return 2;}
 #endif
     if(gpu&&!device::cuda_compiled()){std::fprintf(stderr,"requires real CUDA\n");return 2;}
@@ -221,5 +224,10 @@ int main(int argc,char** argv) {
         close(dx,rz.dx);close(dw,rz.dw);close(db,rz.db);
         device::set_device_ops(false);device::evict_all();device::set(device::Device::CPU);
     }
-    std::printf("{\"pass\":true,\"actual_cuda\":%s,\"cases\":%zu,\"dense_binary64\":true,\"finite_difference\":true,\"f32_order_bitwise\":true,\"all_gradient_masks\":true}\n",gpu?"true":"false",cases);
+    std::printf("{\"pass\":true,\"actual_cuda\":%s,\"devcheck_enabled\":%s,\"cases\":%zu,"
+                "\"dense_binary64\":true,\"finite_difference\":true,\"f32_order_bitwise\":true,\"all_gradient_masks\":true,"
+                "\"poisoned_stale_inputs\":%s,\"deferred_outputs\":%s,\"deferred_gradients\":%s,"
+                "\"device_to_host_backward_fallback\":%s,\"public_autograd_traversal\":true,\"write_through\":%s}\n",
+                gpu?"true":"false",devcheck?"true":"false",cases,
+                gpu?"true":"false",gpu?"true":"false",gpu?"true":"false",gpu?"true":"false",gpu?"true":"false");
 }
