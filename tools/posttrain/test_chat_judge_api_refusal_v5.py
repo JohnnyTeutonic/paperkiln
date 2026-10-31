@@ -103,3 +103,43 @@ def test_new_refusal_cannot_be_silently_excluded_on_restart(files):
             excluded_failed_keys=(f["key"],),
         )
     assert len(post.calls) == 1 and files["ledger"].read_bytes() == before
+
+
+def test_paired_unattempted_order_excluded_without_dispatch(files):
+    f = refuse(files)
+    _, version, _ = api.judge.rubric_identity(files["rubric"])
+    keys = {
+        api.judge.key_of(r["prompt"], r["candidates"], order, api.profile_id(), version)
+        for r, order in api.judge.jobs(requests())
+    }
+    paired = (keys - {f["key"]}).pop()
+    post = fake()
+    before = files["ledger"].read_bytes()
+    result = api.run(
+        requests(),
+        **files,
+        max_calls=2,
+        post=post,
+        excluded_failed_keys=(f["key"],),
+        excluded_unattempted_keys=(paired,),
+    )
+    assert result["calls"] == 0 and not post.calls
+    assert files["ledger"].read_bytes() == before
+    assert not api.rows(files["cache"])
+
+
+@pytest.mark.parametrize("which", ["failed", "foreign"])
+def test_unattempted_exclusion_requires_unattempted_campaign_member(files, which):
+    f = refuse(files)
+    post = fake()
+    key = f["key"] if which == "failed" else "not-a-campaign-key"
+    with pytest.raises(ValueError, match="unattempted exclusions"):
+        api.run(
+            requests(),
+            **files,
+            max_calls=2,
+            post=post,
+            excluded_failed_keys=(f["key"],),
+            excluded_unattempted_keys=(key,),
+        )
+    assert not post.calls
