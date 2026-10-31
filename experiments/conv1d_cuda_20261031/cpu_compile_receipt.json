@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "created_utc": "2026-10-31T01:53:51.446919+00:00",
+  "base_commit": "f790e006e400f952a9becb28be45d19975d7ea76",
+  "scope": "conv1d_causal CUDA forward/backward only; selective_scan and parallel scan remain open",
+  "source_sha256": {
+    "CMakeLists.txt": "6b4bf87dc7ef3691a7e2487eeb1420eb8a286ec08e5dd2f25fdadfefa88aa455",
+    "include/microtorch/device_cache.hpp": "e92273a45e095a0d60b65b4ce50f2346a6fa54101ed79071709a8aeac54b70e6",
+    "include/microtorch/ops.hpp": "f48cad0682eff17302f5dfc9b274f9ef042207a52257b0fe3257a0f5ccaacd87",
+    "src/cuda_ops.cu": "9559249aae0f7698cb5ccb98acf1e030437e94bb19e3296eeca7709e9c4b89d7",
+    "src/conv1d_kernels.cuh": "056f3c40e0ed9558216156ea37c56a997cbe17392d22ef6e72a6d16f0738754e",
+    "src/device_cache.cpp": "ddbadf767defdac314553b0256ef5e3a80481bce293225dc5497040843106b4b",
+    "src/ops.cpp": "c11303411bcf217702635a06d6047db6e1c65779dad917da628ebbe28c9ac3f9",
+    "tests/test_conv1d_cuda.cpp": "9002d77bcdeba5e702b409515bb3019978733caa5f039b7d7d3f054921993833"
+  },
+  "cpu": {
+    "cmake_options": [
+      "MICROTORCH_CUDA=OFF",
+      "MICROTORCH_DEVCHECK=ON"
+    ],
+    "ctest": [
+      "conv1d_cuda_cpu",
+      "thirdparty_ops"
+    ],
+    "passed": true,
+    "cases": 120,
+    "dense_binary64_reference": true,
+    "separately_rounded_f32_bitwise": true,
+    "finite_differences_actual_cpu_op": true,
+    "all_gradient_masks": true,
+    "K_larger_than_sequence_and_total_rows": true,
+    "multiple_sequences_and_channels": true,
+    "nonfinite_padding": true,
+    "invalid_geometry": true,
+    "full_public_autograd_traversal": true,
+    "strict_cuda_refusal_exit": 2,
+    "legacy_empty_shapes": {
+      "base_f790e006e_rejection_verified": true,
+      "current_rejection_verified": true,
+      "shapes": [
+        [
+          0,
+          2
+        ],
+        [
+          4,
+          0
+        ]
+      ],
+      "seq_len": 2,
+      "construction": "Matrix external-storage constructor (allows empty metadata)",
+      "legacy_exception": "Matrix dimensions cannot be zero",
+      "source_probe": "experiments/conv1d_cuda_20261031/legacy_empty_probe.cpp",
+      "devops_empty_refusal_and_untouched_sentinel": true,
+      "probe_sha256": "452381d1b7c598622a00f275b5ae0413bcbaae0f20832c1c507ad66e0dd63b31",
+      "baseline_exit": 0,
+      "baseline_stdout": "legacy empty shape rejection pass"
+    }
+  },
+  "cuda_compile_only": {
+    "nvcc": "12.6.85",
+    "arch": "sm_89",
+    "translation_unit": "src/cuda_ops.cu",
+    "passed": true,
+    "object_sha256": "f274eac69413a3c2af05315dcc290ac6e0435e1ca6b813e83faf746718a48705",
+    "command": "nvcc -std=c++17 -arch=sm_89 -DMICROTORCH_CUDA -DMICROTORCH_DEVCHECK -Iinclude -Ithird_party/transformer_cpp/include -Ithird_party/transformer_cpp/third_party -c src/cuda_ops.cu -o cuda_ops_sm89.o"
+  },
+  "actual_cuda": {
+    "run": false,
+    "required_command": "test_conv1d_cuda --require-cuda",
+    "requires": [
+      "actual CUDA build",
+      "MICROTORCH_DEVCHECK=ON"
+    ],
+    "assertions": [
+      "device-produced cached x/w/b/dy with poisoned stale host bytes",
+      "deferred forward output and requested gradient stale flags",
+      "dense binary64 and bitwise f32-order equality",
+      "all gradient masks and repeated steps",
+      "host fallback backward with device-fresh operands",
+      "full public autograd traversal",
+      "synchronous write-through outside step window"
+    ],
+    "pre_execution_test_repair": "Root source review found scale identity was host-only. Replaced all cached identity producers (x/w/b/dy) with full-width slice_cols, audited actual devops slice copy. Earlier CPU receipts did not execute GPU branch and never established CUDA success."
+  },
+  "claims_excluded": [
+    "GPU execution verified",
+    "speedup",
+    "parallel selective scan",
+    "complete Mamba CUDA support"
+  ]
+}

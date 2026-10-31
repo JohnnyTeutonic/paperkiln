@@ -1,0 +1,22 @@
+10-31 13:11:54 volume fqiwwlwo5e created in EU-RO-1 (20 GB)
+10-31 13:11:56 pod 75dqn756vk5djg created in EU-RO-1 (L4, $0.590/h, SECURE); waiting for ssh
+10-31 13:12:34 pod 75dqn756vk5djg answers at 213.173.105.25:33804 after 37 s
+10-31 13:13:00 prelude done: thon3 -m pip install --upgrade pip | cmake version 3.31.6 | GPU 0: NVIDIA L4 (UUID: GPU-461060af-a2d0-3953-a244-c186e7009b4b) | Cuda compilation tools, release 12.4, V12.4.131 | Build cuda_12.4.r12.4/compiler.34097967_0 | host driver CUDA major: 13 | 48 |                total        used        free      shared  buff/cache   available | Mem:             503          45         142           2         315         451 | mfs#euro-2.runpod.net:9421  2.1P  1.7P  428T  81% /content | prelude done Sat Oct 31 02:13:00 UTC 2026 | debconf: delaying package configuration, since apt-utils is not installed
+10-31 13:13:01 session up, endpoint 75dqn756vk5djg (launch 1)
+10-31 13:14:04 inputs: conv1d_gate_vm_v1.py 7936 conv1d_inputs.json 272 conv1d_source.tgz 6731433 INPUTS_OK
+10-31 13:14:09 boot launched
+10-31 13:14:15 conv1d_gate: NONE  
+10-31 13:18:22 conv1d_gate: FINISHED  {"pass": true, "errors": []}
+10-31 13:18:32 conv1d_gate: gate_summary.json downloaded
+10-31 13:18:43 conv1d_gate: hardware.log downloaded
+10-31 13:18:54 conv1d_gate: nvcc.log downloaded
+10-31 13:19:05 conv1d_gate: configure.log downloaded
+10-31 13:19:16 conv1d_gate: build.log downloaded
+10-31 13:19:27 conv1d_gate: strict.log downloaded
+10-31 13:19:37 conv1d_gate: thirdparty.log downloaded
+10-31 13:19:48 conv1d_gate: ../conv1d_gate_train.log downloaded
+10-31 13:19:48 conv1d_gate: outputs downloaded
+10-31 13:19:48 all jobs finished and home
+10-31 13:19:49 pod 75dqn756vk5djg terminated (RunPod ledger $0.08)
+10-31 13:19:50 volume fqiwwlwo5e (EU-RO-1) deleted
+10-31 13:19:50 session stopped; runner exiting

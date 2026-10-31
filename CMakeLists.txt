@@ -467,3 +467,8 @@ add_executable(test_layernorm_host tests/test_layernorm_host.cpp)
 target_link_libraries(test_layernorm_host PRIVATE microtorch)
 add_test(NAME layernorm_host COMMAND test_layernorm_host)
 set_tests_properties(layernorm_host PROPERTIES TIMEOUT 120)
+
+add_executable(test_conv1d_cuda tests/test_conv1d_cuda.cpp)
+target_link_libraries(test_conv1d_cuda PRIVATE microtorch)
+add_test(NAME conv1d_cuda_cpu COMMAND test_conv1d_cuda)
+set_tests_properties(conv1d_cuda_cpu PROPERTIES TIMEOUT 120)

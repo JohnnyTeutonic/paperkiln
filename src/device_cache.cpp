@@ -85,6 +85,12 @@ void devcheck_host_read(const Matrix&, const char*) {}
 // CPU-only builds: the op-set entries are no-ops returning false, so the
 // tape always runs its own loops and callers never need #ifdefs.
 namespace devops {
+bool conv1d_causal_fwd(const Matrix&, const Matrix&, const Matrix*, size_t, Matrix&) {
+    return false;
+}
+bool conv1d_causal_bwd(const Matrix&, const Matrix&, const Matrix&, size_t, Matrix*, Matrix*, Matrix*) {
+    return false;
+}
 bool add(const Matrix&, const Matrix&, Matrix&) {
     return false;
 }

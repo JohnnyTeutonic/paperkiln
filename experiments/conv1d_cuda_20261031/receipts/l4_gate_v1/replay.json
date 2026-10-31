@@ -1,0 +1,35 @@
+{
+  "integrity": true,
+  "scientific_pass": true,
+  "source_commit": "1ae3472e9fbd247cfb15ae60ca1899fc95ea0a9a",
+  "reported_errors": [],
+  "binary_binding": "recorded executable SHA256; binaries are not downloaded",
+  "speedup_claim": false,
+  "selective_scan_device_claim": false,
+  "strict": {
+    "pass": true,
+    "actual_cuda": true,
+    "devcheck_enabled": true,
+    "cases": 120,
+    "dense_binary64": true,
+    "finite_difference": true,
+    "f32_order_bitwise": true,
+    "all_gradient_masks": true,
+    "poisoned_stale_inputs": true,
+    "deferred_outputs": true,
+    "deferred_gradients": true,
+    "device_to_host_backward_fallback": true,
+    "public_autograd_traversal": true,
+    "write_through": true
+  },
+  "thirdparty": {
+    "pass": true,
+    "cuda_device_selected": true,
+    "mamba_regression": true,
+    "selective_scan_device_claim": false
+  },
+  "recorded_binary_sha256": {
+    "test_conv1d_cuda": "3fbf1aec8a438e4c0aa827b171254b35bff68aaa7c30c04351cd946efc9e7401",
+    "test_thirdparty_ops": "19064b19d3741e8f7732777f2294da0e3eed19a4ba5541b45484d5b1c087154b"
+  }
+}
