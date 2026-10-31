@@ -1,0 +1,203 @@
+{
+  "scope": "descriptive direct CPU/CUDA comparison at exactly frozen shared weights, supplementing independent binary64 derivative gates",
+  "cases": [
+    {
+      "depth": 1,
+      "logits_max_normalized_error": 2.021081197327845e-08,
+      "loss_absolute_error": 1.1920928955078125e-07,
+      "gradients": {
+        "embed.weight": {
+          "max_normalized_error": 5.186820051655022e-08,
+          "relative_l2": 1.7183785073355387e-07
+        },
+        "layers.0.A_log": {
+          "max_normalized_error": 3.0357660829407775e-18,
+          "relative_l2": 5.323011395970021e-07
+        },
+        "layers.0.D": {
+          "max_normalized_error": 1.6370842850508985e-11,
+          "relative_l2": 3.846947605183973e-07
+        },
+        "layers.0.conv1d.bias": {
+          "max_normalized_error": 5.820125541339465e-11,
+          "relative_l2": 3.595895080732484e-07
+        },
+        "layers.0.conv1d.weight": {
+          "max_normalized_error": 7.275843401338995e-12,
+          "relative_l2": 2.9849369450849423e-07
+        },
+        "layers.0.dt_proj.bias": {
+          "max_normalized_error": 1.387778780761069e-17,
+          "relative_l2": 1.0552471242465416e-06
+        },
+        "layers.0.dt_proj.weight": {
+          "max_normalized_error": 9.486769009247587e-20,
+          "relative_l2": 1.7204373666125972e-07
+        },
+        "layers.0.in_proj.weight": {
+          "max_normalized_error": 8.293170072763578e-10,
+          "relative_l2": 2.567769397987529e-07
+        },
+        "layers.0.norm.weight": {
+          "max_normalized_error": 3.910802861260455e-11,
+          "relative_l2": 2.1291860073372366e-07
+        },
+        "layers.0.out_proj.weight": {
+          "max_normalized_error": 9.308239837293751e-10,
+          "relative_l2": 2.9964604597467474e-07
+        },
+        "layers.0.x_proj.weight": {
+          "max_normalized_error": 3.774758272852188e-15,
+          "relative_l2": 8.548344605808423e-07
+        },
+        "lm_head.weight": {
+          "max_normalized_error": 7.985849872610721e-08,
+          "relative_l2": 1.681037906584189e-07
+        },
+        "norm_f.weight": {
+          "max_normalized_error": 1.8470059683245827e-09,
+          "relative_l2": 2.087423116746342e-07
+        }
+      },
+      "actual_gpu_counts": {
+        "accumulate_cols": 5,
+        "add": 1,
+        "axpy": 5,
+        "ce_bwd": 1,
+        "ce_fwd": 1,
+        "conv1d_causal_bwd": 3,
+        "conv1d_causal_fwd": 1,
+        "embed_gather": 1,
+        "fill": 3,
+        "gemm": 15,
+        "mul": 3,
+        "rmsnorm_bwd": 4,
+        "rmsnorm_fwd": 2,
+        "selective_scan_bwd": 1,
+        "selective_scan_fwd": 1,
+        "silu_bwd": 2,
+        "silu_fwd": 2,
+        "slice_cols": 5
+      }
+    },
+    {
+      "depth": 2,
+      "logits_max_normalized_error": 2.6949239685480006e-08,
+      "loss_absolute_error": 0.0,
+      "gradients": {
+        "embed.weight": {
+          "max_normalized_error": 6.975165100873039e-08,
+          "relative_l2": 1.3839069122083361e-07
+        },
+        "layers.0.A_log": {
+          "max_normalized_error": 2.6020852139490825e-18,
+          "relative_l2": 4.6875010726047484e-07
+        },
+        "layers.0.D": {
+          "max_normalized_error": 2.5464765300475234e-11,
+          "relative_l2": 4.0376594147142414e-07
+        },
+        "layers.0.conv1d.bias": {
+          "max_normalized_error": 6.547645627682543e-11,
+          "relative_l2": 3.12464078172716e-07
+        },
+        "layers.0.conv1d.weight": {
+          "max_normalized_error": 3.6379138911553225e-12,
+          "relative_l2": 1.5806324412120125e-07
+        },
+        "layers.0.dt_proj.bias": {
+          "max_normalized_error": 2.4286128663316596e-17,
+          "relative_l2": 1.6051049777566023e-06
+        },
+        "layers.0.dt_proj.weight": {
+          "max_normalized_error": 1.3552527156067794e-19,
+          "relative_l2": 2.1293102164025554e-07
+        },
+        "layers.0.in_proj.weight": {
+          "max_normalized_error": 6.838254704328176e-10,
+          "relative_l2": 2.1761418212159667e-07
+        },
+        "layers.0.norm.weight": {
+          "max_normalized_error": 2.1827407554678787e-11,
+          "relative_l2": 1.4791986080472186e-07
+        },
+        "layers.0.out_proj.weight": {
+          "max_normalized_error": 7.562215042954129e-10,
+          "relative_l2": 3.013761889071882e-07
+        },
+        "layers.0.x_proj.weight": {
+          "max_normalized_error": 3.1086244603022647e-15,
+          "relative_l2": 7.496833393510579e-07
+        },
+        "layers.1.A_log": {
+          "max_normalized_error": 3.642919299448741e-17,
+          "relative_l2": 8.083085994884928e-07
+        },
+        "layers.1.D": {
+          "max_normalized_error": 1.4550514087885788e-11,
+          "relative_l2": 1.7719780567252288e-07
+        },
+        "layers.1.conv1d.bias": {
+          "max_normalized_error": 4.365434892158643e-11,
+          "relative_l2": 1.0744235729483913e-07
+        },
+        "layers.1.conv1d.weight": {
+          "max_normalized_error": 3.637963130658943e-12,
+          "relative_l2": 3.399674035704778e-07
+        },
+        "layers.1.dt_proj.bias": {
+          "max_normalized_error": 6.938893903296676e-17,
+          "relative_l2": 3.2280030091371883e-07
+        },
+        "layers.1.dt_proj.weight": {
+          "max_normalized_error": 5.421010862423881e-19,
+          "relative_l2": 3.3053104558528644e-07
+        },
+        "layers.1.in_proj.weight": {
+          "max_normalized_error": 6.399151609322101e-10,
+          "relative_l2": 1.8512518615899446e-07
+        },
+        "layers.1.norm.weight": {
+          "max_normalized_error": 1.9781462493382354e-11,
+          "relative_l2": 2.882931633560554e-07
+        },
+        "layers.1.out_proj.weight": {
+          "max_normalized_error": 6.976683511614744e-10,
+          "relative_l2": 2.2805816554021967e-07
+        },
+        "layers.1.x_proj.weight": {
+          "max_normalized_error": 7.105427221640991e-15,
+          "relative_l2": 3.367574731645112e-07
+        },
+        "lm_head.weight": {
+          "max_normalized_error": 7.978405329000315e-08,
+          "relative_l2": 1.4869833084851552e-07
+        },
+        "norm_f.weight": {
+          "max_normalized_error": 1.8464741241925108e-09,
+          "relative_l2": 1.900840154067617e-07
+        }
+      },
+      "actual_gpu_counts": {
+        "accumulate_cols": 10,
+        "add": 2,
+        "axpy": 10,
+        "ce_bwd": 1,
+        "ce_fwd": 1,
+        "conv1d_causal_bwd": 6,
+        "conv1d_causal_fwd": 2,
+        "embed_gather": 1,
+        "fill": 6,
+        "gemm": 27,
+        "mul": 6,
+        "rmsnorm_bwd": 6,
+        "rmsnorm_fwd": 3,
+        "selective_scan_bwd": 2,
+        "selective_scan_fwd": 2,
+        "silu_bwd": 4,
+        "silu_fwd": 4,
+        "slice_cols": 10
+      }
+    }
+  ]
+}

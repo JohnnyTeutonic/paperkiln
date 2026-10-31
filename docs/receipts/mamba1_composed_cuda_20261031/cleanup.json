@@ -1,0 +1,9 @@
+{
+  "pass": true,
+  "pod": "3mkrsmvk72cbbp",
+  "volume": "423c2ufjqp",
+  "owned_pod_and_volume_absent_accessor_verified": true,
+  "owned_watchdog_entry_disabled": true,
+  "estimated_own_job_usd": 0.07275389063658169,
+  "time_utc": "2026-10-31T05:38:34Z"
+}
