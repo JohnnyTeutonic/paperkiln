@@ -15,7 +15,12 @@ def build(policy_path,adoption_path,sampling_path,sampling_summary,sampling_jour
     policy=json.loads(Path(policy_path).read_text());adoption=json.loads(Path(adoption_path).read_text())
     if adoption.get('kind')!='ROOT_ADOPTED_API_HELDOUT_POLICY_V1' or adoption.get('adopted') is not True or adoption.get('before_dpo_outcomes') is not True or adoption.get('policy_file_sha256')!=sha(policy_path):
         raise ValueError('exact prospective held-out root adoption required')
-    _,status=training.inspect(json.loads(Path(training_protocol).read_text()));require_ready(status)
+    protocol=json.loads(Path(training_protocol).read_text())
+    if protocol.get('kind')=='FROZEN_EXPLICIT_UNTRANSMITTED_API_V8_3259':
+        import chat_judge_campaign_continuation_v8 as training_v8
+        _,status=training_v8.inspect(protocol)
+    else:_,status=training.inspect(protocol)
+    require_ready(status)
     paths=dict(policy=policy_path,adoption=adoption_path,sampling_receipt=sampling_path,sampling_summary=sampling_summary,sampling_journal=sampling_journal,training_binding=training_binding,requests=requests_path,vocab=vocab_path,val_split=val_split,train_split=train_split)
     instance={'kind':'BOUND_HELDOUT_API_INSTANCE_V1','source_sha256':runner.source_hashes(),
       **{name:{'path':str(Path(path).resolve()),'sha256':sha(path)} for name,path in paths.items()},
