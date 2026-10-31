@@ -1,4 +1,12 @@
 # Changelog
+## Prospective GPT2 precision model gate (31 October 2026)
+
+Prepare a test-only production-CLI embedding, independent full-model NumPy
+forward, exact BF16 GEMM-count checks, per-tensor gradient safeguards and a
+required pinned host Ember replay. CPU preflight and 73 mutation/binding tests
+pass; no paid model gate is launched. Format new C++ tests and isolate their
+temporary save files. The existing CPU raw receipts remain unchanged.
+
 ## Preserve GPT2 export aggregate initialization (31 October 2026)
 
 Append the optional training-recipe field after existing Gpt2ExportConfig

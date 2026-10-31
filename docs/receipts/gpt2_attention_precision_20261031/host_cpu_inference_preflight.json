@@ -1,0 +1,18 @@
+{
+ "lm": {
+  "source_numpy_max_abs": 5.960464477539063e-08,
+  "ember_numpy_max_abs": {
+   "prefill": 2.9802322387695312e-08,
+   "decode": 2.9802322387695312e-08
+  },
+  "actual_cuda": false
+ },
+ "sft": {
+  "source_numpy_max_abs": 3.166496753692627e-08,
+  "ember_numpy_max_abs": {
+   "prefill": 2.9802322387695312e-08,
+   "decode": 2.9802322387695312e-08
+  },
+  "actual_cuda": false
+ }
+}
