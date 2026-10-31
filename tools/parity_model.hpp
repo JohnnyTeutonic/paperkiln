@@ -673,6 +673,23 @@ struct FlexConfig {
     std::string logits_expr;
     // What is wrong with this configuration, or "" (mtstudio and the tests refuse with it).
     std::string problem() const;
+    // The initial BF16 wiring is the canonical plain attention path only.
+    // Training precision never enters cfg or the exported inference IR.
+    std::string attention_precision_problem(device::Precision precision) const {
+        if (precision == device::Precision::FP32) return "";
+        if (precision != device::Precision::BF16) return "unknown attention precision";
+        if (!vocab || !d || !n_heads || d % n_heads || !d_ff || !n_ctx || n_layers == 0 ||
+            attention != "exact" || norm != "layernorm" || act != "gelu" || pos != "learned" ||
+            residual != "residual" || place_attn != "pre" || place_ffn != "pre" ||
+            !has_final_norm() || tie_head || qkv_conv || !qk_norm.empty() || !act_inputs.empty() ||
+            !norm_inputs.empty() || !embed_expr.empty() || !embed_inputs.empty() ||
+            embed_before_pos || !logits_expr.empty())
+            return "BF16 attention needs plain exact Flex: positive depth, layernorm, GELU, "
+                   "learned positions, "
+                   "pre-norm residual blocks and final norm, untied head, no custom attention or "
+                   "expressions";
+        return "";
+    }
 };
 
 inline bool flex_placement_ok(const std::string& p) {
@@ -794,9 +811,20 @@ struct FlexRelPos {
 
 class FlexBlock : public nn::Module {
 public:
-    FlexBlock(const FlexConfig& c, unsigned s)
-        : norm_(c.norm), act_(c.act), residual_(c.residual), place_attn_(c.place_attn), place_ffn_(c.place_ffn),
-          rope_(c.pos == "rope"), rope_theta_(c.rope_theta), act_in_(c.act_inputs), norm_in_(c.norm_inputs) {
+    FlexBlock(const FlexConfig& c, unsigned s,
+              device::Precision precision = device::Precision::FP32)
+        : norm_(c.norm),
+          act_(c.act),
+          residual_(c.residual),
+          place_attn_(c.place_attn),
+          place_ffn_(c.place_ffn),
+          rope_(c.pos == "rope"),
+          rope_theta_(c.rope_theta),
+          act_in_(c.act_inputs),
+          norm_in_(c.norm_inputs) {
+        const std::string precision_bad = c.attention_precision_problem(precision);
+        if (!precision_bad.empty())
+            throw std::invalid_argument("flex attention_precision: " + precision_bad);
         if (residual_ == "highway") {
             // One gate per sublayer, T(x) on the raw stream. Seeds are far
             // from the existing layout so the equivalence pin's seed map
@@ -837,7 +865,7 @@ public:
             swa_attn = mod<nn::SlidingWindowAttention>("attn", c.d, c.n_heads,
                                                        c.window, c.sinks, s);
         else
-            attn = mod<nn::CausalSelfAttention>("attn", c.d, c.n_heads, s);
+            attn = mod<nn::CausalSelfAttention>("attn", c.d, c.n_heads, s, true, precision);
         if (act_ == "swiglu") {
             gate = mod<nn::Linear>("mlp.gate_proj", c.d, c.d_ff, false, s + 3 + 17);
             up = mod<nn::Linear>("mlp.up_proj", c.d, c.d_ff, false, s + 3 + 18);
@@ -1007,7 +1035,12 @@ public:
 
 class FlexLM : public nn::Module {
 public:
-    FlexLM(const FlexConfig& c, unsigned seed) : cfg(c) {
+    FlexLM(const FlexConfig& c, unsigned seed,
+           device::Precision precision = device::Precision::FP32)
+        : cfg(c) {
+        const std::string precision_bad = c.attention_precision_problem(precision);
+        if (!precision_bad.empty())
+            throw std::invalid_argument("flex attention_precision: " + precision_bad);
         const std::string bad = c.problem();
         if (!bad.empty()) throw std::runtime_error("flex: " + bad);
         wte = mod<nn::Embedding>("wte", c.vocab, c.d, seed + 1);
@@ -1027,7 +1060,7 @@ public:
         }
         for (size_t b = 0; b < c.n_layers; ++b)
             blocks.push_back(mod<FlexBlock>("layers." + std::to_string(b), c,
-                                            seed + 10 * static_cast<unsigned>(b + 1)));
+                                            seed + 10 * static_cast<unsigned>(b + 1), precision));
         if (c.has_final_norm()) {
             if (c.norm == "layernorm") {
                 ln_f_ln = mod<nn::LayerNorm>("ln_f", c.d);
