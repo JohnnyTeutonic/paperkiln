@@ -1,0 +1,37 @@
+from pathlib import Path
+import json,hashlib,time
+w=Path('/home/jonat/pk_publication_20261030')
+refpath=Path('/home/jonat/pk_sfull_packet_20261031/experiments/tiny_chat_long_2026-10/receipts/sfull_prospective_20261031/data_reference.json')
+raw=refpath.read_bytes(); assert hashlib.sha256(raw).hexdigest()=='acd00d74a93299aa0614f98233f837ef3dc30d38ce9120330e9f2f5c2b982cf4'
+ref=json.loads(raw)
+base=Path('/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data')
+out=w/'docs/receipts/sfull_runtime_presence_20261031';out.mkdir(exist_ok=False)
+def sha(p):
+ h=hashlib.sha256()
+ with p.open('rb') as f:
+  for b in iter(lambda:f.read(4<<20),b''):h.update(b)
+ return h.hexdigest()
+rows=[]
+for name,want in ref['human']['files'].items():
+ p=base/name
+ row={'name':name,'path':str(p),'exists':p.is_file(),'expected_sha256':want}
+ if p.is_file():
+  row.update(bytes=p.stat().st_size,sha256=sha(p));row['matches']=row['sha256']==want
+ rows.append(row)
+ # An overwritten checkpoint avoids losing completed hashes on reset.
+ tmp=out/'checkpoint.tmp';tmp.write_text(json.dumps(rows));tmp.replace(out/'checkpoint.json')
+roots=[Path('/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r1/data'),Path('/mnt/c/ml_artifacts/tiny_chat/c12_s0/data')]
+products=[]
+for name,want in ref['outputs'].items():
+ for r in roots:
+  p=r/name; row={'name':name,'path':str(p),'exists':p.is_file(),'expected_sha256':want['sha256']}
+  if p.is_file():row.update(bytes=p.stat().st_size,sha256=sha(p));row['matches']=row.get('sha256')==want['sha256']
+  products.append(row)
+v=Path('/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf')
+vocab={'path':str(v),'exists':v.is_file(),'expected_sha256':ref['vocab_sha256']}
+if v.is_file():vocab.update(sha256=sha(v));vocab['matches']=vocab.get('sha256')==ref['vocab_sha256']
+report={'status':'PARTIAL_LOCAL_CACHE_CHECK_NOT_RUNTIME_GATE','reference_sha256':hashlib.sha256(raw).hexdigest(),'raw_sources':rows,'products_at_two_landed_data_roots':products,'vocab':vocab,'summary':{'raw_matches':sum(r.get('matches') is True for r in rows),'raw_mismatches':sum(r.get('matches') is False for r in rows),'raw_not_in_checked_cache':[r['name'] for r in rows if not r['exists']]},'limits':['Only exact registered names in the listed local cache and two landed data roots were checked. Absence is scoped, not a whole-machine search.','No download, extraction, rebuild, training or paid resource was started.','This is not the complete registered runtime data/decontamination gate and does not resolve historical parity or funding.']}
+(out/'presence.json').write_text(json.dumps(report,indent=2)+'\n')
+(out/'checkpoint.json').unlink()
+(out/'.gitattributes').write_text('* -text\n')
+print(json.dumps(report['summary']))
