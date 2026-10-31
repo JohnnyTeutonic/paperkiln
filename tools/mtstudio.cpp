@@ -733,12 +733,14 @@ Spec parse_spec(const std::string& path) {
     s.lr = tr.value("lr", s.lr);
     s.clip = tr.value("clip", s.clip);
     s.eval_every = tr.value("eval_every", s.eval_every);
+    if (s.eval_every < 1) throw std::runtime_error("train.eval_every must be >= 1");
     s.eval_examples = tr.value("eval_examples", s.eval_examples);
     s.eval_batch = tr.value("eval_batch", s.eval_batch);
     if (s.eval_batch < 1) throw std::runtime_error("train.eval_batch must be >= 1");
     s.eval_windows = tr.value("eval_windows", s.eval_windows);
     if (s.eval_windows < 1) throw std::runtime_error("train.eval_windows must be >= 1");
     s.ckpt_every = tr.value("checkpoint_every", s.ckpt_every);
+    if (s.ckpt_every < 1) throw std::runtime_error("train.checkpoint_every must be >= 1");
     s.batch = tr.value("batch", s.batch);
     s.accum = tr.value("accum", s.accum);
     s.ckpt_act = tr.value("checkpoint_activations", s.ckpt_act);

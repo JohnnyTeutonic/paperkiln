@@ -1,0 +1,8 @@
+{
+  "status": "PASS",
+  "tests": 11,
+  "production_fix": "Reject zero/negative evaluation and checkpoint intervals before output or data processing",
+  "reproduced_before": "SIGFPE after first optimizer step with eval_every=0; both intervals feed modulo operations",
+  "actual_binary_sha256": "551d8b00da94b7e36e36a9008b5100b1e5daced40e402cad55495afce27186ec",
+  "valid_default_positive_intervals_preserved": true
+}
