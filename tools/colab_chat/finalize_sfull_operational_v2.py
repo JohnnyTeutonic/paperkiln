@@ -52,6 +52,7 @@ def expected_specs(seed):
 
 
 def validate_runtime_specs(art):
+    missing = []
     for seed in (1, 2, 3):
         base = Path(art) / f"c12_Sfull_r{seed}"
         paths = [
@@ -59,11 +60,15 @@ def validate_runtime_specs(art):
             base / f"post_c12_Sfull_r{seed}/sft_spec.json",
         ]
         for path, expected in zip(paths, expected_specs(seed)):
-            if path.is_file() and json.loads(path.read_text()) != expected:
+            if not path.is_file():
+                missing.append(str(path))
+                continue
+            if json.loads(path.read_text()) != expected:
                 raise ValueError(
                     "V2 runtime spec differs beyond exact checkpoint amendment: "
                     + str(path)
                 )
+    return missing
 
 
 def sources():
@@ -93,8 +98,11 @@ def sources():
 
 class Finalizer(original_finalizer):
     def inputs(self):
-        validate_runtime_specs(self.art)
-        return super().inputs()
+        missing = validate_runtime_specs(self.art)
+        result = super().inputs()
+        result["pending"] = list(dict.fromkeys([*result["pending"], *missing]))
+        result["ready"] = not result["pending"]
+        return result
 
 
 def main():
