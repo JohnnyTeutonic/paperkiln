@@ -1,0 +1,670 @@
+{
+  "pass": true,
+  "scope": "experimental train-only GPT2; overall completion also requires host Ember replay; no speed or quality claim",
+  "commands": [
+    {
+      "name": "hardware",
+      "argv": [
+        "nvidia-smi",
+        "--query-gpu=name,driver_version",
+        "--format=csv,noheader"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "nvcc",
+      "argv": [
+        "nvcc",
+        "--version"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "configure",
+      "argv": [
+        "cmake",
+        "-S",
+        "/content/gpt2_precision_source",
+        "-B",
+        "/content/gpt2_precision_build",
+        "-DCMAKE_BUILD_TYPE=Release",
+        "-DMICROTORCH_CUDA=ON",
+        "-DMICROTORCH_DEVCHECK=ON",
+        "-DMICROTORCH_BUILD_PYTHON=OFF",
+        "-DCMAKE_CUDA_ARCHITECTURES=89"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "build",
+      "argv": [
+        "cmake",
+        "--build",
+        "/content/gpt2_precision_build",
+        "--target",
+        "gpt2_precision_gate",
+        "--parallel",
+        "4"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "packages",
+      "argv": [
+        "python3",
+        "-m",
+        "pip",
+        "install",
+        "numpy==1.26.4",
+        "pytest==9.0.3"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "cpu_model",
+      "argv": [
+        "/content/gpt2_precision_build/gpt2_precision_gate",
+        "--gate-model",
+        "cpu",
+        "/content/chat/gpt2_precision_model_gate/cpu_model.json"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "cuda_model",
+      "argv": [
+        "/content/gpt2_precision_build/gpt2_precision_gate",
+        "--gate-model",
+        "cuda",
+        "/content/chat/gpt2_precision_model_gate/cuda_model.json"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "model_replay",
+      "argv": [
+        "python3",
+        "-O",
+        "/content/gpt2_precision_source/tools/replay_gpt2_precision_gate.py",
+        "--cpu",
+        "/content/chat/gpt2_precision_model_gate/cpu_model.json",
+        "--cuda",
+        "/content/chat/gpt2_precision_model_gate/cuda_model.json",
+        "--out",
+        "/content/chat/gpt2_precision_model_gate/model_replay.json"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "actual_cli",
+      "argv": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "/content/gpt2_precision_source/tests/test_gpt2_attention_precision_cli.py",
+        "-k",
+        "training_reloads or sft_recipe",
+        "--basetemp",
+        "/content/chat/gpt2_precision_model_gate/pytest"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "lm_inference",
+      "argv": [
+        "/content/gpt2_precision_build/gpt2_precision_gate",
+        "--gate-inference",
+        "cuda",
+        "/content/chat/gpt2_precision_model_gate/cli/bf16_cli/bf16.json",
+        "/content/chat/gpt2_precision_model_gate/lm_inference.json"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "lm_replay",
+      "argv": [
+        "python3",
+        "-O",
+        "/content/gpt2_precision_source/tools/replay_gpt2_precision_gate.py",
+        "--cpu",
+        "/content/chat/gpt2_precision_model_gate/cpu_model.json",
+        "--cuda",
+        "/content/chat/gpt2_precision_model_gate/cuda_model.json",
+        "--inference",
+        "/content/chat/gpt2_precision_model_gate/lm_inference.json",
+        "--out",
+        "/content/chat/gpt2_precision_model_gate/lm_replay.json"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "sft_inference",
+      "argv": [
+        "/content/gpt2_precision_build/gpt2_precision_gate",
+        "--gate-inference",
+        "cuda",
+        "/content/chat/gpt2_precision_model_gate/cli/sft_cli/sft.json",
+        "/content/chat/gpt2_precision_model_gate/sft_inference.json"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "sft_replay",
+      "argv": [
+        "python3",
+        "-O",
+        "/content/gpt2_precision_source/tools/replay_gpt2_precision_gate.py",
+        "--cpu",
+        "/content/chat/gpt2_precision_model_gate/cpu_model.json",
+        "--cuda",
+        "/content/chat/gpt2_precision_model_gate/cuda_model.json",
+        "--inference",
+        "/content/chat/gpt2_precision_model_gate/sft_inference.json",
+        "--out",
+        "/content/chat/gpt2_precision_model_gate/sft_replay.json"
+      ],
+      "returncode": 0
+    }
+  ],
+  "errors": [],
+  "inputs": {
+    "archive_scope": [
+      "CMakeLists.txt",
+      "LICENSE",
+      ".gitattributes",
+      "include",
+      "src",
+      "tools",
+      "tests",
+      "third_party",
+      "studio",
+      "spec",
+      "docs/receipts/gpt2_attention_precision_20261031/model_gate_protocol_v2.json"
+    ],
+    "files": {
+      "gpt2_precision_gate.py": "ad243fcc6ad94661d3318c22dc13d37a82a6f79b53b1bcd0c220393b601ead59",
+      "source.tgz": "e5a57ff3e15a4cfa6b8c15c61655dd5a3f774a569941b37373b03fe074acd581"
+    },
+    "host_ember": {
+      "location": "stagev2/host_ir_logits; never uploaded",
+      "sha256": "1f877524c3b59e1cdbf3ca29ab6d4e0ed216900516e1bcb28d5ec7e7e21b9a0f"
+    },
+    "limits": {
+      "gpu": "L4",
+      "max_parallel": 1,
+      "max_usd": 1,
+      "wrapper_seconds": 1500
+    },
+    "protocol": {
+      "actual_gpu_model_results": null,
+      "bounds": {
+        "cpu_cuda_full_gradient_normalized_max": 0.03,
+        "each_expected_nonzero_gradient_tensor_must_be_nonzero": true,
+        "full_parameter_names_shapes_required": true,
+        "gradient_norm_denominator_floor": 1e-08,
+        "independent_full_model_bf16_forward_normalized_max": 0.005,
+        "loaded_fp32_numpy_ember_absolute_max": 3e-05,
+        "loss_trace_cpu_cuda_absolute_max": 0.05,
+        "per_parameter_tensor_relative_gradient_norm_max": 0.03,
+        "same_cuda_arithmetic_default_preserved_composition_logits_and_full_gradients": "bit identical"
+      },
+      "cli": {
+        "bf16_and_fp32_recipe_export_tensor_bytes_and_IR": "identical",
+        "embedding_optimization": "-O0 -g0; linked library Release -O3; contraction off",
+        "lm_steps": 6,
+        "saved_bf16_recipe_vs_fp32_inference_score_rows": "bit equal",
+        "sft_steps": 3,
+        "source": "test-only embedding of unmodified production CLI main/constructors"
+      },
+      "failure_policy": "Preserve all raw logs/models/receipts. No numerical/source/bound tuning or paid retry without a new reviewed protocol. A VM-only pass is not overall completion.",
+      "host_ember_sha256": "1f877524c3b59e1cdbf3ca29ab6d4e0ed216900516e1bcb28d5ec7e7e21b9a0f",
+      "host_output_validation": {
+        "each_array": "allfinite before subtraction",
+        "each_mode_error": "finite and individually <=3e-5",
+        "each_prefill_and_decode_shape": "exact expected matrix shape; no broadcasting"
+      },
+      "interpretation": "Tiny fixed execution/surrogate/inference gate only. No learning-improvement criterion, model-quality, speed or adoption claim.",
+      "kind": "PROSPECTIVE_SINGLE_L4_TRAIN_ONLY_MODEL_GATE_V2",
+      "launch_authorised": false,
+      "limits": {
+        "automatic_retries": 0,
+        "max_parallel": 1,
+        "max_usd": 1,
+        "max_wrapper_seconds": 1500,
+        "one_gpu": "NVIDIA L4"
+      },
+      "offline_validation": {
+        "independent_cpu_full_model_error": 1.4901161193847656e-08,
+        "lm_sft_host_cpu_inference_preflight": "passed; raw host_cpu_inference_preflight.json",
+        "mutation_and_binding_tests_passed": 82,
+        "new_cpp_format": "clang-format18.1.8 dry run passes",
+        "raw_cpu_model_replayed_after_final_cpp_format_and_exact_counter_changes": "byte identical",
+        "unique_model_test_tempfile": true
+      },
+      "precision": {
+        "attention": "bf16 six GEMMs per head",
+        "loaded_inference": "fp32",
+        "projections_and_masters": "fp32",
+        "softmax_and_its_backward": "fp32",
+        "training_only": true
+      },
+      "profile": {
+        "actual_cli_training_attention_bf16_and_projection_fp32": "positive in every logged lm/sft step",
+        "initial_bf16_attention_gemms_exact": 24,
+        "loaded_bf16_gemms_exact": 0,
+        "loaded_fp32_gemms": "positive",
+        "sixteen_step_bf16_attention_gemms_exact": 384
+      },
+      "shape": {
+        "d": 8,
+        "heads": 2,
+        "ids": [
+          1,
+          2,
+          3,
+          4,
+          1,
+          2,
+          3,
+          4
+        ],
+        "layers": 2,
+        "lr": 0.01,
+        "optimizer": "AdamW",
+        "seed": 31,
+        "sequence_length": 4,
+        "stacked_sequences": 2,
+        "steps": 16,
+        "targets": [
+          2,
+          3,
+          4,
+          1,
+          2,
+          3,
+          4,
+          1
+        ],
+        "vocab": 16
+      },
+      "source_sha256": {
+        "tests/gpt2_precision_gate.cpp": "1c4afaa220591c205a94acbbc7ea707d0168f973955b1714125f45c340e0ed68",
+        "tests/test_gpt2_attention_precision_cli.py": "062eef635d06841fd788c44c79463b38796ceb84a46a766fd7ec7f2f2fb5c107",
+        "tools/colab_chat/gpt2_precision_gate.py": "ad243fcc6ad94661d3318c22dc13d37a82a6f79b53b1bcd0c220393b601ead59",
+        "tools/replay_gpt2_precision_gate.py": "a0ac198d810490683ae83d373375f4f2bd595f00c9d01dfbaa85c1460a5fa9cd",
+        "tools/replay_gpt2_precision_home.py": "ed427066cc623713118ab163129c96c6dd5cedd9a29e980ac4a423ee03aa6e48"
+      },
+      "supersedes_unlaunched": "V1/sourcec4be1c743; retained unchanged in stagev1 and Git",
+      "two_part_completion": [
+        "VM CUDA+DEVCHECK/profiler and independent raw model replay",
+        "REQUIRED host pinned CPU Ember+NumPy prefill/decode of both landed GPU-trained models"
+      ]
+    },
+    "scope": "prospective model gate; VM pass requires subsequent host replay",
+    "source_commit": "48910a580089b2d537cda34f1f9781c72429a62a",
+    "source_files": {
+      "CMakeLists.txt": "426dde493268881d05f7c2283132bbfbbb4fbc8a2955b6612fa08ac8dcb82787",
+      "docs/receipts/gpt2_attention_precision_20261031/model_gate_protocol_v2.json": "5ddc959aaa6261ec3a6082aed8b2e7015ad06fab65e7e991108fc05c9b336d79",
+      "include/microtorch/gguf.hpp": "a023297fa0a7fa085ce044086f32702db4468d4e22706eb6cdf6859549edaef1",
+      "include/microtorch/nn.hpp": "8e80b547398d7c45e24333f794aafdf3313d832a3cc5d55ed14937157763a642",
+      "include/microtorch/ops.hpp": "e6efd5098cbfc3484ee7651d12281ca940dd0a3c089740153b4d4c6f4e37da1a",
+      "src/cuda_ops.cu": "9559249aae0f7698cb5ccb98acf1e030437e94bb19e3296eeca7709e9c4b89d7",
+      "src/cuda_resident.cu": "4c5b5995551d680b3b53936d028c2c24358573054e49d53cab12cde34503ffab",
+      "src/device.cpp": "d8dbfd25e811706cb1425399fea968369d461abef026d2472bfd2011bc167b7e",
+      "src/device_cache.cpp": "ddbadf767defdac314553b0256ef5e3a80481bce293225dc5497040843106b4b",
+      "src/gguf.cpp": "310937073eeb42676f4b5fbdff09eca4c055512e3a941db914f07c4f18e1143a",
+      "src/nn.cpp": "944f301888cb6f8715aa27d290215ee10e826fb848f78b914b0c62ceb4d18a91",
+      "src/ops.cpp": "6d11e03a6bb9ddbc3d4ae6f58e1ed7bb9b9a69fd5ec96a8d0e63499954aae1c0",
+      "tests/gpt2_precision_gate.cpp": "1c4afaa220591c205a94acbbc7ea707d0168f973955b1714125f45c340e0ed68",
+      "tests/test_gpt2_attention_precision_cli.py": "062eef635d06841fd788c44c79463b38796ceb84a46a766fd7ec7f2f2fb5c107",
+      "tools/colab_chat/gpt2_precision_gate.py": "ad243fcc6ad94661d3318c22dc13d37a82a6f79b53b1bcd0c220393b601ead59",
+      "tools/mtstudio.cpp": "0678e96b37909e7f9a69cd03cc2e5c49996ede5d8e7ecd0a2b64e2f4eded62d7",
+      "tools/parity_model.hpp": "7c4d9eecd8638a6c1c2aff874a0290e007e1d4682cdc909db511b68c94e6aab0",
+      "tools/replay_gpt2_precision_gate.py": "a0ac198d810490683ae83d373375f4f2bd595f00c9d01dfbaa85c1460a5fa9cd",
+      "tools/replay_gpt2_precision_home.py": "ed427066cc623713118ab163129c96c6dd5cedd9a29e980ac4a423ee03aa6e48"
+    }
+  },
+  "manifest_sha256": "366c8ed09468c55ca7eb62cf615096210041813ba1f03ee5099c50bd32120bff",
+  "binary_sha256": "7d93719f348fd3dd8d932401e0dfc8ec1b90d98f95a767649b3dcdf4a3b1796d",
+  "lm_cli_training_counts": [
+    {
+      "accumulate_cols": 12,
+      "adamw_step_dev": 29,
+      "add": 5,
+      "attn_masked_softmax": 4,
+      "attn_softmax_bwd_inplace": 4,
+      "axpy": 22,
+      "bf16_convert": 24,
+      "ce_bwd": 1,
+      "ce_fwd": 1,
+      "concat_cols": 2,
+      "embed_gather": 2,
+      "fill": 18,
+      "gelu_bwd": 2,
+      "gelu_fwd": 2,
+      "gemm": 27,
+      "gemm_bf16": 24,
+      "layernorm_bwd": 10,
+      "layernorm_fwd": 5,
+      "scale": 19,
+      "slice_cols": 16
+    },
+    {
+      "accumulate_cols": 12,
+      "adamw_step_dev": 29,
+      "add": 5,
+      "attn_masked_softmax": 4,
+      "attn_softmax_bwd_inplace": 4,
+      "axpy": 49,
+      "bf16_convert": 24,
+      "ce_bwd": 1,
+      "ce_fwd": 1,
+      "concat_cols": 2,
+      "embed_gather": 2,
+      "embed_scatter_add": 2,
+      "fill": 47,
+      "gelu_bwd": 2,
+      "gelu_fwd": 2,
+      "gemm": 27,
+      "gemm_bf16": 24,
+      "layernorm_bwd": 10,
+      "layernorm_fwd": 5,
+      "scale": 29,
+      "slice_cols": 16
+    },
+    {
+      "accumulate_cols": 12,
+      "adamw_step_dev": 29,
+      "add": 5,
+      "attn_masked_softmax": 4,
+      "attn_softmax_bwd_inplace": 4,
+      "axpy": 49,
+      "bf16_convert": 24,
+      "ce_bwd": 1,
+      "ce_fwd": 1,
+      "concat_cols": 2,
+      "embed_gather": 2,
+      "embed_scatter_add": 2,
+      "fill": 47,
+      "gelu_bwd": 2,
+      "gelu_fwd": 2,
+      "gemm": 27,
+      "gemm_bf16": 24,
+      "layernorm_bwd": 10,
+      "layernorm_fwd": 5,
+      "scale": 29,
+      "slice_cols": 16
+    },
+    {
+      "accumulate_cols": 12,
+      "adamw_step_dev": 29,
+      "add": 5,
+      "attn_masked_softmax": 12,
+      "attn_softmax_bwd_inplace": 4,
+      "axpy": 49,
+      "bf16_convert": 24,
+      "ce_bwd": 1,
+      "ce_fwd": 3,
+      "concat_cols": 6,
+      "embed_gather": 6,
+      "embed_scatter_add": 2,
+      "fill": 47,
+      "gelu_bwd": 2,
+      "gelu_fwd": 6,
+      "gemm": 27,
+      "gemm_bf16": 24,
+      "layernorm_bwd": 10,
+      "layernorm_fwd": 15,
+      "scale": 29,
+      "slice_cols": 40
+    },
+    {
+      "accumulate_cols": 12,
+      "adamw_step_dev": 29,
+      "add": 5,
+      "attn_masked_softmax": 4,
+      "attn_softmax_bwd_inplace": 4,
+      "axpy": 49,
+      "bf16_convert": 24,
+      "ce_bwd": 1,
+      "ce_fwd": 1,
+      "concat_cols": 2,
+      "embed_gather": 2,
+      "embed_scatter_add": 2,
+      "fill": 47,
+      "gelu_bwd": 2,
+      "gelu_fwd": 2,
+      "gemm": 27,
+      "gemm_bf16": 24,
+      "layernorm_bwd": 10,
+      "layernorm_fwd": 5,
+      "slice_cols": 16
+    },
+    {
+      "accumulate_cols": 12,
+      "adamw_step_dev": 29,
+      "add": 5,
+      "attn_masked_softmax": 4,
+      "attn_softmax_bwd_inplace": 4,
+      "axpy": 49,
+      "bf16_convert": 24,
+      "ce_bwd": 1,
+      "ce_fwd": 1,
+      "concat_cols": 2,
+      "embed_gather": 2,
+      "embed_scatter_add": 2,
+      "fill": 47,
+      "gelu_bwd": 2,
+      "gelu_fwd": 2,
+      "gemm": 27,
+      "gemm_bf16": 24,
+      "layernorm_bwd": 10,
+      "layernorm_fwd": 5,
+      "scale": 29,
+      "slice_cols": 16
+    }
+  ],
+  "sft_cli_training_counts": [
+    {
+      "accumulate_cols": 12,
+      "adamw_step_dev": 29,
+      "add": 5,
+      "attn_masked_softmax": 4,
+      "attn_softmax_bwd_inplace": 4,
+      "axpy": 22,
+      "bf16_convert": 24,
+      "ce_bwd_masked": 1,
+      "ce_fwd_masked": 1,
+      "concat_cols": 2,
+      "embed_gather": 2,
+      "fill": 18,
+      "gelu_bwd": 2,
+      "gelu_fwd": 2,
+      "gemm": 27,
+      "gemm_bf16": 24,
+      "layernorm_bwd": 10,
+      "layernorm_fwd": 5,
+      "scale": 19,
+      "slice_cols": 16
+    },
+    {
+      "accumulate_cols": 12,
+      "adamw_step_dev": 29,
+      "add": 5,
+      "attn_masked_softmax": 4,
+      "attn_softmax_bwd_inplace": 4,
+      "axpy": 49,
+      "bf16_convert": 24,
+      "ce_bwd_masked": 1,
+      "ce_fwd_masked": 1,
+      "concat_cols": 2,
+      "embed_gather": 2,
+      "embed_scatter_add": 2,
+      "fill": 47,
+      "gelu_bwd": 2,
+      "gelu_fwd": 2,
+      "gemm": 27,
+      "gemm_bf16": 24,
+      "layernorm_bwd": 10,
+      "layernorm_fwd": 5,
+      "scale": 29,
+      "slice_cols": 16
+    },
+    {
+      "accumulate_cols": 12,
+      "adamw_step_dev": 29,
+      "add": 5,
+      "attn_masked_softmax": 4,
+      "attn_softmax_bwd_inplace": 4,
+      "axpy": 49,
+      "bf16_convert": 24,
+      "ce_bwd_masked": 1,
+      "ce_fwd_masked": 1,
+      "concat_cols": 2,
+      "embed_gather": 2,
+      "embed_scatter_add": 2,
+      "fill": 47,
+      "gelu_bwd": 2,
+      "gelu_fwd": 2,
+      "gemm": 27,
+      "gemm_bf16": 24,
+      "layernorm_bwd": 10,
+      "layernorm_fwd": 5,
+      "scale": 29,
+      "slice_cols": 16
+    }
+  ],
+  "overall_gate_status": "VM checks passed; REQUIRED pinned host Ember+NumPy replay still pending",
+  "logs": {
+    "hardware.log": {
+      "sha256": "4d27402575c0fbfcbc714a6563f4bcc9ea0e3699ea638e7bd89db077eef291de",
+      "bytes": 21
+    },
+    "nvcc.log": {
+      "sha256": "3c71ed984d2ca98770b0cba5c23a849a87209351e105433929c3062fb66d1915",
+      "bytes": 209
+    },
+    "configure.log": {
+      "sha256": "496d405ada27d0d7172dea629d3008af93187eb6db49cc18695455b30c722376",
+      "bytes": 2009
+    },
+    "build.log": {
+      "sha256": "cd89ee494f9ce43cd4b76e3e23c1fcb536f2d385134deff7a9d5476500f1738a",
+      "bytes": 24571
+    },
+    "packages.log": {
+      "sha256": "1ece7885d5cbd55c1756068b3d6e891d19fc707a0a92c1d0c15b673191e0bffb",
+      "bytes": 2142
+    },
+    "cpu_model.log": {
+      "sha256": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+      "bytes": 54
+    },
+    "cuda_model.log": {
+      "sha256": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+      "bytes": 54
+    },
+    "model_replay.log": {
+      "sha256": "510e795711ee63250c9af87bd137559a387dacc1b46ad964dd167d0783665ca6",
+      "bytes": 1792
+    },
+    "actual_cli.log": {
+      "sha256": "bfb56b8781bba001b2f504c90f60f5236db3ef33c4e09f6fee67e9c6af674688",
+      "bytes": 113
+    },
+    "lm_inference.log": {
+      "sha256": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+      "bytes": 54
+    },
+    "lm_replay.log": {
+      "sha256": "8126cf01e7fe55ecd56388692cb8cb45e10cc65184c3c0e4bc096fc3b0d0afd0",
+      "bytes": 1838
+    },
+    "sft_inference.log": {
+      "sha256": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+      "bytes": 54
+    },
+    "sft_replay.log": {
+      "sha256": "8126cf01e7fe55ecd56388692cb8cb45e10cc65184c3c0e4bc096fc3b0d0afd0",
+      "bytes": 1838
+    }
+  },
+  "artifacts": {
+    "sft_replay.json": "8126cf01e7fe55ecd56388692cb8cb45e10cc65184c3c0e4bc096fc3b0d0afd0",
+    "sft_replay.log": "8126cf01e7fe55ecd56388692cb8cb45e10cc65184c3c0e4bc096fc3b0d0afd0",
+    "sft_inference.json": "ca93bf7dd32d3dc83203afd57d223dfdfab11c887e22465d22db0810a8863b2f",
+    "sft_inference.log": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+    "lm_replay.json": "8126cf01e7fe55ecd56388692cb8cb45e10cc65184c3c0e4bc096fc3b0d0afd0",
+    "lm_replay.log": "8126cf01e7fe55ecd56388692cb8cb45e10cc65184c3c0e4bc096fc3b0d0afd0",
+    "lm_inference.json": "92b39a6f708afcee5e7c1b915103984870c3c310512e9cfdc59c9ed2a60cab4e",
+    "lm_inference.log": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+    "actual_cli.log": "bfb56b8781bba001b2f504c90f60f5236db3ef33c4e09f6fee67e9c6af674688",
+    "model_replay.json": "510e795711ee63250c9af87bd137559a387dacc1b46ad964dd167d0783665ca6",
+    "model_replay.log": "510e795711ee63250c9af87bd137559a387dacc1b46ad964dd167d0783665ca6",
+    "cuda_model.json": "79e6b3f932e2339d31c73143857325d1468ce47999b50cb84c0dff3c9e7229a0",
+    "cuda_model.log": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+    "cpu_model.json": "3460b3b8464ef43bfaa0acfa5cfe8a69eac383c58a31876fc062c9535b2ede8a",
+    "cpu_model.log": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+    "packages.log": "1ece7885d5cbd55c1756068b3d6e891d19fc707a0a92c1d0c15b673191e0bffb",
+    "build.log": "cd89ee494f9ce43cd4b76e3e23c1fcb536f2d385134deff7a9d5476500f1738a",
+    "configure.log": "496d405ada27d0d7172dea629d3008af93187eb6db49cc18695455b30c722376",
+    "nvcc.log": "3c71ed984d2ca98770b0cba5c23a849a87209351e105433929c3062fb66d1915",
+    "hardware.log": "4d27402575c0fbfcbc714a6563f4bcc9ea0e3699ea638e7bd89db077eef291de",
+    "inputs.json": "366c8ed09468c55ca7eb62cf615096210041813ba1f03ee5099c50bd32120bff",
+    "cli/sft_cli/sft_fp32.stderr": "7e42c0889dbed429ed548e4dfb1249ebded6bafcf2fa6f0831ca32c0c69116dc",
+    "cli/sft_cli/sft_fp32.stdout": "d1f9768c8f1f23a06cf560ad2030c339c3b2a253e9823a9d10562f171fcd4084",
+    "cli/sft_cli/sft_fp32.f32": "4289328e8e5e9fd0e41ba005e615726e4f6d58a1a43a317ec7ef8d08bda5a426",
+    "cli/sft_cli/sft_fp32.jsonl": "a29bd55dc9c31239d015baa49fc8d9e13a2e7ad6e8193e099db9dce0529b30da",
+    "cli/sft_cli/sft_recipe.stderr": "b754eb68ae12005e6d0c32aa76608649434776d5aba5eb3715474438c32ea2c0",
+    "cli/sft_cli/sft_recipe.stdout": "d1f9768c8f1f23a06cf560ad2030c339c3b2a253e9823a9d10562f171fcd4084",
+    "cli/sft_cli/sft_recipe.f32": "4289328e8e5e9fd0e41ba005e615726e4f6d58a1a43a317ec7ef8d08bda5a426",
+    "cli/sft_cli/sft_recipe.jsonl": "a29bd55dc9c31239d015baa49fc8d9e13a2e7ad6e8193e099db9dce0529b30da",
+    "cli/sft_cli/req.jsonl": "56acce425b8845b218d7dbaebd0a568c48c40aa3a0d3355795853f6fe842adb5",
+    "cli/sft_cli/sft_inference_fp32.json": "b53d57f32d2b41650ce0d4b149664049f4cb81b31363098f340993e783d34509",
+    "cli/sft_cli/sft.stderr": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+    "cli/sft_cli/sft.stdout": "4d54c6fac15b6d2aaeeebbb51c5b98bc90cf7d9fddfcfeb480165e2e28d66364",
+    "cli/sft_cli/sft.json": "54eb3793af045b1c7d55ee05ced9e0682fc96201b9536dd74862ec1d2ff05c14",
+    "cli/sft_cli/examples.jsonl": "6ea101bb8057a8a96267d86cfaa7595dfbc631d361ffd326fe2c4f59628f9307",
+    "cli/sft_cli/c.txt": "d8a66e5012e7baff2ff1b112620ddb7a19f98cbe16ddf9067f74befeb27f3eab",
+    "cli/sft_cli/v.gguf": "724b813ad2905e3cd133909a14283726bc735497653ee9eb2c220bbbfcb0f12d",
+    "cli/sft_cli/run/result.json": "aa1ad6bb8f7fbef5a703cc39441ec56a6e427d4d839cf8d429946b47464334d5",
+    "cli/sft_cli/run/precision.gguf": "5e23c7edffac00e091706bd041e745a0b48ad670be8248bf519dc37be5a9ce4c",
+    "cli/sft_cli/run/precision.ir.json": "98f242270728286cfc5423f9a4d287ea6721fa2632b711d34c07b9ec987f5d40",
+    "cli/sft_cli/run/precision.safetensors": "30840b3a0ba9aa87ff2a858cd74eed57165c5a1eb5c7e06c44fa70299a6abcdd",
+    "cli/sft_cli/run/state.txt": "92af89486936e1ecc7eecc07dd6d8f23073f711d770d39c5ccaba1516de5e7aa",
+    "cli/sft_cli/run/optim.safetensors": "5e3f28e43caddc668fcc05ebe97bdea5c2144d8adf6077fab7a7e50c62d2f111",
+    "cli/sft_cli/run/model.safetensors": "30840b3a0ba9aa87ff2a858cd74eed57165c5a1eb5c7e06c44fa70299a6abcdd",
+    "cli/sft_cli/run/events.jsonl": "66ad5acf6203c0560a3851948c5cee6980e083506f702da2c0218a9fd185d880",
+    "cli/sft_cli/run/spec.json": "54eb3793af045b1c7d55ee05ced9e0682fc96201b9536dd74862ec1d2ff05c14",
+    "cli/bf16_cli/replay.json": "dff9d2e4c645a263533ce52a10b0220c70c66390bf01e563e249c8234e19aca1",
+    "cli/bf16_cli/export.stderr": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+    "cli/bf16_cli/export.stdout": "dde11bad42400e28a4b94532318a4aa50292b4fafeb2327979a568e8dab1af53",
+    "cli/bf16_cli/explicit_fp32.stderr": "7f8f983d5c80eece0d83d8c91911ad0cfcedb60b3f1f7c2c3b5d526d244869c1",
+    "cli/bf16_cli/explicit_fp32.stdout": "d1f9768c8f1f23a06cf560ad2030c339c3b2a253e9823a9d10562f171fcd4084",
+    "cli/bf16_cli/explicit_fp32.f32": "cc15611c85152ef251df333818990d95fc87f4b56d6c59c2a18e71455bcae0f4",
+    "cli/bf16_cli/explicit_fp32.scores.jsonl": "1e26d58141b625bd1d12d49d10efcd10841e7b7789958aee679c4a99cc94d69a",
+    "cli/bf16_cli/trained_recipe.stderr": "81111478816051d68f74b20630ba95cdcd5501f3fc52cbef97ce6e632abbfeb3",
+    "cli/bf16_cli/trained_recipe.stdout": "d1f9768c8f1f23a06cf560ad2030c339c3b2a253e9823a9d10562f171fcd4084",
+    "cli/bf16_cli/trained_recipe.f32": "cc15611c85152ef251df333818990d95fc87f4b56d6c59c2a18e71455bcae0f4",
+    "cli/bf16_cli/trained_recipe.scores.jsonl": "1e26d58141b625bd1d12d49d10efcd10841e7b7789958aee679c4a99cc94d69a",
+    "cli/bf16_cli/req.jsonl": "56acce425b8845b218d7dbaebd0a568c48c40aa3a0d3355795853f6fe842adb5",
+    "cli/bf16_cli/inference_fp32.json": "bbacc6e1bae88f6695cd061cbc467601af33ea2911a9d3926cb08e1b465a2aa1",
+    "cli/bf16_cli/train.stderr": "82076dea59f96730cc3ffaea88d1392a64a5e8e35aafedac502d23cdccf74d43",
+    "cli/bf16_cli/train.stdout": "ca655a4e902e0a6f23b59f7eb7d8c5f229dde60aececfa7e6b7b1f04fab1cd0e",
+    "cli/bf16_cli/bf16.json": "228dfb2009438b73d5220538f9b890df9f3dc28722052ea47770e8847f40534a",
+    "cli/bf16_cli/c.txt": "d8a66e5012e7baff2ff1b112620ddb7a19f98cbe16ddf9067f74befeb27f3eab",
+    "cli/bf16_cli/v.gguf": "724b813ad2905e3cd133909a14283726bc735497653ee9eb2c220bbbfcb0f12d",
+    "cli/bf16_cli/export_fp32/precision.gguf": "90bdd5e23f3258242fb5d603c990ea037fc6b55458528e10877b6502a33b389b",
+    "cli/bf16_cli/export_fp32/precision.ir.json": "f56a8735ad5995960d148e65602d04293913ba5b96e1a4fa9d013db9674c89af",
+    "cli/bf16_cli/run/result.json": "6a2ac5419404afa787bf99e0bc713c0bcbffaceae8da39b1c7ddb32aa03249e0",
+    "cli/bf16_cli/run/precision.gguf": "daf45e6275beeab2378f2c139f640d633cb92654d90196e831026f257eb90d7b",
+    "cli/bf16_cli/run/precision.ir.json": "f56a8735ad5995960d148e65602d04293913ba5b96e1a4fa9d013db9674c89af",
+    "cli/bf16_cli/run/precision.safetensors": "e6d33a5a453c820cf692090c83febedf41fb2b63874abadc17499d727990cd41",
+    "cli/bf16_cli/run/state.txt": "c0e4a4825b7034060d7b358b105acc1b4caca97e5b5d241168c4ba6272001be2",
+    "cli/bf16_cli/run/optim.safetensors": "2f71c8755e554486beccd8f83229f9a4f0b19b69e2f3e2a788034dd27cf1274e",
+    "cli/bf16_cli/run/model.safetensors": "e6d33a5a453c820cf692090c83febedf41fb2b63874abadc17499d727990cd41",
+    "cli/bf16_cli/run/events.jsonl": "88344e3b62c478b523568a600db3b624662777f03cd94a4677642b67297748af",
+    "cli/bf16_cli/run/spec.json": "228dfb2009438b73d5220538f9b890df9f3dc28722052ea47770e8847f40534a"
+  }
+}

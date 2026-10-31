@@ -1,0 +1,19 @@
+{
+  "pass": true,
+  "vm_pass": true,
+  "required_pinned_host_replay_pass": true,
+  "scientific_source_commit": "48910a580089b2d537cda34f1f9781c72429a62a",
+  "transport_only_commit": "21ea5f802816368c4cad2eea59975b96f27446d3",
+  "manifest_sha256": "366c8ed09468c55ca7eb62cf615096210041813ba1f03ee5099c50bd32120bff",
+  "out_zip_sha256": "ed78f2e58abfbade9acd6816773aa7a10f4ddbd2830de998bd2f46b2c120d905",
+  "raw_artifact_home": "/mnt/c/ml_artifacts/devcheck/pk-gpt2-attn-model-1031-v2/gpt2_precision_model_gate",
+  "numerical_retries": 0,
+  "packaging_failure_preserved": true,
+  "owned_pods_absent": true,
+  "owned_volumes_absent": true,
+  "watchdog_entry_disabled": true,
+  "cumulative_project_ledger_usd": 0.17117691976244065,
+  "original_cumulative_cap_usd": 1,
+  "quality_speed_adoption_claim": false,
+  "notes": "First argv rejected before resources. Next absolute-jobs boot rejected after pod creation but before numerical execution. Reviewed transport-only exact jobs packaging then passed unchanged frozen numerical gate."
+}

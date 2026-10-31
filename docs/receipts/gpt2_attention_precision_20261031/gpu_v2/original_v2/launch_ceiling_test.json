@@ -1,0 +1,7 @@
+{
+ "pass": true,
+ "same_imported_api_module": true,
+ "two_and_three_pods_refused_before_balance_or_dispatch": true,
+ "remote_requests": 0,
+ "source_file_not_modified": true
+}
