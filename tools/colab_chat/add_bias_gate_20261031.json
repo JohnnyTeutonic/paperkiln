@@ -1,0 +1,29 @@
+{
+ "_comment": "Bounded actual L4 CUDA+DEVCHECK stale computed bias baseline/fix and existing parity export guards. Scientific pass is gate_summary.pass only. No models, corpus or training. Root owns watchdog launch.",
+ "max_parallel": 1,
+ "jobs": [
+  {
+   "name": "add_bias_gate",
+   "cmd": [
+    "timeout",
+    "--signal=TERM",
+    "--kill-after=30",
+    "2700",
+    "python3",
+    "/content/chat/upload/add_bias_gate_vm.py",
+    "{out}"
+   ],
+   "outputs": [
+    "gate_summary.json",
+    "hardware.log",
+    "nvcc.log",
+    "configure.log",
+    "baseline_build.log",
+    "baseline.log",
+    "fixed_build.log",
+    "fixed.log",
+    "parity_export.log"
+   ]
+  }
+ ]
+}
