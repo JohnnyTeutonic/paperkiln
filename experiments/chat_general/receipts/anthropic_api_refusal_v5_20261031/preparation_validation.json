@@ -1,0 +1,38 @@
+{
+  "status": "PREPARED_NO_DISPATCH_EXACT_ROOT_REVIEW_REQUIRED",
+  "protocol_sha256": "8ac320152790c221a02a2819743dbc1310b14ed872d7baa76f67cedae4cbca5e",
+  "source_sha256": {
+    "chat_judge_campaign_refusal_v5.py": "2cbd1141cd1a645bcd8d61be6c07537e9221269183ae0961f2abe1a4beb33977",
+    "chat_judge_api_refusal_v5.py": "8c4bf438d080b181628195246e801426f493802060304e63ff8ec21713418926",
+    "chat_judge_transport_diagnostic.py": "779ad1c42bde437cf8fbbd412258f33903514324ea53bd58992b6ca0188cb4de",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+  },
+  "actual_readonly_inspect": {
+    "attempts_since_start": 0,
+    "missing_rankings": 4350,
+    "eligible_missing_rankings": 4349,
+    "preserved_failed_rankings": 1,
+    "pending_reservations": 0,
+    "api_actual_spend_usd": 25.388728,
+    "retained_unknown_ceiling_usd": 0.75
+  },
+  "tests": {
+    "new_and_transport": {
+      "command": "python3 -m pytest -q tools/posttrain/test_chat_judge_campaign_refusal_v5.py tools/posttrain/test_chat_judge_api_refusal_v5.py tools/posttrain/test_chat_judge_transport_diagnostic.py",
+      "passed": 25,
+      "elapsed_seconds": 13.91
+    },
+    "adapted_legacy_against_new_API": {
+      "command": "python3 -m pytest -q /home/jonat/api_v5_legacy_offline_tests_20261031",
+      "passed": 100,
+      "elapsed_seconds": 9.06,
+      "adaptation": "Existing100 adapted V3 legacy tests unchanged; isolated conftest aliases chat_judge_api to chat_judge_api_refusal_v5 from this worktree. Same direct fake callback trace adaptations as V3; no production alias/monkeypatch."
+    },
+    "ruff": "PASS"
+  },
+  "scope_requires_root_decision": "Current proposal excludes exact refused order only. Prespecified reverse order for same candidate set remains unattempted and eligible; no execution until root confirms this interpretation versus excluding whole case.",
+  "unchanged_originals": true,
+  "no_state_created": true,
+  "no_enabled_entry": true,
+  "no_API_dispatch_by_preparation": true
+}
