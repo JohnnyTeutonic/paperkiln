@@ -13,7 +13,7 @@
         "--upload",
         "/content/chat/upload",
         "--manifest-sha256",
-        "f03285674bc94ee0e086a31094ec0c8b0ff5db7a968527ebf5e57725c193c5ef",
+        "1e043e40d81c2ae50f19c8c2beb3d84084c824fa75466c75e8757483c160c98d",
         "--out",
         "{out}"
       ],
