@@ -1,0 +1,50 @@
+{
+  "kind": "FROZEN_FAILSTOP_API_CAMPAIGN_V2_REVIEWED_RECOVERY",
+  "source_sha256": {
+    "chat_judge_campaign_v2.py": "3b1517f32eddc6cb98c9b5d19e4950376e40d1fa80b78fd77f899100fce2c42f",
+    "chat_judge_api.py": "2b5b01c4b68be1d18e30fec85f1ccc2cb490e4142f208f4e1197a3e6da662d87",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+  },
+  "profile_sha256": "a6bf0769bf5d7688c970df16f53c97efd67750313e59c6d49a8760cefd45bee8",
+  "max_new_attempts": 5514,
+  "max_usd": 200,
+  "gate_reserve_usd": 25,
+  "reserve_per_call_usd": 0.25,
+  "batch_calls": 24,
+  "cache": "/mnt/c/ml_artifacts/pref_api_20261031/api_cache.jsonl",
+  "ledger": "/mnt/c/ml_artifacts/pref_api_20261031/budget.jsonl",
+  "requests": "/mnt/c/ml_artifacts/pref_full/sample/candidates.jsonl",
+  "rubric": "/home/jonat/pk_api_judge_20261031/tools/posttrain/rubrics/chat_v1.txt",
+  "legacy_cache": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/experiments/chat_general/judge/judge_cache.jsonl",
+  "env_file": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/.env",
+  "prior_api_ledgers": [
+    "/home/jonat/pk_api_judge_20261031/experiments/chat_general/receipts/anthropic_api_20261031/budget.jsonl"
+  ],
+  "binding_sha256": "d36e10fd0d5708fd937d52857188de442f99ed8938a31e48a51497c2227bb6e1",
+  "ledger_prefix_bytes": 638334,
+  "ledger_prefix_sha256": "1ddb881d4bffc085ba798b6af7e1d84f49883e215d20d84c9a73267cc54bfc37",
+  "requests_sha256": "a69673d5307413214cfb631bc6ee58adbcf5b3020da31db79d6e8a8b952b825f",
+  "rubric_sha256": "cb04edd3543d0906aedc3d82a1d829586272da874182775c6d7c9826e28d937a",
+  "initial_training_attempts": 480,
+  "state_dir": "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign_v2",
+  "initial_valid_api_rankings": 526,
+  "policy": "Separate reviewed phase: original HALTED/source preserved; explicit root-authorised unknown retains full0.25 ceiling, no invented usage/ranking. Same immutable cache/ledger/requests/profile/rubric, cumulative200 and heldout25. This new phase may attempt still-missing semantic rankings only after root launch review; one HTTP attempt per request, no SDK/HTTP retries. Any new unknown/parse/provenance/budget failure HALTS; watchdog cannot recover it. Initial480training attempts, up to5514new attempts; no old successful calls repeated.",
+  "authorised_by": "Prepared for root review only. No model dispatch or watchdog enable authorised by this preparation.",
+  "recovery_anchors": {
+    "old_protocol": {
+      "path": "/home/jonat/pk_api_recovery_v2_20261031/experiments/chat_general/receipts/anthropic_api_recovery_v2_20261031/original_full_campaign_protocol.json",
+      "sha256": "6170b3830d6bb4acfeac972d050241076219e98b0ce3f8eb2a1ea32873ab2724"
+    },
+    "old_halt": {
+      "path": "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign/HALTED",
+      "sha256": "0ee5f79a2d1e09bc2a46663d9bbd59c1bababb428bc8a52b145057065f868bc9"
+    },
+    "retention_receipt": {
+      "path": "/home/jonat/pk_api_recovery_v2_20261031/experiments/chat_general/receipts/anthropic_api_recovery_v2_20261031/retention_receipt.json",
+      "sha256": "6cd77dfcf01d293ea9a72eb054a9ab07d9eb5b354adca0cc475bdbdc91ad4cae"
+    },
+    "resolved_pending_id": "aafafd1531f74959936e5422388ff30e",
+    "cache_prefix_bytes": 1025893,
+    "cache_prefix_sha256": "9fda300721d5174ea777581404d620b87bcd43badea23215706e26162c2b1b07"
+  }
+}

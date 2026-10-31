@@ -1,0 +1,48 @@
+{
+  "status": "OFFLINE_READY_FOR_ROOT_REVIEW",
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tools/posttrain/test_chat_judge_campaign_v2.py",
+        "tools/posttrain/test_chat_judge_campaign.py",
+        "tools/posttrain/test_chat_judge_api.py"
+      ],
+      "returncode": 0,
+      "log": "tests.log"
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "ruff",
+        "check",
+        "tools/posttrain/chat_judge_campaign_v2.py",
+        "tools/posttrain/test_chat_judge_campaign_v2.py"
+      ],
+      "returncode": 0,
+      "log": "ruff.log"
+    }
+  ],
+  "test_result": "99PASS",
+  "source_hashes": {
+    "chat_judge_campaign_v2.py": "3b1517f32eddc6cb98c9b5d19e4950376e40d1fa80b78fd77f899100fce2c42f",
+    "chat_judge_api.py": "2b5b01c4b68be1d18e30fec85f1ccc2cb490e4142f208f4e1197a3e6da662d87",
+    "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+  },
+  "protocol_sha256": "6a233561c2eb490cf7041a8005cb70a06608b33a23b107aecae62b8f9c90d8ea",
+  "new_model_dispatches": 0,
+  "files_sha256": {
+    "original_full_campaign_protocol.json": "6170b3830d6bb4acfeac972d050241076219e98b0ce3f8eb2a1ea32873ab2724",
+    "readiness.json": "a5da28ab01ae5ad46d0ce40dbdc63f907937169750bbae46d1fe323e7aaf5726",
+    "full_campaign_v2_protocol.json": "6a233561c2eb490cf7041a8005cb70a06608b33a23b107aecae62b8f9c90d8ea",
+    "retention_receipt.json": "6cd77dfcf01d293ea9a72eb054a9ab07d9eb5b354adca0cc475bdbdc91ad4cae",
+    "watchdog_proposal.json": "f3ae9cb9b825fa54568842d58456d714f44a2a92e220c983aaf7d0f29f843aca",
+    "root_retention_authorization.json": "849e6108c9d2106593c3bdb3b04447ed9a2104341f037168739bee37bb07196f",
+    "tests.log": "cd7413a524c81b05c45c51ff95a62b058b49cb2a71f5ce2ceda1d7296198de96",
+    "ruff.log": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+  }
+}

@@ -1,0 +1,33 @@
+{
+ "kind": "FROZEN_FAILSTOP_API_CAMPAIGN_V1",
+ "source_sha256": {
+  "chat_judge_campaign.py": "c99b6b0216a4324c76cc9a2563ae2a5f5eed5295c721f2cc2f4c6e1546634ac3",
+  "chat_judge_api.py": "2b5b01c4b68be1d18e30fec85f1ccc2cb490e4142f208f4e1197a3e6da662d87",
+  "chat_judge.py": "b1a97e8faa45d994d31806771a7e2aa08bc880c979ce877b810ac61d12b40dc0"
+ },
+ "profile_sha256": "a6bf0769bf5d7688c970df16f53c97efd67750313e59c6d49a8760cefd45bee8",
+ "max_new_attempts": 5993,
+ "max_usd": 200,
+ "gate_reserve_usd": 25,
+ "reserve_per_call_usd": 0.25,
+ "batch_calls": 24,
+ "cache": "/mnt/c/ml_artifacts/pref_api_20261031/api_cache.jsonl",
+ "ledger": "/mnt/c/ml_artifacts/pref_api_20261031/budget.jsonl",
+ "requests": "/mnt/c/ml_artifacts/pref_full/sample/candidates.jsonl",
+ "rubric": "/home/jonat/pk_api_judge_20261031/tools/posttrain/rubrics/chat_v1.txt",
+ "legacy_cache": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/experiments/chat_general/judge/judge_cache.jsonl",
+ "env_file": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/.env",
+ "prior_api_ledgers": [
+  "/home/jonat/pk_api_judge_20261031/experiments/chat_general/receipts/anthropic_api_20261031/budget.jsonl"
+ ],
+ "binding_sha256": "d36e10fd0d5708fd937d52857188de442f99ed8938a31e48a51497c2227bb6e1",
+ "ledger_prefix_bytes": 60716,
+ "ledger_prefix_sha256": "8e452136a1121d5ab8f8a21fab62ec9501045503076b0c4cb653bb08e9266f81",
+ "requests_sha256": "a69673d5307413214cfb631bc6ee58adbcf5b3020da31db79d6e8a8b952b825f",
+ "rubric_sha256": "cb04edd3543d0906aedc3d82a1d829586272da874182775c6d7c9826e28d937a",
+ "initial_training_attempts": 0,
+ "state_dir": "/mnt/c/ml_artifacts/pref_api_20261031/full_campaign",
+ "initial_valid_api_rankings": 47,
+ "policy": "No automated recovery or HTTP retries. Any pending charge, parse failure, provenance drift or budget stop creates HALTED. Existing calibration unknown remains fully reserved. Same6040 training-stage limit,200 cumulative cap and25 future-gate hold. No CLI verdict reuse. Source/profile/outputcap frozen.",
+ "authorised_by": "Root requested reviewed full judging preparation after frozen calibration. Launch still requires root review of this protocol and host watchdog command."
+}
