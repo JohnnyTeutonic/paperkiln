@@ -150,6 +150,9 @@ target_link_libraries(test_deep_swa PRIVATE microtorch)
 add_test(NAME deep_swa COMMAND test_deep_swa)
 
 # Third-party ops in training (GQA, NEOX/partial RoPE, per-head RMSNorm, Mamba-1's conv and scan).
+add_executable(test_mamba1_composed tests/test_mamba1_composed.cpp)
+target_link_libraries(test_mamba1_composed PRIVATE microtorch)
+
 add_executable(test_thirdparty_ops tests/test_thirdparty_ops.cpp)
 target_link_libraries(test_thirdparty_ops PRIVATE microtorch)
 add_test(NAME thirdparty_ops COMMAND test_thirdparty_ops)

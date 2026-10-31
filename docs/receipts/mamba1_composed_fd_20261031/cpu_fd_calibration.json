@@ -1,0 +1,16 @@
+{
+  "before_any_gpu_outcome": true,
+  "production_or_fixture_changes": false,
+  "threshold_changes": false,
+  "inventory_correction": {
+    "depth1": 448,
+    "depth2": 776,
+    "total": 1224
+  },
+  "step_override": {
+    "dt_proj.weight": 0.1
+  },
+  "reason": "Seed37 dt_proj.weight gradient L2 about1.16e-13 is unresolved by subtracting binary64 CE loss at step1e-4. Larger parameter step0.1 causes tiny dt shifts because dt input itself is small, and remains checked against half-step stability.",
+  "preserved_first_failure": "cpu_replay_first.log",
+  "other_steps": "A_log/dt_proj.bias0.01, other parameters0.0001; every step also halved for stability"
+}
