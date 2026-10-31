@@ -1,0 +1,123 @@
+{
+  "kind": "BOUNDED_SOURCE_HOST_HELPER_AUDIT",
+  "source_commit": "42823c8191d6f4188ffebf8aa565565d56de9fd2",
+  "not_exhaustive": true,
+  "method": "Read forward, backward, ownership and materialization control flow against exact source hashes; directly compile audited ops.cpp for existing CPU FD/parity controls. No CUDA execution or timing claim.",
+  "audited_subset": [
+    {
+      "entry": "record",
+      "lines": [
+        24,
+        36
+      ],
+      "finding": "New Variable from moved result; per-instance DevState is initially nullptr. Host-produced fresh Matrix retains host authority."
+    },
+    {
+      "entry": "unary_host",
+      "lines": [
+        2934,
+        2948
+      ],
+      "public_ops": [
+        "exp",
+        "log",
+        "sqrt",
+        "tanh",
+        "erf",
+        "gelu_erf",
+        "abs"
+      ],
+      "finding": "Materializes input before host forward; output is new host Matrix. Backward materializes upstream gradient. Saved immutable input/output remain host coherent because no supported operation mutates them."
+    },
+    {
+      "entry": "binary_host",
+      "lines": [
+        2959,
+        2986
+      ],
+      "public_ops": [
+        "div",
+        "pow",
+        "maximum",
+        "minimum"
+      ],
+      "finding": "Materializes both operands before host forward; new host output; backward materializes upstream gradient. Same immutable tape assumption."
+    },
+    {
+      "entry": "where",
+      "lines": [
+        3059,
+        3086
+      ],
+      "finding": "Materializes condition and both operands; condition retained as parent with no gradient; selection backward materializes upstream gradient."
+    },
+    {
+      "entry": "rowsum,rowmax,broadcast_cols",
+      "lines": [
+        3089,
+        3155
+      ],
+      "finding": "Input materialized before host read; new host outputs; backward materializes upstream gradient. rowmax captures argmax indices and uses first tie; no re-read of device input needed."
+    },
+    {
+      "entry": "inplace_unary",
+      "lines": [
+        1976,
+        1991
+      ],
+      "public_ops": [
+        "relu_",
+        "sigmoid_",
+        "scale_"
+      ],
+      "finding": "Materializes data before host mutation and gradient before derivative mutation. Under documented fresh matmul/add pattern, produced x has no cached input DevState slot or explicit resident table entry. Clearing stale flag makes host the authoritative source for later consumer upload. Existing CPU finite-difference and out-of-place loss/all-gradient parity controls pass."
+    }
+  ],
+  "authority_invariants": [
+    {
+      "source": "src/cuda_resident.cu",
+      "lines": [
+        155,
+        165,
+        181,
+        225,
+        479,
+        487
+      ],
+      "fact": "vcache_hit only serves stale current-epoch entries. materialize downloads stale content then marks stale false. window_operand can separately serve a same-epoch Variable slot or explicit resident table."
+    },
+    {
+      "source": "include/microtorch/ops.hpp",
+      "lines": [
+        387,
+        395
+      ],
+      "fact": "Inplace contract requires no other consumer and excludes producers whose backward reads their own output. Fresh matmul/add result is the blessed pattern."
+    },
+    {
+      "source": "include/microtorch/device_cache.hpp",
+      "lines": [
+        5,
+        6
+      ],
+      "fact": "Explicit resident buffers require caller invalidate or refreshed make_resident after host mutation."
+    }
+  ],
+  "excluded_candidate": {
+    "trigger": "Use x in one matmul to cache its same-epoch slot, mutate x with inplace op, then use x in a second matmul; or mutate explicitly resident buffer without invalidation.",
+    "disposition": "Not a supported correctness bug: first violates no-other-consumer inplace contract; second violates explicit resident mutation contract. No patch or paid gate is warranted from this trigger.",
+    "important_limit": "This does not prove arbitrary host mutation is automatically invalidated or extend public inplace semantics."
+  },
+  "controls": {
+    "cpu_receipt": "validation.json",
+    "inplace": "All three safe fresh-matmul ops, finite differences on both parents, out-of-place loss/all-gradient parity, tape-node count. NoGrad is exercised during finite difference evaluation.",
+    "expression": "Existing expression parser/value/shape/FD and Flex controls; CPU only.",
+    "paid_calls": 0,
+    "local_gpu_calls": 0
+  },
+  "remaining": [
+    "Other ops.cpp wrappers/backward closures not listed here remain outside this bounded audit.",
+    "CUDA model families, custom expressions under unusual residency transitions, optimizers/export/other host consumers retain their separate evidence requirements.",
+    "No exhaustive audit closure, performance or residency improvement is claimed."
+  ]
+}

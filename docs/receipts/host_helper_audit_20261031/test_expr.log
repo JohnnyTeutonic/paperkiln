@@ -1,0 +1,21 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+1. parser: 15 accepted, 24 rejected at the right column, nesting capped
+2. values: 44 expressions bit-exact against hand-computed f32
+3. shapes: constants fill [T, w] without a gradient; inputs checked
+   max(x, 0)^2                                                rel err 6.00e-06
+   x*sigmoid(1.702*x)                                         rel err 2.72e-05
+   where(x, x, 0.01*x)                                        rel err 9.12e-06
+   x/(1+abs(x))                                               rel err 2.62e-05
+   (x-rowmean(x))/sqrt(rowmean((x-rowmean(x))^2)+1e-5)        rel err 1.37e-05
+   x*tanh(a)                                                  rel err 1.00e-05
+   exp(-x^2) + log(1 + x^2)                                   rel err 2.14e-05
+   erf(x/sqrt(2)) * 0.5 * x                                   rel err 1.15e-05
+   min(x, 0.5*x) - rowmax(x)                                  rel err 1.41e-05
+   sqrt(abs(x) + 1) + abs(x)^1.5                              rel err 1.37e-05
+   2^x - pi/(1 + x^2) + relu(x)                               rel err 1.06e-04
+   where(a, x^2, -x) + max(x, a) * min(a, 1)                  rel err 1.51e-05
+   (x - a) / (1 + exp(rowsum(x*a)/5))                         rel err 2.09e-05
+   relu(a)*x                                                  rel err 5.66e-06
+4. gradients: 14 expressions FD-checked, worst 1.06e-04
+5. flex: expr:relu(x) == relu bitwise; squared ReLU trains 3.455 -> 0.688; IR has the expr node
+EXPR-OK 5/5
