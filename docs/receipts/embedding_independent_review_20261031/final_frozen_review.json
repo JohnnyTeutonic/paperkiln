@@ -1,0 +1,20 @@
+{
+  "pass": true,
+  "source_commit": "18069783ffedd3573bcc2e76b4816c575c02eea5",
+  "manifest_sha256": "c6e702f8473f612f214b710ca8673f1d1df63f0e95b116fa222314b8d3414af3",
+  "all_archive_files_match_registered_hash_and_source_commit": 1378,
+  "all_upload_hashes_match": true,
+  "helper_equals_archive_source": true,
+  "baseline_exact_public_git_blob_and_two_line_patch": true,
+  "parser_test_argv": [
+    "/home/jonat/pk_bf16_replay_20261031/bin/python",
+    "-O",
+    "-m",
+    "pytest",
+    "-q",
+    "/home/jonat/pk_embedding_fallback_20261031/tests/test_embedding_fallback_replay.py"
+  ],
+  "parser_test_returncode": 0,
+  "prior_findings": "Expected-failure mode guard and existing empty-input rejection independently retested; corrected CPU raw replay passed all7 cases.",
+  "scope": "Conditional computed table fallback only; ordinary leaf table coherent control; no actual GPU outcome reviewed."
+}

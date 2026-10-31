@@ -1,0 +1,14 @@
+{
+  "scope": "local compile only, CUDA12.6 sm89, no device execution",
+  "binary_sha256": "92e305d5cb11df333ee1c1752cbd6d87b32723c622b3de1d1cb3005b93d28f30",
+  "nn_candidate_vs_old": {
+    "ops": {
+      "sass_instruction_lines": 152,
+      "exact_instruction_lines_equal": true
+    },
+    "acc": {
+      "sass_instruction_lines": 160,
+      "exact_instruction_lines_equal": true
+    }
+  }
+}
