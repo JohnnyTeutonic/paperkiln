@@ -275,7 +275,8 @@ Var repeat_heads(const Var& x, size_t heads, size_t group, size_t head_dim);
 // sum; each product and sum a rounded f32 operation, so the numpy
 // reference's floats. Backward: dx[u] = sum_k dy[u - k + K - 1] w[k] (rows
 // inside the sequence), dw[c, k] = sum_t dy[t, c] xx[t + k, c], dbias = the
-// column sums. Host only (the device copies come home).
+// column sums. Optional CUDA device-op seam preserves these per-output orders;
+// otherwise the host path materializes its operands.
 Var conv1d_causal(const Var& x, const Var& w, const Var& bias, size_t seq_len = 0);
 // Mamba-1's selective scan (IR_SPEC 6.7, ggml_ssm_scan): x, dt [T, D], B, C
 // [T, N], A [D, N], Dskip [1, D] or null. Per sequence of seq_len rows (0 =

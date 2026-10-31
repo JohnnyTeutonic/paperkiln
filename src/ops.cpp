@@ -1376,34 +1376,59 @@ size_t seq_rows(size_t T, size_t seq_len, const char* what) {
 
 Var conv1d_causal(const Var& x, const Var& w, const Var& bias, size_t seq_len) {
     const size_t T = x->data.rows(), C = x->data.cols(), K = w->data.cols();
+    if (T == 0 || C == 0) throw std::runtime_error("conv1d_causal: x must be nonempty");
     if (w->data.rows() != C || K < 2) throw std::runtime_error("conv1d_causal: w must be [cols(x), K] with K >= 2");
     if (bias && (bias->data.rows() != 1 || bias->data.cols() != C))
         throw std::runtime_error("conv1d_causal: bias must be [1, cols(x)]");
     const size_t sl = seq_rows(T, seq_len, "conv1d_causal");
-    device::materialize(x->data);
-    device::materialize(w->data);
-    if (bias) device::materialize(bias->data);
-    Matrix out(T, C);
-    for (size_t r0 = 0; r0 < T; r0 += sl)
-        for (size_t t = 0; t < sl; ++t)
-            for (size_t c = 0; c < C; ++c) {
-                float acc = 0.0f;
-                for (size_t k = 0; k < K; ++k) {
-                    // xx[t + k] = x[t + k - (K - 1)], zero before the sequence.
-                    const float xv = t + k + 1 >= K ? x->data(r0 + t + k + 1 - K, c) : 0.0f;
-                    acc = acc + w->data(c, k) * xv;
+    Matrix out = device::out_matrix(T, C);
+    if (!device::devops::conv1d_causal_fwd(x->data, w->data, bias ? &bias->data : nullptr, sl, out)) {
+        device::materialize(x->data);
+        device::materialize(w->data);
+        if (bias) device::materialize(bias->data);
+        MT_DEVCHECK_HOST_READ(x->data, "conv1d_causal input");
+        MT_DEVCHECK_HOST_READ(w->data, "conv1d_causal weights");
+        if (bias) MT_DEVCHECK_HOST_READ(bias->data, "conv1d_causal bias");
+        for (size_t r0 = 0; r0 < T; r0 += sl)
+            for (size_t t = 0; t < sl; ++t)
+                for (size_t c = 0; c < C; ++c) {
+                    float acc = 0.0f;
+                    for (size_t k = 0; k < K; ++k) {
+                        // xx[t + k] = x[t + k - (K - 1)], zero before the sequence.
+                        const float xv = t + k + 1 >= K ? x->data(r0 + t + k + 1 - K, c) : 0.0f;
+                        acc = acc + w->data(c, k) * xv;
+                    }
+                    out(t + r0, c) = bias ? acc + bias->data(0, c) : acc;
                 }
-                out(t + r0, c) = bias ? acc + bias->data(0, c) : acc;
-            }
+    }
     std::vector<Var> parents = {x, w};
     if (bias) parents.push_back(bias);
     return record(std::move(out), parents, [sl, K](Variable* self) {
         const Var& x = self->parents[0];
         const Var& w = self->parents[1];
         const Var* b = self->parents.size() > 2 ? &self->parents[2] : nullptr;
-        device::materialize(self->grad);
         const Matrix& dy = self->grad;
         const size_t T = dy.rows(), C = dy.cols();
+        if (device::get() == device::Device::CUDA && device::device_ops_enabled()) {
+            Matrix dx, dw, db;
+            if (x->requires_grad) dx = device::out_matrix(T, C);
+            if (w->requires_grad) dw = device::out_matrix(C, K);
+            if (b && (*b)->requires_grad) db = device::out_matrix(1, C);
+            if (device::devops::conv1d_causal_bwd(x->data, w->data, dy, sl,
+                    x->requires_grad ? &dx : nullptr, w->requires_grad ? &dw : nullptr,
+                    b && (*b)->requires_grad ? &db : nullptr)) {
+                if (x->requires_grad) x->accumulate(std::move(dx));
+                if (w->requires_grad) w->accumulate(std::move(dw));
+                if (b && (*b)->requires_grad) (*b)->accumulate(std::move(db));
+                return;
+            }
+        }
+        device::materialize(self->grad);
+        device::materialize(x->data);
+        device::materialize(w->data);
+        MT_DEVCHECK_HOST_READ(self->grad, "conv1d_causal dy");
+        MT_DEVCHECK_HOST_READ(x->data, "conv1d_causal backward input");
+        MT_DEVCHECK_HOST_READ(w->data, "conv1d_causal backward weights");
         if (x->requires_grad) {
             Matrix dx(T, C);
             for (size_t r0 = 0; r0 < T; r0 += sl)

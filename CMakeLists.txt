@@ -460,3 +460,8 @@ add_test(NAME parity_depth COMMAND test_parity_depth)
 add_executable(test_add_bias_materialization tests/test_add_bias_materialization.cpp)
 target_link_libraries(test_add_bias_materialization PRIVATE microtorch)
 add_test(NAME add_bias_materialization COMMAND test_add_bias_materialization)
+
+add_executable(test_conv1d_cuda tests/test_conv1d_cuda.cpp)
+target_link_libraries(test_conv1d_cuda PRIVATE microtorch)
+add_test(NAME conv1d_cuda_cpu COMMAND test_conv1d_cuda)
+set_tests_properties(conv1d_cuda_cpu PROPERTIES TIMEOUT 120)

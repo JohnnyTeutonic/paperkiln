@@ -26,6 +26,7 @@
 #include <cmath>
 #include <cstddef>
 #include <memory>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -2060,6 +2061,60 @@ bool rope_bwd(const Matrix& dy, const std::vector<int>& pos, size_t head_dim, si
               Matrix& dx, bool neox, size_t n_rot_dims) {
     if (!active()) return false;
     return rope_launch(dy, pos, head_dim, n_rot_heads, base, -1.0f, dx, "rope_bwd", neox, n_rot_dims);
+}
+
+namespace {
+#include "conv1d_kernels.cuh"
+}  // namespace
+
+bool conv1d_causal_fwd(const Matrix& x, const Matrix& w, const Matrix* bias, size_t seq_len, Matrix& y) {
+    if (!active()) return false;
+    size_t sl;
+    const size_t T = x.rows(), C = x.cols(), K = w.cols();
+    if (!conv1d_geometry(x, w, seq_len, sl) || y.rows() != T || y.cols() != C ||
+        (bias && (bias->rows() != 1 || bias->cols() != C))) return false;
+    In ix(x.get_data(), T * C), iw(w.get_data(), C * K);
+    std::unique_ptr<In> ib;
+    if (bias) ib.reset(new In(bias->get_data(), C));
+    Out oy(y.get_data(), T * C);
+    k_conv1d_causal<<<ew_grid(T * C), NTHREADS>>>(ix.d, iw.d, ib ? ib->d : nullptr, oy.d, T, C, K, sl);
+    cuda_check(cudaGetLastError(), "conv1d_causal_fwd");
+    oy.finish();
+    return true;
+}
+
+bool conv1d_causal_bwd(const Matrix& x, const Matrix& w, const Matrix& dy, size_t seq_len,
+                       Matrix* dx, Matrix* dw, Matrix* dbias) {
+    if (!active()) return false;
+    size_t sl;
+    const size_t T = x.rows(), C = x.cols(), K = w.cols();
+    if (!conv1d_geometry(x, w, seq_len, sl) || dy.rows() != T || dy.cols() != C ||
+        (dx && (dx->rows() != T || dx->cols() != C)) ||
+        (dw && (dw->rows() != C || dw->cols() != K)) ||
+        (dbias && (dbias->rows() != 1 || dbias->cols() != C))) return false;
+    if (!dx && !dw && !dbias) return true;
+    In idy(dy.get_data(), T * C);
+    if (dx) {
+        In iw(w.get_data(), C * K);
+        Out odx(dx->get_data(), T * C);
+        k_conv1d_causal_dx<<<ew_grid(T * C), NTHREADS>>>(iw.d, idy.d, odx.d, T, C, K, sl);
+        cuda_check(cudaGetLastError(), "conv1d_causal_dx");
+        odx.finish();
+    }
+    if (dw) {
+        In ix(x.get_data(), T * C);
+        Out odw(dw->get_data(), C * K);
+        k_conv1d_causal_dw<<<ew_grid(C * K), NTHREADS>>>(ix.d, idy.d, odw.d, T, C, K, sl);
+        cuda_check(cudaGetLastError(), "conv1d_causal_dw");
+        odw.finish();
+    }
+    if (dbias) {
+        Out odb(dbias->get_data(), C);
+        k_conv1d_causal_db<<<ew_grid(C), NTHREADS>>>(idy.d, odb.d, T, C);
+        cuda_check(cudaGetLastError(), "conv1d_causal_db");
+        odb.finish();
+    }
+    return true;
 }
 
 bool repeat_heads_fwd(const Matrix& x, size_t heads, size_t group, size_t head_dim, Matrix& y) {

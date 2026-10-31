@@ -501,6 +501,13 @@ bool rmsnorm_group_bwd(const Matrix& dY, const Matrix& x, const Matrix& rms_inv,
                        bool want_dw, Matrix* dw, bool want_dx, Matrix* dx);
 bool repeat_heads_fwd(const Matrix& x, size_t heads, size_t group, size_t head_dim, Matrix& y);
 bool repeat_heads_bwd(const Matrix& dy, size_t heads, size_t group, size_t head_dim, Matrix& dx);
+// Mamba depthwise causal convolution. Every output/gradient reduces in the
+// public CPU order using separately rounded f32 multiply/add; no atomics.
+// seq_len=0 means one sequence. Optional output pointers select gradients.
+// False (inactive or invalid geometry) leaves outputs untouched.
+bool conv1d_causal_fwd(const Matrix& x, const Matrix& w, const Matrix* bias, size_t seq_len, Matrix& y);
+bool conv1d_causal_bwd(const Matrix& x, const Matrix& w, const Matrix& dy, size_t seq_len,
+                       Matrix* dx, Matrix* dw, Matrix* dbias);
 bool slice_cols(const Matrix& x, size_t c0, size_t n, Matrix& y);
 bool place_cols(const Matrix& g, size_t c0, Matrix& dx);
 bool concat_cols(const std::vector<const Matrix*>& xs, Matrix& y);
