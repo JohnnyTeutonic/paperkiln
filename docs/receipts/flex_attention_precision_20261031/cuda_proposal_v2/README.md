@@ -1,0 +1,9 @@
+This is an unlaunched, model-only actual L4 proposal. Root owns controller registration, final operational argv and paid launch. No watchdog entry was edited and no CUDA outcome exists.
+
+The frozen source archive and upload hashes are in inputs.json; proposal.json fixes the resource cap and remote command. The wrapper checks every upload, its own hash, exact extracted inventory, every source hash before and after execution, one actual NVIDIA L4, CUDA plus DEVCHECK and profiler, then independent full arrays and all 116 gradients at unchanged numeric bounds. It runs CPU and CUDA cases once. The CPU leg independently checks the uploaded frozen fixture through the source-bound replayer; actual runtime cases independently reconstruct fixture values. The output directory refuses reuse, failures retain logs and a ZIP, and unsuccessful gates exit nonzero.
+
+Fresh exact-archive CPU configure passed, including studio/chat.html; no library was rebuilt locally for packaging. The local configure uses the previously available nlohmann JSON cache, while remote CMake fetches its declared fixed release. The frozen CPU fixture replay passed, the actual CPU binary refused --require-cuda before writing raw output, and 388 optimized parser/reference/operational tests passed. These CPU checks do not establish CUDA compilation or execution.
+
+Preserve any operational or scientific failure; no outcome-driven retry or numeric bound change. CPU CLI training, save/reload and Ember controls remain the evidence in the parent receipt. This proposal adds no CUDA CLI lifecycle, quality, speed, residency or broad adoption claim.
+
+V2 adds explicit in-VM replay of the uploaded CPU fixture before the newly generated CPU and CUDA cases. V1 is retained unlaunched and superseded before any device outcome. No scientific bounds, model fixtures or production code changed.
