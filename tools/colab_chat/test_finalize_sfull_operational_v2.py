@@ -1,5 +1,15 @@
 import json
 import pytest
+from pathlib import Path
+
+if not Path(
+    "/home/jonat/pk_sfull_operation_v2_20261101/tools/colab_chat/finalize_sfull_operational_v2.py"
+).is_file():
+    pytest.skip(
+        "isolated historical S-full finalizer anchors unavailable",
+        allow_module_level=True,
+    )
+
 import finalize_sfull_operational_v2 as f
 
 
@@ -86,3 +96,11 @@ def test_empty_prelaunch_is_pending_not_error(tmp_path, monkeypatch):
     obj.art = tmp_path
     result = obj.inputs()
     assert result["ready"] is False and len(result["pending"]) == 6
+
+
+def test_integrated_entrypoint_uses_isolated_frozen_runner():
+    assert f.FROZEN_TARGET.parent == Path(
+        "/home/jonat/pk_sfull_operation_v2_20261101/tools/colab_chat"
+    )
+    assert f.FROZEN_TARGET.parent / "runner_multi.py" in f.sources()
+    assert Path(__file__).parent / "runner_multi.py" not in f.sources()

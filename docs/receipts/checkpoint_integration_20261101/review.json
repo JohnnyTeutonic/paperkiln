@@ -1,0 +1,63 @@
+{
+  "status": "CLEAN_INTEGRATION_CPU_REVIEW_READY_NO_ACTIVATION",
+  "base": "6af5ac810add1c212817097edacdbf50bfb50cf4",
+  "worktree": "/home/jonat/pk_checkpoint_integration_20261101",
+  "branch": "codex/checkpoint-integration-20261101",
+  "requested_sfull_commits": [
+    "f005c49d1",
+    "57a661e51",
+    "125bf0396",
+    "1af22cfd6",
+    "b23abe10c"
+  ],
+  "receipt_prerequisite": "4d3fa124d creates readiness_v2.json before b23 modification",
+  "requested_dpo_commits": [
+    "75dc4497f",
+    "110003c20",
+    "1a5bdf0cb",
+    "dc61b0bc3",
+    "048944ac8",
+    "a1a4a14dc"
+  ],
+  "conflicts_resolved": [
+    "normal runner releases both separately typed INFLIGHT lease sets after boot",
+    "both named boot choices preserved",
+    "separate Sfull/DPO relay branches preserve original default fallback"
+  ],
+  "unsupported": "Mixed S-full/DPO campaigns explicitly refused before provider setup and in prepare; each family requires its own named boot. No unified campaign support claimed.",
+  "frozen_sfull": {
+    "delegate": "/home/jonat/pk_sfull_operation_v2_20261101/tools/colab_chat/finalize_sfull_operational_v2.py",
+    "delegate_sha256": "7bc4ecbc2345efa8cfa01b1b8095bcb0d34aa3599c825f095b0d99a93331a449",
+    "source_freeze": "/home/jonat/pk_sfull_operation_v2_20261101/docs/receipts/sfull_launch_v2_20261101/source_freeze_v2.json",
+    "source_freeze_sha256": "7b84e7e6145826efd0253fa52d6e05d5619266d9ba0a51055851211fb14361cb",
+    "original_anchors_verified": 37,
+    "state_anchors_including_freeze": 38,
+    "freeze_and_readiness_copies_byte_identical": true,
+    "integrated_runner_is_historical_frozen_runner": false,
+    "entrypoint_state_smoke": "WAITING with isolated historical runner anchor, no integrated runner anchor"
+  },
+  "numeric": {
+    "historical_sfull_io_commit_merged": false,
+    "modern_cli_exact_reverse_patch_restores_base": true,
+    "original_cli_sha256": "e292b94e53b179ccab5c9bfae6dd3a261a581fd5149a722601bf781f0e33bf42",
+    "integrated_cli_sha256": "7f6f1ce21f511a2f8ec184bcd7db0616e6ce5843eb66d4eed7c752b6b3d806e2",
+    "only_new_dpo_io_hooks": true
+  },
+  "validation": {
+    "pytest_passed": 329,
+    "pytest_seconds": 10.77,
+    "ruff_changed_python": "PASS",
+    "git_diff_check": "PASS",
+    "legacy_checkpoint_function_ast_identity": [
+      "upload_file",
+      "download_file",
+      "relay",
+      "fetch_final",
+      "adopt_home",
+      "volume_has",
+      "upload_checkpoint"
+    ]
+  },
+  "no_public_push_provider_watchdog_or_active_worktree_mutation": true,
+  "scope": "CPU/source integration only. Individual historical proof receipts retain their original source identity. No new CUDA/cadence/performance/quality evidence."
+}
