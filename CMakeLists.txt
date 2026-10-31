@@ -549,3 +549,11 @@ target_compile_definitions(checkpoint_copy_fixed PRIVATE CHECKPOINT_VARIANT="fix
 add_executable(checkpoint_copy_old tests/checkpoint_copy_gate.cpp tests/checkpoint_copy_baseline.cpp)
 target_link_libraries(checkpoint_copy_old PRIVATE microtorch)
 target_compile_definitions(checkpoint_copy_old PRIVATE CHECKPOINT_VARIANT="old")
+
+# Public KL constant-reference host-copy proof, isolated old/fixed ops objects.
+add_executable(policy_reference_fixed tests/policy_reference_gate.cpp src/ops.cpp)
+target_link_libraries(policy_reference_fixed PRIVATE microtorch)
+target_compile_definitions(policy_reference_fixed PRIVATE POLICY_REFERENCE_VARIANT="fixed")
+add_executable(policy_reference_old tests/policy_reference_gate.cpp tests/policy_reference_baseline.cpp)
+target_link_libraries(policy_reference_old PRIVATE microtorch)
+target_compile_definitions(policy_reference_old PRIVATE POLICY_REFERENCE_VARIANT="old")
