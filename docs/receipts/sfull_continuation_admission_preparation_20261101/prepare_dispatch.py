@@ -71,8 +71,12 @@ def prepare():
     for path in [ROOT/"prepare_dispatch.py",ROOT/"guard_validation.json",ROOT/"owner_probe.json"]:
         review["pins"][str(path)]=sha(path)
     path=ROOT/"admission.json";path.write_text(json.dumps(review,indent=2)+"\n")
-    spec=importlib.util.spec_from_file_location("sfull_guard",ROOT/"guarded_continuation.py");module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
-    module.validate(path,sha(path),argv[1:]);module.validate_checkpoint(review)
+    guard={"__file__":str(ROOT/"guarded_continuation.py"),"__name__":"dispatch_guard"}
+    guard_bytes=(ROOT/"guarded_continuation.py").read_bytes()
+    if hashlib.sha256(guard_bytes).hexdigest() != review["pins"][str(ROOT/"guarded_continuation.py")]:
+        raise ValueError("guard source changed before execution")
+    exec(compile(guard_bytes,str(ROOT/"guarded_continuation.py"),"exec"),guard)
+    guard["validate"](path,sha(path),argv[1:]);guard["validate_checkpoint"](review)
     result={"review":str(path),"review_sha256":sha(path),"guard_argv":["python3",str(ROOT/"guarded_continuation.py"),"--review",str(path),"--review-sha256",sha(path),"--"]+argv[1:],"deadline_utc":review["deadline_utc"],"provider_clear":True,"watchdog_enabled":False}
     (ROOT/"dispatch.json").write_text(json.dumps(result,indent=2)+"\n")
     print(json.dumps({"status":"SERIAL_ADMISSION_READY_NOT_ENABLED","deadline_utc":review["deadline_utc"],"review_sha256":sha(path)}))

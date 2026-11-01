@@ -1,5 +1,5 @@
 {
-  "passed": 20,
+  "passed": 23,
   "cases": [
     "complete_valid_contract",
     "reject_--max-usd",
@@ -20,7 +20,10 @@
     "reject_expired_deadline",
     "reject_wrong_numerical",
     "reject_missing_pin",
-    "reject_reservation_reset"
+    "reject_reservation_reset",
+    "reject_carried_ledger_not_original",
+    "reject_absolute_window_reset",
+    "reject_symlink_pin"
   ],
   "provider_calls": 0,
   "gpu_calls": 0

@@ -38,4 +38,16 @@ with tempfile.TemporaryDirectory() as td:
   try:check(v)
   except ValueError:passed.append('reject_'+kind)
   else:raise AssertionError(kind)
+ # Re-sign fixtures deliberately to exercise semantic rather than hash checks.
+ for kind in ['carried_ledger_not_original','absolute_window_reset','symlink_pin']:
+  v=copy.deepcopy(base)
+  if kind=='carried_ledger_not_original':
+   prior=json.loads(Path(v['carried_ledger']).read_text());prior['pods'].pop();bad=t/'bad_prior.json';bad.write_text(json.dumps(prior));v['carried_ledger']=str(bad)
+  if kind=='absolute_window_reset':
+   v['probe_only']=False;v['admitted_at_utc']='2020-01-01T00:00:00Z'
+  if kind=='symlink_pin':
+   link=t/'pin_link';link.symlink_to(r/'guarded_continuation.py');v['pins'][str(link)]=g.sha(link)
+  try:check(v)
+  except ValueError:passed.append('reject_'+kind)
+  else:raise AssertionError(kind)
 (r/'guard_validation.json').write_text(json.dumps({'passed':len(passed),'cases':passed,'provider_calls':0,'gpu_calls':0},indent=2)+'\n');print('S-full admission guard: '+str(len(passed))+' cases pass')

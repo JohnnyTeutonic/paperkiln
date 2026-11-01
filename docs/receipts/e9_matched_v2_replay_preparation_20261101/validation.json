@@ -1,0 +1,19 @@
+{
+  "kind": "OFFLINE_REPLAY_HELPER_PREPARATION_ONLY",
+  "tests_passed": 34,
+  "actual_campaign_replayed": false,
+  "provider_calls": 0,
+  "gpu_calls": 0,
+  "frozen_stage_modified": false,
+  "source_sha256": {
+    "e9_matched_replay_v2.py": "014b94891fc221397f500bf50a329283f88d82c3cd705d0b1d0cdf18bad98d87",
+    "test_e9_matched_replay_v2.py": "352f1559fb582beccae533e8be79ece2bb9e3c73c2a844ee8922ac1752fa06f7"
+  },
+  "checker_sha256": "ec61c2867b7fb1bfc5897871fcf154246825e4b1bfde052354f9aa39ee55c10b",
+  "staging_sha256": "caed026940edb376f2c13c224f7f6ec1fedbd4c47aad11b8de8635e7980048f6",
+  "independent_review": {
+    "disposition": "APPROVE",
+    "reviewer": "Codex admission_review",
+    "scope": "Offline replay helper only; raw reported metrics, not device rerun"
+  }
+}

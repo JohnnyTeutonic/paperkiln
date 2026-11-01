@@ -1,0 +1,17 @@
+{
+  "cases_passed": 9,
+  "cases": [
+    "positive",
+    "wrong_argv",
+    "wrong_review_hash",
+    "stale",
+    "other_enabled",
+    "duplicate_state",
+    "active_provider",
+    "exhausted_cap",
+    "guard_source_drift"
+  ],
+  "isolated_fake_provider_only": true,
+  "actual_provider_calls": 0,
+  "actual_watchdog_mutations": 0
+}
