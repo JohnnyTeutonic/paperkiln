@@ -252,3 +252,26 @@ def test_final_optimizer_state_from_different_recipe_is_refused(tmp_path):
     bad = job(); bad["full_checkpoint_v2"]["source_commit"] = "b" * 40
     with pytest.raises(ValueError, match="source/recipe/budget differs"):
         tr.final_home_ready(bad, tmp_path)
+
+
+def test_finished_poll_halts_missing_final_and_accepts_eventual_final(tmp_path):
+    state = {}
+    ready(tmp_path, 675)
+    assert not tr.finished_home_poll(job(), tmp_path, state)
+    assert not tr.finished_home_poll(job(), tmp_path, state)
+    with pytest.raises(RuntimeError, match="three polls"):
+        tr.finished_home_poll(job(), tmp_path, state)
+    assert state["sfull_final_missing_polls"] == 3
+    ready(tmp_path, 10000)
+    assert tr.finished_home_poll(job(), tmp_path, state)
+    assert "sfull_final_missing_polls" not in state
+
+
+def test_finished_poll_propagates_integrity_failure_immediately(tmp_path):
+    ready(tmp_path, 10000)
+    folder, _ = cp.current_unlocked(tr.root_for(tmp_path, job()))
+    (folder / "optim.safetensors").write_bytes(b"corrupt")
+    state = {}
+    with pytest.raises(ValueError):
+        tr.finished_home_poll(job(), tmp_path, state)
+    assert state == {}

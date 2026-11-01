@@ -284,3 +284,15 @@ def final_home_ready(job, art):
         _, manifest = cp.current_unlocked(root)
         check_manifest(job, manifest)
         return manifest["step"] == c["steps"]
+
+
+def finished_home_poll(job, art, state, limit=3):
+    """Bound missing final-state polling; never convert a missing state to home."""
+    if final_home_ready(job, art):
+        state.pop("sfull_final_missing_polls", None)
+        return True
+    count = state.get("sfull_final_missing_polls", 0) + 1
+    state["sfull_final_missing_polls"] = count
+    if count >= limit:
+        raise RuntimeError("finished S-full job lacks validated exact-final-step checkpoint after three polls")
+    return False

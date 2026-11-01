@@ -1281,8 +1281,16 @@ def main():
                     relayed = relay(st, n, j.get("relay_every_steps", 0)) or relayed
                 if r[n] == "FINISHED" and not js["home"]:
                     if j.get("full_checkpoint_v2"):
-                        from sfull_checkpoint_transport_v2 import final_home_ready as sfull_final_home_ready
-                        if not sfull_final_home_ready(j, ART):
+                        from sfull_checkpoint_transport_v2 import finished_home_poll
+                        try:
+                            final_ready = finished_home_poll(j, ART, js)
+                            st.save()
+                        except (OSError, ValueError, RuntimeError, KeyError, TypeError) as error:
+                            log(f"{n}: final full checkpoint refused: {error}")
+                            with open(os.path.join(HOME, "HALTED"), "x") as marker:
+                                json.dump({"kind": "S_FULL_FINAL_CHECKPOINT_FAILURE", "job": n, "error": str(error)}, marker)
+                            raise
+                        if not final_ready:
                             done = False
                             continue  # final model/AdamW/RNG/events must land, not merely weights
                     if j.get("dpo_full_checkpoint_v1"):
