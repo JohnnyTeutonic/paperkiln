@@ -1,0 +1,20 @@
+{
+ "_comment": "E9 registered quantised-cache gate (AI_ML/e9_f16kv_claude/REGISTRATION.md, amendment A1). Command-only boot; root watchdog owns launch and the $3 cap. NOT YET REGISTERED with the watchdog: waits for the single GPU slot (S-full seed 1). FINISHED means receipts are home; scientific closure requires gate_summary.pass=true and execution.gate_pass=true.",
+ "max_parallel": 1,
+ "jobs": [
+  {
+   "name": "e9_gate",
+   "cmd": [
+    "python3",
+    "/content/chat/upload/e9_runpod_job.py",
+    "{out}"
+   ],
+   "outputs": [
+    "out.zip",
+    "vm.log",
+    "gate_summary.json",
+    "execution.json"
+   ]
+  }
+ ]
+}
