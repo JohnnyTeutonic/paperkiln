@@ -1,0 +1,11 @@
+{
+  "actual_refusal_marker_created": true,
+  "marker_path_is_guard_parent_STOPPED": true,
+  "production_stop_marker_absent": true,
+  "provider_calls": 0,
+  "exit_code": 1,
+  "marker": {
+    "kind": "SFULL_FINANCIAL_CONTINUATION_REFUSED",
+    "error": "review binding differs"
+  }
+}

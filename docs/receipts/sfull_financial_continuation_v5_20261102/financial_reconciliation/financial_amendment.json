@@ -1,0 +1,58 @@
+{
+  "kind": "PROSPECTIVE_FINANCIAL_ONLY_SFULL_AMENDMENT",
+  "status": "ADOPTED_FOR_SEED1_PENDING_SAFE_CAP_BOUNDARY_TRANSITION",
+  "adopted_at_utc": "2026-11-01T18:02:02.620097+00:00",
+  "authority": "Jonathan explicitly authorised increased funding in direct response to the S-full cap shortfall, then instructed execution; not inferred from account balance alone",
+  "seed": 1,
+  "per_seed_cumulative_cap_usd": 12,
+  "three_seed_planning_reservation_usd": 36,
+  "seeds2_and3_admitted": false,
+  "seed_ledger_usd_at_unix": 1793556122.5122967,
+  "seed_ledger_usd": 4.905081143248228,
+  "completed_step_lower_bound": 4858,
+  "source_state_sha256": "a18b95f9e1fcc0965cd297c397cc35189be9fe5ecaf1645ab0191dbf4d16ca37",
+  "estimates": {
+    "mean_interval_proxy": {
+      "remaining_hours_with_post_proxy_and_half_hour_reclaim": 9.68307759206818,
+      "current_seed_cumulative_usd_projection": 10.768722574000627,
+      "new_seed_hours_projection": 15.70047955380144
+    },
+    "slowest_observed_interval_proxy": {
+      "remaining_hours_with_post_proxy_and_half_hour_reclaim": 11.037262042541531,
+      "current_seed_cumulative_usd_projection": 11.58875649123171,
+      "new_seed_hours_projection": 18.334054914504186
+    }
+  },
+  "estimation_limits": [
+    "Timing proxies are not confidence bounds or guarantees",
+    "S-gist maximum post time is a proxy; S-full behaviour remains unmeasured",
+    "Half-hour reclaim allowance is planning headroom, not an additional scientific phase",
+    "Current working and original protected volume charges retained; no protected-volume deletion assumed"
+  ],
+  "registered_budget_comparison": {
+    "method": "Use original core126VMh baseline, plus minimum original conditionalSfull24VMh to form a conservative comparable core+conditional basket; later129.3core and30.8conditional estimates are also retained in registration, not substituted to lower the ratio. HS1 extension separately authorised and reported separately.",
+    "core_actual_vm_hours": 141.89941893021265,
+    "core_baseline_vm_hours": 126,
+    "core_actual_ratio": 1.1261858645254972,
+    "core_plus_conditional_minimum_baseline_vm_hours": 150,
+    "one_and_half_threshold_vm_hours": 225,
+    "core_plus_sfull_all_three_mean_point_vm_hours": 191.2682934996206,
+    "core_plus_sfull_all_three_slow_proxy_vm_hours": 197.88962867149945,
+    "separately_approved_hs1_extension_vm_hours": 29.73919593407048,
+    "all_recorded_plus_current_seed_only_slow_proxy_vm_hours": 190.96071477656156,
+    "decision": "Current actual totals and current-seed continuation planning are below the conservative225VMh comparator. New seeds need fresh whole-programme review; no seed2/3 launch is authorised. Operational dollar caps are not used as measured totals."
+  },
+  "unchanged": [
+    "Original deadline2026-11-02T11:41:15Z",
+    "10000PT/1500SFT steps and all registered scientific gates",
+    "Source c9b82 control/numerical1ccb, recipe, data, interval25 and180second guard",
+    "Full cumulative ledger and prior cap/halts/admissions",
+    "One actual GPU owner and existing watchdog only"
+  ],
+  "transition": "No live-process change; arm a separately validated guard to run only after natural budget stop, preserving terminal evidence; refuse scientific/corruption halts",
+  "live_limit_changed": false,
+  "numerical_commit": "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1",
+  "original_seed_admission": "/home/jonat/sfull_v2_seed1_root_admission_20261101/admission.json",
+  "original_seed_admission_sha256": "579cc75c2be8e1821e043b4c7dda3286a67020d533a51192a59f7e2af9a4851b",
+  "programme_reconciliation_sha256": "92e07a705c1bf4fc5fe6e8212b7c683930803084dfcfffe135392d0fb433851f"
+}

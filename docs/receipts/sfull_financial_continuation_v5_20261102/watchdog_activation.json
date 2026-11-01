@@ -1,0 +1,37 @@
+{
+  "checked_at_utc": "2026-11-01T18:19:33.286248+00:00",
+  "review_sha256": "b05a6d6f811b293d784f8b402f0672ec131f5785ca3907de2da9445582dac45c",
+  "guard_sha256": "c61ca4aaaff2578f60e238054d71ef47a563b4fd8d894d0f8f1c59698e4737c6",
+  "configuration_pass": true,
+  "actual_early_invocation": "DEFER_PREDECESSOR_ALIVE",
+  "actual_predecessor_owner_recognized": true,
+  "candidate_argv_deployed_predicate_replay": true,
+  "candidate_replay_is_live_V5_run": false,
+  "actual_watchdog_match_includes_predecessor": true,
+  "only_one_gpu_campaign_enabled": true,
+  "provider_pods": 1,
+  "seed_cumulative_spend_usd": 5.08183168182292,
+  "stop_file_catches_guard_refusals": true,
+  "before_entry": {
+    "name": "S-full seed1 continuation V4 oneL4 cumulative7USD checkpoint180s",
+    "enabled": true,
+    "workdir": "/home/jonat/sfull_continuation_admission_v4_20261101/source",
+    "state_dir": "/home/jonat/sfull_continuation_admission_v4_20261101/runner",
+    "stop_file": "/home/jonat/sfull_continuation_admission_v4_20261101/runner/HALTED",
+    "match": "--state-dir /home/jonat/sfull_continuation_admission_v4_20261101/runner",
+    "command": "python3 /home/jonat/sfull_continuation_admission_v4_20261101/guarded_continuation.py --review /home/jonat/sfull_continuation_admission_v4_20261101/admission.json --review-sha256 dc9f5fe8971ce61f6916c0e04b2126671cca7d176ecf38ddc20f48530dcfe373 -- /home/jonat/sfull_continuation_admission_v4_20261101/source/tools/colab_chat/runner_multi.py --backend runpod --gpu L4 --cloud SECURE --volume-gb 80 --image runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04 --commit c9b82fd6718497a4ace4fba62f6e23b8ed2346a7 --jobs tools/colab_chat/carry12_sfull_v2_r1.json --boot-script tools/colab_chat/boot_sfull_v2_20261101.sh --name pk-c12-sfull-r1-cont-v4 --art /mnt/c/ml_artifacts/tiny_chat/c12_Sfull_r1_cont_v3_20261101 --state-dir /home/jonat/sfull_continuation_admission_v4_20261101/runner --max-usd 7 --max-hours 23.5 --upload vocab_llama3_bpe.gguf=/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf --deadline-utc 2026-11-02T11:41:15Z >> /home/jonat/sfull_continuation_admission_v4_20261101/runner/guard.log 2>&1"
+  },
+  "after_entry": {
+    "name": "S-full seed1 V5 financial12USD after natural V4 cap; checkpoint180s",
+    "enabled": true,
+    "workdir": "/home/jonat/sfull_continuation_admission_v4_20261101/source",
+    "state_dir": "/home/jonat/sfull_continuation_admission_v4_20261101/runner",
+    "stop_file": "/home/jonat/sfull_financial_continuation_v5_20261102/STOPPED",
+    "match": "--state-dir /home/jonat/sfull_continuation_admission_v4_20261101/runner",
+    "command": "python3 /home/jonat/sfull_financial_continuation_v5_20261102/sfull_financial_continuation_v1.py --review /home/jonat/sfull_financial_continuation_v5_20261102/admission.json --review-sha256 b05a6d6f811b293d784f8b402f0672ec131f5785ca3907de2da9445582dac45c -- /home/jonat/sfull_continuation_admission_v4_20261101/source/tools/colab_chat/runner_multi.py --backend runpod --gpu L4 --cloud SECURE --volume-gb 80 --image runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04 --commit c9b82fd6718497a4ace4fba62f6e23b8ed2346a7 --jobs tools/colab_chat/carry12_sfull_v2_r1.json --boot-script tools/colab_chat/boot_sfull_v2_20261101.sh --name pk-c12-sfull-r1-cont-v4 --art /mnt/c/ml_artifacts/tiny_chat/c12_Sfull_r1_cont_v3_20261101 --state-dir /home/jonat/sfull_continuation_admission_v4_20261101/runner --max-usd 12 --max-hours 23.5 --upload vocab_llama3_bpe.gguf=/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf --deadline-utc 2026-11-02T11:41:15Z >> /home/jonat/sfull_continuation_admission_v4_20261101/runner/guard.log 2>&1"
+  },
+  "activated": true,
+  "live_training_limit_still_usd": 7,
+  "actual_predecessor_owner_recognized_after_activation": true,
+  "local_full_activation_sha256": "7ed1034d8725f97f0d2f6ccad73882ad81774de253de1e66054d4795228ea018"
+}

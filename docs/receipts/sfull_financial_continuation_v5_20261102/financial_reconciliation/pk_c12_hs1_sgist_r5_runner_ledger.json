@@ -1,0 +1,63 @@
+{
+  "scope": "hs1_extension",
+  "state_path": "/home/jonat/pk_c12_hs1_sgist_r5_runner/state.json",
+  "state_sha256": "dcf6fd5ed88ceefede8db0c5eeaf9f21b8137d52ebd04e817eb7a7cfcf6046a0",
+  "campaign_home": true,
+  "jobs": {
+    "cuda_gate": {
+      "status": "FINISHED",
+      "home": true
+    },
+    "data": {
+      "status": "FINISHED",
+      "home": true
+    },
+    "gate": {
+      "status": "FINISHED",
+      "home": true
+    },
+    "pt_c12_Sgist_r5": {
+      "status": "FINISHED",
+      "home": true
+    },
+    "post_c12_Sgist_r5": {
+      "status": "FINISHED",
+      "home": true
+    }
+  },
+  "ledger": {
+    "pods": [
+      {
+        "id": "ixf11kb989nzxl",
+        "name": "pk-c12-hs1-sgist-r5",
+        "gpu": "L4",
+        "usd_per_hr": 0.59,
+        "dc": "EUR-IS-1",
+        "volume": "swhxav3hok",
+        "start": 1793336658.7439287,
+        "stop": 1793368599.2227385,
+        "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+        "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+        "stopped_by": "runner"
+      }
+    ],
+    "volumes": [
+      {
+        "id": "8kcv9d32c8",
+        "dc": "EU-RO-1",
+        "gb": 80,
+        "created": 1793336158.6722124,
+        "name": "pk-c12-hs1-sgist-r5-vol",
+        "deleted": 1793336408.2745142
+      },
+      {
+        "id": "swhxav3hok",
+        "dc": "EUR-IS-1",
+        "gb": 80,
+        "created": 1793336410.0144832,
+        "name": "pk-c12-hs1-sgist-r5-vol",
+        "deleted": 1793368600.0801754
+      }
+    ]
+  }
+}
