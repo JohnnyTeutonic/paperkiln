@@ -1,0 +1,24 @@
+{
+  "argv": [
+    "python3",
+    "/home/jonat/sfull_continuation_admission_v4_20261101/source/tools/colab_chat/sfull_operational_v2.py",
+    "validate",
+    "--historical",
+    "/home/jonat/pk_sfull_numeric_io_v2_20261101",
+    "--control",
+    "/home/jonat/sfull_continuation_admission_v4_20261101/source",
+    "--jobs",
+    "/home/jonat/sfull_continuation_admission_v4_20261101/source/tools/colab_chat/carry12_sfull_v2_r1.json"
+  ],
+  "proof": {
+    "numerical_commit": "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1",
+    "seed": 1,
+    "jobs_sha256": "7cee228e973c6e4775846d709e1f77b60dd6b2d18f994ecfc400cd04b2ffb1f5",
+    "V2_sha256": "ef002f238c1d3d54aa27e6e4981ef9b5590d7930c1feeabc245ac4a607c2edf0",
+    "reference_sha256": "acd00d74a93299aa0614f98233f837ef3dc30d38ce9120330e9f2f5c2b982cf4",
+    "arithmetic_data_optimization_recipe_changed": false,
+    "checkpoint_io_interval_amendment": true,
+    "historical_parity_clean_pass_claimed": false
+  },
+  "gpu_calls": 0
+}

@@ -1,0 +1,16 @@
+{
+  "tests_passed": 64,
+  "seconds": 21.4,
+  "provider_calls": 0,
+  "credential_reads": 0,
+  "source_commit": "b444700195625570130913646bb5ad86c364f4c4",
+  "original_adoption_sha256": "e14520a583bdb308f4c7d5fd2a6ba9036ceb6e0354292f6f31144a0383f39c2c",
+  "frozen_source_and_instance_edited": false,
+  "judging_job_created": false,
+  "files_sha256": {
+    "consumer_linkage_proposal.json": "12ede6702dddcc0c4c5d7a823350ed63f7fe5c1bf3b7b8563c90bf400964b79d",
+    "source_audit.json": "38b19162df5f89eef8c890bbd084d3724b0e14559a987ff2e344c3300829bdae",
+    "intake_plan.json": "4e7c4558a606cc7c163515cf4612c3346ab652f00dfb97ca86f921a540511307",
+    "README.md": "107c98348176f46f50aacfa0744a55cb62afc6264a4aaa15a2f1113eb8677c58"
+  }
+}

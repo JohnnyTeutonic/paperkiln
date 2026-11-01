@@ -1,0 +1,49 @@
+{
+  "kind": "ROOT_ADOPTED_HELDOUT_V3_CONSUMER_LINKAGE",
+  "adopted": true,
+  "prepared_at_utc": "2026-11-01T11:38:46.963270+00:00",
+  "original_adoption_path": "/home/jonat/heldout_api_root_admission_20261101/heldout_adoption.json",
+  "original_adoption_sha256": "e14520a583bdb308f4c7d5fd2a6ba9036ceb6e0354292f6f31144a0383f39c2c",
+  "frozen_policy_sha256": "5181e14991c7eb326b32f9bd2d35688946f38156e4a9e1ab53375d83b751ed29",
+  "v3_training_binding_path": "/home/jonat/dpo_admission_v3_20261101/instance/dpo_binding.json",
+  "v3_training_binding_sha256": "2baf7040c6da1fdeb3e682972b4baf2efe831814f029644d2a22665007a8885b",
+  "v3_training_source_commit": "b444700195625570130913646bb5ad86c364f4c4",
+  "original_heldout_operational_sources_unchanged": true,
+  "changed_consumer_hashes": {
+    "tools/colab_chat/dpo_checkpoint_core_v1.py": {
+      "original_adopted_sha256": "88382d42f4c2e8837a72703f3fc1efb08e61f9097e6b36985e58d96aa3145145",
+      "v3_actual_sha256": "311d6fe7745c91abeba864347b006f0a18f1a9b1e7f459a8999bf39285b17b77"
+    },
+    "tools/colab_chat/dpo_checkpoint_transport_v1.py": {
+      "original_adopted_sha256": "174d394d53977d5862248a652f681cadddf2b82bfa59d2d44675dcb69a33a32d",
+      "v3_actual_sha256": "0b79e318b9f4724c3b4abab33a6f0db67424d2ca4ea86f353778d88ecbc691ac"
+    },
+    "tools/posttrain/build_dpo_instance_v7.py": {
+      "original_adopted_sha256": "b8fdbeb5503088f5fed7c3578a14c63109c6b781e5c9bc4e272df88c997bf019",
+      "v3_actual_sha256": "52557e9a2fe5bf188498adcddce860387a2ce31645005a59025bb2acf933b62d"
+    }
+  },
+  "extra_bound_consumer_hashes": {
+    "tools/posttrain/materialize_preference_v7.py": "bfd1d84341fc3e2aea2c40470cf199a6c8ae9ee058e8120db0629a66991d6a8b"
+  },
+  "reason": "Bind already independently reviewed explicit rotary-layout adoption and checkpoint diagnostic fixes to returned V3 evidence; do not change scientific policy, metrics, sampling, profile, thresholds or accounting. Original adoption and training binding stay immutable.",
+  "preexisting_reviews": [
+    "docs/receipts/dpo_layout_recovery_20261101/",
+    "docs/receipts/dpo_corrected_layout_admission_v3_20261101/"
+  ],
+  "all_five_original_gates_required": true,
+  "automatic_model_replacement": false,
+  "no_provider_calls": true,
+  "adopted_at_utc": "2026-11-01T11:39:41.224497+00:00",
+  "before_dpo_training_and_outcomes": true,
+  "original_policy_and_operational_hashes_verified": true,
+  "independent_intake_tests_passed": 64,
+  "judging_launch_authorized": false,
+  "limits_unchanged": {
+    "stage_usd": 25,
+    "cumulative_usd": 200,
+    "max_attempts": 600
+  },
+  "original_adoption_modified": false,
+  "no_gpu_or_api_calls": true
+}

@@ -1,0 +1,24 @@
+{
+  "reviewed_at_utc": "2026-11-01T11:31:23.287540+00:00",
+  "runner_source_commit": "c9b82fd6718497a4ace4fba62f6e23b8ed2346a7",
+  "root_guard_sha256": "334732a05a5bcb7df46f74795202f05b7cd6cc9e163b28e71bb107d9bb7e94b3",
+  "proposed_guard_sha256": "213e3e2131a5dc16fe6c574a631211b5e9ba15f2a6706a2f8682a2cff02a7915",
+  "tests_passed": 16,
+  "demonstrated_original_validation_gaps": 6,
+  "real_guard_owner_probe": true,
+  "actual_sweeper": "runpod_sweep.runner_alive from frozen source",
+  "probe_no_provider": true,
+  "provider_calls": 0,
+  "gpu_launches": 0,
+  "watchdog_changed": false,
+  "original_prepared_folder_changed": false,
+  "files": {
+    "original_guard.py": "334732a05a5bcb7df46f74795202f05b7cd6cc9e163b28e71bb107d9bb7e94b3",
+    "guard_hardening_proposal.diff": "52d0fd8d405f53d0409a0b2decb65decdca660ff93e31347c7984f8261b8bdcb",
+    "plan_snapshot.json": "76fdf53e76516ec689b41f3b6e84c4641d923c5a79c7ca0dcd9cf881a8c55239",
+    "test_operational_admission.py": "54b54f5d1b7fd804da9853a76e7a1a1c5b7df9af27a8085d0f3d2d8cb17bdb4e",
+    "proposed_guarded_runner.py": "213e3e2131a5dc16fe6c574a631211b5e9ba15f2a6706a2f8682a2cff02a7915",
+    "prepare_dispatch.py": "5cf6e1f7fbdc708fa54d5c7c15d6b7928515e29ef61d0a57dcc19d14f182b745",
+    "README.md": "a090c8ea5832915f85089d2bbcb60e0bab16d67ead4e24797eaf40fd157ff267"
+  }
+}
