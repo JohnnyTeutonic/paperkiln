@@ -1,0 +1,14 @@
+{
+  "status": "PLANNING_ONLY_NOT_ADOPTED",
+  "independent_review": "Read-only review of financial v2 observations against tiny_chat_long_2026-10/PREREGISTRATION.md budget section",
+  "finding": "The registered1.5x referral rule cannot be evaluated by dividing proposed operational caps by old caps. It compares a measured total with its applicable approved planning basket.",
+  "required_before_adoption": [
+    "Identify the dated approval, exact programme/conditional scope and denominator without post-hoc selection",
+    "Reconcile realised and projected remaining VM-hours and costs for that basket, all seeds/phases, setup, reclaims, builds, panels and evaluations",
+    "Keep GPU VM-hour comparator distinct from volume-inclusive cost ledgers; avoid double counting prior core spending",
+    "Record the1.5x check and any required Jonathan referral/go before adopting or admitting a revised cap"
+  ],
+  "current_live_cap_changed": false,
+  "proposal_adopted": false,
+  "scientific_or_provider_action": false
+}
