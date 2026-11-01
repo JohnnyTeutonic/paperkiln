@@ -1,0 +1,89 @@
+{
+  "status": "PASS",
+  "wrapper_sha256": "d925c534a72b499f33107b264862e705ef9feb01c09ca7170c418a49cf1267c4",
+  "cases": [
+    {
+      "case": "negative_science",
+      "refused_before_write": true,
+      "all_prior_bytes_preserved": true
+    },
+    {
+      "case": "positive_science",
+      "refused_before_write": true,
+      "all_prior_bytes_preserved": true
+    },
+    {
+      "case": "partial_science",
+      "refused_before_write": true,
+      "all_prior_bytes_preserved": true
+    },
+    {
+      "case": "negative_jobout",
+      "refused_before_write": true,
+      "all_prior_bytes_preserved": true
+    },
+    {
+      "case": "GATE_DONE",
+      "refused_before_write": true,
+      "all_prior_bytes_preserved": true
+    },
+    {
+      "case": "GATE_FAILED",
+      "refused_before_write": true,
+      "all_prior_bytes_preserved": true
+    },
+    {
+      "case": "PHASES",
+      "refused_before_write": true,
+      "all_prior_bytes_preserved": true
+    },
+    {
+      "case": "gate_vm.log",
+      "refused_before_write": true,
+      "all_prior_bytes_preserved": true
+    },
+    {
+      "case": "gate_out.zip",
+      "refused_before_write": true,
+      "all_prior_bytes_preserved": true
+    },
+    {
+      "case": "gate_out_123.zip",
+      "refused_before_write": true,
+      "all_prior_bytes_preserved": true
+    },
+    {
+      "case": "existing_claim",
+      "refused_before_write": true,
+      "all_prior_bytes_preserved": true
+    },
+    {
+      "case": "missing_staging",
+      "transport_rc": 0,
+      "gate_pass": false,
+      "second_attempt_refused_without_changes": true,
+      "VM_invocations_are_stubs": true
+    },
+    {
+      "case": "stub_scientific_negative",
+      "transport_rc": 0,
+      "gate_pass": false,
+      "second_attempt_refused_without_changes": true,
+      "VM_invocations_are_stubs": true
+    },
+    {
+      "case": "stub_scientific_positive",
+      "transport_rc": 0,
+      "gate_pass": true,
+      "second_attempt_refused_without_changes": true,
+      "VM_invocations_are_stubs": true
+    },
+    {
+      "case": "simultaneous_attempt_claim",
+      "exactly_one_winner": true
+    }
+  ],
+  "case_count": 15,
+  "jobs_vm_source_contract": "manager only creates empty jobout; pid/rc/STATUS/trainlog are outside jobout (jobs_vm.py command branch)",
+  "provider_GPU_model_actions": 0
+}

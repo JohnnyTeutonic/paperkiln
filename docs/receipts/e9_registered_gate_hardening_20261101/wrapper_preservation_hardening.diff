@@ -1,0 +1,52 @@
+--- original/e9_runpod_job.py
++++ hardened/e9_runpod_job.py
+@@ -3,6 +3,7 @@
+ import hashlib
+ import json
+ import os
++import time
+ from pathlib import Path
+ import shutil
+ import subprocess
+@@ -19,8 +20,40 @@
+     return digest.hexdigest()
+ 
+ 
++def claim_attempt(outdir, content):
++    """No attempt may overwrite or retry existing scientific evidence."""
++    outdir, content = Path(outdir), Path(content)
++    output = content / "out"
++    for directory in (outdir, output):
++        if directory.is_symlink() or (directory.exists() and
++                (not directory.is_dir() or any(directory.iterdir()))):
++            raise ValueError("preserve existing E9 evidence: " + str(directory))
++    markers = [content / name for name in
++               ("GATE_DONE", "GATE_FAILED", "PHASES", "gate_vm.log", "gate_out.zip")]
++    markers.extend(content.glob("gate_out_*.zip"))
++    if any(path.exists() or path.is_symlink() for path in markers):
++        raise ValueError("preserve existing E9 terminal/partial attempt evidence")
++    # jobs_vm creates only the empty job directory; its pid/rc/status/log live
++    # outside that directory. O_EXCL serializes concurrent wrapper starts.
++    claim = content / ".e9_gate_attempt.json"
++    fd = os.open(claim, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
++    with os.fdopen(fd, "w") as stream:
++        json.dump({"kind": "E9_ONE_DURABLE_ATTEMPT", "started_unix": time.time(),
++                   "wrapper_sha256": sha(Path(__file__)), "outdir": str(outdir)}, stream)
++        stream.write("\n")
++        stream.flush()
++        os.fsync(stream.fileno())
++    directory = os.open(content, os.O_RDONLY | os.O_DIRECTORY)
++    try:
++        os.fsync(directory)
++    finally:
++        os.close(directory)
++    # The durable claim is intentionally never removed, including setup failure.
++
++
+ def run(outdir, content=Path("/content")):
+-    outdir = Path(outdir)
++    outdir, content = Path(outdir), Path(content)
++    claim_attempt(outdir, content)  # MUST precede every output write and catch block.
+     outdir.mkdir(parents=True, exist_ok=True)
+     output = content / "out"
+     output.mkdir(exist_ok=True)

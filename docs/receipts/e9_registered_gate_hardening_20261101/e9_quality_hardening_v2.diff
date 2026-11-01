@@ -1,0 +1,78 @@
+--- original/e9_quality.cpp
++++ hardened/e9_quality.cpp
+@@ -8,21 +8,38 @@
+ #include <cmath>
+ #include <cstdlib>
+ #include <iostream>
++#include <limits>
++#include <stdexcept>
+ #include <random>
+ #include <string>
+ #include <vector>
+ 
++#ifndef E9_QUALITY_CHECKS_ONLY
+ #include <nlohmann/json.hpp>
+ 
+ #include "gguf_parser.h"
+ #include "graph_ir.h"
+ 
+ using json = nlohmann::json;
++#endif
++
++static void require_logits_rows(const std::vector<float>& values, size_t rows, size_t vocab) {
++  if (rows == 0 || vocab == 0 || rows > std::numeric_limits<size_t>::max() / vocab ||
++      values.size() != rows * vocab)
++    throw std::runtime_error("e9_quality: incomplete or invalid logit shape");
++  for (float value : values)
++    if (!std::isfinite(value))
++      throw std::runtime_error("e9_quality: nonfinite logits");
++}
+ 
+ static double rel_row(const float* a, const float* ref, int n) {
++  if (a == nullptr || ref == nullptr || n <= 0)
++    throw std::runtime_error("e9_quality: empty logit row");
+   float lo = ref[0], hi = ref[0];
+   double d = 0.0;
+   for (int i = 0; i < n; ++i) {
++    if (!std::isfinite(a[i]) || !std::isfinite(ref[i]))
++      throw std::runtime_error("e9_quality: nonfinite logit row");
+     lo = std::min(lo, ref[i]);
+     hi = std::max(hi, ref[i]);
+     d = std::max(d, std::fabs(static_cast<double>(a[i]) - ref[i]));
+@@ -30,6 +47,7 @@
+   return hi > lo ? d / (hi - lo) : d;
+ }
+ 
++#ifndef E9_QUALITY_CHECKS_ONLY
+ int main(int argc, char** argv) {
+   if (argc < 2) {
+     std::cerr << "usage: e9_quality MODEL.gguf --limit L [--n 12] [--len 24] [--seed 0]\n";
+@@ -61,6 +79,8 @@
+     return 1;
+   }
+   const int V = f16.vocab();
++  if (n <= 0 || len <= 0 || V <= 0 || f32.vocab() != V)
++    throw std::runtime_error("e9_quality: invalid request or vocabulary geometry");
+   const int hi = std::min<int>(V, static_cast<int>(gguf.tokenizer_tokens.empty() ? V : gguf.tokenizer_tokens.size()));
+   std::mt19937 rng(seed);
+   std::uniform_int_distribution<int> pick(0, hi - 1);
+@@ -70,10 +90,13 @@
+     std::vector<int> ids(len);
+     for (int& t : ids) t = pick(rng);
+     const std::vector<float> a = f16.forward(ids, 0, true), b = f32.forward(ids, 0, true);
++    require_logits_rows(a, static_cast<size_t>(len), static_cast<size_t>(V));
++    require_logits_rows(b, static_cast<size_t>(len), static_cast<size_t>(V));
+     double w = 0.0, wd = 0.0;
+     for (int t = 0; t < len; ++t) w = std::max(w, rel_row(a.data() + size_t(t) * V, b.data() + size_t(t) * V, V));
+     for (int t = 0; t < len; ++t) {
+       const std::vector<float> d = f16.forward({ids[t]}, t, false);
++      require_logits_rows(d, 1, static_cast<size_t>(V));
+       wd = std::max(wd, rel_row(d.data() + d.size() - V, b.data() + size_t(t) * V, V));
+     }
+     worst = std::max(worst, w);
+@@ -87,3 +110,5 @@
+             << "\n";
+   return pass ? 0 : 1;
+ }
++
++#endif

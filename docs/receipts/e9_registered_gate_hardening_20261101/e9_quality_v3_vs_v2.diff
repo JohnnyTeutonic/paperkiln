@@ -1,0 +1,26 @@
+--- v2/e9_quality.cpp
++++ v3/e9_quality.cpp
+@@ -44,7 +44,13 @@
+     hi = std::max(hi, ref[i]);
+     d = std::max(d, std::fabs(static_cast<double>(a[i]) - ref[i]));
+   }
+-  return hi > lo ? d / (hi - lo) : d;
++  const float range = hi - lo;  // retain the registered ordinary finite arithmetic
++  if (!std::isfinite(range))
++    throw std::runtime_error("e9_quality: nonfinite derived row range");
++  const double error = hi > lo ? d / range : d;
++  if (!std::isfinite(error))
++    throw std::runtime_error("e9_quality: nonfinite relative row error");
++  return error;
+ }
+ 
+ #ifndef E9_QUALITY_CHECKS_ONLY
+@@ -103,6 +109,8 @@
+     worst_decode = std::max(worst_decode, wd);
+     rows.push_back({{"i", s}, {"prefill_rel", w}, {"decode_rel", wd}});
+   }
++  if (!std::isfinite(worst) || !std::isfinite(worst_decode))
++    throw std::runtime_error("e9_quality: nonfinite final worst error");
+   const bool pass = worst <= limit && worst_decode <= limit;
+   std::cout << json{{"gguf", argv[1]}, {"n", n}, {"len", len}, {"seed", seed}, {"limit", limit},
+                     {"worst_prefill_rel", worst}, {"worst_decode_rel", worst_decode}, {"pass", pass}, {"rows", rows}}

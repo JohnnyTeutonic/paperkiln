@@ -1,0 +1,11 @@
+{
+  "status": "CONFIRMED_PRIOR_NEGATIVE_OVERWRITTEN",
+  "wrapper_sha256": "ab33acc43b66c3127c0ffa927a91cf64dea11b031029f423a02efcfb219ae78c",
+  "setup": "Existing content/out and home gate_summary negative; upload STAGING intentionally absent. Actual wrapper invoked, VM subprocess forbidden.",
+  "transport_returncode": 0,
+  "original_negative_sha256": "a6e84deaf5c47488f20af4ffc50e875cfcce0e1240d5d9a97a02e6aa7b4e6eef",
+  "replacement_gate_pass": false,
+  "original_negative_preserved": false,
+  "needed_prelaunch_control": "Refuse nonempty existing evidence/terminal markers or root reviewed one-attempt remote guard that prevents wrapper invocation on any prior scientific evidence, including retained-volume restarts.",
+  "provider_GPU_actions": 0
+}

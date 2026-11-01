@@ -1,0 +1,38 @@
+{
+ "campaign": "E9 registered quantised-cache gate (AI_ML/e9_f16kv_claude/REGISTRATION.md, amendment A1)",
+ "formats": [
+  "f16"
+ ],
+ "deadline_minutes": 95,
+ "phases": [
+  "g1",
+  "g2",
+  "g3",
+  "g4",
+  "tfd_qwen3",
+  "tfd_qwen25"
+ ],
+ "baseline_ember_commit": "3ada969788f4d5ea65f5b81b29c22c30b7f25c97",
+ "files": {
+  "ember.tgz": {
+   "bytes": 6494048,
+   "sha256": "731f51f8ed21872581ee4fe08886547bd496b46766d3560f613675386dad8cd7"
+  },
+  "ember_base.tgz": {
+   "bytes": 6632384,
+   "sha256": "195c15b520c84e32979eba8e1cb5d542045964bf8a11082741018613d4a77251"
+  },
+  "inputs.tgz": {
+   "bytes": 202764,
+   "sha256": "7270b102455bd97767a14c61e11857db2510262dad4f05a2f1553216b4cf6782"
+  },
+  "e9_gate_vm.sh": {
+   "bytes": 12327,
+   "sha256": "60c58f7762e6c48d0694a877187b28eec356add31c87e6ac7cfced317be67538"
+  },
+  "HEAD": {
+   "bytes": 41,
+   "sha256": "e3f51ebf1305d4e1616e7dd90422b6cf933f183e389ce6b522a745fec69a174e"
+  }
+ }
+}
