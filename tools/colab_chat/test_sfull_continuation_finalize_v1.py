@@ -216,3 +216,44 @@ def test_output_destinations_cannot_modify_preserved_inputs(contract,tmp_path,ch
 
 def test_disjoint_new_output_destinations_allowed(contract,tmp_path):
     m.validate_destinations(contract,[tmp_path/"view",tmp_path/"out",tmp_path/"state"])
+
+
+@pytest.fixture
+def amended_contract(contract, tmp_path):
+    c = contract
+    original = c["campaigns"][0]["original_admission"]
+    path = tmp_path / "financial.json"
+    put(path, {"kind": "PROSPECTIVE_FINANCIAL_ONLY_SFULL_AMENDMENT", "status": "ADOPTED_FOR_SEED1_PENDING_SAFE_CAP_BOUNDARY_TRANSITION", "seed": 1, "per_seed_cumulative_cap_usd": 12, "three_seed_planning_reservation_usd": 36, "seeds2_and3_admitted": False, "numerical_commit": m.NUMERICAL, "authority": "explicit funding authority fixture", "adopted_at_utc": "2026-11-02T00:00:00Z", "original_seed_admission": original, "original_seed_admission_sha256": c["pins"][original]})
+    c["pins"][str(path)] = m.sha(path)
+    c.update({"financial_amendments": [str(path)], "seed_cap_usd": 12, "aggregate_cap_usd": 36})
+    return c
+
+
+def test_financial_amendment_only_changes_seed_one_cost_limit(amended_contract):
+    c = amended_contract
+    p = Path(c["campaigns"][0]["state"])
+    s = m.read(p)
+    s["runpod"]["ledger"]["pods"].append({"id": "additional", "start": 1, "stop": 3601, "usd_per_hr": 10})
+    put(p, s); c["pins"][str(p)] = m.sha(p)
+    proof = m.validate(c, 4000)
+    assert proof["seed_financial_caps_usd"] == {1: 12, 2: 7, 3: 7}
+    assert proof["seed_costs_usd_at_validation"][0] > 7
+    assert proof["original_scientific_predicates_unchanged"]
+
+
+@pytest.mark.parametrize("change", ["unpin", "seed", "source", "original", "authority", "future_seed", "cap", "duplicate"])
+def test_financial_amendment_refuses_unbound_or_broadened_scope(amended_contract, change):
+    c = amended_contract; path = c["financial_amendments"][0]; a = m.read(path)
+    if change == "unpin": c["pins"].pop(path)
+    elif change == "duplicate": c["financial_amendments"].append(path)
+    else:
+        key, value = {"seed": ("seed", 2), "source": ("numerical_commit", "bad"), "original": ("original_seed_admission_sha256", "bad"), "authority": ("authority", ""), "future_seed": ("seeds2_and3_admitted", True), "cap": ("per_seed_cumulative_cap_usd", 13)}[change]
+        a[key] = value; put(Path(path), a); c["pins"][path] = m.sha(path)
+    with pytest.raises(ValueError): m.validate(c, 10)
+
+
+def test_financial_amendment_does_not_raise_seed_two_limit(amended_contract):
+    c = amended_contract; p = Path(c["campaigns"][1]["state"]); s = m.read(p)
+    s["runpod"]["ledger"]["pods"].append({"id": "additional", "start": 1, "stop": 3601, "usd_per_hr": 8})
+    put(p, s); c["pins"][str(p)] = m.sha(p)
+    with pytest.raises(ValueError): m.validate(c, 4000)
