@@ -1,0 +1,22 @@
+{
+  "kind": "CURRENT_SOURCE_CPU_CHAT_SMOKE",
+  "source_commit": "f2457c5e8de3b89827545becf270836467415efd",
+  "binary_sha256": "fe11452f384161b4b66228fe12294414c65d7fdd0d62f0ba49863e92b5dfda25",
+  "source_files": {
+    "src/device.cpp": "29c765d1c537131b79d1eed7ca10d13c0513ee6923b9de99e7404728dceb21ae",
+    "tools/mtstudio.cpp": "28c7e7834deb81479b323078dc4be16fc03c13b768c9402bc5f4f0d1b0c57490",
+    "tests/test_mtstudio_chat.py": "0a9cc98cfc893bc87bb52a08e2c0ae8e235b3cea88db85d1c220ff7a3a6d5303"
+  },
+  "command": [
+    "python3",
+    "-m",
+    "pytest",
+    "tests/test_mtstudio_chat.py",
+    "-q",
+    "--basetemp",
+    "/home/jonat/current_cpu_chat_smoke_20261102/pytest"
+  ],
+  "returncode": 0,
+  "actual_cuda": false,
+  "limits": "Tiny synthetic fixture; does not prove 97M model quality, cross-engine chat parity or browser/GPU support."
+}

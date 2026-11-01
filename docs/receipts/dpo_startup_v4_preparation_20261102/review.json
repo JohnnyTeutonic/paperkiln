@@ -1,0 +1,13 @@
+{
+  "status": "APPROVE_OFFLINE_PREPARATION_ONLY",
+  "independent_checks": [
+    "V3/V4 runtime scientific recipes equal",
+    "Checkpoint contracts equal except explicit source identity",
+    "Only job environment addition is reviewed startup telemetry flag",
+    "Source/input/binding and original policy hashes checked",
+    "27 V4 intake mutation/offline barrier tests independently pass"
+  ],
+  "financial_admission": false,
+  "gpu_or_api_calls": 0,
+  "sampling_ready": false
+}

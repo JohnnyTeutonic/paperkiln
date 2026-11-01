@@ -1,0 +1,13 @@
+{
+  "status": "SOURCE_LINKAGE_VALID_NOT_SAMPLING_READY",
+  "original_v3_helper_sha256": "582b51e5e2ca6bfd9f269dc2de93f0ce547943ed701a1be2269355616838bfc7",
+  "v4_helper_sha256": "8ca45067ad3a29b8f286cc81dce067936a1c49300c1014a5ab5154183df555e6",
+  "supplement_sha256": "9bbddcbc85185003aa654654124297f06ce0efa8f4a1fd89d3bfeb2c5576c56a",
+  "training_binding_sha256": "0bcde3e10b8389989a4080f79c65922f5daf26c19207555eedb97918a0fa206a",
+  "source_commit": "3f9217c1516e5c08a48994b92128615e8f1d63a6",
+  "provider_calls": 0,
+  "credential_reads": 0,
+  "gpu_calls": 0,
+  "judging_launch_authorized": false,
+  "tests": "27 mutation/offline-barrier tests pass; actual sampling still absent"
+}

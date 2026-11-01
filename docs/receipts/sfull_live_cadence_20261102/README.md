@@ -1,0 +1,11 @@
+# Actual S-full continuation: bounded live cadence evidence
+
+The admitted V4 continuation is running on one L4 under the existing watchdog and original cumulative seed reservation. The numerical source and operational source pins are recorded in replay.json. Original halt/state/checkpoint and protected volume are preserved. This is a live observed window, not completion of seed 1 or the registered three-seed control.
+
+The exact append-only phase prefix is hash-bound and independently replayed locally. It contains 111 durable publications from step 700 through 3450, every 25 steps, with 110 advancing intervals. The largest observed publication gap is approximately 135.18 seconds, below the unchanged 180-second guard. Manager observation records are also present. These are durable-publication intervals, not isolated compute timings or a future cadence guarantee.
+
+Separately, the frozen production generation validator read the complete home step-3200 generation, checked every payload size/hash and inspected flat model/optimizer/RNG/state consistency. Its receipt is retained here. That establishes one complete historical home generation; it does not establish the exact final training/SFT payload or final scientific result. The still-appending phase log can change during download; the captured complete prefix is immutable and its hash was checked after transport. No live CURRENT/INFLIGHT pointer, source, job, guard, deadline or checkpoint was changed by this observation.
+
+## Financial planning observation
+
+The v2 financial observation preserves the later raw step response and job ledger separately; the phase prefix supplies the timing rate only. The earlier v1 projection is retained as historical planning evidence. The measured pace exceeds the unchanged live cumulative seed cap. The proposed cumulative $12 per seed / $36 aggregate amendment is NOT ADOPTED and changes no running command, cap, endpoint or guard. Post-training estimates are proxies from all three registered S-gist timing summaries, not measured S-full post-training costs. Setup, volume and transport costs are not fully estimated. Before any financial amendment, reconcile the original preregistration financial planning rule, review the remaining work and available headroom, and make a dated prospective admission decision. No quality result informed this proposal.

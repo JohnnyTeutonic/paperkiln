@@ -1,0 +1,25 @@
+{
+  "kind": "OBSERVED_CADENCE_FINANCIAL_PROJECTION_NOT_A_SCIENTIFIC_ENDPOINT",
+  "at_utc": "2026-11-01T17:01:32.387934+00:00",
+  "cost_at_unix": 1793552492.387838,
+  "last_observed_completed_step": 4050,
+  "step_response_sha256": "7ee2152f284173d023accac5ad1553d8830bc71148fbd70390c470c5f5e91a41",
+  "ledger_sha256": "0ad501f4c956d27c351699a49029cd37a883d44ba48946f4464b3556388666a2",
+  "registered_pretraining_final_step": 10000,
+  "ledger_spent_usd": 4.294458356198705,
+  "existing_seed_cap_usd": 7,
+  "remaining_admitted_usd": 2.705541643801295,
+  "pod_rate_usd_per_hour": 0.59,
+  "observed_durable_interval_mean_seconds_per_step": 4.459169835784219,
+  "projected_remaining_pretraining_hours_if_rate_persists": 7.370016811921139,
+  "projected_remaining_pretraining_pod_usd_if_rate_persists": 4.348309919033472,
+  "projection_exceeds_remaining_cap": true,
+  "excludes": [
+    "Remaining SFT",
+    "Post-evaluation",
+    "Future setup/reclaims",
+    "Future volume cost"
+  ],
+  "limits": "Rate projection, not a guarantee, confidence interval or quality result. Current paid limit remains unchanged.",
+  "basis_phase_prefix_sha256": "f01977667486572c254c0cc90682549bc19bfdfa3c4a3d86bb79ac716cff4b9d"
+}

@@ -1,0 +1,60 @@
+{
+  "kind": "ROOT_ADOPTED_HELDOUT_V4_CONSUMER_LINKAGE",
+  "adopted": true,
+  "prepared_at_utc": "2026-11-01T16:58:06.696106+00:00",
+  "original_adoption_path": "/home/jonat/heldout_api_root_admission_20261101/heldout_adoption.json",
+  "original_adoption_sha256": "e14520a583bdb308f4c7d5fd2a6ba9036ceb6e0354292f6f31144a0383f39c2c",
+  "frozen_policy_sha256": "5181e14991c7eb326b32f9bd2d35688946f38156e4a9e1ab53375d83b751ed29",
+  "original_heldout_operational_sources_unchanged": true,
+  "changed_consumer_hashes": {
+    "tools/colab_chat/dpo_checkpoint_core_v1.py": {
+      "original_adopted_sha256": "88382d42f4c2e8837a72703f3fc1efb08e61f9097e6b36985e58d96aa3145145",
+      "v4_actual_sha256": "311d6fe7745c91abeba864347b006f0a18f1a9b1e7f459a8999bf39285b17b77"
+    },
+    "tools/colab_chat/dpo_checkpoint_transport_v1.py": {
+      "original_adopted_sha256": "174d394d53977d5862248a652f681cadddf2b82bfa59d2d44675dcb69a33a32d",
+      "v4_actual_sha256": "0b79e318b9f4724c3b4abab33a6f0db67424d2ca4ea86f353778d88ecbc691ac"
+    },
+    "tools/colab_chat/runner_multi.py": {
+      "original_adopted_sha256": "8857143383175ae067790499590c00df14282e6068e0fcad556d8ea705b3f569",
+      "v4_actual_sha256": "0075bc28d971d3b04f23b2180a226a0f08528ca8f571e86786ff217bbd9928c7"
+    },
+    "tools/mtstudio.cpp": {
+      "original_adopted_sha256": "7f6f1ce21f511a2f8ec184bcd7db0616e6ce5843eb66d4eed7c752b6b3d806e2",
+      "v4_actual_sha256": "28c7e7834deb81479b323078dc4be16fc03c13b768c9402bc5f4f0d1b0c57490"
+    },
+    "tools/posttrain/build_dpo_instance_v7.py": {
+      "original_adopted_sha256": "b8fdbeb5503088f5fed7c3578a14c63109c6b781e5c9bc4e272df88c997bf019",
+      "v4_actual_sha256": "52557e9a2fe5bf188498adcddce860387a2ce31645005a59025bb2acf933b62d"
+    }
+  },
+  "extra_bound_consumer_hashes": {
+    "include/microtorch/dpo_startup_phases.hpp": "63e725d279ea8ebdd243f3258ecd7946865f738aed0edca903b8aba84f008efa",
+    "src/device.cpp": "a2bd639ae7622c635442cba5fb8f9fa21476d391f231fd78d2d32b38db62e206",
+    "tools/posttrain/materialize_preference_v7.py": "bfd1d84341fc3e2aea2c40470cf199a6c8ae9ee058e8120db0629a66991d6a8b"
+  },
+  "reason": "Prospectively bind the already-reviewed opt-in startup telemetry source and reviewed GEMM coherence fallback plus unchanged V3 layout/checkpoint controls; preserve original policy, all API operational files, input cohort, all five gates and accounting. No GPU/API dispatch authorization.",
+  "preexisting_reviews": [
+    "docs/receipts/dpo_layout_recovery_20261101/",
+    "docs/receipts/dpo_corrected_layout_admission_v3_20261101/"
+  ],
+  "all_five_original_gates_required": true,
+  "automatic_model_replacement": false,
+  "no_provider_calls": true,
+  "adopted_at_utc": "2026-11-01T16:58:06.696119+00:00",
+  "before_dpo_training_and_outcomes": true,
+  "original_policy_and_operational_hashes_verified": true,
+  "independent_intake_tests_passed": null,
+  "judging_launch_authorized": false,
+  "limits_unchanged": {
+    "stage_usd": 25,
+    "cumulative_usd": 200,
+    "max_attempts": 600
+  },
+  "original_adoption_modified": false,
+  "no_gpu_or_api_calls": true,
+  "v4_training_binding_path": "/home/jonat/dpo_startup_admission_v4_20261102/instance/dpo_binding.json",
+  "v4_training_binding_sha256": "0bcde3e10b8389989a4080f79c65922f5daf26c19207555eedb97918a0fa206a",
+  "v4_training_source_commit": "3f9217c1516e5c08a48994b92128615e8f1d63a6",
+  "previous_v3_supplement_sha256": "f1e44ccfa223e0f3c912ef4eb504364c8e6e3a732038cccd803d5df9ada0f1bb"
+}

@@ -1,0 +1,13 @@
+{
+  "status": "SOURCE_LINKAGE_VALID_NOT_SAMPLING_READY",
+  "sampling_readiness_established": false,
+  "source_commit": "3f9217c1516e5c08a48994b92128615e8f1d63a6",
+  "original_adoption_sha256": "e14520a583bdb308f4c7d5fd2a6ba9036ceb6e0354292f6f31144a0383f39c2c",
+  "supplemental_adoption_sha256": "9bbddcbc85185003aa654654124297f06ce0efa8f4a1fd89d3bfeb2c5576c56a",
+  "training_binding_sha256": "0bcde3e10b8389989a4080f79c65922f5daf26c19207555eedb97918a0fa206a",
+  "changed_consumers": 5,
+  "extra_consumers": 3,
+  "provider_calls": 0,
+  "credential_reads": 0,
+  "judging_launch_authorized": false
+}
