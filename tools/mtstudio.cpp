@@ -1,4 +1,5 @@
 #include "microtorch/dpo_checkpoint_bridge_v1.hpp"
+#include "microtorch/dpo_startup_phases.hpp"
 // mtstudio — the run-spec driver (STUDIO_PLAN.md M1).
 //
 //   mtstudio run spec.json          execute the spec
@@ -2965,16 +2966,22 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
 
     // grpo: the frozen reference (train.init_from) for the KL term.
     std::function<Var(const std::vector<int>&, size_t)> ref_fwd;
+    DpoStartupPhases dpo_phases(po);
+    dpo_phases.mark("reference_model_load_begin", 0, pd.w.size());
     if (grpo || po) ref_fwd = make_reference(s);
+    dpo_phases.mark("reference_model_load_end", 0, pd.w.size());
     const int eos_tok = wordtok::eos_id(vocab);
     // provenance_po: the reference margin of every pair, once (it is constant).
     std::vector<double> po_ref(pd.w.size(), 0.0);
     if (po) {
         NoGrad ng;
+        dpo_phases.mark("reference_cache_begin", 0, pd.w.size());
         for (size_t i = 0; i < pd.w.size(); ++i) {
             const PrefBatch b = pref_rows(pd, {i}, eos_tok >= 0 ? eos_tok : 0);
             po_ref[i] = pair_margins(ref_fwd(b.x, b.L)->data, b, 1)[0];
+            dpo_phases.progress(i + 1, pd.w.size());
         }
+        dpo_phases.mark("reference_cache_end", pd.w.size(), pd.w.size());
     }
 
     // MICROTORCH_STEP_TIMING=1: per-phase wall time on each step event
@@ -3004,6 +3011,8 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     bool stopped_early = false;
     const bool is_srd = attn_kind(s.attention) == parity::AttnKind::SRD;
     for (int step = start_step + 1; step <= s.steps; ++step) {
+        if (step == start_step + 1)
+            dpo_phases.mark("first_training_step_begin", pd.w.size(), pd.w.size(), step);
         last_step = step;
         mark("other");  // eval, checkpoint and logging since the last step
         t_ms = json::object();
@@ -3360,6 +3369,8 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         if (!gm.is_null()) e["grads"] = gm;
         for (auto it = gmet.begin(); it != gmet.end(); ++it) e[it.key()] = it.value();
         ev.emit(e);
+        if (step == start_step + 1)
+            dpo_phases.mark("first_training_step_end", pd.w.size(), pd.w.size(), step);
 
         if (grpo && step % s.eval_every == 0 && !gd.eval_prompts.empty()) {
             // Held-out monitor with fixed sampling seeds, so successive

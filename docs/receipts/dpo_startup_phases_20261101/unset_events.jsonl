@@ -1,0 +1,9 @@
+{"event":"start","name":"phase_po","steps":2}
+{"beta":0.10000000149011612,"chosen_open":0,"ess_kish":34.0,"event":"data","nll":0.20000000298023224,"objective":"provenance_po","pairs":35,"pairs_by_kind":{"uniform":34},"pairs_with_weight":34,"rejected_open":0,"val_pairs":1,"vocab":29,"weight_mode":"uniform","weight_sum":34.0,"weight_sum_by_kind":{"uniform":34.0}}
+{"T":16,"accum":1,"activation":"swiglu","attention":"exact","batch":2,"checkpoint_activations":false,"d":16,"d_ff":32,"event":"model","family":"llama","final_norm":true,"gate_bias_init":-2.0,"heads":2,"layers":1,"lr":0.0010000000474974513,"norm":"rmsnorm","norm_placement":"pre","objective":"provenance_po","params":3072,"position":"rope","residual":"residual","rope_heads":"all","seed":3,"sinks":1,"vocab":29,"window":64}
+{"event":"init","from":"/home/jonat/dpo_startup_phase_gate_20261101/pytest_final/test_phase_telemetry_preserves0/base/base.safetensors"}
+{"chosen_nll":3.3496127128601074,"ess_kish":2.0,"event":"step","grad_norm":0.6834976077079773,"loss":1.363069772720337,"margin":0.0,"pref_acc":0.0,"step":1,"weight_sum":2.0}
+{"chosen_nll":3.325016975402832,"ess_kish":2.0,"event":"step","grad_norm":0.6797882914543152,"loss":1.3537088632583618,"margin":0.0890343189239502,"pref_acc":1.0,"step":2,"weight_sum":2.0}
+{"event":"po_eval","pairs":1,"pref_acc":0.0,"step":2,"val_loss":0.6934037995568053}
+{"event":"export","format":"safetensors","path":"/home/jonat/dpo_startup_phase_gate_20261101/pytest_final/test_phase_telemetry_preserves0/unset/phase_po.safetensors"}
+{"best_val":1.0000000150474662e+30,"early_stopped":false,"event":"done","final_step":2,"wall_seconds":0.184106629}

@@ -1,0 +1,23 @@
+{
+  "actual_cuda": false,
+  "steps": 2,
+  "seed": 3,
+  "batch": 2,
+  "model_optimizer_state_export_byte_identical": true,
+  "rng_reconstruction_record": {
+    "accum": 1,
+    "batch": 2,
+    "draws": 4,
+    "engine": "std::mt19937",
+    "initial_seed": 3000132,
+    "recipe_seed": 3
+  },
+  "phase_event_stream_unchanged": true,
+  "numerical_step_events_identical": true,
+  "file_sha256": {
+    "model.safetensors": "9406e0c7b5dc0ffff0eddfc1e1aa9032e91f884c6bb5e63a01c339973156f4c2",
+    "optim.safetensors": "5b868eb7d5d5106549dbf8115c44157afb586f9c4b997155629f2d158d083bf2",
+    "state.txt": "87ed045802beeeeacd65d26d3053de3bca615b0bcaad7837fefef68781800ff4",
+    "phase_po.safetensors": "9406e0c7b5dc0ffff0eddfc1e1aa9032e91f884c6bb5e63a01c339973156f4c2"
+  }
+}
