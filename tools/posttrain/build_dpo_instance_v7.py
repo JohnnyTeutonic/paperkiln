@@ -126,7 +126,7 @@ def build(dataset_dir,base_spec,checkpoint,vocab,source_root,source_archive,sour
       "selected_checkpoint":"final","activated":False,"provider_or_gpu_calls":0,
       "whole_completion_chain_ready":False,"unready_step":"Root final instance admission and serial paid launch remain separate; API heldout gate starts only from bound returned sampling evidence."}
     # Named atomic checkpoint manager owns training; no claim about historical standard relay.
-    jobs={"max_parallel":1,"jobs":[{"name":"dpo_preflight","cmd":["python3","tools/posttrain/dpo_vm_preflight_v7.py","tools/posttrain/materialize_preference_v8.py","tools/posttrain/chat_judge_campaign_continuation_v8.py","{upload}/dpo_binding.json","{upload}/pk_dpo_v1.spec.json","{out}"],"outputs":["preflight.json"]},
+    jobs={"max_parallel":1,"jobs":[{"name":"dpo_preflight","cmd":["python3","tools/posttrain/dpo_vm_preflight_v7.py","{upload}/dpo_binding.json","{upload}/pk_dpo_v1.spec.json","{out}"],"outputs":["preflight.json"]},
       {"name":"pk_dpo_v1","after":"dpo_preflight","spec":spec,"init_file":"pksft.safetensors"},
       {"name":"dpo_parity","after":"pk_dpo_v1","cmd":["python3","tools/colab_chat/chat_parity_vm.py","{out}","pk_dpo_v1","40"],"outputs":["parity_summary.json","parity_cuda.jsonl","parity_cpu.jsonl","ember_cuda.log","ember_cpu.log","ember_build.json"]},
       {"name":"dpo_eval","after":"dpo_parity","cmd":["bash","tools/colab_chat/chat_eval_vm.sh","{out}","pksft","pk_dpo_v1@pk_dpo_v1"],"outputs":["chat_eval_results.tar.gz","manifest.json"]},

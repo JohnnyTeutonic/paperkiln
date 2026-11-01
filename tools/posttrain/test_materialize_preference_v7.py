@@ -86,6 +86,17 @@ def test_training_instance_requires_bound_root_freeze_and_emits_serial_standard_
     monkeypatch.setattr(b.subprocess,'Popen',lambda *a,**k:types.SimpleNamespace(stdout=io.BytesIO(b'archive'),wait=lambda:0))
     out=tmp_path/'packet';binding=b.build(dataset,base,checkpoint,vocab,source,archive,ap,heldout,adopted,out)
     jobs=json.loads((out/'jobs_v1.json').read_text())
+    # Execute emitted argv through the actual entry point; stray source paths
+    # previously failed tuple-unpacking before bound-input verification.
+    import dpo_vm_preflight_v7 as preflight
+    import sys
+    command=[arg.replace('{upload}',str(out)).replace('{out}',str(out/'preflight')) for arg in jobs['jobs'][0]['cmd']]
+    seen=[]
+    monkeypatch.setattr(preflight,'verify',lambda binding,spec,upload,repo:seen.append((binding,spec,upload,repo)) or {'kind':'DPO_VM_PREFLIGHT_PASSED'})
+    monkeypatch.setattr(sys,'argv',command[1:])
+    preflight.main()
+    assert len(seen)==1 and seen[0][1]==out/'pk_dpo_v1.spec.json'
+    assert (out/'preflight/preflight.json').exists()
     assert jobs['max_parallel']==1 and jobs['jobs'][1]['after']=='dpo_preflight'
     assert jobs['jobs'][1]['spec']['train']['steps']==26 and binding['activated'] is False
     assert set(json.loads((out/'upload_manifest.json').read_text())['files'])=={'pksft.safetensors','vocab.gguf','dpo_pairs.jsonl','training_source.tar','dpo_binding.json','pk_dpo_v1.spec.json','dialogues_val.jsonl','dialogues_train.jsonl','DPO_RUNTIME_JOBS_V1.json','dpo_checkpoint_contract_v1.json'}
