@@ -49,7 +49,7 @@ def safe_relative(name):
     return p
 
 
-def validate_ledger(state, carried, protected, now):
+def validate_ledger(state, carried, protected, now, cap=7):
     if state.get("campaign_home") is not True or state.get("endpoint"):
         raise ValueError("campaign incomplete or endpoint still owned")
     jobs = state.get("jobs")
@@ -82,15 +82,48 @@ def validate_ledger(state, carried, protected, now):
             if kind == "volumes" and not item.get(end) and item["id"] not in protected:
                 raise ValueError("unaccounted undeleted volume")
     spent = ledger_usd(ledger, now)
-    if not math.isfinite(spent) or spent > 7:
-        raise ValueError("seed cumulative spend exceeds seven dollars")
+    if not math.isfinite(spent) or spent > cap:
+        raise ValueError("seed cumulative spend exceeds admitted financial cap")
     return spent
 
 
+def financial_limits(contract):
+    """A bound financial amendment overlays costs, never original science/admissions."""
+    caps = {seed: 7 for seed in SEEDS}
+    amendments = contract.get("financial_amendments", [])
+    if not amendments:
+        if contract["seed_cap_usd"] != 7 or contract["aggregate_cap_usd"] != 21:
+            raise ValueError("unamended budget differs")
+        return caps, 21
+    # Only the independently reviewed seed-one amendment is supported in this version.
+    if len(amendments) != 1 or contract["seed_cap_usd"] != 12 or contract["aggregate_cap_usd"] != 36:
+        raise ValueError("unsupported financial amendment scope")
+    path = amendments[0]
+    if path not in contract["pins"]:
+        raise ValueError("financial amendment not pinned")
+    a = read(path)
+    if (a.get("kind") != "PROSPECTIVE_FINANCIAL_ONLY_SFULL_AMENDMENT"
+            or a.get("status") != "ADOPTED_FOR_SEED1_PENDING_SAFE_CAP_BOUNDARY_TRANSITION"
+            or type(a.get("seed")) is not int or a["seed"] != 1
+            or type(a.get("per_seed_cumulative_cap_usd")) is not int or a["per_seed_cumulative_cap_usd"] != 12
+            or a.get("three_seed_planning_reservation_usd") != 36
+            or a.get("seeds2_and3_admitted") is not False
+            or a.get("numerical_commit") != NUMERICAL
+            or not a.get("authority") or not a.get("adopted_at_utc")):
+        raise ValueError("financial amendment identity/authority differs")
+    seed1 = next(c for c in contract["campaigns"] if c["seed"] == 1)
+    if (a.get("original_seed_admission") != seed1["original_admission"]
+            or a.get("original_seed_admission_sha256") != contract["pins"].get(seed1["original_admission"])):
+        raise ValueError("financial amendment original admission differs")
+    caps[1] = 12
+    return caps, 36
+
+
 def validate(contract, now):
-    if contract["numerical_commit"] != NUMERICAL or contract["seed_cap_usd"] != 7 or contract["aggregate_cap_usd"] != 21:
-        raise ValueError("registered source/budget differs")
+    if contract["numerical_commit"] != NUMERICAL:
+        raise ValueError("registered numerical source differs")
     pins_check(contract["pins"])
+    seed_caps, aggregate_cap = financial_limits(contract)
     freeze = read(contract["original_source_freeze"])
     if not freeze.get("source_hashes") or any(contract["pins"].get(k) != v for k, v in freeze["source_hashes"].items()):
         raise ValueError("original complete source freeze not bound")
@@ -185,13 +218,13 @@ def validate(contract, now):
         required = {"cuda_gate", "data", "gate", "sfull_inputs", f"pt_c12_Sfull_r{c['seed']}", f"post_c12_Sfull_r{c['seed']}"}
         if set(state.get("jobs", {})) != required:
             raise ValueError("campaign job inventory differs")
-        costs.append(validate_ledger(state, read(c["carried_ledger"]), c["protected_original_volumes"], now))
-    if sum(costs) > 21:
-        raise ValueError("aggregate cumulative spend exceeds twenty-one dollars")
+        costs.append(validate_ledger(state, read(c["carried_ledger"]), c["protected_original_volumes"], now, seed_caps[c["seed"]]))
+    if sum(costs) > aggregate_cap:
+        raise ValueError("aggregate cumulative spend exceeds admitted financial cap")
     for name in ("original_source_freeze", "original_manifest", "frozen_finalizer", "cpu_budget"):
         if contract[name] not in contract["pins"]:
             raise ValueError("required anchor not pinned: " + name)
-    return {"seed_costs_usd_at_validation": costs, "original_scientific_predicates_unchanged": True}
+    return {"seed_costs_usd_at_validation": costs, "seed_financial_caps_usd": seed_caps, "aggregate_financial_cap_usd": aggregate_cap, "original_scientific_predicates_unchanged": True}
 
 
 def validate_destinations(contract, destinations):
