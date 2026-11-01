@@ -1,0 +1,21 @@
+{
+  "kind": "ROOT_ADOPTED_FINAL_ELIGIBLE_DPO_DATASET_V1",
+  "adopted": true,
+  "before_dpo_outcomes": true,
+  "at_utc": "2026-11-01T08:53:35.421133+00:00",
+  "audit_sha256": "7203c0eca0a7f3f9d85cd4246396ef3c3b48f35ba446b701bd5bc7f5b6f6e53e",
+  "dataset_files_sha256": {
+    "dataset_manifest.json": "6d9fb8d725b6dd7413ba5a084eaaff5373b569e5db139eaffe178efeaf66018e",
+    "agreement_pairs.jsonl": "e1d15f9f9ef5df0344f4572acaf6f6aae3be002ce80067967ec0de2d9c7258be",
+    "dpo_pairs.jsonl": "02cf959a8c336f6713ddfe30709a5844d1d7d33ecdeaa8f3dc9760bf457b607e"
+  },
+  "independent_token_reencoding_replay": "Verified byte-identical by separate cleanroom readiness review; no pair or stop-metadata change.",
+  "policy": "Existing both-order agreement and1.5wordratio only; chosen finished breakdown only; original failures and symmetric unattempted reverses retained. Original full-valid completeness false.",
+  "pairs": 1445,
+  "train_pairs": 1373,
+  "validation_pairs": 72,
+  "steps": 344,
+  "source_and_paid_admission_separate": true,
+  "provider_calls": 0,
+  "training_launched": false
+}

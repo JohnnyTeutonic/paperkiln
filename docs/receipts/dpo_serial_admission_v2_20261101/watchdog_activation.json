@@ -1,0 +1,19 @@
+{
+  "activated_at_utc": "2026-11-01T09:09:22.359242+00:00",
+  "review_sha256": "5aab2451c65d4fe2586b2d9f13e6cf95d825b9201f0daa62ec387d367be3e903",
+  "driver": {
+    "name": "Paperkiln DPO V8 frozen344step oneL4 5USD 4h checkpoint180s",
+    "enabled": true,
+    "workdir": "/home/jonat/dpo_admission_v2_20261101/source",
+    "state_dir": "/home/jonat/pk_dpo_v8_20261101_runner",
+    "stop_file": "/home/jonat/pk_dpo_v8_20261101_runner/HALTED",
+    "match": "--state-dir /home/jonat/pk_dpo_v8_20261101_runner",
+    "command": "python3 /home/jonat/dpo_root_admission_20261101/guarded_runner.py --review /home/jonat/dpo_root_admission_20261101/launch_review.json --review-sha256 5aab2451c65d4fe2586b2d9f13e6cf95d825b9201f0daa62ec387d367be3e903 -- /home/jonat/dpo_admission_v2_20261101/source/tools/colab_chat/runner_multi.py --backend runpod --gpu L4 --cloud SECURE --volume-gb 30 --image runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04 --max-usd 5 --max-hours 4 --deadline-utc 2026-11-01T13:07:58Z --name pk-dpo-v8-1101 --commit 6f65be6e53eb416e8e74d7113fa917aef5ece519 --jobs /home/jonat/dpo_admission_v2_20261101/instance/jobs_v1.json --boot-script tools/colab_chat/boot_dpo_checkpoint_v1.sh --state-dir /home/jonat/pk_dpo_v8_20261101_runner --art /mnt/c/ml_artifacts/pref_api_20261031/dpo_run_v2_20261101 --upload DPO_RUNTIME_JOBS_V1.json=/home/jonat/dpo_admission_v2_20261101/instance/jobs_v1.json --upload dialogues_train.jsonl=/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/smol_smoltalk_qa_v1/dialogues_train.jsonl --upload dialogues_val.jsonl=/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/smol_smoltalk_qa_v1/dialogues_val.jsonl --upload dpo_binding.json=/home/jonat/dpo_admission_v2_20261101/instance/dpo_binding.json --upload dpo_checkpoint_contract_v1.json=/home/jonat/dpo_admission_v2_20261101/instance/dpo_checkpoint_contract_v1.json --upload dpo_pairs.jsonl=/mnt/c/ml_artifacts/pref_api_20261031/dpo_dataset_v8_20261101/dpo_pairs.jsonl --upload pk_dpo_v1.spec.json=/home/jonat/dpo_admission_v2_20261101/instance/pk_dpo_v1.spec.json --upload pksft.safetensors=/mnt/c/ml_artifacts/general_chat/sft/pk_sft_v1.safetensors --upload training_source.tar=/home/jonat/dpo_admission_v2_20261101/training_source.tar --upload vocab.gguf=/mnt/c/ml_artifacts/general_chat/sft/pk_sft_v1.gguf >> /home/jonat/pk_dpo_v8_20261101_runner/guard.log 2>&1"
+  },
+  "previous_config_sha256": "b29ebec9d1f63fd5963398bdf34541a74ef290117421afa7ee1aff4a67aa6a58",
+  "config_sha256": "2e85167ed225c2c62f3ed27a7e467c6ebbebbf14af9cf74d424faec618f7e1a9",
+  "other_gpu_campaigns_enabled": 0,
+  "provider_pods_before": 0,
+  "balance_above20": true,
+  "actual_provider_launch_delegated_to_existing_watchdog": true
+}
