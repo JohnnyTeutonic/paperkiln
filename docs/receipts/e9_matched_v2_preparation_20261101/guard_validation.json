@@ -1,0 +1,6 @@
+{
+  "positive_validations": 1,
+  "negative_refusals": 6,
+  "gpu_calls": 0,
+  "launch_authorized": false
+}
