@@ -1,0 +1,468 @@
+{
+  "kind": "LEGACY_MATMUL_CPU_AUTHORITY_PROOF",
+  "actual_cuda": false,
+  "source_sha256": {
+    "src/device.cpp": "29c765d1c537131b79d1eed7ca10d13c0513ee6923b9de99e7404728dceb21ae",
+    "tests/test_legacy_matmul_materialization.cpp": "8a1cdb1a3bf05dea18ba0e3390152e3713274595f9f29182b50472403e5fc126",
+    "docs/receipts/legacy_matmul_materialization_20261102/baseline_device.cpp": "a2bd639ae7622c635442cba5fb8f9fa21476d391f231fd78d2d32b38db62e206"
+  },
+  "cached_library_sha256": "bbaf128454147357574c1f623b0b909c28536be660b3abe2041eb360f25d67f8",
+  "cached_source_proof": {
+    "src/llama.cpp": {
+      "current": "d360d2ef78245147b3dc25cea06937806b8afb3c14086d892c06d50cf7b41a9e",
+      "cached_source": "d360d2ef78245147b3dc25cea06937806b8afb3c14086d892c06d50cf7b41a9e"
+    },
+    "src/nn.cpp": {
+      "current": "944f301888cb6f8715aa27d290215ee10e826fb848f78b914b0c62ceb4d18a91",
+      "cached_source": "944f301888cb6f8715aa27d290215ee10e826fb848f78b914b0c62ceb4d18a91"
+    },
+    "src/ir.cpp": {
+      "current": "91fffa49d1e2ea280d4bd74529055489d43f4caad3fc5ebd62718e1fe8e1f815",
+      "cached_source": "91fffa49d1e2ea280d4bd74529055489d43f4caad3fc5ebd62718e1fe8e1f815"
+    },
+    "src/moe.cpp": {
+      "current": "097e882c698219c322977dace4f84e379cd7718fea1257005e2b2a3f79f4191c",
+      "cached_source": "097e882c698219c322977dace4f84e379cd7718fea1257005e2b2a3f79f4191c"
+    },
+    "src/expr.cpp": {
+      "current": "d6af98610b333a6e61e9f34f8762eb1e31cfa0f3a531355a5970dda5cf3a5253",
+      "cached_source": "d6af98610b333a6e61e9f34f8762eb1e31cfa0f3a531355a5970dda5cf3a5253"
+    },
+    "src/ops.cpp": {
+      "current": "e5455d13ac8d3b8a1b19bd1eba3d4f2eacc32724738579c7a07e2dba6c36bf2a",
+      "cached_source": "e5455d13ac8d3b8a1b19bd1eba3d4f2eacc32724738579c7a07e2dba6c36bf2a"
+    },
+    "src/quant.cpp": {
+      "current": "6b1f55587e71dbbdcf28e4aa4fae4f95ca976f171b8b2d154fbee6bba1470d53",
+      "cached_source": "6b1f55587e71dbbdcf28e4aa4fae4f95ca976f171b8b2d154fbee6bba1470d53"
+    },
+    "src/depth_attend.cpp": {
+      "current": "f9262ec2ff605fd545bc68e4cb772d110c67d2a3cd7895c9a81039ba1c9421ab",
+      "cached_source": "f9262ec2ff605fd545bc68e4cb772d110c67d2a3cd7895c9a81039ba1c9421ab"
+    },
+    "src/llama_attnres.cpp": {
+      "current": "77276862ca750636c362cd6fd951398b043fd01f619d5c642f6ecd08619099ac",
+      "cached_source": "77276862ca750636c362cd6fd951398b043fd01f619d5c642f6ecd08619099ac"
+    },
+    "src/cerebellum.cpp": {
+      "current": "4f420846188c500deb98d68f203fbffac3d53525f3a88a239dd37f80038b8082",
+      "cached_source": "4f420846188c500deb98d68f203fbffac3d53525f3a88a239dd37f80038b8082"
+    },
+    "src/recurrence.cpp": {
+      "current": "a4254eb14a1bd2953d7680a330fe9afcbdfe73205033b739c0dad9414a162e45",
+      "cached_source": "a4254eb14a1bd2953d7680a330fe9afcbdfe73205033b739c0dad9414a162e45"
+    },
+    "src/srd.cpp": {
+      "current": "4dca5ddf37ab434893807e8a8856a358a405d940dbb13e84d9ec7a1ff76f4e48",
+      "cached_source": "4dca5ddf37ab434893807e8a8856a358a405d940dbb13e84d9ec7a1ff76f4e48"
+    },
+    "src/gguf.cpp": {
+      "current": "310937073eeb42676f4b5fbdff09eca4c055512e3a941db914f07c4f18e1143a",
+      "cached_source": "310937073eeb42676f4b5fbdff09eca4c055512e3a941db914f07c4f18e1143a"
+    },
+    "src/safetensors.cpp": {
+      "current": "918c41750e21a2c795e814a206eb1ad5537835d5f4bce69c21bceb7b28a4880c",
+      "cached_source": "918c41750e21a2c795e814a206eb1ad5537835d5f4bce69c21bceb7b28a4880c"
+    },
+    "src/mamba.cpp": {
+      "current": "48eebd7051ec809f51aa8d499443bfcaf615efcfd989bcf06daf14f9eac577e4",
+      "cached_source": "48eebd7051ec809f51aa8d499443bfcaf615efcfd989bcf06daf14f9eac577e4"
+    },
+    "src/kimi_linear.cpp": {
+      "current": "fd6d44c18885af22a00150ccdb3a154dc1a4e19e6705e3acbe487052ab346ba5",
+      "cached_source": "fd6d44c18885af22a00150ccdb3a154dc1a4e19e6705e3acbe487052ab346ba5"
+    },
+    "src/device_cache.cpp": {
+      "current": "1118fc115172761f4935a3a60e9efce279c11b6a83f524d6f13b036d32911c2b",
+      "cached_source": "1118fc115172761f4935a3a60e9efce279c11b6a83f524d6f13b036d32911c2b"
+    },
+    "src/autograd.cpp": {
+      "current": "eff07572cb70cccdfde386ccec1d716f0cfb2b9fb06f9c5a59eeacc76646930e",
+      "cached_source": "eff07572cb70cccdfde386ccec1d716f0cfb2b9fb06f9c5a59eeacc76646930e"
+    },
+    "include/microtorch/safetensors.hpp": {
+      "current": "488b9eb94117bb194173301d54d3e4902434b49ec744ed82518c0cb7c9774413",
+      "cached_source": "488b9eb94117bb194173301d54d3e4902434b49ec744ed82518c0cb7c9774413"
+    },
+    "include/microtorch/expr.hpp": {
+      "current": "20c2271d4ef4d4bd8a07a56a3d02f7adebc38459aff2d51bc6483f05250175de",
+      "cached_source": "20c2271d4ef4d4bd8a07a56a3d02f7adebc38459aff2d51bc6483f05250175de"
+    },
+    "include/microtorch/srd.hpp": {
+      "current": "94eacd7e999869d3b56771b82ded301d8f64128e622fce8d5b724c0fb9fcb336",
+      "cached_source": "94eacd7e999869d3b56771b82ded301d8f64128e622fce8d5b724c0fb9fcb336"
+    },
+    "include/microtorch/primitives.hpp": {
+      "current": "45dbc6011190d1c41a06896f65362dc7b383fea2bb798f7814fc30c3ba23aaae",
+      "cached_source": "45dbc6011190d1c41a06896f65362dc7b383fea2bb798f7814fc30c3ba23aaae"
+    },
+    "include/microtorch/ops.hpp": {
+      "current": "9db1581b296093793a6d6e4cd2fec59ed6a4edfe660f8ac3e525236d6629914d",
+      "cached_source": "9db1581b296093793a6d6e4cd2fec59ed6a4edfe660f8ac3e525236d6629914d"
+    },
+    "include/microtorch/quant.hpp": {
+      "current": "f09c8428b2cd0061d1e231e0607e62e548b6f07c40d7d21d0efdcfb608fa9306",
+      "cached_source": "f09c8428b2cd0061d1e231e0607e62e548b6f07c40d7d21d0efdcfb608fa9306"
+    },
+    "include/microtorch/device_cache.hpp": {
+      "current": "65754656fa3684eb9ea44eb713da9c0b60100a8b445ffb1e7972e4211afc7a9e",
+      "cached_source": "65754656fa3684eb9ea44eb713da9c0b60100a8b445ffb1e7972e4211afc7a9e"
+    },
+    "include/microtorch/nn.hpp": {
+      "current": "8e80b547398d7c45e24333f794aafdf3313d832a3cc5d55ed14937157763a642",
+      "cached_source": "8e80b547398d7c45e24333f794aafdf3313d832a3cc5d55ed14937157763a642"
+    },
+    "include/microtorch/cerebellum.hpp": {
+      "current": "c17f64d2d84444084c66974471fff96ea5212f0405b0748d6153cb016f061e58",
+      "cached_source": "c17f64d2d84444084c66974471fff96ea5212f0405b0748d6153cb016f061e58"
+    },
+    "include/microtorch/autograd.hpp": {
+      "current": "1b265eff977c9e1d3b9eb4a41a31a1b8e8a19e452a5d15df45556498d3a387ab",
+      "cached_source": "1b265eff977c9e1d3b9eb4a41a31a1b8e8a19e452a5d15df45556498d3a387ab"
+    },
+    "include/microtorch/mamba.hpp": {
+      "current": "c0e88f031fc17918743c0a403668f8102545ad9d0138de9c8f86d1e19f466647",
+      "cached_source": "c0e88f031fc17918743c0a403668f8102545ad9d0138de9c8f86d1e19f466647"
+    },
+    "include/microtorch/recurrence.hpp": {
+      "current": "3de8ab7034c361a507f873f3459bab327e55b7d08ba119da0f47eacd43a027aa",
+      "cached_source": "3de8ab7034c361a507f873f3459bab327e55b7d08ba119da0f47eacd43a027aa"
+    },
+    "include/microtorch/llama.hpp": {
+      "current": "f1b349a0aaea82b12acc180f448e837cc002cc8542c3fc8ffcdef4dc9ec76844",
+      "cached_source": "f1b349a0aaea82b12acc180f448e837cc002cc8542c3fc8ffcdef4dc9ec76844"
+    },
+    "include/microtorch/gguf.hpp": {
+      "current": "a023297fa0a7fa085ce044086f32702db4468d4e22706eb6cdf6859549edaef1",
+      "cached_source": "a023297fa0a7fa085ce044086f32702db4468d4e22706eb6cdf6859549edaef1"
+    },
+    "include/microtorch/bpe_tokenizer.hpp": {
+      "current": "2fd193f6321d2ad18196e04e3112b3486ad07412d81f0ddfb7b05c877711004a",
+      "cached_source": "2fd193f6321d2ad18196e04e3112b3486ad07412d81f0ddfb7b05c877711004a"
+    },
+    "include/microtorch/word_tokenizer.hpp": {
+      "current": "fb1b5dd1b86f6446d641641d8be7c94e86cd788aee4dfc2912849823d7a5394e",
+      "cached_source": "fb1b5dd1b86f6446d641641d8be7c94e86cd788aee4dfc2912849823d7a5394e"
+    },
+    "include/microtorch/moe.hpp": {
+      "current": "464534789479f6e54d03d3da8f9f4288f5a550cd00b7fa73e1ef96073cdd79a6",
+      "cached_source": "464534789479f6e54d03d3da8f9f4288f5a550cd00b7fa73e1ef96073cdd79a6"
+    },
+    "include/microtorch/ir.hpp": {
+      "current": "1726ff636f88911f38ebc5ae2193e2dada768ffff7bc87f0099b9c7136afbb1e",
+      "cached_source": "1726ff636f88911f38ebc5ae2193e2dada768ffff7bc87f0099b9c7136afbb1e"
+    },
+    "include/microtorch/chat_template.hpp": {
+      "current": "9b51aca9fa81150f7f8279944c0cb4eac7cfb3d48e08a3ff3b8d0fb940ccaf66",
+      "cached_source": "9b51aca9fa81150f7f8279944c0cb4eac7cfb3d48e08a3ff3b8d0fb940ccaf66"
+    },
+    "include/microtorch/depth_attend.hpp": {
+      "current": "cfaaa57721bf469811e4347ebe4bf538e797f0764141bfc443df61ba925f9afe",
+      "cached_source": "cfaaa57721bf469811e4347ebe4bf538e797f0764141bfc443df61ba925f9afe"
+    },
+    "include/microtorch/device.hpp": {
+      "current": "56c27aa908c5217564b66d1d4f13ef9e54632c24d1f82766b12921955c556ef3",
+      "cached_source": "56c27aa908c5217564b66d1d4f13ef9e54632c24d1f82766b12921955c556ef3"
+    },
+    "include/microtorch/llama_attnres.hpp": {
+      "current": "ac672ed034a160b2baa8a93c8ebf95a147e4ae328c185c21c3391b5b2f119571",
+      "cached_source": "ac672ed034a160b2baa8a93c8ebf95a147e4ae328c185c21c3391b5b2f119571"
+    },
+    "include/microtorch/kimi_linear.hpp": {
+      "current": "cfe06cf8be998e746e2da662ce103278ee2022dd2b4bd718bc16e89b17fc52b9",
+      "cached_source": "cfe06cf8be998e746e2da662ce103278ee2022dd2b4bd718bc16e89b17fc52b9"
+    },
+    "include/microtorch/llama3_unicode_tables.hpp": {
+      "current": "48089608ef42d7542c22b449ee86b504f36ec33e22e0c2715f0226de11566cbb",
+      "cached_source": "48089608ef42d7542c22b449ee86b504f36ec33e22e0c2715f0226de11566cbb"
+    },
+    "include/microtorch/dpo_checkpoint_bridge_v1.hpp": {
+      "current": "0c34a2694a24936d4dcc0096195977f3eb4134676088fcc4fa2bccbd97cc3361",
+      "cached_source": "0c34a2694a24936d4dcc0096195977f3eb4134676088fcc4fa2bccbd97cc3361"
+    },
+    "include/microtorch/llama3_tokenizer.hpp": {
+      "current": "493b2e7e6baf3f66e915aca71b2f83dce7c07d6a3b0acd520f5030c95b13a2ba",
+      "cached_source": "493b2e7e6baf3f66e915aca71b2f83dce7c07d6a3b0acd520f5030c95b13a2ba"
+    }
+  },
+  "commands": [
+    [
+      "g++",
+      "-std=c++17",
+      "-O3",
+      "-DNDEBUG",
+      "-ffp-contract=off",
+      "-fopenmp",
+      "-I/home/jonat/codex_sfull_checkpoint_repair_20261101/include",
+      "-I/home/jonat/codex_sfull_checkpoint_repair_20261101/tests",
+      "-I/home/jonat/codex_sfull_checkpoint_repair_20261101/third_party/transformer_cpp/include",
+      "-I/home/jonat/codex_sfull_checkpoint_repair_20261101/third_party/transformer_cpp/third_party",
+      "-I/home/jonat/pk_publication_build_20261030/_deps/json-src/include",
+      "-DLEGACY_MATMUL_WRAP",
+      "-c",
+      "/home/jonat/codex_sfull_checkpoint_repair_20261101/tests/test_legacy_matmul_materialization.cpp",
+      "-o",
+      "/home/jonat/legacy_matmul_cpu_proof_20261102/test.o"
+    ],
+    [
+      "g++",
+      "-std=c++17",
+      "-O3",
+      "-DNDEBUG",
+      "-ffp-contract=off",
+      "-fopenmp",
+      "-I/home/jonat/codex_sfull_checkpoint_repair_20261101/include",
+      "-I/home/jonat/codex_sfull_checkpoint_repair_20261101/tests",
+      "-I/home/jonat/codex_sfull_checkpoint_repair_20261101/third_party/transformer_cpp/include",
+      "-I/home/jonat/codex_sfull_checkpoint_repair_20261101/third_party/transformer_cpp/third_party",
+      "-I/home/jonat/pk_publication_build_20261030/_deps/json-src/include",
+      "-c",
+      "/home/jonat/codex_sfull_checkpoint_repair_20261101/docs/receipts/legacy_matmul_materialization_20261102/baseline_device.cpp",
+      "-o",
+      "/home/jonat/legacy_matmul_cpu_proof_20261102/old.o"
+    ],
+    [
+      "g++",
+      "-fopenmp",
+      "/home/jonat/legacy_matmul_cpu_proof_20261102/test.o",
+      "/home/jonat/legacy_matmul_cpu_proof_20261102/old.o",
+      "/home/jonat/pk_dpo_checkpoint_build_20261101/libmicrotorch.a",
+      "/home/jonat/pk_dpo_checkpoint_build_20261101/transformer_cpp/libtransformer_core.a",
+      "-pthread",
+      "-Wl,--wrap=_ZN10microtorch6device11materializeERK6Matrix",
+      "-o",
+      "/home/jonat/legacy_matmul_cpu_proof_20261102/old"
+    ],
+    [
+      "g++",
+      "-std=c++17",
+      "-O3",
+      "-DNDEBUG",
+      "-ffp-contract=off",
+      "-fopenmp",
+      "-I/home/jonat/codex_sfull_checkpoint_repair_20261101/include",
+      "-I/home/jonat/codex_sfull_checkpoint_repair_20261101/tests",
+      "-I/home/jonat/codex_sfull_checkpoint_repair_20261101/third_party/transformer_cpp/include",
+      "-I/home/jonat/codex_sfull_checkpoint_repair_20261101/third_party/transformer_cpp/third_party",
+      "-I/home/jonat/pk_publication_build_20261030/_deps/json-src/include",
+      "-c",
+      "/home/jonat/codex_sfull_checkpoint_repair_20261101/src/device.cpp",
+      "-o",
+      "/home/jonat/legacy_matmul_cpu_proof_20261102/fixed.o"
+    ],
+    [
+      "g++",
+      "-fopenmp",
+      "/home/jonat/legacy_matmul_cpu_proof_20261102/test.o",
+      "/home/jonat/legacy_matmul_cpu_proof_20261102/fixed.o",
+      "/home/jonat/pk_dpo_checkpoint_build_20261101/libmicrotorch.a",
+      "/home/jonat/pk_dpo_checkpoint_build_20261101/transformer_cpp/libtransformer_core.a",
+      "-pthread",
+      "-Wl,--wrap=_ZN10microtorch6device11materializeERK6Matrix",
+      "-o",
+      "/home/jonat/legacy_matmul_cpu_proof_20261102/fixed"
+    ],
+    [
+      "g++",
+      "-std=c++17",
+      "-O3",
+      "-DNDEBUG",
+      "-ffp-contract=off",
+      "-fopenmp",
+      "-I/home/jonat/codex_sfull_checkpoint_repair_20261101/include",
+      "-I/home/jonat/codex_sfull_checkpoint_repair_20261101/tests",
+      "-I/home/jonat/codex_sfull_checkpoint_repair_20261101/third_party/transformer_cpp/include",
+      "-I/home/jonat/codex_sfull_checkpoint_repair_20261101/third_party/transformer_cpp/third_party",
+      "-I/home/jonat/pk_publication_build_20261030/_deps/json-src/include",
+      "/home/jonat/codex_sfull_checkpoint_repair_20261101/tests/test_lora_quant.cpp",
+      "/home/jonat/legacy_matmul_cpu_proof_20261102/fixed.o",
+      "/home/jonat/pk_dpo_checkpoint_build_20261101/libmicrotorch.a",
+      "/home/jonat/pk_dpo_checkpoint_build_20261101/transformer_cpp/libtransformer_core.a",
+      "-pthread",
+      "-o",
+      "/home/jonat/legacy_matmul_cpu_proof_20261102/test_lora_quant"
+    ],
+    [
+      "/home/jonat/legacy_matmul_cpu_proof_20261102/test_lora_quant"
+    ],
+    [
+      "g++",
+      "-std=c++17",
+      "-O3",
+      "-DNDEBUG",
+      "-ffp-contract=off",
+      "-fopenmp",
+      "-I/home/jonat/codex_sfull_checkpoint_repair_20261101/include",
+      "-I/home/jonat/codex_sfull_checkpoint_repair_20261101/tests",
+      "-I/home/jonat/codex_sfull_checkpoint_repair_20261101/third_party/transformer_cpp/include",
+      "-I/home/jonat/codex_sfull_checkpoint_repair_20261101/third_party/transformer_cpp/third_party",
+      "-I/home/jonat/pk_publication_build_20261030/_deps/json-src/include",
+      "/home/jonat/codex_sfull_checkpoint_repair_20261101/tests/test_muon.cpp",
+      "/home/jonat/legacy_matmul_cpu_proof_20261102/fixed.o",
+      "/home/jonat/pk_dpo_checkpoint_build_20261101/libmicrotorch.a",
+      "/home/jonat/pk_dpo_checkpoint_build_20261101/transformer_cpp/libtransformer_core.a",
+      "-pthread",
+      "-o",
+      "/home/jonat/legacy_matmul_cpu_proof_20261102/test_muon"
+    ],
+    [
+      "/home/jonat/legacy_matmul_cpu_proof_20261102/test_muon"
+    ]
+  ],
+  "results": [
+    {
+      "variant": "old",
+      "mode": "fresh",
+      "returncode": 0,
+      "rows": [
+        {
+          "case": "both_rectangular",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": false
+        },
+        {
+          "case": "left_only",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": false
+        },
+        {
+          "case": "right_only",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": false
+        },
+        {
+          "case": "dot",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": false
+        },
+        {
+          "case": "odd_rectangular",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": false
+        }
+      ]
+    },
+    {
+      "variant": "old",
+      "mode": "synthetic",
+      "returncode": 1,
+      "rows": [
+        {
+          "case": "both_rectangular",
+          "pass": false,
+          "actual_cuda": false,
+          "synthetic_authority": true,
+          "error": "independent numerical reference differs"
+        },
+        {
+          "case": "left_only",
+          "pass": false,
+          "actual_cuda": false,
+          "synthetic_authority": true,
+          "error": "independent numerical reference differs"
+        },
+        {
+          "case": "right_only",
+          "pass": false,
+          "actual_cuda": false,
+          "synthetic_authority": true,
+          "error": "independent numerical reference differs"
+        },
+        {
+          "case": "dot",
+          "pass": false,
+          "actual_cuda": false,
+          "synthetic_authority": true,
+          "error": "independent numerical reference differs"
+        },
+        {
+          "case": "odd_rectangular",
+          "pass": false,
+          "actual_cuda": false,
+          "synthetic_authority": true,
+          "error": "independent numerical reference differs"
+        }
+      ]
+    },
+    {
+      "variant": "fixed",
+      "mode": "fresh",
+      "returncode": 0,
+      "rows": [
+        {
+          "case": "both_rectangular",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": false
+        },
+        {
+          "case": "left_only",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": false
+        },
+        {
+          "case": "right_only",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": false
+        },
+        {
+          "case": "dot",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": false
+        },
+        {
+          "case": "odd_rectangular",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": false
+        }
+      ]
+    },
+    {
+      "variant": "fixed",
+      "mode": "synthetic",
+      "returncode": 0,
+      "rows": [
+        {
+          "case": "both_rectangular",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": true
+        },
+        {
+          "case": "left_only",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": true
+        },
+        {
+          "case": "right_only",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": true
+        },
+        {
+          "case": "dot",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": true
+        },
+        {
+          "case": "odd_rectangular",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": true
+        }
+      ]
+    }
+  ],
+  "limits": "Synthetic CPU authority emulation; no real CUDA producer/transfer, no default historical training invalidity or exhaustive audit claim."
+}

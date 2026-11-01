@@ -104,6 +104,10 @@ void set_from_env() {
 }
 
 Matrix matmul(const Matrix& a, const Matrix& b) {
+    // Matrix-level callers can supply values deferred by the op set.
+    // Both CPU reads and Phase-A/B1 uploads require coherent host operands.
+    materialize(a);
+    materialize(b);
 #ifdef MICROTORCH_CUDA
     if (g_device == Device::CUDA) {
         Matrix c(a.rows(), b.cols());

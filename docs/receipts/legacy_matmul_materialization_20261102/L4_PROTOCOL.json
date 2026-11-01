@@ -1,0 +1,38 @@
+{
+  "status": "PROSPECTIVE_UNLAUNCHED_ACTUAL_L4",
+  "baseline_commit": "3acfb1cb527a7d43fd85d69a151af939ca8e8a4d",
+  "baseline_device_sha256": "a2bd639ae7622c635442cba5fb8f9fa21476d391f231fd78d2d32b38db62e206",
+  "queue": "After the existing S-full seed1 and frozen E9 matched campaigns; separate admission required",
+  "matrix": {
+    "variants": [
+      "old",
+      "fixed"
+    ],
+    "transitions": [
+      "active",
+      "cpu",
+      "stepoff"
+    ],
+    "B1": [
+      false,
+      true
+    ],
+    "cases": [
+      "both_rectangular",
+      "left_only",
+      "right_only",
+      "dot",
+      "odd_rectangular"
+    ],
+    "rows": 60
+  },
+  "required": {
+    "old": "All 30 stale-input cases fail specifically against independent numerical reference; setup/guard failures are inconclusive",
+    "fixed": "All 30 stale-input cases pass finite full-output double-reference checks",
+    "controls": "Existing CPU fresh, LoRA and Muon controls retained; require real CUDA-produced host-stale operands, not synthetic authority",
+    "residency": "B1 on/off covers uploads without pre-registered stale B1 snapshots; explicit invalidate-on-mutation contract remains unchanged"
+  },
+  "arithmetic_absolute_tolerance": 1e-06,
+  "actual_cuda": false,
+  "automatic_launch": false
+}

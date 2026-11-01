@@ -1,0 +1,12 @@
+{
+  "reviewer": "independent Codex review agent",
+  "outcome": "APPROVE_SOURCE_AND_CPU_EMULATION_SCOPE",
+  "independent_replay": "20 exact old/fixed fresh/synthetic rows verified",
+  "actual_cuda": false,
+  "findings": [],
+  "limitations": [
+    "Actual CUDA matrix is unlaunched",
+    "Explicit B1 invalidate-on-host-mutation contract unchanged",
+    "No historical default-training invalidity claim"
+  ]
+}

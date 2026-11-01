@@ -1,0 +1,17 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+=== int8 blockwise quantization ===
+  error within half-step everywhere; memory 0.27x of fp32
+=== QLinear vs fp32 Linear ===
+  max |QLinear - Linear| = 0.00470
+=== LoRA: identity delta at init ===
+  output identical to frozen base (B initialized to zero)
+=== LoRA: gradients hit adapters only ===
+  dB nonzero at step 0 (dA zero by B=0, as in the paper)
+  adapter step shifts the output; base W untouched
+=== LoRA: merged_weight equivalence ===
+  max |adapter - merged| = 0.0000002
+=== QLoRA: quantized base + adapters ===
+  base stored at 0.27x fp32 bytes
+  3 AdamW steps trained the adapters, outputs finite
+
+[PASS] all LoRA/QLoRA/quantization tests

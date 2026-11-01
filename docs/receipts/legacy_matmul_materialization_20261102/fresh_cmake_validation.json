@@ -1,0 +1,29 @@
+{
+  "actual_cuda": false,
+  "fresh_build": true,
+  "source_sha256": {
+    "src/device.cpp": "29c765d1c537131b79d1eed7ca10d13c0513ee6923b9de99e7404728dceb21ae",
+    "CMakeLists.txt": "9ba426a9d8886035c56bc16de3f8e3c0d5217058a1403997b41036fe11d6e639"
+  },
+  "build_flags": {
+    "MICROTORCH_CUDA": false,
+    "MICROTORCH_DEVCHECK": true,
+    "build_type": "Release"
+  },
+  "binaries": {
+    "legacy_matmul_fixed": "f9a37d68cd62b9cf83a948e9f669943bc552b5072cca9b77eb818b6accdaae5d",
+    "legacy_matmul_old": "a87aa66e31136a934c20c76fc1b437882c45286b6a855990eddcffdee0747794",
+    "legacy_matmul_emulated": "b432542ce783c1f3194c757720bfa832e6e327c3f01cd902fd583ff14ff2d81d",
+    "test_lora_quant": "55b9a220e71775eec149c4ade92943fed24b6df1e1f613a849afab3f92f4515a",
+    "test_muon": "3ce34815bfd1784bf5c5643091912da9346ffbe471da3cbe3a218d44f37fb347"
+  },
+  "command": [
+    "ctest",
+    "--test-dir",
+    "/home/jonat/legacy_matmul_cmake_build_20261102",
+    "-R",
+    "legacy_matmul|lora_quant|muon",
+    "--output-on-failure"
+  ],
+  "returncode": 0
+}
