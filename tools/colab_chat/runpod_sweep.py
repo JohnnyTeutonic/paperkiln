@@ -7,7 +7,8 @@ campaigns that are home. Run by the Windows watchdog (scripts/colab_watchdog.ps1
 Runners (runner_multi.py --backend runpod) register their state dir in ~/.runpod/runners.json. A
 runner is alive when its runner.pid names a live process whose command line is runner_multi.py with
 that --state-dir. The one explicitly registered source-pinned data controller is also
-recognised after its full manifest and anchored root admission validate. For each pod on the account:
+recognised after its full manifest and anchored root admission validate. Exact root-admitted
+Sfull runpy guards are additionally recognized with their source/admission hashes and live PID start identity. For each pod on the account:
   - kept when a live runner's state records it as its pod, or a live runner is creating a pod of
     that name right now (state "creating" within the last 30 minutes);
   - otherwise terminated (its runner died, e.g. kill -9, or no runner state knows it), and the stop
@@ -109,6 +110,145 @@ def admitted_controller_alive(args, state_dir):
         return False
 
 
+
+# These launchers execute runner_multi in-process via runpy; /proc keeps the guard argv.
+# Adding a recovery owner requires a separate reviewed source AND admission hash.
+ADMITTED_ROOT_GUARDS = {
+    "/home/jonat/sfull_v2_seed1_root_admission_20261101/guarded_seed1.py": {
+        "kind": "seed1",
+        "sha256": "d4fe41271c7aaf4325dd019fdc2886098d54490f0f61e28f78bdc8a13132e69a",
+        "admission": "/home/jonat/sfull_v2_seed1_root_admission_20261101/admission.json",
+        "admission_sha256": "579cc75c2be8e1821e043b4c7dda3286a67020d533a51192a59f7e2af9a4851b",
+        "state_dir": "/home/jonat/sfull_v2_states_20261101/pk_c12_sfull_r1_runner",
+    },
+    "/home/jonat/sfull_boot_recovery_root_20261101/guarded_recovery.py": {
+        "kind": "recovery",
+        "sha256": "2f75c9abf767dd3dc1274dc05e2956b06e20147d23e96429a354ad6a30f83cf8",
+        "admission": "/home/jonat/sfull_boot_recovery_root_20261101/recovery_admission.json",
+        "admission_sha256": "2a5c1638a718dc352e0f2361c6bab95925c7cf0c2da36958eca386aeaacb7ec4",
+        "state_dir": "/home/jonat/sfull_v2_states_20261101/pk_c12_sfull_r1_runner",
+        "original_guard": "/home/jonat/sfull_v2_seed1_root_admission_20261101/guarded_seed1.py",
+    },
+}
+
+
+def process_snapshot(pid):
+    """Only process identity metadata; never read process environment or credentials."""
+    from pathlib import Path
+    if type(pid) is not int or pid <= 0:
+        raise ValueError("invalid owner PID")
+    root = Path('/proc') / str(pid)
+    raw = (root / 'cmdline').read_bytes()
+    fields_raw = raw.split(b'\0')
+    if fields_raw and fields_raw[-1] == b'':
+        fields_raw.pop()
+    args = [item.decode('utf-8') for item in fields_raw]
+    fields = (root / 'stat').read_text().rsplit(')', 1)[1].split()
+    if fields[0] == 'Z':
+        raise ValueError('zombie owner')
+    ticks = int(fields[19])
+    boot = next(int(line.split()[1]) for line in Path('/proc/stat').read_text().splitlines()
+                if line.startswith('btime '))
+    return {'args': args, 'start_ticks': ticks,
+            'started_epoch': boot + ticks / os.sysconf('SC_CLK_TCK'),
+            'uid': root.stat().st_uid, 'exe': os.path.realpath(root / 'exe')}
+
+
+def load_guard(path, started_epoch, source):
+    """Validate admission at this same process's start, preserving cleanup after expiry."""
+    import datetime
+    import types
+    module = types.ModuleType('sweep_pinned_root_guard')
+    module.__file__ = str(path)
+    exec(compile(source, str(path), 'exec'), module.__dict__)
+    class AtProcessStart(datetime.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime.datetime.fromtimestamp(started_epoch, tz)
+    module.datetime = types.SimpleNamespace(datetime=AtProcessStart, timezone=datetime.timezone)
+    return module
+
+
+def validate_root_guard(args, state_dir, started_epoch):
+    """No cached approval: rehash every pinned source/admission and rerun full validators."""
+    import hashlib
+    import types
+    from pathlib import Path
+    if len(args) != 3 or os.path.basename(args[0]) not in {'python3', 'python3.11'}:
+        return False
+    known = ADMITTED_ROOT_GUARDS.get(args[1])
+    if known is None or args[2] != known['admission']:
+        return False
+    if os.path.realpath(state_dir) != os.path.realpath(known['state_dir']):
+        return False
+    script, admission = Path(args[1]), Path(args[2])
+    if script.is_symlink() or admission.is_symlink():
+        return False
+    source = script.read_bytes()
+    admission_raw = admission.read_bytes()
+    if (hashlib.sha256(source).hexdigest() != known['sha256']
+            or hashlib.sha256(admission_raw).hexdigest() != known['admission_sha256']):
+        return False
+    record = json.loads(admission_raw)
+    if known['kind'] == 'seed1':
+        module = load_guard(script, started_epoch, source)
+    elif known['kind'] == 'recovery':
+        old = ADMITTED_ROOT_GUARDS.get(known['original_guard'])
+        if (old is None or old['kind'] != 'seed1'
+                or record.get('original_guard') != known['original_guard']
+                or record.get('original_admission') != old['admission']
+                or record.get('source_pins', {}).get(known['original_guard']) != old['sha256']
+                or record['source_pins'].get(old['admission']) != old['admission_sha256']):
+            return False
+        # Use the reviewed recovery validator unchanged, with a private original module
+        # whose deadline clock is the owning PID's start. Never patch global importlib.
+        old_source = Path(known['original_guard']).read_bytes()
+        if (hashlib.sha256(old_source).hexdigest() != old['sha256']
+                or hashlib.sha256(Path(old['admission']).read_bytes()).hexdigest() != old['admission_sha256']):
+            return False
+        original = load_guard(known['original_guard'], started_epoch, old_source)
+        module = types.ModuleType('sweep_pinned_recovery_guard')
+        module.__file__ = str(script)
+        exec(compile(source, str(script), 'exec'), module.__dict__)
+        token = types.SimpleNamespace(loader=types.SimpleNamespace(exec_module=lambda _: None))
+        def pinned_spec(name, path):
+            if name != 'original_sfull_root_guard' or str(path) != known['original_guard']:
+                raise ValueError('unexpected recovery import')
+            return token
+        def pinned_module(value):
+            if value is not token:
+                raise ValueError('unexpected recovery module')
+            return original
+        module.importlib = types.SimpleNamespace(util=types.SimpleNamespace(
+            spec_from_file_location=pinned_spec, module_from_spec=pinned_module))
+    else:
+        return False
+    argv = module.validate(record)
+    if argv.count('--state-dir') != 1 or argv.count('--deadline-utc') != 1:
+        return False
+    return (os.path.realpath(argv[argv.index('--state-dir') + 1]) == os.path.realpath(state_dir)
+            and argv[argv.index('--deadline-utc') + 1] == record['deadline_utc'])
+
+
+def admitted_root_guard_pid_alive(pid, state_dir):
+    """Live exact PID + start identity; source approval cannot survive PID reuse or drift."""
+    try:
+        before = process_snapshot(pid)
+        trusted_python = {os.path.realpath(sys.executable)}
+        for path in ['/usr/bin/python3', '/usr/bin/python3.11']:
+            if os.path.isfile(path):
+                trusted_python.add(os.path.realpath(path))
+        if (before['uid'] != os.getuid() or before['exe'] not in trusted_python
+                or not 0 < before['started_epoch'] <= time.time() + 1):
+            return False
+        if not validate_root_guard(before['args'], state_dir, before['started_epoch']):
+            return False
+        return before == process_snapshot(pid)
+    except (OSError, ValueError, TypeError, KeyError, ImportError, AttributeError,
+            SyntaxError, IndexError, StopIteration):
+        return False
+
+
 def runner_alive(state_dir):
     """The runner of state_dir is running: runner.pid names a live runner_multi.py with this --state-dir."""
     try:
@@ -117,6 +257,13 @@ def runner_alive(state_dir):
     except (OSError, ValueError):
         return False
     args = [a.decode(errors="replace") for a in (argv[:-1] if argv and argv[-1] == b"" else argv)]
+    if len(args) > 1 and args[1] in ADMITTED_ROOT_GUARDS:
+        if not admitted_root_guard_pid_alive(pid, state_dir):
+            return False
+        try:
+            return int(open(os.path.join(state_dir, "runner.pid")).read().strip()) == pid
+        except (OSError, ValueError):
+            return False
     if not any(a.endswith("runner_multi.py") for a in args):
         return admitted_controller_alive(args, state_dir)
     for i, a in enumerate(args):

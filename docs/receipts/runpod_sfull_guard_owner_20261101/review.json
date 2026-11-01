@@ -1,0 +1,41 @@
+{
+  "kind": "ROOT_GUARD_SWEEPER_OWNER_REPAIR_V1",
+  "status": "PREPARED_FOR_ROOT_REVIEW_NOT_DEPLOYED",
+  "source_sha256": {
+    "tools/colab_chat/runpod_sweep.py": "848f0885bdebe42ead9c9abd9a10356582d874b33d0eac02516c1ccb32df9318",
+    "tools/colab_chat/test_runpod_root_guard_owner_v1.py": "eb4c1ff41da657d27634f707321b4624a21bc962b7109e8ceaa51fb2c81c79cf"
+  },
+  "tests": {
+    "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m pytest -p no:cacheprovider -q tools/colab_chat/test_runpod_root_guard_owner_v1.py tools/colab_chat/test_runpod_sfull_owner_20261101.py tests/test_runpod_sweep_volume_safety.py",
+    "passed": 73,
+    "log_sha256": "6540140070273bb41710d4fa81ec33d31d64e237bfbe0ca917cec5b30892af8f"
+  },
+  "actual_probe_sha256": "c26a2d3505f55ca9cc929a90c33dc3ef23fde1df94093b8c0ed520845b778a24",
+  "actual_probe_script_sha256": "286e600bcabd89a333ac887ec581c79608b222b956e231e5f12e0fc7fdb8212b",
+  "actual_old_root_guard_full_validation": true,
+  "owner_contract": [
+    "Exact approved guard path and code SHA",
+    "Exact approved admission path and bytes SHA",
+    "Original full manifest/source/admission/cap/deadline validation",
+    "Exact state directory and argv",
+    "Actual trusted Python interpreter and same user",
+    "Live same PID start identity before and after validation",
+    "Deadline valid at that PID start; same admitted process keeps cleanup ownership after expiry",
+    "No cached approval and no blanket Python exemption"
+  ],
+  "recovery_contract": "Actual separately admitted recovery source/record pinned. Recovery validator retains original bounds and accepts only boot-function runner substitution.",
+  "prior_legacy_guards_preserved": true,
+  "pidfile_mutations": 0,
+  "provider_calls": 0,
+  "credential_accesses": 0,
+  "gpu_jobs": 0,
+  "deployed_sweeper_modified_by_this_task": false,
+  "configuration_modified_by_this_task": false,
+  "pods_modified_by_this_task": false,
+  "remaining": [
+    "Root independent patch/probe review",
+    "Root scoped deployment preserving original author WIP",
+    "Root exact deployed source verification and publication",
+    "Root activation only after watchdog custom match and owner recognition verify"
+  ]
+}
