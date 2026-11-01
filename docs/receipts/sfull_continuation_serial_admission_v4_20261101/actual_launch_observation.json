@@ -1,13 +1,13 @@
 {
-  "at_utc": "2026-11-01T12:13:26.779153+00:00",
+  "at_utc": "2026-11-01T12:24:07.664211+00:00",
   "runner_alive": true,
-  "pod_assigned": false,
-  "volume_assigned": false,
-  "ssh_ready": false,
-  "booted": null,
+  "pod_assigned": true,
+  "volume_assigned": true,
+  "ssh_ready": true,
+  "booted": false,
   "halted": false,
   "campaign_home": false,
   "jobs": {},
-  "prior_pod_ledger_entries": 17,
+  "prior_pod_ledger_entries": 18,
   "protected_original_volume_owned": false
 }
