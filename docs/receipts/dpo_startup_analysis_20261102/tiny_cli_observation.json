@@ -1,0 +1,22 @@
+{
+  "kind": "DPO_STARTUP_OBSERVATION_V1",
+  "diagnostic_only": true,
+  "stderr_sha256": "52af8d725c65f6fe4eefa3a9689f89a296bb1f39ff4767866e0a8cb925288c08",
+  "stderr_bytes": 1412,
+  "expected_pairs": 35,
+  "start_step": 0,
+  "markers": 9,
+  "last_observed_phase": "first_training_step_end",
+  "last_observed_elapsed_seconds": 0.002896,
+  "reference_pairs_observed_complete": 35,
+  "reference_cache_end_observed": true,
+  "first_iteration_end_observed": true,
+  "completed_phase_seconds": {
+    "reference_model_load": 0.000129,
+    "reference_cache": 0.002274,
+    "first_training_iteration": 0.0004780000000000001
+  },
+  "checkpoint_proof": false,
+  "adoption_verdict": null,
+  "limitation": "Last observation is not the exact halt phase; clocks begin at reference setup, not process launch. No extrapolated completion time or causal GPU diagnosis."
+}
