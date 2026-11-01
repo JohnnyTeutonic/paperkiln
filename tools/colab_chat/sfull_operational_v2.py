@@ -164,8 +164,9 @@ def active_training_folders(historical, manager_group):
     return result
 
 
-def gap_check(jobs, chat, active, starts, now, clock):
+def gap_check(jobs, chat, active, starts, now, clock, manager_group=None):
     from sfull_checkpoint_transport_v2 import config, root_for
+    from sfull_checkpoint_v2 import phase
 
     for job in jobs:
         c = config(job)
@@ -175,8 +176,14 @@ def gap_check(jobs, chat, active, starts, now, clock):
         if folder not in active:
             starts.pop(folder, None)
             continue
+        first_observation = folder not in starts
         observed = starts.setdefault(folder, {"clock": clock, "step": 0})
         root = root_for(chat, job)
+        root.mkdir(parents=True, exist_ok=True)
+        if first_observation:
+            phase(root, "manager.active_start", job=job["name"], observed_clock=clock,
+                  observed_unix=now, manager_group=manager_group, max_gap_seconds=c["max_gap_seconds"])
+
         if (root / "CURRENT").is_symlink():
             # The synchronous publisher committed and fsynced the immutable generation.
             m = json.loads((root / "CURRENT/manifest.json").read_text())
@@ -190,8 +197,15 @@ def gap_check(jobs, chat, active, starts, now, clock):
                 continue
             if m["step"] > observed["step"]:
                 observed.update(clock=clock, step=m["step"])
+                phase(root, "manager.generation_observed", job=job["name"], step=m["step"],
+                      observed_clock=clock, observed_unix=now, manager_group=manager_group)
+
         gap = clock - observed["clock"]
         if gap > c["max_gap_seconds"]:
+            phase(root, "manager.gap_halt", job=job["name"], step=observed["step"],
+                  observed_clock=clock, observed_unix=now, elapsed_since_observed=gap,
+                  last_advance_clock=observed["clock"], manager_group=manager_group,
+                  max_gap_seconds=c["max_gap_seconds"])
             raise ValueError(
                 "committed persistent-volume checkpoint gap exceeded180seconds: "
                 + job["name"]
@@ -232,10 +246,11 @@ def manage(historical, control, chat, jobs_path):
     try:
         while p.poll() is None:
             active = active_training_folders(historical, p.pid)
-            gap_check(jobs["jobs"], chat, active, starts, time.time(), time.monotonic())
+            gap_check(jobs["jobs"], chat, active, starts, time.time(), time.monotonic(), p.pid)
             time.sleep(2)
         return finish(chat, jobs, p.returncode)
     except Exception as error:
+        halt_unix, halt_monotonic = time.time(), time.monotonic()
         # Only the process group created above is owned and terminated.
         os.killpg(p.pid, signal.SIGTERM)
         try:
@@ -244,7 +259,9 @@ def manage(historical, control, chat, jobs_path):
             os.killpg(p.pid, signal.SIGKILL)
             p.wait()
         with marker.open("x") as f:
-            json.dump({"kind": "S_FULL_CHECKPOINT_V2_HALTED", "reason": str(error)}, f)
+            json.dump({"kind": "S_FULL_CHECKPOINT_V2_HALTED", "reason": str(error),
+                       "halt_detected_unix": halt_unix, "halt_detected_monotonic": halt_monotonic,
+                       "manager_group": p.pid, "observed_generations": starts}, f)
             f.flush()
             os.fsync(f.fileno())
         with (chat / "boot.log").open("a") as f:

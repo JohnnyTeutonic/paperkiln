@@ -119,3 +119,77 @@ def test_gap_monitor_active_only_and_reset(tmp_path):
     op.gap_check([j], tmp_path, {folder}, starts, 0, 1362)
     with pytest.raises(ValueError, match="gap"):
         op.gap_check([j], tmp_path, {folder}, starts, 0, 1363)
+
+
+@pytest.mark.parametrize("telemetry", ["ok", "download_failed", "partial"])
+def test_real_relay_snapshots_telemetry_after_verified_import_and_release(tmp_path, monkeypatch, telemetry):
+    import contextlib, io, json, types
+    home, remote = tmp_path / "home", tmp_path / "remote"
+    ready(remote, 25)
+    original_root_for = tr.root_for
+    remote_root = original_root_for(remote, job())
+    home_root = original_root_for(home, job())
+    home_root.mkdir(parents=True)
+    previous = b'{"event":"previous"}\n'
+    (home_root / "phases.snapshot.jsonl").write_bytes(previous)
+    monkeypatch.setattr(tr, "root_for", lambda base, j: original_root_for(remote if str(base) == "/content/chat" else base, j))
+
+    def rpc(exec_py, expression):
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            exec(expression, {"cp": cp, "json": json})
+        return json.loads([s[len("S_FULL_RPC "):] for s in output.getvalue().splitlines() if s.startswith("S_FULL_RPC ")][-1])
+
+    monkeypatch.setattr(tr, "rpc", rpc)
+    captures = []
+    def download(source, target, timeout):
+        if source.endswith("phases.jsonl"):
+            # Diagnostic capture must happen after the integrity boundary and
+            # remote acknowledgement, never on behalf of checkpoint success.
+            assert cp.current_unlocked(home_root)[1]["step"] == 25
+            assert not (remote_root / "INFLIGHT").exists()
+            captures.append(source)
+            if telemetry == "download_failed":
+                return 1
+            if telemetry == "partial":
+                from pathlib import Path
+                Path(target).write_bytes(b'{"event":')
+                return 0
+        shutil.copyfile(source, target)
+        return 0
+
+    saved = []
+    st = types.SimpleNamespace(d={}, save=lambda: saved.append(True))
+    assert tr.relay(None, download, st, job(), home)
+    record = st.d["full_checkpoint_v2"][job()["name"]]
+    assert record["full_optimizer"] is True and record["step"] == 25 and saved
+    assert captures
+    assert record["phase_snapshot"]["diagnostic_only"] is True
+    assert record["phase_snapshot"]["status"] == ("CAPTURED" if telemetry == "ok" else "CAPTURE_FAILED")
+    if telemetry == "ok":
+        rows = [json.loads(s) for s in (home_root / "phases.snapshot.jsonl").read_text().splitlines()]
+        assert any(r["event"] == "publish.current_durable" for r in rows)
+        assert rows[-1]["event"] == "release.complete"
+        assert not (home_root / "phases.snapshot.tmp").exists()
+    else:
+        assert (home_root / "phases.snapshot.jsonl").read_bytes() == previous
+    restored = tmp_path / "restored"
+    assert cp.restore_flat(home_root, restored, SOURCE)["rng"]["draws"] == 400
+    assert all((restored / n).read_bytes() == (remote / job()["name"] / n).read_bytes() for n in cp.FILES)
+
+
+def test_manager_phase_evidence_never_resets_checkpoint_gap(tmp_path):
+    import json
+    import sfull_operational_v2 as ops
+    run = ready(tmp_path, 25)
+    active = {str(run.resolve())}
+    starts = {}
+    ops.gap_check([job()], tmp_path, active, starts, 1000.0, 0.0, 1234)
+    ops.gap_check([job()], tmp_path, active, starts, 1179.0, 179.0, 1234)
+    with pytest.raises(ValueError, match="exceeded180seconds"):
+        ops.gap_check([job()], tmp_path, active, starts, 1181.0, 181.0, 1234)
+    assert starts[str(run.resolve())] == {"clock": 0.0, "step": 25}
+    rows = [json.loads(s) for s in (tr.root_for(tmp_path, job()) / "phases.jsonl").read_text().splitlines()]
+    halt = [r for r in rows if r["event"] == "manager.gap_halt"][-1]
+    assert halt["step"] == 25 and halt["elapsed_since_observed"] == 181.0
+    assert halt["manager_group"] == 1234 and halt["max_gap_seconds"] == 180

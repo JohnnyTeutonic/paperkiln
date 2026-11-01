@@ -1,0 +1,43 @@
+{
+  "status": "PASS",
+  "kind": "CONTROLLED_SFULL_LOCK_EVIDENCE_V1",
+  "baseline_source_sha256": "bba056e61d94c554f0dcc96b8ed75086ae32b86a6baff7221909aeea1832cea2",
+  "repaired_source_sha256": "3799edf47750bb9cb276310527045ba4ddb944ce69d0c2895e915533eea0deea",
+  "cells": [
+    {
+      "implementation": "historical",
+      "operation": "pin",
+      "publisher_attempt_observed": true,
+      "publisher_completed_before_verifier_released": false,
+      "controlled_publisher_elapsed_seconds": 0.3721478210063651,
+      "older_generation_retained_during_verification": true
+    },
+    {
+      "implementation": "historical",
+      "operation": "release",
+      "publisher_attempt_observed": true,
+      "publisher_completed_before_verifier_released": false,
+      "controlled_publisher_elapsed_seconds": 0.3605690950062126,
+      "older_generation_retained_during_verification": true
+    },
+    {
+      "implementation": "repaired",
+      "operation": "pin",
+      "publisher_attempt_observed": true,
+      "publisher_completed_before_verifier_released": true,
+      "controlled_publisher_elapsed_seconds": 0.3905233510013204,
+      "older_generation_retained_during_verification": true
+    },
+    {
+      "implementation": "repaired",
+      "operation": "release",
+      "publisher_attempt_observed": true,
+      "publisher_completed_before_verifier_released": true,
+      "controlled_publisher_elapsed_seconds": 0.3770906840072712,
+      "older_generation_retained_during_verification": true
+    }
+  ],
+  "qualification": "Tiny CPU fixtures and deliberately paused verifier prove lock blocking/removal, not storage throughput or actual L4 cadence. Historical false cells release verifier after250ms observation; elapsed includes this artificial delay. No model, historical checkpoint, GPU, provider or driver state changed.",
+  "max_gap_seconds_unchanged": 180,
+  "actual_L4_cadence_measured": false
+}
