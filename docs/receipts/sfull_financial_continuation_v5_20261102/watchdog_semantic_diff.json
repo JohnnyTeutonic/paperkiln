@@ -1,0 +1,10 @@
+{
+  "only_reviewed_entry_semantics_changed": true,
+  "unrelated_driver_settings_preserved": true,
+  "changed_fields": [
+    "name",
+    "stop_file",
+    "command"
+  ],
+  "runtime_config_sha256": "aabba76914b12dbcd31fb2a73134125a958fad1cff96f59f65fe58fcbe2bf044"
+}
