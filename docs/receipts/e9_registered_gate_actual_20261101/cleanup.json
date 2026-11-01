@@ -1,0 +1,12 @@
+{
+  "campaign_home": true,
+  "pod": null,
+  "volume": null,
+  "endpoint": null,
+  "canonical_zip_sha256": "409ca8fb79354a051b23e5b2cd8c7984e0a3baf6b76ea644b623424e5b010fc4",
+  "scientific_pass": false,
+  "qualification": "Provider ledger and runner log independently show owned pod termination and owned volume deletion. Protected unrelated volumes retained.",
+  "owned_pods_stopped": 1,
+  "owned_volumes_deleted": 1,
+  "all_jobs_home": true
+}

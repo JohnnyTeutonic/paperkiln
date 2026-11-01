@@ -1,0 +1,252 @@
+{
+  "pass": false,
+  "errors": [
+    "qwen3: decode metric exceeds corresponding prefill observation",
+    "qwen25: decode metric exceeds corresponding prefill observation"
+  ],
+  "formats": [
+    "f16"
+  ],
+  "phases": [
+    "g1",
+    "g2",
+    "g3",
+    "g4",
+    "tfd_qwen3",
+    "tfd_qwen25"
+  ],
+  "teacher_forcing_comparison": {
+    "qwen3": [
+      {
+        "input": "book",
+        "context": 2048,
+        "max_rel": {
+          "decode": 0.0012561909322083087,
+          "prefill": 0.0015507721253934946,
+          "within_prefill_observed": true
+        },
+        "mean_rel": {
+          "decode": 3.255035261255287e-05,
+          "prefill": 3.286383785015445e-05,
+          "within_prefill_observed": true
+        },
+        "ppl_rel_diff": {
+          "decode": 1.0998615485036112e-06,
+          "prefill": -5.607126643181193e-05,
+          "within_prefill_observed": true
+        }
+      },
+      {
+        "input": "book",
+        "context": 4096,
+        "max_rel": {
+          "decode": 0.0015210560292401392,
+          "prefill": 0.001660704063661289,
+          "within_prefill_observed": true
+        },
+        "mean_rel": {
+          "decode": 3.384540320845425e-05,
+          "prefill": 3.4120681635854164e-05,
+          "within_prefill_observed": true
+        },
+        "ppl_rel_diff": {
+          "decode": 3.884434460599273e-05,
+          "prefill": -2.0942327151551865e-05,
+          "within_prefill_observed": false
+        }
+      },
+      {
+        "input": "book",
+        "context": 8192,
+        "max_rel": {
+          "decode": 0.002258698994718756,
+          "prefill": 0.0023960355198624486,
+          "within_prefill_observed": true
+        },
+        "mean_rel": {
+          "decode": 3.6479604414479337e-05,
+          "prefill": 3.6458820900327744e-05,
+          "within_prefill_observed": false
+        },
+        "ppl_rel_diff": {
+          "decode": 1.513026211474866e-05,
+          "prefill": -3.2575572523563245e-05,
+          "within_prefill_observed": true
+        }
+      },
+      {
+        "input": "chat",
+        "context": 2048,
+        "max_rel": {
+          "decode": 0.0032087867818647686,
+          "prefill": 0.0033246625392863174,
+          "within_prefill_observed": true
+        },
+        "mean_rel": {
+          "decode": 3.727599888855274e-05,
+          "prefill": 3.69372151832665e-05,
+          "within_prefill_observed": false
+        },
+        "ppl_rel_diff": {
+          "decode": -7.939652278743381e-06,
+          "prefill": -2.4610870001051666e-05,
+          "within_prefill_observed": true
+        }
+      },
+      {
+        "input": "chat",
+        "context": 4096,
+        "max_rel": {
+          "decode": 0.0032087867818647686,
+          "prefill": 0.0033246625392863174,
+          "within_prefill_observed": true
+        },
+        "mean_rel": {
+          "decode": 3.86439858654461e-05,
+          "prefill": 3.842736665302027e-05,
+          "within_prefill_observed": false
+        },
+        "ppl_rel_diff": {
+          "decode": -3.01229822975424e-05,
+          "prefill": -4.5211566780944956e-05,
+          "within_prefill_observed": true
+        }
+      },
+      {
+        "input": "chat",
+        "context": 8192,
+        "max_rel": {
+          "decode": 0.0032087867818647686,
+          "prefill": 0.0033246625392863174,
+          "within_prefill_observed": true
+        },
+        "mean_rel": {
+          "decode": 3.961496794683808e-05,
+          "prefill": 3.942886321344889e-05,
+          "within_prefill_observed": false
+        },
+        "ppl_rel_diff": {
+          "decode": -1.20948094477491e-05,
+          "prefill": -5.0505374990961194e-05,
+          "within_prefill_observed": true
+        }
+      }
+    ],
+    "qwen25": [
+      {
+        "input": "book",
+        "context": 2048,
+        "max_rel": {
+          "decode": 0.0037071537340990766,
+          "prefill": 0.003940732946648115,
+          "within_prefill_observed": true
+        },
+        "mean_rel": {
+          "decode": 5.2768780438244886e-05,
+          "prefill": 5.243678481835509e-05,
+          "within_prefill_observed": false
+        },
+        "ppl_rel_diff": {
+          "decode": 4.232620067678994e-05,
+          "prefill": 8.359402941859884e-05,
+          "within_prefill_observed": true
+        }
+      },
+      {
+        "input": "book",
+        "context": 4096,
+        "max_rel": {
+          "decode": 0.0037071537340990766,
+          "prefill": 0.003940732946648115,
+          "within_prefill_observed": true
+        },
+        "mean_rel": {
+          "decode": 4.977967960405634e-05,
+          "prefill": 4.9513985848538e-05,
+          "within_prefill_observed": false
+        },
+        "ppl_rel_diff": {
+          "decode": 5.5205245314438045e-05,
+          "prefill": 6.269034407457852e-05,
+          "within_prefill_observed": true
+        }
+      },
+      {
+        "input": "book",
+        "context": 8192,
+        "max_rel": {
+          "decode": 0.0037071537340990766,
+          "prefill": 0.003940732946648115,
+          "within_prefill_observed": true
+        },
+        "mean_rel": {
+          "decode": 4.955684291573486e-05,
+          "prefill": 4.916622025623033e-05,
+          "within_prefill_observed": false
+        },
+        "ppl_rel_diff": {
+          "decode": 5.560230210654993e-05,
+          "prefill": 4.117734223862968e-05,
+          "within_prefill_observed": false
+        }
+      },
+      {
+        "input": "chat",
+        "context": 2048,
+        "max_rel": {
+          "decode": 0.0036826269751414464,
+          "prefill": 0.0037054413056977153,
+          "within_prefill_observed": true
+        },
+        "mean_rel": {
+          "decode": 4.7140971916085576e-05,
+          "prefill": 4.680994551347949e-05,
+          "within_prefill_observed": false
+        },
+        "ppl_rel_diff": {
+          "decode": -6.339400938881745e-05,
+          "prefill": 1.954380717261728e-06,
+          "within_prefill_observed": false
+        }
+      },
+      {
+        "input": "chat",
+        "context": 4096,
+        "max_rel": {
+          "decode": 0.0036826269751414464,
+          "prefill": 0.0037054413056977153,
+          "within_prefill_observed": true
+        },
+        "mean_rel": {
+          "decode": 4.746413658801063e-05,
+          "prefill": 4.7155944090965484e-05,
+          "within_prefill_observed": false
+        },
+        "ppl_rel_diff": {
+          "decode": 1.3185775566970648e-05,
+          "prefill": 4.307138064008065e-05,
+          "within_prefill_observed": true
+        }
+      },
+      {
+        "input": "chat",
+        "context": 8192,
+        "max_rel": {
+          "decode": 0.0036826269751414464,
+          "prefill": 0.0037054413056977153,
+          "within_prefill_observed": true
+        },
+        "mean_rel": {
+          "decode": 4.4377135277448876e-05,
+          "prefill": 4.4027057106596934e-05,
+          "within_prefill_observed": false
+        },
+        "ppl_rel_diff": {
+          "decode": 6.833281077023301e-05,
+          "prefill": 7.432844641930281e-05,
+          "within_prefill_observed": true
+        }
+      }
+    ]
+  }
+}
