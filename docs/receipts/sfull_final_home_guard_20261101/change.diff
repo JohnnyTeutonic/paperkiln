@@ -1,0 +1,124 @@
+diff --git a/tools/colab_chat/runner_multi.py b/tools/colab_chat/runner_multi.py
+index 084826b91..ec853875a 100644
+--- a/tools/colab_chat/runner_multi.py
++++ b/tools/colab_chat/runner_multi.py
+@@ -1262,7 +1262,7 @@ def main():
+                     log(f"{n}: {r[n]}  {r.get(n + '_tail', '')[-120:]}")
+                     js["status"] = r[n]
+                     st.save()
+-                if r[n] == "RUNNING" and not js["home"] and j.get("full_checkpoint_v2"):
++                if r[n] in ("RUNNING", "FINISHED") and not js["home"] and j.get("full_checkpoint_v2"):
+                     from sfull_checkpoint_transport_v2 import relay as full_relay
+                     try:
+                         relayed = full_relay(exec_py, download_file, st, j, ART) or relayed
+@@ -1280,6 +1280,11 @@ def main():
+                 elif r[n] == "RUNNING" and not js["home"] and "cmd" not in j:
+                     relayed = relay(st, n, j.get("relay_every_steps", 0)) or relayed
+                 if r[n] == "FINISHED" and not js["home"]:
++                    if j.get("full_checkpoint_v2"):
++                        from sfull_checkpoint_transport_v2 import final_home_ready as sfull_final_home_ready
++                        if not sfull_final_home_ready(j, ART):
++                            done = False
++                            continue  # final model/AdamW/RNG/events must land, not merely weights
+                     if j.get("dpo_full_checkpoint_v1"):
+                         from dpo_checkpoint_transport_v1 import final_home_ready
+                         if not final_home_ready(j, ART):
+diff --git a/tools/colab_chat/sfull_checkpoint_transport_v2.py b/tools/colab_chat/sfull_checkpoint_transport_v2.py
+index d8e18ef54..459b6c902 100644
+--- a/tools/colab_chat/sfull_checkpoint_transport_v2.py
++++ b/tools/colab_chat/sfull_checkpoint_transport_v2.py
+@@ -270,3 +270,17 @@ def recover_remote(jobs, chat, upload):
+         elif any((folder / n).exists() for n in cp.FILES):
+             raise ValueError("uncommitted flat checkpoint; cold/mixed resume refused")
+     return result
++
++
++def final_home_ready(job, art):
++    """A finished process is not home until its final full state is verified."""
++    c = config(job)
++    if not c:
++        return True
++    root = root_for(art, job)
++    if not (root / "CURRENT").is_symlink():
++        return False
++    with cp.locked(root, False):
++        _, manifest = cp.current_unlocked(root)
++        check_manifest(job, manifest)
++        return manifest["step"] == c["steps"]
+diff --git a/tools/colab_chat/test_sfull_checkpoint_transport_v2.py b/tools/colab_chat/test_sfull_checkpoint_transport_v2.py
+index 382bfacd4..fcc5ad8c7 100644
+--- a/tools/colab_chat/test_sfull_checkpoint_transport_v2.py
++++ b/tools/colab_chat/test_sfull_checkpoint_transport_v2.py
+@@ -122,14 +122,17 @@ def test_gap_monitor_active_only_and_reset(tmp_path):
+ 
+ 
+ @pytest.mark.parametrize("telemetry", ["ok", "download_failed", "partial"])
+-def test_real_relay_snapshots_telemetry_after_verified_import_and_release(tmp_path, monkeypatch, telemetry):
++@pytest.mark.parametrize("step", [25, 10000])
++def test_real_relay_snapshots_telemetry_after_verified_import_and_release(tmp_path, monkeypatch, telemetry, step):
+     import contextlib, io, json, types
+     home, remote = tmp_path / "home", tmp_path / "remote"
+-    ready(remote, 25)
++    ready(remote, step)
++    if step == 10000:
++        ready(home, 675)
+     original_root_for = tr.root_for
+     remote_root = original_root_for(remote, job())
+     home_root = original_root_for(home, job())
+-    home_root.mkdir(parents=True)
++    home_root.mkdir(parents=True, exist_ok=True)
+     previous = b'{"event":"previous"}\n'
+     (home_root / "phases.snapshot.jsonl").write_bytes(previous)
+     monkeypatch.setattr(tr, "root_for", lambda base, j: original_root_for(remote if str(base) == "/content/chat" else base, j))
+@@ -146,7 +149,7 @@ def test_real_relay_snapshots_telemetry_after_verified_import_and_release(tmp_pa
+         if source.endswith("phases.jsonl"):
+             # Diagnostic capture must happen after the integrity boundary and
+             # remote acknowledgement, never on behalf of checkpoint success.
+-            assert cp.current_unlocked(home_root)[1]["step"] == 25
++            assert cp.current_unlocked(home_root)[1]["step"] == step
+             assert not (remote_root / "INFLIGHT").exists()
+             captures.append(source)
+             if telemetry == "download_failed":
+@@ -162,7 +165,7 @@ def test_real_relay_snapshots_telemetry_after_verified_import_and_release(tmp_pa
+     st = types.SimpleNamespace(d={}, save=lambda: saved.append(True))
+     assert tr.relay(None, download, st, job(), home)
+     record = st.d["full_checkpoint_v2"][job()["name"]]
+-    assert record["full_optimizer"] is True and record["step"] == 25 and saved
++    assert record["full_optimizer"] is True and record["step"] == step and saved
+     assert captures
+     assert record["phase_snapshot"]["diagnostic_only"] is True
+     assert record["phase_snapshot"]["status"] == ("CAPTURED" if telemetry == "ok" else "CAPTURE_FAILED")
+@@ -173,8 +176,9 @@ def test_real_relay_snapshots_telemetry_after_verified_import_and_release(tmp_pa
+         assert not (home_root / "phases.snapshot.tmp").exists()
+     else:
+         assert (home_root / "phases.snapshot.jsonl").read_bytes() == previous
++    assert tr.final_home_ready(job(), home) is (step == 10000)
+     restored = tmp_path / "restored"
+-    assert cp.restore_flat(home_root, restored, SOURCE)["rng"]["draws"] == 400
++    assert cp.restore_flat(home_root, restored, SOURCE)["rng"]["draws"] == step * 16
+     assert all((restored / n).read_bytes() == (remote / job()["name"] / n).read_bytes() for n in cp.FILES)
+ 
+ 
+@@ -229,3 +233,22 @@ def test_rpc_surfaces_corrupt_pin_as_distinct_fatal_error(tmp_path, monkeypatch)
+     with pytest.raises(cp.PinnedGenerationValidationError, match="PINNED_GENERATION_VALIDATION_FAILED"):
+         tr.rpc(executor, f"cp.pin_inflight({str(root)!r})")
+     assert (root / "INFLIGHT").is_symlink()
++
++def test_finished_job_requires_exact_complete_final_optimizer_state(tmp_path):
++    assert not tr.final_home_ready(job(), tmp_path)
++    ready(tmp_path, 675)
++    assert not tr.final_home_ready(job(), tmp_path)
++    ready(tmp_path, 10000)
++    assert tr.final_home_ready(job(), tmp_path)
++    folder, _ = cp.current_unlocked(tr.root_for(tmp_path, job()))
++    optimizer = folder / "optim.safetensors"
++    raw = bytearray(optimizer.read_bytes()); raw[-1] ^= 1; optimizer.write_bytes(raw)
++    with pytest.raises(ValueError, match="hash differs"):
++        tr.final_home_ready(job(), tmp_path)
++
++
++def test_final_optimizer_state_from_different_recipe_is_refused(tmp_path):
++    ready(tmp_path, 10000)
++    bad = job(); bad["full_checkpoint_v2"]["source_commit"] = "b" * 40
++    with pytest.raises(ValueError, match="source/recipe/budget differs"):
++        tr.final_home_ready(bad, tmp_path)

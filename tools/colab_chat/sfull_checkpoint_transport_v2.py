@@ -270,3 +270,17 @@ def recover_remote(jobs, chat, upload):
         elif any((folder / n).exists() for n in cp.FILES):
             raise ValueError("uncommitted flat checkpoint; cold/mixed resume refused")
     return result
+
+
+def final_home_ready(job, art):
+    """A finished process is not home until its final full state is verified."""
+    c = config(job)
+    if not c:
+        return True
+    root = root_for(art, job)
+    if not (root / "CURRENT").is_symlink():
+        return False
+    with cp.locked(root, False):
+        _, manifest = cp.current_unlocked(root)
+        check_manifest(job, manifest)
+        return manifest["step"] == c["steps"]
