@@ -1,7 +1,8 @@
 """Atomic complete generations for the opt-in S-full checkpoint I/O amendment.
 
-publish is called synchronously by the training save function after all three
-legacy files are closed. Readers only consume CURRENT under the same lock.
+publish is called synchronously by the training save function after all four
+legacy files are closed. Pointer/retention changes use LOCK; pinned payload
+validation uses a separate lease lock so it cannot block publication.
 No optimizer arithmetic or random-number generator is implemented here.
 """
 
@@ -45,6 +46,43 @@ def locked(root, exclusive=True):
     root.mkdir(parents=True, exist_ok=True)
     with (root / "LOCK").open("a+b") as f:
         fcntl.flock(f, fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH)
+        yield root
+
+
+def phase(root, event, **details):
+    """Durable operational evidence; never a cadence heartbeat or integrity verdict."""
+    record = dict(event=event, unix=time.time(), monotonic=time.monotonic(), pid=os.getpid(), **details)
+    root = Path(root)
+    if root.is_symlink():
+        raise ValueError("checkpoint root cannot be a symlink")
+    path = root / "phases.jsonl"
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW, 0o600)
+    try:
+        data = (json.dumps(record, sort_keys=True) + "\n").encode()
+        if os.write(fd, data) != len(data):
+            raise OSError("incomplete checkpoint phase record")
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+    if event.startswith("publish."):
+        # The normal training log is a fallback copy of operational telemetry.
+        # A closed stdout pipe must not invalidate a durable checkpoint.
+        try:
+            print("S_FULL_CHECKPOINT_PHASE " + data.decode().rstrip(), flush=True)
+        except (BrokenPipeError, OSError):
+            pass
+
+
+@contextmanager
+def lease_locked(root):
+    # Serializes lease users only. Publishers never acquire this lock, so a
+    # slow full-payload verifier cannot block durable publication.
+    root = Path(root)
+    if root.is_symlink():
+        raise ValueError("checkpoint root cannot be a symlink")
+    root.mkdir(parents=True, exist_ok=True)
+    with (root / "LEASE_LOCK").open("a+b") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
         yield root
 
 
@@ -131,7 +169,7 @@ def inspect_flat(folder, *, expected_step=None):
     return step
 
 
-def current_unlocked(root, pointer="CURRENT"):
+def current_unlocked(root, pointer="CURRENT", *, metadata_only=False):
     if pointer not in ("CURRENT", "INFLIGHT"):
         raise ValueError("unknown pointer")
     link = Path(root) / pointer
@@ -143,10 +181,10 @@ def current_unlocked(root, pointer="CURRENT"):
     if Path(target).name != target or not target.startswith("generation-"):
         raise ValueError("unsafe generation pointer")
     folder = Path(root) / target
-    return validate_generation(folder)
+    return generation_metadata(folder) if metadata_only else validate_generation(folder)
 
 
-def validate_generation(folder):
+def generation_metadata(folder):
     folder = Path(folder)
     if folder.is_symlink() or not folder.is_dir():
         raise ValueError("generation must be a regular directory")
@@ -172,6 +210,11 @@ def validate_generation(folder):
     ):
         raise ValueError("RNG reconstruction or source binding differs")
     inspect_flat(folder, expected_step=manifest["step"])
+    return folder, manifest
+
+
+def validate_generation(folder):
+    folder, manifest = generation_metadata(folder)
     for name, want in manifest["files"].items():
         p = folder / name
         if p.stat().st_size != want["bytes"] or sha(p) != want["sha256"]:
@@ -200,28 +243,51 @@ def require_space(root, paths):
 
 
 def pin_inflight(root):
-    with locked(root) as folder:
-        old = current_unlocked(folder, "INFLIGHT")
-        if old:
-            return old
-        item = current_unlocked(folder)
-        if item is None:
-            raise ValueError("no committed checkpoint to pin")
-        temp = folder / (".pin-" + uuid.uuid4().hex)
-        os.symlink(item[0].name, temp)
-        os.replace(temp, folder / "INFLIGHT")
-        sync_dir(folder)
-        return item
+    with lease_locked(root) as folder:
+        phase(folder, "pin.lock_wait")
+        with locked(folder):
+            phase(folder, "pin.lock_acquired")
+            item = current_unlocked(folder, "INFLIGHT", metadata_only=True)
+            if item is None:
+                item = current_unlocked(folder, metadata_only=True)
+                if item is None:
+                    raise ValueError("no committed checkpoint to pin")
+                temp = folder / (".pin-" + uuid.uuid4().hex)
+                os.symlink(item[0].name, temp)
+                os.replace(temp, folder / "INFLIGHT")
+                sync_dir(folder)
+            expected = sha(item[0] / "manifest.json")
+        # INFLIGHT protects the generation throughout validation, including
+        # failure. Another lease user cannot release it while this runs.
+        phase(folder, "pin.validation_start", generation=item[0].name)
+        checked = validate_generation(item[0])
+        if checked[1] != item[1] or sha(item[0] / "manifest.json") != expected:
+            raise ValueError("pinned manifest changed during validation")
+        phase(folder, "pin.validation_complete", generation=item[0].name)
+        return checked
 
 
 def release_inflight(root, expected_manifest_sha):
-    with locked(root) as folder:
-        item = current_unlocked(folder, "INFLIGHT")
-        if item is None or sha(item[0] / "manifest.json") != expected_manifest_sha:
-            raise ValueError("inflight acknowledgement differs")
-        (folder / "INFLIGHT").unlink()
-        sync_dir(folder)
-        cleanup_unlocked(folder)
+    with lease_locked(root) as folder:
+        phase(folder, "release.lock_wait")
+        with locked(folder):
+            phase(folder, "release.lock_acquired")
+            item = current_unlocked(folder, "INFLIGHT", metadata_only=True)
+            if item is None or sha(item[0] / "manifest.json") != expected_manifest_sha:
+                raise ValueError("inflight acknowledgement differs")
+        phase(folder, "release.validation_start", generation=item[0].name)
+        checked = validate_generation(item[0])
+        if checked[1] != item[1]:
+            raise ValueError("pinned manifest changed during validation")
+        phase(folder, "release.validation_complete", generation=item[0].name)
+        with locked(folder):
+            now = current_unlocked(folder, "INFLIGHT", metadata_only=True)
+            if now is None or now[0] != item[0] or sha(now[0] / "manifest.json") != expected_manifest_sha:
+                raise ValueError("inflight acknowledgement differs")
+            (folder / "INFLIGHT").unlink()
+            sync_dir(folder)
+            cleanup_unlocked(folder)
+        phase(folder, "release.complete")
 
 
 def publish(folder, step, seed, batch, accum, source):
@@ -235,8 +301,20 @@ def publish(folder, step, seed, batch, accum, source):
     ):
         raise ValueError("invalid checkpoint recipe binding")
     inspect_flat(folder, expected_step=step)
-    with locked(folder / ".checkpoint_v2") as root:
-        old = current_unlocked(root)
+    checkpoint_root = folder / ".checkpoint_v2"
+    checkpoint_root.mkdir(parents=True, exist_ok=True)
+    phase(checkpoint_root, "publish.lock_wait", step=step)
+    with locked(checkpoint_root) as root:
+        phase(root, "publish.lock_acquired", step=step)
+        # Prior immutable publisher output is inspected for identity/step only.
+        # All new payloads and consumption/import/restore boundaries retain
+        # complete validation; this does not assert prior-payload integrity.
+        old = current_unlocked(root, metadata_only=True)
+        if old and (old[1]["source_commit"] != source or any(
+            old[1]["rng"][key] != value for key, value in
+            [("recipe_seed", seed), ("batch", batch), ("accum", accum)]
+        )):
+            raise ValueError("checkpoint source/recipe drift")
         if old and step <= old[1]["step"]:
             raise ValueError("checkpoint step must advance")
         cleanup_unlocked(root)
@@ -259,15 +337,19 @@ def publish(folder, step, seed, batch, accum, source):
             "files": {},
         }
         for name in FILES:
+            phase(root, "publish.copy_fsync_start", step=step, file=name)
             target = stage / name
             with (folder / name).open("rb") as src, target.open("xb") as dst:
                 shutil.copyfileobj(src, dst, 4 << 20)
                 dst.flush()
                 os.fsync(dst.fileno())
+            phase(root, "publish.copy_fsync_complete", step=step, file=name)
+            phase(root, "publish.hash_start", step=step, file=name)
             manifest["files"][name] = {
                 "bytes": target.stat().st_size,
                 "sha256": sha(target),
             }
+            phase(root, "publish.hash_complete", step=step, file=name)
         inspect_flat(stage, expected_step=step)
         manifest["committed_unix"] = time.time()
         with (stage / "manifest.json").open("x") as f:
@@ -282,6 +364,7 @@ def publish(folder, step, seed, batch, accum, source):
         os.symlink(generation.name, temp)
         os.replace(temp, root / "CURRENT")
         sync_dir(root)
+        phase(root, "publish.current_durable", step=step, generation=generation.name)
         cleanup_unlocked(root)
         return manifest
 

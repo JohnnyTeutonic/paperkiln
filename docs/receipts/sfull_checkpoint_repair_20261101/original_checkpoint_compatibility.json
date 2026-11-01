@@ -1,0 +1,18 @@
+{
+  "status": "PRESERVED_ORIGINAL_GENERATION_READ_ONLY_COMPATIBILITY_PASS",
+  "step": 675,
+  "source_commit": "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1",
+  "rng": {
+    "accum": 1,
+    "batch": 16,
+    "draws": 10800,
+    "engine": "std::mt19937",
+    "initial_seed": 1000126,
+    "recipe_seed": 1
+  },
+  "manifest_sha256": "43a0acb64ad17234999f417036abd9c36e27072c8d5800ff5321f05a74e54abb",
+  "all_four_payload_hashes_verified": true,
+  "payload_bytes": 873229607,
+  "historical_manifest_timestamp_delta_seconds": 63.2553985118866,
+  "qualification": "This63.255s historical interval omits original CLI serialization, earlier lock wait, prior-generation hashing and final pointer/directory durability. It is not full checkpoint latency. No payload, pointer, marker, original runner or driver was changed."
+}

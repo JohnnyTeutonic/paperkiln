@@ -1,0 +1,590 @@
+diff --git a/tools/colab_chat/sfull_checkpoint_transport_v2.py b/tools/colab_chat/sfull_checkpoint_transport_v2.py
+index 147f3314a..19b6f7dcc 100644
+--- a/tools/colab_chat/sfull_checkpoint_transport_v2.py
++++ b/tools/colab_chat/sfull_checkpoint_transport_v2.py
+@@ -2,6 +2,7 @@
+ 
+ from __future__ import annotations
+ import json
++import os
+ from pathlib import Path
+ import re
+ import shutil
+@@ -125,6 +126,47 @@ def rpc(exec_py, expression):
+     return json.loads(rows[0])
+ 
+ 
++def capture_phase_snapshot(download, remote, home):
++    """Best-effort diagnostics only, after verified import and lease release.
++
++    Neither a snapshot nor capture progress proves checkpoint integrity or
++    resets the remote durable-generation cadence monitor.
++    """
++    home = Path(home)
++    temp = home / "phases.snapshot.tmp"
++    try:
++        if temp.is_symlink():
++            raise ValueError("telemetry scratch cannot be a symlink")
++        if download(str(Path(remote) / "phases.jsonl"), str(temp), timeout=60) != 0:
++            raise OSError("phase telemetry download failed")
++        if not temp.is_file() or temp.is_symlink():
++            raise ValueError("phase telemetry snapshot missing")
++        raw = temp.read_bytes()
++        if not raw or not raw.endswith(b"\n"):
++            raise ValueError("incomplete phase telemetry snapshot")
++        for line in raw.splitlines():
++            record = json.loads(line)
++            if not isinstance(record, dict) or not isinstance(record.get("event"), str):
++                raise ValueError("invalid phase telemetry record")
++        with temp.open("rb") as f:
++            os.fsync(f.fileno())
++        os.replace(temp, home / "phases.snapshot.jsonl")
++        cp.sync_dir(home)
++        return {"status": "CAPTURED", "diagnostic_only": True,
++                "bytes": len(raw), "sha256": cp.sha(home / "phases.snapshot.jsonl")}
++    except Exception as error:
++        # Preserve any previous complete snapshot and the valid checkpoint.
++        # The state receipt and ordinary runner log retain a capture failure.
++        record = {"status": "CAPTURE_FAILED", "diagnostic_only": True,
++                  "error_type": type(error).__name__}
++        try:
++            print("S_FULL_CHECKPOINT_TELEMETRY " + json.dumps(record), flush=True)
++        except (BrokenPipeError, OSError):
++            pass
++        return record
++
++
++
+ def relay(exec_py, download, st, job, art):
+     config(job)
+     remote = str(root_for("/content/chat", job))
+@@ -171,6 +213,7 @@ else:
+         "manifest_sha256": r["manifest_sha256"],
+         "full_optimizer": True,
+         "rng_draws": manifest["rng"]["draws"],
++        "phase_snapshot": capture_phase_snapshot(download, remote, home),
+     }
+     st.save()
+     return True
+diff --git a/tools/colab_chat/sfull_checkpoint_v2.py b/tools/colab_chat/sfull_checkpoint_v2.py
+index 6b1aa02c6..453c88f27 100644
+--- a/tools/colab_chat/sfull_checkpoint_v2.py
++++ b/tools/colab_chat/sfull_checkpoint_v2.py
+@@ -1,7 +1,8 @@
+ """Atomic complete generations for the opt-in S-full checkpoint I/O amendment.
+ 
+-publish is called synchronously by the training save function after all three
+-legacy files are closed. Readers only consume CURRENT under the same lock.
++publish is called synchronously by the training save function after all four
++legacy files are closed. Pointer/retention changes use LOCK; pinned payload
++validation uses a separate lease lock so it cannot block publication.
+ No optimizer arithmetic or random-number generator is implemented here.
+ """
+ 
+@@ -48,6 +49,43 @@ def locked(root, exclusive=True):
+         yield root
+ 
+ 
++def phase(root, event, **details):
++    """Durable operational evidence; never a cadence heartbeat or integrity verdict."""
++    record = dict(event=event, unix=time.time(), monotonic=time.monotonic(), pid=os.getpid(), **details)
++    root = Path(root)
++    if root.is_symlink():
++        raise ValueError("checkpoint root cannot be a symlink")
++    path = root / "phases.jsonl"
++    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW, 0o600)
++    try:
++        data = (json.dumps(record, sort_keys=True) + "\n").encode()
++        if os.write(fd, data) != len(data):
++            raise OSError("incomplete checkpoint phase record")
++        os.fsync(fd)
++    finally:
++        os.close(fd)
++    if event.startswith("publish."):
++        # The normal training log is a fallback copy of operational telemetry.
++        # A closed stdout pipe must not invalidate a durable checkpoint.
++        try:
++            print("S_FULL_CHECKPOINT_PHASE " + data.decode().rstrip(), flush=True)
++        except (BrokenPipeError, OSError):
++            pass
++
++
++@contextmanager
++def lease_locked(root):
++    # Serializes lease users only. Publishers never acquire this lock, so a
++    # slow full-payload verifier cannot block durable publication.
++    root = Path(root)
++    if root.is_symlink():
++        raise ValueError("checkpoint root cannot be a symlink")
++    root.mkdir(parents=True, exist_ok=True)
++    with (root / "LEASE_LOCK").open("a+b") as f:
++        fcntl.flock(f, fcntl.LOCK_EX)
++        yield root
++
++
+ def tensor_inventory(path):
+     size = Path(path).stat().st_size
+     with Path(path).open("rb") as f:
+@@ -131,7 +169,7 @@ def inspect_flat(folder, *, expected_step=None):
+     return step
+ 
+ 
+-def current_unlocked(root, pointer="CURRENT"):
++def current_unlocked(root, pointer="CURRENT", *, metadata_only=False):
+     if pointer not in ("CURRENT", "INFLIGHT"):
+         raise ValueError("unknown pointer")
+     link = Path(root) / pointer
+@@ -143,10 +181,10 @@ def current_unlocked(root, pointer="CURRENT"):
+     if Path(target).name != target or not target.startswith("generation-"):
+         raise ValueError("unsafe generation pointer")
+     folder = Path(root) / target
+-    return validate_generation(folder)
++    return generation_metadata(folder) if metadata_only else validate_generation(folder)
+ 
+ 
+-def validate_generation(folder):
++def generation_metadata(folder):
+     folder = Path(folder)
+     if folder.is_symlink() or not folder.is_dir():
+         raise ValueError("generation must be a regular directory")
+@@ -172,6 +210,11 @@ def validate_generation(folder):
+     ):
+         raise ValueError("RNG reconstruction or source binding differs")
+     inspect_flat(folder, expected_step=manifest["step"])
++    return folder, manifest
++
++
++def validate_generation(folder):
++    folder, manifest = generation_metadata(folder)
+     for name, want in manifest["files"].items():
+         p = folder / name
+         if p.stat().st_size != want["bytes"] or sha(p) != want["sha256"]:
+@@ -200,28 +243,51 @@ def require_space(root, paths):
+ 
+ 
+ def pin_inflight(root):
+-    with locked(root) as folder:
+-        old = current_unlocked(folder, "INFLIGHT")
+-        if old:
+-            return old
+-        item = current_unlocked(folder)
+-        if item is None:
+-            raise ValueError("no committed checkpoint to pin")
+-        temp = folder / (".pin-" + uuid.uuid4().hex)
+-        os.symlink(item[0].name, temp)
+-        os.replace(temp, folder / "INFLIGHT")
+-        sync_dir(folder)
+-        return item
++    with lease_locked(root) as folder:
++        phase(folder, "pin.lock_wait")
++        with locked(folder):
++            phase(folder, "pin.lock_acquired")
++            item = current_unlocked(folder, "INFLIGHT", metadata_only=True)
++            if item is None:
++                item = current_unlocked(folder, metadata_only=True)
++                if item is None:
++                    raise ValueError("no committed checkpoint to pin")
++                temp = folder / (".pin-" + uuid.uuid4().hex)
++                os.symlink(item[0].name, temp)
++                os.replace(temp, folder / "INFLIGHT")
++                sync_dir(folder)
++            expected = sha(item[0] / "manifest.json")
++        # INFLIGHT protects the generation throughout validation, including
++        # failure. Another lease user cannot release it while this runs.
++        phase(folder, "pin.validation_start", generation=item[0].name)
++        checked = validate_generation(item[0])
++        if checked[1] != item[1] or sha(item[0] / "manifest.json") != expected:
++            raise ValueError("pinned manifest changed during validation")
++        phase(folder, "pin.validation_complete", generation=item[0].name)
++        return checked
+ 
+ 
+ def release_inflight(root, expected_manifest_sha):
+-    with locked(root) as folder:
+-        item = current_unlocked(folder, "INFLIGHT")
+-        if item is None or sha(item[0] / "manifest.json") != expected_manifest_sha:
+-            raise ValueError("inflight acknowledgement differs")
+-        (folder / "INFLIGHT").unlink()
+-        sync_dir(folder)
+-        cleanup_unlocked(folder)
++    with lease_locked(root) as folder:
++        phase(folder, "release.lock_wait")
++        with locked(folder):
++            phase(folder, "release.lock_acquired")
++            item = current_unlocked(folder, "INFLIGHT", metadata_only=True)
++            if item is None or sha(item[0] / "manifest.json") != expected_manifest_sha:
++                raise ValueError("inflight acknowledgement differs")
++        phase(folder, "release.validation_start", generation=item[0].name)
++        checked = validate_generation(item[0])
++        if checked[1] != item[1]:
++            raise ValueError("pinned manifest changed during validation")
++        phase(folder, "release.validation_complete", generation=item[0].name)
++        with locked(folder):
++            now = current_unlocked(folder, "INFLIGHT", metadata_only=True)
++            if now is None or now[0] != item[0] or sha(now[0] / "manifest.json") != expected_manifest_sha:
++                raise ValueError("inflight acknowledgement differs")
++            (folder / "INFLIGHT").unlink()
++            sync_dir(folder)
++            cleanup_unlocked(folder)
++        phase(folder, "release.complete")
+ 
+ 
+ def publish(folder, step, seed, batch, accum, source):
+@@ -235,8 +301,20 @@ def publish(folder, step, seed, batch, accum, source):
+     ):
+         raise ValueError("invalid checkpoint recipe binding")
+     inspect_flat(folder, expected_step=step)
+-    with locked(folder / ".checkpoint_v2") as root:
+-        old = current_unlocked(root)
++    checkpoint_root = folder / ".checkpoint_v2"
++    checkpoint_root.mkdir(parents=True, exist_ok=True)
++    phase(checkpoint_root, "publish.lock_wait", step=step)
++    with locked(checkpoint_root) as root:
++        phase(root, "publish.lock_acquired", step=step)
++        # Prior immutable publisher output is inspected for identity/step only.
++        # All new payloads and consumption/import/restore boundaries retain
++        # complete validation; this does not assert prior-payload integrity.
++        old = current_unlocked(root, metadata_only=True)
++        if old and (old[1]["source_commit"] != source or any(
++            old[1]["rng"][key] != value for key, value in
++            [("recipe_seed", seed), ("batch", batch), ("accum", accum)]
++        )):
++            raise ValueError("checkpoint source/recipe drift")
+         if old and step <= old[1]["step"]:
+             raise ValueError("checkpoint step must advance")
+         cleanup_unlocked(root)
+@@ -259,15 +337,19 @@ def publish(folder, step, seed, batch, accum, source):
+             "files": {},
+         }
+         for name in FILES:
++            phase(root, "publish.copy_fsync_start", step=step, file=name)
+             target = stage / name
+             with (folder / name).open("rb") as src, target.open("xb") as dst:
+                 shutil.copyfileobj(src, dst, 4 << 20)
+                 dst.flush()
+                 os.fsync(dst.fileno())
++            phase(root, "publish.copy_fsync_complete", step=step, file=name)
++            phase(root, "publish.hash_start", step=step, file=name)
+             manifest["files"][name] = {
+                 "bytes": target.stat().st_size,
+                 "sha256": sha(target),
+             }
++            phase(root, "publish.hash_complete", step=step, file=name)
+         inspect_flat(stage, expected_step=step)
+         manifest["committed_unix"] = time.time()
+         with (stage / "manifest.json").open("x") as f:
+@@ -282,6 +364,7 @@ def publish(folder, step, seed, batch, accum, source):
+         os.symlink(generation.name, temp)
+         os.replace(temp, root / "CURRENT")
+         sync_dir(root)
++        phase(root, "publish.current_durable", step=step, generation=generation.name)
+         cleanup_unlocked(root)
+         return manifest
+ 
+diff --git a/tools/colab_chat/sfull_operational_v2.py b/tools/colab_chat/sfull_operational_v2.py
+index 117842b3e..86f10a45e 100644
+--- a/tools/colab_chat/sfull_operational_v2.py
++++ b/tools/colab_chat/sfull_operational_v2.py
+@@ -164,8 +164,9 @@ def active_training_folders(historical, manager_group):
+     return result
+ 
+ 
+-def gap_check(jobs, chat, active, starts, now, clock):
++def gap_check(jobs, chat, active, starts, now, clock, manager_group=None):
+     from sfull_checkpoint_transport_v2 import config, root_for
++    from sfull_checkpoint_v2 import phase
+ 
+     for job in jobs:
+         c = config(job)
+@@ -175,8 +176,14 @@ def gap_check(jobs, chat, active, starts, now, clock):
+         if folder not in active:
+             starts.pop(folder, None)
+             continue
++        first_observation = folder not in starts
+         observed = starts.setdefault(folder, {"clock": clock, "step": 0})
+         root = root_for(chat, job)
++        root.mkdir(parents=True, exist_ok=True)
++        if first_observation:
++            phase(root, "manager.active_start", job=job["name"], observed_clock=clock,
++                  observed_unix=now, manager_group=manager_group, max_gap_seconds=c["max_gap_seconds"])
++
+         if (root / "CURRENT").is_symlink():
+             # The synchronous publisher committed and fsynced the immutable generation.
+             m = json.loads((root / "CURRENT/manifest.json").read_text())
+@@ -190,8 +197,15 @@ def gap_check(jobs, chat, active, starts, now, clock):
+                 continue
+             if m["step"] > observed["step"]:
+                 observed.update(clock=clock, step=m["step"])
++                phase(root, "manager.generation_observed", job=job["name"], step=m["step"],
++                      observed_clock=clock, observed_unix=now, manager_group=manager_group)
++
+         gap = clock - observed["clock"]
+         if gap > c["max_gap_seconds"]:
++            phase(root, "manager.gap_halt", job=job["name"], step=observed["step"],
++                  observed_clock=clock, observed_unix=now, elapsed_since_observed=gap,
++                  last_advance_clock=observed["clock"], manager_group=manager_group,
++                  max_gap_seconds=c["max_gap_seconds"])
+             raise ValueError(
+                 "committed persistent-volume checkpoint gap exceeded180seconds: "
+                 + job["name"]
+@@ -232,10 +246,11 @@ def manage(historical, control, chat, jobs_path):
+     try:
+         while p.poll() is None:
+             active = active_training_folders(historical, p.pid)
+-            gap_check(jobs["jobs"], chat, active, starts, time.time(), time.monotonic())
++            gap_check(jobs["jobs"], chat, active, starts, time.time(), time.monotonic(), p.pid)
+             time.sleep(2)
+         return finish(chat, jobs, p.returncode)
+     except Exception as error:
++        halt_unix, halt_monotonic = time.time(), time.monotonic()
+         # Only the process group created above is owned and terminated.
+         os.killpg(p.pid, signal.SIGTERM)
+         try:
+@@ -244,7 +259,9 @@ def manage(historical, control, chat, jobs_path):
+             os.killpg(p.pid, signal.SIGKILL)
+             p.wait()
+         with marker.open("x") as f:
+-            json.dump({"kind": "S_FULL_CHECKPOINT_V2_HALTED", "reason": str(error)}, f)
++            json.dump({"kind": "S_FULL_CHECKPOINT_V2_HALTED", "reason": str(error),
++                       "halt_detected_unix": halt_unix, "halt_detected_monotonic": halt_monotonic,
++                       "manager_group": p.pid, "observed_generations": starts}, f)
+             f.flush()
+             os.fsync(f.fileno())
+         with (chat / "boot.log").open("a") as f:
+diff --git a/tools/colab_chat/test_sfull_checkpoint_transport_v2.py b/tools/colab_chat/test_sfull_checkpoint_transport_v2.py
+index 6dc7d7d8f..d547909fe 100644
+--- a/tools/colab_chat/test_sfull_checkpoint_transport_v2.py
++++ b/tools/colab_chat/test_sfull_checkpoint_transport_v2.py
+@@ -119,3 +119,77 @@ def test_gap_monitor_active_only_and_reset(tmp_path):
+     op.gap_check([j], tmp_path, {folder}, starts, 0, 1362)
+     with pytest.raises(ValueError, match="gap"):
+         op.gap_check([j], tmp_path, {folder}, starts, 0, 1363)
++
++
++@pytest.mark.parametrize("telemetry", ["ok", "download_failed", "partial"])
++def test_real_relay_snapshots_telemetry_after_verified_import_and_release(tmp_path, monkeypatch, telemetry):
++    import contextlib, io, json, types
++    home, remote = tmp_path / "home", tmp_path / "remote"
++    ready(remote, 25)
++    original_root_for = tr.root_for
++    remote_root = original_root_for(remote, job())
++    home_root = original_root_for(home, job())
++    home_root.mkdir(parents=True)
++    previous = b'{"event":"previous"}\n'
++    (home_root / "phases.snapshot.jsonl").write_bytes(previous)
++    monkeypatch.setattr(tr, "root_for", lambda base, j: original_root_for(remote if str(base) == "/content/chat" else base, j))
++
++    def rpc(exec_py, expression):
++        output = io.StringIO()
++        with contextlib.redirect_stdout(output):
++            exec(expression, {"cp": cp, "json": json})
++        return json.loads([s[len("S_FULL_RPC "):] for s in output.getvalue().splitlines() if s.startswith("S_FULL_RPC ")][-1])
++
++    monkeypatch.setattr(tr, "rpc", rpc)
++    captures = []
++    def download(source, target, timeout):
++        if source.endswith("phases.jsonl"):
++            # Diagnostic capture must happen after the integrity boundary and
++            # remote acknowledgement, never on behalf of checkpoint success.
++            assert cp.current_unlocked(home_root)[1]["step"] == 25
++            assert not (remote_root / "INFLIGHT").exists()
++            captures.append(source)
++            if telemetry == "download_failed":
++                return 1
++            if telemetry == "partial":
++                from pathlib import Path
++                Path(target).write_bytes(b'{"event":')
++                return 0
++        shutil.copyfile(source, target)
++        return 0
++
++    saved = []
++    st = types.SimpleNamespace(d={}, save=lambda: saved.append(True))
++    assert tr.relay(None, download, st, job(), home)
++    record = st.d["full_checkpoint_v2"][job()["name"]]
++    assert record["full_optimizer"] is True and record["step"] == 25 and saved
++    assert captures
++    assert record["phase_snapshot"]["diagnostic_only"] is True
++    assert record["phase_snapshot"]["status"] == ("CAPTURED" if telemetry == "ok" else "CAPTURE_FAILED")
++    if telemetry == "ok":
++        rows = [json.loads(s) for s in (home_root / "phases.snapshot.jsonl").read_text().splitlines()]
++        assert any(r["event"] == "publish.current_durable" for r in rows)
++        assert rows[-1]["event"] == "release.complete"
++        assert not (home_root / "phases.snapshot.tmp").exists()
++    else:
++        assert (home_root / "phases.snapshot.jsonl").read_bytes() == previous
++    restored = tmp_path / "restored"
++    assert cp.restore_flat(home_root, restored, SOURCE)["rng"]["draws"] == 400
++    assert all((restored / n).read_bytes() == (remote / job()["name"] / n).read_bytes() for n in cp.FILES)
++
++
++def test_manager_phase_evidence_never_resets_checkpoint_gap(tmp_path):
++    import json
++    import sfull_operational_v2 as ops
++    run = ready(tmp_path, 25)
++    active = {str(run.resolve())}
++    starts = {}
++    ops.gap_check([job()], tmp_path, active, starts, 1000.0, 0.0, 1234)
++    ops.gap_check([job()], tmp_path, active, starts, 1179.0, 179.0, 1234)
++    with pytest.raises(ValueError, match="exceeded180seconds"):
++        ops.gap_check([job()], tmp_path, active, starts, 1181.0, 181.0, 1234)
++    assert starts[str(run.resolve())] == {"clock": 0.0, "step": 25}
++    rows = [json.loads(s) for s in (tr.root_for(tmp_path, job()) / "phases.jsonl").read_text().splitlines()]
++    halt = [r for r in rows if r["event"] == "manager.gap_halt"][-1]
++    assert halt["step"] == 25 and halt["elapsed_since_observed"] == 181.0
++    assert halt["manager_group"] == 1234 and halt["max_gap_seconds"] == 180
+diff --git a/tools/colab_chat/test_sfull_checkpoint_v2.py b/tools/colab_chat/test_sfull_checkpoint_v2.py
+index 74f6b58e0..1a477b700 100644
+--- a/tools/colab_chat/test_sfull_checkpoint_v2.py
++++ b/tools/colab_chat/test_sfull_checkpoint_v2.py
+@@ -158,3 +158,150 @@ def test_invalid_ack_retains_inflight(tmp_path):
+     with pytest.raises(ValueError):
+         cp.release_inflight(root, "wrong")
+     assert (root / "INFLIGHT").is_symlink()
++
++
++@pytest.mark.parametrize("operation", ["pin", "release"])
++def test_slow_full_validation_does_not_hold_publisher_lock(tmp_path, operation):
++    import multiprocessing as mp
++    ctx = mp.get_context("fork")
++    publish(tmp_path)
++    root = tmp_path / ".checkpoint_v2"
++    old, _ = cp.current_unlocked(root)
++    digest = cp.sha(old / "manifest.json")
++    if operation == "release":
++        cp.pin_inflight(root)
++    entered, allow, advanced = ctx.Event(), ctx.Event(), ctx.Event()
++
++    def consumer():
++        original = cp.validate_generation
++        def slow(folder):
++            entered.set()
++            if not allow.wait(20):
++                raise RuntimeError("test validation barrier timed out")
++            return original(folder)
++        cp.validate_generation = slow
++        if operation == "pin":
++            cp.pin_inflight(root)
++        else:
++            cp.release_inflight(root, digest)
++
++    def producer():
++        publish(tmp_path, 50, .5)
++        publish(tmp_path, 75, .75)
++        advanced.set()
++
++    reader = ctx.Process(target=consumer)
++    writer = ctx.Process(target=producer)
++    reader.start()
++    try:
++        assert entered.wait(5)
++        writer.start()
++        # Controlled barrier, not a laptop storage-throughput claim: the
++        # verifier cannot finish until we explicitly allow it below.
++        assert advanced.wait(5)
++        assert old.is_dir()
++        assert cp.current_unlocked(root)[1]["step"] == 75
++    finally:
++        allow.set()
++        reader.join(10)
++        if writer.pid is not None:
++            writer.join(10)
++        for process in [reader, writer]:
++            if process.pid is not None and process.is_alive():
++                process.terminate(); process.join()
++    assert reader.exitcode == 0 and writer.exitcode == 0
++    if operation == "pin":
++        assert old.is_dir()
++        cp.release_inflight(root, digest)
++    assert not old.exists()
++
++
++
++@pytest.mark.parametrize("operation", ["pin", "release", "restore"])
++def test_lease_and_resume_boundaries_still_detect_payload_corruption(tmp_path, operation):
++    publish(tmp_path)
++    root = tmp_path / ".checkpoint_v2"
++    folder, _ = cp.current_unlocked(root)
++    digest = cp.sha(folder / "manifest.json")
++    if operation == "release":
++        cp.pin_inflight(root)
++    payload = folder / "model.safetensors"
++    data = bytearray(payload.read_bytes()); data[-1] ^= 1; payload.write_bytes(data)
++    with pytest.raises(ValueError, match="hash differs"):
++        if operation == "pin":
++            cp.pin_inflight(root)
++        elif operation == "release":
++            cp.release_inflight(root, digest)
++        else:
++            cp.restore_flat(root, tmp_path / "restore", SOURCE)
++    if operation != "restore":
++        assert (root / "INFLIGHT").is_symlink()
++
++
++
++def test_phase_evidence_tracks_actual_durable_commit_not_heartbeat(tmp_path):
++    publish(tmp_path)
++    root = tmp_path / ".checkpoint_v2"
++    rows = [json.loads(s) for s in (root / "phases.jsonl").read_text().splitlines()]
++    names = [r["event"] for r in rows]
++    assert names[0:2] == ["publish.lock_wait", "publish.lock_acquired"]
++    assert names[-1] == "publish.current_durable"
++    assert names.count("publish.copy_fsync_complete") == len(cp.FILES)
++    assert names.count("publish.hash_complete") == len(cp.FILES)
++    assert rows[-1]["generation"] == (root / "CURRENT").readlink().name
++    assert all(type(r["monotonic"]) is float and type(r["unix"]) is float for r in rows)
++
++
++
++def test_stale_ack_cannot_release_newer_lease(tmp_path):
++    publish(tmp_path)
++    root = tmp_path / ".checkpoint_v2"
++    first, _ = cp.pin_inflight(root)
++    stale = cp.sha(first / "manifest.json")
++    cp.release_inflight(root, stale)
++    publish(tmp_path, 50)
++    second, _ = cp.pin_inflight(root)
++    with pytest.raises(ValueError, match="acknowledgement differs"):
++        cp.release_inflight(root, stale)
++    assert (root / "INFLIGHT").readlink().name == second.name
++    cp.release_inflight(root, cp.sha(second / "manifest.json"))
++
++
++
++def test_phase_journal_refuses_symlink_destination(tmp_path):
++    target = tmp_path / "untouched"; target.write_text("preserve")
++    (tmp_path / "phases.jsonl").symlink_to(target)
++    with pytest.raises(OSError):
++        cp.phase(tmp_path, "test")
++    assert target.read_text() == "preserve"
++
++
++
++def test_publish_symlink_root_writes_nothing_outside(tmp_path):
++    run = tmp_path / "run"; external = tmp_path / "external"
++    flat(run); external.mkdir()
++    (external / "sentinel").write_text("preserve")
++    (run / ".checkpoint_v2").symlink_to(external, target_is_directory=True)
++    with pytest.raises(ValueError, match="symlink"):
++        cp.publish(run, 25, 1, 2, 1, SOURCE)
++    assert sorted(p.name for p in external.iterdir()) == ["sentinel"]
++    assert (external / "sentinel").read_text() == "preserve"
++
++
++
++def test_publisher_phase_stdout_fallback_is_telemetry(tmp_path, capsys):
++    publish(tmp_path)
++    lines = [s.removeprefix("S_FULL_CHECKPOINT_PHASE ") for s in capsys.readouterr().out.splitlines() if s.startswith("S_FULL_CHECKPOINT_PHASE ")]
++    rows = [json.loads(s) for s in lines]
++    assert rows[-1]["event"] == "publish.current_durable"
++    assert cp.current_unlocked(tmp_path / ".checkpoint_v2")[1]["step"] == 25
++
++
++
++def test_publication_refuses_source_or_recipe_drift(tmp_path):
++    publish(tmp_path)
++    flat(tmp_path, 50)
++    with pytest.raises(ValueError, match="source/recipe drift"):
++        cp.publish(tmp_path, 50, 1, 2, 1, "c" * 40)
++    with pytest.raises(ValueError, match="source/recipe drift"):
++        cp.publish(tmp_path, 50, 2, 2, 1, SOURCE)

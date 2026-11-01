@@ -1,0 +1,22 @@
+{
+  "status": "PREPARED_FOR_CLAUDE_READ_ONLY_REVIEW_NOT_RESUME_ADMISSION",
+  "base_commit": "54cf0861da268eb60ffdf24282e5b96a3ce74a94",
+  "source_files_sha256": {
+    "tools/colab_chat/sfull_checkpoint_transport_v2.py": "9a799d73c60a5e66ae132d90ba29e116e5b3996c9ab11fc39c22f7350da08c57",
+    "tools/colab_chat/sfull_checkpoint_v2.py": "3799edf47750bb9cb276310527045ba4ddb944ce69d0c2895e915533eea0deea",
+    "tools/colab_chat/sfull_operational_v2.py": "01032a8f0fe091b329f0ba8b2d6006b0829bc1bc22607426b7e14b2fa4ac9a28",
+    "tools/colab_chat/test_sfull_checkpoint_transport_v2.py": "1a47ec3d95b35d6fcb81d4f24edcaf6a1afee69537a98d897703359a578e643b",
+    "tools/colab_chat/test_sfull_checkpoint_v2.py": "cf03ff94534750d55dccbf56bacbe2be748108732400133e7b5572775ba05d9c"
+  },
+  "repair_patch_sha256": "99cb3b9b6cf8cfd7a81e76321a942bfef1080c3829216e7d080e9899031ab82f",
+  "scoped_tests_passed": 66,
+  "test_seconds": 12.07,
+  "controlled_lock_cells_passed": 4,
+  "numerical_sources_or_recipe_changed": false,
+  "checkpoint_every_steps": 25,
+  "max_gap_seconds": 180,
+  "actual_L4_cadence_measured": false,
+  "old_halt_evidence_preserved": true,
+  "gpu_admission_performed": false,
+  "claude_review": "PENDING"
+}
