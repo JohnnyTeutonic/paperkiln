@@ -1,0 +1,19 @@
+{
+  "unix": 1793534795.588093,
+  "files": [
+    "DPO_CHECKPOINT_V1_HALTED.json",
+    "STATUS",
+    "STATUS_dpo_eval",
+    "STATUS_dpo_heldout_sample",
+    "STATUS_dpo_parity",
+    "STATUS_dpo_preflight",
+    "STATUS_pk_dpo_v1",
+    "boot.log",
+    "jobs.log",
+    "pk_dpo_v1/events.jsonl",
+    "pk_dpo_v1/spec.json",
+    "pk_dpo_v1_train.log",
+    "provenance.json"
+  ],
+  "full_checkpoint_present": false
+}

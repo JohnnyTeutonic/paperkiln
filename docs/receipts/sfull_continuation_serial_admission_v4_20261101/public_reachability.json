@@ -1,0 +1,8 @@
+{
+  "source_control_commit": "c9b82fd6718497a4ace4fba62f6e23b8ed2346a7",
+  "public_exact_commit_fetch": true,
+  "boot_bytes_match": true,
+  "boot_sha256": "c67ece8c9dee10170c431df5853675ece0b6d713c5191e9718f00eaa53988a9b",
+  "gpu_calls": 0,
+  "provider_calls": 0
+}

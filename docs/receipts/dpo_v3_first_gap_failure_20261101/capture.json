@@ -1,0 +1,9 @@
+{
+  "archive_sha256": "284fc416e271a40945ad707649a4e1f62c01e9036b0983ccf227394137d1fa13",
+  "kind": "PRESERVED_DPO_V3_GAP_FAILURE",
+  "full_checkpoint_present": false,
+  "source_commit": "b444700195625570130913646bb5ad86c364f4c4",
+  "scientific_quality_verdict": null,
+  "reason": "committed persistent-volume checkpoint gap exceeded180seconds: pk_dpo_v1",
+  "all_recorded_files_readable": true
+}

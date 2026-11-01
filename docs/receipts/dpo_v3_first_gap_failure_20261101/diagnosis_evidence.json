@@ -1,0 +1,28 @@
+{
+  "frozen_source_commit": "b444700195625570130913646bb5ad86c364f4c4",
+  "diagnostic_archive_sha256": "284fc416e271a40945ad707649a4e1f62c01e9036b0983ccf227394137d1fa13",
+  "events_sha256": "724d14a8c387a968dde93dc97821e74fdffcdaadf30dc3aaf78a1234110fe7d4",
+  "event_inventory": [
+    "start",
+    "data",
+    "model",
+    "init"
+  ],
+  "last_event": "init",
+  "pairs": 1445,
+  "full_checkpoint_present": false,
+  "observed_halt": {
+    "kind": "DPO_CHECKPOINT_V1_HALTED",
+    "reason": "committed persistent-volume checkpoint gap exceeded180seconds: pk_dpo_v1"
+  },
+  "source_sha256": {
+    "tools/mtstudio.cpp": "7f6f1ce21f511a2f8ec184bcd7db0616e6ce5843eb66d4eed7c752b6b3d806e2",
+    "tools/colab_chat/dpo_checkpoint_manager_v1.py": "694cb624f1c8c0b25abc674473b3990f286509ede074ce0b681c08653464d285",
+    "tools/colab_chat/jobs_vm.py": "db8c6c3d9370cda09723b6421a4363d707d6fa2ba8c1fc3deeb87c23f8b558ae",
+    "tools/colab_chat/boot_dpo_checkpoint_v1.sh": "be6905dfd7837fea255290ee20f46682971081d31608ec12766c5ba216f41c87"
+  },
+  "actual_live_phase_identified": false,
+  "most_concrete_source_hypothesis": "reference model construction and all-pairs reference-margin precomputation before first optimizer iteration",
+  "no_completed_step_event_recorded": true,
+  "no_gpu_or_provider_calls": true
+}

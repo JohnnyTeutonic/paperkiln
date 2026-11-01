@@ -1,0 +1,21 @@
+# DPO first checkpoint-gap diagnosis
+
+## Actual observations
+
+The frozen V3 diagnostics archive contains only start, data, model and init events, and no complete checkpoint generation. The preserved halt names the unchanged 180-second committed-checkpoint gap. The source flushes stdout and events.jsonl on every emitted event (mtstudio.cpp1103-1112). It unconditionally emits a step event after each completed optimizer iteration (around3374), not merely every ten checkpoint steps. Thus no completed-step event was recorded. This does not identify which uninstrumented phase was executing at termination or prove zero partial-step work.
+
+## Concrete source mechanism
+
+After the init event, the trainer constructs optimizer state/resume bookkeeping, then make_reference at2968 loads a second97.5M-parameter LoadedLM from the base safetensors. It next computes reference margins for every1445 preference pairs in one serial loop (2971-2978), including the72 held-out pairs needed later. No optimizer loop or checkpoint can run until that whole loop finishes. Each pair packs chosen+rejected sides into2*L rows and calls a full frozen forward, then pair_margins invokes dense host log_softmax_rows over2*L*16384 logits (pref_rows1819-1841, pair_margins1844-1850). The first step_begin is only at3026, after reference preprocessing. Therefore these forwards run outside a step-resident deferred window, despite device flags being enabled; operations use write-through behavior, causing many parameter uploads/intermediate downloads. This is a specific plausible source of a >180-second first gap, not an established runtime profile.
+
+The manager starts its clock when the mtstudio run PID is observed (dpo_checkpoint_manager_v1.py gap_check), before any model/init/reference phases. Its check sees CURRENT absent and step0 while this preprocessing runs. This includes initial model and reference work in the first gap. Its use of time.monotonic is correct; the remedy is not to reset that clock on phase/progress messages or widen the guard.
+
+jobs_vm sets OMP_NUM_THREADS=4 explicitly. There is no discovered unbounded default thread count here. Four threads may still oversubscribe a small remote CPU allocation, but diagnostics do not contain CPU affinity/cgroup limits, actual thread count or a live stack, so this report does not assign causality to oversubscription. There is no per-run reference-margin cache: the loop recomputes all reference margins on every resume as written. No arbitrary architecture/configuration reversal was found; the reference evaluates the same registered source and inputs.
+
+## Bounded instrumentation proposal
+
+The adjacent source-only illustrative diff adds a MICROTORCH_DPO_PHASE_TIMING=1 diagnostic mode around reference construction and reference-margin preprocessing. It emits load start/end, all-pairs start/end, pair0 begin/end and every16th pair begin/end, and training-loop entry. Each record has elapsed steady-clock wall time, completed-pair count and total. It performs no cuda synchronization, changes no math/order/RNG/dataset/batch/steps, and never touches the manager clock. Writes use the existing Events flush, not a new fsync path. Any enabled profiling adds some overhead, so it is a diagnostic-only mode and should not be used for throughput claims. It remains uncompiled and uninstalled; the frozen source and running/ended packet were not edited.
+
+A prospective diagnostic should additionally record CPU affinity and cgroup quotas, OMP_NUM_THREADS, actual worker thread count, CUDA process memory/utilization and selected periodic stack snapshots. Distinguish reference construction, individual forward/margin cost and any first optimizer step. Do not claim 1445 calls actually completed or that the halt definitely occurred in the reference loop without these phase observations.
+
+Any future cached-reference or performance change needs exact base-weight/spec/dataset/tokenizer/source binding, preserved reference numerical order or a matched numerical equivalence gate, complete cache validation and the original cumulative spend bound. Moving preprocessing outside the existing cadence scope or increasing its first-gap allowance would be a prospective protocol change, not a silent engineering fix. No such waiver, cache adoption, GPU launch, API call or cap change is made here.

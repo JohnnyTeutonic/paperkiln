@@ -1,0 +1,13 @@
+{
+  "checked_at_utc": "2026-11-01T12:11:15Z",
+  "gpu_campaigns_active": 0,
+  "previous_campaign_home": true,
+  "previous_owned_resources_deleted": true,
+  "previous_state_sha256": "e74831209ff967072c0c69b94155c9ce656238a9bbebe05e7bbe5008b10b0c3b",
+  "seed_spent_usd_at_admission": 1.4595520768132475,
+  "seed_remaining_usd_at_admission": 5.540447923186752,
+  "original_volume_preserved": true,
+  "new_owned_volume_required": true,
+  "continuation_is_same_seed_reservation": true,
+  "caps_reset": false
+}

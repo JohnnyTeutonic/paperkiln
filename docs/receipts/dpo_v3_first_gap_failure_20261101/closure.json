@@ -1,0 +1,13 @@
+{
+  "kind": "DPO_V3_NEGATIVE_CLOSURE_VERIFIED",
+  "scientific_completion": false,
+  "source_commit": "b444700195625570130913646bb5ad86c364f4c4",
+  "all_negative_evidence_home": true,
+  "owned_pod_and_volume_deleted": true,
+  "full_checkpoint_present": false,
+  "state_sha256": "e74831209ff967072c0c69b94155c9ce656238a9bbebe05e7bbe5008b10b0c3b",
+  "diagnostics_sha256": "284fc416e271a40945ad707649a4e1f62c01e9036b0983ccf227394137d1fa13",
+  "cumulative_dpo_spend_usd": 1.2897478416267092,
+  "downstream_jobs": "NOT_RUN_PARENT_HALTED",
+  "protected_volumes_touched": false
+}
