@@ -1,0 +1,8 @@
+{
+  "pass": true,
+  "actual_guard_no_provider": true,
+  "live_owner_recognised": true,
+  "unrelated_pid_rejected": true,
+  "dead_pid_rejected": true,
+  "review_sha256": "664d0116ac98ca0b190ebb6c846fb9113621094ab5a464d807d76c307b6cf6d2"
+}

@@ -1,0 +1,5 @@
+{
+  "pass": true,
+  "negative_cases": 20,
+  "finite_reference_error": 0.125
+}

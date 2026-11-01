@@ -1,0 +1,130 @@
+{
+  "status": "ROOT_REVIEW_REQUIRED_NOT_LAUNCHED",
+  "version": "V3_QUALITY_RANGE_HARDENING_V2_WRAPPER_UNCHANGED",
+  "baseline_commit": "3ada969788f4d5ea65f5b81b29c22c30b7f25c97",
+  "manifest_sha256": "17b87afcd732e357949861cfe9c701fc566b4fffc27ae40522e7335557dafddf",
+  "candidate_archive_sha256": "731f51f8ed21872581ee4fe08886547bd496b46766d3560f613675386dad8cd7",
+  "candidate_archive_bytes": 6494048,
+  "predecessor_v2_archive_sha256": "8afa975c81abae0a17b64c0cabcf1fcdba46e0ce1742afc802e4104640215d2d",
+  "original_candidate_archive_sha256": "fd8a3ff702b95236a50272f6999fd48794d4b728c3f8b9a4bad76569612893d1",
+  "only_candidate_source_changed_from_original": "ember/tools/e9_quality.cpp",
+  "quality_source_sha256": "a455afd24d91d0a147041e169120b257d8e2daee8fc489d9153094accda9ff4a",
+  "quality_v3_delta_sha256": "a0191615a4f0909b1e39172c878760a8f76d2edafe85bb75c31dcfabaed399f8",
+  "actual_CPP_test_source_sha256": "1422938a7cc81d5f1914118abe36d3c774cbd1c723e85a4702116095cf0640fe",
+  "actual_CPP_test_binary_sha256": "4220d10a13b96b4da58cfb52808543b4f89b18ee41e55a3783ec21e9cf0f3926",
+  "quality_checks": {
+    "pass": true,
+    "negative_cases": 20,
+    "finite_reference_error": 0.125
+  },
+  "additional_finite_identity_checks": {
+    "random_finite_rows_bit_identical_to_original": 256,
+    "constant_reference_row_identity": true
+  },
+  "complete_quality_main_CPU_syntax_preflight": "PASS",
+  "wrapper_sha256": "d925c534a72b499f33107b264862e705ef9feb01c09ca7170c418a49cf1267c4",
+  "wrapper_tests": {
+    "status": "PASS",
+    "wrapper_sha256": "d925c534a72b499f33107b264862e705ef9feb01c09ca7170c418a49cf1267c4",
+    "cases": [
+      {
+        "case": "negative_science",
+        "refused_before_write": true,
+        "all_prior_bytes_preserved": true
+      },
+      {
+        "case": "positive_science",
+        "refused_before_write": true,
+        "all_prior_bytes_preserved": true
+      },
+      {
+        "case": "partial_science",
+        "refused_before_write": true,
+        "all_prior_bytes_preserved": true
+      },
+      {
+        "case": "negative_jobout",
+        "refused_before_write": true,
+        "all_prior_bytes_preserved": true
+      },
+      {
+        "case": "GATE_DONE",
+        "refused_before_write": true,
+        "all_prior_bytes_preserved": true
+      },
+      {
+        "case": "GATE_FAILED",
+        "refused_before_write": true,
+        "all_prior_bytes_preserved": true
+      },
+      {
+        "case": "PHASES",
+        "refused_before_write": true,
+        "all_prior_bytes_preserved": true
+      },
+      {
+        "case": "gate_vm.log",
+        "refused_before_write": true,
+        "all_prior_bytes_preserved": true
+      },
+      {
+        "case": "gate_out.zip",
+        "refused_before_write": true,
+        "all_prior_bytes_preserved": true
+      },
+      {
+        "case": "gate_out_123.zip",
+        "refused_before_write": true,
+        "all_prior_bytes_preserved": true
+      },
+      {
+        "case": "existing_claim",
+        "refused_before_write": true,
+        "all_prior_bytes_preserved": true
+      },
+      {
+        "case": "missing_staging",
+        "transport_rc": 0,
+        "gate_pass": false,
+        "second_attempt_refused_without_changes": true,
+        "VM_invocations_are_stubs": true
+      },
+      {
+        "case": "stub_scientific_negative",
+        "transport_rc": 0,
+        "gate_pass": false,
+        "second_attempt_refused_without_changes": true,
+        "VM_invocations_are_stubs": true
+      },
+      {
+        "case": "stub_scientific_positive",
+        "transport_rc": 0,
+        "gate_pass": true,
+        "second_attempt_refused_without_changes": true,
+        "VM_invocations_are_stubs": true
+      },
+      {
+        "case": "simultaneous_attempt_claim",
+        "exactly_one_winner": true
+      }
+    ],
+    "case_count": 15,
+    "jobs_vm_source_contract": "manager only creates empty jobout; pid/rc/STATUS/trainlog are outside jobout (jobs_vm.py command branch)",
+    "provider_GPU_model_actions": 0
+  },
+  "STAGING_does_not_self_pin_wrapper": "Root external guard must pin all7 resolved upload source bytes, including wrapper andSTAGING",
+  "registered_thresholds_baseline_phases_science_unchanged": true,
+  "original_Claude_stage_and_V2_preserved": true,
+  "uploads": {
+    "ember.tgz": "/mnt/c/ml_artifacts/kvq/stage-e9-gate-v3-20261101/ember.tgz",
+    "ember_base.tgz": "/mnt/c/ml_artifacts/kvq/stage-e9-gate-20261101/ember_base.tgz",
+    "inputs.tgz": "/mnt/c/ml_artifacts/kvq/stage-e9-gate-20261101/inputs.tgz",
+    "e9_gate_vm.sh": "/mnt/c/ml_artifacts/kvq/stage-e9-gate-20261101/e9_gate_vm.sh",
+    "HEAD": "/mnt/c/ml_artifacts/kvq/stage-e9-gate-20261101/HEAD",
+    "STAGING.json": "/mnt/c/ml_artifacts/kvq/stage-e9-gate-v3-20261101/STAGING.json",
+    "e9_runpod_job.py": "/mnt/c/ml_artifacts/kvq/stage-e9-gate-v2-20261101/e9_runpod_job.py"
+  },
+  "rerun_CPP_command": "cd /home/jonat/e9_quality_hardening_20261101 && prlimit --as=1610612736 -- g++ -std=c++17 -O0 test_e9_quality_checks_v3.cpp -o test_e9_quality_checks_v3 && ./test_e9_quality_checks_v3",
+  "rerun_wrapper_command": "python3 /home/jonat/test_e9_wrapper_v2.py",
+  "provider_GPU_config_actions": 0
+}

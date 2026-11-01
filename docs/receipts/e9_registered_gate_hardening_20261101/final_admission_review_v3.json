@@ -1,0 +1,134 @@
+{
+  "status": "READY_FOR_ROOT_BOUNDED_ADMISSION_NO_REMAINING_REVIEW_BLOCKER",
+  "readiness_file": "/home/jonat/e9_quality_hardening_20261101/readiness_v3.json",
+  "readiness_sha256": "544e1084348749a2051b3055dab9441affe7bd90802eb31d62bad4a727f0fc82",
+  "uploads": {
+    "ember.tgz": {
+      "path": "/mnt/c/ml_artifacts/kvq/stage-e9-gate-v3-20261101/ember.tgz",
+      "bytes": 6494048,
+      "sha256": "731f51f8ed21872581ee4fe08886547bd496b46766d3560f613675386dad8cd7"
+    },
+    "ember_base.tgz": {
+      "path": "/mnt/c/ml_artifacts/kvq/stage-e9-gate-20261101/ember_base.tgz",
+      "bytes": 6632384,
+      "sha256": "195c15b520c84e32979eba8e1cb5d542045964bf8a11082741018613d4a77251"
+    },
+    "inputs.tgz": {
+      "path": "/mnt/c/ml_artifacts/kvq/stage-e9-gate-20261101/inputs.tgz",
+      "bytes": 202764,
+      "sha256": "7270b102455bd97767a14c61e11857db2510262dad4f05a2f1553216b4cf6782"
+    },
+    "e9_gate_vm.sh": {
+      "path": "/mnt/c/ml_artifacts/kvq/stage-e9-gate-20261101/e9_gate_vm.sh",
+      "bytes": 12327,
+      "sha256": "60c58f7762e6c48d0694a877187b28eec356add31c87e6ac7cfced317be67538"
+    },
+    "HEAD": {
+      "path": "/mnt/c/ml_artifacts/kvq/stage-e9-gate-20261101/HEAD",
+      "bytes": 41,
+      "sha256": "e3f51ebf1305d4e1616e7dd90422b6cf933f183e389ce6b522a745fec69a174e"
+    },
+    "STAGING.json": {
+      "path": "/mnt/c/ml_artifacts/kvq/stage-e9-gate-v3-20261101/STAGING.json",
+      "bytes": 935,
+      "sha256": "17b87afcd732e357949861cfe9c701fc566b4fffc27ae40522e7335557dafddf"
+    },
+    "e9_runpod_job.py": {
+      "path": "/mnt/c/ml_artifacts/kvq/stage-e9-gate-v2-20261101/e9_runpod_job.py",
+      "bytes": 5799,
+      "sha256": "d925c534a72b499f33107b264862e705ef9feb01c09ca7170c418a49cf1267c4"
+    }
+  },
+  "baseline_exact_public_commit": "3ada969788f4d5ea65f5b81b29c22c30b7f25c97",
+  "baseline_git_archive_exact_verified": true,
+  "baseline_files": 3162,
+  "candidate_files": 3164,
+  "inputs_files": 4,
+  "candidate_vs_baseline": "Only tools/e9_quality.cpp, tools/e9_gate_check.py added and CMake target appended; no engine/kernel deltas. V3 only hardens newly added quality probe.",
+  "engine_cuda_kernels_sha256": "e7df10347ed52c54a8210deb6aec34d20b40be751feebe694ce58228e735a3f1",
+  "registered_scope": {
+    "formats": [
+      "f16"
+    ],
+    "phases": [
+      "g1",
+      "g2",
+      "g3",
+      "g4",
+      "tfd_qwen3",
+      "tfd_qwen25"
+    ],
+    "both_models": true,
+    "A1_k": 2,
+    "g3_f16_tol": {
+      "qwen3": 0.0010574654827976977,
+      "qwen25": 0.002088699576726874
+    },
+    "g3_f32_tol": 0.0001,
+    "g4_quality_limit": {
+      "qwen3": 0.0012542332348972035,
+      "qwen25": 0.01219731994521622
+    },
+    "g3_top1": "288/288",
+    "g3_greedy": "12/12",
+    "g1_base_new_bytes": true,
+    "g2_f16_repeat_bytes": true,
+    "teacher_forcing": {
+      "both_models": true,
+      "inputs": [
+        "book",
+        "chat"
+      ],
+      "contexts": [
+        2048,
+        4096,
+        8192
+      ],
+      "decode_metrics_no_greater_than_stored_prefill_observations": true
+    },
+    "qwen25_bench": {
+      "ctx": 8064,
+      "steps": 128
+    }
+  },
+  "all_gates_required": "Original wrapper requires script rc0 + GATE_DONE + gate_summary.pass true; root closure additionally requires execution.gate_pass true. No threshold, phase, model, sourcebaseline or known-history edits.",
+  "quality_probe_tests": {
+    "actual_shared_CPP_aggregation_negative_cases": 20,
+    "finite_original_identity_random_cases": 256,
+    "finite_constant_reference_case": true,
+    "full_quality_main_CPU_syntax": "PASS",
+    "test_source": "/home/jonat/e9_quality_hardening_20261101/test_e9_quality_checks_v3.cpp",
+    "command": "cd /home/jonat/e9_quality_hardening_20261101 && prlimit --as=1610612736 -- g++ -std=c++17 -O0 test_e9_quality_checks_v3.cpp -o test_e9_quality_checks_v3 && ./test_e9_quality_checks_v3"
+  },
+  "wrapper_tests": {
+    "actual_wrapper_cases": 15,
+    "scientific_negative_positive_partial_and_markers_byte_preservation": true,
+    "exclusive_durable_attempt_claim": true,
+    "jobs_vm_empty_outdir_allowed_no_internal_manager_metadata": true,
+    "fresh_missing_setup_and_stub_scientific_negative_transport0_gatefalse": true,
+    "command": "python3 /home/jonat/test_e9_wrapper_v2.py"
+  },
+  "fixed_review_blockers": [
+    "NaN/Inf logits ignored by std::max; now reject before aggregation",
+    "Truncated/empty/wrong forward rows could reach unchecked offsets; now validate exact shapes",
+    "Finite extreme reference produces float range infinity; now reject nonfinite derived range/error/final maximum",
+    "Existing scientific outcomes overwritten on retained-volume retries; now refuse before writes and durably claim one attempt"
+  ],
+  "resources": {
+    "one_L4": true,
+    "volume_gb": 30,
+    "max_usd": 3,
+    "max_hours": 2,
+    "scientific_timeout_minutes": 95,
+    "assessment": "Reasonable bounded envelope for two verified models, source builds and temporary dump/ZIP copies. No runtime or peak-storage guarantee claimed; outer normaltransport cap/deadline/cleanup remain mandatory."
+  },
+  "operational_conditions": [
+    "Root must pin all7 uploads externally, including wrapper and STAGING (STAGING intentionally does not self-pin wrapper).",
+    "Root binds one fresh campaign/state/absolute deadline and recognizes ownership in normal watchdog/sweeper; no manual duplicate driver.",
+    "Preserved attempt/terminal/partial evidence on retained volume causes refusal, never deletion or automatic reset.",
+    "Original Claude stage and V2predecessor retained; user originals not edited.",
+    "This is a newly registered prospective A1/k2 gate, not reversal of historical strict1e-4 negative or an engine arithmetic fix."
+  ],
+  "provider_GPU_config_actions": 0,
+  "Claude_messages_sent": 0
+}
