@@ -193,3 +193,39 @@ def test_manager_phase_evidence_never_resets_checkpoint_gap(tmp_path):
     halt = [r for r in rows if r["event"] == "manager.gap_halt"][-1]
     assert halt["step"] == 25 and halt["elapsed_since_observed"] == 181.0
     assert halt["manager_group"] == 1234 and halt["max_gap_seconds"] == 180
+
+def test_diagnostic_io_failure_does_not_change_manager_guard(tmp_path, monkeypatch):
+    import errno, sfull_operational_v2 as ops
+    run = ready(tmp_path, 25)
+    original = cp.os.open
+    def broken(path, *args, **kwargs):
+        if str(path).endswith("phases.jsonl"):
+            raise OSError(errno.ENOSPC, "telemetry full")
+        return original(path, *args, **kwargs)
+    monkeypatch.setattr(cp.os, "open", broken)
+    starts = {}; active = {str(run.resolve())}
+    ops.gap_check([job()], tmp_path, active, starts, 1000.0, 0.0)
+    with pytest.raises(ValueError, match="exceeded180seconds"):
+        ops.gap_check([job()], tmp_path, active, starts, 1181.0, 181.0)
+    assert starts[str(run.resolve())] == {"clock": 0.0, "step": 25}
+
+
+def test_rpc_surfaces_corrupt_pin_as_distinct_fatal_error(tmp_path, monkeypatch):
+    import contextlib, io
+    from pathlib import Path
+    run = ready(tmp_path, 25); root = tr.root_for(tmp_path, job())
+    folder, _ = cp.current_unlocked(root)
+    payload = folder / "model.safetensors"
+    raw = bytearray(payload.read_bytes()); raw[-1] ^= 1; payload.write_bytes(raw)
+    monkeypatch.setattr(tr, "CONTROL", str(Path(cp.__file__).parent))
+    def executor(code):
+        output = io.StringIO(); rc = 0
+        with contextlib.redirect_stdout(output):
+            try:
+                exec(code, {})
+            except SystemExit as error:
+                rc = error.code
+        return rc, output.getvalue()
+    with pytest.raises(cp.PinnedGenerationValidationError, match="PINNED_GENERATION_VALIDATION_FAILED"):
+        tr.rpc(executor, f"cp.pin_inflight({str(root)!r})")
+    assert (root / "INFLIGHT").is_symlink()

@@ -1,0 +1,22 @@
+{
+  "status": "F1_CONDITION_ADDRESSED_F2_F3_IMPLEMENTED_NOT_RESUME_ADMISSION",
+  "reviewed_baseline_commit": "94a21d34cfd9c40c19b020b79b79f01664598e6b",
+  "claude_review_sha256": "b4c2980b038d5a7a3e09d737be1d846db5de4afe2903490c5c45ae00066837aa",
+  "source_files_sha256": {
+    "tools/colab_chat/sfull_checkpoint_transport_v2.py": "34fdfc51264bc6aa5be2e12d45c5eb6122bc9c210bd72855b6b6573c4acf5518",
+    "tools/colab_chat/sfull_checkpoint_v2.py": "505f08d0c62fc66477d0bc2061e242d9f9e9e1d5f8ddfccdc334fad7a8184a3f",
+    "tools/colab_chat/test_sfull_checkpoint_transport_v2.py": "36e0e6bebd58efc99226aec0b88782e642483517c7933e52f850954cc25dcad5",
+    "tools/colab_chat/test_sfull_checkpoint_v2.py": "0049cad1571423eecd50620475adfd1caa1009d47195f652b5ce9f9b245318c8"
+  },
+  "patch_sha256": "0f00bbb87c1e82af5b3a47917f3583f3b3415c89e31a82c94dd7f2063c497147",
+  "tests_passed": 76,
+  "test_seconds": 4.86,
+  "F1": "One telemetry fsync per publication at publish.current_durable, and at manager.gap_halt; ordinary phase appends do not fsync. Payload/manifest/directory durability unchanged.",
+  "F2": "Ordinary diagnostic append/open/write/fsync/close/encoding failures are best-effort with separate log reporting. Unsafe symlink root/journal paths deliberately fail closed. Manager clock predicate unchanged.",
+  "F3": "Retained metadata/full payload validation failures use PinnedGenerationValidationError. Structured RPC error preserves that distinction, which reaches existing runner HALTED/fatal exception path. INFLIGHT retained; no automatic clearing or successful resume substitution.",
+  "checkpoint_interval_steps": 25,
+  "max_gap_seconds": 180,
+  "actual_L4_cadence_measured": false,
+  "gpu_admission_performed": false,
+  "old_halt_evidence_preserved": true
+}

@@ -112,10 +112,18 @@ def rpc(exec_py, expression):
         "import sys,json\nsys.path.insert(0,"
         + repr(CONTROL)
         + ")\nimport sfull_checkpoint_v2 as cp\n"
-        + expression
-        + "\n"
+        + "try:\n exec(" + repr(expression) + ")\n"
+        + "except cp.PinnedGenerationValidationError as error:\n"
+        + " print('S_FULL_RPC_ERROR '+json.dumps({'kind':'PINNED_GENERATION_VALIDATION_FAILED','error':str(error)}))\n"
+        + " raise SystemExit(3)\n"
     )
     rc, out = exec_py(code)
+    failures = [line[len("S_FULL_RPC_ERROR "):] for line in out.splitlines()
+                if line.startswith("S_FULL_RPC_ERROR ")]
+    if rc != 0 and len(failures) == 1:
+        failure = json.loads(failures[0])
+        if failure.get("kind") == "PINNED_GENERATION_VALIDATION_FAILED":
+            raise cp.PinnedGenerationValidationError(failure["error"])
     rows = [
         line[len("S_FULL_RPC ") :]
         for line in out.splitlines()
