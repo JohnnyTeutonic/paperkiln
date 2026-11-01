@@ -1,0 +1,28 @@
+{
+  "status": "REAL_ORIGINAL_SFT_CPU_INITIALIZATION_REGRESSION_PASS",
+  "binary_sha256": "9baad81203a44b9a33ee751896e281bb97ab37b8894daeb95a02a81e6c24291b",
+  "binary_source_mtstudio_cpp_sha256": "7f6f1ce21f511a2f8ec184bcd7db0616e6ce5843eb66d4eed7c752b6b3d806e2",
+  "training_packet_mtstudio_cpp_sha256": "7f6f1ce21f511a2f8ec184bcd7db0616e6ce5843eb66d4eed7c752b6b3d806e2",
+  "checkpoint_sha256": "eae61755dc6625eb87c54ce3152774596ed4299c65c0462ed3831b0f9d7ee80e",
+  "checkpoint_unchanged": true,
+  "layout_adoption_sha256": "5438c54e8b3831f8bdf82e04f27eb4f8bca310b9eef2c8d4abf40abc05313bcb",
+  "cases": [
+    {
+      "case": "historical_missing_layout",
+      "returncode": 1,
+      "spec_sha256": "ec7741464561c19ba890bab0b40b8db0fd25a282ed99155730e23aa50218718d",
+      "log_sha256": "705203d1ca2f9a9d8f83497ada5b495aed675c09676a336419f8742aa1ca2669",
+      "elapsed_seconds": 55.03608045898727
+    },
+    {
+      "case": "explicit_original_layout",
+      "returncode": 0,
+      "spec_sha256": "54b5b8bbff1a9f9f925dd40a523cab2e453ed4f5c97e9bc169b48fe0d85511e1",
+      "log_sha256": "0e7c8e61ef22ae8a10dd09462766073f0933ab3262c23d97df773e1d8d1a53b0",
+      "elapsed_seconds": 57.21990730499965
+    }
+  ],
+  "training_steps_executed": 0,
+  "gpu_calls": 0,
+  "qualification": "Actual LoadedLM constructor used by DPO reference setup, actual97M SFT weights and vocab, empty scoring input. Not a CUDA training/optimizer/cadence or quality result."
+}

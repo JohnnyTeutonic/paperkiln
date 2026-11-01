@@ -74,6 +74,8 @@ def materialize(protocol_path, adoption_path, vocab_path, out_dir, encode=None):
 def training_spec(base_spec,counts,checkpoint,vocab,pairs):
     train_pairs=counts["train_pairs"]
     if type(train_pairs) is not int or train_pairs<1:raise ValueError("positive bound training-pair count required")
+    if base_spec.get("arch",{}).get("rope_heads") not in {"all","first"}:
+        raise ValueError("bare SFT weights require an explicitly source-bound arch.rope_heads layout")
     spec=copy.deepcopy(base_spec)
     spec["name"]="pk_dpo_v1";spec["out_dir"]="/content/chat/pk_dpo_v1"
     data={"vocab":vocab,"T":512,"pref_pairs":pairs}
