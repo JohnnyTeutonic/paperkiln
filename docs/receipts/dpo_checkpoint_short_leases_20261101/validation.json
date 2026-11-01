@@ -1,0 +1,11 @@
+{
+  "source_commit": "d33dcf7ca694c29ec347eda421a51edf5d7c0d13",
+  "combined_tests_passed": 83,
+  "independent_core_transport_tests_passed": 38,
+  "provider_calls": 0,
+  "gpu_calls": 0,
+  "numerical_recipe_changed": false,
+  "max_gap_seconds": 180,
+  "actual_L4_cadence_measured": false,
+  "tests": "checkpoint core/transport/manager/boot/packet plus materializer; exact emitted preflight regression included."
+}
