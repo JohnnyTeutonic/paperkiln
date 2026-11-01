@@ -1,0 +1,30 @@
+{
+  "status": "SOURCE_LINKAGE_VALID_NOT_SAMPLING_READY",
+  "sampling_readiness_established": false,
+  "source_commit": "b444700195625570130913646bb5ad86c364f4c4",
+  "original_adoption_sha256": "e14520a583bdb308f4c7d5fd2a6ba9036ceb6e0354292f6f31144a0383f39c2c",
+  "supplemental_adoption_sha256": "f1e44ccfa223e0f3c912ef4eb504364c8e6e3a732038cccd803d5df9ada0f1bb",
+  "training_binding_sha256": "2baf7040c6da1fdeb3e682972b4baf2efe831814f029644d2a22665007a8885b",
+  "changed_consumers": 3,
+  "extra_consumers": 1,
+  "provider_calls": 0,
+  "credential_reads": 0,
+  "judging_launch_authorized": false,
+  "actual_sampling_files_present": {
+    "sampling_receipt.json": false,
+    "sampling_summary.json": false,
+    "sampling.journal.jsonl": false,
+    "requests.jsonl": false
+  },
+  "tests_passed": 27,
+  "earlier_frozen_intake_tests_passed": 64,
+  "frozen_source_edited": false,
+  "judging_job_created": false,
+  "actual_prepare_result": "REFUSED_MISSING_ACTUAL_SAMPLING",
+  "actual_prepare_error": "canonical regular input required: /mnt/c/ml_artifacts/pref_api_20261031/dpo_run_v3_20261101/dpo_heldout_sample/sampling_receipt.json",
+  "source_sha256": {
+    "offline_intake_guard.py": "582b51e5e2ca6bfd9f269dc2de93f0ce547943ed701a1be2269355616838bfc7",
+    "test_offline_intake_guard.py": "f34e18b72c666dcce507f5622c01346ac1398a8c9a44578bacfec2826a04f7f4"
+  },
+  "validated_at_utc": "2026-11-01T11:43:20.159224+00:00"
+}

@@ -23,3 +23,13 @@ Held-out STOPPED completion means complete judging, not adoption. The frozen ass
 Use the exact argv arrays in `intake_plan.json` only when preconditions are fulfilled. Builder is offline, inspector replays without dispatch, campaign is admitted through the existing watchdog only. Evaluation raw files are packed in dpo_eval/chat_eval_results.tar.gz; safe extraction and archive/model/hash review are needed before the final assessor. Do not run the eventual campaign CLI manually or invent an instance hash.
 
 64 offline tests passed across held-out API accounting, campaign failure/restart, sampling server cleanup, durable sampling journal, and five-gate assessment. Tests use fake requests/providers and temporary files; they do not establish readiness of unreturned V3 outputs. Original adoption, frozen source and generated V3 instance are unchanged.
+
+## Root-adopted supplemental linkage and enforcing helper
+
+Root subsequently adopted `/home/jonat/heldout_api_root_admission_v3_20261101/consumer_linkage_adoption.json` before DPO training/outcomes. The original proposal above is retained as preparation history. Its adopted hash is `f1e44ccfa223e0f3c912ef4eb504364c8e6e3a732038cccd803d5df9ada0f1bb`.
+
+`offline_intake_guard.py` now enforces exact original adoption, supplemental adoption, V3 binding and policy hashes; all original operational pins, all original/changed/extra consumer pins, and the dataset-manifest-to-training-protocol chain. Only `source-check`, `prepare` and `inspect` exist. There is no campaign launch entry point. The unchanged builder/inspector run under explicit credential-accessor, HTTP and socket barriers. Missing actual sampling is refused before importing the builder. Existing final files remain immutable under the original builder.
+
+Run `python3 offline_intake_guard.py source-check` for source proof only: it deliberately reports `SOURCE_LINKAGE_VALID_NOT_SAMPLING_READY`, with readiness false. After actual outputs arrive, use `python3 offline_intake_guard.py prepare --plan intake_plan.json --out <new-instance-path>` and then `python3 offline_intake_guard.py inspect --instance <path> --instance-sha256 <actual-hash>`. These remain offline and do not admit or launch judging. Root must separately review accounting, actual evidence, memory and operational launch through the existing watchdog.
+
+27 helper tests pass, including actual adopted-source validation, mutated approvals/caps/hash anchors/consumer inventories, missing sampling and wrong training binding, path escape/symlink refusal and barriers against credential/network calls. `guard_validation.json` records the real current source proof and real missing-sampling refusal; it does not fabricate successful readiness.
