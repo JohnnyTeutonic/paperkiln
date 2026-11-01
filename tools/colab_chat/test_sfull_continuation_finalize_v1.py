@@ -21,6 +21,8 @@ def state(seed):
 
 @pytest.fixture
 def contract(tmp_path):
+    tmp_path = tmp_path / "evidence"
+    tmp_path.mkdir()
     roots, baseline, campaigns = {}, {}, []
     anchor = tmp_path / "anchor.py"; anchor.write_text("# immutable source\n")
     pins = {str(anchor): m.sha(anchor)}
@@ -52,7 +54,16 @@ def contract(tmp_path):
         carry = tmp_path / f"carry{seed}.json"
         put(st, state(seed)); put(carry, state(seed)["runpod"]["ledger"])
         pins[str(st)] = m.sha(st); pins[str(carry)] = m.sha(carry)
-        campaigns.append({"seed": seed, "state": str(st), "carried_ledger": str(carry), "protected_original_volumes": [], "operational_source_pins": {**source_pins, str(anchor): m.sha(anchor)}, "operational_checkout": str(checkout), "operational_commit": commit, "original_admission_pins": {str(anchor): m.sha(anchor)}})
+        old_state = tmp_path / f"old_runner{seed}" / "state.json"
+        put(old_state, state(seed))
+        reservation = {"seed": seed, "cap_usd": 7, "state_dir": str(old_state.parent), "status": "ADMITTED"}
+        aggregate = tmp_path / f"aggregate{seed}.json"
+        put(aggregate, {"aggregate_cap_usd": 21, "reservations": [reservation]})
+        admission = tmp_path / f"admission{seed}.json"
+        put(admission, {"status": "ROOT_ADMITTED", "seed": seed, "per_seed_cap_usd": 7, "aggregate_cap_usd": 21, "numerical_commit": m.NUMERICAL, "runner_argv": ["python3", "runner.py", "--state-dir", str(old_state.parent)], "ledger_contract": {"reservation_required": reservation}, "aggregate_ledger": str(aggregate), "aggregate_ledger_sha256": m.sha(aggregate)})
+        original_pins = {str(p): m.sha(p) for p in (old_state, admission, aggregate)}
+        pins.update(original_pins)
+        campaigns.append({"seed": seed, "state": str(st), "carried_ledger": str(carry), "protected_original_volumes": [], "operational_source_pins": {**source_pins, str(anchor): m.sha(anchor)}, "operational_checkout": str(checkout), "operational_commit": commit, "original_admission_pins": {**original_pins, str(anchor): m.sha(anchor)}, "original_state": str(old_state), "original_admission": str(admission)})
     freeze = Path(put(tmp_path / "freeze.json", {"source_hashes": {str(anchor): m.sha(anchor)}}))
     manifest = Path(put(tmp_path / "manifest.json", {"baseline_artifact_sha256": baseline}))
     put(freeze, {"source_hashes": {str(anchor): m.sha(anchor), str(manifest): m.sha(manifest)}})
@@ -153,3 +164,55 @@ def test_real_subprocess_invokes_frozen_finalizer_once_with_mapped_paths(contrac
     assert argv[argv.index("--art")+1] == str(tmp_path / "view/art")
     assert argv[argv.index("--campaign-state-root")+1] == str(tmp_path / "view/states")
     assert argv[argv.index("--source-freeze")+1] == contract["original_source_freeze"]
+
+
+def repin(contract, path, original=False):
+    path = str(path)
+    contract["pins"][path] = m.sha(path)
+    if original:
+        for c in contract["campaigns"]:
+            if path in c["original_admission_pins"]:
+                c["original_admission_pins"][path] = m.sha(path)
+
+
+@pytest.mark.parametrize("change", ["different_old_ledger", "missing_old_state_pin", "wrong_old_seed", "wrong_old_seed_cap", "wrong_old_aggregate_cap", "wrong_old_state_dir", "wrong_reservation", "wrong_aggregate_reservation"])
+def test_original_semantics_cannot_be_replaced_with_arbitrary_pinned_files(contract, change):
+    c = contract["campaigns"][0]
+    if change == "different_old_ledger":
+        old = m.read(c["original_state"]);old["runpod"]["ledger"]["pods"][0]["usd_per_hr"] = 1
+        put(Path(c["original_state"]), old);repin(contract,c["original_state"],True)
+    elif change == "missing_old_state_pin": c["original_admission_pins"].pop(c["original_state"])
+    elif change == "wrong_aggregate_reservation":
+        admission = m.read(c["original_admission"]);path=admission["aggregate_ledger"]
+        aggregate=m.read(path);aggregate["reservations"][0]["cap_usd"]=8;put(Path(path),aggregate);repin(contract,path,True)
+        admission["aggregate_ledger_sha256"]=m.sha(path);put(Path(c["original_admission"]),admission);repin(contract,c["original_admission"],True)
+    else:
+        admission=m.read(c["original_admission"])
+        if change == "wrong_old_seed": admission["seed"]=2
+        elif change == "wrong_old_seed_cap": admission["per_seed_cap_usd"]=8
+        elif change == "wrong_old_aggregate_cap": admission["aggregate_cap_usd"]=22
+        elif change == "wrong_old_state_dir": admission["runner_argv"][-1]="/elsewhere"
+        elif change == "wrong_reservation": admission["ledger_contract"]["reservation_required"]["seed"]=2
+        put(Path(c["original_admission"]),admission);repin(contract,c["original_admission"],True)
+    with pytest.raises(ValueError): m.validate(contract,10)
+
+
+@pytest.mark.parametrize("change", ["artifact_descendant", "artifact_ancestor", "current_state_descendant", "old_state_descendant", "source_descendant", "outputs_nested", "outputs_equal", "symlink_ancestor", "existing"])
+def test_output_destinations_cannot_modify_preserved_inputs(contract,tmp_path,change):
+    outputs=[tmp_path/"view",tmp_path/"out",tmp_path/"state"]
+    if change == "artifact_descendant": outputs[0]=Path(contract["artifact_roots"]["c12_Sfull_r1"])/"new"
+    elif change == "artifact_ancestor": outputs[0]=tmp_path.parent/".."/tmp_path.parent.name
+    elif change == "current_state_descendant": outputs[1]=Path(contract["campaigns"][0]["state"]).parent/"new"
+    elif change == "old_state_descendant": outputs[1]=Path(contract["campaigns"][0]["original_state"]).parent/"new"
+    elif change == "source_descendant": outputs[2]=Path(contract["campaigns"][0]["operational_checkout"])/"new"
+    elif change == "outputs_nested": outputs[1]=outputs[0]/"nested"
+    elif change == "outputs_equal": outputs[2]=outputs[0]
+    elif change == "symlink_ancestor":
+        alias=tmp_path/"alias";alias.symlink_to(Path(contract["artifact_roots"]["c12_Sfull_r1"]),target_is_directory=True);outputs[0]=alias/"new"
+    elif change == "existing": outputs[0].mkdir()
+    with pytest.raises(ValueError): m.validate_destinations(contract,outputs)
+    if change != "existing": assert not (tmp_path/"view").exists()
+
+
+def test_disjoint_new_output_destinations_allowed(contract,tmp_path):
+    m.validate_destinations(contract,[tmp_path/"view",tmp_path/"out",tmp_path/"state"])
