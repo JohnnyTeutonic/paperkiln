@@ -1,0 +1,69 @@
+{
+  "scope": "conditional_sfull",
+  "state_path": "/home/jonat/pk_sfull_data_only_1031_runner/state.json",
+  "state_sha256": "d81adb22c1a1b90365cc521e02aead3c8af7c16af319e6b1126d8a9d7fbfa42a",
+  "campaign_home": true,
+  "jobs": {
+    "data": {
+      "status": "FINISHED",
+      "home": true
+    },
+    "sfull_inputs": {
+      "status": "FAILED",
+      "home": true
+    }
+  },
+  "ledger": {
+    "pods": [
+      {
+        "id": "rk36twad68b4ul",
+        "name": "pk-sfull-data-1031",
+        "gpu": "L4",
+        "usd_per_hr": 0.59,
+        "dc": "EU-RO-1",
+        "volume": "agoeyqf3bz",
+        "start": 1793452497.6768022,
+        "stop": 1793452546.1753492,
+        "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+        "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+        "stopped_by": "runner"
+      },
+      {
+        "id": "3vh03k3yfekqt5",
+        "name": "pk-sfull-data-1031",
+        "gpu": "L4",
+        "usd_per_hr": 0.59,
+        "dc": "EU-RO-1",
+        "volume": "agoeyqf3bz",
+        "start": 1793452788.9808962,
+        "stop": 1793452846.2633364,
+        "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+        "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+        "stopped_by": "runner"
+      },
+      {
+        "id": "dfylzt801rf6s9",
+        "name": "pk-sfull-data-1031",
+        "gpu": "L4",
+        "usd_per_hr": 0.59,
+        "dc": "EU-RO-1",
+        "volume": "agoeyqf3bz",
+        "start": 1793453089.137702,
+        "stop": 1793454544.331051,
+        "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+        "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+        "stopped_by": "runner"
+      }
+    ],
+    "volumes": [
+      {
+        "id": "agoeyqf3bz",
+        "dc": "EU-RO-1",
+        "gb": 50,
+        "created": 1793452494.8970556,
+        "name": "pk-sfull-data-1031-vol",
+        "deleted": 1793454545.1363986
+      }
+    ]
+  }
+}

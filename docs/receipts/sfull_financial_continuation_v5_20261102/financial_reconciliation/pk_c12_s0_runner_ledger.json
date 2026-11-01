@@ -1,0 +1,83 @@
+{
+  "scope": "core",
+  "state_path": "/home/jonat/pk_c12_s0_runner/state.json",
+  "state_sha256": "d65c36478dc533dc3e61c15c236f457cde4177d7fbb321a94bfd380ad7ab6a39",
+  "campaign_home": true,
+  "jobs": {
+    "cuda_gate": {
+      "status": "FINISHED",
+      "home": true
+    },
+    "decontam_fineweb": {
+      "status": "FINISHED",
+      "home": true
+    },
+    "data": {
+      "status": "FINISHED",
+      "home": true
+    },
+    "probe60_B_T1024": {
+      "status": "FINISHED",
+      "home": true
+    },
+    "probe60_B_T1024_acc2": {
+      "status": "FINISHED",
+      "home": true
+    },
+    "probe60_Sgist_T1024": {
+      "status": "FINISHED",
+      "home": true
+    },
+    "probe60_P16_T1024": {
+      "status": "FINISHED",
+      "home": true
+    },
+    "probe60_X_T1024": {
+      "status": "FINISHED",
+      "home": true
+    },
+    "data_long3": {
+      "status": "FINISHED",
+      "home": true
+    },
+    "cost_pick_e1_60m_L8": {
+      "status": "FINISHED",
+      "home": true
+    },
+    "cost_pick_e1_60m_L16": {
+      "status": "FINISHED",
+      "home": true
+    },
+    "cost_pick_e1_60m_L32": {
+      "status": "FINISHED",
+      "home": true
+    }
+  },
+  "ledger": {
+    "pods": [
+      {
+        "id": "cdssujr9rzppkf",
+        "name": "pk-c12-s0",
+        "gpu": "L4",
+        "usd_per_hr": 0.59,
+        "dc": "EUR-IS-1",
+        "volume": "0mo6nhm4t1",
+        "start": 1793067060.2158232,
+        "stop": 1793102202.1293666,
+        "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+        "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+        "stopped_by": "runner"
+      }
+    ],
+    "volumes": [
+      {
+        "id": "0mo6nhm4t1",
+        "dc": "EUR-IS-1",
+        "gb": 50,
+        "created": 1793067054.8388312,
+        "name": "pk-c12-s0-vol",
+        "deleted": 1793102202.9321516
+      }
+    ]
+  }
+}
