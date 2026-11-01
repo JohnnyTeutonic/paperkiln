@@ -1,0 +1,37 @@
+{
+  "status": "PASS_ACTUAL_NO_PROVIDER_OWNER_PROBE",
+  "guard_sha256": "2f75c9abf767dd3dc1274dc05e2956b06e20147d23e96429a354ad6a30f83cf8",
+  "admission_sha256": "2a5c1638a718dc352e0f2361c6bab95925c7cf0c2da36958eca386aeaacb7ec4",
+  "sweeper_sha256": "848f0885bdebe42ead9c9abd9a10356582d874b33d0eac02516c1ccb32df9318",
+  "process_pid": 84579,
+  "process_start_ticks": 5073978,
+  "actual_argv": [
+    "python3",
+    "/home/jonat/sfull_boot_recovery_root_20261101/guarded_recovery.py",
+    "/home/jonat/sfull_boot_recovery_root_20261101/recovery_admission.json"
+  ],
+  "predicate_live": true,
+  "predicate_after_exit": false,
+  "bracketed_watchdog_match": "[/]home/jonat/sfull_boot_recovery_root_20261101/guarded_recovery.py /home/jonat/sfull_boot_recovery_root_20261101/recovery_admission.json",
+  "matching_live_pid_count": 1,
+  "matching_after_exit_count": 0,
+  "provider_calls": 0,
+  "credential_accesses": 0,
+  "gpu_jobs": 0,
+  "original_pidfile_unchanged": true,
+  "all_pinned_files_unchanged": true,
+  "deployed_sweeper_changed": false,
+  "configuration_changed": false,
+  "pinned_files_sha256": {
+    "/home/jonat/pk_sfull_operation_v2_20261101/tools/colab_chat/runner_multi.py": "815984bd604e6ffe00aa55b7992934af6990628bb55e492d70fb273693fa8d6e",
+    "/home/jonat/sfull_boot_recovery_root_20261101/guarded_recovery.py": "2f75c9abf767dd3dc1274dc05e2956b06e20147d23e96429a354ad6a30f83cf8",
+    "/home/jonat/sfull_boot_recovery_candidate_v2_20261101/recovery_helper.py": "a623e19495513af65127962c278b8ed8ba056a898259cdf3aae9f38be478af9b",
+    "/home/jonat/sfull_v2_seed1_root_admission_20261101/admission.json": "579cc75c2be8e1821e043b4c7dda3286a67020d533a51192a59f7e2af9a4851b",
+    "/home/jonat/sfull_boot_recovery_candidate_v2_20261101/tools/colab_chat/runner_multi.py": "6bd9a201ba50b9a98f49e332458880898824f8895ebc1e33217f98d1e596db86",
+    "/home/jonat/sfull_v2_seed1_root_admission_20261101/guarded_seed1.py": "d4fe41271c7aaf4325dd019fdc2886098d54490f0f61e28f78bdc8a13132e69a",
+    "/home/jonat/sfull_boot_recovery_candidate_v2_20261101/policy.json": "c4579edcace61d1e2ad9fc17ee1f5f5a017b85addd81a8da8ddc045551449302",
+    "/home/jonat/sfull_boot_recovery_candidate_v2_20261101/proof.json": "b83072301b56b3798c5d6fe352becfae0606de0adb94290536473c8a27195a70",
+    "/home/jonat/sfull_boot_recovery_candidate_v2_20261101/capsule.py": "78f6ffc17bbe100d53d9fbc9a778717ab3f0f1586098176e54fec7b71d0f85b9",
+    "/home/jonat/sfull_boot_recovery_root_20261101/recovery_admission.json": "2a5c1638a718dc352e0f2361c6bab95925c7cf0c2da36958eca386aeaacb7ec4"
+  }
+}
