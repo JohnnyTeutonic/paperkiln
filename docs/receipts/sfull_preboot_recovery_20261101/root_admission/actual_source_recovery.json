@@ -1,0 +1,14 @@
+{
+  "status": "SOURCE_RECOVERED_ORIGINAL_PATH",
+  "control_commit": "1af22cfd66f95cd40dcd98cf4ffae57cb3de4c61",
+  "archive_sha256": "0ba62855b7fa19f9fe9248ba7edae3b04a124f9cde2aa2f764f4a7680eb7fcd9",
+  "archive_bytes": 388659200,
+  "previous_control_state": "unborn",
+  "numeric_state": "absent",
+  "numeric_unchanged": true,
+  "stage": "/content/.sfull_preboot_v1/stage-control",
+  "quarantine": "/content/.sfull_preboot_v1/quarantined-control",
+  "observed_at_utc": "2026-11-01T01:28:12.772726+00:00",
+  "scientific_training_started": false,
+  "scope": "Actual control source recovery only; original numerical checkout/build/input gates remain subsequent boot steps."
+}
