@@ -1,0 +1,25 @@
+{
+  "kind": "PROPOSED_FINANCIAL_ONLY_SFULL_CONTINUATION_AMENDMENT",
+  "status": "NOT_ADOPTED_NOT_ACTIVATED",
+  "basis": "Observed durable cadence and complete inherited costs, not losses, held-out scores, seed ranking or desired result",
+  "proposed_per_seed_cumulative_cap_usd": 12,
+  "proposed_three_seed_aggregate_cap_usd": 36,
+  "preserve": [
+    "Original7perseed/21aggregate admissions and any stop evidence",
+    "Every historical pod and volume charge",
+    "Registered10000PT/1500SFT steps and all seeds",
+    "Numerical source, data, evaluation,25-step checkpoint and180-second guard",
+    "Original current deadline unless separately justified before a new admission"
+  ],
+  "requirements_before_any_change": [
+    "Independent financial/protocol review",
+    "Confirm all remaining phases and headroom before fixing revised caps",
+    "Prospective dated amendment under operator authority; never edit old receipt",
+    "Fresh source-bound guarded admission and actual ownership probe",
+    "Preserve live V4 rather than mutating its guard/command/state in place",
+    "No automatic seed2/3 or scientific adoption"
+  ],
+  "scientific_completion": false,
+  "current_run_limit_changed": false,
+  "reason_for_proposed12": "Planning ceiling allowing observed remaining PT plus unmeasured SFT/post overhead; not an established cost estimate or permission to spend. Reassess explicit phase estimates before adoption."
+}

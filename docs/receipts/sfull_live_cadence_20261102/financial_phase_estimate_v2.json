@@ -1,0 +1,45 @@
+{
+  "kind": "FINANCIAL_PHASE_ESTIMATE_TIMING_ONLY",
+  "timings": [
+    {
+      "seed": 1,
+      "source_summary_sha256": "3dfc5ac9f352f9c8559e17375cac924f43073546e3395806ed5b4f349010c2fe",
+      "pretraining_wall_seconds": 33564.385554292,
+      "sft_wall_seconds": 1393.496227064,
+      "carry5_seconds": 1829.2,
+      "carry12_seconds": 5523.5,
+      "source_path": "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r1/post_c12_Sgist_r1/summary.json"
+    },
+    {
+      "seed": 2,
+      "source_summary_sha256": "9132c0ff45c26b1d6236de8fca892625266c9002b17cabc12a13d5fea6d695d4",
+      "pretraining_wall_seconds": 14630.206001447,
+      "sft_wall_seconds": 2071.728035843,
+      "carry5_seconds": 1947.7,
+      "carry12_seconds": 6110.6,
+      "source_path": "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r2/post_c12_Sgist_r2/summary.json"
+    },
+    {
+      "seed": 3,
+      "source_summary_sha256": "3f49dcaadf94f873e9933790f6f327d180df92ed47734c827ec1964f9d633e90",
+      "pretraining_wall_seconds": 14729.357324877,
+      "sft_wall_seconds": 2078.131673261,
+      "carry5_seconds": 1945.7,
+      "carry12_seconds": 6073.0,
+      "source_path": "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r3/post_c12_Sgist_r3/summary.json"
+    }
+  ],
+  "method": "Use all three registered Sgist seed timings; maximum combined SFT/Carry5/Carry12 as a planning proxy, not Sfull measurement or probabilistic bound.",
+  "post_proxy_seconds": 10130.028035842999,
+  "projected_cumulative_seed1_pod_plus_existing_ledger_usd": 10.30296731443978,
+  "proposed12usd_headroom_over_point_usd": 1.6970326855602202,
+  "excluded_uncertainties": [
+    "Additional panels/setup/reclaims/transport/volume charges",
+    "Sfull vs Sgist post behaviour",
+    "Future rate variation"
+  ],
+  "losses_scores_or_seed_rankings_used": false,
+  "live_limit_changed": false,
+  "scientific_endpoints_changed": false,
+  "interpretation": "A separately reviewed financial-only continuation ceiling of12 appears reasonable from measured phase costs; it is not a guarantee of completion and does not adopt the amendment."
+}

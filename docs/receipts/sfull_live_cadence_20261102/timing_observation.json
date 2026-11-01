@@ -1,0 +1,44 @@
+{
+  "at_utc": "2026-11-01T16:18:03.506187+00:00",
+  "phase_snapshot_sha256": "f01977667486572c254c0cc90682549bc19bfdfa3c4a3d86bb79ac716cff4b9d",
+  "phase_snapshot_complete_bytes": 359653,
+  "durable_count": 111,
+  "first_durable": {
+    "event": "publish.current_durable",
+    "generation": "generation-938ef0ef7ac5491fadf5331ac03f719a",
+    "monotonic": 2311450.716089437,
+    "pid": 3445,
+    "step": 700,
+    "unix": 1793537560.0061905
+  },
+  "last_durable": {
+    "event": "publish.current_durable",
+    "generation": "generation-33513cdbfdb9468db5fd2aca50d0d609",
+    "monotonic": 2323713.433137916,
+    "pid": 7428,
+    "step": 3450,
+    "unix": 1793549822.723239
+  },
+  "manager_observed_count": 112,
+  "last_manager_observation": {
+    "event": "manager.generation_observed",
+    "job": "pt_c12_Sfull_r1",
+    "manager_group": 2356,
+    "monotonic": 2323715.314699724,
+    "observed_clock": 2323715.307923169,
+    "observed_unix": 1793549824.5980232,
+    "pid": 2344,
+    "step": 3450,
+    "unix": 1793549824.6048005
+  },
+  "advancing_durable_gap_seconds": {
+    "count": 110,
+    "min": 104.21616291999817,
+    "max": 135.18142414093018,
+    "mean": 111.47924589460547
+  },
+  "advancing_step_deltas": [
+    25
+  ],
+  "limits": "Live append-only prefix snapshot; not final payload verification or full-campaign completion. Gaps reflect observed durable publications, not per-step throughput."
+}

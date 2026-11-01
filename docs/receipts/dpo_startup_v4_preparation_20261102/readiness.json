@@ -1,0 +1,24 @@
+{
+  "status": "OFFLINE_PREPARATION_PREFLIGHT_PASS_NOT_ADMITTED",
+  "source_commit": "3f9217c1516e5c08a48994b92128615e8f1d63a6",
+  "source_archive_sha256": "8788e9cb3439e71ae8dbb7726337229a59b15e1454acfe5796a0e41a6fbeb1b1",
+  "jobs_sha256": "36149f517d9f79963b2379643b5cfb7bdfa6a23f9aa85163ec51b3da95584206",
+  "binding_sha256": "0bcde3e10b8389989a4080f79c65922f5daf26c19207555eedb97918a0fa206a",
+  "recipe_identical_to_V3": true,
+  "runtime_environment_only_addition": {
+    "MICROTORCH_DPO_PHASES": "1"
+  },
+  "full_source_input_preflight": true,
+  "manager_contract_validation": true,
+  "provider_calls": 0,
+  "gpu_calls": 0,
+  "training_launched": false,
+  "remaining": [
+    "Independent packet review",
+    "Actual original cumulative ledger/headroom calculation",
+    "Fresh serial ownership and cleanup checks after S-full/E9",
+    "Source-bound owner recognition probe and guard",
+    "Fixed external deadline and existing watchdog activation",
+    "Actual phase/cadence measurement; no marker resets checkpoint clock"
+  ]
+}

@@ -1,0 +1,138 @@
+{
+  "status": "PASS_CPU_ONLY",
+  "attention": "srd",
+  "layers": 3,
+  "steps": 3,
+  "params": 10732,
+  "spec_sha256": "54d3f3cc778d5f494b9f886467df1a7f6f77d22bfc462e4846fe4e5b26c817e1",
+  "gguf_sha256": "ac359661325b99f619d340a5e934e178ec55a2dd6e653d935304aeca3623ee53",
+  "ir_sha256": "28b8a9559ac2a4b173728c7abed2e0de24364f838d77170809996c226499085e",
+  "identity": {
+    "mtstudio": "fe11452f384161b4b66228fe12294414c65d7fdd0d62f0ba49863e92b5dfda25",
+    "ember": "1f877524c3b59e1cdbf3ca29ab6d4e0ed216900516e1bcb28d5ec7e7e21b9a0f",
+    "sources": {
+      "tools/parity_model.hpp": "4efc960bb1e4547b61f7458e7111b1f6efbe59cec0861449788f45e39ddcadcb",
+      "tools/mtstudio.cpp": "28c7e7834deb81479b323078dc4be16fc03c13b768c9402bc5f4f0d1b0c57490",
+      "src/ops.cpp": "e5455d13ac8d3b8a1b19bd1eba3d4f2eacc32724738579c7a07e2dba6c36bf2a"
+    }
+  },
+  "numpy_source": 2.9802322387695312e-08,
+  "numpy_ember": {
+    "prefill": 2.9802322387695312e-08,
+    "decode": 2.9802322387695312e-08
+  },
+  "source_greedy_rows": 2.9802322387695312e-08,
+  "ember_free_running_greedy": {
+    "prefill": 3,
+    "decode": 3
+  },
+  "greedy_sequences": 3,
+  "new_tokens_each": 3,
+  "state_shapes": [
+    {
+      "lin": {
+        "0": {
+          "num": [
+            2,
+            8
+          ],
+          "den": [
+            2,
+            8
+          ]
+        },
+        "1": {
+          "num": [
+            2,
+            8
+          ],
+          "den": [
+            2,
+            8
+          ]
+        },
+        "2": {
+          "num": [
+            2,
+            8
+          ],
+          "den": [
+            2,
+            8
+          ]
+        }
+      }
+    },
+    {
+      "lin": {
+        "0": {
+          "num": [
+            2,
+            8
+          ],
+          "den": [
+            2,
+            8
+          ]
+        },
+        "1": {
+          "num": [
+            2,
+            8
+          ],
+          "den": [
+            2,
+            8
+          ]
+        },
+        "2": {
+          "num": [
+            2,
+            8
+          ],
+          "den": [
+            2,
+            8
+          ]
+        }
+      }
+    },
+    {
+      "lin": {
+        "0": {
+          "num": [
+            2,
+            8
+          ],
+          "den": [
+            2,
+            8
+          ]
+        },
+        "1": {
+          "num": [
+            2,
+            8
+          ],
+          "den": [
+            2,
+            8
+          ]
+        },
+        "2": {
+          "num": [
+            2,
+            8
+          ],
+          "den": [
+            2,
+            8
+          ]
+        }
+      }
+    }
+  ],
+  "rows_each_mode": 10,
+  "gpu_calls": 0,
+  "provider_calls": 0
+}

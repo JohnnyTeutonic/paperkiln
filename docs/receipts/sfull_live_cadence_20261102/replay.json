@@ -1,0 +1,15 @@
+{
+  "status": "PASS_OBSERVED_WINDOW_ONLY",
+  "numerical_source": "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1",
+  "operational_source": "c9b82fd6718497a4ace4fba62f6e23b8ed2346a7",
+  "independent_local_prefix_replay": true,
+  "observed_first_step": 700,
+  "observed_last_step": 3450,
+  "advancing_intervals": 110,
+  "interval_steps": 25,
+  "maximum_durable_gap_seconds": 135.18142414093018,
+  "unchanged_guard_seconds": 180,
+  "full_campaign_completion": false,
+  "home_generation_verified_step": 3200,
+  "phase_prefix_sha256": "f01977667486572c254c0cc90682549bc19bfdfa3c4a3d86bb79ac716cff4b9d"
+}

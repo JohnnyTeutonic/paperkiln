@@ -1,0 +1,51 @@
+{
+  "kind": "CURRENT_SOURCE_REGRESSION_COVERAGE",
+  "purpose": "Regression coverage after legacy public Matrix matmul coherence repair, not new architecture results",
+  "source_commits": {
+    "paperkiln": "f2457c5e8de3b89827545becf270836467415efd",
+    "ember": "3ada969788f4d5ea65f5b81b29c22c30b7f25c97"
+  },
+  "runtime": {
+    "python": "3.12.3",
+    "numpy": "2.3.3"
+  },
+  "chat_tests_passed": 5,
+  "cross_engine_tests_passed": 18,
+  "historical_binary_comparison_tests_skipped": 3,
+  "trained_cases": [
+    {
+      "attention": "kimi",
+      "layers": 1
+    },
+    {
+      "attention": "kimi",
+      "layers": 3
+    },
+    {
+      "attention": "recurrence",
+      "layers": 1
+    },
+    {
+      "attention": "recurrence",
+      "layers": 3
+    },
+    {
+      "attention": "srd",
+      "layers": 1
+    },
+    {
+      "attention": "srd",
+      "layers": 3
+    }
+  ],
+  "maximum_numpy_source_error": 2.9802322387695312e-08,
+  "maximum_numpy_ember_prefill_error": 2.9802322387695312e-08,
+  "maximum_numpy_ember_decode_error": 2.9802322387695312e-08,
+  "rows_per_model_per_mode": [
+    10
+  ],
+  "raw_home": "/home/jonat/current_cross_engine_cpu_20261102",
+  "gpu_calls": 0,
+  "provider_calls": 0,
+  "release_ready": false
+}

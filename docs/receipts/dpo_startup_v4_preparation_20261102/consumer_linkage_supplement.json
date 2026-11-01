@@ -1,0 +1,20 @@
+{
+  "kind": "ROOT_DPO_STARTUP_V4_SOURCE_LINKAGE",
+  "adopted": true,
+  "before_new_training_and_outcomes": true,
+  "original_heldout_adoption_sha256": "e14520a583bdb308f4c7d5fd2a6ba9036ceb6e0354292f6f31144a0383f39c2c",
+  "previous_supplement_sha256": "f1e44ccfa223e0f3c912ef4eb504364c8e6e3a732038cccd803d5df9ada0f1bb",
+  "training_binding_sha256": "0bcde3e10b8389989a4080f79c65922f5daf26c19207555eedb97918a0fa206a",
+  "source_commit": "3f9217c1516e5c08a48994b92128615e8f1d63a6",
+  "phase_flag": "MICROTORCH_DPO_PHASES=1",
+  "scientific_recipe_identical_to_corrected_V3": true,
+  "checkpoint_interval": 10,
+  "max_gap_seconds": 180,
+  "cumulative_training_cap_usd": 5,
+  "stage_judging_cap_usd": 25,
+  "cumulative_api_cap_usd": 200,
+  "max_api_attempts": 600,
+  "api_judging_launched": false,
+  "limits_changed": false,
+  "dispatch_authorized": false
+}

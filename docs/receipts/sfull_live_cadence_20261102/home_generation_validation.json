@@ -1,0 +1,27 @@
+{
+  "kind": "READ_ONLY_FULL_HOME_GENERATION_VERIFICATION",
+  "at_utc": "2026-11-01T16:18:13.968033+00:00",
+  "generation": "generation-5f03f2f09ea5470a8ddb8f2c38afec2f",
+  "step": 3200,
+  "manifest_sha256": "7a327db67da26099de810ff08c8ad173f74d471cfde7decac673bdb8389e4edc",
+  "files": {
+    "events.jsonl": {
+      "bytes": 360951,
+      "sha256": "1bb8fc0747fea0648261384ccc60da2e07fcbba11e0ac4071ff331e658884bc7"
+    },
+    "model.safetensors": {
+      "bytes": 291052192,
+      "sha256": "7e68537ec8e5698dca35c38367221a8208b3ebd9d667f49c654dee28196b4c78"
+    },
+    "optim.safetensors": {
+      "bytes": 582101520,
+      "sha256": "8fb4aa699f4eb675c0476f94902e598aa6fb68a81d3e479e238bf60cf241da54"
+    },
+    "state.txt": {
+      "bytes": 68,
+      "sha256": "060d7df22c5cf2380a9088971eb25a6c29fe51da1ddd91bb961d9eb0691015d3"
+    }
+  },
+  "validation": "All payload sizes/hashes and flat state inspected by frozen production validator",
+  "limits": "One complete historical home generation; not a final campaign verdict. No CURRENT/INFLIGHT or source mutation."
+}
