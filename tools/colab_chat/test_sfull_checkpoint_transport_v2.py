@@ -122,14 +122,17 @@ def test_gap_monitor_active_only_and_reset(tmp_path):
 
 
 @pytest.mark.parametrize("telemetry", ["ok", "download_failed", "partial"])
-def test_real_relay_snapshots_telemetry_after_verified_import_and_release(tmp_path, monkeypatch, telemetry):
+@pytest.mark.parametrize("step", [25, 10000])
+def test_real_relay_snapshots_telemetry_after_verified_import_and_release(tmp_path, monkeypatch, telemetry, step):
     import contextlib, io, json, types
     home, remote = tmp_path / "home", tmp_path / "remote"
-    ready(remote, 25)
+    ready(remote, step)
+    if step == 10000:
+        ready(home, 675)
     original_root_for = tr.root_for
     remote_root = original_root_for(remote, job())
     home_root = original_root_for(home, job())
-    home_root.mkdir(parents=True)
+    home_root.mkdir(parents=True, exist_ok=True)
     previous = b'{"event":"previous"}\n'
     (home_root / "phases.snapshot.jsonl").write_bytes(previous)
     monkeypatch.setattr(tr, "root_for", lambda base, j: original_root_for(remote if str(base) == "/content/chat" else base, j))
@@ -146,7 +149,7 @@ def test_real_relay_snapshots_telemetry_after_verified_import_and_release(tmp_pa
         if source.endswith("phases.jsonl"):
             # Diagnostic capture must happen after the integrity boundary and
             # remote acknowledgement, never on behalf of checkpoint success.
-            assert cp.current_unlocked(home_root)[1]["step"] == 25
+            assert cp.current_unlocked(home_root)[1]["step"] == step
             assert not (remote_root / "INFLIGHT").exists()
             captures.append(source)
             if telemetry == "download_failed":
@@ -162,7 +165,7 @@ def test_real_relay_snapshots_telemetry_after_verified_import_and_release(tmp_pa
     st = types.SimpleNamespace(d={}, save=lambda: saved.append(True))
     assert tr.relay(None, download, st, job(), home)
     record = st.d["full_checkpoint_v2"][job()["name"]]
-    assert record["full_optimizer"] is True and record["step"] == 25 and saved
+    assert record["full_optimizer"] is True and record["step"] == step and saved
     assert captures
     assert record["phase_snapshot"]["diagnostic_only"] is True
     assert record["phase_snapshot"]["status"] == ("CAPTURED" if telemetry == "ok" else "CAPTURE_FAILED")
@@ -173,8 +176,9 @@ def test_real_relay_snapshots_telemetry_after_verified_import_and_release(tmp_pa
         assert not (home_root / "phases.snapshot.tmp").exists()
     else:
         assert (home_root / "phases.snapshot.jsonl").read_bytes() == previous
+    assert tr.final_home_ready(job(), home) is (step == 10000)
     restored = tmp_path / "restored"
-    assert cp.restore_flat(home_root, restored, SOURCE)["rng"]["draws"] == 400
+    assert cp.restore_flat(home_root, restored, SOURCE)["rng"]["draws"] == step * 16
     assert all((restored / n).read_bytes() == (remote / job()["name"] / n).read_bytes() for n in cp.FILES)
 
 
@@ -229,3 +233,22 @@ def test_rpc_surfaces_corrupt_pin_as_distinct_fatal_error(tmp_path, monkeypatch)
     with pytest.raises(cp.PinnedGenerationValidationError, match="PINNED_GENERATION_VALIDATION_FAILED"):
         tr.rpc(executor, f"cp.pin_inflight({str(root)!r})")
     assert (root / "INFLIGHT").is_symlink()
+
+def test_finished_job_requires_exact_complete_final_optimizer_state(tmp_path):
+    assert not tr.final_home_ready(job(), tmp_path)
+    ready(tmp_path, 675)
+    assert not tr.final_home_ready(job(), tmp_path)
+    ready(tmp_path, 10000)
+    assert tr.final_home_ready(job(), tmp_path)
+    folder, _ = cp.current_unlocked(tr.root_for(tmp_path, job()))
+    optimizer = folder / "optim.safetensors"
+    raw = bytearray(optimizer.read_bytes()); raw[-1] ^= 1; optimizer.write_bytes(raw)
+    with pytest.raises(ValueError, match="hash differs"):
+        tr.final_home_ready(job(), tmp_path)
+
+
+def test_final_optimizer_state_from_different_recipe_is_refused(tmp_path):
+    ready(tmp_path, 10000)
+    bad = job(); bad["full_checkpoint_v2"]["source_commit"] = "b" * 40
+    with pytest.raises(ValueError, match="source/recipe/budget differs"):
+        tr.final_home_ready(bad, tmp_path)

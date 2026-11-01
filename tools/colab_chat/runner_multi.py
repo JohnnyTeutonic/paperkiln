@@ -1262,7 +1262,7 @@ def main():
                     log(f"{n}: {r[n]}  {r.get(n + '_tail', '')[-120:]}")
                     js["status"] = r[n]
                     st.save()
-                if r[n] == "RUNNING" and not js["home"] and j.get("full_checkpoint_v2"):
+                if r[n] in ("RUNNING", "FINISHED") and not js["home"] and j.get("full_checkpoint_v2"):
                     from sfull_checkpoint_transport_v2 import relay as full_relay
                     try:
                         relayed = full_relay(exec_py, download_file, st, j, ART) or relayed
@@ -1280,6 +1280,11 @@ def main():
                 elif r[n] == "RUNNING" and not js["home"] and "cmd" not in j:
                     relayed = relay(st, n, j.get("relay_every_steps", 0)) or relayed
                 if r[n] == "FINISHED" and not js["home"]:
+                    if j.get("full_checkpoint_v2"):
+                        from sfull_checkpoint_transport_v2 import final_home_ready as sfull_final_home_ready
+                        if not sfull_final_home_ready(j, ART):
+                            done = False
+                            continue  # final model/AdamW/RNG/events must land, not merely weights
                     if j.get("dpo_full_checkpoint_v1"):
                         from dpo_checkpoint_transport_v1 import final_home_ready
                         if not final_home_ready(j, ART):
