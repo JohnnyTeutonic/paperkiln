@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 from contextlib import contextmanager
 import fcntl
+import errno
 import hashlib
 import json
 import os
@@ -49,28 +50,57 @@ def locked(root, exclusive=True):
         yield root
 
 
+def report_phase_failure(event, error):
+    try:
+        print("S_FULL_CHECKPOINT_TELEMETRY " + json.dumps({
+            "status": "WRITE_FAILED", "diagnostic_only": True,
+            "event": event, "error_type": type(error).__name__}), flush=True)
+    except (BrokenPipeError, OSError):
+        pass
+
+
 def phase(root, event, **details):
-    """Durable operational evidence; never a cadence heartbeat or integrity verdict."""
-    record = dict(event=event, unix=time.time(), monotonic=time.monotonic(), pid=os.getpid(), **details)
+    """Best-effort diagnostics; sync once at durable commit or observed halt.
+
+    Unsafe paths deliberately fail closed. Ordinary telemetry I/O/encoding
+    failures are reported separately and never alter checkpoint validity.
+    """
     root = Path(root)
     if root.is_symlink():
         raise ValueError("checkpoint root cannot be a symlink")
     path = root / "phases.jsonl"
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW, 0o600)
+    if path.is_symlink():
+        raise OSError("checkpoint phase journal cannot be a symlink")
+    fd = None
+    data = None
+    okay = True
     try:
+        record = dict(event=event, unix=time.time(), monotonic=time.monotonic(), pid=os.getpid(), **details)
         data = (json.dumps(record, sort_keys=True) + "\n").encode()
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW, 0o600)
         if os.write(fd, data) != len(data):
             raise OSError("incomplete checkpoint phase record")
-        os.fsync(fd)
+        if event in {"publish.current_durable", "manager.gap_halt"}:
+            os.fsync(fd)
+    except (OSError, ValueError, TypeError) as error:
+        # O_NOFOLLOW is a fail-closed path fence, including a symlink race.
+        if isinstance(error, OSError) and error.errno == errno.ELOOP:
+            raise
+        okay = False
+        report_phase_failure(event, error)
     finally:
-        os.close(fd)
-    if event.startswith("publish."):
-        # The normal training log is a fallback copy of operational telemetry.
-        # A closed stdout pipe must not invalidate a durable checkpoint.
+        if fd is not None:
+            try:
+                os.close(fd)
+            except OSError as error:
+                okay = False
+                report_phase_failure(event, error)
+    if data is not None and event.startswith("publish."):
         try:
             print("S_FULL_CHECKPOINT_PHASE " + data.decode().rstrip(), flush=True)
         except (BrokenPipeError, OSError):
             pass
+    return okay
 
 
 @contextmanager
@@ -242,12 +272,39 @@ def require_space(root, paths):
         raise ValueError("insufficient free space for complete temporary generation")
 
 
+class PinnedGenerationValidationError(ValueError):
+    """Full validation of a retained lease failed; operator review required."""
+
+
+def validate_pinned_generation(folder, expected_manifest, expected_digest, operation):
+    try:
+        checked = validate_generation(folder)
+        if checked[1] != expected_manifest or sha(Path(folder) / "manifest.json") != expected_digest:
+            raise ValueError("pinned manifest changed during validation")
+        return checked
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        # Preserve INFLIGHT. The distinct error propagates through RPC to the
+        # existing runner fail-stop/HALTED path; it must never become a retry.
+        raise PinnedGenerationValidationError(
+            f"PINNED_GENERATION_VALIDATION_FAILED {operation} {Path(folder).name}: {error}"
+        ) from error
+
+
+def pinned_metadata(root):
+    try:
+        return current_unlocked(root, "INFLIGHT", metadata_only=True)
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise PinnedGenerationValidationError(
+            f"PINNED_GENERATION_VALIDATION_FAILED retained metadata: {error}"
+        ) from error
+
+
 def pin_inflight(root):
     with lease_locked(root) as folder:
         phase(folder, "pin.lock_wait")
         with locked(folder):
             phase(folder, "pin.lock_acquired")
-            item = current_unlocked(folder, "INFLIGHT", metadata_only=True)
+            item = pinned_metadata(folder)
             if item is None:
                 item = current_unlocked(folder, metadata_only=True)
                 if item is None:
@@ -260,9 +317,7 @@ def pin_inflight(root):
         # INFLIGHT protects the generation throughout validation, including
         # failure. Another lease user cannot release it while this runs.
         phase(folder, "pin.validation_start", generation=item[0].name)
-        checked = validate_generation(item[0])
-        if checked[1] != item[1] or sha(item[0] / "manifest.json") != expected:
-            raise ValueError("pinned manifest changed during validation")
+        checked = validate_pinned_generation(item[0], item[1], expected, "pin")
         phase(folder, "pin.validation_complete", generation=item[0].name)
         return checked
 
@@ -272,16 +327,14 @@ def release_inflight(root, expected_manifest_sha):
         phase(folder, "release.lock_wait")
         with locked(folder):
             phase(folder, "release.lock_acquired")
-            item = current_unlocked(folder, "INFLIGHT", metadata_only=True)
+            item = pinned_metadata(folder)
             if item is None or sha(item[0] / "manifest.json") != expected_manifest_sha:
                 raise ValueError("inflight acknowledgement differs")
         phase(folder, "release.validation_start", generation=item[0].name)
-        checked = validate_generation(item[0])
-        if checked[1] != item[1]:
-            raise ValueError("pinned manifest changed during validation")
+        checked = validate_pinned_generation(item[0], item[1], expected_manifest_sha, "release")
         phase(folder, "release.validation_complete", generation=item[0].name)
         with locked(folder):
-            now = current_unlocked(folder, "INFLIGHT", metadata_only=True)
+            now = pinned_metadata(folder)
             if now is None or now[0] != item[0] or sha(now[0] / "manifest.json") != expected_manifest_sha:
                 raise ValueError("inflight acknowledgement differs")
             (folder / "INFLIGHT").unlink()

@@ -305,3 +305,70 @@ def test_publication_refuses_source_or_recipe_drift(tmp_path):
         cp.publish(tmp_path, 50, 1, 2, 1, "c" * 40)
     with pytest.raises(ValueError, match="source/recipe drift"):
         cp.publish(tmp_path, 50, 2, 2, 1, SOURCE)
+
+def test_phase_syncs_only_at_durable_commit_and_halt(tmp_path, monkeypatch):
+    import os
+    original = cp.os.fsync
+    synced = []
+    def observed(fd):
+        if os.readlink(f"/proc/self/fd/{fd}").endswith("phases.jsonl"):
+            synced.append(fd)
+        return original(fd)
+    monkeypatch.setattr(cp.os, "fsync", observed)
+    publish(tmp_path)
+    assert len(synced) == 1
+    root = tmp_path / ".checkpoint_v2"
+    cp.phase(root, "manager.active_start")
+    cp.phase(root, "pin.validation_start")
+    assert len(synced) == 1
+    cp.phase(root, "manager.gap_halt")
+    assert len(synced) == 2
+
+
+@pytest.mark.parametrize("fault", ["open", "write", "fsync"])
+def test_diagnostic_io_failure_never_invalidates_publication(tmp_path, monkeypatch, capsys, fault):
+    import os, errno
+    original = getattr(cp.os, fault)
+    def broken(first, *args, **kwargs):
+        target = str(first) if fault == "open" else os.readlink(f"/proc/self/fd/{first}")
+        if target.endswith("phases.jsonl"):
+            raise OSError(errno.EIO, "injected diagnostic-only failure")
+        return original(first, *args, **kwargs)
+    monkeypatch.setattr(cp.os, fault, broken)
+    publish(tmp_path)
+    assert cp.current_unlocked(tmp_path / ".checkpoint_v2")[1]["step"] == 25
+    assert '"status": "WRITE_FAILED"' in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("operation", ["pin", "release"])
+def test_corrupt_retained_generation_raises_distinct_fatal_error(tmp_path, operation):
+    publish(tmp_path)
+    root = tmp_path / ".checkpoint_v2"
+    folder, _ = cp.current_unlocked(root)
+    digest = cp.sha(folder / "manifest.json")
+    if operation == "release":
+        cp.pin_inflight(root)
+    target = folder / "model.safetensors"
+    raw = bytearray(target.read_bytes()); raw[-1] ^= 1; target.write_bytes(raw)
+    with pytest.raises(cp.PinnedGenerationValidationError, match="PINNED_GENERATION_VALIDATION_FAILED"):
+        if operation == "pin":
+            cp.pin_inflight(root)
+        else:
+            cp.release_inflight(root, digest)
+    assert (root / "INFLIGHT").readlink().name == folder.name
+
+@pytest.mark.parametrize("operation", ["pin", "release"])
+def test_corrupt_retained_metadata_has_distinct_fatal_error(tmp_path, operation):
+    publish(tmp_path)
+    root = tmp_path / ".checkpoint_v2"
+    folder, _ = cp.pin_inflight(root)
+    digest = cp.sha(folder / "manifest.json")
+    manifest = json.loads((folder / "manifest.json").read_text())
+    manifest["rng"]["draws"] += 1
+    (folder / "manifest.json").write_text(json.dumps(manifest))
+    with pytest.raises(cp.PinnedGenerationValidationError, match="retained metadata"):
+        if operation == "pin":
+            cp.pin_inflight(root)
+        else:
+            cp.release_inflight(root, digest)
+    assert (root / "INFLIGHT").is_symlink()

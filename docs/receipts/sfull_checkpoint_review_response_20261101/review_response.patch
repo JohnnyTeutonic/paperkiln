@@ -1,0 +1,294 @@
+diff --git a/tools/colab_chat/sfull_checkpoint_transport_v2.py b/tools/colab_chat/sfull_checkpoint_transport_v2.py
+index 19b6f7dcc..d8e18ef54 100644
+--- a/tools/colab_chat/sfull_checkpoint_transport_v2.py
++++ b/tools/colab_chat/sfull_checkpoint_transport_v2.py
+@@ -112,10 +112,18 @@ def rpc(exec_py, expression):
+         "import sys,json\nsys.path.insert(0,"
+         + repr(CONTROL)
+         + ")\nimport sfull_checkpoint_v2 as cp\n"
+-        + expression
+-        + "\n"
++        + "try:\n exec(" + repr(expression) + ")\n"
++        + "except cp.PinnedGenerationValidationError as error:\n"
++        + " print('S_FULL_RPC_ERROR '+json.dumps({'kind':'PINNED_GENERATION_VALIDATION_FAILED','error':str(error)}))\n"
++        + " raise SystemExit(3)\n"
+     )
+     rc, out = exec_py(code)
++    failures = [line[len("S_FULL_RPC_ERROR "):] for line in out.splitlines()
++                if line.startswith("S_FULL_RPC_ERROR ")]
++    if rc != 0 and len(failures) == 1:
++        failure = json.loads(failures[0])
++        if failure.get("kind") == "PINNED_GENERATION_VALIDATION_FAILED":
++            raise cp.PinnedGenerationValidationError(failure["error"])
+     rows = [
+         line[len("S_FULL_RPC ") :]
+         for line in out.splitlines()
+diff --git a/tools/colab_chat/sfull_checkpoint_v2.py b/tools/colab_chat/sfull_checkpoint_v2.py
+index 453c88f27..6098bc221 100644
+--- a/tools/colab_chat/sfull_checkpoint_v2.py
++++ b/tools/colab_chat/sfull_checkpoint_v2.py
+@@ -10,6 +10,7 @@ from __future__ import annotations
+ import argparse
+ from contextlib import contextmanager
+ import fcntl
++import errno
+ import hashlib
+ import json
+ import os
+@@ -49,28 +50,57 @@ def locked(root, exclusive=True):
+         yield root
+ 
+ 
++def report_phase_failure(event, error):
++    try:
++        print("S_FULL_CHECKPOINT_TELEMETRY " + json.dumps({
++            "status": "WRITE_FAILED", "diagnostic_only": True,
++            "event": event, "error_type": type(error).__name__}), flush=True)
++    except (BrokenPipeError, OSError):
++        pass
++
++
+ def phase(root, event, **details):
+-    """Durable operational evidence; never a cadence heartbeat or integrity verdict."""
+-    record = dict(event=event, unix=time.time(), monotonic=time.monotonic(), pid=os.getpid(), **details)
++    """Best-effort diagnostics; sync once at durable commit or observed halt.
++
++    Unsafe paths deliberately fail closed. Ordinary telemetry I/O/encoding
++    failures are reported separately and never alter checkpoint validity.
++    """
+     root = Path(root)
+     if root.is_symlink():
+         raise ValueError("checkpoint root cannot be a symlink")
+     path = root / "phases.jsonl"
+-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW, 0o600)
++    if path.is_symlink():
++        raise OSError("checkpoint phase journal cannot be a symlink")
++    fd = None
++    data = None
++    okay = True
+     try:
++        record = dict(event=event, unix=time.time(), monotonic=time.monotonic(), pid=os.getpid(), **details)
+         data = (json.dumps(record, sort_keys=True) + "\n").encode()
++        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW, 0o600)
+         if os.write(fd, data) != len(data):
+             raise OSError("incomplete checkpoint phase record")
+-        os.fsync(fd)
++        if event in {"publish.current_durable", "manager.gap_halt"}:
++            os.fsync(fd)
++    except (OSError, ValueError, TypeError) as error:
++        # O_NOFOLLOW is a fail-closed path fence, including a symlink race.
++        if isinstance(error, OSError) and error.errno == errno.ELOOP:
++            raise
++        okay = False
++        report_phase_failure(event, error)
+     finally:
+-        os.close(fd)
+-    if event.startswith("publish."):
+-        # The normal training log is a fallback copy of operational telemetry.
+-        # A closed stdout pipe must not invalidate a durable checkpoint.
++        if fd is not None:
++            try:
++                os.close(fd)
++            except OSError as error:
++                okay = False
++                report_phase_failure(event, error)
++    if data is not None and event.startswith("publish."):
+         try:
+             print("S_FULL_CHECKPOINT_PHASE " + data.decode().rstrip(), flush=True)
+         except (BrokenPipeError, OSError):
+             pass
++    return okay
+ 
+ 
+ @contextmanager
+@@ -242,12 +272,39 @@ def require_space(root, paths):
+         raise ValueError("insufficient free space for complete temporary generation")
+ 
+ 
++class PinnedGenerationValidationError(ValueError):
++    """Full validation of a retained lease failed; operator review required."""
++
++
++def validate_pinned_generation(folder, expected_manifest, expected_digest, operation):
++    try:
++        checked = validate_generation(folder)
++        if checked[1] != expected_manifest or sha(Path(folder) / "manifest.json") != expected_digest:
++            raise ValueError("pinned manifest changed during validation")
++        return checked
++    except (OSError, ValueError, KeyError, TypeError) as error:
++        # Preserve INFLIGHT. The distinct error propagates through RPC to the
++        # existing runner fail-stop/HALTED path; it must never become a retry.
++        raise PinnedGenerationValidationError(
++            f"PINNED_GENERATION_VALIDATION_FAILED {operation} {Path(folder).name}: {error}"
++        ) from error
++
++
++def pinned_metadata(root):
++    try:
++        return current_unlocked(root, "INFLIGHT", metadata_only=True)
++    except (OSError, ValueError, KeyError, TypeError) as error:
++        raise PinnedGenerationValidationError(
++            f"PINNED_GENERATION_VALIDATION_FAILED retained metadata: {error}"
++        ) from error
++
++
+ def pin_inflight(root):
+     with lease_locked(root) as folder:
+         phase(folder, "pin.lock_wait")
+         with locked(folder):
+             phase(folder, "pin.lock_acquired")
+-            item = current_unlocked(folder, "INFLIGHT", metadata_only=True)
++            item = pinned_metadata(folder)
+             if item is None:
+                 item = current_unlocked(folder, metadata_only=True)
+                 if item is None:
+@@ -260,9 +317,7 @@ def pin_inflight(root):
+         # INFLIGHT protects the generation throughout validation, including
+         # failure. Another lease user cannot release it while this runs.
+         phase(folder, "pin.validation_start", generation=item[0].name)
+-        checked = validate_generation(item[0])
+-        if checked[1] != item[1] or sha(item[0] / "manifest.json") != expected:
+-            raise ValueError("pinned manifest changed during validation")
++        checked = validate_pinned_generation(item[0], item[1], expected, "pin")
+         phase(folder, "pin.validation_complete", generation=item[0].name)
+         return checked
+ 
+@@ -272,16 +327,14 @@ def release_inflight(root, expected_manifest_sha):
+         phase(folder, "release.lock_wait")
+         with locked(folder):
+             phase(folder, "release.lock_acquired")
+-            item = current_unlocked(folder, "INFLIGHT", metadata_only=True)
++            item = pinned_metadata(folder)
+             if item is None or sha(item[0] / "manifest.json") != expected_manifest_sha:
+                 raise ValueError("inflight acknowledgement differs")
+         phase(folder, "release.validation_start", generation=item[0].name)
+-        checked = validate_generation(item[0])
+-        if checked[1] != item[1]:
+-            raise ValueError("pinned manifest changed during validation")
++        checked = validate_pinned_generation(item[0], item[1], expected_manifest_sha, "release")
+         phase(folder, "release.validation_complete", generation=item[0].name)
+         with locked(folder):
+-            now = current_unlocked(folder, "INFLIGHT", metadata_only=True)
++            now = pinned_metadata(folder)
+             if now is None or now[0] != item[0] or sha(now[0] / "manifest.json") != expected_manifest_sha:
+                 raise ValueError("inflight acknowledgement differs")
+             (folder / "INFLIGHT").unlink()
+diff --git a/tools/colab_chat/test_sfull_checkpoint_transport_v2.py b/tools/colab_chat/test_sfull_checkpoint_transport_v2.py
+index d547909fe..382bfacd4 100644
+--- a/tools/colab_chat/test_sfull_checkpoint_transport_v2.py
++++ b/tools/colab_chat/test_sfull_checkpoint_transport_v2.py
+@@ -193,3 +193,39 @@ def test_manager_phase_evidence_never_resets_checkpoint_gap(tmp_path):
+     halt = [r for r in rows if r["event"] == "manager.gap_halt"][-1]
+     assert halt["step"] == 25 and halt["elapsed_since_observed"] == 181.0
+     assert halt["manager_group"] == 1234 and halt["max_gap_seconds"] == 180
++
++def test_diagnostic_io_failure_does_not_change_manager_guard(tmp_path, monkeypatch):
++    import errno, sfull_operational_v2 as ops
++    run = ready(tmp_path, 25)
++    original = cp.os.open
++    def broken(path, *args, **kwargs):
++        if str(path).endswith("phases.jsonl"):
++            raise OSError(errno.ENOSPC, "telemetry full")
++        return original(path, *args, **kwargs)
++    monkeypatch.setattr(cp.os, "open", broken)
++    starts = {}; active = {str(run.resolve())}
++    ops.gap_check([job()], tmp_path, active, starts, 1000.0, 0.0)
++    with pytest.raises(ValueError, match="exceeded180seconds"):
++        ops.gap_check([job()], tmp_path, active, starts, 1181.0, 181.0)
++    assert starts[str(run.resolve())] == {"clock": 0.0, "step": 25}
++
++
++def test_rpc_surfaces_corrupt_pin_as_distinct_fatal_error(tmp_path, monkeypatch):
++    import contextlib, io
++    from pathlib import Path
++    run = ready(tmp_path, 25); root = tr.root_for(tmp_path, job())
++    folder, _ = cp.current_unlocked(root)
++    payload = folder / "model.safetensors"
++    raw = bytearray(payload.read_bytes()); raw[-1] ^= 1; payload.write_bytes(raw)
++    monkeypatch.setattr(tr, "CONTROL", str(Path(cp.__file__).parent))
++    def executor(code):
++        output = io.StringIO(); rc = 0
++        with contextlib.redirect_stdout(output):
++            try:
++                exec(code, {})
++            except SystemExit as error:
++                rc = error.code
++        return rc, output.getvalue()
++    with pytest.raises(cp.PinnedGenerationValidationError, match="PINNED_GENERATION_VALIDATION_FAILED"):
++        tr.rpc(executor, f"cp.pin_inflight({str(root)!r})")
++    assert (root / "INFLIGHT").is_symlink()
+diff --git a/tools/colab_chat/test_sfull_checkpoint_v2.py b/tools/colab_chat/test_sfull_checkpoint_v2.py
+index 1a477b700..3c80dab68 100644
+--- a/tools/colab_chat/test_sfull_checkpoint_v2.py
++++ b/tools/colab_chat/test_sfull_checkpoint_v2.py
+@@ -305,3 +305,70 @@ def test_publication_refuses_source_or_recipe_drift(tmp_path):
+         cp.publish(tmp_path, 50, 1, 2, 1, "c" * 40)
+     with pytest.raises(ValueError, match="source/recipe drift"):
+         cp.publish(tmp_path, 50, 2, 2, 1, SOURCE)
++
++def test_phase_syncs_only_at_durable_commit_and_halt(tmp_path, monkeypatch):
++    import os
++    original = cp.os.fsync
++    synced = []
++    def observed(fd):
++        if os.readlink(f"/proc/self/fd/{fd}").endswith("phases.jsonl"):
++            synced.append(fd)
++        return original(fd)
++    monkeypatch.setattr(cp.os, "fsync", observed)
++    publish(tmp_path)
++    assert len(synced) == 1
++    root = tmp_path / ".checkpoint_v2"
++    cp.phase(root, "manager.active_start")
++    cp.phase(root, "pin.validation_start")
++    assert len(synced) == 1
++    cp.phase(root, "manager.gap_halt")
++    assert len(synced) == 2
++
++
++@pytest.mark.parametrize("fault", ["open", "write", "fsync"])
++def test_diagnostic_io_failure_never_invalidates_publication(tmp_path, monkeypatch, capsys, fault):
++    import os, errno
++    original = getattr(cp.os, fault)
++    def broken(first, *args, **kwargs):
++        target = str(first) if fault == "open" else os.readlink(f"/proc/self/fd/{first}")
++        if target.endswith("phases.jsonl"):
++            raise OSError(errno.EIO, "injected diagnostic-only failure")
++        return original(first, *args, **kwargs)
++    monkeypatch.setattr(cp.os, fault, broken)
++    publish(tmp_path)
++    assert cp.current_unlocked(tmp_path / ".checkpoint_v2")[1]["step"] == 25
++    assert '"status": "WRITE_FAILED"' in capsys.readouterr().out
++
++
++@pytest.mark.parametrize("operation", ["pin", "release"])
++def test_corrupt_retained_generation_raises_distinct_fatal_error(tmp_path, operation):
++    publish(tmp_path)
++    root = tmp_path / ".checkpoint_v2"
++    folder, _ = cp.current_unlocked(root)
++    digest = cp.sha(folder / "manifest.json")
++    if operation == "release":
++        cp.pin_inflight(root)
++    target = folder / "model.safetensors"
++    raw = bytearray(target.read_bytes()); raw[-1] ^= 1; target.write_bytes(raw)
++    with pytest.raises(cp.PinnedGenerationValidationError, match="PINNED_GENERATION_VALIDATION_FAILED"):
++        if operation == "pin":
++            cp.pin_inflight(root)
++        else:
++            cp.release_inflight(root, digest)
++    assert (root / "INFLIGHT").readlink().name == folder.name
++
++@pytest.mark.parametrize("operation", ["pin", "release"])
++def test_corrupt_retained_metadata_has_distinct_fatal_error(tmp_path, operation):
++    publish(tmp_path)
++    root = tmp_path / ".checkpoint_v2"
++    folder, _ = cp.pin_inflight(root)
++    digest = cp.sha(folder / "manifest.json")
++    manifest = json.loads((folder / "manifest.json").read_text())
++    manifest["rng"]["draws"] += 1
++    (folder / "manifest.json").write_text(json.dumps(manifest))
++    with pytest.raises(cp.PinnedGenerationValidationError, match="retained metadata"):
++        if operation == "pin":
++            cp.pin_inflight(root)
++        else:
++            cp.release_inflight(root, digest)
++    assert (root / "INFLIGHT").is_symlink()
