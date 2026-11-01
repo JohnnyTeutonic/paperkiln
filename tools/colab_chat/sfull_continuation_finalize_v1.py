@@ -155,9 +155,32 @@ def validate(contract, now):
             raise ValueError("incomplete operational source inventory")
         if any(contract["pins"].get(k) != v for k, v in {**c["operational_source_pins"], **c["original_admission_pins"]}.items()):
             raise ValueError("campaign source inventory not prospectively bound")
-        for key in ("state", "carried_ledger"):
-            if str(Path(c[key])) not in contract["pins"]:
-                raise ValueError("final campaign state/ledger not bound")
+        for key in ("state", "carried_ledger", "original_state", "original_admission"):
+            path = Path(c[key])
+            if not path.is_absolute() or path.is_symlink() or str(path) not in contract["pins"]:
+                raise ValueError("campaign state/ledger/admission not bound")
+        for key in ("original_state", "original_admission"):
+            if c[key] not in c["original_admission_pins"]:
+                raise ValueError("original state/admission not in original inventory")
+        original_state = read(c["original_state"])
+        if original_state.get("runpod", {}).get("ledger") != read(c["carried_ledger"]):
+            raise ValueError("carried ledger differs from actual original state")
+        admission = read(c["original_admission"])
+        if admission.get("status") != "ROOT_ADMITTED" or admission.get("seed") != c["seed"] or admission.get("per_seed_cap_usd") != 7 or admission.get("aggregate_cap_usd") != 21 or admission.get("numerical_commit") != NUMERICAL:
+            raise ValueError("original seed/source/cap admission differs")
+        original_argv = admission.get("runner_argv", [])
+        if original_argv.count("--state-dir") != 1 or original_argv[original_argv.index("--state-dir") + 1] != str(Path(c["original_state"]).parent):
+            raise ValueError("original admission state binding differs")
+        reservation = admission.get("ledger_contract", {}).get("reservation_required", {})
+        if reservation != {"seed": c["seed"], "cap_usd": 7, "state_dir": str(Path(c["original_state"]).parent), "status": "ADMITTED"}:
+            raise ValueError("original reservation differs")
+        aggregate_path = admission.get("aggregate_ledger")
+        if aggregate_path not in c["original_admission_pins"] or admission.get("aggregate_ledger_sha256") != c["original_admission_pins"][aggregate_path]:
+            raise ValueError("original aggregate snapshot not bound")
+        aggregate = read(aggregate_path)
+        reservations = aggregate.get("reservations", [])
+        if aggregate.get("aggregate_cap_usd") != 21 or len({v.get("seed") for v in reservations}) != len(reservations) or any(type(v.get("seed")) is not int or v["seed"] not in SEEDS or v.get("cap_usd") != 7 for v in reservations) or sum(v["cap_usd"] for v in reservations) > 21 or reservation not in reservations:
+            raise ValueError("original aggregate reservation semantics differ")
         state = read(c["state"])
         required = {"cuda_gate", "data", "gate", "sfull_inputs", f"pt_c12_Sfull_r{c['seed']}", f"post_c12_Sfull_r{c['seed']}"}
         if set(state.get("jobs", {})) != required:
@@ -171,7 +194,31 @@ def validate(contract, now):
     return {"seed_costs_usd_at_validation": costs, "original_scientific_predicates_unchanged": True}
 
 
+def validate_destinations(contract, destinations):
+    """No prospective output may overlap any preserved input or another output."""
+    def resolve_new(path):
+        p = Path(path)
+        if not p.is_absolute() or p.exists() or p.is_symlink():
+            raise ValueError("destination must be a new absolute path")
+        if any(parent.is_symlink() for parent in p.parents):
+            raise ValueError("symlinked destination ancestor refused")
+        return p.resolve()
+
+    outputs = [resolve_new(p) for p in destinations]
+    evidence = [Path(p).resolve() for p in contract["artifact_roots"].values()]
+    evidence += [Path(p).resolve().parent for p in contract["pins"]]
+    for campaign in contract["campaigns"]:
+        evidence.extend([Path(campaign["state"]).resolve().parent, Path(campaign["original_state"]).resolve().parent, Path(campaign["operational_checkout"]).resolve()])
+    def overlap(a, b):
+        return a == b or a.is_relative_to(b) or b.is_relative_to(a)
+    if any(overlap(output, source) for output in outputs for source in evidence):
+        raise ValueError("destination overlaps preserved evidence or source")
+    if any(overlap(a, b) for i, a in enumerate(outputs) for b in outputs[i+1:]):
+        raise ValueError("output destinations overlap one another")
+
+
 def create_views(contract, destination):
+    validate_destinations(contract, [destination])
     destination = Path(destination)
     if not destination.is_absolute() or destination.is_symlink() or destination.exists():
         raise ValueError("view destination must be new absolute directory")
@@ -198,6 +245,7 @@ def main():
     if sha(args.contract) != args.contract_sha256:
         raise ValueError("prospective mapping contract changed")
     contract = read(args.contract)
+    validate_destinations(contract, [args.view, args.out, args.state_dir])
     before = validate(contract, time.time())
     if not args.execute:
         print(json.dumps({"status": "READY_FOR_MAPPED_FINALIZER", **before}))
