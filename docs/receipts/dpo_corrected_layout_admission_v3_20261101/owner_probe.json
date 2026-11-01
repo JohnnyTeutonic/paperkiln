@@ -1,0 +1,11 @@
+{
+  "pass": true,
+  "actual_guard_no_provider": true,
+  "live_owner_recognised": true,
+  "unrelated_pid_rejected": true,
+  "dead_pid_rejected": true,
+  "review_sha256": "54008bc7209916e71e32bad995a246d09662b34c05306e6cec23aa9c702f82eb",
+  "driver_argv_exactly_validated": true,
+  "provider_calls": 0,
+  "gpu_calls": 0
+}

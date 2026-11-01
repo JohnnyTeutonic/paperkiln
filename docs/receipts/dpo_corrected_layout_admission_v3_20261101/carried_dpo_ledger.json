@@ -1,0 +1,27 @@
+{
+  "pods": [
+    {
+      "id": "wsomd43p95ujq0",
+      "name": "pk-dpo-v8-1101",
+      "gpu": "L4",
+      "usd_per_hr": 0.59,
+      "dc": "EU-RO-1",
+      "volume": "oed4b4nsfk",
+      "start": 1793524197.5758395,
+      "stop": 1793528217.4664009,
+      "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+      "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+      "stopped_by": "runner"
+    }
+  ],
+  "volumes": [
+    {
+      "id": "oed4b4nsfk",
+      "dc": "EU-RO-1",
+      "gb": 30,
+      "created": 1793524194.867627,
+      "name": "pk-dpo-v8-1101-vol",
+      "deleted": 1793528218.2906172
+    }
+  ]
+}
