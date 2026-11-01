@@ -1,0 +1,6 @@
+LEGACY_MATMUL_JSON {"case":"both_rectangular","pass":true,"actual_cuda":false,"synthetic_authority":true}
+LEGACY_MATMUL_JSON {"case":"left_only","pass":true,"actual_cuda":false,"synthetic_authority":true}
+LEGACY_MATMUL_JSON {"case":"right_only","pass":true,"actual_cuda":false,"synthetic_authority":true}
+LEGACY_MATMUL_JSON {"case":"dot","pass":true,"actual_cuda":false,"synthetic_authority":true}
+LEGACY_MATMUL_JSON {"case":"odd_rectangular","pass":true,"actual_cuda":false,"synthetic_authority":true}
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)

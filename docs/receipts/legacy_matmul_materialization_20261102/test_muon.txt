@@ -1,0 +1,8 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+  [muon] golden probe max diff          4.124e-06
+  [muon] golden frobenius diff          2.729e-07
+  [muon] pin vs hand-rolled step        0.000e+00
+  [muon] head update spread full=1.47x per-head=1.08x
+  [muon] training loss 4.3414 -> 0.0021 (200 steps)
+  [muon] guards: vectors + bad head counts refused
+[PASS] all Muon tests

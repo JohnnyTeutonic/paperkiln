@@ -1,0 +1,14 @@
+Internal ctest changing into directory: /home/jonat/legacy_matmul_cmake_build_20261102
+Test project /home/jonat/legacy_matmul_cmake_build_20261102
+    Start 20: lora_quant
+1/4 Test #20: lora_quant .......................   Passed    0.00 sec
+    Start 36: muon
+2/4 Test #36: muon .............................   Passed    0.02 sec
+    Start 70: legacy_matmul_cpu_fresh
+3/4 Test #70: legacy_matmul_cpu_fresh ..........   Passed    0.00 sec
+    Start 71: legacy_matmul_cpu_authority
+4/4 Test #71: legacy_matmul_cpu_authority ......   Passed    0.00 sec
+
+100% tests passed, 0 tests failed out of 4
+
+Total Test time (real) =   0.03 sec
