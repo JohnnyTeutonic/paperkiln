@@ -138,6 +138,11 @@ Matrix gemm(const Matrix& A, DevState** devA, Trans tA, const Matrix& B, DevStat
     if (g_device == Device::CUDA) {
         Matrix C = out_matrix(M, N);  // the B2 gemm writes every element
         if (step_resident_gemm(A, devA, tA, B, devB, tB, C)) return C;
+        // A previously deferred value remains authoritative when runtime
+        // step residency is disabled. Phase-A/B1 fallbacks may transpose or
+        // upload host bytes, so make both operands coherent first.
+        materialize(A);
+        materialize(B);
         zero_if_uninit(C);
         auto run = [&C](const Matrix& a, const Matrix& b) {
             if (resident_matmul(a, b, C)) return;
@@ -158,6 +163,10 @@ Matrix gemm(const Matrix& A, DevState** devA, Trans tA, const Matrix& B, DevStat
     (void)devB;
     (void)M;
     (void)N;
+    // Changing the runtime device does not flush an already open CUDA
+    // window. CPU GEMM and its explicit transposes consume host storage.
+    materialize(A);
+    materialize(B);
     if (tA == Trans::N && tB == Trans::N) return matmul_optimized(A, B);
     if (tA == Trans::T && tB == Trans::N) return matmul_optimized(A.transpose(), B);
     if (tA == Trans::N && tB == Trans::T) return matmul_optimized(A, B.transpose());

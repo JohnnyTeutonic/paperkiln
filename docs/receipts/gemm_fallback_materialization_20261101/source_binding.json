@@ -1,0 +1,11 @@
+{
+  "base_commit": "ce8bafb7e9dec36b8b7324e9e0105c109ca938ba",
+  "baseline_exact_git_blob": true,
+  "sha256": {
+    "src/device.cpp": "a2bd639ae7622c635442cba5fb8f9fa21476d391f231fd78d2d32b38db62e206",
+    "tests/test_gemm_fallback_materialization.cpp": "7e475f65d88a010fe309f6635dd65dcd2358b851089c0d1f848af2b1c5ce38b9",
+    "tests/gemm_fallback_baseline.cpp": "d8dbfd25e811706cb1425399fea968369d461abef026d2472bfd2011bc167b7e",
+    "CMakeLists.txt": "0cc6bff73dcbfbb667882f419c2ca8679e85607d5fb0f466d8cfa47c35857eaf"
+  },
+  "actual_l4_launched": false
+}

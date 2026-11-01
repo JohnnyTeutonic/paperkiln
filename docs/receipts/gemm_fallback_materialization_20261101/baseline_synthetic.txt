@@ -1,0 +1,6 @@
+GEMM_FALLBACK_JSON {"case":"NN","pass":false,"actual_cuda":false,"synthetic_authority":true,"error":"independent numerical reference differs"}
+GEMM_FALLBACK_JSON {"case":"NT","pass":false,"actual_cuda":false,"synthetic_authority":true,"error":"independent numerical reference differs"}
+GEMM_FALLBACK_JSON {"case":"TN","pass":false,"actual_cuda":false,"synthetic_authority":true,"error":"independent numerical reference differs"}
+GEMM_FALLBACK_JSON {"case":"TT","pass":false,"actual_cuda":false,"synthetic_authority":true,"error":"independent numerical reference differs"}
+GEMM_FALLBACK_JSON {"case":"saved_parent_backward","pass":false,"actual_cuda":false,"synthetic_authority":true,"error":"independent numerical reference differs"}
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
