@@ -1,0 +1,31 @@
+{
+  "status": "PREPARED_NOT_ADMITTED_UNLAUNCHED",
+  "matrix": {
+    "GEMM_fallback_rows": 30,
+    "legacy_Matrix_rows": 60,
+    "total_rows": 90,
+    "legs": 18
+  },
+  "offline_checker_tests_passed": 62,
+  "suggested_financial_limits": {
+    "max_usd": 1,
+    "max_hours": 1,
+    "volume_gb": 30,
+    "gpu": "L4",
+    "parallel_campaigns": 1
+  },
+  "internal_packet_deadline_seconds": 2700,
+  "numerical_bounds_changed": false,
+  "gpu_calls": 0,
+  "provider_calls": 0,
+  "ready_for_dispatch": false,
+  "required_before_dispatch": [
+    "Existing S-full/E9 serial queue and DPO priority respected",
+    "Fresh root source/upload binding including HOST_READ_BOUNDARY_HEAD",
+    "Actual financial admission and ledger",
+    "Fresh state/output/build ownership and deadline",
+    "Live owner-recognition probe against deployed sweeper",
+    "Existing watchdog activation only",
+    "Complete safe home replay and owned resource cleanup"
+  ]
+}

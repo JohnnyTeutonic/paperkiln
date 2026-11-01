@@ -1,0 +1,11 @@
+{
+  "_comment": "Prospective unadmitted diagnostic: one L4, proposed1USD/1h/30GB, original serial queue and fresh source-bound root admission required. Upload HOST_READ_BOUNDARY_HEAD as the root-admitted exact full source commit. Exit0 means complete diagnostics, not gate pass; require execution.gate_pass plus independent frozen local replay.",
+  "max_parallel": 1,
+  "jobs": [
+    {
+      "name": "host_read_boundaries_v1",
+      "cmd": ["python3", "tools/colab_chat/run_host_read_boundaries_l4_v1.py", "{out}", "--expected-source-file", "{upload}/HOST_READ_BOUNDARY_HEAD"],
+      "outputs": ["results.tar.gz", "execution.json", "source_hardware.json", "gate_summary.json", "configure.txt", "build.txt"]
+    }
+  ]
+}
