@@ -1,0 +1,13 @@
+{
+  "at_utc": "2026-11-01T12:13:26.779153+00:00",
+  "runner_alive": true,
+  "pod_assigned": false,
+  "volume_assigned": false,
+  "ssh_ready": false,
+  "booted": null,
+  "halted": false,
+  "campaign_home": false,
+  "jobs": {},
+  "prior_pod_ledger_entries": 17,
+  "protected_original_volume_owned": false
+}

@@ -1,0 +1,30 @@
+{
+  "passed": 23,
+  "cases": [
+    "complete_valid_contract",
+    "reject_--max-usd",
+    "reject_--gpu",
+    "reject_--max-hours",
+    "reject_--volume-gb",
+    "reject_--commit",
+    "reject_--boot-script",
+    "reject_omitted_prior_ledger",
+    "reject_changed_prior_ledger",
+    "reject_protected_owned_volume",
+    "reject_protected_retired_volume",
+    "reject_protected_owned_volume_dict",
+    "reject_protected_retired_volume_dict",
+    "reject_already_home",
+    "reject_duplicate_ledger",
+    "reject_historical_path_reuse",
+    "reject_expired_deadline",
+    "reject_wrong_numerical",
+    "reject_missing_pin",
+    "reject_reservation_reset",
+    "reject_carried_ledger_not_original",
+    "reject_absolute_window_reset",
+    "reject_symlink_pin"
+  ],
+  "provider_calls": 0,
+  "gpu_calls": 0
+}
