@@ -1,0 +1,6 @@
+GEMM_FALLBACK_JSON {"case":"NN","pass":true,"actual_cuda":false,"synthetic_authority":true,"restores":2}
+GEMM_FALLBACK_JSON {"case":"NT","pass":true,"actual_cuda":false,"synthetic_authority":true,"restores":2}
+GEMM_FALLBACK_JSON {"case":"TN","pass":true,"actual_cuda":false,"synthetic_authority":true,"restores":2}
+GEMM_FALLBACK_JSON {"case":"TT","pass":true,"actual_cuda":false,"synthetic_authority":true,"restores":2}
+GEMM_FALLBACK_JSON {"case":"saved_parent_backward","pass":true,"actual_cuda":false,"synthetic_authority":true,"restores":2}
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)

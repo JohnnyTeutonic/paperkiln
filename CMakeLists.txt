@@ -567,3 +567,17 @@ target_compile_definitions(policy_reference_fixed PRIVATE POLICY_REFERENCE_VARIA
 add_executable(policy_reference_old tests/policy_reference_gate.cpp tests/policy_reference_baseline.cpp)
 target_link_libraries(policy_reference_old PRIVATE microtorch)
 target_compile_definitions(policy_reference_old PRIVATE POLICY_REFERENCE_VARIANT="old")
+
+# Bounded GEMM fallback host-authority proof; old source retained exactly.
+add_executable(gemm_fallback_fixed tests/test_gemm_fallback_materialization.cpp src/device.cpp)
+target_link_libraries(gemm_fallback_fixed PRIVATE microtorch)
+add_executable(gemm_fallback_old tests/test_gemm_fallback_materialization.cpp tests/gemm_fallback_baseline.cpp)
+target_link_libraries(gemm_fallback_old PRIVATE microtorch)
+add_test(NAME gemm_fallback_cpu_fresh COMMAND gemm_fallback_fixed)
+if(UNIX AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT APPLE)
+    add_executable(gemm_fallback_emulated tests/test_gemm_fallback_materialization.cpp src/device.cpp)
+    target_link_libraries(gemm_fallback_emulated PRIVATE microtorch)
+    target_compile_definitions(gemm_fallback_emulated PRIVATE GEMM_FALLBACK_WRAP)
+    target_link_options(gemm_fallback_emulated PRIVATE "-Wl,--wrap=_ZN10microtorch6device11materializeERK6Matrix")
+    add_test(NAME gemm_fallback_cpu_authority COMMAND gemm_fallback_emulated --synthetic)
+endif()

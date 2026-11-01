@@ -1,0 +1,211 @@
+{
+  "actual_cuda": false,
+  "linked_source_proof": {
+    "src/ops.cpp": {
+      "tested_sha256": "e5455d13ac8d3b8a1b19bd1eba3d4f2eacc32724738579c7a07e2dba6c36bf2a",
+      "library_source_sha256": "e5455d13ac8d3b8a1b19bd1eba3d4f2eacc32724738579c7a07e2dba6c36bf2a"
+    },
+    "src/autograd.cpp": {
+      "tested_sha256": "eff07572cb70cccdfde386ccec1d716f0cfb2b9fb06f9c5a59eeacc76646930e",
+      "library_source_sha256": "eff07572cb70cccdfde386ccec1d716f0cfb2b9fb06f9c5a59eeacc76646930e"
+    },
+    "src/device_cache.cpp": {
+      "tested_sha256": "1118fc115172761f4935a3a60e9efce279c11b6a83f524d6f13b036d32911c2b",
+      "library_source_sha256": "1118fc115172761f4935a3a60e9efce279c11b6a83f524d6f13b036d32911c2b"
+    },
+    "include/microtorch/autograd.hpp": {
+      "tested_sha256": "1b265eff977c9e1d3b9eb4a41a31a1b8e8a19e452a5d15df45556498d3a387ab",
+      "library_source_sha256": "1b265eff977c9e1d3b9eb4a41a31a1b8e8a19e452a5d15df45556498d3a387ab"
+    },
+    "include/microtorch/ops.hpp": {
+      "tested_sha256": "9db1581b296093793a6d6e4cd2fec59ed6a4edfe660f8ac3e525236d6629914d",
+      "library_source_sha256": "9db1581b296093793a6d6e4cd2fec59ed6a4edfe660f8ac3e525236d6629914d"
+    },
+    "include/microtorch/device_cache.hpp": {
+      "tested_sha256": "65754656fa3684eb9ea44eb713da9c0b60100a8b445ffb1e7972e4211afc7a9e",
+      "library_source_sha256": "65754656fa3684eb9ea44eb713da9c0b60100a8b445ffb1e7972e4211afc7a9e"
+    },
+    "include/microtorch/device.hpp": {
+      "tested_sha256": "56c27aa908c5217564b66d1d4f13ef9e54632c24d1f82766b12921955c556ef3",
+      "library_source_sha256": "56c27aa908c5217564b66d1d4f13ef9e54632c24d1f82766b12921955c556ef3"
+    },
+    "include/microtorch/primitives.hpp": {
+      "tested_sha256": "45dbc6011190d1c41a06896f65362dc7b383fea2bb798f7814fc30c3ba23aaae",
+      "library_source_sha256": "45dbc6011190d1c41a06896f65362dc7b383fea2bb798f7814fc30c3ba23aaae"
+    }
+  },
+  "library_sha256": "bbaf128454147357574c1f623b0b909c28536be660b3abe2041eb360f25d67f8",
+  "baseline_device_source_sha256": "d8dbfd25e811706cb1425399fea968369d461abef026d2472bfd2011bc167b7e",
+  "fixed_device_source_sha256": "a2bd639ae7622c635442cba5fb8f9fa21476d391f231fd78d2d32b38db62e206",
+  "test_source_sha256": "7e475f65d88a010fe309f6635dd65dcd2358b851089c0d1f848af2b1c5ce38b9",
+  "results": [
+    {
+      "variant": "baseline",
+      "mode": "fresh",
+      "returncode": 0,
+      "rows": [
+        {
+          "case": "NN",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": false,
+          "restores": 0
+        },
+        {
+          "case": "NT",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": false,
+          "restores": 0
+        },
+        {
+          "case": "TN",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": false,
+          "restores": 0
+        },
+        {
+          "case": "TT",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": false,
+          "restores": 0
+        },
+        {
+          "case": "saved_parent_backward",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": false,
+          "restores": 0
+        }
+      ]
+    },
+    {
+      "variant": "baseline",
+      "mode": "synthetic",
+      "returncode": 1,
+      "rows": [
+        {
+          "case": "NN",
+          "pass": false,
+          "actual_cuda": false,
+          "synthetic_authority": true,
+          "error": "independent numerical reference differs"
+        },
+        {
+          "case": "NT",
+          "pass": false,
+          "actual_cuda": false,
+          "synthetic_authority": true,
+          "error": "independent numerical reference differs"
+        },
+        {
+          "case": "TN",
+          "pass": false,
+          "actual_cuda": false,
+          "synthetic_authority": true,
+          "error": "independent numerical reference differs"
+        },
+        {
+          "case": "TT",
+          "pass": false,
+          "actual_cuda": false,
+          "synthetic_authority": true,
+          "error": "independent numerical reference differs"
+        },
+        {
+          "case": "saved_parent_backward",
+          "pass": false,
+          "actual_cuda": false,
+          "synthetic_authority": true,
+          "error": "independent numerical reference differs"
+        }
+      ]
+    },
+    {
+      "variant": "fixed",
+      "mode": "fresh",
+      "returncode": 0,
+      "rows": [
+        {
+          "case": "NN",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": false,
+          "restores": 0
+        },
+        {
+          "case": "NT",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": false,
+          "restores": 0
+        },
+        {
+          "case": "TN",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": false,
+          "restores": 0
+        },
+        {
+          "case": "TT",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": false,
+          "restores": 0
+        },
+        {
+          "case": "saved_parent_backward",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": false,
+          "restores": 0
+        }
+      ]
+    },
+    {
+      "variant": "fixed",
+      "mode": "synthetic",
+      "returncode": 0,
+      "rows": [
+        {
+          "case": "NN",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": true,
+          "restores": 2
+        },
+        {
+          "case": "NT",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": true,
+          "restores": 2
+        },
+        {
+          "case": "TN",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": true,
+          "restores": 2
+        },
+        {
+          "case": "TT",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": true,
+          "restores": 2
+        },
+        {
+          "case": "saved_parent_backward",
+          "pass": true,
+          "actual_cuda": false,
+          "synthetic_authority": true,
+          "restores": 2
+        }
+      ]
+    }
+  ]
+}

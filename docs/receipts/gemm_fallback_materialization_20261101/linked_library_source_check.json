@@ -1,0 +1,9 @@
+{
+  "src/ops.cpp": true,
+  "src/autograd.cpp": true,
+  "src/device_cache.cpp": true,
+  "include/microtorch/autograd.hpp": true,
+  "include/microtorch/ops.hpp": true,
+  "include/microtorch/device_cache.hpp": true,
+  "include/microtorch/primitives.hpp": true
+}

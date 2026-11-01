@@ -1,0 +1,50 @@
+{
+  "status": "PROSPECTIVE_ACTUAL_L4_PROTOCOL_UNLAUNCHED",
+  "baseline_commit": "ce8bafb7e9dec36b8b7324e9e0105c109ca938ba",
+  "baseline_device_cpp_sha256": "d8dbfd25e811706cb1425399fea968369d461abef026d2472bfd2011bc167b7e",
+  "numerical_scope": "FP32 fallback host-coherence only; legacy Matrix device::matmul unchanged",
+  "queue": "After DPO, admitted S-full seed1 and E9 matched, unless root independently reprioritizes prospectively",
+  "gpu": "L4",
+  "max_parallel_campaigns": 1,
+  "suggested_max_usd": 1,
+  "suggested_max_hours": 1,
+  "admission_required": true,
+  "build_targets": [
+    "gemm_fallback_fixed",
+    "gemm_fallback_old"
+  ],
+  "cmake_flags": [
+    "-DMICROTORCH_CUDA=ON",
+    "-DMICROTORCH_DEVCHECK=ON",
+    "-DCMAKE_CUDA_ARCHITECTURES=89"
+  ],
+  "matrix": {
+    "variants": [
+      "old",
+      "fixed"
+    ],
+    "transitions": [
+      "active",
+      "cpu",
+      "stepoff"
+    ],
+    "cases": [
+      "NN",
+      "NT",
+      "TN",
+      "TT",
+      "saved_parent_backward"
+    ],
+    "total_rows": 30
+  },
+  "registered_verdicts": {
+    "old_active": "all5pass",
+    "old_cpu": "all5fail independent numeric reference",
+    "old_stepoff": "all5fail independent numeric reference",
+    "fixed_all": "all15pass"
+  },
+  "tolerance_absolute": 1e-06,
+  "required_real_stale_assertions": "Every real produced operand host_stale before and after poisoning host-only backing; values remain mathematically unchanged on device",
+  "historical_claim": "No conclusion about default historical CLI results; public runtime-transition boundary repair only",
+  "automatic_launch": false
+}
