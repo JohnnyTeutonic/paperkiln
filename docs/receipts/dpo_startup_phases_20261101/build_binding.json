@@ -1,0 +1,8 @@
+{
+  "cli_source_sha256": "28c7e7834deb81479b323078dc4be16fc03c13b768c9402bc5f4f0d1b0c57490",
+  "phase_header_sha256": "63e725d279ea8ebdd243f3258ecd7946865f738aed0edca903b8aba84f008efa",
+  "device_source_sha256": "a2bd639ae7622c635442cba5fb8f9fa21476d391f231fd78d2d32b38db62e206",
+  "binary_sha256": "35371efa7f0450178e9a5241e236ae0ebaf41ce6e918c3177fce1e9099e8bbef",
+  "cached_library_sha256": "bbaf128454147357574c1f623b0b909c28536be660b3abe2041eb360f25d67f8",
+  "actual_cuda": false
+}

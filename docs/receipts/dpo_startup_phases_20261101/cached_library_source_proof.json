@@ -1,0 +1,186 @@
+{
+  "src/llama.cpp": {
+    "current_sha256": "d360d2ef78245147b3dc25cea06937806b8afb3c14086d892c06d50cf7b41a9e",
+    "cached_library_source_sha256": "d360d2ef78245147b3dc25cea06937806b8afb3c14086d892c06d50cf7b41a9e"
+  },
+  "src/nn.cpp": {
+    "current_sha256": "944f301888cb6f8715aa27d290215ee10e826fb848f78b914b0c62ceb4d18a91",
+    "cached_library_source_sha256": "944f301888cb6f8715aa27d290215ee10e826fb848f78b914b0c62ceb4d18a91"
+  },
+  "src/ir.cpp": {
+    "current_sha256": "91fffa49d1e2ea280d4bd74529055489d43f4caad3fc5ebd62718e1fe8e1f815",
+    "cached_library_source_sha256": "91fffa49d1e2ea280d4bd74529055489d43f4caad3fc5ebd62718e1fe8e1f815"
+  },
+  "src/moe.cpp": {
+    "current_sha256": "097e882c698219c322977dace4f84e379cd7718fea1257005e2b2a3f79f4191c",
+    "cached_library_source_sha256": "097e882c698219c322977dace4f84e379cd7718fea1257005e2b2a3f79f4191c"
+  },
+  "src/expr.cpp": {
+    "current_sha256": "d6af98610b333a6e61e9f34f8762eb1e31cfa0f3a531355a5970dda5cf3a5253",
+    "cached_library_source_sha256": "d6af98610b333a6e61e9f34f8762eb1e31cfa0f3a531355a5970dda5cf3a5253"
+  },
+  "src/ops.cpp": {
+    "current_sha256": "e5455d13ac8d3b8a1b19bd1eba3d4f2eacc32724738579c7a07e2dba6c36bf2a",
+    "cached_library_source_sha256": "e5455d13ac8d3b8a1b19bd1eba3d4f2eacc32724738579c7a07e2dba6c36bf2a"
+  },
+  "src/quant.cpp": {
+    "current_sha256": "6b1f55587e71dbbdcf28e4aa4fae4f95ca976f171b8b2d154fbee6bba1470d53",
+    "cached_library_source_sha256": "6b1f55587e71dbbdcf28e4aa4fae4f95ca976f171b8b2d154fbee6bba1470d53"
+  },
+  "src/depth_attend.cpp": {
+    "current_sha256": "f9262ec2ff605fd545bc68e4cb772d110c67d2a3cd7895c9a81039ba1c9421ab",
+    "cached_library_source_sha256": "f9262ec2ff605fd545bc68e4cb772d110c67d2a3cd7895c9a81039ba1c9421ab"
+  },
+  "src/llama_attnres.cpp": {
+    "current_sha256": "77276862ca750636c362cd6fd951398b043fd01f619d5c642f6ecd08619099ac",
+    "cached_library_source_sha256": "77276862ca750636c362cd6fd951398b043fd01f619d5c642f6ecd08619099ac"
+  },
+  "src/cerebellum.cpp": {
+    "current_sha256": "4f420846188c500deb98d68f203fbffac3d53525f3a88a239dd37f80038b8082",
+    "cached_library_source_sha256": "4f420846188c500deb98d68f203fbffac3d53525f3a88a239dd37f80038b8082"
+  },
+  "src/recurrence.cpp": {
+    "current_sha256": "a4254eb14a1bd2953d7680a330fe9afcbdfe73205033b739c0dad9414a162e45",
+    "cached_library_source_sha256": "a4254eb14a1bd2953d7680a330fe9afcbdfe73205033b739c0dad9414a162e45"
+  },
+  "src/srd.cpp": {
+    "current_sha256": "4dca5ddf37ab434893807e8a8856a358a405d940dbb13e84d9ec7a1ff76f4e48",
+    "cached_library_source_sha256": "4dca5ddf37ab434893807e8a8856a358a405d940dbb13e84d9ec7a1ff76f4e48"
+  },
+  "src/gguf.cpp": {
+    "current_sha256": "310937073eeb42676f4b5fbdff09eca4c055512e3a941db914f07c4f18e1143a",
+    "cached_library_source_sha256": "310937073eeb42676f4b5fbdff09eca4c055512e3a941db914f07c4f18e1143a"
+  },
+  "src/safetensors.cpp": {
+    "current_sha256": "918c41750e21a2c795e814a206eb1ad5537835d5f4bce69c21bceb7b28a4880c",
+    "cached_library_source_sha256": "918c41750e21a2c795e814a206eb1ad5537835d5f4bce69c21bceb7b28a4880c"
+  },
+  "src/mamba.cpp": {
+    "current_sha256": "48eebd7051ec809f51aa8d499443bfcaf615efcfd989bcf06daf14f9eac577e4",
+    "cached_library_source_sha256": "48eebd7051ec809f51aa8d499443bfcaf615efcfd989bcf06daf14f9eac577e4"
+  },
+  "src/kimi_linear.cpp": {
+    "current_sha256": "fd6d44c18885af22a00150ccdb3a154dc1a4e19e6705e3acbe487052ab346ba5",
+    "cached_library_source_sha256": "fd6d44c18885af22a00150ccdb3a154dc1a4e19e6705e3acbe487052ab346ba5"
+  },
+  "src/device_cache.cpp": {
+    "current_sha256": "1118fc115172761f4935a3a60e9efce279c11b6a83f524d6f13b036d32911c2b",
+    "cached_library_source_sha256": "1118fc115172761f4935a3a60e9efce279c11b6a83f524d6f13b036d32911c2b"
+  },
+  "src/autograd.cpp": {
+    "current_sha256": "eff07572cb70cccdfde386ccec1d716f0cfb2b9fb06f9c5a59eeacc76646930e",
+    "cached_library_source_sha256": "eff07572cb70cccdfde386ccec1d716f0cfb2b9fb06f9c5a59eeacc76646930e"
+  },
+  "include/microtorch/autograd.hpp": {
+    "current_sha256": "1b265eff977c9e1d3b9eb4a41a31a1b8e8a19e452a5d15df45556498d3a387ab",
+    "cached_library_source_sha256": "1b265eff977c9e1d3b9eb4a41a31a1b8e8a19e452a5d15df45556498d3a387ab"
+  },
+  "include/microtorch/bpe_tokenizer.hpp": {
+    "current_sha256": "2fd193f6321d2ad18196e04e3112b3486ad07412d81f0ddfb7b05c877711004a",
+    "cached_library_source_sha256": "2fd193f6321d2ad18196e04e3112b3486ad07412d81f0ddfb7b05c877711004a"
+  },
+  "include/microtorch/cerebellum.hpp": {
+    "current_sha256": "c17f64d2d84444084c66974471fff96ea5212f0405b0748d6153cb016f061e58",
+    "cached_library_source_sha256": "c17f64d2d84444084c66974471fff96ea5212f0405b0748d6153cb016f061e58"
+  },
+  "include/microtorch/chat_template.hpp": {
+    "current_sha256": "9b51aca9fa81150f7f8279944c0cb4eac7cfb3d48e08a3ff3b8d0fb940ccaf66",
+    "cached_library_source_sha256": "9b51aca9fa81150f7f8279944c0cb4eac7cfb3d48e08a3ff3b8d0fb940ccaf66"
+  },
+  "include/microtorch/depth_attend.hpp": {
+    "current_sha256": "cfaaa57721bf469811e4347ebe4bf538e797f0764141bfc443df61ba925f9afe",
+    "cached_library_source_sha256": "cfaaa57721bf469811e4347ebe4bf538e797f0764141bfc443df61ba925f9afe"
+  },
+  "include/microtorch/device.hpp": {
+    "current_sha256": "56c27aa908c5217564b66d1d4f13ef9e54632c24d1f82766b12921955c556ef3",
+    "cached_library_source_sha256": "56c27aa908c5217564b66d1d4f13ef9e54632c24d1f82766b12921955c556ef3"
+  },
+  "include/microtorch/device_cache.hpp": {
+    "current_sha256": "65754656fa3684eb9ea44eb713da9c0b60100a8b445ffb1e7972e4211afc7a9e",
+    "cached_library_source_sha256": "65754656fa3684eb9ea44eb713da9c0b60100a8b445ffb1e7972e4211afc7a9e"
+  },
+  "include/microtorch/dpo_checkpoint_bridge_v1.hpp": {
+    "current_sha256": "0c34a2694a24936d4dcc0096195977f3eb4134676088fcc4fa2bccbd97cc3361",
+    "cached_library_source_sha256": "0c34a2694a24936d4dcc0096195977f3eb4134676088fcc4fa2bccbd97cc3361"
+  },
+  "include/microtorch/expr.hpp": {
+    "current_sha256": "20c2271d4ef4d4bd8a07a56a3d02f7adebc38459aff2d51bc6483f05250175de",
+    "cached_library_source_sha256": "20c2271d4ef4d4bd8a07a56a3d02f7adebc38459aff2d51bc6483f05250175de"
+  },
+  "include/microtorch/gguf.hpp": {
+    "current_sha256": "a023297fa0a7fa085ce044086f32702db4468d4e22706eb6cdf6859549edaef1",
+    "cached_library_source_sha256": "a023297fa0a7fa085ce044086f32702db4468d4e22706eb6cdf6859549edaef1"
+  },
+  "include/microtorch/ir.hpp": {
+    "current_sha256": "1726ff636f88911f38ebc5ae2193e2dada768ffff7bc87f0099b9c7136afbb1e",
+    "cached_library_source_sha256": "1726ff636f88911f38ebc5ae2193e2dada768ffff7bc87f0099b9c7136afbb1e"
+  },
+  "include/microtorch/kimi_linear.hpp": {
+    "current_sha256": "cfe06cf8be998e746e2da662ce103278ee2022dd2b4bd718bc16e89b17fc52b9",
+    "cached_library_source_sha256": "cfe06cf8be998e746e2da662ce103278ee2022dd2b4bd718bc16e89b17fc52b9"
+  },
+  "include/microtorch/llama.hpp": {
+    "current_sha256": "f1b349a0aaea82b12acc180f448e837cc002cc8542c3fc8ffcdef4dc9ec76844",
+    "cached_library_source_sha256": "f1b349a0aaea82b12acc180f448e837cc002cc8542c3fc8ffcdef4dc9ec76844"
+  },
+  "include/microtorch/llama3_tokenizer.hpp": {
+    "current_sha256": "493b2e7e6baf3f66e915aca71b2f83dce7c07d6a3b0acd520f5030c95b13a2ba",
+    "cached_library_source_sha256": "493b2e7e6baf3f66e915aca71b2f83dce7c07d6a3b0acd520f5030c95b13a2ba"
+  },
+  "include/microtorch/llama3_unicode_tables.hpp": {
+    "current_sha256": "48089608ef42d7542c22b449ee86b504f36ec33e22e0c2715f0226de11566cbb",
+    "cached_library_source_sha256": "48089608ef42d7542c22b449ee86b504f36ec33e22e0c2715f0226de11566cbb"
+  },
+  "include/microtorch/llama_attnres.hpp": {
+    "current_sha256": "ac672ed034a160b2baa8a93c8ebf95a147e4ae328c185c21c3391b5b2f119571",
+    "cached_library_source_sha256": "ac672ed034a160b2baa8a93c8ebf95a147e4ae328c185c21c3391b5b2f119571"
+  },
+  "include/microtorch/mamba.hpp": {
+    "current_sha256": "c0e88f031fc17918743c0a403668f8102545ad9d0138de9c8f86d1e19f466647",
+    "cached_library_source_sha256": "c0e88f031fc17918743c0a403668f8102545ad9d0138de9c8f86d1e19f466647"
+  },
+  "include/microtorch/moe.hpp": {
+    "current_sha256": "464534789479f6e54d03d3da8f9f4288f5a550cd00b7fa73e1ef96073cdd79a6",
+    "cached_library_source_sha256": "464534789479f6e54d03d3da8f9f4288f5a550cd00b7fa73e1ef96073cdd79a6"
+  },
+  "include/microtorch/nn.hpp": {
+    "current_sha256": "8e80b547398d7c45e24333f794aafdf3313d832a3cc5d55ed14937157763a642",
+    "cached_library_source_sha256": "8e80b547398d7c45e24333f794aafdf3313d832a3cc5d55ed14937157763a642"
+  },
+  "include/microtorch/ops.hpp": {
+    "current_sha256": "9db1581b296093793a6d6e4cd2fec59ed6a4edfe660f8ac3e525236d6629914d",
+    "cached_library_source_sha256": "9db1581b296093793a6d6e4cd2fec59ed6a4edfe660f8ac3e525236d6629914d"
+  },
+  "include/microtorch/posttrain/grpo.hpp": {
+    "current_sha256": "7b92d2749bd67e0df05f7e47ad1ae179da3b16ab9c428df0f73f3db4b6c00400",
+    "cached_library_source_sha256": "7b92d2749bd67e0df05f7e47ad1ae179da3b16ab9c428df0f73f3db4b6c00400"
+  },
+  "include/microtorch/posttrain/verifier.hpp": {
+    "current_sha256": "46be64e254e02054b66d945d4901a31832945ea30bd1316b41ba8e6c6d6ad10b",
+    "cached_library_source_sha256": "46be64e254e02054b66d945d4901a31832945ea30bd1316b41ba8e6c6d6ad10b"
+  },
+  "include/microtorch/primitives.hpp": {
+    "current_sha256": "45dbc6011190d1c41a06896f65362dc7b383fea2bb798f7814fc30c3ba23aaae",
+    "cached_library_source_sha256": "45dbc6011190d1c41a06896f65362dc7b383fea2bb798f7814fc30c3ba23aaae"
+  },
+  "include/microtorch/quant.hpp": {
+    "current_sha256": "f09c8428b2cd0061d1e231e0607e62e548b6f07c40d7d21d0efdcfb608fa9306",
+    "cached_library_source_sha256": "f09c8428b2cd0061d1e231e0607e62e548b6f07c40d7d21d0efdcfb608fa9306"
+  },
+  "include/microtorch/recurrence.hpp": {
+    "current_sha256": "3de8ab7034c361a507f873f3459bab327e55b7d08ba119da0f47eacd43a027aa",
+    "cached_library_source_sha256": "3de8ab7034c361a507f873f3459bab327e55b7d08ba119da0f47eacd43a027aa"
+  },
+  "include/microtorch/safetensors.hpp": {
+    "current_sha256": "488b9eb94117bb194173301d54d3e4902434b49ec744ed82518c0cb7c9774413",
+    "cached_library_source_sha256": "488b9eb94117bb194173301d54d3e4902434b49ec744ed82518c0cb7c9774413"
+  },
+  "include/microtorch/srd.hpp": {
+    "current_sha256": "94eacd7e999869d3b56771b82ded301d8f64128e622fce8d5b724c0fb9fcb336",
+    "cached_library_source_sha256": "94eacd7e999869d3b56771b82ded301d8f64128e622fce8d5b724c0fb9fcb336"
+  },
+  "include/microtorch/word_tokenizer.hpp": {
+    "current_sha256": "fb1b5dd1b86f6446d641641d8be7c94e86cd788aee4dfc2912849823d7a5394e",
+    "cached_library_source_sha256": "fb1b5dd1b86f6446d641641d8be7c94e86cd788aee4dfc2912849823d7a5394e"
+  }
+}

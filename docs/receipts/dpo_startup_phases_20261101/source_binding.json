@@ -1,0 +1,14 @@
+{
+  "base_commit": "9edacd0de7de11f1123ddd546e1f345551231da9",
+  "sha256": {
+    "tools/mtstudio.cpp": "28c7e7834deb81479b323078dc4be16fc03c13b768c9402bc5f4f0d1b0c57490",
+    "include/microtorch/dpo_startup_phases.hpp": "63e725d279ea8ebdd243f3258ecd7946865f738aed0edca903b8aba84f008efa",
+    "tests/test_dpo_startup_phases.py": "1547906f1f33349fb604150eeccdcf868fc17f6c63148b40b2d9761c67c4d53d"
+  },
+  "actual_cli_cpu_test_passed": true,
+  "test_count": 1,
+  "tiny_dpo_runs": 3,
+  "steps_per_dpo_run": 2,
+  "actual_cuda": false,
+  "guard_or_cadence_changed": false
+}
