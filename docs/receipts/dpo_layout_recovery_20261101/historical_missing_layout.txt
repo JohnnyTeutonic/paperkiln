@@ -1,0 +1,2 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+mtstudio: /home/jonat/dpo_layout_recovery_20261101/cpu_initialization/bare has bare weights and no run record: set arch.rope_heads ("all" for models trained since 18 Oct 2026, "first" for older ones)
