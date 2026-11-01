@@ -1,0 +1,11 @@
+{
+  "status": "CPU_INITIALIZATION_AND_OFFLINE_REGRESSION_PASS",
+  "scoped_tests_passed": 97,
+  "test_seconds": 4.92,
+  "training_recipe_changed": false,
+  "explicit_layout_from_original_export": "all",
+  "training_steps_executed": 0,
+  "gpu_calls": 0,
+  "old_setup_failure_preserved": true,
+  "checkpoint_diagnostic_repairs": "Port of independently reviewed S-full F1-F3 diagnostic/lease fixes; no numerical code change."
+}

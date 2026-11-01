@@ -1,0 +1,12 @@
+{
+  "kind": "ROOT_ADOPTED_ORIGINAL_SFT_LAYOUT_V1",
+  "layout": "all",
+  "evidence": "Canonical original SFT exported IR RoPE node explicitly says all; head count/dimension, model width and depth match original base spec. No date-based default or numerical outcome selected the layout.",
+  "base_spec_sha256": "d5537c076b23b7ff4e86b7f3c8c18e552a8d2832c38cbd4a3ed3e62e6c86f189",
+  "exported_ir_sha256": "9c0188867977fe2be6264a1cf99ef88fce713d1968ec65286e31f5739d71bf13",
+  "checkpoint_sha256": "eae61755dc6625eb87c54ce3152774596ed4299c65c0462ed3831b0f9d7ee80e",
+  "derived_base_spec_sha256": "340b4e07e37fed3c592dd8cfbc539007e8572d3aa2451e994bdcac951d67f09b",
+  "changed_field_only": "arch.rope_heads",
+  "old_setup_negative_preserved": true,
+  "training_outcomes_seen": false
+}

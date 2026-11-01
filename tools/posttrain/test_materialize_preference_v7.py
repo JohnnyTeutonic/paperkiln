@@ -44,14 +44,14 @@ def test_incomplete_eligible_data_never_reaches_pair_extraction(monkeypatch,tmp_
     with pytest.raises(ValueError):m.materialize(protocol,adopt,vocab,tmp_path/'output',encode=lambda s:s.split())
 
 def test_exact_original_recipe_and_expected_two_passes():
-    base={'arch':{'preset':'llama-tiny'},'data':{'vocab_cap':16384}}
+    base={'arch':{'preset':'llama-tiny','rope_heads':'all'},'data':{'vocab_cap':16384}}
     s=m.training_spec(base,{'train_pairs':101},'weights','vocab','pairs')
     assert s['train']['steps']==26 and s['train']['batch']==8 and s['train']['lr']==2e-6
     assert s['train']['po']==dict(weight_mode='uniform',beta=.1,nll=.2)
     assert s['train']['lr_schedule']==dict(warmup_steps=20,decay='cosine',min_lr_frac=.1)
     assert s['train']['precision']=='fp32' and s['train']['optimizer']=='adamw'
     assert s['train']['init_from']=='weights' and s['data']['pref_pairs']=='pairs'
-    assert s['export']['formats']==['safetensors','gguf'] and base=={'arch':{'preset':'llama-tiny'},'data':{'vocab_cap':16384}}
+    assert s['export']['formats']==['safetensors','gguf'] and base=={'arch':{'preset':'llama-tiny','rope_heads':'all'},'data':{'vocab_cap':16384}}
 
 def test_vm_preflight_rejects_upload_source_or_spec_drift(tmp_path):
     upload=tmp_path/'upload';repo=tmp_path/'repo';upload.mkdir();repo.mkdir()
@@ -72,7 +72,7 @@ def test_training_instance_requires_bound_root_freeze_and_emits_serial_standard_
     dataset=tmp_path/'dataset';dataset.mkdir();(dataset/'dpo_pairs.jsonl').write_text('pairs')
     manifest=dict(kind='IMMUTABLE_ELIGIBLE_API_PREFERENCE_DATASET_V7',readiness=dict(eligible_complete=True,original_full_valid_complete=False,eligible_candidate_sets=3018,excluded_candidate_sets=2),dpo_pairs_sha256=sha(dataset/'dpo_pairs.jsonl'),token_filter_report=dict(train_pairs=101))
     (dataset/'dataset_manifest.json').write_text(json.dumps(manifest))
-    base=tmp_path/'base';base.write_text(json.dumps({'arch':{'preset':'llama-tiny'}}))
+    base=tmp_path/'base';base.write_text(json.dumps({'arch':{'preset':'llama-tiny','rope_heads':'all'}}))
     checkpoint=tmp_path/'checkpoint';checkpoint.write_text('weights');vocab=tmp_path/'vocab';vocab.write_text('vocab');archive=tmp_path/'archive';archive.write_text('archive')
     source=tmp_path/'source';source.mkdir();files={}
     for name in b.REQUIRED_SOURCE_FILES:
@@ -104,3 +104,19 @@ def test_training_instance_requires_bound_root_freeze_and_emits_serial_standard_
     with pytest.raises(ValueError):b.verify_source_admission(bad,source,dataset/'dataset_manifest.json',base,checkpoint,vocab,archive)
     (source/'tools/mtstudio.cpp').write_text('modified')
     with pytest.raises(ValueError):b.verify_source_admission(admission,source,dataset/'dataset_manifest.json',base,checkpoint,vocab,archive)
+
+
+@pytest.mark.parametrize("layout", [None, "", "unknown"])
+def test_bare_weight_training_recipe_requires_explicit_layout(layout):
+    base = {"arch": {"preset": "llama-tiny"}}
+    if layout is not None:
+        base["arch"]["rope_heads"] = layout
+    with pytest.raises(ValueError, match="explicitly source-bound"):
+        m.training_spec(base, {"train_pairs": 1373}, "weights", "vocab", "pairs")
+
+
+@pytest.mark.parametrize("layout", ["all", "first"])
+def test_explicit_original_weight_layout_is_preserved(layout):
+    base = {"arch": {"preset": "llama-tiny", "rope_heads": layout}}
+    s = m.training_spec(base, {"train_pairs": 1373}, "weights", "vocab", "pairs")
+    assert s["arch"]["rope_heads"] == layout and s["train"]["steps"] == 344
