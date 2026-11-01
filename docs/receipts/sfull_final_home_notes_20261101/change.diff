@@ -1,0 +1,74 @@
+diff --git a/tools/colab_chat/runner_multi.py b/tools/colab_chat/runner_multi.py
+index ec853875a..ffc9f1355 100644
+--- a/tools/colab_chat/runner_multi.py
++++ b/tools/colab_chat/runner_multi.py
+@@ -1281,8 +1281,16 @@ def main():
+                     relayed = relay(st, n, j.get("relay_every_steps", 0)) or relayed
+                 if r[n] == "FINISHED" and not js["home"]:
+                     if j.get("full_checkpoint_v2"):
+-                        from sfull_checkpoint_transport_v2 import final_home_ready as sfull_final_home_ready
+-                        if not sfull_final_home_ready(j, ART):
++                        from sfull_checkpoint_transport_v2 import finished_home_poll
++                        try:
++                            final_ready = finished_home_poll(j, ART, js)
++                            st.save()
++                        except (OSError, ValueError, RuntimeError, KeyError, TypeError) as error:
++                            log(f"{n}: final full checkpoint refused: {error}")
++                            with open(os.path.join(HOME, "HALTED"), "x") as marker:
++                                json.dump({"kind": "S_FULL_FINAL_CHECKPOINT_FAILURE", "job": n, "error": str(error)}, marker)
++                            raise
++                        if not final_ready:
+                             done = False
+                             continue  # final model/AdamW/RNG/events must land, not merely weights
+                     if j.get("dpo_full_checkpoint_v1"):
+diff --git a/tools/colab_chat/sfull_checkpoint_transport_v2.py b/tools/colab_chat/sfull_checkpoint_transport_v2.py
+index 459b6c902..dcb6f388f 100644
+--- a/tools/colab_chat/sfull_checkpoint_transport_v2.py
++++ b/tools/colab_chat/sfull_checkpoint_transport_v2.py
+@@ -284,3 +284,15 @@ def final_home_ready(job, art):
+         _, manifest = cp.current_unlocked(root)
+         check_manifest(job, manifest)
+         return manifest["step"] == c["steps"]
++
++
++def finished_home_poll(job, art, state, limit=3):
++    """Bound missing final-state polling; never convert a missing state to home."""
++    if final_home_ready(job, art):
++        state.pop("sfull_final_missing_polls", None)
++        return True
++    count = state.get("sfull_final_missing_polls", 0) + 1
++    state["sfull_final_missing_polls"] = count
++    if count >= limit:
++        raise RuntimeError("finished S-full job lacks validated exact-final-step checkpoint after three polls")
++    return False
+diff --git a/tools/colab_chat/test_sfull_checkpoint_transport_v2.py b/tools/colab_chat/test_sfull_checkpoint_transport_v2.py
+index fcc5ad8c7..06188032d 100644
+--- a/tools/colab_chat/test_sfull_checkpoint_transport_v2.py
++++ b/tools/colab_chat/test_sfull_checkpoint_transport_v2.py
+@@ -252,3 +252,26 @@ def test_final_optimizer_state_from_different_recipe_is_refused(tmp_path):
+     bad = job(); bad["full_checkpoint_v2"]["source_commit"] = "b" * 40
+     with pytest.raises(ValueError, match="source/recipe/budget differs"):
+         tr.final_home_ready(bad, tmp_path)
++
++
++def test_finished_poll_halts_missing_final_and_accepts_eventual_final(tmp_path):
++    state = {}
++    ready(tmp_path, 675)
++    assert not tr.finished_home_poll(job(), tmp_path, state)
++    assert not tr.finished_home_poll(job(), tmp_path, state)
++    with pytest.raises(RuntimeError, match="three polls"):
++        tr.finished_home_poll(job(), tmp_path, state)
++    assert state["sfull_final_missing_polls"] == 3
++    ready(tmp_path, 10000)
++    assert tr.finished_home_poll(job(), tmp_path, state)
++    assert "sfull_final_missing_polls" not in state
++
++
++def test_finished_poll_propagates_integrity_failure_immediately(tmp_path):
++    ready(tmp_path, 10000)
++    folder, _ = cp.current_unlocked(tr.root_for(tmp_path, job()))
++    (folder / "optim.safetensors").write_bytes(b"corrupt")
++    state = {}
++    with pytest.raises(ValueError):
++        tr.finished_home_poll(job(), tmp_path, state)
++    assert state == {}
