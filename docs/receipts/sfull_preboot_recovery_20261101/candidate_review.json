@@ -1,0 +1,88 @@
+{
+  "status": "UNLAUNCHED_SOURCE_ONLY_RECOVERY_CANDIDATE_V2",
+  "base_commit": "0d63b6bb12ae80d2a2d7b695974c1970a3cfae4e",
+  "cause_qualification": "Root separately established orphan sweeper ownership mismatch caused previous pod loss; this helper addresses the retained incomplete Git source checkout and does not replace the separate strict owner-recognition repair.",
+  "candidate_proof": {
+    "kind": "NORMAL_RUNNER_BOOT_FUNCTION_ONLY_RECOVERY_V1",
+    "original_runner": "/home/jonat/pk_sfull_operation_v2_20261101/tools/colab_chat/runner_multi.py",
+    "original_runner_sha256": "815984bd604e6ffe00aa55b7992934af6990628bb55e492d70fb273693fa8d6e",
+    "modified_runner": "/home/jonat/sfull_boot_recovery_candidate_v2_20261101/tools/colab_chat/runner_multi.py",
+    "modified_runner_sha256": "6bd9a201ba50b9a98f49e332458880898824f8895ebc1e33217f98d1e596db86",
+    "exact_reverse_restores_original": true,
+    "only_function_changed": "boot_launch_code",
+    "control_commit_unchanged": "1af22cfd66f95cd40dcd98cf4ffae57cb3de4c61",
+    "numerical_commit_unchanged": "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1",
+    "original_boot_sha256": "c67ece8c9dee10170c431df5853675ece0b6d713c5191e9718f00eaa53988a9b",
+    "payload_pins": {
+      "/home/jonat/sfull_boot_recovery_candidate_v2_20261101/recovery_helper.py": "a623e19495513af65127962c278b8ed8ba056a898259cdf3aae9f38be478af9b",
+      "/home/jonat/sfull_boot_recovery_candidate_v2_20261101/policy.json": "c4579edcace61d1e2ad9fc17ee1f5f5a017b85addd81a8da8ddc045551449302",
+      "/home/jonat/sfull_boot_recovery_candidate_v2_20261101/capsule.py": "78f6ffc17bbe100d53d9fbc9a778717ab3f0f1586098176e54fec7b71d0f85b9"
+    },
+    "no_provider_or_config_action": true
+  },
+  "source_archive": {
+    "commit": "1af22cfd66f95cd40dcd98cf4ffae57cb3de4c61",
+    "sha256": "0ba62855b7fa19f9fe9248ba7edae3b04a124f9cde2aa2f764f4a7680eb7fcd9",
+    "bytes": 388659200,
+    "verified_from": "git archive --format=tar exact isolated original control commit, streamed SHA256"
+  },
+  "frozen_original_anchors": {
+    "source_anchors": 37,
+    "with_freeze_file": 38,
+    "all_original_hashes_match": true,
+    "frozen_source_modified": false,
+    "manager_finalizer_compatibility": "Original control/numerical commit, remote original boot URL/bytes/args, manager and finalizer freeze remain unchanged. Only local normal-runner boot_launch_code is amended; root must separately admit its path/hash and strict owner mapping."
+  },
+  "actual_relative_path_proof": {
+    "actual_help_exit": 0,
+    "repo_root": "/home/jonat/sfull_boot_recovery_candidate_v2_20261101",
+    "jobs_sha256": {
+      "tools/colab_chat/carry12_sfull_v2_r1.json": "7cee228e973c6e4775846d709e1f77b60dd6b2d18f994ecfc400cd04b2ffb1f5",
+      "tools/colab_chat/carry12_sfull_v2_r2.json": "f6912bf51cd6be2431febb172c7c480b20086435080e18a3815b8e2cf3e087b0",
+      "tools/colab_chat/carry12_sfull_v2_r3.json": "64b03b62703c6971fdf9037bfa2ce4f1dfe8ac8374287a74350c8a8846aad7c1"
+    },
+    "dependency_sha256": {
+      "runpod_api.py": "e0812f37b743e7c60a20c18a9b97b63b5a2fe692541ec3a6442bb361e5065e3b",
+      "runpod_transport.py": "4e9e99b1642f1e0b88edc6a8180fadef91cf0bd73749898e541429cb1ae70690",
+      "jobs_vm.py": "db8c6c3d9370cda09723b6421a4363d707d6fa2ba8c1fc3deeb87c23f8b558ae",
+      "sfull_checkpoint_v2.py": "bba056e61d94c554f0dcc96b8ed75086ae32b86a6baff7221909aeea1832cea2",
+      "sfull_checkpoint_transport_v2.py": "94ca061225b1ef2a30662c053e23b7183b45239515a742d73b652c83c818c3ad"
+    },
+    "all_bytes_equal_original": true,
+    "method": "Actual modified runner module HERE\u2192repo root resolution and real --help; no provider calls."
+  },
+  "validation": {
+    "passed": 17,
+    "real_git_recovery_tests": 12,
+    "candidate_tests": 5,
+    "cases": [
+      "stale index.lock preserved inside quarantined source, never unlinked",
+      "real interrupted Git subprocess/unborn source",
+      "live Git owner and --git-dir owner outside target cwd refused",
+      "exclusive recovery lock owner refused",
+      "dirty tracked/wrong revision/wrong archive/numeric dirty refused",
+      "Git metadata symlink refused",
+      "clean retry retains same directory inode",
+      "publication interruption preserves quarantine plus verified stage, retry refuses",
+      "function-only full-byte reverse restores original runner",
+      "remote generated code compile and mocked Popen preparation",
+      "original relative jobs and dependencies identical",
+      "all original frozen source anchors unchanged"
+    ]
+  },
+  "semantics": {
+    "numeric_absent": "Permitted, not created or altered by recovery. Original frozen boot later handles exact numeric checkout.",
+    "source_publication": "Verified fresh control staged in owned path, old incomplete control renamed into retained quarantine, new directory moved to original control path. No deletion. Interrupted staging/publication refuses further automatic mutation.",
+    "disk_admission": "At least twice exact388659200byte archive plus64MiB free before staging.",
+    "active_owner": "Any live Git/mtstudio process or boot/manager refuses. Ancestors ignored so the reviewed caller can operate.",
+    "status_evidence": "Previous STATUS preserved once; BOOTING current marker before background recovery. Failures write BOOT_FAILED except active-owner refusal, which does not overwrite live owner status.",
+    "prototype": "V1 private prototype failed generated-code compilation offline, retained at /home/jonat/sfull_boot_recovery_candidate_20261101 and never dispatched."
+  },
+  "no_provider_config_pod_or_original_source_mutation": true,
+  "required_root_actions": [
+    "Independently admit V2 exact source/payload hashes and sole argv runner-path substitution, preserving old ledger/cap/deadline/state/art",
+    "Adopt separate strict live-owner recognition repair before any pod launch",
+    "Preserve previous boot failure evidence; root owns explicit operational recovery disposition",
+    "Execute only through existing normal watchdog driver on own retained volume"
+  ]
+}

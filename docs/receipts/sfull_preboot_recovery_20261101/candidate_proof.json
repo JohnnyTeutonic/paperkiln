@@ -1,0 +1,18 @@
+{
+  "kind": "NORMAL_RUNNER_BOOT_FUNCTION_ONLY_RECOVERY_V1",
+  "original_runner": "/home/jonat/pk_sfull_operation_v2_20261101/tools/colab_chat/runner_multi.py",
+  "original_runner_sha256": "815984bd604e6ffe00aa55b7992934af6990628bb55e492d70fb273693fa8d6e",
+  "modified_runner": "/home/jonat/sfull_boot_recovery_candidate_v2_20261101/tools/colab_chat/runner_multi.py",
+  "modified_runner_sha256": "6bd9a201ba50b9a98f49e332458880898824f8895ebc1e33217f98d1e596db86",
+  "exact_reverse_restores_original": true,
+  "only_function_changed": "boot_launch_code",
+  "control_commit_unchanged": "1af22cfd66f95cd40dcd98cf4ffae57cb3de4c61",
+  "numerical_commit_unchanged": "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1",
+  "original_boot_sha256": "c67ece8c9dee10170c431df5853675ece0b6d713c5191e9718f00eaa53988a9b",
+  "payload_pins": {
+    "/home/jonat/sfull_boot_recovery_candidate_v2_20261101/recovery_helper.py": "a623e19495513af65127962c278b8ed8ba056a898259cdf3aae9f38be478af9b",
+    "/home/jonat/sfull_boot_recovery_candidate_v2_20261101/policy.json": "c4579edcace61d1e2ad9fc17ee1f5f5a017b85addd81a8da8ddc045551449302",
+    "/home/jonat/sfull_boot_recovery_candidate_v2_20261101/capsule.py": "78f6ffc17bbe100d53d9fbc9a778717ab3f0f1586098176e54fec7b71d0f85b9"
+  },
+  "no_provider_or_config_action": true
+}

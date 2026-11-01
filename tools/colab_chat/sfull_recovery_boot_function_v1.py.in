@@ -1,0 +1,25 @@
+def boot_launch_code(commit, jobs_rel, boot_script="tools/colab_chat/boot_jobs.sh"):
+    import base64
+    import hashlib
+    from pathlib import Path
+    if commit != __CONTROL__ or jobs_rel != "tools/colab_chat/carry12_sfull_v2_r1.json" or boot_script != "tools/colab_chat/boot_sfull_v2_20261101.sh":
+        raise ValueError("reviewed recovery is seed1/original boot only")
+    local = __LOCAL_PINS__
+    payloads = __PAYLOADS__
+    for path, digest in local.items():
+        if hashlib.sha256(Path(path).read_bytes()).hexdigest() != digest:
+            raise ValueError("local recovery payload drift")
+    code = ["import base64,hashlib,os,subprocess,sys", "from pathlib import Path"]
+    for path, encoded in payloads.items():
+        data = base64.b64decode(encoded)
+        code.append("p=Path("+repr(path)+");p.write_bytes(base64.b64decode("+repr(encoded)+"))")
+        code.append("assert hashlib.sha256(p.read_bytes()).hexdigest()=="+repr(hashlib.sha256(data).hexdigest()))
+    code += ["sys.path.insert(0,'/content')", "import sfull_preboot_recovery_v1 as recovery",
+             "if recovery.active_owners([Path('/content/sfull_control'),Path('/content/pk')]):raise recovery.ActiveOwner('live source owner')",
+             "chat=Path('/content/chat');chat.mkdir(parents=True,exist_ok=True)",
+             "status=chat/'STATUS';saved=chat/'sfull_preboot_status_before_v1.txt'",
+             "if status.exists() and not saved.exists():saved.write_bytes(status.read_bytes())",
+             "status.write_text('BOOTING'+chr(10))", "log=(chat/'boot.log').open('ab')"]
+    code.append("subprocess.Popen("+repr(["python3","/content/sfull_boot_recovery_capsule_v1.py",commit,jobs_rel])+",stdin=subprocess.DEVNULL,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)")
+    code.append("print('BOOTED')")
+    return "\n".join(code)+"\n"

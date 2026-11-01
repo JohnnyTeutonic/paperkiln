@@ -1,0 +1,31 @@
+import hashlib,json,os,subprocess,sys,urllib.request
+from pathlib import Path
+sys.path.insert(0,'/content')
+import sfull_preboot_recovery_v1 as recovery
+EXPECTED_HELPER='a623e19495513af65127962c278b8ed8ba056a898259cdf3aae9f38be478af9b'
+EXPECTED_POLICY='c4579edcace61d1e2ad9fc17ee1f5f5a017b85addd81a8da8ddc045551449302'
+EXPECTED_BOOT='c67ece8c9dee10170c431df5853675ece0b6d713c5191e9718f00eaa53988a9b'
+
+def main():
+ control,jobs=sys.argv[1:]
+ if control!='1af22cfd66f95cd40dcd98cf4ffae57cb3de4c61' or jobs!='tools/colab_chat/carry12_sfull_v2_r1.json':raise ValueError('original boot arguments differ')
+ helper=Path('/content/sfull_preboot_recovery_v1.py');policy_path=Path('/content/sfull_preboot_policy_v1.json')
+ if hashlib.sha256(helper.read_bytes()).hexdigest()!=EXPECTED_HELPER or hashlib.sha256(policy_path.read_bytes()).hexdigest()!=EXPECTED_POLICY:raise ValueError('recovery payload differs')
+ policy=json.loads(policy_path.read_text())
+ recovery.recover('/content',policy['origin'],control,policy['numerical_commit'],policy['control_archive_sha256'],policy['control_archive_bytes'])
+ url='https://raw.githubusercontent.com/JohnnyTeutonic/paperkiln/'+control+'/tools/colab_chat/boot_sfull_v2_20261101.sh'
+ raw=urllib.request.urlopen(url,timeout=120).read()
+ if hashlib.sha256(raw).hexdigest()!=EXPECTED_BOOT:raise ValueError('original frozen boot bytes differ')
+ boot=Path('/content/boot_jobs.sh')
+ if boot.exists() and hashlib.sha256(boot.read_bytes()).hexdigest()!=EXPECTED_BOOT:raise ValueError('existing boot file differs; preserve for review')
+ temp=boot.with_suffix('.verified.tmp');temp.write_bytes(raw);os.replace(temp,boot)
+ return subprocess.call(['bash',str(boot),control,jobs])
+
+try:
+ raise SystemExit(main())
+except recovery.ActiveOwner:
+ print('source recovery refused active owner; no source/status overwrite',flush=True)
+ raise SystemExit(75)
+except Exception:
+ Path('/content/chat/STATUS').write_text('BOOT_FAILED'+chr(10))
+ raise
