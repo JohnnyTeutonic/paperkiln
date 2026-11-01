@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -118,6 +119,47 @@ def rpc(exec_py, expression):
     return json.loads(rows[0])
 
 
+
+def capture_phase_snapshot(download, remote, home):
+    """Best-effort diagnostics only, after verified import and lease release.
+
+    Neither a snapshot nor capture progress proves checkpoint integrity or
+    resets the remote durable-generation cadence monitor.
+    """
+    home = Path(home)
+    temp = home / "phases.snapshot.tmp"
+    try:
+        if temp.is_symlink():
+            raise ValueError("telemetry scratch cannot be a symlink")
+        if download(str(Path(remote) / "phases.jsonl"), str(temp), timeout=60) != 0:
+            raise OSError("phase telemetry download failed")
+        if not temp.is_file() or temp.is_symlink():
+            raise ValueError("phase telemetry snapshot missing")
+        raw = temp.read_bytes()
+        if not raw or not raw.endswith(b"\n"):
+            raise ValueError("incomplete phase telemetry snapshot")
+        for line in raw.splitlines():
+            record = json.loads(line)
+            if not isinstance(record, dict) or not isinstance(record.get("event"), str):
+                raise ValueError("invalid phase telemetry record")
+        with temp.open("rb") as f:
+            os.fsync(f.fileno())
+        os.replace(temp, home / "phases.snapshot.jsonl")
+        cp.sync_dir(home)
+        return {"status": "CAPTURED", "diagnostic_only": True,
+                "bytes": len(raw), "sha256": cp.sha(home / "phases.snapshot.jsonl")}
+    except Exception as error:
+        # Preserve any previous complete snapshot and the valid checkpoint.
+        # The state receipt and ordinary runner log retain a capture failure.
+        record = {"status": "CAPTURE_FAILED", "diagnostic_only": True,
+                  "error_type": type(error).__name__}
+        try:
+            print("DPO_CHECKPOINT_TELEMETRY " + json.dumps(record), flush=True)
+        except (BrokenPipeError, OSError):
+            pass
+        return record
+
+
 def relay(exec_py, download, st, job, art):
     config(job)
     remote = str(root_for("/content/chat", job))
@@ -164,6 +206,7 @@ else:
         "manifest_sha256": r["manifest_sha256"],
         "full_optimizer": True,
         "rng_draws": manifest["rng"]["draws"],
+        "phase_snapshot": capture_phase_snapshot(download, remote, home),
     }
     st.save()
     return True
