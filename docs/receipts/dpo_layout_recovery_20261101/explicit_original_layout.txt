@@ -1,0 +1,2 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+score: 0 continuations (0 over the context of 512) -> /home/jonat/dpo_layout_recovery_20261101/cpu_initialization/explicit_original_layout.scores.jsonl
