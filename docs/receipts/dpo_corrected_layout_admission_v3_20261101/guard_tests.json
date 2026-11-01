@@ -1,0 +1,19 @@
+{
+  "passed": [
+    "valid_fixture",
+    "prior_spend_cannot_disappear",
+    "review_digest",
+    "--max-usd",
+    "--max-hours",
+    "--commit",
+    "--state-dir",
+    "--boot-script",
+    "source_drift",
+    "unapproved",
+    "expired",
+    "symlink_upload"
+  ],
+  "count": 12,
+  "provider_calls": 0,
+  "gpu_calls": 0
+}

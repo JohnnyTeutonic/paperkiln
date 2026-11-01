@@ -1,0 +1,12 @@
+{
+  "kind": "DPO_VM_PREFLIGHT_PASSED",
+  "training_launched": false,
+  "source_commit": "b444700195625570130913646bb5ad86c364f4c4",
+  "spec_sha256": "66f1fd7b98763f3d10894583533c6f6aac1e5bff8225a406b0f8f6118f6391b6",
+  "local_offline_full_source_preflight": true,
+  "provider_calls": 0,
+  "gpu_calls": 0,
+  "upload_aliases": "Scratch-only symlinks; canonical manifest paths unchanged",
+  "instance": "/home/jonat/dpo_admission_v3_20261101/instance",
+  "runtime_jobs_sha256": "c4853745125782602adfc5091eabefbe749df0a63afdf9a2dceeea3893ec752e"
+}
