@@ -1,0 +1,13 @@
+{
+  "actual_L4_cadence_measured": false,
+  "gpu_calls": 0,
+  "instance": "/home/jonat/dpo_admission_v2_20261101/instance",
+  "provider_calls": 0,
+  "recipe_identical_to_unlaunched_prior": true,
+  "remaining": "Root serial resource/owner check, fixed deadline and watchdog activation; all five acceptance gates after training.",
+  "source_admission_sha256": "590867a1e3e9ef36ae7fa93820271739caf6a123b641edcde87d9e0193d42f8a",
+  "source_commit": "6f65be6e53eb416e8e74d7113fa917aef5ece519",
+  "source_root": "/home/jonat/dpo_admission_v2_20261101/source",
+  "status": "FULL_SOURCE_INSTANCE_AND_REAL_PREFLIGHT_PASS",
+  "training_launched": false
+}

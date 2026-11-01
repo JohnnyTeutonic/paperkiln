@@ -1,0 +1,13 @@
+{
+  "kind": "PROSPECTIVE_PRELAUNCH_CHECKPOINT_IO_HOLD_V1",
+  "at_utc": "2026-11-01T08:58:00.587713+00:00",
+  "training_launched": false,
+  "provider_calls": 0,
+  "prior_source_admission": "source_admission.json",
+  "prior_source_commit": "316f2aecd680f9ba2cb5aaa14195f1c9e3de4a67",
+  "prior_instance": "/home/jonat/dpo_admission_prepare_20261101/admitted_instance",
+  "launch_of_prior_instance_authorized": false,
+  "reason": "Actual390MB SFT model implies ~1.17GB full model/AdamW checkpoint. DPO core repeats complete payload hashing under the writer-shared exclusive lock, the source-proven contention risk identified in S-full. No DPO cadence failure or exact S-full offending phase is established.",
+  "repair_scope": "Prospective checkpoint lease critical sections and phase telemetry only, with complete payload integrity at consumption/import/restore boundaries, pin retention, atomicity and unchanged180second failstop. Numerical training and recipe unchanged.",
+  "next_source_admission": "New exact source commit/archive and immutable instance after repair and independent review; preserve original candidate and no automatic unchanged launch."
+}

@@ -1,0 +1,18 @@
+{
+  "passed": [
+    "valid_fixture",
+    "review_digest",
+    "--max-usd",
+    "--max-hours",
+    "--commit",
+    "--state-dir",
+    "--boot-script",
+    "source_drift",
+    "unapproved",
+    "expired",
+    "symlink_upload"
+  ],
+  "count": 11,
+  "provider_calls": 0,
+  "gpu_calls": 0
+}
