@@ -1,0 +1,9 @@
+{
+  "status": "ROOT_OFFLINE_REVIEW_PASS_NO_PROVIDER_CALLS",
+  "positive_full_guard_validation": true,
+  "only_argv1_changed": true,
+  "outside_boot_function_bytes_equal": true,
+  "inactive_deadline_state_artifact_negatives": 4,
+  "generated_remote_boot_compiles": true,
+  "no_provider_or_GPU_calls": true
+}

@@ -1,0 +1,9 @@
+{
+  "status": "PRESERVED_BEFORE_REPAIR",
+  "state_sha256": "4bfa6e8c547696e5f675836a362d3f1a0b4661923fca17c4b05d2e347f1d43ec",
+  "boot_log_sha256": "21593a4122d61d185ed3976078858bd9ad2ed028f584268f17b5dd4f96b13684",
+  "source_control_commit": "1af22cfd66f95cd40dcd98cf4ffae57cb3de4c61",
+  "volume": "y3wdizon57",
+  "all_jobs_unstarted": true,
+  "no_state_or_ledger_reset": true
+}

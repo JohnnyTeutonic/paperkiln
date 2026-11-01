@@ -1,0 +1,26 @@
+{
+  "kind": "ROOT_SFULL_OPERATIONAL_BOOT_RECOVERY_V1",
+  "adopted": true,
+  "original_guard": "/home/jonat/sfull_v2_seed1_root_admission_20261101/guarded_seed1.py",
+  "original_admission": "/home/jonat/sfull_v2_seed1_root_admission_20261101/admission.json",
+  "modified_runner": "/home/jonat/sfull_boot_recovery_candidate_v2_20261101/tools/colab_chat/runner_multi.py",
+  "recovery_helper": "/home/jonat/sfull_boot_recovery_candidate_v2_20261101/recovery_helper.py",
+  "state_dir": "/home/jonat/sfull_v2_states_20261101/pk_c12_sfull_r1_runner",
+  "artifact_dir": "/mnt/c/ml_artifacts/tiny_chat/c12_Sfull_r1",
+  "deadline_utc": "2026-11-01T05:26:20Z",
+  "source_pins": {
+    "/home/jonat/sfull_v2_seed1_root_admission_20261101/guarded_seed1.py": "d4fe41271c7aaf4325dd019fdc2886098d54490f0f61e28f78bdc8a13132e69a",
+    "/home/jonat/sfull_v2_seed1_root_admission_20261101/admission.json": "579cc75c2be8e1821e043b4c7dda3286a67020d533a51192a59f7e2af9a4851b",
+    "/home/jonat/pk_sfull_operation_v2_20261101/tools/colab_chat/runner_multi.py": "815984bd604e6ffe00aa55b7992934af6990628bb55e492d70fb273693fa8d6e",
+    "/home/jonat/sfull_boot_recovery_candidate_v2_20261101/tools/colab_chat/runner_multi.py": "6bd9a201ba50b9a98f49e332458880898824f8895ebc1e33217f98d1e596db86",
+    "/home/jonat/sfull_boot_recovery_root_20261101/guarded_recovery.py": "2f75c9abf767dd3dc1274dc05e2956b06e20147d23e96429a354ad6a30f83cf8",
+    "/home/jonat/sfull_boot_recovery_candidate_v2_20261101/recovery_helper.py": "a623e19495513af65127962c278b8ed8ba056a898259cdf3aae9f38be478af9b",
+    "/home/jonat/sfull_boot_recovery_candidate_v2_20261101/policy.json": "c4579edcace61d1e2ad9fc17ee1f5f5a017b85addd81a8da8ddc045551449302",
+    "/home/jonat/sfull_boot_recovery_candidate_v2_20261101/capsule.py": "78f6ffc17bbe100d53d9fbc9a778717ab3f0f1586098176e54fec7b71d0f85b9",
+    "/home/jonat/sfull_boot_recovery_candidate_v2_20261101/proof.json": "b83072301b56b3798c5d6fe352becfae0606de0adb94290536473c8a27195a70"
+  },
+  "same_cost_ledger_and_cap": true,
+  "preserved_failure": "/home/jonat/sfull_boot_recovery_root_20261101/preservation.json",
+  "activation_requires": "Actual sweeper no-provider PID probe and exact deployed source verification; configuration remains disabled.",
+  "adopted_at_utc": "2026-11-01T01:16:01.975188+00:00"
+}

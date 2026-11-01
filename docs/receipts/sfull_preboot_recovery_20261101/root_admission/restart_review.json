@@ -1,0 +1,16 @@
+{
+  "status": "ROOT_RECOVERY_RESTART_ADMITTED",
+  "time_utc": "2026-11-01T01:21:04.011889+00:00",
+  "source_admission_sha256": "2a5c1638a718dc352e0f2361c6bab95925c7cf0c2da36958eca386aeaacb7ec4",
+  "deployed_sweeper_sha256": "848f0885bdebe42ead9c9abd9a10356582d874b33d0eac02516c1ccb32df9318",
+  "actual_deployed_probe_sha256": "26c7cd3e3505e1dab86f2d933f800b62fbf2f4f0a15523129081386d4692f8cc",
+  "prior_failed_state_sha256": "4bfa6e8c547696e5f675836a362d3f1a0b4661923fca17c4b05d2e347f1d43ec",
+  "same_cost_ledger": true,
+  "same_volume": true,
+  "same_cap_usd": 7,
+  "same_aggregate_cap_usd": 21,
+  "same_deadline_utc": "2026-11-01T05:26:20Z",
+  "all_jobs_unstarted": true,
+  "active_gpu_pods_before": 0,
+  "seeds2and3_enabled": false
+}

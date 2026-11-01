@@ -1,0 +1,7 @@
+{
+  "status": "SCOPED_RUNTIME_DEPLOYED",
+  "old_equals_published_baseline_ignoring_CRLF": true,
+  "new_sha256": "848f0885bdebe42ead9c9abd9a10356582d874b33d0eac02516c1ccb32df9318",
+  "prior_runtime_preserved": true,
+  "only_runtime_file_changed": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/colab_chat/runpod_sweep.py"
+}
