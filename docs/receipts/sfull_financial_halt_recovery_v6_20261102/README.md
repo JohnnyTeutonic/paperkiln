@@ -1,0 +1,11 @@
+# Exact financial-transport halt recovery, 2 November 2026
+
+The predecessor exhausted its original cumulative $7 ceiling while transferring a full checkpoint. The frozen runner classified the provider refusal as `S_FULL_CHECKPOINT_V2_FAILURE`; V5 correctly refused the resulting HALTED state. Both original markers, terminal states and source freezes remain unchanged. This receipt concerns recovery from that particular financial refusal, not a generic waiver of checkpoint failures.
+
+The new admission requires exact pinned marker, terminal exception, log and state evidence, independently validated full model/AdamW/RNG checkpoints, closed historical pod charges, an empty provider slot and the same retained network volume. A separate runtime state carries the complete cumulative ledger. An anchored local registry transfer retires the dead predecessor owner without changing its evidence. Protected historical volumes remain outside active ownership.
+
+Jonathan previously authorised the cumulative seed-one $12 ceiling and $36 planning envelope. Seeds two and three remain unadmitted. All previous costs count. The numerical source, data, recipe, 10000-step pretraining and 1500-step post-training endpoints, 25-step checkpoint interval, 180-second guard and original absolute deadline are unchanged. The frozen scientific calculator is unchanged; a completed seed one alone does not close the registered three-seed experiment.
+
+Fresh pre-recovery full-payload validation accepted the home pretraining generation at step 7500. This is a recovery point, not evidence of campaign completion or a scientific verdict. Operational admission, validation and actual-launch evidence will be recorded separately below once verified.
+
+The independently reviewed guard and tests are public at Paperkiln `f4afcd1b0`. All 12 tests and 19 mutation subtests passed. Actual local transfer and preparation validated 294 source/evidence pins. The existing watchdog was activated after a fresh provider-empty/full-checkpoint gate; parsed configuration comparison proved that only the intended entry changed. The actual process is recognised by the deployed sweeper. The first L4 request reported no available instance and the admitted driver is retrying. No resumed training or completion is claimed by this receipt.
