@@ -1,9 +1,10 @@
-// Host test of the chunked selective-scan forward (src/selective_scan_chunked.cuh), through the host emulation
-// built from the same functions the CUDA kernels call. It establishes the algorithm, indexing and chunk
-// boundaries on the host; device numerics (CUDA expf/log1pf, kernel execution) are checked on the GPU by
-// tools/scan_bench.cu. For every case:
+// Host test of the chunked selective-scan forward (src/selective_scan_chunked.cuh), through the
+// host emulation built from the same functions the CUDA kernels call. It establishes the algorithm,
+// indexing and chunk boundaries on the host; device numerics (CUDA expf/log1pf, kernel execution)
+// are checked on the GPU by tools/scan_bench.cu. For every case:
 //   1. y and every state within 3e-5 of an independent binary64 recurrence, with the metric
-//      |v - ref| / max(1, |ref|) (stricter, by up to 2x, than the frozen CUDA gate's |v - ref| / (1 + |ref|));
+//      |v - ref| / max(1, |ref|) (stricter, by up to 2x, than the frozen CUDA gate's |v - ref| / (1
+//      + |ref|));
 //   2. one chunk per sequence (L = sl and L > sl) gives the host ordered recurrence bit for bit;
 //   3. two runs are bit-identical (measured and reported).
 // Prints one JSON summary line; exit 1 on any failure.
@@ -38,7 +39,9 @@ uint64_t mix(uint64_t z) {
 }
 
 // deterministic value in [-1, 1)
-float unit(uint64_t seed, size_t i) { return float(double(mix(seed * 1000003ULL + i) >> 11) / 9007199254740992.0 * 2 - 1); }
+float unit(uint64_t seed, size_t i) {
+    return float(double(mix(seed * 1000003ULL + i) >> 11) / 9007199254740992.0 * 2 - 1);
+}
 
 Inputs make(const Case& k) {
     const size_t T = k.sl * k.batch, D = k.d, N = k.n;
@@ -47,14 +50,17 @@ Inputs make(const Case& k) {
     for (size_t i = 0; i < T * D; ++i) {
         const float u = unit(2, i);
         // delta = softplus(dt) or dt; long memory wants small delta, fast decay large
-        float v = k.regime == 1 ? 0.001f + 0.004f * (u + 1) : k.regime == 2 ? 2.0f + 2.0f * u : 0.5f * (u + 1.2f);
+        float v = k.regime == 1   ? 0.001f + 0.004f * (u + 1)
+                  : k.regime == 2 ? 2.0f + 2.0f * u
+                                  : 0.5f * (u + 1.2f);
         if (k.softplus) v = k.regime == 1 ? -6.0f + u : k.regime == 2 ? 2.0f + 2.0f * u : 1.5f * u;
         in.dt.push_back(v);
     }
     for (size_t i = 0; i < T * N; ++i) in.B.push_back(unit(3, i));
     for (size_t i = 0; i < T * N; ++i) in.C.push_back(unit(4, i));
     for (size_t i = 0; i < D * N; ++i)  // A = -exp(log range), as Mamba's A_log parametrisation
-        in.A.push_back(-std::exp(float(k.regime == 1 ? -3.0 + 0.5 * unit(5, i) : 1.5 * unit(5, i))));
+        in.A.push_back(
+            -std::exp(float(k.regime == 1 ? -3.0 + 0.5 * unit(5, i) : 1.5 * unit(5, i))));
     for (size_t i = 0; i < D; ++i) in.skip.push_back(unit(6, i));
     return in;
 }
@@ -74,7 +80,8 @@ void reference(const Case& k, const Inputs& in, std::vector<double>& y, std::vec
             double acc = 0;
             for (size_t n = 0; n < N; ++n) {
                 const size_t i = c * N + n;
-                const double s = base[t * DN + i] * std::exp(dl * double(in.A[i])) + double(in.B[row * N + n]) * double(in.x[cell]) * dl;
+                const double s = base[t * DN + i] * std::exp(dl * double(in.A[i])) +
+                                 double(in.B[row * N + n]) * double(in.x[cell]) * dl;
                 base[(t + 1) * DN + i] = s;
                 acc += s * in.C[row * N + n];
             }
@@ -110,14 +117,16 @@ void ordered(const Case& k, const Inputs& in, std::vector<float>& y, std::vector
         }
 }
 
-void chunked(const Case& k, const Inputs& in, size_t L, std::vector<float>& y, std::vector<float>& S) {
+void chunked(const Case& k, const Inputs& in, size_t L, std::vector<float>& y,
+             std::vector<float>& S) {
     const size_t T = k.sl * k.batch, D = k.d, N = k.n;
     y.assign(T * D, 0.0f);
     S.assign((T + k.batch) * D * N, -1.0f);  // every slot must be written
     std::vector<float> delta(T * D);
-    ss_chunked::selective_scan_chunked_host(in.x.data(), in.dt.data(), in.B.data(), in.C.data(), in.A.data(),
-                                            k.skip ? in.skip.data() : nullptr, y.data(), S.data(), delta.data(),
-                                            T, D, N, k.sl, L, k.softplus);
+    ss_chunked::selective_scan_chunked_host(in.x.data(), in.dt.data(), in.B.data(), in.C.data(),
+                                            in.A.data(), k.skip ? in.skip.data() : nullptr,
+                                            y.data(), S.data(), delta.data(), T, D, N, k.sl, L,
+                                            k.softplus);
 }
 
 template <class V>
@@ -134,8 +143,10 @@ double worst(const V& got, const std::vector<double>& ref) {
 struct Js {
     char s[32];
     explicit Js(double v) {
-        if (std::isfinite(v)) std::snprintf(s, sizeof s, "%.3g", v);
-        else std::snprintf(s, sizeof s, "null");
+        if (std::isfinite(v))
+            std::snprintf(s, sizeof s, "%.3g", v);
+        else
+            std::snprintf(s, sizeof s, "null");
     }
 };
 
@@ -155,7 +166,8 @@ int main() {
             }
     // wider channels and states at a Mamba-like state size; one sequence and several
     for (size_t batch : {1, 3})
-        for (int regime : {0, 1, 2}) cases.push_back({1500, batch, 8, 16, 64, regime == 1, true, regime});
+        for (int regime : {0, 1, 2})
+            cases.push_back({1500, batch, 8, 16, 64, regime == 1, true, regime});
     cases.push_back({4096, 1, 2, 16, 128, false, true, 1});
     cases.push_back({4096, 1, 2, 16, 128, true, false, 2});
 
@@ -169,7 +181,8 @@ int main() {
         ordered(k, in, oy, oS);
         chunked(k, in, k.L, cy, cS);
         chunked(k, in, k.L, cy2, cS2);
-        const double ey = worst(cy, ry), eS = worst(cS, rS), oey = worst(oy, ry), oeS = worst(oS, rS);
+        const double ey = worst(cy, ry), eS = worst(cS, rS), oey = worst(oy, ry),
+                     oeS = worst(oS, rS);
         worst_chunked = std::max({worst_chunked, ey, eS});
         worst_ordered = std::max({worst_ordered, oey, oeS});
         const bool repeat = same_bits(cy, cy2) && same_bits(cS, cS2);
@@ -188,16 +201,20 @@ int main() {
         ok = ok && one_chunk;
         if (!ok) {
             ++failures;
-            std::printf("{\"fail\": true, \"sl\": %zu, \"batch\": %zu, \"d\": %zu, \"n\": %zu, \"L\": %zu, \"softplus\": %d, "
-                        "\"skip\": %d, \"regime\": %d, \"y\": %s, \"states\": %s, \"ordered_y\": %s, "
-                        "\"one_chunk_identical\": %d}\n",
-                        k.sl, k.batch, k.d, k.n, k.L, k.softplus, k.skip, k.regime, Js(ey).s, Js(eS).s, Js(oey).s,
-                        one_chunk);
+            std::printf(
+                "{\"fail\": true, \"sl\": %zu, \"batch\": %zu, \"d\": %zu, \"n\": %zu, \"L\": %zu, "
+                "\"softplus\": %d, "
+                "\"skip\": %d, \"regime\": %d, \"y\": %s, \"states\": %s, \"ordered_y\": %s, "
+                "\"one_chunk_identical\": %d}\n",
+                k.sl, k.batch, k.d, k.n, k.L, k.softplus, k.skip, k.regime, Js(ey).s, Js(eS).s,
+                Js(oey).s, one_chunk);
         }
     }
-    std::printf("{\"pass\": %s, \"cases\": %zu, \"failures\": %zu, \"bound\": %.0e, \"worst_chunked\": %s, "
-                "\"worst_ordered\": %s, \"one_chunk_bit_identical\": \"%zu/%zu\", \"repeat_bit_identical\": \"%zu/%zu\"}\n",
-                failures ? "false" : "true", cases.size(), failures, kBound, Js(worst_chunked).s, Js(worst_ordered).s,
-                ordered_identical, ordered_checks, repeats_identical, cases.size());
+    std::printf(
+        "{\"pass\": %s, \"cases\": %zu, \"failures\": %zu, \"bound\": %.0e, \"worst_chunked\": %s, "
+        "\"worst_ordered\": %s, \"one_chunk_bit_identical\": \"%zu/%zu\", "
+        "\"repeat_bit_identical\": \"%zu/%zu\"}\n",
+        failures ? "false" : "true", cases.size(), failures, kBound, Js(worst_chunked).s,
+        Js(worst_ordered).s, ordered_identical, ordered_checks, repeats_identical, cases.size());
     return failures ? 1 : 0;
 }

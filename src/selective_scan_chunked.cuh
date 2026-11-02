@@ -1,20 +1,21 @@
 // Chunked (parallel-in-time) selective-scan forward. Opt-in with MICROTORCH_SCAN_CHUNK=L (L >= 2);
 // unset, the ordered kernels in selective_scan_kernels.cuh run unchanged.
 //
-// Per (sequence, channel c, state n) the recurrence is s_t = s_{t-1} a_t + b_t, with a_t = exp(delta_t A_cn)
-// and b_t = B_tn (x_tc delta_t), s starting at zero for each sequence. Rows of a sequence are split into
-// chunks of L rows (the last may be shorter):
+// Per (sequence, channel c, state n) the recurrence is s_t = s_{t-1} a_t + b_t, with a_t =
+// exp(delta_t A_cn) and b_t = B_tn (x_tc delta_t), s starting at zero for each sequence. Rows of a
+// sequence are split into chunks of L rows (the last may be shorter):
 //   1. local:   each chunk scans from zero and keeps its end value and the product of its a's;
 //   2. carry:   one pass over a sequence's chunks gives each chunk its true start;
 //   3. final:   each chunk rescans from its start and writes every state;
 //   4. readout: y_tc = sum over ascending n of s_tcn C_tn, plus x_tc skip_c, as the ordered kernel.
-// Steps 1, 3 and 4 run with (sequences x chunks x D x N) or (T x D) independent threads, where the ordered
-// kernel has (sequences x D). Rounding differs from the ordered scan only through the chunk starts of step 2.
-// Every multiply and add is explicitly rounded (no contraction), so results are deterministic.
+// Steps 1, 3 and 4 run with (sequences x chunks x D x N) or (T x D) independent threads, where the
+// ordered kernel has (sequences x D). Rounding differs from the ordered scan only through the chunk
+// starts of step 2. Every multiply and add is explicitly rounded (no contraction), so results are
+// deterministic.
 //
-// The same functions build the host emulation (selective_scan_chunked_host) that the host test runs, so the
-// indexing and chunk boundaries the device executes are the ones the host test checks. Device numerics (CUDA
-// expf/log1pf and the kernels) are checked on the GPU by tools/scan_bench.cu.
+// The same functions build the host emulation (selective_scan_chunked_host) that the host test
+// runs, so the indexing and chunk boundaries the device executes are the ones the host test checks.
+// Device numerics (CUDA expf/log1pf and the kernels) are checked on the GPU by tools/scan_bench.cu.
 #pragma once
 #include <cmath>
 #include <cstddef>
@@ -63,8 +64,9 @@ struct Geom {
     size_t T, D, N, sl, L, nchunk;  // nchunk = ceil(sl / L) chunks per sequence
 };
 
-// L is clamped to [1, sl]: any L >= sl is one chunk per sequence (the ordered recurrence), and the chunk count
-// is computed without the overflow of (sl + L - 1) / L. sl must be >= 1 (the op's geometry check requires it).
+// L is clamped to [1, sl]: any L >= sl is one chunk per sequence (the ordered recurrence), and the
+// chunk count is computed without the overflow of (sl + L - 1) / L. sl must be >= 1 (the op's
+// geometry check requires it).
 SS_HD inline Geom geom(size_t T, size_t D, size_t N, size_t sl, size_t L) {
     const size_t Lc = L < 1 ? 1 : (L > sl ? sl : L);
     return Geom{T, D, N, sl, Lc, 1 + (sl - 1) / Lc};
@@ -99,8 +101,8 @@ SS_HD inline size_t slot(const Geom& g, size_t q, size_t k, size_t c, size_t n) 
 }
 
 // step 1: the chunk's scan from zero; its end value and the product of its decays
-SS_HD inline void local(const Geom& g, const float* x, const float* delta, const float* B, const float* A,
-                        size_t idx, float* end, float* prod) {
+SS_HD inline void local(const Geom& g, const float* x, const float* delta, const float* B,
+                        const float* A, size_t idx, float* end, float* prod) {
     size_t q, k, c, n, r0, r1;
     unpack(g, idx, q, k, c, n);
     chunk_rows(g, q, k, r0, r1);
@@ -118,7 +120,8 @@ SS_HD inline void local(const Geom& g, const float* x, const float* delta, const
 }
 
 // step 2: true chunk starts for one (q, c, n), chunks in order
-SS_HD inline void carry(const Geom& g, size_t qcn, const float* end, const float* prod, float* start) {
+SS_HD inline void carry(const Geom& g, size_t qcn, const float* end, const float* prod,
+                        float* start) {
     const size_t n = qcn % g.N, c = (qcn / g.N) % g.D, q = qcn / (g.N * g.D);
     float s = 0.0f;
     for (size_t k = 0; k < g.nchunk; ++k) {
@@ -128,10 +131,10 @@ SS_HD inline void carry(const Geom& g, size_t qcn, const float* end, const float
     }
 }
 
-// step 3: rescan the chunk from its start, writing the state after each row (S[(t + 1) D N] of sequence q,
-// the ordered layout) and, for the first chunk, the zero state before row 0
-SS_HD inline void final_states(const Geom& g, const float* x, const float* delta, const float* B, const float* A,
-                               const float* start, size_t idx, float* S) {
+// step 3: rescan the chunk from its start, writing the state after each row (S[(t + 1) D N] of
+// sequence q, the ordered layout) and, for the first chunk, the zero state before row 0
+SS_HD inline void final_states(const Geom& g, const float* x, const float* delta, const float* B,
+                               const float* A, const float* start, size_t idx, float* S) {
     size_t q, k, c, n, r0, r1;
     unpack(g, idx, q, k, c, n);
     chunk_rows(g, q, k, r0, r1);
@@ -150,8 +153,8 @@ SS_HD inline void final_states(const Geom& g, const float* x, const float* delta
 }
 
 // step 4: y for one (row, c), ascending n as the ordered kernel
-SS_HD inline void readout(const Geom& g, const float* x, const float* C, const float* skip, const float* S,
-                          size_t cell, float* y) {
+SS_HD inline void readout(const Geom& g, const float* x, const float* C, const float* skip,
+                          const float* S, size_t cell, float* y) {
     const size_t row = cell / g.D, c = cell % g.D, q = row / g.sl, t = row % g.sl, DN = g.D * g.N;
     const float* sn = S + (q * g.sl + q + t + 1) * DN + c * g.N;
     float acc = 0.0f;
@@ -161,36 +164,42 @@ SS_HD inline void readout(const Geom& g, const float* x, const float* C, const f
 
 #ifdef __CUDACC__
 __global__ void k_delta(const float* dt, float* delta, size_t cells, bool softplus) {
-    for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < cells; i += static_cast<size_t>(gridDim.x) * blockDim.x)
+    for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < cells;
+         i += static_cast<size_t>(gridDim.x) * blockDim.x)
         delta_cell(dt, delta, i, softplus);
 }
-__global__ void k_local(Geom g, const float* x, const float* delta, const float* B, const float* A, float* end,
-                        float* prod, size_t items) {
-    for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < items; i += static_cast<size_t>(gridDim.x) * blockDim.x)
+__global__ void k_local(Geom g, const float* x, const float* delta, const float* B, const float* A,
+                        float* end, float* prod, size_t items) {
+    for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < items;
+         i += static_cast<size_t>(gridDim.x) * blockDim.x)
         local(g, x, delta, B, A, i, end, prod);
 }
 __global__ void k_carry(Geom g, const float* end, const float* prod, float* start, size_t count) {
-    for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < count; i += static_cast<size_t>(gridDim.x) * blockDim.x)
+    for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < count;
+         i += static_cast<size_t>(gridDim.x) * blockDim.x)
         carry(g, i, end, prod, start);
 }
 __global__ void k_final(Geom g, const float* x, const float* delta, const float* B, const float* A,
                         const float* start, float* S, size_t items) {
-    for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < items; i += static_cast<size_t>(gridDim.x) * blockDim.x)
+    for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < items;
+         i += static_cast<size_t>(gridDim.x) * blockDim.x)
         final_states(g, x, delta, B, A, start, i, S);
 }
-__global__ void k_readout(Geom g, const float* x, const float* C, const float* skip, const float* S, float* y,
-                          size_t cells) {
-    for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < cells; i += static_cast<size_t>(gridDim.x) * blockDim.x)
+__global__ void k_readout(Geom g, const float* x, const float* C, const float* skip, const float* S,
+                          float* y, size_t cells) {
+    for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < cells;
+         i += static_cast<size_t>(gridDim.x) * blockDim.x)
         readout(g, x, C, skip, S, i, y);
 }
 
-// The four steps on the device. end, prod and start hold (T / sl) nchunk D N floats each; grid(n) gives the
-// block count for n grid-stride work items.
+// The four steps on the device. end, prod and start hold (T / sl) nchunk D N floats each; grid(n)
+// gives the block count for n grid-stride work items.
 template <class Grid>
-inline void launch(const Geom& g, const float* x, const float* dt, const float* B, const float* C, const float* A,
-                   const float* skip, float* y, float* S, float* delta, float* end, float* prod, float* start,
-                   bool softplus, Grid grid, int threads) {
-    const size_t cells = g.T * g.D, items = (g.T / g.sl) * g.nchunk * g.D * g.N, carries = (g.T / g.sl) * g.D * g.N;
+inline void launch(const Geom& g, const float* x, const float* dt, const float* B, const float* C,
+                   const float* A, const float* skip, float* y, float* S, float* delta, float* end,
+                   float* prod, float* start, bool softplus, Grid grid, int threads) {
+    const size_t cells = g.T * g.D, items = (g.T / g.sl) * g.nchunk * g.D * g.N,
+                 carries = (g.T / g.sl) * g.D * g.N;
     k_delta<<<grid(cells), threads>>>(dt, delta, cells, softplus);
     k_local<<<grid(items), threads>>>(g, x, delta, B, A, end, prod, items);
     k_carry<<<grid(carries), threads>>>(g, end, prod, start, carries);
@@ -200,15 +209,17 @@ inline void launch(const Geom& g, const float* x, const float* dt, const float* 
 #endif
 
 // Host emulation of the four device steps, in the same phases. S must hold (T + T / sl) D N floats.
-inline void selective_scan_chunked_host(const float* x, const float* dt, const float* B, const float* C,
-                                        const float* A, const float* skip, float* y, float* S, float* delta,
-                                        size_t T, size_t D, size_t N, size_t sl, size_t L, bool softplus) {
+inline void selective_scan_chunked_host(const float* x, const float* dt, const float* B,
+                                        const float* C, const float* A, const float* skip, float* y,
+                                        float* S, float* delta, size_t T, size_t D, size_t N,
+                                        size_t sl, size_t L, bool softplus) {
     const Geom g = geom(T, D, N, sl, L);
     const size_t items = (T / sl) * g.nchunk * D * N;
     std::vector<float> end(items), prod(items), start(items);
     for (size_t cell = 0; cell < T * D; ++cell) delta_cell(dt, delta, cell, softplus);
     for (size_t i = 0; i < items; ++i) local(g, x, delta, B, A, i, end.data(), prod.data());
-    for (size_t qcn = 0; qcn < (T / sl) * D * N; ++qcn) carry(g, qcn, end.data(), prod.data(), start.data());
+    for (size_t qcn = 0; qcn < (T / sl) * D * N; ++qcn)
+        carry(g, qcn, end.data(), prod.data(), start.data());
     for (size_t i = 0; i < items; ++i) final_states(g, x, delta, B, A, start.data(), i, S);
     for (size_t cell = 0; cell < T * D; ++cell) readout(g, x, C, skip, S, cell, y);
 }
