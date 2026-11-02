@@ -1,0 +1,15 @@
+{
+  "at_utc": "2026-11-02T14:39:18.977098+00:00",
+  "status": "ACTUAL_L4_ACQUIRED_PREPARATION_IN_PROGRESS",
+  "gpu": "NVIDIA L4",
+  "dc": "EUR-IS-1",
+  "same_retained_volume": true,
+  "source_control_commit": "c9b82fd6718497a4ace4fba62f6e23b8ed2346a7",
+  "admission_sha256": "c31836b737b0604bb0d1ebf6b620a734171c7c032d1de8a3153295050dbb8b59",
+  "booted": false,
+  "pretraining_job_home": true,
+  "post_job_home": false,
+  "post_job_status": "RUNNING",
+  "scientific_result": "INCOMPLETE",
+  "note": "Preserves the initial stock-wait receipt; actual prelude now identifies an owned L4. Preparation is not resumed evaluation or final completion."
+}
