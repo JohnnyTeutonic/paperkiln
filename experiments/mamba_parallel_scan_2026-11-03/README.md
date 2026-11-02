@@ -37,12 +37,41 @@ chunks x N.
 - **Established:** an opt-in chunked forward for the selective scan on CUDA. It is correct within the frozen
   bound on the frozen gate and on Mamba-130m and Mamba-370m-like shapes, deterministic, bit-identical to the
   ordered kernel when one chunk covers the sequence, and faster as a kernel in every measured cell.
-- **Not established:** model-level or training speed (these are component timings); the backward (it stays
-  ordered and consumes the chunked states); other GPUs.
+- **Not established:** model-level or training speed (these are component timings); the backward (in r1 it was
+  ordered and consumed the chunked states); other GPUs.
 - **Default:** unchanged and ordered. Making the chunked path the default, or claiming model speed, needs its own
   protocol (PROTOCOL.md).
-- **Open follow-ups:** a chunked backward; an end-to-end Mamba prefill measurement; choosing L automatically
-  (128-256 was best or near best at every shape here).
-- **Driver note:** the Colab CLI prints `[colab]` banner rows in `sessions`. The driver read them as session
-  rows, which was harmless here, since they were in the pre-creation snapshot and constant. A later driver should
-  skip `[colab]` rows.
+- **Open follow-ups:** the chunked backward's GPU run (below); an end-to-end Mamba prefill measurement; choosing L
+  automatically (128-256 was best or near best at every shape here).
+- **Driver note:** the Colab CLI prints `[colab]` banner rows in `sessions`. In r1 the driver read them as session
+  rows, which was harmless, since they were in the pre-creation snapshot and constant. The driver skips them.
+
+## Chunked backward: result (run `b1-20261103`, one Colab L4, 3 Nov 2026)
+
+- **Design:** `BACKWARD_DESIGN.md` (recurrences, stored against recomputed, rounding, tolerance). Code:
+  `src/selective_scan_chunked_backward.cuh`, opt-in through the same `MICROTORCH_SCAN_CHUNK`; the ordered default is
+  unchanged.
+- **Review:** Codex methods review, one round, RUN (kept in the research workspace, not here).
+- **Gates:** all 17 of `PROTOCOL_BACKWARD.md` pass (`receipts/b1-20261103/status.json`):
+  - the host tests;
+  - the frozen 220-case gate and replay at L unset, 2 and 3;
+  - the malformed switch value refused;
+  - the device backward bench;
+  - the default path identical to master `d0390e39`.
+  The build used the image's CUDA 13.0.88; NumPy as recorded in `numpy_install.log`.
+- **Device bench** (`receipts/b1-20261103/scan_bwd_bench.jsonl`, 24 rows, all gradients, median of 20 alternating runs):
+  - **Accuracy:** every row is within 2.9e-7 of binary64 under the magnitude metric (bound 3e-5), for both the
+    ordered and the chunked backward.
+  - **Bit identity and determinism:** with one chunk per sequence the chunked backward equals the ordered one
+    bit for bit, every output is written, and repeats are identical.
+  - **Speed:** at the best chunk length the chunked backward is 3.4x faster than the ordered one at 512 tokens,
+    3.65x at 2048, 2.96x at 4096, 3.8x at batch 4 of 2048, 6.9x at batch 8 of 1024 and 3.8x at batch 16 of 64.
+    These are kernel timings, not training speed.
+- **What a pass means:** the error is small relative to the expanded expression (the metric scales by the
+  binary64 sum of absolute terms, including inside the recurrences), not small relative error in each gradient.
+- **Forward mode on this commit:** with the switch set, the forward protocol now also runs the new backward, so it
+  is not an unchanged reproduction of the forward run r1.
+- **Host evidence:** `receipts/host_test_bwd_local.json` (173/173 cases; chunked within 2.51e-7 of binary64 and
+  2.82e-7 of the ordered backward) and `receipts/default_cpu_local.txt` (the CPU default identical to master's).
+- **Running it:** `vm_run.sh` and `drive.py` take a protocol argument: `forward` (the default, PROTOCOL.md's gate
+  set) or `backward`.

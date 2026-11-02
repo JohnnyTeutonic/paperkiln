@@ -22,6 +22,7 @@
 
 #include "device_pool.cuh"
 #include "selective_scan_chunked.cuh"
+#include "selective_scan_chunked_backward.cuh"
 
 #include <algorithm>
 #include <cmath>
@@ -2204,18 +2205,39 @@ bool selective_scan_bwd(const Matrix& x, const Matrix& dt, const Matrix& B, cons
             outs[j].reset(new Out(destinations[j]->get_data(),
                                   destinations[j]->rows() * destinations[j]->cols()));
     auto out = [&](size_t j) -> float* { return outs[j] ? outs[j]->d : nullptr; };
-    DBuf G(D * N);
-    std::unique_ptr<DBuf> history;
-    if (dB) history.reset(new DBuf(T * D * N));
-    k_selective_scan_bwd_channels<<<ew_grid(D), NTHREADS>>>(
-        ix.d, idt.d, ib.d, ic.d, ia.d, isk ? isk->d : nullptr, idy.d, is.d, idelta.d, G.d,
-        history ? history->d : nullptr, out(0), out(1), out(4), out(5), T, D, N, sl, softplus);
-    cuda_check(cudaGetLastError(), "selective_scan_bwd_channels");
-    if (dB || dC) {
-        k_selective_scan_bwd_BC<<<ew_grid(T * N), NTHREADS>>>(ix.d, idy.d, is.d, idelta.d,
-                                                              history ? history->d : nullptr,
-                                                              out(2), out(3), T, D, N, sl);
-        cuda_check(cudaGetLastError(), "selective_scan_bwd_BC");
+    if (const size_t L = scan_chunk()) {
+        // chunked backward (selective_scan_chunked_backward.cuh); scratch only for what is wanted
+        const ss_chunked::Geom g = ss_chunked::geom(T, D, N, sl, L);
+        const ss_chunked::BwdSizes z = ss_chunked::bwd_sizes(g);
+        std::unique_ptr<DBuf> end, prod, start, hist, dA_part, dD_part;
+        if (dx || ddt || dB || dA) {
+            end.reset(new DBuf(z.items));
+            prod.reset(new DBuf(z.items));
+            start.reset(new DBuf(z.items));
+            hist.reset(new DBuf(z.hist));
+        }
+        if (dA) dA_part.reset(new DBuf(z.items));
+        if (dD) dD_part.reset(new DBuf(z.dD_parts));
+        auto d = [](const std::unique_ptr<DBuf>& b) -> float* { return b ? b->d : nullptr; };
+        ss_chunked::launch_backward(g, ix.d, idt.d, ib.d, ic.d, ia.d, isk ? isk->d : nullptr, idy.d,
+                                    is.d, idelta.d, out(0), out(1), out(2), out(3), out(4), out(5),
+                                    d(end), d(prod), d(start), d(hist), d(dA_part), d(dD_part),
+                                    softplus, ew_grid, NTHREADS);
+        cuda_check(cudaGetLastError(), "selective_scan_bwd chunked");
+    } else {
+        DBuf G(D * N);
+        std::unique_ptr<DBuf> history;
+        if (dB) history.reset(new DBuf(T * D * N));
+        k_selective_scan_bwd_channels<<<ew_grid(D), NTHREADS>>>(
+            ix.d, idt.d, ib.d, ic.d, ia.d, isk ? isk->d : nullptr, idy.d, is.d, idelta.d, G.d,
+            history ? history->d : nullptr, out(0), out(1), out(4), out(5), T, D, N, sl, softplus);
+        cuda_check(cudaGetLastError(), "selective_scan_bwd_channels");
+        if (dB || dC) {
+            k_selective_scan_bwd_BC<<<ew_grid(T * N), NTHREADS>>>(ix.d, idy.d, is.d, idelta.d,
+                                                                  history ? history->d : nullptr,
+                                                                  out(2), out(3), T, D, N, sl);
+            cuda_check(cudaGetLastError(), "selective_scan_bwd_BC");
+        }
     }
     for (auto& o : outs)
         if (o) o->finish();

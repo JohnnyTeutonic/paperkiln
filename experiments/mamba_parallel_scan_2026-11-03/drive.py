@@ -2,25 +2,35 @@
 """Local driver for one L4 run (microtorch/AGENTS.md path C). Run in a foreground WSL process from the paperkiln
 checkout's root:
 
-    python3 experiments/mamba_parallel_scan_2026-11-03/drive.py FULL_COMMIT_SHA RUN_ID
+    python3 experiments/mamba_parallel_scan_2026-11-03/drive.py FULL_COMMIT_SHA RUN_ID [forward|backward]
 
-Session name claude-scan-RUN_ID (unique per run). Outputs: /mnt/c/ml_artifacts/mamba_parallel_scan_20261103/RUN_ID/
-(driver.log, scan_out.tgz, run_RUN_ID/out/); receipts copied to this experiment's receipts/RUN_ID/.
+forward (the default) is PROTOCOL.md, the gate set of run r1-20261103; backward is PROTOCOL_BACKWARD.md. Session name
+claude-scan-RUN_ID (unique per run). Outputs: /mnt/c/ml_artifacts/mamba_parallel_scan_20261103/RUN_ID/ (driver.log,
+scan_out.tgz, run_RUN_ID/out/); the top-level files of out/ are copied to this experiment's receipts/RUN_ID/, with
+archive.sha256 hashing every retrieved file, after the VM is gone.
 
 Deadlines from the driver's start: polling ends at 60 minutes, retrieval at 75, shutdown attempts at 85, the
 final inventory at 90. Every external call has a timeout capped by the deadline that governs it; a call past its
 deadline is not started; a timed-out child is killed.
 
+Hardening from the Gemma packet (ember experiments/hf_cuda_2026-10-30/gemma_colab_20261103/drive.py): the launch
+publishes vm_run.sh atomically and a launch without acknowledgement is reconciled by a read-only probe, never blindly
+repeated (vm_run.sh claims its run directory with an atomic mkdir, so a delayed first launch and the retry cannot
+both run); read-only and idempotent calls are retried; a run that did not finish is stopped through the VM script's
+published PID before retrieval; each retrieval attempt extracts into its own staging folder.
+
 Shutdown is certified only by an authoritative session listing that shows neither our session name, nor the
 endpoint we owned, nor any endpoint that was not there before our creation call (a VM whose name the CLI lost
-shows as [?]; it is never stopped unless it is ours by endpoint, but it does prevent certification).
+shows as [?]; it is never stopped unless it is ours by endpoint, but it does prevent certification). The CLI's own
+[colab] banner and status rows are not sessions.
 Exit status:
-  0  run validated: status.json matches run, commit and HEAD, exactly the required gates, all 0, VM exit 0
+  0  run validated: status.json matches protocol, run, commit and HEAD, exactly the required gates, all 0, VM exit 0
   1  the experiment failed (receipts preserved)
-  2  transport, receipt or validation could not be completed
+  2  transport, receipt or validation could not be completed, or a workload stop was not confirmed
   3  cleanup unresolved: a VM may still be running (the log names it and how to stop it)
 Test hooks (DRIVE_TEST_*) are honoured only with DRIVE_TEST_HARNESS=1, and refused otherwise.
 """
+import hashlib
 import json
 import os
 import re
@@ -49,8 +59,31 @@ RECEIPTS = Path(hook("DRIVE_TEST_RECEIPTS", str(HERE / "receipts")))
 MINUTE = float(hook("DRIVE_TEST_MINUTE_SECONDS", "60"))
 LOG_FAIL_AFTER = int(hook("DRIVE_TEST_LOG_FAIL_AFTER", "0"))   # test: log writes fail after N lines
 RAISE_ON = hook("DRIVE_TEST_RAISE_ON", "")                      # test: first call whose argv has this word raises
-REQUIRED_GATES = {"checkout", "configure", "build", "host_test", "numpy", "strict_unset", "replay_unset", "strict_2",
-                  "replay_2", "strict_3", "replay_3", "switch_refuses_malformed", "scan_bench"}
+REQUIRED_GATES = {
+    "forward": {"checkout", "configure", "build", "host_test", "numpy", "strict_unset", "replay_unset", "strict_2",
+                "replay_2", "strict_3", "replay_3", "switch_refuses_malformed", "scan_bench"},
+    "backward": {"provenance", "checkout", "configure", "build", "host_test", "host_test_bwd", "numpy",
+                 "strict_unset", "replay_unset", "strict_2", "replay_2", "strict_3", "replay_3",
+                 "switch_refuses_malformed", "build_base", "default_identical", "scan_bwd_bench"},
+}
+
+
+def launch_code(url, commit, run, protocol, root="/content"):
+    """The VM-side launch: fetch vm_run.sh and start it detached. A delayed duplicate of this call may arrive while
+    an earlier launch's bash is still reading the script, so the script is never rewritten in place: each call
+    writes its own temporary file and renames it over the final path, and a bash that already opened the old file
+    keeps reading it. vm_run.sh's atomic run-directory claim then lets only one launch do any work.
+    (`root` is for tests only.)"""
+    return (
+        "import os, subprocess, tempfile, urllib.request\n"
+        f"src = urllib.request.urlopen({url!r}).read().replace(b'\\r\\n', b'\\n')\n"
+        f"fd, tmp = tempfile.mkstemp(prefix='vm_run_{run}.', suffix='.tmp', dir={root!r})\n"
+        "with os.fdopen(fd, 'wb') as f:\n"
+        "    f.write(src)\n"
+        f"os.replace(tmp, '{root}/vm_run_{run}.sh')\n"
+        f"subprocess.Popen('nohup bash {root}/vm_run_{run}.sh {commit} {run} {protocol} "
+        f">> {root}/vm_run_{run}.log 2>&1 &', shell=True)\n"
+        "print('LAUNCHED')\n")
 
 
 class Stop(Exception):
@@ -58,8 +91,9 @@ class Stop(Exception):
 
 
 class Driver:
-    def __init__(self, commit, run):
-        self.commit, self.run = commit, run
+    def __init__(self, commit, run, protocol="forward"):
+        self.commit, self.run, self.protocol = commit, run, protocol
+        self.required = REQUIRED_GATES[protocol]
         self.name = f"claude-scan-{run}"
         self.out = ARTIFACTS / run
         self.receipts = RECEIPTS / run
@@ -75,6 +109,8 @@ class Driver:
         self.raised = False
         self.log_failed = False
         self.done = False
+        self.stop_confirmed = None  # None: no stop was needed or no launch was attempted
+        self.launch_attempted = False
 
     # ---- logging never raises: the file is the record, the terminal and stderr best effort
     def log(self, *parts):
@@ -140,6 +176,8 @@ class Driver:
             if not m:
                 self.log("unparsed session row:", line)
                 return None
+            if m.group(1) == "colab":  # the CLI's own banner and status lines, not sessions
+                continue
             rows.append((m.group(1), m.group(2)))
         return rows
 
@@ -182,18 +220,44 @@ class Driver:
         return self.call([COL, "exec", "-s", self.name, "-f", str(p), "--timeout", str(max(30, want - 60))],
                          want, deadline, label)
 
+    def launch_state(self):
+        """After a launch call without acknowledgement: 'started' when the VM script has claimed its run directory
+        or published its PID within 90 s, 'absent' when neither appears, None when the probe itself keeps failing.
+        The probe only reads, so it is retried."""
+        code = ("import os, time\n"
+                f"pid, run = '/content/vm_{self.run}.pid', '/content/run_{self.run}'\n"
+                "for _ in range(90):\n"
+                "    if os.path.exists(pid) or os.path.isdir(run):\n"
+                "        print('STARTED'); raise SystemExit\n"
+                "    time.sleep(1)\n"
+                "print('ABSENT')\n")
+        for attempt in (1, 2, 3):
+            self.check()
+            rc, out = self.exec_py(code, 200, self.work_end, f"launch_probe{attempt}")
+            if rc == 0 and ("STARTED" in out.split() or "ABSENT" in out.split()):
+                return "started" if "STARTED" in out.split() else "absent"
+        return None
+
     def launch(self):
+        """Fetch vm_run.sh at the commit and start it detached. A launch call without acknowledgement is reconciled,
+        never blindly repeated: if the script has started, the run goes on; only if it is shown absent is the launch
+        tried once more."""
         url = (f"https://raw.githubusercontent.com/JohnnyTeutonic/paperkiln/{self.commit}/"
                "experiments/mamba_parallel_scan_2026-11-03/vm_run.sh")
-        code = (
-            "import subprocess, urllib.request\n"
-            f"src = urllib.request.urlopen({url!r}).read()\n"
-            f"open('/content/vm_run_{self.run}.sh', 'wb').write(src.replace(b'\\r\\n', b'\\n'))\n"
-            f"subprocess.Popen('nohup bash /content/vm_run_{self.run}.sh {self.commit} {self.run} "
-            f"> /content/vm_run_{self.run}.log 2>&1 &', shell=True)\n"
-            "print('LAUNCHED')\n")
-        rc, out = self.exec_py(code, 200, self.work_end, "launch")
-        return rc == 0 and "LAUNCHED" in out
+        code = launch_code(url, self.commit, self.run, self.protocol)
+        for label in ("launch", "launch_retry"):
+            self.check()  # never submit a launch after cancellation; main() still stops and retrieves
+            self.launch_attempted = True  # from here the script may be running, whatever the acknowledgement says
+            rc, out = self.exec_py(code, 200, self.work_end, label)
+            if rc == 0 and "LAUNCHED" in out:
+                return True
+            state = self.launch_state()
+            self.log(f"{label}: no acknowledgement; the VM script is {state or 'unknown'}")
+            if state == "started":
+                return True
+            if state is None:
+                return False  # unknown: never launch again; the stop path reconciles
+        return False
 
     def poll(self):
         code = (f"import os\np = '/content/run_{self.run}/out/DONE'\n"
@@ -208,33 +272,115 @@ class Driver:
                 return True
         return False
 
+    def stop_workload(self):
+        """Polling ended without DONE (or the launch acknowledgement was lost): send SIGTERM to the VM script's
+        recorded PID, after checking that the PID is still that script. Its handler stops the running gate command's
+        process group, waits (bounded) until it is gone, writes stop.json and exits through the trap that writes
+        status.json and DONE. The VM side answers with one STOP_REPLY JSON line:
+          interrupted  DONE holds our run id and stop.json says the step's group is gone or no step was running;
+          completed    DONE holds our run id and there is no stop.json: the script finished on its own;
+          unconfirmed  anything else; not_observed  no PID file after waiting for one.
+        Returns True (interrupted or completed), False (not confirmed, including a launch that was attempted but
+        never observed) or None (no launch was attempted)."""
+        if not self.launch_attempted:
+            self.log("workload stop: no launch was attempted")
+            return None
+        code = (
+            "import json, os, signal, time\n"
+            f"run, script = {self.run!r}, '/content/vm_run_{self.run}.sh'\n"
+            f"pid_file, done, stop = '/content/vm_{self.run}.pid', '/content/run_{self.run}/out/DONE', "
+            f"'/content/run_{self.run}/out/stop.json'\n"
+            "def reply(result, **kw):\n"
+            "    print('STOP_REPLY ' + json.dumps(dict(result=result, **kw))); raise SystemExit\n"
+            "def done_ok():\n"
+            "    try:\n"
+            "        return open(done).read().strip() == run\n"
+            "    except OSError:\n"
+            "        return False\n"
+            "for _ in range(60):  # a script launched late publishes its PID within seconds of starting\n"
+            "    if os.path.exists(pid_file):\n"
+            "        break\n"
+            "    time.sleep(1)\n"
+            "else:\n"
+            "    reply('not_observed')\n"
+            "pid = int(open(pid_file).read())\n"
+            "try:\n"
+            "    ours = script.encode() in open(f'/proc/{pid}/cmdline', 'rb').read()\n"
+            "except OSError:\n"
+            "    ours = False\n"
+            "if ours and not done_ok():\n"
+            "    try:\n"
+            "        os.kill(pid, signal.SIGTERM)\n"
+            "    except ProcessLookupError:  # it finished in between; DONE and stop evidence decide below\n"
+            "        pass\n"
+            "for _ in range(120):\n"
+            "    if done_ok():\n"
+            "        break\n"
+            "    time.sleep(1)\n"
+            "s = json.load(open(stop)) if os.path.exists(stop) else None\n"
+            "if not done_ok():\n"
+            "    reply('unconfirmed', stop=s, signalled=ours)\n"
+            "if s is None:\n"
+            "    reply('completed', signalled=ours)\n"
+            "gone = s.get('step_group_gone') is True or s.get('step_started') is False\n"
+            "reply('interrupted' if gone else 'unconfirmed', stop=s, signalled=ours)\n")
+        # idempotent (it signals only a live script without DONE), so a hung call is tried once more
+        result, out = None, ""
+        for attempt in (1, 2):
+            rc, out = self.exec_py(code, 260, self.retrieve_end, f"stop_workload{attempt}")
+            reply = None
+            for line in out.splitlines():
+                if line.startswith("STOP_REPLY "):
+                    try:
+                        reply = json.loads(line[len("STOP_REPLY "):])
+                    except ValueError:
+                        reply = None
+            result = reply.get("result") if rc == 0 and isinstance(reply, dict) else None
+            if result is not None:
+                break
+        confirmed = result in ("interrupted", "completed")
+        self.log("workload stop:", f"confirmed ({result})" if confirmed else
+                 f"NOT CONFIRMED ({result}): the archive may hold outputs still being written", out.strip()[-300:])
+        return confirmed
+
     def retrieve(self):
+        # GNU tar exits 1 when a file changed while it was read; the archive is still written and is evidence
         code = ("import subprocess\n"
-                f"subprocess.run('cp /content/vm_run_{self.run}.log /content/run_{self.run}/out/ 2>/dev/null; "
-                f"tar czf /content/scan_{self.run}.tgz -C /content run_{self.run}/out', shell=True, check=True)\n"
-                "print('PACKED')\n")
-        rc, out = self.exec_py(code, 300, self.retrieve_end, "pack")
-        if rc != 0 or "PACKED" not in out:
-            return False
+                f"subprocess.run('cp /content/vm_run_{self.run}.log /content/run_{self.run}/out/ 2>/dev/null', "
+                "shell=True)\n"
+                f"r = subprocess.run('tar czf /content/scan_{self.run}.tgz --warning=no-file-changed -C /content "
+                f"run_{self.run}/out', shell=True)\n"
+                "print('PACKED' if r.returncode in (0, 1) else 'PACK_FAILED %d' % r.returncode)\n")
         archive = self.out / "scan_out.tgz"
-        rc, _ = self.call([COL, "download", "-s", self.name, f"/content/scan_{self.run}.tgz", str(archive)], 600,
-                          self.retrieve_end, "download")
-        if rc != 0 or not archive.is_file():
-            return False
         prefix = f"run_{self.run}/out"
-        try:
-            with tarfile.open(archive) as t:
-                members = t.getmembers()
-                for m in members:
-                    inside = m.name == prefix or m.name.startswith(prefix + "/")
-                    if not (m.isfile() or m.isdir()) or not inside or ".." in Path(m.name).parts:
-                        self.log("refusing archive member", m.name)
-                        return False
-                t.extractall(self.out, members=members)
-        except (tarfile.TarError, OSError) as e:
-            self.log("extract failed:", e)
-            return False
-        return True
+        for attempt in (1, 2):
+            archive.unlink(missing_ok=True)  # never validate a partial archive from an earlier attempt
+            rc, out = self.exec_py(code, 300, self.retrieve_end, f"pack{attempt}")
+            if rc != 0 or "PACKED" not in out:
+                continue
+            rc, _ = self.call([COL, "download", "-s", self.name, f"/content/scan_{self.run}.tgz", str(archive)],
+                              600, self.retrieve_end, f"download {attempt}")
+            if rc != 0 or not archive.is_file():
+                continue
+            # each attempt extracts into its own fresh staging folder; only a complete extraction is promoted
+            stage = self.out / f"extract_{attempt}"
+            try:
+                shutil.rmtree(stage, ignore_errors=True)
+                with tarfile.open(archive) as t:
+                    members = t.getmembers()
+                    bad = [m.name for m in members if not (m.isfile() or m.isdir())
+                           or not (m.name == prefix or m.name.startswith(prefix + "/")) or ".." in Path(m.name).parts]
+                    if bad:
+                        self.log("refusing archive members", bad[:5])
+                        continue
+                    t.extractall(stage, members=members)
+                (stage / f"run_{self.run}").rename(self.out / f"run_{self.run}")
+                shutil.rmtree(stage, ignore_errors=True)
+                return True
+            except (tarfile.TarError, OSError) as e:
+                self.log(f"archive attempt {attempt} unreadable:", e)
+        self.log("EVIDENCE NOT RETRIEVED: the VM holds the only copy, and cleanup will stop it")
+        return False
 
     def copy_receipts(self):
         src = self.out / f"run_{self.run}" / "out"
@@ -243,15 +389,26 @@ class Driver:
             for f in src.iterdir():
                 if f.is_file():
                     shutil.copy2(f, self.receipts / f.name)
+            lines = []  # every retrieved file hashed into the receipts (local work, after VM cleanup)
+            for f in sorted(p for p in src.rglob("*") if p.is_file()):
+                h = hashlib.sha256()
+                with open(f, "rb") as fh:
+                    for chunk in iter(lambda: fh.read(1 << 20), b""):
+                        h.update(chunk)
+                lines.append(f"{h.hexdigest()}  {f.relative_to(src).as_posix()}\n")
+            tmp = self.receipts / "archive.sha256.tmp"
+            tmp.write_text("".join(lines))
+            tmp.rename(self.receipts / "archive.sha256")
             return True
-        except OSError as e:
-            self.log("receipt copy failed:", e)
+        except Exception as e:  # never let receipt work prevent the exit-code rules
+            self.log("receipt copy failed:", repr(e))
             return False
 
     def validate(self):
         """True: validated pass. False: a well-formed status of a failed experiment. None: missing or malformed."""
+        out = self.out / f"run_{self.run}" / "out"
         try:
-            s = json.loads((self.out / f"run_{self.run}" / "out" / "status.json").read_text())
+            s = json.loads((out / "status.json").read_text())
         except (OSError, ValueError) as e:
             self.log("status.json missing or unreadable:", e)
             return None
@@ -260,13 +417,15 @@ class Driver:
                 or type(s.get("exit_status")) is not int or not isinstance(s.get("pass"), bool):
             self.log("status.json malformed:", json.dumps(s)[:500])
             return None
-        if s.get("run_id") != self.run or s.get("commit") != self.commit or s.get("head") != self.commit:
-            self.log("status.json identity mismatch:", s.get("run_id"), s.get("commit"), s.get("head"))
+        if s.get("run_id") != self.run or s.get("commit") != self.commit or s.get("head") != self.commit \
+                or s.get("protocol") != self.protocol:
+            self.log("status.json identity mismatch:", s.get("run_id"), s.get("protocol"), s.get("commit"),
+                     s.get("head"))
             return None
         problems = []
-        if set(gates) != REQUIRED_GATES:
-            problems.append(f"gate set differs: missing {sorted(REQUIRED_GATES - set(gates))}, "
-                            f"extra {sorted(set(gates) - REQUIRED_GATES)}")
+        if set(gates) != self.required:
+            problems.append(f"gate set differs: missing {sorted(self.required - set(gates))}, "
+                            f"extra {sorted(set(gates) - self.required)}")
         failed = sorted(k for k, v in gates.items() if v != 0)
         if failed:
             problems.append(f"failed gates {failed}")
@@ -274,6 +433,15 @@ class Driver:
             problems.append(f"VM exit status {s['exit_status']}")
         if s["pass"] is not True:
             problems.append("pass is not true")
+        # a process the VM script could not take down (QUIESCENCE_UNCONFIRMED, or stop.json saying the step's group
+        # is not gone) means the archive may not be a final snapshot, whatever the stop reply said
+        try:
+            stop = json.loads((out / "stop.json").read_text()) if (out / "stop.json").exists() else {}
+        except (OSError, ValueError):
+            stop = {"step_group_gone": None}
+        if (out / "QUIESCENCE_UNCONFIRMED").exists() or stop.get("step_group_gone", True) is not True:
+            self.log("quiescence not confirmed by the VM script: the archive may not be final")
+            self.stop_confirmed = False
         self.log("status.json:", json.dumps(s))
         self.log("validation:", "PASS" if not problems else "; ".join(problems))
         return not problems
@@ -317,7 +485,8 @@ class Driver:
             self.log_file = open(self.out / "driver.log", "a")
         except OSError:
             self.log_file = None
-        self.log(f"run {self.run} commit {self.commit} session {self.name}" + (" [TEST HARNESS]" if TEST else ""))
+        self.log(f"run {self.run} protocol {self.protocol} commit {self.commit} session {self.name}"
+                 + (" [TEST HARNESS]" if TEST else ""))
         transport = receipts = False
         valid = None
         try:
@@ -329,11 +498,18 @@ class Driver:
             done = self.poll() if launched else False
             self.done = done
             self.log("launched", launched, "done", done, "cancelled", self.cancel)
+            if not done:  # also when the launch acknowledgement was lost: the script may be running
+                self.stop_confirmed = self.stop_workload()
             transport = self.retrieve()  # also after a launch failure, deadline or signal: diagnostics are evidence
-            receipts = transport and self.copy_receipts()
             valid = self.validate() if transport else None
         except Stop as e:
             self.log("stopped:", e)
+            if self.launch_attempted and not self.done:
+                # a cancelled or failed run that may have started: stop the script and keep its diagnostics, as
+                # the normal path does (neither call raises Stop; both are bounded by the retrieval deadline)
+                self.stop_confirmed = self.stop_workload()
+                transport = self.retrieve()
+                valid = self.validate() if transport else None
         except Exception as e:
             self.log("error:", repr(e))
         finally:
@@ -345,11 +521,15 @@ class Driver:
             for label, argv in (("final sessions", [COL, "sessions"]), ("final orphans", REAP)):
                 rc, out = self.call(argv, 120, self.inventory_end, label)
                 self.log(f"{label}:\n" + out.strip())
+            receipts = transport and self.copy_receipts()  # local work only, after the VM is gone
             code = 3 if not clean else 2 if not (transport and receipts and valid is not None) else 0 if valid else 1
             if code == 0 and not self.done:
                 self.log("validated status but no matching DONE marker was seen: exit 2")
                 code = 2
             if self.log_failed:
+                code = max(code, 2)
+            if self.stop_confirmed is False:  # the archive may not be a final snapshot
+                self.log("the workload stop was not confirmed: exit at least 2")
                 code = max(code, 2)
             self.log(f"exit {code} (transport {transport}, receipts {receipts}, valid {valid}, cleanup {clean})")
             try:
@@ -367,11 +547,12 @@ def main():
         print("DRIVE_TEST_* is set but DRIVE_TEST_HARNESS is not: refusing a real run with test hooks",
               file=sys.stderr)
         return 2
-    if len(sys.argv) != 3 or not re.fullmatch(r"[0-9a-f]{40}", sys.argv[1]) \
-            or not re.fullmatch(r"[A-Za-z0-9_-]{1,32}", sys.argv[2]):
+    if len(sys.argv) not in (3, 4) or not re.fullmatch(r"[0-9a-f]{40}", sys.argv[1]) \
+            or not re.fullmatch(r"[A-Za-z0-9_-]{1,32}", sys.argv[2]) \
+            or (len(sys.argv) == 4 and sys.argv[3] not in REQUIRED_GATES):
         print(__doc__, file=sys.stderr)
         return 2
-    d = Driver(sys.argv[1], sys.argv[2])
+    d = Driver(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) == 4 else "forward")
 
     def on_signal(signum, _frame):  # request cancellation; observed at controlled points
         d.cancel = True
