@@ -29,6 +29,8 @@ if cmd == "sessions":
     sys.exit(0)
 name = args[args.index("-s") + 1]
 if cmd == "new":
+    if mode == "orphan_new":
+        st["sessions"]["?"] = "ep-orphan"; st["created"] = True; save(); sys.exit(1)
     st["sessions"][name] = "ep-" + name; st["created"] = True; save()
     if mode == "new_timeout": time.sleep(60)
     sys.exit(0)
@@ -62,17 +64,17 @@ sys.exit(2)
 
 
 class DriveTests(unittest.TestCase):
-    def run_drive(self, mode, run="t1"):
+    def run_drive(self, mode, run="t1", extra=None):
         tmp = Path(tempfile.mkdtemp())
         mock = tmp / "colab"
         mock.write_text(MOCK)
         mock.chmod(0o755)
         (tmp / "content").mkdir()
-        env = dict(os.environ, DRIVE_TEST_COLAB=str(mock), DRIVE_TEST_CLI_PY=sys.executable,
+        env = dict(os.environ, DRIVE_TEST_HARNESS="1", DRIVE_TEST_COLAB=str(mock), DRIVE_TEST_CLI_PY=sys.executable,
                    DRIVE_TEST_REAP="true", DRIVE_TEST_ADOPT="true", DRIVE_TEST_ARTIFACTS=str(tmp / "art"),
                    DRIVE_TEST_RECEIPTS=str(tmp / "receipts"), DRIVE_TEST_MINUTE_SECONDS="0.3",
                    MOCK_STATE=str(tmp / "state.json"), MOCK_CONTENT=str(tmp / "content"), MOCK_MODE=mode,
-                   MOCK_GATES=" ".join(GATES), MOCK_COMMIT=COMMIT)
+                   MOCK_GATES=" ".join(GATES), MOCK_COMMIT=COMMIT, **(extra or {}))
         t0 = time.monotonic()
         r = subprocess.run([sys.executable, str(HERE / "drive.py"), COMMIT, run], env=env, capture_output=True,
                            text=True, timeout=120)
@@ -97,8 +99,35 @@ class DriveTests(unittest.TestCase):
 
     def test_wrong_commit_fails_validation(self):
         rc, _, log, _, _ = self.run_drive("wrong_commit")
-        self.assertEqual(rc, 1, log)
-        self.assertIn("run/commit/HEAD mismatch", log)
+        self.assertEqual(rc, 2, log)
+        self.assertIn("identity mismatch", log)
+
+    def test_unnamed_allocation_is_never_certified(self):
+        rc, state, log, _, _ = self.run_drive("orphan_new")
+        self.assertEqual(rc, 3, log)
+        self.assertIn("CLEANUP UNRESOLVED", log)
+        self.assertNotIn("CLEANUP OK", log)
+        self.assertEqual(state["sessions"], {"?": "ep-orphan"})  # not ours by name or endpoint: not stopped
+
+    def test_log_failure_does_not_stop_the_shutdown(self):
+        rc, state, log, _, _ = self.run_drive("normal", extra={"DRIVE_TEST_LOG_FAIL_AFTER": "4"})
+        self.assertEqual(state["sessions"], {})
+        self.assertNotEqual(rc, 3)
+
+    def test_cleanup_command_start_failure_is_retried(self):
+        rc, state, log, _, _ = self.run_drive("normal", extra={"DRIVE_TEST_RAISE_ON": "stop"})
+        self.assertEqual(state["sessions"], {}, log)
+        self.assertIn("could not run", log)
+        self.assertIn("CLEANUP OK", log)
+        self.assertEqual(rc, 0, log)
+
+    def test_test_hooks_refused_without_harness(self):
+        env = dict(os.environ, DRIVE_TEST_COLAB="/bin/true")
+        env.pop("DRIVE_TEST_HARNESS", None)
+        r = subprocess.run([sys.executable, str(HERE / "drive.py"), COMMIT, "t9"], env=env, capture_output=True,
+                           text=True)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("refusing", r.stderr)
 
     def test_listing_failure_is_never_reported_as_clean(self):
         rc, state, log, _, _ = self.run_drive("sessions_fail")
