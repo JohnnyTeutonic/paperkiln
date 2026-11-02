@@ -15,11 +15,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: u26-default, os: ubuntu-26.04, cxx: g++, extra: "", patch: none }
-          - { name: u26-portable-v3, os: ubuntu-26.04, cxx: g++, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", patch: none }
-          - { name: u26-no-fast-math, os: ubuntu-26.04, cxx: g++, extra: "", patch: nofastmath }
-          - { name: u26-gcc14, os: ubuntu-26.04, cxx: g++-14, extra: "", patch: none }
-          - { name: u24-default, os: ubuntu-24.04, cxx: g++, extra: "", patch: none }
+          # Round 2: every job x86-64-v3 (codegen independent of the runner's CPU); -ffast-math split into parts.
+          # core: "drop" removes -ffast-math; otherwise the flags are appended after it (later flags win).
+          - { name: v3-fast-math, os: ubuntu-26.04, cxx: g++, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", core: "" }
+          - { name: v3-no-fast-math, os: ubuntu-26.04, cxx: g++, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", core: drop }
+          - { name: v3-no-assoc, os: ubuntu-26.04, cxx: g++, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", core: "-fno-associative-math" }
+          - { name: v3-no-recip, os: ubuntu-26.04, cxx: g++, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", core: "-fno-reciprocal-math" }
+          - { name: v3-no-contract, os: ubuntu-26.04, cxx: g++, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", core: "-ffp-contract=off" }
+          - { name: v3-no-finite, os: ubuntu-26.04, cxx: g++, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", core: "-fno-finite-math-only -fsigned-zeros -ftrapping-math -fmath-errno" }
     steps:
       - uses: actions/checkout@v4
 
@@ -41,11 +44,13 @@ jobs:
             echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
           ${{ matrix.cxx }} -march=native -Q --help=target 2>/dev/null | grep -E '^\s+-march=|-mtune=' | head -2
 
-      - name: Drop the core's -ffast-math (this job only)
-        if: matrix.patch == 'nofastmath'
+      - name: Adjust the core's -ffast-math (this job only)
+        if: matrix.core != ''
         run: |
-          grep -n 'ffast-math' third_party/transformer_cpp/CMakeLists.txt
-          sed -i '/-ffast-math/d' third_party/transformer_cpp/CMakeLists.txt
+          f=third_party/transformer_cpp/CMakeLists.txt
+          if [ "${{ matrix.core }}" = drop ]; then sed -i '/-ffast-math/d' "$f"
+          else sed -i 's/-ffast-math /-ffast-math ${{ matrix.core }} /' "$f"; fi
+          grep -n -A1 -B3 'O3 ' "$f" | head -12
 
       - name: Build the five tests
         run: |
