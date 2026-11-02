@@ -1,0 +1,1 @@
+{"engine": "paperkiln", "tensors": 21, "rows": 48, "vocab": 2275, "d": 128, "layers": 2, "heads": 4, "rope_pairing": "neox", "tied": false}
