@@ -1,10 +1,11 @@
-// CPU proof of the chunked selective-scan forward (src/selective_scan_chunked.cuh), using the host emulation
-// built from the same functions the CUDA kernels call. Checks, for every case:
-//   1. y and every state within the frozen gate of tests/test_selective_scan_replay.py (|v - ref| / max(1, |ref|)
-//      <= 3e-5) of an independent binary64 recurrence;
-//   2. chunk length >= sequence length gives the ordered recurrence (one thread per channel, ascending rows
-//      and states, explicitly rounded) bit for bit;
-//   3. two runs are bit-identical.
+// Host test of the chunked selective-scan forward (src/selective_scan_chunked.cuh), through the host emulation
+// built from the same functions the CUDA kernels call. It establishes the algorithm, indexing and chunk
+// boundaries on the host; device numerics (CUDA expf/log1pf, kernel execution) are checked on the GPU by
+// tools/scan_bench.cu. For every case:
+//   1. y and every state within 3e-5 of an independent binary64 recurrence, with the metric
+//      |v - ref| / max(1, |ref|) (stricter, by up to 2x, than the frozen CUDA gate's |v - ref| / (1 + |ref|));
+//   2. one chunk per sequence (L = sl and L > sl) gives the host ordered recurrence bit for bit;
+//   3. two runs are bit-identical (measured and reported).
 // Prints one JSON summary line; exit 1 on any failure.
 #include <algorithm>
 #include <cmath>
@@ -138,7 +139,7 @@ bool same_bits(const std::vector<float>& a, const std::vector<float>& b) {
 int main() {
     std::vector<Case> cases;
     for (size_t sl : {1, 2, 7, 63, 64, 65, 127, 128, 129, 1000, 2048})
-        for (size_t L : {2, 16, 64, 256})
+        for (size_t L : {1, 2, 16, 64, 256})
             for (int regime : {0, 1, 2}) {
                 const bool sp = (sl + L + regime) % 2, skip = (sl + regime) % 3 != 0;
                 cases.push_back({sl, 2, 3, 4, L, sp, skip, regime});
@@ -149,7 +150,7 @@ int main() {
     cases.push_back({4096, 1, 2, 16, 128, false, true, 1});
     cases.push_back({4096, 1, 2, 16, 128, true, false, 2});
 
-    size_t failures = 0, ordered_identical = 0, ordered_checks = 0;
+    size_t failures = 0, ordered_identical = 0, ordered_checks = 0, repeats_identical = 0;
     double worst_chunked = 0, worst_ordered = 0;
     for (const Case& k : cases) {
         const Inputs in = make(k);
@@ -162,13 +163,19 @@ int main() {
         const double ey = worst(cy, ry), eS = worst(cS, rS), oey = worst(oy, ry), oeS = worst(oS, rS);
         worst_chunked = std::max({worst_chunked, ey, eS});
         worst_ordered = std::max({worst_ordered, oey, oeS});
-        bool ok = ey <= kBound && eS <= kBound && same_bits(cy, cy2) && same_bits(cS, cS2);
-        // one chunk per sequence is the ordered recurrence exactly
-        std::vector<float> wy, wS;
-        chunked(k, in, k.sl, wy, wS);
-        ++ordered_checks;
-        const bool one_chunk = same_bits(wy, oy) && same_bits(wS, oS);
-        ordered_identical += one_chunk;
+        const bool repeat = same_bits(cy, cy2) && same_bits(cS, cS2);
+        repeats_identical += repeat;
+        bool ok = ey <= kBound && eS <= kBound && repeat;
+        // one chunk per sequence (L = sl, and L > sl, clamped) is the ordered recurrence exactly
+        bool one_chunk = true;
+        for (size_t L1 : {k.sl, k.sl + 1, 4 * k.sl + 7}) {
+            std::vector<float> wy, wS;
+            chunked(k, in, L1, wy, wS);
+            ++ordered_checks;
+            const bool same = same_bits(wy, oy) && same_bits(wS, oS);
+            ordered_identical += same;
+            one_chunk = one_chunk && same;
+        }
         ok = ok && one_chunk;
         if (!ok) {
             ++failures;
@@ -179,8 +186,8 @@ int main() {
         }
     }
     std::printf("{\"pass\": %s, \"cases\": %zu, \"failures\": %zu, \"bound\": %.0e, \"worst_chunked\": %.3g, "
-                "\"worst_ordered\": %.3g, \"one_chunk_bit_identical\": \"%zu/%zu\", \"repeat_bit_identical\": true}\n",
+                "\"worst_ordered\": %.3g, \"one_chunk_bit_identical\": \"%zu/%zu\", \"repeat_bit_identical\": \"%zu/%zu\"}\n",
                 failures ? "false" : "true", cases.size(), failures, kBound, worst_chunked, worst_ordered,
-                ordered_identical, ordered_checks);
+                ordered_identical, ordered_checks, repeats_identical, cases.size());
     return failures ? 1 : 0;
 }

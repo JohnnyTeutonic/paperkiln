@@ -12,8 +12,9 @@
 // kernel has (sequences x D). Rounding differs from the ordered scan only through the chunk starts of step 2.
 // Every multiply and add is explicitly rounded (no contraction), so results are deterministic.
 //
-// The same functions build the host emulation (selective_scan_chunked_host) that the CPU tests run, so the
-// indexing and chunk boundaries the device executes are the ones the CPU proof checks.
+// The same functions build the host emulation (selective_scan_chunked_host) that the host test runs, so the
+// indexing and chunk boundaries the device executes are the ones the host test checks. Device numerics (CUDA
+// expf/log1pf and the kernels) are checked on the GPU by tools/scan_bench.cu.
 #pragma once
 #include <cmath>
 #include <cstddef>
@@ -62,8 +63,11 @@ struct Geom {
     size_t T, D, N, sl, L, nchunk;  // nchunk = ceil(sl / L) chunks per sequence
 };
 
+// L is clamped to [1, sl]: any L >= sl is one chunk per sequence (the ordered recurrence), and the chunk count
+// is computed without the overflow of (sl + L - 1) / L. sl must be >= 1 (the op's geometry check requires it).
 SS_HD inline Geom geom(size_t T, size_t D, size_t N, size_t sl, size_t L) {
-    return Geom{T, D, N, sl, L, (sl + L - 1) / L};
+    const size_t Lc = L < 1 ? 1 : (L > sl ? sl : L);
+    return Geom{T, D, N, sl, Lc, 1 + (sl - 1) / Lc};
 }
 
 // delta for one cell, as the ordered kernel computes it

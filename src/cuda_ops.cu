@@ -2122,15 +2122,21 @@ bool conv1d_causal_bwd(const Matrix& x, const Matrix& w, const Matrix& dy, size_
 namespace {
 #include "selective_scan_kernels.cuh"
 
-// MICROTORCH_SCAN_CHUNK: unset or 0 runs the ordered scan; L >= 1 the chunked one. Anything else is refused,
-// so a typo cannot silently select a path.
+// MICROTORCH_SCAN_CHUNK: unset or empty runs the ordered scan, as does "0"; a decimal count L >= 1 the chunked
+// one. Anything else (signs, spaces, other characters, a value past 2^31) is refused, so a typo cannot silently
+// select a path. The CPU path never reads it.
 size_t scan_chunk() {
     const char* v = std::getenv("MICROTORCH_SCAN_CHUNK");
     if (!v || !*v) return 0;
-    char* end = nullptr;
-    const unsigned long long L = std::strtoull(v, &end, 10);
-    if (*end || v[0] == '-') throw std::runtime_error(std::string("MICROTORCH_SCAN_CHUNK must be a count: ") + v);
-    return static_cast<size_t>(L);
+    size_t L = 0;
+    for (const char* p = v; *p; ++p) {
+        if (*p < '0' || *p > '9' || L > (size_t(1) << 31))
+            throw std::runtime_error(std::string("MICROTORCH_SCAN_CHUNK must be a decimal count up to 2^31: ") + v);
+        L = L * 10 + size_t(*p - '0');
+    }
+    if (L > (size_t(1) << 31))
+        throw std::runtime_error(std::string("MICROTORCH_SCAN_CHUNK must be a decimal count up to 2^31: ") + v);
+    return L;
 }
 }  // namespace
 
