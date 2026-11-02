@@ -101,13 +101,19 @@ jobs:
             build/integration_benchmark.txt
             build/benchmark.json
 
-      # The previous master results live in the Actions cache (gh-pages serves the docs).
+      # Timings are only comparable on the same runner image: the ubuntu-26.04 image ran these benchmarks about 3x
+      # faster than ubuntu-24.04 (2 Nov 2026), so a baseline from one image must never judge the other. ImageOS is
+      # set by GitHub's hosted runners (ubuntu24, ubuntu26, ...).
+      - name: Name the runner image
+        run: echo "BENCH_IMAGE=${ImageOS:-unknown}" >> "$GITHUB_ENV"
+
+      # The previous master results live in the Actions cache (gh-pages serves the docs), one series per image.
       - name: Restore previous master results
         uses: actions/cache/restore@v4
         with:
           path: bench-cache
-          key: benchmark-data-${{ github.run_id }}
-          restore-keys: benchmark-data-
+          key: benchmark-data-${{ env.BENCH_IMAGE }}-${{ github.run_id }}
+          restore-keys: benchmark-data-${{ env.BENCH_IMAGE }}-
 
       # Shared runners are noisy: fail only when a measurement is 2.5x the stored value.
       - name: Compare with previous master results
@@ -126,7 +132,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: bench-cache
-          key: benchmark-data-${{ github.run_id }}
+          key: benchmark-data-${{ env.BENCH_IMAGE }}-${{ github.run_id }}
 
       - name: Comment on PR with results
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
