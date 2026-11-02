@@ -9,7 +9,7 @@
 #include <memory>
 #include <stdexcept>
 
-#include "gguf_export.hpp"  // transformer_cpp's verified writer
+#include "gguf_writer.hpp"  // coalfire.cpp's GGUF byte writer (vendored in third_party/transformer_cpp)
 #include "microtorch/ir.hpp"
 
 namespace microtorch {
@@ -533,7 +533,9 @@ void quantize_q6_k(const float* x, size_t n, uint8_t* out) {
 namespace {
 
 // ggml type ids of the k-quants llama.cpp's mixes ask for (quantize_q4_k & co.).
-constexpr uint32_t kQ4_K = 12, kQ5_K = 13, kQ6_K = 14;
+constexpr uint32_t kQ4_K = static_cast<uint32_t>(GGMLType::Q4_K),
+                   kQ5_K = static_cast<uint32_t>(GGMLType::Q5_K),
+                   kQ6_K = static_cast<uint32_t>(GGMLType::Q6_K);
 
 // llama.cpp's use_more_bits (llama-quant.cpp): the first and last eighth of
 // the layers, and every third layer between.
@@ -891,24 +893,35 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
     }
 
     // ---- quantise and hand the tensors to the writer ----
-    // GGUFWriter sizes a tensor as num_elements * ggml_type_size(type) and
-    // knows no block sizes, so a quantised tensor is handed over as its byte
-    // count in that unit, the kept-alive buffer zero-padded to a whole unit.
-    // The writer zero-pads every tensor to 32 bytes anyway, so the file is
-    // unchanged while the extra bytes stay inside that padding (checked).
+    // A quantised tensor goes to the writer as its blocks: data points at
+    // ggml_nbytes(type, n) bytes, kept alive in owned_q until finalize().
     std::vector<std::unique_ptr<std::vector<uint8_t>>> owned_q;
     auto store = [&](TensorExportInfo info, GGMLType type) {
-        size_t block = 0, per = 32;  // bytes per block of `per` values
+        size_t per = 32;  // values per block
         void (*quantize)(const float*, size_t, uint8_t*) = nullptr;
         const char* tname = "";
         switch (static_cast<uint32_t>(type)) {
-            case static_cast<uint32_t>(GGMLType::Q4_0): block = 18, quantize = quantize_q4_0, tname = "Q4_0"; break;
-            case static_cast<uint32_t>(GGMLType::Q5_0): block = 22, quantize = quantize_q5_0, tname = "Q5_0"; break;
-            case static_cast<uint32_t>(GGMLType::Q5_1): block = 24, quantize = quantize_q5_1, tname = "Q5_1"; break;
-            case static_cast<uint32_t>(GGMLType::Q8_0): block = 34, quantize = quantize_q8_0, tname = "Q8_0"; break;
-            case kQ4_K: block = 144, per = 256, quantize = quantize_q4_k, tname = "Q4_K"; break;
-            case kQ5_K: block = 176, per = 256, quantize = quantize_q5_k, tname = "Q5_K"; break;
-            case kQ6_K: block = 210, per = 256, quantize = quantize_q6_k, tname = "Q6_K"; break;
+            case static_cast<uint32_t>(GGMLType::Q4_0):
+                quantize = quantize_q4_0, tname = "Q4_0";
+                break;
+            case static_cast<uint32_t>(GGMLType::Q5_0):
+                quantize = quantize_q5_0, tname = "Q5_0";
+                break;
+            case static_cast<uint32_t>(GGMLType::Q5_1):
+                quantize = quantize_q5_1, tname = "Q5_1";
+                break;
+            case static_cast<uint32_t>(GGMLType::Q8_0):
+                quantize = quantize_q8_0, tname = "Q8_0";
+                break;
+            case kQ4_K:
+                per = 256, quantize = quantize_q4_k, tname = "Q4_K";
+                break;
+            case kQ5_K:
+                per = 256, quantize = quantize_q5_k, tname = "Q5_K";
+                break;
+            case kQ6_K:
+                per = 256, quantize = quantize_q6_k, tname = "Q6_K";
+                break;
             default:
                 throw std::runtime_error("export_gguf_llama: " + info.name + ": no quantiser for ggml type " +
                                          std::to_string(static_cast<uint32_t>(type)));
@@ -918,17 +931,11 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
             throw std::runtime_error("export_gguf_llama: " + info.name + " has ne0 = " + std::to_string(ne0) +
                                      ", not a multiple of " + std::to_string(per) + ", so it cannot be stored as " +
                                      tname);
-        const size_t bytes = info.num_elements / per * block;
-        const size_t unit = gguf_export::ggml_type_size(type);
-        const size_t units = (bytes + unit - 1) / unit;
-        if (((bytes + 31) & ~size_t(31)) != ((units * unit + 31) & ~size_t(31)))
-            throw std::runtime_error("export_gguf_llama: GGUFWriter's size unit for " + std::string(tname) +
-                                     " cannot carry the " + std::to_string(bytes) + " bytes of " + info.name);
-        auto buf = std::make_unique<std::vector<uint8_t>>(units * unit, 0);
-        quantize(info.data, info.num_elements, buf->data());
+        auto buf = std::make_unique<std::vector<uint8_t>>(
+            gguf_export::ggml_nbytes(type, info.num_elements), 0);
+        quantize(static_cast<const float*>(info.data), info.num_elements, buf->data());
         info.type = type;
-        info.data = reinterpret_cast<const float*>(buf->data());  // written as raw bytes
-        info.num_elements = units;
+        info.data = buf->data();
         owned_q.push_back(std::move(buf));
         writer.add_tensor(info);
     };
@@ -971,19 +978,10 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
         }
     }
 
+    // llama.cpp pads the last tensor to the alignment as well.
+    writer.set_pad_final_tensor(lcpp);
     if (!writer.finalize()) {
         throw std::runtime_error("export_gguf_llama: finalize failed for " + path);
-    }
-    if (lcpp) {
-        // llama.cpp pads the last tensor to the alignment as well.
-        std::ifstream in(path, std::ios::binary | std::ios::ate);
-        const auto size = static_cast<uint64_t>(in.tellg());
-        in.close();
-        const uint64_t pad = (gguf_export::GGUF_DEFAULT_ALIGNMENT - size % gguf_export::GGUF_DEFAULT_ALIGNMENT) %
-                             gguf_export::GGUF_DEFAULT_ALIGNMENT;
-        std::ofstream out(path, std::ios::binary | std::ios::app);
-        for (uint64_t i = 0; i < pad; ++i) out.put('\0');
-        if (!out) throw std::runtime_error("export_gguf_llama: could not pad " + path);
     }
 }
 
