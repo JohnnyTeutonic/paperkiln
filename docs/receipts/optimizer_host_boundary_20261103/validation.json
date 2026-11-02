@@ -1,0 +1,180 @@
+{
+  "kind": "CAUSAL_CPU_OPTIMIZER_HOST_AUTHORITY",
+  "source_parent": "239415297b749afdf24230f9e702549ee82ddf13",
+  "baseline_nn_sha256": "84c6c3dccf0159fb35dc03ee4f48e99d2c3fa5830953c8d3d5c1e474fe155b93",
+  "fixed_nn_sha256": "819d0cc3adf364e44b5d75250ab0acd9bd51a8555c239c418c33db6f9280cc5c",
+  "runs": [
+    {
+      "binary": "optimizer_host_old",
+      "mode": "fresh",
+      "records": [
+        {
+          "optimizer": 0,
+          "authority_mode": 0,
+          "numerical_match": true
+        },
+        {
+          "optimizer": 1,
+          "authority_mode": 0,
+          "numerical_match": true
+        },
+        {
+          "optimizer": 2,
+          "authority_mode": 0,
+          "numerical_match": true
+        },
+        {
+          "cases": 3,
+          "numerical_failures": 0,
+          "unexpected": 0,
+          "cpu_emulation_only": true
+        }
+      ]
+    },
+    {
+      "binary": "optimizer_host_old",
+      "mode": "deferred",
+      "records": [
+        {
+          "optimizer": 0,
+          "authority_mode": 1,
+          "numerical_match": false
+        },
+        {
+          "optimizer": 0,
+          "authority_mode": 2,
+          "numerical_match": false
+        },
+        {
+          "optimizer": 0,
+          "authority_mode": 3,
+          "numerical_match": false
+        },
+        {
+          "optimizer": 1,
+          "authority_mode": 1,
+          "numerical_match": false
+        },
+        {
+          "optimizer": 1,
+          "authority_mode": 2,
+          "numerical_match": false
+        },
+        {
+          "optimizer": 1,
+          "authority_mode": 3,
+          "numerical_match": false
+        },
+        {
+          "optimizer": 2,
+          "authority_mode": 1,
+          "numerical_match": false
+        },
+        {
+          "optimizer": 2,
+          "authority_mode": 2,
+          "numerical_match": true
+        },
+        {
+          "optimizer": 2,
+          "authority_mode": 3,
+          "numerical_match": false
+        },
+        {
+          "cases": 9,
+          "numerical_failures": 8,
+          "unexpected": 0,
+          "cpu_emulation_only": true
+        }
+      ]
+    },
+    {
+      "binary": "optimizer_host_fixed",
+      "mode": "fresh",
+      "records": [
+        {
+          "optimizer": 0,
+          "authority_mode": 0,
+          "numerical_match": true
+        },
+        {
+          "optimizer": 1,
+          "authority_mode": 0,
+          "numerical_match": true
+        },
+        {
+          "optimizer": 2,
+          "authority_mode": 0,
+          "numerical_match": true
+        },
+        {
+          "cases": 3,
+          "numerical_failures": 0,
+          "unexpected": 0,
+          "cpu_emulation_only": true
+        }
+      ]
+    },
+    {
+      "binary": "optimizer_host_fixed",
+      "mode": "deferred",
+      "records": [
+        {
+          "optimizer": 0,
+          "authority_mode": 1,
+          "numerical_match": true
+        },
+        {
+          "optimizer": 0,
+          "authority_mode": 2,
+          "numerical_match": true
+        },
+        {
+          "optimizer": 0,
+          "authority_mode": 3,
+          "numerical_match": true
+        },
+        {
+          "optimizer": 1,
+          "authority_mode": 1,
+          "numerical_match": true
+        },
+        {
+          "optimizer": 1,
+          "authority_mode": 2,
+          "numerical_match": true
+        },
+        {
+          "optimizer": 1,
+          "authority_mode": 3,
+          "numerical_match": true
+        },
+        {
+          "optimizer": 2,
+          "authority_mode": 1,
+          "numerical_match": true
+        },
+        {
+          "optimizer": 2,
+          "authority_mode": 2,
+          "numerical_match": true
+        },
+        {
+          "optimizer": 2,
+          "authority_mode": 3,
+          "numerical_match": true
+        },
+        {
+          "cases": 9,
+          "numerical_failures": 0,
+          "unexpected": 0,
+          "cpu_emulation_only": true
+        }
+      ]
+    }
+  ],
+  "ctest_targets_passed": 5,
+  "independent_review": "GPT reading (Codex review agent),3Nov2026: APPROVE narrow SGD/AdamW host-fallback repair; preserveddevicepaths/formulas; explicit CPU-only qualification.",
+  "actual_cuda": false,
+  "frozen_sfull_sources_changed": false
+}
