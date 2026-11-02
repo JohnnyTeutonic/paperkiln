@@ -96,12 +96,15 @@ int main(int argc, char** argv) {
         const Matrix& L = logits->data;
         if (L.rows() != ids.size() || L.cols() != cfg.vocab)
             throw std::runtime_error("logits shape");
-        std::ofstream out(argv[3], std::ios::binary);
+        std::vector<float> rows;
+        rows.reserve(L.rows() * L.cols());
         for (size_t i = 0; i < L.rows(); ++i)
-            for (size_t j = 0; j < L.cols(); ++j) {
-                const float v = L(i, j);
-                out.write(reinterpret_cast<const char*>(&v), sizeof v);
-            }
+            for (size_t j = 0; j < L.cols(); ++j) rows.push_back(L(i, j));
+        std::FILE* out = std::fopen(argv[3], "wb");
+        if (!out) throw std::runtime_error("cannot open logits output");
+        const size_t written = std::fwrite(rows.data(), sizeof(float), rows.size(), out);
+        std::fclose(out);
+        if (written != rows.size()) throw std::runtime_error("cannot write logits");
         std::printf(
             "{\"engine\": \"paperkiln\", \"tensors\": %zu, \"rows\": %zu, \"vocab\": %zu, \"d\": "
             "%zu, "
