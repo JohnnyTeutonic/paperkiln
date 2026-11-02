@@ -10,7 +10,9 @@ COMMIT=${1:-}
 RUN=${2:-}
 [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo "COMMIT must be a full 40-character SHA" >&2; exit 2; }
 [[ "$RUN" =~ ^[A-Za-z0-9_-]{1,32}$ ]] || { echo "RUN_ID: 1-32 letters, digits, - or _" >&2; exit 2; }
-W=${VM_ROOT:-/content}/run_$RUN   # VM_ROOT only for test_vm_run.py
+ROOT=/content
+[ "${VM_TEST_HARNESS:-}" = 1 ] && ROOT=${VM_ROOT:-/content}   # test_vm_run.py only
+W=$ROOT/run_$RUN
 O=$W/out
 [ -e "$W" ] && { echo "$W exists: refusing to reuse a run directory" >&2; exit 2; }
 mkdir -p "$O" || exit 2

@@ -77,12 +77,15 @@ dropped or rerun. Outcomes:
   started. Expected about 30 minutes. Within Claude's Colab lane envelope (stack page).
 - The VM checks out a full commit SHA, verifies HEAD and a clean tree before and after the build, and works in a
   fresh per-run directory. It never modifies the source.
-  - It writes `status.json` atomically: every gate's own exit status, the script's exit status, run id, commit
-    and HEAD. The `DONE` marker follows it on every exit path after argument validation.
+  - It writes `status.json` atomically: every gate's own exit status, the incoming shell status, the
+    aggregate final status, run id, commit and HEAD. Only if that write succeeds does the `DONE` marker follow,
+    on every exit path once the fresh run directory exists.
   - A failed prerequisite (checkout, configure, build, host test, ordered control) stops further paid work.
 - Outputs come home to `/mnt/c/ml_artifacts/mamba_parallel_scan_20261103/RUN_ID/`. Receipts are copied to
   `receipts/RUN_ID/` here before any analysis, and the driver log is copied after cleanup.
-- The driver validates `status.json`: run, commit and HEAD; exactly the 13 required gates, all 0; VM exit 0.
+- The driver validates `status.json`: run, commit and HEAD; exactly the 13 required gates, all integers equal
+  to 0; aggregate exit 0. A validated success also needs the matching `DONE` marker to have been seen, and a
+  failed log write makes the exit at least 2.
   Exit codes: 0 validated, 1 experiment failed (receipts kept), 2 transport, receipt or status-identity failure,
   3 cleanup unresolved. Test hooks are refused unless the test harness flag is set.
 - `test_drive.py` (mock Colab CLI) and `test_vm_run.py` (stub tools) test that bookkeeping locally. The local

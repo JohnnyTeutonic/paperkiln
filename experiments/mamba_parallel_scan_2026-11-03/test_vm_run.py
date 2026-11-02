@@ -64,7 +64,7 @@ class VmRunTests(unittest.TestCase):
         for name, body in STUBS.items():
             (bin_ / name).write_text(body + "\n")
             (bin_ / name).chmod(0o755)
-        env = dict(os.environ, PATH=f"{bin_}:/usr/bin:/bin", VM_ROOT=str(tmp), FAIL_AT=fail_at)
+        env = dict(os.environ, PATH=f"{bin_}:/usr/bin:/bin", VM_TEST_HARNESS="1", VM_ROOT=str(tmp), FAIL_AT=fail_at)
         if head:
             env["STUB_HEAD"] = head
         r = subprocess.run(["bash", str(HERE / "vm_run.sh"), COMMIT, run], env=env, capture_output=True, text=True,
