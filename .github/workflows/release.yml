@@ -11,7 +11,7 @@ env:
 jobs:
   build-and-test:
     name: Build and Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@v4
@@ -48,7 +48,7 @@ jobs:
   create-release:
     name: Create GitHub Release
     needs: build-and-test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@v4
@@ -116,7 +116,7 @@ jobs:
   benchmark-release:
     name: Benchmark Release Build
     needs: build-and-test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: success()
 
     steps:
