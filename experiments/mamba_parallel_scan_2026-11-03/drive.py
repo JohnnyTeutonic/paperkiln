@@ -7,13 +7,19 @@ checkout's root:
 Session name claude-scan-RUN_ID (unique per run). Outputs: /mnt/c/ml_artifacts/mamba_parallel_scan_20261103/RUN_ID/
 (driver.log, scan_out.tgz, run_RUN_ID/out/); receipts copied to this experiment's receipts/RUN_ID/.
 
-Deadlines from the driver's start: work (polling) ends at 60 minutes, retrieval at 75, shutdown at 90. Every
-external call runs with a timeout capped by the deadline that governs it; a call whose deadline has passed is not
-started. Timed-out children are killed. Exit status:
-  0  run validated: status.json matches run, commit and HEAD, every required gate 0, VM exit 0; cleanup verified
+Deadlines from the driver's start: polling ends at 60 minutes, retrieval at 75, shutdown attempts at 85, the
+final inventory at 90. Every external call has a timeout capped by the deadline that governs it; a call past its
+deadline is not started; a timed-out child is killed.
+
+Shutdown is certified only by an authoritative session listing that shows neither our session name, nor the
+endpoint we owned, nor any endpoint that was not there before our creation call (a VM whose name the CLI lost
+shows as [?]; it is never stopped unless it is ours by endpoint, but it does prevent certification).
+Exit status:
+  0  run validated: status.json matches run, commit and HEAD, exactly the required gates, all 0, VM exit 0
   1  the experiment failed (receipts preserved)
   2  transport, receipt or validation could not be completed
-  3  cleanup unresolved: the session may still be running (stop it by hand; the log says how)
+  3  cleanup unresolved: a VM may still be running (the log names it and how to stop it)
+Test hooks (DRIVE_TEST_*) are honoured only with DRIVE_TEST_HARNESS=1, and refused otherwise.
 """
 import json
 import os
@@ -26,13 +32,23 @@ import tarfile
 import time
 from pathlib import Path
 
-COL = os.environ.get("DRIVE_TEST_COLAB") or os.path.expanduser("~/.local/bin/colab")
-CLI_PY = os.environ.get("DRIVE_TEST_CLI_PY") or os.path.expanduser("~/.local/share/uv/tools/google-colab-cli/bin/python")
+TEST = os.environ.get("DRIVE_TEST_HARNESS") == "1"
+
+
+def hook(name, default):
+    return os.environ.get(name) if TEST and os.environ.get(name) else default
+
+
+COL = hook("DRIVE_TEST_COLAB", os.path.expanduser("~/.local/bin/colab"))
+CLI_PY = hook("DRIVE_TEST_CLI_PY", os.path.expanduser("~/.local/share/uv/tools/google-colab-cli/bin/python"))
+REAP = hook("DRIVE_TEST_REAP", f"{sys.executable} tools/colab_reap_orphans.py").split()
+ADOPT = hook("DRIVE_TEST_ADOPT", f"{CLI_PY} tools/colab_adopt.py").split()
 HERE = Path(__file__).resolve().parent
-ARTIFACTS = Path(os.environ.get("DRIVE_TEST_ARTIFACTS") or "/mnt/c/ml_artifacts/mamba_parallel_scan_20261103")
-REAP = os.environ["DRIVE_TEST_REAP"].split() if os.environ.get("DRIVE_TEST_REAP") else [sys.executable, "tools/colab_reap_orphans.py"]
-ADOPT = os.environ["DRIVE_TEST_ADOPT"].split() if os.environ.get("DRIVE_TEST_ADOPT") else [CLI_PY, "tools/colab_adopt.py"]
-MINUTES = float(os.environ.get("DRIVE_TEST_MINUTE_SECONDS") or 60)  # tests shrink the deadlines
+ARTIFACTS = Path(hook("DRIVE_TEST_ARTIFACTS", "/mnt/c/ml_artifacts/mamba_parallel_scan_20261103"))
+RECEIPTS = Path(hook("DRIVE_TEST_RECEIPTS", str(HERE / "receipts")))
+MINUTE = float(hook("DRIVE_TEST_MINUTE_SECONDS", "60"))
+LOG_FAIL_AFTER = int(hook("DRIVE_TEST_LOG_FAIL_AFTER", "0"))   # test: log writes fail after N lines
+RAISE_ON = hook("DRIVE_TEST_RAISE_ON", "")                      # test: first call whose argv has this word raises
 REQUIRED_GATES = {"checkout", "configure", "build", "host_test", "numpy", "strict_unset", "replay_unset", "strict_2",
                   "replay_2", "strict_3", "replay_3", "switch_refuses_malformed", "scan_bench"}
 
@@ -46,76 +62,116 @@ class Driver:
         self.commit, self.run = commit, run
         self.name = f"claude-scan-{run}"
         self.out = ARTIFACTS / run
-        self.receipts = Path(os.environ.get("DRIVE_TEST_RECEIPTS") or HERE / "receipts") / run
-        self.start = time.monotonic()
-        self.work_end, self.retrieve_end, self.shutdown_end = (self.start + m * MINUTES for m in (60, 75, 90))
-        self.intent = False      # a creation was attempted: cleanup must reconcile
-        self.endpoint = None
+        self.receipts = RECEIPTS / run
+        t = time.monotonic()
+        self.work_end, self.retrieve_end, self.shutdown_end, self.inventory_end = (
+            t + m * MINUTE for m in (60, 75, 85, 90))
+        self.intent = False      # a creation call was made: cleanup must reconcile it
+        self.endpoint = None     # the endpoint we own, once established
+        self.before = None       # endpoints listed before the creation call
+        self.cancel = False
         self.log_file = None
+        self.log_lines = 0
+        self.raised = False
 
-    # ---- logging: the file is the record; the terminal is best effort
+    # ---- logging never raises: the file is the record, the terminal and stderr best effort
     def log(self, *parts):
         line = f"{time.strftime('%H:%M:%S')} " + " ".join(str(p) for p in parts)
-        self.log_file.write(line + "\n")
-        self.log_file.flush()
+        try:
+            self.log_lines += 1
+            if LOG_FAIL_AFTER and self.log_lines > LOG_FAIL_AFTER:
+                raise OSError("test: log write failed")
+            self.log_file.write(line + "\n")
+            self.log_file.flush()
+        except (OSError, ValueError, AttributeError):
+            try:
+                sys.stderr.write("[log file unavailable] " + line + "\n")
+            except (OSError, ValueError):
+                pass
         try:
             print(line, flush=True)
-        except (BrokenPipeError, OSError):
+        except (OSError, ValueError):
             pass
 
+    def check(self):
+        if self.cancel:
+            raise Stop("cancelled by signal")
+
     def call(self, argv, want, deadline, label):
-        """Run argv with timeout min(want, time to deadline). Returns (rc, stdout) or (None, '') if not started or
-        timed out (the child is killed)."""
+        """Run argv, timeout min(want, time to deadline). (rc, output), or (None, '') if not started, timed out
+        (the child is killed) or failed to start. Never raises."""
         left = deadline - time.monotonic()
         if left <= 1:
             self.log(f"{label}: not started, deadline passed")
             return None, ""
         try:
+            if RAISE_ON and RAISE_ON in argv and not self.raised:
+                self.raised = True
+                raise OSError("test: command failed to start")
             r = subprocess.run(argv, capture_output=True, text=True, timeout=min(want, left))
         except subprocess.TimeoutExpired:
             self.log(f"{label}: timed out, killed")
             return None, ""
+        except OSError as e:
+            self.log(f"{label}: could not run: {e}")
+            return None, ""
         self.log(f"{label}: exit {r.returncode}")
         return r.returncode, r.stdout + r.stderr
 
+    def sleep(self, seconds, deadline):
+        end = min(time.monotonic() + seconds, deadline)
+        while time.monotonic() < end and not self.cancel:
+            time.sleep(min(1.0, max(0.0, end - time.monotonic())))
+
     def sessions(self, deadline):
-        """Authoritative listing {name: endpoint}, or None if the listing failed."""
+        """Rows [(name, endpoint)] from an authoritative listing, or None if the listing failed or has a row
+        that does not parse (fail closed). Names may repeat (several [?] orphans)."""
         rc, out = self.call([COL, "sessions"], 120, deadline, "sessions")
         if rc != 0:
             return None
-        listing = {}
+        rows = []
         for line in out.splitlines():
+            if not line.startswith("["):
+                continue
             m = re.match(r"^\[([^\]]+)\]\s+(\S+)", line)
-            if m:
-                listing[m.group(1)] = m.group(2)
-        return listing
+            if not m:
+                self.log("unparsed session row:", line)
+                return None
+            rows.append((m.group(1), m.group(2)))
+        return rows
 
     # ---- phases
     def preflight(self):
-        listing = self.sessions(self.work_end)
-        if listing is None:
+        rows = self.sessions(self.work_end)
+        if rows is None:
             raise Stop("preflight: session listing failed; not creating anything")
-        self.log("preflight sessions:", json.dumps(listing))
-        if self.name in listing:
+        self.log("preflight sessions:", json.dumps(rows))
+        if any(n == self.name for n, _ in rows):
             raise Stop(f"preflight: a session named {self.name} exists; not ours to touch")
-        for argv, label in ((REAP, "orphans"),
-                            (ADOPT + ["--list"], "adopt --list")):
+        for argv, label in ((REAP, "orphans"), (ADOPT + ["--list"], "adopt --list")):
             rc, out = self.call(argv, 300, self.work_end, label)
             self.log(f"{label}:\n" + out.strip())
             if rc != 0:
                 raise Stop(f"preflight: {label} failed")
+        self.before = {ep for _, ep in rows}
 
     def create(self):
         self.intent = True
         self.call([COL, "new", "-s", self.name, "--gpu", "L4"], 600, self.work_end, "new")
         for _ in range(3):  # reconcile whatever the creation call returned
-            listing = self.sessions(self.work_end)
-            if listing is not None and self.name in listing:
-                self.endpoint = listing[self.name]
-                self.log("owned session", self.name, "endpoint", self.endpoint)
-                return
-            time.sleep(MINUTES / 3)
-        raise Stop("creation not confirmed in the session listing")
+            rows = self.sessions(self.work_end)
+            if rows is not None:
+                mine = [ep for n, ep in rows if n == self.name]
+                if len(mine) == 1:
+                    self.endpoint = mine[0]
+                    self.log("owned session", self.name, "endpoint", self.endpoint)
+                    return
+                new = sorted({ep for _, ep in rows} - self.before)
+                if new:
+                    self.log("endpoints new since creation, not under our name:", new)
+            self.sleep(MINUTE / 3, self.work_end)
+            self.check()
+        raise Stop("creation not confirmed under our name")
 
     def exec_py(self, code, want, deadline, label):
         p = Path(f"/tmp/claude_scan_{self.run}_{label}.py")
@@ -139,8 +195,10 @@ class Driver:
     def poll(self):
         code = (f"import os\np = '/content/run_{self.run}/out/DONE'\n"
                 f"print('DONE' if os.path.exists(p) and open(p).read().strip() == {self.run!r} else 'RUNNING')\n")
-        while time.monotonic() < self.work_end:
-            time.sleep(max(0, min(2 * MINUTES, self.work_end - time.monotonic())))
+        while time.monotonic() < self.work_end and not self.cancel:
+            self.sleep(2 * MINUTE, self.work_end)
+            if self.cancel:
+                break
             self.call(ADOPT + ["--refresh"], 180, self.work_end, "refresh")
             rc, out = self.exec_py(code, 200, self.work_end, "poll")
             if rc == 0 and "DONE" in out.split():
@@ -160,13 +218,16 @@ class Driver:
                           self.retrieve_end, "download")
         if rc != 0 or not archive.is_file():
             return False
+        prefix = f"run_{self.run}/out"
         try:
             with tarfile.open(archive) as t:
-                for m in t.getmembers():
-                    if m.issym() or m.islnk() or m.name.startswith("/") or ".." in Path(m.name).parts:
+                members = t.getmembers()
+                for m in members:
+                    inside = m.name == prefix or m.name.startswith(prefix + "/")
+                    if not (m.isfile() or m.isdir()) or not inside or ".." in Path(m.name).parts:
                         self.log("refusing archive member", m.name)
                         return False
-                t.extractall(self.out)
+                t.extractall(self.out, members=members)
         except (tarfile.TarError, OSError) as e:
             self.log("extract failed:", e)
             return False
@@ -185,99 +246,126 @@ class Driver:
             return False
 
     def validate(self):
+        """True: validated pass. False: a well-formed status of a failed experiment. None: missing or malformed."""
         try:
             s = json.loads((self.out / f"run_{self.run}" / "out" / "status.json").read_text())
         except (OSError, ValueError) as e:
             self.log("status.json missing or unreadable:", e)
             return None
-        problems = []
+        gates = s.get("gates") if isinstance(s, dict) else None
+        if not isinstance(gates, dict) or not all(isinstance(v, int) for v in gates.values()) \
+                or not isinstance(s.get("exit_status"), int) or not isinstance(s.get("pass"), bool):
+            self.log("status.json malformed:", json.dumps(s)[:500])
+            return None
         if s.get("run_id") != self.run or s.get("commit") != self.commit or s.get("head") != self.commit:
-            problems.append("run/commit/HEAD mismatch")
-        gates = s.get("gates", {})
+            self.log("status.json identity mismatch:", s.get("run_id"), s.get("commit"), s.get("head"))
+            return None
+        problems = []
         if set(gates) != REQUIRED_GATES:
             problems.append(f"gate set differs: missing {sorted(REQUIRED_GATES - set(gates))}, "
                             f"extra {sorted(set(gates) - REQUIRED_GATES)}")
         failed = sorted(k for k, v in gates.items() if v != 0)
         if failed:
             problems.append(f"failed gates {failed}")
-        if s.get("exit_status") != 0:
-            problems.append(f"VM exit status {s.get('exit_status')}")
-        if s.get("pass") is not True:
+        if s["exit_status"] != 0:
+            problems.append(f"VM exit status {s['exit_status']}")
+        if s["pass"] is not True:
             problems.append("pass is not true")
         self.log("status.json:", json.dumps(s))
         self.log("validation:", "PASS" if not problems else "; ".join(problems))
         return not problems
 
     def cleanup(self):
-        """Verified shutdown; True only on an authoritative listing without our name or endpoint."""
+        """True only when an authoritative listing shows neither our name, our endpoint, nor any endpoint new since
+        before the creation call. Never raises."""
         if not self.intent:
             return True
-        for attempt in range(1, 5):
-            self.call([COL, "stop", "-s", self.name], 120, self.shutdown_end, f"stop {attempt}")
-            time.sleep(min(MINUTES / 6, max(0, self.shutdown_end - time.monotonic())))
-            listing = self.sessions(self.shutdown_end)
-            if listing is not None:
-                endpoints = set(listing.values())
-                if self.name not in listing and (self.endpoint is None or self.endpoint not in endpoints):
-                    self.log(f"CLEANUP OK: {self.name} ({self.endpoint}) not listed")
+        for attempt in range(1, 6):
+            try:
+                if time.monotonic() >= self.shutdown_end:
+                    break
+                self.call([COL, "stop", "-s", self.name], 120, self.shutdown_end, f"stop {attempt}")
+                self.sleep(MINUTE / 6, self.shutdown_end)
+                rows = self.sessions(self.shutdown_end)
+                if rows is None:
+                    continue
+                names = {n for n, _ in rows}
+                endpoints = {ep for _, ep in rows}
+                new = endpoints - (self.before or set()) - ({self.endpoint} if self.endpoint else set())
+                ours_listed = self.name in names or (self.endpoint is not None and self.endpoint in endpoints)
+                if not ours_listed and not new:
+                    self.log(f"CLEANUP OK: {self.name} ({self.endpoint}) and no new endpoint listed")
                     return True
-                if self.name not in listing and self.endpoint in endpoints:  # the CLI lost the name
-                    self.call(ADOPT + ["--adopt", f"{self.endpoint}={self.name}"], 180,
-                              self.shutdown_end, "adopt")
-            if time.monotonic() >= self.shutdown_end:
-                break
-        self.log(f"CLEANUP UNRESOLVED: {self.name} ({self.endpoint}) may still be running. "
-                 f"Stop it by hand: {COL} stop -s {self.name}")
+                if self.endpoint is not None and self.endpoint in endpoints and self.name not in names:
+                    # the CLI lost our name: re-adopt our own endpoint, then stop it on the next attempt
+                    self.call(ADOPT + ["--adopt", f"{self.endpoint}={self.name}"], 180, self.shutdown_end, "adopt")
+                if new:
+                    self.log("endpoints new since our creation call, ownership not established:", sorted(new))
+            except Exception as e:  # keep reconciling within the deadline
+                self.log(f"cleanup attempt {attempt} error:", repr(e))
+        self.log(f"CLEANUP UNRESOLVED: {self.name} (endpoint {self.endpoint}) may still be running, or a VM our "
+                 f"creation call allocated is unnamed. Inspect `{COL} sessions`; stop ours with "
+                 f"`{COL} stop -s {self.name}` or adopt the endpoint first (tools/colab_adopt.py --adopt EP=NAME).")
         return False
 
     def main(self):
         self.out.mkdir(parents=True, exist_ok=False)
-        self.log_file = open(self.out / "driver.log", "a")
-        self.log(f"run {self.run} commit {self.commit} session {self.name}")
+        try:
+            self.log_file = open(self.out / "driver.log", "a")
+        except OSError:
+            self.log_file = None
+        self.log(f"run {self.run} commit {self.commit} session {self.name}" + (" [TEST HARNESS]" if TEST else ""))
         transport = receipts = False
         valid = None
         try:
             self.preflight()
+            self.check()
             self.create()
+            self.check()
             launched = self.launch()
             done = self.poll() if launched else False
-            self.log("launched", launched, "done", done)
-            transport = self.retrieve()  # also after a launch failure or deadline: diagnostics are evidence
+            self.log("launched", launched, "done", done, "cancelled", self.cancel)
+            transport = self.retrieve()  # also after a launch failure, deadline or signal: diagnostics are evidence
             receipts = transport and self.copy_receipts()
             valid = self.validate() if transport else None
         except Stop as e:
             self.log("stopped:", e)
-        except Exception as e:  # signals arrive here as Stop or KeyboardInterrupt-like exceptions
+        except Exception as e:
             self.log("error:", repr(e))
         finally:
-            for s in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):  # nothing may interrupt the shutdown
-                signal.signal(s, signal.SIG_IGN)
-            clean = self.cleanup()
-            rc, out = self.call([COL, "sessions"], 120, self.shutdown_end + 300, "final sessions")
-            self.log("final sessions:\n" + out.strip())
-            rc, out = self.call(REAP, 300, self.shutdown_end + 300,
-                                "final orphans")
-            self.log("final orphans:\n" + out.strip())
+            clean = False
+            try:
+                clean = self.cleanup()
+            except Exception as e:  # cleanup() does not raise; this is the last line of defence
+                self.log("cleanup error:", repr(e))
+            for label, argv in (("final sessions", [COL, "sessions"]), ("final orphans", REAP)):
+                rc, out = self.call(argv, 120, self.inventory_end, label)
+                self.log(f"{label}:\n" + out.strip())
             code = 3 if not clean else 2 if not (transport and receipts and valid is not None) else 0 if valid else 1
             self.log(f"exit {code} (transport {transport}, receipts {receipts}, valid {valid}, cleanup {clean})")
-            self.log_file.close()
-            if receipts:
-                try:
+            try:
+                if self.log_file:
+                    self.log_file.close()
+                if receipts:
                     shutil.copy2(self.out / "driver.log", self.receipts / "driver.log")
-                except OSError:
-                    code = max(code, 2)
+            except OSError:
+                code = max(code, 2)
             return code
 
 
 def main():
+    if not TEST and any(k.startswith("DRIVE_TEST_") for k in os.environ):
+        print("DRIVE_TEST_* is set but DRIVE_TEST_HARNESS is not: refusing a real run with test hooks",
+              file=sys.stderr)
+        return 2
     if len(sys.argv) != 3 or not re.fullmatch(r"[0-9a-f]{40}", sys.argv[1]) \
             or not re.fullmatch(r"[A-Za-z0-9_-]{1,32}", sys.argv[2]):
         print(__doc__, file=sys.stderr)
         return 2
     d = Driver(sys.argv[1], sys.argv[2])
 
-    def on_signal(signum, _frame):
-        raise Stop(f"signal {signum}")
+    def on_signal(signum, _frame):  # request cancellation; observed at controlled points
+        d.cancel = True
 
     for s in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
         signal.signal(s, on_signal)

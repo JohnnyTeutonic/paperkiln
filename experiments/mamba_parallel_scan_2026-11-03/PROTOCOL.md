@@ -66,9 +66,13 @@ dropped or rerun. Outcomes:
   - The preflight needs a successful session listing, orphan listing and adopt listing, and refuses if the
     name is taken.
   - Creation is reconciled against the listing whatever the creation call returned.
-  - Shutdown counts as done only after an authoritative listing without the name or endpoint. Otherwise the
-    driver reports unresolved cleanup and exits 3. It ends with a session and orphan inventory.
-- Deadlines from the driver's start: polling ends at 60 minutes, retrieval at 75, shutdown at 90. Every external
+  - Shutdown counts as done only after an authoritative listing that shows neither our name, nor our endpoint,
+    nor any endpoint that is new since before the creation call. A VM whose name the CLI lost appears as `[?]`;
+    it is not stopped unless it is ours by endpoint, but it blocks certification. Otherwise the driver reports
+    unresolved cleanup and exits 3. It ends with a session and orphan inventory.
+  - Logging and cleanup never raise. Signals request cancellation, which is observed at controlled points.
+- Deadlines from the driver's start: polling ends at 60 minutes, retrieval at 75, shutdown attempts at 85, the
+  final inventory at 90. Every external
   call has a timeout capped by its deadline, timed-out children are killed, and a call past its deadline is not
   started. Expected about 30 minutes. Within Claude's Colab lane envelope (stack page).
 - The VM checks out a full commit SHA, verifies HEAD and a clean tree before and after the build, and works in a
@@ -79,8 +83,8 @@ dropped or rerun. Outcomes:
 - Outputs come home to `/mnt/c/ml_artifacts/mamba_parallel_scan_20261103/RUN_ID/`. Receipts are copied to
   `receipts/RUN_ID/` here before any analysis, and the driver log is copied after cleanup.
 - The driver validates `status.json`: run, commit and HEAD; exactly the 13 required gates, all 0; VM exit 0.
-  Exit codes: 0 validated, 1 experiment failed (receipts kept), 2 transport or receipt failure, 3 cleanup
-  unresolved.
+  Exit codes: 0 validated, 1 experiment failed (receipts kept), 2 transport, receipt or status-identity failure,
+  3 cleanup unresolved. Test hooks are refused unless the test harness flag is set.
 - `test_drive.py` (mock Colab CLI) and `test_vm_run.py` (stub tools) test that bookkeeping locally. The local
   host-test receipt is `receipts/host_test_local.json`.
 - The run is not repeated to improve a result. An operational failure (session lost, build failure) is recorded

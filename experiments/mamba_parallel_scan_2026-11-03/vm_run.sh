@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Runs ON the Colab VM (PROTOCOL.md gates 1-3). Usage: bash vm_run.sh FULL_COMMIT_SHA RUN_ID
-# Everything goes under a fresh /content/run_RUN_ID. On every exit path after the arguments are validated,
-# status.json (each gate's exit status, the script's exit status, run id, commit and HEAD) is written atomically,
-# then the DONE marker holding the run id. pass is true only if exactly the 13 required gates ran, all 0, and the
+# Everything goes under a fresh /content/run_RUN_ID. On every exit path once that directory exists,
+# status.json (each gate's exit status, the incoming shell status, the script's final exit status, run id, commit
+# and HEAD) is written atomically, then, only if that succeeded, the DONE marker holding the run id. pass is true only if exactly the 13 required gates ran, all 0, and the
 # script exits 0. A prerequisite failure (checkout, build, host test, ordered control) stops further paid work.
 # The source tree is never modified.
 set -u
@@ -17,14 +17,15 @@ mkdir -p "$O" || exit 2
 declare -A G=()
 REQUIRED="build checkout configure host_test numpy replay_2 replay_3 replay_unset scan_bench strict_2 strict_3 strict_unset switch_refuses_malformed"
 finish() {
-    local rc=$? pass=true keys
+    local rc=$? pass=true keys final
     keys=$(printf '%s\n' "${!G[@]}" | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//')
     [ "$keys" = "$REQUIRED" ] || pass=false
     for k in "${!G[@]}"; do [ "${G[$k]}" = 0 ] || pass=false; done
     [ "$rc" = 0 ] || pass=false
+    [ "$pass" = true ] && final=0 || final=1   # the script's actual exit status, recorded as exit_status
     {
-        printf '{"run_id": "%s", "commit": "%s", "head": "%s", "exit_status": %d, "pass": %s, "gates": {' \
-            "$RUN" "$COMMIT" "$(git -C "$W/src" rev-parse HEAD 2>/dev/null)" "$rc" "$pass"
+        printf '{"run_id": "%s", "commit": "%s", "head": "%s", "shell_status": %d, "exit_status": %d, "pass": %s, "gates": {' \
+            "$RUN" "$COMMIT" "$(git -C "$W/src" rev-parse HEAD 2>/dev/null)" "$rc" "$final" "$pass"
         local first=1
         for k in $(printf '%s\n' "${!G[@]}" | LC_ALL=C sort); do
             [ $first = 1 ] || printf ', '
@@ -32,9 +33,9 @@ finish() {
             printf '"%s": %d' "$k" "${G[$k]}"
         done
         printf '}}\n'
-    } > "$O/status.json.tmp" && mv "$O/status.json.tmp" "$O/status.json"
-    echo "$RUN" > "$O/DONE.tmp" && mv "$O/DONE.tmp" "$O/DONE"
-    [ "$pass" = true ] && exit 0 || exit 1
+    } > "$O/status.json.tmp" && mv "$O/status.json.tmp" "$O/status.json" || exit 1   # no DONE without a status
+    echo "$RUN" > "$O/DONE.tmp" && mv "$O/DONE.tmp" "$O/DONE" || exit 1
+    exit $final
 }
 trap finish EXIT
 fail() { G[$1]=$2; exit 1; }   # fail GATE STATUS, with the failed command's own status
