@@ -1,0 +1,9 @@
+# Comparable CI benchmark histories, 3 November 2026
+
+The generic Actions cache compared a new Ubuntu24.04/GNU13.3 run against a prior Ubuntu26.04/GNU15.2 history. Actual GitHub runner/build logs confirm both environments. Ten rows exceeded the unchanged250%threshold. The historical failure and its rows are preserved in validation.json and linked runs. Environment differences prevent attributing those ratios to engine source alone; this does not prove performance unchanged.
+
+A schema-versioned cohort now identifies the actual configured CMake compiler/version/target, OSrelease, CPUmodel/features, architecture, logical/usablecores, allowlisted OpenMP/thread settings, libc, buildtype and effective benchmark-target compiler flags/defines. Sourcecommit and runID are deliberately excluded from identity, so actual code changes still compare. RunID remains only the cache-entry suffix. Restore prefixes cannot cross the full cohort fingerprint or fall back to legacy history.
+
+Current metadata is uploaded beside raw benchmark outputs. Restored history must carry identical environment metadata; unknown or mismatched metadata fails without rewriting/deleting it. A genuinely absent history starts a new baseline. The250%alert and fail-on-alert stay unchanged; unsuccessful comparisons do not save over a baseline. Shared-runner noise remains a limitation.
+
+Six unit tests, including compiler/OS/CPU/thread/flags mutations and non-destructive foreign-history refusal, pass independently. The actual collector and fresh-cache validation CLI also passed on the local CPU build; its environment receipt is included as local evidence only. The workflow runs the tests itself. Hosted execution of the new workflow remains pending; no local performance benchmark was run and no historical failure was relabelled.
