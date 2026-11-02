@@ -178,8 +178,9 @@ jobs:
       - name: Build
         run: |
           mkdir build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Debug
-          make -j$(nproc)
+          # Valgrind cannot execute AVX-512, which -march=native emits on the runner.
+          cmake .. -DCMAKE_BUILD_TYPE=Debug -DMICROTORCH_PORTABLE_ARCH=ON
+          make -j$(nproc) test_gradcheck
 
       # Required gate: invalid reads/writes, uses of uninitialised values and definite or
       # indirect leaks fail the build. Reachable memory at exit is reported, not failed.
