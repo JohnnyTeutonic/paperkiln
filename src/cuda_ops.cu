@@ -27,8 +27,8 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>
-#include <memory>
 #include <limits>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -2122,20 +2122,22 @@ bool conv1d_causal_bwd(const Matrix& x, const Matrix& w, const Matrix& dy, size_
 namespace {
 #include "selective_scan_kernels.cuh"
 
-// MICROTORCH_SCAN_CHUNK: unset or empty runs the ordered scan, as does "0"; a decimal count L >= 1 the chunked
-// one. Anything else (signs, spaces, other characters, a value past 2^31) is refused, so a typo cannot silently
-// select a path. The CPU path never reads it.
+// MICROTORCH_SCAN_CHUNK: unset or empty runs the ordered scan, as does "0"; a decimal count L >= 1
+// the chunked one. Anything else (signs, spaces, other characters, a value past 2^31) is refused,
+// so a typo cannot silently select a path. The CPU path never reads it.
 size_t scan_chunk() {
     const char* v = std::getenv("MICROTORCH_SCAN_CHUNK");
     if (!v || !*v) return 0;
     size_t L = 0;
     for (const char* p = v; *p; ++p) {
         if (*p < '0' || *p > '9' || L > (size_t(1) << 31))
-            throw std::runtime_error(std::string("MICROTORCH_SCAN_CHUNK must be a decimal count up to 2^31: ") + v);
+            throw std::runtime_error(
+                std::string("MICROTORCH_SCAN_CHUNK must be a decimal count up to 2^31: ") + v);
         L = L * 10 + size_t(*p - '0');
     }
     if (L > (size_t(1) << 31))
-        throw std::runtime_error(std::string("MICROTORCH_SCAN_CHUNK must be a decimal count up to 2^31: ") + v);
+        throw std::runtime_error(
+            std::string("MICROTORCH_SCAN_CHUNK must be a decimal count up to 2^31: ") + v);
     return L;
 }
 }  // namespace
@@ -2159,13 +2161,13 @@ bool selective_scan_fwd(const Matrix& x, const Matrix& dt, const Matrix& B, cons
         const ss_chunked::Geom g = ss_chunked::geom(T, D, N, sl, L);
         const size_t items = (T / sl) * g.nchunk * D * N;
         DBuf end(items), prod(items), start(items);
-        ss_chunked::launch(g, ix.d, idt.d, ib.d, ic.d, ia.d, isk ? isk->d : nullptr, oy.d, os.d, od.d,
-                           end.d, prod.d, start.d, softplus, ew_grid, NTHREADS);
+        ss_chunked::launch(g, ix.d, idt.d, ib.d, ic.d, ia.d, isk ? isk->d : nullptr, oy.d, os.d,
+                           od.d, end.d, prod.d, start.d, softplus, ew_grid, NTHREADS);
         cuda_check(cudaGetLastError(), "selective_scan_fwd chunked");
     } else {
-        k_selective_scan_fwd<<<ew_grid((T / sl) * D), NTHREADS>>>(ix.d, idt.d, ib.d, ic.d, ia.d,
-                                                                  isk ? isk->d : nullptr, oy.d,
-                                                                  os.d, od.d, T, D, N, sl, softplus);
+        k_selective_scan_fwd<<<ew_grid((T / sl) * D), NTHREADS>>>(
+            ix.d, idt.d, ib.d, ic.d, ia.d, isk ? isk->d : nullptr, oy.d, os.d, od.d, T, D, N, sl,
+            softplus);
         cuda_check(cudaGetLastError(), "selective_scan_fwd");
     }
     oy.finish();
