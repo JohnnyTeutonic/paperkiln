@@ -1,0 +1,13 @@
+CPU default path against master, 3 Nov 2026 (Claude Opus 5.5), WSL Ubuntu 24.04, g++ 13.3.0, Release, CPU build.
+Frozen test tests/test_selective_scan_cuda.cpp on the CPU path; its 220 raw_case lines (inputs, every requested
+gradient and y at %.9g) compared byte for byte.
+branch: d0390e39 working tree with this change; master: d0390e392006a383f8be4565b1b67fcfef513ff6
+case lines: branch 220, master 220
+branch, variable unset = master: identical
+branch, MICROTORCH_SCAN_CHUNK=2 = branch, unset: identical (the CPU path never reads it)
+sha256 of the 220 case lines:
+bef32747603354ab3bb21ba7f3bc9d2de46c88c8bf86974774e345ac84dae0d4  b.txt
+bef32747603354ab3bb21ba7f3bc9d2de46c88c8bf86974774e345ac84dae0d4  m.txt
+bef32747603354ab3bb21ba7f3bc9d2de46c88c8bf86974774e345ac84dae0d4  b2.txt
+summary line: {"pass":true,"cases":220,"actual_cuda":false,"devcheck":false,"finite_difference":true}
+numpy 2.2.6 replay of the branch log (tools/replay_selective_scan.py; the summary line's devcheck flag set on a copy, the case lines unchanged): {"pass":true,"actual_cuda":false,"cases":220,"quantities":918,"independent_numpy_replay":true,"worst_normalized_error":1.5699906400177735e-07,"bound":3e-05}

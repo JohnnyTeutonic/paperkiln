@@ -37,12 +37,22 @@ chunks x N.
 - **Established:** an opt-in chunked forward for the selective scan on CUDA. It is correct within the frozen
   bound on the frozen gate and on Mamba-130m and Mamba-370m-like shapes, deterministic, bit-identical to the
   ordered kernel when one chunk covers the sequence, and faster as a kernel in every measured cell.
-- **Not established:** model-level or training speed (these are component timings); the backward (it stays
-  ordered and consumes the chunked states); other GPUs.
+- **Not established:** model-level or training speed (these are component timings); the backward (in r1 it was
+  ordered and consumed the chunked states); other GPUs.
 - **Default:** unchanged and ordered. Making the chunked path the default, or claiming model speed, needs its own
   protocol (PROTOCOL.md).
-- **Open follow-ups:** a chunked backward; an end-to-end Mamba prefill measurement; choosing L automatically
-  (128-256 was best or near best at every shape here).
-- **Driver note:** the Colab CLI prints `[colab]` banner rows in `sessions`. The driver read them as session
-  rows, which was harmless here, since they were in the pre-creation snapshot and constant. A later driver should
-  skip `[colab]` rows.
+- **Open follow-ups:** the chunked backward's GPU run (below); an end-to-end Mamba prefill measurement; choosing L
+  automatically (128-256 was best or near best at every shape here).
+- **Driver note:** the Colab CLI prints `[colab]` banner rows in `sessions`. In r1 the driver read them as session
+  rows, which was harmless, since they were in the pre-creation snapshot and constant. The driver skips them.
+
+## Chunked backward: implemented and tested on the host; GPU run not yet made
+
+- **Design:** `BACKWARD_DESIGN.md` (recurrences, stored against recomputed, rounding, tolerance). Code:
+  `src/selective_scan_chunked_backward.cuh`, opt-in through the same `MICROTORCH_SCAN_CHUNK`; the ordered default is
+  unchanged.
+- **Host evidence:** `receipts/host_test_bwd_local.json` (173/173 cases; chunked within 2.51e-7 of binary64 and
+  2.82e-7 of the ordered backward under the magnitude metric, bound 3e-5) and `receipts/default_cpu_local.txt`
+  (the CPU default identical to master's).
+- **GPU run:** `PROTOCOL_BACKWARD.md`, one Colab L4 session, after independent review. `vm_run.sh` and `drive.py`
+  take a protocol argument: `forward` (the default, PROTOCOL.md's gate set) or `backward`.
