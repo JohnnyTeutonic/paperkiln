@@ -24,3 +24,8 @@ invalidPointerCast:tools/make_timing_gguf.cpp
 
 # check_control_tokens: tokens[i] is bounded by the loop; the later i < types.size() guards types[i].
 arrayIndexThenCheck:include/microtorch/chat_template.hpp
+
+# Test and tool executables: an exception escaping main() aborts with its message, which ctest and the caller
+# record as a failure; that is the intended failure path (reported from cppcheck 2.17, ubuntu-26.04).
+throwInEntryPoint:tests/*
+throwInEntryPoint:tools/*
