@@ -54,8 +54,10 @@ retain whole-file formatting failures at or below the exact pre-existing baselin
 this is not an all-green CI claim. The publication's GitHub test workflow has since
 succeeded (41048998212); that does not establish success of every workflow. Source-bound evidence is in
 `docs/receipts/publication_lowbit_qktemp_20261030/`. The chat-v1 release serves the
-quickstart's ready-made model. cppcheck and Valgrind still run as advisory steps
-that cannot fail the build.
+quickstart's ready-made model. cppcheck and Valgrind are required checks since
+PR #1 (2 Nov 2026). Two CI failures predate that change: Code Quality's style job
+fails on master, and Run Benchmarks cannot run on pull requests (non-JSON output,
+read-only PR token).
 
 ## 3b. Environment traps found 17 Oct 2026
 
