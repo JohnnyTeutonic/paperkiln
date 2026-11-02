@@ -5456,6 +5456,8 @@ int score_cmd(const std::string& target, const std::string& in_path, const std::
                     q.at.clear();
                     for (size_t k = 0; k < ids.size(); ++k)
                         if (f2[k]) q.at.push_back(k);
+                    if (q.at.empty())
+                        throw std::runtime_error("score: line " + std::to_string(n) + ": no continuation positions after state insertion");
                     q.rec["prompt_tokens"] = q.at[0];
                 }
             }
