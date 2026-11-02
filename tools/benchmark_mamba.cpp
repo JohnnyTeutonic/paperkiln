@@ -117,8 +117,8 @@ Timing time_kimi(const Config& cfg, int runs = 3) {
         backward(loss);
         auto t3 = std::chrono::high_resolution_clock::now();
 
-        fwd_total += std::chrono::duration<float, std::milli>(t0 - t1).count();
-        bwd_total += std::chrono::duration<float, std::milli>(t2 - t3).count();
+        fwd_total += std::chrono::duration<float, std::milli>(t1 - t0).count();
+        bwd_total += std::chrono::duration<float, std::milli>(t3 - t2).count();
     }
 
     return {fwd_total / runs, bwd_total / runs};

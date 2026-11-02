@@ -15,6 +15,10 @@ jobs:
   benchmark:
     name: Run Benchmarks
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
@@ -80,7 +84,14 @@ jobs:
           print(f"RESULTS={results}")
           EOF
 
+      - name: Convert results to JSON
+        run: |
+          python3 .github/scripts/bench_to_json.py build/attention_benchmark.txt \
+            build/mamba_benchmark.txt > build/benchmark.json
+          cat build/benchmark.json
+
       - name: Upload benchmark results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: benchmark-results
@@ -88,18 +99,37 @@ jobs:
             build/attention_benchmark.txt
             build/mamba_benchmark.txt
             build/integration_benchmark.txt
+            build/benchmark.json
 
-      - name: Store benchmark results
+      # The previous master results live in the Actions cache (gh-pages serves the docs).
+      - name: Restore previous master results
+        uses: actions/cache/restore@v4
+        with:
+          path: bench-cache
+          key: benchmark-data-${{ github.run_id }}
+          restore-keys: benchmark-data-
+
+      # Shared runners are noisy: fail only when a measurement is 2.5x the stored value.
+      - name: Compare with previous master results
         uses: benchmark-action/github-action-benchmark@v1
         with:
           tool: 'customSmallerIsBetter'
-          output-file-path: build/attention_benchmark.txt
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          auto-push: true
-        continue-on-error: true
+          output-file-path: build/benchmark.json
+          external-data-json-path: bench-cache/benchmark-data.json
+          alert-threshold: '250%'
+          fail-on-alert: true
+          summary-always: true
+          save-data-file: ${{ github.event_name != 'pull_request' }}
+
+      - name: Save master results
+        if: github.event_name != 'pull_request'
+        uses: actions/cache/save@v4
+        with:
+          path: bench-cache
+          key: benchmark-data-${{ github.run_id }}
 
       - name: Comment on PR with results
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -127,59 +157,4 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: comment
-            });
-
-  regression-detection:
-    name: Performance Regression Detection
-    needs: benchmark
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Download current benchmark
-        uses: actions/download-artifact@v4
-        with:
-          name: benchmark-results
-
-      - name: Compare with baseline
-        run: |
-          python3 << 'EOF'
-          import re
-          import sys
-
-          # Parse current benchmarks
-          with open('attention_benchmark.txt', 'r') as f:
-              current = f.read()
-
-          # Extract speedups
-          speedups = re.findall(r'Speedup[:\s]+([0-9.]+)x', current)
-
-          if speedups:
-              speedup = float(speedups[0])
-              print(f"Current Kimi speedup: {speedup}x")
-
-              # Threshold: warn if <20% regression
-              if speedup < 7.0:  # 8.88x baseline, allow down to ~7x
-                  print("⚠️  WARNING: Possible performance regression detected!")
-                  print(f"Expected >8x speedup, got {speedup}x")
-                  sys.exit(1)
-              else:
-                  print("✅ Performance within acceptable range")
-          EOF
-
-      - name: Report findings
-        if: failure()
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '⚠️ **Performance Regression Detected**: Benchmark results show possible performance degradation. Please review benchmark artifacts and optimize if needed.'
             });
