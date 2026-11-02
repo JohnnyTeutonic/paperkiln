@@ -1,0 +1,25 @@
+{
+  "kind": "DPO_V4_STARTUP_REFERENCE_CACHE_GUARD_FAILURE",
+  "at": "2026-11-02T19:47:09.494882+00:00",
+  "remote_marker": {
+    "kind": "DPO_CHECKPOINT_V1_HALTED",
+    "reason": "committed persistent-volume checkpoint gap exceeded180seconds: pk_dpo_v1"
+  },
+  "last_recorded_phase": {
+    "phase": "reference_cache_progress",
+    "elapsed_seconds": 172.490997,
+    "pairs_completed": 416,
+    "pairs_total": 1445,
+    "step": 0,
+    "diagnostic_only": true
+  },
+  "reference_cache_completed": false,
+  "training_step_recorded": false,
+  "scientific_completion": false,
+  "outcome": "OPERATIONAL_FAILURE_BEFORE_TRAINING",
+  "remote_observation_sha256": "8daa3634bcee45f12d1fab8a20ae5b66e354d99429f140af13147771000aede4",
+  "pod_stopped_by_registered_runner": true,
+  "volume_retained_for_evidence_and_prospective_repair": "lworogxyyy",
+  "automatic_retry_authorized": false,
+  "provider_pods_after_stop": 0
+}
