@@ -217,7 +217,7 @@ def port_for(path):
 EMBER_REPO = os.environ.get("TINY_CHAT_EMBER_REPO", "https://github.com/JohnnyTeutonic/ember.cpp.git")
 # ember main, 25 Oct 2026: conformant with spec/IR_SPEC.md v1 (reads ir_version 0 and 1; its parity receipts
 # byte-identical to 69d7ca26d5cd's, the CUDA prefill rmsnorm fix it carries).
-EMBER_COMMIT = "aa50a6112dfd706078e5c7849070f8ca5af620b4"
+EMBER_COMMIT = "ab51ee89ce0c1e5b2e1c05c9b0895801dd7f09ff"
 EMBER_DIR = os.environ.get("TINY_CHAT_EMBER_DIR", "/content/ember")  # one build per VM, shared by post jobs
 EMBER_CMAKE = os.environ.get("TINY_CHAT_EMBER_CMAKE", "-DCMAKE_CUDA_ARCHITECTURES=89").split()
 EMBER_GPU_LAYERS = os.environ.get("TINY_CHAT_EMBER_GPU_LAYERS", "-1")  # all layers on the GPU
