@@ -69,6 +69,17 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-ffp-contract=off>)
 endif()
 
+# The core keeps -ffast-math, but not glibc's vector maths: under __FAST_MATH__
+# glibc declares libmvec variants of expf, logf and the like, and GCC 15
+# vectorises some core loops into them. Their results differ from the scalar
+# calls, so one loop rounds differently depending on its length at the call
+# site, and paperkiln's EXACT path comparisons (step_residency, fused_head,
+# llama_attnres, recursion, mor) fail. Undefining the macro drops only those
+# declarations; every fast-math code-generation flag stays.
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(transformer_core PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-U__FAST_MATH__>)
+endif()
+
 add_library(microtorch STATIC
     src/autograd.cpp
     src/ops.cpp
@@ -327,6 +338,10 @@ add_test(NAME srd COMMAND test_srd)
 add_executable(gpt2_parity tools/gpt2_parity.cpp)
 target_link_libraries(gpt2_parity PRIVATE microtorch nlohmann_json::nlohmann_json)
 
+# C2 (docs/ECOSYSTEM.md): paperkiln's leg of the coalfire cross-engine logit pin
+add_executable(c2_parity tools/c2_parity.cpp)
+target_link_libraries(c2_parity PRIVATE microtorch nlohmann_json::nlohmann_json)
+
 # Phase-2b Llama-family test: load Qwen 2B safetensors and verify RMSNorm + RoPE
 # work end-to-end. Needs a checkpoint on disk (downloaded separately).
 add_executable(qwen_parity tools/qwen_parity.cpp)
@@ -509,6 +524,9 @@ add_executable(test_selective_scan_cuda tests/test_selective_scan_cuda.cpp)
 target_link_libraries(test_selective_scan_cuda PRIVATE microtorch)
 add_test(NAME selective_scan_cuda_cpu COMMAND test_selective_scan_cuda)
 set_tests_properties(selective_scan_cuda_cpu PROPERTIES TIMEOUT 120)
+add_executable(test_selective_scan_chunked tests/test_selective_scan_chunked.cpp)
+add_test(NAME selective_scan_chunked_cpu COMMAND test_selective_scan_chunked)
+set_tests_properties(selective_scan_chunked_cpu PROPERTIES TIMEOUT 120)
 add_executable(test_gpt2_attention_precision tests/test_gpt2_attention_precision.cpp)
 target_link_libraries(test_gpt2_attention_precision PRIVATE microtorch)
 add_test(NAME gpt2_attention_precision COMMAND test_gpt2_attention_precision)

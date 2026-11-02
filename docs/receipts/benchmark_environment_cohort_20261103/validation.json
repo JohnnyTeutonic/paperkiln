@@ -1,0 +1,233 @@
+{
+  "status": "LOCAL_CONTRACT_TESTS_AND_COLLECTOR_PASS_HOSTED_CI_PENDING",
+  "tests_passed": 6,
+  "independent_review": "GPT packet reading (Codex independent review agent),3Nov2026: APPROVE",
+  "threshold_percent": 250,
+  "historical_failed_run": "https://github.com/JohnnyTeutonic/paperkiln/actions/runs/41465689984",
+  "historical_baseline_run": "https://github.com/JohnnyTeutonic/paperkiln/actions/runs/41461122266",
+  "baseline_environment": {
+    "image": "ubuntu-26.04",
+    "compiler": "GNU15.2.0"
+  },
+  "failed_environment": {
+    "image": "ubuntu-24.04",
+    "compiler": "GNU13.3.0"
+  },
+  "failed_rows_preserved": [
+    {
+      "name": "attention standard seq32 d512 h8 total",
+      "current_ms": 43.49,
+      "previous_ms": 15.98,
+      "reported_ratio": 2.72
+    },
+    {
+      "name": "attention kimi seq32 d512 h8 total",
+      "current_ms": 40.9,
+      "previous_ms": 14.33,
+      "reported_ratio": 2.85
+    },
+    {
+      "name": "mamba-table kimi seq16 total",
+      "current_ms": 13.7,
+      "previous_ms": 4.63,
+      "reported_ratio": 2.96
+    },
+    {
+      "name": "mamba-table standard seq16 total",
+      "current_ms": 28.94,
+      "previous_ms": 6.21,
+      "reported_ratio": 4.66
+    },
+    {
+      "name": "mamba-table kimi seq32 total",
+      "current_ms": 28.28,
+      "previous_ms": 9.52,
+      "reported_ratio": 2.97
+    },
+    {
+      "name": "mamba-table standard seq32 total",
+      "current_ms": 28.95,
+      "previous_ms": 11.03,
+      "reported_ratio": 2.62
+    },
+    {
+      "name": "mamba-table kimi seq64 total",
+      "current_ms": 54.09,
+      "previous_ms": 18.03,
+      "reported_ratio": 3.0
+    },
+    {
+      "name": "mamba-table standard seq64 total",
+      "current_ms": 56.33,
+      "previous_ms": 20.0,
+      "reported_ratio": 2.82
+    },
+    {
+      "name": "mamba-table kimi seq128 total",
+      "current_ms": 107.4,
+      "previous_ms": 36.4,
+      "reported_ratio": 2.95
+    },
+    {
+      "name": "mamba-table standard seq128 total",
+      "current_ms": 110.75,
+      "previous_ms": 39.63,
+      "reported_ratio": 2.79
+    }
+  ],
+  "actual_local_environment": {
+    "schema": "paperkiln.benchmark-environment.v1",
+    "identity": {
+      "os": {
+        "id": "ubuntu",
+        "version": "24.04"
+      },
+      "compiler": {
+        "version": "c++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0\nCopyright (C) 2023 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+        "target": "x86_64-linux-gnu"
+      },
+      "cpu": {
+        "architecture": "x86_64",
+        "model": "13th Gen Intel(R) Core(TM) i9-13905H",
+        "flags": [
+          "3dnowprefetch",
+          "abm",
+          "adx",
+          "aes",
+          "apic",
+          "arch_capabilities",
+          "avx",
+          "avx2",
+          "avx_vnni",
+          "bmi1",
+          "bmi2",
+          "clflush",
+          "clflushopt",
+          "clwb",
+          "cmov",
+          "constant_tsc",
+          "cpuid",
+          "cx16",
+          "cx8",
+          "de",
+          "ept",
+          "ept_ad",
+          "erms",
+          "f16c",
+          "flush_l1d",
+          "fma",
+          "fpu",
+          "fsgsbase",
+          "fsrm",
+          "fxsr",
+          "gfni",
+          "ht",
+          "hypervisor",
+          "ibpb",
+          "ibrs",
+          "ibrs_enhanced",
+          "ibt",
+          "invpcid",
+          "lahf_lm",
+          "lm",
+          "mca",
+          "mce",
+          "md_clear",
+          "mmx",
+          "movbe",
+          "movdir64b",
+          "movdiri",
+          "msr",
+          "mtrr",
+          "nonstop_tsc",
+          "nopl",
+          "nx",
+          "pae",
+          "pat",
+          "pcid",
+          "pclmulqdq",
+          "pdpe1gb",
+          "pge",
+          "pni",
+          "popcnt",
+          "pse",
+          "pse36",
+          "rdpid",
+          "rdrand",
+          "rdseed",
+          "rdtscp",
+          "rep_good",
+          "sep",
+          "serialize",
+          "sha_ni",
+          "smap",
+          "smep",
+          "ss",
+          "ssbd",
+          "sse",
+          "sse2",
+          "sse4_1",
+          "sse4_2",
+          "ssse3",
+          "stibp",
+          "syscall",
+          "tpr_shadow",
+          "tsc",
+          "tsc_adjust",
+          "tsc_deadline_timer",
+          "tsc_known_freq",
+          "tsc_reliable",
+          "umip",
+          "vaes",
+          "vme",
+          "vmx",
+          "vnmi",
+          "vpclmulqdq",
+          "vpid",
+          "waitpkg",
+          "x2apic",
+          "xgetbv1",
+          "xsave",
+          "xsavec",
+          "xsaveopt",
+          "xsaves",
+          "xtopology"
+        ],
+        "logical_cores": 4,
+        "usable_cores": 4
+      },
+      "threads": {
+        "OMP_NUM_THREADS": null,
+        "OMP_DYNAMIC": null,
+        "OMP_PROC_BIND": null,
+        "OMP_PLACES": null,
+        "MKL_NUM_THREADS": null,
+        "OPENBLAS_NUM_THREADS": null,
+        "OMP_THREAD_LIMIT": null,
+        "OMP_MAX_ACTIVE_LEVELS": null,
+        "GOMP_CPU_AFFINITY": null,
+        "OMP_WAIT_POLICY": null
+      },
+      "build_type": "Release",
+      "effective_flags": {
+        "benchmark_attention": {
+          "CXX_DEFINES": "-DMICROTORCH_DEVCHECK",
+          "CXX_FLAGS": "-O3 -DNDEBUG -std=gnu++17 -ffp-contract=off -fopenmp"
+        },
+        "benchmark_mamba": {
+          "CXX_DEFINES": "-DMICROTORCH_DEVCHECK",
+          "CXX_FLAGS": "-O3 -DNDEBUG -std=gnu++17 -ffp-contract=off -fopenmp"
+        }
+      },
+      "libc": [
+        "glibc",
+        "2.39"
+      ]
+    },
+    "cohort": "31a16ced9d446a6e381eb6338cd0dac16397e70532a828a26a9d04927ba3c408"
+  },
+  "helper_sha256": "c8e1182cd0b469a3e157d7500a638ff05d8ea0046f87e9f861ed6921ca6a9d05",
+  "numerical_threshold_changed": false,
+  "benchmarks_rerun_locally": false,
+  "performance_unchanged_claimed": false
+}

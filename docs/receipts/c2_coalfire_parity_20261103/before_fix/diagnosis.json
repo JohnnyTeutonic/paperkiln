@@ -1,0 +1,58 @@
+{
+  "HF semantics (compare.py)": {
+    "max_rel": 0.2840092192975065,
+    "median_rel": 0.1613867481748505,
+    "argmax_identical": false
+  },
+  "no RoPE": {
+    "max_rel": 0.2846949193970491,
+    "median_rel": 0.16135402637936608,
+    "argmax_identical": false
+  },
+  "adjacent-pair RoPE on the exported (permuted) weights": {
+    "max_rel": 0.28334776375377885,
+    "median_rel": 0.1627845658874517,
+    "argmax_identical": false
+  },
+  "adjacent-pair RoPE on un-permuted weights": {
+    "max_rel": 0.2840092192975064,
+    "median_rel": 0.16138674817485055,
+    "argmax_identical": false
+  },
+  "rotate-half RoPE on un-permuted weights": {
+    "max_rel": 0.28362454378564567,
+    "median_rel": 0.16024399728344307,
+    "argmax_identical": false
+  },
+  "positions start at 1": {
+    "max_rel": 0.2840092192975065,
+    "median_rel": 0.16138674817485055,
+    "argmax_identical": false
+  },
+  "eps 1e-6": {
+    "max_rel": 0.8213913276762546,
+    "median_rel": 0.4458783966094211,
+    "argmax_identical": false
+  },
+  "LayerNorm instead of RMSNorm": {
+    "max_rel": 0.928698813732187,
+    "median_rel": 0.37015412084232463,
+    "argmax_identical": false
+  },
+  "no final norm": {
+    "max_rel": 1.7144206625599514,
+    "median_rel": 1.1527844771778495,
+    "argmax_identical": false
+  },
+  "attention scale 1/hd": {
+    "max_rel": 0.28391046263916647,
+    "median_rel": 0.16077011308822262,
+    "argmax_identical": false
+  },
+  "attention scale 1": {
+    "max_rel": 0.28460766584352576,
+    "median_rel": 0.16389124154879847,
+    "argmax_identical": false
+  },
+  "position 0 only (HF semantics)": 0.10883110751131458
+}
