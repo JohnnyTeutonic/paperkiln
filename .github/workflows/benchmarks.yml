@@ -33,11 +33,20 @@ jobs:
             build-essential \
             nlohmann-json3-dev
 
+      - name: Test benchmark environment contracts
+        run: python3 -m unittest discover -s tests -p test_benchmark_environment.py -v
+
       - name: Build benchmarks
         run: |
           mkdir build && cd build
           cmake .. -DCMAKE_BUILD_TYPE=${{ env.CMAKE_BUILD_TYPE }}
           make benchmark_attention benchmark_mamba phase3_integration -j$(nproc)
+
+      - name: Record benchmark execution environment
+        id: benchmark_env
+        run: |
+          python3 .github/scripts/benchmark_environment.py --build build \
+            --out build/benchmark-environment.json --github-output "$GITHUB_OUTPUT"
 
       - name: Run attention benchmark
         id: attention_bench
@@ -100,14 +109,20 @@ jobs:
             build/mamba_benchmark.txt
             build/integration_benchmark.txt
             build/benchmark.json
+            build/benchmark-environment.json
 
       # The previous master results live in the Actions cache (gh-pages serves the docs).
       - name: Restore previous master results
         uses: actions/cache/restore@v4
         with:
           path: bench-cache
-          key: benchmark-data-${{ github.run_id }}
-          restore-keys: benchmark-data-
+          key: benchmark-data-v2-${{ steps.benchmark_env.outputs.cohort }}-${{ github.run_id }}
+          restore-keys: benchmark-data-v2-${{ steps.benchmark_env.outputs.cohort }}-
+
+      - name: Verify baseline environment before comparing
+        run: |
+          python3 .github/scripts/benchmark_environment.py \
+            --out build/benchmark-environment.json --validate-cache bench-cache
 
       # Shared runners are noisy: fail only when a measurement is 2.5x the stored value.
       - name: Compare with previous master results
@@ -126,7 +141,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: bench-cache
-          key: benchmark-data-${{ github.run_id }}
+          key: benchmark-data-v2-${{ steps.benchmark_env.outputs.cohort }}-${{ github.run_id }}
 
       - name: Comment on PR with results
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
