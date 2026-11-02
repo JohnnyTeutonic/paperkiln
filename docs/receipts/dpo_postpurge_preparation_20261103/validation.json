@@ -1,0 +1,39 @@
+{
+  "status": "MAPPED_ARCHIVE_VERIFIED_NOT_ADMITTED",
+  "old_source_commit": "3f9217c1516e5c08a48994b92128615e8f1d63a6",
+  "mapped_source_commit": "c894814bdfc08e49fd97c33cb93b9e92f73448e3",
+  "old_archive_sha256": "8788e9cb3439e71ae8dbb7726337229a59b15e1454acfe5796a0e41a6fbeb1b1",
+  "mapped_archive_sha256": "9a59bff939f1e7fd67547e9ca78324151feb9649522a8316e76b4572290ab530",
+  "retained_entries_identical": 7176,
+  "all_original_named_source_pins_identical": 31,
+  "original_packet_preserved": true,
+  "remaining": [
+    "prospective binding/job/upload-manifest hash-chain mapping",
+    "Ember evaluation source mapping",
+    "manager validation and independent review",
+    "actual financial/deadline/owner admission"
+  ],
+  "manager_validation": {
+    "manager_validate_jobs": true,
+    "contract_sha256": "6e885d90221efdbea0156e332523dc5be703daf40f62171e762370615e71bfe4",
+    "steps": 344,
+    "checkpoint_every": 10,
+    "status": "OFFLINE_RESTAGED_NOT_ADMITTED"
+  },
+  "mapping_amendment": {
+    "date": "2026-11-03",
+    "kind": "POSTPURGE_PROVENANCE_ONLY_MAPPING",
+    "new_admission_sha256": "d157ac39a47aa083870b3020c12b2f0cb3daa103bd1b8909a415e5e64ee411f3",
+    "new_ember_commit": "ab51ee89ce0c1e5b2e1c05c9b0895801dd7f09ff",
+    "new_source_commit": "c894814bdfc08e49fd97c33cb93b9e92f73448e3",
+    "old_admission_sha256": "bfd18fef4f0c781924796805a9dc920aed47bb750e5d3959b358f898c8863146",
+    "old_ember_commit": "aa50a6112dfd706078e5c7849070f8ca5af620b4",
+    "old_source_commit": "3f9217c1516e5c08a48994b92128615e8f1d63a6",
+    "original_endpoints_caps_gates_retained": true,
+    "source_files_identical": 31,
+    "status": "RESTAGED_PENDING_MANAGER_AND_INDEPENDENT_VALIDATION_NOT_ADMITTED",
+    "training_spec_byte_identical": true
+  },
+  "independent_review": "pending",
+  "actual_gpu_admission": false
+}
