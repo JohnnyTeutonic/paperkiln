@@ -1,0 +1,40 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+Counting word frequencies (max 100000 unique words)...
+Found 1793 unique words in 3533 lines
+Sorting by frequency...
+Sorting complete, building vocabulary...
+Built vocabulary with top 1793 most frequent tokens
+Total vocabulary size: 1795
+Counting word frequencies (max 100000 unique words)...
+Found 1551 unique words in 3533 lines
+Sorting by frequency...
+Sorting complete, building vocabulary...
+Built vocabulary with top 480 most frequent tokens
+Total vocabulary size: 2275
+Initializing transformer with vocabulary size: 2275
+Initializing TokenEmbedding with:
+- Vocabulary size: 2275
+- Embedding dimension: 128
+Initializing TransformerLayer 0 with config:
+- use_gqa: false
+- num_kv_heads: 4
+- hidden_size: 128
+- intermediate_size: 512
+- layer_norm_epsilon: 1e-05
+- dropout_rate: 0.1
+Initializing TransformerLayer 1 with config:
+- use_gqa: false
+- num_kv_heads: 4
+- hidden_size: 128
+- intermediate_size: 512
+- layer_norm_epsilon: 1e-05
+- dropout_rate: 0.1
+Initializing LM head with:
+- Hidden size: 128
+- Vocabulary size: 2275
+Weights initialized with proper scaling
+Initializing TokenEmbedding with:
+- Vocabulary size: 2275
+- Embedding dimension: 128
+{"engine": "coalfire", "rows": 48, "vocab": 2275, "use_rope": 1, "use_rms_norm": 1, "use_biases": 0, "eps": 1e-05}
+Transformer destructor called

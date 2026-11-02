@@ -327,6 +327,10 @@ add_test(NAME srd COMMAND test_srd)
 add_executable(gpt2_parity tools/gpt2_parity.cpp)
 target_link_libraries(gpt2_parity PRIVATE microtorch nlohmann_json::nlohmann_json)
 
+# C2 (docs/ECOSYSTEM.md): paperkiln's leg of the coalfire cross-engine logit pin
+add_executable(c2_parity tools/c2_parity.cpp)
+target_link_libraries(c2_parity PRIVATE microtorch nlohmann_json::nlohmann_json)
+
 # Phase-2b Llama-family test: load Qwen 2B safetensors and verify RMSNorm + RoPE
 # work end-to-end. Needs a checkpoint on disk (downloaded separately).
 add_executable(qwen_parity tools/qwen_parity.cpp)
