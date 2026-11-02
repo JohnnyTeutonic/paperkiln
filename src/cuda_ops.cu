@@ -21,10 +21,12 @@
 #include <cuda_runtime.h>
 
 #include "device_pool.cuh"
+#include "selective_scan_chunked.cuh"
 
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <cstdlib>
 #include <memory>
 #include <limits>
 #include <stdexcept>
@@ -2119,6 +2121,17 @@ bool conv1d_causal_bwd(const Matrix& x, const Matrix& w, const Matrix& dy, size_
 
 namespace {
 #include "selective_scan_kernels.cuh"
+
+// MICROTORCH_SCAN_CHUNK: unset or 0 runs the ordered scan; L >= 1 the chunked one. Anything else is refused,
+// so a typo cannot silently select a path.
+size_t scan_chunk() {
+    const char* v = std::getenv("MICROTORCH_SCAN_CHUNK");
+    if (!v || !*v) return 0;
+    char* end = nullptr;
+    const unsigned long long L = std::strtoull(v, &end, 10);
+    if (*end || v[0] == '-') throw std::runtime_error(std::string("MICROTORCH_SCAN_CHUNK must be a count: ") + v);
+    return static_cast<size_t>(L);
+}
 }  // namespace
 
 bool selective_scan_fwd(const Matrix& x, const Matrix& dt, const Matrix& B, const Matrix& C,
@@ -2136,10 +2149,19 @@ bool selective_scan_fwd(const Matrix& x, const Matrix& dt, const Matrix& B, cons
     if (skip) isk.reset(new In(skip->get_data(), D));
     Out oy(y.get_data(), T * D), os(states.get_data(), states.rows() * N),
         od(delta.get_data(), T * D);
-    k_selective_scan_fwd<<<ew_grid((T / sl) * D), NTHREADS>>>(ix.d, idt.d, ib.d, ic.d, ia.d,
-                                                              isk ? isk->d : nullptr, oy.d, os.d,
-                                                              od.d, T, D, N, sl, softplus);
-    cuda_check(cudaGetLastError(), "selective_scan_fwd");
+    if (const size_t L = scan_chunk()) {
+        const ss_chunked::Geom g = ss_chunked::geom(T, D, N, sl, L);
+        const size_t items = (T / sl) * g.nchunk * D * N;
+        DBuf end(items), prod(items), start(items);
+        ss_chunked::launch(g, ix.d, idt.d, ib.d, ic.d, ia.d, isk ? isk->d : nullptr, oy.d, os.d, od.d,
+                           end.d, prod.d, start.d, softplus, ew_grid, NTHREADS);
+        cuda_check(cudaGetLastError(), "selective_scan_fwd chunked");
+    } else {
+        k_selective_scan_fwd<<<ew_grid((T / sl) * D), NTHREADS>>>(ix.d, idt.d, ib.d, ic.d, ia.d,
+                                                                  isk ? isk->d : nullptr, oy.d,
+                                                                  os.d, od.d, T, D, N, sl, softplus);
+        cuda_check(cudaGetLastError(), "selective_scan_fwd");
+    }
     oy.finish();
     os.finish();
     od.finish();
