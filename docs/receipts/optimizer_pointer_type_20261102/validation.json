@@ -1,0 +1,32 @@
+{
+  "compiler": [
+    {
+      "source": "old",
+      "gpp_pointer_arithmetic_error_gate_pass": true,
+      "source_sha256": "944f301888cb6f8715aa27d290215ee10e826fb848f78b914b0c62ceb4d18a91"
+    },
+    {
+      "source": "fixed",
+      "gpp_pointer_arithmetic_error_gate_pass": true,
+      "source_sha256": "84c6c3dccf0159fb35dc03ee4f48e99d2c3fa5830953c8d3d5c1e474fe155b93"
+    }
+  ],
+  "cppcheck": [
+    {
+      "source": "old",
+      "returncode": 1,
+      "diagnostics": "/home/jonat/cppcheck_inbox_20261102/nn_old.cpp:451:80: portability: 'devstate_.get()' is of type 'void *'. When using void pointers in calculations, the behaviour is undefined. [arithOperationsOnVoidPointer]\n            if (device::devops::sgd_step_dev(p->data, p->grad, devstate_.get() + devoff_[k], lr,\n                                                                               ^\n/home/jonat/cppcheck_inbox_20261102/nn_old.cpp:531:82: portability: 'devstate_.get()' is of type 'void *'. When using void pointers in calculations, the behaviour is undefined. [arithOperationsOnVoidPointer]\n            if (device::devops::adamw_step_dev(p->data, p->grad, devstate_.get() + devoff_[k],\n                                                                                 ^\n/home/jonat/cppcheck_inbox_20261102/nn_old.cpp:532:64: portability: 'devstate_.get()' is of type 'void *'. When using void pointers in calculations, the behaviour is undefined. [arithOperationsOnVoidPointer]\n                                               devstate_.get() + devtotal_ + devoff_[k], lr, b1_,\n                                                               ^\n/home/jonat/cppcheck_inbox_20261102/nn_old.cpp:532:76: portability: 'devstate_.get()+devtotal_' is of type 'void *'. When using void pointers in calculations, the behaviour is undefined. [arithOperationsOnVoidPointer]\n                                               devstate_.get() + devtotal_ + devoff_[k], lr, b1_,\n                                                                           ^\n"
+    },
+    {
+      "source": "fixed",
+      "returncode": 0,
+      "diagnostics": ""
+    }
+  ],
+  "cppcheck_version": "2.13.0 Ubuntu2ubuntu3 isolated package; no system installation",
+  "header_shared_ptr_float_declarations": [
+    "include/microtorch/nn.hpp:245",
+    "include/microtorch/nn.hpp:279"
+  ],
+  "live_campaign_source_modified": false
+}
