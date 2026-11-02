@@ -17,12 +17,14 @@ jobs:
         include:
           # Round 2: every job x86-64-v3 (codegen independent of the runner's CPU); -ffast-math split into parts.
           # core: "drop" removes -ffast-math; otherwise the flags are appended after it (later flags win).
+          # Round 3: round 2 showed the group "-fno-finite-math-only -fsigned-zeros -ftrapping-math -fmath-errno"
+          # restores the five tests and reassociation, reciprocal and contraction alone do not; split the group.
           - { name: v3-fast-math, os: ubuntu-26.04, cxx: g++, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", core: "" }
-          - { name: v3-no-fast-math, os: ubuntu-26.04, cxx: g++, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", core: drop }
-          - { name: v3-no-assoc, os: ubuntu-26.04, cxx: g++, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", core: "-fno-associative-math" }
-          - { name: v3-no-recip, os: ubuntu-26.04, cxx: g++, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", core: "-fno-reciprocal-math" }
-          - { name: v3-no-contract, os: ubuntu-26.04, cxx: g++, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", core: "-ffp-contract=off" }
-          - { name: v3-no-finite, os: ubuntu-26.04, cxx: g++, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", core: "-fno-finite-math-only -fsigned-zeros -ftrapping-math -fmath-errno" }
+          - { name: v3-math-errno, os: ubuntu-26.04, cxx: g++, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", core: "-fmath-errno" }
+          - { name: v3-no-finite-only, os: ubuntu-26.04, cxx: g++, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", core: "-fno-finite-math-only" }
+          - { name: v3-signed-zeros, os: ubuntu-26.04, cxx: g++, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", core: "-fsigned-zeros" }
+          - { name: v3-trapping, os: ubuntu-26.04, cxx: g++, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", core: "-ftrapping-math" }
+          - { name: v3-no-vectorize, os: ubuntu-26.04, cxx: g++, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", core: "-fno-tree-vectorize" }
     steps:
       - uses: actions/checkout@v4
 
