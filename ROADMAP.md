@@ -238,8 +238,6 @@ as of 2 Nov 2026.
 *Reference: [`docs/ECOSYSTEM.md`](docs/ECOSYSTEM.md).*
 
 - **C2 follow-up:** the CPU pin passes (`docs/receipts/c2_coalfire_parity_20261103/`); still open are a coalfire CUDA leg and a GQA, tied-head model.
-- **C5, tokenizer consolidation with coalfire.** Paperkiln already trains byte-level BPE models
-  (`tools/bpe.py`, `bpe_tokenizer.hpp`); the coalfire consolidation contract remains open.
 - **Technique transfer still open** (`docs/TECH_TRANSFER.md`):
   - SiTU-GLU and quantile balancing;
   - gated MLA/NoPE;
