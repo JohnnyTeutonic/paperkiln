@@ -2219,10 +2219,10 @@ bool selective_scan_bwd(const Matrix& x, const Matrix& dt, const Matrix& B, cons
         if (dA) dA_part.reset(new DBuf(z.items));
         if (dD) dD_part.reset(new DBuf(z.dD_parts));
         auto d = [](const std::unique_ptr<DBuf>& b) -> float* { return b ? b->d : nullptr; };
-        ss_chunked::launch_backward(g, ix.d, idt.d, ib.d, ic.d, ia.d, isk ? isk->d : nullptr,
-                                    idy.d, is.d, idelta.d, out(0), out(1), out(2), out(3), out(4),
-                                    out(5), d(end), d(prod), d(start), d(hist), d(dA_part),
-                                    d(dD_part), softplus, ew_grid, NTHREADS);
+        ss_chunked::launch_backward(g, ix.d, idt.d, ib.d, ic.d, ia.d, isk ? isk->d : nullptr, idy.d,
+                                    is.d, idelta.d, out(0), out(1), out(2), out(3), out(4), out(5),
+                                    d(end), d(prod), d(start), d(hist), d(dA_part), d(dD_part),
+                                    softplus, ew_grid, NTHREADS);
         cuda_check(cudaGetLastError(), "selective_scan_bwd chunked");
     } else {
         DBuf G(D * N);

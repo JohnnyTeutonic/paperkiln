@@ -29,9 +29,9 @@
 #include <vector>
 
 #include "../src/selective_scan_chunked_backward.cuh"
-#include "selective_scan_backward_reference.hpp"
 #include "microtorch/device.hpp"
 #include "microtorch/ops.hpp"
+#include "selective_scan_backward_reference.hpp"
 
 using namespace microtorch;
 
@@ -158,8 +158,8 @@ Grads ordered_backward(const Case& k, const Inputs& in, const std::vector<float>
                 o[0][cell] = add(mul(dxd, dl), k.skip ? mul(dyv, in.skip[c]) : 0.0f);
                 if (k.skip) skip_gradient = add(skip_gradient, mul(dyv, xv));
                 const float v = in.dt[cell];
-                o[1][cell] = k.softplus && v <= 20.0f ? mul(ddelta, 1.0f / add(1.0f, ex(-v)))
-                                                      : ddelta;
+                o[1][cell] =
+                    k.softplus && v <= 20.0f ? mul(ddelta, 1.0f / add(1.0f, ex(-v))) : ddelta;
             }
         }
         if (k.skip) o[5][c] = skip_gradient;
@@ -208,12 +208,18 @@ Grads cpu_op_backward(const Case& k, const Inputs& in) {
 // the device check
 using Ref = ss_reference::Backward;
 using InD = ss_reference::Inputs64;
-ss_reference::Shape shape(const Case& k) { return {k.sl, k.batch, k.d, k.n, k.softplus, k.skip}; }
+ss_reference::Shape shape(const Case& k) {
+    return {k.sl, k.batch, k.d, k.n, k.softplus, k.skip};
+}
 InD widen(const Inputs& in) {
     return ss_reference::widen(in.x, in.dt, in.B, in.C, in.A, in.skip, in.dy);
 }
-double loss64(const Case& k, const InD& in) { return ss_reference::loss(shape(k), in); }
-Ref reference(const Case& k, const InD& in) { return ss_reference::backward(shape(k), in); }
+double loss64(const Case& k, const InD& in) {
+    return ss_reference::loss(shape(k), in);
+}
+Ref reference(const Case& k, const InD& in) {
+    return ss_reference::backward(shape(k), in);
+}
 
 // worst |v - ref| / max(1, mag) over every output; nonfinite counts as infinite
 double worst(const Grads& got, const Ref& r) {
@@ -400,10 +406,10 @@ int main() {
         // the opt-in path end to end: chunked forward states into the chunked backward
         std::vector<float> cS((k.sl + 1) * k.batch * k.d * k.n), cdelta(k.sl * k.batch * k.d),
             cy(k.sl * k.batch * k.d);
-        ss_chunked::selective_scan_chunked_host(
-            in.x.data(), in.dt.data(), in.B.data(), in.C.data(), in.A.data(),
-            k.skip ? in.skip.data() : nullptr, cy.data(), cS.data(), cdelta.data(),
-            k.sl * k.batch, k.d, k.n, k.sl, k.L, k.softplus);
+        ss_chunked::selective_scan_chunked_host(in.x.data(), in.dt.data(), in.B.data(), in.C.data(),
+                                                in.A.data(), k.skip ? in.skip.data() : nullptr,
+                                                cy.data(), cS.data(), cdelta.data(), k.sl * k.batch,
+                                                k.d, k.n, k.sl, k.L, k.softplus);
         const double ep = worst(chunked_backward(k, in, cS, cdelta, k.L), r);
         worst_pipeline = std::max(worst_pipeline, ep);
         ok = ok && ep <= kBound;
@@ -433,9 +439,8 @@ int main() {
         "\"%zu/%zu\", \"fd_checked\": %zu, \"fd_worst\": %s, \"fd_bound\": %.0e}\n",
         failures || !fd_ok ? "false" : "true", cases.size(), failures, kBound, Js(worst_chunked).s,
         Js(worst_ordered).s, Js(worst_vs_ordered).s, Js(worst_pipeline).s, Js(plain_chunked).s,
-        Js(plain_ordered).s, cpu_identical,
-        cases.size(), one_chunk_identical, one_chunk_checks, one_chunk_regrouped, repeats,
-        cases.size(), finite, cases.size(), mask_identical, mask_checks, fd_checked, Js(fd).s,
-        kFdBound);
+        Js(plain_ordered).s, cpu_identical, cases.size(), one_chunk_identical, one_chunk_checks,
+        one_chunk_regrouped, repeats, cases.size(), finite, cases.size(), mask_identical,
+        mask_checks, fd_checked, Js(fd).s, kFdBound);
     return failures || !fd_ok ? 1 : 0;
 }

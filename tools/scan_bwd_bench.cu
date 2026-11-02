@@ -11,11 +11,12 @@
 //   - the chunked forward's states (same L) into the chunked backward within the bound of binary64;
 //   - timings: ordered and chunked alternate within each repetition; median of the per-repetition
 //     elapsed stream time (CUDA events on the default stream, spanning the two ordered launches or
-//     the chunked path's eight, idle gaps included). Scratch buffers are allocated outside the timed
-//     region.
+//     the chunked path's eight, idle gaps included). Scratch buffers are allocated outside the
+//     timed region.
 // A component timing of the scan backward, not a model-speed claim.
 // build: nvcc -O3 -std=c++17 -arch=sm_89 -I src -I tests tools/scan_bwd_bench.cu -o scan_bwd_bench
-// run:   ./scan_bwd_bench [reps=20]   (one JSON line per shape and L, then a summary line; exit 1 on
+// run:   ./scan_bwd_bench [reps=20]   (one JSON line per shape and L, then a summary line; exit 1
+// on
 //        any failure)
 #include <cuda_runtime.h>
 
@@ -28,7 +29,8 @@
 #include <vector>
 
 namespace ordered {
-struct Matrix {  // stand-in: the header's host geometry helper takes paperkiln's Matrix, unused here
+struct Matrix {  // stand-in: the header's host geometry helper takes paperkiln's Matrix, unused
+                 // here
     size_t rows() const { return 0; }
     size_t cols() const { return 0; }
 };
@@ -124,8 +126,8 @@ using Grads = std::array<std::vector<float>, 6>;
 
 struct Dev {
     float *x, *dt, *B, *C, *A, *skip, *dy, *y, *S, *delta, *S2, *delta2;
-    float* g[6];                                       // dx, ddt, dB, dC, dA, dD
-    float *G, *history;                                // ordered scratch
+    float* g[6];                                           // dx, ddt, dB, dC, dA, dD
+    float *G, *history;                                    // ordered scratch
     float *end, *prod, *start, *hist, *dA_part, *dD_part;  // chunked scratch (largest L)
     size_t n[6];
 };
@@ -149,9 +151,9 @@ void run_ordered(const Shape& s, const Dev& d) {
 }
 void run_chunked(const Shape& s, const Dev& d, size_t L, const float* S, const float* delta) {
     const ss_chunked::Geom g = ss_chunked::geom(s.sl * s.batch, s.D, s.N, s.sl, L);
-    ss_chunked::launch_backward(g, d.x, d.dt, d.B, d.C, d.A, d.skip, d.dy, S, delta, d.g[0],
-                                d.g[1], d.g[2], d.g[3], d.g[4], d.g[5], d.end, d.prod, d.start,
-                                d.hist, d.dA_part, d.dD_part, s.softplus, grid, kThreads);
+    ss_chunked::launch_backward(g, d.x, d.dt, d.B, d.C, d.A, d.skip, d.dy, S, delta, d.g[0], d.g[1],
+                                d.g[2], d.g[3], d.g[4], d.g[5], d.end, d.prod, d.start, d.hist,
+                                d.dA_part, d.dD_part, s.softplus, grid, kThreads);
 }
 
 // errors of every gradient against the binary64 reference, and between two results
@@ -246,7 +248,8 @@ int main(int argc, char** argv) {
         for (size_t j = 0; j < 6; ++j) d.n[j] = n[j], d.g[j] = zeros(n[j]);
         d.G = zeros(DN), d.history = zeros(T * DN);
         // the largest chunk scratch any L below needs (the smallest L here is 32)
-        const ss_chunked::BwdSizes z = ss_chunked::bwd_sizes(ss_chunked::geom(T, s.D, s.N, s.sl, 32));
+        const ss_chunked::BwdSizes z =
+            ss_chunked::bwd_sizes(ss_chunked::geom(T, s.D, s.N, s.sl, 32));
         d.end = zeros(z.items), d.prod = zeros(z.items), d.start = zeros(z.items);
         d.dA_part = zeros(z.items), d.hist = zeros(z.hist), d.dD_part = zeros(z.dD_parts);
 
@@ -270,8 +273,8 @@ int main(int argc, char** argv) {
             CK(cudaGetLastError());
             CK(cudaDeviceSynchronize());
             const Grads w = fetch(d);
-            one_chunk = one_chunk && same_all(w, og, s.batch == 1 ? 6 : 4) &&
-                        between(w, og, ref) <= kBound;
+            one_chunk =
+                one_chunk && same_all(w, og, s.batch == 1 ? 6 : 4) && between(w, og, ref) <= kBound;
         }
 
         for (size_t L : chunks) {
@@ -300,8 +303,8 @@ int main(int argc, char** argv) {
                             ce <= kBound && co <= kBound && pe <= kBound;
             all_ok = all_ok && ok;
             double t_ord, t_ch;
-            paired_ms([&] { run_ordered(s, d); }, [&] { run_chunked(s, d, L, d.S, d.delta); },
-                      reps, t_ord, t_ch);
+            paired_ms([&] { run_ordered(s, d); }, [&] { run_chunked(s, d, L, d.S, d.delta); }, reps,
+                      t_ord, t_ch);
             ++rows;
             std::printf(
                 "{\"gpu\": \"%s\", \"sl\": %zu, \"batch\": %zu, \"D\": %zu, \"N\": %zu, \"L\": "
@@ -314,8 +317,9 @@ int main(int argc, char** argv) {
                 one_chunk ? "true" : "false", Js(t_ord).s, Js(t_ch).s, Js(t_ord / t_ch).s, reps);
             std::fflush(stdout);
         }
-        for (float* p : {d.x, d.dt, d.B, d.C, d.A, d.skip, d.dy, d.y, d.S, d.delta, d.S2, d.delta2,
-                         d.G, d.history, d.end, d.prod, d.start, d.hist, d.dA_part, d.dD_part})
+        for (float* p :
+             {d.x,  d.dt,     d.B, d.C,       d.A,   d.skip, d.dy,    d.y,    d.S,       d.delta,
+              d.S2, d.delta2, d.G, d.history, d.end, d.prod, d.start, d.hist, d.dA_part, d.dD_part})
             cudaFree(p);
         for (float* p : d.g) cudaFree(p);
     }

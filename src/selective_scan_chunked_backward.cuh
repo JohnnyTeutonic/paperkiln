@@ -1,6 +1,6 @@
 // Chunked (parallel-in-time) selective-scan backward. Opt-in with MICROTORCH_SCAN_CHUNK=L (L >= 1),
-// the same switch as the chunked forward (selective_scan_chunked.cuh); unset, the ordered kernels in
-// selective_scan_kernels.cuh run unchanged. Design, recurrences and tolerances:
+// the same switch as the chunked forward (selective_scan_chunked.cuh); unset, the ordered kernels
+// in selective_scan_kernels.cuh run unchanged. Design, recurrences and tolerances:
 // experiments/mamba_parallel_scan_2026-11-03/BACKWARD_DESIGN.md.
 //
 // Per (sequence, channel c, state n) the adjoint g_t = d loss / d s_t satisfies, backward in time,
@@ -9,20 +9,22 @@
 // forward's chunks of L rows (the last may be shorter):
 //   1. local:   each chunk scans backward from G = 0; it keeps the G it passes to the chunk before
 //               (G after its first row) and the product of its a's;
-//   2. carry:   one pass over a sequence's chunks, last to first, gives each chunk its true incoming G;
+//   2. carry:   one pass over a sequence's chunks, last to first, gives each chunk its true
+//   incoming G;
 //   3. final:   each chunk rescans backward from that G, writes g_t for every row (the history) and
 //               its partial sum of dA's terms;
-//   4. reduce:  dA (per c, n) and dD (per c) add their chunk partials in sequence order, chunks last
+//   4. reduce:  dA (per c, n) and dD (per c) add their chunk partials in sequence order, chunks
+//   last
 //               to first, as the ordered kernel visits rows;
 //   5. cell:    dx and ddt per (row, c) from the history, ascending n, as the ordered kernel;
 //   6. B/C:     dB and dC per (row, n), ascending c, as the ordered kernel.
 // The forward states S (and delta) are read, never recomputed; the decays a_t are recomputed from
-// delta and A wherever they are needed, with the forward's exact expression. Given the same g, steps
-// 5 and 6 are the ordered kernel's arithmetic, so rounding differs from the ordered backward only
-// through the chunk boundaries of step 2 (the g's) and the regrouped sums of step 4 (dA and dD).
-// With one chunk per sequence (L >= sl) g, dx, ddt, dB and dC are the ordered kernel's bits, and so
-// are dA and dD for a single sequence. Every multiply and add is explicitly rounded; results are
-// deterministic.
+// delta and A wherever they are needed, with the forward's exact expression. Given the same g,
+// steps 5 and 6 are the ordered kernel's arithmetic, so rounding differs from the ordered backward
+// only through the chunk boundaries of step 2 (the g's) and the regrouped sums of step 4 (dA and
+// dD). With one chunk per sequence (L >= sl) g, dx, ddt, dB and dC are the ordered kernel's bits,
+// and so are dA and dD for a single sequence. Every multiply and add is explicitly rounded; results
+// are deterministic.
 //
 // The same functions build the host emulation (selective_scan_chunked_backward_host) that
 // tests/test_selective_scan_chunked_backward.cpp runs. Device numerics are checked on the GPU by
@@ -63,8 +65,9 @@ SS_HD inline void bwd_carry(const Geom& g, size_t qcn, const float* end, const f
     }
 }
 
-// step 3: rescan the chunk backward from its incoming G; g_t to hist[row D N + c N + n] (the ordered
-// kernel's g_history layout) and, if dA_part, the chunk's partial sum of dA's terms, rows descending
+// step 3: rescan the chunk backward from its incoming G; g_t to hist[row D N + c N + n] (the
+// ordered kernel's g_history layout) and, if dA_part, the chunk's partial sum of dA's terms, rows
+// descending
 SS_HD inline void bwd_final(const Geom& g, const float* dy, const float* C, const float* delta,
                             const float* A, const float* S, const float* start, size_t idx,
                             float* hist, float* dA_part) {
@@ -88,7 +91,8 @@ SS_HD inline void bwd_final(const Geom& g, const float* dy, const float* C, cons
     if (dA_part) dA_part[idx] = da;
 }
 
-// dD's partial sum over chunk k of sequence q for channel c (work item (q k) D + c), rows descending
+// dD's partial sum over chunk k of sequence q for channel c (work item (q k) D + c), rows
+// descending
 SS_HD inline void bwd_skip_part(const Geom& g, const float* dy, const float* x, size_t qkc,
                                 float* dD_part) {
     const size_t c = qkc % g.D, k = (qkc / g.D) % g.nchunk, q = qkc / (g.D * g.nchunk);
@@ -231,7 +235,7 @@ inline void launch_backward(const Geom& g, const float* x, const float* dt, cons
         k_bwd_local<<<grid(z.items), threads>>>(g, dy, C, delta, A, end, prod, z.items);
         k_bwd_carry<<<grid(carries), threads>>>(g, end, prod, start, carries);
         k_bwd_final<<<grid(z.items), threads>>>(g, dy, C, delta, A, S, start, hist,
-                                                 dA ? dA_part : nullptr, z.items);
+                                                dA ? dA_part : nullptr, z.items);
     }
     if (dA) k_bwd_reduce_A<<<grid(g.D * g.N), threads>>>(g, dA_part, dA, g.D * g.N);
     if (dD) {
@@ -249,12 +253,12 @@ inline void launch_backward(const Geom& g, const float* x, const float* dt, cons
 // Host emulation of the device steps, in the same phases. S and delta are the forward's (S holds
 // (T + T / sl) D N floats). Null outputs are not computed, as on the device; dD needs skip.
 inline void selective_scan_chunked_backward_host(const float* x, const float* dt, const float* B,
-                                                 const float* C, const float* A,
-                                                 const float* skip, const float* dy,
-                                                 const float* S, const float* delta, size_t T,
-                                                 size_t D, size_t N, size_t sl, size_t L,
-                                                 bool softplus, float* dx, float* ddt, float* dB,
-                                                 float* dC, float* dA, float* dD) {
+                                                 const float* C, const float* A, const float* skip,
+                                                 const float* dy, const float* S,
+                                                 const float* delta, size_t T, size_t D, size_t N,
+                                                 size_t sl, size_t L, bool softplus, float* dx,
+                                                 float* ddt, float* dB, float* dC, float* dA,
+                                                 float* dD) {
     const Geom g = geom(T, D, N, sl, L);
     const BwdSizes z = bwd_sizes(g);
     const bool adjoint = dx || ddt || dB || dA;
