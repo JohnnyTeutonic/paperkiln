@@ -1,0 +1,54 @@
+{
+  "status": "ADMITTED_WATCHDOG_ENABLED_ACTUAL_LAUNCH_PENDING",
+  "limits": {
+    "usd": 2,
+    "hours": 2,
+    "volume_gb": 30,
+    "gpu": "L4",
+    "account_reserve_usd": 10
+  },
+  "deadline_utc": "2026-11-02T19:18:07.111823+00:00",
+  "runner_source_commit": "f8e823e51df56495b08a107f5f706138a7d9da54",
+  "source_mapping": {
+    "old_commit": "3ada969788f4d5ea65f5b81b29c22c30b7f25c97",
+    "new_commit": "b310c2f30a7ec51142a4cd55da219d62dbee2b4c",
+    "retained_files_byte_identical": 3152,
+    "removed_paths": [
+      "ember/experiments/spec_r1_2026-10-28/integrated_gate_20261031/independent_review/.gitattributes",
+      "ember/experiments/spec_r1_2026-10-28/integrated_gate_20261031/independent_review/launch_review.json",
+      "ember/experiments/spec_r1_2026-10-28/integrated_gate_20261031/independent_review/offline_tests.log",
+      "ember/experiments/spec_r1_2026-10-28/integrated_gate_20261031/independent_review/preflight.json",
+      "ember/experiments/spec_r1_2026-10-28/integrated_gate_20261031/independent_review/review.json",
+      "ember/experiments/spec_r1_2026-10-28/integrated_gate_20261031/independent_review_v2/.gitattributes",
+      "ember/experiments/spec_r1_2026-10-28/integrated_gate_20261031/independent_review_v2/admission.json",
+      "ember/experiments/spec_r1_2026-10-28/integrated_gate_20261031/independent_review_v2/launch_review.json",
+      "ember/experiments/spec_r1_2026-10-28/integrated_gate_20261031/independent_review_v2/offline_tests.log",
+      "ember/experiments/spec_r1_2026-10-28/integrated_gate_20261031/independent_review_v2/review.json"
+    ],
+    "old_stage_preserved": "/mnt/c/ml_artifacts/kvq/stage-e9-matched-v2-20261101",
+    "new_stage": "/mnt/c/ml_artifacts/kvq/stage-e9-matched-v2-postpurge-20261103",
+    "checker_sha256": "ec61c2867b7fb1bfc5897871fcf154246825e4b1bfde052354f9aa39ee55c10b",
+    "wrapper_sha256": "a8a42596a6657d3f23b2ef1bd2d59fa4339193e35cb6275537ce09899bbe3837",
+    "status": "RESTAGED_NOT_ADMITTED"
+  },
+  "checker_mapping": {
+    "date": "2026-11-03",
+    "kind": "prospective_postpurge_provenance_mapping",
+    "checker_change": "only PINNED_COMMIT and PINNED_EMBER_SHA",
+    "ast_equal_after_replacing_two_pin_constants": true,
+    "science_thresholds_inventory_models_contexts_unchanged": true,
+    "new_checker_sha256": "45885f2b55b6c99c1fca2c478cae7c0d5fe72d661477072b303bc551ea89cc8e",
+    "original_stage_preserved": true
+  },
+  "tests": {
+    "checker_cases": 8,
+    "failure_cases": 27,
+    "mapped_replay_tests": 34,
+    "all_pass": true
+  },
+  "independent_approval": true,
+  "deployed_owner_predicate_replay": true,
+  "actual_owner_observation": false,
+  "original_negatives_preserved": true,
+  "acceptance": "Both gate_summary.pass and execution.gate_pass true, plus independent mapped frozen-checker replay; operational completion alone is not a scientific pass"
+}
