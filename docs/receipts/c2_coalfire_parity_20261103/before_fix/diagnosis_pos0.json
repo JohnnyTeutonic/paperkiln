@@ -1,0 +1,50 @@
+{
+  "HF semantics": {
+    "max_rel": 0.10883110751131458,
+    "argmax_identical": true
+  },
+  "embedding x sqrt(d)": {
+    "max_rel": 0.5633433894244039,
+    "argmax_identical": false
+  },
+  "norm (1 + w)": {
+    "max_rel": 0.5437150517583641,
+    "argmax_identical": true
+  },
+  "norms without weight": {
+    "max_rel": 0.11039308085612308,
+    "argmax_identical": true
+  },
+  "GELU (erf)": {
+    "max_rel": 0.14770295272901912,
+    "argmax_identical": true
+  },
+  "ReLU": {
+    "max_rel": 0.3796100532309666,
+    "argmax_identical": true
+  },
+  "gate/up swapped": {
+    "max_rel": 1.51482203640506,
+    "argmax_identical": false
+  },
+  "FFN output x 0.9 (dropout scaling)": {
+    "max_rel": 0.10401556052909337,
+    "argmax_identical": true
+  },
+  "FFN output x 1/0.9 (inverted dropout)": {
+    "max_rel": 0.11245639368669733,
+    "argmax_identical": true
+  },
+  "attention output x 0.9": {
+    "max_rel": 0.11314321042833,
+    "argmax_identical": true
+  },
+  "attention output x 0": {
+    "max_rel": 0.7493733235452346,
+    "argmax_identical": false
+  },
+  "FFN output x 0": {
+    "max_rel": 0.9351056077908387,
+    "argmax_identical": false
+  }
+}

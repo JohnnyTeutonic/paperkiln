@@ -237,7 +237,7 @@ as of 2 Nov 2026.
 
 *Reference: [`docs/ECOSYSTEM.md`](docs/ECOSYSTEM.md).*
 
-- **C2, the paperkiln/coalfire training logit-parity pin:** no receipt exists for that contract.
+- **C2 follow-up:** the CPU pin passes (`docs/receipts/c2_coalfire_parity_20261103/`); still open are a coalfire CUDA leg and a GQA, tied-head model.
 - **C3, a single GGUF writer** (coalfire side).
 - **C5, tokenizer consolidation with coalfire.** Paperkiln already trains byte-level BPE models
   (`tools/bpe.py`, `bpe_tokenizer.hpp`); the coalfire consolidation contract remains open.
