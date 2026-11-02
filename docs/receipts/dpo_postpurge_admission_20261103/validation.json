@@ -1,0 +1,28 @@
+{
+  "status": "ACTUAL_OWNER_VERIFIED_L4_CREATED_WAITING_SSH",
+  "admitted_at_utc": "2026-11-02T18:46:58.885215+00:00",
+  "deadline_utc": "2026-11-02T22:46:58.885215+00:00",
+  "max_usd_cumulative": 5,
+  "carried_prior_spend_usd": 1.2897478416267092,
+  "source_commit": "80b8de5c53574f8e25be7a1664f302bd751e2e0e",
+  "limits": {
+    "hours": 4,
+    "volume_gb": 30,
+    "gpu": "L4",
+    "max_pods": 1,
+    "reserve_usd": 10
+  },
+  "steps": 344,
+  "checkpoint_every": 10,
+  "max_gap_seconds": 180,
+  "independent_guard_tests_passed": 16,
+  "owner_predicate_replay": true,
+  "actual_owner_verified": true,
+  "previous_E9_home_and_resources_deleted": true,
+  "old_DPO_halting_evidence_preserved": true,
+  "heldout_paid_judging_authorized": false,
+  "launch_review_sha256": "962d82e2770ad17668848bc9bc8f8eb6bfd85b39e62398d8ab01048e9df8f7f6",
+  "original_five_gates_unchanged": true,
+  "actual_L4_pod_created": true,
+  "startup_training_cadence_measured": false
+}
