@@ -24,4 +24,3 @@ invalidPointerCast:tools/make_timing_gguf.cpp
 
 # check_control_tokens: tokens[i] is bounded by the loop; the later i < types.size() guards types[i].
 arrayIndexThenCheck:include/microtorch/chat_template.hpp
-
