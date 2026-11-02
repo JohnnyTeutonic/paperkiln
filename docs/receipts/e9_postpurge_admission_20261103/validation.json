@@ -1,5 +1,5 @@
 {
-  "status": "ADMITTED_WATCHDOG_ENABLED_ACTUAL_LAUNCH_PENDING",
+  "status": "ACTUAL_WATCHDOG_OWNER_VERIFIED_WAITING_L4_STOCK",
   "limits": {
     "usd": 2,
     "hours": 2,
@@ -7,7 +7,7 @@
     "gpu": "L4",
     "account_reserve_usd": 10
   },
-  "deadline_utc": "2026-11-02T19:18:07.111823+00:00",
+  "deadline_utc": "2026-11-02T19:21:30.390872+00:00",
   "runner_source_commit": "f8e823e51df56495b08a107f5f706138a7d9da54",
   "source_mapping": {
     "old_commit": "3ada969788f4d5ea65f5b81b29c22c30b7f25c97",
@@ -48,7 +48,30 @@
   },
   "independent_approval": true,
   "deployed_owner_predicate_replay": true,
-  "actual_owner_observation": false,
+  "actual_owner_observation": {
+    "at": "2026-11-02T17:22:12.298380+00:00",
+    "owner_recognized": true,
+    "campaign_home": false,
+    "runpod_pod": null,
+    "creating": null,
+    "jobs": {},
+    "halted": false
+  },
   "original_negatives_preserved": true,
-  "acceptance": "Both gate_summary.pass and execution.gate_pass true, plus independent mapped frozen-checker replay; operational completion alone is not a scientific pass"
+  "acceptance": "Both gate_summary.pass and execution.gate_pass true, plus independent mapped frozen-checker replay; operational completion alone is not a scientific pass",
+  "attempts": [
+    {
+      "attempt": 1,
+      "status": "HALTED_BEFORE_PROVIDER",
+      "error": "watchdog precreates driver.out; strict directory freshness refused",
+      "marker_preserved": true
+    },
+    {
+      "attempt": 2,
+      "status": "ACTUAL_OWNER_RECOGNIZED_WAITING_STOCK",
+      "fresh_state": "/home/jonat/e9_matched_v2_postpurge_20261103/runner-v2",
+      "deadline": "2026-11-02T19:21:30.390872+00:00",
+      "guard_fixtures_passed": 12
+    }
+  ]
 }
