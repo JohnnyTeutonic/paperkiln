@@ -3,11 +3,12 @@
 //   HF checkpoint -> load_safetensors -> (fine-tune on the tape) -> export_gguf
 //   -> tinyllama.cpp serves it.
 //
-// The byte-level writer is transformer_cpp's GGUFWriter -- the one that
-// already survived the 2026-07-13 alignment postmortem (EXPORT_NOTES.md:
-// data section starts at align_up(header_end, 32); offsets are relative to
-// that aligned start) and is argmax-parity verified against tinyllama.cpp.
-// This header only maps microtorch state_dicts onto that writer.
+// The byte-level writer is coalfire.cpp's GGUFWriter, the standalone header
+// gguf_writer.hpp (vendored in third_party/transformer_cpp/include), which
+// coalfire's own export_to_gguf uses too: the writer that survived the
+// 2026-07-13 alignment postmortem (data section starts at align_up(header_end,
+// 32); offsets are relative to that aligned start). This header only maps
+// microtorch state_dicts onto that writer (and quantises for it).
 #include <cstddef>
 #include <cstdint>
 #include <map>

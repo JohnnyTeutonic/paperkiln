@@ -204,6 +204,10 @@ add_test(NAME gguf_q8 COMMAND test_gguf_q8)
 add_executable(test_gguf_q4 tests/test_gguf_q4.cpp)
 target_link_libraries(test_gguf_q4 PRIVATE microtorch)
 add_test(NAME gguf_q4 COMMAND test_gguf_q4)
+# Every export_gguf_* variant against its recorded SHA-256 (the shared byte writer, ROADMAP C3).
+add_executable(test_gguf_byte_identity tests/test_gguf_byte_identity.cpp)
+target_link_libraries(test_gguf_byte_identity PRIVATE microtorch)
+add_test(NAME gguf_byte_identity COMMAND test_gguf_byte_identity)
 
 add_executable(test_attention_blocked tests/test_attention_blocked.cpp)
 target_link_libraries(test_attention_blocked PRIVATE microtorch)
