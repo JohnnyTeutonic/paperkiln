@@ -17,14 +17,13 @@ jobs:
         include:
           # Round 2: every job x86-64-v3 (codegen independent of the runner's CPU); -ffast-math split into parts.
           # core: "drop" removes -ffast-math; otherwise the flags are appended after it (later flags win).
-          # Round 3: round 2 showed the group "-fno-finite-math-only -fsigned-zeros -ftrapping-math -fmath-errno"
-          # restores the five tests and reassociation, reciprocal and contraction alone do not; split the group.
+          # Round 4: round 3 showed each of -fmath-errno, -fno-finite-math-only, -fsigned-zeros, -ftrapping-math (the
+          # flags that decide whether __FAST_MATH__ is defined) and -fno-tree-vectorize restores the tests. Check
+          # for libmvec calls (_ZGV*) directly, and try keeping all fast-math codegen but undefining __FAST_MATH__.
           - { name: v3-fast-math, os: ubuntu-26.04, cxx: g++, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", core: "" }
-          - { name: v3-math-errno, os: ubuntu-26.04, cxx: g++, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", core: "-fmath-errno" }
-          - { name: v3-no-finite-only, os: ubuntu-26.04, cxx: g++, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", core: "-fno-finite-math-only" }
-          - { name: v3-signed-zeros, os: ubuntu-26.04, cxx: g++, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", core: "-fsigned-zeros" }
-          - { name: v3-trapping, os: ubuntu-26.04, cxx: g++, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", core: "-ftrapping-math" }
-          - { name: v3-no-vectorize, os: ubuntu-26.04, cxx: g++, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", core: "-fno-tree-vectorize" }
+          - { name: v3-undef-fast-math-macro, os: ubuntu-26.04, cxx: g++, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", core: "-U__FAST_MATH__" }
+          - { name: v3-gcc14-fast-math, os: ubuntu-26.04, cxx: g++-14, extra: "-DMICROTORCH_PORTABLE_ARCH=ON", core: "" }
+          - { name: native-undef-fast-math-macro, os: ubuntu-26.04, cxx: g++, extra: "", core: "-U__FAST_MATH__" }
     steps:
       - uses: actions/checkout@v4
 
@@ -60,6 +59,14 @@ jobs:
             -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} ${{ matrix.extra }}
           cmake --build build -j"$(nproc)" --target test_step_residency test_fused_head test_llama_attnres \
             test_recursion test_mor
+
+      - name: Vector math library calls in the core
+        run: |
+          lib=$(find build -name 'libtransformer_core.a' | head -1)
+          { echo '```'; echo "libmvec symbols referenced by $lib:"
+            nm -u "$lib" 2>/dev/null | grep -o '_ZGV[A-Za-z0-9_]*' | sort | uniq -c | sort -rn | head -20
+            echo "objects referencing _ZGV: $(nm -A -u "$lib" 2>/dev/null | grep '_ZGV' | cut -d: -f2 | sort -u | tr '\n' ' ')"
+            echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Run the five tests
         run: |
