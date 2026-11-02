@@ -73,6 +73,8 @@ class Driver:
         self.log_file = None
         self.log_lines = 0
         self.raised = False
+        self.log_failed = False
+        self.done = False
 
     # ---- logging never raises: the file is the record, the terminal and stderr best effort
     def log(self, *parts):
@@ -84,6 +86,7 @@ class Driver:
             self.log_file.write(line + "\n")
             self.log_file.flush()
         except (OSError, ValueError, AttributeError):
+            self.log_failed = True
             try:
                 sys.stderr.write("[log file unavailable] " + line + "\n")
             except (OSError, ValueError):
@@ -253,8 +256,8 @@ class Driver:
             self.log("status.json missing or unreadable:", e)
             return None
         gates = s.get("gates") if isinstance(s, dict) else None
-        if not isinstance(gates, dict) or not all(isinstance(v, int) for v in gates.values()) \
-                or not isinstance(s.get("exit_status"), int) or not isinstance(s.get("pass"), bool):
+        if not isinstance(gates, dict) or not all(type(v) is int for v in gates.values()) \
+                or type(s.get("exit_status")) is not int or not isinstance(s.get("pass"), bool):
             self.log("status.json malformed:", json.dumps(s)[:500])
             return None
         if s.get("run_id") != self.run or s.get("commit") != self.commit or s.get("head") != self.commit:
@@ -324,6 +327,7 @@ class Driver:
             self.check()
             launched = self.launch()
             done = self.poll() if launched else False
+            self.done = done
             self.log("launched", launched, "done", done, "cancelled", self.cancel)
             transport = self.retrieve()  # also after a launch failure, deadline or signal: diagnostics are evidence
             receipts = transport and self.copy_receipts()
@@ -342,6 +346,11 @@ class Driver:
                 rc, out = self.call(argv, 120, self.inventory_end, label)
                 self.log(f"{label}:\n" + out.strip())
             code = 3 if not clean else 2 if not (transport and receipts and valid is not None) else 0 if valid else 1
+            if code == 0 and not self.done:
+                self.log("validated status but no matching DONE marker was seen: exit 2")
+                code = 2
+            if self.log_failed:
+                code = max(code, 2)
             self.log(f"exit {code} (transport {transport}, receipts {receipts}, valid {valid}, cleanup {clean})")
             try:
                 if self.log_file:
