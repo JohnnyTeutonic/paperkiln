@@ -1,21 +1,19 @@
 {
-  "status": "MAPPED_ARCHIVE_VERIFIED_NOT_ADMITTED",
+  "status": "OFFLINE_PACKET_V2_APPROVED_NOT_ADMITTED",
   "old_source_commit": "3f9217c1516e5c08a48994b92128615e8f1d63a6",
   "mapped_source_commit": "c894814bdfc08e49fd97c33cb93b9e92f73448e3",
   "old_archive_sha256": "8788e9cb3439e71ae8dbb7726337229a59b15e1454acfe5796a0e41a6fbeb1b1",
-  "mapped_archive_sha256": "9a59bff939f1e7fd67547e9ca78324151feb9649522a8316e76b4572290ab530",
+  "mapped_archive_sha256": "86edc504a49ac500675960613c3d01a4ad31774376cecd28c53cdc0ff47aee44",
   "retained_entries_identical": 7176,
   "all_original_named_source_pins_identical": 31,
   "original_packet_preserved": true,
   "remaining": [
-    "prospective binding/job/upload-manifest hash-chain mapping",
-    "Ember evaluation source mapping",
-    "manager validation and independent review",
-    "actual financial/deadline/owner admission"
+    "financial/owner/deadline/ledger admission after E9",
+    "mapped heldout source/binding intake before any paid judging"
   ],
   "manager_validation": {
     "manager_validate_jobs": true,
-    "contract_sha256": "6e885d90221efdbea0156e332523dc5be703daf40f62171e762370615e71bfe4",
+    "contract_sha256": "1366b75f581e83e5e41faa368e435177879cbda09a055b764992c938d8c4084b",
     "steps": 344,
     "checkpoint_every": 10,
     "status": "OFFLINE_RESTAGED_NOT_ADMITTED"
@@ -34,6 +32,21 @@
     "status": "RESTAGED_PENDING_MANAGER_AND_INDEPENDENT_VALIDATION_NOT_ADMITTED",
     "training_spec_byte_identical": true
   },
-  "independent_review": "pending",
-  "actual_gpu_admission": false
+  "independent_review": "APPROVE_OFFLINE_PACKET_ONLY",
+  "actual_gpu_admission": false,
+  "initial_mapping_preserved": true,
+  "runtime_pin_amendment": {
+    "date": "2026-11-03",
+    "kind": "PROSPECTIVE_POSTPURGE_RUNTIME_PROVENANCE_MAPPING",
+    "source_commit": "80b8de5c53574f8e25be7a1664f302bd751e2e0e",
+    "archive_sha256": "86edc504a49ac500675960613c3d01a4ad31774376cecd28c53cdc0ff47aee44",
+    "changed_file": "tools/colab_chat/tiny_chat_run.py",
+    "old_ember_commit": "aa50a6112dfd706078e5c7849070f8ca5af620b4",
+    "mapped_ember_commit": "ab51ee89ce0c1e5b2e1c05c9b0895801dd7f09ff",
+    "ast_identical_except_ember_constant": true,
+    "training_recipe_unchanged": true,
+    "old_mapping_attempt_preserved": true
+  },
+  "unchanged_named_source_pins": 30,
+  "provenance_mapped_named_source_pins": 1
 }
