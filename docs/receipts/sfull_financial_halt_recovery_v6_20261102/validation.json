@@ -1,0 +1,67 @@
+{
+  "kind": "SFULL_FINANCIAL_HALT_RECOVERY_V6",
+  "seed": 1,
+  "per_seed_cap_usd": 12,
+  "aggregate_planning_usd": 36,
+  "seeds2_and3_admitted": false,
+  "source_control_commit": "c9b82fd6718497a4ace4fba62f6e23b8ed2346a7",
+  "numerical_commit": "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1",
+  "deadline_utc": "2026-11-02T11:41:15Z",
+  "minimum_home_step": 7500,
+  "admission_sha256": "e6b76905ffa86cb2c0b4c0fcf42738c3abe58eacaedd84c51e3be4948b460350",
+  "guard_sha256": "c6e17cf0e84d75114fb7fa72e518c0ce0e64c3006c375d4286c3fd368fbecc73",
+  "pinned_source_and_evidence_files": 294,
+  "only_reviewed_watchdog_entry_changed": true,
+  "preparation": {
+    "status": "PASS",
+    "checkpoint": [
+      {
+        "job": "pt_c12_Sfull_r1",
+        "step": 7500,
+        "manifest_sha256": "9ba9d933605886289beccb85f88310392ae3332ce0b066d67a2a8f99b67804e2"
+      }
+    ],
+    "new_state_sha256": "ceab9c554637bc354ef92609ba6b3f7a5d7ac5c497359ba905eae6061f096870",
+    "old_state_sha256": "ed9cde6f350b4fd11dfa35fe6f199db0d1b1a2d687d15d5247bec59f093577dd",
+    "registry_sha256": "203ef9308655373d2a4e8eb03375f3bf411175c57758f922196670577b4bf8e9",
+    "actual_launch": false
+  },
+  "activation": {
+    "checked_at_utc": "2026-11-02T05:23:06.134330+00:00",
+    "review_sha256": "e6b76905ffa86cb2c0b4c0fcf42738c3abe58eacaedd84c51e3be4948b460350",
+    "guard_sha256": "c6e17cf0e84d75114fb7fa72e518c0ce0e64c3006c375d4286c3fd368fbecc73",
+    "validated_home_checkpoints": [
+      {
+        "job": "pt_c12_Sfull_r1",
+        "step": 7500,
+        "manifest_sha256": "9ba9d933605886289beccb85f88310392ae3332ce0b066d67a2a8f99b67804e2"
+      }
+    ],
+    "deployed_owner_predicate_replay": true,
+    "replay_is_live_process": false,
+    "provider_pods": 0,
+    "seed_cumulative_spend_usd": 7.123211102638789,
+    "activated": true,
+    "only_reviewed_entry_changed": true
+  },
+  "actual_observation": {
+    "at_utc": "2026-11-02T05:23:56.870602+00:00",
+    "owner_recognized": true,
+    "pod_assigned": false,
+    "creating": false,
+    "booted": false,
+    "halted": false,
+    "stopped": false,
+    "campaign_home": false,
+    "jobs": {
+      "cuda_gate": "FINISHED",
+      "data": "FINISHED",
+      "gate": "FINISHED",
+      "sfull_inputs": "FINISHED",
+      "pt_c12_Sfull_r1": "RUNNING",
+      "post_c12_Sfull_r1": "WAITING"
+    }
+  },
+  "launch_status": "ACTUAL_OWNER_RECOGNIZED_WAITING_L4_STOCK",
+  "scientific_result": "INCOMPLETE"
+}
