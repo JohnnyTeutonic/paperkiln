@@ -1,0 +1,64 @@
+{
+  "checked_at_utc": "2026-11-02T13:21:16.088335+00:00",
+  "review_sha256": "c31836b737b0604bb0d1ebf6b620a734171c7c032d1de8a3153295050dbb8b59",
+  "guard_sha256": "2f5fd28376201a424fb853dc8255e052fe47f672a32c229220426d25709e989f",
+  "validated_home_checkpoints": [
+    {
+      "job": "pt_c12_Sfull_r1",
+      "step": 10000,
+      "manifest_sha256": "bf3b742c5ab688c624a94f368f87cc1af05ad2e4b7a70a3e962aad4a8eca1997"
+    },
+    {
+      "job": "post_c12_Sfull_r1",
+      "step": 1500,
+      "manifest_sha256": "57744187dd65d10001bdc9726df7843708d7153c20d55f199a4f9c711acb7438"
+    }
+  ],
+  "deployed_owner_predicate_replay": true,
+  "replay_is_live_process": false,
+  "provider_pods": 0,
+  "seed_cumulative_spend_usd": 10.919320039710588,
+  "activated": true,
+  "only_reviewed_entry_changed": true,
+  "admission_sha256": "c31836b737b0604bb0d1ebf6b620a734171c7c032d1de8a3153295050dbb8b59",
+  "source_pins": 303,
+  "preparation": {
+    "status": "PASS",
+    "checkpoint": [
+      {
+        "job": "pt_c12_Sfull_r1",
+        "step": 10000,
+        "manifest_sha256": "bf3b742c5ab688c624a94f368f87cc1af05ad2e4b7a70a3e962aad4a8eca1997"
+      },
+      {
+        "job": "post_c12_Sfull_r1",
+        "step": 1500,
+        "manifest_sha256": "57744187dd65d10001bdc9726df7843708d7153c20d55f199a4f9c711acb7438"
+      }
+    ],
+    "new_state_sha256": "6b59b1b4dfc8475e82a408169b404653f9ab4e643a50fa5ddde7b5aa1a8aee71",
+    "old_state_sha256": "05d408105e8169ff55365b7f01883117c8a11c1b89c7b2cedf4906ea6da3858d",
+    "registry_sha256": "dd02e635771121461e4782c6beb6ea60857de7415a5182c11e8cf0e43cbfb592",
+    "actual_launch": false
+  },
+  "actual_observation": {
+    "at_utc": "2026-11-02T13:22:09.217186+00:00",
+    "owner_recognized": true,
+    "pod_assigned": false,
+    "creating": false,
+    "booted": false,
+    "halted": false,
+    "stopped": false,
+    "campaign_home": false,
+    "jobs": {
+      "cuda_gate": "FINISHED",
+      "data": "FINISHED",
+      "gate": "FINISHED",
+      "sfull_inputs": "FINISHED",
+      "pt_c12_Sfull_r1": "FINISHED",
+      "post_c12_Sfull_r1": "RUNNING"
+    }
+  },
+  "scientific_result": "INCOMPLETE",
+  "actual_state": "OWNER_RECOGNIZED_WAITING_FOR_L4_STOCK"
+}
