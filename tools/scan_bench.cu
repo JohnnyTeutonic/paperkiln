@@ -76,6 +76,15 @@ Host make(const Shape& s) {
     return h;
 }
 
+// a JSON number, or null for a nonfinite value (which has already failed its gate)
+struct Js {
+    char s[32];
+    explicit Js(double v) {
+        if (std::isfinite(v)) std::snprintf(s, sizeof s, "%.4g", v);
+        else std::snprintf(s, sizeof s, "null");
+    }
+};
+
 double err(double v, double ref) {
     const double e = std::fabs(v - ref) / std::max(1.0, std::fabs(ref));
     return std::isfinite(e) ? e : INFINITY;  // a nonfinite value or reference fails the bound
@@ -243,12 +252,13 @@ int main(int argc, char** argv) {
             paired_ms([&] { run_ordered(s, d); }, [&] { run_chunked(s, d, L); }, reps, t_ord, t_ch);
             ++rows;
             std::printf("{\"gpu\": \"%s\", \"sl\": %zu, \"batch\": %zu, \"D\": %zu, \"N\": %zu, \"L\": %zu, \"ok\": %s, "
-                        "\"ordered_err_y\": %.3g, \"ordered_err_states\": %.3g, \"chunked_err_y\": %.3g, "
-                        "\"chunked_err_states\": %.3g, \"chunked_vs_ordered_states\": %.3g, \"repeat_identical\": %s, "
-                        "\"one_chunk_identical_to_ordered\": %s, \"ordered_ms\": %.4f, \"chunked_ms\": %.4f, "
-                        "\"speedup\": %.3f, \"reps\": %d}\n",
-                        prop.name, s.sl, s.batch, s.D, s.N, L, ok ? "true" : "false", oey, oes, cey, ces, vs_ordered,
-                        repeat ? "true" : "false", one_chunk ? "true" : "false", t_ord, t_ch, t_ord / t_ch, reps);
+                        "\"ordered_err_y\": %s, \"ordered_err_states\": %s, \"chunked_err_y\": %s, "
+                        "\"chunked_err_states\": %s, \"chunked_vs_ordered_states\": %s, \"repeat_identical\": %s, "
+                        "\"one_chunk_identical_to_ordered\": %s, \"ordered_ms\": %s, \"chunked_ms\": %s, "
+                        "\"speedup\": %s, \"reps\": %d}\n",
+                        prop.name, s.sl, s.batch, s.D, s.N, L, ok ? "true" : "false", Js(oey).s, Js(oes).s, Js(cey).s,
+                        Js(ces).s, Js(vs_ordered).s, repeat ? "true" : "false", one_chunk ? "true" : "false",
+                        Js(t_ord).s, Js(t_ch).s, Js(t_ord / t_ch).s, reps);
             std::fflush(stdout);
         }
         for (float* p : {d.x, d.dt, d.B, d.C, d.A, d.skip, d.y, d.S, d.delta, d.end, d.prod, d.start}) cudaFree(p);
