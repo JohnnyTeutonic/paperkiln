@@ -1,0 +1,3 @@
+/usr/local/cuda
+/usr/local/cuda-13
+/usr/local/cuda-13.0

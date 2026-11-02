@@ -46,13 +46,32 @@ chunks x N.
 - **Driver note:** the Colab CLI prints `[colab]` banner rows in `sessions`. In r1 the driver read them as session
   rows, which was harmless, since they were in the pre-creation snapshot and constant. The driver skips them.
 
-## Chunked backward: implemented and tested on the host; GPU run not yet made
+## Chunked backward: result (run `b1-20261103`, one Colab L4, 3 Nov 2026)
 
 - **Design:** `BACKWARD_DESIGN.md` (recurrences, stored against recomputed, rounding, tolerance). Code:
   `src/selective_scan_chunked_backward.cuh`, opt-in through the same `MICROTORCH_SCAN_CHUNK`; the ordered default is
   unchanged.
+- **Review:** Codex methods review, one round, RUN (kept in the research workspace, not here).
+- **Gates:** all 17 of `PROTOCOL_BACKWARD.md` pass (`receipts/b1-20261103/status.json`):
+  - the host tests;
+  - the frozen 220-case gate and replay at L unset, 2 and 3;
+  - the malformed switch value refused;
+  - the device backward bench;
+  - the default path identical to master `d0390e39`.
+  The build used the image's CUDA 13.0.88; NumPy as recorded in `numpy_install.log`.
+- **Device bench** (`receipts/b1-20261103/scan_bwd_bench.jsonl`, 24 rows, all gradients, median of 20 alternating runs):
+  - **Accuracy:** every row is within 2.9e-7 of binary64 under the magnitude metric (bound 3e-5), for both the
+    ordered and the chunked backward.
+  - **Bit identity and determinism:** with one chunk per sequence the chunked backward equals the ordered one
+    bit for bit, every output is written, and repeats are identical.
+  - **Speed:** at the best chunk length the chunked backward is 3.4x faster than the ordered one at 512 tokens,
+    3.65x at 2048, 2.96x at 4096, 3.8x at batch 4 of 2048, 6.9x at batch 8 of 1024 and 3.8x at batch 16 of 64.
+    These are kernel timings, not training speed.
+- **What a pass means:** the error is small relative to the expanded expression (the metric scales by the
+  binary64 sum of absolute terms, including inside the recurrences), not small relative error in each gradient.
+- **Forward mode on this commit:** with the switch set, the forward protocol now also runs the new backward, so it
+  is not an unchanged reproduction of the forward run r1.
 - **Host evidence:** `receipts/host_test_bwd_local.json` (173/173 cases; chunked within 2.51e-7 of binary64 and
-  2.82e-7 of the ordered backward under the magnitude metric, bound 3e-5) and `receipts/default_cpu_local.txt`
-  (the CPU default identical to master's).
-- **GPU run:** `PROTOCOL_BACKWARD.md`, one Colab L4 session, after independent review. `vm_run.sh` and `drive.py`
-  take a protocol argument: `forward` (the default, PROTOCOL.md's gate set) or `backward`.
+  2.82e-7 of the ordered backward) and `receipts/default_cpu_local.txt` (the CPU default identical to master's).
+- **Running it:** `vm_run.sh` and `drive.py` take a protocol argument: `forward` (the default, PROTOCOL.md's gate
+  set) or `backward`.
