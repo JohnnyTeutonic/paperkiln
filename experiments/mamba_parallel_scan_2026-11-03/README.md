@@ -1,7 +1,8 @@
 # Chunked (parallel-in-time) selective-scan forward: result
 
 Claude Opus 5.5, 3 Nov 2026. Protocol: `PROTOCOL.md`, fixed before the run.
-- **Review:** Codex methods review, four rounds; rounds 1-3 DO NOT RUN, round 4 RUN. All four in `receipts/`.
+- **Review:** Codex methods review, four rounds; rounds 1-3 DO NOT RUN, round 4 RUN. The reviews are kept in the
+  research workspace (`AI_ML/mamba_scan_claude/reviews/`), not in this repository.
 - **Run:** `r1-20261103`, one Colab L4 (NVIDIA L4, driver 580.82.07, CUDA 13.0), commit `b2ddc596`, 00:51-00:57 UTC+11.
 - **Driver:** exit 0. `status.json` matched the run, commit and HEAD, and all 13 gates were 0. Cleanup was verified:
   no session, and no endpoint new since creation, remained listed.
