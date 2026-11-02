@@ -1,0 +1,32 @@
+{
+  "kind": "BOUNDED_AUTOGRAD_HOST_READ_SOURCE_AUDIT",
+  "date_sydney": "2026-11-03",
+  "source_commit": "7410b7d5fdc9b6a7355a47725590f3ed4dbabeb1",
+  "source_file": "src/autograd.cpp",
+  "source_sha256": "eff07572cb70cccdfde386ccec1d716f0cfb2b9fb06f9c5a59eeacc76646930e",
+  "checks": [
+    {
+      "path": "Variable::accumulate(const Matrix&) host fallback",
+      "finding": "Both grad and incoming g materialized before host grad += g; guarded device axpy early return retained."
+    },
+    {
+      "path": "Variable::accumulate_cols host fallback",
+      "finding": "Fresh device output initialized, then both grad and g materialized before indexed host reads."
+    },
+    {
+      "path": "checkpoint forward cached-output copy",
+      "finding": "inner data materialized before Matrix copy."
+    },
+    {
+      "path": "checkpoint backward detached-input copy",
+      "finding": "input data materialized before Matrix copy; incoming gradient delegated to audited accumulate."
+    },
+    {
+      "path": "backward/topo/rvalue accumulation",
+      "finding": "Shape/graph metadata and buffer moves do not read numerical payload; no added synchronization justified."
+    }
+  ],
+  "scope": "Source inspection of host payload read boundaries only; no new defect found in these paths. This does not establish CUDA numerical correctness, whole-file mutation/lifetime safety, or complete the wider repository audit. zero_grad write authority and rematerialized tape lifetime are separate concerns.",
+  "code_changed": false,
+  "gpu_calls": 0
+}

@@ -460,6 +460,9 @@ void SGD::step() {
         }
         // B2.3a seam for the momentum-free case (no state to persist).
         if (mu_ == 0.0f && device::devops::sgd_step(p->data, p->grad, nullptr, lr, mu_)) continue;
+        // Device execution above declined; host arithmetic needs authoritative inputs.
+        device::materialize(p->data);
+        device::materialize(p->grad);
         MT_DEVCHECK_HOST_READ(p->data, "SGD::step parameter");
         MT_DEVCHECK_HOST_READ(p->grad, "SGD::step gradient");
         if (mu_ != 0.0f) MT_DEVCHECK_HOST_READ(vel_[k], "SGD::step velocity");
@@ -538,6 +541,7 @@ void AdamW::step() {
                 "AdamW: persistent device state exists but device ops are "
                 "off — do not toggle MICROTORCH_DEVICE_OPS mid-run");
         }
+        device::materialize(p->data);  // host fallback also reads the parameter
         device::materialize(p->grad);  // no-op unless the step left it on the device
         MT_DEVCHECK_HOST_READ(p->grad, "AdamW::step gradient");
         MT_DEVCHECK_HOST_READ(p->data, "AdamW::step parameter");

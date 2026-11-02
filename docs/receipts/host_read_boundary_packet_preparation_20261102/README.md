@@ -17,3 +17,7 @@ python3 tools/colab_chat/replay_host_read_boundary_packet_v1.py RESULTS.tar.gz -
 No current campaign, scientific predicate, cadence guard, source freeze or budget was changed by this preparation.
 
 Independent read-only review approved the final preparation after 62 tests, including typed JSON replay and exact source-pin input checks. This does not admit the packet or establish an actual CUDA result.
+
+## Bounded CPU source audit, 3 November
+
+`autograd_source_audit_20261103.json` binds a source inspection of the gradient-accumulation and checkpoint-copy host reads. These paths materialize their numerical inputs before host access; no change was warranted. Metadata traversal and buffer moves need no extra synchronization. This closes that bounded inspection only: it adds no CUDA correctness/performance claim and does not close the wider host-read audit or separate write-authority/lifetime questions.
