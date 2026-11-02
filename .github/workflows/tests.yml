@@ -133,11 +133,21 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cmake clang-tidy cppcheck
 
-      - name: Run cppcheck
+      # Required gate: errors, warnings and portability findings fail the build. Reviewed
+      # false positives and intentional constructs live in .cppcheck-suppressions, one
+      # reason per entry.
+      - name: Run cppcheck (required)
         run: |
-          cppcheck --enable=all --suppress=missingIncludeSystem \
-            include/ src/ tests/ tools/ \
-            --report-progress || true
+          cppcheck -j 4 --enable=warning,portability --inconclusive --inline-suppr \
+            --suppressions-list=.cppcheck-suppressions --error-exitcode=1 --quiet \
+            --template='{file}:{line}: {severity} [{id}] {message}' \
+            -I include include/ src/ tests/ tools/
+
+      # Advisory: style and performance findings are reported but do not fail the build.
+      - name: Run cppcheck (advisory, all checks)
+        run: |
+          cppcheck -j 4 --enable=all --suppress=missingIncludeSystem --quiet \
+            -I include include/ src/ tests/ tools/ || true
 
       - name: Run clang-tidy
         run: |
@@ -148,7 +158,6 @@ jobs:
   valgrind:
     name: Memory Safety (Valgrind)
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
 
     steps:
       - uses: actions/checkout@v4
@@ -163,23 +172,29 @@ jobs:
             build-essential \
             nlohmann-json3-dev \
             libgtest-dev \
+            libc6-dbg \
             valgrind
 
       - name: Build
         run: |
           mkdir build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Debug
-          make -j$(nproc)
+          # Valgrind cannot execute AVX-512, which -march=native emits on the runner.
+          cmake .. -DCMAKE_BUILD_TYPE=Debug -DMICROTORCH_PORTABLE_ARCH=ON
+          make -j$(nproc) test_gradcheck
 
-      - name: Run with Valgrind
+      # Required gate: invalid reads/writes, uses of uninitialised values and definite or
+      # indirect leaks fail the build. Reachable memory at exit is reported, not failed.
+      - name: Run with Valgrind (required)
         run: |
           cd build
-          valgrind --leak-check=full --show-leak-kinds=all \
-            --track-origins=yes --verbose \
+          valgrind --error-exitcode=1 --leak-check=full \
+            --errors-for-leak-kinds=definite,indirect --show-leak-kinds=definite,indirect \
+            --track-origins=yes \
             ./test_gradcheck 2>&1 | tee valgrind.log
-        continue-on-error: true
+          test "${PIPESTATUS[0]}" -eq 0
 
       - name: Upload Valgrind report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: valgrind-report

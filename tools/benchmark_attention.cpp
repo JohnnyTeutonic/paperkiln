@@ -38,7 +38,7 @@ BenchmarkResult benchmark_attention(const std::string& name, size_t seq_len, siz
         }
     }
 
-    BenchmarkResult result;
+    BenchmarkResult result{};
     result.name = name;
     result.forward_ms = 0;
     result.backward_ms = 0;
