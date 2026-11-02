@@ -1,0 +1,33 @@
+{
+  "status": "APPROVED_OFFLINE_PACKET_ONLY_NOT_ADMITTED",
+  "date_sydney": "2026-11-03",
+  "producer": "GPT packet audit (Codex independent review agent)",
+  "source_archive_sha256": "8788e9cb3439e71ae8dbb7726337229a59b15e1454acfe5796a0e41a6fbeb1b1",
+  "verified": [
+    "Exact Git archive via verify_source_admission",
+    "Every upload/source/binding/jobs/spec/contract hash chain",
+    "Actual manager.validate_jobs contract validation",
+    "V3 scientific spec equal; job changes only diagnostic environment and source/contract pins",
+    "Telemetry does not modify arithmetic/RNG or advance checkpoint clock",
+    "Preserved V3 negative and five gates"
+  ],
+  "endpoint_steps": 344,
+  "checkpoint_every_steps": 10,
+  "max_gap_seconds": 180,
+  "caps_preserved": {
+    "training_usd": 5,
+    "judging_usd": 25,
+    "cumulative_api_usd": 200,
+    "attempts": 600
+  },
+  "provider_calls": 0,
+  "gpu_calls": 0,
+  "still_required": [
+    "Fresh cumulative financial admission and US10 reserve",
+    "Actual serial ownership and source-bound owner probe",
+    "Fixed deadline and watchdog activation",
+    "Reclone/restage/source verification after purge",
+    "Actual CUDA startup and checkpoint cadence measurement"
+  ],
+  "execution_note": "Streamed archive verification unexpectedly exceeded one minute; future archive checks must use CPU budget wrapper."
+}
