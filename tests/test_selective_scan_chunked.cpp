@@ -130,6 +130,15 @@ double worst(const V& got, const std::vector<double>& ref) {
     return w;
 }
 
+// a JSON number, or null for a nonfinite value
+struct Js {
+    char s[32];
+    explicit Js(double v) {
+        if (std::isfinite(v)) std::snprintf(s, sizeof s, "%.3g", v);
+        else std::snprintf(s, sizeof s, "null");
+    }
+};
+
 bool same_bits(const std::vector<float>& a, const std::vector<float>& b) {
     return a.size() == b.size() && std::memcmp(a.data(), b.data(), a.size() * sizeof(float)) == 0;
 }
@@ -180,14 +189,15 @@ int main() {
         if (!ok) {
             ++failures;
             std::printf("{\"fail\": true, \"sl\": %zu, \"batch\": %zu, \"d\": %zu, \"n\": %zu, \"L\": %zu, \"softplus\": %d, "
-                        "\"skip\": %d, \"regime\": %d, \"y\": %.3g, \"states\": %.3g, \"ordered_y\": %.3g, "
+                        "\"skip\": %d, \"regime\": %d, \"y\": %s, \"states\": %s, \"ordered_y\": %s, "
                         "\"one_chunk_identical\": %d}\n",
-                        k.sl, k.batch, k.d, k.n, k.L, k.softplus, k.skip, k.regime, ey, eS, oey, one_chunk);
+                        k.sl, k.batch, k.d, k.n, k.L, k.softplus, k.skip, k.regime, Js(ey).s, Js(eS).s, Js(oey).s,
+                        one_chunk);
         }
     }
-    std::printf("{\"pass\": %s, \"cases\": %zu, \"failures\": %zu, \"bound\": %.0e, \"worst_chunked\": %.3g, "
-                "\"worst_ordered\": %.3g, \"one_chunk_bit_identical\": \"%zu/%zu\", \"repeat_bit_identical\": \"%zu/%zu\"}\n",
-                failures ? "false" : "true", cases.size(), failures, kBound, worst_chunked, worst_ordered,
+    std::printf("{\"pass\": %s, \"cases\": %zu, \"failures\": %zu, \"bound\": %.0e, \"worst_chunked\": %s, "
+                "\"worst_ordered\": %s, \"one_chunk_bit_identical\": \"%zu/%zu\", \"repeat_bit_identical\": \"%zu/%zu\"}\n",
+                failures ? "false" : "true", cases.size(), failures, kBound, Js(worst_chunked).s, Js(worst_ordered).s,
                 ordered_identical, ordered_checks, repeats_identical, cases.size());
     return failures ? 1 : 0;
 }

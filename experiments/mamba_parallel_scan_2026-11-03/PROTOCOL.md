@@ -61,15 +61,27 @@ dropped or rerun. Outcomes:
 
 ## Budget and procedure
 
-- One Colab L4 session, AGENTS.md path C, through `drive.sh`. It runs the preflight, and refuses if a
-  session already holds its name. It stops the session on every exit path and verifies that it is gone, saying
-  explicitly if cleanup is unresolved. It ends with a session and orphan inventory.
-- Absolute deadline 90 minutes from the driver's start, 15 of them reserved for retrieval and shutdown; expected
-  about 30. Within Claude's Colab lane envelope (stack page).
-- The VM checks out a full commit SHA, verifies HEAD and a clean tree, and works in a fresh per-run directory.
-  It writes `status.json` (every gate's exit status, run id and commit) before its `DONE` marker on every exit
-  path. A failed prerequisite (checkout, build, host test, ordered control) stops further paid work.
+- One Colab L4 session, AGENTS.md path C, through `drive.py`, run in a foreground WSL process. The session is
+  named `claude-scan-RUN_ID`.
+  - The preflight needs a successful session listing, orphan listing and adopt listing, and refuses if the
+    name is taken.
+  - Creation is reconciled against the listing whatever the creation call returned.
+  - Shutdown counts as done only after an authoritative listing without the name or endpoint. Otherwise the
+    driver reports unresolved cleanup and exits 3. It ends with a session and orphan inventory.
+- Deadlines from the driver's start: polling ends at 60 minutes, retrieval at 75, shutdown at 90. Every external
+  call has a timeout capped by its deadline, timed-out children are killed, and a call past its deadline is not
+  started. Expected about 30 minutes. Within Claude's Colab lane envelope (stack page).
+- The VM checks out a full commit SHA, verifies HEAD and a clean tree before and after the build, and works in a
+  fresh per-run directory. It never modifies the source.
+  - It writes `status.json` atomically: every gate's own exit status, the script's exit status, run id, commit
+    and HEAD. The `DONE` marker follows it on every exit path after argument validation.
+  - A failed prerequisite (checkout, configure, build, host test, ordered control) stops further paid work.
 - Outputs come home to `/mnt/c/ml_artifacts/mamba_parallel_scan_20261103/RUN_ID/`. Receipts are copied to
-  `receipts/RUN_ID/` here before any analysis, and the driver checks the run id and commit.
+  `receipts/RUN_ID/` here before any analysis, and the driver log is copied after cleanup.
+- The driver validates `status.json`: run, commit and HEAD; exactly the 13 required gates, all 0; VM exit 0.
+  Exit codes: 0 validated, 1 experiment failed (receipts kept), 2 transport or receipt failure, 3 cleanup
+  unresolved.
+- `test_drive.py` (mock Colab CLI) and `test_vm_run.py` (stub tools) test that bookkeeping locally. The local
+  host-test receipt is `receipts/host_test_local.json`.
 - The run is not repeated to improve a result. An operational failure (session lost, build failure) is recorded
   as such and may be rerun once, unchanged.
