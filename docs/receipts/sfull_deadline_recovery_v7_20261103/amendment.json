@@ -1,0 +1,49 @@
+{
+  "kind": "PROSPECTIVE_SFULL_V7_DEADLINE_AND_COST_AMENDMENT",
+  "authority": "Jonathan explicitly authorised 3 November: prospective fixed24h deadline; measured remaining post needs plus25percent, cumulative seedcap at most20; seeds2and3 unadmitted. Root agent delegated preparation.",
+  "seed": 1,
+  "seeds2_and3_admitted": false,
+  "numerical_commit": "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1",
+  "admitted_at_utc": "2026-11-02T13:18:23.244385+00:00",
+  "deadline_utc": "2026-11-03T13:18:23.244385+00:00",
+  "per_seed_cumulative_cap_usd": 13.76,
+  "cap_calculation": {
+    "current_cumulative_usd": 10.918573183878117,
+    "carried_state_sha256": "05d408105e8169ff55365b7f01883117c8a11c1b89c7b2cedf4906ea6da3858d",
+    "remaining_cost_components_usd": {
+      "remaining_post_residual_family_proxy": 1.4014302777777778,
+      "two_full_checkpoint_startup_upload_proxy": 0.3343333333333333,
+      "final_outputs_home_proxy": 0.16306944444444443,
+      "both_carried_80GB_volumes_24h_storage": 0.37333333333333335
+    },
+    "evidence": [
+      {
+        "path": "/home/jonat/pk_c12_sgist_r1_runner/runner.log",
+        "sha256": "34736aef38ee1b39130de77ac7131bb3d687bfc6b97965626a566082eb72bda2"
+      },
+      {
+        "path": "/mnt/c/ml_artifacts/tiny_chat/c12_Sgist_r1/post_c12_Sgist_r1/summary.json",
+        "sha256": "3dfc5ac9f352f9c8559e17375cac924f43073546e3395806ed5b4f349010c2fe"
+      },
+      {
+        "path": "/home/jonat/sfull_financial_recovery_v6_20261102/runner/runner.log",
+        "sha256": "e80dd0f73a67e9c56b14270b20a566437de2cc0325d4eca04cb6ac059c42be5b"
+      },
+      {
+        "path": "/home/jonat/sfull_financial_recovery_v6_20261102/runner/state.json",
+        "sha256": "05d408105e8169ff55365b7f01883117c8a11c1b89c7b2cedf4906ea6da3858d"
+      },
+      {
+        "path": "/home/jonat/sfull_continuation_admission_v4_20261101/source/tools/colab_chat/runpod_api.py",
+        "sha256": "e0812f37b743e7c60a20c18a9b97b63b5a2fe692541ec3a6442bb361e5065e3b"
+      }
+    ],
+    "proxy_limitations": "Matched Sgist rather than Sfull, same72761088parameter L8 state-token family, batch16,1500SFT, L4, deterministic Ember pinned ec3201b and same Carry5/Carry12 recipe. Residual9952seconds boot-to-finished minus recorded1400.9SFT includes unseparated panels/export/base/engine/evaluation and any included VM gates; NOT an isolated Sfull measurement or guaranteed bound. Two1020second startup/upload periods reserve both full checkpoints using actualV6 single-upload cadence; doubles shared setup conservatively.995seconds is actualSgist terminaloutput-home cadence. Storage prices both inherited80GB volumes for full24h. No extra training steps budgeted; no outcome-based gate changes."
+  },
+  "endpoint": {
+    "pretraining_registered_and_home": 10000,
+    "post_sft_registered_and_home": 1500,
+    "remaining_training_steps": 0,
+    "remaining_work": "restore/export/panels/Carry5/Carry12/final-home verification, reusing valid existing volume outputs under frozen source"
+  }
+}
