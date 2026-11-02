@@ -1,0 +1,17 @@
+{
+  "classification": "COMPLETE_SCIENTIFIC_NEGATIVE",
+  "overall_pass": false,
+  "result_zip_sha256": "2040fc1f51bbd9e9f4851393dd97297351d389301c55ba73ce4a188caebe125c",
+  "actual_L4": true,
+  "pod_deleted": true,
+  "volume_deleted": true,
+  "reported_campaign_ledger_usd": 0.33,
+  "recorded_home": "/mnt/c/ml_artifacts/kvq/e9-matched-v2-postpurge-launch2-20261103/e9_matched",
+  "failed_cell": "qwen25/chat/2048",
+  "prefill_ppl_rel_diff": 1.954380717261728e-06,
+  "decode_ppl_rel_diff": -6.339400938881745e-05,
+  "absolute_decode_limit": 2.195438071726173e-05,
+  "original_thresholds_unchanged": true,
+  "automatic_f16_adoption": false,
+  "prior_negatives_preserved": true
+}

@@ -1,0 +1,346 @@
+{
+  "kind": "LOCAL_E9_MATCHED_V2_REPLAY",
+  "classification": "COMPLETE_SCIENTIFIC_NEGATIVE",
+  "overall_pass": false,
+  "complete_scientific_matrix": true,
+  "transported_matrix_agrees": true,
+  "process_completed_successfully": false,
+  "execution": {
+    "gate_pass": false,
+    "process_exit_code": 1,
+    "complete_marker": false
+  },
+  "transported_gate_pass": false,
+  "local_checker_exit_code": 1,
+  "local_summary": {
+    "pass": false,
+    "errors": [
+      "qwen25 chat 2048: c3_ppl fails"
+    ],
+    "criteria": {
+      "mean_ratio": 1.05,
+      "max_ratio": 1.25,
+      "ppl_abs": 2e-05
+    },
+    "cells": [
+      {
+        "model": "qwen3",
+        "input": "book",
+        "context": 2048,
+        "prefill": {
+          "max_rel": 0.0015507721253934946,
+          "mean_rel": 3.286383785015445e-05,
+          "ppl_rel_diff": -5.607126643181193e-05
+        },
+        "decode": {
+          "max_rel": 0.0012561909322083087,
+          "mean_rel": 3.255035261255287e-05,
+          "ppl_rel_diff": 1.0998615485036112e-06
+        },
+        "c1_mean": true,
+        "c2_max": true,
+        "c3_ppl": true,
+        "mean_ratio": 0.9904610885974139
+      },
+      {
+        "model": "qwen3",
+        "input": "book",
+        "context": 4096,
+        "prefill": {
+          "max_rel": 0.001660704063661289,
+          "mean_rel": 3.4120681635854164e-05,
+          "ppl_rel_diff": -2.0942327151551865e-05
+        },
+        "decode": {
+          "max_rel": 0.0015210560292401392,
+          "mean_rel": 3.384540320845425e-05,
+          "ppl_rel_diff": 3.884434460599273e-05
+        },
+        "c1_mean": true,
+        "c2_max": true,
+        "c3_ppl": true,
+        "mean_ratio": 0.99193221195468
+      },
+      {
+        "model": "qwen3",
+        "input": "book",
+        "context": 8192,
+        "prefill": {
+          "max_rel": 0.0023960355198624486,
+          "mean_rel": 3.6458820900327744e-05,
+          "ppl_rel_diff": -3.2575572523563245e-05
+        },
+        "decode": {
+          "max_rel": 0.002258698994718756,
+          "mean_rel": 3.6479604414479337e-05,
+          "ppl_rel_diff": 1.513026211474866e-05
+        },
+        "c1_mean": true,
+        "c2_max": true,
+        "c3_ppl": true,
+        "mean_ratio": 1.0005700544789535
+      },
+      {
+        "model": "qwen3",
+        "input": "chat",
+        "context": 2048,
+        "prefill": {
+          "max_rel": 0.0033246625392863174,
+          "mean_rel": 3.69372151832665e-05,
+          "ppl_rel_diff": -2.4610870001051666e-05
+        },
+        "decode": {
+          "max_rel": 0.0032087867818647686,
+          "mean_rel": 3.727599888855274e-05,
+          "ppl_rel_diff": -7.939652278743381e-06
+        },
+        "c1_mean": true,
+        "c2_max": true,
+        "c3_ppl": true,
+        "mean_ratio": 1.0091718800024676
+      },
+      {
+        "model": "qwen3",
+        "input": "chat",
+        "context": 4096,
+        "prefill": {
+          "max_rel": 0.0033246625392863174,
+          "mean_rel": 3.842736665302027e-05,
+          "ppl_rel_diff": -4.5211566780944956e-05
+        },
+        "decode": {
+          "max_rel": 0.0032087867818647686,
+          "mean_rel": 3.86439858654461e-05,
+          "ppl_rel_diff": -3.01229822975424e-05
+        },
+        "c1_mean": true,
+        "c2_max": true,
+        "c3_ppl": true,
+        "mean_ratio": 1.005637107907544
+      },
+      {
+        "model": "qwen3",
+        "input": "chat",
+        "context": 8192,
+        "prefill": {
+          "max_rel": 0.0033246625392863174,
+          "mean_rel": 3.942886321344889e-05,
+          "ppl_rel_diff": -5.0505374990961194e-05
+        },
+        "decode": {
+          "max_rel": 0.0032087867818647686,
+          "mean_rel": 3.961496794683808e-05,
+          "ppl_rel_diff": -1.20948094477491e-05
+        },
+        "c1_mean": true,
+        "c2_max": true,
+        "c3_ppl": true,
+        "mean_ratio": 1.004720012656254
+      },
+      {
+        "model": "qwen25",
+        "input": "book",
+        "context": 2048,
+        "prefill": {
+          "max_rel": 0.003940732946648115,
+          "mean_rel": 5.243678481835509e-05,
+          "ppl_rel_diff": 8.359402941859884e-05
+        },
+        "decode": {
+          "max_rel": 0.0037071537340990766,
+          "mean_rel": 5.2768780438244886e-05,
+          "ppl_rel_diff": 4.232620067678994e-05
+        },
+        "c1_mean": true,
+        "c2_max": true,
+        "c3_ppl": true,
+        "mean_ratio": 1.0063313496630248
+      },
+      {
+        "model": "qwen25",
+        "input": "book",
+        "context": 4096,
+        "prefill": {
+          "max_rel": 0.003940732946648115,
+          "mean_rel": 4.9513985848538e-05,
+          "ppl_rel_diff": 6.269034407457852e-05
+        },
+        "decode": {
+          "max_rel": 0.0037071537340990766,
+          "mean_rel": 4.977967960405634e-05,
+          "ppl_rel_diff": 5.5205245314438045e-05
+        },
+        "c1_mean": true,
+        "c2_max": true,
+        "c3_ppl": true,
+        "mean_ratio": 1.0053660344842987
+      },
+      {
+        "model": "qwen25",
+        "input": "book",
+        "context": 8192,
+        "prefill": {
+          "max_rel": 0.003940732946648115,
+          "mean_rel": 4.916622025623033e-05,
+          "ppl_rel_diff": 4.117734223862968e-05
+        },
+        "decode": {
+          "max_rel": 0.0037071537340990766,
+          "mean_rel": 4.955684291573486e-05,
+          "ppl_rel_diff": 5.560230210654993e-05
+        },
+        "c1_mean": true,
+        "c2_max": true,
+        "c3_ppl": true,
+        "mean_ratio": 1.0079449397872928
+      },
+      {
+        "model": "qwen25",
+        "input": "chat",
+        "context": 2048,
+        "prefill": {
+          "max_rel": 0.0037054413056977153,
+          "mean_rel": 4.680994551347949e-05,
+          "ppl_rel_diff": 1.954380717261728e-06
+        },
+        "decode": {
+          "max_rel": 0.0036826269751414464,
+          "mean_rel": 4.7140971916085576e-05,
+          "ppl_rel_diff": -6.339400938881745e-05
+        },
+        "c1_mean": true,
+        "c2_max": true,
+        "c3_ppl": false,
+        "mean_ratio": 1.0070717109147407
+      },
+      {
+        "model": "qwen25",
+        "input": "chat",
+        "context": 4096,
+        "prefill": {
+          "max_rel": 0.0037054413056977153,
+          "mean_rel": 4.7155944090965484e-05,
+          "ppl_rel_diff": 4.307138064008065e-05
+        },
+        "decode": {
+          "max_rel": 0.0036826269751414464,
+          "mean_rel": 4.746413658801063e-05,
+          "ppl_rel_diff": 1.3185775566970648e-05
+        },
+        "c1_mean": true,
+        "c2_max": true,
+        "c3_ppl": true,
+        "mean_ratio": 1.0065356023081762
+      },
+      {
+        "model": "qwen25",
+        "input": "chat",
+        "context": 8192,
+        "prefill": {
+          "max_rel": 0.0037054413056977153,
+          "mean_rel": 4.4027057106596934e-05,
+          "ppl_rel_diff": 7.432844641930281e-05
+        },
+        "decode": {
+          "max_rel": 0.0036826269751414464,
+          "mean_rel": 4.4377135277448876e-05,
+          "ppl_rel_diff": 6.833281077023301e-05
+        },
+        "c1_mean": true,
+        "c2_max": true,
+        "c3_ppl": true,
+        "mean_ratio": 1.0079514324567356
+      }
+    ]
+  },
+  "frozen_checker_sha256": "45885f2b55b6c99c1fca2c478cae7c0d5fe72d661477072b303bc551ea89cc8e",
+  "frozen_staging_sha256": "33cb93cb56b7ed5f49be96c8404e714d1cb152bd1b2d33a826e9a861270eb221",
+  "replay_helper_sha256": "c49b92e47c2959a4c1d902ceaf9918eacfd46d2d57f99fea72cf6e433143de9a",
+  "returned_file_sha256": {
+    "out.zip": "2040fc1f51bbd9e9f4851393dd97297351d389301c55ba73ce4a188caebe125c",
+    "gate_summary.json": "f2ebaaf518fd67b45cf28ddf2ef709cd7f29e2f2dab8e01cae8da6230435012f",
+    "execution.json": "752d38c7c8b14692e2491907b36b8ab3231bbb9508467f56c377c529156ee915"
+  },
+  "archive_members": {
+    "execution.json": {
+      "bytes": 76,
+      "sha256": "752d38c7c8b14692e2491907b36b8ab3231bbb9508467f56c377c529156ee915"
+    },
+    "gate_summary.json": {
+      "bytes": 5651,
+      "sha256": "f2ebaaf518fd67b45cf28ddf2ef709cd7f29e2f2dab8e01cae8da6230435012f"
+    },
+    "models.sha256": {
+      "bytes": 628,
+      "sha256": "59510feaa47993ea3319d0311c58975a88f9ccb3264fb6cd4fe8c85b551f16d1"
+    },
+    "long_qwen3.json": {
+      "bytes": 34544,
+      "sha256": "ad8be540f48fed37ee41e848164a63d3c2936a2ea933f7ebad776efebfa3728c"
+    },
+    "long_qwen25.json": {
+      "bytes": 34544,
+      "sha256": "1f67e810f56cc6c877778ee9e604f544855f0c1523183d66fa24ceb68b4b5812"
+    },
+    "inputs_qwen3.json": {
+      "bytes": 322946,
+      "sha256": "de22edf77fd41e10e11e6f5549600fb027d09cbd1f1329b981b66e586354a24c"
+    },
+    "inputs_qwen25.json": {
+      "bytes": 323827,
+      "sha256": "64b85f2eecd7db09ba323f23935e8c1a4ddff79fa0045bb67e290ff4fcdc9ea4"
+    },
+    "hardware.txt": {
+      "bytes": 2233,
+      "sha256": "02fb06c862191b78aa801ed0f93332734a559d78d600b0a71d0035ca5d021e26"
+    },
+    "STAGING.json": {
+      "bytes": 1139,
+      "sha256": "33cb93cb56b7ed5f49be96c8404e714d1cb152bd1b2d33a826e9a861270eb221"
+    },
+    "eval_qwen25/tf_decode.json": {
+      "bytes": 18529,
+      "sha256": "6864415f23bc747128af7977edd53542aeef6bc71eb16fee81234ec553c0be77"
+    },
+    "eval_qwen25/tf_prefill.json": {
+      "bytes": 18513,
+      "sha256": "87b5dcc1584aadbfc5f1854b38b46b4ca265cc05dc34d33d405e725b3201f4db"
+    },
+    "eval_qwen25/meta.json": {
+      "bytes": 411,
+      "sha256": "495b9e98e64dd990ad0a42cc9d9f63acb4f5f4bea76694ac608a4e750dfb8509"
+    },
+    "eval_qwen25/stderr_eval.log": {
+      "bytes": 1051,
+      "sha256": "be21ba4ac253706f4da4d6d76d48425c051f8abd0078a79749d803b0de408c03"
+    },
+    "eval_qwen25/stdout_eval.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "eval_qwen3/tf_decode.json": {
+      "bytes": 18509,
+      "sha256": "b5778314a62c39d005946d8d67152f213be6c39bc5c08d3791eefe38b43d7c44"
+    },
+    "eval_qwen3/tf_prefill.json": {
+      "bytes": 18535,
+      "sha256": "730542f038b38f5758ab0c66238a21301d1ca3a5ff760650e1b8b2eada20b18f"
+    },
+    "eval_qwen3/meta.json": {
+      "bytes": 403,
+      "sha256": "dc7d6663e89c6e861fa151ac9059f00d78ae72ea82b8cd34093c309f8753d216"
+    },
+    "eval_qwen3/stderr_eval.log": {
+      "bytes": 1043,
+      "sha256": "04e76688a2363dddd6f36bc208432f10ee5604b9e9168858bd31e3367d0487a0"
+    },
+    "eval_qwen3/stdout_eval.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "provider_calls": 0,
+  "gpu_calls": 0,
+  "automatic_production_adoption": false,
+  "qualification": "Replays reported raw metrics and recorded model/input hashes; model binaries and actual device execution are not independently rerun."
+}
