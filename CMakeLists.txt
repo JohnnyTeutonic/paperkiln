@@ -69,6 +69,17 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-ffp-contract=off>)
 endif()
 
+# The core keeps -ffast-math, but not glibc's vector maths: under __FAST_MATH__
+# glibc declares libmvec variants of expf, logf and the like, and GCC 15
+# vectorises some core loops into them. Their results differ from the scalar
+# calls, so one loop rounds differently depending on its length at the call
+# site, and paperkiln's EXACT path comparisons (step_residency, fused_head,
+# llama_attnres, recursion, mor) fail. Undefining the macro drops only those
+# declarations; every fast-math code-generation flag stays.
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(transformer_core PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-U__FAST_MATH__>)
+endif()
+
 add_library(microtorch STATIC
     src/autograd.cpp
     src/ops.cpp
