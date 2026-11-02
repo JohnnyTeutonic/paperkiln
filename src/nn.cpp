@@ -447,8 +447,8 @@ void SGD::step() {
     for (size_t k = 0; k < params_.size(); ++k) {
         Var& p = params_[k];
         if (p->grad.rows() == 0) continue;
-        if (devstate_) {
-            if (device::devops::sgd_step_dev(p->data, p->grad, devstate_.get() + devoff_[k], lr,
+        if (float* state = devstate_.get()) {
+            if (device::devops::sgd_step_dev(p->data, p->grad, state + devoff_[k], lr,
                                              mu_))
                 continue;
             // Device ops were disabled mid-run: the velocity lives on
@@ -527,9 +527,9 @@ void AdamW::step() {
     for (size_t k = 0; k < params_.size(); ++k) {
         Var& p = params_[k];
         if (p->grad.rows() == 0) continue;
-        if (devstate_) {
-            if (device::devops::adamw_step_dev(p->data, p->grad, devstate_.get() + devoff_[k],
-                                               devstate_.get() + devtotal_ + devoff_[k], lr, b1_,
+        if (float* state = devstate_.get()) {
+            if (device::devops::adamw_step_dev(p->data, p->grad, state + devoff_[k],
+                                               state + devtotal_ + devoff_[k], lr, b1_,
                                                b2_, c1, c2, eps_, wd_))
                 continue;
             // Same loud-failure rule as SGD: m/v live on device; the
