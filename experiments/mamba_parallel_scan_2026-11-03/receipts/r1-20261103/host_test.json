@@ -1,0 +1,1 @@
+{"pass": true, "cases": 173, "failures": 0, "bound": 3e-05, "worst_chunked": 9.85e-07, "worst_ordered": 1.08e-06, "one_chunk_bit_identical": "519/519", "repeat_bit_identical": "173/173"}
