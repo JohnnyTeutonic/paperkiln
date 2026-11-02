@@ -1,0 +1,56 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+{"prepared": true, "fresh_init_from_allowed": true}
+== mtstudio: pk_dpo_v1 ==
+arch: exact d=768 layers=12 heads=12 | T=512 vocab_cap=16384
+train: 344 steps batch=8 accum=1 lr=2e-06 clip=1 eval_every=10 ckpt_every=10 early_stop(patience=0, min_delta=0)
+export: safetensors gguf | serve: no | out: /content/chat/pk_dpo_v1
+rope_heads: all
+{"event":"start","name":"pk_dpo_v1","steps":344}
+{"beta":0.10000000149011612,"chosen_open":829,"ess_kish":1373.0,"event":"data","nll":0.20000000298023224,"objective":"provenance_po","pairs":1445,"pairs_by_kind":{"uniform":1373},"pairs_with_weight":1373,"rejected_open":1033,"val_pairs":72,"vocab":16384,"weight_mode":"uniform","weight_sum":1373.0,"weight_sum_by_kind":{"uniform":1373.0}}
+{"T":512,"accum":1,"activation":"swiglu","attention":"exact","attention_impl":"blocked","batch":8,"checkpoint_activations":false,"d":768,"d_ff":2048,"event":"model","family":"llama","final_norm":true,"gate_bias_init":-2.0,"heads":12,"layers":12,"lr":1.9999999949504854e-06,"lr_schedule":{"decay":"cosine","min_lr_frac":0.10000000149011612,"warmup_steps":20},"norm":"rmsnorm","norm_placement":"pre","objective":"provenance_po","params":97536768,"position":"rope","residual":"residual","rope_heads":"all","seed":1,"sinks":1,"vocab":16384,"window":64}
+{"event":"init","from":"/content/chat/upload/pksft.safetensors"}
+DPO_STARTUP_PHASE {"phase":"reference_model_load_begin","elapsed_seconds":0.000000,"pairs_completed":0,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_model_load_end","elapsed_seconds":6.784752,"pairs_completed":0,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_begin","elapsed_seconds":6.785262,"pairs_completed":0,"pairs_total":1445,"step":0,"diagnostic_only":true}
+Using CUDA device: NVIDIA L4
+Compute capability: 8.9
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":7.626537,"pairs_completed":1,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":12.692694,"pairs_completed":14,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":18.057974,"pairs_completed":25,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":20.923913,"pairs_completed":32,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":26.060002,"pairs_completed":45,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":31.481577,"pairs_completed":59,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":33.400467,"pairs_completed":64,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":38.591486,"pairs_completed":77,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":43.874118,"pairs_completed":91,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":45.781641,"pairs_completed":96,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":51.011458,"pairs_completed":110,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":56.069010,"pairs_completed":122,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":58.590725,"pairs_completed":128,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":63.947752,"pairs_completed":142,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":69.227889,"pairs_completed":155,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":71.272473,"pairs_completed":160,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":76.467958,"pairs_completed":173,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":81.684802,"pairs_completed":186,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":84.170619,"pairs_completed":192,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":89.207906,"pairs_completed":204,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":94.285962,"pairs_completed":217,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":96.899580,"pairs_completed":224,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":102.344815,"pairs_completed":238,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":107.640196,"pairs_completed":252,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":109.356931,"pairs_completed":256,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":114.578760,"pairs_completed":270,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":119.659215,"pairs_completed":283,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":121.532650,"pairs_completed":288,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":126.575455,"pairs_completed":301,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":131.899594,"pairs_completed":315,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":133.655412,"pairs_completed":320,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":138.747405,"pairs_completed":333,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":144.118789,"pairs_completed":347,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":146.153071,"pairs_completed":352,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":151.466686,"pairs_completed":364,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":156.628002,"pairs_completed":377,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":159.210281,"pairs_completed":384,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":164.211969,"pairs_completed":397,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":169.350921,"pairs_completed":409,"pairs_total":1445,"step":0,"diagnostic_only":true}
+DPO_STARTUP_PHASE {"phase":"reference_cache_progress","elapsed_seconds":172.490997,"pairs_completed":416,"pairs_total":1445,"step":0,"diagnostic_only":true}
