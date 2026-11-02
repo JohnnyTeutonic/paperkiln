@@ -21,24 +21,28 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y clang-format
 
-      - name: Check formatting
+      # The existing tree predates the .clang-format rules, so only the lines a change
+      # touches are checked (git clang-format against the base commit).
+      - name: Check formatting of changed lines
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
         run: |
-          # Check headers
-          for file in include/microtorch/*.hpp; do
-            echo "Checking $file..."
-            clang-format --dry-run -Werror "$file" || (echo "Format issue in $file"; exit 1)
-          done
-
-          # Check source
-          for file in src/*.cpp tests/*.cpp tools/*.cpp; do
-            [ -f "$file" ] && (clang-format --dry-run -Werror "$file" || (echo "Format issue in $file"; exit 1))
-          done
-
-      - name: Report formatting issues
-        if: failure()
-        run: |
-          echo "❌ Code formatting issues found"
-          echo "Run: clang-format -i <file> to fix"
+          if [ "$EVENT" = "pull_request" ]; then base="$PR_BASE"; else base="$PUSH_BEFORE"; fi
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ] \
+             || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+            echo "No comparable base commit; nothing to check."
+            exit 0
+          fi
+          out=$(git clang-format --diff --extensions c,cc,cpp,cxx,h,hpp,cu,cuh "$base" \
+                -- include src tests tools 2>&1) || true
+          echo "$out"
+          case "$out" in
+            ""|*"no modified files to format"*|*"did not modify any files"*) exit 0 ;;
+          esac
+          echo "Changed lines are not clang-formatted; run: git clang-format $base"
+          exit 1
 
   complexity:
     name: Code Complexity Analysis
