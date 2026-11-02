@@ -1,0 +1,9 @@
+# Optimizer host-fallback authority, 3 November 2026
+
+When SGD or AdamW selects its host update path, its numerical reads must use authoritative parameter/gradient values. SGD lacked materialization for both operands; AdamW already materialized the gradient but not the parameter. Three materialize calls repair these fallback boundaries. Successful device execution and the refusal to fall back from persistent device optimizer state are unchanged. Arithmetic and optimizer state equations are unchanged.
+
+The public optimizer API has no step-end precondition; existing AdamW gradient materialization already establishes the intended fallback boundary. This repair handles input authority at that boundary. It does not make arbitrary host mutation followed by cached device operations inside an open step window coherent; write authority/cache invalidation remains a separate contract.
+
+The exact pre-edit nn.cpp is retained as baseline_nn.cpp. Linker-wrapped materialize calls emulate authoritative values separately from poisoned host storage. Independent double-precision two-step equations check SGD without momentum, SGD with momentum, and AdamW with weight decay. Each has parameter-only, gradient-only and both-stale cases plus a fresh-input control. Old code fails8/9 stale cases (AdamW gradient-only was already correct); fixed code passes9/9. Both old and fixed pass all three fresh cases. Four causal CTests and the existing nn regression pass. This is CPU authority emulation, not actual CUDA evidence or a claim that historical default runs were wrong.
+
+Independent read-only review approved the implementation and tests. The live S-full frozen source is untouched. Muon/Newton-Schulz and the wider host-read audit remain open; the queued90-row device packet is not silently changed by this repair. Source hashes and raw row results are in validation.json.
