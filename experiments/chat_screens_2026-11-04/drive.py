@@ -325,7 +325,8 @@ class Driver:
 
     def hf_fetch(self, names):
         """Have the VM download `names` from HF_REPO into VM_IN with the scoped token, then delete the token file on
-        the VM. Returns True if the download step reported success (hashes are checked separately). Never raises."""
+        the VM. Returns True if the download step ran, completely or partly (hashes are checked separately, and what
+        did not arrive intact is uploaded). Never raises."""
         if not HF_TOKEN_FILE.is_file() or not HF_REVISION_FILE.is_file():
             self.log("no HF token or verified revision: inputs will be uploaded")
             return False
@@ -357,7 +358,8 @@ class Driver:
                 "print('HF_DONE' if ok else 'HF_PARTIAL', round(time.monotonic() - t))\n")
         rc, out = self.exec_py(code, 1500, self.work_end, "hf_fetch")
         self.log("hf_fetch:", " ".join(out.split()[-6:]))
-        return rc == 0 and "HF_DONE" in out.split()
+        # HF_PARTIAL still counts as having run: the hash check that follows decides what must be uploaded
+        return rc == 0 and ("HF_DONE" in out.split() or "HF_PARTIAL" in out.split())
 
     def upload(self):
         """Inputs onto the VM: the per-run manifest is uploaded; the data files come from the HF repo when the token
