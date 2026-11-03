@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Runs ON the Colab VM. Usage: bash vm_run.sh FULL_COMMIT_SHA RUN_ID MANIFEST_SHA256
+# Runs ON the Colab VM. Usage: bash vm_run.sh FULL_COMMIT_SHA RUN_ID MANIFEST_SHA256 [SEED SCREENS]
+#   SEED (default 1) becomes each spec's train.seed; SCREENS (default S0,S1,S2,S3) is the comma-separated list of
+#   screens to train in order. Both must equal the manifest's (amendment A1, wave 2).
 #   FULL_COMMIT_SHA: this experiment's commit (the commit vm_run.sh was fetched at), recorded in status.json;
 #   MANIFEST_SHA256: the hash of $ROOT/screens_in/manifest.json, which pins every uploaded input.
 # The first-wave screening session of Claude's chat screening lane (the root workspace's
@@ -19,9 +21,13 @@ set -u
 COMMIT=${1:-}
 RUN=${2:-}
 MANIFEST_SHA=${3:-}
+SEED=${4:-1}
+SCREENS_CSV=${5:-S0,S1,S2,S3}
 # paperkiln's numerical source: arm A's admitted trainer source (PROTOCOL.md section 2)
 SOURCE=1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1
-SCREENS="S0 S1 S2 S3"
+[[ "$SEED" =~ ^[1-9]$ ]] || { echo "SEED must be one digit 1-9" >&2; exit 2; }
+[[ "$SCREENS_CSV" =~ ^S[0-9](,S[0-9])*$ ]] || { echo "SCREENS must look like S0,S2,S4" >&2; exit 2; }
+SCREENS=${SCREENS_CSV//,/ }
 [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo "COMMIT must be a full 40-character SHA" >&2; exit 2; }
 [[ "$RUN" =~ ^[A-Za-z0-9_-]{1,32}$ ]] || { echo "RUN_ID: 1-32 letters, digits, - or _" >&2; exit 2; }
 [[ "$MANIFEST_SHA" =~ ^[0-9a-f]{64}$ ]] || { echo "MANIFEST_SHA256 must be 64 hex characters" >&2; exit 2; }
@@ -48,8 +54,8 @@ finish() {
     [ "$pass" = true ] && final=0 || final=1   # the script's actual exit status, recorded as exit_status
     packaged=$(for s in $SCREENS; do [ -f "$O/screens/$s/READY" ] && printf '"%s",' "$s"; done | sed 's/,$//')
     {
-        printf '{"run_id": "%s", "commit": "%s", "source": "%s", "head": "%s", "manifest_sha256": "%s", "shell_status": %d, "exit_status": %d, "pass": %s, "packaged": [%s], "gates": {' \
-            "$RUN" "$COMMIT" "$SOURCE" "$(git -C "$W/src" rev-parse HEAD 2>/dev/null)" "$MANIFEST_SHA" "$rc" "$final" \
+        printf '{"run_id": "%s", "seed": %d, "screens": [%s], "commit": "%s", "source": "%s", "head": "%s", "manifest_sha256": "%s", "shell_status": %d, "exit_status": %d, "pass": %s, "packaged": [%s], "gates": {' \
+            "$RUN" "$SEED" "$(for s in $SCREENS; do printf '"%s",' "$s"; done | sed 's/,$//')" "$COMMIT" "$SOURCE" "$(git -C "$W/src" rev-parse HEAD 2>/dev/null)" "$MANIFEST_SHA" "$rc" "$final" \
             "$pass" "$packaged"
         local first=1
         for k in $(printf '%s\n' "${!G[@]}" | LC_ALL=C sort); do
@@ -207,9 +213,11 @@ G[build]=0
 # out_dir and the three input paths changed; any other difference fails the gate
 cat > "$W/make_specs.py" <<'PY'
 import copy, hashlib, json, sys
-arm_a_path, work, man_path, screens = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4:]
+arm_a_path, work, man_path, seed, screens = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4]), sys.argv[5:]
 arm_a_bytes = open(arm_a_path, "rb").read()
 man = json.load(open(man_path))
+if man.get("seed") != seed or man.get("screens") != screens:
+    sys.exit("seed or screens differ from the manifest's pin")
 if hashlib.sha256(arm_a_bytes).hexdigest() != man["arm_a_spec_sha256"]:
     sys.exit("arm A spec differs from the manifest's pin")
 arm_a = json.loads(arm_a_bytes)
@@ -218,10 +226,11 @@ def flat(d, p=""):
     for k, v in d.items():
         out.update(flat(v, p + k + ".") if isinstance(v, dict) else {p + k: v})
     return out
-allowed = {"name", "out_dir", "data.sft_examples", "data.vocab", "train.init_from"}
+allowed = {"name", "out_dir", "data.sft_examples", "data.vocab", "train.init_from", "train.seed"}
 for s in screens:
     spec = copy.deepcopy(arm_a)
     spec["name"] = "screen_" + s
+    spec["train"]["seed"] = seed
     spec["out_dir"] = f"{work}/train_{s}"
     spec["data"]["vocab"] = f"{work}/upload/vocab.gguf"
     spec["data"]["sft_examples"] = f"{work}/upload/{s}.jsonl"
@@ -234,7 +243,7 @@ for s in screens:
         json.dump(spec, f, indent=2)
 print(json.dumps({"specs": screens, "allowed_changes": sorted(allowed)}))
 PY
-run specs "$O/specs.log" "$PY" "$W/make_specs.py" "$IN/arm_a_lr3e5.json" "$W" "$IN/manifest.json" $SCREENS \
+run specs "$O/specs.log" "$PY" "$W/make_specs.py" "$IN/arm_a_lr3e5.json" "$W" "$IN/manifest.json" "$SEED" $SCREENS \
     || fail specs $?
 cp "$W"/spec_S*.json "$O/" 2>/dev/null
 G[specs]=0

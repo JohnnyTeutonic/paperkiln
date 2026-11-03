@@ -3,7 +3,10 @@
 AI_ML/chat_screens_claude/PROTOCOL.md v1.2 and SESSION.md). Run in a foreground WSL process from the paperkiln
 checkout's root:
 
-    python3 experiments/chat_screens_2026-11-04/drive.py FULL_COMMIT_SHA RUN_ID
+    python3 experiments/chat_screens_2026-11-04/drive.py FULL_COMMIT_SHA RUN_ID [SEED SCREENS]
+
+SEED (default 1) is the spec's train.seed; SCREENS (default S0,S1,S2,S3, wave 1) is a comma-separated list of the
+screens this session trains, in order. Both are pinned in the input manifest (amendment A1, wave 2).
 
 FULL_COMMIT_SHA is this experiment's commit on GitHub (vm_run.sh is fetched at it); the trainer is built on the VM
 from the numerical source pinned in vm_run.sh. Session name claude-screens-RUN_ID. Outputs:
@@ -62,16 +65,21 @@ CLI_PY = hook("DRIVE_TEST_CLI_PY", os.path.expanduser("~/.local/share/uv/tools/g
 REAP = hook("DRIVE_TEST_REAP", f"{sys.executable} tools/colab_reap_orphans.py").split()
 ADOPT = hook("DRIVE_TEST_ADOPT", f"{CLI_PY} tools/colab_adopt.py").split()
 HERE = Path(__file__).resolve().parent
-ARTIFACTS = Path(hook("DRIVE_TEST_ARTIFACTS", "/mnt/c/ml_artifacts/chat_screens_claude/w1"))
+ARTIFACTS = Path(hook("DRIVE_TEST_ARTIFACTS", "/mnt/c/ml_artifacts/chat_screens_claude/runs"))
 RECEIPTS = Path(hook("DRIVE_TEST_RECEIPTS", str(HERE / "receipts")))
 MINUTE = float(hook("DRIVE_TEST_MINUTE_SECONDS", "60"))
 LOG_FAIL_AFTER = int(hook("DRIVE_TEST_LOG_FAIL_AFTER", "0"))
 RAISE_ON = hook("DRIVE_TEST_RAISE_ON", "")
 PART_BYTES = int(hook("DRIVE_TEST_PART_BYTES", str(45 * 1024 * 1024)))  # runner_multi.py: 45 MiB both ways
 SOURCE = "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1"
-SCREENS = ("S0", "S1", "S2", "S3")
-REQUIRED_GATES = {"provenance", "checkout", "inputs", "configure", "build", "specs"} | {
-    f"{g}_{s}" for s in SCREENS for g in ("train", "package")}
+SCREENS = ("S0", "S1", "S2", "S3")  # wave 1, the default
+ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4")
+COMMON_INPUTS = ("sfull_sft1500.safetensors", "vocab.gguf", "arm_a_lr3e5.json")
+
+
+def required_gates(screens):
+    return {"provenance", "checkout", "inputs", "configure", "build", "specs"} | {
+        f"{g}_{s}" for s in screens for g in ("train", "package")}
 DEADLINES = (100, 104, 112, 117, 120)
 VM_IN = "/content/screens_in"
 # The inputs' private Hugging Face dataset repo (Jonathan, 4 Nov 2026), seeded with hf_seed.py: the base parts and every
@@ -100,6 +108,8 @@ PINS = {
                  "efb36b697e07888aa63fe525733f9f5759844043e6f8a1351f763d79afe4e46d"),
     "S3.jsonl": (f"{ART}/chat_screens_claude/packets/v2/S3/train.jsonl",
                  "e623e241a776bd1acdc3dd9c5cb9f204c93bc2944dca41f83948421118f33272"),
+    "S4.jsonl": (f"{ART}/chat_screens_claude/packets/w2/S4/train.jsonl",
+                 "6d24b3bd3b83f2964737fdf74f952fbdbfe8c5b0f4fdb0c8fe6e294d5009011f"),
     "arm_a_lr3e5.json": (str(HERE / "arm_a_lr3e5.json"),
                          "66c718e0b501c751aae0a1cd22eddfdc666a7cfb46a4c074fa41b67aa220125e"),
 }
@@ -115,7 +125,7 @@ def sha256(path):
     return h.hexdigest()
 
 
-def launch_code(url, commit, run, manifest_sha, root="/content"):
+def launch_code(url, commit, run, manifest_sha, seed=1, screens=SCREENS, root="/content"):
     """The VM-side launch: fetch vm_run.sh and start it detached. Each call writes its own temporary file and renames
     it over the final path, so a delayed duplicate never rewrites a script a bash is reading; vm_run.sh's atomic
     run-directory claim then lets only one launch do any work. (`root` is for tests only.)"""
@@ -126,7 +136,8 @@ def launch_code(url, commit, run, manifest_sha, root="/content"):
         "with os.fdopen(fd, 'wb') as f:\n"
         "    f.write(src)\n"
         f"os.replace(tmp, '{root}/vm_run_{run}.sh')\n"
-        f"subprocess.Popen('nohup bash {root}/vm_run_{run}.sh {commit} {run} {manifest_sha} "
+        f"subprocess.Popen('nohup bash {root}/vm_run_{run}.sh {commit} {run} {manifest_sha} {seed} "
+        f"{','.join(screens)} "
         f">> {root}/vm_run_{run}.log 2>&1 &', shell=True)\n"
         "print('LAUNCHED')\n")
 
@@ -136,8 +147,10 @@ class Stop(Exception):
 
 
 class Driver:
-    def __init__(self, commit, run):
-        self.commit, self.run = commit, run
+    def __init__(self, commit, run, seed=1, screens=SCREENS):
+        self.commit, self.run, self.seed, self.screens = commit, run, seed, tuple(screens)
+        self.required = required_gates(self.screens)
+        self.needed = COMMON_INPUTS + tuple(f"{s}.jsonl" for s in self.screens)
         self.name = f"claude-screens-{run}"
         self.out = ARTIFACTS / run
         self.stage = self.out / "staging"
@@ -236,6 +249,8 @@ class Driver:
         self.stage.mkdir(parents=True, exist_ok=False)
         files = {}
         for name, (path, want) in PINS.items():
+            if name not in self.needed:
+                continue
             got = sha256(path)
             if got != want:
                 raise Stop(f"input {name} hashes {got}, pinned {want}: nothing created")
@@ -250,7 +265,7 @@ class Driver:
                 p.write_bytes(chunk)
                 parts.append({"name": p.name, "sha256": hashlib.sha256(chunk).hexdigest()})
         self.manifest = {"files": files, "base_parts": parts, "arm_a_spec_sha256": files["arm_a_lr3e5.json"],
-                         "source": SOURCE, "run_id": self.run}
+                         "source": SOURCE, "run_id": self.run, "seed": self.seed, "screens": list(self.screens)}
         man = self.stage / "manifest.json"
         man.write_text(json.dumps(self.manifest, indent=2, sort_keys=True))
         self.manifest_sha = sha256(man)
@@ -260,7 +275,7 @@ class Driver:
     def uploads(self):
         """[(local path, VM name)] in upload order: the manifest, then the small inputs, then the base parts."""
         out = [(self.stage / "manifest.json", "manifest.json")]
-        out += [(Path(PINS[n][0]), n) for n in PINS if n != "sfull_sft1500.safetensors"]
+        out += [(Path(PINS[n][0]), n) for n in self.needed if n != "sfull_sft1500.safetensors"]
         out += [(self.stage / p["name"], p["name"]) for p in self.manifest["base_parts"]]
         return out
 
@@ -468,7 +483,7 @@ class Driver:
     def launch(self):
         url = (f"https://raw.githubusercontent.com/JohnnyTeutonic/paperkiln/{self.commit}/"
                "experiments/chat_screens_2026-11-04/vm_run.sh")
-        code = launch_code(url, self.commit, self.run, self.manifest_sha)
+        code = launch_code(url, self.commit, self.run, self.manifest_sha, self.seed, self.screens)
         for label in ("launch", "launch_retry"):
             self.check()
             self.launch_attempted = True
@@ -492,14 +507,14 @@ class Driver:
                 f"        return open(p).read().strip() == {self.run!r}\n"
                 "    except OSError:\n"
                 "        return False\n"
-                f"ready = [s for s in {list(SCREENS)!r} if holds(f'{{o}}/screens/{{s}}/READY')]\n"
+                f"ready = [s for s in {list(self.screens)!r} if holds(f'{{o}}/screens/{{s}}/READY')]\n"
                 "print('STATE ' + json.dumps({'done': holds(o + '/DONE'), 'ready': ready}))\n")
         rc, out = self.exec_py(code, 200, deadline, label)
         for line in out.splitlines():
             if rc == 0 and line.startswith("STATE "):
                 try:
                     s = json.loads(line[len("STATE "):])
-                    return bool(s["done"]), [x for x in s["ready"] if x in SCREENS]
+                    return bool(s["done"]), [x for x in s["ready"] if x in self.screens]
                 except (ValueError, KeyError, TypeError):
                     pass
         return None, None
@@ -694,7 +709,7 @@ class Driver:
                         shutil.copy2(f, self.receipts / f.name)
             if (self.out / "input_manifest.json").is_file():
                 shutil.copy2(self.out / "input_manifest.json", self.receipts / "input_manifest.json")
-            for s in SCREENS:
+            for s in self.screens:
                 if (self.out / s / "manifest.json").is_file():
                     shutil.copy2(self.out / s / "manifest.json", self.receipts / f"{s}_manifest.json")
             lines = []
@@ -729,9 +744,11 @@ class Driver:
                      s.get("head"), s.get("manifest_sha256"))
             return None
         problems = []
-        if set(gates) != REQUIRED_GATES:
-            problems.append(f"gate set differs: missing {sorted(REQUIRED_GATES - set(gates))}, "
-                            f"extra {sorted(set(gates) - REQUIRED_GATES)}")
+        if set(gates) != self.required:
+            problems.append(f"gate set differs: missing {sorted(self.required - set(gates))}, "
+                            f"extra {sorted(set(gates) - self.required)}")
+        if s.get("seed") != self.seed or s.get("screens") != list(self.screens):
+            problems.append(f"seed or screens differ: {s.get('seed')} {s.get('screens')}")
         failed = sorted(k for k, v in gates.items() if v != 0)
         if failed:
             problems.append(f"failed gates {failed}")
@@ -833,7 +850,7 @@ class Driver:
             if self.out.joinpath("staging").exists():
                 shutil.rmtree(self.out / "staging", ignore_errors=True)  # copies of pinned inputs only
             receipts = self.copy_receipts()
-            all_home = set(self.home) == set(SCREENS)
+            all_home = set(self.home) == set(self.screens)
             code = 3 if not clean else 2 if not (logs and receipts and valid is not None) else 0 if valid else 1
             if receipts and not logs:
                 self.log("receipts hold only what came home: the VM logs were not retrieved")
@@ -862,11 +879,17 @@ def main():
         print("DRIVE_TEST_* is set but DRIVE_TEST_HARNESS is not: refusing a real run with test hooks",
               file=sys.stderr)
         return 2
-    if len(sys.argv) != 3 or not re.fullmatch(r"[0-9a-f]{40}", sys.argv[1]) \
-            or not re.fullmatch(r"[A-Za-z0-9_-]{1,32}", sys.argv[2]):
+    args = sys.argv[1:]
+    if len(args) not in (2, 4) or not re.fullmatch(r"[0-9a-f]{40}", args[0]) \
+            or not re.fullmatch(r"[A-Za-z0-9_-]{1,32}", args[1]) \
+            or (len(args) == 4 and not (re.fullmatch(r"[1-9]", args[2])
+                                        and re.fullmatch(r"S[0-9](,S[0-9])*", args[3])
+                                        and set(args[3].split(",")) <= set(ALL_SCREENS)
+                                        and len(set(args[3].split(","))) == len(args[3].split(",")))):
         print(__doc__, file=sys.stderr)
         return 2
-    d = Driver(sys.argv[1], sys.argv[2])
+    seed, screens = (int(args[2]), args[3].split(",")) if len(args) == 4 else (1, SCREENS)
+    d = Driver(args[0], args[1], seed, screens)
 
     def on_signal(signum, _frame):
         d.cancel = True

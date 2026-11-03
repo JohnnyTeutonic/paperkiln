@@ -77,10 +77,11 @@ def advance(run):
     """One step of VM progress: the next screen READY, or status.json and DONE after the last one."""
     out = content / f"run_{run}" / "out"
     k = st.get("progress", 0)
+    screens = os.environ["MOCK_SCREENS"].split(",")
     fail_at = 2 if mode == "gate_fail" else None
     gates = {g: 0 for g in os.environ["MOCK_GATES"].split()}
-    if k < 4 and k != fail_at and mode not in ("never_done", "stop_unconfirmed"):
-        s = f"S{k}"
+    if k < len(screens) and k != fail_at and mode not in ("never_done", "stop_unconfirmed"):
+        s = screens[k]
         d = out / "screens" / s; d.mkdir(parents=True, exist_ok=True)
         gguf = (s * 1300).encode()
         parts = []
@@ -99,12 +100,13 @@ def advance(run):
     if mode in ("never_done", "stop_unconfirmed") or "status" in st:
         return
     if fail_at is not None:
-        for g in [g for g in gates if g.endswith(("_S2", "_S3"))]: del gates[g]
-        gates["train_S2"] = 1
+        for g in [g for g in gates if g.endswith(tuple("_" + x for x in screens[2:]))]: del gates[g]
+        gates["train_" + screens[2]] = 1
     head = SOURCE if mode != "wrong_source" else "e" * 40
-    s = {"run_id": run, "commit": os.environ["MOCK_COMMIT"], "source": SOURCE, "head": head,
+    s = {"run_id": run, "seed": int(os.environ["MOCK_SEED"]), "screens": screens,
+         "commit": os.environ["MOCK_COMMIT"], "source": SOURCE, "head": head,
          "manifest_sha256": st["manifest_sha"], "exit_status": 0 if fail_at is None else 1,
-         "pass": fail_at is None, "packaged": [f"S{i}" for i in range(st.get("progress", 0))], "gates": gates}
+         "pass": fail_at is None, "packaged": screens[:st.get("progress", 0)], "gates": gates}
     (out / "status.json").write_text(json.dumps(s)); (out / "DONE").write_text(run)
     st["status"] = s; save()
 SOURCE = "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1"
@@ -119,7 +121,7 @@ if cmd == "exec":
         n = count("launch")
         if mode == "launch_lost_absent" and n == 1:
             sys.exit(1)
-        msha = re.search(r"vm_run_\S+\.sh \S+ \S+ ([0-9a-f]{64}) ", code).group(1)
+        msha = re.search(r"vm_run_\S+\.sh \S+ \S+ ([0-9a-f]{64}) (\d) (\S+) ", code).group(1)
         st["manifest_sha"] = msha; save()
         out.mkdir(parents=True, exist_ok=True)
         (content / f"vm_{run}.pid").write_text("4242")
@@ -170,7 +172,7 @@ def write_inputs(tmp, bad_pin=False):
     d.mkdir()
     pins = {}
     names = ["sfull_sft1500.safetensors", "vocab.gguf", "S0.jsonl", "S1.jsonl", "S2.jsonl", "S3.jsonl",
-             "arm_a_lr3e5.json"]
+             "S4.jsonl", "arm_a_lr3e5.json"]
     for i, n in enumerate(names):
         data = (n * (300 if n.startswith("sfull") else 3)).encode()
         (d / n).write_bytes(data)
@@ -198,7 +200,10 @@ def seed_hub(tmp, pins, missing=()):
 
 class DriveTests(unittest.TestCase):
     def run_drive(self, mode, run="t1", bad_pin=False, hf=False, hub_missing=(), minute="0.05", extra=None,
-                  pre=None):
+                  pre=None, seed=None, screens=None):
+        use = screens or SCREENS
+        gates = sorted(["provenance", "checkout", "inputs", "configure", "build", "specs"]
+                       + [f"{g}_{s}" for s in use for g in ("train", "package")])
         tmp = Path(tempfile.mkdtemp())
         mock = tmp / "colab"
         mock.write_text(MOCK)
@@ -216,20 +221,22 @@ class DriveTests(unittest.TestCase):
                    DRIVE_TEST_PINS=json.dumps(pins), DRIVE_TEST_PART_BYTES="2000",
                    DRIVE_TEST_HF_TOKEN_FILE=str(tok), DRIVE_TEST_HF_REVISION_FILE=str(rev),
                    MOCK_STATE=str(tmp / "state.json"), MOCK_CONTENT=str(tmp / "content"), MOCK_MODE=mode,
-                   MOCK_HUB=str(hub), MOCK_GATES=" ".join(GATES), MOCK_COMMIT=COMMIT)
+                   MOCK_HUB=str(hub), MOCK_GATES=" ".join(gates), MOCK_COMMIT=COMMIT,
+                   MOCK_SEED=str(seed or 1), MOCK_SCREENS=",".join(use))
         env.update(extra or {})
         if pre:
             pre(tmp)
         t0 = time.monotonic()
-        r = subprocess.run([sys.executable, str(HERE / "drive.py"), COMMIT, run], env=env, capture_output=True,
-                           text=True, timeout=180)
+        argv = [sys.executable, str(HERE / "drive.py"), COMMIT, run] + (
+            [str(seed), ",".join(screens)] if seed else [])
+        r = subprocess.run(argv, env=env, capture_output=True, text=True, timeout=180)
         state = json.loads((tmp / "state.json").read_text()) if (tmp / "state.json").exists() else {
             "sessions": {}, "counts": {}}
         log = (tmp / "art" / run / "driver.log").read_text() if (tmp / "art" / run / "driver.log").exists() else ""
         return r.returncode, state, log, tmp, time.monotonic() - t0
 
-    def assert_home(self, tmp, screens, run="t1"):
-        for s in SCREENS:
+    def assert_home(self, tmp, screens, run="t1", universe=None):
+        for s in universe or SCREENS:
             gguf = tmp / "art" / run / s / "model.gguf"
             if s in screens:
                 self.assertEqual(gguf.read_bytes(), (s * 1300).encode(), s)
@@ -406,6 +413,27 @@ class DriveTests(unittest.TestCase):
         spec.loader.exec_module(mod)
         self.assertEqual(list(mod.DEADLINES), sorted(mod.DEADLINES))
         self.assertLessEqual(mod.DEADLINES[-1], 120)
+
+    def test_a_wave_2_session_trains_its_screens_at_its_seed(self):
+        rc, state, log, tmp, _ = self.run_drive("normal", seed=2, screens=["S0", "S2", "S4"])
+        self.assertEqual(rc, 0, log)
+        self.assert_home(tmp, ["S0", "S2", "S4"], universe=["S0", "S1", "S2", "S3", "S4"])
+        man = json.loads((tmp / "receipts" / "t1" / "input_manifest.json").read_text())
+        self.assertEqual((man["seed"], man["screens"]), (2, ["S0", "S2", "S4"]))
+        self.assertEqual(sorted(man["files"]), sorted(["sfull_sft1500.safetensors", "vocab.gguf", "arm_a_lr3e5.json",
+                                                       "S0.jsonl", "S2.jsonl", "S4.jsonl"]))
+
+    def test_a_status_with_another_seed_is_not_validated(self):
+        rc, state, log, tmp, _ = self.run_drive("normal", seed=2, screens=["S0", "S2", "S4"],
+                                                extra={"MOCK_SEED": "3"})
+        self.assertEqual(rc, 1, log)
+        self.assertIn("seed or screens differ", log)
+
+    def test_bad_seed_or_screens_are_refused(self):
+        for extra in (["0", "S0"], ["2", "S0,S9"], ["2", "S0,S0"], ["x", "S0"]):
+            r = subprocess.run([sys.executable, str(HERE / "drive.py"), COMMIT, "t1"] + extra,
+                               env=dict(os.environ, DRIVE_TEST_HARNESS="1"), capture_output=True, text=True)
+            self.assertEqual(r.returncode, 2, extra)
 
     def test_test_hooks_are_refused_without_the_harness(self):
         env = dict(os.environ, DRIVE_TEST_COLAB="/bin/true")

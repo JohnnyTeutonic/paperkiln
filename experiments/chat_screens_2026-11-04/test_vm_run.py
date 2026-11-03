@@ -91,7 +91,7 @@ class VmRunTests(unittest.TestCase):
             (self.inputs / n).write_bytes(base[i:i + 2000])
             parts.append({"name": n, "sha256": sha(base[i:i + 2000])})
         files = {"sfull_sft1500.safetensors": sha(base)}
-        for n in ["vocab.gguf"] + [f"{s}.jsonl" for s in SCREENS]:
+        for n in ["vocab.gguf"] + [f"{s}.jsonl" for s in SCREENS + ["S4"]]:
             data = (n * 5).encode()
             (self.inputs / n).write_bytes(data)
             files[n] = sha(data)
@@ -99,7 +99,7 @@ class VmRunTests(unittest.TestCase):
         (self.inputs / "arm_a_lr3e5.json").write_bytes(spec)
         files["arm_a_lr3e5.json"] = sha(spec)
         self.manifest = {"files": files, "base_parts": parts, "arm_a_spec_sha256": sha(spec), "source": self.source,
-                         "run_id": "v1"}
+                         "run_id": "v1", "seed": 1, "screens": SCREENS}
         self.write_manifest()
 
     def tearDown(self):
@@ -109,13 +109,14 @@ class VmRunTests(unittest.TestCase):
         (self.inputs / "manifest.json").write_text(json.dumps(self.manifest, indent=2, sort_keys=True))
         self.manifest_sha = sha((self.inputs / "manifest.json").read_bytes())
 
-    def run_vm(self, run="v1", manifest_sha=None, extra=None, args=None):
+    def run_vm(self, run="v1", manifest_sha=None, extra=None, args=None, seed_screens=None):
         env = dict(os.environ, VM_TEST_HARNESS="1", VM_ROOT=str(self.root), VM_TEST_SOURCE=self.source,
                    VM_TEST_CLONE_URL=str(self.repo), VM_TEST_CMAKE=str(self.tmp / "cmake"),
                    VM_TEST_MTSTUDIO=str(self.tmp / "mtstudio"), VM_TEST_PROVENANCE="0")
         env.update(extra or {})
         argv = ["bash", str(HERE / "vm_run.sh")] + (args if args is not None else
-                                                   [COMMIT, run, manifest_sha or self.manifest_sha])
+                                                   [COMMIT, run, manifest_sha or self.manifest_sha]
+                                                   + (seed_screens or []))
         r = subprocess.run(argv, env=env, capture_output=True, text=True, timeout=120)
         out = self.root / f"run_{run}" / "out"
         status = json.loads((out / "status.json").read_text()) if (out / "status.json").exists() else None
@@ -210,6 +211,24 @@ class VmRunTests(unittest.TestCase):
                              sha((out / "screens" / "S1" / name).read_bytes()))
         self.assertTrue((out / "result_S1.json").is_file())
 
+    def test_a_wave_2_session_applies_its_seed_to_every_spec(self):
+        self.manifest.update(seed=2, screens=["S0", "S2", "S4"])
+        self.write_manifest()
+        r, s, out = self.run_vm(seed_screens=["2", "S0,S2,S4"])
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual((s["seed"], s["screens"], s["packaged"]), (2, ["S0", "S2", "S4"], ["S0", "S2", "S4"]))
+        self.assertIn("train_S4", s["gates"])
+        self.assertNotIn("train_S1", s["gates"])
+        for scr in ("S0", "S2", "S4"):
+            spec = json.loads((out / f"spec_{scr}.json").read_text())
+            self.assertEqual(spec["train"]["seed"], 2)
+            self.assertEqual(spec["name"], f"screen_{scr}")
+
+    def test_a_seed_that_differs_from_the_manifest_fails_the_specs_gate(self):
+        r, s, out = self.run_vm(seed_screens=["3", "S0,S1,S2,S3"])
+        self.assertNotEqual(s["gates"]["specs"], 0)
+        self.assertNotIn("train_S0", s["gates"])
+
     def test_a_second_launch_of_the_same_run_is_refused(self):
         self.run_vm()
         r, _, _ = self.run_vm()
@@ -217,7 +236,8 @@ class VmRunTests(unittest.TestCase):
         self.assertIn("refusing to reuse a run directory", r.stderr)
 
     def test_bad_arguments_are_refused(self):
-        for args in ([COMMIT[:39], "v1", "0" * 64], [COMMIT, "bad run", "0" * 64], [COMMIT, "v1", "xyz"]):
+        for args in ([COMMIT[:39], "v1", "0" * 64], [COMMIT, "bad run", "0" * 64], [COMMIT, "v1", "xyz"],
+                     [COMMIT, "v1", "0" * 64, "0", "S0"], [COMMIT, "v1", "0" * 64, "2", "S0;S1"]):
             r, _, _ = self.run_vm(args=args)
             self.assertEqual(r.returncode, 2, args)
         self.assertFalse((self.root / "run_v1").exists())
