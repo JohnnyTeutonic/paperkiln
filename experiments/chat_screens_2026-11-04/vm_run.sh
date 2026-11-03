@@ -28,6 +28,7 @@ SCREENS="S0 S1 S2 S3"
 case $- in *m*) echo "job control must be off (setsid would fork)" >&2; exit 2;; esac
 ROOT=/content
 [ "${VM_TEST_HARNESS:-}" = 1 ] && ROOT=${VM_ROOT:-/content}   # test_vm_run.py only
+[ "${VM_TEST_HARNESS:-}" = 1 ] && SOURCE=${VM_TEST_SOURCE:-$SOURCE}   # tests: a fixture repository's commit
 signal_point() { [ "${VM_TEST_HARNESS:-}" = 1 ] && [ "${VM_TEST_SIGNAL_AT:-}" = "$1" ] && kill -TERM $$; }  # tests
 IN=$ROOT/screens_in
 W=$ROOT/run_$RUN
@@ -149,7 +150,8 @@ G[checkout]=0
 # inputs: the manifest is the one the driver pinned; every listed file hashes as listed; the base weights are joined
 # from their parts and hash as listed. Files land in $W/upload under the names arm A's spec uses.
 mkdir -p "$W/upload"
-run inputs "$O/inputs.log" "$PY" - "$IN" "$W/upload" "$MANIFEST_SHA" <<'PY' || fail inputs $?
+# (each gate's Python is written to a file first: run() gives its command stdin from /dev/null)
+cat > "$W/check_inputs.py" <<'PY'
 import hashlib, json, os, sys
 src, dst, want = sys.argv[1], sys.argv[2], sys.argv[3]
 def sha(p):
@@ -188,6 +190,7 @@ for name, digest in man["files"].items():
             sys.exit("copied file hash differs: " + name)
 print(json.dumps({"verified": sorted(man["files"]), "base_parts": len(parts)}))
 PY
+run inputs "$O/inputs.log" "$PY" "$W/check_inputs.py" "$IN" "$W/upload" "$MANIFEST_SHA" || fail inputs $?
 G[inputs]=0
 
 # configure and build: arm A's boot, target mtstudio, sm_89
@@ -201,7 +204,7 @@ G[build]=0
 
 # specs: arm A's admitted spec (uploaded as arm_a_lr3e5.json, its hash pinned in the manifest) with only the name,
 # out_dir and the three input paths changed; any other difference fails the gate
-run specs "$O/specs.log" "$PY" - "$IN/arm_a_lr3e5.json" "$W" "$IN/manifest.json" $SCREENS <<'PY' || fail specs $?
+cat > "$W/make_specs.py" <<'PY'
 import copy, hashlib, json, sys
 arm_a_path, work, man_path, screens = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4:]
 arm_a_bytes = open(arm_a_path, "rb").read()
@@ -230,6 +233,8 @@ for s in screens:
         json.dump(spec, f, indent=2)
 print(json.dumps({"specs": screens, "allowed_changes": sorted(allowed)}))
 PY
+run specs "$O/specs.log" "$PY" "$W/make_specs.py" "$IN/arm_a_lr3e5.json" "$W" "$IN/manifest.json" $SCREENS \
+    || fail specs $?
 cp "$W"/spec_S*.json "$O/" 2>/dev/null
 G[specs]=0
 
