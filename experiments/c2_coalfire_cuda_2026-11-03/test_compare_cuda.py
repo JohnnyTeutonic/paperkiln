@@ -102,6 +102,12 @@ class CompareCudaTests(unittest.TestCase):
         rc, rep = self.run_compare(self.logits("cuda.f32", self.ref), repeat=self.logits("rep.f32", nudged))
         self.assertEqual(rc, 0, rep)
         self.assertFalse(rep["repeat_bit_identical"])
+        signed = self.ref.copy()  # -0.0 against 0.0: equal as numbers, different bits
+        signed[0, 0] = 0.0
+        flipped = signed.copy()
+        flipped[0, 0] = -0.0
+        rc, rep = self.run_compare(self.logits("cuda.f32", signed), repeat=self.logits("rep.f32", flipped))
+        self.assertFalse(rep["repeat_bit_identical"])
 
 
 if __name__ == "__main__":

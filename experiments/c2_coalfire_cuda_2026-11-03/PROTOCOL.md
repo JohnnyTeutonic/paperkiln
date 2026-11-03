@@ -25,9 +25,10 @@ scope: coalfire implements neither (reference §10).
   unchanged since February 2025 (blob `fbbe6ce0` at both C2's commit and the pin).
 - **Engine:** coalfire.cpp `605685e8` (main after #38), built with `-DCUDA_ENABLED=ON -DCMAKE_CUDA_ARCHITECTURES=89`
   with the image's own toolkit (recorded, not installed).
-- **Tool:** `coalfire_dump.cpp`, C2's dump tool. The only change is that it reports the build's CUDA state first:
-  `use_cuda`, the device count, name and compute capability. A CUDA build without a visible device exits 3 instead
-  of running. It is compiled with exactly the flags coalfire's build gave `src/transformer.cpp`, taken from
+- **Tool:** `coalfire_dump.cpp`, C2's dump tool, with three changes:
+  - it reports the build's CUDA state first: `use_cuda`, the device count, name and compute capability;
+  - a CUDA build without a visible device exits 3 instead of running;
+  - it sets the config's two uninitialised flags (`use_fp16`, `use_gradient_checkpointing`) to false. It is compiled with exactly the flags coalfire's build gave `src/transformer.cpp`, taken from
   `compile_commands.json` by `dump_flags.py`, because the headers change under `USE_CUDA`. It runs `forward_batch`
   in eval mode, as C2 did.
 - **What runs on the device** in this build, by construction (`USE_CUDA` is compile-time; there is no runtime
@@ -38,8 +39,13 @@ scope: coalfire implements neither (reference §10).
 
   RMSNorm stays on the CPU (its CUDA path is disabled in the source), as do the embedding gather and the residual
   adds. The GEMMs are `cublasSgemm` in the default math mode, which is FP32, and every dump also runs with
-  `NVIDIA_TF32_OVERRIDE=0`. The config's `use_fp16` flag has no initialiser in coalfire (a latent defect), but only
-  backward paths read it, not this forward.
+  `NVIDIA_TF32_OVERRIDE=0`. The internals of the batched-attention and SwiGLU launchers are coalfire's. The excerpts
+  reviewed show their call sites and compile-time selection; the device run is the evidence for the rest.
+- **The FP16 flag.** coalfire's `TransformerConfig` gives `use_fp16` and `use_gradient_checkpointing` no
+  initialiser, a latent defect. Constructing the layers reads `use_fp16`: `MultiHeadAttention` stores it, which is
+  undefined behaviour while it is indeterminate, though no forward branch selects on it. Only backward paths branch
+  on it. C2's CPU tool inherited the read. This tool sets both flags to false, and the CPU control was rerun with
+  that change.
 - **Referee:** C2's `compare.py`, imported unchanged by `compare_cuda.py`.
 
 ## Gates (all required; `vm_c2.sh`, in order; a failure stops the run)
@@ -49,8 +55,9 @@ scope: coalfire implements neither (reference §10).
 3. `inputs`: the uploaded set is exactly `inputs.sha256`'s names, and every hash matches.
 4. `corpus`: the rebuilt vocabulary files match `corpus.sha256`.
 5. `configure`, `build`: coalfire's CUDA configure and `transformer_core`. Neither tree is modified.
-6. `dump_build`: the dump tool is built with the library's flags. They must contain `-DUSE_CUDA`, and the tool is
-   linked to the toolkit's cudart and cuBLAS (rpath to the toolkit beside `nvcc`).
+6. `dump_build`: the dump tool is built with the library's flags, passed one argument per line. They must include
+   `-DUSE_CUDA`, and the tool is linked to the toolkit's cudart and cuBLAS (rpath to the toolkit beside `nvcc`). The
+   compile database, the resolved `nvcc`, compiler and library paths (`toolchain.txt`) and the tool's `ldd` are kept.
 7. `device_required`, a negative control: with `CUDA_VISIBLE_DEVICES` empty, the tool exits 3, reports
    `"devices": 0` and writes no logits.
 8. `dump_cuda`, `dump_cuda_repeat`: two runs. Each must report `"use_cuda": true, "devices": 1, "device":
@@ -62,22 +69,30 @@ scope: coalfire implements neither (reference §10).
     - the referee, rerun on the VM, still passing both CPU legs of the C2 receipt.
 
 **Reported, not gated:**
-- whether the repeat is bit-identical;
+- the repeat's own scores, and whether its file bytes equal the first run's (the gate is on the first run only; the
+  repeat must only run and report the L4);
 - the CUDA logits against coalfire's CPU build and against paperkiln;
 - the CUDA leg's maximum and median error.
 
 The bound is C2's, fixed before C2's first run, and it is not changed here. The CPU legs were within 5.6e-7.
 
-**Outcomes.** A pass extends C2's pin to coalfire's CUDA build at this commit. A failure is a finding about coalfire's
-CUDA forward (as the FFN-bias defect was on the CPU). It would be diagnosed with C2's sub-op method, not by relaxing
-the bound. No rerun to improve a result: an operational failure (session lost, build failure, CLI hang) is recorded
-and may be rerun once, unchanged, under a new RUN_ID.
+**Outcomes.**
+- **A pass** establishes this, and no more: at coalfire `605685e8`, the CUDA build's eval-mode `forward_batch`, on
+  C2's checkpoint and 48 ids on one L4 in FP32, is within C2's bound of the float64 referee, with its argmax in
+  every row. It says nothing about training or backward parity, other attention paths, other shapes, other
+  precisions or other devices.
+- **A completed dump that fails the comparison** is a parity discrepancy to diagnose, with C2's sub-op method. It
+  does not by itself locate the cause, and the bound is not relaxed.
+- **A provenance, input, build, transport or referee-environment failure** is operational.
+
+No rerun to improve a result: an operational failure (session lost, build failure, CLI hang) is recorded and may be
+rerun once, unchanged, under a new RUN_ID.
 
 ## Local evidence (before any GPU)
 
-- **CPU control** (`receipts/cpu_control_local.txt`): the modified dump tool, built against a CPU build of coalfire
-  `605685e8`, reproduces C2's `coalfire.f32` byte for byte (sha256 `a4806858…`). This covers both the tool change and
-  coalfire's merges since C2 (#33, #37, #38) for this model.
+- **CPU control** (`receipts/cpu_control_local.txt`): the modified dump tool, as committed, built against a CPU
+  build of coalfire `605685e8`, reproduces C2's `coalfire.f32` byte for byte (sha256 `a4806858…`). This covers the
+  tool's changes and coalfire's merges since C2 (#33, #37, #38) for this model.
 - **CUDA compile** (no GPU): coalfire `605685e8` builds with CUDA 12.6 for sm_89 in about 2.5 minutes on 4 cores. The
   dump tool compiles with the library's flags (`-DCUDA_AVAILABLE -DUSE_CUDA ...`) and links cudart and cuBLAS.
 - **Comparison:** `compare_cuda.py` on C2's own files reproduces C2's figures (coalfire 5.647e-7, paperkiln
@@ -87,6 +102,14 @@ and may be rerun once, unchanged, under a new RUN_ID.
     retries, coalfire's HEAD and the pins.
   - `test_vm_c2.py` (stub tools, 13 tests): every gate's stop and the stop handling.
   - `test_compare_cuda.py` (synthetic tiny Llama, 4 tests).
+- **Review:** Codex methods review round 1, RUN with no blocking findings. Its five non-blocking points are applied:
+  - the FP16 flag's description corrected, and both uninitialised flags set;
+  - flags passed one per line;
+  - repeat identity on bytes;
+  - the toolchain evidence kept;
+  - the outcome wording narrowed.
+
+  Round 2 reviews these changes.
 
 ## Budget and procedure
 

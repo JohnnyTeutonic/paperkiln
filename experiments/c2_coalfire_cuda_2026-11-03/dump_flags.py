@@ -1,6 +1,7 @@
-"""Print the compile flags coalfire's own build gave one source file, from its compile_commands.json, as one line of
-shell words: everything except the compiler, -o and its argument, -c and the source itself. The dump tool is compiled
-with these, so that it sees the headers exactly as the library did (USE_CUDA and friends change class layouts).
+"""Print the compile flags coalfire's own build gave one source file, from its compile_commands.json, one argument
+per line (no shell quoting; vm_c2.sh reads them with mapfile): everything except the compiler, -o and its argument,
+-c and the source itself. The dump tool is compiled with these, so that it sees the headers exactly as the library
+did (USE_CUDA and friends change class layouts). An argument containing a newline is refused.
 
   python3 dump_flags.py BUILD/compile_commands.json src/transformer.cpp
 
@@ -36,9 +37,9 @@ def flags(db_path, source):
 
 def main():
     f = flags(sys.argv[1], sys.argv[2])
-    if not f:
+    if not f or any("\n" in w for w in f):
         return 1
-    print(" ".join(shlex.quote(w) for w in f))
+    print("\n".join(f))
     return 0
 
 

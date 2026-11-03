@@ -164,9 +164,12 @@ G[build]=0
 # the dump tool, with exactly the flags the library's src/transformer.cpp was compiled with (a CUDA build: USE_CUDA)
 python3 "$E/dump_flags.py" build/compile_commands.json src/transformer.cpp > "$O/dump_flags.txt" 2>&1 \
     || fail dump_build 1
-grep -q -- '-DUSE_CUDA' "$O/dump_flags.txt" || fail dump_build 95
-read -r -a FL < "$O/dump_flags.txt"   # the VM's paths have no spaces or shell characters, so words split cleanly
+grep -qx -- '-DUSE_CUDA' "$O/dump_flags.txt" || fail dump_build 95
+mapfile -t FL < "$O/dump_flags.txt"   # one argument per line, unquoted
 CUDA_LIB=$(dirname "$(dirname "$(command -v nvcc)")")/lib64
+cp build/compile_commands.json "$O/compile_commands.json"
+{ echo "nvcc $(command -v nvcc)"; echo "g++ $(command -v g++)"; echo "cuda_lib $CUDA_LIB"
+  ls -l "$CUDA_LIB"/libcudart.so* "$CUDA_LIB"/libcublas.so* 2>&1; } > "$O/toolchain.txt"
 run dump_build "$O/dump_build.log" g++ "${FL[@]}" "$E/coalfire_dump.cpp" build/libtransformer_core.a \
     -L"$CUDA_LIB" -Wl,-rpath,"$CUDA_LIB" -lcudart -lcublas -fopenmp -o coalfire_dump || fail dump_build $?
 G[dump_build]=0
@@ -188,6 +191,7 @@ for k in dump_cuda dump_cuda_repeat; do
     grep -q '"use_cuda": true, "devices": 1, "device": "NVIDIA L4", "cc": "8.9"' "$O/$k.log" || fail $k 94
     G[$k]=0
 done
+ldd coalfire_dump > "$O/ldd.txt" 2>&1
 # the referee needs NumPy; the image's own, recorded (nothing is installed)
 run numpy "$O/numpy.txt" python3 -c "import numpy; print(numpy.__version__)" || fail numpy $?
 G[numpy]=0

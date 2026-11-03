@@ -6,7 +6,8 @@ forward of the HF export in docs/receipts/c2_coalfire_parity_20261103/compare.py
 Gate (exit 1 on failure): the CUDA logits have T x V finite values, every row within the frozen bound of the
 referee (max |a - ref| / max(1, max |ref row|) <= 1e-4) and the referee's argmax in every row; and the referee, run
 here, still passes the two CPU legs of the C2 receipt (their files are hash-checked inputs). Reported, not gated:
-whether the repeat is bit-identical, and CUDA against coalfire's CPU build and against paperkiln.
+the repeat's own scores and whether its bytes equal the first run's, and CUDA against coalfire's CPU build and
+against paperkiln.
 """
 import importlib.util
 import json
@@ -56,8 +57,8 @@ def main():
     ok = all(report["legs"].get(n, {}).get("pass") is True for n in gated)
     if "coalfire_cuda" in arrays:
         cu = arrays["coalfire_cuda"]
-        if "coalfire_cuda_repeat" in arrays:
-            report["repeat_bit_identical"] = bool(np.array_equal(cu, arrays["coalfire_cuda_repeat"]))
+        if "coalfire_cuda_repeat" in arrays:  # the files' bytes (float equality would equate -0.0 and 0.0)
+            report["repeat_bit_identical"] = Path(cuda_path).read_bytes() == Path(repeat_path).read_bytes()
         for other in ("coalfire_cpu", "paperkiln_cpu"):
             if other in arrays:
                 report[f"cuda_vs_{other}"] = {

@@ -1,8 +1,8 @@
 C2 CUDA leg, local CPU control (Claude Opus 5.5, 3 Nov 2026; CPU only, WSL, under scripts/cpu_budget.py)
 coalfire HEAD: 605685e8e212eecdf86d01630f76b9ac47b5d5a8  (clean: yes)
 build: cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON (CPU), target transformer_core; g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
-dump tool flags (dump_flags.py, src/transformer.cpp): -I/home/jonat/claude_coalfire/include -I/home/jonat/claude_coalfire/third_party -I/home/jonat/claude_c2cpu_build/_deps/json-src/include -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -fopenmp
-dump tool source sha256: dc7533f383c4a53a010e392fc76e258c586d714cf7a9cc83ec0fa14adb113e64
+dump tool flags (dump_flags.py, src/transformer.cpp, one per line): -I/home/jonat/claude_coalfire/include -I/home/jonat/claude_coalfire/third_party -I/home/jonat/claude_c2cpu_build/_deps/json-src/include -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -fopenmp
+dump tool source sha256: 02026ec64040ea73026718bc6c0124861458b69d294cc950c20d7d9b89eda040
 run: dump CKPT train-0-small.txt train-1-small.txt 64 ids.txt OUT (the C2 after-fix inputs)
 {"use_cuda": false}
 {"ffn_bias_max_abs": 0, "zeroed": false}

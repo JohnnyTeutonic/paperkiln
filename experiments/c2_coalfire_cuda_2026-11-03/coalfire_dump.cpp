@@ -1,7 +1,7 @@
 // C2 CUDA leg: docs/receipts/c2_coalfire_parity_20261103/coalfire_dump.cpp, unchanged except
 // that it first reports the build's CUDA state as one JSON line, {"use_cuda": ..., "devices":
-// ..., "device": ..., "cc": ...}, and a CUDA build exits 3 without a visible device instead of
-// running. Loads a coalfire format-3 checkpoint of the --tiny llama-family model, runs
+// ..., "device": ..., "cc": ...}, a CUDA build exits 3 without a visible device instead of
+// running, and the config's two uninitialised flags are set to false. Loads a coalfire format-3 checkpoint of the --tiny llama-family model, runs
 // forward_batch (the path training optimises through; golden_batch_test.cpp explains why not
 // forward()) over the ids in IDS and writes every row's logits as float32 [T, vocab] to OUT. The
 // config is rebuilt exactly as coalfire's src/golden_batch_test.cpp does for --tiny: the
@@ -67,6 +67,11 @@ int main(int argc, char** argv) {
     c.intermediate_size = 512;
     c.max_seq_length = std::stoul(argv[4]);
     c.head_dim = c.hidden_size / c.num_heads;
+    // TransformerConfig gives these two no initialiser, and constructing the layers reads use_fp16
+    // (MultiHeadAttention stores it); set them so nothing reads an indeterminate value. This forward
+    // selects no FP16 path either way.
+    c.use_fp16 = false;
+    c.use_gradient_checkpointing = false;
     arch::ArchitectureSpec spec = arch::ArchitectureSpec::from_family("llama");
     spec.apply(c);
     transformer_runtime::llama_no_bias = !c.use_biases;
