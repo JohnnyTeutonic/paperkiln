@@ -124,7 +124,7 @@ run() {
 # the driver stops this run through this PID (SIGTERM; see on_stop); published only once the traps are in place
 { echo $$ > "$ROOT/vm_$RUN.pid.tmp" && mv "$ROOT/vm_$RUN.pid.tmp" "$ROOT/vm_$RUN.pid"; } || exit 2
 cd "$W"
-HERE=$(dirname "$(readlink -f "$0")")
+
 PY=${VM_TEST_PYTHON:-python3}
 CMAKE=${VM_TEST_CMAKE:-cmake}
 { nvidia-smi --query-gpu=name,driver_version --format=csv,noheader; nvcc --version | tail -1; nproc; python3 --version; } > "$O/hardware.log" 2>&1
@@ -199,9 +199,9 @@ run build "$O/build.log" "$CMAKE" --build build --target mtstudio --parallel "$(
 sha256sum build/mtstudio > "$O/mtstudio.sha256"
 G[build]=0
 
-# specs: arm A's spec (arm_a_lr3e5.json beside this script, its hash pinned in the manifest) with only the name,
+# specs: arm A's admitted spec (uploaded as arm_a_lr3e5.json, its hash pinned in the manifest) with only the name,
 # out_dir and the three input paths changed; any other difference fails the gate
-run specs "$O/specs.log" "$PY" - "$HERE/arm_a_lr3e5.json" "$W" "$IN/manifest.json" $SCREENS <<'PY' || fail specs $?
+run specs "$O/specs.log" "$PY" - "$IN/arm_a_lr3e5.json" "$W" "$IN/manifest.json" $SCREENS <<'PY' || fail specs $?
 import copy, hashlib, json, sys
 arm_a_path, work, man_path, screens = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4:]
 arm_a_bytes = open(arm_a_path, "rb").read()
