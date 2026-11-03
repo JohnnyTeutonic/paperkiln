@@ -41,8 +41,15 @@ chunks x N.
   ordered and consumed the chunked states); other GPUs.
 - **Default:** unchanged and ordered. Making the chunked path the default, or claiming model speed, needs its own
   protocol (PROTOCOL.md).
-- **Follow-ups:** the chunked backward's GPU run and the end-to-end prefill measurement are done (below). Choosing L
-  automatically is still open (128-256 was best or near best at every shape here).
+- **Follow-ups:** the chunked backward's GPU run and the end-to-end prefill measurement are done (below).
+- **Choosing L automatically:** `MICROTORCH_SCAN_CHUNK=auto` selects L = 128 (`src/scan_chunk_switch.hpp`). The
+  measured timings leave no room for a shape-dependent rule:
+  - forward (r1): across the six cells and L = 32-256, a fixed L = 128 is within 0.2% of each cell's best L;
+  - backward (b1): the same holds within 2%;
+  - end-to-end prefill (p2): L = 64 and 128 are within 1.5% of each other everywhere.
+
+  `auto` is the value 128 exactly, so it runs the code those gates passed at L = 128 (`tests/test_scan_chunk_switch.cpp`).
+  The default stays ordered.
 - **Driver note:** the Colab CLI prints `[colab]` banner rows in `sessions`. In r1 the driver read them as session
   rows, which was harmless, since they were in the pre-creation snapshot and constant. The driver skips them.
 
