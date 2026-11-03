@@ -17,6 +17,9 @@ GATES = {
     "backward": ["build", "build_base", "checkout", "configure", "default_identical", "host_test", "host_test_bwd",
                  "numpy", "provenance", "replay_2", "replay_3", "replay_unset", "scan_bwd_bench", "strict_2",
                  "strict_3", "strict_unset", "switch_refuses_malformed"],
+    "prefill": ["build", "checkout", "configure", "engine_unchanged", "host_test", "prefill_gate",
+                "prefill_gate_cublas", "prefill_profile", "prefill_profile_cublas", "prefill_time",
+                "prefill_time_cublas", "provenance"],
 }
 
 # The mock keeps its state in MOCK_STATE: sessions, call counts. exec is dispatched on the label in the -f file name
@@ -123,7 +126,7 @@ class DriveTests(unittest.TestCase):
         return r.returncode, state, log, tmp, time.monotonic() - t0
 
     def test_normal_run_validates_and_stops(self):
-        for protocol in (None, "backward"):
+        for protocol in (None, "backward", "prefill"):
             rc, state, log, tmp, _ = self.run_drive("normal", protocol=protocol)
             self.assertEqual(rc, 0, log)
             self.assertEqual(state["sessions"], {})
@@ -145,6 +148,24 @@ class DriveTests(unittest.TestCase):
             rc, _, log, _, _ = self.run_drive(mode, protocol="backward")
             self.assertEqual(rc, 2, log)
             self.assertIn("identity mismatch", log)
+
+    def test_prefill_paths_reuse_the_hardening(self):
+        rc, state, log, _, _ = self.run_drive("launch_lost_started", protocol="prefill")
+        self.assertEqual((rc, state["counts"]["launch"]), (0, 1), log)
+        rc, state, log, tmp, _ = self.run_drive("never_done", protocol="prefill")
+        self.assertEqual(rc, 1, log)
+        self.assertIn("workload stop: confirmed (interrupted)", log)
+        self.assertEqual(state["sessions"], {})
+        rc, _, log, _, _ = self.run_drive("gate_fail", protocol="prefill")
+        self.assertEqual(rc, 1, log)
+        rc, _, log, _, _ = self.run_drive("wrong_protocol", protocol="prefill")
+        self.assertEqual(rc, 2, log)
+
+    def test_gate_sets_do_not_validate_each_other(self):
+        for protocol, other in (("prefill", "backward"), ("backward", "prefill"), (None, "prefill")):
+            rc, _, log, _, _ = self.run_drive("normal", protocol=protocol, extra={"MOCK_GATES": " ".join(GATES[other])})
+            self.assertEqual(rc, 1, log)
+            self.assertIn("gate set differs", log)
 
     def test_forward_gate_set_does_not_validate_a_backward_run(self):
         rc, _, log, _, _ = self.run_drive("normal", protocol="backward", extra={})
@@ -261,6 +282,20 @@ class LaunchCodeTests(unittest.TestCase):
         while not (tmp / "started").exists() and time.monotonic() < deadline:
             time.sleep(0.1)
         self.assertEqual((tmp / "started").read_text().strip(), f"{COMMIT} r9 backward")
+
+    def test_prefill_deadlines_fit_its_60_minute_cap(self):
+        spec = importlib.util.spec_from_file_location("drive", HERE / "drive.py")
+        drive = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(drive)
+        self.assertEqual(set(drive.DEADLINES), set(drive.REQUIRED_GATES))
+        for protocol, cap in (("forward", 90), ("backward", 90), ("prefill", 60)):
+            t0 = time.monotonic()
+            d = drive.Driver(COMMIT, "r9", protocol)
+            ends = [d.work_end, d.retrieve_end, d.shutdown_end, d.inventory_end]
+            self.assertEqual(ends, sorted(ends), protocol)  # each phase ends after the one before
+            self.assertLessEqual(d.inventory_end - t0, cap * drive.MINUTE + 1, protocol)
+            self.assertGreater(d.inventory_end - t0, (cap - 1) * drive.MINUTE, protocol)
+        self.assertEqual(drive.DEADLINES["prefill"], (42, 50, 56, 60))
 
 
 if __name__ == "__main__":

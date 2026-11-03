@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Runs ON the Colab VM. Usage: bash vm_run.sh FULL_COMMIT_SHA RUN_ID [forward|backward]
+# Runs ON the Colab VM. Usage: bash vm_run.sh FULL_COMMIT_SHA RUN_ID [forward|backward|prefill]
 #   forward  (the default): PROTOCOL.md gates 1-3, the gate set of run r1-20261103;
-#   backward: PROTOCOL_BACKWARD.md gates 1-6.
+#   backward: PROTOCOL_BACKWARD.md gates 1-6;
+#   prefill:  PROTOCOL_PREFILL.md, the end-to-end prefill gates and timings.
 # The run directory /content/run_RUN_ID is claimed with an atomic mkdir, so a second launch of the same run (the
 # driver retries a launch only after its probe found no script; a delayed first call may still arrive) exits before
 # traps, PID or any work. Once it exists, status.json (each gate's exit status, the incoming shell status, the
@@ -18,9 +19,11 @@ RUN=${2:-}
 PROTO=${3:-forward}
 # the backward protocol's base: paperkiln master when the branch was cut; its default path is the reference for gate 5
 BASE=d0390e392006a383f8be4565b1b67fcfef513ff6
+# the prefill protocol's base: master with both chunked kernels merged (PR #15); the engine and the model are its own
+PREFILL_BASE=da5febf2f0a4578bbf17384123c8962e8c623bf5
 [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo "COMMIT must be a full 40-character SHA" >&2; exit 2; }
 [[ "$RUN" =~ ^[A-Za-z0-9_-]{1,32}$ ]] || { echo "RUN_ID: 1-32 letters, digits, - or _" >&2; exit 2; }
-case "$PROTO" in forward|backward) ;; *) echo "protocol must be forward or backward" >&2; exit 2;; esac
+case "$PROTO" in forward|backward|prefill) ;; *) echo "protocol must be forward, backward or prefill" >&2; exit 2;; esac
 case $- in *m*) echo "job control must be off (setsid would fork)" >&2; exit 2;; esac
 ROOT=/content
 [ "${VM_TEST_HARNESS:-}" = 1 ] && ROOT=${VM_ROOT:-/content}   # test_vm_run.py only
@@ -32,8 +35,10 @@ mkdir -p "$O" || exit 2
 declare -A G=()
 if [ "$PROTO" = forward ]; then
     REQUIRED="build checkout configure host_test numpy replay_2 replay_3 replay_unset scan_bench strict_2 strict_3 strict_unset switch_refuses_malformed"
-else
+elif [ "$PROTO" = backward ]; then
     REQUIRED="build build_base checkout configure default_identical host_test host_test_bwd numpy provenance replay_2 replay_3 replay_unset scan_bwd_bench strict_2 strict_3 strict_unset switch_refuses_malformed"
+else
+    REQUIRED="build checkout configure engine_unchanged host_test prefill_gate prefill_gate_cublas prefill_profile prefill_profile_cublas prefill_time prefill_time_cublas provenance"
 fi
 finish() {
     local rc=$? pass=true keys final
@@ -122,7 +127,7 @@ run() {
 { echo $$ > "$ROOT/vm_$RUN.pid.tmp" && mv "$ROOT/vm_$RUN.pid.tmp" "$ROOT/vm_$RUN.pid"; } || exit 2
 cd "$W"
 { nvidia-smi --query-gpu=name,driver_version --format=csv,noheader; nvcc --version | tail -1; nproc; python3 --version; } > "$O/hardware.log" 2>&1
-if [ "$PROTO" = backward ]; then
+if [ "$PROTO" != forward ]; then
     # exactly one NVIDIA L4, and the image's toolkit (CUDA 13.0 on 3 Nov; r1-20261103 built this repository with it)
     { [ "$(nvidia-smi --query-gpu=name --format=csv,noheader | wc -l)" = 1 ] \
       && nvidia-smi --query-gpu=name --format=csv,noheader | grep -q L4 \
@@ -138,14 +143,56 @@ if [ "$PROTO" = backward ]; then
     { [ "$(git -C base rev-parse HEAD)" = "$BASE" ] && [ -z "$(git -C base status --porcelain)" ]; } || fail checkout 99
 fi
 G[checkout]=0
+if [ "$PROTO" = prefill ]; then
+    # the engine (src/, include/) and the model (tools/parity_model.hpp) are master's at PREFILL_BASE, the code the
+    # kernel runs r1 and b1 gated, and the commit descends from it
+    { git -C src merge-base --is-ancestor "$PREFILL_BASE" "$COMMIT" \
+      && git -C src diff --quiet "$PREFILL_BASE" "$COMMIT" -- src include tools/parity_model.hpp; } \
+      > "$O/engine_unchanged.log" 2>&1 || fail engine_unchanged 1
+    G[engine_unchanged]=0
+fi
 run configure "$O/configure.log" cmake -S src -B build -DCMAKE_BUILD_TYPE=Release -DMICROTORCH_CUDA=ON \
     -DMICROTORCH_DEVCHECK=ON -DMICROTORCH_BUILD_PYTHON=OFF -DCMAKE_CUDA_ARCHITECTURES=89 || fail configure $?
 G[configure]=0
 TARGETS="test_selective_scan_cuda test_selective_scan_chunked"
 [ "$PROTO" = backward ] && TARGETS="$TARGETS test_selective_scan_chunked_backward"
+[ "$PROTO" = prefill ] && TARGETS="mamba_prefill_bench test_mamba_prefill_bench"
 run build "$O/build.log" cmake --build build --target $TARGETS --parallel "$(nproc)" || fail build $?
 [ -z "$(git -C src status --porcelain)" ] || fail build 98   # the build wrote nothing into the source tree
 G[build]=0
+if [ "$PROTO" = prefill ]; then
+    # gate 1: the host test, again here, on the same commit
+    run host_test "$O/host_test.json" build/test_mamba_prefill_bench || fail host_test $?
+    G[host_test]=0
+    # Every bench process runs with the scan switch, TF32 and the profile unset unless its step sets them; the bench
+    # refuses MICROTORCH_SCAN_CHUNK set from outside, and sets it per arm itself.
+    B="env -u MICROTORCH_SCAN_CHUNK -u MICROTORCH_TF32 -u MICROTORCH_GPU_PROFILE -u MICROTORCH_CUBLAS"
+    # gates 2-3: correctness before any timing, for each GEMM backend that is timed; a failure stops paid work
+    RUN_ERR="$O/prefill_gate.err" run prefill_gate "$O/prefill_gate.jsonl" \
+        $B build/mamba_prefill_bench --mode gate --require-cuda || fail prefill_gate $?
+    G[prefill_gate]=0
+    RUN_ERR="$O/prefill_gate_cublas.err" run prefill_gate_cublas "$O/prefill_gate_cublas.jsonl" \
+        $B MICROTORCH_CUBLAS=1 build/mamba_prefill_bench --mode gate --require-cuda || fail prefill_gate_cublas $?
+    G[prefill_gate_cublas]=0
+    # the timings (profile off), then the per-op profile (its own processes: the profile switch is read once)
+    RUN_ERR="$O/prefill_time.err" run prefill_time "$O/prefill_time.jsonl" \
+        $B build/mamba_prefill_bench --mode time --require-cuda
+    G[prefill_time]=$?
+    RUN_ERR="$O/prefill_time_cublas.err" run prefill_time_cublas "$O/prefill_time_cublas.jsonl" \
+        $B MICROTORCH_CUBLAS=1 build/mamba_prefill_bench --mode time --require-cuda
+    G[prefill_time_cublas]=$?
+    RUN_ERR="$O/prefill_profile.err" run prefill_profile "$O/prefill_profile.jsonl" \
+        $B MICROTORCH_GPU_PROFILE=1 build/mamba_prefill_bench --mode profile --require-cuda
+    G[prefill_profile]=$?
+    RUN_ERR="$O/prefill_profile_cublas.err" run prefill_profile_cublas "$O/prefill_profile_cublas.jsonl" \
+        $B MICROTORCH_CUBLAS=1 MICROTORCH_GPU_PROFILE=1 build/mamba_prefill_bench --mode profile --require-cuda
+    G[prefill_profile_cublas]=$?
+    sha256sum build/mamba_prefill_bench build/test_mamba_prefill_bench > "$O/binaries.sha256" 2>&1
+    for k in prefill_time prefill_time_cublas prefill_profile prefill_profile_cublas; do
+        [ "${G[$k]}" = 0 ] || exit 1
+    done
+    exit 0
+fi
 # gate 1: the host test(s), again here, on the same commit
 run host_test "$O/host_test.json" build/test_selective_scan_chunked || fail host_test $?
 G[host_test]=0

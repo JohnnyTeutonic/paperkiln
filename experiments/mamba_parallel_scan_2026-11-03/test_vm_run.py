@@ -16,6 +16,8 @@ FORWARD = {"build", "checkout", "configure", "host_test", "numpy", "replay_2", "
 BACKWARD = {"build", "build_base", "checkout", "configure", "default_identical", "host_test", "host_test_bwd",
             "numpy", "provenance", "replay_2", "replay_3", "replay_unset", "scan_bwd_bench", "strict_2", "strict_3",
             "strict_unset", "switch_refuses_malformed"}
+PREFILL = {"build", "checkout", "configure", "engine_unchanged", "host_test", "prefill_gate", "prefill_gate_cublas",
+           "prefill_profile", "prefill_profile_cublas", "prefill_time", "prefill_time_cublas", "provenance"}
 
 # Stubs: git clones by creating the tree and adds the base worktree; cmake makes the test binaries in the build
 # directory it is given; nvcc makes the bench named by -o; python3 replay and pip succeed. FAIL_AT names one step to
@@ -30,6 +32,8 @@ case "$1" in
              *) echo "${STUB_HEAD:-0123456789abcdef0123456789abcdef01234567}";; esac;;
   status) [ "$FAIL_AT" = dirty ] && echo " M x"; true;;
   worktree) [ "$FAIL_AT" = worktree ] && exit 8; mkdir -p "${@: -2:1}";;
+  merge-base) [ "$FAIL_AT" = not_descendant ] && exit 1; exit 0;;
+  diff) [ "$FAIL_AT" = engine_changed ] && exit 1; echo "$*" > "$STUB_LOG/git_diff_args"; exit 0;;
   *) [ "$FAIL_AT" = checkout ] && exit 5; true;;
 esac''',
     "cmake": r'''#!/usr/bin/env bash
@@ -38,13 +42,27 @@ if [ "$1" = --build ]; then
   [ "$FAIL_AT" = build ] && [ "$dir" = build ] && exit 4
   [ "$FAIL_AT" = build_base ] && [ "$dir" = base_build ] && exit 4
   mkdir -p "$dir"
-  for t in test_selective_scan_chunked test_selective_scan_chunked_backward; do
+  for t in test_selective_scan_chunked test_selective_scan_chunked_backward test_mamba_prefill_bench; do
     cat > "$dir/$t" <<'X'
 #!/usr/bin/env bash
-case "$0" in *backward) [ "$FAIL_AT" = host_test_bwd ] && exit 3;; *) [ "$FAIL_AT" = host_test ] && exit 3;; esac
+case "$0" in *backward) [ "$FAIL_AT" = host_test_bwd ] && exit 3;; *prefill*) [ "$FAIL_AT" = host_test_prefill ] && exit 3;;
+  *) [ "$FAIL_AT" = host_test ] && exit 3;; esac
 echo '{"pass": true}'
 X
   done
+  # the prefill bench: refuses the scan switch set from outside, and the profile outside --mode profile (as the
+  # real tool); prints the configuration it was given
+  cat > "$dir/mamba_prefill_bench" <<'X'
+#!/usr/bin/env bash
+mode=""; prev=""
+for a in "$@"; do [ "$prev" = --mode ] && mode=$a; prev=$a; done
+key=prefill_$mode; [ "$MICROTORCH_CUBLAS" = 1 ] && key=${key}_cublas
+[ -n "$MICROTORCH_SCAN_CHUNK$MICROTORCH_TF32" ] && exit 2
+case "$mode" in profile) [ "$MICROTORCH_GPU_PROFILE" = 1 ] || exit 2;; *) [ -z "$MICROTORCH_GPU_PROFILE" ] || exit 2;; esac
+[ "$FAIL_AT" = "hang_$mode" ] && exec sleep 120
+[ "$FAIL_AT" = "$key" ] && exit 1
+echo "{\"mode\": \"$mode\", \"cublas\": \"$MICROTORCH_CUBLAS\", \"profile\": \"$MICROTORCH_GPU_PROFILE\", \"args\": \"$*\"}"
+X
   cat > "$dir/test_selective_scan_cuda" <<'X'
 #!/usr/bin/env bash
 case "$MICROTORCH_SCAN_CHUNK" in
@@ -90,7 +108,10 @@ class VmRunTests(unittest.TestCase):
         for name, body in STUBS.items():
             (bin_ / name).write_text(body + "\n")
             (bin_ / name).chmod(0o755)
-        self.env = dict(os.environ, PATH=f"{bin_}:/usr/bin:/bin", VM_TEST_HARNESS="1", VM_ROOT=str(self.tmp))
+        self.env = dict(os.environ, PATH=f"{bin_}:/usr/bin:/bin", VM_TEST_HARNESS="1", VM_ROOT=str(self.tmp),
+                        STUB_LOG=str(self.tmp))
+        for k in ("MICROTORCH_SCAN_CHUNK", "MICROTORCH_CUBLAS", "MICROTORCH_GPU_PROFILE", "MICROTORCH_TF32"):
+            self.env.pop(k, None)
 
     def run_vm(self, fail_at="", run="r1", head=None, protocol=None, extra=None):
         env = dict(self.env, FAIL_AT=fail_at, **(extra or {}))
@@ -196,6 +217,67 @@ class VmRunTests(unittest.TestCase):
             self.assertEqual(rc, 1, fail_at)
             self.assertNotEqual(s["gates"][gate], 0, fail_at)
             self.assertFalse(s["pass"], fail_at)
+
+    # ---- prefill protocol
+    def test_prefill_success_records_exactly_its_gates(self):
+        rc, s, done = self.run_vm(protocol="prefill")
+        self.assertEqual(rc, 0, s)
+        self.assertEqual(done, "r1")
+        self.assertTrue(s["pass"])
+        self.assertEqual(set(s["gates"]), PREFILL)
+        self.assertTrue(all(v == 0 for v in s["gates"].values()))
+        self.assertEqual((s["protocol"], s["head"]), ("prefill", COMMIT))
+        out = self.tmp / "run_r1" / "out"
+        # each bench step ran its mode with its GEMM backend and profile switch, and --require-cuda
+        for step, mode, cublas, profile in (("prefill_gate", "gate", "", ""), ("prefill_gate_cublas", "gate", "1", ""),
+                                            ("prefill_time", "time", "", ""), ("prefill_time_cublas", "time", "1", ""),
+                                            ("prefill_profile", "profile", "", "1"),
+                                            ("prefill_profile_cublas", "profile", "1", "1")):
+            row = json.loads((out / f"{step}.jsonl").read_text())
+            self.assertEqual((row["mode"], row["cublas"], row["profile"]), (mode, cublas, profile), step)
+            self.assertIn("--require-cuda", row["args"], step)
+        # the engine and the model are compared with the prefill base, and nothing else is
+        diff = (self.tmp / "git_diff_args").read_text().split()
+        self.assertEqual(diff[-4:], ["--", "src", "include", "tools/parity_model.hpp"])
+        self.assertIn("da5febf2f0a4578bbf17384123c8962e8c623bf5", diff)
+        self.assertFalse((out / "scan_bench.jsonl").exists())  # no other protocol's work
+
+    def test_prefill_runs_with_the_switch_unset_even_if_the_vm_has_it(self):
+        rc, s, _ = self.run_vm(protocol="prefill", extra={"MICROTORCH_SCAN_CHUNK": "64", "MICROTORCH_TF32": "1"})
+        self.assertEqual(rc, 0, s)  # the stub, like the bench, refuses them; vm_run.sh unsets both
+
+    def test_prefill_prerequisites_stop_before_timing(self):
+        for fail_at, gate in (("two_gpus", "provenance"), ("engine_changed", "engine_unchanged"),
+                              ("not_descendant", "engine_unchanged"), ("build", "build"),
+                              ("host_test_prefill", "host_test"), ("prefill_gate", "prefill_gate"),
+                              ("prefill_gate_cublas", "prefill_gate_cublas")):
+            rc, s, done = self.run_vm(fail_at, run=f"p_{fail_at}", protocol="prefill")
+            self.assertEqual(rc, 1, fail_at)
+            self.assertEqual(done, f"p_{fail_at}")
+            self.assertFalse(s["pass"], fail_at)
+            self.assertNotEqual(s["gates"][gate], 0, fail_at)
+            for later in ("prefill_time", "prefill_time_cublas", "prefill_profile", "prefill_profile_cublas"):
+                self.assertNotIn(later, s["gates"], fail_at)  # no timing without the correctness gates
+
+    def test_prefill_timing_failure_fails_and_still_collects_the_rest(self):
+        for fail_at in ("prefill_time", "prefill_time_cublas", "prefill_profile", "prefill_profile_cublas"):
+            rc, s, _ = self.run_vm(fail_at, run=f"t_{fail_at}", protocol="prefill")
+            self.assertEqual(rc, 1, fail_at)
+            self.assertFalse(s["pass"], fail_at)
+            self.assertEqual(s["gates"][fail_at], 1, fail_at)
+            self.assertEqual(set(s["gates"]), PREFILL, fail_at)  # the other steps still ran
+
+    def test_prefill_stop_during_timing_stops_its_group(self):
+        t0 = time.monotonic()
+        rc, s, done = self.run_vm("hang_time", protocol="prefill", extra={"VM_TEST_SIGNAL_AT": "run_prefill_time"})
+        self.assertLess(time.monotonic() - t0, 60)
+        self.assertEqual((rc, done), (1, "r1"))
+        self.assertEqual(s["gates"]["prefill_time"], 143)
+        self.assertNotIn("prefill_profile", s["gates"])
+        stop = json.loads((self.tmp / "run_r1" / "out" / "stop.json").read_text())
+        self.assertEqual((stop["step"], stop["step_group_gone"]), ("prefill_time", True))
+        ps = subprocess.run(["ps", "-eo", "args="], capture_output=True, text=True).stdout
+        self.assertNotIn("sleep 120", ps)
 
     # ---- hardening: run-directory claim, PID, stop
     def test_second_launch_of_a_run_is_refused_and_changes_nothing(self):

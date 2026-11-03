@@ -74,4 +74,14 @@ chunks x N.
 - **Host evidence:** `receipts/host_test_bwd_local.json` (173/173 cases; chunked within 2.51e-7 of binary64 and
   2.82e-7 of the ordered backward) and `receipts/default_cpu_local.txt` (the CPU default identical to master's).
 - **Running it:** `vm_run.sh` and `drive.py` take a protocol argument: `forward` (the default, PROTOCOL.md's gate
-  set) or `backward`.
+  set), `backward` or `prefill`.
+
+## End-to-end prefill: packet (not yet run)
+
+- **Protocol:** `PROTOCOL_PREFILL.md`. It measures the whole Mamba-1 model's prefill, ordered against chunked scan
+  at L = 64 and 128, at two shapes (`d768x24`, Mamba-130m's width and depth; `d384x12`), five cases and two GEMM
+  backends. The correctness gates come before any timing, and a per-op profile gives the scan's share.
+- **Tool:** `tools/mamba_prefill_bench.cpp` (modes gate, time, profile and calibrate), with its host test
+  `tests/test_mamba_prefill_bench.cpp`.
+- **Host evidence:** `receipts/prefill_host_test_local.json` and `receipts/prefill_calibration_local.json`, the
+  tolerance's CPU calibration.

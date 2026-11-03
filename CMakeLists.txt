@@ -535,6 +535,26 @@ add_executable(test_selective_scan_chunked_backward tests/test_selective_scan_ch
 target_link_libraries(test_selective_scan_chunked_backward PRIVATE microtorch)
 add_test(NAME selective_scan_chunked_backward_cpu COMMAND test_selective_scan_chunked_backward)
 set_tests_properties(selective_scan_chunked_backward_cpu PROPERTIES TIMEOUT 300)
+# End-to-end Mamba-1 prefill, ordered against chunked scan
+# (experiments/mamba_parallel_scan_2026-11-03/PROTOCOL_PREFILL.md). On the host: the helpers and the model
+# code at the tiny shape, and the tool's own modes as dry runs on the CPU path.
+add_executable(mamba_prefill_bench tools/mamba_prefill_bench.cpp)
+target_link_libraries(mamba_prefill_bench PRIVATE microtorch nlohmann_json::nlohmann_json)
+add_executable(test_mamba_prefill_bench tests/test_mamba_prefill_bench.cpp)
+target_link_libraries(test_mamba_prefill_bench PRIVATE microtorch)
+add_test(NAME mamba_prefill_bench_host COMMAND test_mamba_prefill_bench)
+set_tests_properties(mamba_prefill_bench_host PROPERTIES TIMEOUT 120)
+foreach(mode gate time profile calibrate)
+    add_test(NAME mamba_prefill_bench_dry_${mode} COMMAND mamba_prefill_bench --mode ${mode} --host-dry-run)
+    set_tests_properties(mamba_prefill_bench_dry_${mode} PROPERTIES TIMEOUT 120)
+endforeach()
+add_test(NAME mamba_prefill_bench_refuses_bad_mode COMMAND mamba_prefill_bench --mode sideways)
+set_tests_properties(mamba_prefill_bench_refuses_bad_mode PROPERTIES WILL_FAIL TRUE)
+if(NOT MICROTORCH_CUDA)
+    # a GPU mode on a CPU build is refused, never run on the CPU and reported as a GPU result
+    add_test(NAME mamba_prefill_bench_refuses_gpu_mode_on_cpu COMMAND mamba_prefill_bench --mode time)
+    set_tests_properties(mamba_prefill_bench_refuses_gpu_mode_on_cpu PROPERTIES WILL_FAIL TRUE)
+endif()
 add_executable(test_gpt2_attention_precision tests/test_gpt2_attention_precision.cpp)
 target_link_libraries(test_gpt2_attention_precision PRIVATE microtorch)
 add_test(NAME gpt2_attention_precision COMMAND test_gpt2_attention_precision)
