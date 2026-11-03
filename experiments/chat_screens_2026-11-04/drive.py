@@ -73,6 +73,12 @@ REQUIRED_GATES = {"provenance", "checkout", "inputs", "configure", "build", "spe
     f"{g}_{s}" for s in SCREENS for g in ("train", "package")}
 DEADLINES = (100, 104, 112, 117, 120)
 VM_IN = "/content/screens_in"
+# The inputs' private Hugging Face dataset repo (Jonathan, 4 Nov 2026), seeded with hf_seed.py: the base parts and every
+# other pinned file under their VM names. The token (scoped to that repo only) lives in HF_TOKEN_FILE, mode 600, and is
+# never printed; it is copied to our own VM only for the download and deleted there afterwards. Without the token file
+# the driver uploads every input instead.
+HF_REPO = hook("DRIVE_TEST_HF_REPO", "JohnnyTeutonic/chat-screens-inputs")
+HF_TOKEN_FILE = Path(hook("DRIVE_TEST_HF_TOKEN_FILE", os.path.expanduser("~/.config/claude_screens/hf_token")))
 
 # Every input, by its name on the VM: (local path, SHA-256). PROTOCOL.md section 2 and PACKETS.md.
 ART = "/mnt/c/ml_artifacts"
@@ -315,13 +321,52 @@ class Driver:
                         pass
         return None
 
+    def hf_fetch(self, names):
+        """Have the VM download `names` from HF_REPO into VM_IN with the scoped token, then delete the token file on
+        the VM. Returns True if the download step reported success (hashes are checked separately). Never raises."""
+        if not HF_TOKEN_FILE.is_file():
+            self.log("no HF token file: inputs will be uploaded")
+            return False
+        rc, _ = self.call([COL, "upload", "-s", self.name, str(HF_TOKEN_FILE), f"{VM_IN}/.hf_token"], 300,
+                          self.work_end, "upload token")
+        if rc != 0:
+            return False
+        code = ("import os, time\n"
+                "from huggingface_hub import hf_hub_download\n"
+                f"tok_path = os.path.join({VM_IN!r}, '.hf_token')\n"
+                "os.chmod(tok_path, 0o600)\n"
+                "token = open(tok_path).read().strip()\n"
+                "ok = True\n"
+                "t = time.monotonic()\n"
+                "try:\n"
+                f"    for n in {sorted(names)!r}:\n"
+                "        try:\n"
+                f"            hf_hub_download({HF_REPO!r}, n, repo_type='dataset', token=token, local_dir={VM_IN!r})\n"
+                "        except Exception as e:\n"
+                "            ok = False\n"
+                "            print('FAILED', n, type(e).__name__)\n"
+                "finally:\n"
+                "    os.remove(tok_path)\n"
+                "print('HF_DONE' if ok else 'HF_PARTIAL', round(time.monotonic() - t))\n")
+        rc, out = self.exec_py(code, 1500, self.work_end, "hf_fetch")
+        self.log("hf_fetch:", " ".join(out.split()[-6:]))
+        return rc == 0 and "HF_DONE" in out.split()
+
     def upload(self):
-        """Upload every input, then hash them on the VM; re-upload what differs, at most twice. True when every
-        file on the VM matches the manifest."""
+        """Inputs onto the VM: the per-run manifest is uploaded; the data files come from the HF repo when the token
+        file exists, else they are uploaded. Then everything is hashed on the VM; what differs is uploaded directly,
+        at most twice more. True when every file on the VM matches the manifest."""
         rc, _ = self.exec_py(f"import os\nos.makedirs({VM_IN!r}, exist_ok=True)\nprint('READY')\n", 120,
                              self.work_end, "mkdir_in")
         want = {n: sha256(p) for p, n in self.uploads()}
         pending = self.uploads()
+        data = [n for _, n in self.uploads() if n != "manifest.json"]
+        if self.hf_fetch(data):
+            got = self.vm_hashes(want) or {}
+            pending = [(p, n) for p, n in self.uploads() if got.get(n) != want[n]]
+            self.log(f"after HF fetch, {len(pending)} file(s) still to upload:", [n for _, n in pending])
+            if not pending:
+                return True
         for round_ in (1, 2, 3):
             for local, name in pending:
                 self.check()
