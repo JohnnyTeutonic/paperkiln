@@ -101,9 +101,15 @@ and it changes no default: `MICROTORCH_SCAN_CHUNK` stays opt-in.
      **A path that leaves the visible namespace** once mapped (after lexical normalisation) is recorded as scope
      `namespace_root`, with the raw path and a note. Examples: a leading `/..`, or a path not under the mount's
      root. Colab's layout is like this: `0::/../../jupyter-children`, the notebook's cgroup above the container's
-     cgroup-namespace root (run p1, below). Its own limits are not visible, so:
-     - a finite limit at the visible mount root applies, with valid usage required;
+     cgroup-namespace root (run p1, below). The process's own limits are not visible, and the visible mount root is
+     not established as its ancestor, so:
+     - any finite limit at the visible mount root, with valid usage required, is used as an additional
+       conservative constraint (it can cause an unnecessary stop, never a laxer one);
      - otherwise MemAvailable governs.
+
+     This is an operational screen, not memory certification: an invisible limit could still be smaller than the
+     headroom recorded. (The note the script writes says that the mount root's limit "applies"; read it in this
+     sense.)
 
      Headroom that cannot be established is also an operational stop, and the reason is recorded:
      - an unreadable, empty or unparsable `/proc/self/cgroup`;
@@ -112,8 +118,10 @@ and it changes no default: `MICROTORCH_SCAN_CHUNK` stays opt-in.
      - an unreadable limit;
      - a finite limit without a valid usage (never taken as zero).
 
-     Only a readable `/proc/self/cgroup` with no memory membership leaves MemAvailable alone. Every level read is
-     recorded, including those that are unlimited or have no limit file.
+     Only a readable `/proc/self/cgroup` with no memory membership leaves MemAvailable alone. Every level read
+     successfully is recorded, including those that are unlimited or have no limit file. A level whose limit cannot
+     be read, or whose finite limit has no valid usage, stops the scan before it is appended; the error names its
+     directory.
 
      Why 16 GiB: the gate's batched d768x24 case holds about 7.4 GB of live result objects (two recorded runs of
      2.86 GB and a live 1.65 GB logits matrix). With the models, parameters and allocator retention it is
@@ -312,7 +320,7 @@ claim needs its own protocol.
   top-level files of `out/` are copied to `receipts/RUN_ID/`, with `archive.sha256` hashing every retrieved file,
   and then the driver log. The JSONL files are `prefill_gate[_cublas]`, `prefill_time[_cublas]` and
   `prefill_profile[_cublas]`.
-- **Tests.** `test_drive.py` (mock Colab CLI, 23 tests) and `test_vm_run.py` (stub tools, 39 tests)
+- **Tests.** `test_drive.py` (mock Colab CLI, 23 tests) and `test_vm_run.py` (stub tools, 40 tests; 39 at p2's commit)
   test that bookkeeping locally for all three protocols. For prefill they cover:
   - the gate set and the deadlines;
   - a hung stop that still leaves retrieval before shutdown, with the exit at least 2;
@@ -326,6 +334,7 @@ claim needs its own protocol.
     - unmappable membership;
     - no membership;
     - Colab's exact layout, alone and with a finite limit at the mount root;
+    - a missing mount directory, inside and outside the namespace (added after p2; no runtime code changed);
     - paths outside the mounted subtree, including v1;
     - all-`max` levels;
     - an unreadable or unparsable `/proc/self/cgroup`;
@@ -342,9 +351,16 @@ claim needs its own protocol.
 
 ## Runs
 
-- **`p1-20261103`** (commit `e11c5d47`; receipts in `receipts/p1-20261103/`) was a pre-controller operational
+- **`p1-20261103`** (commit `e11c5d47`; receipts in `receipts/p1-20261103/`) was a pre-checkout operational
   failure at the resources gate, costing about 3 L4-minutes. The VM was stopped and cleanup certified. No
   checkout, build or measurement happened. MemAvailable was 53.9 GB and the device had 22.5 GB free. The gate
   stopped because `/proc/self/cgroup` read `0::/../../jupyter-children`: Colab's notebook cgroup lies outside the
-  container's cgroup namespace, and the gate looked for it under the mount. This revision fixes that: such a path
-  is recorded as outside the visible namespace, with the mount root's limit, if any, applied.
+  container's cgroup namespace, and the gate looked for it under the mount. The next revision handles that layout
+  (the namespace fallback above).
+- **`p2-20261103`** (commit `f2abc6c1`; receipts in `receipts/p2-20261103/`) is that revision's first and only
+  measurement attempt. It is a reviewed operational revision following p1 (Codex round 4, RUN), not an unchanged
+  rerun under the clause above: the packet changed only in the resources gate, before any measurement, so the
+  revision could not select a more favourable result. It ran from 13:29:45 to 14:04:28 UTC+11 (about 35
+  L4-minutes) with driver exit 0. All 13 gates passed, and cleanup was certified. The resources gate recorded scope
+  `namespace_root`, an unlimited visible root and 53.8 GB MemAvailable. The result is in `README.md`. Together the
+  two attempts cost about 38 L4-minutes.

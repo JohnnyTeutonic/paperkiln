@@ -1,0 +1,1 @@
+{"cmd": ["cmake", "--build", "build", "--target", "mamba_prefill_bench", "test_mamba_prefill_bench", "--parallel", "12"], "exit": 0, "elapsed_s": 69.826, "user_s": 400.637, "sys_s": 23.709, "max_rss_kib": 686976}

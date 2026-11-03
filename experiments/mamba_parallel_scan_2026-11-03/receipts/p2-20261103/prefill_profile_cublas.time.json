@@ -1,0 +1,1 @@
+{"cmd": ["env", "-u", "MICROTORCH_SCAN_CHUNK", "-u", "MICROTORCH_TF32", "-u", "MICROTORCH_GPU_PROFILE", "-u", "MICROTORCH_CUBLAS", "MICROTORCH_CUBLAS=1", "MICROTORCH_GPU_PROFILE=1", "build/mamba_prefill_bench", "--mode", "profile", "--require-cuda"], "exit": 0, "elapsed_s": 169.283, "user_s": 373.64, "sys_s": 34.179, "max_rss_kib": 1170372}

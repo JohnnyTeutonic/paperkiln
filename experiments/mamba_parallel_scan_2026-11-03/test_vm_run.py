@@ -3,6 +3,7 @@ network). python3 -m unittest test_vm_run -v"""
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -392,6 +393,13 @@ class VmRunTests(unittest.TestCase):
         self.limit(mnt / "a", "memory.max", "12G", "memory.current", 0)
         r = self.assert_resources_stop("q4", "unreadable limit")
         self.assertIn("unreadable limit", r["cgroup_error"])
+
+    def test_missing_mount_directory_stops_even_outside_the_namespace(self):
+        for run, path in (("m1", "/a"), ("m2", "/../../jupyter-children")):
+            mnt = self.cgroup_v2(path, "/")
+            shutil.rmtree(mnt)
+            r = self.assert_resources_stop(run, f"mount directory missing, {path}")
+            self.assertIn(f"cgroup mount {mnt} missing", r["cgroup_error"])
 
     # Colab's layout (run p1-20261103): the notebook's cgroup sits above the container's cgroup-namespace root
     def test_colab_layout_outside_the_namespace_passes_on_mem_available(self):
