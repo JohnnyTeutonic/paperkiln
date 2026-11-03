@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Runs ON the Colab VM. Usage: bash vm_run.sh FULL_COMMIT_SHA RUN_ID [forward|backward]
+# Runs ON the Colab VM. Usage: bash vm_run.sh FULL_COMMIT_SHA RUN_ID [forward|backward|prefill]
 #   forward  (the default): PROTOCOL.md gates 1-3, the gate set of run r1-20261103;
-#   backward: PROTOCOL_BACKWARD.md gates 1-6.
+#   backward: PROTOCOL_BACKWARD.md gates 1-6;
+#   prefill:  PROTOCOL_PREFILL.md, the end-to-end prefill gates and timings.
 # The run directory /content/run_RUN_ID is claimed with an atomic mkdir, so a second launch of the same run (the
 # driver retries a launch only after its probe found no script; a delayed first call may still arrive) exits before
 # traps, PID or any work. Once it exists, status.json (each gate's exit status, the incoming shell status, the
@@ -18,9 +19,11 @@ RUN=${2:-}
 PROTO=${3:-forward}
 # the backward protocol's base: paperkiln master when the branch was cut; its default path is the reference for gate 5
 BASE=d0390e392006a383f8be4565b1b67fcfef513ff6
+# the prefill protocol's base: master with both chunked kernels merged (PR #15); the engine and the model are its own
+PREFILL_BASE=da5febf2f0a4578bbf17384123c8962e8c623bf5
 [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo "COMMIT must be a full 40-character SHA" >&2; exit 2; }
 [[ "$RUN" =~ ^[A-Za-z0-9_-]{1,32}$ ]] || { echo "RUN_ID: 1-32 letters, digits, - or _" >&2; exit 2; }
-case "$PROTO" in forward|backward) ;; *) echo "protocol must be forward or backward" >&2; exit 2;; esac
+case "$PROTO" in forward|backward|prefill) ;; *) echo "protocol must be forward, backward or prefill" >&2; exit 2;; esac
 case $- in *m*) echo "job control must be off (setsid would fork)" >&2; exit 2;; esac
 ROOT=/content
 [ "${VM_TEST_HARNESS:-}" = 1 ] && ROOT=${VM_ROOT:-/content}   # test_vm_run.py only
@@ -32,8 +35,10 @@ mkdir -p "$O" || exit 2
 declare -A G=()
 if [ "$PROTO" = forward ]; then
     REQUIRED="build checkout configure host_test numpy replay_2 replay_3 replay_unset scan_bench strict_2 strict_3 strict_unset switch_refuses_malformed"
-else
+elif [ "$PROTO" = backward ]; then
     REQUIRED="build build_base checkout configure default_identical host_test host_test_bwd numpy provenance replay_2 replay_3 replay_unset scan_bwd_bench strict_2 strict_3 strict_unset switch_refuses_malformed"
+else
+    REQUIRED="build checkout configure engine_unchanged host_test prefill_gate prefill_gate_cublas prefill_profile prefill_profile_cublas prefill_time prefill_time_cublas provenance resources"
 fi
 finish() {
     local rc=$? pass=true keys final
@@ -122,13 +127,158 @@ run() {
 { echo $$ > "$ROOT/vm_$RUN.pid.tmp" && mv "$ROOT/vm_$RUN.pid.tmp" "$ROOT/vm_$RUN.pid"; } || exit 2
 cd "$W"
 { nvidia-smi --query-gpu=name,driver_version --format=csv,noheader; nvcc --version | tail -1; nproc; python3 --version; } > "$O/hardware.log" 2>&1
-if [ "$PROTO" = backward ]; then
+if [ "$PROTO" != forward ]; then
     # exactly one NVIDIA L4, and the image's toolkit (CUDA 13.0 on 3 Nov; r1-20261103 built this repository with it)
     { [ "$(nvidia-smi --query-gpu=name --format=csv,noheader | wc -l)" = 1 ] \
       && nvidia-smi --query-gpu=name --format=csv,noheader | grep -q L4 \
       && nvcc --version > "$O/nvcc.txt" && ls -d /usr/local/cuda* > "$O/cuda_dirs.txt" 2>&1; } \
       > "$O/provenance.log" 2>&1 || fail provenance 1
     G[provenance]=0
+fi
+JOBS=$(nproc)
+if [ "$PROTO" = prefill ]; then
+    # Resources (PROTOCOL_PREFILL.md gate 2b): host memory available to this run and device memory free, recorded at
+    # the start and again just before the correctness gate. Below NEED_KIB on the host or NEED_DEV_MIB on the device,
+    # or host headroom that cannot be established, is an operational stop before any heavyweight step. The gate's
+    # batched d768x24 case holds ~7.4 GB of live result objects (two recorded runs and a live logits matrix) plus the
+    # models, parameters and allocator retention: ~9 GB estimated, unmeasured; 16 GiB leaves headroom. The device
+    # estimate is ~5 GB of the L4's 23 GB. Build jobs are bounded by host memory too (3 GiB per job) as well as by
+    # nproc.
+    #
+    # Host headroom is the minimum of MemAvailable and, at every level of this process's own memory cgroup from its
+    # leaf up to the mount's root that has a finite limit, limit - usage. The cgroup is resolved from
+    # /proc/self/cgroup and /proc/self/mountinfo: on v1, the memory controller's line under a cgroup mount with the
+    # memory option (memory.limit_in_bytes, memory.usage_in_bytes; ~2^63 means no limit); otherwise v2, the 0::
+    # line under the cgroup2 mount (memory.max, memory.current; "max" means no limit). A level with a finite limit
+    # must have a valid usage.
+    #
+    # A path that leaves the visible namespace once mapped under the mount's root (Colab: 0::/../../jupyter-children,
+    # the notebook's cgroup above the container's cgroup-namespace root, run p1-20261103) is recorded as such: its own
+    # limits are not visible, so any finite limit at the visible mount root applies, and otherwise MemAvailable
+    # governs. Everything else unexpected stops: an unreadable or unparsable /proc/self/cgroup, membership with no
+    # mount, a missing directory for a path inside the mount, an unreadable limit, a finite limit without valid usage.
+    # Only a readable /proc/self/cgroup with no memory membership leaves MemAvailable alone.
+    MEMINFO=/proc/meminfo
+    PROC_CGROUP=/proc/self/cgroup
+    MOUNTINFO=/proc/self/mountinfo
+    if [ "${VM_TEST_HARNESS:-}" = 1 ]; then
+        MEMINFO=${VM_MEMINFO:-$MEMINFO}
+        PROC_CGROUP=${VM_PROC_CGROUP:-$PROC_CGROUP}
+        MOUNTINFO=${VM_MOUNTINFO:-$MOUNTINFO}
+    fi
+    NEED_KIB=16777216
+    NEED_DEV_MIB=12288
+    JOB_KIB=3145728
+    # cgroup_scan: sets CG_VER (v1, v2 or none), CG_PATH (the raw membership path), CG_SCOPE (process: its own cgroup
+    # and ancestors; namespace_root: outside the visible namespace, the mount root only), CG_NOTE, CG_HEAD (KiB,
+    # empty if no level has a finite limit), CG_LEVELS (every level read: dir=limit/usage KiB, dir=unlimited or
+    # dir=no-limit-file) and CG_ERR (why headroom could not be established; empty if it was)
+    cgroup_scan() {
+        local line rel mnt root leaf d lim use limf usef v norm nmnt
+        CG_VER=none CG_PATH="" CG_SCOPE="" CG_NOTE="" CG_HEAD="" CG_LEVELS="" CG_ERR=""
+        if ! [ -r "$PROC_CGROUP" ] || ! v=$(cat "$PROC_CGROUP" 2>/dev/null); then
+            CG_ERR="cannot read $PROC_CGROUP"
+            return 1
+        fi
+        if [ -z "$v" ] || printf '%s\n' "$v" | grep -qvE '^[0-9]+:[^:]*:/'; then
+            CG_ERR="unparsable $PROC_CGROUP"
+            return 1
+        fi
+        line=$(awk -F: '{n = split($2, c, ","); for (i = 1; i <= n; i++) if (c[i] == "memory") {print $3; exit}}' \
+            "$PROC_CGROUP")
+        if [ -n "$line" ]; then
+            CG_VER=v1
+            CG_PATH=$line
+            v=$(awk '{for (i = 7; i <= NF; i++) if ($i == "-") break;
+                      n = split($(i + 3), o, ","); for (j = 1; j <= n; j++) if ($(i + 1) == "cgroup" && o[j] == "memory")
+                      {print $4, $5; exit}}' "$MOUNTINFO" 2>/dev/null)
+            limf=memory.limit_in_bytes usef=memory.usage_in_bytes
+        else
+            line=$(awk -F: '$1 == "0" && $2 == "" {print $3; exit}' "$PROC_CGROUP")
+            if [ -z "$line" ]; then CG_NOTE="no memory cgroup membership"; return 0; fi
+            CG_VER=v2
+            CG_PATH=$line
+            v=$(awk '{for (i = 7; i <= NF; i++) if ($i == "-") break; if ($(i + 1) == "cgroup2") {print $4, $5; exit}}' \
+                "$MOUNTINFO" 2>/dev/null)
+            limf=memory.max usef=memory.current
+        fi
+        [ -n "$v" ] || { CG_ERR="$CG_VER membership $CG_PATH but no matching mount in mountinfo"; return 1; }
+        root=${v%% *}
+        mnt=${v#* }
+        [ -d "$mnt" ] || { CG_ERR="cgroup mount $mnt missing"; return 1; }
+        CG_SCOPE=process
+        rel=$CG_PATH
+        if [ "$root" != / ]; then
+            case "$rel" in
+                "$root") rel=/ ;;
+                "$root"/*) rel=${rel#"$root"} ;;
+                *) CG_SCOPE=namespace_root ;;   # the process's cgroup is not under the mounted subtree
+            esac
+        fi
+        if [ "$CG_SCOPE" = process ]; then
+            # lexical normalisation only (no symlinks): a path that climbs out of the mount leaves the namespace
+            norm=$(realpath -m -s "$mnt${rel%/}") && nmnt=$(realpath -m -s "$mnt") \
+                || { CG_ERR="cannot normalise $mnt$rel"; return 1; }
+            mnt=$nmnt
+            case "$norm" in "$nmnt"|"$nmnt"/*) leaf=$norm ;; *) CG_SCOPE=namespace_root ;; esac
+        fi
+        if [ "$CG_SCOPE" = namespace_root ]; then
+            CG_NOTE="the process cgroup $CG_PATH is outside the visible cgroup namespace (mount root $root at $mnt); its own limits are not visible, so only the visible mount root's limit applies"
+            leaf=$mnt
+        fi
+        [ -d "$leaf" ] || { CG_ERR="cgroup directory $leaf missing"; return 1; }
+        d=$leaf
+        while :; do
+            if [ -e "$d/$limf" ]; then
+                lim=$(cat "$d/$limf" 2>/dev/null)
+                if [[ "$lim" =~ ^[0-9]+$ ]] && { [ "$CG_VER" = v2 ] || [ "${#lim}" -lt 19 ]; }; then
+                    use=$(cat "$d/$usef" 2>/dev/null)
+                    [[ "$use" =~ ^[0-9]+$ ]] || { CG_ERR="finite limit in $d but usage missing or malformed"; return 1; }
+                    v=$(((lim - use) / 1024))
+                    CG_LEVELS="$CG_LEVELS$d=$((lim / 1024))/$((use / 1024));"
+                    if [ -z "$CG_HEAD" ] || [ "$v" -lt "$CG_HEAD" ]; then CG_HEAD=$v; fi
+                elif [ "$lim" = max ] || [[ "$lim" =~ ^[0-9]+$ ]]; then
+                    CG_LEVELS="$CG_LEVELS$d=unlimited;"
+                else
+                    CG_ERR="unreadable limit in $d"
+                    return 1
+                fi
+            else
+                CG_LEVELS="$CG_LEVELS$d=no-limit-file;"
+            fi
+            [ "$d" = "$mnt" ] && break
+            d=$(dirname "$d")
+            case "$d" in "$mnt"|"$mnt"/*) ;; *) break ;; esac
+        done
+        return 0
+    }
+    resources_check() {   # resources_check LABEL: writes resources_LABEL.json and the raw readings; 0 if enough
+        local avail head dev ok=true
+        cp "$MEMINFO" "$O/meminfo_$1.txt" 2>/dev/null
+        cp "$PROC_CGROUP" "$O/proc_cgroup_$1.txt" 2>/dev/null
+        free -m > "$O/free_$1.txt" 2>&1
+        nvidia-smi --query-gpu=name,memory.total,memory.used,memory.free --format=csv > "$O/gpu_memory_$1.txt" 2>&1
+        avail=$(awk '$1 == "MemAvailable:" {print $2}' "$MEMINFO" 2>/dev/null)
+        [[ "$avail" =~ ^[0-9]+$ ]] || { avail=0; ok=false; }
+        cgroup_scan || ok=false
+        head=$avail
+        if [ -n "$CG_HEAD" ] && [ "$CG_HEAD" -lt "$head" ]; then head=$CG_HEAD; fi
+        [ "$head" -lt 0 ] && head=0
+        dev=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits 2>/dev/null | head -1 | tr -d ' ')
+        [[ "$dev" =~ ^[0-9]+$ ]] || { dev=0; ok=false; }
+        [ "$head" -ge "$NEED_KIB" ] || ok=false
+        [ "$dev" -ge "$NEED_DEV_MIB" ] || ok=false
+        printf '{"label": "%s", "mem_available_kib": %d, "cgroup_version": "%s", "cgroup_path": "%s", "cgroup_scope": "%s", "cgroup_note": "%s", "cgroup_headroom_kib": %s, "cgroup_levels": "%s", "cgroup_error": "%s", "headroom_kib": %d, "need_kib": %d, "device_free_mib": %d, "need_device_mib": %d, "nproc": %d, "ok": %s}\n' \
+            "$1" "$avail" "$CG_VER" "$CG_PATH" "$CG_SCOPE" "$CG_NOTE" "${CG_HEAD:-null}" "$CG_LEVELS" "$CG_ERR" "$head" "$NEED_KIB" "$dev" \
+            "$NEED_DEV_MIB" "$(nproc)" "$ok" > "$O/resources_$1.json"
+        [ "$ok" = true ] || return 1
+        JOBS=$((head / JOB_KIB))
+        [ "$JOBS" -lt 1 ] && JOBS=1
+        [ "$JOBS" -gt "$(nproc)" ] && JOBS=$(nproc)
+        return 0
+    }
+    resources_check start || fail resources 1
+    G[resources]=0
 fi
 run checkout "$O/clone.log" git clone -q https://github.com/JohnnyTeutonic/paperkiln.git src || fail checkout $?
 run checkout "$O/clone.log" git -C src -c advice.detachedHead=false checkout -q --detach "$COMMIT" || fail checkout $?
@@ -138,14 +288,79 @@ if [ "$PROTO" = backward ]; then
     { [ "$(git -C base rev-parse HEAD)" = "$BASE" ] && [ -z "$(git -C base status --porcelain)" ]; } || fail checkout 99
 fi
 G[checkout]=0
+if [ "$PROTO" = prefill ]; then
+    # the engine (src/, include/) and the model (tools/parity_model.hpp) are master's at PREFILL_BASE, the code the
+    # kernel runs r1 and b1 gated, and the commit descends from it
+    { git -C src merge-base --is-ancestor "$PREFILL_BASE" "$COMMIT" \
+      && git -C src diff --quiet "$PREFILL_BASE" "$COMMIT" -- src include tools/parity_model.hpp; } \
+      > "$O/engine_unchanged.log" 2>&1 || fail engine_unchanged 1
+    G[engine_unchanged]=0
+fi
 run configure "$O/configure.log" cmake -S src -B build -DCMAKE_BUILD_TYPE=Release -DMICROTORCH_CUDA=ON \
     -DMICROTORCH_DEVCHECK=ON -DMICROTORCH_BUILD_PYTHON=OFF -DCMAKE_CUDA_ARCHITECTURES=89 || fail configure $?
 G[configure]=0
 TARGETS="test_selective_scan_cuda test_selective_scan_chunked"
 [ "$PROTO" = backward ] && TARGETS="$TARGETS test_selective_scan_chunked_backward"
-run build "$O/build.log" cmake --build build --target $TARGETS --parallel "$(nproc)" || fail build $?
+[ "$PROTO" = prefill ] && TARGETS="mamba_prefill_bench test_mamba_prefill_bench"
+# prefill: every step from the build on runs under measure.py (the checked-out commit's), which records its elapsed
+# time and peak RSS in STEP.time.json. A step that exited 0 without its receipt fails with 96 (measure.py keeps the
+# command's status and reports a receipt it could not write; the missing receipt is what fails the step).
+M=""
+[ "$PROTO" = prefill ] && M="python3 src/experiments/mamba_parallel_scan_2026-11-03/measure.py"
+receipt() { [ -z "$M" ] || [ -s "$O/$1.time.json" ]; }
+run build "$O/build.log" ${M:+$M "$O/build.time.json" --} cmake --build build --target $TARGETS --parallel "$JOBS" \
+    || fail build $?
+receipt build || fail build 96
 [ -z "$(git -C src status --porcelain)" ] || fail build 98   # the build wrote nothing into the source tree
 G[build]=0
+if [ "$PROTO" = prefill ]; then
+    # gate 1: the host test, again here, on the same commit
+    run host_test "$O/host_test.json" $M "$O/host_test.time.json" -- build/test_mamba_prefill_bench \
+        || fail host_test $?
+    receipt host_test || fail host_test 96
+    G[host_test]=0
+    # Every bench process runs with the scan switch, TF32 and the profile unset unless its step sets them; the bench
+    # refuses MICROTORCH_SCAN_CHUNK set from outside, and sets it per arm itself.
+    B="env -u MICROTORCH_SCAN_CHUNK -u MICROTORCH_TF32 -u MICROTORCH_GPU_PROFILE -u MICROTORCH_CUBLAS"
+    # the resources again, just before the heavyweight gate; short is an operational stop before it
+    resources_check before_gate || fail resources 2
+    # gates 2-3: correctness before any timing, for each GEMM backend that is timed; a failure stops paid work
+    RUN_ERR="$O/prefill_gate.err" run prefill_gate "$O/prefill_gate.jsonl" $M "$O/prefill_gate.time.json" -- \
+        $B build/mamba_prefill_bench --mode gate --require-cuda || fail prefill_gate $?
+    receipt prefill_gate || fail prefill_gate 96
+    G[prefill_gate]=0
+    RUN_ERR="$O/prefill_gate_cublas.err" run prefill_gate_cublas "$O/prefill_gate_cublas.jsonl" \
+        $M "$O/prefill_gate_cublas.time.json" -- \
+        $B MICROTORCH_CUBLAS=1 build/mamba_prefill_bench --mode gate --require-cuda || fail prefill_gate_cublas $?
+    receipt prefill_gate_cublas || fail prefill_gate_cublas 96
+    G[prefill_gate_cublas]=0
+    # the timings (profile off), then the per-op profile (its own processes: the profile switch is read once)
+    RUN_ERR="$O/prefill_time.err" run prefill_time "$O/prefill_time.jsonl" $M "$O/prefill_time.time.json" -- \
+        $B build/mamba_prefill_bench --mode time --require-cuda
+    G[prefill_time]=$?
+    [ "${G[prefill_time]}" = 0 ] && ! receipt prefill_time && G[prefill_time]=96
+    RUN_ERR="$O/prefill_time_cublas.err" run prefill_time_cublas "$O/prefill_time_cublas.jsonl" \
+        $M "$O/prefill_time_cublas.time.json" -- \
+        $B MICROTORCH_CUBLAS=1 build/mamba_prefill_bench --mode time --require-cuda
+    G[prefill_time_cublas]=$?
+    [ "${G[prefill_time_cublas]}" = 0 ] && ! receipt prefill_time_cublas && G[prefill_time_cublas]=96
+    RUN_ERR="$O/prefill_profile.err" run prefill_profile "$O/prefill_profile.jsonl" \
+        $M "$O/prefill_profile.time.json" -- \
+        $B MICROTORCH_GPU_PROFILE=1 build/mamba_prefill_bench --mode profile --require-cuda
+    G[prefill_profile]=$?
+    [ "${G[prefill_profile]}" = 0 ] && ! receipt prefill_profile && G[prefill_profile]=96
+    RUN_ERR="$O/prefill_profile_cublas.err" run prefill_profile_cublas "$O/prefill_profile_cublas.jsonl" \
+        $M "$O/prefill_profile_cublas.time.json" -- \
+        $B MICROTORCH_CUBLAS=1 MICROTORCH_GPU_PROFILE=1 build/mamba_prefill_bench --mode profile --require-cuda
+    G[prefill_profile_cublas]=$?
+    [ "${G[prefill_profile_cublas]}" = 0 ] && ! receipt prefill_profile_cublas && G[prefill_profile_cublas]=96
+    resources_check end > /dev/null 2>&1   # a record only, made when the run gets this far
+    sha256sum build/mamba_prefill_bench build/test_mamba_prefill_bench > "$O/binaries.sha256" 2>&1
+    for k in prefill_time prefill_time_cublas prefill_profile prefill_profile_cublas; do
+        [ "${G[$k]}" = 0 ] || exit 1
+    done
+    exit 0
+fi
 # gate 1: the host test(s), again here, on the same commit
 run host_test "$O/host_test.json" build/test_selective_scan_chunked || fail host_test $?
 G[host_test]=0

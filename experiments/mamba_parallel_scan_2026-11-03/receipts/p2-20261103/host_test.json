@@ -1,0 +1,2 @@
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+{"pass":true,"bound_tiny":0.0001,"worst_chunked_emulation_err":{"logits":7.561e-07,"scan":3.863e-07},"least_dropped_carry_err":{"logits":4.862e-04,"scan":2.515e-03},"merged_sequences_logits_err":1.383e-01,"one_chunk_emulation_identical":true}

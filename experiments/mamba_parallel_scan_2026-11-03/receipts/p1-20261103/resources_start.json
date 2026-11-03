@@ -1,0 +1,1 @@
+{"label": "start", "mem_available_kib": 53909336, "cgroup_version": "v2", "cgroup_path": "/../../jupyter-children", "cgroup_headroom_kib": null, "cgroup_levels": "", "cgroup_error": "cgroup directory /sys/fs/cgroup/../../jupyter-children missing", "headroom_kib": 53909336, "need_kib": 16777216, "device_free_mib": 22564, "need_device_mib": 12288, "nproc": 12, "ok": false}

@@ -2,16 +2,19 @@
 """Local driver for one L4 run (microtorch/AGENTS.md path C). Run in a foreground WSL process from the paperkiln
 checkout's root:
 
-    python3 experiments/mamba_parallel_scan_2026-11-03/drive.py FULL_COMMIT_SHA RUN_ID [forward|backward]
+    python3 experiments/mamba_parallel_scan_2026-11-03/drive.py FULL_COMMIT_SHA RUN_ID [forward|backward|prefill]
 
-forward (the default) is PROTOCOL.md, the gate set of run r1-20261103; backward is PROTOCOL_BACKWARD.md. Session name
-claude-scan-RUN_ID (unique per run). Outputs: /mnt/c/ml_artifacts/mamba_parallel_scan_20261103/RUN_ID/ (driver.log,
-scan_out.tgz, run_RUN_ID/out/); the top-level files of out/ are copied to this experiment's receipts/RUN_ID/, with
-archive.sha256 hashing every retrieved file, after the VM is gone.
+forward (the default) is PROTOCOL.md, the gate set of run r1-20261103; backward is PROTOCOL_BACKWARD.md; prefill is
+PROTOCOL_PREFILL.md. Session name claude-scan-RUN_ID (unique per run). Outputs:
+/mnt/c/ml_artifacts/mamba_parallel_scan_20261103/RUN_ID/ (driver.log, scan_out.tgz, run_RUN_ID/out/); the top-level
+files of out/ are copied to this experiment's receipts/RUN_ID/, with archive.sha256 hashing every retrieved file,
+after the VM is gone.
 
-Deadlines from the driver's start: polling ends at 60 minutes, retrieval at 75, shutdown attempts at 85, the
-final inventory at 90. Every external call has a timeout capped by the deadline that governs it; a call past its
-deadline is not started; a timed-out child is killed.
+Deadlines from the driver's start (DEADLINES): forward and backward, polling ends at 60 minutes, workload-stop
+attempts and retrieval at 75, shutdown attempts at 85, the final inventory at 90; prefill (a 60-minute cap), polling
+ends at 43, workload-stop attempts at 47, retrieval at 51, shutdown attempts at 56, the final inventory at 60. Every
+external call has a timeout capped by the deadline that governs it; a call past its deadline is not started; a
+timed-out child is killed.
 
 Hardening from the Gemma packet (ember experiments/hf_cuda_2026-10-30/gemma_colab_20261103/drive.py): the launch
 publishes vm_run.sh atomically and a launch without acknowledgement is reconciled by a read-only probe, never blindly
@@ -65,7 +68,16 @@ REQUIRED_GATES = {
     "backward": {"provenance", "checkout", "configure", "build", "host_test", "host_test_bwd", "numpy",
                  "strict_unset", "replay_unset", "strict_2", "replay_2", "strict_3", "replay_3",
                  "switch_refuses_malformed", "build_base", "default_identical", "scan_bwd_bench"},
+    "prefill": {"provenance", "resources", "checkout", "engine_unchanged", "configure", "build", "host_test", "prefill_gate",
+                "prefill_gate_cublas", "prefill_time", "prefill_time_cublas", "prefill_profile",
+                "prefill_profile_cublas"},
 }
+# Minutes from the driver's start: polling ends, workload-stop attempts end, retrieval ends, shutdown attempts end,
+# final inventory ends. Stopping has its own deadline before retrieval's, so a stop whose replies hang can never use
+# up the time packing and download need (the VM is the only copy of the evidence until then). Forward and backward
+# keep their schedule: their stop shares retrieval's 15 minutes, and two stop attempts (at most 2 x 260 s) leave
+# retrieval at least 6 minutes.
+DEADLINES = {"forward": (60, 75, 75, 85, 90), "backward": (60, 75, 75, 85, 90), "prefill": (43, 47, 51, 56, 60)}
 
 
 def launch_code(url, commit, run, protocol, root="/content"):
@@ -98,8 +110,8 @@ class Driver:
         self.out = ARTIFACTS / run
         self.receipts = RECEIPTS / run
         t = time.monotonic()
-        self.work_end, self.retrieve_end, self.shutdown_end, self.inventory_end = (
-            t + m * MINUTE for m in (60, 75, 85, 90))
+        self.work_end, self.stop_end, self.retrieve_end, self.shutdown_end, self.inventory_end = (
+            t + m * MINUTE for m in DEADLINES[protocol])
         self.intent = False      # a creation call was made: cleanup must reconcile it
         self.endpoint = None     # the endpoint we own, once established
         self.before = None       # endpoints listed before the creation call
@@ -327,7 +339,8 @@ class Driver:
         # idempotent (it signals only a live script without DONE), so a hung call is tried once more
         result, out = None, ""
         for attempt in (1, 2):
-            rc, out = self.exec_py(code, 260, self.retrieve_end, f"stop_workload{attempt}")
+            # each attempt and the retry are capped by the stop deadline, never retrieval's
+            rc, out = self.exec_py(code, 260, self.stop_end, f"stop_workload{attempt}")
             reply = None
             for line in out.splitlines():
                 if line.startswith("STOP_REPLY "):

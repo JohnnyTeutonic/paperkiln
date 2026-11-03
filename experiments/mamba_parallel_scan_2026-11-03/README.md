@@ -41,8 +41,8 @@ chunks x N.
   ordered and consumed the chunked states); other GPUs.
 - **Default:** unchanged and ordered. Making the chunked path the default, or claiming model speed, needs its own
   protocol (PROTOCOL.md).
-- **Open follow-ups:** the chunked backward's GPU run (below); an end-to-end Mamba prefill measurement; choosing L
-  automatically (128-256 was best or near best at every shape here).
+- **Follow-ups:** the chunked backward's GPU run and the end-to-end prefill measurement are done (below). Choosing L
+  automatically is still open (128-256 was best or near best at every shape here).
 - **Driver note:** the Colab CLI prints `[colab]` banner rows in `sessions`. In r1 the driver read them as session
   rows, which was harmless, since they were in the pre-creation snapshot and constant. The driver skips them.
 
@@ -74,4 +74,81 @@ chunks x N.
 - **Host evidence:** `receipts/host_test_bwd_local.json` (173/173 cases; chunked within 2.51e-7 of binary64 and
   2.82e-7 of the ordered backward) and `receipts/default_cpu_local.txt` (the CPU default identical to master's).
 - **Running it:** `vm_run.sh` and `drive.py` take a protocol argument: `forward` (the default, PROTOCOL.md's gate
-  set) or `backward`.
+  set), `backward` or `prefill`.
+
+## End-to-end prefill: result (run `p2-20261103`, one Colab L4, 3 Nov 2026)
+
+- **Protocol:** `PROTOCOL_PREFILL.md`, fixed before the run. It measures the whole Mamba-1 model's prefill
+  (`parity::MambaLM`, FP32, logits at every position), ordered against chunked scan at L = 64 and 128, at two
+  shapes (`d768x24`, Mamba-130m's width and depth; `d384x12`), five cases and two GEMM backends.
+- **Review:** Codex methods review, four rounds; round 2 DO NOT RUN, rounds 3 and 4 RUN (kept in the research
+  workspace, not here).
+- **Runs:**
+  - `p1-20261103` stopped at the resources gate before checkout, on Colab's cgroup-namespace layout (about 3
+    L4-minutes; `receipts/p1-20261103/`).
+  - `p2-20261103`, commit `f2abc6c1`, is the revised packet's only attempt. It ran 13:29-14:04 UTC+11 with driver
+    exit 0. `status.json` matched the run, commit and HEAD, and all 13 gates were 0. Cleanup was certified.
+    Receipts: `receipts/p2-20261103/`.
+- **Tool:** `tools/mamba_prefill_bench.cpp` (modes gate, time, profile and calibrate), with its host test
+  `tests/test_mamba_prefill_bench.cpp`. Host evidence: `receipts/prefill_host_test_local.json` and
+  `receipts/prefill_calibration_local.json` (the tolerance's CPU calibration).
+
+### Gates: all pass
+
+- **Host test**, on the VM: one chunk equals ordered bit for bit. The chunked emulation is within 7.6e-7 (logits)
+  and 3.9e-7 (scan) of ordered. Both broken scans exceed the bound: dropped chunk starts by 4.9e-4 and 2.5e-3,
+  carrying state across sequences by 0.14.
+- **The two correctness gates**, tiled and cuBLAS: 72 of 72 checks each. They cover:
+  - the CPU and device replicas;
+  - CPU agreement at all three shapes;
+  - repeats and one chunk, bit-identical;
+  - every chunked variant differing from ordered yet within the bound;
+  - the timed path matching the recorded one;
+  - the malformed switch refused.
+- **Worst errors** (max |a - ref| / rms(ref), over logits and every block's scan output):
+  - chunked against ordered: 2.2e-5 at `d768x24` and 8.2e-6 at `d384x12` (bound 1e-3);
+  - device against CPU: 2.6e-5 (bound 1e-3), and 1.7e-6 at the tiny shape (bound 1e-4).
+
+### Prefill latency (median of 15, alternating; whole forward, host work included)
+
+L = 64 and L = 128 are within 1.5% of each other in every cell; the table shows L = 128. "Scan op" is the profiled
+`selective_scan_fwd` time summed over the layers (cuBLAS run; the tiled run agrees within 2% or 0.2 ms). "Outside device ops"
+is 1 - (summed device-op time) / wall, at L = 128 in the profile.
+
+| Shape | tokens x batch | tiled: ordered -> L128 ms | cuBLAS: ordered -> L128 ms | scan op, ms | wall saving / scan saving (tiled, cuBLAS) | outside device ops (tiled, cuBLAS) |
+|---|---|---|---|---|---|---|
+| `d768x24` | 512 x 1 | 318.5 -> 264.7 (1.20x) | 269.7 -> 223.1 (1.21x) | 62.6 -> 10.4 (6.0x) | 1.01, 0.89 | 72%, 89% |
+| `d768x24` | 1024 x 1 | 593.6 -> 484.3 (1.23x) | 469.6 -> 357.9 (1.31x) | 135.9 -> 26.3 (5.2x) | 0.99, 1.02 | 68%, 86% |
+| `d768x24` | 2048 x 1 | 1157.1 -> 924.1 (1.25x) | 908.6 -> 669.7 (1.36x) | 284.7 -> 52.6 (5.4x) | 1.00, 1.03 | 66%, 85% |
+| `d768x24` | 4096 x 1 | 2262.8 -> 1785.8 (1.27x) | 1789.1 -> 1311.0 (1.36x) | 581.3 -> 106.6 (5.5x) | 1.00, 1.01 | 60%, 84% |
+| `d768x24` | 2048 x 4 | 4058.9 -> 3965.6 (1.02x) | 3120.8 -> 3039.1 (1.03x) | 301.7 -> 214.5 (1.4x) | 1.03, 0.94 | 66%, 86% |
+| `d384x12` | 512 x 1 | 100.8 -> 74.1 (1.36x) | 88.7 -> 60.7 (1.46x) | 29.8 -> 1.6 (18.6x) | 0.95, 0.99 | 74%, 90% |
+| `d384x12` | 1024 x 1 | 173.0 -> 126.0 (1.37x) | 145.4 -> 98.1 (1.48x) | 63.2 -> 5.2 (12.3x) | 0.81, 0.81 | 69%, 88% |
+| `d384x12` | 2048 x 1 | 346.7 -> 220.4 (1.57x) | 290.3 -> 165.8 (1.75x) | 135.2 -> 13.2 (10.3x) | 1.01, 1.02 | 64%, 85% |
+| `d384x12` | 4096 x 1 | 763.0 -> 505.8 (1.51x) | 640.3 -> 384.9 (1.66x) | 279.2 -> 26.3 (10.6x) | 1.01, 1.01 | 67%, 87% |
+| `d384x12` | 2048 x 4 | 1095.2 -> 1004.8 (1.09x) | 858.9 -> 768.2 (1.12x) | 144.5 -> 53.2 (2.7x) | 0.98, 0.99 | 61%, 87% |
+
+- **The chunked scan's gain reaches the prefill in full.** The wall-time saving (timing run) is 0.81-1.03 times
+  the scan's device-time saving (profile), and 0.94-1.03 times in 17 of the 20 cells. The prefill ratio is therefore set by the
+  scan's share of the ordered prefill: 1.20-1.76x for single sequences, 1.02-1.12x at batch 4. The scan op itself
+  is 5.2-6.0x faster at `d768x24` and 10-19x at `d384x12`, where the ordered kernel has half the threads.
+- **Most of the prefill is outside the device ops.** With the chunked scan, 60-74% of the wall time (tiled) and
+  84-90% (cuBLAS) is the residual. This mixes host work, transfers, allocation and gaps, and the profile does not
+  split it further. The protocol lists the host work in this forward: `dt_proj`'s bias added on the host with its
+  round trip, A = -exp(A_log) on the host in every layer, and the embedding table uploaded on every forward. cuBLAS
+  removes most of the GEMM time (the head falls from 197 to 20 ms at `d768x24` x 4096), which is why its residual
+  share is larger. The profiled walls are within 11% of the timing medians.
+- **Memory, measured:**
+  - Device in use at most 5.3 GB, and the pool's peak 2.3 GB (estimate about 5 GB).
+  - Host peak RSS 8.5 GB, in the gates (estimate about 9 GB); 1.1-1.2 GB in timing and profiles.
+  - Step times: build 70 s, gates 316-329 s, timing 396-510 s, profiles 169-211 s.
+
+### What this establishes, and what it does not
+
+- **Established:** on one L4 in FP32, paperkiln's Mamba-1 prefill with the opt-in chunked scan is
+  1.20-1.36x faster at Mamba-130m's shape and 1.36-1.76x at `d384x12` for single sequences of 512-4096 tokens, and
+  1.02-1.12x at batch 4 of 2048. It stays within the frozen bound, and one chunk is bit-identical to ordered.
+- **Not established:** training or decode speed; other GPUs, precisions or engines; what the residual consists of.
+- **Default:** unchanged and ordered; making the chunked path the default needs its own protocol.
+- **Where the next prefill gain is:** the residual, not the scan. Moving `dt_proj`'s bias add and A = -exp(A_log)
+  to the device, and keeping the embedding table resident, are the named candidates. Each needs its own measurement.

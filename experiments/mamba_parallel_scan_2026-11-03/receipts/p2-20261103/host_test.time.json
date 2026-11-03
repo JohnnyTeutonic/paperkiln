@@ -1,0 +1,1 @@
+{"cmd": ["build/test_mamba_prefill_bench"], "exit": 0, "elapsed_s": 2.968, "user_s": 6.637, "sys_s": 0.109, "max_rss_kib": 224748}
