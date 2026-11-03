@@ -10,7 +10,7 @@ screens this session trains, in order. Both are pinned in the input manifest (am
 
 FULL_COMMIT_SHA is this experiment's commit on GitHub (vm_run.sh is fetched at it); the trainer is built on the VM
 from the numerical source pinned in vm_run.sh. Session name claude-screens-RUN_ID. Outputs:
-/mnt/c/ml_artifacts/chat_screens_claude/w1/RUN_ID/ (driver.log, staging/, one folder per screen holding model.gguf,
+/mnt/c/ml_artifacts/chat_screens_claude/runs/RUN_ID/ (driver.log, staging/, one folder per screen holding model.gguf,
 manifest.json and train.log, and run_RUN_ID/out/ with the VM's logs and status.json); the top-level files of out/
 and every screen's manifest are copied to this experiment's receipts/RUN_ID/, with archive.sha256 hashing every
 retrieved file, after the VM is gone.
@@ -23,7 +23,7 @@ then. No screen is ever retrained by the driver.
 
 Deadlines from the driver's start (DEADLINES, minutes): polling ends at 100, workload-stop attempts at 104,
 retrieval (the final logs and any screen still uncollected) at 112, shutdown attempts at 117, the final inventory at
-120: the session's 2 L4-hour cap. Every external call has a timeout capped by the deadline that governs it; a call
+120: the session's 2 L4-hour cap (100 for sessions of three screens or fewer). Every external call has a timeout capped by the deadline that governs it; a call
 past its deadline is not started; a timed-out child is killed.
 
 Safeguards carried over from the Mamba scan driver (experiments/mamba_parallel_scan_2026-11-03/drive.py): the launch
@@ -33,7 +33,7 @@ published PID before retrieval; each retrieval extracts into its own staging fol
 authoritative session listing that shows neither our session name, nor the endpoint we owned, nor any endpoint that
 was not there before our creation call.
 Exit status:
-  0  every gate passed, status.json matches run, commit, source and manifest, and all four screens are home verified
+  0  every gate passed, status.json matches run, commit, source and manifest, and every screen is home verified
   1  the experiment failed (a gate failed; screens already home and receipts are preserved)
   2  transport, receipt or validation could not be completed, a screen is not home, or a workload stop was not
      confirmed
@@ -80,7 +80,8 @@ COMMON_INPUTS = ("sfull_sft1500.safetensors", "vocab.gguf", "arm_a_lr3e5.json")
 def required_gates(screens):
     return {"provenance", "checkout", "inputs", "configure", "build", "specs"} | {
         f"{g}_{s}" for s in screens for g in ("train", "package")}
-DEADLINES = (100, 104, 112, 117, 120)
+DEADLINES = (100, 104, 112, 117, 120)  # four screens (wave 1)
+DEADLINES_SHORT = (80, 84, 92, 97, 100)  # three or fewer screens (wave 2): keeps three sessions within the week
 VM_IN = "/content/screens_in"
 # The inputs' private Hugging Face dataset repo (Jonathan, 4 Nov 2026), seeded with hf_seed.py: the base parts and every
 # other pinned file under their VM names. The token (scoped to that repo only) lives in HF_TOKEN_FILE, mode 600, and is
@@ -157,7 +158,7 @@ class Driver:
         self.receipts = RECEIPTS / run
         t = time.monotonic()
         self.work_end, self.stop_end, self.retrieve_end, self.shutdown_end, self.inventory_end = (
-            t + m * MINUTE for m in DEADLINES)
+            t + m * MINUTE for m in (DEADLINES if len(self.screens) > 3 else DEADLINES_SHORT))
         self.intent = False
         self.endpoint = None
         self.before = None
@@ -781,7 +782,10 @@ class Driver:
                     continue
                 names = {n for n, _ in rows}
                 endpoints = {ep for _, ep in rows}
-                new = endpoints - (self.before or set()) - ({self.endpoint} if self.endpoint else set())
+                # Only an unnamed [?] row can be a VM our creation call allocated; named rows (parallel sibling
+                # sessions included) belong to their names.
+                unnamed = {ep for n, ep in rows if n == "?"}
+                new = unnamed - (self.before or set()) - ({self.endpoint} if self.endpoint else set())
                 ours_listed = self.name in names or (self.endpoint is not None and self.endpoint in endpoints)
                 if not ours_listed and not new:
                     self.log(f"CLEANUP OK: {self.name} ({self.endpoint}) and no new endpoint listed")

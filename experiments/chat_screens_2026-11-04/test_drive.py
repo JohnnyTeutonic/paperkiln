@@ -43,6 +43,9 @@ if cmd == "sessions":
     for n, ep in st["sessions"].items(): print(f"[{n}] {ep} L4")
     sys.exit(0)
 name = args[args.index("-s") + 1]
+if cmd == "new" and mode == "sibling":
+    st["sessions"][name] = "ep-" + name; st["sessions"]["claude-screens-other"] = "ep-other"
+    st["created"] = True; count("new"); save(); sys.exit(0)
 if cmd == "new":
     if mode == "orphan_new":
         st["sessions"]["?"] = "ep-orphan"; st["created"] = True; count("new"); save(); sys.exit(1)
@@ -434,6 +437,20 @@ class DriveTests(unittest.TestCase):
             r = subprocess.run([sys.executable, str(HERE / "drive.py"), COMMIT, "t1"] + extra,
                                env=dict(os.environ, DRIVE_TEST_HARNESS="1"), capture_output=True, text=True)
             self.assertEqual(r.returncode, 2, extra)
+
+    def test_a_parallel_sibling_session_does_not_block_cleanup(self):
+        rc, state, log, tmp, _ = self.run_drive("sibling")
+        self.assertEqual(rc, 0, log)
+        self.assertIn("CLEANUP OK", log)
+        self.assertIn("claude-screens-other", state["sessions"])
+
+    def test_three_screen_sessions_use_the_short_cap(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("drive_mod3", HERE / "drive.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        self.assertEqual(mod.DEADLINES_SHORT[-1], 100)
+        self.assertEqual(list(mod.DEADLINES_SHORT), sorted(mod.DEADLINES_SHORT))
 
     def test_test_hooks_are_refused_without_the_harness(self):
         env = dict(os.environ, DRIVE_TEST_COLAB="/bin/true")
