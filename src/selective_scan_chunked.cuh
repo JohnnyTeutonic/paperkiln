@@ -1,5 +1,6 @@
-// Chunked (parallel-in-time) selective-scan forward. Opt-in with MICROTORCH_SCAN_CHUNK=L (L >= 2);
-// unset, the ordered kernels in selective_scan_kernels.cuh run unchanged.
+// Chunked (parallel-in-time) selective-scan forward. Opt-in with MICROTORCH_SCAN_CHUNK=L (L >= 2) or
+// MICROTORCH_SCAN_CHUNK=auto (L = 128; scan_chunk_switch.hpp); unset, the ordered kernels in
+// selective_scan_kernels.cuh run unchanged.
 //
 // Per (sequence, channel c, state n) the recurrence is s_t = s_{t-1} a_t + b_t, with a_t =
 // exp(delta_t A_cn) and b_t = B_tn (x_tc delta_t), s starting at zero for each sequence. Rows of a
