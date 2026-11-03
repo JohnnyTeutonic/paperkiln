@@ -2124,9 +2124,11 @@ bool conv1d_causal_bwd(const Matrix& x, const Matrix& w, const Matrix& dy, size_
 namespace {
 #include "selective_scan_kernels.cuh"
 
-// MICROTORCH_SCAN_CHUNK: unset, empty or "0" runs the ordered scan; a decimal count L >= 1 or "auto"
-// the chunked one (scan_chunk_switch.hpp has the rules and why auto is 128).
-size_t scan_chunk() { return microtorch::parse_scan_chunk(std::getenv("MICROTORCH_SCAN_CHUNK")); }
+// MICROTORCH_SCAN_CHUNK: unset, empty or "0" runs the ordered scan; a decimal count L >= 1 or
+// "auto" the chunked one (scan_chunk_switch.hpp has the rules and why auto is 128).
+size_t scan_chunk() {
+    return microtorch::parse_scan_chunk(std::getenv("MICROTORCH_SCAN_CHUNK"));
+}
 }  // namespace
 
 bool selective_scan_fwd(const Matrix& x, const Matrix& dt, const Matrix& B, const Matrix& C,

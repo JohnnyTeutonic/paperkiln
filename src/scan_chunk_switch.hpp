@@ -1,6 +1,6 @@
 #pragma once
-// MICROTORCH_SCAN_CHUNK, the opt-in switch for the chunked (parallel-in-time) selective scan on CUDA
-// (src/cuda_ops.cu reads it on every scan call; the CPU path never reads it):
+// MICROTORCH_SCAN_CHUNK, the opt-in switch for the chunked (parallel-in-time) selective scan on
+// CUDA (src/cuda_ops.cu reads it on every scan call; the CPU path never reads it):
 //   unset, empty or "0"  the ordered scan (the default);
 //   a decimal count L    the chunked scan with chunks of L rows (L >= 1);
 //   "auto"               the chunked scan with kScanChunkAuto rows per chunk.
@@ -29,7 +29,8 @@ inline std::size_t parse_scan_chunk(const char* v) {
     for (const char* p = v; *p; ++p) {
         if (*p < '0' || *p > '9' || L > (std::size_t(1) << 31))
             throw std::runtime_error(
-                std::string("MICROTORCH_SCAN_CHUNK must be a decimal count up to 2^31, or auto: ") + v);
+                std::string("MICROTORCH_SCAN_CHUNK must be a decimal count up to 2^31, or auto: ") +
+                v);
         L = L * 10 + std::size_t(*p - '0');
     }
     if (L > (std::size_t(1) << 31))

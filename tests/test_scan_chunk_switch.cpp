@@ -1,5 +1,5 @@
-// MICROTORCH_SCAN_CHUNK's parser (src/scan_chunk_switch.hpp), which the CUDA scan path calls on every
-// scan: the ordered default, explicit chunk lengths, auto, and the refusals.
+// MICROTORCH_SCAN_CHUNK's parser (src/scan_chunk_switch.hpp), which the CUDA scan path calls on
+// every scan: the ordered default, explicit chunk lengths, auto, and the refusals.
 #include <cstddef>
 #include <stdexcept>
 #include <string>
@@ -37,8 +37,8 @@ int main() {
     CHECK(kScanChunkAuto == 128);
     CHECK(parse_scan_chunk("auto") == parse_scan_chunk("128"));
     // refusals: a typo never selects a path
-    for (const char* bad : {" 2", "2 ", "+2", "-2", "2x", "0x80", "1e3", "Auto", "AUTO", "auto ", " auto",
-                            "automatic", "2147483649", "99999999999999999999"})
+    for (const char* bad : {" 2", "2 ", "+2", "-2", "2x", "0x80", "1e3", "Auto", "AUTO", "auto ",
+                            " auto", "automatic", "2147483649", "99999999999999999999"})
         CHECK(refused(bad));
     return 0;
 }
