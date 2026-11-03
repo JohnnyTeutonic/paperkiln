@@ -79,6 +79,8 @@ VM_IN = "/content/screens_in"
 # the driver uploads every input instead.
 HF_REPO = hook("DRIVE_TEST_HF_REPO", "JohnnyTeutonic/chat-screens-inputs")
 HF_TOKEN_FILE = Path(hook("DRIVE_TEST_HF_TOKEN_FILE", os.path.expanduser("~/.config/claude_screens/hf_token")))
+# The repo commit hf_seed.py verified, written there after verification; downloads pin it (an immutable revision).
+HF_REVISION_FILE = Path(hook("DRIVE_TEST_HF_REVISION_FILE", os.path.expanduser("~/.config/claude_screens/hf_revision")))
 
 # Every input, by its name on the VM: (local path, SHA-256). PROTOCOL.md section 2 and PACKETS.md.
 ART = "/mnt/c/ml_artifacts"
@@ -324,9 +326,14 @@ class Driver:
     def hf_fetch(self, names):
         """Have the VM download `names` from HF_REPO into VM_IN with the scoped token, then delete the token file on
         the VM. Returns True if the download step reported success (hashes are checked separately). Never raises."""
-        if not HF_TOKEN_FILE.is_file():
-            self.log("no HF token file: inputs will be uploaded")
+        if not HF_TOKEN_FILE.is_file() or not HF_REVISION_FILE.is_file():
+            self.log("no HF token or verified revision: inputs will be uploaded")
             return False
+        revision = HF_REVISION_FILE.read_text().strip()
+        if not re.fullmatch(r"[0-9a-f]{40}", revision):
+            self.log("HF revision file malformed: inputs will be uploaded")
+            return False
+        self.log("HF fetch from", HF_REPO, "at revision", revision)
         rc, _ = self.call([COL, "upload", "-s", self.name, str(HF_TOKEN_FILE), f"{VM_IN}/.hf_token"], 300,
                           self.work_end, "upload token")
         if rc != 0:
@@ -341,7 +348,7 @@ class Driver:
                 "try:\n"
                 f"    for n in {sorted(names)!r}:\n"
                 "        try:\n"
-                f"            hf_hub_download({HF_REPO!r}, n, repo_type='dataset', token=token, local_dir={VM_IN!r})\n"
+                f"            hf_hub_download({HF_REPO!r}, n, repo_type='dataset', revision={revision!r}, token=token, local_dir={VM_IN!r})\n"
                 "        except Exception as e:\n"
                 "            ok = False\n"
                 "            print('FAILED', n, type(e).__name__)\n"
