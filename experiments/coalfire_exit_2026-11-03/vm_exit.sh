@@ -171,6 +171,7 @@ for t in base fix; do
     python3 "$E/dump_flags.py" build_$t/compile_commands.json src/transformer.cpp > "$O/dump_flags_$t.txt" 2>&1 \
         || fail dump_build 1
     grep -qx -- '-DUSE_CUDA' "$O/dump_flags_$t.txt" || fail dump_build 95
+    cp build_$t/compile_commands.json "$O/compile_commands_$t.json"
     mapfile -t FL < "$O/dump_flags_$t.txt"
     run dump_build "$O/dump_build_$t.log" g++ "${FL[@]}" "$E/coalfire_dump.cpp" build_$t/libtransformer_core.a \
         -L"$CUDA_LIB" -Wl,-rpath,"$CUDA_LIB" -lcudart -lcublas -fopenmp -o dump_$t || fail dump_build $?
@@ -188,16 +189,20 @@ G[device_required]=0
 # with a TIMEOUT (120 s) bound. Each attempt appends one JSON line to exit_TAG.jsonl: its exit status, whether the device line,
 # the written marker and the normal-exit marker appeared, and the logits' sha256.
 attempt() {   # attempt TAG I
-    local t=$1 i=$2 log=$O/exit_$1_$2.log f=$W/logits_$1_$2.f32 rc dev wr nx sha
-    run exit_$t "$log" timeout -s KILL "$TIMEOUT" env NVIDIA_TF32_OVERRIDE=0 COALFIRE_DUMP_NORMAL_EXIT=1 ./dump_$t \
-        "${ARGS[@]}" "$f"
+    local t=$1 i=$2 log=$O/exit_$1_$2.log f=$W/logits_$1_$2.f32 rc dev wr nx to sha
+    # --verbose makes timeout say when it sends the signal, so a timeout is told apart from a crash
+    run exit_$t "$log" timeout --verbose -s KILL "$TIMEOUT" env NVIDIA_TF32_OVERRIDE=0 COALFIRE_DUMP_NORMAL_EXIT=1 \
+        ./dump_$t "${ARGS[@]}" "$f"
     rc=$?
     grep -q '"use_cuda": true, "devices": 1, "device": "NVIDIA L4", "cc": "8.9"' "$log" && dev=true || dev=false
     grep -qx '{"logits_written": true}' "$log" && wr=true || wr=false
     grep -qx '{"exit": "normal"}' "$log" && nx=true || nx=false
+    grep -q '^timeout: sending signal' "$log" && to=true || to=false
     sha=$( [ -s "$f" ] && sha256sum "$f" | cut -d' ' -f1 )
-    printf '{"build": "%s", "rep": %d, "exit": %d, "device": %s, "written": %s, "normal_exit_reached": %s, "sha256": "%s", "matches_c2": %s}\n' \
-        "$t" "$i" "$rc" "$dev" "$wr" "$nx" "$sha" "$( [ "$sha" = "$WANT" ] && echo true || echo false )" \
+    # a mismatching output is kept for diagnosis (a matching one is the C2 file, by its hash)
+    [ -s "$f" ] && [ "$sha" != "$WANT" ] && cp "$f" "$O/logits_${t}_$i.f32"
+    printf '{"build": "%s", "rep": %d, "exit": %d, "timed_out": %s, "device": %s, "written": %s, "normal_exit_reached": %s, "sha256": "%s", "matches_c2": %s}\n' \
+        "$t" "$i" "$rc" "$to" "$dev" "$wr" "$nx" "$sha" "$( [ "$sha" = "$WANT" ] && echo true || echo false )" \
         >> "$O/exit_$t.jsonl"
 }
 # base first (recorded: its crashes are the defect being measured, not a failure of this run), then fix (gated)
@@ -205,19 +210,29 @@ for i in $(seq "$REPS"); do attempt base "$i"; done
 [ "$(wc -l < "$O/exit_base.jsonl")" = "$REPS" ] || fail exit_base 1
 G[exit_base]=0
 for i in $(seq "$REPS"); do attempt fix "$i"; done
-ok=$(grep -c '"exit": 0, "device": true, "written": true, "normal_exit_reached": true, "sha256": "[0-9a-f]*", "matches_c2": true' \
+ok=$(grep -c '"exit": 0, "timed_out": false, "device": true, "written": true, "normal_exit_reached": true, "sha256": "[0-9a-f]*", "matches_c2": true' \
      "$O/exit_fix.jsonl")
-python3 - "$O" "$REPS" > "$O/summary.json" <<'PY'
+# summary.json, per build: attempts; exit 0; nonzero; of the nonzero, timeouts, failures after the normal-exit marker
+# that were not timeouts (teardown failures) and failures before it (the attempt never reached teardown); and how
+# many attempts showed the device, the written and normal-exit markers and the C2 logits
+python3 - "$O" > "$O/summary.json" <<'PY' || fail exit_fix 92
 import json, sys
-o, reps = sys.argv[1], int(sys.argv[2])
+o = sys.argv[1]
 s = {}
 for t in ("base", "fix"):
     rows = [json.loads(l) for l in open(f"{o}/exit_{t}.jsonl")]
-    s[t] = {"attempts": len(rows), "exit_0": sum(r["exit"] == 0 for r in rows),
-            "crashed": sum(r["exit"] != 0 for r in rows), "exit_codes": sorted({r["exit"] for r in rows}),
+    bad = [r for r in rows if r["exit"] != 0]
+    s[t] = {"attempts": len(rows), "exit_0": len(rows) - len(bad), "nonzero": len(bad),
+            "timeouts": sum(r["timed_out"] for r in bad),
+            "teardown_failures": sum(r["normal_exit_reached"] and not r["timed_out"] for r in bad),
+            "failures_before_teardown": sum(not r["normal_exit_reached"] and not r["timed_out"] for r in bad),
+            "exit_codes": sorted({r["exit"] for r in rows}),
+            "device": sum(r["device"] for r in rows), "written": sum(r["written"] for r in rows),
+            "normal_exit_reached": sum(r["normal_exit_reached"] for r in rows),
             "logits_match_c2": sum(r["matches_c2"] for r in rows)}
 print(json.dumps(s))
 PY
-sha256sum dump_base dump_fix build_base/libtransformer_core.a build_fix/libtransformer_core.a > "$O/binaries.sha256" 2>&1
+sha256sum dump_base dump_fix build_base/libtransformer_core.a build_fix/libtransformer_core.a > "$O/binaries.sha256" \
+    || fail exit_fix 91
 [ "$ok" = "$REPS" ] || fail exit_fix 1
 G[exit_fix]=0

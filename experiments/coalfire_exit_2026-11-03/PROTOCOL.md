@@ -35,7 +35,8 @@ build now exit cleanly through every destructor and atexit handler, and did main
   - whether the L4 device line, the written marker and the normal-exit marker appeared;
   - the logits' sha256, and whether it equals the C2 CUDA leg's `de52befb…`.
 
-  `summary.json` counts them.
+  `summary.json` counts them (below). A mismatching logits file is kept under `out/` for diagnosis, as are both
+  builds' compile databases.
 
 ## Gates (all required)
 
@@ -54,14 +55,34 @@ build now exit cleanly through every destructor and atexit handler, and did main
 
 ## Outcomes, stated before the run
 
-- **Fix confirmed:** `exit_fix` passes, and at least one base attempt ends non-zero after its normal-exit marker
-  (a crash in teardown). That shows that, on this workload, the two initialisers are what separate a crashing exit
-  from a clean one.
-- **Clean exit, cause not shown:** `exit_fix` passes and every base attempt exits 0. The fix exits cleanly, but this
-  run does not show that it removes a crash. The fix is still merged, since an indeterminate handle passed to
-  `cublasDestroy` is a defect either way, and the record says the cause was not reproduced.
-- **Fix fails:** a fix attempt crashes, hangs or differs. The teardown has another cause; it is diagnosed
-  separately, and nothing is relaxed.
+`summary.json` classifies each build's nonzero attempts:
+- **timeouts:** `timeout --verbose` reported sending its signal;
+- **teardown failures:** the attempt printed the normal-exit marker and then ended nonzero, not by timeout;
+- **failures before teardown:** the attempt never printed that marker.
+
+What the run can show is narrow. By inspection, the two members are a real defect: an indeterminate value is read,
+and may be passed to `cudaStreamDestroy` and `cublasDestroy`. The run cannot show that this defect caused c1's
+SIGSEGV. The normal return also runs `g_batched_attn`'s static destructor, which frees device memory and destroys its
+own cuBLAS handle, and nothing here locates a crash. So no outcome attributes a crash to these members.
+
+- **Base teardown failure reproduced; fix passed 10/10.** `exit_fix` passes, and at least one base attempt is a
+  teardown failure. This is consistent with the proposed fix; the cause stays unproven.
+- **Fix passed 10/10; no base teardown failure observed.** `exit_fix` passes, and no base attempt is a teardown
+  failure.
+- **Fix passed 10/10; base inconclusive.** `exit_fix` passes, but some base attempts timed out or failed before
+  teardown, so the base did not measure the exit it was meant to. This is operational for the base.
+- **Fix acceptance failed.** A fix attempt fails the criterion: nonzero exit, timeout, missing marker or other
+  logits. The failure is attributed to teardown only if that attempt printed the normal-exit marker. Even then,
+  `g_batched_attn`'s teardown or another owner can cause it independently of the member fix, so it does not refute
+  the fix. It is diagnosed separately, and nothing is relaxed.
+
+**How strong 0/10 is.** "0/10" is reported as observed failures, not as reliability or as the end of an
+intermittent
+crash. Treating the attempts as independent, and repeats on one VM only approximate that:
+- ten attempts detect a 10% per-attempt failure rate with probability about 65%, and a 1% rate about 10%;
+- zero failures in ten bounds the per-attempt failure probability below about 26% (one-sided, 95%).
+
+In every outcome the member fix is merged: an indeterminate handle passed to a destroy call is a defect either way.
 
 Out of scope:
 - other static-destruction hazards in coalfire, such as `g_batched_attn` destroying its own cuBLAS handle at static
@@ -75,8 +96,13 @@ Out of scope:
   released in the destructor.
 - **Builds:** the tool builds against a CUDA 12.6 build of coalfire, compile only. The normal-exit switch is under
   `USE_CUDA`, so CPU builds are unchanged.
-- **Tests:** `test_vm_exit.py` (stub tools, 12 tests: crash, clean, hang, mismatch, marker and checkout cases, and
-  stopping); `test_drive.py` (the C2 CUDA leg's driver tests, adapted, 26 tests).
+- **Tests:** `test_vm_exit.py` (stub tools, 14 tests: crash, clean, hang, mismatch, marker and checkout cases, a
+  base timeout after the marker, a base failure before it, and stopping); `test_drive.py` (the C2 CUDA leg's driver
+  tests, adapted, 26 tests).
+- **Review:** Codex round 1 was DO NOT RUN, on the outcome rules only: "confirmed" overstated the cause, and the
+  outcomes missed base failures before teardown. The rules above are its correction. Its evidence points are applied
+  too: timeouts told apart, teardown failures counted separately, compile databases and mismatching logits kept,
+  and the summary and hash steps checked.
 
 ## Budget and procedure
 

@@ -79,10 +79,12 @@ if [ "${CUDA_VISIBLE_DEVICES-unset}" = "" ] && [ "${STUB_NODEVICE_RUNS:-}" != 1 
 fi
 echo '{"use_cuda": true, "devices": 1, "device": "NVIDIA L4", "cc": "8.9", "error": ""}'
 [ "${STUB_HANG:-}" = "$TAG" ] && sleep 30
+[ "${STUB_FAIL_BEFORE:-}" = "$TAG" ] && exit 1
 if [ "${STUB_OTHER_LOGITS:-}" = "$TAG" ]; then printf 'other' > "$6"; else printf 'logits' > "$6"; fi
 echo '{"logits_written": true}'
 [ "${COALFIRE_DUMP_NORMAL_EXIT:-}" = 1 ] || { echo '{"cuda_shutdown": "ok"}'; exit 0; }
 [ "${STUB_NO_NORMAL:-}" = "$TAG" ] || echo '{"exit": "normal"}'
+[ "${STUB_HANG_AFTER:-}" = "$TAG" ] && sleep 30
 case "${STUB_CRASH:-}" in "$TAG"|both) kill -SEGV $$ ;; esac
 exit 0
 DUMP
@@ -146,30 +148,48 @@ class VmExitTests(unittest.TestCase):
         self.assertEqual((s["protocol"], s["head"], s["coalfire_base_head"], s["coalfire_fix_head"]),
                          ("cfexit", COMMIT, BASE, FIX))
         sm = self.summary(out)
-        self.assertEqual((sm["base"]["crashed"], sm["base"]["exit_codes"]), (3, [139]))
+        self.assertEqual((sm["base"]["nonzero"], sm["base"]["teardown_failures"], sm["base"]["exit_codes"]),
+                         (3, 3, [139]))
+        self.assertEqual((sm["base"]["timeouts"], sm["base"]["failures_before_teardown"]), (0, 0))
         self.assertEqual((sm["fix"]["exit_0"], sm["fix"]["logits_match_c2"]), (3, 3))
         rows = [json.loads(line) for line in (out / "exit_base.jsonl").read_text().splitlines()]
         self.assertTrue(all(x["written"] and x["normal_exit_reached"] and x["matches_c2"] for x in rows))
+        self.assertTrue((out / "compile_commands_base.json").is_file() and (out / "compile_commands_fix.json").is_file())
 
-    def test_base_that_never_crashes_is_recorded_not_failed(self):
+    def test_base_that_never_fails_is_recorded_not_failed(self):
         rc, s, _, out, _ = self.run_vm()
         self.assertEqual(rc, 0)
-        self.assertEqual(self.summary(out)["base"]["crashed"], 0)
+        self.assertEqual(self.summary(out)["base"]["nonzero"], 0)
+
+    def test_base_timeout_after_the_marker_is_a_timeout_not_a_teardown_failure(self):
+        rc, s, _, out, _ = self.run_vm(extra_env={"STUB_HANG_AFTER": "base", "VM_TEST_REPS": "1",
+                                                  "VM_TEST_TIMEOUT": "2"})
+        self.assertEqual(rc, 0)
+        b = self.summary(out)["base"]
+        self.assertEqual((b["nonzero"], b["timeouts"], b["teardown_failures"], b["exit_codes"]), (1, 1, 0, [137]))
+
+    def test_base_failure_before_the_marker_never_reached_teardown(self):
+        rc, s, _, out, _ = self.run_vm(extra_env={"STUB_FAIL_BEFORE": "base"})
+        self.assertEqual(rc, 0)
+        b = self.summary(out)["base"]
+        self.assertEqual((b["failures_before_teardown"], b["teardown_failures"], b["normal_exit_reached"]), (3, 0, 0))
 
     def test_fix_that_crashes_fails(self):
         rc, s, _, out, _ = self.run_vm(extra_env={"STUB_CRASH": "both"})
         self.assertEqual((rc, s["gates"]["exit_fix"], s["pass"]), (1, 1, False))
-        self.assertEqual(self.summary(out)["fix"]["crashed"], 3)
+        self.assertEqual(self.summary(out)["fix"]["teardown_failures"], 3)
 
     def test_fix_with_other_logits_or_without_the_normal_exit_marker_fails(self):
         for run, env in (("o1", {"STUB_OTHER_LOGITS": "fix"}), ("o2", {"STUB_NO_NORMAL": "fix"})):
-            rc, s, _, _, _ = self.run_vm(run=run, extra_env=env)
+            rc, s, _, out, _ = self.run_vm(run=run, extra_env=env)
             self.assertEqual((rc, s["gates"]["exit_fix"]), (1, 1), run)
+        self.assertTrue((self.tmp / "content" / "run_o1" / "out" / "logits_fix_1.f32").is_file())  # kept
 
     def test_a_hung_dump_is_killed_and_counted(self):
         rc, s, _, out, _ = self.run_vm(extra_env={"STUB_HANG": "fix", "VM_TEST_REPS": "1", "VM_TEST_TIMEOUT": "2"})
         self.assertEqual((rc, s["gates"]["exit_fix"]), (1, 1))
-        self.assertEqual(self.summary(out)["fix"]["exit_codes"], [137])
+        f = self.summary(out)["fix"]
+        self.assertEqual((f["exit_codes"], f["timeouts"]), ([137], 1))
 
     def test_wrong_heads_or_dirty_trees_fail_checkout(self):
         for run, env in (("h1", {"STUB_HEAD": "f" * 40}), ("h2", {"STUB_BASE_HEAD": "e" * 40}),
