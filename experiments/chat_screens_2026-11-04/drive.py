@@ -276,8 +276,8 @@ class Driver:
         rc, head = self.call(["git", "-C", root, "rev-parse", "HEAD"], 60, self.work_end, "git HEAD")
         if rc != 0 or head.strip() != self.commit:
             raise Stop(f"checkout HEAD {head.strip()} is not {self.commit}")
-        rc, dirty = self.call(["git", "-C", root, "status", "--porcelain", "--", str(HERE)], 60, self.work_end,
-                              "git status")
+        rc, dirty = self.call(["git", "-C", root, "status", "--porcelain", "--", str(HERE),
+                               f":(exclude){HERE / 'receipts'}"], 60, self.work_end, "git status")
         if rc != 0 or dirty.strip():
             raise Stop("this experiment has uncommitted changes")
         url = (f"https://raw.githubusercontent.com/JohnnyTeutonic/paperkiln/{self.commit}/"
@@ -289,7 +289,9 @@ class Driver:
         local = (HERE / "vm_run.sh").read_bytes().replace(b"\r\n", b"\n")
         if hashlib.sha256(served).digest() != hashlib.sha256(local).digest():
             raise Stop("GitHub serves a different vm_run.sh at this commit")
-        self.call(["git", "-C", root, "fetch", "-q", "origin"], 300, self.work_end, "git fetch")
+        rc, _ = self.call(["git", "-C", root, "fetch", "-q", "origin"], 300, self.work_end, "git fetch")
+        if rc != 0:
+            raise Stop("git fetch failed: remote branches unconfirmed")
         rc, branches = self.call(["git", "-C", root, "branch", "-r", "--contains", SOURCE], 120,
                                  self.work_end, "source on a remote branch")
         if rc != 0 or not branches.strip():
@@ -372,6 +374,7 @@ class Driver:
         rc, _ = self.call([COL, "upload", "-s", self.name, str(HF_TOKEN_FILE), f"{VM_IN}/.hf_token"], 300,
                           self.work_end, "upload token")
         if rc != 0:
+            self.remove_token()  # the upload may have landed although the call failed
             return False
         code = ("import os, time\n"
                 "from huggingface_hub import hf_hub_download\n"
@@ -394,21 +397,24 @@ class Driver:
                 "    if os.path.exists(tok_path):\n"
                 "        os.remove(tok_path)\n"
                 "print('HF_DONE' if ok else 'HF_PARTIAL', round(time.monotonic() - t))\n")
-        rc, out = self.exec_py(code, 1500, self.work_end, "hf_fetch")
+        rc, out = self.exec_py(code, 600, self.work_end, "hf_fetch")
         self.log("hf_fetch:", " ".join(out.split()[-6:]))
         if not (rc == 0 and ("HF_DONE" in out.split() or "HF_PARTIAL" in out.split())):
-            gone = ("import os\n"
-                    f"p = os.path.join({VM_IN!r}, '.hf_token')\n"
-                    "os.path.exists(p) and os.remove(p)\n"
-                    "print('TOKEN_GONE' if not os.path.exists(p) else 'TOKEN_PRESENT')\n")
-            for attempt in (1, 2):
-                rc2, out2 = self.exec_py(gone, 120, self.work_end, f"token_remove{attempt}")
-                if rc2 == 0 and "TOKEN_GONE" in out2.split():
-                    break
-            else:
-                self.log("the token file may remain on our VM until it stops")
+            self.remove_token()
         # HF_PARTIAL still counts as having run: the hash check that follows decides what must be uploaded
         return rc == 0 and ("HF_DONE" in out.split() or "HF_PARTIAL" in out.split())
+
+    def remove_token(self):
+        """Best effort: delete the token file on our VM and confirm it is gone (two attempts). Never raises."""
+        gone = ("import os\n"
+                f"p = os.path.join({VM_IN!r}, '.hf_token')\n"
+                "os.path.exists(p) and os.remove(p)\n"
+                "print('TOKEN_GONE' if not os.path.exists(p) else 'TOKEN_PRESENT')\n")
+        for attempt in (1, 2):
+            rc, out = self.exec_py(gone, 120, self.work_end, f"token_remove{attempt}")
+            if rc == 0 and "TOKEN_GONE" in out.split():
+                return
+        self.log("the token file may remain on our VM until it stops")
 
     def upload(self):
         """Inputs onto the VM: the per-run manifest is uploaded; the data files come from the HF repo when the token

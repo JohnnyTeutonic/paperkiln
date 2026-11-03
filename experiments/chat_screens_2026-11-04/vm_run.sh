@@ -3,7 +3,7 @@
 #   FULL_COMMIT_SHA: this experiment's commit (the commit vm_run.sh was fetched at), recorded in status.json;
 #   MANIFEST_SHA256: the hash of $ROOT/screens_in/manifest.json, which pins every uploaded input.
 # The first-wave screening session of Claude's chat screening lane (the root workspace's
-# AI_ML/chat_screens_claude/PROTOCOL.md v1.2 and SESSION.md): S0, S1, S2 and S3 trained in turn with arm A's recipe,
+# AI_ML/chat_screens_claude/PROTOCOL.md v1.3 and SESSION.md): S0, S1, S2 and S3 trained in turn with arm A's recipe,
 # the trainer built from paperkiln's numerical source SOURCE below, each screen's GGUF packaged in parts the driver
 # collects while the session continues.
 # The run directory /content/run_RUN_ID is claimed with an atomic mkdir, so a second launch of the same run exits
@@ -247,7 +247,7 @@ MTSTUDIO=${VM_TEST_MTSTUDIO:-$W/build/mtstudio}
 for s in $SCREENS; do
     signal_point "screen_$s"
     UNSET=()
-    for v in $(compgen -e | grep -E '^MICROTORCH_'); do UNSET+=(-u "$v"); done
+    for v in $(compgen -e | grep -E '^(MICROTORCH|OMP)_'); do UNSET+=(-u "$v"); done
     env "${UNSET[@]}" "${BACKEND[@]}" env | grep -E '^(MICROTORCH|OMP)_' | LC_ALL=C sort > "$O/env_$s.txt"
     printf '%s\n' "${BACKEND[@]}" | LC_ALL=C sort | cmp -s - "$O/env_$s.txt" || fail "train_$s" 94
     run "train_$s" "$O/train_$s.log" env "${UNSET[@]}" "${BACKEND[@]}" "$MTSTUDIO" run "$W/spec_$s.json" \
@@ -272,7 +272,7 @@ print(json.dumps({"last_step": steps[-1]["step"] if steps else None, "steps_logg
 sys.exit(0 if ok else 1)
 PY
     G["train_$s"]=0
-    # package: the GGUF in parts under 90 MB, a manifest of the whole and the parts, then READY (atomic)
+    # package: the GGUF in parts of 45 MiB, a manifest of the whole and the parts, then READY (atomic)
     P=$O/screens/$s
     mkdir -p "$P"
     GGUF=$(ls "$W/train_$s"/*.gguf)
