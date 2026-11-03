@@ -137,49 +137,110 @@ if [ "$PROTO" != forward ]; then
 fi
 JOBS=$(nproc)
 if [ "$PROTO" = prefill ]; then
-    # Resources (PROTOCOL_PREFILL.md gate 2b): host memory available to this run (MemAvailable, and the cgroup's
-    # headroom when it has a limit) and device memory free, recorded at the start and again just before the
-    # correctness gate. Below NEED_KIB on the host or NEED_DEV_MIB on the device is an operational stop, before any
-    # heavyweight step. The gate's batched d768x24 case holds ~7.4 GB of live result objects (two recorded runs and
-    # a live logits matrix) plus the models, parameters and allocator retention: ~9 GB estimated, unmeasured; 16 GiB
-    # leaves headroom. The device estimate is ~5 GB of the L4's 23 GB. Build jobs are bounded by host memory too
-    # (3 GiB per job) as well as by nproc.
+    # Resources (PROTOCOL_PREFILL.md gate 2b): host memory available to this run and device memory free, recorded at
+    # the start and again just before the correctness gate. Below NEED_KIB on the host or NEED_DEV_MIB on the device,
+    # or host headroom that cannot be established, is an operational stop before any heavyweight step. The gate's
+    # batched d768x24 case holds ~7.4 GB of live result objects (two recorded runs and a live logits matrix) plus the
+    # models, parameters and allocator retention: ~9 GB estimated, unmeasured; 16 GiB leaves headroom. The device
+    # estimate is ~5 GB of the L4's 23 GB. Build jobs are bounded by host memory too (3 GiB per job) as well as by
+    # nproc.
+    #
+    # Host headroom is the minimum of MemAvailable and, at every level of this process's own memory cgroup from its
+    # leaf up to the mount's root that has a finite limit, limit - usage. The cgroup is resolved from
+    # /proc/self/cgroup and /proc/self/mountinfo: on v1, the memory controller's line under a cgroup mount with the
+    # memory option (memory.limit_in_bytes, memory.usage_in_bytes; ~2^63 means no limit); otherwise v2, the 0::
+    # line under the cgroup2 mount (memory.max, memory.current; "max" means no limit). A level with a finite limit
+    # must have a valid usage. Membership that cannot be mapped to a readable directory is an error, never "no
+    # limit". With no memory cgroup membership at all, MemAvailable alone applies.
     MEMINFO=/proc/meminfo
-    CG=/sys/fs/cgroup
-    if [ "${VM_TEST_HARNESS:-}" = 1 ]; then MEMINFO=${VM_MEMINFO:-$MEMINFO}; CG=${VM_CGROUP:-$CG}; fi
+    PROC_CGROUP=/proc/self/cgroup
+    MOUNTINFO=/proc/self/mountinfo
+    if [ "${VM_TEST_HARNESS:-}" = 1 ]; then
+        MEMINFO=${VM_MEMINFO:-$MEMINFO}
+        PROC_CGROUP=${VM_PROC_CGROUP:-$PROC_CGROUP}
+        MOUNTINFO=${VM_MOUNTINFO:-$MOUNTINFO}
+    fi
     NEED_KIB=16777216
     NEED_DEV_MIB=12288
     JOB_KIB=3145728
+    # cgroup_scan: sets CG_VER (v1, v2 or none), CG_PATH, CG_HEAD (KiB, empty if no level has a finite limit),
+    # CG_LEVELS (dir=limit/usage per level, KiB) and CG_ERR (why headroom could not be established; empty if it was)
+    cgroup_scan() {
+        local line rel mnt root leaf d lim use limf usef v
+        CG_VER=none CG_PATH="" CG_HEAD="" CG_LEVELS="" CG_ERR=""
+        [ -r "$PROC_CGROUP" ] || return 0   # no cgroup membership to account for
+        line=$(awk -F: '{n = split($2, c, ","); for (i = 1; i <= n; i++) if (c[i] == "memory") {print $3; exit}}' \
+            "$PROC_CGROUP")
+        if [ -n "$line" ]; then
+            CG_VER=v1
+            CG_PATH=$line
+            v=$(awk '{for (i = 7; i <= NF; i++) if ($i == "-") break;
+                      n = split($(i + 3), o, ","); for (j = 1; j <= n; j++) if ($(i + 1) == "cgroup" && o[j] == "memory")
+                      {print $4, $5; exit}}' "$MOUNTINFO" 2>/dev/null)
+            limf=memory.limit_in_bytes usef=memory.usage_in_bytes
+        else
+            line=$(awk -F: '$1 == "0" && $2 == "" {print $3; exit}' "$PROC_CGROUP")
+            [ -n "$line" ] || return 0   # no memory controller and no unified line
+            CG_VER=v2
+            CG_PATH=$line
+            v=$(awk '{for (i = 7; i <= NF; i++) if ($i == "-") break; if ($(i + 1) == "cgroup2") {print $4, $5; exit}}' \
+                "$MOUNTINFO" 2>/dev/null)
+            limf=memory.max usef=memory.current
+        fi
+        [ -n "$v" ] || { CG_ERR="$CG_VER membership $CG_PATH but no matching mount in mountinfo"; return 1; }
+        root=${v%% *}
+        mnt=${v#* }
+        rel=$CG_PATH
+        if [ "$root" != / ]; then
+            case "$rel" in
+                "$root") rel=/ ;;
+                "$root"/*) rel=${rel#"$root"} ;;
+                *) CG_ERR="cgroup path $CG_PATH is outside the mount root $root"; return 1 ;;
+            esac
+        fi
+        rel=${rel%/}
+        leaf=$mnt$rel
+        [ -d "$leaf" ] || { CG_ERR="cgroup directory $leaf missing"; return 1; }
+        d=$leaf
+        while :; do
+            if [ -e "$d/$limf" ]; then
+                lim=$(cat "$d/$limf" 2>/dev/null)
+                if [[ "$lim" =~ ^[0-9]+$ ]] && { [ "$CG_VER" = v2 ] || [ "${#lim}" -lt 19 ]; }; then
+                    use=$(cat "$d/$usef" 2>/dev/null)
+                    [[ "$use" =~ ^[0-9]+$ ]] || { CG_ERR="finite limit in $d but usage missing or malformed"; return 1; }
+                    v=$(((lim - use) / 1024))
+                    CG_LEVELS="$CG_LEVELS$d=$((lim / 1024))/$((use / 1024));"
+                    if [ -z "$CG_HEAD" ] || [ "$v" -lt "$CG_HEAD" ]; then CG_HEAD=$v; fi
+                elif [ "$lim" != max ] && ! [[ "$lim" =~ ^[0-9]+$ ]]; then
+                    CG_ERR="unreadable limit in $d"
+                    return 1
+                fi
+            fi
+            [ "$d" = "$mnt" ] && break
+            d=$(dirname "$d")
+            case "$d" in "$mnt"|"$mnt"/*) ;; *) break ;; esac
+        done
+        return 0
+    }
     resources_check() {   # resources_check LABEL: writes resources_LABEL.json and the raw readings; 0 if enough
-        local avail limit="" cur="" head dev ok=true v
+        local avail head dev ok=true
         cp "$MEMINFO" "$O/meminfo_$1.txt" 2>/dev/null
+        cp "$PROC_CGROUP" "$O/proc_cgroup_$1.txt" 2>/dev/null
         free -m > "$O/free_$1.txt" 2>&1
         nvidia-smi --query-gpu=name,memory.total,memory.used,memory.free --format=csv > "$O/gpu_memory_$1.txt" 2>&1
         avail=$(awk '$1 == "MemAvailable:" {print $2}' "$MEMINFO" 2>/dev/null)
         [[ "$avail" =~ ^[0-9]+$ ]] || { avail=0; ok=false; }
+        cgroup_scan || ok=false
         head=$avail
-        if [ -r "$CG/memory.max" ]; then   # cgroup v2
-            v=$(cat "$CG/memory.max")
-            [[ "$v" =~ ^[0-9]+$ ]] && limit=$((v / 1024))
-            v=$(cat "$CG/memory.current" 2>/dev/null)
-            [[ "$v" =~ ^[0-9]+$ ]] && cur=$((v / 1024))
-        elif [ -r "$CG/memory/memory.limit_in_bytes" ]; then   # cgroup v1; ~2^63 means no limit
-            v=$(cat "$CG/memory/memory.limit_in_bytes")
-            [[ "$v" =~ ^[0-9]+$ ]] && [ "${#v}" -lt 19 ] && limit=$((v / 1024))
-            v=$(cat "$CG/memory/memory.usage_in_bytes" 2>/dev/null)
-            [[ "$v" =~ ^[0-9]+$ ]] && cur=$((v / 1024))
-        fi
-        if [ -n "$limit" ]; then
-            v=$((limit - ${cur:-0}))
-            [ "$v" -lt "$head" ] && head=$v
-        fi
+        if [ -n "$CG_HEAD" ] && [ "$CG_HEAD" -lt "$head" ]; then head=$CG_HEAD; fi
+        [ "$head" -lt 0 ] && head=0
         dev=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits 2>/dev/null | head -1 | tr -d ' ')
         [[ "$dev" =~ ^[0-9]+$ ]] || { dev=0; ok=false; }
         [ "$head" -ge "$NEED_KIB" ] || ok=false
         [ "$dev" -ge "$NEED_DEV_MIB" ] || ok=false
-        printf '{"label": "%s", "mem_available_kib": %d, "cgroup_limit_kib": %s, "cgroup_current_kib": %s, "headroom_kib": %d, "need_kib": %d, "device_free_mib": %d, "need_device_mib": %d, "nproc": %d, "ok": %s}\n' \
-            "$1" "$avail" "${limit:-null}" "${cur:-null}" "$head" "$NEED_KIB" "$dev" "$NEED_DEV_MIB" "$(nproc)" "$ok" \
-            > "$O/resources_$1.json"
+        printf '{"label": "%s", "mem_available_kib": %d, "cgroup_version": "%s", "cgroup_path": "%s", "cgroup_headroom_kib": %s, "cgroup_levels": "%s", "cgroup_error": "%s", "headroom_kib": %d, "need_kib": %d, "device_free_mib": %d, "need_device_mib": %d, "nproc": %d, "ok": %s}\n' \
+            "$1" "$avail" "$CG_VER" "$CG_PATH" "${CG_HEAD:-null}" "$CG_LEVELS" "$CG_ERR" "$head" "$NEED_KIB" "$dev" \
+            "$NEED_DEV_MIB" "$(nproc)" "$ok" > "$O/resources_$1.json"
         [ "$ok" = true ] || return 1
         JOBS=$((head / JOB_KIB))
         [ "$JOBS" -lt 1 ] && JOBS=1
@@ -212,17 +273,21 @@ TARGETS="test_selective_scan_cuda test_selective_scan_chunked"
 [ "$PROTO" = backward ] && TARGETS="$TARGETS test_selective_scan_chunked_backward"
 [ "$PROTO" = prefill ] && TARGETS="mamba_prefill_bench test_mamba_prefill_bench"
 # prefill: every step from the build on runs under measure.py (the checked-out commit's), which records its elapsed
-# time and peak RSS in STEP.time.json
+# time and peak RSS in STEP.time.json. A step that exited 0 without its receipt fails with 96 (measure.py keeps the
+# command's status and reports a receipt it could not write; the missing receipt is what fails the step).
 M=""
 [ "$PROTO" = prefill ] && M="python3 src/experiments/mamba_parallel_scan_2026-11-03/measure.py"
+receipt() { [ -z "$M" ] || [ -s "$O/$1.time.json" ]; }
 run build "$O/build.log" ${M:+$M "$O/build.time.json" --} cmake --build build --target $TARGETS --parallel "$JOBS" \
     || fail build $?
+receipt build || fail build 96
 [ -z "$(git -C src status --porcelain)" ] || fail build 98   # the build wrote nothing into the source tree
 G[build]=0
 if [ "$PROTO" = prefill ]; then
     # gate 1: the host test, again here, on the same commit
     run host_test "$O/host_test.json" $M "$O/host_test.time.json" -- build/test_mamba_prefill_bench \
         || fail host_test $?
+    receipt host_test || fail host_test 96
     G[host_test]=0
     # Every bench process runs with the scan switch, TF32 and the profile unset unless its step sets them; the bench
     # refuses MICROTORCH_SCAN_CHUNK set from outside, and sets it per arm itself.
@@ -232,28 +297,34 @@ if [ "$PROTO" = prefill ]; then
     # gates 2-3: correctness before any timing, for each GEMM backend that is timed; a failure stops paid work
     RUN_ERR="$O/prefill_gate.err" run prefill_gate "$O/prefill_gate.jsonl" $M "$O/prefill_gate.time.json" -- \
         $B build/mamba_prefill_bench --mode gate --require-cuda || fail prefill_gate $?
+    receipt prefill_gate || fail prefill_gate 96
     G[prefill_gate]=0
     RUN_ERR="$O/prefill_gate_cublas.err" run prefill_gate_cublas "$O/prefill_gate_cublas.jsonl" \
         $M "$O/prefill_gate_cublas.time.json" -- \
         $B MICROTORCH_CUBLAS=1 build/mamba_prefill_bench --mode gate --require-cuda || fail prefill_gate_cublas $?
+    receipt prefill_gate_cublas || fail prefill_gate_cublas 96
     G[prefill_gate_cublas]=0
     # the timings (profile off), then the per-op profile (its own processes: the profile switch is read once)
     RUN_ERR="$O/prefill_time.err" run prefill_time "$O/prefill_time.jsonl" $M "$O/prefill_time.time.json" -- \
         $B build/mamba_prefill_bench --mode time --require-cuda
     G[prefill_time]=$?
+    [ "${G[prefill_time]}" = 0 ] && ! receipt prefill_time && G[prefill_time]=96
     RUN_ERR="$O/prefill_time_cublas.err" run prefill_time_cublas "$O/prefill_time_cublas.jsonl" \
         $M "$O/prefill_time_cublas.time.json" -- \
         $B MICROTORCH_CUBLAS=1 build/mamba_prefill_bench --mode time --require-cuda
     G[prefill_time_cublas]=$?
+    [ "${G[prefill_time_cublas]}" = 0 ] && ! receipt prefill_time_cublas && G[prefill_time_cublas]=96
     RUN_ERR="$O/prefill_profile.err" run prefill_profile "$O/prefill_profile.jsonl" \
         $M "$O/prefill_profile.time.json" -- \
         $B MICROTORCH_GPU_PROFILE=1 build/mamba_prefill_bench --mode profile --require-cuda
     G[prefill_profile]=$?
+    [ "${G[prefill_profile]}" = 0 ] && ! receipt prefill_profile && G[prefill_profile]=96
     RUN_ERR="$O/prefill_profile_cublas.err" run prefill_profile_cublas "$O/prefill_profile_cublas.jsonl" \
         $M "$O/prefill_profile_cublas.time.json" -- \
         $B MICROTORCH_CUBLAS=1 MICROTORCH_GPU_PROFILE=1 build/mamba_prefill_bench --mode profile --require-cuda
     G[prefill_profile_cublas]=$?
-    resources_check end > /dev/null 2>&1   # a record only
+    [ "${G[prefill_profile_cublas]}" = 0 ] && ! receipt prefill_profile_cublas && G[prefill_profile_cublas]=96
+    resources_check end > /dev/null 2>&1   # a record only, made when the run gets this far
     sha256sum build/mamba_prefill_bench build/test_mamba_prefill_bench > "$O/binaries.sha256" 2>&1
     for k in prefill_time prefill_time_cublas prefill_profile prefill_profile_cublas; do
         [ "${G[$k]}" = 0 ] || exit 1

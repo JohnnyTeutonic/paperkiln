@@ -86,16 +86,40 @@ and it changes no default: `MICROTORCH_SCAN_CHUNK` stays opt-in.
 
    **2b. Resources** (`resources`). An operational stop before any heavyweight step, checked twice in the same
    session: at the start, and again just before the correctness gate.
-   - **Host.** MemAvailable from `/proc/meminfo`, or the cgroup's headroom (limit minus current) when it has a
-     limit, if that is smaller, must be at least 16 GiB. The gate's batched d768x24 case holds about 7.4 GB of live
-     result objects (two recorded runs of 2.86 GB and a live 1.65 GB logits matrix). With the models, parameters
-     and allocator retention it is estimated at about 9 GB, unmeasured; 16 GiB leaves headroom.
+   - **Host.** The headroom must be at least 16 GiB. It is the smallest of:
+     - MemAvailable from `/proc/meminfo`;
+     - limit minus usage, at every level of this process's own memory cgroup that has a finite limit, from its
+       leaf up to the mount's root.
+
+     The cgroup comes from `/proc/self/cgroup` and `/proc/self/mountinfo`:
+     - **v1:** the memory controller's line, under the cgroup mount with the `memory` option
+       (`memory.limit_in_bytes` and `memory.usage_in_bytes`; about 2^63 means no limit);
+     - **v2:** otherwise, the `0::` line under the cgroup2 mount (`memory.max` and `memory.current`; `max` means
+       no limit);
+     - a cgroup path is mapped under the mount's root (a container's mount root may be its own cgroup).
+
+     Headroom that cannot be established is also an operational stop, and the reason is recorded:
+     - membership with no matching mount;
+     - a path outside the mount's root, or a missing directory;
+     - an unreadable limit;
+     - a finite limit without a valid usage (never taken as zero).
+
+     With no memory cgroup membership at all, MemAvailable alone applies.
+
+     Why 16 GiB: the gate's batched d768x24 case holds about 7.4 GB of live result objects (two recorded runs of
+     2.86 GB and a live 1.65 GB logits matrix). With the models, parameters and allocator retention it is
+     estimated at about 9 GB, unmeasured.
    - **Device.** At least 12 GiB free (`nvidia-smi`), against the about 5 GB estimate.
-   - **Records.** `/proc/meminfo`, `free -m`, the device's memory query and a summary are kept for each check
-     (`resources_LABEL.json`), and once more at the end.
-   - **Build jobs** are min(nproc, host headroom / 3 GiB), at least 1.
+   - **Records.** For each check, `resources_LABEL.json` keeps the summary, every cgroup level read and any error,
+     with `/proc/meminfo`, `/proc/self/cgroup`, `free -m` and the device's memory query. A third snapshot (`end`) is
+     taken only if the run reaches the end of the prefill steps; failed prerequisites and interrupted runs have the
+     earlier ones only.
+   - **Build jobs** are min(nproc, host headroom / 3 GiB), at least 1: an estimate of safe concurrency, not a
+     bound on the compiler's memory.
    - **Per step.** The build, the host test and every bench step run under `measure.py`, which records the elapsed
-     time, CPU time and peak RSS (`STEP.time.json`).
+     time, CPU time and peak RSS (`STEP.time.json`). It keeps the command's exit status (128 + N for signal N). If
+     the receipt cannot be written, it says so on stderr, and a step that exited 0 without its receipt fails with
+     96. A prerequisite step failing that way stops the run.
 3. **Engine unchanged.** The commit descends from `da5febf2`, and `src/`, `include/` and `tools/parity_model.hpp`
    are byte-identical to it. The kernels measured are then the ones that r1 and b1 gated, and the model is the one
    the lifecycle receipts ran. A prerequisite.
@@ -199,14 +223,16 @@ claim needs its own protocol.
   `p1-YYYYMMDD`.
 - **Cap.** One Colab L4 session, AGENTS.md path C, named `claude-scan-RUN_ID`. At most 60 minutes from the
   driver's start, within Claude's Colab lane (stack page: one L4 at a time, at most 100 compute units a week).
-- **Expected time:** about 30-38 minutes from the driver's start, against a polling end at 43. The parts:
+- **Expected time:** roughly half an hour from the driver's start, against a polling end at 43. The component
+  ranges below add up to about 25-39 minutes:
   - session creation and the launch, 3-5 minutes;
   - one CUDA build of the library with 2 targets, its jobs bounded by memory, 5-8 minutes (r1's whole run took
     6 minutes).
   - the two gates, 3-5 minutes each. Each gate runs:
     - per real case, 7 device forwards, so 70 over the 10 cells: ordered, an ordered repeat, one chunk, L64, L128,
-      an L128 repeat and the timed-path L128, each recorded with its logits and 24 or 12 scan outputs downloaded,
-      compared and fingerprinted;
+      an L128 repeat and the timed-path L128;
+    - the first six of those are recorded, with their logits and 24 or 12 scan outputs downloaded, compared and
+      fingerprinted, while the timed-path forward downloads and fingerprints its logits only;
     - 6 device forwards for the real-shape CPU agreement and 2 CPU reference forwards (d768x24 at 512 rows is the
       largest, about 20-40 s on the VM's CPU);
     - at the tiny shape, 3 recorded device forwards, the replica checks and the malformed-switch forward.
@@ -233,11 +259,15 @@ claim needs its own protocol.
   - the final inventory ends at 60.
 
   Stopping has its own window before retrieval's. A stop whose replies hang therefore uses at most 4 minutes (one
-  full attempt, which needs about 3), and packing and download keep their 4 minutes. Without that, until retrieval,
-  the VM holds the only copy of the evidence, and cleanup would destroy it. Every external call has a timeout
-  capped by its deadline, timed-out children are killed, and a call past its deadline is not started.
-  - **If polling ends without DONE:** the run is stopped through the VM script's PID, and the receipts so far are
-    retrieved before shutdown. An unconfirmed stop keeps the exit at least 2.
+  full attempt, which needs about 3), and packing and download keep a reserved 4 minutes. Every external call has a
+  timeout capped by its deadline, timed-out children are killed, and a call past its deadline is not started.
+  - **Retrieval is attempted, not guaranteed.** It is reserved time, and it is attempted before shutdown. It can
+    still fail: a hung pack can use the whole window so that the download never starts, and failed attempts leave
+    evidence behind. An exception after launch takes the general error path straight to cleanup.
+  - **When retrieval fails,** the driver logs `EVIDENCE NOT RETRIEVED` and the exit is at least 2. Cleanup then
+    stops the VM, which until retrieval holds the only copy of the evidence.
+  - **If polling ends without DONE:** the run is stopped through the VM script's PID, and retrieval of the receipts
+    so far is attempted before shutdown. An unconfirmed stop keeps the exit at least 2.
   - **Forward and backward** keep their schedule (polling 60; stop and retrieval 75; shutdown 85; inventory 90).
     Their two stop attempts, at most 2 x 260 s, leave retrieval at least 6 of its 15 minutes.
 - **Session ownership, shutdown and the launch and stop hardening** are the backward protocol's, unchanged:
@@ -273,13 +303,22 @@ claim needs its own protocol.
   top-level files of `out/` are copied to `receipts/RUN_ID/`, with `archive.sha256` hashing every retrieved file,
   and then the driver log. The JSONL files are `prefill_gate[_cublas]`, `prefill_time[_cublas]` and
   `prefill_profile[_cublas]`.
-- **Tests.** `test_drive.py` (mock Colab CLI, 23 tests) and `test_vm_run.py` (stub tools, 25 tests)
+- **Tests.** `test_drive.py` (mock Colab CLI, 23 tests) and `test_vm_run.py` (stub tools, 33 tests)
   test that bookkeeping locally for all three protocols. For prefill they cover:
   - the gate set and the deadlines;
   - a hung stop that still leaves retrieval before shutdown, with the exit at least 2;
-  - the per-step environment and the resources stop (host, cgroup and device);
+  - the per-step environment, and the resources stop for host and device memory;
+  - the cgroup resolution:
+    - v2 with the limit on an ancestor of a nested cgroup;
+    - v2 with the limit on the process's own nested cgroup;
+    - a mount root inside the hierarchy;
+    - v1 with own and ancestor limits;
+    - a finite limit with missing or malformed usage;
+    - unmappable membership;
+    - no membership;
   - build jobs bounded by memory;
-  - `measure.py`'s record and exit status;
+  - `measure.py`'s record and exit status, including a receipt it cannot write, and a missing receipt failing its
+    step;
   - the prerequisite stops before timing;
   - a timing failure that still collects the rest;
   - a stop during timing.

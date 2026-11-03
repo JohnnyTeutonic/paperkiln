@@ -101,7 +101,10 @@ true''',
 case "$*" in *replay_selective_scan.py*) [ "$FAIL_AT" = replay ] && exit 2; exit 0;; esac
 case "$*" in *pip*) [ "$FAIL_AT" = numpy ] && exit 1; exit 0;; esac
 # measure.py OUT -- CMD...: run CMD and record it, as the real helper does (tested on its own below)
-case "$1" in *measure.py) out=$2; shift 3; "$@"; rc=$?; echo "{\"exit\": $rc}" > "$out"; exit $rc;; esac
+case "$1" in *measure.py) out=$2; shift 3; "$@"; rc=$?
+  case "$FAIL_AT" in no_receipt) ;; no_receipt_*) [ "$out" = "${out%/${FAIL_AT#no_receipt_}.time.json}" ] && echo "{\"exit\": $rc}" > "$out";;
+    *) echo "{\"exit\": $rc}" > "$out";; esac
+  exit $rc;; esac
 [ "$1" = --version ] && echo "Python 3.13.0"
 exit 0''',
     "nproc": "#!/usr/bin/env bash\necho ${STUB_NPROC:-2}",
@@ -120,15 +123,60 @@ class VmRunTests(unittest.TestCase):
                         STUB_LOG=str(self.tmp))
         for k in ("MICROTORCH_SCAN_CHUNK", "MICROTORCH_CUBLAS", "MICROTORCH_GPU_PROFILE", "MICROTORCH_TF32"):
             self.env.pop(k, None)
-        # the prefill resources check reads these instead of the machine's own (a 50 GiB host, no cgroup limit)
+        # the prefill resources check reads these instead of the machine's own: a 50 GiB host, and by default a v2
+        # process in the root of a cgroup2 mount with no limit
         self.meminfo(50 << 20)
-        (self.tmp / "cgroup").mkdir()
-        self.env.update(VM_MEMINFO=str(self.tmp / "meminfo"), VM_CGROUP=str(self.tmp / "cgroup"))
+        self.cgroup_v2("/", "/")
+        self.env.update(VM_MEMINFO=str(self.tmp / "meminfo"), VM_PROC_CGROUP=str(self.tmp / "proc_cgroup"),
+                        VM_MOUNTINFO=str(self.tmp / "mountinfo"))
 
     def meminfo(self, available_kib):
         (self.tmp / "meminfo").write_text(f"MemTotal:       {available_kib + 1024} kB\n"
                                           f"MemFree:        {available_kib} kB\n"
                                           f"MemAvailable:   {available_kib} kB\n")
+
+    def cgroup_v2(self, path, mount_root):
+        """This process in v2 cgroup PATH, under a cgroup2 mount (at tmp/cg2) whose root is MOUNT_ROOT; returns the
+        mount directory. The cgroup's directories exist, with no limit files until a test writes them."""
+        mnt = self.tmp / "cg2"
+        (self.tmp / "proc_cgroup").write_text(f"0::{path}\n")
+        (self.tmp / "mountinfo").write_text(
+            "22 1 8:1 / / rw,relatime shared:1 - ext4 /dev/sda1 rw\n"
+            f"30 22 0:26 {mount_root} {mnt} rw,nosuid,nodev,noexec shared:9 - cgroup2 cgroup2 rw,nsdelegate\n")
+        rel = path[len(mount_root):] if mount_root != "/" and path.startswith(mount_root) else path
+        (mnt / rel.strip("/")).mkdir(parents=True, exist_ok=True)
+        return mnt
+
+    def cgroup_v1(self, path, mount_root):
+        """As cgroup_v2, for a v1 memory controller mounted at tmp/cg1 (the unified line is present too, as on a
+        hybrid host; the memory controller's line wins)."""
+        mnt = self.tmp / "cg1"
+        (self.tmp / "proc_cgroup").write_text(f"12:pids:/x\n4:memory:{path}\n0::/\n")
+        (self.tmp / "mountinfo").write_text(
+            "22 1 8:1 / / rw,relatime shared:1 - ext4 /dev/sda1 rw\n"
+            f"31 22 0:27 / {self.tmp}/cg1pids rw,nosuid shared:10 - cgroup cgroup rw,pids\n"
+            f"32 22 0:28 {mount_root} {mnt} rw,nosuid shared:11 - cgroup cgroup rw,memory\n")
+        rel = path[len(mount_root):] if mount_root != "/" and path.startswith(mount_root) else path
+        (mnt / rel.strip("/")).mkdir(parents=True, exist_ok=True)
+        return mnt
+
+    @staticmethod
+    def limit(d, limit_name, limit, usage_name=None, usage=None):
+        d.mkdir(parents=True, exist_ok=True)
+        (d / limit_name).write_text(f"{limit}\n")
+        if usage_name:
+            (d / usage_name).write_text(f"{usage}\n")
+
+    def resources(self, run):
+        return json.loads((self.tmp / f"run_{run}" / "out" / "resources_start.json").read_text())
+
+    def assert_resources_stop(self, run, why):
+        rc, s, done = self.run_vm(run=run, protocol="prefill")
+        self.assertEqual((rc, done), (1, run), why)
+        self.assertEqual(s["gates"], {"provenance": 0, "resources": 1}, why)  # no checkout, build or gate
+        r = self.resources(run)
+        self.assertFalse(r["ok"], why)
+        return r
 
     def run_vm(self, fail_at="", run="r1", head=None, protocol=None, extra=None):
         env = dict(self.env, FAIL_AT=fail_at, **(extra or {}))
@@ -266,7 +314,7 @@ class VmRunTests(unittest.TestCase):
         for label in ("start", "before_gate", "end"):
             r = json.loads((out / f"resources_{label}.json").read_text())
             self.assertEqual((r["mem_available_kib"], r["device_free_mib"], r["ok"]), (50 << 20, 22500, True), label)
-            self.assertIsNone(r["cgroup_limit_kib"])
+            self.assertEqual((r["cgroup_version"], r["cgroup_headroom_kib"], r["cgroup_error"]), ("v2", None, ""))
             self.assertTrue((out / f"meminfo_{label}.txt").is_file() and (out / f"gpu_memory_{label}.txt").is_file())
         for step in ("build", "host_test", "prefill_gate", "prefill_gate_cublas", "prefill_time", "prefill_time_cublas",
                      "prefill_profile", "prefill_profile_cublas"):
@@ -280,26 +328,109 @@ class VmRunTests(unittest.TestCase):
         rc, s, _ = self.run_vm(run="r2", protocol="prefill", extra={"STUB_NPROC": "3"})
         self.assertIn("--parallel 3", (self.tmp / "cmake_build_args_build").read_text())  # nproc bounds it too
 
-    def test_prefill_short_resources_stop_before_any_heavy_work(self):
-        cases = (("host", lambda: self.meminfo(15 << 20), {}),
-                 ("device", lambda: None, {"FAIL_AT": "low_device"}),
-                 ("cgroup", lambda: (self.tmp / "cgroup" / "memory.max").write_text(str(12 << 30) + "\n"), {}))
-        for i, (name, setup, extra) in enumerate(cases):
-            setup()
-            rc, s, done = self.run_vm(extra.get("FAIL_AT", ""), run=f"m{i}", protocol="prefill")
-            self.assertEqual((rc, done), (1, f"m{i}"), name)
-            self.assertEqual(s["gates"], {"provenance": 0, "resources": 1}, name)  # no checkout, build or gate
-            r = json.loads((self.tmp / f"run_m{i}" / "out" / "resources_start.json").read_text())
-            self.assertFalse(r["ok"], name)
-            self.meminfo(50 << 20)
-            (self.tmp / "cgroup" / "memory.max").unlink(missing_ok=True)
-        # a cgroup with room is fine, and its headroom (limit - current) is what counts
-        (self.tmp / "cgroup" / "memory.max").write_text(str(40 << 30) + "\n")
-        (self.tmp / "cgroup" / "memory.current").write_text(str(4 << 30) + "\n")
-        rc, s, _ = self.run_vm(run="m9", protocol="prefill")
+    def test_prefill_short_host_or_device_memory_stops_before_any_heavy_work(self):
+        self.meminfo(15 << 20)
+        self.assert_resources_stop("m1", "host")
+        self.meminfo(50 << 20)
+        rc, s, _ = self.run_vm("low_device", run="m2", protocol="prefill")
+        self.assertEqual((rc, s["gates"]), (1, {"provenance": 0, "resources": 1}))
+
+    # cgroup v2: this process's own cgroup, resolved from /proc/self/cgroup and mountinfo, and its ancestors
+    def test_v2_limit_on_an_ancestor_of_a_nested_cgroup_is_found(self):
+        mnt = self.cgroup_v2("/a/b", "/")
+        self.limit(mnt / "a", "memory.max", 24 << 30, "memory.current", 12 << 30)  # 12 GiB of room above us
+        self.limit(mnt / "a" / "b", "memory.max", "max", "memory.current", 1 << 30)
+        r = self.assert_resources_stop("n1", "ancestor limit")
+        self.assertEqual((r["cgroup_version"], r["cgroup_path"], r["headroom_kib"]), ("v2", "/a/b", 12 << 20))
+        self.assertIn(f"{mnt}/a=", r["cgroup_levels"])
+        # with room at the ancestor too, the smallest headroom over the levels is the one that counts
+        self.limit(mnt / "a", "memory.max", 40 << 30, "memory.current", 4 << 30)       # 36 GiB
+        self.limit(mnt / "a" / "b", "memory.max", 30 << 30, "memory.current", 2 << 30)  # 28 GiB
+        rc, s, _ = self.run_vm(run="n2", protocol="prefill")
         self.assertEqual(rc, 0, s)
-        r = json.loads((self.tmp / "run_m9" / "out" / "resources_start.json").read_text())
-        self.assertEqual((r["cgroup_limit_kib"], r["headroom_kib"]), (40 << 20, 36 << 20))
+        r = self.resources("n2")
+        self.assertEqual((r["cgroup_headroom_kib"], r["headroom_kib"], r["ok"]), (28 << 20, 28 << 20, True))
+
+    def test_v2_limit_on_the_process_own_nested_cgroup_is_found(self):
+        mnt = self.cgroup_v2("/system.slice/colab.scope", "/")
+        self.limit(mnt / "system.slice" / "colab.scope", "memory.max", 12 << 30, "memory.current", 0)
+        r = self.assert_resources_stop("o1", "own limit")
+        self.assertEqual(r["headroom_kib"], 12 << 20)
+
+    def test_v2_mount_root_inside_the_hierarchy_maps_the_path(self):
+        # a container's cgroup2 mount whose root is /docker/abc: /proc/self/cgroup's /docker/abc/app is mnt/app
+        mnt = self.cgroup_v2("/docker/abc/app", "/docker/abc")
+        self.limit(mnt, "memory.max", 12 << 30, "memory.current", 1 << 30)  # the container's limit at the mount
+        r = self.assert_resources_stop("p1", "limit at the mount root")
+        self.assertEqual(r["headroom_kib"], 11 << 20)
+
+    def test_finite_limit_without_valid_usage_is_never_zero_usage(self):
+        for i, usage in enumerate((None, "abc", "", "-5")):
+            mnt = self.cgroup_v2("/a", "/")
+            if usage is None:
+                self.limit(mnt / "a", "memory.max", 24 << 30)
+                (mnt / "a" / "memory.current").unlink(missing_ok=True)
+            else:
+                self.limit(mnt / "a", "memory.max", 24 << 30, "memory.current", usage)
+            r = self.assert_resources_stop(f"u{i}", f"usage {usage!r}")
+            self.assertIn("usage missing or malformed", r["cgroup_error"])
+
+    def test_unmappable_membership_is_an_error_not_no_limit(self):
+        self.cgroup_v2("/a", "/")
+        (self.tmp / "mountinfo").write_text("22 1 8:1 / / rw - ext4 /dev/sda1 rw\n")  # no cgroup2 mount
+        r = self.assert_resources_stop("q1", "no mount")
+        self.assertIn("no matching mount", r["cgroup_error"])
+        self.cgroup_v2("/elsewhere/a", "/docker/abc")  # the path is not under the mount's root
+        r = self.assert_resources_stop("q2", "outside the mount root")
+        self.assertIn("outside the mount root", r["cgroup_error"])
+        mnt = self.cgroup_v2("/gone", "/")
+        (mnt / "gone").rmdir()
+        r = self.assert_resources_stop("q3", "missing directory")
+        self.assertIn("missing", r["cgroup_error"])
+        mnt = self.cgroup_v2("/a", "/")
+        self.limit(mnt / "a", "memory.max", "12G", "memory.current", 0)
+        r = self.assert_resources_stop("q4", "unreadable limit")
+        self.assertIn("unreadable limit", r["cgroup_error"])
+
+    def test_no_memory_cgroup_membership_uses_mem_available(self):
+        (self.tmp / "proc_cgroup").write_text("12:pids:/x\n")  # no memory controller, no unified line
+        rc, s, _ = self.run_vm(run="z1", protocol="prefill")
+        self.assertEqual(rc, 0, s)
+        r = self.resources("z1")
+        self.assertEqual((r["cgroup_version"], r["headroom_kib"]), ("none", 50 << 20))
+
+    # cgroup v1: the memory controller's line, under the memory mount
+    def test_v1_nested_and_ancestor_limits(self):
+        mnt = self.cgroup_v1("/docker/x/y", "/docker")
+        unlimited = 9223372036854771712
+        self.limit(mnt / "x" / "y", "memory.limit_in_bytes", unlimited, "memory.usage_in_bytes", 1 << 30)
+        self.limit(mnt / "x", "memory.limit_in_bytes", 20 << 30, "memory.usage_in_bytes", 6 << 30)  # 14 GiB
+        r = self.assert_resources_stop("v1", "v1 ancestor limit")
+        self.assertEqual((r["cgroup_version"], r["cgroup_path"], r["headroom_kib"]), ("v1", "/docker/x/y", 14 << 20))
+        self.limit(mnt / "x", "memory.limit_in_bytes", 40 << 30, "memory.usage_in_bytes", 4 << 30)
+        self.limit(mnt / "x" / "y", "memory.limit_in_bytes", 13 << 30, "memory.usage_in_bytes", 0)  # its own: 13
+        r = self.assert_resources_stop("v2", "v1 own limit")
+        self.assertEqual(r["headroom_kib"], 13 << 20)
+        self.limit(mnt / "x" / "y", "memory.limit_in_bytes", 30 << 30)
+        (mnt / "x" / "y" / "memory.usage_in_bytes").unlink()
+        r = self.assert_resources_stop("v3", "v1 limit without usage")
+        self.assertIn("usage missing or malformed", r["cgroup_error"])
+        self.limit(mnt / "x" / "y", "memory.limit_in_bytes", 30 << 30, "memory.usage_in_bytes", "n/a")
+        r = self.assert_resources_stop("v4", "v1 malformed usage")
+        self.assertIn("usage missing or malformed", r["cgroup_error"])
+        self.limit(mnt / "x" / "y", "memory.limit_in_bytes", unlimited, "memory.usage_in_bytes", 1 << 30)
+        rc, s, _ = self.run_vm(run="v5", protocol="prefill")  # x has 36 GiB, y no limit
+        self.assertEqual(rc, 0, s)
+        self.assertEqual(self.resources("v5")["headroom_kib"], 36 << 20)
+
+    def test_missing_measurement_receipt_fails_the_step(self):
+        rc, s, _ = self.run_vm("no_receipt", run="w1", protocol="prefill")  # every receipt missing: the build fails
+        self.assertEqual((rc, s["gates"]["build"]), (1, 96))
+        self.assertNotIn("host_test", s["gates"])
+        rc, s, _ = self.run_vm("no_receipt_prefill_time", run="w2", protocol="prefill")
+        self.assertEqual((rc, s["gates"]["prefill_time"]), (1, 96))
+        self.assertEqual(s["gates"]["prefill_profile"], 0)  # the other steps still ran
+        self.assertFalse(s["pass"])
 
     def test_measure_records_time_rss_and_the_exit_status(self):
         out = self.tmp / "m.json"
@@ -315,6 +446,16 @@ class VmRunTests(unittest.TestCase):
         self.assertEqual((r.returncode, json.loads(out.read_text())["exit"]), (143, 143))
         r = subprocess.run([sys.executable, str(HERE / "measure.py"), str(out)], capture_output=True, text=True)
         self.assertEqual(r.returncode, 2)
+        # a receipt that cannot be written: the command's own status stands, and the failure is reported
+        bad = self.tmp / "no_such_dir" / "m.json"
+        r = subprocess.run([sys.executable, str(HERE / "measure.py"), str(bad), "--", "sh", "-c", "exit 3"],
+                           capture_output=True, text=True, timeout=30)
+        self.assertEqual(r.returncode, 3)
+        self.assertIn("could not write", r.stderr)
+        self.assertFalse(bad.exists())
+        r = subprocess.run([sys.executable, str(HERE / "measure.py"), str(bad), "--", "true"], capture_output=True,
+                           text=True, timeout=30)
+        self.assertEqual(r.returncode, 0)  # a success without its receipt; vm_run.sh fails that step (test above)
 
     def test_prefill_runs_with_the_switch_unset_even_if_the_vm_has_it(self):
         rc, s, _ = self.run_vm(protocol="prefill", extra={"MICROTORCH_SCAN_CHUNK": "64", "MICROTORCH_TF32": "1"})
