@@ -1,0 +1,119 @@
+# C2 CUDA leg: coalfire's CUDA build on the C2 checkpoint: protocol
+
+Claude Opus 5.5, 3 Nov 2026. Fixed before any GPU result. Branch `claude/c2-coalfire-cuda`, cut from paperkiln
+master `93bf21d2`. It runs only after independent review, from the reviewed commit.
+
+## Question and scope
+
+C2 (`docs/receipts/c2_coalfire_parity_20261103/`, paperkiln PR #6) pinned coalfire's CPU forward and paperkiln's
+`nn::Llama` to an independent float64 forward of the same tiny llama-family checkpoint. With coalfire's FFN-bias fix
+(coalfire.cpp #32), both are within 5.6e-7 of it. Its stated gap is that coalfire's CUDA path was not run. The
+question here is whether coalfire's CUDA build computes the same model as its CPU build and its export: does its
+forward on the same checkpoint and ids stay within C2's frozen bound of the float64 referee?
+
+Scope: one tiny model (2 layers, hidden 128, 4 heads, FFN 512, vocabulary 2,275; multi-head attention, untied head),
+48 positions, one L4, FP32. It is a correctness pin, not a speed measurement. The GQA, tied-head leg stays out of
+scope: coalfire implements neither (reference §10).
+
+## What runs
+
+- **Model and inputs:** C2's after-fix artifacts, unchanged. These are the format-3 checkpoint, the HF export
+  (`config.json`, `model.safetensors`), the 48 ids and both CPU legs' logits (`coalfire.f32`, `paperkiln.f32`). They
+  are uploaded and checked against `inputs.sha256`, which is the C2 receipt's `after_fix/sha256.txt`
+  (`test_drive.py` checks the two agree). The tokenizer's two vocabulary files are rebuilt on the VM from coalfire's
+  `data/training_pairs.txt`, as C2's `run.sh` built them, and checked against `corpus.sha256`. That file has been
+  unchanged since February 2025 (blob `fbbe6ce0` at both C2's commit and the pin).
+- **Engine:** coalfire.cpp `605685e8` (main after #38), built with `-DCUDA_ENABLED=ON -DCMAKE_CUDA_ARCHITECTURES=89`
+  with the image's own toolkit (recorded, not installed).
+- **Tool:** `coalfire_dump.cpp`, C2's dump tool. The only change is that it reports the build's CUDA state first:
+  `use_cuda`, the device count, name and compute capability. A CUDA build without a visible device exits 3 instead
+  of running. It is compiled with exactly the flags coalfire's build gave `src/transformer.cpp`, taken from
+  `compile_commands.json` by `dump_flags.py`, because the headers change under `USE_CUDA`. It runs `forward_batch`
+  in eval mode, as C2 did.
+- **What runs on the device** in this build, by construction (`USE_CUDA` is compile-time; there is no runtime
+  fallback):
+  - the FFN (SwiGLU kernel with cuBLAS GEMMs);
+  - attention (cuBLAS GEMMs, CUDA softmax);
+  - the head (`cuda::matmul`, cublasSgemm).
+
+  RMSNorm stays on the CPU (its CUDA path is disabled in the source), as do the embedding gather and the residual
+  adds. The GEMMs are `cublasSgemm` in the default math mode, which is FP32, and every dump also runs with
+  `NVIDIA_TF32_OVERRIDE=0`. The config's `use_fp16` flag has no initialiser in coalfire (a latent defect), but only
+  backward paths read it, not this forward.
+- **Referee:** C2's `compare.py`, imported unchanged by `compare_cuda.py`.
+
+## Gates (all required; `vm_c2.sh`, in order; a failure stops the run)
+
+1. `provenance`: exactly one NVIDIA L4. `nvcc --version` and the CUDA directories are recorded.
+2. `checkout`: this packet at the run's commit and coalfire at `605685e8`, each verified at HEAD with a clean tree.
+3. `inputs`: the uploaded set is exactly `inputs.sha256`'s names, and every hash matches.
+4. `corpus`: the rebuilt vocabulary files match `corpus.sha256`.
+5. `configure`, `build`: coalfire's CUDA configure and `transformer_core`. Neither tree is modified.
+6. `dump_build`: the dump tool is built with the library's flags. They must contain `-DUSE_CUDA`, and the tool is
+   linked to the toolkit's cudart and cuBLAS (rpath to the toolkit beside `nvcc`).
+7. `device_required`, a negative control: with `CUDA_VISIBLE_DEVICES` empty, the tool exits 3, reports
+   `"devices": 0` and writes no logits.
+8. `dump_cuda`, `dump_cuda_repeat`: two runs. Each must report `"use_cuda": true, "devices": 1, "device":
+   "NVIDIA L4", "cc": "8.9"`.
+9. `numpy`: the image's NumPy, recorded (nothing is installed).
+10. `compare`: `compare_cuda.py`. It must find:
+    - the CUDA logits: 48 x 2,275 finite values, every row within the frozen bound of the referee
+      (max |a - ref| / max(1, max |ref row|) <= 1e-4), and the referee's argmax in every row;
+    - the referee, rerun on the VM, still passing both CPU legs of the C2 receipt.
+
+**Reported, not gated:**
+- whether the repeat is bit-identical;
+- the CUDA logits against coalfire's CPU build and against paperkiln;
+- the CUDA leg's maximum and median error.
+
+The bound is C2's, fixed before C2's first run, and it is not changed here. The CPU legs were within 5.6e-7.
+
+**Outcomes.** A pass extends C2's pin to coalfire's CUDA build at this commit. A failure is a finding about coalfire's
+CUDA forward (as the FFN-bias defect was on the CPU). It would be diagnosed with C2's sub-op method, not by relaxing
+the bound. No rerun to improve a result: an operational failure (session lost, build failure, CLI hang) is recorded
+and may be rerun once, unchanged, under a new RUN_ID.
+
+## Local evidence (before any GPU)
+
+- **CPU control** (`receipts/cpu_control_local.txt`): the modified dump tool, built against a CPU build of coalfire
+  `605685e8`, reproduces C2's `coalfire.f32` byte for byte (sha256 `a4806858…`). This covers both the tool change and
+  coalfire's merges since C2 (#33, #37, #38) for this model.
+- **CUDA compile** (no GPU): coalfire `605685e8` builds with CUDA 12.6 for sm_89 in about 2.5 minutes on 4 cores. The
+  dump tool compiles with the library's flags (`-DCUDA_AVAILABLE -DUSE_CUDA ...`) and links cudart and cuBLAS.
+- **Comparison:** `compare_cuda.py` on C2's own files reproduces C2's figures (coalfire 5.647e-7, paperkiln
+  5.160e-7, against each other 7.86e-7).
+- **Tests:**
+  - `test_drive.py` (mock Colab CLI, 26 tests): the prefill driver's tests, adapted, plus the upload, its
+    retries, coalfire's HEAD and the pins.
+  - `test_vm_c2.py` (stub tools, 13 tests): every gate's stop and the stop handling.
+  - `test_compare_cuda.py` (synthetic tiny Llama, 4 tests).
+
+## Budget and procedure
+
+- **Command.** From a paperkiln checkout's root, in a foreground WSL process, after the reviewed commit is pushed (the
+  VM fetches `vm_c2.sh` at that commit):
+  `python3 experiments/c2_coalfire_cuda_2026-11-03/drive.py FULL_COMMIT_SHA RUN_ID`, with RUN_ID `c1-YYYYMMDD`.
+- **Cap.** One Colab L4 session, AGENTS.md path C, named `claude-c2cuda-RUN_ID`, within Claude's Colab lane (one L4
+  at a time, at most 100 compute units a week). At most 42 minutes from the driver's start.
+- **Expected time:** about 10-15 minutes, made up of:
+  - session creation and the launch, 3-5 minutes;
+  - uploading about 9.3 MB, 1-2 minutes at the home uplink;
+  - two clones and coalfire's CUDA build, 3-5 minutes;
+  - dumps and comparison, under a minute.
+- **Deadlines** from the driver's start: polling ends at 25 minutes, workload-stop attempts at 29, retrieval at 33,
+  shutdown attempts at 38, the final inventory at 42.
+- **Driver.** The Mamba prefill packet's driver (run `p2-20261103`), with this protocol's gate set, deadlines, paths
+  and session name, plus the Gemma packet's upload step. The local inputs are checked against `inputs.sha256` before
+  any session exists, and the upload's mkdir and every file are tried up to three times. Validation also requires
+  `coalfire_head` = `605685e8`. Session ownership, the reconciled launch, PID-based stop with process groups,
+  retrieval before shutdown and authoritative shutdown certification are unchanged from it. Exit codes:
+  - 0 validated;
+  - 1 experiment failed (receipts kept);
+  - 2 transport, receipt, status-identity or stop-confirmation failure;
+  - 3 cleanup unresolved.
+- **Outputs** come home to `/mnt/c/ml_artifacts/c2_coalfire_cuda_20261103/RUN_ID/`. The top-level files of `out/`
+  are copied to `receipts/RUN_ID/` with `archive.sha256`, and then the driver log.
+
+## Runs
+
+None yet.
