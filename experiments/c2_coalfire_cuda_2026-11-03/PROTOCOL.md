@@ -60,8 +60,9 @@ scope: coalfire implements neither (reference §10).
    compile database, the resolved `nvcc`, compiler and library paths (`toolchain.txt`) and the tool's `ldd` are kept.
 7. `device_required`, a negative control: with `CUDA_VISIBLE_DEVICES` empty, the tool exits 3, reports
    `"devices": 0` and writes no logits.
-8. `dump_cuda`, `dump_cuda_repeat`: two runs. Each must report `"use_cuda": true, "devices": 1, "device":
-   "NVIDIA L4", "cc": "8.9"`.
+8. `dump_cuda`, `dump_cuda_repeat`: two runs. Each must exit 0, report `"use_cuda": true, "devices": 1,
+   "device": "NVIDIA L4", "cc": "8.9"`, and print `{"logits_written": true}` and `{"cuda_shutdown": "ok"}`
+   (from c2 on; see Runs).
 9. `numpy`: the image's NumPy, recorded (nothing is installed).
 10. `compare`: `compare_cuda.py`. It must find:
     - the CUDA logits: 48 x 2,275 finite values, every row within the frozen bound of the referee
@@ -100,7 +101,7 @@ rerun once, unchanged, under a new RUN_ID.
 - **Tests:**
   - `test_drive.py` (mock Colab CLI, 26 tests): the prefill driver's tests, adapted, plus the upload, its
     retries, coalfire's HEAD and the pins.
-  - `test_vm_c2.py` (stub tools, 13 tests): every gate's stop and the stop handling.
+  - `test_vm_c2.py` (stub tools, 14 tests): every gate's stop and the stop handling.
   - `test_compare_cuda.py` (synthetic tiny Llama, 4 tests).
 - **Review:** Codex methods review round 1, RUN with no blocking findings. Its five non-blocking points are applied:
   - the FP16 flag's description corrected, and both uninitialised flags set;
@@ -139,4 +140,35 @@ rerun once, unchanged, under a new RUN_ID.
 
 ## Runs
 
-None yet.
+- **`c1-20261103`** (commit `2a7370c5`, reviewed rounds 1-2; receipts in `receipts/c1-20261103/`): failed at
+  `dump_cuda` with exit 139. It ran from 15:13:36 to 15:21:58 UTC+11 (about 8 L4-minutes); the driver exited 1 and
+  cleanup was certified.
+  - **What passed:** provenance, checkout, inputs, corpus, configure, build (27 s), the dump build and the
+    no-device control.
+  - **The failure:** the CUDA dump reported the L4, loaded the checkpoint, ran the forward and wrote all 48 x
+    2,275 logits (436,800 bytes). It printed its final line, then died with SIGSEGV after "Transformer destructor
+    called", in the process's CUDA teardown. `dump_cuda_repeat`, `numpy` and `compare` did not run.
+  - **A known coalfire defect.** coalfire's own `src/train.cpp` documents that its component destructors
+    (`CudaMatrix` `cudaFree`) and the cudart/cuBLAS atexit handlers "intermittently hit an access violation during
+    the CUDA runtime's teardown". It describes this as a Windows problem, and the trainer fast-exits with
+    `std::_Exit(0)` after `cuda::cleanup_loss_resources()` and `cuda::cleanup_cuda()`. c1 shows the same crash on
+    Linux (L4, driver 580.82.07, CUDA 13.0.88).
+  - **Seen before this revision, diagnostic only:** c1's logits file was scored at home with `compare_cuda.py`
+    (`receipts/c1-20261103/diagnostic_compare_home.json`). It is within 7.0e-7 of the float64 referee (median
+    4.2e-7), with the referee's argmax in every row, 7.5e-7 from coalfire's CPU logits and 8.4e-7 from
+    paperkiln's. This is not a protocol pass: the gate failed, and the file came from a process that then crashed.
+- **The revision for `c2-20261103`** is a reviewed operational revision following c1, not an unchanged rerun. It
+  was written after c1's diagnostic score was known. It changes the process's exit only, never the model, the
+  inputs, the forward, the bound or the comparison:
+  - **The dump tool** closes the logits file and checks it, and prints `{"logits_written": true}`. A CUDA build
+    then takes coalfire's own shutdown path from `train.cpp`: synchronise, `cuda::cleanup_loss_resources()`,
+    `cuda::cleanup_cuda()`, flush, `std::_Exit`. It prints `{"cuda_shutdown": "ok"}`, or exits 4 if the
+    synchronisation reports an error.
+  - **`vm_c2.sh`** requires both lines in each dump's log (status 93 otherwise). It now captures the tool's `ldd`
+    right after the build, and records resolved paths (`readlink -f`) in `toolchain.txt`; these are round 2's two
+    non-blocking points.
+  - **The teardown crash itself** stays a recorded coalfire finding outside this protocol's gate. Diagnosing it
+    would need its own run, with a backtrace.
+  - **Checks:** the CPU control was rerun with the revised tool, still byte-identical to C2's `coalfire.f32`; the
+    revised CUDA tool compiles and links. `test_vm_c2.py` gains a test that a dump without both lines fails (14
+    tests).

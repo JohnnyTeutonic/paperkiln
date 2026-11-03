@@ -74,6 +74,9 @@ if [ "${CUDA_VISIBLE_DEVICES-unset}" = "" ] && [ "${STUB_NODEVICE_RUNS:-}" != 1 
 fi
 echo "{\"use_cuda\": true, \"devices\": 1, \"device\": \"${STUB_DEVICE:-NVIDIA L4}\", \"cc\": \"8.9\", \"error\": \"\"}"
 printf 'logits' > "$6"
+[ "${STUB_NO_SHUTDOWN:-}" = 1 ] && exit 0   # a dump that skipped the shutdown markers
+echo '{"logits_written": true}'
+echo '{"cuda_shutdown": "ok"}'
 DUMP
 chmod +x "$out"
 ''',
@@ -173,6 +176,11 @@ class VmC2Tests(unittest.TestCase):
     def test_wrong_device_fails_the_cuda_leg(self):
         rc, s, _, _, _ = self.run_vm(extra_env={"STUB_DEVICE": "Tesla T4"})
         self.assertEqual((rc, s["gates"]["dump_cuda"]), (1, 94))
+
+    def test_a_dump_without_the_written_and_shutdown_markers_fails(self):
+        rc, s, _, out, _ = self.run_vm(extra_env={"STUB_NO_SHUTDOWN": "1"})
+        self.assertEqual((rc, s["gates"]["dump_cuda"]), (1, 93))
+        self.assertTrue((out / "ldd.txt").exists())  # captured right after the build, before any dump
 
     def test_failed_comparison_fails_the_run(self):
         rc, s, done, _, _ = self.run_vm(extra_env={"STUB_COMPARE_RC": "1"})

@@ -1,11 +1,17 @@
 // C2 CUDA leg: docs/receipts/c2_coalfire_parity_20261103/coalfire_dump.cpp, unchanged except
 // that it first reports the build's CUDA state as one JSON line, {"use_cuda": ..., "devices":
-// ..., "device": ..., "cc": ...}, a CUDA build exits 3 without a visible device instead of
-// running, and the config's two uninitialised flags are set to false. Loads a coalfire format-3 checkpoint of the --tiny llama-family model, runs
-// forward_batch (the path training optimises through; golden_batch_test.cpp explains why not
-// forward()) over the ids in IDS and writes every row's logits as float32 [T, vocab] to OUT. The
-// config is rebuilt exactly as coalfire's src/golden_batch_test.cpp does for --tiny: the
-// format-3 checkpoint does not record the architecture.
+// ..., "device": ..., "cc": ...}; a CUDA build exits 3 without a visible device instead of
+// running; the config's two uninitialised flags are set to false; it closes and checks the
+// logits file and reports {"logits_written": true}; and a CUDA build then shuts down as
+// coalfire's own train.cpp does (synchronise, cuda::cleanup_loss_resources(),
+// cuda::cleanup_cuda(), flush, std::_Exit(0)) instead of running the destructors, whose CUDA
+// teardown crashed run c1-20261103 with SIGSEGV after the logits were written.
+//
+// Loads a coalfire format-3 checkpoint of the --tiny llama-family model, runs forward_batch (the
+// path training optimises through; golden_batch_test.cpp explains why not forward()) over the ids
+// in IDS and writes every row's logits as float32 [T, vocab] to OUT. The config is rebuilt
+// exactly as coalfire's src/golden_batch_test.cpp does for --tiny: the format-3 checkpoint does
+// not record the architecture.
 //
 //   coalfire_dump CKPT VOCAB_FILE_0 VOCAB_FILE_1 SEQ_LEN IDS OUT
 //
@@ -27,6 +33,11 @@
 #include "transformer.hpp"
 #ifdef USE_CUDA
 #include <cuda_runtime.h>
+
+#include <cstdlib>
+
+#include "cuda/loss_kernels.cuh"
+#include "cuda/matrix_ops.cuh"
 #endif
 
 int main(int argc, char** argv) {
@@ -152,11 +163,29 @@ int main(int argc, char** argv) {
             const float x = L(i, v);
             f.write(reinterpret_cast<const char*>(&x), sizeof x);
         }
+    f.close();
+    if (!f) {
+        std::cerr << "coalfire_dump: cannot write " << argv[6] << "\n";
+        return 1;
+    }
     std::printf(
         "{\"engine\": \"coalfire\", \"rows\": %zu, \"vocab\": %zu, \"use_rope\": %d, "
         "\"use_rms_norm\": %d, "
         "\"use_biases\": %d, \"eps\": %g}\n",
         ids.size(), static_cast<size_t>(L.cols()), c.use_rope, c.use_rms_norm, c.use_biases,
         c.layer_norm_epsilon);
+    std::printf("{\"logits_written\": true}\n");
+#ifdef USE_CUDA
+    // coalfire's own CUDA shutdown (src/train.cpp): free its CUDA resources while the context is
+    // alive, then fast-exit before the destructors, whose teardown is unsafe
+    const cudaError_t sync = cudaDeviceSynchronize();
+    cuda::cleanup_loss_resources();
+    cuda::cleanup_cuda();
+    std::printf("{\"cuda_shutdown\": \"%s\"}\n", sync == cudaSuccess ? "ok" : cudaGetErrorName(sync));
+    std::fflush(nullptr);
+    std::cout.flush();
+    std::cerr.flush();
+    std::_Exit(sync == cudaSuccess ? 0 : 4);
+#endif
     return 0;
 }

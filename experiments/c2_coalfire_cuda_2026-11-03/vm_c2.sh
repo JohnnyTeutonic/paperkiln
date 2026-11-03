@@ -168,10 +168,13 @@ grep -qx -- '-DUSE_CUDA' "$O/dump_flags.txt" || fail dump_build 95
 mapfile -t FL < "$O/dump_flags.txt"   # one argument per line, unquoted
 CUDA_LIB=$(dirname "$(dirname "$(command -v nvcc)")")/lib64
 cp build/compile_commands.json "$O/compile_commands.json"
-{ echo "nvcc $(command -v nvcc)"; echo "g++ $(command -v g++)"; echo "cuda_lib $CUDA_LIB"
+{ echo "nvcc $(command -v nvcc) -> $(readlink -f "$(command -v nvcc)")"
+  echo "g++ $(command -v g++) -> $(readlink -f "$(command -v g++)")"
+  echo "cuda_lib $CUDA_LIB -> $(readlink -f "$CUDA_LIB")"
   ls -l "$CUDA_LIB"/libcudart.so* "$CUDA_LIB"/libcublas.so* 2>&1; } > "$O/toolchain.txt"
 run dump_build "$O/dump_build.log" g++ "${FL[@]}" "$E/coalfire_dump.cpp" build/libtransformer_core.a \
     -L"$CUDA_LIB" -Wl,-rpath,"$CUDA_LIB" -lcudart -lcublas -fopenmp -o coalfire_dump || fail dump_build $?
+ldd coalfire_dump > "$O/ldd.txt" 2>&1
 G[dump_build]=0
 ARGS=(in/pol_checkpoint_0.ckpt in/train-0-small.txt in/train-1-small.txt 64 in/ids.txt)
 # every dump runs with TF32 forced off (coalfire's forward calls cublasSgemm in the default math mode, which is FP32
@@ -189,9 +192,11 @@ for k in dump_cuda dump_cuda_repeat; do
     [ $k = dump_cuda_repeat ] && f=$O/coalfire_cuda_repeat.f32
     run $k "$O/$k.log" env NVIDIA_TF32_OVERRIDE=0 ./coalfire_dump "${ARGS[@]}" "$f" || fail $k $?
     grep -q '"use_cuda": true, "devices": 1, "device": "NVIDIA L4", "cc": "8.9"' "$O/$k.log" || fail $k 94
+    # the logits file was closed and checked, and coalfire's own CUDA shutdown completed
+    { grep -qx '{"logits_written": true}' "$O/$k.log" && grep -qx '{"cuda_shutdown": "ok"}' "$O/$k.log"; } \
+        || fail $k 93
     G[$k]=0
 done
-ldd coalfire_dump > "$O/ldd.txt" 2>&1
 # the referee needs NumPy; the image's own, recorded (nothing is installed)
 run numpy "$O/numpy.txt" python3 -c "import numpy; print(numpy.__version__)" || fail numpy $?
 G[numpy]=0

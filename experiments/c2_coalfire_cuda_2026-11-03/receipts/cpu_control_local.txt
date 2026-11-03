@@ -2,11 +2,12 @@ C2 CUDA leg, local CPU control (Claude Opus 5.5, 3 Nov 2026; CPU only, WSL, unde
 coalfire HEAD: 605685e8e212eecdf86d01630f76b9ac47b5d5a8  (clean: yes)
 build: cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON (CPU), target transformer_core; g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
 dump tool flags (dump_flags.py, src/transformer.cpp, one per line): -I/home/jonat/claude_coalfire/include -I/home/jonat/claude_coalfire/third_party -I/home/jonat/claude_c2cpu_build/_deps/json-src/include -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -fopenmp
-dump tool source sha256: 02026ec64040ea73026718bc6c0124861458b69d294cc950c20d7d9b89eda040
+dump tool source sha256: c670f38f03d7fdf48c185b8b8ba0a0526b0861b0d55ee1ea95f75f630bb70b9c
 run: dump CKPT train-0-small.txt train-1-small.txt 64 ids.txt OUT (the C2 after-fix inputs)
 {"use_cuda": false}
 {"ffn_bias_max_abs": 0, "zeroed": false}
 {"engine": "coalfire", "rows": 48, "vocab": 2275, "use_rope": 1, "use_rms_norm": 1, "use_biases": 0, "eps": 1e-05}
+{"logits_written": true}
 output sha256: a4806858378f5f16c1d8663cd2c479767a499e77dfa246b08cf82778a9a3bddd
 C2 receipt coalfire.f32 sha256: a4806858378f5f16c1d8663cd2c479767a499e77dfa246b08cf82778a9a3bddd
 result: byte-identical
