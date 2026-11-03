@@ -31,7 +31,7 @@ void test_args() {
     CHECK(a.mode == "gate" && a.require_cuda && !a.host_dry_run);
     CHECK((a.shapes == std::vector<std::string>{"d768x24", "d384x12"}));
     a = prefill::parse_args({"--mode", "time"});
-    CHECK(a.reps == 20 && a.warmup == 3);
+    CHECK(a.reps == 15 && a.warmup == 2);  // PROTOCOL_PREFILL.md's timing schedule
     a = prefill::parse_args({"--mode", "profile"});
     CHECK(a.reps == 5 && a.warmup == 2);
     a = prefill::parse_args(
@@ -201,17 +201,20 @@ ModelResult test_model() {
     r.one_chunk_identical =
         prefill::compare(prefill::record_run(*m, ids, sl, prefill::ChunkedHostScan{sl}), rec)
             .identical;
+    // one chunk per sequence is the ordered recurrence, bit for bit (the device gate checks the
+    // same)
+    CHECK(r.one_chunk_identical);
     // the errors the gate exists to catch exceed the bound: chunk starts dropped (here 256 rows, so
     // the dropped-carry scan's L divides them), and state carried across the sequence boundary. At
-    // these weights the logits alone move by less than the bound when the chunk starts are dropped;
-    // the scan outputs do not.
+    // these weights a dropped carry moves the logits by only ~4.9 times the tiny shape's bound, and
+    // the scan outputs by ~25 times it, so both are checked.
     const size_t sl2 = 256;
     const auto ids2 = prefill::make_ids(s.vocab, sl2 * batch);
     const prefill::Run rec2 = prefill::record_run(*m, ids2, sl2, prefill::OrderedScan{});
     for (size_t L : {size_t(64), size_t(128)}) {
         const auto c = prefill::compare(
             prefill::record_run(*m, ids2, sl2, prefill::DroppedCarryScan{L}), rec2);
-        CHECK(c.logits.finite && c.scan.finite && !c.pass(s.bound));
+        CHECK(c.logits.finite && c.scan.finite && !c.logits.pass(s.bound) && !c.scan.pass(s.bound));
         r.dropped_logits = std::min(r.dropped_logits, c.logits.err);
         r.dropped_scan = std::min(r.dropped_scan, c.scan.err);
     }

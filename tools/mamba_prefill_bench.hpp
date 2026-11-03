@@ -225,8 +225,8 @@ inline Args parse_args(const std::vector<std::string>& argv) {
     if (!have_shapes)
         a.shapes = a.host_dry_run ? std::vector<std::string>{"tiny"}
                                   : std::vector<std::string>{"d768x24", "d384x12"};
-    if (!have_reps) a.reps = a.mode == "profile" ? 5 : 20;
-    if (!have_warmup) a.warmup = a.mode == "profile" ? 2 : 3;
+    if (!have_reps) a.reps = a.mode == "profile" ? 5 : 15;
+    if (!have_warmup) a.warmup = 2;
     return a;
 }
 

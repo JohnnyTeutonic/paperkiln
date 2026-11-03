@@ -58,8 +58,15 @@ and it changes no default: `MICROTORCH_SCAN_CHUNK` stays opt-in.
   - The scan op writes every state, (rows + sequences) x Di x N floats (805 MB per layer at 8192 rows of d768),
     which the backward reads, even under NoGrad. This is device work inside the scan's own time.
 
-  These costs dilute the end-to-end ratio. The profile separates them: the wall time minus the sum of the device
-  ops' time is host work, transfers and idle gaps.
+  These costs dilute the end-to-end ratio. The profile does not measure host time. The wall time minus the
+  device ops' summed span time is a **residual**, which mixes:
+  - host work and transfers;
+  - allocation;
+  - idle device gaps;
+  - instrumentation gaps.
+
+  Reading the residual as time outside the device ops assumes that the spans do not overlap and cover the device
+  work. They are sequential on one stream, but uploads made before a span opens fall outside it.
 
 ## Gates (all required)
 
@@ -76,6 +83,19 @@ and it changes no default: `MICROTORCH_SCAN_CHUNK` stays opt-in.
    ctest also runs the tool's four modes on the CPU path as dry runs (bookkeeping only).
 2. **Provenance.** Exactly one NVIDIA L4. The image's own CUDA toolkit, recorded (`nvcc.txt`, `cuda_dirs.txt`), as
    run b1 did (CUDA 13.0.88). No toolkit is installed. A prerequisite.
+
+   **2b. Resources** (`resources`). An operational stop before any heavyweight step, checked twice in the same
+   session: at the start, and again just before the correctness gate.
+   - **Host.** MemAvailable from `/proc/meminfo`, or the cgroup's headroom (limit minus current) when it has a
+     limit, if that is smaller, must be at least 16 GiB. The gate's batched d768x24 case holds about 7.4 GB of live
+     result objects (two recorded runs of 2.86 GB and a live 1.65 GB logits matrix). With the models, parameters
+     and allocator retention it is estimated at about 9 GB, unmeasured; 16 GiB leaves headroom.
+   - **Device.** At least 12 GiB free (`nvidia-smi`), against the about 5 GB estimate.
+   - **Records.** `/proc/meminfo`, `free -m`, the device's memory query and a summary are kept for each check
+     (`resources_LABEL.json`), and once more at the end.
+   - **Build jobs** are min(nproc, host headroom / 3 GiB), at least 1.
+   - **Per step.** The build, the host test and every bench step run under `measure.py`, which records the elapsed
+     time, CPU time and peak RSS (`STEP.time.json`).
 3. **Engine unchanged.** The commit descends from `da5febf2`, and `src/`, `include/` and `tools/parity_model.hpp`
    are byte-identical to it. The kernels measured are then the ones that r1 and b1 gated, and the model is the one
    the lifecycle receipts ran. A prerequisite.
@@ -95,9 +115,14 @@ and it changes no default: `MICROTORCH_SCAN_CHUNK` stays opt-in.
      - the timed function's logits at L128 equal the gated ones (fingerprint);
      - every value is finite.
 5. **The timings and the profile complete**, each a gate (`prefill_time`, `prefill_time_cublas`,
-   `prefill_profile`, `prefill_profile_cublas`). Every median must be finite and positive. In the profile, every
-   block's scan and convolution must be counted on the device once per forward: `selective_scan_fwd` and
-   `conv1d_causal_fwd` spans equal to the layer count. That shows that no arm fell back to the host scan.
+   `prefill_profile`, `prefill_profile_cublas`). Every timing sample must be finite and positive. The profile
+   checks each repetition on its own and reports every failure:
+   - the wall time, the scan's device time and the device-op sum are finite and positive;
+   - every block's scan and convolution are counted on the device once per forward (`selective_scan_fwd` and
+     `conv1d_causal_fwd` spans equal to the layer count), which shows that no arm fell back to the host scan;
+   - the medians are finite and positive.
+
+   Each repetition's counts are kept.
 
 ### The metric and the bound
 
@@ -142,11 +167,13 @@ forward. The calibration took 45 minutes on 4 local cores.
 - **Timed region.** Each sample is one whole prefill: `device::synchronize()`, start the clock, `prefill()` (the
   model's forward, logits for every position, left on the device), `device::synchronize()`, stop the clock. It is
   wall time from a steady clock, host work and transfers included. Freeing the outputs falls outside the span.
-- **Schedule.** Within a case's step window, 3 warm-up rounds are run, then 20 timed repetitions. Each round runs
+- **Schedule.** Within a case's step window, 2 warm-up rounds are run, then 15 timed repetitions. The kernel
+  protocols used 20 after 3; 15 here keeps both GEMM backends' timings inside the polling window. Each round runs
   the three variants once, in an order rotated by the round number, so that over every three rounds each variant
   takes each position once. The cases and shapes run in the fixed order above.
 - **Reported** for every shape, case and GEMM backend: the median, minimum, maximum and all samples per variant;
-  ordered / variant at the median; and the pool's peak device bytes. No cell is dropped or rerun.
+  ordered / variant at the median; the pool's peak and cached bytes; and the device's bytes in use. No cell is
+  dropped or rerun.
 - **The profile** (`MICROTORCH_GPU_PROFILE=1`, its own processes) runs 2 warm-up rounds and 5 profiled
   repetitions per variant, with the same rotation. It uses CUDA events around every device op and GEMM, summed per
   op name. The head's GEMM is tagged `gemm_head`. Medians are reported for:
@@ -172,20 +199,47 @@ claim needs its own protocol.
   `p1-YYYYMMDD`.
 - **Cap.** One Colab L4 session, AGENTS.md path C, named `claude-scan-RUN_ID`. At most 60 minutes from the
   driver's start, within Claude's Colab lane (stack page: one L4 at a time, at most 100 compute units a week).
-- **Expected time:** about 25-35 minutes, from:
-  - one CUDA build of the library, with 2 targets (r1's whole run took 6 minutes);
-  - the two gates, each with three CPU reference forwards (the largest is d768x24 at 512 rows) and about 30 device
-    forwards with downloads;
-  - the two timing runs, each with 23 rounds of 3 variants over 10 cells (a d768x24 forward of 8192 rows is
-    estimated at about 1-1.5 s);
-  - the two profiles.
-- **Memory.** Device peak is estimated at about 5 GB, at d768x24 (2048, 4): logits 1.65 GB, one layer's 805 MB of
-  states and the activations. Host peak is about 9 GB, in the gate's batched case: two recorded runs of 2.9 GB,
-  plus the live outputs.
-- **Deadlines** from the driver's start: polling ends at 42 minutes, retrieval at 50, shutdown attempts at 56 and
-  the final inventory at 60. Every external call has a timeout capped by its deadline, timed-out children are
-  killed, and a call past its deadline is not started. If polling ends without DONE, the run is stopped through the
-  VM script's PID and the receipts so far are retrieved.
+- **Expected time:** about 30-38 minutes from the driver's start, against a polling end at 43. The parts:
+  - session creation and the launch, 3-5 minutes;
+  - one CUDA build of the library with 2 targets, its jobs bounded by memory, 5-8 minutes (r1's whole run took
+    6 minutes).
+  - the two gates, 3-5 minutes each. Each gate runs:
+    - per real case, 7 device forwards, so 70 over the 10 cells: ordered, an ordered repeat, one chunk, L64, L128,
+      an L128 repeat and the timed-path L128, each recorded with its logits and 24 or 12 scan outputs downloaded,
+      compared and fingerprinted;
+    - 6 device forwards for the real-shape CPU agreement and 2 CPU reference forwards (d768x24 at 512 rows is the
+      largest, about 20-40 s on the VM's CPU);
+    - at the tiny shape, 3 recorded device forwards, the replica checks and the malformed-switch forward.
+  - the two timing runs, 4-6 minutes each: 17 rounds of 3 variants over 10 cells. The sum of one variant's forwards
+    over the cells is estimated at about 3.8 s at d768x24 and 1.2 s at d384x12; a d768x24 forward of 8192 rows is
+    estimated at 1-1.5 s.
+  - the two profiles, 1.5-2 minutes each: 7 rounds of 3 variants.
+
+  These are estimates; `STEP.time.json` records each step's actual time. The steps run in that order, so if
+  polling ends first, the later steps are the ones lost. The schedule is not extended to obtain completion.
+- **Memory.** These are estimates, unmeasured until this run, which records them:
+  - **Device peak:** about 5 GB, at d768x24 (2048, 4): logits 1.65 GB, one layer's 805 MB of states and the
+    activations. Each timing row records the pool's peak and cached bytes and the whole device's use
+    (`cudaMemGetInfo`), which includes allocations outside the pool.
+  - **Host peak:** about 9 GB, in the gate's batched case: about 7.4 GB of live result objects plus the models.
+    `measure.py` records each step's peak RSS.
+
+  Gate 2b stops the run if either is short.
+- **Deadlines** from the driver's start:
+  - polling ends at 43 minutes;
+  - attempts to stop the VM workload end at 47;
+  - retrieval ends at 51;
+  - shutdown attempts end at 56;
+  - the final inventory ends at 60.
+
+  Stopping has its own window before retrieval's. A stop whose replies hang therefore uses at most 4 minutes (one
+  full attempt, which needs about 3), and packing and download keep their 4 minutes. Without that, until retrieval,
+  the VM holds the only copy of the evidence, and cleanup would destroy it. Every external call has a timeout
+  capped by its deadline, timed-out children are killed, and a call past its deadline is not started.
+  - **If polling ends without DONE:** the run is stopped through the VM script's PID, and the receipts so far are
+    retrieved before shutdown. An unconfirmed stop keeps the exit at least 2.
+  - **Forward and backward** keep their schedule (polling 60; stop and retrieval 75; shutdown 85; inventory 90).
+    Their two stop attempts, at most 2 x 260 s, leave retrieval at least 6 of its 15 minutes.
 - **Session ownership, shutdown and the launch and stop hardening** are the backward protocol's, unchanged:
   - preflight listings;
   - creation reconciled against the listing;
@@ -204,11 +258,11 @@ claim needs its own protocol.
     outside, refuses a GPU mode on a build without CUDA and DEVCHECK, and refuses the profile switch in the wrong
     mode.
   - writes `status.json` atomically, then `DONE`, on every exit path once the run directory exists. A failed
-    prerequisite (provenance, checkout, engine unchanged, configure, build, host test, either gate) stops further
-    paid work. A failed timing or profile step is recorded, and the remaining steps still run.
+    prerequisite (provenance, resources, checkout, engine unchanged, configure, build, host test, either gate)
+    stops further paid work. A failed timing or profile step is recorded, and the remaining steps still run.
 - **Validation.** The driver validates `status.json`:
   - protocol `prefill`, run, commit and HEAD;
-  - exactly the 12 required gates (`provenance`, `checkout`, `engine_unchanged`, `configure`, `build`,
+  - exactly the 13 required gates (`provenance`, `resources`, `checkout`, `engine_unchanged`, `configure`, `build`,
     `host_test`, `prefill_gate`, `prefill_gate_cublas`, `prefill_time`, `prefill_time_cublas`, `prefill_profile`,
     `prefill_profile_cublas`), all integers equal to 0;
   - aggregate exit 0, and the matching `DONE` marker seen.
@@ -219,10 +273,16 @@ claim needs its own protocol.
   top-level files of `out/` are copied to `receipts/RUN_ID/`, with `archive.sha256` hashing every retrieved file,
   and then the driver log. The JSONL files are `prefill_gate[_cublas]`, `prefill_time[_cublas]` and
   `prefill_profile[_cublas]`.
-- **Tests.** `test_drive.py` (mock Colab CLI, 22 tests) and `test_vm_run.py` (stub tools, 21 tests) test that
-  bookkeeping locally for all three protocols. For prefill they cover the gate set, the deadlines, the per-step
-  environment, the prerequisite stops before timing, a timing failure that still collects the rest, and a stop
-  during timing.
+- **Tests.** `test_drive.py` (mock Colab CLI, 23 tests) and `test_vm_run.py` (stub tools, 25 tests)
+  test that bookkeeping locally for all three protocols. For prefill they cover:
+  - the gate set and the deadlines;
+  - a hung stop that still leaves retrieval before shutdown, with the exit at least 2;
+  - the per-step environment and the resources stop (host, cgroup and device);
+  - build jobs bounded by memory;
+  - `measure.py`'s record and exit status;
+  - the prerequisite stops before timing;
+  - a timing failure that still collects the rest;
+  - a stop during timing.
 - **Compiled, not run, locally:** a CUDA 12.6 build of both targets (`-DMICROTORCH_CUDA=ON -DMICROTORCH_DEVCHECK=ON`,
   sm_89). No GPU was used.
 - **No reruns.** The run is not repeated to improve a result. An operational failure (session lost, build failure)

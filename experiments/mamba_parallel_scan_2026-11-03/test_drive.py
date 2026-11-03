@@ -19,7 +19,7 @@ GATES = {
                  "strict_3", "strict_unset", "switch_refuses_malformed"],
     "prefill": ["build", "checkout", "configure", "engine_unchanged", "host_test", "prefill_gate",
                 "prefill_gate_cublas", "prefill_profile", "prefill_profile_cublas", "prefill_time",
-                "prefill_time_cublas", "provenance"],
+                "prefill_time_cublas", "provenance", "resources"],
 }
 
 # The mock keeps its state in MOCK_STATE: sessions, call counts. exec is dispatched on the label in the -f file name
@@ -61,7 +61,7 @@ def start_script(run, protocol):
     proto = protocol if mode != "wrong_protocol" else "sideways"
     s = {"run_id": run, "protocol": proto, "commit": commit, "head": commit, "exit_status": 0,
          "pass": mode != "gate_fail", "gates": gates}
-    if mode not in ("never_done", "stop_unconfirmed"):
+    if mode not in ("never_done", "stop_unconfirmed", "stop_hang"):
         (out / "status.json").write_text(json.dumps(s)); (out / "DONE").write_text(run)
     st["status"] = s; save()
 if cmd == "exec":
@@ -85,6 +85,8 @@ if cmd == "exec":
         print("DONE" if (out / "DONE").exists() else "RUNNING")
     elif label.startswith("stop_workload"):
         count("stop_workload")
+        if mode == "stop_hang":
+            time.sleep(60); sys.exit(0)                     # the reply never comes; the driver's timeout kills this
         if mode == "stop_unconfirmed":
             print('STOP_REPLY {"result": "unconfirmed"}'); sys.exit(0)
         s = st["status"]; s["gates"][sorted(s["gates"])[-1]] = 143; s["pass"] = False; s["exit_status"] = 1
@@ -93,7 +95,7 @@ if cmd == "exec":
         (out / "DONE").write_text(run)
         print('STOP_REPLY {"result": "interrupted"}')
     else:
-        if mode == "pack_flaky" and count("pack") == 1:
+        if count("pack") == 1 and mode == "pack_flaky":
             sys.exit(1)
         with tarfile.open(content / f"scan_{run}.tgz", "w:gz") as t: t.add(out, arcname=f"run_{run}/out")
         print("PACKED")
@@ -152,7 +154,8 @@ class DriveTests(unittest.TestCase):
     def test_prefill_paths_reuse_the_hardening(self):
         rc, state, log, _, _ = self.run_drive("launch_lost_started", protocol="prefill")
         self.assertEqual((rc, state["counts"]["launch"]), (0, 1), log)
-        rc, state, log, tmp, _ = self.run_drive("never_done", protocol="prefill")
+        rc, state, log, tmp, _ = self.run_drive("never_done", protocol="prefill",
+                                                extra={"DRIVE_TEST_MINUTE_SECONDS": "0.6"})
         self.assertEqual(rc, 1, log)
         self.assertIn("workload stop: confirmed (interrupted)", log)
         self.assertEqual(state["sessions"], {})
@@ -160,6 +163,21 @@ class DriveTests(unittest.TestCase):
         self.assertEqual(rc, 1, log)
         rc, _, log, _, _ = self.run_drive("wrong_protocol", protocol="prefill")
         self.assertEqual(rc, 2, log)
+
+    def test_prefill_hung_stop_still_leaves_time_to_retrieve_before_shutdown(self):
+        # the run never finishes and every stop reply hangs: the stop attempts end at the stop deadline, and the
+        # evidence is packed and downloaded before the session is stopped; the unconfirmed stop keeps the exit >= 2
+        rc, state, log, tmp, _ = self.run_drive("stop_hang", protocol="prefill",
+                                                extra={"DRIVE_TEST_MINUTE_SECONDS": "0.6"})
+        self.assertGreaterEqual(rc, 2, log)
+        self.assertIn("stop_workload1: timed out, killed", log)
+        self.assertIn("NOT CONFIRMED", log)
+        self.assertGreaterEqual(state["counts"].get("pack", 0), 1, log)
+        self.assertIn("download 1: exit 0", log)
+        self.assertLess(log.index("download 1: exit 0"), log.index("stop 1: exit"), log)  # retrieval, then shutdown
+        self.assertTrue((tmp / "art" / "t1" / "run_t1" / "out").is_dir(), log)       # the evidence came home
+        self.assertTrue((tmp / "receipts" / "t1" / "archive.sha256").is_file(), log)
+        self.assertEqual(state["sessions"], {})
 
     def test_gate_sets_do_not_validate_each_other(self):
         for protocol, other in (("prefill", "backward"), ("backward", "prefill"), (None, "prefill")):
@@ -291,11 +309,19 @@ class LaunchCodeTests(unittest.TestCase):
         for protocol, cap in (("forward", 90), ("backward", 90), ("prefill", 60)):
             t0 = time.monotonic()
             d = drive.Driver(COMMIT, "r9", protocol)
-            ends = [d.work_end, d.retrieve_end, d.shutdown_end, d.inventory_end]
+            ends = [d.work_end, d.stop_end, d.retrieve_end, d.shutdown_end, d.inventory_end]
             self.assertEqual(ends, sorted(ends), protocol)  # each phase ends after the one before
             self.assertLessEqual(d.inventory_end - t0, cap * drive.MINUTE + 1, protocol)
             self.assertGreater(d.inventory_end - t0, (cap - 1) * drive.MINUTE, protocol)
-        self.assertEqual(drive.DEADLINES["prefill"], (42, 50, 56, 60))
+        self.assertEqual(drive.DEADLINES["prefill"], (43, 47, 51, 56, 60))
+        # prefill: a full stop (about 3 minutes VM-side) fits before the stop deadline, and retrieval keeps 4 minutes
+        poll, stop, retrieve, _, _ = drive.DEADLINES["prefill"]
+        self.assertGreaterEqual(stop - poll, 4)
+        self.assertGreaterEqual(retrieve - stop, 4)
+        # forward and backward are unchanged: stop shares retrieval's 15 minutes, and two attempts leave over 6
+        for protocol in ("forward", "backward"):
+            self.assertEqual(drive.DEADLINES[protocol], (60, 75, 75, 85, 90))
+            self.assertGreater((75 - 60) * 60 - 2 * 260, 6 * 60)
 
 
 if __name__ == "__main__":

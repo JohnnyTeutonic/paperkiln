@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -17,7 +18,8 @@ BACKWARD = {"build", "build_base", "checkout", "configure", "default_identical",
             "numpy", "provenance", "replay_2", "replay_3", "replay_unset", "scan_bwd_bench", "strict_2", "strict_3",
             "strict_unset", "switch_refuses_malformed"}
 PREFILL = {"build", "checkout", "configure", "engine_unchanged", "host_test", "prefill_gate", "prefill_gate_cublas",
-           "prefill_profile", "prefill_profile_cublas", "prefill_time", "prefill_time_cublas", "provenance"}
+           "prefill_profile", "prefill_profile_cublas", "prefill_time", "prefill_time_cublas", "provenance",
+           "resources"}
 
 # Stubs: git clones by creating the tree and adds the base worktree; cmake makes the test binaries in the build
 # directory it is given; nvcc makes the bench named by -o; python3 replay and pip succeed. FAIL_AT names one step to
@@ -39,6 +41,7 @@ esac''',
     "cmake": r'''#!/usr/bin/env bash
 if [ "$1" = --build ]; then
   dir=$2
+  echo "$*" > "$STUB_LOG/cmake_build_args_$dir"
   [ "$FAIL_AT" = build ] && [ "$dir" = build ] && exit 4
   [ "$FAIL_AT" = build_base ] && [ "$dir" = base_build ] && exit 4
   mkdir -p "$dir"
@@ -88,15 +91,20 @@ echo '{"summary": true, "pass": true}'
 X
 chmod +x "$out"''',
     "nvidia-smi": r'''#!/usr/bin/env bash
+case "$*" in *memory.free*nounits*) [ "$FAIL_AT" = low_device ] && echo 2000 || echo 22500; exit 0;; esac
+case "$*" in *memory.free*) echo "name, memory.total [MiB], memory.used [MiB], memory.free [MiB]"
+  echo "NVIDIA L4, 23034 MiB, 0 MiB, 22500 MiB"; exit 0;; esac
 echo "NVIDIA L4, 580.82.07"
 [ "$FAIL_AT" = two_gpus ] && echo "NVIDIA L4, 580.82.07"
 true''',
     "python3": r'''#!/usr/bin/env bash
 case "$*" in *replay_selective_scan.py*) [ "$FAIL_AT" = replay ] && exit 2; exit 0;; esac
 case "$*" in *pip*) [ "$FAIL_AT" = numpy ] && exit 1; exit 0;; esac
+# measure.py OUT -- CMD...: run CMD and record it, as the real helper does (tested on its own below)
+case "$1" in *measure.py) out=$2; shift 3; "$@"; rc=$?; echo "{\"exit\": $rc}" > "$out"; exit $rc;; esac
 [ "$1" = --version ] && echo "Python 3.13.0"
 exit 0''',
-    "nproc": "#!/usr/bin/env bash\necho 2",
+    "nproc": "#!/usr/bin/env bash\necho ${STUB_NPROC:-2}",
 }
 
 
@@ -112,6 +120,15 @@ class VmRunTests(unittest.TestCase):
                         STUB_LOG=str(self.tmp))
         for k in ("MICROTORCH_SCAN_CHUNK", "MICROTORCH_CUBLAS", "MICROTORCH_GPU_PROFILE", "MICROTORCH_TF32"):
             self.env.pop(k, None)
+        # the prefill resources check reads these instead of the machine's own (a 50 GiB host, no cgroup limit)
+        self.meminfo(50 << 20)
+        (self.tmp / "cgroup").mkdir()
+        self.env.update(VM_MEMINFO=str(self.tmp / "meminfo"), VM_CGROUP=str(self.tmp / "cgroup"))
+
+    def meminfo(self, available_kib):
+        (self.tmp / "meminfo").write_text(f"MemTotal:       {available_kib + 1024} kB\n"
+                                          f"MemFree:        {available_kib} kB\n"
+                                          f"MemAvailable:   {available_kib} kB\n")
 
     def run_vm(self, fail_at="", run="r1", head=None, protocol=None, extra=None):
         env = dict(self.env, FAIL_AT=fail_at, **(extra or {}))
@@ -241,6 +258,63 @@ class VmRunTests(unittest.TestCase):
         self.assertEqual(diff[-4:], ["--", "src", "include", "tools/parity_model.hpp"])
         self.assertIn("da5febf2f0a4578bbf17384123c8962e8c623bf5", diff)
         self.assertFalse((out / "scan_bench.jsonl").exists())  # no other protocol's work
+
+    def test_prefill_records_resources_and_step_measurements(self):
+        rc, s, _ = self.run_vm(protocol="prefill")
+        self.assertEqual(rc, 0, s)
+        out = self.tmp / "run_r1" / "out"
+        for label in ("start", "before_gate", "end"):
+            r = json.loads((out / f"resources_{label}.json").read_text())
+            self.assertEqual((r["mem_available_kib"], r["device_free_mib"], r["ok"]), (50 << 20, 22500, True), label)
+            self.assertIsNone(r["cgroup_limit_kib"])
+            self.assertTrue((out / f"meminfo_{label}.txt").is_file() and (out / f"gpu_memory_{label}.txt").is_file())
+        for step in ("build", "host_test", "prefill_gate", "prefill_gate_cublas", "prefill_time", "prefill_time_cublas",
+                     "prefill_profile", "prefill_profile_cublas"):
+            self.assertEqual(json.loads((out / f"{step}.time.json").read_text())["exit"], 0, step)
+
+    def test_prefill_build_jobs_are_bounded_by_host_memory(self):
+        self.meminfo(17 << 20)  # 17 GiB: 5 jobs of 3 GiB, though nproc says 16
+        rc, s, _ = self.run_vm(protocol="prefill", extra={"STUB_NPROC": "16"})
+        self.assertEqual(rc, 0, s)
+        self.assertIn("--parallel 5", (self.tmp / "cmake_build_args_build").read_text())
+        rc, s, _ = self.run_vm(run="r2", protocol="prefill", extra={"STUB_NPROC": "3"})
+        self.assertIn("--parallel 3", (self.tmp / "cmake_build_args_build").read_text())  # nproc bounds it too
+
+    def test_prefill_short_resources_stop_before_any_heavy_work(self):
+        cases = (("host", lambda: self.meminfo(15 << 20), {}),
+                 ("device", lambda: None, {"FAIL_AT": "low_device"}),
+                 ("cgroup", lambda: (self.tmp / "cgroup" / "memory.max").write_text(str(12 << 30) + "\n"), {}))
+        for i, (name, setup, extra) in enumerate(cases):
+            setup()
+            rc, s, done = self.run_vm(extra.get("FAIL_AT", ""), run=f"m{i}", protocol="prefill")
+            self.assertEqual((rc, done), (1, f"m{i}"), name)
+            self.assertEqual(s["gates"], {"provenance": 0, "resources": 1}, name)  # no checkout, build or gate
+            r = json.loads((self.tmp / f"run_m{i}" / "out" / "resources_start.json").read_text())
+            self.assertFalse(r["ok"], name)
+            self.meminfo(50 << 20)
+            (self.tmp / "cgroup" / "memory.max").unlink(missing_ok=True)
+        # a cgroup with room is fine, and its headroom (limit - current) is what counts
+        (self.tmp / "cgroup" / "memory.max").write_text(str(40 << 30) + "\n")
+        (self.tmp / "cgroup" / "memory.current").write_text(str(4 << 30) + "\n")
+        rc, s, _ = self.run_vm(run="m9", protocol="prefill")
+        self.assertEqual(rc, 0, s)
+        r = json.loads((self.tmp / "run_m9" / "out" / "resources_start.json").read_text())
+        self.assertEqual((r["cgroup_limit_kib"], r["headroom_kib"]), (40 << 20, 36 << 20))
+
+    def test_measure_records_time_rss_and_the_exit_status(self):
+        out = self.tmp / "m.json"
+        r = subprocess.run([sys.executable, str(HERE / "measure.py"), str(out), "--", "sh", "-c", "echo hi; exit 3"],
+                           capture_output=True, text=True, timeout=30)
+        self.assertEqual((r.returncode, r.stdout), (3, "hi\n"))  # its own status, its output passed through
+        m = json.loads(out.read_text())
+        self.assertEqual((m["exit"], m["cmd"][0]), (3, "sh"))
+        self.assertGreater(m["max_rss_kib"], 0)
+        self.assertGreaterEqual(m["elapsed_s"], 0)
+        r = subprocess.run([sys.executable, str(HERE / "measure.py"), str(out), "--", "sh", "-c", "kill -TERM $$"],
+                           capture_output=True, text=True, timeout=30)
+        self.assertEqual((r.returncode, json.loads(out.read_text())["exit"]), (143, 143))
+        r = subprocess.run([sys.executable, str(HERE / "measure.py"), str(out)], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 2)
 
     def test_prefill_runs_with_the_switch_unset_even_if_the_vm_has_it(self):
         rc, s, _ = self.run_vm(protocol="prefill", extra={"MICROTORCH_SCAN_CHUNK": "64", "MICROTORCH_TF32": "1"})

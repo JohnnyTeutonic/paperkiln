@@ -5,7 +5,7 @@
 // --mode gate [--require-cuda]: correctness. Chunked and ordered prefill agree (logits and every
 //     block's scan output), and both match the CPU path; exit 0 only if every check passes.
 // --mode time [--require-cuda]: whole-prefill wall time, ordered against L = 64 and 128,
-//     alternating, median of --reps (20) after --warmup (3) rounds.
+//     alternating, median of --reps (15) after --warmup (2) rounds.
 // --mode profile [--require-cuda]: with MICROTORCH_GPU_PROFILE=1, per-op device time from CUDA
 //     events, so the scan's share of the prefill.
 // --mode calibrate: on the CPU, the chunked scan's host emulation inside the model against the
@@ -307,7 +307,10 @@ int run_time(const prefill::Args& a) {
                         {"rows", k.sl * k.batch},
                         {"reps", a.reps},
                         {"warmup", a.warmup},
-                        {"pool_peak_bytes", device::pool_peak_bytes()}};
+                        {"pool_peak_bytes", device::pool_peak_bytes()},
+                        {"pool_cached_bytes", device::pool_cached_bytes()},
+                        // the whole device's use (cudaMemGetInfo), allocations outside the pool too
+                        {"device_bytes_in_use", device::device_bytes_in_use()}};
             const double ord = prefill::median(ms[0]);
             for (size_t L : variants) {
                 const auto& v = ms[L];
@@ -327,11 +330,15 @@ int run_time(const prefill::Args& a) {
 }
 
 // ---- profile: per-op device time from MICROTORCH_GPU_PROFILE's CUDA events, in separate forwards
-// (the profile is read once per process, so the timed run never carries it)
+// (the profile is read once per process, so the timed run never carries it). Every repetition is
+// checked on its own: a finite, positive wall time and, on the device, a finite, positive scan time
+// and device-op sum, with every block's scan and convolution counted once (no host fallback).
+// Failures accumulate and are all reported.
 int run_profile(const prefill::Args& a) {
     const auto variants = prefill::timed_variants();
     use_device();
-    bool pass = true;
+    std::vector<std::string> failed;
+    auto positive = [](double x) { return std::isfinite(x) && x > 0; };
     for (const auto& name : a.shapes) {
         const prefill::Shape& s = prefill::shape(name);
         auto m = prefill::make_model(s);
@@ -339,7 +346,10 @@ int run_profile(const prefill::Args& a) {
             const auto ids = prefill::make_ids(s.vocab, k.sl * k.batch);
             std::map<size_t, std::vector<double>> wall, scan, devsum, head;
             std::map<size_t, std::map<std::string, std::vector<double>>> per_op;
-            std::map<size_t, std::map<std::string, size_t>> counts;
+            std::map<size_t, std::vector<json>> counts;  // every repetition's
+            std::map<size_t, size_t> bad_reps;
+            const std::string where =
+                s.name + " sl " + std::to_string(k.sl) + " batch " + std::to_string(k.batch) + " ";
             {
                 Window w;
                 for (size_t r = 0; r < a.warmup; ++r)
@@ -355,8 +365,19 @@ int run_profile(const prefill::Args& a) {
                             if (op == "selective_scan_fwd") sc += x;
                             if (op == "gemm_head") hd += x;
                         }
-                        counts[L].clear();
-                        for (const auto& [op, n] : device::gpu_profile_counts()) counts[L][op] = n;
+                        std::map<std::string, size_t> n;
+                        for (const auto& [op, c] : device::gpu_profile_counts()) n[op] = c;
+                        bool ok = positive(t);
+                        if (g_gpu)
+                            ok = ok && positive(sc) && positive(sum) &&
+                                 n["selective_scan_fwd"] == s.layers &&
+                                 n["conv1d_causal_fwd"] == s.layers;
+                        if (!ok) {
+                            ++bad_reps[L];
+                            failed.push_back(where + prefill::variant_name(L) + " rep " +
+                                             std::to_string(r));
+                        }
+                        counts[L].push_back(n);
                         wall[L].push_back(t);
                         scan[L].push_back(sc);
                         devsum[L].push_back(sum);
@@ -374,27 +395,28 @@ int run_profile(const prefill::Args& a) {
                     share_wall.push_back(scan[L][i] / wall[L][i]);
                     share_dev.push_back(devsum[L][i] > 0 ? scan[L][i] / devsum[L][i] : 0.0);
                 }
-                // every block's scan and convolution ran on the device, once per forward
-                const bool on_device = !g_gpu || (counts[L]["selective_scan_fwd"] == s.layers &&
-                                                  counts[L]["conv1d_causal_fwd"] == s.layers);
-                pass = pass && on_device;
+                const double wm = prefill::median(wall[L]), sm = prefill::median(scan[L]),
+                             dm = prefill::median(devsum[L]);
+                const bool medians_ok = positive(wm) && (!g_gpu || (positive(sm) && positive(dm)));
+                if (!medians_ok) failed.push_back(where + prefill::variant_name(L) + " medians");
                 row[prefill::variant_name(L)] = {
-                    {"wall_ms", prefill::median(wall[L])},
-                    {"device_op_sum_ms", prefill::median(devsum[L])},
-                    {"scan_ms", prefill::median(scan[L])},
+                    {"wall_ms", wm},
+                    {"device_op_sum_ms", dm},
+                    {"scan_ms", sm},
                     {"head_gemm_ms", prefill::median(head[L])},
                     {"scan_share_of_wall", prefill::median(share_wall)},
                     {"scan_share_of_device_ops", prefill::median(share_dev)},
                     {"ops_median_ms", ops},
-                    {"op_counts", counts[L]},
-                    {"scan_and_conv_on_device", on_device}};
+                    {"op_counts_per_rep", counts[L]},
+                    {"failed_reps", bad_reps[L]},
+                    {"medians_ok", medians_ok}};
             }
             emit(row);
         }
     }
     use_cpu();
-    emit({{"summary", true}, {"mode", "profile"}, {"pass", pass}});
-    return pass ? 0 : 1;
+    emit({{"summary", true}, {"mode", "profile"}, {"failed", failed}, {"pass", failed.empty()}});
+    return failed.empty() ? 0 : 1;
 }
 
 // ---- calibrate (CPU): how far the chunked scan's rounding moves the model's logits, against how
