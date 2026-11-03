@@ -126,8 +126,9 @@ run() {
 { echo $$ > "$ROOT/vm_$RUN.pid.tmp" && mv "$ROOT/vm_$RUN.pid.tmp" "$ROOT/vm_$RUN.pid"; } || exit 2
 cd "$W"
 
-PY=${VM_TEST_PYTHON:-python3}
-CMAKE=${VM_TEST_CMAKE:-cmake}
+PY=python3
+CMAKE=cmake
+if [ "${VM_TEST_HARNESS:-}" = 1 ]; then PY=${VM_TEST_PYTHON:-python3}; CMAKE=${VM_TEST_CMAKE:-cmake}; fi
 { nvidia-smi --query-gpu=name,driver_version --format=csv,noheader; nvcc --version | tail -1; nproc; python3 --version; } > "$O/hardware.log" 2>&1
 
 # provenance: exactly one NVIDIA L4 (PROTOCOL.md section 5)
@@ -245,7 +246,12 @@ MTSTUDIO=${VM_TEST_MTSTUDIO:-$W/build/mtstudio}
 [ "${VM_TEST_HARNESS:-}" = 1 ] || MTSTUDIO=$W/build/mtstudio
 for s in $SCREENS; do
     signal_point "screen_$s"
-    run "train_$s" "$O/train_$s.log" env "${BACKEND[@]}" "$MTSTUDIO" run "$W/spec_$s.json" || fail "train_$s" $?
+    UNSET=()
+    for v in $(compgen -e | grep -E '^MICROTORCH_'); do UNSET+=(-u "$v"); done
+    env "${UNSET[@]}" "${BACKEND[@]}" env | grep -E '^(MICROTORCH|OMP)_' | LC_ALL=C sort > "$O/env_$s.txt"
+    printf '%s\n' "${BACKEND[@]}" | LC_ALL=C sort | cmp -s - "$O/env_$s.txt" || fail "train_$s" 94
+    run "train_$s" "$O/train_$s.log" env "${UNSET[@]}" "${BACKEND[@]}" "$MTSTUDIO" run "$W/spec_$s.json" \
+        || fail "train_$s" $?
     # the run reached update 256 with finite losses, and exported exactly one GGUF
     "$PY" - "$O/train_$s.log" "$W/train_$s" > "$O/train_${s}_check.json" 2>&1 <<'PY' || fail "train_$s" 96
 import glob, json, math, sys
@@ -270,7 +276,7 @@ PY
     P=$O/screens/$s
     mkdir -p "$P"
     GGUF=$(ls "$W/train_$s"/*.gguf)
-    run "package_$s" "$O/package_$s.log" split -b 90M -d -a 2 "$GGUF" "$P/model.gguf.part" || fail "package_$s" $?
+    run "package_$s" "$O/package_$s.log" split -b 45M -d -a 2 "$GGUF" "$P/model.gguf.part" || fail "package_$s" $?
     "$PY" - "$GGUF" "$P" "$s" "$RUN" <<'PY' >> "$O/package_$s.log" 2>&1 || fail "package_$s" 96
 import glob, hashlib, json, os, sys
 gguf, folder, screen, run = sys.argv[1:5]
@@ -289,7 +295,18 @@ with open(folder + "/manifest.json.tmp", "w") as f:
     json.dump(man, f, indent=2)
 os.replace(folder + "/manifest.json.tmp", folder + "/manifest.json")
 PY
-    cp "$O/train_$s.log" "$P/train.log"
+    cp "$O/train_$s.log" "$P/train.log" && cp "$W/train_$s/result.json" "$P/result.json" \
+        && cp "$W/train_$s/result.json" "$O/result_$s.json" || fail "package_$s" 93
+    "$PY" - "$P" <<'PY' >> "$O/package_$s.log" 2>&1 || fail "package_$s" 92
+import hashlib, json, os, sys
+folder = sys.argv[1]
+man = json.load(open(folder + "/manifest.json"))
+for name in ("train.log", "result.json"):
+    man[name.replace(".", "_") + "_sha256"] = hashlib.sha256(open(os.path.join(folder, name), "rb").read()).hexdigest()
+with open(folder + "/manifest.json.tmp", "w") as f:
+    json.dump(man, f, indent=2)
+os.replace(folder + "/manifest.json.tmp", folder + "/manifest.json")
+PY
     echo "$RUN" > "$P/READY.tmp" && mv "$P/READY.tmp" "$P/READY" || fail "package_$s" 95
     G["package_$s"]=0
 done

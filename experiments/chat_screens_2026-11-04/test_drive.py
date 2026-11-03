@@ -38,13 +38,21 @@ def sha(b):
 args = sys.argv[1:]
 cmd = args[0]
 if cmd == "sessions":
+    if mode == "sessions_fail" and st.get("created"):
+        print("error: auth", file=sys.stderr); sys.exit(1)
     for n, ep in st["sessions"].items(): print(f"[{n}] {ep} L4")
     sys.exit(0)
 name = args[args.index("-s") + 1]
 if cmd == "new":
-    st["sessions"][name] = "ep-" + name; st["created"] = True; count("new"); save(); sys.exit(0)
+    if mode == "orphan_new":
+        st["sessions"]["?"] = "ep-orphan"; st["created"] = True; count("new"); save(); sys.exit(1)
+    st["sessions"][name] = "ep-" + name; st["created"] = True; count("new"); save()
+    if mode == "new_timeout": time.sleep(60)
+    sys.exit(0)
 if cmd == "stop":
-    if mode != "stop_ignored": st["sessions"].pop(name, None); save()
+    if mode != "stop_ignored":
+        st["sessions"].pop(name, None)
+        save()
     sys.exit(0)
 if cmd == "upload":
     src, dst = Path(args[-2]), vm(args[-1])
@@ -71,7 +79,7 @@ def advance(run):
     k = st.get("progress", 0)
     fail_at = 2 if mode == "gate_fail" else None
     gates = {g: 0 for g in os.environ["MOCK_GATES"].split()}
-    if k < 4 and k != fail_at and mode != "never_done":
+    if k < 4 and k != fail_at and mode not in ("never_done", "stop_unconfirmed"):
         s = f"S{k}"
         d = out / "screens" / s; d.mkdir(parents=True, exist_ok=True)
         gguf = (s * 1300).encode()
@@ -79,13 +87,16 @@ def advance(run):
         for i in range(0, len(gguf), 1000):
             p = d / f"model.gguf.part{i // 1000:02d}"; p.write_bytes(gguf[i:i + 1000])
             parts.append({"name": p.name, "sha256": sha(p.read_bytes()), "bytes": p.stat().st_size})
-        (d / "manifest.json").write_text(json.dumps({"screen": s, "run_id": run, "gguf_sha256": sha(gguf),
-                                                     "gguf_bytes": len(gguf), "parts": parts}))
         (d / "train.log").write_text('{"event": "step", "step": 256, "loss": 2.5}\n')
+        (d / "result.json").write_text('{"final_step": 256}')
+        (d / "manifest.json").write_text(json.dumps({"screen": s, "run_id": run, "gguf_sha256": sha(gguf),
+                                                     "gguf_bytes": len(gguf), "parts": parts,
+                                                     "train_log_sha256": sha((d / "train.log").read_bytes()),
+                                                     "result_json_sha256": sha((d / "result.json").read_bytes())}))
         (d / "READY").write_text(run)
         st["progress"] = k + 1; save()
         return
-    if mode == "never_done" or "status" in st:
+    if mode in ("never_done", "stop_unconfirmed") or "status" in st:
         return
     if fail_at is not None:
         for g in [g for g in gates if g.endswith(("_S2", "_S3"))]: del gates[g]
@@ -101,18 +112,24 @@ if cmd == "exec":
     f = args[args.index("-f") + 1]
     code = Path(f).read_text()
     m = re.match(r".*claude_screens_(.+?)_(mkdir_in|vm_hashes\d|hf_fetch|launch_retry|launch_probe\d|launch|poll|"
-                 r"final_state|pack\d|stop_workload\d)\.py$", f)
+                 r"final_state|pack\d|stop_workload\d|token_remove\d)\.py$", f)
     run, label = m.group(1), m.group(2)
     out = content / f"run_{run}" / "out"
     if label in ("launch", "launch_retry"):
-        count("launch")
+        n = count("launch")
+        if mode == "launch_lost_absent" and n == 1:
+            sys.exit(1)
         msha = re.search(r"vm_run_\S+\.sh \S+ \S+ ([0-9a-f]{64}) ", code).group(1)
         st["manifest_sha"] = msha; save()
         out.mkdir(parents=True, exist_ok=True)
         (content / f"vm_{run}.pid").write_text("4242")
+        if mode == "launch_lost_started" and n == 1:
+            sys.exit(1)
         print("LAUNCHED"); sys.exit(0)
     if label.startswith("launch_probe"):
         print("STARTED" if (content / f"vm_{run}.pid").exists() else "ABSENT"); sys.exit(0)
+    if label == "hf_fetch" and mode == "hf_exec_fails":
+        count("hf_fetch"); sys.exit(1)
     if label == "hf_fetch":
         count("hf_fetch")
         names = json.loads(re.search(r"for n in (\[.*?\]):", code).group(1).replace("'", '"'))
@@ -126,6 +143,8 @@ if cmd == "exec":
         print("HF_DONE" if ok else "HF_PARTIAL", 0); sys.exit(0)
     if label.startswith("stop_workload"):
         count("stop_workload")
+        if mode == "stop_unconfirmed":
+            print('STOP_REPLY {"result": "unconfirmed"}'); sys.exit(0)
         s = st.get("status") or {"run_id": run, "commit": os.environ["MOCK_COMMIT"], "source": SOURCE,
                                  "head": SOURCE, "manifest_sha256": st.get("manifest_sha"), "exit_status": 1,
                                  "pass": False, "packaged": [], "gates": {"provenance": 0, "train_S0": 143}}
@@ -136,6 +155,8 @@ if cmd == "exec":
         print('STOP_REPLY {"result": "interrupted"}'); sys.exit(0)
     if label == "poll":
         advance(run)
+    if label.startswith("pack") and mode == "logs_lost":
+        sys.exit(1)
     code = code.replace("/content", str(content))
     r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
     sys.stdout.write(r.stdout); sys.stderr.write(r.stderr); sys.exit(r.returncode)
@@ -176,7 +197,8 @@ def seed_hub(tmp, pins, missing=()):
 
 
 class DriveTests(unittest.TestCase):
-    def run_drive(self, mode, run="t1", bad_pin=False, hf=False, hub_missing=(), minute="0.05"):
+    def run_drive(self, mode, run="t1", bad_pin=False, hf=False, hub_missing=(), minute="0.05", extra=None,
+                  pre=None):
         tmp = Path(tempfile.mkdtemp())
         mock = tmp / "colab"
         mock.write_text(MOCK)
@@ -195,6 +217,9 @@ class DriveTests(unittest.TestCase):
                    DRIVE_TEST_HF_TOKEN_FILE=str(tok), DRIVE_TEST_HF_REVISION_FILE=str(rev),
                    MOCK_STATE=str(tmp / "state.json"), MOCK_CONTENT=str(tmp / "content"), MOCK_MODE=mode,
                    MOCK_HUB=str(hub), MOCK_GATES=" ".join(GATES), MOCK_COMMIT=COMMIT)
+        env.update(extra or {})
+        if pre:
+            pre(tmp)
         t0 = time.monotonic()
         r = subprocess.run([sys.executable, str(HERE / "drive.py"), COMMIT, run], env=env, capture_output=True,
                            text=True, timeout=180)
@@ -296,6 +321,91 @@ class DriveTests(unittest.TestCase):
         rc, state, log, tmp, _ = self.run_drive("stop_ignored")
         self.assertEqual(rc, 3, log)
         self.assertIn("CLEANUP UNRESOLVED", log)
+
+    def test_a_failed_github_precondition_creates_nothing(self):
+        rc, state, log, tmp, _ = self.run_drive("normal", extra={"DRIVE_TEST_GITHUB": "fail"})
+        self.assertEqual(rc, 2, log)
+        self.assertIn("github preflight failed", log)
+        self.assertEqual(state["counts"].get("new", 0), 0)
+
+    def test_a_failed_hf_exec_removes_the_token_and_uploads(self):
+        rc, state, log, tmp, _ = self.run_drive("hf_exec_fails", hf=True)
+        self.assertEqual(rc, 0, log)
+        self.assertFalse((tmp / "content" / "screens_in" / ".hf_token").exists())
+        self.assertGreater(state["counts"]["uploads_data"], 0)
+        self.assertNotIn("hf_fixture_token", log)
+
+    def test_receipts_are_kept_when_the_logs_are_lost(self):
+        rc, state, log, tmp, _ = self.run_drive("logs_lost")
+        self.assertEqual(rc, 2, log)
+        receipts = tmp / "receipts" / "t1"
+        self.assertEqual(sorted(json.loads((receipts / "home.json").read_text())), SCREENS)
+        for f in ("input_manifest.json", "S0_manifest.json", "driver.log", "archive.sha256"):
+            self.assertTrue((receipts / f).is_file(), f)
+
+    def test_screen_results_and_logs_come_home_hashed(self):
+        rc, state, log, tmp, _ = self.run_drive("normal")
+        self.assertEqual(rc, 0, log)
+        for s in SCREENS:
+            self.assertTrue((tmp / "art" / "t1" / s / "result.json").is_file(), s)
+        self.assertTrue((tmp / "receipts" / "t1" / "input_manifest.json").is_file())
+
+    def test_an_existing_run_folder_is_refused(self):
+        rc, state, log, tmp, _ = self.run_drive("normal", pre=lambda t: (t / "art" / "t1").mkdir(parents=True))
+        self.assertEqual(rc, 2)
+        self.assertEqual(state["counts"].get("new", 0), 0)
+
+    def test_a_lost_launch_acknowledgement_is_reconciled_not_repeated(self):
+        rc, state, log, tmp, _ = self.run_drive("launch_lost_started")
+        self.assertEqual(rc, 0, log)
+        self.assertEqual(state["counts"]["launch"], 1)
+        self.assertIn("the VM script is started", log)
+
+    def test_an_absent_launch_is_tried_once_more(self):
+        rc, state, log, tmp, _ = self.run_drive("launch_lost_absent")
+        self.assertEqual(rc, 0, log)
+        self.assertEqual(state["counts"]["launch"], 2)
+
+    def test_an_unconfirmed_stop_exits_at_least_2(self):
+        rc, state, log, tmp, _ = self.run_drive("stop_unconfirmed", minute="0.3")
+        self.assertGreaterEqual(rc, 2, log)
+        self.assertIn("NOT CONFIRMED", log)
+
+    def test_a_failed_listing_is_never_certified_clean(self):
+        rc, state, log, tmp, _ = self.run_drive("sessions_fail")
+        self.assertEqual(rc, 3, log)
+        self.assertNotIn("CLEANUP OK", log)
+
+    def test_an_unnamed_allocation_is_never_certified(self):
+        rc, state, log, tmp, _ = self.run_drive("orphan_new")
+        self.assertNotIn("CLEANUP OK", log)
+        self.assertIn("creation not confirmed", log)
+
+    def test_a_hanging_creation_call_still_stops_the_session(self):
+        rc, state, log, tmp, _ = self.run_drive("new_timeout", minute="0.3")
+        self.assertEqual(state["sessions"], {}, log)
+
+    def test_a_log_failure_exits_at_least_2(self):
+        rc, state, log, tmp, _ = self.run_drive("normal", extra={"DRIVE_TEST_LOG_FAIL_AFTER": "5"})
+        self.assertGreaterEqual(rc, 2)
+
+    def test_the_launch_code_publishes_vm_run_atomically(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("drive_mod", HERE / "drive.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        code = mod.launch_code("https://example.invalid/vm_run.sh", COMMIT, "t1", "a" * 64)
+        self.assertIn("tempfile.mkstemp", code)
+        self.assertIn("os.replace(tmp", code)
+        self.assertIn("a" * 64, code)
+
+    def test_the_deadlines_fit_the_session_cap(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("drive_mod2", HERE / "drive.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        self.assertEqual(list(mod.DEADLINES), sorted(mod.DEADLINES))
+        self.assertLessEqual(mod.DEADLINES[-1], 120)
 
     def test_test_hooks_are_refused_without_the_harness(self):
         env = dict(os.environ, DRIVE_TEST_COLAB="/bin/true")

@@ -56,6 +56,7 @@ for s in range(1, last + 1):
     print(json.dumps({"event": "step", "step": s, "loss": 3.0 - s / 1000}))
 out = Path(spec["out_dir"]); out.mkdir(parents=True, exist_ok=True)
 (out / (spec["name"] + ".gguf")).write_bytes((screen * 1500).encode())
+(out / "result.json").write_text(json.dumps({"final_step": last}))
 '''
 
 
@@ -193,6 +194,21 @@ class VmRunTests(unittest.TestCase):
         self.assertEqual(self.ready(out), ["S0"])
         self.assertTrue((out / "DONE").exists())
         self.assertTrue((self.root / "vm_v1.pid").exists())
+
+    def test_inherited_backend_variables_are_cleared_and_recorded(self):
+        r, s, out = self.run_vm(extra={"MICROTORCH_STRAY": "1", "MICROTORCH_DEVICE": "cpu"})
+        self.assertEqual(r.returncode, 0, r.stderr)
+        env = (out / "env_S0.txt").read_text()
+        self.assertNotIn("MICROTORCH_STRAY", env)
+        self.assertIn("MICROTORCH_DEVICE=cuda", env)
+
+    def test_screen_manifests_hash_the_log_and_result(self):
+        r, s, out = self.run_vm()
+        man = json.loads((out / "screens" / "S1" / "manifest.json").read_text())
+        for name in ("train.log", "result.json"):
+            self.assertEqual(man[name.replace(".", "_") + "_sha256"],
+                             sha((out / "screens" / "S1" / name).read_bytes()))
+        self.assertTrue((out / "result_S1.json").is_file())
 
     def test_a_second_launch_of_the_same_run_is_refused(self):
         self.run_vm()

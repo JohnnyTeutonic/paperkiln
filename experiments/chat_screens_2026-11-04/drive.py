@@ -47,6 +47,7 @@ import subprocess
 import sys
 import tarfile
 import time
+import urllib.request
 from pathlib import Path
 
 TEST = os.environ.get("DRIVE_TEST_HARNESS") == "1"
@@ -66,7 +67,7 @@ RECEIPTS = Path(hook("DRIVE_TEST_RECEIPTS", str(HERE / "receipts")))
 MINUTE = float(hook("DRIVE_TEST_MINUTE_SECONDS", "60"))
 LOG_FAIL_AFTER = int(hook("DRIVE_TEST_LOG_FAIL_AFTER", "0"))
 RAISE_ON = hook("DRIVE_TEST_RAISE_ON", "")
-PART_BYTES = int(hook("DRIVE_TEST_PART_BYTES", str(90 * 1024 * 1024)))
+PART_BYTES = int(hook("DRIVE_TEST_PART_BYTES", str(45 * 1024 * 1024)))  # runner_multi.py: 45 MiB both ways
 SOURCE = "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1"
 SCREENS = ("S0", "S1", "S2", "S3")
 REQUIRED_GATES = {"provenance", "checkout", "inputs", "configure", "build", "specs"} | {
@@ -93,12 +94,12 @@ PINS = {
                    "0b880aa073a7e27c0770d5ecc5215b55d6d415080d20bd3dc7b169ecabadf198"),
     "S0.jsonl": (f"{ART}/sfull_uplift_20261103/token-packet-v3/train.jsonl",
                  "a319c322b0d7a5f134ecd22223b8c7f6b11277794a8ed485ee0aaf085ad59602"),
-    "S1.jsonl": (f"{ART}/chat_screens_claude/packets/v1/S1/train.jsonl",
-                 "6fd1304ead0dc3e5d6b60cef554b52b8d494f0b224264fce4a68481901c1afa4"),
-    "S2.jsonl": (f"{ART}/chat_screens_claude/packets/v1/S2/train.jsonl",
-                 "bb8d2fadbb0e3a09073742a1aaded22a67af653f3a4397210b8c27a966034a4b"),
-    "S3.jsonl": (f"{ART}/chat_screens_claude/packets/v1/S3/train.jsonl",
-                 "6ec1a8d855e981d50b8f63eff908d16828f21d47671293789fc7a0169b25568b"),
+    "S1.jsonl": (f"{ART}/chat_screens_claude/packets/v2/S1/train.jsonl",
+                 "cd6e9d35b9ff9acc11f1cbd824f55b73923a2c520eddedeb93e9787de17d47c3"),
+    "S2.jsonl": (f"{ART}/chat_screens_claude/packets/v2/S2/train.jsonl",
+                 "efb36b697e07888aa63fe525733f9f5759844043e6f8a1351f763d79afe4e46d"),
+    "S3.jsonl": (f"{ART}/chat_screens_claude/packets/v2/S3/train.jsonl",
+                 "e623e241a776bd1acdc3dd9c5cb9f204c93bc2944dca41f83948421118f33272"),
     "arm_a_lr3e5.json": (str(HERE / "arm_a_lr3e5.json"),
                          "66c718e0b501c751aae0a1cd22eddfdc666a7cfb46a4c074fa41b67aa220125e"),
 }
@@ -263,6 +264,39 @@ class Driver:
         out += [(self.stage / p["name"], p["name"]) for p in self.manifest["base_parts"]]
         return out
 
+    def github_preflight(self):
+        """Before anything is created: this checkout is at COMMIT and clean in this experiment, GitHub serves the
+        same vm_run.sh at COMMIT, and the numerical source is on a remote branch (the VM clones it). Raises Stop."""
+        if TEST:
+            if os.environ.get("DRIVE_TEST_GITHUB") == "fail":
+                raise Stop("github preflight failed (test)")
+            self.log("github preflight: simulated under the test harness")
+            return
+        root = str(HERE.parents[1])
+        rc, head = self.call(["git", "-C", root, "rev-parse", "HEAD"], 60, self.work_end, "git HEAD")
+        if rc != 0 or head.strip() != self.commit:
+            raise Stop(f"checkout HEAD {head.strip()} is not {self.commit}")
+        rc, dirty = self.call(["git", "-C", root, "status", "--porcelain", "--", str(HERE)], 60, self.work_end,
+                              "git status")
+        if rc != 0 or dirty.strip():
+            raise Stop("this experiment has uncommitted changes")
+        url = (f"https://raw.githubusercontent.com/JohnnyTeutonic/paperkiln/{self.commit}/"
+               "experiments/chat_screens_2026-11-04/vm_run.sh")
+        try:
+            served = urllib.request.urlopen(url, timeout=60).read().replace(b"\r\n", b"\n")
+        except OSError as e:
+            raise Stop(f"vm_run.sh not served at {self.commit}: {e}")
+        local = (HERE / "vm_run.sh").read_bytes().replace(b"\r\n", b"\n")
+        if hashlib.sha256(served).digest() != hashlib.sha256(local).digest():
+            raise Stop("GitHub serves a different vm_run.sh at this commit")
+        self.call(["git", "-C", root, "fetch", "-q", "origin"], 300, self.work_end, "git fetch")
+        rc, branches = self.call(["git", "-C", root, "branch", "-r", "--contains", SOURCE], 120,
+                                 self.work_end, "source on a remote branch")
+        if rc != 0 or not branches.strip():
+            raise Stop(f"numerical source {SOURCE} is on no remote branch")
+        self.log("github preflight: HEAD, clean tree, served vm_run.sh and remote source all confirmed:",
+                 branches.split()[0])
+
     def preflight(self):
         rows = self.sessions(self.work_end)
         if rows is None:
@@ -342,22 +376,37 @@ class Driver:
         code = ("import os, time\n"
                 "from huggingface_hub import hf_hub_download\n"
                 f"tok_path = os.path.join({VM_IN!r}, '.hf_token')\n"
-                "os.chmod(tok_path, 0o600)\n"
-                "token = open(tok_path).read().strip()\n"
                 "ok = True\n"
                 "t = time.monotonic()\n"
                 "try:\n"
+                "    os.chmod(tok_path, 0o600)\n"
+                "    token = open(tok_path).read().strip()\n"
                 f"    for n in {sorted(names)!r}:\n"
                 "        try:\n"
                 f"            hf_hub_download({HF_REPO!r}, n, repo_type='dataset', revision={revision!r}, token=token, local_dir={VM_IN!r})\n"
                 "        except Exception as e:\n"
                 "            ok = False\n"
                 "            print('FAILED', n, type(e).__name__)\n"
+                "except Exception as e:\n"
+                "    ok = False\n"
+                "    print('FAILED setup', type(e).__name__)\n"
                 "finally:\n"
-                "    os.remove(tok_path)\n"
+                "    if os.path.exists(tok_path):\n"
+                "        os.remove(tok_path)\n"
                 "print('HF_DONE' if ok else 'HF_PARTIAL', round(time.monotonic() - t))\n")
         rc, out = self.exec_py(code, 1500, self.work_end, "hf_fetch")
         self.log("hf_fetch:", " ".join(out.split()[-6:]))
+        if not (rc == 0 and ("HF_DONE" in out.split() or "HF_PARTIAL" in out.split())):
+            gone = ("import os\n"
+                    f"p = os.path.join({VM_IN!r}, '.hf_token')\n"
+                    "os.path.exists(p) and os.remove(p)\n"
+                    "print('TOKEN_GONE' if not os.path.exists(p) else 'TOKEN_PRESENT')\n")
+            for attempt in (1, 2):
+                rc2, out2 = self.exec_py(gone, 120, self.work_end, f"token_remove{attempt}")
+                if rc2 == 0 and "TOKEN_GONE" in out2.split():
+                    break
+            else:
+                self.log("the token file may remain on our VM until it stops")
         # HF_PARTIAL still counts as having run: the hash check that follows decides what must be uploaded
         return rc == 0 and ("HF_DONE" in out.split() or "HF_PARTIAL" in out.split())
 
@@ -487,8 +536,13 @@ class Driver:
                 return False
             for part in man["parts"]:
                 (work / part["name"]).unlink()
-            self.call([COL, "download", "-s", self.name, f"{remote}/train.log", str(work / "train.log")], 300,
-                      deadline, f"{screen} train.log")
+            for extra in ("train.log", "result.json"):
+                self.call([COL, "download", "-s", self.name, f"{remote}/{extra}", str(work / extra)], 300,
+                          deadline, f"{screen} {extra}")
+                want = man.get(extra.replace(".", "_") + "_sha256")
+                if not (work / extra).is_file() or sha256(work / extra) != want:
+                    self.log(f"{screen}: {extra} missing or not as the VM hashed it")
+                    return False
             (work).rename(self.out / screen)
             self.home[screen] = man["gguf_sha256"]
             self.log(f"{screen}: HOME, GGUF {man['gguf_sha256']} ({man['gguf_bytes']} bytes)")
@@ -623,12 +677,17 @@ class Driver:
         return got_logs
 
     def copy_receipts(self):
+        """Receipts from whatever came home: the VM's top-level out/ files when the logs came back, and in every
+        case the input manifest, every screen's manifest, result and log hashes, and home.json."""
         src = self.out / f"run_{self.run}" / "out"
         try:
             self.receipts.mkdir(parents=True, exist_ok=False)
-            for f in src.iterdir():
-                if f.is_file():
-                    shutil.copy2(f, self.receipts / f.name)
+            if src.is_dir():
+                for f in src.iterdir():
+                    if f.is_file():
+                        shutil.copy2(f, self.receipts / f.name)
+            if (self.out / "input_manifest.json").is_file():
+                shutil.copy2(self.out / "input_manifest.json", self.receipts / "input_manifest.json")
             for s in SCREENS:
                 if (self.out / s / "manifest.json").is_file():
                     shutil.copy2(self.out / s / "manifest.json", self.receipts / f"{s}_manifest.json")
@@ -693,7 +752,7 @@ class Driver:
                 if time.monotonic() >= self.shutdown_end:
                     break
                 self.call([COL, "stop", "-s", self.name], 120, self.shutdown_end, f"stop {attempt}")
-                self.sleep(MINUTE / 6, self.shutdown_end)
+                time.sleep(max(0.0, min(MINUTE / 6, self.shutdown_end - time.monotonic())))  # not cancellable
                 rows = self.sessions(self.shutdown_end)
                 if rows is None:
                     continue
@@ -716,7 +775,11 @@ class Driver:
         return False
 
     def main(self):
-        self.out.mkdir(parents=True, exist_ok=False)
+        try:
+            self.out.mkdir(parents=True, exist_ok=False)
+        except FileExistsError:
+            print(f"{self.out} exists: refusing to reuse a run folder", file=sys.stderr)
+            return 2
         try:
             self.log_file = open(self.out / "driver.log", "a")
         except OSError:
@@ -727,6 +790,7 @@ class Driver:
         valid = None
         try:
             self.stage_inputs()
+            self.github_preflight()
             self.preflight()
             self.check()
             self.create()
@@ -758,11 +822,15 @@ class Driver:
             for label, argv in (("final sessions", [COL, "sessions"]), ("final orphans", REAP)):
                 rc, out = self.call(argv, 120, self.inventory_end, label)
                 self.log(f"{label}:\n" + out.strip())
+            if (self.stage / "manifest.json").is_file():
+                shutil.copy2(self.stage / "manifest.json", self.out / "input_manifest.json")
             if self.out.joinpath("staging").exists():
                 shutil.rmtree(self.out / "staging", ignore_errors=True)  # copies of pinned inputs only
-            receipts = logs and self.copy_receipts()
+            receipts = self.copy_receipts()
             all_home = set(self.home) == set(SCREENS)
             code = 3 if not clean else 2 if not (logs and receipts and valid is not None) else 0 if valid else 1
+            if receipts and not logs:
+                self.log("receipts hold only what came home: the VM logs were not retrieved")
             if code == 0 and not (self.done and all_home):
                 self.log(f"validated status but done {self.done}, home {sorted(self.home)}: exit 2")
                 code = 2
