@@ -1,7 +1,9 @@
 # C2 CUDA leg: coalfire's CUDA build on the C2 checkpoint: protocol
 
-Claude Opus 5.5, 3 Nov 2026. Fixed before any GPU result. Branch `claude/c2-coalfire-cuda`, cut from paperkiln
-master `93bf21d2`. It runs only after independent review, from the reviewed commit.
+Claude Opus 5.5, 3 Nov 2026. Branch `claude/c2-coalfire-cuda`, cut from paperkiln master `93bf21d2`. The original
+packet, and every numerical criterion (inputs, forward, bound, comparison), were fixed before any GPU result. The
+exit-path revision after run c1 was written after c1's diagnostic score was known (Runs). Each run uses a reviewed,
+frozen commit.
 
 ## Question and scope
 
@@ -25,10 +27,12 @@ scope: coalfire implements neither (reference §10).
   unchanged since February 2025 (blob `fbbe6ce0` at both C2's commit and the pin).
 - **Engine:** coalfire.cpp `605685e8` (main after #38), built with `-DCUDA_ENABLED=ON -DCMAKE_CUDA_ARCHITECTURES=89`
   with the image's own toolkit (recorded, not installed).
-- **Tool:** `coalfire_dump.cpp`, C2's dump tool, with three changes:
+- **Tool:** `coalfire_dump.cpp`, C2's dump tool, with five changes:
   - it reports the build's CUDA state first: `use_cuda`, the device count, name and compute capability;
   - a CUDA build without a visible device exits 3 instead of running;
-  - it sets the config's two uninitialised flags (`use_fp16`, `use_gradient_checkpointing`) to false. It is compiled with exactly the flags coalfire's build gave `src/transformer.cpp`, taken from
+  - it sets the config's two uninitialised flags (`use_fp16`, `use_gradient_checkpointing`) to false;
+  - from c2 on, it closes and checks the logits file and prints `{"logits_written": true}`;
+  - from c2 on, a CUDA build then takes coalfire's own fast exit (see Runs). It is compiled with exactly the flags coalfire's build gave `src/transformer.cpp`, taken from
   `compile_commands.json` by `dump_flags.py`, because the headers change under `USE_CUDA`. It runs `forward_batch`
   in eval mode, as C2 did.
 - **What runs on the device** in this build, by construction (`USE_CUDA` is compile-time; there is no runtime
@@ -151,19 +155,25 @@ rerun once, unchanged, under a new RUN_ID.
   - **A known coalfire defect.** coalfire's own `src/train.cpp` documents that its component destructors
     (`CudaMatrix` `cudaFree`) and the cudart/cuBLAS atexit handlers "intermittently hit an access violation during
     the CUDA runtime's teardown". It describes this as a Windows problem, and the trainer fast-exits with
-    `std::_Exit(0)` after `cuda::cleanup_loss_resources()` and `cuda::cleanup_cuda()`. c1 shows the same crash on
-    Linux (L4, driver 580.82.07, CUDA 13.0.88).
+    `std::_Exit(0)` after `cuda::cleanup_loss_resources()` and `cuda::cleanup_cuda()`. c1 shows a teardown crash on
+    Linux (L4, driver 580.82.07, CUDA 13.0.88) consistent with this documented failure mode. Without a backtrace,
+    it does not establish the same underlying cause.
   - **Seen before this revision, diagnostic only:** c1's logits file was scored at home with `compare_cuda.py`
     (`receipts/c1-20261103/diagnostic_compare_home.json`). It is within 7.0e-7 of the float64 referee (median
     4.2e-7), with the referee's argmax in every row, 7.5e-7 from coalfire's CPU logits and 8.4e-7 from
     paperkiln's. This is not a protocol pass: the gate failed, and the file came from a process that then crashed.
+    c1 never ran the repeat. The diagnostic passed c1's one logits file as both the first and the repeat argument,
+    so its repeat fields (a passing repeat, `repeat_bit_identical: true`) are no repeat evidence.
 - **The revision for `c2-20261103`** is a reviewed operational revision following c1, not an unchanged rerun. It
   was written after c1's diagnostic score was known. It changes the process's exit only, never the model, the
   inputs, the forward, the bound or the comparison:
   - **The dump tool** closes the logits file and checks it, and prints `{"logits_written": true}`. A CUDA build
     then takes coalfire's own shutdown path from `train.cpp`: synchronise, `cuda::cleanup_loss_resources()`,
     `cuda::cleanup_cuda()`, flush, `std::_Exit`. It prints `{"cuda_shutdown": "ok"}`, or exits 4 if the
-    synchronisation reports an error.
+    synchronisation reports an error. The marker means the adopted sequence completed: the synchronisation succeeded
+    and both cleanups returned. Those functions ignore some CUDA and cuBLAS return codes, and the model's and the
+    attention pool's allocations are left to process exit. So the marker does not certify that every resource was
+    released, and a pass says nothing about coalfire exiting normally or about its CUDA resource lifecycle.
   - **`vm_c2.sh`** requires both lines in each dump's log (status 93 otherwise). It now captures the tool's `ldd`
     right after the build, and records resolved paths (`readlink -f`) in `toolchain.txt`; these are round 2's two
     non-blocking points.
@@ -172,3 +182,11 @@ rerun once, unchanged, under a new RUN_ID.
   - **Checks:** the CPU control was rerun with the revised tool, still byte-identical to C2's `coalfire.f32`; the
     revised CUDA tool compiles and links. `test_vm_c2.py` gains a test that a dump without both lines fails (14
     tests).
+- **`c2-20261103`** (commit `4fd869a6`, Codex round 3 RUN; receipts in `receipts/c2-20261103/`): passed all 12
+  gates. It ran from 15:27:55 to 15:31:10 UTC+11 (about 3.5 L4-minutes); the driver exited 0 and cleanup was
+  certified. The CUDA logits are within 7.0e-7 of the float64 referee, with the referee's argmax in every row. The
+  repeat is bit-identical. Result: `README.md`. The two attempts together used about 12 L4-minutes.
+- **After c2** (text and tests only, no change to the run's code): round 3's non-blocking points are applied. These
+  are the wording above on what was fixed before any GPU result, the tool's changes, the teardown cause, c1's
+  diagnostic repeat fields and the shutdown marker, plus separate tests for each missing marker and for a crash
+  after both.

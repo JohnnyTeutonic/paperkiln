@@ -1,0 +1,314 @@
+[
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/config.cpp.o -c /content/run_c2-20261103/coalfire/src/config.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/config.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/config.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/architecture.cpp.o -c /content/run_c2-20261103/coalfire/src/architecture.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/architecture.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/architecture.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/lora.cpp.o -c /content/run_c2-20261103/coalfire/src/lora.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/lora.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/lora.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/logger.cpp.o -c /content/run_c2-20261103/coalfire/src/logger.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/logger.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/logger.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/scope_logger.cpp.o -c /content/run_c2-20261103/coalfire/src/scope_logger.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/scope_logger.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/scope_logger.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/components.cpp.o -c /content/run_c2-20261103/coalfire/src/components.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/components.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/components.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/matrix.cpp.o -c /content/run_c2-20261103/coalfire/src/matrix.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/matrix.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/matrix.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/matmul_optimized.cpp.o -c /content/run_c2-20261103/coalfire/src/matmul_optimized.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/matmul_optimized.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/matmul_optimized.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/tensor.cpp.o -c /content/run_c2-20261103/coalfire/src/tensor.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/tensor.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/tensor.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/utils.cpp.o -c /content/run_c2-20261103/coalfire/src/utils.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/utils.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/utils.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/vector_ops.cpp.o -c /content/run_c2-20261103/coalfire/src/vector_ops.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/vector_ops.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/vector_ops.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/embeddings.cpp.o -c /content/run_c2-20261103/coalfire/src/embeddings.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/embeddings.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/embeddings.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/layer_norm.cpp.o -c /content/run_c2-20261103/coalfire/src/layer_norm.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/layer_norm.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/layer_norm.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/feed_forward.cpp.o -c /content/run_c2-20261103/coalfire/src/feed_forward.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/feed_forward.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/feed_forward.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/attention.cpp.o -c /content/run_c2-20261103/coalfire/src/attention.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/attention.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/attention.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/transformer_layer.cpp.o -c /content/run_c2-20261103/coalfire/src/transformer_layer.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/transformer_layer.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/transformer_layer.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/transformer.cpp.o -c /content/run_c2-20261103/coalfire/src/transformer.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/transformer.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/transformer.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/lm_head.cpp.o -c /content/run_c2-20261103/coalfire/src/lm_head.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/lm_head.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/lm_head.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/router.cpp.o -c /content/run_c2-20261103/coalfire/src/router.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/router.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/router.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/moe.cpp.o -c /content/run_c2-20261103/coalfire/src/moe.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/moe.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/moe.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/gqa.cpp.o -c /content/run_c2-20261103/coalfire/src/gqa.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/gqa.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/gqa.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/vocabulary.cpp.o -c /content/run_c2-20261103/coalfire/src/vocabulary.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/vocabulary.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/vocabulary.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/tiktoken_tokenizer.cpp.o -c /content/run_c2-20261103/coalfire/src/tiktoken_tokenizer.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/tiktoken_tokenizer.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/tiktoken_tokenizer.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/gradient_checkpoint.cpp.o -c /content/run_c2-20261103/coalfire/src/gradient_checkpoint.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/gradient_checkpoint.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/gradient_checkpoint.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/cache.cpp.o -c /content/run_c2-20261103/coalfire/src/cache.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/cache.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/cache.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/quantization.cpp.o -c /content/run_c2-20261103/coalfire/src/quantization.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/quantization.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/quantization.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/quantization_api.cpp.o -c /content/run_c2-20261103/coalfire/src/quantization_api.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/quantization_api.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/quantization_api.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/model_saver.cpp.o -c /content/run_c2-20261103/coalfire/src/model_saver.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/model_saver.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/model_saver.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/gguf_export.cpp.o -c /content/run_c2-20261103/coalfire/src/gguf_export.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/gguf_export.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/gguf_export.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -O3 -march=native -ffast-math -Wno-error -fpermissive -fopenmp -o CMakeFiles/transformer_core.dir/src/safetensors_export.cpp.o -c /content/run_c2-20261103/coalfire/src/safetensors_export.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/safetensors_export.cpp",
+  "output": "CMakeFiles/transformer_core.dir/src/safetensors_export.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__CUDACC__ -D__NV_NO_HOST_COMPILER_CHECK --options-file CMakeFiles/transformer_core.dir/includes_CUDA.rsp -allow-unsupported-compiler -O3 -DNDEBUG -std=c++17 \"--generate-code=arch=compute_89,code=[compute_89,sm_89]\" -O3 -march=native -ffast-math -x cu -c /content/run_c2-20261103/coalfire/src/cuda/cuda_matrix.cu -o CMakeFiles/transformer_core.dir/src/cuda/cuda_matrix.cu.o",
+  "file": "/content/run_c2-20261103/coalfire/src/cuda/cuda_matrix.cu",
+  "output": "CMakeFiles/transformer_core.dir/src/cuda/cuda_matrix.cu.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__CUDACC__ -D__NV_NO_HOST_COMPILER_CHECK --options-file CMakeFiles/transformer_core.dir/includes_CUDA.rsp -allow-unsupported-compiler -O3 -DNDEBUG -std=c++17 \"--generate-code=arch=compute_89,code=[compute_89,sm_89]\" -O3 -march=native -ffast-math -x cu -c /content/run_c2-20261103/coalfire/src/cuda/swiglu_kernels.cu -o CMakeFiles/transformer_core.dir/src/cuda/swiglu_kernels.cu.o",
+  "file": "/content/run_c2-20261103/coalfire/src/cuda/swiglu_kernels.cu",
+  "output": "CMakeFiles/transformer_core.dir/src/cuda/swiglu_kernels.cu.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__CUDACC__ -D__NV_NO_HOST_COMPILER_CHECK --options-file CMakeFiles/transformer_core.dir/includes_CUDA.rsp -allow-unsupported-compiler -O3 -DNDEBUG -std=c++17 \"--generate-code=arch=compute_89,code=[compute_89,sm_89]\" -O3 -march=native -ffast-math -x cu -c /content/run_c2-20261103/coalfire/src/cuda/quantization_kernels.cu -o CMakeFiles/transformer_core.dir/src/cuda/quantization_kernels.cu.o",
+  "file": "/content/run_c2-20261103/coalfire/src/cuda/quantization_kernels.cu",
+  "output": "CMakeFiles/transformer_core.dir/src/cuda/quantization_kernels.cu.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__CUDACC__ -D__NV_NO_HOST_COMPILER_CHECK --options-file CMakeFiles/transformer_core.dir/includes_CUDA.rsp -allow-unsupported-compiler -O3 -DNDEBUG -std=c++17 \"--generate-code=arch=compute_89,code=[compute_89,sm_89]\" -O3 -march=native -ffast-math -x cu -c /content/run_c2-20261103/coalfire/src/cuda/matrix_ops.cu -o CMakeFiles/transformer_core.dir/src/cuda/matrix_ops.cu.o",
+  "file": "/content/run_c2-20261103/coalfire/src/cuda/matrix_ops.cu",
+  "output": "CMakeFiles/transformer_core.dir/src/cuda/matrix_ops.cu.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__CUDACC__ -D__NV_NO_HOST_COMPILER_CHECK --options-file CMakeFiles/transformer_core.dir/includes_CUDA.rsp -allow-unsupported-compiler -O3 -DNDEBUG -std=c++17 \"--generate-code=arch=compute_89,code=[compute_89,sm_89]\" -O3 -march=native -ffast-math -x cu -c /content/run_c2-20261103/coalfire/src/cuda/fused_attention_kernels.cu -o CMakeFiles/transformer_core.dir/src/cuda/fused_attention_kernels.cu.o",
+  "file": "/content/run_c2-20261103/coalfire/src/cuda/fused_attention_kernels.cu",
+  "output": "CMakeFiles/transformer_core.dir/src/cuda/fused_attention_kernels.cu.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__CUDACC__ -D__NV_NO_HOST_COMPILER_CHECK --options-file CMakeFiles/transformer_core.dir/includes_CUDA.rsp -allow-unsupported-compiler -O3 -DNDEBUG -std=c++17 \"--generate-code=arch=compute_89,code=[compute_89,sm_89]\" -O3 -march=native -ffast-math -x cu -c /content/run_c2-20261103/coalfire/src/cuda/moe_kernel.cu -o CMakeFiles/transformer_core.dir/src/cuda/moe_kernel.cu.o",
+  "file": "/content/run_c2-20261103/coalfire/src/cuda/moe_kernel.cu",
+  "output": "CMakeFiles/transformer_core.dir/src/cuda/moe_kernel.cu.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__CUDACC__ -D__NV_NO_HOST_COMPILER_CHECK --options-file CMakeFiles/transformer_core.dir/includes_CUDA.rsp -allow-unsupported-compiler -O3 -DNDEBUG -std=c++17 \"--generate-code=arch=compute_89,code=[compute_89,sm_89]\" -O3 -march=native -ffast-math -x cu -c /content/run_c2-20261103/coalfire/src/cuda/router_kernel.cu -o CMakeFiles/transformer_core.dir/src/cuda/router_kernel.cu.o",
+  "file": "/content/run_c2-20261103/coalfire/src/cuda/router_kernel.cu",
+  "output": "CMakeFiles/transformer_core.dir/src/cuda/router_kernel.cu.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__CUDACC__ -D__NV_NO_HOST_COMPILER_CHECK --options-file CMakeFiles/transformer_core.dir/includes_CUDA.rsp -allow-unsupported-compiler -O3 -DNDEBUG -std=c++17 \"--generate-code=arch=compute_89,code=[compute_89,sm_89]\" -O3 -march=native -ffast-math -x cu -c /content/run_c2-20261103/coalfire/src/cuda/layernorm_cuda.cu -o CMakeFiles/transformer_core.dir/src/cuda/layernorm_cuda.cu.o",
+  "file": "/content/run_c2-20261103/coalfire/src/cuda/layernorm_cuda.cu",
+  "output": "CMakeFiles/transformer_core.dir/src/cuda/layernorm_cuda.cu.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__CUDACC__ -D__NV_NO_HOST_COMPILER_CHECK --options-file CMakeFiles/transformer_core.dir/includes_CUDA.rsp -allow-unsupported-compiler -O3 -DNDEBUG -std=c++17 \"--generate-code=arch=compute_89,code=[compute_89,sm_89]\" -O3 -march=native -ffast-math -x cu -c /content/run_c2-20261103/coalfire/src/cuda/loss_kernels.cu -o CMakeFiles/transformer_core.dir/src/cuda/loss_kernels.cu.o",
+  "file": "/content/run_c2-20261103/coalfire/src/cuda/loss_kernels.cu",
+  "output": "CMakeFiles/transformer_core.dir/src/cuda/loss_kernels.cu.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__CUDACC__ -D__NV_NO_HOST_COMPILER_CHECK --options-file CMakeFiles/transformer_core.dir/includes_CUDA.rsp -allow-unsupported-compiler -O3 -DNDEBUG -std=c++17 \"--generate-code=arch=compute_89,code=[compute_89,sm_89]\" -O3 -march=native -ffast-math -x cu -c /content/run_c2-20261103/coalfire/src/cuda/attention_ops.cu -o CMakeFiles/transformer_core.dir/src/cuda/attention_ops.cu.o",
+  "file": "/content/run_c2-20261103/coalfire/src/cuda/attention_ops.cu",
+  "output": "CMakeFiles/transformer_core.dir/src/cuda/attention_ops.cu.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -fopenmp -o CMakeFiles/train_simple.dir/src/train_simple.cpp.o -c /content/run_c2-20261103/coalfire/src/train_simple.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/train_simple.cpp",
+  "output": "CMakeFiles/train_simple.dir/src/train_simple.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -fopenmp -o CMakeFiles/swa_check.dir/src/swa_check.cpp.o -c /content/run_c2-20261103/coalfire/src/swa_check.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/swa_check.cpp",
+  "output": "CMakeFiles/swa_check.dir/src/swa_check.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -fopenmp -o CMakeFiles/train.dir/src/train.cpp.o -c /content/run_c2-20261103/coalfire/src/train.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/train.cpp",
+  "output": "CMakeFiles/train.dir/src/train.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -fopenmp -o CMakeFiles/golden_batch_test.dir/src/golden_batch_test.cpp.o -c /content/run_c2-20261103/coalfire/src/golden_batch_test.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/golden_batch_test.cpp",
+  "output": "CMakeFiles/golden_batch_test.dir/src/golden_batch_test.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -fopenmp -o CMakeFiles/matmul_selftest.dir/src/matmul_selftest.cpp.o -c /content/run_c2-20261103/coalfire/src/matmul_selftest.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/matmul_selftest.cpp",
+  "output": "CMakeFiles/matmul_selftest.dir/src/matmul_selftest.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++  -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles/repro_sum_demo.dir/src/repro_sum_demo.cpp.o -c /content/run_c2-20261103/coalfire/src/repro_sum_demo.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/repro_sum_demo.cpp",
+  "output": "CMakeFiles/repro_sum_demo.dir/src/repro_sum_demo.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++  -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles/pol_demo.dir/src/pol_demo.cpp.o -c /content/run_c2-20261103/coalfire/src/pol_demo.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/pol_demo.cpp",
+  "output": "CMakeFiles/pol_demo.dir/src/pol_demo.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++  -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -O3 -DNDEBUG -std=gnu++17 -fopenmp -o CMakeFiles/repro_reduce_demo.dir/src/repro_reduce_demo.cpp.o -c /content/run_c2-20261103/coalfire/src/repro_reduce_demo.cpp",
+  "file": "/content/run_c2-20261103/coalfire/src/repro_reduce_demo.cpp",
+  "output": "CMakeFiles/repro_reduce_demo.dir/src/repro_reduce_demo.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++  -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles/gguf_writer_test.dir/tests/gguf_writer_test.cpp.o -c /content/run_c2-20261103/coalfire/tests/gguf_writer_test.cpp",
+  "file": "/content/run_c2-20261103/coalfire/tests/gguf_writer_test.cpp",
+  "output": "CMakeFiles/gguf_writer_test.dir/tests/gguf_writer_test.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -fopenmp -o CMakeFiles/gguf_export_test.dir/tests/gguf_export_test.cpp.o -c /content/run_c2-20261103/coalfire/tests/gguf_export_test.cpp",
+  "file": "/content/run_c2-20261103/coalfire/tests/gguf_export_test.cpp",
+  "output": "CMakeFiles/gguf_export_test.dir/tests/gguf_export_test.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++  -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles/bpe_tokenizer_test.dir/tests/bpe_tokenizer_test.cpp.o -c /content/run_c2-20261103/coalfire/tests/bpe_tokenizer_test.cpp",
+  "file": "/content/run_c2-20261103/coalfire/tests/bpe_tokenizer_test.cpp",
+  "output": "CMakeFiles/bpe_tokenizer_test.dir/tests/bpe_tokenizer_test.cpp.o"
+},
+{
+  "directory": "/content/run_c2-20261103/build",
+  "command": "/usr/bin/c++ -DCUDA_AVAILABLE -DUSE_CUDA -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -D__NV_NO_HOST_COMPILER_CHECK -I/content/run_c2-20261103/coalfire/include -I/content/run_c2-20261103/coalfire/third_party -I/content/run_c2-20261103/build/_deps/json-src/include -isystem /usr/local/cuda/targets/x86_64-linux/include -isystem /usr/local/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=gnu++17 -fopenmp -o CMakeFiles/bpe_export_test.dir/tests/bpe_export_test.cpp.o -c /content/run_c2-20261103/coalfire/tests/bpe_export_test.cpp",
+  "file": "/content/run_c2-20261103/coalfire/tests/bpe_export_test.cpp",
+  "output": "CMakeFiles/bpe_export_test.dir/tests/bpe_export_test.cpp.o"
+}
+]

@@ -1,0 +1,51 @@
+{
+  "ids": 48,
+  "vocab": 2275,
+  "bound": 0.0001,
+  "referee": "docs/receipts/c2_coalfire_parity_20261103/compare.py",
+  "legs": {
+    "coalfire_cuda": {
+      "pass": true,
+      "max_rel_vs_float64": 6.995030439945718e-07,
+      "median_rel_vs_float64": 4.2141810815705213e-07,
+      "argmax_identical": true,
+      "finite": true
+    },
+    "coalfire_cuda_repeat": {
+      "pass": true,
+      "max_rel_vs_float64": 6.995030439945718e-07,
+      "median_rel_vs_float64": 4.2141810815705213e-07,
+      "argmax_identical": true,
+      "finite": true
+    },
+    "coalfire_cpu": {
+      "pass": true,
+      "max_rel_vs_float64": 5.647362101721101e-07,
+      "median_rel_vs_float64": 3.408799853536386e-07,
+      "argmax_identical": true,
+      "finite": true
+    },
+    "paperkiln_cpu": {
+      "pass": true,
+      "max_rel_vs_float64": 5.16030822872861e-07,
+      "median_rel_vs_float64": 3.501495416573295e-07,
+      "argmax_identical": true,
+      "finite": true
+    }
+  },
+  "repeat_bit_identical": true,
+  "cuda_vs_coalfire_cpu": {
+    "max_rel": 7.463242310363627e-07,
+    "argmax_identical": true
+  },
+  "cuda_vs_paperkiln_cpu": {
+    "max_rel": 8.366573419656539e-07,
+    "argmax_identical": true
+  },
+  "gated": [
+    "coalfire_cuda",
+    "coalfire_cpu",
+    "paperkiln_cpu"
+  ],
+  "pass": true
+}
