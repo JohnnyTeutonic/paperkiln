@@ -82,6 +82,11 @@ crash. Treating the attempts as independent, and repeats on one VM only approxim
 - ten attempts detect a 10% per-attempt failure rate with probability about 65%, and a 1% rate about 10%;
 - zero failures in ten bounds the per-attempt failure probability below about 26% (one-sided, 95%).
 
+**Precedence** (Codex round 2): when `exit_fix` passes, any base timeout or failure before teardown makes the
+headline "base inconclusive", with any observed base teardown failures reported beside it. Otherwise the headline is
+"reproduced" if there was at least one base teardown failure, and "none observed" if there was none. This text was
+added after round 2's RUN and changes no code.
+
 In every outcome the member fix is merged: an indeterminate handle passed to a destroy call is a defect either way.
 
 Out of scope:
