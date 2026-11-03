@@ -85,3 +85,5 @@ chunks x N.
   `tests/test_mamba_prefill_bench.cpp`.
 - **Host evidence:** `receipts/prefill_host_test_local.json` and `receipts/prefill_calibration_local.json`, the
   tolerance's CPU calibration.
+- **Run p1-20261103** stopped at the resources gate, before checkout (about 3 L4-minutes). The cause was Colab's
+  cgroup-namespace layout, which this revision now handles (`PROTOCOL_PREFILL.md`, Runs; `receipts/p1-20261103/`).

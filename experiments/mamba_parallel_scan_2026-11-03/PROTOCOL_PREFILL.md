@@ -98,13 +98,22 @@ and it changes no default: `MICROTORCH_SCAN_CHUNK` stays opt-in.
        no limit);
      - a cgroup path is mapped under the mount's root (a container's mount root may be its own cgroup).
 
+     **A path that leaves the visible namespace** once mapped (after lexical normalisation) is recorded as scope
+     `namespace_root`, with the raw path and a note. Examples: a leading `/..`, or a path not under the mount's
+     root. Colab's layout is like this: `0::/../../jupyter-children`, the notebook's cgroup above the container's
+     cgroup-namespace root (run p1, below). Its own limits are not visible, so:
+     - a finite limit at the visible mount root applies, with valid usage required;
+     - otherwise MemAvailable governs.
+
      Headroom that cannot be established is also an operational stop, and the reason is recorded:
-     - membership with no matching mount;
-     - a path outside the mount's root, or a missing directory;
+     - an unreadable, empty or unparsable `/proc/self/cgroup`;
+     - membership with no matching mount, or a missing mount directory;
+     - a missing directory for a path that stays inside the mount;
      - an unreadable limit;
      - a finite limit without a valid usage (never taken as zero).
 
-     With no memory cgroup membership at all, MemAvailable alone applies.
+     Only a readable `/proc/self/cgroup` with no memory membership leaves MemAvailable alone. Every level read is
+     recorded, including those that are unlimited or have no limit file.
 
      Why 16 GiB: the gate's batched d768x24 case holds about 7.4 GB of live result objects (two recorded runs of
      2.86 GB and a live 1.65 GB logits matrix). With the models, parameters and allocator retention it is
@@ -303,7 +312,7 @@ claim needs its own protocol.
   top-level files of `out/` are copied to `receipts/RUN_ID/`, with `archive.sha256` hashing every retrieved file,
   and then the driver log. The JSONL files are `prefill_gate[_cublas]`, `prefill_time[_cublas]` and
   `prefill_profile[_cublas]`.
-- **Tests.** `test_drive.py` (mock Colab CLI, 23 tests) and `test_vm_run.py` (stub tools, 33 tests)
+- **Tests.** `test_drive.py` (mock Colab CLI, 23 tests) and `test_vm_run.py` (stub tools, 39 tests)
   test that bookkeeping locally for all three protocols. For prefill they cover:
   - the gate set and the deadlines;
   - a hung stop that still leaves retrieval before shutdown, with the exit at least 2;
@@ -316,6 +325,10 @@ claim needs its own protocol.
     - a finite limit with missing or malformed usage;
     - unmappable membership;
     - no membership;
+    - Colab's exact layout, alone and with a finite limit at the mount root;
+    - paths outside the mounted subtree, including v1;
+    - all-`max` levels;
+    - an unreadable or unparsable `/proc/self/cgroup`;
   - build jobs bounded by memory;
   - `measure.py`'s record and exit status, including a receipt it cannot write, and a missing receipt failing its
     step;
@@ -326,3 +339,12 @@ claim needs its own protocol.
   sm_89). No GPU was used.
 - **No reruns.** The run is not repeated to improve a result. An operational failure (session lost, build failure)
   is recorded as such and may be rerun once, unchanged, under a new RUN_ID.
+
+## Runs
+
+- **`p1-20261103`** (commit `e11c5d47`; receipts in `receipts/p1-20261103/`) was a pre-controller operational
+  failure at the resources gate, costing about 3 L4-minutes. The VM was stopped and cleanup certified. No
+  checkout, build or measurement happened. MemAvailable was 53.9 GB and the device had 22.5 GB free. The gate
+  stopped because `/proc/self/cgroup` read `0::/../../jupyter-children`: Colab's notebook cgroup lies outside the
+  container's cgroup namespace, and the gate looked for it under the mount. This revision fixes that: such a path
+  is recorded as outside the visible namespace, with the mount root's limit, if any, applied.

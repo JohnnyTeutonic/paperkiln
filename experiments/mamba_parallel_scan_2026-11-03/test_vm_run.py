@@ -144,7 +144,9 @@ class VmRunTests(unittest.TestCase):
             "22 1 8:1 / / rw,relatime shared:1 - ext4 /dev/sda1 rw\n"
             f"30 22 0:26 {mount_root} {mnt} rw,nosuid,nodev,noexec shared:9 - cgroup2 cgroup2 rw,nsdelegate\n")
         rel = path[len(mount_root):] if mount_root != "/" and path.startswith(mount_root) else path
-        (mnt / rel.strip("/")).mkdir(parents=True, exist_ok=True)
+        mnt.mkdir(parents=True, exist_ok=True)
+        if ".." not in rel.split("/"):
+            (mnt / rel.strip("/")).mkdir(parents=True, exist_ok=True)
         return mnt
 
     def cgroup_v1(self, path, mount_root):
@@ -157,7 +159,9 @@ class VmRunTests(unittest.TestCase):
             f"31 22 0:27 / {self.tmp}/cg1pids rw,nosuid shared:10 - cgroup cgroup rw,pids\n"
             f"32 22 0:28 {mount_root} {mnt} rw,nosuid shared:11 - cgroup cgroup rw,memory\n")
         rel = path[len(mount_root):] if mount_root != "/" and path.startswith(mount_root) else path
-        (mnt / rel.strip("/")).mkdir(parents=True, exist_ok=True)
+        mnt.mkdir(parents=True, exist_ok=True)
+        if ".." not in rel.split("/"):
+            (mnt / rel.strip("/")).mkdir(parents=True, exist_ok=True)
         return mnt
 
     @staticmethod
@@ -380,9 +384,6 @@ class VmRunTests(unittest.TestCase):
         (self.tmp / "mountinfo").write_text("22 1 8:1 / / rw - ext4 /dev/sda1 rw\n")  # no cgroup2 mount
         r = self.assert_resources_stop("q1", "no mount")
         self.assertIn("no matching mount", r["cgroup_error"])
-        self.cgroup_v2("/elsewhere/a", "/docker/abc")  # the path is not under the mount's root
-        r = self.assert_resources_stop("q2", "outside the mount root")
-        self.assertIn("outside the mount root", r["cgroup_error"])
         mnt = self.cgroup_v2("/gone", "/")
         (mnt / "gone").rmdir()
         r = self.assert_resources_stop("q3", "missing directory")
@@ -391,6 +392,82 @@ class VmRunTests(unittest.TestCase):
         self.limit(mnt / "a", "memory.max", "12G", "memory.current", 0)
         r = self.assert_resources_stop("q4", "unreadable limit")
         self.assertIn("unreadable limit", r["cgroup_error"])
+
+    # Colab's layout (run p1-20261103): the notebook's cgroup sits above the container's cgroup-namespace root
+    def test_colab_layout_outside_the_namespace_passes_on_mem_available(self):
+        mnt = self.cgroup_v2("/../../jupyter-children", "/")
+        rc, s, _ = self.run_vm(run="c1", protocol="prefill")
+        self.assertEqual(rc, 0, s)
+        r = self.resources("c1")
+        self.assertEqual((r["cgroup_version"], r["cgroup_path"], r["cgroup_scope"]),
+                         ("v2", "/../../jupyter-children", "namespace_root"))
+        self.assertIn("outside the visible cgroup namespace", r["cgroup_note"])
+        self.assertEqual((r["cgroup_headroom_kib"], r["headroom_kib"], r["cgroup_error"]), (None, 50 << 20, ""))
+        self.assertEqual(r["cgroup_levels"], f"{mnt}=no-limit-file;")
+        self.assertFalse((self.tmp.parent / "jupyter-children").exists())  # nothing was looked up above the mount
+
+    def test_colab_layout_applies_a_finite_limit_at_the_visible_mount_root(self):
+        mnt = self.cgroup_v2("/../../jupyter-children", "/")
+        self.limit(mnt, "memory.max", 12 << 30, "memory.current", 1 << 30)
+        r = self.assert_resources_stop("c2", "mount-root limit")
+        self.assertEqual((r["cgroup_scope"], r["headroom_kib"]), ("namespace_root", 11 << 20))
+        self.limit(mnt, "memory.max", 40 << 30, "memory.current", 4 << 30)
+        rc, s, _ = self.run_vm(run="c3", protocol="prefill")
+        self.assertEqual(rc, 0, s)
+        self.assertEqual(self.resources("c3")["headroom_kib"], 36 << 20)
+        self.limit(mnt, "memory.max", 40 << 30)
+        (mnt / "memory.current").unlink()
+        r = self.assert_resources_stop("c4", "mount-root limit without usage")
+        self.assertIn("usage missing or malformed", r["cgroup_error"])
+        self.limit(mnt, "memory.max", "40G", "memory.current", 0)
+        r = self.assert_resources_stop("c5", "unreadable mount-root limit")
+        self.assertIn("unreadable limit", r["cgroup_error"])
+
+    def test_paths_outside_the_mounted_subtree_use_the_visible_root(self):
+        # a climb that ends elsewhere, and a path not under a bind mount's root, both leave the visible namespace
+        for i, (path, root) in enumerate((("/a/../../b", "/"), ("/elsewhere/a", "/docker/abc"))):
+            self.cgroup_v2(path, root)
+            rc, s, _ = self.run_vm(run=f"e{i}", protocol="prefill")
+            self.assertEqual(rc, 0, (path, s))
+            self.assertEqual(self.resources(f"e{i}")["cgroup_scope"], "namespace_root", path)
+        # a climb that stays inside the mount is an ordinary path, and its missing directory still stops
+        self.cgroup_v2("/a/../b", "/")
+        r = self.assert_resources_stop("e2", "inside, missing")
+        self.assertEqual(r["cgroup_scope"], "process")
+        self.assertIn("missing", r["cgroup_error"])
+        mnt = self.cgroup_v2("/a/../b", "/")
+        (mnt / "b").mkdir()
+        self.limit(mnt / "b", "memory.max", 12 << 30, "memory.current", 0)
+        r = self.assert_resources_stop("e3", "inside, own limit")
+        self.assertEqual(r["headroom_kib"], 12 << 20)
+
+    def test_v1_outside_the_namespace(self):
+        mnt = self.cgroup_v1("/../x", "/")
+        self.limit(mnt, "memory.limit_in_bytes", 9223372036854771712, "memory.usage_in_bytes", 1 << 30)
+        rc, s, _ = self.run_vm(run="g1", protocol="prefill")
+        self.assertEqual(rc, 0, s)
+        r = self.resources("g1")
+        self.assertEqual((r["cgroup_version"], r["cgroup_scope"], r["cgroup_levels"]),
+                         ("v1", "namespace_root", f"{mnt}=unlimited;"))
+
+    def test_v2_all_max_levels_are_recorded_and_unlimited(self):
+        mnt = self.cgroup_v2("/a/b", "/")
+        self.limit(mnt / "a", "memory.max", "max", "memory.current", 3 << 30)
+        self.limit(mnt / "a" / "b", "memory.max", "max", "memory.current", 2 << 30)
+        rc, s, _ = self.run_vm(run="x1", protocol="prefill")
+        self.assertEqual(rc, 0, s)
+        r = self.resources("x1")
+        self.assertEqual((r["cgroup_scope"], r["cgroup_headroom_kib"], r["headroom_kib"]), ("process", None, 50 << 20))
+        self.assertEqual(r["cgroup_levels"], f"{mnt}/a/b=unlimited;{mnt}/a=unlimited;{mnt}=no-limit-file;")
+
+    def test_unreadable_or_unparsable_proc_cgroup_stops(self):
+        (self.tmp / "proc_cgroup").unlink()
+        r = self.assert_resources_stop("k1", "missing /proc/self/cgroup")
+        self.assertIn("cannot read", r["cgroup_error"])
+        for i, text in enumerate(("", "garbage\n", "0::/\nnot a line\n", "x:memory:/a\n")):
+            (self.tmp / "proc_cgroup").write_text(text)
+            r = self.assert_resources_stop(f"k{i + 2}", repr(text))
+            self.assertIn("unparsable", r["cgroup_error"])
 
     def test_no_memory_cgroup_membership_uses_mem_available(self):
         (self.tmp / "proc_cgroup").write_text("12:pids:/x\n")  # no memory controller, no unified line

@@ -150,8 +150,14 @@ if [ "$PROTO" = prefill ]; then
     # /proc/self/cgroup and /proc/self/mountinfo: on v1, the memory controller's line under a cgroup mount with the
     # memory option (memory.limit_in_bytes, memory.usage_in_bytes; ~2^63 means no limit); otherwise v2, the 0::
     # line under the cgroup2 mount (memory.max, memory.current; "max" means no limit). A level with a finite limit
-    # must have a valid usage. Membership that cannot be mapped to a readable directory is an error, never "no
-    # limit". With no memory cgroup membership at all, MemAvailable alone applies.
+    # must have a valid usage.
+    #
+    # A path that leaves the visible namespace once mapped under the mount's root (Colab: 0::/../../jupyter-children,
+    # the notebook's cgroup above the container's cgroup-namespace root, run p1-20261103) is recorded as such: its own
+    # limits are not visible, so any finite limit at the visible mount root applies, and otherwise MemAvailable
+    # governs. Everything else unexpected stops: an unreadable or unparsable /proc/self/cgroup, membership with no
+    # mount, a missing directory for a path inside the mount, an unreadable limit, a finite limit without valid usage.
+    # Only a readable /proc/self/cgroup with no memory membership leaves MemAvailable alone.
     MEMINFO=/proc/meminfo
     PROC_CGROUP=/proc/self/cgroup
     MOUNTINFO=/proc/self/mountinfo
@@ -163,12 +169,21 @@ if [ "$PROTO" = prefill ]; then
     NEED_KIB=16777216
     NEED_DEV_MIB=12288
     JOB_KIB=3145728
-    # cgroup_scan: sets CG_VER (v1, v2 or none), CG_PATH, CG_HEAD (KiB, empty if no level has a finite limit),
-    # CG_LEVELS (dir=limit/usage per level, KiB) and CG_ERR (why headroom could not be established; empty if it was)
+    # cgroup_scan: sets CG_VER (v1, v2 or none), CG_PATH (the raw membership path), CG_SCOPE (process: its own cgroup
+    # and ancestors; namespace_root: outside the visible namespace, the mount root only), CG_NOTE, CG_HEAD (KiB,
+    # empty if no level has a finite limit), CG_LEVELS (every level read: dir=limit/usage KiB, dir=unlimited or
+    # dir=no-limit-file) and CG_ERR (why headroom could not be established; empty if it was)
     cgroup_scan() {
-        local line rel mnt root leaf d lim use limf usef v
-        CG_VER=none CG_PATH="" CG_HEAD="" CG_LEVELS="" CG_ERR=""
-        [ -r "$PROC_CGROUP" ] || return 0   # no cgroup membership to account for
+        local line rel mnt root leaf d lim use limf usef v norm nmnt
+        CG_VER=none CG_PATH="" CG_SCOPE="" CG_NOTE="" CG_HEAD="" CG_LEVELS="" CG_ERR=""
+        if ! [ -r "$PROC_CGROUP" ] || ! v=$(cat "$PROC_CGROUP" 2>/dev/null); then
+            CG_ERR="cannot read $PROC_CGROUP"
+            return 1
+        fi
+        if [ -z "$v" ] || printf '%s\n' "$v" | grep -qvE '^[0-9]+:[^:]*:/'; then
+            CG_ERR="unparsable $PROC_CGROUP"
+            return 1
+        fi
         line=$(awk -F: '{n = split($2, c, ","); for (i = 1; i <= n; i++) if (c[i] == "memory") {print $3; exit}}' \
             "$PROC_CGROUP")
         if [ -n "$line" ]; then
@@ -180,7 +195,7 @@ if [ "$PROTO" = prefill ]; then
             limf=memory.limit_in_bytes usef=memory.usage_in_bytes
         else
             line=$(awk -F: '$1 == "0" && $2 == "" {print $3; exit}' "$PROC_CGROUP")
-            [ -n "$line" ] || return 0   # no memory controller and no unified line
+            if [ -z "$line" ]; then CG_NOTE="no memory cgroup membership"; return 0; fi
             CG_VER=v2
             CG_PATH=$line
             v=$(awk '{for (i = 7; i <= NF; i++) if ($i == "-") break; if ($(i + 1) == "cgroup2") {print $4, $5; exit}}' \
@@ -190,16 +205,27 @@ if [ "$PROTO" = prefill ]; then
         [ -n "$v" ] || { CG_ERR="$CG_VER membership $CG_PATH but no matching mount in mountinfo"; return 1; }
         root=${v%% *}
         mnt=${v#* }
+        [ -d "$mnt" ] || { CG_ERR="cgroup mount $mnt missing"; return 1; }
+        CG_SCOPE=process
         rel=$CG_PATH
         if [ "$root" != / ]; then
             case "$rel" in
                 "$root") rel=/ ;;
                 "$root"/*) rel=${rel#"$root"} ;;
-                *) CG_ERR="cgroup path $CG_PATH is outside the mount root $root"; return 1 ;;
+                *) CG_SCOPE=namespace_root ;;   # the process's cgroup is not under the mounted subtree
             esac
         fi
-        rel=${rel%/}
-        leaf=$mnt$rel
+        if [ "$CG_SCOPE" = process ]; then
+            # lexical normalisation only (no symlinks): a path that climbs out of the mount leaves the namespace
+            norm=$(realpath -m -s "$mnt${rel%/}") && nmnt=$(realpath -m -s "$mnt") \
+                || { CG_ERR="cannot normalise $mnt$rel"; return 1; }
+            mnt=$nmnt
+            case "$norm" in "$nmnt"|"$nmnt"/*) leaf=$norm ;; *) CG_SCOPE=namespace_root ;; esac
+        fi
+        if [ "$CG_SCOPE" = namespace_root ]; then
+            CG_NOTE="the process cgroup $CG_PATH is outside the visible cgroup namespace (mount root $root at $mnt); its own limits are not visible, so only the visible mount root's limit applies"
+            leaf=$mnt
+        fi
         [ -d "$leaf" ] || { CG_ERR="cgroup directory $leaf missing"; return 1; }
         d=$leaf
         while :; do
@@ -211,10 +237,14 @@ if [ "$PROTO" = prefill ]; then
                     v=$(((lim - use) / 1024))
                     CG_LEVELS="$CG_LEVELS$d=$((lim / 1024))/$((use / 1024));"
                     if [ -z "$CG_HEAD" ] || [ "$v" -lt "$CG_HEAD" ]; then CG_HEAD=$v; fi
-                elif [ "$lim" != max ] && ! [[ "$lim" =~ ^[0-9]+$ ]]; then
+                elif [ "$lim" = max ] || [[ "$lim" =~ ^[0-9]+$ ]]; then
+                    CG_LEVELS="$CG_LEVELS$d=unlimited;"
+                else
                     CG_ERR="unreadable limit in $d"
                     return 1
                 fi
+            else
+                CG_LEVELS="$CG_LEVELS$d=no-limit-file;"
             fi
             [ "$d" = "$mnt" ] && break
             d=$(dirname "$d")
@@ -238,8 +268,8 @@ if [ "$PROTO" = prefill ]; then
         [[ "$dev" =~ ^[0-9]+$ ]] || { dev=0; ok=false; }
         [ "$head" -ge "$NEED_KIB" ] || ok=false
         [ "$dev" -ge "$NEED_DEV_MIB" ] || ok=false
-        printf '{"label": "%s", "mem_available_kib": %d, "cgroup_version": "%s", "cgroup_path": "%s", "cgroup_headroom_kib": %s, "cgroup_levels": "%s", "cgroup_error": "%s", "headroom_kib": %d, "need_kib": %d, "device_free_mib": %d, "need_device_mib": %d, "nproc": %d, "ok": %s}\n' \
-            "$1" "$avail" "$CG_VER" "$CG_PATH" "${CG_HEAD:-null}" "$CG_LEVELS" "$CG_ERR" "$head" "$NEED_KIB" "$dev" \
+        printf '{"label": "%s", "mem_available_kib": %d, "cgroup_version": "%s", "cgroup_path": "%s", "cgroup_scope": "%s", "cgroup_note": "%s", "cgroup_headroom_kib": %s, "cgroup_levels": "%s", "cgroup_error": "%s", "headroom_kib": %d, "need_kib": %d, "device_free_mib": %d, "need_device_mib": %d, "nproc": %d, "ok": %s}\n' \
+            "$1" "$avail" "$CG_VER" "$CG_PATH" "$CG_SCOPE" "$CG_NOTE" "${CG_HEAD:-null}" "$CG_LEVELS" "$CG_ERR" "$head" "$NEED_KIB" "$dev" \
             "$NEED_DEV_MIB" "$(nproc)" "$ok" > "$O/resources_$1.json"
         [ "$ok" = true ] || return 1
         JOBS=$((head / JOB_KIB))
