@@ -282,6 +282,13 @@ separate layers. Proposed by Jonathan and GPT on 5 Nov 2026.
     S12.
   - Cost is dominated by pretraining from scratch, and the interaction needs several independently pretrained
     bases per arm.
+  - **A depth sweep already exists for another outcome.** The October from-scratch programme's E1 pretrained
+    depths 2 to 32 at about 20M parameters, and the 4 to 32 cells at 60M, on human-written data, at three seeds
+    each (microtorch `experiments/tiny_chat_2026-10/`, `analysis_2026-10-28.json`, `TACTICS_2026-10-26.md`). Depth
+    did not change Carry-5's context carry-over cost at 20M; model size was the one lever with a signal. Carry-5
+    measures carry-over, not operation selection, so E1 does not answer this question. It is evidence that depth at
+    fixed size has been a weak lever in this codebase, and its per-seed spread is the nearest available estimate of
+    between-base variance.
 - **The binding constraint: base-to-base variance is the error term for Δ.** Depth must be compared across
   independently pretrained replicates, at least three per architecture. SFT seeds on one base per architecture
   confound depth with that base's idiosyncrasies. No estimate of between-base variance exists yet for these
@@ -331,15 +338,17 @@ separate layers. Proposed by Jonathan and GPT on 5 Nov 2026.
 **First, cheaper experiments, in order.**
 1. **A10 itself (S15 against S16, §4).** Score S15 separately on scenario and instruction combinations it trained
    on and on held-out ones. That gives the composition gap at 8 layers.
-2. **A small-scale proxy depth sweep.** About 5-10M-parameter models (for example 4, 8 and 12 layers at matched
-   layer parameters), pretrained from scratch on the corpus with the scenario language mixed in, at least five
-   seeds each. Each run takes minutes on one L4. The sweep tests whether depth changes the composition of these
-   operations at all, and it estimates between-base variance for the 73M power calculation.
+2. **Score E1's existing bases on operation selection, before any new pretraining.** E1's 20M and 60M bases at
+   each depth and seed already exist. Give each the same small SFT (S15's mixture) and score it on the misfire
+   probe and the compositional split. That is a depth sweep with three independent bases per depth, for SFT cost
+   only. It tests whether depth changes operation selection at all, and it estimates between-base variance for the
+   73M power calculation. A new small proxy sweep is needed only if E1's bases cannot take this SFT (tokenizer,
+   template or context differences, checked first).
 
 **Trigger.** All three of the following.
 - A10 shows S15 learning its trained combinations (low in-distribution misfire), while a held-out-combination gap
   persists after one further diversity dose at 8 layers.
-- The proxy sweep shows Δ > 0 across seeds.
+- The E1-base sweep, or the proxy sweep, shows Δ > 0 across seeds.
 - The cost of one 73M base is verified (§6 Cost, ledger) and fits an authorised envelope.
 
 **Retirement.**
