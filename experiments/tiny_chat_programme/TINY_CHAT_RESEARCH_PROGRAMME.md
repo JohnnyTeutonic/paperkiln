@@ -20,7 +20,7 @@ variable, and test whether the improvement transfers.
 | | |
 |---|---|
 | Architecture | Llama-style decoder: 8 layers, d_model 768, FFN 2,240 (SwiGLU), 12 heads (12 KV heads), context 1,024 |
-| Parameters | 85.3M in total: 60.2M in the 8 layers, 25.2M in untied input and output embeddings (16,384-token BPE vocabulary). "70M" in earlier notes undercounts. |
+| Parameters | 72,761,088 unique: 60.17M in the 8 layers, 12.58M in the tied token embedding (16,384-token BPE vocabulary), plus norms and a 3,072-value state embedding. Source: the native PT result and the safetensors header (Codex's check, `reviews/codex_sfull_cost_and_parameter_check_20261104.json` in the root workspace). The GGUF export stores the tied embedding twice, as `token_embd` and `output.weight`, so its tensor total of 85.3M is export storage, not trainable parameters. |
 | Trainer | paperkiln `mtstudio`, numerical source `1ccb693f55d7…` |
 | Base for every screen | `sfull_sft1500.safetensors`: the preserved S-full baseline (pretraining PT10000, then SFT1500), owned by Codex |
 | SFT recipe (arm A) | 256 updates × 16 rows, lr 3e-5, loss on assistant segments only, EOS supervised; spec `arm_a_lr3e5.json` (`66c718e0`) |
@@ -82,6 +82,22 @@ ratings, made on 3 Nov 2026, of the S-full baseline's final replies on the five 
 
 The judge is an instrument, not ground truth. In paired comparisons, candidate identities are hidden from the judge
 and the order of presentation is counterbalanced.
+
+**Judge run J1 (4 Nov 2026), fixed before any call.** Jonathan corrected the brief the same day: salience is not
+part of the rubric, and relevance is the programme's priority.
+- **Calibration:** S-full's calibration transcript (`f7d4f4d3…`), judged twice, per-turn, on the five gate cases
+  (13 turns). The final-turn scores are compared with Jonathan's four ratings. Reported: each disagreement of 2 or
+  more points, and test-retest agreement between the two runs.
+- **Screens:** the release-suite dev reports of S0, S2 and S4 (seeds 1-3), S1 and S3 (seed 1, wave 1) and S5
+  (seeds 1-3, as they are evaluated), each judged once, per-turn.
+- **Configuration:** `integrations.py judge --per-turn --model gemini-3.1-pro-preview --max-calls 20 --limit 20`,
+  with the root workspace `.env` as the designated env file.
+- **Primary reading:** relevance per turn. Per model: the mean, and the fraction of turns at 3 or more (the v0.0.2
+  gate's statistic, threshold 0.7). Each screen is paired with S0 at the same seed, case by case and turn by turn.
+- **Also reported:** coherence the same way. Fluency is reported but is never a target.
+- **Not claimed:** no screen is called better on the judge unless its relevance difference from S0 has the same
+  sign at every seed. The calibration disagreements are stated beside every judged number.
+- **Receipts:** one exclusive JSON per run in `C:/ml_artifacts/chat_screens_claude/judge/`.
 
 **Task instruments (frozen):**
 
@@ -183,17 +199,25 @@ Step 1 decides whether depth is worth paying for.
 **Step 2, only if step 1 shows an in-distribution failure that a larger dose of the same data does not fix: depth
 at matched parameters.**
 
-| Arm | Layers | d_model | FFN | Heads | Non-embedding | Total |
+| Arm | Layers | d_model | FFN | Heads × dim | In the layers | Unique total (tied embedding) |
 |---|---:|---:|---:|---:|---:|---:|
-| Baseline | 8 | 768 | 2,240 | 12 | 60.2M | 85.3M |
-| Deeper | 16 | 576 | 1,680 | 9 | 67.7M | 86.6M |
+| Baseline | 8 | 768 | 2,240 | 12 × 64 | 60,174,336 | 72,761,088 |
+| Deeper | 16 | 560 | 1,632 | 10 × 56 | 63,956,480 | 73,134,320 (+0.5%) |
+
+The pair is matched on unique parameters. The deeper arm puts more of them in the layers, because its embedding is
+narrower. Its total is computed by the same accounting that reproduces the baseline's native count exactly: layers,
+tied embedding, final norm, and a state embedding of 4 × d_model.
 
 - **Matched start:** a newly initialised deeper model is never compared with the extensively pretrained baseline.
   Both arms are pretrained from scratch on the same corpus, tokenizer, token count, optimiser and schedule. Then
   both get the identical SFT mixture (S2 with the A4 D_high grid) and the identical evaluation. At least two seeds.
 - **Exposure accounting:** pretraining tokens, SFT tokens and FLOPs are reported per arm.
-- **Cost:** the pretraining pair dominates and exceeds a two-L4-hour wave. Pretraining the S-full base (PT10000) is
-  Codex's record. Step 2 needs its own registered design, a cost estimate from that record and separate
+- **Cost:** the pretraining pair dominates and exceeds a two-L4-hour wave.
+  - The S-full base campaign's closed pod total was 18.97 hours and US$11.19. That total includes phases other than
+    pretraining, and excludes separately allocated storage (Codex's check, 4 Nov).
+  - The final pretraining receipt's 3.08 hours cover only the resumed steps 7,675 to 10,000, not the whole of
+    pretraining.
+  - The exact cost of pretraining one base therefore remains unverified. Step 2 needs its own registered design, a cost estimate from that record and separate
   authorisation.
 - **A larger-parameter control** comes only if the matched-depth comparison is null and step 1 still shows an
   in-distribution failure.
@@ -210,7 +234,7 @@ demonstrated optimum.
 
 | Configuration | Params (total / non-emb.) | PT tokens | SFT rows × updates | Template diversity | L4 time | v001 exact (68) | Format (A5 copy) | Coherence | Relevance | Salience | Seeds | Regressions |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| S-full baseline | 85.3M / 60.2M | Codex record | SFT1500 | n/a | n/a | not run | pending | human: 1-2 | human: 0 | unmeasured | 1 | n/a |
+| S-full baseline | 72.76M / 60.17M | Codex record | SFT1500 | n/a | n/a | not run | pending | human: 1-2 | human: 0 | unmeasured | 1 | n/a |
 | S2 (seed 1) | same | same | arm A, 256 × 16 | n/a | about 10 min | 0 | pending | not judged | not judged | unmeasured | 3 | none (wave 2) |
 | S5 (seed 1) | same | same | arm A, 256 × 16 | train side, 1 pool | about 10 min | 1 | pending | not judged | not judged | unmeasured | 3 (scoring) | scoring |
 
@@ -229,7 +253,10 @@ CPU evaluation runs under the shared CPU budget (`scripts/cpu_budget.py`, sessio
 
 ## 9. Retractions and superseded readings
 
-- **Model size:** "70M" in earlier notes is superseded by the parameter count from the GGUF header (section 2).
+- **Model size.** The first version of this registry (`baff7c47`) gave 85.3M parameters and called "70M"
+  an undercount. That reading is superseded: 85.3M counted the GGUF's duplicated tied embedding. The model has
+  72,761,088 unique parameters (section 2, Codex's correction, 4 Nov). The same version's depth arm, 16 × 576
+  (77.1M unique), was not parameter-matched; 16 × 560 replaces it.
 - **Wave-3 incident (4 Nov):** the reading "a fresh VM may not answer its first exec" is superseded. The review
   found that the VM answered and the local Colab CLI stalled (`reviews/launch_review_6_w3_rerun.md`).
 - **A4 figures:** the earlier figures (grid about 14% of supervised tokens; 487, 961 and 2,049 masked templates)
