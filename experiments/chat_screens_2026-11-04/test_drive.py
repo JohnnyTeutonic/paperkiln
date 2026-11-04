@@ -75,6 +75,8 @@ if cmd == "download":
     data = src.read_bytes()
     if (mode == "bad_part_once" and n == 1 or mode == "bad_part_always") and src.name == "model.gguf.part01":
         data = b"y" + data[1:]
+    if mode == "bad_st_always" and src.name == "model.safetensors.part00":
+        data = b"z" + data[1:]
     dst.write_bytes(data); sys.exit(0)
 def advance(run):
     """One step of VM progress: the next screen READY, or status.json and DONE after the last one."""
@@ -91,10 +93,17 @@ def advance(run):
         for i in range(0, len(gguf), 1000):
             p = d / f"model.gguf.part{i // 1000:02d}"; p.write_bytes(gguf[i:i + 1000])
             parts.append({"name": p.name, "sha256": sha(p.read_bytes()), "bytes": p.stat().st_size})
+        stb = (s * 900).encode()
+        st_parts = []
+        for i in range(0, len(stb), 1000):
+            p = d / f"model.safetensors.part{i // 1000:02d}"; p.write_bytes(stb[i:i + 1000])
+            st_parts.append({"name": p.name, "sha256": sha(p.read_bytes()), "bytes": p.stat().st_size})
         (d / "train.log").write_text('{"event": "step", "step": 256, "loss": 2.5}\n')
         (d / "result.json").write_text('{"final_step": 256}')
         (d / "manifest.json").write_text(json.dumps({"screen": s, "run_id": run, "gguf_sha256": sha(gguf),
                                                      "gguf_bytes": len(gguf), "parts": parts,
+                                                     "st_sha256": sha(stb), "st_bytes": len(stb),
+                                                     "st_parts": st_parts,
                                                      "train_log_sha256": sha((d / "train.log").read_bytes()),
                                                      "result_json_sha256": sha((d / "result.json").read_bytes())}))
         (d / "READY").write_text(run)
@@ -180,7 +189,7 @@ def write_inputs(tmp, bad_pin=False):
     pins = {}
     names = ["sfull_sft1500.safetensors", "vocab.gguf", "S0.jsonl", "S1.jsonl", "S2.jsonl", "S3.jsonl",
              "S4.jsonl", "S5.jsonl", "S6.jsonl", "S7.jsonl", "S8.jsonl", "S9.jsonl", "S10.jsonl",
-             "S11.jsonl", "S12.jsonl", "S13.jsonl", "S14.jsonl", "recipes.json", "arm_a_lr3e5.json"]
+             "S11.jsonl", "S12.jsonl", "S13.jsonl", "S14.jsonl", "S15.jsonl", "S16.jsonl", "recipes.json", "arm_a_lr3e5.json"]
     for i, n in enumerate(names):
         data = (n * (300 if n.startswith("sfull") else 3)).encode()
         (d / n).write_bytes(data)
@@ -307,6 +316,28 @@ class DriveTests(unittest.TestCase):
         rc, state, log, tmp, _ = self.run_drive("bad_part_once")
         self.assertEqual(rc, 0, log)
         self.assert_home(tmp, SCREENS)
+
+    def test_the_safetensors_comes_home_verified(self):
+        rc, state, log, tmp, _ = self.run_drive("normal")
+        self.assertEqual(rc, 0, log)
+        for s in SCREENS:
+            st = tmp / "art" / "t1" / s / "model.safetensors"
+            self.assertEqual(st.read_bytes(), (s * 900).encode(), s)
+            self.assertFalse(list(st.parent.glob("model.safetensors.part*")), s)
+
+    def test_with_little_time_left_the_safetensors_is_skipped_after_home(self):
+        rc, state, log, tmp, _ = self.run_drive("normal", extra={"DRIVE_TEST_ST_MIN_LEFT": "1000"})
+        self.assertEqual(rc, 0, log)
+        self.assert_home(tmp, SCREENS)
+        self.assertFalse(list((tmp / "art").glob("*/*/model.safetensors")))
+        self.assertIn("the safetensors stays on the VM", log)
+
+    def test_an_unverified_safetensors_leaves_the_gguf_home_without_it(self):
+        rc, state, log, tmp, _ = self.run_drive("bad_st_always")
+        self.assertEqual(rc, 0, log)
+        self.assert_home(tmp, SCREENS)
+        self.assertFalse(list((tmp / "art").glob("*/*/model.safetensors")))
+        self.assertIn("the GGUF comes home without its safetensors", log)
 
     def test_a_part_that_never_verifies_leaves_its_screen_away(self):
         rc, state, log, tmp, _ = self.run_drive("bad_part_always")

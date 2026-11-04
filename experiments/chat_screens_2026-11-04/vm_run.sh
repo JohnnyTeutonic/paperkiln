@@ -305,7 +305,14 @@ PY
     mkdir -p "$P"
     GGUF=$(ls "$W/train_$s"/*.gguf)
     run "package_$s" "$O/package_$s.log" split -b 45M -d -a 2 "$GGUF" "$P/model.gguf.part" || fail "package_$s" $?
-    "$PY" - "$GGUF" "$P" "$s" "$RUN" <<'PY' >> "$O/package_$s.log" 2>&1 || fail "package_$s" 96
+    # A10: the exported safetensors beside the GGUF (same name), in parts, for the inference-parity check
+    ST="${GGUF%.gguf}.safetensors"
+    # optional: a failed split leaves no safetensors parts, and the GGUF is packaged as before
+    if [ -f "$ST" ]; then
+        run "package_st_$s" "$O/package_st_$s.log" split -b 45M -d -a 2 "$ST" "$P/model.safetensors.part" \
+            || rm -f "$P"/model.safetensors.part*
+    fi
+    "$PY" - "$GGUF" "$P" "$s" "$RUN" "$ST" <<'PY' >> "$O/package_$s.log" 2>&1 || fail "package_$s" 96
 import glob, hashlib, json, os, sys
 gguf, folder, screen, run = sys.argv[1:5]
 def sha(p):
@@ -319,6 +326,17 @@ man = {"screen": screen, "run_id": run, "gguf_sha256": sha(gguf), "gguf_bytes": 
        "parts": [{"name": os.path.basename(p), "sha256": sha(p), "bytes": os.path.getsize(p)} for p in parts]}
 if sum(p["bytes"] for p in man["parts"]) != man["gguf_bytes"]:
     sys.exit("parts do not add up to the GGUF")
+st = sys.argv[5] if len(sys.argv) > 5 else ""
+if st and os.path.exists(st):
+    sp = sorted(glob.glob(folder + "/model.safetensors.part*"))
+    man.update(st_sha256=sha(st), st_bytes=os.path.getsize(st),
+               st_parts=[{"name": os.path.basename(p), "sha256": sha(p), "bytes": os.path.getsize(p)} for p in sp])
+    if not man["st_parts"] or sum(p["bytes"] for p in man["st_parts"]) != man["st_bytes"]:
+        print("safetensors parts missing or do not add up; packaged without them")
+        for k in ("st_sha256", "st_bytes", "st_parts"):
+            man.pop(k, None)
+        for p in sp:
+            os.remove(p)
 with open(folder + "/manifest.json.tmp", "w") as f:
     json.dump(man, f, indent=2)
 os.replace(folder + "/manifest.json.tmp", folder + "/manifest.json")

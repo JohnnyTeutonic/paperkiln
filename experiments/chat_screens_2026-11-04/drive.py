@@ -75,7 +75,7 @@ RAISE_ON = hook("DRIVE_TEST_RAISE_ON", "")
 PART_BYTES = int(hook("DRIVE_TEST_PART_BYTES", str(45 * 1024 * 1024)))  # runner_multi.py: 45 MiB both ways
 SOURCE = "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1"
 SCREENS = ("S0", "S1", "S2", "S3")  # wave 1, the default
-ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14")
+ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16")
 COMMON_INPUTS = ("sfull_sft1500.safetensors", "vocab.gguf", "arm_a_lr3e5.json", "recipes.json")
 
 
@@ -83,6 +83,9 @@ def capped(cap):
     """Deadlines for an absolute session cap of `cap` minutes (A4): polling ends 10 minutes before the cap, stop
     attempts 8, retrieval 5, shutdown 3."""
     return (cap - 10, cap - 8, cap - 5, cap - 3, cap)
+
+
+ST_MIN_LEFT = float(hook("DRIVE_TEST_ST_MIN_LEFT", "6"))  # minutes needed to start the safetensors fetch
 
 
 def screen_steps(screen):
@@ -158,7 +161,10 @@ PINS = {
     "S12.jsonl": (f"{ART}/chat_screens_claude/packets/a9/S12/train.jsonl", "9719eeb1c20f5c45bd6ed802b10e456003d3435a7fdc3f242731c4683807496f"),
     "S13.jsonl": (f"{ART}/chat_screens_claude/packets/a9/S12/train.jsonl", "9719eeb1c20f5c45bd6ed802b10e456003d3435a7fdc3f242731c4683807496f"),
     "S14.jsonl": (f"{ART}/chat_screens_claude/packets/a9/S14/train.jsonl", "ad6e4ba0aaae1d92fbaa9bfbfc4f289df17243f6ba01c3bb7f6d335f15b01479"),
-    "recipes.json": (str(HERE / "recipes.json"), "b1d9c267c6cd4ab7e21aa27db08d5d5d796f95dd87421aa3324703038e539e5e"),
+    # A10: S15 multi-scenario, S16 the existing grid, at matched exposure (PROTOCOL.md section 19)
+    "S15.jsonl": (f"{ART}/chat_screens_claude/packets/a10/S15/train.jsonl", "ac96a2d418ca3c2bac19679d5e2abe52e6fc212f1f42176f112e24f497345569"),
+    "S16.jsonl": (f"{ART}/chat_screens_claude/packets/a10/S16/train.jsonl", "f7d05b869f1e3c3a1971179d62417cf1b91a13926e6e9283ee95fedc1a74939d"),
+    "recipes.json": (str(HERE / "recipes.json"), "4c2ec6b429365076268079811b2f88bf40c12ea72196e5ff91271da03b771b60"),
     "arm_a_lr3e5.json": (str(HERE / "arm_a_lr3e5.json"),
                          "66c718e0b501c751aae0a1cd22eddfdc666a7cfb46a4c074fa41b67aa220125e"),
 }
@@ -644,10 +650,55 @@ class Driver:
             (work).rename(self.out / screen)
             self.home[screen] = man["gguf_sha256"]
             self.log(f"{screen}: HOME, GGUF {man['gguf_sha256']} ({man['gguf_bytes']} bytes)")
+            # A10: the safetensors comes only after the screen is home, and only with time to spare
+            if man.get("st_parts"):
+                if (deadline - time.monotonic()) / MINUTE >= ST_MIN_LEFT:
+                    self.collect_safetensors(screen, remote, self.out / screen, man, deadline)
+                else:
+                    self.log(f"{screen}: under {ST_MIN_LEFT} minutes left; the safetensors stays on the VM")
             return True
         except (OSError, ValueError, KeyError, TypeError) as e:
             self.log(f"{screen}: collection failed:", repr(e))
             return False
+
+    def collect_safetensors(self, screen, remote, work, man, deadline):
+        """The run's exported safetensors (A10 parity check), in parts like the GGUF, each hash-verified, then joined
+        and checked. Optional: on any failure the screen still comes home with its verified GGUF, without
+        model.safetensors, and the log says so. Never raises."""
+        ok = True
+        for part in man["st_parts"]:
+            name = part["name"]
+            if not re.fullmatch(r"model\.safetensors\.part\d{2}", name):
+                self.log(f"{screen}: refusing safetensors part name", name)
+                ok = False
+                break
+            got = False
+            for attempt in (1, 2):
+                rc, _ = self.call([COL, "download", "-s", self.name, f"{remote}/{name}", str(work / name)],
+                                  900, deadline, f"{screen} {name} a{attempt}")
+                if rc == 0 and (work / name).is_file() and sha256(work / name) == part["sha256"]:
+                    got = True
+                    break
+            if not got:
+                self.log(f"{screen}: safetensors part {name} not verified")
+                ok = False
+                break
+        if ok:
+            with open(work / "model.safetensors", "wb") as g:
+                for part in man["st_parts"]:
+                    with open(work / part["name"], "rb") as f:
+                        shutil.copyfileobj(f, g, 1 << 20)
+            if sha256(work / "model.safetensors") != man.get("st_sha256"):
+                self.log(f"{screen}: joined safetensors hash differs from the VM's manifest")
+                ok = False
+        if not ok:
+            (work / "model.safetensors").unlink(missing_ok=True)
+            self.log(f"{screen}: the GGUF comes home without its safetensors")
+        else:
+            self.log(f"{screen}: safetensors {man['st_sha256']} ({man['st_bytes']} bytes)")
+        for p in work.glob("model.safetensors.part*"):
+            p.unlink()
+        return ok
 
     def poll(self):
         while time.monotonic() < self.work_end and not self.cancel:

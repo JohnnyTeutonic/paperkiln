@@ -56,6 +56,7 @@ for s in range(1, last + 1):
     print(json.dumps({"event": "step", "step": s, "loss": 3.0 - s / 1000}))
 out = Path(spec["out_dir"]); out.mkdir(parents=True, exist_ok=True)
 (out / (spec["name"] + ".gguf")).write_bytes((screen * 1500).encode())
+(out / (spec["name"] + ".safetensors")).write_bytes((screen * 700).encode())
 (out / "result.json").write_text(json.dumps({"final_step": last}))
 '''
 
@@ -184,6 +185,17 @@ class VmRunTests(unittest.TestCase):
         if pin:
             self.manifest["files"]["recipes.json"] = sha(data)
         self.write_manifest()
+
+    def test_the_exported_safetensors_is_packaged_in_verified_parts(self):
+        r, s, out = self.run_vm()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        for screen in self.ready(out):
+            d = out / "screens" / screen
+            man = json.loads((d / "manifest.json").read_text())
+            joined = b"".join((d / p["name"]).read_bytes() for p in man["st_parts"])
+            self.assertEqual(joined, (screen * 700).encode())
+            self.assertEqual(sha(joined), man["st_sha256"])
+            self.assertEqual(man["st_bytes"], len(joined))
 
     def test_a_recipe_overrides_only_its_screen_and_keys(self):
         self.write_recipes({"S1": {"train.steps": 300, "train.lr": 0.0001, "train.eval_examples": 64}})
