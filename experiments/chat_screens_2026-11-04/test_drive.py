@@ -131,6 +131,8 @@ if cmd == "exec":
         if mode == "launch_lost_started" and n == 1:
             sys.exit(1)
         print("LAUNCHED"); sys.exit(0)
+    if label == "mkdir_in" and (mode == "mkdir_never" or (mode == "mkdir_fail_once" and count("mkdir") == 1)):
+        sys.exit(1)
     if label.startswith("launch_probe"):
         print("STARTED" if (content / f"vm_{run}.pid").exists() else "ABSENT"); sys.exit(0)
     if label == "hf_fetch" and mode == "hf_exec_fails":
@@ -202,7 +204,7 @@ def seed_hub(tmp, pins, missing=()):
 
 
 class DriveTests(unittest.TestCase):
-    def run_drive(self, mode, run="t1", bad_pin=False, hf=False, hub_missing=(), minute="0.05", extra=None,
+    def run_drive(self, mode, run="t1", bad_pin=False, hf=False, hub_missing=(), minute="0.1", extra=None,
                   pre=None, seed=None, screens=None):
         use = screens or SCREENS
         gates = sorted(["provenance", "checkout", "inputs", "configure", "build", "specs"]
@@ -478,6 +480,18 @@ class DriveTests(unittest.TestCase):
             r = subprocess.run([sys.executable, str(HERE / "drive.py"), COMMIT, "t1", "1", "S6", bad],
                                env=dict(os.environ, DRIVE_TEST_HARNESS="1"), capture_output=True, text=True)
             self.assertEqual(r.returncode, 2, bad)
+
+    def test_a_vm_that_answers_late_still_gets_its_inputs(self):
+        rc, state, log, tmp, _ = self.run_drive("mkdir_fail_once")
+        self.assertEqual(rc, 0, log)
+        self.assertIn("VM not ready for inputs (attempt 1)", log)
+
+    def test_a_vm_that_never_answers_gets_no_uploads(self):
+        rc, state, log, tmp, _ = self.run_drive("mkdir_never", minute="0.3")
+        self.assertEqual(rc, 2, log)
+        self.assertIn("the VM never answered", log)
+        self.assertEqual(state["counts"].get("uploads_data", 0), 0)
+        self.assertEqual(state["sessions"], {})
 
     def test_test_hooks_are_refused_without_the_harness(self):
         env = dict(os.environ, DRIVE_TEST_COLAB="/bin/true")

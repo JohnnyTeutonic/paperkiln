@@ -454,8 +454,19 @@ class Driver:
         """Inputs onto the VM: the per-run manifest is uploaded; the data files come from the HF repo when the token
         file exists, else they are uploaded. Then everything is hashed on the VM; what differs is uploaded directly,
         at most twice more. True when every file on the VM matches the manifest."""
-        rc, _ = self.exec_py(f"import os\nos.makedirs({VM_IN!r}, exist_ok=True)\nprint('READY')\n", 120,
-                             self.work_end, "mkdir_in")
+        # A fresh VM may not answer its first exec (wave 3, seeds 2-3): retry until VM_IN exists, else stop before
+        # any upload.
+        for attempt in range(1, 5):
+            self.check()
+            rc, out = self.exec_py(f"import os\nos.makedirs({VM_IN!r}, exist_ok=True)\n"
+                                   f"print('READY' if os.path.isdir({VM_IN!r}) else 'NO_DIR')\n", 120,
+                                   self.work_end, "mkdir_in")
+            if rc == 0 and "READY" in out.split():
+                break
+            self.log(f"VM not ready for inputs (attempt {attempt}); waiting")
+            self.sleep(MINUTE / 2, self.work_end)
+        else:
+            raise Stop("the VM never answered: no input was uploaded")
         want = {n: sha256(p) for p, n in self.uploads()}
         pending = self.uploads()
         data = [n for _, n in self.uploads() if n != "manifest.json"]
