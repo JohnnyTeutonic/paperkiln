@@ -175,7 +175,7 @@ def write_inputs(tmp, bad_pin=False):
     d.mkdir()
     pins = {}
     names = ["sfull_sft1500.safetensors", "vocab.gguf", "S0.jsonl", "S1.jsonl", "S2.jsonl", "S3.jsonl",
-             "S4.jsonl", "S5.jsonl", "arm_a_lr3e5.json"]
+             "S4.jsonl", "S5.jsonl", "S6.jsonl", "S7.jsonl", "S8.jsonl", "arm_a_lr3e5.json"]
     for i, n in enumerate(names):
         data = (n * (300 if n.startswith("sfull") else 3)).encode()
         (d / n).write_bytes(data)
@@ -231,7 +231,8 @@ class DriveTests(unittest.TestCase):
             pre(tmp)
         t0 = time.monotonic()
         argv = [sys.executable, str(HERE / "drive.py"), COMMIT, run] + (
-            [str(seed), ",".join(screens)] if seed else [])
+            [str(seed), ",".join(screens)] if seed else []) + (
+            [extra["DRIVE_TEST_CAP"]] if extra and "DRIVE_TEST_CAP" in extra else [])
         r = subprocess.run(argv, env=env, capture_output=True, text=True, timeout=180)
         state = json.loads((tmp / "state.json").read_text()) if (tmp / "state.json").exists() else {
             "sessions": {}, "counts": {}}
@@ -460,6 +461,23 @@ class DriveTests(unittest.TestCase):
         self.assertEqual((man["seed"], man["screens"]), (3, ["S5"]))
         self.assertEqual(sorted(man["files"]), sorted(["sfull_sft1500.safetensors", "vocab.gguf", "arm_a_lr3e5.json",
                                                        "S5.jsonl"]))
+
+    def test_a_capped_diversity_session(self):
+        rc, state, log, tmp, _ = self.run_drive("normal", seed=2, screens=["S7", "S8", "S6"],
+                                                extra={"DRIVE_TEST_CAP": "60"}, minute="0.3")
+        self.assertEqual(rc, 0, log)
+        self.assert_home(tmp, ["S6", "S7", "S8"], universe=["S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8"])
+
+    def test_the_cap_sets_the_deadlines_and_is_bounded(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("drive_mod4", HERE / "drive.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        self.assertEqual(mod.capped(60), (40, 44, 52, 57, 60))
+        for bad in ("30", "121", "6x"):
+            r = subprocess.run([sys.executable, str(HERE / "drive.py"), COMMIT, "t1", "1", "S6", bad],
+                               env=dict(os.environ, DRIVE_TEST_HARNESS="1"), capture_output=True, text=True)
+            self.assertEqual(r.returncode, 2, bad)
 
     def test_test_hooks_are_refused_without_the_harness(self):
         env = dict(os.environ, DRIVE_TEST_COLAB="/bin/true")

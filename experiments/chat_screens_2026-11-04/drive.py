@@ -3,7 +3,9 @@
 AI_ML/chat_screens_claude/PROTOCOL.md v1.2 and SESSION.md). Run in a foreground WSL process from the paperkiln
 checkout's root:
 
-    python3 experiments/chat_screens_2026-11-04/drive.py FULL_COMMIT_SHA RUN_ID [SEED SCREENS]
+    python3 experiments/chat_screens_2026-11-04/drive.py FULL_COMMIT_SHA RUN_ID [SEED SCREENS [CAP_MINUTES]]
+
+CAP_MINUTES (45-120, A4) sets an absolute session cap; deadlines then follow capped().
 
 SEED (default 1) is the spec's train.seed; SCREENS (default S0,S1,S2,S3, wave 1) is a comma-separated list of the
 screens this session trains, in order. Both are pinned in the input manifest (amendment A1, wave 2).
@@ -73,8 +75,14 @@ RAISE_ON = hook("DRIVE_TEST_RAISE_ON", "")
 PART_BYTES = int(hook("DRIVE_TEST_PART_BYTES", str(45 * 1024 * 1024)))  # runner_multi.py: 45 MiB both ways
 SOURCE = "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1"
 SCREENS = ("S0", "S1", "S2", "S3")  # wave 1, the default
-ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5")
+ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8")
 COMMON_INPUTS = ("sfull_sft1500.safetensors", "vocab.gguf", "arm_a_lr3e5.json")
+
+
+def capped(cap):
+    """Deadlines for an absolute session cap of `cap` minutes (A4): polling ends 20 minutes before the cap, stop
+    attempts 16, retrieval 8, shutdown 3."""
+    return (cap - 20, cap - 16, cap - 8, cap - 3, cap)
 
 
 def required_gates(screens):
@@ -113,6 +121,13 @@ PINS = {
                  "6d24b3bd3b83f2964737fdf74f952fbdbfe8c5b0f4fdb0c8fe6e294d5009011f"),
     "S5.jsonl": (f"{ART}/chat_screens_claude/packets/w3/S5/train.jsonl",
                  "cc1cd7f75665c00424037d68df630053bde18ee057b5b1cc07a1df58ededadf5"),
+    # A4 template-diversity arms: S6 = D_low, S7 = D_medium, S8 = D_high
+    "S6.jsonl": (f"{ART}/chat_screens_claude/packets/w4/D_low/train.jsonl",
+                 "b7f7aaf7f870352a877a8030a98406de6e39e14cd9bd5f3c0c8ded9ec965186a"),
+    "S7.jsonl": (f"{ART}/chat_screens_claude/packets/w4/D_medium/train.jsonl",
+                 "9fc2bd944248b47fb41ff8b6a62f02da257351766e0ad3024dff5fdc014b86f8"),
+    "S8.jsonl": (f"{ART}/chat_screens_claude/packets/w4/D_high/train.jsonl",
+                 "ae7a43299fa2a68cb0ca96f75c8592d752eed532c8cb071b52b60926bec15970"),
     "arm_a_lr3e5.json": (str(HERE / "arm_a_lr3e5.json"),
                          "66c718e0b501c751aae0a1cd22eddfdc666a7cfb46a4c074fa41b67aa220125e"),
 }
@@ -150,7 +165,7 @@ class Stop(Exception):
 
 
 class Driver:
-    def __init__(self, commit, run, seed=1, screens=SCREENS):
+    def __init__(self, commit, run, seed=1, screens=SCREENS, cap=None):
         self.commit, self.run, self.seed, self.screens = commit, run, seed, tuple(screens)
         self.required = required_gates(self.screens)
         self.needed = COMMON_INPUTS + tuple(f"{s}.jsonl" for s in self.screens)
@@ -160,7 +175,8 @@ class Driver:
         self.receipts = RECEIPTS / run
         t = time.monotonic()
         self.work_end, self.stop_end, self.retrieve_end, self.shutdown_end, self.inventory_end = (
-            t + m * MINUTE for m in (DEADLINES if len(self.screens) > 3 else DEADLINES_SHORT))
+            t + m * MINUTE for m in (capped(cap) if cap else
+                                     DEADLINES if len(self.screens) > 3 else DEADLINES_SHORT))
         self.intent = False
         self.endpoint = None
         self.before = None
@@ -886,6 +902,12 @@ def main():
               file=sys.stderr)
         return 2
     args = sys.argv[1:]
+    cap = None
+    if len(args) == 5:
+        if not re.fullmatch(r"[0-9]{2,3}", args[4]) or not 45 <= int(args[4]) <= 120:
+            print(__doc__, file=sys.stderr)
+            return 2
+        cap = int(args.pop())
     if len(args) not in (2, 4) or not re.fullmatch(r"[0-9a-f]{40}", args[0]) \
             or not re.fullmatch(r"[A-Za-z0-9_-]{1,32}", args[1]) \
             or (len(args) == 4 and not (re.fullmatch(r"[1-9]", args[2])
@@ -895,7 +917,7 @@ def main():
         print(__doc__, file=sys.stderr)
         return 2
     seed, screens = (int(args[2]), args[3].split(",")) if len(args) == 4 else (1, SCREENS)
-    d = Driver(args[0], args[1], seed, screens)
+    d = Driver(args[0], args[1], seed, screens, cap)
 
     def on_signal(signum, _frame):
         d.cancel = True
