@@ -175,6 +175,83 @@ exactly between waves.
   4. "Your" or "You" wins on recall but not on copy: interference from S2's convention.
 - **Result:** section 5.
 
+## 4b. Judge run J1: results (4 Nov 2026)
+
+Receipts are in `C:/ml_artifacts/chat_screens_claude/judge/`. The item table is `analysis/judge_j1_items.json` (root
+workspace), from `judge_items.py` and `judge_compare.py`.
+
+**Calibration against Jonathan's ratings (S-full, final turns).**
+- **Test-retest:** relevance was identical on 11 of 13 turns, and every turn was within 1.
+- **Leniency:** 4 of 12 scores differ from Jonathan's by 2 or more, all with Gemini higher.
+- **Pattern:** Gemini gives relevance 1-2 to on-topic but wrong answers, which Jonathan scores 0. Examples:
+  - "Its name is Ted." (the cat is Basil): 2.
+  - "Your meeting is on Tuesday." after a correction to Thursday: 2.
+
+**Mean relevance per model** (0-4, 13 turns; fraction of turns at 3 or more):
+
+| Seed | S0 | S2 | S4 | Seed 1 only |
+|---|---|---|---|---|
+| 1 | 1.92 (6/13) | 1.54 | 1.69 | S1 1.31, S3 1.31, S5 1.69 |
+| 2 | 1.31 | 1.85 | 2.08 | |
+| 3 | 1.31 | 1.23 | 1.85 | |
+
+- **Registered verdict:** no screen beats S0, since none has the same sign at every seed. Every model is far below
+  the v0.0.2 gate (70% of turns at 3 or more), under a judge already lenient by 1-2 points on wrong answers.
+- **S4:** its paired mean differences against S0 are −0.23, +0.77 and +0.54. That is an exploratory directional
+  signal only.
+- **Noise:** S0's own seed spread (1.31 to 1.92) is as large as any screen's effect.
+
+**Item level.** The means hide a consistent trade, not noise. Across 7 runs containing S2's rows (S2, S4 and S5),
+the same items move in the same direction at every seed:
+- `pet_delayed` turn 0 goes from 1 to 4. "My cat is named Basil." is now answered "Thanks, so your cat is named
+  Basil.", where S0 echoed it.
+- `pet_delayed` turn 2 goes from 3 to 0 or 1. "Today is quite sunny." is now answered "Thanks, so you live in a
+  small town." (S5: "…you live in the park.").
+- `name_now` turn 0: "My name is Nora." gives "Thanks, so you are a native English language."
+- `open_hobby` turn 1 goes from 4 to 1: "You could try a small amount of bread."
+
+The second-person data taught an *unconditional* acknowledgement template, fired by the surface form "user
+statement". Other findings:
+- **Fail in every model:** `open_friend` turns 0 and 1, `name_now` turn 0, and the final exact turns.
+- **A separate limit:** in `open_friend`'s "explain with an example", every model degenerates into repetition loops
+  ("a good friend, a friend, a friend…"). No format intervention addresses this.
+- **Gemini against the exact checks:** no disagreement. No reply passed an exact check, and Gemini gave no failed
+  final turn 3 or more.
+
+**Corpus link** (counted directly; the full audit is in section 5b). S2's contrast class, non-personal statements
+that should *not* be restated in the second person, has exactly **2 distinct pairs**:
+- "It is quite windy this evening." → "Sounds blustery." (120 copies);
+- "The train was late again today." → "That is annoying." (109 copies).
+
+Against them are 71 distinct personal facts, acknowledged with 6 openers. Two memorised pairs cannot define a
+category, so the condition was never taught; only the template and two lookups were.
+
+**Calibration set calib_v1** (`analysis/calibration_v1/`, `15b19e8f`, frozen): 12 real replies across the five
+classes (fluent but irrelevant; on-topic but failing; correct but misformatted; correct and formatted; incoherent).
+It has a blind form for Jonathan and a separate key. Gemini judges it with the unchanged rubric only after the
+human ratings exist.
+
+**calib_v1 results (4 Nov).** Jonathan's blind ratings were recorded (`f7c8baa1`) before Gemini judged the set
+(judge version `J1-calib-v1`: same rubric, schema, model and settings; `calib_judge.py`).
+
+| | Exact agreement | Within 1 | Mean (Gemini − human) |
+|---|---|---|---|
+| Fluency | 11/12 | 12/12 | +0.08 |
+| Coherence | 8/12 | 11/12 | −0.08 |
+| Relevance | 8/12 | 10/12 | +0.42 |
+
+- **Gemini is lenient on on-topic content that is wrong or nonsensical:**
+  - "You could try baking a small piece of bread with a twist of a stick.": human 1, Gemini 4.
+  - "Your meeting is on Tuesday." after the correction to Thursday: human 0, Gemini 2.
+- **It agrees with the human** on plainly off-topic replies and on correct, well-formatted ones.
+- **On correct content in the wrong format it is slightly stricter:** human 3, Gemini 2 or 3.
+- **The human's relevance tracks semantic correctness,** with a one-point cost for a format violation.
+- **Selection note:** item c1_07 was placed in class D (correct and appropriate) on the strength of Gemini's earlier
+  4; the human rating shows that placement was judge-biased. Class labels for open-ended items need a human anchor.
+- **Consequence for the relevance target:** judged relevance can rise on on-topic wrong answers without the model
+  becoming more correct. Every judged relevance result is reported beside the semantic and exact checks. A gate
+  claim needs agreement with human anchors on that candidate's own transcripts.
+
 ## 5. Results of the current diagnostic (A5)
 
 Pending: filled in from `C:/ml_artifacts/chat_screens_claude/format_probe/{S0,S2,S5}-s1/summary.json` when the run
@@ -262,7 +339,19 @@ CPU evaluation runs under the shared CPU budget (`scripts/cpu_budget.py`, sessio
 - **A4 figures:** the earlier figures (grid about 14% of supervised tokens; 487, 961 and 2,049 masked templates)
   are superseded. The grid is 12.0%, and the arms have 10, 30 and 57 wordings (`reviews/launch_review_5_wave4.md`).
 
-## 10. Next authorised step and its stopping rule
+## 10. Programme end goal (Jonathan, 4 Nov 2026)
+
+1. **Clear the bare-answer and format bottleneck.** Jonathan identified the training corpus as its cause; the SFT
+   corpus audit and A5/A6 confirmed it.
+2. **Train full runs, score them above all on relevance** (the 0-4 Gemini judge with human anchors, beside the
+   semantic and exact checks), and iterate.
+3. **Demonstrate utility, not just function.** A working small chatbot is not the end point. The model must do
+   something useful; the first candidate is connecting it to a basic retrieval-augmented setup (RAG) over
+   documents.
+4. **Benchmark it** against comparable small models at scale, reporting where it stands. The aim is an honest
+   comparison, not a claim to beat larger systems.
+
+## 10b. Next authorised step and its stopping rule
 
 Finish A5 and apply its rules; score wave 3; run step 1 of section 6 on CPU. Then exactly one of:
 - A4 seed 1, if its launch condition holds (65 L4-minutes); or
