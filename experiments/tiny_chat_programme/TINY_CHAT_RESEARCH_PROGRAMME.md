@@ -351,6 +351,31 @@ CPU evaluation runs under the shared CPU budget (`scripts/cpu_budget.py`, sessio
 4. **Benchmark it** against comparable small models at scale, reporting where it stands. The aim is an honest
    comparison, not a claim to beat larger systems.
 
+### Design principle: early readout (Jonathan, 4 Nov 2026)
+
+Every training design reports its decisive metrics at a pre-registered cut-off without waiting for training to
+finish, wherever possible. GPU runs may be used whenever they are faster. The mechanisms, none needing a trainer
+change:
+1. **Probe rows at the start of the held-out tail.** The trainer's SFT evaluation (the first `eval_examples`
+   held-out rows, every `eval_every` steps; held-out rows never receive gradient) then reports a format-learning
+   curve in train.log. The probe items are distinct from the frozen instruments.
+2. **The session driver streams train.log while polling,** and applies pre-registered rules: report at the cut-off,
+   stop early if the curve is flat.
+3. **For long runs, one mid-run checkpoint is pulled at a registered cut-off** and scored at home with the A3 and A5
+   probes.
+
+The cut-off and the rules are registered with the bar.
+
+**Gates for the combined run** (Jonathan, 4 Nov: "eventually we will combine the best of both worlds"), all
+required together:
+- relevance (Gemini 0-4, read against the human anchors);
+- format (v001, A5);
+- utility (the RAG instrument, `AI_ML/tiny_chat_utility/`);
+- knowledge (the benchmark suite, `AI_ML/tiny_chat_benchmarks/`), as a regression gate against S0 and October's
+  models.
+
+A run that wins on format but loses knowledge fails.
+
 ## 10b. Next authorised step and its stopping rule
 
 Finish A5 and apply its rules; score wave 3; run step 1 of section 6 on CPU. Then exactly one of:
