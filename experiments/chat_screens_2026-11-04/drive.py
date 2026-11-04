@@ -73,7 +73,7 @@ RAISE_ON = hook("DRIVE_TEST_RAISE_ON", "")
 PART_BYTES = int(hook("DRIVE_TEST_PART_BYTES", str(45 * 1024 * 1024)))  # runner_multi.py: 45 MiB both ways
 SOURCE = "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1"
 SCREENS = ("S0", "S1", "S2", "S3")  # wave 1, the default
-ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4")
+ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5")
 COMMON_INPUTS = ("sfull_sft1500.safetensors", "vocab.gguf", "arm_a_lr3e5.json")
 
 
@@ -111,6 +111,8 @@ PINS = {
                  "e623e241a776bd1acdc3dd9c5cb9f204c93bc2944dca41f83948421118f33272"),
     "S4.jsonl": (f"{ART}/chat_screens_claude/packets/w2/S4/train.jsonl",
                  "6d24b3bd3b83f2964737fdf74f952fbdbfe8c5b0f4fdb0c8fe6e294d5009011f"),
+    "S5.jsonl": (f"{ART}/chat_screens_claude/packets/w3/S5/train.jsonl",
+                 "cc1cd7f75665c00424037d68df630053bde18ee057b5b1cc07a1df58ededadf5"),
     "arm_a_lr3e5.json": (str(HERE / "arm_a_lr3e5.json"),
                          "66c718e0b501c751aae0a1cd22eddfdc666a7cfb46a4c074fa41b67aa220125e"),
 }

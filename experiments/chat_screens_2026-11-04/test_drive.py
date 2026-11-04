@@ -175,7 +175,7 @@ def write_inputs(tmp, bad_pin=False):
     d.mkdir()
     pins = {}
     names = ["sfull_sft1500.safetensors", "vocab.gguf", "S0.jsonl", "S1.jsonl", "S2.jsonl", "S3.jsonl",
-             "S4.jsonl", "arm_a_lr3e5.json"]
+             "S4.jsonl", "S5.jsonl", "arm_a_lr3e5.json"]
     for i, n in enumerate(names):
         data = (n * (300 if n.startswith("sfull") else 3)).encode()
         (d / n).write_bytes(data)
@@ -451,6 +451,15 @@ class DriveTests(unittest.TestCase):
         spec.loader.exec_module(mod)
         self.assertEqual(mod.DEADLINES_SHORT[-1], 100)
         self.assertEqual(list(mod.DEADLINES_SHORT), sorted(mod.DEADLINES_SHORT))
+
+    def test_a_wave_3_session_trains_only_s5(self):
+        rc, state, log, tmp, _ = self.run_drive("normal", seed=3, screens=["S5"])
+        self.assertEqual(rc, 0, log)
+        self.assert_home(tmp, ["S5"], universe=["S0", "S1", "S2", "S3", "S4", "S5"])
+        man = json.loads((tmp / "receipts" / "t1" / "input_manifest.json").read_text())
+        self.assertEqual((man["seed"], man["screens"]), (3, ["S5"]))
+        self.assertEqual(sorted(man["files"]), sorted(["sfull_sft1500.safetensors", "vocab.gguf", "arm_a_lr3e5.json",
+                                                       "S5.jsonl"]))
 
     def test_test_hooks_are_refused_without_the_harness(self):
         env = dict(os.environ, DRIVE_TEST_COLAB="/bin/true")
