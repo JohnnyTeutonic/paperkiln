@@ -135,6 +135,8 @@ if cmd == "exec":
         sys.exit(1)
     if label.startswith("launch_probe"):
         print("STARTED" if (content / f"vm_{run}.pid").exists() else "ABSENT"); sys.exit(0)
+    if label == "hf_fetch" and mode == "hf_fail_once" and not st["counts"].get("hf_fetch"):
+        count("hf_fetch"); sys.exit(1)
     if label == "hf_fetch" and mode == "hf_exec_fails":
         count("hf_fetch"); sys.exit(1)
     if label == "hf_fetch":
@@ -465,8 +467,8 @@ class DriveTests(unittest.TestCase):
                                                        "S5.jsonl"]))
 
     def test_a_capped_diversity_session(self):
-        rc, state, log, tmp, _ = self.run_drive("normal", seed=2, screens=["S7", "S8", "S6"],
-                                                extra={"DRIVE_TEST_CAP": "60"}, minute="0.3")
+        rc, state, log, tmp, _ = self.run_drive("normal", seed=2, screens=["S8", "S6", "S7"], hf=True,
+                                                extra={"DRIVE_TEST_CAP": "55"}, minute="0.3")
         self.assertEqual(rc, 0, log)
         self.assert_home(tmp, ["S6", "S7", "S8"], universe=["S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8"])
 
@@ -475,8 +477,10 @@ class DriveTests(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("drive_mod4", HERE / "drive.py")
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
-        self.assertEqual(mod.capped(60), (40, 44, 52, 57, 60))
-        for bad in ("30", "121", "6x"):
+        self.assertEqual(mod.capped(60), (50, 52, 55, 57, 60))
+        self.assertEqual(mod.capped(35), (25, 27, 30, 32, 35))
+        self.assertEqual((mod.launch_need(1), mod.launch_need(3)), (12, 30))
+        for bad in ("29", "121", "6x"):
             r = subprocess.run([sys.executable, str(HERE / "drive.py"), COMMIT, "t1", "1", "S6", bad],
                                env=dict(os.environ, DRIVE_TEST_HARNESS="1"), capture_output=True, text=True)
             self.assertEqual(r.returncode, 2, bad)
@@ -492,6 +496,33 @@ class DriveTests(unittest.TestCase):
         self.assertIn("the VM never answered", log)
         self.assertEqual(state["counts"].get("uploads_data", 0), 0)
         self.assertEqual(state["sessions"], {})
+
+    def test_a_capped_session_never_uploads_the_base_weights_directly(self):
+        rc, state, log, tmp, _ = self.run_drive("hf_exec_fails", hf=True, extra={"DRIVE_TEST_CAP": "60"}, minute="0.3",
+                                                seed=2, screens=["S5"])
+        self.assertEqual(rc, 2, log)
+        self.assertIn("base weights are not uploaded directly", log)
+        self.assertEqual(state["counts"]["hf_fetch"], 2)
+        self.assertFalse([k for k in state["counts"] if k.startswith("upload:base.part")])
+        self.assertEqual(state["counts"].get("launch", 0), 0)
+        self.assertFalse((tmp / "content" / "screens_in" / ".hf_token").exists())
+        self.assertEqual(state["sessions"], {})
+
+    def test_a_failed_hf_fetch_is_retried_once(self):
+        rc, state, log, tmp, _ = self.run_drive("hf_fail_once", hf=True, extra={"DRIVE_TEST_CAP": "60"}, minute="0.3",
+                                                seed=2, screens=["S5"])
+        self.assertEqual(rc, 0, log)
+        self.assertEqual(state["counts"]["hf_fetch"], 2)
+        self.assertEqual(state["counts"].get("uploads_data", 0), 0)
+        self.assertNotIn("hf_fixture_token", log)
+
+    def test_a_late_session_is_not_launched(self):
+        rc, state, log, tmp, _ = self.run_drive("normal", extra={"DRIVE_TEST_LAUNCH_NEED": "100000"})
+        self.assertEqual(rc, 2, log)
+        self.assertIn("too late to launch", log)
+        self.assertEqual(state["counts"].get("launch", 0), 0)
+        self.assertEqual(state["sessions"], {})
+        self.assertIn("CLEANUP OK", log)
 
     def test_test_hooks_are_refused_without_the_harness(self):
         env = dict(os.environ, DRIVE_TEST_COLAB="/bin/true")

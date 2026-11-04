@@ -5,7 +5,7 @@ checkout's root:
 
     python3 experiments/chat_screens_2026-11-04/drive.py FULL_COMMIT_SHA RUN_ID [SEED SCREENS [CAP_MINUTES]]
 
-CAP_MINUTES (45-120, A4) sets an absolute session cap; deadlines then follow capped().
+CAP_MINUTES (30-120, A4) sets an absolute session cap; deadlines then follow capped().
 
 SEED (default 1) is the spec's train.seed; SCREENS (default S0,S1,S2,S3, wave 1) is a comma-separated list of the
 screens this session trains, in order. Both are pinned in the input manifest (amendment A1, wave 2).
@@ -80,9 +80,15 @@ COMMON_INPUTS = ("sfull_sft1500.safetensors", "vocab.gguf", "arm_a_lr3e5.json")
 
 
 def capped(cap):
-    """Deadlines for an absolute session cap of `cap` minutes (A4): polling ends 20 minutes before the cap, stop
-    attempts 16, retrieval 8, shutdown 3."""
-    return (cap - 20, cap - 16, cap - 8, cap - 3, cap)
+    """Deadlines for an absolute session cap of `cap` minutes (A4): polling ends 10 minutes before the cap, stop
+    attempts 8, retrieval 5, shutdown 3."""
+    return (cap - 10, cap - 8, cap - 5, cap - 3, cap)
+
+
+def launch_need(screens):
+    """Minutes needed between launch and the polling deadline: the build (about 2.5) and about 8.7 minutes of
+    training per screen (wave 3, seed 1), with margin. The driver does not launch with less."""
+    return float(hook("DRIVE_TEST_LAUNCH_NEED", str(3 + 9 * screens)))
 
 
 def required_gates(screens):
@@ -123,11 +129,11 @@ PINS = {
                  "cc1cd7f75665c00424037d68df630053bde18ee057b5b1cc07a1df58ededadf5"),
     # A4 template-diversity arms: S6 = D_low, S7 = D_medium, S8 = D_high
     "S6.jsonl": (f"{ART}/chat_screens_claude/packets/w4/D_low/train.jsonl",
-                 "b7f7aaf7f870352a877a8030a98406de6e39e14cd9bd5f3c0c8ded9ec965186a"),
+                 "beb51b848eb9e87592e294204b49e92a5dcceed817d3070988851312e2e5117d"),
     "S7.jsonl": (f"{ART}/chat_screens_claude/packets/w4/D_medium/train.jsonl",
-                 "9fc2bd944248b47fb41ff8b6a62f02da257351766e0ad3024dff5fdc014b86f8"),
+                 "18c2ed659bf3a375467fcef59626863fa9e66d4fcecb6c14b0a98cfd9c4c3ac1"),
     "S8.jsonl": (f"{ART}/chat_screens_claude/packets/w4/D_high/train.jsonl",
-                 "ae7a43299fa2a68cb0ca96f75c8592d752eed532c8cb071b52b60926bec15970"),
+                 "fd5907163fc3da2683af4f7b17a7d9a50adc146c35cc04f777e68fee75aabfd0"),
     "arm_a_lr3e5.json": (str(HERE / "arm_a_lr3e5.json"),
                          "66c718e0b501c751aae0a1cd22eddfdc666a7cfb46a4c074fa41b67aa220125e"),
 }
@@ -166,7 +172,7 @@ class Stop(Exception):
 
 class Driver:
     def __init__(self, commit, run, seed=1, screens=SCREENS, cap=None):
-        self.commit, self.run, self.seed, self.screens = commit, run, seed, tuple(screens)
+        self.commit, self.run, self.seed, self.screens, self.cap = commit, run, seed, tuple(screens), cap
         self.required = required_gates(self.screens)
         self.needed = COMMON_INPUTS + tuple(f"{s}.jsonl" for s in self.screens)
         self.name = f"claude-screens-{run}"
@@ -234,7 +240,8 @@ class Driver:
         except OSError as e:
             self.log(f"{label}: could not run: {e}")
             return None, ""
-        self.log(f"{label}: exit {r.returncode}")
+        tail = " | ".join(r.stderr.strip().splitlines()[-2:])[:240] if r.returncode else ""
+        self.log(f"{label}: exit {r.returncode}" + (f" ({tail})" if tail else ""))
         return r.returncode, r.stdout + r.stderr
 
     def sleep(self, seconds, deadline):
@@ -383,7 +390,8 @@ class Driver:
                 "    return h.hexdigest()\n"
                 f"print('HASHES ' + json.dumps({{n: (sha(os.path.join({VM_IN!r}, n)) if os.path.isfile("
                 f"os.path.join({VM_IN!r}, n)) else None) for n in names}}))\n")
-        for attempt in (1, 2):
+        for attempt in (1, 2, 3, 4):  # read-only, so retried freely (wave 3 seed 1: one failed, the next passed)
+            self.check()
             rc, out = self.exec_py(code, 300, self.work_end, f"vm_hashes{attempt}")
             for line in out.splitlines():
                 if rc == 0 and line.startswith("HASHES "):
@@ -391,6 +399,7 @@ class Driver:
                         return json.loads(line[len("HASHES "):])
                     except ValueError:
                         pass
+            self.sleep(MINUTE / 6, self.work_end)
         return None
 
     def hf_fetch(self, names):
@@ -405,11 +414,6 @@ class Driver:
             self.log("HF revision file malformed: inputs will be uploaded")
             return False
         self.log("HF fetch from", HF_REPO, "at revision", revision)
-        rc, _ = self.call([COL, "upload", "-s", self.name, str(HF_TOKEN_FILE), f"{VM_IN}/.hf_token"], 300,
-                          self.work_end, "upload token")
-        if rc != 0:
-            self.remove_token()  # the upload may have landed although the call failed
-            return False
         code = ("import os, time\n"
                 "from huggingface_hub import hf_hub_download\n"
                 f"tok_path = os.path.join({VM_IN!r}, '.hf_token')\n"
@@ -431,12 +435,26 @@ class Driver:
                 "    if os.path.exists(tok_path):\n"
                 "        os.remove(tok_path)\n"
                 "print('HF_DONE' if ok else 'HF_PARTIAL', round(time.monotonic() - t))\n")
-        rc, out = self.exec_py(code, 600, self.work_end, "hf_fetch")
-        self.log("hf_fetch:", " ".join(out.split()[-6:]))
-        if not (rc == 0 and ("HF_DONE" in out.split() or "HF_PARTIAL" in out.split())):
+        # Two attempts (a fetch takes about 25 s; a stalled exec waits for its timeout). Each uploads the token
+        # afresh, since the VM-side code deletes it whatever happens.
+        for attempt, timeout in ((1, 300), (2, 180)):
+            self.check()
+            rc = None
+            for up in (1, 2):
+                rc, _ = self.call([COL, "upload", "-s", self.name, str(HF_TOKEN_FILE), f"{VM_IN}/.hf_token"],
+                                  300, self.work_end, f"upload token a{attempt}u{up}")
+                if rc == 0:
+                    break
+            if rc != 0:
+                self.remove_token()  # the upload may have landed although the call failed
+                return False
+            rc, out = self.exec_py(code, timeout, self.work_end, "hf_fetch")
+            self.log(f"hf_fetch attempt {attempt}:", " ".join(out.split()[-6:]))
+            # HF_PARTIAL still counts as having run: the hash check that follows decides what must be uploaded
+            if rc == 0 and ("HF_DONE" in out.split() or "HF_PARTIAL" in out.split()):
+                return True
             self.remove_token()
-        # HF_PARTIAL still counts as having run: the hash check that follows decides what must be uploaded
-        return rc == 0 and ("HF_DONE" in out.split() or "HF_PARTIAL" in out.split())
+        return False
 
     def remove_token(self):
         """Best effort: delete the token file on our VM and confirm it is gone (two attempts). Never raises."""
@@ -454,8 +472,8 @@ class Driver:
         """Inputs onto the VM: the per-run manifest is uploaded; the data files come from the HF repo when the token
         file exists, else they are uploaded. Then everything is hashed on the VM; what differs is uploaded directly,
         at most twice more. True when every file on the VM matches the manifest."""
-        # A fresh VM may not answer its first exec (wave 3, seeds 2-3): retry until VM_IN exists, else stop before
-        # any upload.
+        # The first exec on a new session can stall in the local CLI (wave 3, seeds 2-3: two sessions created in
+        # the same second; the VM itself was answering). Retry until VM_IN exists, else stop before any upload.
         for attempt in range(1, 5):
             self.check()
             rc, out = self.exec_py(f"import os\nos.makedirs({VM_IN!r}, exist_ok=True)\n"
@@ -477,6 +495,10 @@ class Driver:
             if not pending:
                 return True
         for round_ in (1, 2, 3):
+            base = [n for _, n in pending if n.startswith("base.part")]
+            if self.cap and base:
+                raise Stop(f"under a {self.cap}-minute cap the base weights are not uploaded directly "
+                           f"({len(base)} part(s) missing or wrong on the VM): not launching")
             for local, name in pending:
                 self.check()
                 for attempt in (1, 2):
@@ -853,6 +875,10 @@ class Driver:
             self.check()
             if not self.upload():
                 raise Stop("inputs not verified on the VM: not launching")
+            left, need = (self.work_end - time.monotonic()) / MINUTE, launch_need(len(self.screens))
+            if left < need:
+                raise Stop(f"too late to launch: {left:.1f} minutes to the polling deadline, {need:g} needed for "
+                           f"{len(self.screens)} screen(s)")
             launched = self.launch()
             done = self.poll() if launched else False
             self.done = done
@@ -915,7 +941,7 @@ def main():
     args = sys.argv[1:]
     cap = None
     if len(args) == 5:
-        if not re.fullmatch(r"[0-9]{2,3}", args[4]) or not 45 <= int(args[4]) <= 120:
+        if not re.fullmatch(r"[0-9]{2,3}", args[4]) or not 30 <= int(args[4]) <= 120:
             print(__doc__, file=sys.stderr)
             return 2
         cap = int(args.pop())
