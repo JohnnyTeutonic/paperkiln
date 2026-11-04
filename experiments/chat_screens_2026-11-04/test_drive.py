@@ -180,7 +180,7 @@ def write_inputs(tmp, bad_pin=False):
     pins = {}
     names = ["sfull_sft1500.safetensors", "vocab.gguf", "S0.jsonl", "S1.jsonl", "S2.jsonl", "S3.jsonl",
              "S4.jsonl", "S5.jsonl", "S6.jsonl", "S7.jsonl", "S8.jsonl", "S9.jsonl", "S10.jsonl",
-             "S11.jsonl", "arm_a_lr3e5.json"]
+             "S11.jsonl", "S12.jsonl", "S13.jsonl", "S14.jsonl", "recipes.json", "arm_a_lr3e5.json"]
     for i, n in enumerate(names):
         data = (n * (300 if n.startswith("sfull") else 3)).encode()
         (d / n).write_bytes(data)
@@ -429,7 +429,7 @@ class DriveTests(unittest.TestCase):
         self.assert_home(tmp, ["S0", "S2", "S4"], universe=["S0", "S1", "S2", "S3", "S4"])
         man = json.loads((tmp / "receipts" / "t1" / "input_manifest.json").read_text())
         self.assertEqual((man["seed"], man["screens"]), (2, ["S0", "S2", "S4"]))
-        self.assertEqual(sorted(man["files"]), sorted(["sfull_sft1500.safetensors", "vocab.gguf", "arm_a_lr3e5.json",
+        self.assertEqual(sorted(man["files"]), sorted(["sfull_sft1500.safetensors", "vocab.gguf", "arm_a_lr3e5.json", "recipes.json",
                                                        "S0.jsonl", "S2.jsonl", "S4.jsonl"]))
 
     def test_a_status_with_another_seed_is_not_validated(self):
@@ -464,7 +464,7 @@ class DriveTests(unittest.TestCase):
         self.assert_home(tmp, ["S5"], universe=["S0", "S1", "S2", "S3", "S4", "S5"])
         man = json.loads((tmp / "receipts" / "t1" / "input_manifest.json").read_text())
         self.assertEqual((man["seed"], man["screens"]), (3, ["S5"]))
-        self.assertEqual(sorted(man["files"]), sorted(["sfull_sft1500.safetensors", "vocab.gguf", "arm_a_lr3e5.json",
+        self.assertEqual(sorted(man["files"]), sorted(["sfull_sft1500.safetensors", "vocab.gguf", "arm_a_lr3e5.json", "recipes.json",
                                                        "S5.jsonl"]))
 
     def test_a_capped_diversity_session(self):
@@ -481,6 +481,7 @@ class DriveTests(unittest.TestCase):
         self.assertEqual(mod.capped(60), (50, 52, 55, 57, 60))
         self.assertEqual(mod.capped(35), (25, 27, 30, 32, 35))
         self.assertEqual((mod.launch_need(1), mod.launch_need(3)), (12, 30))
+        self.assertEqual(mod.launch_need(["S0", "S5"]), 21)  # no recipes: 256 steps each
         for bad in ("29", "121", "6x"):
             r = subprocess.run([sys.executable, str(HERE / "drive.py"), COMMIT, "t1", "1", "S6", bad],
                                env=dict(os.environ, DRIVE_TEST_HARNESS="1"), capture_output=True, text=True)

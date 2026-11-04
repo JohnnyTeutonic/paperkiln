@@ -75,8 +75,8 @@ RAISE_ON = hook("DRIVE_TEST_RAISE_ON", "")
 PART_BYTES = int(hook("DRIVE_TEST_PART_BYTES", str(45 * 1024 * 1024)))  # runner_multi.py: 45 MiB both ways
 SOURCE = "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1"
 SCREENS = ("S0", "S1", "S2", "S3")  # wave 1, the default
-ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11")
-COMMON_INPUTS = ("sfull_sft1500.safetensors", "vocab.gguf", "arm_a_lr3e5.json")
+ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14")
+COMMON_INPUTS = ("sfull_sft1500.safetensors", "vocab.gguf", "arm_a_lr3e5.json", "recipes.json")
 
 
 def capped(cap):
@@ -85,9 +85,21 @@ def capped(cap):
     return (cap - 10, cap - 8, cap - 5, cap - 3, cap)
 
 
+def screen_steps(screen):
+    """A screen's training steps: its recipes.json override (A9), else arm A's 256."""
+    try:
+        rec = json.loads(Path(PINS["recipes.json"][0]).read_text())
+    except (KeyError, OSError, ValueError):
+        rec = {}
+    return int(rec.get(screen, {}).get("train.steps", 256))
+
+
 def launch_need(screens):
     """Minutes needed between launch and the polling deadline: the build (about 2.5) and about 8.7 minutes of
-    training per screen (wave 3, seed 1), with margin. The driver does not launch with less."""
+    training per 256 steps per screen (wave 3, seed 1), with margin. The driver does not launch with less.
+    `screens` is a count (arm A recipes) or a sequence of screen names (steps from recipes.json)."""
+    if not isinstance(screens, int):
+        screens = sum(screen_steps(s) / 256 for s in screens)
     return float(hook("DRIVE_TEST_LAUNCH_NEED", str(3 + 9 * screens)))
 
 
@@ -142,6 +154,11 @@ PINS = {
                   "dcebc46ac0d509f3df35b50cdc5a9c6426cbc8bae9f7d8269c205486e0b62c16"),
     "S11.jsonl": (f"{ART}/chat_screens_claude/packets/a7/S11/train.jsonl",
                   "2d5dafa8dc0b3bcc925cb8edc5606a0aeacaae3c335e452d92308a2ffd454ef2"),
+    # A9 dose arms: S12 and S13 train the same packet under different recipes; S14 is the control (S2 data)
+    "S12.jsonl": (f"{ART}/chat_screens_claude/packets/a9/S12/train.jsonl", "9719eeb1c20f5c45bd6ed802b10e456003d3435a7fdc3f242731c4683807496f"),
+    "S13.jsonl": (f"{ART}/chat_screens_claude/packets/a9/S12/train.jsonl", "9719eeb1c20f5c45bd6ed802b10e456003d3435a7fdc3f242731c4683807496f"),
+    "S14.jsonl": (f"{ART}/chat_screens_claude/packets/a9/S14/train.jsonl", "ad6e4ba0aaae1d92fbaa9bfbfc4f289df17243f6ba01c3bb7f6d335f15b01479"),
+    "recipes.json": (str(HERE / "recipes.json"), "b1d9c267c6cd4ab7e21aa27db08d5d5d796f95dd87421aa3324703038e539e5e"),
     "arm_a_lr3e5.json": (str(HERE / "arm_a_lr3e5.json"),
                          "66c718e0b501c751aae0a1cd22eddfdc666a7cfb46a4c074fa41b67aa220125e"),
 }
@@ -883,7 +900,7 @@ class Driver:
             self.check()
             if not self.upload():
                 raise Stop("inputs not verified on the VM: not launching")
-            left, need = (self.work_end - time.monotonic()) / MINUTE, launch_need(len(self.screens))
+            left, need = (self.work_end - time.monotonic()) / MINUTE, launch_need(self.screens)
             if left < need:
                 raise Stop(f"too late to launch: {left:.1f} minutes to the polling deadline, {need:g} needed for "
                            f"{len(self.screens)} screen(s)")

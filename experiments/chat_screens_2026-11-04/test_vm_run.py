@@ -51,7 +51,7 @@ if os.environ.get("FAKE_SLOW") == screen:
     time.sleep(30)
 if os.environ.get("FAKE_FAIL") == screen:
     print("trainer error"); sys.exit(1)
-last = 200 if os.environ.get("FAKE_SHORT") == screen else 256
+last = 200 if os.environ.get("FAKE_SHORT") == screen else int(spec["train"]["steps"])
 for s in range(1, last + 1):
     print(json.dumps({"event": "step", "step": s, "loss": 3.0 - s / 1000}))
 out = Path(spec["out_dir"]); out.mkdir(parents=True, exist_ok=True)
@@ -177,6 +177,44 @@ class VmRunTests(unittest.TestCase):
         self.assertEqual(self.ready(out), ["S0", "S1"])
         self.assertEqual(s["packaged"], ["S0", "S1"])
         self.assertTrue((out / "DONE").exists())
+
+    def write_recipes(self, body, pin=True):
+        data = json.dumps(body).encode()
+        (self.inputs / "recipes.json").write_bytes(data)
+        if pin:
+            self.manifest["files"]["recipes.json"] = sha(data)
+        self.write_manifest()
+
+    def test_a_recipe_overrides_only_its_screen_and_keys(self):
+        self.write_recipes({"S1": {"train.steps": 300, "train.lr": 0.0001, "train.eval_examples": 64}})
+        r, s, out = self.run_vm()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(s["pass"])
+        s1 = json.loads((out / "spec_S1.json").read_text())
+        s0 = json.loads((out / "spec_S0.json").read_text())
+        arm_a = json.loads((HERE / "arm_a_lr3e5.json").read_text())
+        self.assertEqual((s1["train"]["steps"], s1["train"]["lr"], s1["train"]["eval_examples"]), (300, 0.0001, 64))
+        self.assertEqual((s0["train"]["steps"], s0["train"]["lr"]), (256, arm_a["train"]["lr"]))
+        self.assertNotIn("eval_examples", s0["train"])
+        self.assertEqual(json.loads((out / "train_S1_check.json").read_text())["want_step"], 300)
+
+    def test_a_recipe_with_a_forbidden_key_fails_the_specs_gate(self):
+        self.write_recipes({"S1": {"train.batch": 32}})
+        r, s, out = self.run_vm()
+        self.assertNotEqual(s["gates"]["specs"], 0)
+        self.assertEqual(self.ready(out), [])
+
+    def test_a_pinned_recipes_file_that_is_missing_fails_the_specs_gate(self):
+        self.write_recipes({"S1": {"train.steps": 300}})
+        (self.inputs / "recipes.json").unlink()
+        r, s, out = self.run_vm()
+        self.assertNotEqual(r.returncode, 0)
+        self.assertEqual(self.ready(out), [])
+
+    def test_an_unpinned_recipes_file_fails_the_specs_gate(self):
+        self.write_recipes({"S1": {"train.steps": 300}}, pin=False)
+        r, s, out = self.run_vm()
+        self.assertNotEqual(s["gates"]["specs"], 0)
 
     def test_a_run_that_stops_short_of_256_fails_its_check(self):
         r, s, out = self.run_vm(extra={"FAKE_SHORT": "S1"})

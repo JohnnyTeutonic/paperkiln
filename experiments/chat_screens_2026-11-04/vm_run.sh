@@ -212,7 +212,7 @@ G[build]=0
 # specs: arm A's admitted spec (uploaded as arm_a_lr3e5.json, its hash pinned in the manifest) with only the name,
 # out_dir and the three input paths changed; any other difference fails the gate
 cat > "$W/make_specs.py" <<'PY'
-import copy, hashlib, json, sys
+import copy, hashlib, json, os, sys
 arm_a_path, work, man_path, seed, screens = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4]), sys.argv[5:]
 arm_a_bytes = open(arm_a_path, "rb").read()
 man = json.load(open(man_path))
@@ -227,8 +227,26 @@ def flat(d, p=""):
         out.update(flat(v, p + k + ".") if isinstance(v, dict) else {p + k: v})
     return out
 allowed = {"name", "out_dir", "data.sft_examples", "data.vocab", "train.init_from", "train.seed"}
+# A9: per-screen recipe overrides (recipes.json beside the arm spec, hash-pinned in the manifest), only these keys
+RECIPE_KEYS = {"train.steps", "train.lr", "train.lr_schedule.warmup_steps", "train.eval_examples", "train.eval_every"}
+rec_path = os.path.join(os.path.dirname(arm_a_path), "recipes.json")
+if "recipes.json" in man["files"] and not os.path.exists(rec_path):
+    sys.exit("the manifest pins recipes.json but it is missing beside the arm spec")
+recipes = json.load(open(rec_path)) if os.path.exists(rec_path) else {}
+if os.path.exists(rec_path) and hashlib.sha256(open(rec_path, "rb").read()).hexdigest() != man["files"].get("recipes.json"):
+    sys.exit("recipes.json differs from the manifest's pin")
+def put(d, dotted, v):
+    *head, last = dotted.split(".")
+    for k in head:
+        d = d.setdefault(k, {})
+    d[last] = v
 for s in screens:
     spec = copy.deepcopy(arm_a)
+    ov = recipes.get(s, {})
+    if set(ov) - RECIPE_KEYS:
+        sys.exit(f"{s}: recipe keys outside {sorted(RECIPE_KEYS)}: {sorted(set(ov) - RECIPE_KEYS)}")
+    for k, v in ov.items():
+        put(spec, k, v)
     spec["name"] = "screen_" + s
     spec["train"]["seed"] = seed
     spec["out_dir"] = f"{work}/train_{s}"
@@ -237,11 +255,11 @@ for s in screens:
     spec["train"]["init_from"] = f"{work}/upload/sfull_sft1500.safetensors"
     a, b = flat(arm_a), flat(spec)
     changed = {k for k in a.keys() | b.keys() if a.get(k) != b.get(k)}
-    if not changed <= allowed or set(a) != set(b):
+    if not changed <= allowed | set(ov) or set(a) - set(b) or set(b) - set(a) - set(ov):
         sys.exit(f"{s}: spec differs from arm A outside the allowed keys: {sorted(changed - allowed)}")
     with open(f"{work}/spec_{s}.json", "w") as f:
         json.dump(spec, f, indent=2)
-print(json.dumps({"specs": screens, "allowed_changes": sorted(allowed)}))
+print(json.dumps({"specs": screens, "allowed_changes": sorted(allowed), "recipes": {s: recipes.get(s, {}) for s in screens}}))
 PY
 run specs "$O/specs.log" "$PY" "$W/make_specs.py" "$IN/arm_a_lr3e5.json" "$W" "$IN/manifest.json" "$SEED" $SCREENS \
     || fail specs $?
@@ -261,9 +279,10 @@ for s in $SCREENS; do
     printf '%s\n' "${BACKEND[@]}" | LC_ALL=C sort | cmp -s - "$O/env_$s.txt" || fail "train_$s" 94
     run "train_$s" "$O/train_$s.log" env "${UNSET[@]}" "${BACKEND[@]}" "$MTSTUDIO" run "$W/spec_$s.json" \
         || fail "train_$s" $?
-    # the run reached update 256 with finite losses, and exported exactly one GGUF
-    "$PY" - "$O/train_$s.log" "$W/train_$s" > "$O/train_${s}_check.json" 2>&1 <<'PY' || fail "train_$s" 96
+    # the run reached its spec's final update (256 for arm A) with finite losses, and exported exactly one GGUF
+    "$PY" - "$O/train_$s.log" "$W/train_$s" "$W/spec_$s.json" > "$O/train_${s}_check.json" 2>&1 <<'PY' || fail "train_$s" 96
 import glob, json, math, sys
+want = int(json.load(open(sys.argv[3]))["train"]["steps"])
 steps = []
 for line in open(sys.argv[1], errors="replace"):
     line = line.strip()
@@ -275,8 +294,8 @@ for line in open(sys.argv[1], errors="replace"):
         if d.get("event") == "step":
             steps.append(d)
 ggufs = glob.glob(sys.argv[2] + "/*.gguf")
-ok = bool(steps) and steps[-1]["step"] == 256 and all(math.isfinite(d["loss"]) for d in steps) and len(ggufs) == 1
-print(json.dumps({"last_step": steps[-1]["step"] if steps else None, "steps_logged": len(steps),
+ok = bool(steps) and steps[-1]["step"] == want and all(math.isfinite(d["loss"]) for d in steps) and len(ggufs) == 1
+print(json.dumps({"want_step": want, "last_step": steps[-1]["step"] if steps else None, "steps_logged": len(steps),
                   "final_loss": steps[-1]["loss"] if steps else None, "ggufs": ggufs, "ok": ok}))
 sys.exit(0 if ok else 1)
 PY
