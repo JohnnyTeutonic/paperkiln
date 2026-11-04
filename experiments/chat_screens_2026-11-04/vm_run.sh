@@ -26,7 +26,7 @@ SCREENS_CSV=${5:-S0,S1,S2,S3}
 # paperkiln's numerical source: arm A's admitted trainer source (PROTOCOL.md section 2)
 SOURCE=1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1
 [[ "$SEED" =~ ^[1-9]$ ]] || { echo "SEED must be one digit 1-9" >&2; exit 2; }
-[[ "$SCREENS_CSV" =~ ^S[0-9](,S[0-9])*$ ]] || { echo "SCREENS must look like S0,S2,S4" >&2; exit 2; }
+[[ "$SCREENS_CSV" =~ ^S[0-9]{1,2}(,S[0-9]{1,2})*$ ]] || { echo "SCREENS must look like S0,S2,S4" >&2; exit 2; }
 SCREENS=${SCREENS_CSV//,/ }
 [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo "COMMIT must be a full 40-character SHA" >&2; exit 2; }
 [[ "$RUN" =~ ^[A-Za-z0-9_-]{1,32}$ ]] || { echo "RUN_ID: 1-32 letters, digits, - or _" >&2; exit 2; }

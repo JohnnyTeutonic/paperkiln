@@ -179,7 +179,8 @@ def write_inputs(tmp, bad_pin=False):
     d.mkdir()
     pins = {}
     names = ["sfull_sft1500.safetensors", "vocab.gguf", "S0.jsonl", "S1.jsonl", "S2.jsonl", "S3.jsonl",
-             "S4.jsonl", "S5.jsonl", "S6.jsonl", "S7.jsonl", "S8.jsonl", "arm_a_lr3e5.json"]
+             "S4.jsonl", "S5.jsonl", "S6.jsonl", "S7.jsonl", "S8.jsonl", "S9.jsonl", "S10.jsonl",
+             "S11.jsonl", "arm_a_lr3e5.json"]
     for i, n in enumerate(names):
         data = (n * (300 if n.startswith("sfull") else 3)).encode()
         (d / n).write_bytes(data)
@@ -438,7 +439,7 @@ class DriveTests(unittest.TestCase):
         self.assertIn("seed or screens differ", log)
 
     def test_bad_seed_or_screens_are_refused(self):
-        for extra in (["0", "S0"], ["2", "S0,S9"], ["2", "S0,S0"], ["x", "S0"]):
+        for extra in (["0", "S0"], ["2", "S0,S99"], ["2", "S0,S0"], ["x", "S0"]):
             r = subprocess.run([sys.executable, str(HERE / "drive.py"), COMMIT, "t1"] + extra,
                                env=dict(os.environ, DRIVE_TEST_HARNESS="1"), capture_output=True, text=True)
             self.assertEqual(r.returncode, 2, extra)
@@ -523,6 +524,13 @@ class DriveTests(unittest.TestCase):
         self.assertEqual(state["counts"].get("launch", 0), 0)
         self.assertEqual(state["sessions"], {})
         self.assertIn("CLEANUP OK", log)
+
+    def test_a_four_screen_a7_session(self):
+        rc, state, log, tmp, _ = self.run_drive("normal", seed=1, screens=["S9", "S11", "S10", "S8"], hf=True,
+                                                extra={"DRIVE_TEST_CAP": "70"}, minute="0.3")
+        self.assertEqual(rc, 0, log)
+        self.assert_home(tmp, ["S8", "S9", "S10", "S11"],
+                         universe=["S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11"])
 
     def test_test_hooks_are_refused_without_the_harness(self):
         env = dict(os.environ, DRIVE_TEST_COLAB="/bin/true")

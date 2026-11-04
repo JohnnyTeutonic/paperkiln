@@ -75,7 +75,7 @@ RAISE_ON = hook("DRIVE_TEST_RAISE_ON", "")
 PART_BYTES = int(hook("DRIVE_TEST_PART_BYTES", str(45 * 1024 * 1024)))  # runner_multi.py: 45 MiB both ways
 SOURCE = "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1"
 SCREENS = ("S0", "S1", "S2", "S3")  # wave 1, the default
-ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8")
+ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11")
 COMMON_INPUTS = ("sfull_sft1500.safetensors", "vocab.gguf", "arm_a_lr3e5.json")
 
 
@@ -134,6 +134,14 @@ PINS = {
                  "18c2ed659bf3a375467fcef59626863fa9e66d4fcecb6c14b0a98cfd9c4c3ac1"),
     "S8.jsonl": (f"{ART}/chat_screens_claude/packets/w4/D_high/train.jsonl",
                  "fd5907163fc3da2683af4f7b17a7d9a50adc146c35cc04f777e68fee75aabfd0"),
+    # A7 contrastive arms: S9 = CX (same fact, different operations), S10 = CU (matched different-fact control);
+    # A8 format-only arm S11
+    "S9.jsonl": (f"{ART}/chat_screens_claude/packets/a7/S9/train.jsonl",
+                 "5368bf3f99b158426954e4c8b437fb464dcb0c97ed83a4decdfea1cb73f81c02"),
+    "S10.jsonl": (f"{ART}/chat_screens_claude/packets/a7/S10/train.jsonl",
+                  "dcebc46ac0d509f3df35b50cdc5a9c6426cbc8bae9f7d8269c205486e0b62c16"),
+    "S11.jsonl": (f"{ART}/chat_screens_claude/packets/a7/S11/train.jsonl",
+                  "2d5dafa8dc0b3bcc925cb8edc5606a0aeacaae3c335e452d92308a2ffd454ef2"),
     "arm_a_lr3e5.json": (str(HERE / "arm_a_lr3e5.json"),
                          "66c718e0b501c751aae0a1cd22eddfdc666a7cfb46a4c074fa41b67aa220125e"),
 }
@@ -948,7 +956,7 @@ def main():
     if len(args) not in (2, 4) or not re.fullmatch(r"[0-9a-f]{40}", args[0]) \
             or not re.fullmatch(r"[A-Za-z0-9_-]{1,32}", args[1]) \
             or (len(args) == 4 and not (re.fullmatch(r"[1-9]", args[2])
-                                        and re.fullmatch(r"S[0-9](,S[0-9])*", args[3])
+                                        and re.fullmatch(r"S[0-9]{1,2}(,S[0-9]{1,2})*", args[3])
                                         and set(args[3].split(",")) <= set(ALL_SCREENS)
                                         and len(set(args[3].split(","))) == len(args[3].split(",")))):
         print(__doc__, file=sys.stderr)
