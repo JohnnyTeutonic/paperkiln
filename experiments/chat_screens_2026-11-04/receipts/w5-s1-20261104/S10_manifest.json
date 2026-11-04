@@ -1,0 +1,50 @@
+{
+  "screen": "S10",
+  "run_id": "w5-s1-20261104",
+  "gguf_sha256": "d849d1f49913ea1c8aa492a174a87c14fee405dfb75c5a0025b8c16c50206f69",
+  "gguf_bytes": 342015264,
+  "parts": [
+    {
+      "name": "model.gguf.part00",
+      "sha256": "4823f74002892a0d7d1fda5e90fc2a311ca3b9dc7e8f4507bd71ed291ec09d92",
+      "bytes": 47185920
+    },
+    {
+      "name": "model.gguf.part01",
+      "sha256": "5cbc012f8537981b15e16828ad5f3aa4238b76abe940e004ac79ffac5a3025c8",
+      "bytes": 47185920
+    },
+    {
+      "name": "model.gguf.part02",
+      "sha256": "00db0e681d0b427d382358ab070760bc3447c4876bb2875650720e3918e2b921",
+      "bytes": 47185920
+    },
+    {
+      "name": "model.gguf.part03",
+      "sha256": "3ddb52224f16da3ba7fa74cfd3bba5ff16f7a90d92df524458e4f7a2dc938fec",
+      "bytes": 47185920
+    },
+    {
+      "name": "model.gguf.part04",
+      "sha256": "bcab5c22483eca07eed7b5be70a2b0fc41c9fa54415c56a9208b32f5b91c72c5",
+      "bytes": 47185920
+    },
+    {
+      "name": "model.gguf.part05",
+      "sha256": "15748ba33efe746ff1ad89bb032cb92a67e9839a024bc8d5ecfa73674c586b78",
+      "bytes": 47185920
+    },
+    {
+      "name": "model.gguf.part06",
+      "sha256": "a71927c57592c56a7b705b319942bcb88314b9d1561dc6c1c21de374d4a8bae2",
+      "bytes": 47185920
+    },
+    {
+      "name": "model.gguf.part07",
+      "sha256": "fb265030a0a5f5333f21de239cac14dd0f1fe8a1b07e68d99a8f17bd9c049984",
+      "bytes": 11713824
+    }
+  ],
+  "train_log_sha256": "d200ed7c09d6ddc94f0421706429f062e3bbe04e84e8e9c4c234dec7717ea17d",
+  "result_json_sha256": "976fff7ec4f29e33e101286897bb8bf07b3c5da726dea3508d5375c9358db39b"
+}
