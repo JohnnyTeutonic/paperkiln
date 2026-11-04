@@ -1,0 +1,21 @@
+{
+  "T": 1024,
+  "accum": 1,
+  "attention": "exact",
+  "batch": 16,
+  "best_val": 2.3655343055725098,
+  "checkpoint_activations": false,
+  "d": 768,
+  "early_stopped": false,
+  "family": "llama",
+  "final_step": 1024,
+  "heads": 12,
+  "layers": 8,
+  "lr": 2.9999999242136255e-05,
+  "name": "screen_S13",
+  "params": 72761088,
+  "seed": 1,
+  "steps_requested": 1024,
+  "tokens_per_second": 10195.922745601558,
+  "wall_seconds": 1645.482848253
+}

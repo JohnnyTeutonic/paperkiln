@@ -175,6 +175,31 @@ exactly between waves.
   4. "Your" or "You" wins on recall but not on copy: interference from S2's convention.
 - **Result:** section 5.
 
+### A6-A10 (4-5 Nov, done). Results against their registered bars
+
+Full records are in root `AI_ML/chat_screens_claude/PROTOCOL.md`. Each experiment ran at seed 1, or at seeds 1-2
+where stated, and is exploratory.
+- **A6 (§15):** S5 is 0 of 68 on v003, the training-side twin, at all three seeds. The policy was not learned even
+  where it was trained.
+- **A4 (§13, §17): uninformative (floor) at both seeds.** S8 and S6 each pass 1 of 68. The format margin moves with
+  dose: S6 − S2 +6.57, S8 − S2 +7.41, and diversity adds only +0.84.
+- **A7 (§16-17): FAILS.** The contrastive arm S9 does not beat S10, and at seed 2 its format margin is significantly
+  below the control's.
+- **A8 (§17): FAILS.** S11 copies 17 and 13 of 64, against a bar of 32.
+- **A9, dose (§18): primary FAILS** (S12 7 and S13 6 of 68, against 10). **Co-primary PASSES:** the median bare-format
+  margin is +2.89 and +1.06, against −11.95 for the S2-data control. Guards hold.
+  - Format data, not steps, moves bare-answer learning: the control's probe loss stays at about 5.2 for 1,024
+    steps.
+  - The remaining failures are mostly wrong values.
+- **A10, scenario diversity (§19): primary FAILS.** On the frozen misfire probe, S15 has 58 correct and S16 64,
+  with p 0.38, against a bar of +21.
+  - S15 halves the misfires in the scenario types it trains, 12 against 24, but misfires more where neither arm
+    trains, 24 against 15.
+  - Guards hold, and paperkiln/ember inference parity passes, single- and multi-turn.
+  - At this dose, diversity buys scenario-specific conventions, not a transferable operation rule.
+- **Misfire probe baselines** (correct of 140): S12 74, S14 57, S2 58, S0 54. The best degenerate responder gets
+  55.
+
 ## 4b. Judge run J1: results (4 Nov 2026)
 
 Receipts are in `C:/ml_artifacts/chat_screens_claude/judge/`. The item table is `analysis/judge_j1_items.json` (root
@@ -399,7 +424,15 @@ demonstrated optimum.
 | w3-s1 (S2, S5) | 26.5 | exit 0 |
 | w3-s2, w3-s3 (S5) | about 46 | failed before training (CLI stall); cancelled, certified stopped |
 | w3b-s2, w3b-s3 (S5) | 51.8 | exit 2 (rescued) and exit 0 |
-| **Week of 4 Nov** | **about 285 (4.75 h of 6)** | |
+| w5-s1 (S8, S9, S10, S11, seed 1) | 51.1 | exit 0 |
+| w5-s2 (S8, S9, S10, S11, seed 2) | 59.0 | exit 0 |
+| w6-s1 (S6, seed 1) | 20.0 | exit 0 |
+| w6-s2 (S6, seed 2) | 20.7 | exit 2 before training (CLI stalls); certified stopped |
+| w6b-s2 (S6, seed 2) | 0 | stopped at preflight (git fetch); no session |
+| w6c-s2 (S6, seed 2) | 23.9 | exit 0 |
+| a9-s1 (S12, S13, S14; one session each) | 128.9 | three exit 0 |
+| a10-s1 (S15, S16; one session each) | 67.0 | two exit 0 |
+| **4-5 Nov** | **about 656 (10.9 h)** | the week's 6 h, increased by Jonathan's redistribution of budget to this week (4 Nov) |
 
 CPU evaluation runs under the shared CPU budget (`scripts/cpu_budget.py`, session `claude`, at most 4 slots).
 
