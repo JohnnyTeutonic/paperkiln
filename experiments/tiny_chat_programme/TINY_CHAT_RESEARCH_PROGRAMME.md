@@ -257,51 +257,117 @@ human ratings exist.
 Pending: filled in from `C:/ml_artifacts/chat_screens_claude/format_probe/{S0,S2,S5}-s1/summary.json` when the run
 ends.
 
-## 6. Capacity × diversity: the smallest discriminating design (proposed, not authorised)
+## 6. Depth × diversity (proposed, unexecuted, not authorised for training)
 
-The question is whether compositional generalisation, here held-out instruction wording combined with retrieval,
-is limited by data coverage or by depth and capacity. A full factorial sweep is not the first step.
+**Question.** Does more depth, at approximately constant parameters, improve generalisation of conversational
+operations to unfamiliar scenario and instruction combinations? The estimand is the interaction on a held-out
+transfer measure R:
 
-**Step 1, CPU only, no new training: an in-distribution control (amendment A6, running).** Evaluate S2 and S5 at
-three seeds on instrument v003. Each v003 item is its v001 twin with training-side wordings; values, facts and
-answers are unchanged. A4's arms get the same control, built with their own pools, if they are trained. Reading
-rules are in root `PROTOCOL.md` §15.
-- If the models pass the training-side items but not v001, they can represent and execute the policy, and the
-  failure is transfer to new wording: a data-coverage limit, which A4 tests directly.
-- If they also fail the training-side items, the policy is not learned even where it was trained. That points to
-  dose, optimisation or capacity, and more template diversity alone will not help.
+Δ = (R_16,diverse − R_16,narrow) − (R_8,diverse − R_8,narrow).
 
-Step 1 decides whether depth is worth paying for.
+A depth effect alone would not show how depth helps, and a positive Δ would not show that operations occupy
+separate layers. Proposed by Jonathan and GPT on 5 Nov 2026.
 
-**Step 2, only if step 1 shows an in-distribution failure that a larger dose of the same data does not fix: depth
-at matched parameters.**
+**Assessment (Claude Opus 5.5's read, 5 Nov 2026).** Defer, with a cheaper experiment first.
+- **For:** the prior is reasonable at this scale.
+  - Petty et al. (NAACL 2024) matched parameters by shrinking the FFN, at sizes including 41M. Deeper transformers
+    generalised more compositionally after fine-tuning, with gains that shrink quickly, and not only through better
+    language modelling.
+  - MobileLLM (Liu et al., ICML 2024) found deep-and-thin better than wide-and-shallow below a billion parameters.
+- **Against:** the failures measured so far are explained by data at fixed architecture.
+  - A9 moved the median bare-format margin from −11.95 (control) to +2.89 with no architectural change.
+  - On the A5 ladder, constraint-first items stay at 0 of 30 in every model. Training data that never states the
+    constraint first explains that as well as depth does. A10's counterbalanced data tests it.
+  - Most remaining v001 failures are wrong values, a recall limit even on training-side wording: v003 13 of 68 for
+    S12.
+  - Cost is dominated by pretraining from scratch, and the interaction needs several independently pretrained
+    bases per arm.
+- **The binding constraint: base-to-base variance is the error term for Δ.** Depth must be compared across
+  independently pretrained replicates, at least three per architecture. SFT seeds on one base per architecture
+  confound depth with that base's idiosyncrasies. No estimate of between-base variance exists yet for these
+  instruments.
 
-| Arm | Layers | d_model | FFN | Heads × dim | In the layers | Unique total (tied embedding) |
-|---|---:|---:|---:|---:|---:|---:|
-| Baseline | 8 | 768 | 2,240 | 12 × 64 | 60,174,336 | 72,761,088 |
-| Deeper | 16 | 560 | 1,632 | 10 × 56 | 63,956,480 | 73,134,320 (+0.5%) |
+**Architectures.**
 
-The pair is matched on unique parameters. The deeper arm puts more of them in the layers, because its embedding is
-narrower. Its total is computed by the same accounting that reproduces the baseline's native count exactly: layers,
-tied embedding, final norm, and a state embedding of 4 × d_model.
+| Arm | Layers | d_model | FFN | Heads × dim | In the layers | Unique total (tied embedding) | Forward FLOPs per token at T = 1,024 (approx.) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Baseline | 8 | 768 | 2,240 | 12 × 64 | 60,174,336 | 72,761,088 | about 171M |
+| Deeper | 16 | 560 | 1,632 | 10 × 56 | 63,956,480 | 73,134,320 (+0.5%) | about 183M (+7%) |
 
-- **Matched start:** a newly initialised deeper model is never compared with the extensively pretrained baseline.
-  Both arms are pretrained from scratch on the same corpus, tokenizer, token count, optimiser and schedule. Then
-  both get the identical SFT mixture (S2 with the A4 D_high grid) and the identical evaluation. At least two seeds.
-- **Exposure accounting:** pretraining tokens, SFT tokens and FLOPs are reported per arm.
-- **Cost:** the pretraining pair dominates and exceeds a two-L4-hour wave.
-  - The S-full base campaign's closed pod total was 18.97 hours and US$11.19. That total includes phases other than
-    pretraining, and excludes separately allocated storage (Codex's check, 4 Nov).
-  - The final pretraining receipt's 3.08 hours cover only the resumed steps 7,675 to 10,000, not the whole of
-    pretraining.
-  - The exact cost of pretraining one base therefore remains unverified. Step 2 needs its own registered design, a cost estimate from that record and separate
-  authorisation.
-- **A larger-parameter control** comes only if the matched-depth comparison is null and step 1 still shows an
-  in-distribution failure.
+- **Three matchings, which are not equivalent.**
+  - **Parameter matching:** the pair is matched on unique total parameters. It is not matched on parameters inside
+    the layers (+6.3% for the deeper arm), because its tied embedding is narrower. A registered design picks one and
+    reports both; layer parameters (non-embedding N) are the usual scaling quantity. A 16-layer variant matched on
+    layer parameters would need a narrower FFN.
+  - **Token matching:** the same pretraining corpus, tokenizer, data order and token count, then identical SFT
+    mixtures and supervised-token counts.
+  - **FLOP matching:** at matched tokens the deeper arm costs about 7% more forward compute: 2N, plus the attention term
+    4·L·T·d, plus the tied output projection 2·V·d, which is smaller for the narrower arm. On an L4 its wall time is likely higher still, from sequential depth and narrower matrix products.
+    Report FLOPs and wall time per arm. A FLOP-matched reading needs the baseline trained on proportionally more
+    tokens, as a separate arm.
+- **Optimiser:** the best learning rate depends on shape without μP. Both arms get a short learning-rate sweep, or
+  a registered argument that the shared rate is near-optimal for both, with sensitivity reported.
 
-**Training-procedure factors, in order:** uniform mixing (the current default), then a sequential curriculum if A5
-rule 2 fires, then preference optimisation only if SFT fails to establish format transfer. No tokenizer change,
-speculative architecture or reinforcement learning without evidence that the simpler explanations fail.
+**Alternative comparisons.**
+- **A depth sweep:** at least three depths at matched layer parameters, for example 6, 8, 12 and 16. It gives a
+  dose-response curve instead of one pair whose width and head dimension also change.
+- **Weight-shared (looped) depth:** 8 layers applied twice is 16 sequential stages at the baseline's parameters. It
+  isolates "more sequential computation" from "parameters allocated differently". MobileLLM's layer-sharing
+  variant is the closest precedent. It needs trainer support, which is not built and not to be built merely for
+  this.
+
+**Instruments (frozen, pre-registered).**
+- A compositional held-out split. Scenario × instruction cells form a grid, the training data covers a registered
+  subset (a Latin-square design), and R is measured on the complement. Unseen wording alone does not measure
+  composition.
+- The misfire probe v001.
+- The v003 against v001 gap: trained against held-out wording.
+- The A5 ladder, including constraint-first items.
+- J1's 0-4 fluency, coherence and relevance, with human calibration. Salience needs a new, versioned instrument;
+  the J1 rubric has none.
+- Factual recall, separated from operation choice, and the knowledge smoke.
+- Not as a sole endpoint: training loss or any single aggregate score.
+
+**First, cheaper experiments, in order.**
+1. **A10 itself (S15 against S16, §4).** Score S15 separately on scenario and instruction combinations it trained
+   on and on held-out ones. That gives the composition gap at 8 layers.
+2. **A small-scale proxy depth sweep.** About 5-10M-parameter models (for example 4, 8 and 12 layers at matched
+   layer parameters), pretrained from scratch on the corpus with the scenario language mixed in, at least five
+   seeds each. Each run takes minutes on one L4. The sweep tests whether depth changes the composition of these
+   operations at all, and it estimates between-base variance for the 73M power calculation.
+
+**Trigger.** All three of the following.
+- A10 shows S15 learning its trained combinations (low in-distribution misfire), while a held-out-combination gap
+  persists after one further diversity dose at 8 layers.
+- The proxy sweep shows Δ > 0 across seeds.
+- The cost of one 73M base is verified (§6 Cost, ledger) and fits an authorised envelope.
+
+**Retirement.**
+- **Unnecessary:** S15 closes the held-out-combination gap, so diversity at 8 layers suffices.
+- **Premature:** the remaining failures are content recall or knowledge. The stronger-base question then comes
+  first.
+- **Recipe problem first:** S15 and S16 both fail in-distribution.
+- **Shelved:** the proxy shows no depth effect across seeds.
+
+**Cost.**
+- Extrapolating the resumed pretraining receipt (steps 7,675 to 10,000 in 3.08 L4-hours), one base is about
+  13 L4-hours. This estimate is unverified (§9).
+- The deeper arm costs about 7% more FLOPs, and likely more in wall time.
+- Three bases per architecture is roughly 80-100 L4-hours: a multi-day campaign, beyond any screening wave. The SFT
+  arms on top are cheap (about 15 minutes each).
+- The S-full campaign's closed pod total was 18.97 hours and US$11.19. It includes phases other than pretraining
+  (Codex's check, 4 Nov), so the cost of one base remains unverified.
+
+**Already settled from the original step 1.**
+- A6: S5 failed even its trained wording.
+- A9: a larger dose of format data fixed the format margin but not value recall.
+- The original trigger ("an in-distribution failure that a larger dose of the same data does not fix") has therefore
+  fired for recall only. Recall is a base-capability question as much as a depth question.
+
+**Training-procedure factors, in order:** uniform mixing, the current default. Then a sequential curriculum
+(deferred from A10 as S17, to be compared with a matched uniform mixture at identical exposure). Then preference
+optimisation, only if SFT fails to establish format transfer. No tokenizer change, speculative architecture or
+reinforcement learning without evidence that the simpler explanations fail.
 
 ## 7. Capability frontier (to be filled as configurations are evaluated)
 
