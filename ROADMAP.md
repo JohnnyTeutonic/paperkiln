@@ -7,6 +7,8 @@ where one of those documents carries a plan, this file wins.*
 
 ## 1. Now
 
+Tiny-chat research registry: [question, instruments, results and proposed capacity/diversity controls](https://github.com/JohnnyTeutonic/paperkiln/blob/baff7c47d3770a707eac95f5bd110e112c268af0/experiments/tiny_chat_programme/TINY_CHAT_RESEARCH_PROGRAMME.md).
+
 0. **Tiny chat from scratch (LOCAL_LLM_WORK.md E1;
    `experiments/tiny_chat_2026-10/`, `experiments/tiny_chat_long_2026-10/`).**
    E5, E1 at 20M/60M, recursion and MoR are home and analysed
