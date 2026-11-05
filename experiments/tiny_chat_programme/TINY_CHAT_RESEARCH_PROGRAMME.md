@@ -208,11 +208,15 @@ where stated, and is exploratory.
   - Monotone on held-out items: 28, 35, 47 of 120. Constraint satisfaction 61, 73, 86; operation choice 65, 66, 71.
   - The registered reading is wording transfer, not composition (held-out gain 0.158, reference gain 0.225).
   - Persona invention falls 7.9%, 4.6%, 0.7%.
+  - S23 has the highest misfire-probe total of any arm, 84 correct and 33 misfires of 140, with nine items sharing
+    target frames with its packet (§22.2).
 - **A14, hybrids (§22, verdict §22.3): both FAIL on precision alone.** S28 and S29 have 18 and 17 of 40 against a limit
   of 20, and pass naturalness (22, 16) and the ambiguity guard (60, 62).
-  - They have the highest misfire-probe totals so far, 78 and 79 correct of 140, mostly from family b (16 and 17 of 20).
-  - Identity: 94.7% and 98.0% of identity turns answer as an assistant on `persona_v002`, on wordings left out of
-    training, with invention at 2.6% and 1.3%.
+  - They have 78 and 79 correct of 140 on the misfire probe. Their lead over S24 is all in family b (16 and 17 of 20);
+    outside b they have 62 each against S24's 67.
+  - Identity behaves close to a constant reply. On `persona_v002`, 94.7% and 98.0% of plain identity turns answer as an
+    assistant, but 1 and 0 of 48 role-play turns stay in character, and 7 and 5 of 12 user-name questions get the
+    model's own identity (S24: 0, with 8 recalled).
 - **A15, hybrid plus instruction diversity (§23-23.1): running.** S30 and S31 on a five-condition bar that a constant-form
   model cannot pass.
 - **Misfire probe baselines** (correct of 140): S12 74, S14 57, S2 58, S0 54. The best degenerate responder gets
