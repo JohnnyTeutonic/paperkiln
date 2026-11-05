@@ -75,7 +75,7 @@ RAISE_ON = hook("DRIVE_TEST_RAISE_ON", "")
 PART_BYTES = int(hook("DRIVE_TEST_PART_BYTES", str(45 * 1024 * 1024)))  # runner_multi.py: 45 MiB both ways
 SOURCE = "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1"
 SCREENS = ("S0", "S1", "S2", "S3")  # wave 1, the default
-ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16", "S24", "S25", "S26", "S27", "S21", "S22", "S23", "S28", "S29", "S30", "S31")
+ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16", "S24", "S25", "S26", "S27", "S21", "S22", "S23", "S28", "S29", "S30", "S31", "S32", "S33", "S34")
 COMMON_INPUTS = ("sfull_sft1500.safetensors", "vocab.gguf", "arm_a_lr3e5.json", "recipes.json")
 
 
@@ -179,7 +179,11 @@ PINS = {
     # A15 (section 23): S30, S31 (hybrid with A12 instruction half, at 30% of sampled supervised tokens)
     "S30.jsonl": (f"{ART}/chat_screens_claude/packets/a15/S30/train.jsonl", "4b761d345af7ec37126b339c4c30bef703e5ef71ab9df4658aea551599cdf60b"),
     "S31.jsonl": (f"{ART}/chat_screens_claude/packets/a15/S31/train.jsonl", "00ec274aff7df7762b5085fe67615c20e7630a669f4b5aa9156908d4cbff7eb0"),
-    "recipes.json": (str(HERE / "recipes.json"), "928e791601ae520d7a745c445f0a0eef8ce6a463404d7be3dd0b0ee95472b23c"),
+    # A16 (section 24): S32, S33, S34 (paired contrast data; S34 is S32's packet at 2,048 steps)
+    "S32.jsonl": (f"{ART}/chat_screens_claude/packets/a16/S32/train.jsonl", "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a"),
+    "S33.jsonl": (f"{ART}/chat_screens_claude/packets/a16/S33/train.jsonl", "12818666ddeae11a96d928a9e0636cacb93cf72dc2019785f45f9454f53c5685"),
+    "S34.jsonl": (f"{ART}/chat_screens_claude/packets/a16/S32/train.jsonl", "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a"),
+    "recipes.json": (str(HERE / "recipes.json"), "a39a53ef63d8a0cd46031dc22f067ee5fd82497c3a7b19c29572cfbcec1f8f54"),
     "arm_a_lr3e5.json": (str(HERE / "arm_a_lr3e5.json"),
                          "66c718e0b501c751aae0a1cd22eddfdc666a7cfb46a4c074fa41b67aa220125e"),
 }
