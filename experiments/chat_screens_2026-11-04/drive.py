@@ -75,7 +75,7 @@ RAISE_ON = hook("DRIVE_TEST_RAISE_ON", "")
 PART_BYTES = int(hook("DRIVE_TEST_PART_BYTES", str(45 * 1024 * 1024)))  # runner_multi.py: 45 MiB both ways
 SOURCE = "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1"
 SCREENS = ("S0", "S1", "S2", "S3")  # wave 1, the default
-ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16", "S24", "S25", "S26", "S27", "S21", "S22", "S23", "S28", "S29")
+ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16", "S24", "S25", "S26", "S27", "S21", "S22", "S23", "S28", "S29", "S30", "S31")
 COMMON_INPUTS = ("sfull_sft1500.safetensors", "vocab.gguf", "arm_a_lr3e5.json", "recipes.json")
 
 
@@ -176,7 +176,10 @@ PINS = {
     # A14 (section 22): S28 H-graft, S29 H-LLM (hybrids at 30% of sampled supervised tokens)
     "S28.jsonl": (f"{ART}/chat_screens_claude/packets/a14/S28/train.jsonl", "25b70169db28e140b4a6f951eb01258237aa4bdab20dd4660f3e2519f57ff5f8"),
     "S29.jsonl": (f"{ART}/chat_screens_claude/packets/a14/S29/train.jsonl", "b62155cd3bcf9de2fa3b39d198f7a97ec837b6366566dfefb0567af9f4da550d"),
-    "recipes.json": (str(HERE / "recipes.json"), "dea1ae16fe1c2b9b69734dd8adfcc72940b8a7e75f2988262acf20baa56e20b8"),
+    # A15 (section 23): S30, S31 (hybrid with A12 instruction half, at 30% of sampled supervised tokens)
+    "S30.jsonl": (f"{ART}/chat_screens_claude/packets/a15/S30/train.jsonl", "4b761d345af7ec37126b339c4c30bef703e5ef71ab9df4658aea551599cdf60b"),
+    "S31.jsonl": (f"{ART}/chat_screens_claude/packets/a15/S31/train.jsonl", "00ec274aff7df7762b5085fe67615c20e7630a669f4b5aa9156908d4cbff7eb0"),
+    "recipes.json": (str(HERE / "recipes.json"), "928e791601ae520d7a745c445f0a0eef8ce6a463404d7be3dd0b0ee95472b23c"),
     "arm_a_lr3e5.json": (str(HERE / "arm_a_lr3e5.json"),
                          "66c718e0b501c751aae0a1cd22eddfdc666a7cfb46a4c074fa41b67aa220125e"),
 }
