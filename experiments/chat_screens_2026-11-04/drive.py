@@ -75,7 +75,7 @@ RAISE_ON = hook("DRIVE_TEST_RAISE_ON", "")
 PART_BYTES = int(hook("DRIVE_TEST_PART_BYTES", str(45 * 1024 * 1024)))  # runner_multi.py: 45 MiB both ways
 SOURCE = "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1"
 SCREENS = ("S0", "S1", "S2", "S3")  # wave 1, the default
-ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16", "S24", "S25", "S26", "S27")
+ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16", "S24", "S25", "S26", "S27", "S21", "S22", "S23")
 COMMON_INPUTS = ("sfull_sft1500.safetensors", "vocab.gguf", "arm_a_lr3e5.json", "recipes.json")
 
 
@@ -169,7 +169,11 @@ PINS = {
     "S25.jsonl": (f"{ART}/chat_screens_claude/packets/a11b/S25/train.jsonl", "32ed04621ee1e1eb1725f941d733ec5b06ac5f9cf5387c8334205ae78791f78b"),
     "S26.jsonl": (f"{ART}/chat_screens_claude/packets/a11b/S26/train.jsonl", "193b0ba2b6bc370cff35d7fbdf693a4dc46eef1328026ea6e6b47c5ee5a4b7c4"),
     "S27.jsonl": (f"{ART}/chat_screens_claude/packets/a11b/S27/train.jsonl", "b20f46b2f6c016f2c609010968935a70ab527fb80327d5a1eec9f5acb5cf86ea"),
-    "recipes.json": (str(HERE / "recipes.json"), "ceeb540758334f1acfd3e7915c72e14e2aad33aa00b5d604b144eecb59b321c9"),
+    # A12 (section 21): S21 / S22 / S23 with 68 / 272 / 1,088 distinct instructions
+    "S21.jsonl": (f"{ART}/chat_screens_claude/packets/a12/S21/train.jsonl", "2a66d0e01e8eb7183f4820c3e8e11e5b090acc6e79843f1c3bed021e2d016c37"),
+    "S22.jsonl": (f"{ART}/chat_screens_claude/packets/a12/S22/train.jsonl", "e68b2ed7f67c2b0950962e481c51659671c749296571a7bf0a966feb2acbe552"),
+    "S23.jsonl": (f"{ART}/chat_screens_claude/packets/a12/S23/train.jsonl", "ae9f593d08877ab96e9b0f67f657ba1d5697552e2b5d6011ba12d434fd568ec5"),
+    "recipes.json": (str(HERE / "recipes.json"), "e6e898a046d695298f6e4e9e6b1c9e91f83e66985266515daeae794e6dec63d1"),
     "arm_a_lr3e5.json": (str(HERE / "arm_a_lr3e5.json"),
                          "66c718e0b501c751aae0a1cd22eddfdc666a7cfb46a4c074fa41b67aa220125e"),
 }

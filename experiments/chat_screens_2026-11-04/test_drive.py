@@ -189,7 +189,7 @@ def write_inputs(tmp, bad_pin=False):
     pins = {}
     names = ["sfull_sft1500.safetensors", "vocab.gguf", "S0.jsonl", "S1.jsonl", "S2.jsonl", "S3.jsonl",
              "S4.jsonl", "S5.jsonl", "S6.jsonl", "S7.jsonl", "S8.jsonl", "S9.jsonl", "S10.jsonl",
-             "S11.jsonl", "S12.jsonl", "S13.jsonl", "S14.jsonl", "S15.jsonl", "S16.jsonl", "S24.jsonl", "S25.jsonl", "S26.jsonl", "S27.jsonl", "recipes.json", "arm_a_lr3e5.json"]
+             "S11.jsonl", "S12.jsonl", "S13.jsonl", "S14.jsonl", "S15.jsonl", "S16.jsonl", "S24.jsonl", "S25.jsonl", "S26.jsonl", "S27.jsonl", "S21.jsonl", "S22.jsonl", "S23.jsonl", "recipes.json", "arm_a_lr3e5.json"]
     for i, n in enumerate(names):
         data = (n * (300 if n.startswith("sfull") else 3)).encode()
         (d / n).write_bytes(data)

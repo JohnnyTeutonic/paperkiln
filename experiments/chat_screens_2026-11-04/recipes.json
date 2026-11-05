@@ -7,5 +7,8 @@
   "S24": {"train.steps": 1024, "train.lr": 0.0001, "train.lr_schedule.warmup_steps": 64, "train.eval_examples": 64},
   "S25": {"train.steps": 1024, "train.lr": 0.0001, "train.lr_schedule.warmup_steps": 64, "train.eval_examples": 64},
   "S26": {"train.steps": 1024, "train.lr": 0.0001, "train.lr_schedule.warmup_steps": 64, "train.eval_examples": 64},
-  "S27": {"train.steps": 1024, "train.lr": 0.0001, "train.lr_schedule.warmup_steps": 64, "train.eval_examples": 64}
+  "S27": {"train.steps": 1024, "train.lr": 0.0001, "train.lr_schedule.warmup_steps": 64, "train.eval_examples": 64},
+  "S21": {"train.steps": 1024, "train.lr": 0.0001, "train.lr_schedule.warmup_steps": 64, "train.eval_examples": 64},
+  "S22": {"train.steps": 1024, "train.lr": 0.0001, "train.lr_schedule.warmup_steps": 64, "train.eval_examples": 64},
+  "S23": {"train.steps": 1024, "train.lr": 0.0001, "train.lr_schedule.warmup_steps": 64, "train.eval_examples": 64}
 }
