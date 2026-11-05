@@ -403,6 +403,67 @@ separate layers. Proposed by Jonathan and GPT on 5 Nov 2026.
 optimisation, only if SFT fails to establish format transfer. No tokenizer change, speculative architecture or
 reinforcement learning without evidence that the simpler explanations fail.
 
+## 6b. Typed conversational state registers (proposed, unexecuted, not authorised for training)
+
+**Origin.** Jonathan's aim, 5 Nov 2026, refined with GPT the same day: supervise the model's existing k = 4 per-turn
+state tokens with explicit, typed dialogue state. Recall, role-tracking and identity should then come from trained
+state rather than template matching.
+- **ι (identity):** the assistant and the user. The prior-art lessons recommend splitting it, or binding role to
+  filler.
+- **φ (facts):** values, corrections and absences.
+- **τ (mode):** role-play state and speaker attribution.
+- **κ (standing instructions).**
+
+The registers hold persistent state; the current instruction stays in the token stream.
+
+**Central question.** Does explicit, semantically typed state improve the model's use of persistent conversational
+information across unfamiliar situations? The experiment must also separate a state-representation failure from a
+response-policy failure.
+
+**Endpoints, kept separate.**
+- **Decodability:** a low-capacity probe recovers the state.
+- **Necessity:** disrupting a register impairs generated behaviour, against matched equal-norm perturbations.
+- **Selectivity:** disrupting a register disproportionately impairs its own capability (a capability × register damage
+  matrix).
+
+A probe result alone is never called functional memory.
+
+**Factors.**
+- **Typing:** a stable against a variable role-to-slot assignment, with identical heads, targets, loss weight and
+  exposure. The variable assignment must not be inferable by the model.
+- **Masking regime:** causal (raw turns visible, so a bypass exists) against turn_state with eviction (the registers
+  are the only memory of finished turns). These are different memory tasks. The primary contrast fixes the mask, and
+  a result under eviction is not evidence about ordinary causal conversation.
+
+**Smallest controlled matrix (one mask, identical exposure).**
+- A: no auxiliary loss.
+- A′: the same heads and weight with shuffled, uninformative targets.
+- B: variable assignment.
+- C: stable assignment.
+
+A′ − A isolates supervision as such, B − A′ isolates informative state, and C − B isolates typing.
+
+**Known facts** (`AI_ML/chat_screens_claude/analysis/state_token_feasibility.md`, 5 Nov):
+- `state_embd` is 4 distinct trained vectors, and the slot index is the id minus V.
+- State-position outputs are unused in training and inference, so the heads are training-only, with no change to
+  export, the GGUF or Ember.
+- Open values are predicted as a first token through the tied embedding, plus "absent".
+
+**Prior art** (`analysis/state_token_prior_art.md`): the plain idea is ADJACENT (SituationSupervision, Findings of ACL
+2023; Compressed Context Memory, ICLR 2024; the dialogue-state-tracking line). The typed combination is OPEN. Two 2026
+preprints cited there remain unverified.
+
+**Stages.**
+- **Stage 0:** a CPU probing diagnostic of existing checkpoints, decodability only, with numpy-to-trainer logit parity
+  required.
+- **Stage 1:** a data-only pilot, if justified.
+- **Stage 2:** the matrix above.
+
+Each stage needs its own registration, independent review and Jonathan's authorisation. The specification is
+`analysis/TYPED_STATE_SPEC.md`. A trainer change stays on `claude/chat-screens` and is announced in the
+LOCAL_LLM_STACK inbox before it lands. Paperkiln master and any `src/llama.cpp` change are Codex's. Kept separate
+from §6 (depth).
+
 ## 7. Capability frontier (to be filled as configurations are evaluated)
 
 One row per evaluated configuration. No single weighted score is used for selection. A Pareto-efficient row is one
