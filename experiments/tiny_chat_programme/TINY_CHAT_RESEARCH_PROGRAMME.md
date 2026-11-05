@@ -217,8 +217,11 @@ where stated, and is exploratory.
   - Identity behaves close to a constant reply. On `persona_v002`, 94.7% and 98.0% of plain identity turns answer as an
     assistant, but 1 and 0 of 48 role-play turns stay in character, and 7 and 5 of 12 user-name questions get the
     model's own identity (S24: 0, with 8 recalled).
-- **A15, hybrid plus instruction diversity (§23-23.1): running.** S30 and S31 on a five-condition bar that a constant-form
-  model cannot pass.
+- **A15, hybrid plus instruction diversity (§23-23.2): both FAIL, on precision and discrimination.** S30 and S31 have 18
+  and 17 of 40 on precision against a limit of 20, and 0 and 2 twin pairs against a limit of 4. Naturalness and the
+  ambiguity guard hold. By §23.1's rule no further phrasing or weighting variant is run.
+- **A16, paired contrast data (§24-24.1): running.** S32, S33 and S34, on the 59 context pairs of `contrast_v001`, which no
+  copy policy passes. Controls have at most 5 of 59.
 - **Misfire probe baselines** (correct of 140): S12 74, S14 57, S2 58, S0 54. The best degenerate responder gets
   55.
 
@@ -486,6 +489,18 @@ decodable from the slots at 94-98%, with no slot specialisation. Seen values rea
 against chance 12.5%, so the value code does not generalise. Latest-after-correction (49-58%) and ownership (54-66%) sit
 near chance. Reply attention to the slots is 4-11% against a uniform 12%.
 
+**Stage 0b result** (`analysis/state_ablation_results.md`, 6 Nov; 320 forced-choice items on S-full, S24, S25 and S23).
+The replies do not depend on slot content; recall comes from the raw turns. Masking all slots costs nothing on S-full,
+S24 or S25, and improves S23's recall by 0.36 nats, so there they act as a distractor. With raw turns hidden, the slots
+add nothing beyond the empty floor (only S25's interval clears zero, narrowly), and replacing them with another
+conversation's slots changes the margin by at most 0.03 nats. Together with Stage 0, the state is written but not read.
+A head that supervises writing alone could make the slots more decodable and leave them inert, so sufficiency with raw
+turns hidden and the donor test are the endpoints that matter.
+
+**Scope of that result.** Stage 0b shows the existing unsupervised tokens are largely bypassed under the tested inference
+conditions. It does not falsify supervised typed registers, which remain a separate hypothesis from visible scratchpads, with
+the endpoints above and matched typed and untyped controls.
+
 **Model scale (Jonathan, 6 Nov 2026).** If the state tokens perform, a separate paper needs them tested at several model
 scales with more rigour. E1's bases at 20M, 60M and 150M are on disk, at several seeds, and carry no `state_embd`. They
 save pretraining only: each scale still needs a GPU SFT run with state tokens added before Stage 0 can be repeated there.
@@ -527,7 +542,8 @@ demonstrated optimum.
 | a11b-s1 (S24, S25, S26, S27-r2; one session each) | 193.5 | four exit 0; S27's first session was refused at assignment (0 L4) |
 | a12-s1 (S21, S22, S23; one session each) | 140.4 | three exit 0 |
 | a14-s1 (S28, S29; one session each) | 105.3 | S29 exit 0; S28 exit 2 (log archive timeout; model and train check verified) |
-| **4-5 Nov** | **about 1,095 (18.3 h)** | the week's 6 h, increased by Jonathan's redistribution of budget to this week (4 Nov); A15's two sessions, from 6 Nov, are not yet counted |
+| a15-s1 (S30, S31; one session each) | 114.4 | two exit 0 |
+| **4-6 Nov, through A15** | **about 1,210 (20.2 h)** | the week's 6 h, increased by Jonathan's redistribution of budget to this week (4 Nov) |
 
 CPU evaluation runs under the shared CPU budget (`scripts/cpu_budget.py`, session `claude`, at most 4 slots).
 
@@ -581,7 +597,10 @@ A run that wins on format but loses knowledge fails.
 
 ## 10b. Next authorised step and its stopping rule
 
-Score A15 (S30 and S31) under `AI_ML/chat_screens_claude/PROTOCOL.md` §23.1 and apply its continuation rules. Any later
+Score A16 (S32, S33 and S34) under `AI_ML/chat_screens_claude/PROTOCOL.md` §24.1, report §24.2's additions and apply its
+continuation rules. Run A17 (§25), S30 with a correct, irrelevant and conflicting note, on CPU. S30 is the practical baseline, not a
+confirmed winner: promotion needs a sealed evaluation set. Seed-1 screens are triage, 30% is a reference dose, and a candidate is
+replicated before it is promoted. The 130-L4-hour pretraining campaign waits for the full benchmarks and a short scaling pilot. Any later
 training run has its design, hypothesis and bar written here and in the root protocol, and independently reviewed,
 before training.
 
