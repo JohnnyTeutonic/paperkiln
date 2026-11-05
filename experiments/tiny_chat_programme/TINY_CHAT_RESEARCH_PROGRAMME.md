@@ -197,6 +197,24 @@ where stated, and is exploratory.
     trains, 24 against 15.
   - Guards hold, and paperkiln/ember inference parity passes, single- and multi-turn.
   - At this dose, diversity buys scenario-specific conventions, not a transferable operation rule.
+  - That dose was about 2% of sampled supervised tokens. Every later intervention is sized by sampled tokens, not rows.
+- **A11, human conversation at 30% of tokens (§20, verdict §20.4): primary FAILS.** S25 67 against S24 68 of 111
+  decided, p 1, against a bar of +21. S25 ties S26, the matched grid half.
+  - S27, human data alone, is strongest in scenario types the grid never saw (16 / 9 against 6 / 29) and weakest on
+    instruction families e and f (16 of 40 against 24). It follows no format (v001 0).
+  - S25 fails the relevance guard (−0.54) and more than doubles persona invention (45.4% against 19.7%).
+- **A12, instruction diversity at 68, 272 and 1,088 phrasings (§21, verdict §21.2): primary FAILS by two items.** S23
+  against S21 is 42 to 26 of 90, +16, p 0.0025, against a bar of +18.
+  - Monotone on held-out items: 28, 35, 47 of 120. Constraint satisfaction 61, 73, 86; operation choice 65, 66, 71.
+  - The registered reading is wording transfer, not composition (held-out gain 0.158, reference gain 0.225).
+  - Persona invention falls 7.9%, 4.6%, 0.7%.
+- **A14, hybrids (§22, verdict §22.3): both FAIL on precision alone.** S28 and S29 have 18 and 17 of 40 against a limit
+  of 20, and pass naturalness (22, 16) and the ambiguity guard (60, 62).
+  - They have the highest misfire-probe totals so far, 78 and 79 correct of 140, mostly from family b (16 and 17 of 20).
+  - Identity: 94.7% and 98.0% of identity turns answer as an assistant on `persona_v002`, on wordings left out of
+    training, with invention at 2.6% and 1.3%.
+- **A15, hybrid plus instruction diversity (§23-23.1): running.** S30 and S31 on a five-condition bar that a constant-form
+  model cannot pass.
 - **Misfire probe baselines** (correct of 140): S12 74, S14 57, S2 58, S0 54. The best degenerate responder gets
   55.
 
@@ -459,6 +477,15 @@ preprints cited there remain unverified.
 - **Stage 1:** a data-only pilot, if justified.
 - **Stage 2:** the matrix above.
 
+**Stage 0 result** (`analysis/state_probe_results.md`, 5 Nov; numpy-to-trainer parity at most 9.5e-6). Closed state is
+decodable from the slots at 94-98%, with no slot specialisation. Seen values reach 69-85%, and held-out values 14-42%
+against chance 12.5%, so the value code does not generalise. Latest-after-correction (49-58%) and ownership (54-66%) sit
+near chance. Reply attention to the slots is 4-11% against a uniform 12%.
+
+**Model scale (Jonathan, 6 Nov 2026).** If the state tokens perform, a separate paper needs them tested at several model
+scales with more rigour. E1's bases at 20M, 60M and 150M are on disk, at several seeds, and carry no `state_embd`. They
+save pretraining only: each scale still needs a GPU SFT run with state tokens added before Stage 0 can be repeated there.
+
 Each stage needs its own registration, independent review and Jonathan's authorisation. The specification is
 `analysis/TYPED_STATE_SPEC.md`. A trainer change stays on `claude/chat-screens` and is announced in the
 LOCAL_LLM_STACK inbox before it lands. Paperkiln master and any `src/llama.cpp` change are Codex's. Kept separate
@@ -493,7 +520,10 @@ demonstrated optimum.
 | w6c-s2 (S6, seed 2) | 23.9 | exit 0 |
 | a9-s1 (S12, S13, S14; one session each) | 128.9 | three exit 0 |
 | a10-s1 (S15, S16; one session each) | 67.0 | two exit 0 |
-| **4-5 Nov** | **about 656 (10.9 h)** | the week's 6 h, increased by Jonathan's redistribution of budget to this week (4 Nov) |
+| a11b-s1 (S24, S25, S26, S27-r2; one session each) | 193.5 | four exit 0; S27's first session was refused at assignment (0 L4) |
+| a12-s1 (S21, S22, S23; one session each) | 140.4 | three exit 0 |
+| a14-s1 (S28, S29; one session each) | 105.3 | S29 exit 0; S28 exit 2 (log archive timeout; model and train check verified) |
+| **4-5 Nov** | **about 1,095 (18.3 h)** | the week's 6 h, increased by Jonathan's redistribution of budget to this week (4 Nov); A15's two sessions, from 6 Nov, are not yet counted |
 
 CPU evaluation runs under the shared CPU budget (`scripts/cpu_budget.py`, session `claude`, at most 4 slots).
 
@@ -547,10 +577,9 @@ A run that wins on format but loses knowledge fails.
 
 ## 10b. Next authorised step and its stopping rule
 
-Finish A5 and apply its rules; score wave 3; run step 1 of section 6 on CPU. Then exactly one of:
-- A4 seed 1, if its launch condition holds (65 L4-minutes); or
-- a registered A5 follow-up (format-only arm or ladder curriculum). Its design, hypothesis and bar are written here
-  and in the root protocol, and independently reviewed, before training, within the remaining weekly L4 budget.
+Score A15 (S30 and S31) under `AI_ML/chat_screens_claude/PROTOCOL.md` §23.1 and apply its continuation rules. Any later
+training run has its design, hypothesis and bar written here and in the root protocol, and independently reviewed,
+before training.
 
 **Stopping rule:** no GPU training without a registered design, review and budget. An intervention that does not
 beat its control at its registered bar is recorded here as a negative and not retried with relaxed criteria.
