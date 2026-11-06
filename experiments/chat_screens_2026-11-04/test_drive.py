@@ -125,7 +125,7 @@ SOURCE = "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1"
 if cmd == "exec":
     f = args[args.index("-f") + 1]
     code = Path(f).read_text()
-    m = re.match(r".*claude_screens_(.+?)_(mkdir_in|vm_hashes\d|hf_fetch|launch_retry|launch_probe\d|launch|poll|"
+    m = re.match(r".*claude_screens_(.+?)_(early_read|mkdir_in|vm_hashes\d|hf_fetch|launch_retry|launch_probe\d|launch|poll|"
                  r"final_state|pack\d|stop_workload\d|token_remove\d)\.py$", f)
     run, label = m.group(1), m.group(2)
     out = content / f"run_{run}" / "out"
@@ -137,9 +137,14 @@ if cmd == "exec":
         st["manifest_sha"] = msha; save()
         out.mkdir(parents=True, exist_ok=True)
         (content / f"vm_{run}.pid").write_text("4242")
+        if os.environ.get("MOCK_TRAIN_LOG"):
+            (out / "train_S35.log").write_text(os.environ["MOCK_TRAIN_LOG"])
         if mode == "launch_lost_started" and n == 1:
             sys.exit(1)
         print("LAUNCHED"); sys.exit(0)
+    if label == "early_read":
+        if count("early_read") <= int(os.environ.get("MOCK_EARLY_FAIL", "0")):
+            sys.exit(1)
     if label == "mkdir_in" and (mode == "mkdir_never" or (mode == "mkdir_fail_once" and count("mkdir") == 1)):
         sys.exit(1)
     if label.startswith("launch_probe"):
@@ -189,7 +194,7 @@ def write_inputs(tmp, bad_pin=False, recipes=None):
     pins = {}
     names = ["sfull_sft1500.safetensors", "vocab.gguf", "S0.jsonl", "S1.jsonl", "S2.jsonl", "S3.jsonl",
              "S4.jsonl", "S5.jsonl", "S6.jsonl", "S7.jsonl", "S8.jsonl", "S9.jsonl", "S10.jsonl",
-             "S11.jsonl", "S12.jsonl", "S13.jsonl", "S14.jsonl", "S15.jsonl", "S16.jsonl", "S24.jsonl", "S25.jsonl", "S26.jsonl", "S27.jsonl", "S21.jsonl", "S22.jsonl", "S23.jsonl", "S28.jsonl", "S29.jsonl", "S30.jsonl", "S31.jsonl", "S32.jsonl", "S33.jsonl", "S34.jsonl", "S51.jsonl", "S52.jsonl", "S53.jsonl", "s34_a16.safetensors", "s30_a15.safetensors", "recipes.json", "arm_a_lr3e5.json"]
+             "S11.jsonl", "S12.jsonl", "S13.jsonl", "S14.jsonl", "S15.jsonl", "S16.jsonl", "S24.jsonl", "S25.jsonl", "S26.jsonl", "S27.jsonl", "S21.jsonl", "S22.jsonl", "S23.jsonl", "S28.jsonl", "S29.jsonl", "S30.jsonl", "S31.jsonl", "S32.jsonl", "S33.jsonl", "S34.jsonl", "S35.jsonl", "S36.jsonl", "S37.jsonl", "S38.jsonl", "S39.jsonl", "S40.jsonl", "S41.jsonl", "S42.jsonl", "S43.jsonl", "S44.jsonl", "S45.jsonl", "S46.jsonl", "S47.jsonl", "S48.jsonl", "S49.jsonl", "S50.jsonl", "tc_e1_L2_r1.safetensors", "tc_e1_L2_r2.safetensors", "tc_e1_L4_r1.safetensors", "tc_e1_L4_r2.safetensors", "tc_e5_s35_r1.safetensors", "tc_e5_s35_r3.safetensors", "tc_e1_L16_r1.safetensors", "tc_e1_L16_r2.safetensors", "tc_e1_L32_r1.safetensors", "tc_e1_L32_r2.safetensors", "tc_sft_B_r1.safetensors", "tc_e1_60m_L8_r1.safetensors", "S51.jsonl", "S52.jsonl", "S53.jsonl", "s34_a16.safetensors", "s30_a15.safetensors", "recipes.json", "arm_a_lr3e5.json"]
     for i, n in enumerate(names):
         data = (n * (300 if n.endswith(".safetensors") else 3)).encode()
         if n == "recipes.json" and recipes is not None:
@@ -651,6 +656,146 @@ class DriveTests(unittest.TestCase):
         self.assertEqual(mod.bases_of(["S51", "S52"]), ("s34_a16",))
         self.assertEqual(mod.bases_of(["S51", "S53"]), ("s30_a15", "s34_a16"))
         self.assertEqual(mod.PINS["S52.jsonl"], mod.PINS["S34.jsonl"])
+
+    DEPTH = {"S35": {"base": "tc_e5_s35_r1", "train.steps": 2048}, "S36": {"base": "tc_e1_L32_r1", "train.steps": 2048}, "S37": {"base": "tc_e1_L2_r1", "train.steps": 2048}}
+    ARMS = ["S35", "S36", "S37"]
+
+    def depth(self, log, mode="normal", extra=None):
+        env = {"MOCK_TRAIN_LOG": log, "DRIVE_TEST_LAUNCH_NEED": "1", **(extra or {})}
+        return self.run_drive(mode, seed=1, screens=self.ARMS, recipes=self.DEPTH, extra=env, minute="0.3")
+
+    @staticmethod
+    def evals(*rows):
+        return "".join('{"eval_device":true,"eval_s":2.4,"event":"eval","step":%d,"val_loss":%s}\n' % r for r in rows)
+
+    def test_a_session_below_the_bar_runs_to_the_end(self):
+        rc, state, log, tmp, _ = self.depth(self.evals((256, "3.1"), (512, "2.5"), (768, "2.2"), (1024, "1.88"), (1280, "2.9")))
+        self.assertEqual(rc, 0, log)
+        self.assert_home(tmp, self.ARMS, universe=self.ARMS)
+        self.assertIn("S35: R(1024) = 1.88, bar 1.88: continues", log)
+        self.assertEqual(state["counts"]["early_read"], 1)
+        self.assertEqual(state["counts"].get("stop_workload", 0), 0)
+
+    def test_above_the_bar_stops_after_s35_comes_home_with_its_weights(self):
+        rc, state, log, tmp, _ = self.depth(self.evals((512, "1.5"), (1024, "1.881")))
+        self.assert_home(tmp, ["S35"], universe=self.ARMS)
+        self.assertTrue((tmp / "art" / "t1" / "S35" / "model.safetensors").is_file())
+        self.assertIn("stop once S35 is home", log)
+        self.assertIn("early stop: S35 is home", log)
+        self.assertEqual(state["counts"]["stop_workload"], 1)
+        self.assertEqual(rc, 1, log)
+        self.assertEqual(state["sessions"], {})
+        self.assertLess(log.index("S35: HOME"), log.index("early stop: S35 is home"))
+
+    def test_a_null_reading_is_a_stop(self):
+        for token in ("null", "nan", "inf", "-nan"):
+            rc, state, log, tmp, _ = self.depth(self.evals((1024, token)))
+            self.assertIn("R(1024) = None", log, token)
+            self.assertEqual(state["counts"]["stop_workload"], 1, token)
+            self.assert_home(tmp, ["S35"], universe=self.ARMS)
+
+    def test_the_first_eval_at_or_past_the_step_is_the_one_read(self):
+        rc, state, log, tmp, _ = self.depth(self.evals((768, "9.9"), (1280, "1.2"), (1536, "9.9")))
+        self.assertEqual(rc, 0, log)
+        self.assertIn("S35: R(1280) = 1.2", log)
+
+    def test_no_eval_yet_is_read_again_and_is_not_a_stop(self):
+        rc, state, log, tmp, _ = self.depth(self.evals((512, "9.9")))
+        self.assertEqual(rc, 0, log)
+        self.assertGreater(state["counts"]["early_read"], 1)
+        self.assertNotIn("R(", log)
+
+    def test_a_failed_read_is_logged_is_no_stop_and_is_tried_again(self):
+        rc, state, log, tmp, _ = self.depth(self.evals((1024, "2.5")), extra={"MOCK_EARLY_FAIL": "1"})
+        self.assertIn("early read failed: not a stop", log)
+        self.assertIn("R(1024) = 2.5", log)
+        self.assertEqual(state["counts"]["early_read"], 2)
+
+    def test_a_read_that_always_fails_lets_the_session_finish(self):
+        rc, state, log, tmp, _ = self.depth(self.evals((1024, "2.5")), extra={"MOCK_EARLY_FAIL": "99"})
+        self.assertEqual(rc, 0, log)
+        self.assert_home(tmp, self.ARMS, universe=self.ARMS)
+        self.assertEqual(state["counts"].get("stop_workload", 0), 0)
+
+    def test_no_cancel_until_s35_is_home(self):
+        rc, state, log, tmp, _ = self.depth(self.evals((1024, "2.5")), mode="bad_part_always")
+        self.assertNotIn("early stop:", log)
+        self.assertEqual(state["counts"].get("stop_workload", 0), 0)
+        self.assert_home(tmp, [], universe=self.ARMS)
+
+    def test_cancel_with_the_safetensors_not_home_keeps_it_in_the_archive(self):
+        rc, state, log, tmp, _ = self.depth(self.evals((1024, "2.5")), mode="bad_st_always")
+        self.assertIn("early stop: S35 is home", log)
+        self.assertFalse((tmp / "art" / "t1" / "S35" / "model.safetensors").exists())
+        self.assertTrue([n for n in self.members(tmp) if "screens/S35/model.safetensors.part" in n])
+
+    def test_a_session_without_s35_never_reads(self):
+        rc, state, log, tmp, _ = self.run_drive("normal", seed=1, screens=["S38", "S39"], recipes={"S38": {"base": "tc_e1_L16_r1"}, "S39": {"base": "tc_e1_L4_r1"}}, extra={"DRIVE_TEST_LAUNCH_NEED": "1"})
+        self.assertEqual(rc, 0, log)
+        self.assertEqual(state["counts"].get("early_read", 0), 0)
+
+    def test_s35_alone_is_not_cancelled_after_it_is_home(self):
+        rc, state, log, tmp, _ = self.run_drive("normal", seed=1, screens=["S35"], recipes={"S35": self.DEPTH["S35"]},
+                                                extra={"MOCK_TRAIN_LOG": self.evals((1024, "2.5")), "DRIVE_TEST_LAUNCH_NEED": "1"})
+        self.assertEqual(rc, 0, log)
+        self.assertNotIn("early stop:", log)
+
+    def test_two_named_bases_in_one_a18_session_and_a_recipe_naming_an_unpinned_base(self):
+        rc, state, log, tmp, _ = self.run_drive("normal", seed=1, screens=["S35", "S36"], recipes=self.DEPTH, extra={"DRIVE_TEST_LAUNCH_NEED": "1"})
+        self.assertEqual(rc, 0, log)
+        man = json.loads((tmp / "receipts" / "t1" / "input_manifest.json").read_text())
+        self.assertEqual(sorted(man["bases"]), ["tc_e1_L32_r1", "tc_e5_s35_r1"])
+        rc, state, log, tmp, _ = self.run_drive("normal", seed=1, screens=["S35"], recipes={"S35": {"base": "tc_e1_L3_r1"}}, extra={"DRIVE_TEST_LAUNCH_NEED": "1"})
+        self.assertEqual(rc, 2, log)
+        self.assertIn("not pinned", log)
+        self.assertEqual(state["counts"].get("new", 0), 0)
+
+    def test_the_a18_recipes_pins_and_budget(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("drive_mod", HERE / "drive.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        rec = json.loads((HERE / "recipes.json").read_text())
+        shapes = {"S35": (448, 8, 7, 1248), "S36": (192, 32, 3, 832), "S37": (896, 2, 14, 2528), "S38": (320, 16, 5, 864), "S39": (640, 4, 10, 1760), "S40": (896, 2, 14, 2528), "S41": (448, 8, 7, 1248),
+                  "S42": (192, 32, 3, 832), "S43": (320, 16, 5, 864), "S44": (640, 4, 10, 1760), "S45": (768, 8, 12, 2240), "S46": (768, 8, 12, 2240), "S47": (896, 2, 14, 2528), "S48": (192, 32, 3, 832),
+                  "S49": (192, 32, 3, 832), "S50": (192, 32, 3, 832)}
+        for s, (d, layers, heads, ff) in shapes.items():
+            r = rec[s]
+            self.assertEqual((r["arch.custom.d"], r["arch.custom.layers"], r["arch.custom.heads"], r["arch.custom.d_ff"]), (d, layers, heads, ff), s)
+            self.assertEqual(d, heads * 64, s)
+            self.assertIsNone(r["arch.state_tokens"])
+            self.assertEqual((r["train.steps"], r["train.batch"], r["train.accum"], r["train.checkpoint_every"], r["train.eval_examples"], r["train.eval_every"], r["train.lr_schedule.warmup_steps"]), (2048, 8, 2, 256, 680, 256, 64), s)
+            self.assertEqual(r["train.lr"], 0.0002 if s in ("S49", "S50") else 0.0001, s)
+            self.assertEqual(r["base"].startswith("tc_"), True, s)
+            self.assertIn(s, mod.ALL_SCREENS)
+            self.assertIn(s, mod.SCREEN_MINUTES)
+        self.assertEqual(rec["S47"]["base"], rec["S37"]["base"])
+        self.assertEqual(rec["S48"]["base"], rec["S36"]["base"])
+        self.assertEqual((rec["S49"]["base"], rec["S50"]["base"]), (rec["S36"]["base"], rec["S42"]["base"]))
+        for s in ("S35", "S36", "S37", "S38", "S39", "S40", "S41", "S42", "S43", "S44", "S49", "S50"):
+            self.assertEqual(mod.PINS[f"{s}.jsonl"], mod.PINS["S34.jsonl"], s)
+            self.assertIn(f"{rec[s]['base']}.safetensors", mod.PINS, s)
+        for s in ("S45", "S46", "S47", "S48"):
+            self.assertNotIn(f"{s}.jsonl", mod.PINS, s)
+        for b in ("tc_sft_B_r1", "tc_e1_60m_L8_r1"):
+            self.assertNotIn(f"{b}.safetensors", mod.PINS, b)
+        self.assertEqual(mod.launch_need(["S35", "S36", "S37"]), 103)
+        self.assertEqual(mod.launch_need(["S51", "S52"]), 75)
+        self.assertEqual(mod.launch_need(["S34"]), 75)
+        self.assertEqual(mod.part_stem("tc_e1_L2_r1"), "tc_e1_L2_r1")
+        self.assertEqual(mod.part_stem("sfull_sft1500"), "base")
+        self.assertEqual(mod.EARLY_STOP, {"S35": (1024, 1.88)})
+
+    def test_every_a18_session_plan_fits_the_driver(self):
+        """Each plan's need is under its polling end by at least the 4 minutes a fetch takes, and every cap is one main() accepts."""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("drive_mod", HERE / "drive.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        plans = ((("S35", "S36", "S37"), 120), (("S36", "S37"), 85), (("S38", "S39", "S40"), 110), (("S41", "S42"), 100), (("S43", "S44"), 85), (("S45",), 85), (("S46",), 85), (("S47", "S48"), 85), (("S49", "S50"), 110))
+        for screens, cap in plans:
+            self.assertTrue(30 <= cap <= 120, screens)
+            self.assertLessEqual(mod.launch_need(list(screens)) + 4, mod.capped(cap)[0], screens)
 
     def test_a_late_session_is_not_launched(self):
         rc, state, log, tmp, _ = self.run_drive("normal", extra={"DRIVE_TEST_LAUNCH_NEED": "100000"})

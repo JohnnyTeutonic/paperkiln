@@ -230,6 +230,67 @@ class VmRunTests(unittest.TestCase):
         r, s, out = self.run_vm()
         self.assertNotEqual(s["gates"]["specs"], 0)
 
+    A18 = {"base": "s34_a16", "arch.custom.d": 192, "arch.custom.layers": 32, "arch.custom.heads": 3, "arch.custom.d_ff": 832, "arch.state_tokens": None, "train.steps": 8, "train.batch": 8, "train.accum": 2,
+           "train.checkpoint_every": 256, "train.eval_examples": 680, "train.eval_every": 256}
+
+    def a18_recipe(self, **over):
+        self.add_base(screens=("S0",))
+        rec = json.dumps({"S0": {**self.A18, **over}}).encode()
+        (self.inputs / "recipes.json").write_bytes(rec)
+        self.manifest["files"]["recipes.json"] = sha(rec)
+        self.write_manifest()
+
+    def test_a_recipe_with_base_and_shape_reaches_its_spec_and_k_goes(self):
+        self.a18_recipe()
+        r, s, out = self.run_vm()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(s["pass"])
+        spec = json.loads((out / "spec_S0.json").read_text())
+        self.assertEqual(spec["arch"]["custom"], {"d": 192, "layers": 32, "heads": 3, "d_ff": 832})
+        self.assertNotIn("state_tokens", spec["arch"])
+        self.assertEqual((spec["train"]["batch"], spec["train"]["accum"], spec["train"]["checkpoint_every"], spec["train"]["eval_examples"]), (8, 2, 256, 680))
+        self.assertTrue(spec["train"]["init_from"].endswith("/upload/s34_a16.safetensors"))
+        self.assertEqual(spec["arch"]["preset"], "llama-tiny")
+        self.assertIn("state_tokens", json.loads((out / "spec_S1.json").read_text())["arch"])
+
+    def test_specs_log_keeps_the_base_key_and_the_null(self):
+        self.a18_recipe()
+        r, s, out = self.run_vm()
+        log = (out / "specs.log").read_text()
+        self.assertIn('"base": "s34_a16"', log)
+        self.assertIn('"arch.state_tokens": null', log)
+
+    def test_a_key_outside_the_recipe_keys_fails_the_specs_gate(self):
+        self.a18_recipe(**{"train.clip": 2.0})
+        r, s, out = self.run_vm()
+        self.assertNotEqual(s["gates"]["specs"], 0)
+        self.assertNotIn("train_S0", s["gates"])
+
+    def test_a_null_outside_the_prefix_fails_the_specs_gate(self):
+        for key in ("train.steps", "arch.custom.d", "train.batch"):
+            self.setUp()
+            self.a18_recipe(**{key: None})
+            r, s, out = self.run_vm()
+            self.assertNotEqual(s["gates"]["specs"], 0, key)
+            self.assertNotIn("train_S0", s["gates"])
+
+    def test_a_null_on_a_key_inside_the_prefix_is_refused(self):
+        self.a18_recipe(**{"arch.state_tokens.k": None})
+        r, s, out = self.run_vm()
+        self.assertNotEqual(s["gates"]["specs"], 0)
+
+    def test_the_state_tokens_stay_unless_the_recipe_deletes_them(self):
+        rec = dict(self.A18)
+        del rec["arch.state_tokens"]
+        self.add_base(screens=("S0",))
+        data = json.dumps({"S0": rec}).encode()
+        (self.inputs / "recipes.json").write_bytes(data)
+        self.manifest["files"]["recipes.json"] = sha(data)
+        self.write_manifest()
+        r, s, out = self.run_vm()
+        self.assertEqual(s["gates"]["specs"], 0)
+        self.assertEqual(json.loads((out / "spec_S0.json").read_text())["arch"]["state_tokens"]["k"], 4)
+
     def test_a_wrong_manifest_hash_stops_before_the_build(self):
         r, s, out = self.run_vm(manifest_sha="0" * 64)
         self.assertNotEqual(r.returncode, 0)
@@ -292,7 +353,7 @@ class VmRunTests(unittest.TestCase):
         self.assertEqual(json.loads((out / "train_S1_check.json").read_text())["want_step"], 300)
 
     def test_a_recipe_with_a_forbidden_key_fails_the_specs_gate(self):
-        self.write_recipes({"S1": {"train.batch": 32}})
+        self.write_recipes({"S1": {"train.clip": 2.0}})   # train.batch became a recipe key with A18
         r, s, out = self.run_vm()
         self.assertNotEqual(s["gates"]["specs"], 0)
         self.assertEqual(self.ready(out), [])

@@ -44,6 +44,7 @@ Test hooks (DRIVE_TEST_*) are honoured only with DRIVE_TEST_HARNESS=1, and refus
 """
 import hashlib
 import json
+import math
 import os
 import re
 import shutil
@@ -75,7 +76,7 @@ RAISE_ON = hook("DRIVE_TEST_RAISE_ON", "")
 PART_BYTES = int(hook("DRIVE_TEST_PART_BYTES", str(45 * 1024 * 1024)))  # runner_multi.py: 45 MiB both ways
 SOURCE = "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1"
 SCREENS = ("S0", "S1", "S2", "S3")  # wave 1, the default
-ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16", "S24", "S25", "S26", "S27", "S21", "S22", "S23", "S28", "S29", "S30", "S31", "S32", "S33", "S34", "S51", "S52", "S53")
+ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16", "S24", "S25", "S26", "S27", "S21", "S22", "S23", "S28", "S29", "S30", "S31", "S32", "S33", "S34", "S35", "S36", "S37", "S38", "S39", "S40", "S41", "S42", "S43", "S44", "S45", "S46", "S47", "S48", "S49", "S50", "S51", "S52", "S53")
 COMMON_INPUTS = ("vocab.gguf", "arm_a_lr3e5.json", "recipes.json")
 DEFAULT_BASE = "sfull_sft1500"  # a screen starts from this unless its recipe names a "base" (A19)
 
@@ -87,6 +88,10 @@ def capped(cap):
 
 
 ST_MIN_LEFT = float(hook("DRIVE_TEST_ST_MIN_LEFT", "6"))  # minutes needed to start the safetensors fetch
+# A18: training minutes per arm, whole minutes, by shape (L2 23, L4 26, L8 32, L16 38, L32 45, 60M 57). Used by launch_need only; the VM never reads them.
+SCREEN_MINUTES = {"S35": 32, "S36": 45, "S37": 23, "S38": 38, "S39": 26, "S40": 23, "S41": 32, "S42": 45, "S43": 38, "S44": 26, "S45": 57, "S46": 57, "S47": 23, "S48": 45, "S49": 45, "S50": 45}
+# A18: (step, bar). val_loss at the first evaluation at or past the step, above the bar or not finite, ends the session once this arm is home. Later arms are never stopped.
+EARLY_STOP = {"S35": (1024, 1.88)}
 
 
 def recipe(screen):
@@ -125,10 +130,13 @@ def st_excludes(st_home):
 def launch_need(screens):
     """Minutes needed between launch and the polling deadline: the build (about 2.5) and about 8.7 minutes of
     training per 256 steps per screen (wave 3, seed 1), with margin. The driver does not launch with less.
-    `screens` is a count (arm A recipes) or a sequence of screen names (steps from recipes.json)."""
+    `screens` is a count (arm A recipes) or a sequence of screen names (steps from recipes.json). A screen in
+    SCREEN_MINUTES takes its own minutes, since the 9 minutes per 256 steps are S-full's shape."""
+    timed = 0
     if not isinstance(screens, int):
-        screens = sum(screen_steps(s) / 256 for s in screens)
-    return float(hook("DRIVE_TEST_LAUNCH_NEED", str(3 + 9 * screens)))
+        timed = sum(SCREEN_MINUTES.get(s, 0) for s in screens)
+        screens = sum(screen_steps(s) / 256 for s in screens if s not in SCREEN_MINUTES)
+    return float(hook("DRIVE_TEST_LAUNCH_NEED", str(3 + timed + 9 * screens)))
 
 
 def required_gates(screens):
@@ -214,7 +222,31 @@ PINS = {
     "S51.jsonl": (f"{ART}/chat_screens_claude/packets/a19/M1/train.jsonl", "5d7a022081363972766dc5bfc13754b7f6a32e2c21208eae88c03fa822dfe9e1"),
     "S52.jsonl": (f"{ART}/chat_screens_claude/packets/a16/S32/train.jsonl", "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a"),
     "S53.jsonl": (f"{ART}/chat_screens_claude/packets/a19/M2/train.jsonl", "58113f54d69f8d3697d40f1ff8945ef4e3234be8b9117c4782a07dfa2f02f270"),
-    "recipes.json": (str(HERE / "recipes.json"), "7500c0c03d72f83538e9243055b42e3d62d54a7b59ec812f29fbe4848d52f817"),
+    # A18 (section 26): depth for width. S35 to S44 and the rate arms train S32's packet; each base is the tc_ export. S45 to S48 are pinned only if their branch opens: A18 later pins
+    "S35.jsonl": (f"{ART}/chat_screens_claude/packets/a16/S32/train.jsonl", "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a"),
+    "S36.jsonl": (f"{ART}/chat_screens_claude/packets/a16/S32/train.jsonl", "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a"),
+    "S37.jsonl": (f"{ART}/chat_screens_claude/packets/a16/S32/train.jsonl", "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a"),
+    "S38.jsonl": (f"{ART}/chat_screens_claude/packets/a16/S32/train.jsonl", "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a"),
+    "S39.jsonl": (f"{ART}/chat_screens_claude/packets/a16/S32/train.jsonl", "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a"),
+    "S40.jsonl": (f"{ART}/chat_screens_claude/packets/a16/S32/train.jsonl", "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a"),
+    "S41.jsonl": (f"{ART}/chat_screens_claude/packets/a16/S32/train.jsonl", "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a"),
+    "S42.jsonl": (f"{ART}/chat_screens_claude/packets/a16/S32/train.jsonl", "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a"),
+    "S43.jsonl": (f"{ART}/chat_screens_claude/packets/a16/S32/train.jsonl", "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a"),
+    "S44.jsonl": (f"{ART}/chat_screens_claude/packets/a16/S32/train.jsonl", "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a"),
+    "S49.jsonl": (f"{ART}/chat_screens_claude/packets/a16/S32/train.jsonl", "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a"),
+    "S50.jsonl": (f"{ART}/chat_screens_claude/packets/a16/S32/train.jsonl", "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a"),
+    "tc_e1_L2_r1.safetensors": (f"{ART}/tiny_chat/e1/pt_e1_L2_r1/tc_e1_L2_r1.safetensors", "763c4f38c2c1c890481f9895cb47d164b5d2f7e758563a34a9c072bd1fd70700"),
+    "tc_e1_L2_r2.safetensors": (f"{ART}/tiny_chat/e1/pt_e1_L2_r2/tc_e1_L2_r2.safetensors", "6d56a0433ce378a3641d0904b516a96c18d755c3e9dfe41377815f27a1d19419"),
+    "tc_e1_L4_r1.safetensors": (f"{ART}/tiny_chat/e1/pt_e1_L4_r1/tc_e1_L4_r1.safetensors", "f4f5fc323e8d5856ddcc90e21b95e70d9fb202861854faa080774a6319648c1a"),
+    "tc_e1_L4_r2.safetensors": (f"{ART}/tiny_chat/e1/pt_e1_L4_r2/tc_e1_L4_r2.safetensors", "42ee6b5d01308a3fa9e483eae4e747337595831787399ad587074dfe9f474f7c"),
+    "tc_e5_s35_r1.safetensors": (f"{ART}/tiny_chat/e5/pt_e5_s35_r1/tc_e5_s35_r1.safetensors", "0b6485e241224a0a07407caa55e7e03346b7e31264ba2daa122e531d4d6da956"),
+    "tc_e5_s35_r3.safetensors": (f"{ART}/tiny_chat/e5/pt_e5_s35_r3/tc_e5_s35_r3.safetensors", "b8d47042a0bcab9ae77089ef1671c4197f7fbd891efd230004dcd0c85df4e00b"),
+    "tc_e1_L16_r1.safetensors": (f"{ART}/tiny_chat/e1/pt_e1_L16_r1/tc_e1_L16_r1.safetensors", "b8d5e4099653aa52b1bc9b46f4793f4072e1f03e4d7dd973ed3f0c4217216559"),
+    "tc_e1_L16_r2.safetensors": (f"{ART}/tiny_chat/e1/pt_e1_L16_r2/tc_e1_L16_r2.safetensors", "7e59c4989bec3754a076750da4e52d2325768a84ecf5d7960a08f13bc3f46810"),
+    "tc_e1_L32_r1.safetensors": (f"{ART}/tiny_chat/e1/pt_e1_L32_r1/tc_e1_L32_r1.safetensors", "86fc7216c1da122ecfd66e8c43b2e8a0effaf0dfb30a91f61c3df4b8f95507ff"),
+    "tc_e1_L32_r2.safetensors": (f"{ART}/tiny_chat/e1/pt_e1_L32_r2/tc_e1_L32_r2.safetensors", "02b11e03185413131883bfd24249d6bb80a64d970ff9dc5ff8bf9758f274f34e"),
+    # A18 later pins
+    "recipes.json": (str(HERE / "recipes.json"), "b6c44a5eb96dd2726dc44ce51d8c6a1a469f43b7e482d36d0f8530afbd65d15b"),
     "arm_a_lr3e5.json": (str(HERE / "arm_a_lr3e5.json"),
                          "66c718e0b501c751aae0a1cd22eddfdc666a7cfb46a4c074fa41b67aa220125e"),
 }
@@ -280,6 +312,8 @@ class Driver:
         self.manifest = None
         self.manifest_sha = None
         self.home = {}  # screen -> verified GGUF SHA-256
+        self.early_read = {}  # A18: screen -> R at its read step, None if not finite
+        self.stop_after = None
 
     # ---- logging never raises: the file is the record, the terminal and stderr best effort
     def log(self, *parts):
@@ -661,6 +695,53 @@ class Driver:
                     pass
         return None, None
 
+    def read_eval(self, screen, step, deadline):
+        """The first evaluation at or past `step` in the VM's train log: (step, value), value None if not finite; None if there is none yet; False if the read failed. Read-only."""
+        code = ("import json, re\n"
+                f"step, got = {step}, None\n"
+                "try:\n"
+                f"    for line in open('/content/run_{self.run}/out/train_{screen}.log', errors='replace'):\n"
+                "        if '\"eval\"' not in line:\n"
+                "            continue\n"
+                "        s, v = re.search(r'\"step\":\\s*(\\d+)', line), re.search(r'\"val_loss\":\\s*([^,}\\s]+)', line)\n"
+                "        if s and v and int(s.group(1)) >= step:\n"
+                "            got = [int(s.group(1)), v.group(1)]\n"
+                "            break\n"
+                "except OSError:\n"
+                "    pass\n"
+                "print('EVAL ' + json.dumps(got))\n")
+        rc, out = self.exec_py(code, 200, deadline, "early_read")
+        for line in out.splitlines():
+            if rc == 0 and line.startswith("EVAL "):
+                try:
+                    got = json.loads(line[len("EVAL "):])
+                except ValueError:
+                    return False
+                if got is None:
+                    return None
+                try:
+                    value = float(got[1])
+                except ValueError:
+                    value = math.inf
+                return int(got[0]), value if math.isfinite(value) else None
+        return False
+
+    def early_check(self):
+        """A18's readout: each arm in EARLY_STOP is read once. A failed read is logged and is not a stop; it is tried again at the next poll."""
+        for s, (step, bar) in EARLY_STOP.items():
+            if s not in self.screens or s in self.early_read:
+                continue
+            got = self.read_eval(s, step, self.work_end)
+            if got is False:
+                self.log(f"{s}: early read failed: not a stop")
+            elif got is not None:
+                at, value = got
+                self.early_read[s] = value
+                over = value is None or value > bar
+                self.log(f"{s}: R({at}) = {value}, bar {bar}:", f"stop once {s} is home" if over else "continues")
+                if over:
+                    self.stop_after = s
+
     def collect(self, screen, deadline):
         """Download one READY screen's manifest, parts and log; hash every part; join; hash the GGUF. Only a fully
         verified screen is promoted to OUT/screen. True on success. Never raises."""
@@ -769,11 +850,16 @@ class Driver:
             done, ready = self.vm_state(self.work_end, "poll")
             if done is None:
                 continue
+            self.early_check()
             for s in ready:
                 if s not in self.home:
                     self.collect(s, self.work_end)
             if done:
                 return True
+            # S35 finishes and comes home first, so a stop is never blind. Its safetensors, if it did not arrive, stays in the logs archive: st_excludes keeps an arm not home.
+            if self.stop_after in self.home and self.screens[-1] != self.stop_after:
+                self.log(f"early stop: {self.stop_after} is home, the arms after it are cancelled")
+                self.cancel = True
         return False
 
     def stop_workload(self):

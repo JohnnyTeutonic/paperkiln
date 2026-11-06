@@ -234,7 +234,9 @@ def flat(d, p=""):
     return out
 allowed = {"name", "out_dir", "data.sft_examples", "data.vocab", "train.init_from", "train.seed"}
 # A9: per-screen recipe overrides (recipes.json beside the arm spec, hash-pinned in the manifest), only these keys
-RECIPE_KEYS = {"train.steps", "train.lr", "train.lr_schedule.warmup_steps", "train.eval_examples", "train.eval_every"}
+RECIPE_KEYS = {"train.steps", "train.lr", "train.lr_schedule.warmup_steps", "train.eval_examples", "train.eval_every", "train.batch", "train.accum", "train.checkpoint_every",
+               "arch.custom.d", "arch.custom.layers", "arch.custom.heads", "arch.custom.d_ff", "arch.state_tokens"}
+NULLABLE = "arch.state_tokens"   # A18: a null deletes this key and nothing else; a recipe cannot delete any other part of arm A's spec
 rec_path = os.path.join(os.path.dirname(arm_a_path), "recipes.json")
 if "recipes.json" in man["files"] and not os.path.exists(rec_path):
     sys.exit("the manifest pins recipes.json but it is missing beside the arm spec")
@@ -246,6 +248,11 @@ def put(d, dotted, v):
     for k in head:
         d = d.setdefault(k, {})
     d[last] = v
+def drop(d, dotted):
+    *head, last = dotted.split(".")
+    for k in head:
+        d = d[k]
+    del d[last]
 for s in screens:
     spec = copy.deepcopy(arm_a)
     ov = dict(recipes.get(s, {}))   # a copy: specs.log below keeps the base key
@@ -255,7 +262,9 @@ for s in screens:
     if set(ov) - RECIPE_KEYS:
         sys.exit(f"{s}: recipe keys outside {sorted(RECIPE_KEYS)}: {sorted(set(ov) - RECIPE_KEYS)}")
     for k, v in ov.items():
-        put(spec, k, v)
+        if v is None and k != NULLABLE:
+            sys.exit(f"{s}: a null is allowed only on {NULLABLE}, not {k}")
+        (drop(spec, k) if v is None else put(spec, k, v))
     spec["name"] = "screen_" + s
     spec["train"]["seed"] = seed
     spec["out_dir"] = f"{work}/train_{s}"
@@ -264,7 +273,8 @@ for s in screens:
     spec["train"]["init_from"] = f"{work}/upload/{base}.safetensors"
     a, b = flat(arm_a), flat(spec)
     changed = {k for k in a.keys() | b.keys() if a.get(k) != b.get(k)}
-    if not changed <= allowed | set(ov) or set(a) - set(b) or set(b) - set(a) - set(ov):
+    gone = {k for k in set(a) - set(b) if k.startswith(NULLABLE + ".") and ov.get(NULLABLE, 0) is None}
+    if not changed - gone <= allowed | set(ov) or set(a) - set(b) - gone or set(b) - set(a) - set(ov):
         sys.exit(f"{s}: spec differs from arm A outside the allowed keys: {sorted(changed - allowed)}")
     with open(f"{work}/spec_{s}.json", "w") as f:
         json.dump(spec, f, indent=2)
