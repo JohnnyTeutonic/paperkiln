@@ -291,7 +291,9 @@ public:
                 r.step = s;
                 break;
             }
-            fs::rename(gen_ / name, gen_ / ("rejected_" + name));
+            std::string kept = "rejected_" + name;  // never over an earlier rejection of the same step
+            for (int i = 1; fs::exists(gen_ / kept); ++i) kept = "rejected_" + name + "." + std::to_string(i);
+            fs::rename(gen_ / name, gen_ / kept);
             r.rejected.push_back(name + ": " + why);
         }
         if (chosen.empty())

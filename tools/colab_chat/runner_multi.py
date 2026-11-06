@@ -170,7 +170,10 @@ class State:
         return self.d["jobs"].setdefault(name, {"relayed_step": 0, "status": None, "home": False})
 
     def save(self):
-        json.dump(self.d, open(os.path.join(HOME, "state.json"), "w"), indent=1)
+        tmp = os.path.join(HOME, "state.json.tmp")
+        with open(tmp, "w") as f:
+            json.dump(self.d, f, indent=1)
+        os.replace(tmp, os.path.join(HOME, "state.json"))
 
 
 def remote_sizes(d):
@@ -349,8 +352,12 @@ def relay(st, name, every=0):
     rc, out = exec_py(
         "import os, shutil\n"
         f"src, snap = {src!r}, {snap!r}\n"
+        # A transactional checkpoint: one generation, named once. It outlives the next commit, so a save during the copy
+        # cannot tear it; a plain checkpoint has the flat files and the step check.
+        "live = os.path.join(src, 'ckpt_gen', 'live')\n"
+        "gen = os.path.join(src, 'ckpt_gen', os.readlink(live)) if os.path.islink(live) else src\n"
         "def step():\n"
-        "    p = os.path.join(src, 'state.txt')\n"
+        "    p = os.path.join(gen, 'state.txt')\n"
         "    return int(open(p).readline().strip() or 0) if os.path.exists(p) else 0\n"
         "s0 = step()\n"
         # A snapshot not yet home is kept until it is (a slow download must not restart each tick).
@@ -360,8 +367,9 @@ def relay(st, name, every=0):
         "    print('SNAP', s1)\n"
         f"elif s0 > {js['relayed_step']} and s0 - {js['relayed_step']} >= {every}:\n"
         "    os.makedirs(snap + '.tmp', exist_ok=True)\n"
-        "    for f in ('model.safetensors', 'optim.safetensors', 'events.jsonl', 'state.txt'):\n"
-        "        shutil.copyfile(os.path.join(src, f), os.path.join(snap + '.tmp', f))\n"
+        "    for f in ('model.safetensors', 'optim.safetensors', 'state.txt'):\n"
+        "        shutil.copyfile(os.path.join(gen, f), os.path.join(snap + '.tmp', f))\n"
+        "    shutil.copyfile(os.path.join(src, 'events.jsonl'), os.path.join(snap + '.tmp', 'events.jsonl'))\n"
         "    if step() == s0 and int(open(os.path.join(snap + '.tmp', 'state.txt')).readline()) == s0:\n"
         "        shutil.rmtree(snap, ignore_errors=True)\n"
         "        os.replace(snap + '.tmp', snap)\n"
@@ -889,20 +897,28 @@ def halt_campaign(job, why):
 def halt_drill(st, job):
     """Stage 0's last job: a real mtstudio refused a real torn checkpoint on the real volume and the VM reports FAILED.
     With the job unhome, release() must refuse and the volume must still exist. The record goes to HOME/halt_drill.json;
-    the job then counts as home, so the drill's own end is the ordinary campaign end. Any other outcome stops the campaign."""
+    the job then counts as home, so the drill's own end is the ordinary campaign end. Any other outcome stops the campaign.
+    It proves FAILED, not home and a refused release, with the refusal read from the job's log; the HALTED branch itself runs
+    only under the fake CLI (tests/test_tc_b1.py), because a real HALTED would leave the volume for a person to read."""
     T.stop(st)
+    try:
+        log_text = open(os.path.join(ART, job, f"{job}_train.log"), errors="replace").read()
+    except OSError:
+        log_text = ""
     refused, error = False, None
     try:
         T.release(st)
     except Exception as e:  # noqa: BLE001 runpod_api.Refused, or a provider failure, recorded either way
         refused, error = type(e).__name__ == "Refused", repr(e)
-    rec = {"job": job, "status_seen": "FAILED", "home_before": st.job(job)["home"], "release_refused": refused,
-           "error": error, "volume_present": T.volume_present(st), "at": time.time()}
+    rec = {"job": job, "status_seen": st.job(job).get("status"), "home_before": st.job(job)["home"],
+           "refusal_in_log": "no whole generation" in log_text, "release_refused": refused, "error": error,
+           "volume_present": T.volume_present(st), "at": time.time()}
     with open(os.path.join(HOME, "halt_drill.json"), "w") as handle:
         json.dump(rec, handle, indent=1)
     shutil.copyfile(os.path.join(HOME, "halt_drill.json"), os.path.join(ART, "halt_drill.json"))
     log(f"halt drill: {json.dumps(rec)}")
-    if not (refused and rec["volume_present"] and rec["home_before"] is False):
+    if not (refused and rec["volume_present"] and rec["home_before"] is False and rec["refusal_in_log"]
+            and rec["status_seen"] == "FAILED"):
         halt_campaign(job, "halt drill failed")
         raise SystemExit(3)
 

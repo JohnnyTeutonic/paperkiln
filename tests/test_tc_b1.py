@@ -121,14 +121,24 @@ def test_pins_refuse_and_record(tmp_path):
 
 
 def test_filter_drops_held_out_text_and_keeps_the_rest(tmp_path):
-    shared = " ".join(f"word{i}" for i in range(20))
+    sys.path.insert(0, str(ROOT / "corpus" / "fetchers"))
+    import _common as C
+    a = " ".join(f"word{i}" for i in range(8))
+    b = " ".join(f"word{i}" for i in range(8, 20))
+    c = " ".join(f"later{i}" for i in range(8))
+    d = " ".join(f"later{i}" for i in range(8, 20))
+    shared = f"{a} {b}"
+    held = [{"role": "user", "content": a}, {"role": "assistant", "content": b},
+            {"role": "user", "content": c}, {"role": "assistant", "content": d}]
     val = tmp_path / "val.txt"
-    val.write_text(f"<|user|>\n{shared}\n<|endoftext|>\n", encoding="utf-8")
+    val.write_text(C.render_dialogue(held), encoding="utf-8")  # the real format: markers between the turns
     sft = tmp_path / "sft.jsonl"
     sft.write_text(json.dumps({"messages": [{"role": "user", "content": "only sft text " + " ".join(f"x{i}" for i in range(14))}]}) + "\n")
     src = tmp_path / "human_msc_v1" / "dialogues.jsonl"
     src.parent.mkdir()
+    across = f"{' '.join(b.split()[-6:])} {' '.join(c.split()[:7])}"  # a gram over two exchanges of one val dialogue
     rows = [[{"role": "user", "content": shared}, {"role": "assistant", "content": "fine"}],
+            [{"role": "user", "content": across}, {"role": "assistant", "content": "that too"}],
             [{"role": "user", "content": "unrelated talk here"}, {"role": "assistant", "content": "yes indeed it is"}],
             [{"role": "user", "content": "only sft text " + " ".join(f"x{i}" for i in range(14))},
              {"role": "assistant", "content": "ok"}]]
@@ -137,7 +147,8 @@ def test_filter_drops_held_out_text_and_keeps_the_rest(tmp_path):
     subprocess.run([sys.executable, str(CC / "tc_b1_filter.py"), "--repo", str(ROOT), "--heldout", str(val), str(sft),
                     "--out", str(out), "--source", f"msc={src}"], check=True, capture_output=True)
     led = json.load(open(out / "filter.ledger.json"))["sources"]["msc"]
-    assert (led["rows_in"], led["rows_kept"], led["dropped_heldout_13gram"]) == (3, 1, 2)
+    assert (led["rows_in"], led["rows_kept"], led["dropped_heldout_13gram"]) == (4, 1, 3)
+    assert led["gate"] == "licence-unstated" and "not stated" in led["licence"] and led["model_generated"] is False
     assert "unrelated talk here" in (out / "msc.txt").read_text()
 
 
@@ -256,11 +267,14 @@ def test_halt_drill(tmp_path, monkeypatch, refuse, present, ok):
     monkeypatch.setattr(rm, "ART", str(tmp_path / "a"))
     monkeypatch.setattr(rm, "T", Stub(refuse, present))
 
+    (tmp_path / "a" / "s0_torn").mkdir()
+    (tmp_path / "a" / "s0_torn" / "s0_torn_train.log").write_text("checkpoint: no whole generation under x; refusing to resume")
+
     class St:
         d = {}
 
         def job(self, n):
-            return {"home": False}
+            return {"home": False, "status": "FAILED"}
 
     if ok:
         rm.halt_drill(St(), "s0_torn")
@@ -270,3 +284,10 @@ def test_halt_drill(tmp_path, monkeypatch, refuse, present, ok):
         assert (tmp_path / "h" / "HALTED").exists()
     rec = json.load(open(tmp_path / "h" / "halt_drill.json"))
     assert rec["release_refused"] is refuse and rec["volume_present"] is present and rec["home_before"] is False
+    assert rec["refusal_in_log"] is True and rec["status_seen"] == "FAILED"
+
+
+def test_pins_sources_mode_ignores_the_mix(tmp_path):
+    (tmp_path / "a.txt").write_text("a")
+    pins = {"files": {"a.txt": hashlib.sha256(b"a").hexdigest()}, "mix": {"m.ids": None}}
+    assert P.check(pins, str(tmp_path), "sources")[0] == []

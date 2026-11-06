@@ -12,7 +12,8 @@ same text as ConvAI2's, so an episode can repeat a held-out dialogue. Each sourc
 - dropped when the dialogue shares a word 13-gram with a held-out dialogue (val or SFT), the same 13 words as those rules.
 
 Kept dialogues are rendered as their source's text.txt renders them. Outputs: DIR/<source>.txt and DIR/filter.ledger.json
-(counts by rule and sha256 of every input and output; no text). Deterministic: rows in file order, nothing random.
+(per source its licence, gate and whether its text is model-generated, counts by rule and sha256 of every input and output; no
+text). Deterministic: rows in file order, nothing random.
 """
 import argparse
 import hashlib
@@ -23,6 +24,9 @@ import sys
 
 N = 13
 SPLIT = re.compile(r"[^0-9a-z]+")
+MARKERS = ("<|user|>", "<|assistant|>", "<|endoftext|>")
+# (licence, model-generated), for the sources this mix reads from dialogue_pt.py; human_dialogue.py's own table has the rest.
+LEVER2 = {"soda": ("CC BY 4.0", True), "ultrachat": ("MIT; ChatGPT output", True), "everyday": ("Apache-2.0; Llama-3.1-70B-Instruct", True)}
 
 
 def words(text):
@@ -42,11 +46,14 @@ def sha256(path):
 
 
 def heldout_grams(val_txt, sft_jsonl):
-    """Every word 13-gram of the rendered val split and of the SFT dialogues. Turn markers are stripped by words(), so a
-    gram can run across a turn boundary, as it would in a pretraining window."""
+    """Every word 13-gram of the rendered val split and of the SFT dialogues, over a dialogue's words alone. The markers must go
+    first: words() would keep "user" and "assistant" in the grams, and a source's bare text could then never meet a gram that
+    crosses a turn. A document ends at the separator with its newline, so a val dialogue stays whole across its exchanges."""
     table = set()
     with open(val_txt, encoding="utf-8") as f:
-        for doc in f.read().split("<|endoftext|>"):
+        for doc in f.read().split("<|endoftext|>\n"):
+            for m in MARKERS:
+                doc = doc.replace(m, " ")
             table.update(grams(words(doc)))
     with open(sft_jsonl, encoding="utf-8") as f:
         for line in f:
@@ -96,7 +103,12 @@ def main(argv=None):
                 kept += 1
                 g.write(C.render_dialogue(msgs))
         os.replace(out + ".tmp", out)
+        gate, licence = "lever 2", LEVER2.get(name, (None, None))[0]
+        generated = LEVER2.get(name, (None, False))[1]
+        if name in human_dialogue.SOURCES:
+            gate, licence = human_dialogue.SOURCES[name][0], human_dialogue.SOURCES[name][1]
         ledger["sources"][name] = {"input": os.path.basename(os.path.dirname(path)), "input_sha256": sha256(path),
+                                   "gate": gate, "licence": licence, "model_generated": generated,
                                    "rows_in": n, "rows_kept": kept, "dropped_eval_rules": drop_eval,
                                    "dropped_heldout_13gram": drop_held, "dropped_both": both,
                                    "bytes": os.path.getsize(out), "sha256": sha256(out)}

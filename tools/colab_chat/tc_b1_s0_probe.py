@@ -4,12 +4,13 @@
     python3 tools/colab_chat/tc_b1_s0_probe.py --out OUT --spec tools/colab_chat/tc_b1_probe_spec.json
 
 Three short runs of the real trainer on the volume, with the job's own device settings:
-1. control, 150 steps, a save every 50.
+1. control, 150 steps, a save every 50, run twice: whether the device repeats itself is read first, so a difference below can be
+   placed.
 2. the same spec, killed with SIGKILL while the step-100 generation is being written, then started again: it must resume from
-   step 50 and end with the control's weights, optimiser and state, byte for byte.
-3. the control's directory with its live generation damaged: a restart must fall back to the previous generation; with every
-   generation damaged it must refuse.
-Writes OUT/probe.json. Exit 0 only when all of that held.
+   step 50. Byte equality with the control is reported, and stops B until read.
+3. a copy of the control with its live generation damaged: a restart must fall back to the previous generation; with every
+   generation damaged it must refuse, with the refusal's own message.
+Writes OUT/probe.json. Exit 1 on a structural failure: a run that fails, a kill that missed, a wrong fallback or no refusal.
 """
 import argparse
 import hashlib
@@ -101,10 +102,15 @@ def main():
             json.dump({"torn": a.torn}, f)
         return 0
     rep = {"producer": "Claude Opus 5.5, 7 Nov 2026"}
-    ctl, cr = f"{a.out}/control", f"{a.out}/crash"
-    sc, sk = write_spec(a.spec, ctl, "probe"), write_spec(a.spec, cr, "probe")
+    ctl, ct2, cr = f"{a.out}/control", f"{a.out}/control2", f"{a.out}/crash"
+    for d in (ctl, ct2, cr, f"{a.out}/fallback"):  # a rerun on a replacement pod starts clean
+        shutil.rmtree(d, ignore_errors=True)
+    sc, sc2, sk = write_spec(a.spec, ctl, "probe"), write_spec(a.spec, ct2, "probe"), write_spec(a.spec, cr, "probe")
     rc, rep["control_seconds"] = run(sc, f"{a.out}/control.log")
     rep["control_rc"] = rc
+    rc, rep["control2_seconds"] = run(sc2, f"{a.out}/control2.log")
+    rep["control2_rc"] = rc
+    rep["device_repeats_itself"] = files(ctl, "probe") == files(ct2, "probe")
     killed, partial = kill_during_write(sk, cr, f"{a.out}/crash.log", 100)
     rep["killed_during_write"], rep["partial_bytes_at_kill"] = killed, partial
     rep["crash_live_after_kill"] = os.readlink(f"{cr}/ckpt_gen/live") if os.path.lexists(f"{cr}/ckpt_gen/live") else None
@@ -134,12 +140,14 @@ def main():
                 f.write(b"\xff" * 16)
     rc, _ = run(s2, f"{a.out}/refuse.log")
     rep["refused_rc"] = rc
-    rep["ok"] = (rep["control_rc"] == 0 and killed and rep["resume_rc"] == 0 and rep["bit_identical"]
+    rep["refused_message"] = "no whole generation" in open(f"{a.out}/refuse.log", errors="replace").read()
+    rep["ok"] = (rep["control_rc"] == 0 and rep["control2_rc"] == 0 and killed and rep["resume_rc"] == 0
                  and rep["recover_events"][-1].get("recovered_step") == 50 and rep["fallback"]["rc"] == 0
-                 and rep["fallback"]["fallback"] is True and rep["fallback"]["live"] != live and rep["refused_rc"] != 0)
+                 and rep["fallback"]["fallback"] is True and rep["fallback"]["live"] != live and rep["refused_rc"] != 0
+                 and rep["refused_message"])
     with open(f"{a.out}/probe.json", "w") as f:
         json.dump(rep, f, indent=1)
-    print(json.dumps({k: rep[k] for k in ("ok", "bit_identical", "resume_seconds", "save_seconds")}))
+    print(json.dumps({k: rep[k] for k in ("ok", "device_repeats_itself", "bit_identical", "resume_seconds", "save_seconds")}))
     return 0 if rep["ok"] else 1
 
 

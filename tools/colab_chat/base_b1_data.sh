@@ -12,20 +12,30 @@ MODE=${3:?stage0 or b1}
 S13=oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots
 LONG=taskmaster3,abcd,ccpe,p4g,aya_en,msc
 # Byte ratios, from Stage 1's measured filtered sizes (spec section 10): main 73/27, tail 53/47.
-MAIN="fineweb=0.730000,human=0.051446,soda=0.090580,ultrachat=0.127734,everyday=0.000240"
-TAIL="fineweb=0.530000,human=0.089555,soda=0.157674,ultrachat=0.222353,everyday=0.000418"
+MAIN="fineweb=0.730000,human=0.051332,soda=0.090613,ultrachat=0.127815,everyday=0.000240"
+TAIL="fineweb=0.530000,human=0.089356,soda=0.157733,ultrachat=0.222493,everyday=0.000418"
 mkdir -p "$OUT"
 
+# A pod lost mid-way must not leave half a step: the fetch runs here, whole, behind a marker, and tiny_chat_data.py trusts its
+# three split files by their presence, so they go until its own run has finished.
+if [ ! -e "$OUT/human/.fetched" ]; then
+  rm -rf "$OUT/human"
+  python3 corpus/fetchers/human_dialogue.py "$S13" --allow-sa --allow-nc --out-dir "$OUT/human"
+  touch "$OUT/human/.fetched"
+fi
+[ -e "$OUT/.split_done" ] || rm -f "$OUT/human_pt.txt" "$OUT/human_val.txt" "$OUT/human_sft.jsonl"
 python3 tools/colab_chat/tiny_chat_data.py --out "$OUT" --vocab "$V" --fineweb corpus/data/fineweb_edu_shard0_v1 \
   --shares 35 --mix-bytes 800000000 --max-epochs 4 --T 1024 --seed 1 --require-pinned --carry12 --long-sft 10:4 \
   --sources "$S13" \
   --human-fetch "python3 corpus/fetchers/human_dialogue.py $S13 --allow-sa --allow-nc --out-dir {human}"
+touch "$OUT/.split_done"
 
 # msc has no stated licence and aya_en carries a documented LLM risk: both in by Jonathan's ruling of 7 Nov 2026, recorded
 # per source by the fetcher's report and the mix ledger.
-[ -s "$OUT/long/human_dialogue_long_v1.ledger.json" ] || [ -s "$OUT/long/human_msc_v1/text.txt" ] || \
+# Each ledger is written last, so it marks a whole fetch.
+[ -s "$OUT/long/human_dialogue_v1.ledger.json" ] || \
   python3 corpus/fetchers/human_dialogue.py "$LONG" --allow-llm-risk --allow-unstated-licence --out-dir "$OUT/long"
-[ -s "$OUT/lever2/dialogue_everyday_v1/text.txt" ] || python3 corpus/fetchers/dialogue_pt.py all --out-dir "$OUT/lever2"
+[ -s "$OUT/lever2/dialogue_pt_v1.ledger.json" ] || python3 corpus/fetchers/dialogue_pt.py all --out-dir "$OUT/lever2"
 python3 corpus/fetchers/fineweb_edu.py shard1_v1  # no --pin: the committed pin checks these bytes
 
 F="$OUT/filtered"
@@ -42,6 +52,7 @@ if [ ! -s "$F/filter.ledger.json" ]; then
     --source "msc=$OUT/long/human_msc_v1/dialogues.jsonl"
 fi
 cp "$F/filter.ledger.json" "$OUT/filter.ledger.json"
+python3 tools/colab_chat/tc_b1_pins.py "$OUT" sources  # a wrong source stops here, not after half an hour of mixing
 
 if [ ! -s "$OUT/mix_b1.main.ids" ] || [ ! -s "$OUT/mix_b1.tail.ids" ]; then
   # Two copies of the human text; the long sets' documents follow S-full's pretraining split.

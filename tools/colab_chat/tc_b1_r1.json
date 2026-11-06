@@ -36,7 +36,9 @@
     "filter.ledger.json",
     "fineweb_b1.ledger.json",
     "ids_b1.json",
-    "tc_b1_pins_observed.json"
+    "tc_b1_pins_observed.json",
+    "long/human_dialogue_v1.ledger.json",
+    "lever2/dialogue_pt_v1.ledger.json"
    ]
   },
   {

@@ -201,6 +201,27 @@ def test_truncated_or_flipped_live_generation_falls_back_then_refuses(control):
 
 
 @needs_bin
+def test_a_step_rejected_twice_keeps_both(control):
+    tmp, ctl, want, _ = control
+    out = tmp / "twice"
+    sp = spec(tmp, out, state_tokens=True)
+    assert run(sp, {"MICROTORCH_CKPT_CRASH": f"prune:{3 * EVERY}"}).returncode == 137
+
+    def damage(g):
+        with open(g / "model.safetensors", "r+b") as f:
+            f.seek(64)
+            f.write(b"\xff" * 8)
+
+    damage(out / "ckpt_gen" / f"g{3 * EVERY}")
+    assert run(sp, {"MICROTORCH_CKPT_CRASH": f"prune:{3 * EVERY}"}).returncode == 137   # falls back, writes the step again
+    damage(out / "ckpt_gen" / f"g{3 * EVERY}")
+    assert run(sp).returncode == 0
+    names = sorted(p.name for p in (out / "ckpt_gen").glob("rejected_*"))
+    assert names == [f"rejected_g{3 * EVERY}", f"rejected_g{3 * EVERY}.1"]
+    assert finals(out) == want
+
+
+@needs_bin
 def test_flat_checkpoint_of_an_old_run_resumes_and_converts(control):
     tmp, ctl, want, _ = control
     out = tmp / "legacy"
