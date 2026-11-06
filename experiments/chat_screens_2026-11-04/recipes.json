@@ -17,5 +17,8 @@
   "S31": {"train.steps": 1024, "train.lr": 0.0001, "train.lr_schedule.warmup_steps": 64, "train.eval_examples": 64},
   "S32": {"train.steps": 1024, "train.lr": 0.0001, "train.lr_schedule.warmup_steps": 64, "train.eval_examples": 64},
   "S33": {"train.steps": 1024, "train.lr": 0.0001, "train.lr_schedule.warmup_steps": 64, "train.eval_examples": 64},
-  "S34": {"train.steps": 2048, "train.lr": 0.0001, "train.lr_schedule.warmup_steps": 64, "train.eval_examples": 64}
+  "S34": {"train.steps": 2048, "train.lr": 0.0001, "train.lr_schedule.warmup_steps": 64, "train.eval_examples": 64},
+  "S51": {"base": "s34_a16", "train.steps": 1024, "train.lr": 0.0001, "train.lr_schedule.warmup_steps": 64, "train.eval_examples": 64},
+  "S52": {"base": "s34_a16", "train.steps": 1024, "train.lr": 0.0001, "train.lr_schedule.warmup_steps": 64, "train.eval_examples": 64},
+  "S53": {"base": "s30_a15", "train.steps": 1024, "train.lr": 0.0001, "train.lr_schedule.warmup_steps": 64, "train.eval_examples": 64}
 }

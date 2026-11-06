@@ -171,31 +171,37 @@ man_path = os.path.join(src, "manifest.json")
 if sha(man_path) != want:
     sys.exit("manifest hash differs from the driver's pin")
 man = json.load(open(man_path))
-parts = man["base_parts"]
-with open(os.path.join(dst, "sfull_sft1500.safetensors.tmp"), "wb") as out:
-    for p in parts:
-        name, digest = p["name"], p["sha256"]
-        if os.path.basename(name) != name:
-            sys.exit("part name is not a plain file name: " + name)
-        path = os.path.join(src, name)
-        if sha(path) != digest:
-            sys.exit("part hash differs: " + name)
-        with open(path, "rb") as f:
-            for b in iter(lambda: f.read(1 << 20), b""):
-                out.write(b)
-os.replace(os.path.join(dst, "sfull_sft1500.safetensors.tmp"), os.path.join(dst, "sfull_sft1500.safetensors"))
+for base, entry in sorted(man["bases"].items()):
+    if os.path.basename(base) != base:
+        sys.exit("base name is not a plain file name: " + base)
+    whole = os.path.join(dst, base + ".safetensors")
+    with open(whole + ".tmp", "wb") as out:
+        for p in entry["parts"]:
+            name, digest = p["name"], p["sha256"]
+            if os.path.basename(name) != name:
+                sys.exit("part name is not a plain file name: " + name)
+            path = os.path.join(src, name)
+            if sha(path) != digest:
+                sys.exit("part hash differs: " + name)
+            with open(path, "rb") as f:
+                for b in iter(lambda: f.read(1 << 20), b""):
+                    out.write(b)
+    os.replace(whole + ".tmp", whole)
+    if sha(whole) != entry["sha256"]:
+        sys.exit("joined base hash differs: " + base)
 for name, digest in man["files"].items():
     if os.path.basename(name) != name:
         sys.exit("file name is not a plain file name: " + name)
-    path = os.path.join(dst, name) if name == "sfull_sft1500.safetensors" else os.path.join(src, name)
+    joined = name.endswith(".safetensors")
+    path = os.path.join(dst, name) if joined else os.path.join(src, name)
     if sha(path) != digest:
         sys.exit("file hash differs: " + name)
-    if name != "sfull_sft1500.safetensors":
+    if not joined:
         with open(path, "rb") as f, open(os.path.join(dst, name), "wb") as g:
             g.write(f.read())
         if sha(os.path.join(dst, name)) != digest:
             sys.exit("copied file hash differs: " + name)
-print(json.dumps({"verified": sorted(man["files"]), "base_parts": len(parts)}))
+print(json.dumps({"verified": sorted(man["files"]), "bases": {k: len(v["parts"]) for k, v in man["bases"].items()}}))
 PY
 run inputs "$O/inputs.log" "$PY" "$W/check_inputs.py" "$IN" "$W/upload" "$MANIFEST_SHA" || fail inputs $?
 G[inputs]=0
@@ -242,7 +248,10 @@ def put(d, dotted, v):
     d[last] = v
 for s in screens:
     spec = copy.deepcopy(arm_a)
-    ov = recipes.get(s, {})
+    ov = dict(recipes.get(s, {}))   # a copy: specs.log below keeps the base key
+    base = ov.pop("base", "sfull_sft1500")
+    if man["screen_bases"].get(s) != base or base + ".safetensors" not in man["files"]:
+        sys.exit(f"{s}: recipe base {base} is not the manifest's")
     if set(ov) - RECIPE_KEYS:
         sys.exit(f"{s}: recipe keys outside {sorted(RECIPE_KEYS)}: {sorted(set(ov) - RECIPE_KEYS)}")
     for k, v in ov.items():
@@ -252,7 +261,7 @@ for s in screens:
     spec["out_dir"] = f"{work}/train_{s}"
     spec["data"]["vocab"] = f"{work}/upload/vocab.gguf"
     spec["data"]["sft_examples"] = f"{work}/upload/{s}.jsonl"
-    spec["train"]["init_from"] = f"{work}/upload/sfull_sft1500.safetensors"
+    spec["train"]["init_from"] = f"{work}/upload/{base}.safetensors"
     a, b = flat(arm_a), flat(spec)
     changed = {k for k in a.keys() | b.keys() if a.get(k) != b.get(k)}
     if not changed <= allowed | set(ov) or set(a) - set(b) or set(b) - set(a) - set(ov):

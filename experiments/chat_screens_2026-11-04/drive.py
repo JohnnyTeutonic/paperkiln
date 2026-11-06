@@ -75,8 +75,9 @@ RAISE_ON = hook("DRIVE_TEST_RAISE_ON", "")
 PART_BYTES = int(hook("DRIVE_TEST_PART_BYTES", str(45 * 1024 * 1024)))  # runner_multi.py: 45 MiB both ways
 SOURCE = "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1"
 SCREENS = ("S0", "S1", "S2", "S3")  # wave 1, the default
-ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16", "S24", "S25", "S26", "S27", "S21", "S22", "S23", "S28", "S29", "S30", "S31", "S32", "S33", "S34")
-COMMON_INPUTS = ("sfull_sft1500.safetensors", "vocab.gguf", "arm_a_lr3e5.json", "recipes.json")
+ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16", "S24", "S25", "S26", "S27", "S21", "S22", "S23", "S28", "S29", "S30", "S31", "S32", "S33", "S34", "S51", "S52", "S53")
+COMMON_INPUTS = ("vocab.gguf", "arm_a_lr3e5.json", "recipes.json")
+DEFAULT_BASE = "sfull_sft1500"  # a screen starts from this unless its recipe names a "base" (A19)
 
 
 def capped(cap):
@@ -88,13 +89,37 @@ def capped(cap):
 ST_MIN_LEFT = float(hook("DRIVE_TEST_ST_MIN_LEFT", "6"))  # minutes needed to start the safetensors fetch
 
 
-def screen_steps(screen):
-    """A screen's training steps: its recipes.json override (A9), else arm A's 256."""
+def recipe(screen):
+    """A screen's recipes.json entry (A9), empty if it has none."""
     try:
         rec = json.loads(Path(PINS["recipes.json"][0]).read_text())
     except (KeyError, OSError, ValueError):
         rec = {}
-    return int(rec.get(screen, {}).get("train.steps", 256))
+    return rec.get(screen, {})
+
+
+def screen_steps(screen):
+    """A screen's training steps: its recipes.json override (A9), else arm A's 256."""
+    return int(recipe(screen).get("train.steps", 256))
+
+
+def screen_base(screen):
+    """The base a screen starts from (A19): each base is the pin <base>.safetensors."""
+    return recipe(screen).get("base", DEFAULT_BASE)
+
+
+def bases_of(screens):
+    return tuple(sorted({screen_base(s) for s in screens}))
+
+
+def part_stem(base):
+    """Part names: base.partNN for the default base, so its copy on the HF repo is not sent again, <base>.partNN for others."""
+    return "base" if base == DEFAULT_BASE else base
+
+
+def st_excludes(st_home):
+    """tar patterns: the safetensors parts of arms verified home stay out of the log archive. An arm not home keeps them, since the VM then holds the only copy."""
+    return "".join(f' --exclude="screens/{s}/model.safetensors.part*"' for s in sorted(st_home))
 
 
 def launch_need(screens):
@@ -183,7 +208,13 @@ PINS = {
     "S32.jsonl": (f"{ART}/chat_screens_claude/packets/a16/S32/train.jsonl", "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a"),
     "S33.jsonl": (f"{ART}/chat_screens_claude/packets/a16/S33/train.jsonl", "12818666ddeae11a96d928a9e0636cacb93cf72dc2019785f45f9454f53c5685"),
     "S34.jsonl": (f"{ART}/chat_screens_claude/packets/a16/S32/train.jsonl", "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a"),
-    "recipes.json": (str(HERE / "recipes.json"), "a39a53ef63d8a0cd46031dc22f067ee5fd82497c3a7b19c29572cfbcec1f8f54"),
+    # A19 (section 27): S51 M1 and S52 C0 from S34, S53 M2 from S30; S52 is S34's own packet, S34's and S30's exported weights are bases
+    "s34_a16.safetensors": (f"{ART}/chat_screens_claude/runs/a16-s1-S34-20261106/S34/model.safetensors", "7a0562f01da0f517314934646c5814c3d67aac2864664b84e1f89c6e248ba457"),
+    "s30_a15.safetensors": (f"{ART}/chat_screens_claude/runs/a15-s1-S30-20261106/S30/model.safetensors", "332d1c2bcede7d40b1f25b2ece3be9b0b13a50941c77beb5282bfffeab7d4933"),
+    "S51.jsonl": (f"{ART}/chat_screens_claude/packets/a19/M1/train.jsonl", "5d7a022081363972766dc5bfc13754b7f6a32e2c21208eae88c03fa822dfe9e1"),
+    "S52.jsonl": (f"{ART}/chat_screens_claude/packets/a16/S32/train.jsonl", "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a"),
+    "S53.jsonl": (f"{ART}/chat_screens_claude/packets/a19/M2/train.jsonl", "58113f54d69f8d3697d40f1ff8945ef4e3234be8b9117c4782a07dfa2f02f270"),
+    "recipes.json": (str(HERE / "recipes.json"), "7500c0c03d72f83538e9243055b42e3d62d54a7b59ec812f29fbe4848d52f817"),
     "arm_a_lr3e5.json": (str(HERE / "arm_a_lr3e5.json"),
                          "66c718e0b501c751aae0a1cd22eddfdc666a7cfb46a4c074fa41b67aa220125e"),
 }
@@ -224,7 +255,9 @@ class Driver:
     def __init__(self, commit, run, seed=1, screens=SCREENS, cap=None):
         self.commit, self.run, self.seed, self.screens, self.cap = commit, run, seed, tuple(screens), cap
         self.required = required_gates(self.screens)
-        self.needed = COMMON_INPUTS + tuple(f"{s}.jsonl" for s in self.screens)
+        self.bases = bases_of(self.screens)
+        self.st_home = set()
+        self.needed = tuple(f"{b}.safetensors" for b in self.bases) + COMMON_INPUTS + tuple(f"{s}.jsonl" for s in self.screens)
         self.name = f"claude-screens-{run}"
         self.out = ARTIFACTS / run
         self.stage = self.out / "staging"
@@ -323,6 +356,9 @@ class Driver:
         """Local, before any session: every input hashes as pinned; the base weights are split into parts; the
         manifest pins every file and part. Raises Stop on any mismatch (nothing has been created)."""
         self.stage.mkdir(parents=True, exist_ok=False)
+        unpinned = sorted(n for n in self.needed if n not in PINS)
+        if unpinned:
+            raise Stop(f"inputs not pinned: {unpinned}: nothing created")
         files = {}
         for name, (path, want) in PINS.items():
             if name not in self.needed:
@@ -331,28 +367,32 @@ class Driver:
             if got != want:
                 raise Stop(f"input {name} hashes {got}, pinned {want}: nothing created")
             files[name] = want
-        parts = []
-        with open(PINS["sfull_sft1500.safetensors"][0], "rb") as f:
-            for i in range(10 ** 6):
-                chunk = f.read(PART_BYTES)
-                if not chunk:
-                    break
-                p = self.stage / f"base.part{i:02d}"
-                p.write_bytes(chunk)
-                parts.append({"name": p.name, "sha256": hashlib.sha256(chunk).hexdigest()})
-        self.manifest = {"files": files, "base_parts": parts, "arm_a_spec_sha256": files["arm_a_lr3e5.json"],
+        bases = {}
+        for b in self.bases:
+            parts = []
+            with open(PINS[f"{b}.safetensors"][0], "rb") as f:
+                for i in range(10 ** 6):
+                    chunk = f.read(PART_BYTES)
+                    if not chunk:
+                        break
+                    p = self.stage / f"{part_stem(b)}.part{i:02d}"
+                    p.write_bytes(chunk)
+                    parts.append({"name": p.name, "sha256": hashlib.sha256(chunk).hexdigest()})
+            bases[b] = {"sha256": files[f"{b}.safetensors"], "parts": parts}
+        self.manifest = {"files": files, "bases": bases, "screen_bases": {s: screen_base(s) for s in self.screens},
+                         "arm_a_spec_sha256": files["arm_a_lr3e5.json"],
                          "source": SOURCE, "run_id": self.run, "seed": self.seed, "screens": list(self.screens)}
         man = self.stage / "manifest.json"
         man.write_text(json.dumps(self.manifest, indent=2, sort_keys=True))
         self.manifest_sha = sha256(man)
-        self.log("inputs pinned and staged:", len(files), "files,", len(parts), "base parts, manifest",
+        self.log("inputs pinned and staged:", len(files), "files,", sum(len(v["parts"]) for v in bases.values()), "base parts, manifest",
                  self.manifest_sha)
 
     def uploads(self):
         """[(local path, VM name)] in upload order: the manifest, then the small inputs, then the base parts."""
         out = [(self.stage / "manifest.json", "manifest.json")]
-        out += [(Path(PINS[n][0]), n) for n in self.needed if n != "sfull_sft1500.safetensors"]
-        out += [(self.stage / p["name"], p["name"]) for p in self.manifest["base_parts"]]
+        out += [(Path(PINS[n][0]), n) for n in self.needed if not n.endswith(".safetensors")]
+        out += [(self.stage / p["name"], p["name"]) for v in self.manifest["bases"].values() for p in v["parts"]]
         return out
 
     def github_preflight(self):
@@ -545,7 +585,7 @@ class Driver:
             if not pending:
                 return True
         for round_ in (1, 2, 3):
-            base = [n for _, n in pending if n.startswith("base.part")]
+            base = [n for _, n in pending if re.fullmatch(r".+\.part\d{2}", n)]
             if self.cap and base:
                 raise Stop(f"under a {self.cap}-minute cap the base weights are not uploaded directly "
                            f"({len(base)} part(s) missing or wrong on the VM): not launching")
@@ -714,6 +754,7 @@ class Driver:
             (work / "model.safetensors").unlink(missing_ok=True)
             self.log(f"{screen}: the GGUF comes home without its safetensors")
         else:
+            self.st_home.add(screen)
             self.log(f"{screen}: safetensors {man['st_sha256']} ({man['st_bytes']} bytes)")
         for p in work.glob("model.safetensors.part*"):
             p.unlink()
@@ -805,7 +846,7 @@ class Driver:
                 f"subprocess.run('cp /content/vm_run_{self.run}.log /content/run_{self.run}/out/ 2>/dev/null', "
                 "shell=True)\n"
                 f"r = subprocess.run('tar czf /content/screens_{self.run}.tgz --warning=no-file-changed "
-                f"--exclude=\"model.gguf.part*\" -C /content run_{self.run}/out', shell=True)\n"
+                f"--exclude=\"model.gguf.part*\"{st_excludes(self.st_home)} -C /content run_{self.run}/out', shell=True)\n"
                 "print('PACKED' if r.returncode in (0, 1) else 'PACK_FAILED %d' % r.returncode)\n")
         archive = self.out / "logs.tgz"
         prefix = f"run_{self.run}/out"

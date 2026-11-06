@@ -92,6 +92,7 @@ class VmRunTests(unittest.TestCase):
             (self.inputs / n).write_bytes(base[i:i + 2000])
             parts.append({"name": n, "sha256": sha(base[i:i + 2000])})
         files = {"sfull_sft1500.safetensors": sha(base)}
+        self.base_entry = {"sha256": sha(base), "parts": parts}
         for n in ["vocab.gguf"] + [f"{s}.jsonl" for s in SCREENS + ["S4"]]:
             data = (n * 5).encode()
             (self.inputs / n).write_bytes(data)
@@ -99,7 +100,8 @@ class VmRunTests(unittest.TestCase):
         spec = (HERE / "arm_a_lr3e5.json").read_bytes()
         (self.inputs / "arm_a_lr3e5.json").write_bytes(spec)
         files["arm_a_lr3e5.json"] = sha(spec)
-        self.manifest = {"files": files, "base_parts": parts, "arm_a_spec_sha256": sha(spec), "source": self.source,
+        self.manifest = {"files": files, "bases": {"sfull_sft1500": self.base_entry}, "screen_bases": {s: "sfull_sft1500" for s in SCREENS + ["S4"]},
+                         "arm_a_spec_sha256": sha(spec), "source": self.source,
                          "run_id": "v1", "seed": 1, "screens": SCREENS}
         self.write_manifest()
 
@@ -148,6 +150,85 @@ class VmRunTests(unittest.TestCase):
         self.assertEqual(spec["train"]["lr"], arm_a["train"]["lr"])
         self.assertEqual(spec["train"]["steps"], 256)
         self.assertTrue(spec["data"]["sft_examples"].endswith("/upload/S2.jsonl"))
+
+    def add_base(self, name="s34_a16", screens=("S0", "S2")):
+        """A second base in two parts, and a recipes.json naming it for `screens`."""
+        data = b"parent" * 600
+        parts = []
+        for i in range(0, len(data), 2000):
+            n = f"{name}.part{i // 2000:02d}"
+            (self.inputs / n).write_bytes(data[i:i + 2000])
+            parts.append({"name": n, "sha256": sha(data[i:i + 2000])})
+        self.manifest["bases"][name] = {"sha256": sha(data), "parts": parts}
+        self.manifest["files"][f"{name}.safetensors"] = sha(data)
+        for s in screens:
+            self.manifest["screen_bases"][s] = name
+        rec = json.dumps({s: {"base": name, "train.steps": 8} for s in screens}).encode()
+        (self.inputs / "recipes.json").write_bytes(rec)
+        self.manifest["files"]["recipes.json"] = sha(rec)
+        self.write_manifest()
+        return data
+
+    def test_two_bases_join_and_each_arm_starts_from_its_own(self):
+        data = self.add_base()
+        r, s, out = self.run_vm()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(s["pass"])
+        up = self.root / "run_v1" / "upload"
+        self.assertEqual((up / "s34_a16.safetensors").read_bytes(), data)
+        self.assertEqual((up / "sfull_sft1500.safetensors").read_bytes(), b"weights" * 700)
+        specs = {x: json.loads((out / f"spec_{x}.json").read_text()) for x in SCREENS}
+        self.assertTrue(specs["S0"]["train"]["init_from"].endswith("/upload/s34_a16.safetensors"))
+        self.assertTrue(specs["S2"]["train"]["init_from"].endswith("/upload/s34_a16.safetensors"))
+        self.assertTrue(specs["S1"]["train"]["init_from"].endswith("/upload/sfull_sft1500.safetensors"))
+        self.assertEqual((specs["S0"]["train"]["steps"], specs["S1"]["train"]["steps"]), (8, 256))
+        self.assertNotIn("base", specs["S0"]["train"])
+        self.assertNotIn("base", specs["S0"])
+
+    def test_specs_log_keeps_the_base_key(self):
+        self.add_base()
+        r, s, out = self.run_vm()
+        self.assertIn('"base": "s34_a16"', (out / "specs.log").read_text())
+
+    def test_a_wrong_part_of_the_second_base_fails_the_inputs_gate(self):
+        self.add_base()
+        (self.inputs / "s34_a16.part01").write_bytes(b"tampered")
+        r, s, out = self.run_vm()
+        self.assertNotEqual(s["gates"]["inputs"], 0)
+        self.assertNotIn("build", s["gates"])
+
+    def test_a_joined_base_that_differs_from_its_hash_fails_the_inputs_gate(self):
+        self.add_base()
+        self.manifest["bases"]["s34_a16"]["sha256"] = "0" * 64
+        self.write_manifest()
+        r, s, out = self.run_vm()
+        self.assertNotEqual(s["gates"]["inputs"], 0)
+
+    def test_a_base_file_pin_that_differs_fails_the_inputs_gate(self):
+        self.add_base()
+        self.manifest["files"]["s34_a16.safetensors"] = "0" * 64
+        self.write_manifest()
+        r, s, out = self.run_vm()
+        self.assertNotEqual(s["gates"]["inputs"], 0)
+
+    def test_a_recipe_base_the_manifest_does_not_map_fails_the_specs_gate(self):
+        self.add_base()
+        self.manifest["screen_bases"]["S0"] = "sfull_sft1500"
+        self.write_manifest()
+        r, s, out = self.run_vm()
+        self.assertEqual(s["gates"]["inputs"], 0)
+        self.assertNotEqual(s["gates"]["specs"], 0)
+        self.assertNotIn("train_S0", s["gates"])
+
+    def test_a_recipe_base_with_no_pinned_file_fails_the_specs_gate(self):
+        self.add_base()
+        rec = json.dumps({"S0": {"base": "nosuch"}}).encode()
+        (self.inputs / "recipes.json").write_bytes(rec)
+        self.manifest["files"]["recipes.json"] = sha(rec)
+        self.manifest["screen_bases"]["S0"] = "nosuch"
+        self.write_manifest()
+        r, s, out = self.run_vm()
+        self.assertNotEqual(s["gates"]["specs"], 0)
 
     def test_a_wrong_manifest_hash_stops_before_the_build(self):
         r, s, out = self.run_vm(manifest_sha="0" * 64)

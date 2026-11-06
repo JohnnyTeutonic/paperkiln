@@ -182,20 +182,22 @@ sys.exit(2)
 '''
 
 
-def write_inputs(tmp, bad_pin=False):
+def write_inputs(tmp, bad_pin=False, recipes=None):
     """Small stand-ins for every pinned input, and their pins (the base weights span several parts)."""
     d = tmp / "inputs"
     d.mkdir()
     pins = {}
     names = ["sfull_sft1500.safetensors", "vocab.gguf", "S0.jsonl", "S1.jsonl", "S2.jsonl", "S3.jsonl",
              "S4.jsonl", "S5.jsonl", "S6.jsonl", "S7.jsonl", "S8.jsonl", "S9.jsonl", "S10.jsonl",
-             "S11.jsonl", "S12.jsonl", "S13.jsonl", "S14.jsonl", "S15.jsonl", "S16.jsonl", "S24.jsonl", "S25.jsonl", "S26.jsonl", "S27.jsonl", "S21.jsonl", "S22.jsonl", "S23.jsonl", "S28.jsonl", "S29.jsonl", "S30.jsonl", "S31.jsonl", "S32.jsonl", "S33.jsonl", "S34.jsonl", "recipes.json", "arm_a_lr3e5.json"]
+             "S11.jsonl", "S12.jsonl", "S13.jsonl", "S14.jsonl", "S15.jsonl", "S16.jsonl", "S24.jsonl", "S25.jsonl", "S26.jsonl", "S27.jsonl", "S21.jsonl", "S22.jsonl", "S23.jsonl", "S28.jsonl", "S29.jsonl", "S30.jsonl", "S31.jsonl", "S32.jsonl", "S33.jsonl", "S34.jsonl", "S51.jsonl", "S52.jsonl", "S53.jsonl", "s34_a16.safetensors", "s30_a15.safetensors", "recipes.json", "arm_a_lr3e5.json"]
     for i, n in enumerate(names):
-        data = (n * (300 if n.startswith("sfull") else 3)).encode()
+        data = (n * (300 if n.endswith(".safetensors") else 3)).encode()
+        if n == "recipes.json" and recipes is not None:
+            data = json.dumps(recipes).encode()
         (d / n).write_bytes(data)
         pins[n] = [str(d / n), hashlib.sha256(data).hexdigest()]
     if bad_pin:
-        pins["S2.jsonl"][1] = "0" * 64
+        pins[bad_pin if isinstance(bad_pin, str) else "S2.jsonl"][1] = "0" * 64
     return pins
 
 
@@ -204,10 +206,11 @@ def seed_hub(tmp, pins, missing=()):
     hub = tmp / "hub"
     hub.mkdir()
     for n, (path, _) in pins.items():
-        if n == "sfull_sft1500.safetensors":
+        if n.endswith(".safetensors"):
             data = Path(path).read_bytes()
+            stem = "base" if n == "sfull_sft1500.safetensors" else n[:-len(".safetensors")]
             for i in range(0, len(data), 2000):
-                (hub / f"base.part{i // 2000:02d}").write_bytes(data[i:i + 2000])
+                (hub / f"{stem}.part{i // 2000:02d}").write_bytes(data[i:i + 2000])
         else:
             (hub / n).write_bytes(Path(path).read_bytes())
     for n in missing:
@@ -217,7 +220,7 @@ def seed_hub(tmp, pins, missing=()):
 
 class DriveTests(unittest.TestCase):
     def run_drive(self, mode, run="t1", bad_pin=False, hf=False, hub_missing=(), minute="0.1", extra=None,
-                  pre=None, seed=None, screens=None):
+                  pre=None, seed=None, screens=None, recipes=None):
         use = screens or SCREENS
         gates = sorted(["provenance", "checkout", "inputs", "configure", "build", "specs"]
                        + [f"{g}_{s}" for s in use for g in ("train", "package")])
@@ -226,7 +229,7 @@ class DriveTests(unittest.TestCase):
         mock.write_text(MOCK)
         mock.chmod(0o755)
         (tmp / "content").mkdir()
-        pins = write_inputs(tmp, bad_pin)
+        pins = write_inputs(tmp, bad_pin, recipes)
         hub = seed_hub(tmp, pins, hub_missing)
         tok, rev = tmp / "hf_token", tmp / "hf_revision"
         if hf:
@@ -548,6 +551,106 @@ class DriveTests(unittest.TestCase):
         self.assertEqual(state["counts"]["hf_fetch"], 2)
         self.assertEqual(state["counts"].get("uploads_data", 0), 0)
         self.assertNotIn("hf_fixture_token", log)
+
+    TWO_ARMS = {"S51": {"base": "s34_a16", "train.steps": 1024}, "S52": {"base": "s34_a16", "train.steps": 1024}}
+    ONE_BASE = {"S51": {"base": "s34_a16"}, "S52": {"base": "s34_a16"}}
+    TWO_BASES = {"S51": {"base": "s34_a16"}, "S53": {"base": "s30_a15"}}
+
+    def members(self, tmp, run="t1"):
+        import tarfile
+        with tarfile.open(tmp / "art" / run / "logs.tgz") as t:
+            return [m.name for m in t.getmembers()]
+
+    def test_two_arms_from_one_named_base_under_a_95_minute_cap(self):
+        rc, state, log, tmp, _ = self.run_drive("normal", seed=2, screens=["S51", "S52"], hf=True, recipes=self.TWO_ARMS,
+                                                extra={"DRIVE_TEST_CAP": "95", "DRIVE_TEST_LAUNCH_NEED": "1"}, minute="0.3")
+        self.assertEqual(rc, 0, log)
+        self.assert_home(tmp, ["S51", "S52"], universe=["S51", "S52"])
+        man = json.loads((tmp / "receipts" / "t1" / "input_manifest.json").read_text())
+        self.assertEqual(sorted(man["bases"]), ["s34_a16"])
+        self.assertEqual(man["screen_bases"], {"S51": "s34_a16", "S52": "s34_a16"})
+        self.assertEqual(sorted(man["files"]), sorted(["s34_a16.safetensors", "vocab.gguf", "arm_a_lr3e5.json", "recipes.json", "S51.jsonl", "S52.jsonl"]))
+        self.assertEqual(man["bases"]["s34_a16"]["sha256"], man["files"]["s34_a16.safetensors"])
+        self.assertTrue(all(p["name"].startswith("s34_a16.part") for p in man["bases"]["s34_a16"]["parts"]))
+        self.assertEqual(state["counts"].get("uploads_data", 0), 0)
+
+    def test_two_bases_in_one_session_upload_under_distinct_names(self):
+        rc, state, log, tmp, _ = self.run_drive("normal", seed=2, screens=["S51", "S53"], recipes=self.TWO_BASES)
+        self.assertEqual(rc, 0, log)
+        man = json.loads((tmp / "receipts" / "t1" / "input_manifest.json").read_text())
+        self.assertEqual(sorted(man["bases"]), ["s30_a15", "s34_a16"])
+        names = [p["name"] for v in man["bases"].values() for p in v["parts"]]
+        self.assertEqual(len(names), len(set(names)))
+        for n in names:
+            self.assertEqual(state["counts"][f"upload:{n}"], 1)
+        self.assertNotIn("upload:base.part00", state["counts"])
+
+    def test_the_default_base_keeps_its_part_names_beside_a_named_base(self):
+        rc, state, log, tmp, _ = self.run_drive("normal", seed=2, screens=["S0", "S51"], recipes={"S51": {"base": "s34_a16"}})
+        self.assertEqual(rc, 0, log)
+        man = json.loads((tmp / "receipts" / "t1" / "input_manifest.json").read_text())
+        self.assertEqual(man["screen_bases"], {"S0": "sfull_sft1500", "S51": "s34_a16"})
+        self.assertTrue(all(p["name"].startswith("base.part") for p in man["bases"]["sfull_sft1500"]["parts"]))
+
+    def test_a_flipped_byte_in_a_named_base_stops_before_any_session(self):
+        rc, state, log, tmp, _ = self.run_drive("normal", bad_pin="s34_a16.safetensors", seed=2, screens=["S51", "S52"], recipes=self.TWO_ARMS)
+        self.assertEqual(rc, 2, log)
+        self.assertIn("s34_a16.safetensors hashes", log)
+        self.assertEqual(state["counts"].get("new", 0), 0)
+
+    def test_a_recipe_naming_an_unpinned_base_stops_before_any_session(self):
+        rc, state, log, tmp, _ = self.run_drive("normal", seed=2, screens=["S51"], recipes={"S51": {"base": "nosuch"}})
+        self.assertEqual(rc, 2, log)
+        self.assertIn("not pinned", log)
+        self.assertEqual(state["counts"].get("new", 0), 0)
+
+    def test_a_cap_refuses_a_direct_upload_of_a_named_base(self):
+        """The refusal once tested a fixed prefix: renamed parts would have gone over the home link under a cap."""
+        rc, state, log, tmp, _ = self.run_drive("hf_exec_fails", hf=True, extra={"DRIVE_TEST_CAP": "95", "DRIVE_TEST_LAUNCH_NEED": "1"}, minute="0.3",
+                                                seed=2, screens=["S51", "S52"], recipes=self.TWO_ARMS)
+        self.assertEqual(rc, 2, log)
+        self.assertIn("base weights are not uploaded directly", log)
+        self.assertFalse([k for k in state["counts"] if ".part" in k and k.startswith("upload:")])
+        self.assertEqual(state["counts"].get("launch", 0), 0)
+        self.assertEqual(state["sessions"], {})
+
+    def test_a_cap_refuses_one_missing_part_of_a_named_base(self):
+        rc, state, log, tmp, _ = self.run_drive("normal", hf=True, hub_missing=["s34_a16.part01"], extra={"DRIVE_TEST_CAP": "95", "DRIVE_TEST_LAUNCH_NEED": "1"}, minute="0.3",
+                                                seed=2, screens=["S51", "S52"], recipes=self.TWO_ARMS)
+        self.assertEqual(rc, 2, log)
+        self.assertIn("(1 part(s) missing or wrong", log)
+        self.assertEqual(state["counts"].get("launch", 0), 0)
+
+    def test_retrieval_leaves_out_the_safetensors_of_arms_already_home(self):
+        rc, state, log, tmp, _ = self.run_drive("normal", seed=2, screens=["S51", "S52"], recipes=self.ONE_BASE)
+        self.assertEqual(rc, 0, log)
+        names = self.members(tmp)
+        self.assertFalse([n for n in names if "model.safetensors.part" in n], names)
+        self.assertFalse([n for n in names if "model.gguf.part" in n])
+        for s in ("S51", "S52"):
+            self.assertTrue((tmp / "art" / "t1" / s / "model.safetensors").is_file())
+
+    def test_retrieval_keeps_the_safetensors_of_an_arm_not_home(self):
+        rc, state, log, tmp, _ = self.run_drive("bad_st_always", seed=2, screens=["S51", "S52"], recipes=self.ONE_BASE)
+        names = self.members(tmp)
+        for s in ("S51", "S52"):
+            self.assertTrue([n for n in names if f"screens/{s}/model.safetensors.part" in n], log)
+
+    def test_the_a19_recipes_and_budget(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("drive_mod", HERE / "drive.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        rec = json.loads((HERE / "recipes.json").read_text())
+        self.assertEqual({k: v for k, v in rec["S51"].items()}, {"base": "s34_a16", "train.steps": 1024, "train.lr": 0.0001, "train.lr_schedule.warmup_steps": 64, "train.eval_examples": 64})
+        self.assertEqual(rec["S52"], rec["S51"])
+        self.assertEqual(rec["S53"], {**rec["S51"], "base": "s30_a15"})
+        self.assertEqual(mod.launch_need(["S51", "S52"]), 75)
+        self.assertEqual(mod.capped(95), (85, 87, 90, 92, 95))
+        self.assertTrue({"S51", "S52", "S53"} <= set(mod.ALL_SCREENS))
+        self.assertEqual(mod.bases_of(["S51", "S52"]), ("s34_a16",))
+        self.assertEqual(mod.bases_of(["S51", "S53"]), ("s30_a15", "s34_a16"))
+        self.assertEqual(mod.PINS["S52.jsonl"], mod.PINS["S34.jsonl"])
 
     def test_a_late_session_is_not_launched(self):
         rc, state, log, tmp, _ = self.run_drive("normal", extra={"DRIVE_TEST_LAUNCH_NEED": "100000"})
