@@ -68,10 +68,13 @@ Then check:
    plainly dead, stop it with `colab_reap_orphans.py --kill` (it will not touch
    named sessions). If it may be another driver's work in progress, adopt it
    instead: `colab_adopt.py --adopt <endpoint>=<name>`.
-3. **Slots.** At most **three** concurrent GPU sessions in practice (measured
-   13 Sep 2026; a fourth returns `TooManyAssignmentsError` or `Precondition
-   Failed`). `supervisor.py` still says `MAX_SESSIONS = 4` from an older
-   measurement; plan for three.
+3. **Slots.** The current account limits and slot checks live in workspace
+   `scripts/colab_slots.py`; `scripts/colab_supervisor.py` delegates to it.
+   Before taking capacity, run `python scripts/colab_slots.py can cpu N` or
+   `python scripts/colab_slots.py can l4 N` from the workspace root. Exit 0
+   means room, 1 means full, and 2 means unreadable: a failed listing never
+   frees slots. Preserve the historical fourth-L4 refusal; do not hard-code
+   another limit in this preflight.
 4. **`HALTED`?** `ls /mnt/c/ml_artifacts/<study>/<arm>/HALTED`. If present, stop
    and tell the author.
 5. **Budget.** Ask the author before any job expected to use more than a few GPU
