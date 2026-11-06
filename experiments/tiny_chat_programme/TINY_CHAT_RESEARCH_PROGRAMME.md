@@ -22,7 +22,7 @@ variable, and test whether the improvement transfers.
 | Architecture | Llama-style decoder: 8 layers, d_model 768, FFN 2,240 (SwiGLU), 12 heads (12 KV heads), context 1,024 |
 | Parameters | 72,761,088 unique: 60.17M in the 8 layers, 12.58M in the tied token embedding (16,384-token BPE vocabulary), plus norms and a 3,072-value state embedding. Source: the native PT result and the safetensors header (Codex's check, `reviews/codex_sfull_cost_and_parameter_check_20261104.json` in the root workspace). The GGUF export stores the tied embedding twice, as `token_embd` and `output.weight`, so its tensor total of 85.3M is export storage, not trainable parameters. |
 | Trainer | paperkiln `mtstudio`, numerical source `1ccb693f55d7…` |
-| Base for every screen | `sfull_sft1500.safetensors`: the preserved S-full baseline (pretraining PT10000, then SFT1500), owned by Codex |
+| Base, screens to A17 | `sfull_sft1500.safetensors`: the preserved S-full baseline (pretraining PT10000, then SFT1500), owned by Codex. A19 continues from S34 and S30, on the same lineage. A18 uses October's 20M bases and A20 uses pk_sft_v1 (12 × 768); each has its shape in `PROTOCOL.md` |
 | SFT recipe (arm A) | 256 updates × 16 rows, lr 3e-5, loss on assistant segments only, EOS supervised; spec `arm_a_lr3e5.json` (`66c718e0`) |
 | Serving and evaluation | the archived ember CPU server build `ember_publication_build_20261030`, greedy |
 
@@ -175,7 +175,7 @@ exactly between waves.
   4. "Your" or "You" wins on recall but not on copy: interference from S2's convention.
 - **Result:** section 5.
 
-### A6-A10 (4-5 Nov, done). Results against their registered bars
+### A6-A19 (4-7 Nov). Results against their registered bars
 
 Full records are in root `AI_ML/chat_screens_claude/PROTOCOL.md`. Each experiment ran at seed 1, or at seeds 1-2
 where stated, and is exploratory.
@@ -220,8 +220,41 @@ where stated, and is exploratory.
 - **A15, hybrid plus instruction diversity (§23-23.2): both FAIL, on precision and discrimination.** S30 and S31 have 18
   and 17 of 40 on precision against a limit of 20, and 0 and 2 twin pairs against a limit of 4. Naturalness and the
   ambiguity guard hold. By §23.1's rule no further phrasing or weighting variant is run.
-- **A16, paired contrast data (§24-24.1): running.** S32, S33 and S34, on the 59 context pairs of `contrast_v001`, which no
-  copy policy passes. Controls have at most 5 of 59.
+- **A16, paired contrast data (§24-24.3): all three FAIL.** S32, S33 and S34 have 12, 6 and 16 of the 59 context pairs of
+  `contrast_v001` against a bar of 17. S34 meets the McNemar leg (13 and 2, p 0.0074) and the strata leg and misses the count by
+  one pair. Every guard holds and parity passes.
+  - Rule 3 fires: S32 and S34 reach 19 and 22 of 100 and fail the context legs, so they are recorded as a copy reflex, with no
+    credit.
+  - Paired data moved identity and role, and neither recall nor correction: S34's 16 are I 11, R 4, U 1, A 0, C 0.
+    `contrast_v002` takes S34 to 8 of 59, because declines had scored as correct.
+  - The passage test with the right passage is 0 of 11 for all three.
+- **A17, does S30 read a correct note (§25-25.3, CPU, no L4): B FAILS on reach, spread and content, and a read is shown.** Reach is
+  +2 of 82, p 0.815, against +15; content 8 against 10; collateral −2 holds. Continuation rule 3 applies.
+  - Ranked read 62 of 114 frames, none the opposite way. Produced read 21 of 114. Selection about none, 0.038.
+  - The read is availability in context: condition D, the only one with both values in the prompt, has a mean margin of −0.59
+    nats, positive on 52 of 114. The role flag is flat.
+  - S30 was never trained on notes, so this does not rule out a scratchpad. A read-only training arm is the next test, on a
+    separate registration.
+- **A19, mixed rows against a sham (§27-27.1), seed 2: not a pass. Rule 3 fires, because a guard failed.** S51 (M1) against S52
+  (C0), both from S34, on `chatflow_v001`'s 108 told-value items.
+  - **Primary fails** on reach (+7, 37 against 30, bar +13), the frame sign test (0.174) and template (3.81 and −8.33 points per
+    item, bar 7). Role, spread, discrimination, selection, parent and preference hold.
+  - **The guard:** the ended twin on `plain_name` is 6 of 8 against a floor of 7. It fails by one item, and ROLE_LEAK totals are
+    equal at 4.
+  - **The claim tier is not reached.** On the 51 items the cue table fails, M1 has 13, C0 12 and S34 12: a gain of 1 against a bar
+    of 7.
+  - **Rows were learned.** On M1's held-out mixed rows, fact in a role is 0.903 against C0's 0.483, like in a role 0.989 against
+    0.000, name in a role 0.956 against 0.433.
+  - **Reported:** job gains +11 of the net +7, on items asking a job 17 of 42 against 7. Corrections fall from 7 to 3 of 16. J1
+    relevance 2.00 against 2.08. Pairs split 6 to 0, p 0.031.
+  - **Next by rule:** no seed 3 until the cause is read, and M2 waits. Exploratory, one seed, one checkpoint, on S-full's base: a
+    failed bar here is a fact about this dose on this checkpoint. Whether mixed rows work on a stronger base stays open.
+- **A18, depth for width at matched parameters (§26): session 1 run, no verdict.** S35, S36 and S37 came home with exit 0 and
+  cleanup certified. Sessions 2 to 4 wait for the floor gate.
+- **A20, S34's and S30's recipes on pk_sft_v1 (§28): both sessions run, no verdict.** S54 and S55 came home with exit 0 and cleanup
+  certified. Evaluation is on Colab CPU runtimes.
+- **B1, a stronger pretrained base (§29): Stage 0 live on RunPod.** It spends no L4-hours of §8. Costs are in
+  `AI_ML/tiny_chat_benchmarks/b1_ledger.md`.
 - **Misfire probe baselines** (correct of 140): S12 74, S14 57, S2 58, S0 54. The best degenerate responder gets
   55.
 
@@ -308,6 +341,9 @@ Pending: filled in from `C:/ml_artifacts/chat_screens_claude/format_probe/{S0,S2
 ends.
 
 ## 6. Depth × diversity (proposed, unexecuted, not authorised for training)
+
+A18 (root `PROTOCOL.md` §26), authorised by Jonathan on 6 Nov, runs depth for width on October's 20M bases, the cheap first test
+this section names. The 2×2 below stays proposed.
 
 **Question.** Does more depth, at approximately constant parameters, improve generalisation of conversational
 operations to unfamiliar scenario and instruction combinations? The estimand is the interaction on a held-out
@@ -521,6 +557,10 @@ demonstrated optimum.
 | S-full baseline | 72.76M / 60.17M | Codex record | SFT1500 | n/a | n/a | not run | pending | human: 1-2 | human: 0 | unmeasured | 1 | n/a |
 | S2 (seed 1) | same | same | arm A, 256 × 16 | n/a | about 10 min | 0 | pending | not judged | not judged | unmeasured | 3 | none (wave 2) |
 | S5 (seed 1) | same | same | arm A, 256 × 16 | train side, 1 pool | about 10 min | 1 | pending | not judged | not judged | unmeasured | 3 (scoring) | scoring |
+| S23 (highest relevance on record) | same | same | 1,024 steps, 30% instruction, 1,088 phrasings | 1,088 phrasings | 47.5 min | 2 | 1 of 64 | 2.46 | 2.92 | unmeasured | 1 | A12's primary +16 against +18 |
+| S30 (practical baseline, not confirmed) | same | same | 1,024 steps, 30% hybrid | 1,088-phrasing generator | 59.3 min | 0 | 1 of 64 | 2.85 | 2.54 | unmeasured | 1 | fails precision and discrimination |
+| S34 (most context pairs, 16 of 59) | same | same | 2,048 steps, 30% contrast | not varied | 73.8 min | not scored | not scored | 2.46 | 2.15 | unmeasured | 1 | copy reflex recorded; 8 of 59 on `contrast_v002` |
+| S51, M1 (from S34) | same | same | 1,024 more steps, mixed rows | not varied | 67.5 min with S52 | not scored | not scored | 2.46 | 2.00 | unmeasured | 1 | corrections 3 of 16 against C0's 7; ended twin 6 of 8 |
 
 ## 8. Compute ledger (Colab L4, from session creation to certified cleanup)
 
@@ -544,8 +584,19 @@ demonstrated optimum.
 | a14-s1 (S28, S29; one session each) | 105.3 | S29 exit 0; S28 exit 2 (log archive timeout; model and train check verified) |
 | a15-s1 (S30, S31; one session each) | 114.4 | two exit 0 |
 | **4-6 Nov, through A15** | **about 1,210 (20.2 h)** | the week's 6 h, increased by Jonathan's redistribution of budget to this week (4 Nov) |
+| a16-s1 (S32, S33, S34; one session each) | 168.7 | three exit 0; a verdict, §24.3 |
+| A17 (S30, CPU) | none | no L4; a verdict, §25.3 |
+| a19-s2 (S51, S52, seed 2; one session) | 67.5 | exit 0; a verdict, §27.1; evaluation on Colab CPU runtimes, no L4 |
+| a18-s1 (S35, S36, S37) | 84 | exit 0; run, not yet a verdict |
+| a20-s54 (S54) | 81 | exit 0; run, not yet a verdict |
+| a20-s55 (S55) | 48 | exit 0; run, not yet a verdict |
+| **4-7 Nov, through A19's verdict and the sessions run** | **about 1,659 (27.6 h)** | §8's 6 h is past; Jonathan's dated line of 7 Nov stands for up to 12 L4-hours in this period, shared by A18, A19 and A20 (§26, §28) |
 
-CPU evaluation runs under the shared CPU budget (`scripts/cpu_budget.py`, session `claude`, at most 4 slots).
+The last three rows are driver spans. By session creation to the last certified stop, `score_a19.py compute` reads 83.4, 80.2 and
+47.3, and 1,650.2 minutes for the lane on its own count.
+
+CPU evaluation runs under the shared CPU budget (`scripts/cpu_budget.py`, session `claude`). From A19 it runs on Colab CPU runtimes
+through `cloud_eval/`, at 0.08 units an hour per session, with no L4.
 
 ## 9. Retractions and superseded readings
 
@@ -555,6 +606,12 @@ CPU evaluation runs under the shared CPU budget (`scripts/cpu_budget.py`, sessio
   (77.1M unique), was not parameter-matched; 16 × 560 replaces it.
 - **Wave-3 incident (4 Nov):** the reading "a fresh VM may not answer its first exec" is superseded. The review
   found that the VM answered and the local Colab CLI stalled (`reviews/launch_review_6_w3_rerun.md`).
+- **Pretraining cost:** the 130-L4-hour figure for ten times S-full's tokens is superseded. It matched S-full's
+  checkpoint-burdened rate. At the clean rate of about 40M positions an L4-hour the figure is about 41 hours
+  (`AI_ML/tiny_chat_benchmarks/base_receipt_comparison.md` §6.6).
+- **Where S-full's knowledge gap sits:** the receipts comparison of 6 Nov could not order the SFT recipe against pretraining
+  exposure. Gate 0 (`cloud_eval/receipts/d0cpu5/decision_compare.json`) places 82% of the LAMBADA target-bits gap in the base:
+  1.4004 for S-full's base, 1.493 after SFT1500, 0.970 for pk_base_v1. It locates the gap and names no cause.
 - **A4 figures:** the earlier figures (grid about 14% of supervised tokens; 487, 961 and 2,049 masked templates)
   are superseded. The grid is 12.0%, and the arms have 10, 30 and 57 wordings (`reviews/launch_review_5_wave4.md`).
 
@@ -567,7 +624,7 @@ CPU evaluation runs under the shared CPU budget (`scripts/cpu_budget.py`, sessio
 3. **Demonstrate utility, not just function.** A working small chatbot is not the end point. The model must do
    something useful; the first candidate is connecting it to a basic retrieval-augmented setup (RAG) over
    documents.
-4. **Benchmark it** against comparable small models at scale, reporting where it stands. The aim is an honest
+4. **Benchmark it** against comparable small models at scale, reporting where it stands. The aim is a fair
    comparison, not a claim to beat larger systems.
 
 ### Design principle: early readout (Jonathan, 4 Nov 2026)
@@ -597,12 +654,21 @@ A run that wins on format but loses knowledge fails.
 
 ## 10b. Next authorised step and its stopping rule
 
-Score A16 (S32, S33 and S34) under `AI_ML/chat_screens_claude/PROTOCOL.md` §24.1, report §24.2's additions and apply its
-continuation rules. Run A17 (§25), S30 with a correct, irrelevant and conflicting note, on CPU. S30 is the practical baseline, not a
-confirmed winner: promotion needs a sealed evaluation set. Seed-1 screens are triage, 30% is a reference dose, and a candidate is
-replicated before it is promoted. The 130-L4-hour pretraining campaign waits for the full benchmarks and a short scaling pilot. Any later
-training run has its design, hypothesis and bar written here and in the root protocol, and independently reviewed,
-before training.
+**The stronger base B, whose Stage 0 is live on RunPod** (`AI_ML/chat_screens_claude/PROTOCOL.md` §29,
+`AI_ML/tiny_chat_benchmarks/stronger_base_spec.md`). Stage 0's bars must all hold. B then needs its own admission and review, under
+Jonathan's cap of $21 for B plus $2 for Stage 0. After B come S-full's SFT1500 on the final base and the two-by-two, which gets its own
+section and its own dated line under §8.
+
+Beside it, each registration's continuation table decides:
+- **A19:** rule 3 holds, so seed 3 waits until the cause of the guard is read, and M2 waits as registered.
+- **A18:** session 1's evaluation, then the floor gate, which decides sessions 2 to 4.
+- **A20:** evaluation, J1 and the verdict by §28's table. Its registration sets what each reading sends where.
+- **A17:** a read-only training arm stays the next test of a note, on a separate registration.
+
+S30 is the practical baseline, not a confirmed winner: promotion needs a sealed evaluation set, and none is built. Seed-1 screens are
+triage, 30% is a reference dose, and a candidate is replicated before it is promoted. An intervention on S-full's base reads as
+conditional on that base, not as failed in general (Jonathan, 7 Nov 2026). Any later training run has its design, hypothesis and bar
+written here and in the root protocol, and independently reviewed, before training.
 
 **Stopping rule:** no GPU training without a registered design, review and budget. An intervention that does not
 beat its control at its registered bar is recorded here as a negative and not retried with relaxed criteria.
