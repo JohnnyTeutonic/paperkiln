@@ -1,0 +1,428 @@
+{
+ "_comment": "B: fresh 8x768, 60,000 steps at T 1,024, k 4 (spec section 9). Cap $21, cumulative with Stage 0 $23. Not admitted: needs Stage 0's hashes, measured costs and its own review.",
+ "max_parallel": 1,
+ "max_parallel_light": 2,
+ "jobs": [
+  {
+   "name": "cuda_gate",
+   "halt_on_failure": true,
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "cuda_gate",
+    "--out",
+    "{out}"
+   ],
+   "outputs": [
+    "cuda_gate.json",
+    "cuda_gate.log"
+   ]
+  },
+  {
+   "name": "data",
+   "light": true,
+   "halt_on_failure": true,
+   "cmd": [
+    "bash",
+    "tools/colab_chat/base_b1_data.sh",
+    "{out}",
+    "/content/chat/upload/vocab_llama3_bpe.gguf",
+    "b1"
+   ],
+   "outputs": [
+    "data.ledger.json",
+    "human_decontam.json",
+    "mix_b1.ledger.json",
+    "filter.ledger.json",
+    "ids_b1.json",
+    "tc_b1_pins_observed.json"
+   ]
+  },
+  {
+   "name": "pt_b1_r1",
+   "model_name": "tc_b1_r1",
+   "after": [
+    "data",
+    "cuda_gate"
+   ],
+   "relay_every_steps": 2500,
+   "snapshot_steps": [
+    10000,
+    20000,
+    30000,
+    40000,
+    50000
+   ],
+   "halt_on_failure": true,
+   "env": {
+    "MICROTORCH_CHECKPOINT_TXN": "1"
+   },
+   "spec": {
+    "name": "tc_b1_r1",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 768,
+      "layers": 8,
+      "heads": 12,
+      "d_ff": 2240
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/mix_b1.main.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "max_tokens": 0,
+     "anneal": {
+      "corpus": "/content/chat/data/mix_b1.tail.ids",
+      "from_fraction": 0.85
+     }
+    },
+    "train": {
+     "steps": 60000,
+     "lr": 0.0005,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 1000,
+     "eval_windows": 32,
+     "checkpoint_every": 125,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 2000,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    },
+    "out_dir": "/content/chat/pt_b1_r1"
+   }
+  },
+  {
+   "name": "rung_b1_s10000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_b1_r1",
+    "step": 10000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_long_2026-10/specs/cell_Sfull.json",
+    "--weights",
+    "/content/chat/pt_b1_r1/rung_10000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_b1_r1",
+    "--step",
+    "10000",
+    "--job",
+    "pt_b1_r1",
+    "--cell",
+    "B1",
+    "--seed",
+    "1",
+    "--share",
+    "30",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ],
+   "keep_home_snapshot": true
+  },
+  {
+   "name": "rung_b1_s20000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_b1_r1",
+    "step": 20000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_long_2026-10/specs/cell_Sfull.json",
+    "--weights",
+    "/content/chat/pt_b1_r1/rung_20000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_b1_r1",
+    "--step",
+    "20000",
+    "--job",
+    "pt_b1_r1",
+    "--cell",
+    "B1",
+    "--seed",
+    "1",
+    "--share",
+    "30",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ],
+   "keep_home_snapshot": true
+  },
+  {
+   "name": "rung_b1_s30000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_b1_r1",
+    "step": 30000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_long_2026-10/specs/cell_Sfull.json",
+    "--weights",
+    "/content/chat/pt_b1_r1/rung_30000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_b1_r1",
+    "--step",
+    "30000",
+    "--job",
+    "pt_b1_r1",
+    "--cell",
+    "B1",
+    "--seed",
+    "1",
+    "--share",
+    "30",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_b1_s40000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_b1_r1",
+    "step": 40000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_long_2026-10/specs/cell_Sfull.json",
+    "--weights",
+    "/content/chat/pt_b1_r1/rung_40000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_b1_r1",
+    "--step",
+    "40000",
+    "--job",
+    "pt_b1_r1",
+    "--cell",
+    "B1",
+    "--seed",
+    "1",
+    "--share",
+    "30",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_b1_s50000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_b1_r1",
+    "step": 50000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_long_2026-10/specs/cell_Sfull.json",
+    "--weights",
+    "/content/chat/pt_b1_r1/rung_50000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_b1_r1",
+    "--step",
+    "50000",
+    "--job",
+    "pt_b1_r1",
+    "--cell",
+    "B1",
+    "--seed",
+    "1",
+    "--share",
+    "30",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "sft_b1_r1",
+   "model_name": "tc_sft_b1_r1",
+   "after": "pt_b1_r1",
+   "init_job": "pt_b1_r1",
+   "relay_every_steps": 500,
+   "halt_on_failure": true,
+   "env": {
+    "MICROTORCH_CHECKPOINT_TXN": "1"
+   },
+   "spec": {
+    "name": "tc_sft_b1_r1",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 768,
+      "layers": 8,
+      "heads": 12,
+      "d_ff": 2240
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/data/sft_human.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1500,
+     "lr": 0.0003,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 500,
+     "eval_batch": 8,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 100,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   }
+  },
+  {
+   "name": "items",
+   "after": "sft_b1_r1",
+   "light": true,
+   "halt_on_failure": true,
+   "cmd": [
+    "bash",
+    "tools/colab_chat/bench_vm.sh",
+    "items",
+    "{out}"
+   ],
+   "outputs": [
+    "items_build.json",
+    "fetch.log"
+   ]
+  },
+  {
+   "name": "bench_b1",
+   "after": [
+    "items",
+    "sft_b1_r1"
+   ],
+   "halt_on_failure": true,
+   "cmd": [
+    "sh",
+    "-c",
+    "ln -sf /content/chat/pt_b1_r1/rung_10000/model.safetensors /content/chat/upload/b1_s10000.safetensors && ln -sf /content/chat/pt_b1_r1/rung_20000/model.safetensors /content/chat/upload/b1_s20000.safetensors && ln -sf /content/chat/pt_b1_r1/rung_30000/model.safetensors /content/chat/upload/b1_s30000.safetensors && ln -sf /content/chat/pt_b1_r1/rung_40000/model.safetensors /content/chat/upload/b1_s40000.safetensors && ln -sf /content/chat/pt_b1_r1/rung_50000/model.safetensors /content/chat/upload/b1_s50000.safetensors && ln -sf /content/chat/pt_b1_r1/tc_b1_r1.safetensors /content/chat/upload/b1_final.safetensors && ln -sf /content/chat/sft_b1_r1/tc_sft_b1_r1.safetensors /content/chat/upload/b1_sft.safetensors && env BENCH_SCORE_COMMIT=cc6635bee8c89b8b0304edeca633b1903b5d9291 EMBER_DETERMINISTIC=1 bash tools/colab_chat/bench_vm.sh ember {out} 100 1 b1_s10000 b1_s20000 b1_s30000 b1_s40000 b1_s50000 b1_final b1_sft sfull_sft1500"
+   ],
+   "outputs": [
+    "results.tar.gz"
+   ]
+  }
+ ]
+}

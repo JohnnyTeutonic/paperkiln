@@ -66,6 +66,16 @@ def restore(name):
     if not os.path.isdir(up):
         return
     os.makedirs(out, exist_ok=True)
+    # A transactional checkpoint's flat names are symlinks into its generations (include/microtorch/checkpoint_txn.hpp).
+    # An upload replaces the flat files, so it must never write through them: the links go, and the generations are
+    # set aside whole, never deleted, so the resume reads the upload.
+    if any(os.path.exists(f"{up}/{p}") or p.startswith("model") and any(q.startswith(p + ".part") for q in os.listdir(up))
+           for p in ("model.safetensors", "state.txt")):
+        for f in ("model.safetensors", "optim.safetensors", "state.txt"):
+            if os.path.islink(f"{out}/{f}"):
+                os.remove(f"{out}/{f}")
+        if os.path.isdir(f"{out}/ckpt_gen"):
+            os.rename(f"{out}/ckpt_gen", f"{out}/ckpt_gen.superseded.{int(time.time())}")
     for f in ("model.safetensors", "optim.safetensors"):
         parts = sorted(p for p in os.listdir(up) if p.startswith(f + ".part"))
         if parts:

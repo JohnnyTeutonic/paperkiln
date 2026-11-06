@@ -39,6 +39,11 @@ rung job of that snapshot is home and FINISHED (its rung.json records the weight
 job that failed "rung lost" while its snapshot is home is rerun after reset_lost_rungs.py, applied
 when the runner next starts. A campaign without rung jobs makes exactly the calls it made before.
 
+State that must survive a failure (7 Nov 2026, the stronger base). A job with "halt_on_failure" is never counted
+home when it fails: the runner writes HOME/HALTED (the watchdog's stop_file), ends the pod, and leaves the volume and every
+checkpoint on it, so a failed save or resume cannot become HOME and release() the volume. "halt_drill" and
+"pod_loss_drill_step" exercise that path and the replacement path on a real pod (tools/colab_chat/tc_b1_s0.json).
+
 Picks (25 Oct 2026). A tiny_chat_run.py pick reads every post job's summary.json and only the best run's
 SFT model, and a post job's files live only on the VM that ran it, so a replacement VM reran every home
 post an unfinished pick waits for (E5: six, ~1.4 L4 hours each, ahead of its pretraining). prepare() now
@@ -53,6 +58,7 @@ import argparse
 import base64
 import hashlib
 import json
+import math
 import os
 import re
 import shutil
@@ -67,6 +73,7 @@ ADOPT = os.path.join(os.path.dirname(HERE), "colab_adopt.py")
 CHUNK = 45 * 1024 * 1024
 TICK = 240
 NAME = ART = HOME = None
+BOOT_SCRIPT = "tools/colab_chat/boot_jobs.sh"
 T = None  # the Transport (ColabTransport unless --backend runpod)
 
 
@@ -135,6 +142,12 @@ class ColabTransport:
 
     def release(self, st):
         pass  # nothing outlives a Colab session
+
+    def lose_pod(self, st):
+        self.stop(st)  # the drill on the fake CLI; a real campaign's drill runs on RunPod
+
+    def volume_present(self, st):
+        return False
 
     def over_budget(self, st):
         return None
@@ -516,10 +529,11 @@ def fetch_rung_snapshot(st, jobs, r, busy):
     training job with rung jobs is active on the VM)."""
     own = rung_owners(jobs)
     rec = st.d.get("rung_snapshots") or {}
+    keep = {j["name"] for j in jobs if j.get("keep_home_snapshot")}  # read again at home after its rung job
     for key, e in rec.items():
         pt, step = key.rsplit("/rung_", 1)
         names = own.get((pt, int(step)), [])
-        if not e.get("deleted") and names and all(
+        if not e.get("deleted") and names and not keep.intersection(names) and all(
                 st.job(n)["home"] and st.job(n)["status"] == "FINISHED" for n in names):
             shutil.rmtree(snap_home(pt, int(step)), ignore_errors=True)
             e["deleted"] = time.time()
@@ -691,7 +705,13 @@ def apply_rung_resets(st, jobs):
 
 
 def launch(st, commit, jobs_rel, jobs, uploads):
+    if getattr(T, "deadline", None) is not None and time.time() >= T.deadline:
+        log("deadline expired before launch; no session created")
+        return False
     T.stop(st)
+    if getattr(T, "deadline", None) is not None and time.time() >= T.deadline:
+        log("deadline expired while stopping prior session; no replacement created")
+        return False
     rc, out = T.create(st)
     if rc != 0:
         log(f"no {T.gpu} ({out.strip()[-120:]}); retry later")
@@ -842,10 +862,74 @@ def spared_posts(st, jobs, by, needed, failed):
     return spare
 
 
+def validate_checkpoint_families(jobs, boot_script):
+    """Each named boot admits one opt-in contract, never mixed campaigns."""
+    sfull = any("full_checkpoint_v2" in j for j in jobs)
+    dpo = any("dpo_full_checkpoint_v1" in j for j in jobs)
+    if sfull and dpo:
+        raise ValueError("mixed S-full/DPO checkpoint campaigns are unsupported")
+    expected = ("tools/colab_chat/boot_sfull_v2_20261101.sh" if sfull else
+                "tools/colab_chat/boot_dpo_checkpoint_v1.sh" if dpo else None)
+    if expected is not None and boot_script != expected:
+        raise ValueError("checkpoint family requires its separately admitted named boot")
+
+
+def halt_campaign(job, why):
+    """A failed job whose state must survive: the marker the watchdog's stop_file reads. The job stays unhome, so
+    campaign_home is never set and release() never runs; the caller ends the pod and exits. A person reads it first."""
+    marker = os.path.join(HOME, "HALTED")
+    if not os.path.exists(marker):
+        with open(marker, "x") as handle:
+            json.dump({"kind": "JOB_FAILED_STATE_KEPT", "job": job, "why": why, "at": time.time()}, handle)
+            handle.flush()
+            os.fsync(handle.fileno())
+    log(f"{job}: {why}; HALTED written, pod ends, the volume and its checkpoints are kept")
+
+
+def halt_drill(st, job):
+    """Stage 0's last job: a real mtstudio refused a real torn checkpoint on the real volume and the VM reports FAILED.
+    With the job unhome, release() must refuse and the volume must still exist. The record goes to HOME/halt_drill.json;
+    the job then counts as home, so the drill's own end is the ordinary campaign end. Any other outcome stops the campaign."""
+    T.stop(st)
+    refused, error = False, None
+    try:
+        T.release(st)
+    except Exception as e:  # noqa: BLE001 runpod_api.Refused, or a provider failure, recorded either way
+        refused, error = type(e).__name__ == "Refused", repr(e)
+    rec = {"job": job, "status_seen": "FAILED", "home_before": st.job(job)["home"], "release_refused": refused,
+           "error": error, "volume_present": T.volume_present(st), "at": time.time()}
+    with open(os.path.join(HOME, "halt_drill.json"), "w") as handle:
+        json.dump(rec, handle, indent=1)
+    shutil.copyfile(os.path.join(HOME, "halt_drill.json"), os.path.join(ART, "halt_drill.json"))
+    log(f"halt drill: {json.dumps(rec)}")
+    if not (refused and rec["volume_present"] and rec["home_before"] is False):
+        halt_campaign(job, "halt drill failed")
+        raise SystemExit(3)
+
+
+def halt_dpo_checkpoint(error):
+    marker = os.path.join(HOME, "HALTED")
+    if not os.path.exists(marker):
+        with open(marker, "x") as handle:
+            json.dump({"kind": "DPO_FULL_STATE_CHECKPOINT_FAILURE", "error": str(error)}, handle)
+            handle.flush()
+            os.fsync(handle.fileno())
+
+
 def prepare(st, commit, jobs_rel, jobs, uploads):
     """Inputs, relayed checkpoints and the boot onto a session that is up but
     not yet booted. Retried every tick until it succeeds (st.d["booted"]), so
     a failed upload never leaves a provisioned VM idle."""
+    validate_checkpoint_families(jobs, BOOT_SCRIPT)
+    dpo_leases = []
+    if any(j.get("dpo_full_checkpoint_v1") for j in jobs):
+        from dpo_checkpoint_transport_v1 import home_uploads
+        try:
+            extra, dpo_leases = home_uploads(jobs, ART)
+            uploads = [*uploads, *extra]
+        except (OSError, ValueError, RuntimeError, KeyError, TypeError) as error:
+            halt_dpo_checkpoint(error)
+            raise
     adopt_home(st, jobs)  # files home but state unmarked: FINISHED below, not run again
     dirs = ["/content/chat/upload"] + [f"/content/chat/upload/{j['name']}" for j in jobs]
     rc, out = exec_py(f"import os\nfor d in {dirs!r}: os.makedirs(d, exist_ok=True)\nprint('DIRS_OK')\n")
@@ -932,6 +1016,11 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
     if rung_up is None:
         log("prepare: rung snapshot check got no reply; will retry")
         return False
+    full_leases = []
+    if any(j.get("full_checkpoint_v2") for j in jobs):
+        from sfull_checkpoint_transport_v2 import home_uploads
+        extra, full_leases = home_uploads(jobs, ART)
+        uploads = [*uploads, *extra]
     try:
         for key, src in uploads:
             upload_file(src, f"/content/chat/upload/{key}")
@@ -989,19 +1078,32 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
         log(f"input reassembly failed: {out.strip()[-160:]}")
         return False
     log("inputs: " + " ".join(ln for ln in out.splitlines() if ln and not ln.startswith("[")))
-    url = f"https://raw.githubusercontent.com/JohnnyTeutonic/paperkiln/{commit}/tools/colab_chat/boot_jobs.sh"
-    rc, out = exec_py(
-        "import subprocess, urllib.request\n"
-        f"open('/content/boot_jobs.sh','wb').write(urllib.request.urlopen('{url}').read())\n"
-        f"subprocess.Popen('nohup bash /content/boot_jobs.sh {commit} {jobs_rel} > /dev/null 2>&1 &', shell=True)\n"
-        "print('BOOTED')\n")
+    rc, out = exec_py(boot_launch_code(commit, jobs_rel, BOOT_SCRIPT))
     if "BOOTED" not in out:
         log(f"boot exec failed: {out.strip()[-160:]}")
         return False
     st.d["booted"] = True
     st.save()
     log("boot launched")
+    if full_leases:
+        from sfull_checkpoint_transport_v2 import release_uploads
+        release_uploads(full_leases)
+    if dpo_leases:
+        from dpo_checkpoint_transport_v1 import release_uploads
+        release_uploads(dpo_leases)
     return True
+
+
+def boot_launch_code(commit, jobs_rel, boot_script="tools/colab_chat/boot_jobs.sh"):
+    """Pinned boot selection; the legacy training boot remains the default."""
+    if boot_script not in ("tools/colab_chat/boot_jobs.sh", "tools/colab_chat/boot_commands.sh", "tools/colab_chat/boot_commands_sparse.sh", "tools/colab_chat/boot_sfull_data_only_20261031.sh", "tools/colab_chat/boot_sfull_v2_20261101.sh", "tools/colab_chat/boot_dpo_checkpoint_v1.sh"):
+        raise ValueError("unsupported boot script")
+    url = f"https://raw.githubusercontent.com/JohnnyTeutonic/paperkiln/{commit}/{boot_script}"
+    return (
+        "import subprocess, urllib.request\n"
+        f"open('/content/boot_jobs.sh','wb').write(urllib.request.urlopen('{url}').read())\n"
+        f"subprocess.Popen('nohup bash /content/boot_jobs.sh {commit} {jobs_rel} > /dev/null 2>&1 &', shell=True)\n"
+        "print('BOOTED')\n")
 
 
 def vm_status(jobs):
@@ -1028,12 +1130,52 @@ def make_transport(a):
                            image=a.image, max_usd=a.max_usd, commit=a.commit, name=NAME, home=HOME, log=log)
 
 
+def parse_deadline_utc(value):
+    """Timezone-aware ISO8601 only; return an absolute Unix timestamp."""
+    from datetime import datetime
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})", value):
+        raise argparse.ArgumentTypeError("deadline must be timezone-aware ISO8601, e.g. 2026-10-30T13:17:00Z")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if parsed.utcoffset() is None:
+            raise ValueError("timezone required")
+        return parsed.timestamp()
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("invalid ISO8601 deadline") from exc
+
+
+def resolve_deadline(max_hours, absolute, now):
+    """A watchdog restart cannot extend a supplied absolute deadline."""
+    if not math.isfinite(max_hours) or max_hours <= 0:
+        raise ValueError("--max-hours must be finite and positive")
+    deadline = now + max_hours * 3600
+    if not math.isfinite(deadline):
+        raise ValueError("--max-hours must produce a finite deadline")
+    if absolute is not None:
+        deadline = min(deadline, absolute)
+    if deadline <= now:
+        raise ValueError("runner deadline has already expired; no session may be created")
+    return deadline
+
+
+def sleep_tick(deadline):
+    """Wait at most one normal tick, and never intentionally sleep past the ceiling."""
+    delay = min(TICK, max(0, deadline - time.time()))
+    if delay > 0:
+        time.sleep(delay)
+
+
 def main():
-    global NAME, ART, HOME, T
+    global NAME, ART, HOME, T, BOOT_SCRIPT
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--commit", required=True)
     ap.add_argument("--jobs", required=True, help="jobs JSON, path relative to the paperkiln repo root")
+    ap.add_argument("--boot-script", default="tools/colab_chat/boot_jobs.sh",
+                    choices=["tools/colab_chat/boot_jobs.sh", "tools/colab_chat/boot_commands.sh", "tools/colab_chat/boot_commands_sparse.sh", "tools/colab_chat/boot_sfull_data_only_20261031.sh", "tools/colab_chat/boot_sfull_v2_20261101.sh", "tools/colab_chat/boot_dpo_checkpoint_v1.sh"],
+                    help="pinned VM boot; command-only boot skips trainer and corpus setup")
     ap.add_argument("--max-hours", type=float, default=23.5)
+    ap.add_argument("--deadline-utc", type=parse_deadline_utc, default=None,
+                    help="absolute timezone-aware ISO8601 ceiling, preserved across watchdog restarts")
     ap.add_argument("--name", required=True, help="Colab session name (this run's own)")
     ap.add_argument("--art", required=True, help="local artifact directory")
     ap.add_argument("--state-dir", required=True, help="runner state, pid file and log")
@@ -1047,15 +1189,23 @@ def main():
     ap.add_argument("--max-usd", type=float, default=None,
                     help="RunPod: stop and create nothing once this runner's ledger passes this many dollars")
     a = ap.parse_args()
+    try:
+        resolve_deadline(a.max_hours, a.deadline_utc, time.time())
+    except ValueError as exc:
+        ap.error(str(exc))
+    BOOT_SCRIPT = a.boot_script
     NAME, ART, HOME = a.name, a.art, os.path.expanduser(a.state_dir)
     os.makedirs(HOME, exist_ok=True)
     os.makedirs(ART, exist_ok=True)
     repo = os.path.dirname(os.path.dirname(HERE))
     jobs = json.load(open(os.path.join(repo, a.jobs)))["jobs"]
+    validate_checkpoint_families(jobs, a.boot_script)
     uploads = [tuple(u.split("=", 1)) for u in a.upload]
     for k, src in uploads:
         if not os.path.exists(src):
             sys.exit(f"--upload {k}: {src} does not exist")
+    if os.path.exists(os.path.join(HOME, "HALTED")):
+        sys.exit("HALTED marker present: nothing runs until a person has read it (the marker stays)")
     pid = os.path.join(HOME, "runner.pid")
     if os.path.exists(pid):
         try:
@@ -1082,6 +1232,10 @@ def main():
     # Nor for a campaign that is home (a restart after the end would otherwise launch a pod and find nothing to do).
     if a.backend != "colab" and all(st.d["jobs"].get(j["name"], {}).get("home") for j in jobs):
         sys.exit("every job is home; nothing to run (no pod rented)")
+    try:
+        resolve_deadline(a.max_hours, a.deadline_utc, time.time())
+    except ValueError as exc:
+        ap.error(str(exc))
     T = make_transport(a)
     open(pid, "w").write(str(os.getpid()))
     if a.backend != "colab":
@@ -1090,10 +1244,12 @@ def main():
         st.save()
         T.attach(st)  # registers the runner for runpod_sweep.py; atexit and signal handlers end the pod
 
-    deadline = time.time() + a.max_hours * 3600
+    deadline = resolve_deadline(a.max_hours, a.deadline_utc, time.time())
+    T.deadline = deadline  # transport must enforce it while a transfer blocks the main loop
     if listed() is None and not st.d.get("endpoint"):
         if not launch(st, a.commit, a.jobs, jobs, uploads):
-            time.sleep(TICK)
+            if time.time() < deadline and not T.over_budget(st):
+                sleep_tick(deadline)
     try:
         while time.time() < deadline:
             why = T.over_budget(st)
@@ -1119,24 +1275,24 @@ def main():
                         log("session gone on 3 consecutive ticks; relaunching from the relayed checkpoints")
                         st.d["gone_ticks"] = 0
                         if not launch(st, a.commit, a.jobs, jobs, uploads):
-                            time.sleep(TICK)
+                            sleep_tick(deadline)
                             continue
                     elif probe is None:
                         log(f"session not listed and VM silent ({st.d['gone_ticks']}/3); waiting")
-                        time.sleep(TICK)
+                        sleep_tick(deadline)
                         continue
             else:
                 st.d["gone_ticks"] = 0
             if not st.d.get("booted", True):
                 log("session up but not booted; preparing it")
                 if not prepare(st, a.commit, a.jobs, jobs, uploads):
-                    time.sleep(TICK)
+                    sleep_tick(deadline)
                     continue
             upload_pending(st)
             r = vm_status(jobs)
             if r is None:
                 log("vm status: no reply")
-                time.sleep(TICK)
+                sleep_tick(deadline)
                 continue
             if r["vm"] == "BOOT_FAILED":
                 log("boot failed on the VM; downloading boot.log")
@@ -1153,9 +1309,50 @@ def main():
                     log(f"{n}: {r[n]}  {r.get(n + '_tail', '')[-120:]}")
                     js["status"] = r[n]
                     st.save()
-                if r[n] == "RUNNING" and not js["home"] and "cmd" not in j:
+                if r[n] in ("RUNNING", "FINISHED") and not js["home"] and j.get("full_checkpoint_v2"):
+                    from sfull_checkpoint_transport_v2 import relay as full_relay
+                    try:
+                        relayed = full_relay(exec_py, download_file, st, j, ART) or relayed
+                    except (OSError, ValueError, RuntimeError, KeyError, TypeError) as error:
+                        with open(os.path.join(HOME, "HALTED"), "x") as marker:
+                            json.dump({"kind": "S_FULL_CHECKPOINT_V2_FAILURE", "error": str(error)}, marker)
+                        raise
+                elif r[n] in ("RUNNING", "FINISHED") and not js["home"] and j.get("dpo_full_checkpoint_v1"):
+                    from dpo_checkpoint_transport_v1 import relay as dpo_relay
+                    try:
+                        relayed = dpo_relay(exec_py, download_file, st, j, ART) or relayed
+                    except (OSError, ValueError, RuntimeError, KeyError, TypeError) as error:
+                        halt_dpo_checkpoint(error)
+                        raise
+                elif r[n] == "RUNNING" and not js["home"] and "cmd" not in j:
                     relayed = relay(st, n, j.get("relay_every_steps", 0)) or relayed
+                    drill = j.get("pod_loss_drill_step")
+                    if drill and js["relayed_step"] >= drill and not st.d.get("pod_loss_drill"):
+                        st.d["pod_loss_drill"] = {"job": n, "relayed_step": js["relayed_step"], "at": time.time()}
+                        st.save()
+                        log(f"{n}: pod loss drill: the pod ends at the provider now; relayed {js['relayed_step']}")
+                        T.lose_pod(st)
+                        done = False
+                        break
                 if r[n] == "FINISHED" and not js["home"]:
+                    if j.get("full_checkpoint_v2"):
+                        from sfull_checkpoint_transport_v2 import finished_home_poll
+                        try:
+                            final_ready = finished_home_poll(j, ART, js)
+                            st.save()
+                        except (OSError, ValueError, RuntimeError, KeyError, TypeError) as error:
+                            log(f"{n}: final full checkpoint refused: {error}")
+                            with open(os.path.join(HOME, "HALTED"), "x") as marker:
+                                json.dump({"kind": "S_FULL_FINAL_CHECKPOINT_FAILURE", "job": n, "error": str(error)}, marker)
+                            raise
+                        if not final_ready:
+                            done = False
+                            continue  # final model/AdamW/RNG/events must land, not merely weights
+                    if j.get("dpo_full_checkpoint_v1"):
+                        from dpo_checkpoint_transport_v1 import final_home_ready
+                        if not final_home_ready(j, ART):
+                            done = False
+                            continue  # final optimizer/RNG/events bundle must land before home
                     if "cmd" in j:
                         fetch_outputs(st, n, j.get("outputs", []))
                     else:
@@ -1164,6 +1361,16 @@ def main():
                 # read mid-reset (a job being restarted by hand) is not final.
                 js["failed_seen"] = js.get("failed_seen", 0) + 1 if r[n] == "FAILED" else 0
                 if r[n] == "FAILED" and js["failed_seen"] >= 2 and not js["home"]:
+                    if j.get("halt_on_failure") or j.get("halt_drill"):
+                        os.makedirs(os.path.join(ART, n), exist_ok=True)
+                        T.get(f"/content/chat/{n}_train.log", os.path.join(ART, n, f"{n}_train.log"), 300)
+                        if j.get("halt_on_failure"):
+                            halt_campaign(n, "job FAILED on the VM")
+                            raise SystemExit(3)
+                        halt_drill(st, n)
+                        js["home"] = True
+                        st.save()
+                        continue
                     if "cmd" in j:  # a failed data job's outputs are its diagnosis: whatever exists
                         fetch_outputs(st, n, j.get("outputs", []), best_effort=True)
                     T.get(f"/content/chat/{n}_train.log", os.path.join(ART, n, f"{n}_train.log"), 300)
@@ -1180,7 +1387,7 @@ def main():
                 st.d["campaign_home"] = True
                 st.save()
                 break
-            time.sleep(TICK)
+            sleep_tick(deadline)
     finally:
         T.stop(st)
         if st.d.get("campaign_home"):

@@ -1,0 +1,252 @@
+{
+ "_comment": "Stage 0 of tc_b1: section 10, step 2, of the stronger base spec. Cap $2, one RunPod L4. Reviewed and admitted on its own; B has its own admission after this.",
+ "max_parallel": 1,
+ "max_parallel_light": 2,
+ "jobs": [
+  {
+   "name": "cuda_gate",
+   "halt_on_failure": true,
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "cuda_gate",
+    "--out",
+    "{out}"
+   ],
+   "outputs": [
+    "cuda_gate.json",
+    "cuda_gate.log"
+   ]
+  },
+  {
+   "name": "data",
+   "light": true,
+   "halt_on_failure": true,
+   "cmd": [
+    "bash",
+    "tools/colab_chat/base_b1_data.sh",
+    "{out}",
+    "/content/chat/upload/vocab_llama3_bpe.gguf",
+    "stage0"
+   ],
+   "outputs": [
+    "data.ledger.json",
+    "human_decontam.json",
+    "mix_b1.ledger.json",
+    "filter.ledger.json",
+    "ids_b1.json",
+    "tc_b1_pins_observed.json"
+   ]
+  },
+  {
+   "name": "pt_s0",
+   "model_name": "tc_b1_s0",
+   "after": [
+    "data",
+    "cuda_gate"
+   ],
+   "relay_every_steps": 250,
+   "snapshot_steps": [
+    250
+   ],
+   "pod_loss_drill_step": 250,
+   "halt_on_failure": true,
+   "env": {
+    "MICROTORCH_CHECKPOINT_TXN": "1"
+   },
+   "spec": {
+    "name": "tc_b1_s0",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 768,
+      "layers": 8,
+      "heads": 12,
+      "d_ff": 2240
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/mix_b1.main.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "max_tokens": 0,
+     "anneal": {
+      "corpus": "/content/chat/data/mix_b1.tail.ids",
+      "from_fraction": 0.85
+     }
+    },
+    "train": {
+     "steps": 1000,
+     "lr": 0.0005,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 250,
+     "eval_windows": 32,
+     "checkpoint_every": 125,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 100,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    },
+    "out_dir": "/content/chat/pt_s0"
+   }
+  },
+  {
+   "name": "rung_s0_s250",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_s0",
+    "step": 250
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_long_2026-10/specs/cell_Sfull.json",
+    "--weights",
+    "/content/chat/pt_s0/rung_250/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_s0",
+    "--step",
+    "250",
+    "--job",
+    "pt_s0",
+    "--cell",
+    "B1",
+    "--seed",
+    "1",
+    "--share",
+    "30",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "s0_probe",
+   "after": [
+    "pt_s0",
+    "rung_s0_s250"
+   ],
+   "after_terminal": true,
+   "halt_on_failure": true,
+   "env": {
+    "MICROTORCH_CHECKPOINT_TXN": "1"
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tc_b1_s0_probe.py",
+    "--out",
+    "{out}",
+    "--spec",
+    "tools/colab_chat/tc_b1_probe_spec.json"
+   ],
+   "outputs": [
+    "probe.json"
+   ]
+  },
+  {
+   "name": "s0_torn_setup",
+   "after": "s0_probe",
+   "light": true,
+   "halt_on_failure": true,
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tc_b1_s0_probe.py",
+    "--out",
+    "{out}",
+    "--torn",
+    "/content/chat/s0_torn"
+   ],
+   "outputs": [
+    "torn.json"
+   ]
+  },
+  {
+   "name": "s0_torn",
+   "model_name": "tc_b1_torn",
+   "after": "s0_torn_setup",
+   "halt_drill": true,
+   "env": {
+    "MICROTORCH_CHECKPOINT_TXN": "1"
+   },
+   "spec": {
+    "name": "probe",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 768,
+      "layers": 8,
+      "heads": 12,
+      "d_ff": 2240
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/panel_fineweb.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "max_tokens": 0
+    },
+    "train": {
+     "steps": 2,
+     "lr": 0.0005,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 1000,
+     "eval_windows": 32,
+     "checkpoint_every": 1,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 20,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors"
+     ]
+    }
+   }
+  }
+ ]
+}

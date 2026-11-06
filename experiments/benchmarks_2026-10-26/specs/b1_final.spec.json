@@ -1,0 +1,32 @@
+{
+ "name": "b1_final",
+ "arch": {
+  "preset": "llama-tiny",
+  "rope_heads": "all",
+  "custom": {
+   "d": 768,
+   "layers": 8,
+   "heads": 12,
+   "d_ff": 2240
+  },
+  "state_tokens": {
+   "k": 4,
+   "mask": "causal"
+  }
+ },
+ "data": {
+  "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+  "vocab_cap": 16384,
+  "T": 1024
+ },
+ "train": {
+  "steps": 1,
+  "lr": 0.001,
+  "batch": 16,
+  "seed": 1
+ },
+ "export": {
+  "formats": []
+ },
+ "out_dir": "/content/eval/b1_final"
+}

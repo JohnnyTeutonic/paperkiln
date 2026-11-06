@@ -39,6 +39,7 @@
 #include <regex>
 #include "httplib.h"
 
+#include "microtorch/checkpoint_txn.hpp"
 #include "microtorch/device.hpp"
 #include "microtorch/device_cache.hpp"
 #include "microtorch/gguf.hpp"
@@ -2220,6 +2221,18 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             "(exact/swa at depth ride the flex family)");
 
     std::filesystem::create_directories(s.out_dir);
+    // Transactional checkpoints (include/microtorch/checkpoint_txn.hpp), opt-in: from here on the flat names read one
+    // whole, hash-validated step, or the job has refused to start. Before the first read of state.txt, so the RoPE record
+    // and the event trim below follow the validated step.
+    std::unique_ptr<ckpt_txn::Store> ckpt_store;
+    ckpt_txn::Recovered ckpt_rec;
+    double ckpt_rec_seconds = 0;
+    if (const char* txn = std::getenv("MICROTORCH_CHECKPOINT_TXN"); txn && std::strcmp(txn, "1") == 0) {
+        ckpt_store = std::make_unique<ckpt_txn::Store>(s.out_dir);
+        const auto t0 = std::chrono::steady_clock::now();
+        ckpt_rec = ckpt_store->recover();
+        ckpt_rec_seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+    }
     // Resuming = a checkpoint step > 0 in state.txt. A resumed run keeps the
     // RoPE coverage it was trained with (resolve_rope_heads).
     int ckpt_step = 0;
@@ -2261,6 +2274,14 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     if (ckpt_step > 0) truncate_events_after(s.out_dir + "/events.jsonl", ckpt_step);
     Events ev(s.out_dir + "/events.jsonl");
     ev.emit({{"event", "start"}, {"name", s.name}, {"steps", s.steps}});
+    if (ckpt_store)
+        ev.emit({{"event", "checkpoint_recover"},
+                 {"live", ckpt_rec.live},
+                 {"recovered_step", ckpt_rec.step},
+                 {"fallback", ckpt_rec.fallback},
+                 {"rejected", ckpt_rec.rejected},
+                 {"uncommitted", ckpt_rec.uncommitted},
+                 {"seconds", ckpt_rec_seconds}});
 
     // Data.
     auto tokens = read_gguf_vocab(s.vocab_gguf);
@@ -2743,7 +2764,12 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     // Resume determinism: each step consumed accum*batch draws.
     for (int i = 0; i < start_step * s.accum * s.batch; ++i) rng();
     auto save = [&](int step) {
-        save_safetensors(ckpt, model_ref.state_dict());
+        const auto save_t0 = std::chrono::steady_clock::now();
+        std::map<std::string, Matrix> msd;
+        if (ckpt_store)
+            msd = model_ref.state_dict();
+        else
+            save_safetensors(ckpt, model_ref.state_dict());
         std::map<std::string, Matrix> osd;
         std::vector<long> ts;
         for (size_t i = 0; i < opt.adamw.size(); ++i) {
@@ -2755,11 +2781,21 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             auto part = opt.muon[i].state_dict("muon." + std::to_string(i));
             osd.insert(part.begin(), part.end());
         }
+        const std::string state_text =
+            std::to_string(step) + "\n" +
+            json({{"best_val", best_val}, {"evals_flat", evals_flat}, {"adamw_t", ts}}).dump() + "\n";
+        if (ckpt_store) {  // one step's three files publish as one unit
+            const auto c = ckpt_store->commit(step, msd, osd, state_text);
+            ev.emit({{"event", "checkpoint"},
+                     {"step", step},
+                     {"generation", c.generation},
+                     {"bytes", c.bytes},
+                     {"seconds", std::chrono::duration<double>(std::chrono::steady_clock::now() - save_t0).count()}});
+            return;
+        }
         save_safetensors(optim_path, osd);
         std::ofstream st(state_path);
-        st << step << "\n";
-        st << json({{"best_val", best_val}, {"evals_flat", evals_flat}, {"adamw_t", ts}}).dump()
-           << "\n";
+        st << state_text;
         st.close();
         if (!st) throw std::runtime_error("checkpoint V2 state close failed");
         sfull_checkpoint_v2::publish(s.out_dir, step, s.seed, s.batch, s.accum);

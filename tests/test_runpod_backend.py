@@ -56,6 +56,7 @@ class FakeAPI:
 
 
 def test_create_pod_guardrails(monkeypatch):
+    monkeypatch.setattr(api, "MAX_PODS", 4)  # fixture cap; production account limit remains unchanged
     f = FakeAPI(pods=[{"id": i} for i in "abcd"])
     f.install(monkeypatch)
     with pytest.raises(api.Refused, match="cap 4"):
@@ -79,7 +80,7 @@ def test_ledger_usd():
 def runner_state(tmp, name, pod=None, vol=None, home=False, creating=None, alive=False):
     d = tmp / name
     d.mkdir()
-    st = {"endpoint": pod, "launches": 1, "jobs": {}, "campaign_home": home,
+    st = {"endpoint": pod, "launches": 1, "jobs": {"completed": {"home": True}} if home else {}, "campaign_home": home,
           "runpod": {"pod": {"id": pod} if pod else None, "volume": {"id": vol, "dc": "X"} if vol else None,
                      "retired_volumes": [], "creating": creating,
                      "ledger": {"pods": [{"id": pod, "start": 1.0, "stop": None, "usd_per_hr": 0.5}] if pod else [],

@@ -57,7 +57,9 @@ std::map<std::string, Matrix> load_safetensors(const std::string& path,
     return out;
 }
 
-void save_safetensors(const std::string& path, const std::map<std::string, Matrix>& tensors) {
+namespace {
+
+std::string header_text(const std::map<std::string, Matrix>& tensors) {
     // Build the JSON header first; offsets are relative to the byte
     // region after the header, per the format spec.
     nlohmann::json header;
@@ -77,6 +79,29 @@ void save_safetensors(const std::string& path, const std::map<std::string, Matri
     // implementation does this, and tinyllama.cpp's GGUF-adjacent readers
     // assume aligned tensor data (the repair_gguf.py lesson).
     while (htext.size() % 8 != 0) htext.push_back(' ');
+    return htext;
+}
+
+}  // namespace
+
+void write_safetensors(const std::map<std::string, Matrix>& tensors,
+                       const std::function<void(const void*, size_t)>& sink) {
+    const std::string htext = header_text(tensors);
+    const std::uint64_t hlen = htext.size();
+    sink(&hlen, 8);
+    sink(htext.data(), htext.size());
+    std::vector<float> row;
+    for (const auto& [name, m] : tensors) {
+        row.resize(m.cols());
+        for (size_t i = 0; i < m.rows(); ++i) {
+            for (size_t j = 0; j < m.cols(); ++j) row[j] = m(i, j);
+            sink(row.data(), row.size() * sizeof(float));
+        }
+    }
+}
+
+void save_safetensors(const std::string& path, const std::map<std::string, Matrix>& tensors) {
+    const std::string htext = header_text(tensors);
 
     std::ofstream f(path, std::ios::binary);
     if (!f) throw std::runtime_error("safetensors: cannot write " + path);

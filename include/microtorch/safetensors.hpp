@@ -2,6 +2,7 @@
 // Phase 1c: the "torch.load story" docs/DESIGN.md section 3 chose -- safetensors,
 // not pickle. Format: 8-byte LE header length, JSON header
 // {name: {dtype, shape, data_offsets}}, raw little-endian tensor bytes.
+#include <functional>
 #include <map>
 #include <string>
 
@@ -25,5 +26,9 @@ std::map<std::string, Matrix> load_safetensors(
 // Every Matrix is written [rows, cols]; the map's sorted order fixes the
 // tensor layout so identical dicts produce byte-identical files.
 void save_safetensors(const std::string& path, const std::map<std::string, Matrix>& tensors);
+
+// The same bytes, handed to `sink` in order instead of written to a path (checkpoint_txn.hpp hashes them as they go).
+void write_safetensors(const std::map<std::string, Matrix>& tensors,
+                       const std::function<void(const void*, size_t)>& sink);
 
 }  // namespace microtorch

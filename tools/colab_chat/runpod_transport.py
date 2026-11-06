@@ -12,9 +12,9 @@ The volume (SECURE cloud) is created once per campaign in a data centre with the
 mounted at /content, so /content/chat and /content/pk are Colab's paths and outlive any pod: a
 relaunch in the same data centre needs no re-upload, the build is reused (same commit), and jobs
 resume from their own checkpoints on the volume (runner_multi.volume_has). When that data centre
-has no stock (or two creates there failed) the campaign moves: a new volume elsewhere, a full
-prepare(), the old volume deleted once the new pod is up. The volume is deleted when the campaign
-is home (release); runpod_sweep.py deletes it too if the runner could not.
+has no stock, a used volume stays in its original data centre and the runner waits/retries.
+Only a volume never referenced by a pod can move automatically. Used retired volumes remain until
+all jobs are home and release() runs; a replacement pod's successful prelude is not migration proof.
 
 The pod is terminated (never just stopped: its container disk would still bill) whenever the runner
 stops it: queue empty, deadline, a fatal error, SIGTERM/SIGINT/SIGHUP, or interpreter exit (atexit).
@@ -30,6 +30,7 @@ import re
 import shlex
 import signal
 import subprocess
+import tempfile
 import time
 import urllib.request
 
@@ -56,7 +57,8 @@ ENV_PREAMBLE = (
     "if _pk_os.path.isdir('/usr/local/cuda/bin') and '/usr/local/cuda/bin' not in _pk_os.environ.get('PATH', ''):\n"
     "    _pk_os.environ['PATH'] = '/usr/local/cuda/bin:' + _pk_os.environ.get('PATH', '')\n")
 UP_SECONDS = 1500  # create -> ssh answering (image pull included) before the pod is given up
-DC_FAILS_MOVE = 2   # failed creates in the volume's data centre before the campaign moves
+DC_FAILS_MOVE = 2   # failed creates before an UNUSED volume may move
+OPERATION_POLL_S = 2.0  # bound transfer overspend/deadline latency without remote calls
 MIN_RAM, MIN_VCPU = 32, 6  # per GPU: the host floor (RunPod L4 hosts: 6 vCPU/62 GB in EU-RO-1, 12/100 in EUR-IS-2)
 
 
@@ -112,6 +114,7 @@ class RunPodTransport:
         self._last = None      # the pod as the API last returned it; None = gone; "error" = API failed
         self._in_stop = False
         self._n = 0
+        self.deadline = None  # runner wall-clock deadline, also enforced inside blocking transfers
 
     # ------------------------------------------------------------ state
     def R(self, st=None):
@@ -159,13 +162,65 @@ class RunPodTransport:
                 "-o", "ConnectTimeout=20", "-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=4",
                 "-o", "BatchMode=yes", "-o", "LogLevel=ERROR"]
 
+    def _operation_limit(self):
+        if self.deadline is not None and time.time() >= self.deadline:
+            return "runner deadline reached during transport operation"
+        return self.over_budget(self.st) if self.st is not None else None
+
+    @staticmethod
+    def _kill_owned_group(process):
+        """Only the process group created by this _run, never a terminal/other driver."""
+        if os.name == "posix":
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        else:
+            subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                           capture_output=True, check=False)
+            if process.poll() is None:
+                process.kill()
+        return process.communicate()  # close pipes and reap our process, including timeout paths
+
     def _run(self, argv, timeout, stdin_text=None):
+        why = self._operation_limit()
+        if why:
+            raise api.Refused(why)
+        # CPython POSIX communicate(timeout) cannot reliably resume a partially written stdin:
+        # a retry without input stops selecting its write pipe. A private file avoids that deadlock.
+        input_file = tempfile.TemporaryFile(mode="w+t", encoding="utf-8") if stdin_text is not None else None
+        if input_file is not None:
+            input_file.write(stdin_text)
+            input_file.seek(0)
         try:
-            p = subprocess.run(argv, input=stdin_text, capture_output=True, text=True, timeout=timeout,
-                               stdin=None if stdin_text is not None else subprocess.DEVNULL, start_new_session=True)
-            return p.returncode, (p.stdout or "") + (p.stderr or "")
-        except subprocess.TimeoutExpired:
-            return 124, "TIMEOUT"
+            process = subprocess.Popen(
+                argv, stdin=input_file if input_file is not None else subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True)
+        except BaseException:
+            if input_file is not None:
+                input_file.close()
+            raise
+        end = time.monotonic() + timeout
+        try:
+            while True:
+                why = self._operation_limit()
+                if why:
+                    raise api.Refused(why)  # never let upload_whole retry past the cap/deadline
+                remaining = end - time.monotonic()
+                if remaining <= 0:
+                    out, err = self._kill_owned_group(process)
+                    return 124, (out or "") + (err or "") + "TIMEOUT"
+                try:
+                    out, err = process.communicate(timeout=min(OPERATION_POLL_S, remaining))
+                    return process.returncode, (out or "") + (err or "")
+                except subprocess.TimeoutExpired:
+                    pass  # communicate retains captured output across retries
+        except BaseException:
+            self._kill_owned_group(process)
+            raise
+        finally:
+            if input_file is not None:
+                input_file.close()
 
     def exec(self, code, timeout=200):
         pod = self.R().get("pod")
@@ -312,9 +367,23 @@ class RunPodTransport:
         finally:
             self._in_stop = False
 
+    def lose_pod(self, st):
+        """The pod loss drill: the provider ends the pod and this runner's state is left as a host failure leaves it."""
+        pod = self.R(st).get("pod")
+        return bool(pod) and api.terminate_pod(pod["id"])
+
+    def volume_present(self, st):
+        vol = self.R(st).get("volume")
+        return bool(vol) and any(v.get("id") == vol["id"] for v in api.list_volumes())
+
     def release(self, st):
         """The campaign is home: delete its volume(s)."""
         R = self.R(st)
+        jobs = st.d.get("jobs")
+        if (st.d.get("campaign_home") is not True or not isinstance(jobs, dict) or not jobs
+                or R.get("pod") or st.d.get("endpoint") or R.get("creating") or any(
+                    not isinstance(job, dict) or job.get("home") is not True for job in jobs.values())):
+            raise api.Refused("volume release requires all campaign jobs home and no active pod")
         vols = [v for v in [R.get("volume")] + R["retired_volumes"] if v]
         for v in vols:
             self._delete_volume(st, v)
@@ -340,11 +409,22 @@ class RunPodTransport:
     def _stocked(self):
         return api.stocked_dcs(self.gpu, MIN_RAM, MIN_VCPU, secure=self.cloud == "SECURE")
 
+    def _volume_used(self, st, vol):
+        """A pod reference means potentially irreplaceable progress, including failed boots.
+        Legacy pod records without a volume binding are uncertain, hence protected too.
+        """
+        R = self.R(st)
+        pods = R["ledger"]["pods"]
+        live = R.get("pod")
+        unbound_live = live and not any(p.get("id") == live.get("id") for p in pods)
+        return bool(unbound_live) or any(
+            p.get("volume") == vol["id"] or "volume" not in p for p in pods)
+
     def _retire(self, st, vol):
         """The campaign leaves this volume: deleted now when no pod ever ran on it (nothing to lose), else
-        kept until the next pod is up (create) or the campaign is home (release)."""
+        kept until the entire campaign is home (release), never just until a replacement pod is up."""
         R = self.R(st)
-        if not any(p.get("volume") == vol["id"] for p in R["ledger"]["pods"]) and self._delete_volume(st, vol):
+        if not self._volume_used(st, vol) and self._delete_volume(st, vol):
             return
         R["retired_volumes"].append(vol)
         st.save()
@@ -360,10 +440,17 @@ class RunPodTransport:
             return stocked[0], None
         if self.dc:
             if vol and vol["dc"] != self.dc:
+                if self._volume_used(st, vol):
+                    raise api.Refused("used volume cannot switch data centre without operator-verified migration; "
+                                      "preserve its checkpoints and resume in " + vol["dc"])
                 self._retire(st, vol)
                 vol = R["volume"] = None
             dc = self.dc
         else:
+            if vol and self._volume_used(st, vol):
+                # Stock metadata and repeated create failures cannot authorize losing partial results.
+                # Try the same DC; the provider's no-stock response is a safe retry, never migration.
+                return vol["dc"], vol
             stocked = self._stocked()
             if vol and vol["dc"] in stocked and R.get("dc_fails", 0) < DC_FAILS_MOVE:
                 return vol["dc"], vol
@@ -394,7 +481,7 @@ class RunPodTransport:
         """(0, pod id) once the pod answers over ssh and the prelude has run; (1, why) otherwise
         (the runner logs it and retries next tick). A pod that fails to come up is terminated."""
         R = self.R(st)
-        why = self.over_budget(st)
+        why = self._operation_limit() or self.over_budget(st)
         if why:
             return 1, f"refused: {why}"
         try:
@@ -410,6 +497,9 @@ class RunPodTransport:
             else:
                 body["supportPublicIp"] = True
             digest = image_digest(self.image)
+            why = self._operation_limit() or self.over_budget(st)
+            if why:
+                return 1, f"refused: {why}"
             R["creating"] = time.time()
             st.save()
             try:
@@ -442,7 +532,8 @@ class RunPodTransport:
                 self.stop(st)
                 return 1, "prelude failed; pod terminated"
             for v in list(R["retired_volumes"]):
-                self._delete_volume(st, v)
+                if not self._volume_used(st, v):
+                    self._delete_volume(st, v)
             R["retired_volumes"] = [v for v in R["retired_volumes"] if not v.get("deleted")]
             st.save()
             return 0, pod["id"]
@@ -456,6 +547,9 @@ class RunPodTransport:
     def _wait_up(self, pod_id):
         t0 = time.time()
         while time.time() - t0 < UP_SECONDS:
+            why = self._operation_limit()
+            if why:
+                raise api.Refused(why)
             p = self._fetch()
             if p is None:
                 self.log(f"pod {pod_id} vanished while starting")
