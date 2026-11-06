@@ -12,8 +12,8 @@ MODE=${3:?stage0 or b1}
 S13=oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots
 LONG=taskmaster3,abcd,ccpe,p4g,aya_en,msc
 # Byte ratios, from Stage 1's measured filtered sizes (spec section 10): main 73/27, tail 53/47.
-MAIN="fineweb=0.730000,human=0.000000,soda=0.000000,ultrachat=0.000000,everyday=0.000000"
-TAIL="fineweb=0.530000,human=0.000000,soda=0.000000,ultrachat=0.000000,everyday=0.000000"
+MAIN="fineweb=0.730000,human=0.051446,soda=0.090580,ultrachat=0.127734,everyday=0.000240"
+TAIL="fineweb=0.530000,human=0.089555,soda=0.157674,ultrachat=0.222353,everyday=0.000418"
 mkdir -p "$OUT"
 
 python3 tools/colab_chat/tiny_chat_data.py --out "$OUT" --vocab "$V" --fineweb corpus/data/fineweb_edu_shard0_v1 \
@@ -50,8 +50,9 @@ if [ ! -s "$OUT/mix_b1.main.ids" ] || [ ! -s "$OUT/mix_b1.tail.ids" ]; then
   # shellcheck disable=SC2086
   [ -s "$HUMAN" ] || { cat "$OUT/human_pt.txt" $LONGF "$OUT/human_pt.txt" $LONGF > "$HUMAN.tmp" && mv "$HUMAN.tmp" "$HUMAN"; }
   FW="$OUT/fineweb01.txt"
-  [ -s "$FW" ] || { cat corpus/data/fineweb_edu_shard0_v1/pretrain_train.txt corpus/data/fineweb_edu_shard1_v1/pretrain_train.txt \
-    > "$FW.tmp" && mv "$FW.tmp" "$FW"; }
+  [ -s "$FW" ] || python3 tools/colab_chat/tc_b1_fineweb.py "$FW" --val corpus/data/fineweb_edu_shard0_v1/val.txt \
+    corpus/data/fineweb_edu_shard0_v1/pretrain_train.txt corpus/data/fineweb_edu_shard1_v1/pretrain_train.txt
+  cp "$FW.ledger.json" "$OUT/fineweb_b1.ledger.json"
   python3 corpus/mix_pretrain.py "$OUT/mix_b1" --seed 1 --tail-fraction 0.15 --total-bytes 6600000000 \
     --source "fineweb=$FW" --source "human=$HUMAN" --source "soda=$F/soda.txt" --source "ultrachat=$F/ultrachat.txt" \
     --source "everyday=$F/everyday.txt" --main "$MAIN" --tail "$TAIL"

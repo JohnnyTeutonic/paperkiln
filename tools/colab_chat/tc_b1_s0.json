@@ -34,6 +34,7 @@
     "human_decontam.json",
     "mix_b1.ledger.json",
     "filter.ledger.json",
+    "fineweb_b1.ledger.json",
     "ids_b1.json",
     "tc_b1_pins_observed.json"
    ]

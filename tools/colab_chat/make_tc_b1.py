@@ -80,7 +80,7 @@ def data(mode):
     return {"name": "data", "light": True, "halt_on_failure": True,
             "cmd": ["bash", "tools/colab_chat/base_b1_data.sh", "{out}", V, mode],
             "outputs": ["data.ledger.json", "human_decontam.json", "mix_b1.ledger.json", "filter.ledger.json",
-                        "ids_b1.json", "tc_b1_pins_observed.json"]}
+                        "fineweb_b1.ledger.json", "ids_b1.json", "tc_b1_pins_observed.json"]}
 
 
 def rung(job, step, tag, keep=False):

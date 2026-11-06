@@ -141,6 +141,25 @@ def test_filter_drops_held_out_text_and_keeps_the_rest(tmp_path):
     assert "unrelated talk here" in (out / "msc.txt").read_text()
 
 
+def test_fineweb_keeps_each_document_once_and_never_a_val_document(tmp_path):
+    sep = "<|endoftext|>\n"
+    (tmp_path / "s0").mkdir()
+    (tmp_path / "s1").mkdir()
+    val = tmp_path / "val.txt"
+    val.write_text(f"panel doc\n{sep}", encoding="utf-8")
+    a = tmp_path / "s0" / "t.txt"
+    a.write_text(f"one\n{sep}two\n{sep}one\n{sep}", encoding="utf-8")
+    b = tmp_path / "s1" / "t.txt"
+    b.write_text(f"two\n{sep}three\n{sep}panel doc\n{sep}", encoding="utf-8")
+    out = tmp_path / "f.txt"
+    subprocess.run([sys.executable, str(CC / "tc_b1_fineweb.py"), str(out), "--val", str(val), str(a), str(b)], check=True,
+                   capture_output=True)
+    assert out.read_text() == f"one\n{sep}two\n{sep}three\n{sep}"
+    led = json.load(open(str(out) + ".ledger.json"))
+    assert (led["kept"], led["dropped_equal_val"], led["dropped_repeat"]) == (3, 1, 2)
+    assert led["sha256"] == hashlib.sha256(out.read_bytes()).hexdigest()
+
+
 def test_restore_never_writes_through_a_generation(tmp_path, monkeypatch):
     monkeypatch.setenv("JOBS_CHAT_DIR", str(tmp_path))
     sys.modules.pop("jobs_vm", None)
