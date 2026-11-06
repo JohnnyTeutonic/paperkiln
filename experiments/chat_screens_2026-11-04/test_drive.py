@@ -99,6 +99,8 @@ def advance(run):
             p = d / f"model.safetensors.part{i // 1000:02d}"; p.write_bytes(stb[i:i + 1000])
             st_parts.append({"name": p.name, "sha256": sha(p.read_bytes()), "bytes": p.stat().st_size})
         (d / "train.log").write_text('{"event": "step", "step": 256, "loss": 2.5}\n')
+        (out / f"spec_{s}.json").write_text('{"name": "screen"}')
+        (out / f"train_{s}_check.json").write_text('{"ok": true}')
         (d / "result.json").write_text('{"final_step": 256}')
         (d / "manifest.json").write_text(json.dumps({"screen": s, "run_id": run, "gguf_sha256": sha(gguf),
                                                      "gguf_bytes": len(gguf), "parts": parts,
@@ -750,6 +752,31 @@ class DriveTests(unittest.TestCase):
         self.assertIn("not pinned", log)
         self.assertEqual(state["counts"].get("new", 0), 0)
 
+    def test_an_arm_home_keeps_its_spec_and_check_when_the_logs_are_lost(self):
+        rc, state, log, tmp, _ = self.run_drive("logs_lost", seed=1, screens=["S35"], recipes={"S35": self.DEPTH["S35"]}, extra={"DRIVE_TEST_LAUNCH_NEED": "1"})
+        self.assertIn("LOGS NOT RETRIEVED", log)
+        d = tmp / "art" / "t1" / "S35"
+        self.assertEqual((d / "spec_S35.json").read_text(), '{"name": "screen"}')
+        self.assertEqual((d / "train_S35_check.json").read_text(), '{"ok": true}')
+        self.assertTrue((d / "train.log").is_file())
+
+    def test_an_earlier_screen_fetches_neither(self):
+        rc, state, log, tmp, _ = self.run_drive("normal")
+        self.assertEqual(rc, 0, log)
+        self.assertFalse((tmp / "art" / "t1" / "S0" / "spec_S0.json").exists())
+
+    def test_the_last_depth_arm_may_fetch_its_safetensors_up_to_the_retrieval_deadline(self):
+        extra = {"DRIVE_TEST_LAUNCH_NEED": "1", "DRIVE_TEST_ST_MIN_LEFT": "78"}
+        rc, state, log, tmp, _ = self.run_drive("normal", seed=1, screens=["S35"], recipes={"S35": self.DEPTH["S35"]}, extra=extra, minute="1")
+        self.assertEqual(rc, 0, log)
+        self.assertTrue((tmp / "art" / "t1" / "S35" / "model.safetensors").is_file(), log)
+
+    def test_an_arm_before_the_last_keeps_the_polling_deadline(self):
+        extra = {"DRIVE_TEST_LAUNCH_NEED": "1", "DRIVE_TEST_ST_MIN_LEFT": "78"}
+        rc, state, log, tmp, _ = self.run_drive("normal", seed=1, screens=["S35", "S36"], recipes=self.DEPTH, extra=extra, minute="1")
+        self.assertFalse((tmp / "art" / "t1" / "S35" / "model.safetensors").exists(), log)
+        self.assertIn("S35: under 78.0 minutes left", log)
+
     def test_the_a18_recipes_pins_and_budget(self):
         import importlib.util
         spec = importlib.util.spec_from_file_location("drive_mod", HERE / "drive.py")
@@ -775,10 +802,9 @@ class DriveTests(unittest.TestCase):
         for s in ("S35", "S36", "S37", "S38", "S39", "S40", "S41", "S42", "S43", "S44", "S49", "S50"):
             self.assertEqual(mod.PINS[f"{s}.jsonl"], mod.PINS["S34.jsonl"], s)
             self.assertIn(f"{rec[s]['base']}.safetensors", mod.PINS, s)
-        for s in ("S45", "S46", "S47", "S48"):
-            self.assertNotIn(f"{s}.jsonl", mod.PINS, s)
-        for b in ("tc_sft_B_r1", "tc_e1_60m_L8_r1"):
-            self.assertNotIn(f"{b}.safetensors", mod.PINS, b)
+        for s in ("S45", "S46", "S47", "S48"):   # pinned only when their branch opens, by patch_a18_driver.py
+            if f"{s}.jsonl" in mod.PINS:
+                self.assertEqual(mod.PINS[f"{s}.jsonl"], mod.PINS["S14.jsonl" if s in ("S47", "S48") else "S34.jsonl"], s)
         self.assertEqual(mod.launch_need(["S35", "S36", "S37"]), 103)
         self.assertEqual(mod.launch_need(["S51", "S52"]), 75)
         self.assertEqual(mod.launch_need(["S34"]), 75)

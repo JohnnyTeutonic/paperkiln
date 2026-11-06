@@ -787,13 +787,18 @@ class Driver:
                 if not (work / extra).is_file() or sha256(work / extra) != want:
                     self.log(f"{screen}: {extra} missing or not as the VM hashed it")
                     return False
+            if screen in SCREEN_MINUTES:   # A18: what the scorer reads beside the weights, here in case the VM is lost before its logs archive. Best effort: the archive holds them too
+                for extra in (f"spec_{screen}.json", f"train_{screen}_check.json"):
+                    self.call([COL, "download", "-s", self.name, f"/content/run_{self.run}/out/{extra}", str(work / extra)], 120, deadline, f"{screen} {extra}")
             (work).rename(self.out / screen)
             self.home[screen] = man["gguf_sha256"]
             self.log(f"{screen}: HOME, GGUF {man['gguf_sha256']} ({man['gguf_bytes']} bytes)")
             # A10: the safetensors comes only after the screen is home, and only with time to spare
             if man.get("st_parts"):
-                if (deadline - time.monotonic()) / MINUTE >= ST_MIN_LEFT:
-                    self.collect_safetensors(screen, remote, self.out / screen, man, deadline)
+                # A18: no arm follows the last one, so nothing needs the time up to the stop deadline
+                st_end = self.retrieve_end if screen in SCREEN_MINUTES and screen == self.screens[-1] else deadline
+                if (st_end - time.monotonic()) / MINUTE >= ST_MIN_LEFT:
+                    self.collect_safetensors(screen, remote, self.out / screen, man, st_end)
                 else:
                     self.log(f"{screen}: under {ST_MIN_LEFT} minutes left; the safetensors stays on the VM")
             return True
