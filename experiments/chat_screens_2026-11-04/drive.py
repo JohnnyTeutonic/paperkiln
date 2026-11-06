@@ -76,7 +76,7 @@ RAISE_ON = hook("DRIVE_TEST_RAISE_ON", "")
 PART_BYTES = int(hook("DRIVE_TEST_PART_BYTES", str(45 * 1024 * 1024)))  # runner_multi.py: 45 MiB both ways
 SOURCE = "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1"
 SCREENS = ("S0", "S1", "S2", "S3")  # wave 1, the default
-ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16", "S24", "S25", "S26", "S27", "S21", "S22", "S23", "S28", "S29", "S30", "S31", "S32", "S33", "S34", "S35", "S36", "S37", "S38", "S39", "S40", "S41", "S42", "S43", "S44", "S45", "S46", "S47", "S48", "S49", "S50", "S51", "S52", "S53")
+ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16", "S24", "S25", "S26", "S27", "S21", "S22", "S23", "S28", "S29", "S30", "S31", "S32", "S33", "S34", "S35", "S36", "S37", "S38", "S39", "S40", "S41", "S42", "S43", "S44", "S45", "S46", "S47", "S48", "S49", "S50", "S51", "S52", "S53", "S54", "S55")
 COMMON_INPUTS = ("vocab.gguf", "arm_a_lr3e5.json", "recipes.json")
 DEFAULT_BASE = "sfull_sft1500"  # a screen starts from this unless its recipe names a "base" (A19)
 
@@ -89,9 +89,11 @@ def capped(cap):
 
 ST_MIN_LEFT = float(hook("DRIVE_TEST_ST_MIN_LEFT", "6"))  # minutes needed to start the safetensors fetch
 # A18: training minutes per arm, whole minutes, by shape (L2 23, L4 26, L8 32, L16 38, L32 45, 60M 57). Used by launch_need only; the VM never reads them.
-SCREEN_MINUTES = {"S35": 32, "S36": 45, "S37": 23, "S38": 38, "S39": 26, "S40": 23, "S41": 32, "S42": 45, "S43": 38, "S44": 26, "S45": 57, "S46": 57, "S47": 23, "S48": 45, "S49": 45, "S50": 45}
+SCREEN_MINUTES = {"S35": 32, "S36": 45, "S37": 23, "S38": 38, "S39": 26, "S40": 23, "S41": 32, "S42": 45, "S43": 38, "S44": 26, "S45": 57, "S46": 57, "S47": 23, "S48": 45, "S49": 45, "S50": 45, "S54": 86, "S55": 43}
 # A18: (step, bar). val_loss at the first evaluation at or past the step, above the bar or not finite, ends the session once this arm is home. Later arms are never stopped.
 EARLY_STOP = {"S35": (1024, 1.88)}
+# A20: the same read at the pre-set cut-off, logged. It stops nothing: each arm is alone in its session, and a kill on a bar set from 31 rows costs more than it saves (PROTOCOL.md section 28).
+EARLY_READ = {"S54": (1024, 2.09), "S55": (512, 2.65)}
 
 
 def recipe(screen):
@@ -245,8 +247,12 @@ PINS = {
     "tc_e1_L16_r2.safetensors": (f"{ART}/tiny_chat/e1/pt_e1_L16_r2/tc_e1_L16_r2.safetensors", "7e59c4989bec3754a076750da4e52d2325768a84ecf5d7960a08f13bc3f46810"),
     "tc_e1_L32_r1.safetensors": (f"{ART}/tiny_chat/e1/pt_e1_L32_r1/tc_e1_L32_r1.safetensors", "86fc7216c1da122ecfd66e8c43b2e8a0effaf0dfb30a91f61c3df4b8f95507ff"),
     "tc_e1_L32_r2.safetensors": (f"{ART}/tiny_chat/e1/pt_e1_L32_r2/tc_e1_L32_r2.safetensors", "02b11e03185413131883bfd24249d6bb80a64d970ff9dc5ff8bf9758f274f34e"),
+    # A20 (section 28): S34's and S30's recipes from October's pk_sft_v1, at 12x768, k = 0, 8x2. S54 trains S32's packet, S55 S30's
+    "S54.jsonl": (f"{ART}/chat_screens_claude/packets/a16/S32/train.jsonl", "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a"),
+    "S55.jsonl": (f"{ART}/chat_screens_claude/packets/a15/S30/train.jsonl", "4b761d345af7ec37126b339c4c30bef703e5ef71ab9df4658aea551599cdf60b"),
+    "pk_sft_v1.safetensors": (f"{ART}/general_chat/sft/pk_sft_v1.safetensors", "eae61755dc6625eb87c54ce3152774596ed4299c65c0462ed3831b0f9d7ee80e"),
     # A18 later pins
-    "recipes.json": (str(HERE / "recipes.json"), "b6c44a5eb96dd2726dc44ce51d8c6a1a469f43b7e482d36d0f8530afbd65d15b"),
+    "recipes.json": (str(HERE / "recipes.json"), "d6ba0267c7a29b95ad10e1714b5c3274bfbca8ec403356401f5d397e044cfc0c"),
     "arm_a_lr3e5.json": (str(HERE / "arm_a_lr3e5.json"),
                          "66c718e0b501c751aae0a1cd22eddfdc666a7cfb46a4c074fa41b67aa220125e"),
 }
@@ -727,8 +733,8 @@ class Driver:
         return False
 
     def early_check(self):
-        """A18's readout: each arm in EARLY_STOP is read once. A failed read is logged and is not a stop; it is tried again at the next poll."""
-        for s, (step, bar) in EARLY_STOP.items():
+        """A18's readout: each arm in EARLY_STOP is read once. A failed read is logged and is not a stop; it is tried again at the next poll. A20's arms in EARLY_READ are read the same way and stop nothing."""
+        for s, (step, bar) in {**EARLY_STOP, **EARLY_READ}.items():
             if s not in self.screens or s in self.early_read:
                 continue
             got = self.read_eval(s, step, self.work_end)
@@ -738,6 +744,9 @@ class Driver:
                 at, value = got
                 self.early_read[s] = value
                 over = value is None or value > bar
+                if s in EARLY_READ:
+                    self.log(f"{s}: R({at}) = {value}, bar {bar}, read only:", "over the bar" if over else "under the bar")
+                    continue
                 self.log(f"{s}: R({at}) = {value}, bar {bar}:", f"stop once {s} is home" if over else "continues")
                 if over:
                     self.stop_after = s
