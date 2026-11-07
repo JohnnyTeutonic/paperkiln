@@ -184,7 +184,7 @@ or put it on a command line. The ssh key is `~/.ssh/runpod_ed25519`.
 - **Status**: `python3 tools/colab_chat/runpod_api.py status` (balance, spend per hour, pods, volumes,
   L4 stock). Run it before and after any RunPod work; finish every turn with no pod that a live driver
   does not own.
-- **Guardrails** (in code): at most 2 pods account-wide and no create below a $15 balance (checked
+- **Guardrails** (in code): MAX_PODS = 13 is the account-wide runaway guard, not a campaign budget; no create below a $15 balance (checked
   through the API before every create); `--max-usd` caps one runner's ledger (state.json `runpod.ledger`).
 - **No idle spend**: the runner terminates its pod when the queue is empty, at the deadline, on any exit
   (SIGTERM/SIGINT/SIGHUP, atexit); the watchdog runs `tools/colab_chat/runpod_sweep.py` every tick, which
