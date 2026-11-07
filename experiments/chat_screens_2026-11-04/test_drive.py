@@ -859,6 +859,26 @@ class DriveTests(unittest.TestCase):
         self.assertEqual(mod.EARLY_STOP, {"S35": (1024, 1.88)})
         self.assertEqual(set(mod.EARLY_READ) & set(mod.EARLY_STOP), set())
 
+    def test_the_lab_n1_recipes_pins_and_budget(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("drive_mod", HERE / "drive.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        rec = json.loads((HERE / "recipes.json").read_text())
+        for s in ("S56", "S57", "S58"):
+            r = rec[s]
+            self.assertEqual((r["arch.custom.d"], r["arch.custom.layers"], r["arch.custom.heads"], r["arch.custom.d_ff"]), (768, 12, 12, 2048))
+            self.assertIsNone(r["arch.state_tokens"])
+            self.assertEqual((r["train.steps"], r["train.batch"], r["train.accum"], r["train.checkpoint_every"], r["train.eval_examples"], r["train.eval_every"], r["train.lr_schedule.warmup_steps"], r["train.lr"]), (1024, 8, 2, 256, 200, 256, 64, 0.0001))
+            self.assertEqual(r["base"], "pk_sft_v1")
+            self.assertIn(s, mod.ALL_SCREENS)
+            self.assertNotIn(s, mod.EARLY_STOP)
+            self.assertNotIn(s, mod.EARLY_READ)
+        self.assertEqual(mod.launch_need(["S56", "S58"]), 89)
+        self.assertLessEqual(mod.launch_need(["S56", "S58"]) + 4, mod.capped(115)[0])
+        self.assertLessEqual(mod.launch_need(["S57"]) + 4, mod.capped(75)[0])
+        self.assertEqual(len({mod.PINS[f"{s}.jsonl"][1] for s in ("S56", "S57", "S58")}), 3)
+
     def test_a_late_session_is_not_launched(self):
         rc, state, log, tmp, _ = self.run_drive("normal", extra={"DRIVE_TEST_LAUNCH_NEED": "100000"})
         self.assertEqual(rc, 2, log)

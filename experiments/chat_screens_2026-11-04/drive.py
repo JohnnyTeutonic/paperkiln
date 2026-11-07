@@ -76,7 +76,7 @@ RAISE_ON = hook("DRIVE_TEST_RAISE_ON", "")
 PART_BYTES = int(hook("DRIVE_TEST_PART_BYTES", str(45 * 1024 * 1024)))  # runner_multi.py: 45 MiB both ways
 SOURCE = "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1"
 SCREENS = ("S0", "S1", "S2", "S3")  # wave 1, the default
-ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16", "S24", "S25", "S26", "S27", "S21", "S22", "S23", "S28", "S29", "S30", "S31", "S32", "S33", "S34", "S35", "S36", "S37", "S38", "S39", "S40", "S41", "S42", "S43", "S44", "S45", "S46", "S47", "S48", "S49", "S50", "S51", "S52", "S53", "S54", "S55")
+ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16", "S24", "S25", "S26", "S27", "S21", "S22", "S23", "S28", "S29", "S30", "S31", "S32", "S33", "S34", "S35", "S36", "S37", "S38", "S39", "S40", "S41", "S42", "S43", "S44", "S45", "S46", "S47", "S48", "S49", "S50", "S51", "S52", "S53", "S54", "S55", "S56", "S57", "S58")
 COMMON_INPUTS = ("vocab.gguf", "arm_a_lr3e5.json", "recipes.json")
 DEFAULT_BASE = "sfull_sft1500"  # a screen starts from this unless its recipe names a "base" (A19)
 
@@ -89,7 +89,7 @@ def capped(cap):
 
 ST_MIN_LEFT = float(hook("DRIVE_TEST_ST_MIN_LEFT", "6"))  # minutes needed to start the safetensors fetch
 # A18: training minutes per arm, whole minutes, by shape (L2 23, L4 26, L8 32, L16 38, L32 45, 60M 57). Used by launch_need only; the VM never reads them.
-SCREEN_MINUTES = {"S35": 32, "S36": 45, "S37": 23, "S38": 38, "S39": 26, "S40": 23, "S41": 32, "S42": 45, "S43": 38, "S44": 26, "S45": 57, "S46": 57, "S47": 23, "S48": 45, "S49": 45, "S50": 45, "S54": 86, "S55": 43}
+SCREEN_MINUTES = {"S35": 32, "S36": 45, "S37": 23, "S38": 38, "S39": 26, "S40": 23, "S41": 32, "S42": 45, "S43": 38, "S44": 26, "S45": 57, "S46": 57, "S47": 23, "S48": 45, "S49": 45, "S50": 45, "S54": 86, "S55": 43, "S56": 43, "S57": 43, "S58": 43}
 # A18: (step, bar). val_loss at the first evaluation at or past the step, above the bar or not finite, ends the session once this arm is home. Later arms are never stopped.
 EARLY_STOP = {"S35": (1024, 1.88)}
 # A20: the same read at the pre-set cut-off, logged. It stops nothing: each arm is alone in its session, and a kill on a bar set from 31 rows costs more than it saves (PROTOCOL.md section 28).
@@ -251,8 +251,12 @@ PINS = {
     "S54.jsonl": (f"{ART}/chat_screens_claude/packets/a16/S32/train.jsonl", "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a"),
     "S55.jsonl": (f"{ART}/chat_screens_claude/packets/a15/S30/train.jsonl", "4b761d345af7ec37126b339c4c30bef703e5ef71ab9df4658aea551599cdf60b"),
     "pk_sft_v1.safetensors": (f"{ART}/general_chat/sft/pk_sft_v1.safetensors", "eae61755dc6625eb87c54ce3152774596ed4299c65c0462ed3831b0f9d7ee80e"),
+    # Lab step 1 (section 33): the balanced fixed mixture at seeds 1 and 2, each packet placed for its seed, and the mixed-row specialist
+    "S56.jsonl": (f"{ART}/chat_screens_claude/packets/lab_n1/N1/train.jsonl", "42990b4b3043213425103e23c617fcd6bf528cd19625a6b2debd38f9971d8935"),
+    "S57.jsonl": (f"{ART}/chat_screens_claude/packets/lab_n1/N2/train.jsonl", "2a4c2bdb4befa9006d3e90e6ea48ce31b25992478b0ddfb592a6fe50040d3869"),
+    "S58.jsonl": (f"{ART}/chat_screens_claude/packets/lab_n1/SP/train.jsonl", "64673f9fdfa6ce8dfc527a29385e028849ecdc172155e057aceb2e1acb78ab1d"),
     # A18 later pins
-    "recipes.json": (str(HERE / "recipes.json"), "d6ba0267c7a29b95ad10e1714b5c3274bfbca8ec403356401f5d397e044cfc0c"),
+    "recipes.json": (str(HERE / "recipes.json"), "35bc242cd483f043971a18d220e6f668784369587929c8c1687309ce60148d8a"),
     "arm_a_lr3e5.json": (str(HERE / "arm_a_lr3e5.json"),
                          "66c718e0b501c751aae0a1cd22eddfdc666a7cfb46a4c074fa41b67aa220125e"),
 }
