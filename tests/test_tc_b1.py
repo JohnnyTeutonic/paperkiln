@@ -216,6 +216,50 @@ def test_overlap_scan_runs_the_real_worker_on_a_correct_mix(tmp_path, monkeypatc
     assert r["identity"]["manifest_sha256"] == hashlib.sha256(O.manifest_text(str(tmp_path)).encode()).hexdigest()
 
 
+def test_a_restarted_manager_keeps_the_rung_exclusive_and_its_deadline(tmp_path):
+    """The real jobs_vm.py killed mid-rung and started again: training is held again, and the rung still ends at its original deadline."""
+    import signal
+    import time
+    chat = tmp_path / "chat"
+    (chat / "pt").mkdir(parents=True)
+    (chat / "pt" / "model.safetensors").write_text("w")
+    fake = tmp_path / "fake_mtstudio"
+    fake.write_text("#!/bin/sh\nout=$(python3 -c \"import json,sys; print(json.load(open(sys.argv[1]))['out_dir'])\" $2)\nmkdir -p $out\n"
+                    "echo 5 > $out/state.txt\ni=0\nwhile [ $i -lt 30 ]; do i=$((i+1)); sleep 0.1; echo $i > $out/ticks; done\n")
+    fake.chmod(0o755)
+    jobs = {"max_parallel": 1, "max_parallel_light": 1, "jobs": [
+        {"name": "pt", "spec": {}, "snapshot_steps": [5], "model_name": "m"},
+        {"name": "rung", "light": True, "exclusive": True, "timeout_s": 6, "rung_of": {"job": "pt", "step": 5}, "cmd": ["sleep", "40"]}]}
+    jf = tmp_path / "jobs.json"
+    jf.write_text(json.dumps(jobs))
+    env = {**os.environ, "JOBS_CHAT_DIR": str(chat), "JOBS_REPO": str(tmp_path), "JOBS_MTSTUDIO": str(fake), "JOBS_TICK": "0.05"}
+    first = subprocess.Popen([sys.executable, str(CC / "jobs_vm.py"), str(jf)], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    hold = chat / "rung.hold"
+    t0 = time.time()
+    while not hold.exists() and time.time() - t0 < 15:
+        time.sleep(0.05)
+    assert hold.exists()
+    started = float(hold.read_text())
+    time.sleep(0.5)
+    first.send_signal(signal.SIGKILL)
+    first.wait()
+    second = subprocess.Popen([sys.executable, str(CC / "jobs_vm.py"), str(jf)], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    time.sleep(1.0)
+    pid = int(subprocess.run(["pgrep", "-f", f"{chat}/pt_spec.json"], capture_output=True, text=True).stdout.split()[0])
+    assert open(f"/proc/{pid}/stat").read().rsplit(")", 1)[1].split()[0] == "T"   # held again by the new manager
+    frozen = (chat / "pt" / "ticks").read_text()
+    time.sleep(0.5)
+    assert (chat / "pt" / "ticks").read_text() == frozen
+    out, _ = second.communicate(timeout=30)
+    assert "adopted exclusive" in out
+    assert (chat / "STATUS_rung").read_text().strip() == "FAILED"
+    assert "exclusive rung over 6 s" in (chat / "rung_train.log").read_text()
+    ended = max(os.path.getmtime(chat / "rung_train.log"), 0)
+    assert ended - started < 8                                                     # the original deadline, not a new one
+    assert (chat / "STATUS_pt").read_text().strip() == "FINISHED"
+    assert (chat / "pt" / "ticks").read_text().strip() == "30"
+
+
 def test_exclusive_rung_past_its_limit_fails_and_training_carries_on(tmp_path):
     chat = tmp_path / "chat"
     (chat / "pt").mkdir(parents=True)

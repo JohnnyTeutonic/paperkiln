@@ -29,7 +29,8 @@ Rungs and successive halving (experiments/tiny_chat_2026-10/PREREGISTRATION.md, 
 - "exclusive": true on a rung job: its training job gets SIGSTOP while it runs and SIGCONT when it ends, so the rung has the GPU alone
   (Stage 0: 512 panel windows took 756 s beside training, about one window a training step). "timeout_s" ends it as FAILED. Training
   loses wall time only. The rung's own wrapper sends SIGCONT when it ends, and a detached guard sends it past the timeout, so training is not
-  left stopped if this manager dies; a manager that starts up also continues what it adopts. An adopted rung runs on without its limit.
+  left stopped if this manager dies. <job>.hold records when the rung started: a manager that starts up and adopts a live exclusive rung holds its
+  training job again and keeps the original deadline.
 - "after_terminal": true: wait until every "after" job has ended, FINISHED or FAILED, and run
   either way (a promotion step that must see failed candidates too).
 - "promoted_by": {"files": [F, ...], "round": R, "key": K}: hold the job until one of the JSON
@@ -105,6 +106,20 @@ def restore(name):
             open(f"{out}/state.txt", "w").write("\n".join(lines))
         print(f"{name}: optimiser state not uploaded; cold resume, AdamW step count from 0", flush=True)
     print(f"{name}: restored checkpoint", flush=True)
+
+
+def write_hold(name, started):
+    with open(f"{C}/{name}.hold.tmp", "w") as f:
+        f.write(str(started))
+    os.replace(f"{C}/{name}.hold.tmp", f"{C}/{name}.hold")
+
+
+def read_hold(name):
+    """When this exclusive rung started, by the manager that started it; now when no record survives."""
+    try:
+        return float(open(f"{C}/{name}.hold").read())
+    except (OSError, ValueError):
+        return time.time()
 
 
 def awaiting_upload(name):
@@ -293,6 +308,19 @@ def main():
             else:
                 restore(name)
             set_status(name, "WAITING")
+    # Adopted exclusive rungs: every adopted job has had SIGCONT above, so the rung's training job is held again here, with the rung's own deadline.
+    for name, j in jobs.items():
+        if j.get("exclusive") and name in running:
+            t = j["rung_of"]["job"]
+            if t in running:
+                try:
+                    os.kill(running[t].pid, signal.SIGSTOP)
+                except OSError:
+                    t = None
+            else:
+                t = None
+            held[name] = (t, read_hold(name))
+            print(f"{name}: adopted exclusive, training held again", flush=True)
     while True:
         for name, (held_job, started) in list(held.items()):
             limit = jobs[name].get("timeout_s")
@@ -397,6 +425,7 @@ def main():
                                                  env=env, start_new_session=exclusive)
                 if exclusive:
                     held[name] = (jobs[name]["rung_of"]["job"] if train is not None else None, time.time())
+                    write_hold(name, held[name][1])
             else:
                 spec = spec_for(jobs[name], jobs)
                 running[name] = subprocess.Popen([BIN, "run", spec], stdout=log, stderr=subprocess.STDOUT, env=env)
