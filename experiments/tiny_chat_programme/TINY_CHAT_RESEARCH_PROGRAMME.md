@@ -175,7 +175,7 @@ exactly between waves.
   4. "Your" or "You" wins on recall but not on copy: interference from S2's convention.
 - **Result:** section 5.
 
-### A6-A19 (4-7 Nov). Results against their registered bars
+### A6-A20 (4-7 Nov). Results against their registered bars
 
 Full records are in root `AI_ML/chat_screens_claude/PROTOCOL.md`. Each experiment ran at seed 1, or at seeds 1-2
 where stated, and is exploratory.
@@ -249,12 +249,39 @@ where stated, and is exploratory.
     relevance 2.00 against 2.08. Pairs split 6 to 0, p 0.031.
   - **Next by rule:** no seed 3 until the cause is read, and M2 waits. Exploratory, one seed, one checkpoint, on S-full's base: a
     failed bar here is a fact about this dose on this checkpoint. Whether mixed rows work on a stronger base stays open.
-- **A18, depth for width at matched parameters (§26): session 1 run, no verdict.** S35, S36 and S37 came home with exit 0 and
-  cleanup certified. Sessions 2 to 4 wait for the floor gate.
-- **A20, S34's and S30's recipes on pk_sft_v1 (§28): both sessions run, no verdict.** S54 and S55 came home with exit 0 and cleanup
-  certified. Evaluation is on Colab CPU runtimes.
-- **B1, a stronger pretrained base (§29): Stage 0 live on RunPod.** It spends no L4-hours of §8. Costs are in
-  `AI_ML/tiny_chat_benchmarks/b1_ledger.md`.
+- **A18, depth for width at matched parameters (§26-26.3), ten bases at about 20M: unresolved, rule 8.** S35 to S44 in four
+  sessions, each exit 0 with cleanup certified. The floor gate read clear, mean y59 9.667 on the first three arms. Score files:
+  `analysis/a18_score.json`, `analysis/a18_gate.json`.
+  - **Primary, on five cell means of `contrast_v001` y59:** slope 0.7 pairs per doubling, 95% [-1.58, 2.98], t 0.977 on 3 df, p
+    0.401. T1, T2 and T3 do not hold, with leave-end slopes of -0.45 without L2 and 1.5 without L32. T4 holds, b37 0.7. The
+    interval is not inside (−2, +2), so no null is excluded.
+  - **Cells, L2, L4, L8, L16, L32:** mean y59 8.0, 13.5, 12.0, 13.5, 11.5; mean y37 1.5, 3.0, 4.5, 7.0, 3.0.
+  - **Reported:** pure error s 1.97, 95% [1.22, 4.84]; lack of fit F(3,5) 2.63; permutation p 0.262; interior contrast t 2.55, p
+    0.051, which does not hold; cluster bootstrap on b [-0.45, 1.85].
+  - **Guards hold.** The rate flag does not fire, mean R(2,048) 0.539 at L32 against 0.419 over L2 and L8, so S49 and S50 don't open.
+  - **Next by rule:** recorded with the curve and s. No extension exists at 20M inside this registration.
+  - **The verdict's reading (Claude Opus 5.5, 7 Nov 2026, exploratory, two bases a cell):** this design neither finds a depth trend
+    at 20M on this recipe nor excludes one of 2 pairs a doubling. It speaks to raw 20M bases without SFT1500, does not rule out
+    depth at 73M, and reads as conditional on those bases.
+- **A20, S34's and S30's recipes on pk_sft_v1 (§28-28.1), one seed: `guard`, rule 6. No arm moved; S54 reads `guard` and S55
+  `flat`.** Runs `a20-s54-20261107` and `a20-s55-20261107`, S54 at 2,048 steps and S55 at 1,024, both exit 0 with cleanup
+  certified. Score file: `analysis/a20_score.json`.
+  - **J1 relevance, of 52 points:** S54 32, +4 on S34 and +5 on S52; S55 36, +3 on S30. The bar is +9.
+  - **Told of 108:** S54 49, +21 on S34 and +19 on S52; S55 37, +6 on S30. The bar is 20, and a move on S54 must hold against both
+    comparators. S55's pairs fall by 4.
+  - **The guard:** the ended twin on `plain_name` is 5 of 8 on S54, against 8 of 8 on S34. The verdict read the three failures
+    (`cv_R_13b`, `cv_R_15b`, `cv_R_16b`), and the label stands. S55's guards hold.
+  - **Reported:** `contrast_v002` context pairs 14 against 8 and 7 against 1; `contrast_v001` y59 21 and 7; L3 on own wording, own
+    history, 0.823 against 0.448 and 0.354 against 0.708; J1 coherence 2.462 and 3.077; PIQA 0.595 and 0.590; passage 0 on both.
+  - **Next by rule:** the guard is the recorded cost and B's two-by-two stays unchanged. Neither arm's seed 2 opens, and neither does S45.
+  - **The verdict's reading (Claude Opus 5.5, 7 Nov 2026, exploratory, one seed):** these arms do not show that a stronger base moves
+    relevance, and a flat result does not say the base does not matter. S54's told line rests on one seed and a bundled change of
+    base, depth, parameters, k, T, 8×2 and corpus, so nothing here attributes it.
+- **B1, a stronger pretrained base (§29-32): Stage 0 not passed, one bar missed.** The rung job failed: a state-token shape is scored
+  only through a GGUF declaring its tokens, and the snapshot had none. §30 races 8×768 against 12×768 to a cut-off at step 20,000 by
+  a frozen rule (`b1_stage1/race_verdict.py`). No step had trained when §32 was written: A's first data job failed on one HTTP 504,
+  and both arms' first `precheck` failed at 1,800.1 s in Carry-5. §31 and §32 hold the fixes. This work spends no L4-hours of §8.
+  Costs are in `AI_ML/tiny_chat_benchmarks/b1_ledger.md`.
 - **Misfire probe baselines** (correct of 140): S12 74, S14 57, S2 58, S0 54. The best degenerate responder gets
   55.
 
@@ -342,8 +369,8 @@ ends.
 
 ## 6. Depth × diversity (proposed, unexecuted, not authorised for training)
 
-A18 (root `PROTOCOL.md` §26), authorised by Jonathan on 6 Nov, runs depth for width on October's 20M bases, the cheap first test
-this section names. The 2×2 below stays proposed.
+A18 (root `PROTOCOL.md` §26), authorised by Jonathan on 6 Nov, ran depth for width on October's 20M bases, the cheap first test
+this section names. Its verdict is rule 8, unresolved (§26.3), and it does not rule out depth at 73M. The 2×2 below stays proposed.
 
 **Question.** Does more depth, at approximately constant parameters, improve generalisation of conversational
 operations to unfamiliar scenario and instruction combinations? The estimand is the interaction on a held-out
@@ -559,8 +586,10 @@ demonstrated optimum.
 | S5 (seed 1) | same | same | arm A, 256 × 16 | train side, 1 pool | about 10 min | 1 | pending | not judged | not judged | unmeasured | 3 (scoring) | scoring |
 | S23 (highest relevance on record) | same | same | 1,024 steps, 30% instruction, 1,088 phrasings | 1,088 phrasings | 47.5 min | 2 | 1 of 64 | 2.46 | 2.92 | unmeasured | 1 | A12's primary +16 against +18 |
 | S30 (practical baseline, not confirmed) | same | same | 1,024 steps, 30% hybrid | 1,088-phrasing generator | 59.3 min | 0 | 1 of 64 | 2.85 | 2.54 | unmeasured | 1 | fails precision and discrimination |
-| S34 (most context pairs, 16 of 59) | same | same | 2,048 steps, 30% contrast | not varied | 73.8 min | not scored | not scored | 2.46 | 2.15 | unmeasured | 1 | copy reflex recorded; 8 of 59 on `contrast_v002` |
+| S34 (most context pairs on S-full's lineage, 16 of 59) | same | same | 2,048 steps, 30% contrast | not varied | 73.8 min | not scored | not scored | 2.46 | 2.15 | unmeasured | 1 | copy reflex recorded; 8 of 59 on `contrast_v002` |
 | S51, M1 (from S34) | same | same | 1,024 more steps, mixed rows | not varied | 67.5 min with S52 | not scored | not scored | 2.46 | 2.00 | unmeasured | 1 | corrections 3 of 16 against C0's 7; ended twin 6 of 8 |
+| S54 (most context pairs, 21 of 59; 49 told of 108) | 97.54M total | 983.04M positions | pk_sft_v1, then 2,048 steps, S34's packet, k = 0 | not varied | 80.2 min | not scored | not scored | 2.46 | 2.46 | unmeasured | 1 | ended twin 5 of 8, a guard; 14 of 59 on `contrast_v002` |
+| S55 (highest coherence in this table) | as S54 | as S54 | pk_sft_v1, then 1,024 steps, S30's packet, k = 0 | as S30 | 47.3 min | not scored | not scored | 3.08 | 2.77 | unmeasured | 1 | told pairs 4 below S30; 7 of 59 on `contrast_v002` |
 
 ## 8. Compute ledger (Colab L4, from session creation to certified cleanup)
 
@@ -587,13 +616,13 @@ demonstrated optimum.
 | a16-s1 (S32, S33, S34; one session each) | 168.7 | three exit 0; a verdict, §24.3 |
 | A17 (S30, CPU) | none | no L4; a verdict, §25.3 |
 | a19-s2 (S51, S52, seed 2; one session) | 67.5 | exit 0; a verdict, §27.1; evaluation on Colab CPU runtimes, no L4 |
-| a18-s1 (S35, S36, S37) | 84 | exit 0; run, not yet a verdict |
-| a20-s54 (S54) | 81 | exit 0; run, not yet a verdict |
-| a20-s55 (S55) | 48 | exit 0; run, not yet a verdict |
-| **4-7 Nov, through A19's verdict and the sessions run** | **about 1,659 (27.6 h)** | §8's 6 h is past; Jonathan's dated line of 7 Nov stands for up to 12 L4-hours in this period, shared by A18, A19 and A20 (§26, §28) |
+| a18-s1 to a18-s4 (S35 to S44; four sessions) | 292.9 (4.88 h) | four exit 0; a verdict, §26.3; sessions 83.4, 83.1, 67.2 and 59.2 |
+| a20-s54-20261107 (S54) | 80.2 | exit 0; a verdict, §28.1 |
+| a20-s55-20261107 (S55) | 47.3 | exit 0; a verdict, §28.1; A20 in all 127.5 (2.12 h) |
+| **4-7 Nov, through A20's and A18's verdicts** | **about 1,866 (31.1 h)** | §8's 6 h is past; Jonathan's dated line of 7 Nov stands for up to 12 L4-hours in this period, shared by A18, A19 and A20 (§26, §28), which spent 8.1 |
 
-The last three rows are driver spans. By session creation to the last certified stop, `score_a19.py compute` reads 83.4, 80.2 and
-47.3, and 1,650.2 minutes for the lane on its own count.
+By session creation to the last certified stop, `score_a19.py compute` reads 1,650.2 minutes for the lane on its own count, with
+a18-s1, a20-s54 and a20-s55 inside it. A18's sessions 2 to 4 add 209.5, so that count stands at 1,859.7 (31.0 h).
 
 CPU evaluation runs under the shared CPU budget (`scripts/cpu_budget.py`, session `claude`). From A19 it runs on Colab CPU runtimes
 through `cloud_eval/`, at 0.08 units an hour per session, with no L4.
@@ -612,6 +641,8 @@ through `cloud_eval/`, at 0.08 units an hour per session, with no L4.
 - **Where S-full's knowledge gap sits:** the receipts comparison of 6 Nov could not order the SFT recipe against pretraining
   exposure. Gate 0 (`cloud_eval/receipts/d0cpu5/decision_compare.json`) places 82% of the LAMBADA target-bits gap in the base:
   1.4004 for S-full's base, 1.493 after SFT1500, 0.970 for pk_base_v1. It locates the gap and names no cause.
+- **Most context pairs:** S34's 16 of 59 on `contrast_v001` no longer tops the programme. S54 has 21 (`analysis/a20_score.json`), on a
+  different base and shape. S34 stays the highest on S-full's lineage.
 - **A4 figures:** the earlier figures (grid about 14% of supervised tokens; 487, 961 and 2,049 masked templates)
   are superseded. The grid is 12.0%, and the arms have 10, 30 and 57 wordings (`reviews/launch_review_5_wave4.md`).
 
@@ -654,15 +685,17 @@ A run that wins on format but loses knowledge fails.
 
 ## 10b. Next authorised step and its stopping rule
 
-**The stronger base B, whose Stage 0 is live on RunPod** (`AI_ML/chat_screens_claude/PROTOCOL.md` §29,
-`AI_ML/tiny_chat_benchmarks/stronger_base_spec.md`). Stage 0's bars must all hold. B then needs its own admission and review, under
-Jonathan's cap of $21 for B plus $2 for Stage 0. After B come S-full's SFT1500 on the final base and the two-by-two, which gets its own
-section and its own dated line under §8.
+**The stronger base B, raced to a cut-off on RunPod** (`AI_ML/chat_screens_claude/PROTOCOL.md` §29 to §32,
+`AI_ML/tiny_chat_benchmarks/stronger_base_spec.md`). Stage 0 was not passed: one bar missed, the rung job, read in §30. §30 races 8×768
+against 12×768 to step 20,000 by a frozen rule, §31 adds a pre-training check on both arms and §32 one Carry-5 scorer path. Jonathan's
+cumulative cap is $80 (§31). The winner trains on to 983.04M positions and takes §29's final bars. After that come one fixed SFT recipe on
+the final base, S-full's SFT1500 unchanged but for the shape's rows, and the two-by-two, which gets its own section and its own dated
+line under §8. B's two-by-two is unchanged by A20.
 
 Beside it, each registration's continuation table decides:
 - **A19:** rule 3 holds, so seed 3 waits until the cause of the guard is read, and M2 waits as registered.
-- **A18:** session 1's evaluation, then the floor gate, which decides sessions 2 to 4.
-- **A20:** evaluation, J1 and the verdict by §28's table. Its registration sets what each reading sends where.
+- **A18:** rule 8, unresolved, recorded with the curve and s. No extension exists at 20M inside this registration, and S49 and S50 don't open.
+- **A20:** rule 6, `guard`. The guard is the recorded cost. Neither arm's seed 2 opens, and neither does S45.
 - **A17:** a read-only training arm stays the next test of a note, on a separate registration.
 
 S30 is the practical baseline, not a confirmed winner: promotion needs a sealed evaluation set, and none is built. Seed-1 screens are
