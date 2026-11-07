@@ -1,0 +1,195 @@
+{
+ "cells": {
+  "S54": {
+   "affirm_in_role": {
+    "loss": 2.5679,
+    "task_points": 2.0
+   },
+   "correction": {
+    "loss": 0.163,
+    "task_points": 22.73
+   },
+   "ended_role": {
+    "loss": 1.73,
+    "task_points": 24.0
+   },
+   "how_are_you": {
+    "loss": 2.0875,
+    "task_points": 40.0
+   },
+   "like_recall": {
+    "loss": 2.8272,
+    "task_points": 0.0
+   },
+   "name_use": {
+    "loss": 1.4984,
+    "task_points": 38.0
+   },
+   "nameless_role": {
+    "loss": 2.2846,
+    "task_points": 2.0
+   },
+   "passage": {
+    "loss": 0.2457,
+    "task_points": 29.23
+   },
+   "recall_abstain": {
+    "loss": 0.1471,
+    "task_points": 30.95
+   },
+   "role_mix": {
+    "loss": 2.0365,
+    "task_points": 22.0
+   },
+   "roleplay": {
+    "loss": 0.6022,
+    "task_points": 41.38
+   },
+   "whose_name": {
+    "loss": 0.2697,
+    "task_points": 49.15
+   }
+  },
+  "S55": {
+   "affirm_in_role": {
+    "loss": 2.5434,
+    "task_points": 0.0
+   },
+   "correction": {
+    "loss": 2.3371,
+    "task_points": 4.55
+   },
+   "ended_role": {
+    "loss": 2.3002,
+    "task_points": 2.0
+   },
+   "how_are_you": {
+    "loss": 2.02,
+    "task_points": 18.0
+   },
+   "like_recall": {
+    "loss": 2.4209,
+    "task_points": 0.0
+   },
+   "name_use": {
+    "loss": 1.8268,
+    "task_points": 10.0
+   },
+   "nameless_role": {
+    "loss": 2.6612,
+    "task_points": 0.0
+   },
+   "passage": {
+    "loss": 2.6777,
+    "task_points": 16.92
+   },
+   "recall_abstain": {
+    "loss": 2.5501,
+    "task_points": 9.52
+   },
+   "role_mix": {
+    "loss": 2.5155,
+    "task_points": 6.0
+   },
+   "roleplay": {
+    "loss": 2.1377,
+    "task_points": 0.0
+   },
+   "whose_name": {
+    "loss": 2.0449,
+    "task_points": 23.73
+   }
+  },
+  "pk_sft_v1": {
+   "affirm_in_role": {
+    "loss": 2.8877,
+    "task_points": 2.0
+   },
+   "correction": {
+    "loss": 2.6808,
+    "task_points": 0.0
+   },
+   "ended_role": {
+    "loss": 2.7909,
+    "task_points": 6.0
+   },
+   "how_are_you": {
+    "loss": 2.7868,
+    "task_points": 0.0
+   },
+   "like_recall": {
+    "loss": 2.8128,
+    "task_points": 6.0
+   },
+   "name_use": {
+    "loss": 2.2501,
+    "task_points": 2.0
+   },
+   "nameless_role": {
+    "loss": 3.046,
+    "task_points": 0.0
+   },
+   "passage": {
+    "loss": 2.9578,
+    "task_points": 7.69
+   },
+   "recall_abstain": {
+    "loss": 2.827,
+    "task_points": 2.38
+   },
+   "role_mix": {
+    "loss": 2.8013,
+    "task_points": 4.0
+   },
+   "roleplay": {
+    "loss": 2.7825,
+    "task_points": 0.0
+   },
+   "whose_name": {
+    "loss": 2.5657,
+    "task_points": 3.39
+   }
+  }
+ },
+ "families_read": [
+  "affirm_in_role",
+  "correction",
+  "ended_role",
+  "how_are_you",
+  "like_recall",
+  "name_use",
+  "nameless_role",
+  "passage",
+  "recall_abstain",
+  "role_mix",
+  "roleplay",
+  "whose_name"
+ ],
+ "gate": {
+  "bar": 0.5,
+  "cells": 36,
+  "families_with_range": 12,
+  "passes": true,
+  "spearman": 0.788
+ },
+ "models": [
+  "pk_sft_v1",
+  "S54",
+  "S55"
+ ],
+ "producer": "Claude Opus 5.5, 7 Nov 2026",
+ "task_rows_by_family": {
+  "affirm_in_role": 100,
+  "correction": 44,
+  "ended_role": 100,
+  "how_are_you": 100,
+  "like_recall": 100,
+  "name_use": 100,
+  "nameless_role": 100,
+  "passage": 130,
+  "recall_abstain": 84,
+  "role_mix": 100,
+  "roleplay": 58,
+  "whose_name": 118
+ }
+}
