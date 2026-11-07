@@ -39,5 +39,9 @@
  "mix": {
   "mix_b1.main.ids": "ea8b4242a7ead30959fd1cf5ab17b51e2fe8a0160e7a966a83b3da22466e3b91",
   "mix_b1.tail.ids": "0585df71706e872d2e3144fde315c94aa3a10cecf8b11db2d25f42efb0ebfc94"
+ },
+ "mix_text": {
+  "mix_b1.main.txt": "2c55d8667348f0cf87464d3fd001f8a9d699a0f504541fa5eccfa054bff014a5",
+  "mix_b1.tail.txt": "4d0582176b384821e4b5b0cc0b57b4923ebf750185899db76d2104058000c98f"
  }
 }

@@ -173,6 +173,27 @@ def test_overlap_manifest_refuses_text_or_ids_that_are_not_the_jobs(tmp_path):
     (d / "mix_b1.ledger.json").write_text(json.dumps({"parts": {"main": {"sha256": "0"}, "tail": {"sha256": "0"}}}))
     with pytest.raises(SystemExit):
         O.manifest(str(d))
+    assert all(load("tc_b1_pins.json")["mix_text"].values())
+
+
+def test_exclusive_rung_past_its_limit_fails_and_training_carries_on(tmp_path):
+    chat = tmp_path / "chat"
+    (chat / "pt").mkdir(parents=True)
+    (chat / "pt" / "model.safetensors").write_text("w")
+    fake = tmp_path / "fake_mtstudio"
+    fake.write_text("#!/bin/sh\nout=$(python3 -c \"import json,sys; print(json.load(open(sys.argv[1]))['out_dir'])\" $2)\nmkdir -p $out\n"
+                    "echo 5 > $out/state.txt\ni=0\nwhile [ $i -lt 40 ]; do i=$((i+1)); sleep 0.1; echo $i > $out/ticks; done\n")
+    fake.chmod(0o755)
+    jobs = {"max_parallel": 1, "max_parallel_light": 1, "jobs": [
+        {"name": "pt", "spec": {}, "snapshot_steps": [5], "model_name": "m"},
+        {"name": "rung", "light": True, "exclusive": True, "timeout_s": 1, "rung_of": {"job": "pt", "step": 5}, "cmd": ["sleep", "30"]}]}
+    jf = tmp_path / "jobs.json"
+    jf.write_text(json.dumps(jobs))
+    env = {**os.environ, "JOBS_CHAT_DIR": str(chat), "JOBS_REPO": str(tmp_path), "JOBS_MTSTUDIO": str(fake), "JOBS_TICK": "0.05"}
+    subprocess.run([sys.executable, str(CC / "jobs_vm.py"), str(jf)], env=env, check=True, timeout=25, capture_output=True)
+    assert (chat / "STATUS_rung").read_text().strip() == "FAILED"
+    assert (chat / "STATUS_pt").read_text().strip() == "FINISHED"
+    assert (chat / "pt" / "ticks").read_text().strip() == "40"
 
 
 def test_exclusive_rung_stops_training_and_a_failed_rung_never_goes_home(tmp_path):
@@ -185,7 +206,6 @@ def test_exclusive_rung_stops_training_and_a_failed_rung_never_goes_home(tmp_pat
     fake.chmod(0o755)
     probe = tmp_path / "rung.py"
     probe.write_text("import glob, os, sys, time\n"
-                     f"t = open({str(chat / 'pt.pid.txt')!r}).read().strip() if False else None\n"
                      f"p = [d for d in os.listdir('/proc') if d.isdigit() and b'fake_mtstudio' in open(f'/proc/{{d}}/cmdline','rb').read()]\n"
                      "state = [open(f'/proc/{d}/stat').read().rsplit(')', 1)[1].split()[0] for d in p]\n"
                      f"open({str(tmp_path / 'seen')!r}, 'w').write(' '.join(state))\n"

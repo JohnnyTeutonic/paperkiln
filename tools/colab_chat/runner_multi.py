@@ -1343,6 +1343,12 @@ def main():
                 log("vm status: no reply")
                 sleep_tick(deadline)
                 continue
+            # boot_jobs.sh writes FINISHED when the manager exits. With jobs open that is a dead manager: nothing would ever end this pod.
+            js_open = [j["name"] for j in jobs if j.get("halt_on_failure") and r[j["name"]] in ("RUNNING", "WAITING")]
+            st.d["manager_gone"] = st.d.get("manager_gone", 0) + 1 if r["vm"] == "FINISHED" and js_open else 0
+            if st.d["manager_gone"] >= 3:
+                halt_campaign(js_open[0], "the VM's job manager has ended with jobs open")
+                raise SystemExit(3)
             if r["vm"] == "BOOT_FAILED":
                 log("boot failed on the VM; downloading boot.log")
                 T.get("/content/chat/boot.log", os.path.join(ART, "boot.log"), 120)

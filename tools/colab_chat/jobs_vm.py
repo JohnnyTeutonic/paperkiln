@@ -28,7 +28,8 @@ Rungs and successive halving (experiments/tiny_chat_2026-10/PREREGISTRATION.md, 
   max_parallel's, so short scoring jobs never hold back a training job.
 - "exclusive": true on a rung job: its training job gets SIGSTOP while it runs and SIGCONT when it ends, so the rung has the GPU alone
   (Stage 0: 512 panel windows took 756 s beside training, about one window a training step). "timeout_s" ends it as FAILED. Training
-  loses wall time only; a manager that starts up sends SIGCONT to what it adopts, so a dead manager cannot leave training stopped.
+  loses wall time only. The rung's own wrapper sends SIGCONT when it ends, and a detached guard sends it past the timeout, so training is not
+  left stopped if this manager dies; a manager that starts up also continues what it adopts. An adopted rung runs on without its limit.
 - "after_terminal": true: wait until every "after" job has ended, FINISHED or FAILED, and run
   either way (a promotion step that must see failed candidates too).
 - "promoted_by": {"files": [F, ...], "round": R, "key": K}: hold the job until one of the JSON
@@ -380,11 +381,14 @@ def main():
                 for f in (f"{C}/{name}.pid", f"{C}/{name}.rc"):
                     if os.path.exists(f):
                         os.remove(f)
-                wrap = ['sh', '-c', f'echo $$ > {C}/{name}.pid; "$@"; r=$?; echo $r > {C}/{name}.rc; exit $r', 'sh',
-                        *argv]
                 exclusive = bool(jobs[name].get("exclusive"))
                 train = running.get(jobs[name]["rung_of"]["job"]) if exclusive else None
+                cont = f"kill -CONT {train.pid} 2>/dev/null; " if train is not None else ""
+                wrap = ['sh', '-c', f'echo $$ > {C}/{name}.pid; "$@"; r=$?; echo $r > {C}/{name}.rc; {cont}exit $r', 'sh',
+                        *argv]
                 if train is not None:
+                    subprocess.Popen(["sh", "-c", f"sleep {int(jobs[name].get('timeout_s', 3600)) + 300}; kill -CONT {train.pid}"],
+                                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
                     try:
                         os.kill(train.pid, signal.SIGSTOP)
                     except OSError:

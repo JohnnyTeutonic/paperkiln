@@ -4,8 +4,8 @@
     python3 tools/colab_chat/tc_b2_overlap.py scan --data /content/chat/data --packet KEYED.json --out OUT
     python3 tools/colab_chat/tc_b2_overlap.py check --data /content/chat/data --decision DECISION.json --out OUT
 
-scan ties each part's text to its ids through the data job's own ledgers, so the text scanned is the text the ids came from, then runs
-codex_overlap_worker.py unchanged. It reports counts and passes no judgement: the worker's receipt says COMPLETE_REQUIRES_CODEX_REVIEW.
+scan refuses text whose sha differs from Stage 0's pinned text and the mix ledger, or ids that differ from the pins, so the two hashes are
+the pair Stage 0 made from one data job, then runs codex_overlap_worker.py unchanged. It reports counts and passes no judgement: the worker's receipt says COMPLETE_REQUIRES_CODEX_REVIEW.
 check runs once Codex's reviewed decision reaches the VM (jobs_vm.py holds it on `promoted_by`). The decision is a file Codex writes by
 temporary file and rename, {"decisions": {"b2": {"go": true}}, "mix": {both .ids hashes}, "worker_sha256", "packet_sha256", "manifest_sha256"}.
 It must name this worker, the pinned packet, the manifest this VM rebuilds from its own text and ids, and both final mix hashes, or training
@@ -34,14 +34,18 @@ def pins():
     return json.load(open(os.path.join(HERE, "tc_b1_pins.json")))["mix"]
 
 
+def text_pins():
+    return json.load(open(os.path.join(HERE, "tc_b1_pins.json")))["mix_text"]
+
+
 def manifest(d):
     led = json.load(open(os.path.join(d, "mix_b1.ledger.json")))["parts"]
-    want = pins()
+    want, text = pins(), text_pins()
     rows = []
     for part in ("main", "tail"):
         text, ids = os.path.join(d, f"mix_b1.{part}.txt"), os.path.join(d, f"mix_b1.{part}.ids")
         t, i = sha256(text), sha256(ids)
-        if t != led[part]["sha256"] or i != want[f"mix_b1.{part}.ids"]:
+        if t != led[part]["sha256"] or t != text[f"mix_b1.{part}.txt"] or i != want[f"mix_b1.{part}.ids"]:
             raise SystemExit(f"{part}: the text or ids is not the data job's")
         rows.append({"name": part, "text": text, "text_sha256": t, "ids": ids, "ids_sha256": i})
     return rows
