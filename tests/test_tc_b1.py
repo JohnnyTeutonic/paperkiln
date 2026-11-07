@@ -225,7 +225,7 @@ def test_a_restarted_manager_keeps_the_rung_exclusive_and_its_deadline(tmp_path)
     (chat / "pt" / "model.safetensors").write_text("w")
     fake = tmp_path / "fake_mtstudio"
     fake.write_text("#!/bin/sh\nout=$(python3 -c \"import json,sys; print(json.load(open(sys.argv[1]))['out_dir'])\" $2)\nmkdir -p $out\n"
-                    "echo 5 > $out/state.txt\ni=0\nwhile [ $i -lt 30 ]; do i=$((i+1)); sleep 0.1; echo $i > $out/ticks; done\n")
+                    "echo 5 > $out/state.txt\ni=0\nwhile [ $i -lt 30 ]; do i=$((i+1)); sleep 0.1; echo $i > $out/ticks; done; echo done > $out/result.json\n")
     fake.chmod(0o755)
     jobs = {"max_parallel": 1, "max_parallel_light": 1, "jobs": [
         {"name": "pt", "spec": {}, "snapshot_steps": [5], "model_name": "m"},
@@ -247,9 +247,10 @@ def test_a_restarted_manager_keeps_the_rung_exclusive_and_its_deadline(tmp_path)
     time.sleep(1.0)
     pid = int(subprocess.run(["pgrep", "-f", f"{chat}/pt_spec.json"], capture_output=True, text=True).stdout.split()[0])
     assert open(f"/proc/{pid}/stat").read().rsplit(")", 1)[1].split()[0] == "T"   # held again by the new manager
-    frozen = (chat / "pt" / "ticks").read_text()
+    ticks = chat / "pt" / "ticks"
+    frozen = ticks.read_text() if ticks.exists() else ""   # it may be held before its first tick
     time.sleep(0.5)
-    assert (chat / "pt" / "ticks").read_text() == frozen
+    assert (ticks.read_text() if ticks.exists() else "") == frozen
     out, _ = second.communicate(timeout=30)
     assert "adopted exclusive" in out
     assert (chat / "STATUS_rung").read_text().strip() == "FAILED"
