@@ -22,6 +22,7 @@ import history as H  # noqa: E402
 import miner as M  # noqa: E402
 import proposer as P  # noqa: E402
 import rowcheck as SC  # noqa: E402
+import shortcuts as SH  # noqa: E402
 import sim as S  # noqa: E402
 import synthetic as SY  # noqa: E402
 import taxonomy as T  # noqa: E402
@@ -1209,11 +1210,38 @@ class TestVerdict(unittest.TestCase):
         self.assertEqual(V.trajectory([(0, 0.0), (10, 10.0)]), 5.0)
         self.assertIsNone(V.trajectory([(0, 0.0)]))
 
-    def test_signal_gate(self):
-        dev = {("m", i): float(i) for i in range(12)}
-        self.assertTrue(V.signal_gate(dev, {k: -v for k, v in dev.items()}, 0.5)["passes"])
-        self.assertFalse(V.signal_gate(dev, dict(dev), 0.5)["passes"])
-        self.assertFalse(V.signal_gate({("m", 1): 1.0}, {("m", 1): 1.0}, 0.5)["passes"])
+    def cells(self, sign=-1.0, spread=0.5):
+        dev = {(m, f): 1.0 + 3.0 * f + spread * m + (0.13 * m * f) % 0.07 for m in range(3) for f in range(6)}
+        return dev, {k: 50.0 + sign * 10.0 * v for k, v in dev.items()}
+
+    def test_signal_gate_passes_when_the_signal_tracks(self):
+        dev, pri = self.cells()
+        self.assertTrue(V.signal_gate(dev, pri)["passes"])
+
+    def test_signal_gate_fails_when_the_signal_runs_backwards(self):
+        dev, pri = self.cells(sign=1.0)
+        self.assertFalse(V.signal_gate(dev, pri)["passes"])
+
+    def test_family_difficulty_cannot_carry_the_gate(self):
+        """Hard families read high loss and low score on every model. That rank is not the signal: within families these reads run backwards."""
+        dev, pri = self.cells(sign=1.0)
+        pri = {k: v - 40.0 * k[1] for k, v in pri.items()}
+        self.assertFalse(V.signal_gate(dev, pri)["passes"])
+
+    def test_no_range_is_not_a_pass(self):
+        dev, pri = self.cells(spread=0.01)
+        r = V.signal_gate(dev, pri)
+        self.assertFalse(r["passes"])
+        self.assertIn("not informative", r["note"])
+
+    def test_too_few_cells_is_not_a_pass(self):
+        self.assertFalse(V.signal_gate({("m", 1): 1.0}, {("m", 1): 1.0})["passes"])
+
+    def test_the_bar_is_what_the_plan_states(self):
+        self.assertEqual((V.SIGNAL_BAR, V.SIGNAL_MIN_CELLS, V.SIGNAL_MIN_RANGE_NATS, V.SIGNAL_MIN_RANGE_FAMILIES), (0.5, 10, 0.30, 5))
+        text = (HERE / "PLAN.md").read_text(encoding="utf-8")
+        for phrase in ("Spearman at least 0.5", "at least 10 cells", "at least 0.30 nats", "at least 5 families"):
+            self.assertIn(phrase, text)
 
 
 class TestVerdictFromLedger(Tmp):
@@ -1306,6 +1334,57 @@ class TestVerdictFromLedger(Tmp):
     def test_attempts_are_counted(self):
         rule = self.build()
         self.assertEqual(V.verdict_from_ledger(self.led.load(), SY.EXP, rule)["attempts_under_this_hypothesis"], 1)
+
+
+class TestShortcuts(unittest.TestCase):
+    """Definitions fixed before any T_E row exists. Invented items; the frozen policies are stubbed unless the workspace is here."""
+    STUB = {"constant_identity": lambda v, o, r: "identity line", "constant_abstain": lambda v, o, r: "abstain line", "yes_always": lambda v, o, r: "yes line", "list_all_told": lambda v, o, r: " ".join(o), "last_told": lambda v, o, r: o[-1] if o else ""}
+
+    def item(self, key, told, last="toy question?"):
+        return {"value": key, "told": told, "last_user": last, "key": key}
+
+    def pairs(self):
+        return [(self.item("aa", ["aa", "bb"]), self.item("bb", ["aa", "bb"])) for _ in range(4)]
+
+    def passes(self, text, item):
+        others = [t for t in item["told"] if t != item["key"]]
+        return item["key"] in text.split() and not any(o in text.split() for o in others)
+
+    def test_every_required_shortcut_is_defined(self):
+        self.assertEqual(SH.check_complete(), sorted(FW.REQUIRED_SHORTCUTS))
+
+    def test_definitions_are_pinned(self):
+        """A change to any definition or the bar has to change this line too, so it shows in review."""
+        self.assertEqual(SH.definitions_sha(), "b06b42f5e2320ebe592ed95c2263d4d3f02ec26e3c2f201b295992b5d78bd40e")
+        self.assertEqual(SH.SHORTCUT_BAR_POINTS, 25.0)
+
+    def test_no_policy_can_pass_both_twins_of_a_keyed_pair(self):
+        read = SH.read(self.pairs(), self.passes, self.STUB)
+        self.assertEqual(sorted(read), sorted(FW.REQUIRED_SHORTCUTS))
+        self.assertTrue(all(v == 0.0 for v in read.values()), read)
+        self.assertEqual(len(FW.check_shortcut_read(read, SH.SHORTCUT_BAR_POINTS)), 7)
+
+    def test_a_policy_that_passes_both_twins_is_caught(self):
+        def lenient(text, item):
+            return True
+        read = SH.read(self.pairs(), lenient, self.STUB)
+        with self.assertRaises(FW.FirewallBreach):
+            FW.check_shortcut_read(read, SH.SHORTCUT_BAR_POINTS)
+
+    def test_echo_and_ack(self):
+        it = self.item("aa", ["aa"], "toy question?")
+        self.assertEqual(SH.reply("echo_question", it, self.STUB), "toy question?")
+        self.assertEqual(SH.reply("generic_acknowledgement", it, self.STUB), SH.GENERIC_ACK)
+
+    def test_no_policy_is_handed_the_key(self):
+        seen = []
+        stub = dict(self.STUB, constant_identity=lambda v, o, r: seen.append((v, o, r)) or "x")
+        SH.reply("constant_identity", {"value": None, "told": [], "last_user": "q", "row": None, "key": "secret"}, stub)
+        self.assertNotIn("secret", str(seen))
+
+    def test_unknown_policy_refused(self):
+        with self.assertRaises(Malformed):
+            SH.reply("cleverness", self.item("a", []), self.STUB)
 
 
 class TestReplaySim(unittest.TestCase):
@@ -1677,6 +1756,11 @@ class TestFrozenAdapters(unittest.TestCase):
     def test_importing_the_scorer_starts_no_analysis(self):
         import adapters as AD
         self.assertTrue(callable(AD.mine_score().score))
+
+    def test_the_five_frozen_shortcuts_exist_in_the_pinned_scorer(self):
+        import adapters as AD
+        names = set(AD.mine_score().POLICIES)
+        self.assertTrue(set(SH.FROM_MINE_SCORE.values()) <= names)
 
 
 if __name__ == "__main__":

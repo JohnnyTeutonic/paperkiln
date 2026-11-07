@@ -270,11 +270,24 @@ def verdict_from_ledger(records, experiment_id, rule):
     return res
 
 
-def signal_gate(dev_cells, primary_cells, bar):
-    """Does the development signal track the primary? dev_cells and primary_cells: {(model, family): value}, dev where lower is better and primary where higher is better. Rank agreement over shared cells, the bar frozen before the read. Fails closed on few cells."""
+SIGNAL_BAR, SIGNAL_MIN_CELLS, SIGNAL_MIN_RANGE_NATS, SIGNAL_MIN_RANGE_FAMILIES = 0.5, 10, 0.30, 5
+
+
+def signal_gate(dev_cells, primary_cells):
+    """Does the development signal track the primary? Frozen in PLAN.md before any model is read. dev_cells and primary_cells: {(model, family): value}, dev in nats per target on T_M, lower better, primary in task points on T_E, higher better.
+    Both are centred within each family, so family difficulty cannot carry the rank: the controller asks how far a family sits from its best, and this asks the same of both reads. The read needs range: if too few families differ across models on dev, the
+    models cannot test the signal, and that is reported as not informative, which does not pass. Fails closed on few cells."""
     from history import spearman
     keys = sorted(set(dev_cells) & set(primary_cells))
-    if len(keys) < 10:
+    fams = sorted({k[1] for k in keys})
+    ranged = [f for f in fams if max(dev_cells[k] for k in keys if k[1] == f) - min(dev_cells[k] for k in keys if k[1] == f) >= SIGNAL_MIN_RANGE_NATS]
+    if len(keys) < SIGNAL_MIN_CELLS:
         return {"passes": False, "cells": len(keys), "spearman": None, "note": "too few cells to read"}
-    rho = spearman([-dev_cells[k] for k in keys], [primary_cells[k] for k in keys])
-    return {"passes": rho is not None and rho >= bar, "cells": len(keys), "spearman": rho, "bar": bar}
+    if len(ranged) < SIGNAL_MIN_RANGE_FAMILIES:
+        return {"passes": False, "cells": len(keys), "families_with_range": len(ranged), "spearman": None, "note": "not informative: too few families vary across these models"}
+
+    def centred(cells):
+        mean = {f: _mean([cells[k] for k in keys if k[1] == f]) for f in fams}
+        return [cells[k] - mean[k[1]] for k in keys]
+    rho = spearman([-x for x in centred(dev_cells)], centred(primary_cells))
+    return {"passes": rho is not None and rho >= SIGNAL_BAR, "cells": len(keys), "families_with_range": len(ranged), "spearman": rho, "bar": SIGNAL_BAR}

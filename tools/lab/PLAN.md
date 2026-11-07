@@ -6,13 +6,28 @@ Claude Opus 5.5, 7 Nov 2026. Nothing below is authorised by this file. Costs com
 
 ## Order
 
-1. **CPU, no L4.** T_E's rows through a blind data author, the shortcut reads published before any model is read, S54's J1 read completed, then T_M and T_E on `pk_sft_v1`, S54 and S55: the signal read, with its bar frozen first.
-2. **CPU, engineering.** Cut contrast and stance families into T_M, T_C and T_E, recover `nameless_role` and `affirm_in_role` from the caps, freeze the map from packet family to controller family, wrap `mtstudio score` as a per-family read on the VM, write the packet writer with its pre-launch recount, write the independent target tracker by another hand, and time one leg boundary.
-3. **Registration, an independent review, Jonathan's dated line,** for each L4 step below.
-4. **L4, `pk_sft_v1`:** the noise pair, two fixed seeds excluded from every later comparison, and one mixed-row specialist. This gives `pair_sd_points` and design A's gate.
-5. **L4, `pk_sft_v1`, only if the gate opens:** the comparison, three seed pairs, registered with numbers after step 4.
-6. **L4, `pk_sft_v1`:** the error pilot, as a screen at one seed.
-7. **After the race:** the same on the selected base, skipping what steps 4 to 6 showed to be pointless.
+1. **CPU, no L4.** T_E's seven mixed families through a blind data author, the shortcut reads published before any model is read, and S54's J1 read completed.
+2. **CPU, engineering.** Generate contrast and stance rows in T_M, T_C and T_E, recover `nameless_role` and `affirm_in_role` in T_C from the caps, freeze the map from packet family to controller family, wrap `mtstudio score` as a per-family read on the VM, write the packet writer with its pre-launch recount, write the independent target tracker by another hand, and time one leg boundary.
+3. **CPU, the signal read,** once, below. It waits for step 2's contrast rows: S54 was dosed on contrast and on nothing mixed, so mixed families alone give these three models too little range to test the signal.
+4. **Registration, an independent review, Jonathan's dated line,** for each L4 step below.
+5. **L4, `pk_sft_v1`:** the noise pair, two fixed seeds excluded from every later comparison, and one mixed-row specialist. This gives `pair_sd_points` and design A's gate.
+6. **L4, `pk_sft_v1`, only if the gate opens:** the comparison, three seed pairs, registered with numbers after step 5.
+7. **L4, `pk_sft_v1`:** the error pilot, as a screen at one seed.
+8. **After the race:** the same on the selected base, skipping what steps 5 to 7 showed to be pointless.
+
+## The signal read, frozen before any model is read
+
+Fixed here on 7 Nov 2026, before any T_E row exists, and in code as `verdict.signal_gate`.
+
+- **Models:** `pk_sft_v1`, S54 and S55. Read once. No other model enters it, and no read is repeated.
+- **Development signal:** family loss on T_M, nats per target, chosen before the read. Cells are model by family, for families present in both T_M and T_E with at least 20 rows.
+- **Primary:** task points on T_E by family, greedy, gold history.
+- **Statistic:** both reads centred within each family, so family difficulty cannot carry the rank; then Spearman of the negated loss against the points.
+- **Bar:** Spearman at least 0.5, over at least 10 cells.
+- **Range:** at least 5 families whose development loss varies by at least 0.30 nats across the three models. Short of that the read is not informative, and it does not pass.
+- **If it does not pass:** the pilot stops at this read. A new metric is a new registration, with a new read on new models. The bar does not move.
+
+The shortcut baselines are fixed in `shortcuts.py`, with a bar of 25 task points overall. A shortcut reaching it sends the instrument back for revision before any model is read on it.
 
 ## The two starts
 
@@ -22,7 +37,7 @@ Claude Opus 5.5, 7 Nov 2026. Nothing below is authorised by this file. Costs com
 | Adaptive start | `pk_sft_v1`: every family dosed from one level, so the arms differ in how allocation answers real differences in learning | Its SFT1500 |
 | Error parent | S54, the line's fixed recipe. `pk_sft_v1` alone would repeat S34's finding: failures that restate an absent dose | The fixed recipe on it |
 | Specialist floors | S54 and S55 on file, one arm to train | Three arms to train |
-| First L4 possible | After steps 1 and 2 | After the race, its base evaluation and its fixed SFT |
+| First L4 possible | After steps 1 to 4 | After the race, its base evaluation and its fixed SFT |
 
 ## L4 cost
 
@@ -53,7 +68,7 @@ On assumed worlds (`replay-sim`, no evidence about any model), with a seed sprea
 
 ## Stop rules
 
-No comparison if no family stays above 0.15 nats beyond noise after the noise pair. The signal read failing stops the pilot; a new metric is a new registration. No second round of the error pilot under this plan.
+No comparison if no family stays above 0.15 nats beyond noise after the noise pair. The signal read not passing stops the pilot. No second round of the error pilot under this plan.
 
 ## Not built, and why
 
