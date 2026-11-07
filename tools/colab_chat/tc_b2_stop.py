@@ -101,15 +101,18 @@ def release_rung(home, arm, rung, reason, ahead=False):
 
 
 def reset_failed(home, arm, reason):
-    """After a halted job has been read and repaired: every unfinished job goes back to not started, in state.json here and, through prepare(), on the
-    volume, where FAILED otherwise persists. Home jobs and checkpoints are untouched. The marker is kept as HALTED.failed. Only a stopped arm."""
+    """After a failed data job or boot has been read and repaired: every unfinished job goes back to not started, in state.json here and, through
+    prepare(), on the volume, where FAILED otherwise persists. Home jobs and checkpoints are untouched. The marker is kept as HALTED.failed. Only for a
+    stopped arm that failed before training: a failure from training on is repaired by hand under a dated line (PROTOCOL.md section 30)."""
     state = read(home)
     check_arm(state, arm)
     if sweep.runner_alive(home) or state.get("runpod", {}).get("pod"):
         raise SystemExit("the arm is not stopped")
     marker = os.path.join(home, "HALTED")
-    if not os.path.exists(marker) or json.load(open(marker)).get("kind") != "JOB_FAILED_STATE_KEPT":
-        raise SystemExit("this arm is not halted on a failed job")
+    held = json.load(open(marker)) if os.path.exists(marker) else None
+    failed_data = bool(held) and held.get("kind") == "JOB_FAILED_STATE_KEPT" and held.get("job") == "data"
+    if not failed_data and (held or not state.get("boot_failed_commit")):
+        raise SystemExit("this arm is not stopped on a failed data job or a failed boot")
     names = [n for n, j in state["jobs"].items() if not j.get("home")]
     if any(j.get("relayed_step") for j in state["jobs"].values()):
         raise SystemExit("this arm has trained: a reset here is not for that")
@@ -118,11 +121,13 @@ def reset_failed(home, arm, reason):
     state["reset_jobs"] = names
     state["reset_reason"] = {"reason": reason, "at": time.time()}
     state["booted"] = False
+    state.pop("boot_failed_commit", None)
     tmp = os.path.join(home, "state.json.tmp")
     with open(tmp, "w") as f:
         json.dump(state, f, indent=1)
     os.replace(tmp, os.path.join(home, "state.json"))
-    os.replace(marker, os.path.join(home, "HALTED.failed"))
+    if held:
+        os.replace(marker, os.path.join(home, "HALTED.failed"))
     print(f"reset: {names}")
     return state
 

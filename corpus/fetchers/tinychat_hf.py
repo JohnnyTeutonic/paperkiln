@@ -63,13 +63,15 @@ def split_of(line):
 def lines(sample):
     if sample:
         req = urllib.request.Request(URL, headers={"Range": f"bytes=0-{SAMPLE_BYTES - 1}"})
-        with urllib.request.urlopen(req, timeout=300) as r:
-            body = r.read()
+        def fetch():
+            with urllib.request.urlopen(req, timeout=300) as r:
+                return r.read()
+
+        body = C.with_retries(fetch, URL)
         text = body.decode("utf-8", errors="ignore")
         yield from text.split("\n")[:-1]  # the last line may be cut mid-way
         return
-    from huggingface_hub import hf_hub_download
-    path = hf_hub_download(REPO, "tinychat.txt", repo_type="dataset", revision=REV)
+    path = C.hf_download(REPO, "tinychat.txt", REV)
     with open(path, encoding="utf-8") as f:
         for line in f:
             yield line.rstrip("\n")

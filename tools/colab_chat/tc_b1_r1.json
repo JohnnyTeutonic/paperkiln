@@ -46,27 +46,6 @@
    ]
   },
   {
-   "name": "overlap",
-   "after": "data",
-   "light": true,
-   "halt_on_failure": true,
-   "cmd": [
-    "python3",
-    "tools/colab_chat/tc_b2_overlap.py",
-    "scan",
-    "--data",
-    "/content/chat/data",
-    "--packet",
-    "/content/chat/upload/targets.keyed.json",
-    "--out",
-    "{out}"
-   ],
-   "outputs": [
-    "overlap_receipt.json",
-    "manifest.json"
-   ]
-  },
-  {
    "name": "overlap_check",
    "after": "data",
    "light": true,

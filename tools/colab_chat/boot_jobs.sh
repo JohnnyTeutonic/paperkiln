@@ -21,8 +21,11 @@ nvidia-smi -L || true
 nproc; free -g | head -2
 
 if [ ! -x /content/pk/build_cuda/mtstudio ]; then
-  rm -rf /content/pk
-  git clone -q https://github.com/JohnnyTeutonic/paperkiln.git /content/pk
+  for try in 1 2 3; do
+    rm -rf /content/pk
+    git clone -q https://github.com/JohnnyTeutonic/paperkiln.git /content/pk && break
+    sleep 30
+  done
   git -C /content/pk checkout -q "$COMMIT"
   mkdir -p /content/pk/build_cuda && cd /content/pk/build_cuda
   cmake .. -DCMAKE_BUILD_TYPE=Release -DMICROTORCH_CUDA=ON -DCUDA_ENABLED=ON \

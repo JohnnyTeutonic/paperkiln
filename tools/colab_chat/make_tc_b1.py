@@ -197,7 +197,7 @@ def b1():
     links = [(f"/content/chat/pt_b1_r1/rung_{s}/model.safetensors", f"b1_s{s}") for s in RUNGS]
     links += [("/content/chat/pt_b1_r1/tc_b1_r1.safetensors", "b1_final"), ("/content/chat/sft_b1_r1/tc_sft_b1_r1.safetensors", "b1_sft")]
     link = " && ".join(f"ln -sf {a} /content/chat/upload/{t}.safetensors" for a, t in links)
-    jobs = [cuda_gate(), data("b1"), *overlap_jobs(True),
+    jobs = [cuda_gate(), data("b1"), *overlap_jobs(False),   # the one scan ran on B's mix (PROTOCOL.md section 31), and this gate reads its decision
             {"name": "pt_b1_r1", "model_name": "tc_b1_r1", "after": ["data", "cuda_gate", "overlap_check"], "relay_every_steps": 2500,
              "snapshot_steps": [SMOKE, *RUNGS], "snapshot_full_steps": PAUSES, "pause_rungs": [f"rung_b1_s{s}" for s in PAUSES],
              "halt_on_failure": True, "env": TXN, "spec": b_spec()}]

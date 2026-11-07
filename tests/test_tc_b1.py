@@ -138,7 +138,7 @@ def test_the_arms_pause_at_the_reads_and_keep_whole_checkpoints():
             r = jobs[f"rung_{tag}_s{s}"]
             assert r["halt_on_failure"] and r["keep_home_snapshot"] and "model.gguf" in r["outputs"] and "--export-gguf" in r["cmd"]
         assert not jobs[f"rung_{tag}_s40000"].get("halt_on_failure")
-    assert "overlap" in {j["name"] for j in load("tc_b1_r1.json")["jobs"]}
+    assert "overlap" not in {j["name"] for j in load("tc_b1_r1.json")["jobs"]}
     assert "overlap" not in {j["name"] for j in load("tc_b2_l12.json")["jobs"]}
     assert next(j for j in load("tc_b2_l12.json")["jobs"] if j["name"] == "data")["after"] == "l12_probe"
 
@@ -306,9 +306,12 @@ def test_relay_copies_one_generation_through_a_commit(tmp_path):
 
 def test_fetch_retries_transient_errors_only(monkeypatch):
     sys.path.insert(0, str(ROOT / "corpus" / "fetchers"))
+    import http.client
+    import io
     import urllib.error
     import human_dialogue as H
-    monkeypatch.setattr(H.time, "sleep", lambda s: None)
+    C = H.C
+    monkeypatch.setattr(C.time, "sleep", lambda s: None)
     calls = []
 
     def flaky():
@@ -317,7 +320,7 @@ def test_fetch_retries_transient_errors_only(monkeypatch):
             raise urllib.error.HTTPError("u", 504, "Gateway Timeout", {}, None)
         return "bytes"
 
-    assert H.with_retries(flaky, "u") == "bytes" and len(calls) == 3
+    assert C.with_retries(flaky, "u") == "bytes" and len(calls) == 3
     calls.clear()
 
     def down():
@@ -325,7 +328,7 @@ def test_fetch_retries_transient_errors_only(monkeypatch):
         raise urllib.error.HTTPError("u", 504, "Gateway Timeout", {}, None)
 
     with pytest.raises(urllib.error.HTTPError):
-        H.with_retries(down, "u")
+        C.with_retries(down, "u")
     assert len(calls) == 6                                       # bounded
     calls.clear()
 
@@ -334,8 +337,58 @@ def test_fetch_retries_transient_errors_only(monkeypatch):
         raise urllib.error.HTTPError("u", 404, "Not Found", {}, None)
 
     with pytest.raises(urllib.error.HTTPError):
-        H.with_retries(gone, "u")
+        C.with_retries(gone, "u")
     assert len(calls) == 1                                       # a client error stands at once
+    calls.clear()
+
+    def cut():
+        calls.append(1)
+        if len(calls) < 2:
+            raise http.client.IncompleteRead(b"x")
+        return "whole"
+
+    assert C.with_retries(cut, "u") == "whole"
+
+    class HubError(Exception):                                   # huggingface_hub's errors carry .response
+        def __init__(self, status):
+            self.response = type("R", (), {"status_code": status})
+
+    calls.clear()
+
+    def hub(status):
+        def call():
+            calls.append(1)
+            raise HubError(status)
+        return call
+
+    with pytest.raises(HubError):
+        C.with_retries(hub(404), "h", errors=Exception)
+    assert len(calls) == 1
+    calls.clear()
+    with pytest.raises(HubError):
+        C.with_retries(hub(504), "h", errors=Exception)
+    assert len(calls) == 6
+
+
+def test_a_short_body_is_fetched_again_and_the_pin_still_decides(tmp_path, monkeypatch):
+    import hashlib as hl
+    import io
+    import human_dialogue as H
+    monkeypatch.setattr(H.C.time, "sleep", lambda s: None)
+    good = b"whole file"
+    bodies = [(b"whole", len(good)), (good, len(good))]
+
+    class Resp(io.BytesIO):
+        def __init__(self, body, length):
+            super().__init__(body)
+            self.headers = {"Content-Length": str(length)}
+
+    monkeypatch.setattr(H.urllib.request, "urlopen", lambda req, timeout=0: Resp(*bodies.pop(0)))
+    dest = H.fetch_url("https://x/y.txt", str(tmp_path), hl.sha256(good).hexdigest())
+    assert open(dest, "rb").read() == good and not bodies
+    bodies[:] = [(b"other file", 10)]
+    with pytest.raises(H.C.HashMismatch):
+        H.fetch_url("https://x/z.txt", str(tmp_path), hl.sha256(good).hexdigest())
 
 
 def test_reset_failed_only_on_a_stopped_arm_that_never_trained(tmp_path):
@@ -348,7 +401,18 @@ def test_reset_failed_only_on_a_stopped_arm_that_never_trained(tmp_path):
     (home / "state.json").write_text(json.dumps(st))
     with pytest.raises(SystemExit):                              # not halted
         X.reset_failed(str(home), "pk-tc-b1-r1", "go")
+    for marker in ({"kind": "RACE_ARM_STOPPED"}, {"kind": "JOB_FAILED_STATE_KEPT", "job": "rung_b1_s1000"}):
+        (home / "HALTED").write_text(json.dumps(marker))         # another stop, or a failure after training began
+        with pytest.raises(SystemExit):
+            X.reset_failed(str(home), "pk-tc-b1-r1", "go")
     (home / "HALTED").write_text(json.dumps({"kind": "JOB_FAILED_STATE_KEPT", "job": "data"}))
+    live = json.loads((home / "state.json").read_text())
+    live["runpod"]["pod"] = {"id": "p"}
+    (home / "state.json").write_text(json.dumps(live))
+    with pytest.raises(SystemExit):                              # a live pod
+        X.reset_failed(str(home), "pk-tc-b1-r1", "go")
+    live["runpod"]["pod"] = None
+    (home / "state.json").write_text(json.dumps(live))
     out = X.reset_failed(str(home), "pk-tc-b1-r1", "Codex's go")
     assert out["reset_jobs"] == ["data", "pt_b1_r1"] and out["jobs"]["cuda_gate"]["home"] is True
     assert out["jobs"]["data"] == {"relayed_step": 0, "status": None, "home": False}
@@ -357,29 +421,34 @@ def test_reset_failed_only_on_a_stopped_arm_that_never_trained(tmp_path):
     st = json.load(open(tmp_path / "t" / "state.json"))
     st["jobs"] = {"pt_b1_r1": {"status": "FAILED", "home": False, "relayed_step": 2500}}
     (tmp_path / "t" / "state.json").write_text(json.dumps(st))
-    (tmp_path / "t" / "HALTED").write_text(json.dumps({"kind": "JOB_FAILED_STATE_KEPT", "job": "pt_b1_r1"}))
+    (tmp_path / "t" / "HALTED").write_text(json.dumps({"kind": "JOB_FAILED_STATE_KEPT", "job": "data"}))
     with pytest.raises(SystemExit):                              # never for an arm that has trained
         X.reset_failed(str(tmp_path / "t"), "pk-tc-b1-r1", "go")
+    race_state(str(tmp_path / "b"), name="pk-tc-b1-r1")
+    st = json.load(open(tmp_path / "b" / "state.json"))
+    st["jobs"] = {"data": {"status": "WAITING", "home": False, "relayed_step": 0}}
+    st["boot_failed_commit"] = "abc"
+    (tmp_path / "b" / "state.json").write_text(json.dumps(st))
+    out = X.reset_failed(str(tmp_path / "b"), "pk-tc-b1-r1", "Codex's go")   # a failed boot leaves no marker
+    assert "boot_failed_commit" not in out and out["reset_jobs"] == ["data"]
 
 
-def test_a_failed_job_can_run_again_after_a_reset(tmp_path):
-    """The runner against the fake CLI: halted on a failed job, reset by the tool, run again on the same state, and home."""
+def test_a_failed_job_can_run_again_after_a_reset(tmp_path, monkeypatch):
+    """The runner against the fake CLI: halted on a failed data job, reset by the tool, run again on the same state, and home."""
     import run_eq
-    jobs = {"jobs": [{"name": "good", "cmd": ["x"], "outputs": ["out.txt"]},
-                     {"name": "bad", "cmd": ["z"], "outputs": ["x.json"], "after": "good", "fake_fail": True, "halt_on_failure": True}]}
+    import tc_b2_stop as X
+    monkeypatch.setattr(X, "check_arm", lambda state, arm: None)  # the fake's ledger names no race arm
+    jobs = {"jobs": [{"name": "gate", "cmd": ["x"], "outputs": ["out.txt"]},
+                     {"name": "data", "cmd": ["z"], "outputs": ["x.json"], "after": "gate", "fake_fail": True, "halt_on_failure": True}]}
     r = run_fake(tmp_path, jobs, {})
-    assert r["rc"] == 3 and r["state"]["jobs"]["bad"]["home"] is False
+    assert r["rc"] == 3 and r["state"]["jobs"]["data"]["home"] is False
     assert (tmp_path / "w" / "state" / "HALTED").exists()
-    st = json.load(open(tmp_path / "w" / "state" / "state.json"))
-    st["jobs"]["bad"] = {"relayed_step": 0, "status": None, "home": False}
-    st["reset_jobs"] = ["bad"]
-    st["booted"] = False
-    json.dump(st, open(tmp_path / "w" / "state" / "state.json", "w"))
-    os.replace(tmp_path / "w" / "state" / "HALTED", tmp_path / "w" / "state" / "HALTED.failed")
+    out = X.reset_failed(str(tmp_path / "w" / "state"), "pk-tc-b1-r1", "Codex's go")
+    assert out["reset_jobs"] == ["data"] and (tmp_path / "w" / "state" / "HALTED.failed").exists()
     jobs["jobs"][1].pop("fake_fail")
     r = run_eq.run(str(CC / "runner_multi.py"), str(tmp_path / "w"), {}, jobs=jobs, fresh=False)
     assert r["rc"] == 0, r["stderr"][-400:]
-    assert r["state"]["jobs"]["bad"]["home"] is True and r["state"]["reset_jobs"] == []
+    assert r["state"]["jobs"]["data"]["home"] is True and r["state"]["reset_jobs"] == []
     assert "jobs reset on the volume" in r["log"]
 
 

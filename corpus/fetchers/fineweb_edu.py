@@ -43,8 +43,7 @@ def split_of(doc_id):
 def documents(shard):
     """(id, text) in shard order."""
     import pyarrow.parquet as pq
-    from huggingface_hub import hf_hub_download
-    path = hf_hub_download(REPO, shard, repo_type="dataset", revision=REV)
+    path = C.hf_download(REPO, shard, REV)
     f = pq.ParquetFile(path)
     for batch in f.iter_batches(batch_size=2048, columns=["id", "text"]):
         d = batch.to_pydict()

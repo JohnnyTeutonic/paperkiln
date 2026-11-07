@@ -6,8 +6,12 @@ under corpus/data/.
 from __future__ import annotations
 
 import hashlib
+import http.client
 import os
+import ssl
 import sys
+import time
+import urllib.error
 
 CORPUS_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(CORPUS_DIR, "data")      # gitignored: bytes, not records
@@ -116,12 +120,36 @@ BOILERPLATE_SYSTEM = frozenset({
 })
 
 
+RETRY_WAITS = (5, 15, 45, 120, 300)   # seconds; six tries in all, then the error stands
+RETRY_CODES = {408, 429, 500, 502, 503, 504}
+TRANSIENT = (urllib.error.URLError, TimeoutError, ConnectionError, http.client.HTTPException, ssl.SSLError)
+
+
+def with_retries(call, what, errors=TRANSIENT):
+    """A network call again after a transient failure, bounded. Bytes and hashes are the caller's and do not change. A response with any other
+    status stands at once (a raced arm's data job died on one HTTP 504 from raw.githubusercontent.com, 7 Nov 2026)."""
+    for wait in (*RETRY_WAITS, None):
+        try:
+            return call()
+        except errors as e:
+            code = e.code if isinstance(e, urllib.error.HTTPError) else getattr(getattr(e, "response", None), "status_code", None)
+            if wait is None or (code is not None and code not in RETRY_CODES):
+                raise
+            print(f"{what}: {type(e).__name__} {code or ''}; again in {wait} s", flush=True)
+        time.sleep(wait)
+
+
+def hf_download(repo, filename, revision):
+    """One file of a pinned dataset revision. huggingface_hub's own error types vary by version, so anything but a final status goes round again."""
+    from huggingface_hub import hf_hub_download
+    return with_retries(lambda: hf_hub_download(repo, filename, repo_type="dataset", revision=revision), f"{repo}/{filename}", errors=Exception)
+
+
 def parquet_rows(repo, rev, files, columns):
     """(uri, row dict) for every row of the given parquet files of a pinned dataset revision."""
     import pyarrow.parquet as pq
-    from huggingface_hub import hf_hub_download
     for fn in files:
-        f = pq.ParquetFile(hf_hub_download(repo, fn, repo_type="dataset", revision=rev))
+        f = pq.ParquetFile(hf_download(repo, fn, rev))
         i = 0
         for batch in f.iter_batches(batch_size=2048, columns=columns):
             for row in batch.to_pylist():
