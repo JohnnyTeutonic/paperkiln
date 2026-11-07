@@ -40,12 +40,12 @@ def text_pins():
 
 def manifest(d):
     led = json.load(open(os.path.join(d, "mix_b1.ledger.json")))["parts"]
-    want, text = pins(), text_pins()
+    want, want_text = pins(), text_pins()
     rows = []
     for part in ("main", "tail"):
         text, ids = os.path.join(d, f"mix_b1.{part}.txt"), os.path.join(d, f"mix_b1.{part}.ids")
         t, i = sha256(text), sha256(ids)
-        if t != led[part]["sha256"] or t != text[f"mix_b1.{part}.txt"] or i != want[f"mix_b1.{part}.ids"]:
+        if t != led[part]["sha256"] or t != want_text[f"mix_b1.{part}.txt"] or i != want[f"mix_b1.{part}.ids"]:
             raise SystemExit(f"{part}: the text or ids is not the data job's")
         rows.append({"name": part, "text": text, "text_sha256": t, "ids": ids, "ids_sha256": i})
     return rows

@@ -176,6 +176,46 @@ def test_overlap_manifest_refuses_text_or_ids_that_are_not_the_jobs(tmp_path):
     assert all(load("tc_b1_pins.json")["mix_text"].values())
 
 
+def overlap_fixture(tmp_path, monkeypatch):
+    import tc_b2_overlap as O
+    d = tmp_path
+    sha = {}
+    for name, body in (("mix_b1.main.txt", "m"), ("mix_b1.tail.txt", "t"), ("mix_b1.main.ids", "i"), ("mix_b1.tail.ids", "j")):
+        (d / name).write_text(body)
+        sha[name] = hashlib.sha256(body.encode()).hexdigest()
+    (d / "mix_b1.ledger.json").write_text(json.dumps({"parts": {"main": {"sha256": sha["mix_b1.main.txt"]}, "tail": {"sha256": sha["mix_b1.tail.txt"]}}}))
+    monkeypatch.setattr(O, "pins", lambda: {k: sha[k] for k in ("mix_b1.main.ids", "mix_b1.tail.ids")})
+    monkeypatch.setattr(O, "text_pins", lambda: {k: sha[k] for k in ("mix_b1.main.txt", "mix_b1.tail.txt")})
+    return O, sha
+
+
+def test_overlap_manifest_on_a_correct_mix_and_on_each_wrong_pin(tmp_path, monkeypatch):
+    O, sha = overlap_fixture(tmp_path, monkeypatch)
+    rows = O.manifest(str(tmp_path))
+    assert [r["name"] for r in rows] == ["main", "tail"]
+    assert rows[0]["text"].endswith("mix_b1.main.txt") and rows[0]["text_sha256"] == sha["mix_b1.main.txt"]
+    assert rows[1]["ids_sha256"] == sha["mix_b1.tail.ids"]
+    monkeypatch.setattr(O, "text_pins", lambda: {"mix_b1.main.txt": "0", "mix_b1.tail.txt": sha["mix_b1.tail.txt"]})
+    with pytest.raises(SystemExit):
+        O.manifest(str(tmp_path))
+    O, sha = overlap_fixture(tmp_path, monkeypatch)
+    monkeypatch.setattr(O, "pins", lambda: {"mix_b1.main.ids": sha["mix_b1.main.ids"], "mix_b1.tail.ids": "0"})
+    with pytest.raises(SystemExit):
+        O.manifest(str(tmp_path))
+
+
+def test_overlap_scan_runs_the_real_worker_on_a_correct_mix(tmp_path, monkeypatch):
+    O, sha = overlap_fixture(tmp_path, monkeypatch)
+    packet = tmp_path / "p.json"
+    packet.write_text(json.dumps({"version": 1, "key": "00" * 16, "targets": []}))
+    monkeypatch.setattr(O, "PACKET_SHA256", O.sha256(str(packet)))
+    out = tmp_path / "o"
+    assert O.main(["scan", "--data", str(tmp_path), "--packet", str(packet), "--out", str(out)]) == 0
+    r = json.load(open(out / "overlap_receipt.json"))
+    assert r["status"] == "COMPLETE_REQUIRES_CODEX_REVIEW"
+    assert r["identity"]["manifest_sha256"] == hashlib.sha256(O.manifest_text(str(tmp_path)).encode()).hexdigest()
+
+
 def test_exclusive_rung_past_its_limit_fails_and_training_carries_on(tmp_path):
     chat = tmp_path / "chat"
     (chat / "pt").mkdir(parents=True)
