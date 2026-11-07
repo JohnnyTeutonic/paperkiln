@@ -23,6 +23,8 @@ import miner as M  # noqa: E402
 import proposer as P  # noqa: E402
 import rowcheck as SC  # noqa: E402
 import shortcuts as SH  # noqa: E402
+import te_score as TS  # noqa: E402
+import te_verify as TV  # noqa: E402
 import sim as S  # noqa: E402
 import synthetic as SY  # noqa: E402
 import taxonomy as T  # noqa: E402
@@ -1385,6 +1387,145 @@ class TestShortcuts(unittest.TestCase):
     def test_unknown_policy_refused(self):
         with self.assertRaises(Malformed):
             SH.reply("cleverness", self.item("a", []), self.STUB)
+
+
+CUES = TS.compile_cues({"abstain": ["no clue"], "no": ["no", "not"]})
+
+
+def te_row(k, accept, refuse, last="Toy question?", pol=None, told=("Paris", "Lima"), fam="toyfam", pid="p1", var="a", gold="Toy reply."):
+    """An invented decision row. Nothing here comes from any table or instrument."""
+    segs = [{"text": "<|user|>Toy opener.<|assistant|>", "loss": False}, {"text": "Noted.", "loss": True}, {"text": "<|endoftext|><|user|>" + last + "<|assistant|>", "loss": False}, {"text": gold, "loss": True}]
+    metas = [{"k": "chat"}, {"k": k, "c": "none"}]
+    if pol:
+        metas[1]["pol"] = pol
+    return {"conversation_id": f"te-{fam}-01-{var}", "segments": segs, "provenance": {"family": fam, "pair_id": pid, "variant": var, "turns": metas, "values": {"told": list(told)}, "changed_turns": [1]},
+            "decision": {"turn": 1, "k": k, "c": "none", "form": "D", "template_group": "0" * 12, "key": {"accept": list(accept), "refuse": list(refuse)}, "told_in_order": list(told)}}
+
+
+class TestTEScore(unittest.TestCase):
+    def test_accept_and_refuse(self):
+        r = te_row("recall", ["Paris"], ["Lima"])
+        self.assertTrue(TS.passes("You said Paris.", r, CUES))
+        self.assertFalse(TS.passes("You said Lima.", r, CUES))
+        self.assertFalse(TS.passes("You said Paris or Lima.", r, CUES))
+        self.assertFalse(TS.passes("", r, CUES))
+
+    def test_a_refused_word_inside_the_accepted_value_is_no_mention(self):
+        r = te_row("recall", ["New York"], ["York"])
+        self.assertTrue(TS.passes("You said New York.", r, CUES))
+        self.assertFalse(TS.passes("You said York.", r, CUES))
+
+    def test_article_is_ignored(self):
+        self.assertTrue(TS.passes("You are a baker.", te_row("recall", ["a baker"], []), CUES))
+
+    def test_abstention_needs_a_cue_and_no_value(self):
+        r = te_row("abstain", [], ["Paris", "Lima"])
+        self.assertTrue(TS.passes("I have no clue.", r, CUES))
+        self.assertFalse(TS.passes("Okay.", r, CUES))
+        self.assertFalse(TS.passes("No clue, maybe Paris.", r, CUES))
+
+    def test_a_confirmation_holds_its_polarity(self):
+        yes, no = te_row("like_affirm", ["tea"], [], pol="yes"), te_row("like_affirm", ["tea"], [], pol="no")
+        self.assertTrue(TS.passes("You like tea.", yes, CUES))
+        self.assertFalse(TS.passes("You do not like tea.", yes, CUES))
+        self.assertTrue(TS.passes("You do not like tea.", no, CUES))
+        self.assertFalse(TS.passes("You like tea.", no, CUES))
+
+    def test_a_copied_question_fails_whatever_it_names(self):
+        r = te_row("like_affirm", ["tea"], [], last="Do I like tea?", pol="yes")
+        self.assertFalse(TS.passes("Do I like tea?", r, CUES))
+        self.assertFalse(TS.passes("do i like TEA", r, CUES))
+        self.assertTrue(TS.passes("You like tea.", r, CUES))
+
+    def test_a_constant_earns_nothing_on_a_keyed_pair(self):
+        a, b = te_row("recall", ["Paris"], ["Lima"], var="a"), te_row("recall", ["Lima"], ["Paris"], var="b")
+        self.assertEqual(TS.pair_points([(a, b)], lambda r: "You said Paris.", CUES), 0.0)
+        self.assertEqual(TS.pair_points([(a, b)], lambda r: "You said " + r["decision"]["key"]["accept"][0] + ".", CUES), 100.0)
+
+    def test_the_cue_list_is_pinned(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "c.json"
+            p.write_text('{"abstain": ["x"], "no": ["y"]}')
+            with self.assertRaises(Malformed):
+                TS.load_cues(p)
+
+    def test_the_scorer_shares_no_code_with_mining_or_the_author(self):
+        tree = ast.parse((HERE / "te_score.py").read_text(encoding="utf-8"))
+        names = {a.name for n in ast.walk(tree) if isinstance(n, ast.Import) for a in n.names} | {n.module for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)}
+        self.assertFalse(names & {"build_te", "mine_score", "adapters", "mixed_gen"})
+
+
+class TestTEVerify(unittest.TestCase):
+    def named(self, value, k="both_names", user_says=False, in_meta=True):
+        r = te_row(k, [value], [])
+        first = "My name is " + value + "." if user_says else "Toy opener."
+        r["segments"][0]["text"] = "<|user|>" + first + "<|assistant|>"
+        r["segments"][1]["text"] = "I'm " + value + "."
+        r["provenance"]["turns"][0] = {"k": "rp_nameless", "name": value if in_meta else None}
+        return r
+
+    def values(self, rows):
+        out = {}
+        TV.check_values(rows, out)
+        return out["3_values"]
+
+    def test_3a_a_users_value_must_come_from_a_user_turn(self):
+        r = te_row("recall", ["Paris"], [])
+        r["segments"][1]["text"] = "Paris it is."
+        self.assertEqual(self.values([r])["3a_defects"], {"toyfam/recall": 1})
+
+    def test_3b_admits_the_characters_name(self):
+        v = self.values([self.named("Zorp")])
+        self.assertEqual((v["3b_character_names_held"], v["3b_defects"]), (1, {}))
+
+    def test_3b_refuses_a_value_that_is_not_the_characters_name(self):
+        v = self.values([self.named("Zorp", in_meta=False)])
+        self.assertEqual(v["3b_character_names_held"], 0)
+        self.assertEqual(sum(v["3b_defects"].values()), 1)
+
+    def test_a_value_the_user_said_is_3a(self):
+        v = self.values([self.named("Zorp", user_says=True)])
+        self.assertEqual(v["3b_character_names_held"], 0)
+        self.assertEqual(v["3a_user_values_held"], 1)
+
+    def test_the_assistants_own_decisions_are_counted_apart(self):
+        self.assertEqual(self.values([te_row("self_name", ["Ember"], [])])["assistant_own_decisions_not_checked_here"], {"self_name": 1})
+
+    def twins(self, a, b):
+        out = {}
+        TV.check_twins([a, b], CUES, out)
+        return out["4_twins"]
+
+    def test_good_twins(self):
+        a = te_row("recall", ["Paris"], ["Lima"], last="Where?", var="a", gold="Paris.")
+        b = te_row("recall", ["Lima"], ["Paris"], last="And there?", var="b", gold="Lima.")
+        t = self.twins(a, b)
+        self.assertEqual(t["structural_defects"], {})
+        self.assertEqual((t["gold_passes_own_key"], t["gold_fails_twin_key"]), ("2 of 2", "2 of 2"))
+
+    def test_twins_with_one_key_are_caught(self):
+        a = te_row("recall", ["Paris"], [], last="Where?", var="a", gold="Paris.")
+        b = te_row("recall", ["Paris"], [], last="And there?", var="b", gold="Paris.")
+        t = self.twins(a, b)
+        self.assertEqual(t["structural_defects"]["same_key"], 1)
+        self.assertEqual(t["gold_fails_twin_key"], "0 of 2")
+
+    def test_recorded_change_must_be_the_real_one(self):
+        a = te_row("recall", ["Paris"], ["Lima"], last="Where?", var="a", gold="Paris.")
+        b = te_row("recall", ["Lima"], ["Paris"], last="And there?", var="b", gold="Lima.")
+        a["provenance"]["changed_turns"] = b["provenance"]["changed_turns"] = [0]
+        self.assertEqual(self.twins(a, b)["structural_defects"]["changed_turns_not_the_difference"], 1)
+
+    def test_fits_a_slot_with_a_digit_and_sentence_joins(self):
+        exact, rx = TV.frames({"toy": ["Hello {e1} friend.", "Fixed line."], "pool:x": ["Paris"]}, {})
+        self.assertTrue(TV.fits("Hello big friend.", exact, rx))
+        self.assertTrue(TV.fits("Hello big friend. Fixed line.", exact, rx))
+        self.assertFalse(TV.fits("Quite new wording.", exact, rx))
+
+    def test_the_verifier_shares_no_code_with_the_author(self):
+        tree = ast.parse((HERE / "te_verify.py").read_text(encoding="utf-8"))
+        names = {a.name for n in ast.walk(tree) if isinstance(n, ast.Import) for a in n.names} | {n.module for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)}
+        self.assertNotIn("build_te", names)
 
 
 class TestReplaySim(unittest.TestCase):
