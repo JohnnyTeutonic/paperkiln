@@ -26,6 +26,8 @@ terminated the moment the queue is empty or the driver exits (finally, atexit, S
 SIGHUP). runpod_sweep.py (run by the Windows watchdog each tick) terminates pods whose driver is
 dead and deletes the volumes of campaigns that are home. A state dir moves from Colab to RunPod
 like a replacement VM: stop the Colab driver, start the same command with --backend runpod.
+--backend jarvis (7 Nov 2026, jarvis_transport.py) is the same on a Jarvis Labs L4 VM; --max-usd is
+required there, and jarvis_sweep.py is its sweep.
 
 Rung snapshots (25 Oct 2026). jobs_vm.py copies a training job's weights at each of its
 "snapshot_steps" to /content/chat/<job>/rung_<step>/ (model.safetensors, state.txt: weights only),
@@ -69,7 +71,7 @@ CHUNK = 45 * 1024 * 1024
 TICK = 240
 NAME = ART = HOME = None
 BOOT_SCRIPT = "tools/colab_chat/boot_jobs.sh"
-T = None  # the Transport (ColabTransport unless --backend runpod)
+T = None  # the Transport (ColabTransport unless --backend runpod or jarvis)
 
 
 def log(msg):
@@ -1080,6 +1082,10 @@ def vm_status(jobs):
 def make_transport(a):
     if a.backend == "colab":
         return ColabTransport(a.gpu)
+    if a.backend == "jarvis":
+        from jarvis_transport import JarvisTransport  # tools/colab_chat/jarvis_transport.py
+        return JarvisTransport(gpu=a.gpu, volume_gb=a.volume_gb, max_usd=a.max_usd, commit=a.commit, name=NAME,
+                               home=HOME, log=log, cloud=a.cloud, datacenter=a.datacenter, image=a.image)
     from runpod_transport import RunPodTransport  # tools/colab_chat/runpod_transport.py
     return RunPodTransport(gpu=a.gpu, cloud=a.cloud, volume_gb=a.volume_gb, datacenter=a.datacenter,
                            image=a.image, max_usd=a.max_usd, commit=a.commit, name=NAME, home=HOME, log=log)
@@ -1135,7 +1141,7 @@ def main():
     ap.add_argument("--art", required=True, help="local artifact directory")
     ap.add_argument("--state-dir", required=True, help="runner state, pid file and log")
     ap.add_argument("--upload", action="append", default=[], help="KEY=LOCAL_PATH, sent to /content/chat/upload/KEY")
-    ap.add_argument("--backend", choices=["colab", "runpod"], default="colab")
+    ap.add_argument("--backend", choices=["colab", "runpod", "jarvis"], default="colab")
     ap.add_argument("--gpu", default="L4", help="GPU type (both backends; L4 is the study GPU)")
     ap.add_argument("--cloud", choices=["SECURE", "COMMUNITY"], default="SECURE", help="RunPod cloud")
     ap.add_argument("--volume-gb", type=int, default=50, help="RunPod network volume size")

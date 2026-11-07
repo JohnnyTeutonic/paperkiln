@@ -87,9 +87,9 @@ def image_digest(image):
         return None
 
 
-def load_registry():
+def load_registry(path=None):
     try:
-        return json.load(open(REGISTRY))
+        return json.load(open(path or REGISTRY))
     except (OSError, ValueError):
         return {}
 
@@ -104,6 +104,9 @@ def save_json(path, obj):
 class RunPodTransport:
     backend = "runpod"
     whole_files = True
+    ssh_user = "root"
+    ssh_key = None        # None: KEY
+    state_key = "runpod"  # the runner state's section
 
     def __init__(self, gpu, cloud, volume_gb, datacenter, image, max_usd, commit, name, home, log):
         self.gpu, self.cloud, self.volume_gb, self.dc = gpu, cloud, volume_gb, datacenter
@@ -119,7 +122,7 @@ class RunPodTransport:
     # ------------------------------------------------------------ state
     def R(self, st=None):
         st = st or self.st
-        r = st.d.setdefault("runpod", {})
+        r = st.d.setdefault(self.state_key, {})
         r.setdefault("pod", None)
         r.setdefault("volume", None)
         r.setdefault("retired_volumes", [])
@@ -130,13 +133,16 @@ class RunPodTransport:
         self.st = st
         self.R(st)
         st.save()
+        self._register()
+        atexit.register(self._atexit)
+        for s in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
+            signal.signal(s, self._signal)
+
+    def _register(self):
         os.makedirs(os.path.dirname(REGISTRY), exist_ok=True)
         reg = load_registry()
         reg[self.home] = {"name": self.name, "registered": time.time()}
         save_json(REGISTRY, reg)
-        atexit.register(self._atexit)
-        for s in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
-            signal.signal(s, self._signal)
 
     def _signal(self, signum, frame):
         if self._in_stop:  # never interrupt the terminate call itself
@@ -157,7 +163,7 @@ class RunPodTransport:
 
     # ------------------------------------------------------------ ssh / rsync
     def _ssh_opts(self, pod):
-        return ["-i", KEY, "-p", str(pod["port"]), "-o", "StrictHostKeyChecking=accept-new",
+        return ["-i", self.ssh_key or KEY, "-p", str(pod["port"]), "-o", "StrictHostKeyChecking=accept-new",
                 "-o", f"UserKnownHostsFile={os.path.join(self.home, 'known_hosts_' + pod['id'])}",
                 "-o", "ConnectTimeout=20", "-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=4",
                 "-o", "BatchMode=yes", "-o", "LogLevel=ERROR"]
@@ -234,7 +240,7 @@ class RunPodTransport:
         # the background (the boot) holds no handle on the ssh channel.
         remote = (f"mkdir -p /tmp/pkx && cat > {f} && {{ cd /content 2>/dev/null || cd /; }} && "
                   f"timeout {limit} python3 {f} < /dev/null; r=$?; rm -f {f}; exit $r")
-        return self._run(["ssh", *self._ssh_opts(pod), f"root@{pod['ip']}", remote], timeout, stdin_text=code)
+        return self._run(["ssh", *self._ssh_opts(pod), f"{self.ssh_user}@{pod['ip']}", remote], timeout, stdin_text=code)
 
     def _rsync(self, src, dst, timeout, mkdir=None):
         pod = self.R().get("pod")
@@ -248,11 +254,11 @@ class RunPodTransport:
 
     def put(self, src, dst, timeout):
         pod = self.R().get("pod") or {}
-        return self._rsync(src, f"root@{pod.get('ip')}:{dst}", timeout, mkdir=os.path.dirname(dst))
+        return self._rsync(src, f"{self.ssh_user}@{pod.get('ip')}:{dst}", timeout, mkdir=os.path.dirname(dst))
 
     def get(self, src, dst, timeout):
         pod = self.R().get("pod") or {}
-        return self._rsync(f"root@{pod.get('ip')}:{src}", dst, timeout)
+        return self._rsync(f"{self.ssh_user}@{pod.get('ip')}:{src}", dst, timeout)
 
     def _remote_shas(self, paths):
         rc, out = self.exec("import hashlib, json, os\n"
