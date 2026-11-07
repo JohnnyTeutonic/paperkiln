@@ -1522,6 +1522,11 @@ class TestTEVerify(unittest.TestCase):
         self.assertTrue(TV.fits("Hello big friend. Fixed line.", exact, rx))
         self.assertFalse(TV.fits("Quite new wording.", exact, rx))
 
+    def test_the_verb_s_slot_may_be_empty(self):
+        exact, rx = TV.frames({"toy": ["{X} always cheer{s_} me."]}, {})
+        self.assertTrue(TV.fits("Tea always cheers me.", exact, rx))
+        self.assertTrue(TV.fits("Teas always cheer me.", exact, rx))
+
     def test_the_verifier_shares_no_code_with_the_author(self):
         tree = ast.parse((HERE / "te_verify.py").read_text(encoding="utf-8"))
         names = {a.name for n in ast.walk(tree) if isinstance(n, ast.Import) for a in n.names} | {n.module for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)}

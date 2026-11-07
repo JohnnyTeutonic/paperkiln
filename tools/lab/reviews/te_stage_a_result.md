@@ -5,7 +5,7 @@ Claude Opus 5.5, 7 Nov 2026. Counts only. Rows `eccd5255…`, 700 rows, 350 pair
 | Check | Result |
 |---|---|
 | 1. Inputs and format | Both hashes hold. 700 rows, no format defect. |
-| 2. Entries | 9,416 turns: 9,399 fit an entry, 17 replies fit after a pronoun fill the receipt discloses, 0 fit none. 6,408 meta values: 0 from another part. 79 are in no table, and all 79 are the assistant's own name. |
+| 2. Entries | 9,416 turns: all fit an entry. 6,408 meta values: 0 from another part. 79 are in no table, and all 79 are the assistant's own name. |
 | 3. Values | 3a: 616 held, 0 defects. 3b: 37 held. **20 defects under the ruling.** Text check: 0 defects on 2,539 checks. |
 | 4. Twins | 350 pairs, no structural defect. Golds pass their own key 700 of 700, and fail the twin's 700 of 700. |
 | 5. Counts | Every family and cell of the table met. 25 S and 25 D per family. No recall or name decision under two told values. Most-recent rule at most 29 per family. No repeat. At least 8 final wordings per family. |

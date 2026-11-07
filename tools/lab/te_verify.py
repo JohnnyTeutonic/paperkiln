@@ -58,7 +58,7 @@ def frames(tables, attr):
     entries = [e for name, v in tables.items() if not name.startswith(SKIP_FRAME) for e in v if isinstance(e, str)]
     for e in entries:
         if "{" in e:
-            patterns.append(re.sub(r"\\\{[A-Za-z_0-9]+\\\}", ".+?", re.escape(e)))
+            patterns.append(re.sub(r"\\\{[A-Za-z_0-9]+\\\}", ".+?", re.escape(e).replace(r"\{s_\}", "s?")))  # {s_} is a verb's s, empty after a plural
         else:
             exact.add(e.lower())
     return exact, re.compile("(?:" + "|".join(sorted(set(patterns), key=len, reverse=True)) + ")", re.I | re.S)
@@ -113,17 +113,14 @@ def check_format(rows, problems):
 
 def check_entries(rows, tables, attr, others, out):
     exact, rx = frames(tables, attr)
-    un, pronoun = collections.Counter(), 0
+    un = collections.Counter()
     n = 0
     for r in rows:
         for u, a in RC.parse_turns(r):
             for who, t in (("user", u), ("reply", a)):
                 n += 1
                 if not fits(t, exact, rx):
-                    if fits(re.sub(r"\bthem\b", "it", t), exact, rx):  # the receipt's "it or them" fill: a table's literal pronoun agreeing with a plural value
-                        pronoun += 1
-                    else:
-                        un[who] += 1
+                    un[who] += 1
     pool = set()
     for name, v in tables.items():
         if name.startswith(VALUE_TABLES):
@@ -139,7 +136,7 @@ def check_entries(rows, tables, attr, others, out):
                     wrong_part += 1
                 elif norm(v) not in pool:
                     bad += 1
-    out["2_entries"] = {"turns_checked": n, "turns_fitting_no_entry": dict(un), "turns_fitting_after_a_pronoun_fill": pronoun, "meta_values_checked": checked, "meta_values_in_another_part": wrong_part, "meta_values_in_no_table": bad}
+    out["2_entries"] = {"turns_checked": n, "turns_fitting_no_entry": dict(un), "meta_values_checked": checked, "meta_values_in_another_part": wrong_part, "meta_values_in_no_table": bad}
 
 
 def told_sources(row):
