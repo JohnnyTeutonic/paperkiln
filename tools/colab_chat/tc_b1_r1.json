@@ -1,5 +1,5 @@
 {
- "_comment": "B: fresh 8x768, 60,000 steps at T 1,024, k 4 (spec section 9). Cap $21, cumulative with Stage 0 $23. Not admitted: needs Stage 0's hashes, measured costs and its own review.",
+ "_comment": "The race's 8x768 arm (PROTOCOL section 30): 60,000 steps at T 1,024, k 4, stopping at each read. Not admitted.",
  "max_parallel": 1,
  "max_parallel_light": 2,
  "jobs": [
@@ -224,6 +224,8 @@
    "outputs": [
     "rung.json"
    ],
+   "exclusive": true,
+   "timeout_s": 3600,
    "halt_on_failure": true
   },
   {
@@ -271,6 +273,8 @@
     "rung.json",
     "model.gguf"
    ],
+   "exclusive": true,
+   "timeout_s": 3600,
    "keep_home_snapshot": true,
    "halt_on_failure": true
   },
@@ -319,6 +323,8 @@
     "rung.json",
     "model.gguf"
    ],
+   "exclusive": true,
+   "timeout_s": 3600,
    "keep_home_snapshot": true,
    "halt_on_failure": true
   },
@@ -367,6 +373,8 @@
     "rung.json",
     "model.gguf"
    ],
+   "exclusive": true,
+   "timeout_s": 3600,
    "keep_home_snapshot": true,
    "halt_on_failure": true
   },
@@ -413,7 +421,9 @@
    ],
    "outputs": [
     "rung.json"
-   ]
+   ],
+   "exclusive": true,
+   "timeout_s": 3600
   },
   {
    "name": "rung_b1_s50000",
@@ -458,7 +468,9 @@
    ],
    "outputs": [
     "rung.json"
-   ]
+   ],
+   "exclusive": true,
+   "timeout_s": 3600
   },
   {
    "name": "sft_b1_r1",

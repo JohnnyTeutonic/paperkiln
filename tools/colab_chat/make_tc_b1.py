@@ -19,7 +19,8 @@ SHAPE = "experiments/tiny_chat_long_2026-10/specs/cell_Sfull.json"
 SHAPE_L12 = "experiments/tiny_chat_long_2026-10/specs/cell_b2_l12.json"
 RUNGS = [10000, 20000, 30000, 40000, 50000]
 PAUSES = [20000, 30000]   # the race's reads: both arms stop at each until released (PROTOCOL.md section 30)
-SMOKE = 1000              # a rung early on, so a rung fault or a memory limit beside training shows here, not at step 10,000
+SMOKE = 1000              # a rung early on, so a rung fault or a limit shows here, at about $1, not at step 10,000
+RUNG_TIMEOUT_S = 3600     # a rung runs alone (jobs_vm.py "exclusive"); past this it has failed
 # ember's /score for the final benchmarks: the commit tools/colab_chat/bench_v2.json gated (580e1089), under its new id
 # after the history rewrite of 3 Nov (C:/ml_artifacts/purge_20261103/ember.cpp.commit-map).
 EMBER_SCORE = "cc6635bee8c89b8b0304edeca633b1903b5d9291"
@@ -147,7 +148,7 @@ def data(mode, after=None):
                         "human/human_dialogue_v1.ledger.json"]}
 
 
-def rung(job, step, tag, keep=False, shape=SHAPE, halt=False):
+def rung(job, step, tag, keep=False, shape=SHAPE, halt=False, exclusive=False):
     """keep: a rung the race reads: its GGUF and weights stay at home, and a failure stops the arm, because the read needs it."""
     j = {"name": f"rung_{tag}_s{step}", "after": "data", "light": True, "rung_of": {"job": job, "step": step},
          "env": {"MICROTORCH_POOL_MB": 2048},
@@ -158,6 +159,8 @@ def rung(job, step, tag, keep=False, shape=SHAPE, halt=False):
                  "--panel", "dialogue=/content/chat/data/panel_dialogue.ids",
                  "--carry5-items", "corpus/eval/carry5_v1.jsonl"],
          "outputs": ["rung.json"]}
+    if exclusive:
+        j["exclusive"], j["timeout_s"] = True, RUNG_TIMEOUT_S
     if halt:
         j["halt_on_failure"] = True
     if keep:
@@ -198,7 +201,8 @@ def b1():
             {"name": "pt_b1_r1", "model_name": "tc_b1_r1", "after": ["data", "cuda_gate", "overlap_check"], "relay_every_steps": 2500,
              "snapshot_steps": [SMOKE, *RUNGS], "snapshot_full_steps": PAUSES, "pause_rungs": [f"rung_b1_s{s}" for s in PAUSES],
              "halt_on_failure": True, "env": TXN, "spec": b_spec()}]
-    jobs += [rung("pt_b1_r1", SMOKE, "b1", halt=True)] + [rung("pt_b1_r1", s, "b1", keep=s <= PAUSES[-1]) for s in RUNGS]
+    jobs += [rung("pt_b1_r1", SMOKE, "b1", halt=True, exclusive=True)]
+    jobs += [rung("pt_b1_r1", s, "b1", keep=s <= PAUSES[-1], exclusive=True) for s in RUNGS]
     jobs += [{"name": "sft_b1_r1", "model_name": "tc_sft_b1_r1", "after": "pt_b1_r1", "init_job": "pt_b1_r1",
               "relay_every_steps": 500, "halt_on_failure": True, "env": TXN, "spec": sft_spec()},
              {"name": "items", "after": "sft_b1_r1", "light": True, "halt_on_failure": True,
@@ -207,8 +211,7 @@ def b1():
               "cmd": ["sh", "-c", f"{link} && env BENCH_SCORE_COMMIT={EMBER_SCORE} EMBER_DETERMINISTIC=1 bash "
                       f"tools/colab_chat/bench_vm.sh ember {{out}} 100 1 {' '.join(tags)}"],
               "outputs": ["results.tar.gz"]}]
-    return {"_comment": "B: fresh 8x768, 60,000 steps at T 1,024, k 4 (spec section 9). Cap $21, cumulative with Stage 0 $23. Not "
-                        "admitted: needs Stage 0's hashes, measured costs and its own review.",
+    return {"_comment": "The race's 8x768 arm (PROTOCOL section 30): 60,000 steps at T 1,024, k 4, stopping at each read. Not admitted.",
             "max_parallel": 1, "max_parallel_light": 2, "jobs": jobs}, tags
 
 
@@ -230,8 +233,8 @@ def l12():
             {"name": "pt_b2_l12", "model_name": "tc_b2_l12", "after": ["data", "cuda_gate", "l12_probe", "overlap_check"],
              "relay_every_steps": 2500, "snapshot_steps": [SMOKE, *RUNGS], "snapshot_full_steps": PAUSES,
              "pause_rungs": [f"rung_l12_s{s}" for s in PAUSES], "halt_on_failure": True, "env": TXN, "spec": l12_spec()}]
-    jobs += [rung("pt_b2_l12", SMOKE, "l12", shape=SHAPE_L12, halt=True)]
-    jobs += [rung("pt_b2_l12", s, "l12", keep=s <= PAUSES[-1], shape=SHAPE_L12) for s in RUNGS]
+    jobs += [rung("pt_b2_l12", SMOKE, "l12", shape=SHAPE_L12, halt=True, exclusive=True)]
+    jobs += [rung("pt_b2_l12", s, "l12", keep=s <= PAUSES[-1], shape=SHAPE_L12, exclusive=True) for s in RUNGS]
     jobs += [{"name": "sft_b2_l12", "model_name": "tc_sft_b2_l12", "after": "pt_b2_l12", "init_job": "pt_b2_l12",
               "relay_every_steps": 500, "halt_on_failure": True, "env": TXN, "spec": sft},
              {"name": "items", "after": "sft_b2_l12", "light": True, "halt_on_failure": True,

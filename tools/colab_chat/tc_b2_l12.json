@@ -221,6 +221,8 @@
    "outputs": [
     "rung.json"
    ],
+   "exclusive": true,
+   "timeout_s": 3600,
    "halt_on_failure": true
   },
   {
@@ -268,6 +270,8 @@
     "rung.json",
     "model.gguf"
    ],
+   "exclusive": true,
+   "timeout_s": 3600,
    "keep_home_snapshot": true,
    "halt_on_failure": true
   },
@@ -316,6 +320,8 @@
     "rung.json",
     "model.gguf"
    ],
+   "exclusive": true,
+   "timeout_s": 3600,
    "keep_home_snapshot": true,
    "halt_on_failure": true
   },
@@ -364,6 +370,8 @@
     "rung.json",
     "model.gguf"
    ],
+   "exclusive": true,
+   "timeout_s": 3600,
    "keep_home_snapshot": true,
    "halt_on_failure": true
   },
@@ -410,7 +418,9 @@
    ],
    "outputs": [
     "rung.json"
-   ]
+   ],
+   "exclusive": true,
+   "timeout_s": 3600
   },
   {
    "name": "rung_l12_s50000",
@@ -455,7 +465,9 @@
    ],
    "outputs": [
     "rung.json"
-   ]
+   ],
+   "exclusive": true,
+   "timeout_s": 3600
   },
   {
    "name": "sft_b2_l12",

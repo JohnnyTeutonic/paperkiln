@@ -3,12 +3,13 @@
 
     python3 tools/colab_chat/tc_b2_stop.py stop --arm NAME --state-dir DIR --reason "..."
     python3 tools/colab_chat/tc_b2_stop.py release-volume --arm NAME --state-dir DIR --reason "the lead's word, dated"
-    python3 tools/colab_chat/tc_b2_stop.py release-rung --arm NAME --state-dir DIR --rung RUNG_JOB --reason "the verdict or Jonathan's line"
+    python3 tools/colab_chat/tc_b2_stop.py release-rung --arm NAME --state-dir DIR --rung RUNG_JOB [--ahead] --reason "the verdict or Jonathan's line"
 
 stop writes DIR/HALTED (the watchdog's stop_file, which then disables the entry), SIGTERMs a live runner and waits for its pod to go.
 Volume and checkpoints stay. release-volume deletes that arm's volume, by the id its state holds and only if the provider's name for
 it is NAME-vol: the loser's last step, and only on the lead's word. release-rung lets a paused arm go past a cut-off: it keeps the
-pause marker as HALTED.<rung> and writes DIR/RELEASED_<rung>. The lead then sets a fresh deadline and enables the entry.
+pause marker as HALTED.<rung> and writes DIR/RELEASED_<rung>; --ahead releases a later rung before the arm reaches it, for a winner with no
+read left. The lead then sets a fresh deadline and enables the entry.
 """
 import argparse
 import json
@@ -86,14 +87,16 @@ def release_volume(home, arm, reason):
     return state
 
 
-def release_rung(home, arm, rung, reason):
+def release_rung(home, arm, rung, reason, ahead=False):
     check_arm(read(home), arm)
     marker = os.path.join(home, "HALTED")
-    if not os.path.exists(marker) or json.load(open(marker)).get("rung") != rung:
+    paused = os.path.exists(marker) and json.load(open(marker)).get("rung") == rung
+    if not paused and not ahead:
         raise SystemExit(f"this arm is not paused at {rung}")
     with open(os.path.join(home, f"RELEASED_{rung}"), "x") as f:
         json.dump({"reason": reason, "at": time.time()}, f)
-    os.replace(marker, os.path.join(home, f"HALTED.{rung}"))
+    if paused:
+        os.replace(marker, os.path.join(home, f"HALTED.{rung}"))
 
 
 def main(argv=None):
@@ -103,6 +106,7 @@ def main(argv=None):
     ap.add_argument("--state-dir", required=True)
     ap.add_argument("--reason", required=True)
     ap.add_argument("--rung")
+    ap.add_argument("--ahead", action="store_true")
     a = ap.parse_args(argv)
     home = os.path.expanduser(a.state_dir)
     if a.cmd == "stop":
@@ -112,7 +116,7 @@ def main(argv=None):
     else:
         if not a.rung:
             ap.error("--rung is required")
-        release_rung(home, a.arm, a.rung, a.reason)
+        release_rung(home, a.arm, a.rung, a.reason, a.ahead)
     return 0
 
 

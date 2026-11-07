@@ -146,15 +146,62 @@ def test_the_arms_pause_at_the_reads_and_keep_whole_checkpoints():
 def test_overlap_gate_names_both_hashes(tmp_path):
     import tc_b2_overlap as O
     want = load("tc_b1_pins.json")["mix"]
+    monkey = pytest.MonkeyPatch()
+    monkey.setattr(O, "manifest_text", lambda d: "the manifest")
+    good = {"mix": want, "decisions": {"b2": {"go": True}}, "packet_sha256": O.PACKET_SHA256,
+            "worker_sha256": O.sha256(str(CC / "codex_overlap_worker.py")),
+            "manifest_sha256": hashlib.sha256(b"the manifest").hexdigest()}
     d = tmp_path / "d.json"
-    d.write_text(json.dumps({"mix": want, "decisions": {"b2": {"go": True}}}))
-    assert O.main(["check", "--data", "x", "--decision", str(d), "--out", str(tmp_path / "o")]) == 0
-    d.write_text(json.dumps({"mix": {k: "0" for k in want}, "decisions": {"b2": {"go": True}}}))
+    args = ["check", "--data", "x", "--decision", str(d), "--out", str(tmp_path / "o")]
+    d.write_text(json.dumps(good))
+    assert O.main(args) == 0
+    for bad in ({"mix": {k: "0" for k in want}}, {"decisions": {"b2": {"go": False}}}, {"worker_sha256": "0"}, {"packet_sha256": "0"},
+                {"manifest_sha256": "0"}):
+        d.write_text(json.dumps({**good, **bad}))
+        with pytest.raises(SystemExit):
+            O.main(args)
+    monkey.undo()
+
+
+def test_overlap_manifest_refuses_text_or_ids_that_are_not_the_jobs(tmp_path):
+    import tc_b2_overlap as O
+    d = tmp_path
+    (d / "mix_b1.main.txt").write_text("m")
+    (d / "mix_b1.tail.txt").write_text("t")
+    (d / "mix_b1.main.ids").write_text("i")
+    (d / "mix_b1.tail.ids").write_text("j")
+    (d / "mix_b1.ledger.json").write_text(json.dumps({"parts": {"main": {"sha256": "0"}, "tail": {"sha256": "0"}}}))
     with pytest.raises(SystemExit):
-        O.main(["check", "--data", "x", "--decision", str(d), "--out", str(tmp_path / "o")])
-    d.write_text(json.dumps({"mix": want, "decisions": {"b2": {"go": False}}}))
-    with pytest.raises(SystemExit):
-        O.main(["check", "--data", "x", "--decision", str(d), "--out", str(tmp_path / "o")])
+        O.manifest(str(d))
+
+
+def test_exclusive_rung_stops_training_and_a_failed_rung_never_goes_home(tmp_path):
+    """The real jobs_vm.py with a fake trainer: the trainer sits stopped while the rung runs, and carries on after it."""
+    chat = tmp_path / "chat"
+    chat.mkdir()
+    fake = tmp_path / "fake_mtstudio"
+    fake.write_text("#!/bin/sh\nout=$(python3 -c \"import json,sys; print(json.load(open(sys.argv[1]))['out_dir'])\" $2)\nmkdir -p $out\n"
+                    "echo 5 > $out/state.txt\ni=0\nwhile [ $i -lt 60 ]; do i=$((i+1)); sleep 0.1; echo $i > $out/ticks; done\n")
+    fake.chmod(0o755)
+    probe = tmp_path / "rung.py"
+    probe.write_text("import glob, os, sys, time\n"
+                     f"t = open({str(chat / 'pt.pid.txt')!r}).read().strip() if False else None\n"
+                     f"p = [d for d in os.listdir('/proc') if d.isdigit() and b'fake_mtstudio' in open(f'/proc/{{d}}/cmdline','rb').read()]\n"
+                     "state = [open(f'/proc/{d}/stat').read().rsplit(')', 1)[1].split()[0] for d in p]\n"
+                     f"open({str(tmp_path / 'seen')!r}, 'w').write(' '.join(state))\n"
+                     f"sys.exit({0})\n")
+    jobs = {"max_parallel": 1, "max_parallel_light": 1, "jobs": [
+        {"name": "pt", "spec": {}, "snapshot_steps": [5], "model_name": "m"},
+        {"name": "rung", "light": True, "exclusive": True, "timeout_s": 30, "rung_of": {"job": "pt", "step": 5}, "cmd": ["python3", str(probe)]}]}
+    jf = tmp_path / "jobs.json"
+    jf.write_text(json.dumps(jobs))
+    (chat / "pt").mkdir()
+    (chat / "pt" / "model.safetensors").write_text("w")
+    env = {**os.environ, "JOBS_CHAT_DIR": str(chat), "JOBS_REPO": str(tmp_path), "JOBS_MTSTUDIO": str(fake), "JOBS_TICK": "0.05"}
+    subprocess.run([sys.executable, str(CC / "jobs_vm.py"), str(jf)], env=env, check=True, timeout=60, capture_output=True)
+    assert "T" in (tmp_path / "seen").read_text().split()      # stopped while the rung ran
+    assert (chat / "pt" / "ticks").read_text().strip() == "60"  # and it finished afterwards
+    assert (chat / "STATUS_pt").read_text().strip() == "FINISHED"
 
 
 def test_relay_copies_one_generation_through_a_commit(tmp_path):

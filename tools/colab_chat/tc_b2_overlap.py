@@ -6,8 +6,10 @@
 
 scan ties each part's text to its ids through the data job's own ledgers, so the text scanned is the text the ids came from, then runs
 codex_overlap_worker.py unchanged. It reports counts and passes no judgement: the worker's receipt says COMPLETE_REQUIRES_CODEX_REVIEW.
-check runs once Codex's reviewed decision reaches the VM (jobs_vm.py holds it on `promoted_by`): the decision must name both final mix
-hashes, or training does not start. Keyed fingerprints only; no target text or case id is read or written here.
+check runs once Codex's reviewed decision reaches the VM (jobs_vm.py holds it on `promoted_by`). The decision is a file Codex writes by
+temporary file and rename, {"decisions": {"b2": {"go": true}}, "mix": {both .ids hashes}, "worker_sha256", "packet_sha256", "manifest_sha256"}.
+It must name this worker, the pinned packet, the manifest this VM rebuilds from its own text and ids, and both final mix hashes, or training
+does not start. Keyed fingerprints only; no target text or case id is read or written here.
 """
 import argparse
 import hashlib
@@ -17,6 +19,7 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+PACKET_SHA256 = "525165893ecebc48a03f1b5bf1daf53e5bf35babd7e0d11d14202b93791a9b87"
 
 
 def sha256(path):
@@ -44,13 +47,19 @@ def manifest(d):
     return rows
 
 
+def manifest_text(d):
+    return json.dumps(manifest(d), indent=1)
+
+
 def scan(a):
     os.makedirs(a.out, exist_ok=True)
     m = os.path.join(a.out, "manifest.json")
     if not os.path.exists(m):
         with open(m + ".tmp", "w") as f:
-            json.dump(manifest(a.data), f, indent=1)
+            f.write(manifest_text(a.data))
         os.replace(m + ".tmp", m)
+    if sha256(a.packet) != PACKET_SHA256:
+        raise SystemExit("not the pinned keyed packet")
     out = os.path.join(a.out, "overlap_receipt.json")
     if os.path.exists(out):
         print(f"{out}: present")
@@ -64,6 +73,12 @@ def check(a):
     bad = [k for k, v in want.items() if d.get("mix", {}).get(k) != v]
     if d.get("decisions", {}).get("b2", {}).get("go") is not True:
         bad.append("no go")
+    if d.get("worker_sha256") != sha256(os.path.join(HERE, "codex_overlap_worker.py")):
+        bad.append("worker")
+    if d.get("packet_sha256") != PACKET_SHA256:
+        bad.append("packet")
+    if d.get("manifest_sha256") != hashlib.sha256(manifest_text(a.data).encode()).hexdigest():
+        bad.append("manifest")
     os.makedirs(a.out, exist_ok=True)
     with open(os.path.join(a.out, "overlap_check.json"), "w") as f:
         json.dump({"mix": want, "decision_sha256": sha256(a.decision), "bad": bad}, f, indent=1)

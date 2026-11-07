@@ -944,6 +944,10 @@ def gate_upload(j, st):
     """A job's "gate_upload": {"home", "vm"}: one small file sent to the VM once it exists at home, for a job holding on `promoted_by`."""
     g, js = j.get("gate_upload"), st.job(j["name"])
     if g and not js.get("gate_sent") and os.path.exists(g["home"]):
+        try:
+            json.load(open(g["home"]))
+        except ValueError:
+            return  # being written: the next tick
         if T.put(g["home"], g["vm"] + ".tmp", 300)[0] == 0:
             rc, out = exec_py(f"import os\nos.replace({g['vm'] + '.tmp'!r}, {g['vm']!r})\nprint('GATE_OK')\n")
             if "GATE_OK" in out:

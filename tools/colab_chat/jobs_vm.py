@@ -26,6 +26,9 @@ Rungs and successive halving (experiments/tiny_chat_2026-10/PREREGISTRATION.md, 
   replaced), the job is marked FAILED with "rung lost" in its log, so the session still ends.
 - "light": true: the job runs in its own pool of "max_parallel_light" slots (default 1), not in
   max_parallel's, so short scoring jobs never hold back a training job.
+- "exclusive": true on a rung job: its training job gets SIGSTOP while it runs and SIGCONT when it ends, so the rung has the GPU alone
+  (Stage 0: 512 panel windows took 756 s beside training, about one window a training step). "timeout_s" ends it as FAILED. Training
+  loses wall time only; a manager that starts up sends SIGCONT to what it adopts, so a dead manager cannot leave training stopped.
 - "after_terminal": true: wait until every "after" job has ended, FINISHED or FAILED, and run
   either way (a promotion step that must see failed candidates too).
 - "promoted_by": {"files": [F, ...], "round": R, "key": K}: hold the job until one of the JSON
@@ -35,6 +38,7 @@ Rungs and successive halving (experiments/tiny_chat_2026-10/PREREGISTRATION.md, 
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -268,6 +272,7 @@ def main():
     take_lock()
     t0 = time.time()
     running = {}
+    held = {}         # exclusive rung job -> (training job, started)
     deferred = set()  # restored once the runner's upload of their checkpoint is READY
     for name in jobs:
         st = status(name)
@@ -276,6 +281,10 @@ def main():
             if pid:
                 running[name] = Adopted(pid, name)
                 print(f"{name}: adopted running pid {pid}", flush=True)
+                try:
+                    os.kill(pid, signal.SIGCONT)  # an earlier manager may have held it for a rung
+                except OSError:
+                    pass
                 continue
         if st not in ("FINISHED", "FAILED"):
             if awaiting_upload(name):
@@ -284,6 +293,11 @@ def main():
                 restore(name)
             set_status(name, "WAITING")
     while True:
+        for name, (held_job, started) in list(held.items()):
+            limit = jobs[name].get("timeout_s")
+            if limit and time.time() - started > limit and running[name].poll() is None:
+                note(name, f"exclusive rung over {limit} s: ended")
+                os.killpg(running[name].pid, signal.SIGKILL)
         for name, p in list(running.items()):
             rc = p.poll()
             if rc is not None:
@@ -292,6 +306,13 @@ def main():
                 set_status(name, "FINISHED" if rc == 0 else "FAILED")
                 print(f"{name}: exit {rc} {time.strftime('%H:%M:%S')}", flush=True)
                 del running[name]
+                if name in held:
+                    t = running.get(held.pop(name)[0])
+                    if t is not None:
+                        try:
+                            os.kill(t.pid, signal.SIGCONT)
+                        except OSError:
+                            pass
         for name, j in jobs.items():  # rung snapshots: before any rung job looks for them
             if j.get("snapshot_steps") and "cmd" not in j and status(name) not in ("FINISHED", "FAILED"):
                 take_snapshot(name, j)
@@ -361,8 +382,17 @@ def main():
                         os.remove(f)
                 wrap = ['sh', '-c', f'echo $$ > {C}/{name}.pid; "$@"; r=$?; echo $r > {C}/{name}.rc; exit $r', 'sh',
                         *argv]
+                exclusive = bool(jobs[name].get("exclusive"))
+                train = running.get(jobs[name]["rung_of"]["job"]) if exclusive else None
+                if train is not None:
+                    try:
+                        os.kill(train.pid, signal.SIGSTOP)
+                    except OSError:
+                        train = None
                 running[name] = subprocess.Popen(wrap, cwd=REPO, stdout=log, stderr=subprocess.STDOUT,
-                                                 env=env)
+                                                 env=env, start_new_session=exclusive)
+                if exclusive:
+                    held[name] = (jobs[name]["rung_of"]["job"] if train is not None else None, time.time())
             else:
                 spec = spec_for(jobs[name], jobs)
                 running[name] = subprocess.Popen([BIN, "run", spec], stdout=log, stderr=subprocess.STDOUT, env=env)
