@@ -923,6 +923,35 @@ def halt_drill(st, job):
         raise SystemExit(3)
 
 
+def pause_at_rung(j, st):
+    """A job's "pause_rungs": once a named rung job is home, its read is at home or lost, and this arm stops there unless HOME/RELEASED_<rung>
+    exists. The marker is HALTED (the watchdog's stop_file), the pod ends, and the volume and every checkpoint stay. tc_b2_stop.py
+    release-rung lets it go on. Returns the rung, or None."""
+    for rung in j.get("pause_rungs", []):
+        if st.job(rung)["home"] and not os.path.exists(os.path.join(HOME, f"RELEASED_{rung}")):
+            marker = os.path.join(HOME, "HALTED")
+            if not os.path.exists(marker):
+                with open(marker, "x") as handle:
+                    json.dump({"kind": "CUTOFF_REACHED", "rung": rung, "job": j["name"], "at": time.time()}, handle)
+                    handle.flush()
+                    os.fsync(handle.fileno())
+            log(f"{j['name']}: paused at {rung}: pod ends, volume and checkpoints stay")
+            return rung
+    return None
+
+
+def gate_upload(j, st):
+    """A job's "gate_upload": {"home", "vm"}: one small file sent to the VM once it exists at home, for a job holding on `promoted_by`."""
+    g, js = j.get("gate_upload"), st.job(j["name"])
+    if g and not js.get("gate_sent") and os.path.exists(g["home"]):
+        if T.put(g["home"], g["vm"] + ".tmp", 300)[0] == 0:
+            rc, out = exec_py(f"import os\nos.replace({g['vm'] + '.tmp'!r}, {g['vm']!r})\nprint('GATE_OK')\n")
+            if "GATE_OK" in out:
+                js["gate_sent"] = True
+                st.save()
+                log(f"{j['name']}: gate file sent")
+
+
 def halt_dpo_checkpoint(error):
     marker = os.path.join(HOME, "HALTED")
     if not os.path.exists(marker):
@@ -1393,11 +1422,15 @@ def main():
                     js["home"] = True
                     st.save()
                 done = done and js["home"]
+            for j in jobs:
+                gate_upload(j, st)
             if has_rungs:
                 try:
                     fetch_rung_snapshot(st, jobs, r, relayed)
                 except (OSError, ValueError, KeyError, TypeError) as e:  # a backstop must never end a driver
                     log(f"rung snapshots: {e!r}")
+            if any(pause_at_rung(j, st) for j in jobs):
+                raise SystemExit(0)
             if done:
                 log("all jobs finished and home")
                 st.d["campaign_home"] = True

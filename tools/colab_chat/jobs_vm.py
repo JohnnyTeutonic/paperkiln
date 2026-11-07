@@ -186,7 +186,8 @@ def take_snapshot(name, job):
     shutil.rmtree(tmp, ignore_errors=True)
     os.makedirs(tmp)
     try:
-        for f in ("model.safetensors", "state.txt"):
+        # "snapshot_full_steps": the optimiser too, so a kept cut-off is a whole checkpoint, on the volume.
+        for f in ("model.safetensors", "state.txt") + (("optim.safetensors",) if step in job.get("snapshot_full_steps", []) else ()):
             shutil.copyfile(f"{out}/{f}", f"{tmp}/{f}")
     except OSError:
         shutil.rmtree(tmp, ignore_errors=True)

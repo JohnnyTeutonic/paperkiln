@@ -38,6 +38,7 @@
    "name": "data",
    "light": true,
    "halt_on_failure": true,
+   "after": "l12_probe",
    "env": {
     "TC_B1_KEEP_MIX_TEXT": "1"
    },
@@ -62,20 +63,61 @@
    ]
   },
   {
+   "name": "overlap_check",
+   "after": "data",
+   "light": true,
+   "halt_on_failure": true,
+   "gate_upload": {
+    "home": "/mnt/c/ml_artifacts/tiny_chat/b2_overlap/overlap_decision.json",
+    "vm": "/content/chat/upload/overlap_decision.json"
+   },
+   "promoted_by": {
+    "files": [
+     "/content/chat/upload/overlap_decision.json"
+    ],
+    "round": "b2",
+    "key": "go"
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tc_b2_overlap.py",
+    "check",
+    "--data",
+    "/content/chat/data",
+    "--decision",
+    "/content/chat/upload/overlap_decision.json",
+    "--out",
+    "{out}"
+   ],
+   "outputs": [
+    "overlap_check.json"
+   ]
+  },
+  {
    "name": "pt_b2_l12",
    "model_name": "tc_b2_l12",
    "after": [
     "data",
     "cuda_gate",
-    "l12_probe"
+    "l12_probe",
+    "overlap_check"
    ],
    "relay_every_steps": 2500,
    "snapshot_steps": [
+    1000,
     10000,
     20000,
     30000,
     40000,
     50000
+   ],
+   "snapshot_full_steps": [
+    20000,
+    30000
+   ],
+   "pause_rungs": [
+    "rung_l12_s20000",
+    "rung_l12_s30000"
    ],
    "halt_on_failure": true,
    "env": {
@@ -136,6 +178,52 @@
    }
   },
   {
+   "name": "rung_l12_s1000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_b2_l12",
+    "step": 1000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_long_2026-10/specs/cell_b2_l12.json",
+    "--export-gguf",
+    "--weights",
+    "/content/chat/pt_b2_l12/rung_1000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_b2_l12",
+    "--step",
+    "1000",
+    "--job",
+    "pt_b2_l12",
+    "--cell",
+    "L12",
+    "--seed",
+    "1",
+    "--share",
+    "30",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ],
+   "halt_on_failure": true
+  },
+  {
    "name": "rung_l12_s10000",
    "after": "data",
    "light": true,
@@ -154,6 +242,7 @@
     "{out}",
     "--spec",
     "experiments/tiny_chat_long_2026-10/specs/cell_b2_l12.json",
+    "--export-gguf",
     "--weights",
     "/content/chat/pt_b2_l12/rung_10000/model.safetensors",
     "--pt-dir",
@@ -163,7 +252,7 @@
     "--job",
     "pt_b2_l12",
     "--cell",
-    "B1",
+    "L12",
     "--seed",
     "1",
     "--share",
@@ -176,9 +265,11 @@
     "corpus/eval/carry5_v1.jsonl"
    ],
    "outputs": [
-    "rung.json"
+    "rung.json",
+    "model.gguf"
    ],
-   "keep_home_snapshot": true
+   "keep_home_snapshot": true,
+   "halt_on_failure": true
   },
   {
    "name": "rung_l12_s20000",
@@ -199,6 +290,7 @@
     "{out}",
     "--spec",
     "experiments/tiny_chat_long_2026-10/specs/cell_b2_l12.json",
+    "--export-gguf",
     "--weights",
     "/content/chat/pt_b2_l12/rung_20000/model.safetensors",
     "--pt-dir",
@@ -208,7 +300,7 @@
     "--job",
     "pt_b2_l12",
     "--cell",
-    "B1",
+    "L12",
     "--seed",
     "1",
     "--share",
@@ -221,9 +313,11 @@
     "corpus/eval/carry5_v1.jsonl"
    ],
    "outputs": [
-    "rung.json"
+    "rung.json",
+    "model.gguf"
    ],
-   "keep_home_snapshot": true
+   "keep_home_snapshot": true,
+   "halt_on_failure": true
   },
   {
    "name": "rung_l12_s30000",
@@ -244,6 +338,7 @@
     "{out}",
     "--spec",
     "experiments/tiny_chat_long_2026-10/specs/cell_b2_l12.json",
+    "--export-gguf",
     "--weights",
     "/content/chat/pt_b2_l12/rung_30000/model.safetensors",
     "--pt-dir",
@@ -253,7 +348,7 @@
     "--job",
     "pt_b2_l12",
     "--cell",
-    "B1",
+    "L12",
     "--seed",
     "1",
     "--share",
@@ -266,8 +361,11 @@
     "corpus/eval/carry5_v1.jsonl"
    ],
    "outputs": [
-    "rung.json"
-   ]
+    "rung.json",
+    "model.gguf"
+   ],
+   "keep_home_snapshot": true,
+   "halt_on_failure": true
   },
   {
    "name": "rung_l12_s40000",
@@ -288,6 +386,7 @@
     "{out}",
     "--spec",
     "experiments/tiny_chat_long_2026-10/specs/cell_b2_l12.json",
+    "--export-gguf",
     "--weights",
     "/content/chat/pt_b2_l12/rung_40000/model.safetensors",
     "--pt-dir",
@@ -297,7 +396,7 @@
     "--job",
     "pt_b2_l12",
     "--cell",
-    "B1",
+    "L12",
     "--seed",
     "1",
     "--share",
@@ -332,6 +431,7 @@
     "{out}",
     "--spec",
     "experiments/tiny_chat_long_2026-10/specs/cell_b2_l12.json",
+    "--export-gguf",
     "--weights",
     "/content/chat/pt_b2_l12/rung_50000/model.safetensors",
     "--pt-dir",
@@ -341,7 +441,7 @@
     "--job",
     "pt_b2_l12",
     "--cell",
-    "B1",
+    "L12",
     "--seed",
     "1",
     "--share",

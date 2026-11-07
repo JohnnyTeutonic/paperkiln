@@ -1234,6 +1234,15 @@ def cmd_rung(a):
          "val_loss": next((e["val_loss"] for e in ev if e.get("event") == "eval" and e.get("step") == a.step), None),
          "train_loss_last50": sum(tl) / len(tl) if tl else None}
     s["panels"] = zero_rate_panels(shape, a.weights, a.out, a.panel)
+    if a.export_gguf:  # a state-token shape is scored only through a GGUF that declares its tokens (carry5_eval.py)
+        spec = os.path.join(a.out, "export_spec.json")
+        jsave(spec, {**shape, "name": os.path.splitext(os.path.basename(a.weights))[0],
+                     "out_dir": os.path.dirname(os.path.abspath(a.weights))})
+        g, why = ensure_f32_gguf(spec, a.weights, os.path.join(a.out, "export.log"))
+        if g is None:
+            raise SystemExit(f"rung export: {why}")
+        shutil.copyfile(g, os.path.join(a.out, "model.gguf"))
+        s["gguf_sha256"] = why
     s["carry5_base"] = carry5_base(shape, a.weights, a.carry5_items, a.out, required=True)
     s.update(rung_metrics(s["carry5_base"]))
     s["gpu"] = gpu_name()
@@ -1672,6 +1681,7 @@ def main(argv=None):
     p.add_argument("--pt-dir", required=True)
     p.add_argument("--step", type=int, required=True)
     p.add_argument("--drop-snapshot", action="store_true", help="delete the snapshot's weights once rung.json is saved")
+    p.add_argument("--export-gguf", action="store_true", help="export the snapshot's F32 GGUF first; a copy stays in --out")
     p.add_argument("--job", required=True)
     p.add_argument("--cell", required=True)
     p.add_argument("--seed", type=int, required=True)

@@ -51,18 +51,19 @@ def test_race_arm_gates_on_its_probe_and_the_same_pins():
 
 def test_probe_bars():
     import tc_b2_probe as Q
-    ok = {"peak_pool_mib": 17000, "peak_smi_mib": 18000, "s_per_step": 2.1}
+    ok = {"peak_pool_mib": 15000, "peak_smi_mib": 18000, "s_per_step": 2.1, "params": 97539840}
     assert Q.verdict(ok) == []
-    assert Q.verdict({**ok, "peak_smi_mib": 21000})
-    assert Q.verdict({**ok, "s_per_step": 2.7})
+    assert Q.verdict({**ok, "peak_smi_mib": 18100})
+    assert Q.verdict({**ok, "s_per_step": 2.31})
+    assert Q.verdict({**ok, "params": 72761088})
     assert Q.verdict({"peak_pool_mib": None, "peak_smi_mib": None, "s_per_step": None})
 
 
-def race_state(home, name="pk-tc-b2-l12", pod=None):
+def race_state(home, name="pk-tc-b2-l12", pod=None, pods=True):
     os.makedirs(home, exist_ok=True)
     st = {"runpod": {"pod": pod, "volume": {"id": "v1", "dc": "X", "gb": 80},
-                     "ledger": {"pods": [{"id": "p", "name": name, "usd_per_hr": 0.59, "start": 0, "stop": 3600}],
-                                "volumes": [{"id": "v1", "gb": 80, "created": 0}]}}}
+                     "ledger": {"pods": [{"id": "p", "name": name, "usd_per_hr": 0.59, "start": 0, "stop": 3600}] if pods else [],
+                                "volumes": [{"id": "v1", "gb": 80, "created": 0, "name": f"{name}-vol"}]}}}
     json.dump(st, open(os.path.join(home, "state.json"), "w"))
 
 
@@ -72,9 +73,11 @@ def test_stop_releases_only_its_own_volume(tmp_path, monkeypatch):
     home = str(tmp_path / "s")
     race_state(home)
     deleted = []
-    monkeypatch.setattr(api, "list_volumes", lambda: [{"id": "v1"}, {"id": "other"}])
+    monkeypatch.setattr(api, "list_volumes", lambda: [{"id": "v1", "name": "pk-tc-b2-l12-vol"}, {"id": "other", "name": "x"}])
     monkeypatch.setattr(api, "delete_volume", lambda i: deleted.append(i) or True)
-    st = X.stop(home, "lost at the cut-off", True, sleep=lambda s: None)
+    X.stop(home, "pk-tc-b2-l12", "lost at the cut-off", sleep=lambda s: None)
+    assert deleted == []  # stop never releases
+    st = X.release_volume(home, "pk-tc-b2-l12", "the lead's word")
     assert deleted == ["v1"] and st["runpod"]["volume"] is None
     assert json.load(open(os.path.join(home, "HALTED")))["kind"] == "RACE_ARM_STOPPED"
 
@@ -85,12 +88,73 @@ def test_stop_keeps_the_volume_unless_told_and_refuses_a_stranger(tmp_path, monk
     monkeypatch.setattr(api, "delete_volume", lambda i: pytest.fail("no delete"))
     home = str(tmp_path / "s")
     race_state(home)
-    X.stop(home, "held", False, sleep=lambda s: None)
+    X.stop(home, "pk-tc-b2-l12", "held", sleep=lambda s: None)
+    with pytest.raises(SystemExit):           # the wrong arm's name for this directory
+        X.release_volume(home, "pk-tc-b1-r1", "typo")
     other = str(tmp_path / "o")
     race_state(other, name="pk-c12-sfull-r1")
     with pytest.raises(SystemExit):
-        X.stop(other, "no", True, sleep=lambda s: None)
+        X.stop(other, "pk-tc-b2-l12", "no", sleep=lambda s: None)
     assert not os.path.exists(os.path.join(other, "HALTED"))
+    nopod = str(tmp_path / "n")               # a volume made, no pod ever up
+    race_state(nopod, pods=False)
+    X.stop(nopod, "pk-tc-b2-l12", "race off", sleep=lambda s: None)
+
+
+def test_pause_and_release(tmp_path):
+    import runner_multi as rm
+    import tc_b2_stop as X
+    home = tmp_path / "h"
+    race_state(str(home))
+    rm.HOME = str(home)
+    (home / "runner.log").write_text("")
+
+    class St:
+        jobs = {"rung_l12_s20000": {"home": False}, "rung_l12_s30000": {"home": False}}
+
+        def job(self, n):
+            return self.jobs[n]
+
+    j = {"name": "pt_b2_l12", "pause_rungs": ["rung_l12_s20000", "rung_l12_s30000"]}
+    st = St()
+    assert rm.pause_at_rung(j, st) is None
+    st.jobs["rung_l12_s20000"]["home"] = True
+    assert rm.pause_at_rung(j, st) == "rung_l12_s20000"
+    assert json.load(open(home / "HALTED"))["kind"] == "CUTOFF_REACHED"
+    X.release_rung(str(home), "pk-tc-b2-l12", "rung_l12_s20000", "verdict a")
+    assert not (home / "HALTED").exists() and (home / "HALTED.rung_l12_s20000").exists()
+    assert rm.pause_at_rung(j, st) is None
+    st.jobs["rung_l12_s30000"]["home"] = True
+    assert rm.pause_at_rung(j, st) == "rung_l12_s30000"
+
+
+def test_the_arms_pause_at_the_reads_and_keep_whole_checkpoints():
+    for name, job, tag in (("tc_b1_r1.json", "pt_b1_r1", "b1"), ("tc_b2_l12.json", "pt_b2_l12", "l12")):
+        jobs = {j["name"]: j for j in load(name)["jobs"]}
+        assert jobs[job]["pause_rungs"] == [f"rung_{tag}_s20000", f"rung_{tag}_s30000"]
+        assert jobs[job]["snapshot_full_steps"] == [20000, 30000]
+        assert "overlap_check" in jobs[job]["after"]
+        for s in (10000, 20000, 30000):
+            r = jobs[f"rung_{tag}_s{s}"]
+            assert r["halt_on_failure"] and r["keep_home_snapshot"] and "model.gguf" in r["outputs"] and "--export-gguf" in r["cmd"]
+        assert not jobs[f"rung_{tag}_s40000"].get("halt_on_failure")
+    assert "overlap" in {j["name"] for j in load("tc_b1_r1.json")["jobs"]}
+    assert "overlap" not in {j["name"] for j in load("tc_b2_l12.json")["jobs"]}
+    assert next(j for j in load("tc_b2_l12.json")["jobs"] if j["name"] == "data")["after"] == "l12_probe"
+
+
+def test_overlap_gate_names_both_hashes(tmp_path):
+    import tc_b2_overlap as O
+    want = load("tc_b1_pins.json")["mix"]
+    d = tmp_path / "d.json"
+    d.write_text(json.dumps({"mix": want, "decisions": {"b2": {"go": True}}}))
+    assert O.main(["check", "--data", "x", "--decision", str(d), "--out", str(tmp_path / "o")]) == 0
+    d.write_text(json.dumps({"mix": {k: "0" for k in want}, "decisions": {"b2": {"go": True}}}))
+    with pytest.raises(SystemExit):
+        O.main(["check", "--data", "x", "--decision", str(d), "--out", str(tmp_path / "o")])
+    d.write_text(json.dumps({"mix": want, "decisions": {"b2": {"go": False}}}))
+    with pytest.raises(SystemExit):
+        O.main(["check", "--data", "x", "--decision", str(d), "--out", str(tmp_path / "o")])
 
 
 def test_relay_copies_one_generation_through_a_commit(tmp_path):
@@ -145,7 +209,7 @@ def test_files_are_what_the_generator_writes():
 def test_b_spec_is_section_9():
     s = next(j for j in load("tc_b1_r1.json")["jobs"] if j["name"] == "pt_b1_r1")
     assert s["model_name"] == "tc_b1_r1" and s["relay_every_steps"] == 2500
-    assert s["snapshot_steps"] == [10000, 20000, 30000, 40000, 50000]
+    assert s["snapshot_steps"] == [1000, 10000, 20000, 30000, 40000, 50000]
     t, d, a = s["spec"]["train"], s["spec"]["data"], s["spec"]["arch"]
     assert t["steps"] * t["batch"] * d["T"] == 983040000
     assert (t["lr"], t["batch"], t["accum"], t["checkpoint_every"], t["eval_every"], t["seed"]) == (0.0005, 16, 1, 125, 1000, 1)
@@ -157,7 +221,7 @@ def test_b_spec_is_section_9():
     assert sfull["spec"]["arch"] == a  # strict load from every S-lineage recipe
 
 
-@pytest.mark.parametrize("name", ["tc_b1_s0.json", "tc_b1_r1.json"])
+@pytest.mark.parametrize("name", ["tc_b1_s0.json", "tc_b1_r1.json", "tc_b2_l12.json"])
 def test_jobs_are_well_formed(name):
     jobs = load(name)["jobs"]
     names = [j["name"] for j in jobs]
@@ -191,7 +255,7 @@ def test_stage0_has_every_drill():
 def test_rungs_kept_at_home_for_the_cpu_lambada():
     j = {x["name"]: x for x in load("tc_b1_r1.json")["jobs"]}
     assert j["rung_b1_s10000"].get("keep_home_snapshot") and j["rung_b1_s20000"].get("keep_home_snapshot")
-    assert not j["rung_b1_s30000"].get("keep_home_snapshot")
+    assert not j["rung_b1_s40000"].get("keep_home_snapshot")
 
 
 def test_sft_recipe_is_sfull_sft1500():

@@ -6,8 +6,8 @@
 Sixty steps of the real shape at 8 x 2, T 1,024, on the pinned small corpus, in a scratch directory. No 12-layer figure exists
 at T 1,024: this is the first. GPU memory is read twice, from the device pool's own high-water mark (MICROTORCH_STEP_TIMING) and
 from nvidia-smi every 2 s, and the larger counts. It must leave room for the rung job's 2,048 MB pool beside training, and the rate
-must be one the registered cost can carry. Writes OUT/probe.json. Exit 1 when either bar fails: the job is halt_on_failure, so the
-pod ends before any spend on the 12-layer arm, and 8x768 goes on alone.
+must be one the registered cost can carry. Writes OUT/probe.json. Exit 1 when a bar fails: the job is halt_on_failure, so the pod ends
+before any spend on the 12-layer arm, and 8x768 goes on alone. It runs before the data job, so its rate has the GPU and CPU to itself.
 """
 import argparse
 import json
@@ -20,8 +20,9 @@ import time
 
 BIN = os.environ.get("JOBS_MTSTUDIO", "/content/pk/build_cuda/mtstudio")
 DEVICE_MIB = 23034
-ROOM_MIB = 2048 + 256        # the rung job's pool, and its margin
-MAX_S_PER_STEP = 2.6         # steady, over steps 21 to 60
+ROOM_MIB = 5000              # the rung job beside training: MICROTORCH_POOL_MB bounds its cache, not its live bytes (an estimate)
+MAX_S_PER_STEP = 2.3         # steady, over steps 21 to 60: 10% over the slow estimate of 2.08
+PARAMS = 97539840
 TAIL = 20                    # skipped: warm-up of the pool and the caches
 
 
@@ -54,6 +55,8 @@ def read(ev_path):
 def verdict(rep):
     """Pure, for the tests: the two bars on the measured numbers."""
     bad = []
+    if rep.get("params", PARAMS) != PARAMS:
+        bad.append(f"params {rep['params']}, not {PARAMS}")
     peak = max(rep["peak_pool_mib"] or 0, rep["peak_smi_mib"] or 0)
     if not peak:
         bad.append("no memory reading")

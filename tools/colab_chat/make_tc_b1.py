@@ -18,6 +18,8 @@ TXN = {"MICROTORCH_CHECKPOINT_TXN": "1"}
 SHAPE = "experiments/tiny_chat_long_2026-10/specs/cell_Sfull.json"
 SHAPE_L12 = "experiments/tiny_chat_long_2026-10/specs/cell_b2_l12.json"
 RUNGS = [10000, 20000, 30000, 40000, 50000]
+PAUSES = [20000, 30000]   # the race's reads: both arms stop at each until released (PROTOCOL.md section 30)
+SMOKE = 1000              # a rung early on, so a rung fault or a memory limit beside training shows here, not at step 10,000
 # ember's /score for the final benchmarks: the commit tools/colab_chat/bench_v2.json gated (580e1089), under its new id
 # after the history rewrite of 3 Nov (C:/ml_artifacts/purge_20261103/ember.cpp.commit-map).
 EMBER_SCORE = "cc6635bee8c89b8b0304edeca633b1903b5d9291"
@@ -109,14 +111,33 @@ def sft_spec():
             "train": {**t["train"], "batch": 16, "accum": 1, "seed": 1}, "export": t["export"]}
 
 
+DECISION = {"home": "/mnt/c/ml_artifacts/tiny_chat/b2_overlap/overlap_decision.json", "vm": "/content/chat/upload/overlap_decision.json"}
+
+
+def overlap_jobs(scan):
+    """Codex's counts-only scan of the final mix, once, on arm A; a Codex-reviewed decision naming both mix hashes, then training on both."""
+    j = []
+    if scan:
+        j.append({"name": "overlap", "after": "data", "light": True, "halt_on_failure": True,
+                  "cmd": ["python3", "tools/colab_chat/tc_b2_overlap.py", "scan", "--data", "/content/chat/data", "--packet",
+                          "/content/chat/upload/targets.keyed.json", "--out", "{out}"],
+                  "outputs": ["overlap_receipt.json", "manifest.json"]})
+    j.append({"name": "overlap_check", "after": "data", "light": True, "halt_on_failure": True, "gate_upload": DECISION,
+              "promoted_by": {"files": [DECISION["vm"]], "round": "b2", "key": "go"},
+              "cmd": ["python3", "tools/colab_chat/tc_b2_overlap.py", "check", "--data", "/content/chat/data", "--decision", DECISION["vm"],
+                      "--out", "{out}"],
+              "outputs": ["overlap_check.json"]})
+    return j
+
+
 def cuda_gate():
     return {"name": "cuda_gate", "halt_on_failure": True,
             "cmd": ["python3", "tools/colab_chat/tiny_chat_run.py", "cuda_gate", "--out", "{out}"],
             "outputs": ["cuda_gate.json", "cuda_gate.log"]}
 
 
-def data(mode):
-    return {"name": "data", "light": True, "halt_on_failure": True,
+def data(mode, after=None):
+    return {"name": "data", "light": True, "halt_on_failure": True, **({"after": after} if after else {}),
             # Keeps the mix's text: Codex's counts-only scan of the final mix reads it (inbox, 7 Nov). Stage 0 needed no scan.
             "env": {} if mode == "stage0" else {"TC_B1_KEEP_MIX_TEXT": "1"},
             "cmd": ["bash", "tools/colab_chat/base_b1_data.sh", "{out}", V, mode],
@@ -126,18 +147,23 @@ def data(mode):
                         "human/human_dialogue_v1.ledger.json"]}
 
 
-def rung(job, step, tag, keep=False, shape=SHAPE):
+def rung(job, step, tag, keep=False, shape=SHAPE, halt=False):
+    """keep: a rung the race reads: its GGUF and weights stay at home, and a failure stops the arm, because the read needs it."""
     j = {"name": f"rung_{tag}_s{step}", "after": "data", "light": True, "rung_of": {"job": job, "step": step},
          "env": {"MICROTORCH_POOL_MB": 2048},
-         "cmd": ["python3", "tools/colab_chat/tiny_chat_run.py", "rung", "--out", "{out}", "--spec", shape,
+         "cmd": ["python3", "tools/colab_chat/tiny_chat_run.py", "rung", "--out", "{out}", "--spec", shape, "--export-gguf",
                  "--weights", f"/content/chat/{job}/rung_{step}/model.safetensors", "--pt-dir", f"/content/chat/{job}",
-                 "--step", str(step), "--job", job, "--cell", "B1", "--seed", "1", "--share", "30",
+                 "--step", str(step), "--job", job, "--cell", tag.upper(), "--seed", "1", "--share", "30",
                  "--panel", "fineweb=/content/chat/data/panel_fineweb.ids",
                  "--panel", "dialogue=/content/chat/data/panel_dialogue.ids",
                  "--carry5-items", "corpus/eval/carry5_v1.jsonl"],
          "outputs": ["rung.json"]}
+    if halt:
+        j["halt_on_failure"] = True
     if keep:
         j["keep_home_snapshot"] = True
+        j["halt_on_failure"] = True
+        j["outputs"] = ["rung.json", "model.gguf"]
     return j
 
 
@@ -168,10 +194,11 @@ def b1():
     links = [(f"/content/chat/pt_b1_r1/rung_{s}/model.safetensors", f"b1_s{s}") for s in RUNGS]
     links += [("/content/chat/pt_b1_r1/tc_b1_r1.safetensors", "b1_final"), ("/content/chat/sft_b1_r1/tc_sft_b1_r1.safetensors", "b1_sft")]
     link = " && ".join(f"ln -sf {a} /content/chat/upload/{t}.safetensors" for a, t in links)
-    jobs = [cuda_gate(), data("b1"),
-            {"name": "pt_b1_r1", "model_name": "tc_b1_r1", "after": ["data", "cuda_gate"], "relay_every_steps": 2500,
-             "snapshot_steps": RUNGS, "halt_on_failure": True, "env": TXN, "spec": b_spec()}]
-    jobs += [rung("pt_b1_r1", s, "b1", keep=s <= 20000) for s in RUNGS]
+    jobs = [cuda_gate(), data("b1"), *overlap_jobs(True),
+            {"name": "pt_b1_r1", "model_name": "tc_b1_r1", "after": ["data", "cuda_gate", "overlap_check"], "relay_every_steps": 2500,
+             "snapshot_steps": [SMOKE, *RUNGS], "snapshot_full_steps": PAUSES, "pause_rungs": [f"rung_b1_s{s}" for s in PAUSES],
+             "halt_on_failure": True, "env": TXN, "spec": b_spec()}]
+    jobs += [rung("pt_b1_r1", SMOKE, "b1", halt=True)] + [rung("pt_b1_r1", s, "b1", keep=s <= PAUSES[-1]) for s in RUNGS]
     jobs += [{"name": "sft_b1_r1", "model_name": "tc_sft_b1_r1", "after": "pt_b1_r1", "init_job": "pt_b1_r1",
               "relay_every_steps": 500, "halt_on_failure": True, "env": TXN, "spec": sft_spec()},
              {"name": "items", "after": "sft_b1_r1", "light": True, "halt_on_failure": True,
@@ -199,10 +226,12 @@ def l12():
             {"name": "l12_probe", "after": "cuda_gate", "halt_on_failure": True,
              "cmd": ["python3", "tools/colab_chat/tc_b2_probe.py", "--out", "{out}", "--spec", "tools/colab_chat/tc_b2_probe_spec.json"],
              "outputs": ["probe.json"]},
-            data("b1"),
-            {"name": "pt_b2_l12", "model_name": "tc_b2_l12", "after": ["data", "cuda_gate", "l12_probe"], "relay_every_steps": 2500,
-             "snapshot_steps": RUNGS, "halt_on_failure": True, "env": TXN, "spec": l12_spec()}]
-    jobs += [rung("pt_b2_l12", s, "l12", keep=s <= 20000, shape=SHAPE_L12) for s in RUNGS]
+            data("b1", after="l12_probe"), *overlap_jobs(False),
+            {"name": "pt_b2_l12", "model_name": "tc_b2_l12", "after": ["data", "cuda_gate", "l12_probe", "overlap_check"],
+             "relay_every_steps": 2500, "snapshot_steps": [SMOKE, *RUNGS], "snapshot_full_steps": PAUSES,
+             "pause_rungs": [f"rung_l12_s{s}" for s in PAUSES], "halt_on_failure": True, "env": TXN, "spec": l12_spec()}]
+    jobs += [rung("pt_b2_l12", SMOKE, "l12", shape=SHAPE_L12, halt=True)]
+    jobs += [rung("pt_b2_l12", s, "l12", keep=s <= PAUSES[-1], shape=SHAPE_L12) for s in RUNGS]
     jobs += [{"name": "sft_b2_l12", "model_name": "tc_sft_b2_l12", "after": "pt_b2_l12", "init_job": "pt_b2_l12",
               "relay_every_steps": 500, "halt_on_failure": True, "env": TXN, "spec": sft},
              {"name": "items", "after": "sft_b2_l12", "light": True, "halt_on_failure": True,
