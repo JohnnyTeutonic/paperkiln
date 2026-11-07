@@ -1,0 +1,32 @@
+{
+ "kind": "CORRECTION_CS_RECEIPT",
+ "producer": "Claude Opus 5.5, 7 Nov 2026",
+ "salt": "correction-cs-v1",
+ "tables": 113,
+ "new_entries": 661,
+ "entries_kept_from_v1": 714,
+ "disjoint": true,
+ "entries_by_part": {
+  "T_M": 471,
+  "T_C": 466,
+  "T_E": 466
+ },
+ "empty_tables": {
+  "T_M": [
+   "c_rp_in:job",
+   "c_rp_in:age"
+  ],
+  "T_C": [],
+  "T_E": []
+ },
+ "tables_sha256": {
+  "T_M": "082eb7c3d87d775b333c53ebf0eaa36175924d52d8e3b32431c2fc129252934d",
+  "T_C": "668885df9cadafa99e73e7f9a9e9f1ab385d8b57bfc37cb42e67c20329cfdfb8",
+  "T_E": "13c15ba5abb5bf962f51268c9b66900c74ef1f857a18589f6e3b7350c003f731"
+ },
+ "sources": {
+  "correction_split": "da785f1c9bf880fdd274de588fd31041273e1d0711a4c89a6b4de3f8fd940ff2",
+  "contrast_gen": "164f868106251a66ca000f77715fc203064f591a98e21a42a1902769c3b01eba",
+  "contrast_stance_gen": "bea8f1598b8c694c464f6634a82313a068c34972fd63a8ee10476635a9a0e313"
+ }
+}

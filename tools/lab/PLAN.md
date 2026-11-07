@@ -6,9 +6,9 @@ Claude Opus 5.5, 7 Nov 2026. Nothing below is authorised by this file. Costs com
 
 ## Order
 
-1. **CPU, no L4.** T_E's seven mixed families through a blind data author, the shortcut reads published before any model is read, and S54's J1 read completed.
-2. **CPU, engineering.** Generate contrast and stance rows in T_M, T_C and T_E, recover `nameless_role` and `affirm_in_role` in T_C from the caps, freeze the map from packet family to controller family, wrap `mtstudio score` as a per-family read on the VM, write the packet writer with its pre-launch recount, write the independent target tracker by another hand, and time one leg boundary.
-3. **CPU, the signal read,** once, below. It waits for step 2's contrast rows: S54 was dosed on contrast and on nothing mixed, so mixed families alone give these three models too little range to test the signal.
+1. **CPU, no L4.** T_E stage A and its shortcut reads are done: `reviews/te_stage_a_result.md`. Still open here: S54's J1 read, which the error pilot's parent needs and the signal read does not.
+2. **CPU, engineering.** T_M and T_C hold contrast and stance candidates: `reviews/step2_contrast_stance.md`. Still open: T_E stage B through a blind author, the 2% caps on those rows, a ruling on `nameless_role` and `affirm_in_role` in T_C, the map from packet family to controller family, `mtstudio score` as a per-family read on the VM, the packet writer with its pre-launch recount, the independent target tracker by another hand, and one timed leg boundary.
+3. **CPU, the signal read,** once, below. It waits for T_E stage B: S54 was dosed on contrast and on nothing mixed, so mixed families alone give these three models too little range to test the signal.
 4. **Registration, an independent review, Jonathan's dated line,** for each L4 step below.
 5. **L4, `pk_sft_v1`:** the noise pair, two fixed seeds excluded from every later comparison, and one mixed-row specialist. This gives `pair_sd_points` and design A's gate.
 6. **L4, `pk_sft_v1`, only if the gate opens:** the comparison, three seed pairs, registered with numbers after step 5.

@@ -1,0 +1,33 @@
+{
+ "T_C_contrast": {
+  "rows": 30598,
+  "rows_flagged_reserved_metas": 0,
+  "rows_flagged_reserved_text": 0,
+  "rows_in_the_wrong_part": 0
+ },
+ "T_C_stance": {
+  "rows": 31786,
+  "rows_flagged_reserved_metas": 0,
+  "rows_flagged_reserved_text": 0,
+  "rows_in_the_wrong_part": 0
+ },
+ "T_C_turns_fitting_a_T_E_entry_and_none_of_this_part": {
+  "c_id:user_name|user": 170,
+  "g:OP_PAIR_Q|reply": 6
+ },
+ "T_M_contrast": {
+  "rows": 3588,
+  "rows_flagged_reserved_metas": 0,
+  "rows_flagged_reserved_text": 0,
+  "rows_in_the_wrong_part": 0
+ },
+ "T_M_stance": {
+  "rows": 3718,
+  "rows_flagged_reserved_metas": 0,
+  "rows_flagged_reserved_text": 0,
+  "rows_in_the_wrong_part": 0
+ },
+ "T_M_turns_fitting_a_T_E_entry_and_none_of_this_part": {
+  "g:OP_PAIR_Q|reply": 7
+ }
+}

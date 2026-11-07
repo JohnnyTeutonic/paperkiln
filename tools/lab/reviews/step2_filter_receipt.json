@@ -1,0 +1,138 @@
+{
+ "T_C_contrast": {
+  "by_family": {
+   "correction": [
+    3052,
+    3930
+   ],
+   "followup": [
+    4796,
+    4856
+   ],
+   "identity_topic": [
+    3768,
+    4138
+   ],
+   "passage": [
+    9770,
+    11326
+   ],
+   "recall_abstain": [
+    3110,
+    3604
+   ],
+   "roleplay": [
+    2108,
+    2740
+   ],
+   "whose_name": [
+    3994,
+    3994
+   ]
+  },
+  "rows_in": 34588,
+  "rows_kept": 30598
+ },
+ "T_C_stance": {
+  "by_family": {
+   "correction": [
+    3048,
+    3910
+   ],
+   "followup": [
+    4796,
+    4908
+   ],
+   "identity_stance": [
+    4610,
+    5224
+   ],
+   "passage": [
+    9730,
+    11332
+   ],
+   "recall_abstain": [
+    3066,
+    3598
+   ],
+   "roleplay": [
+    2490,
+    2826
+   ],
+   "whose_name": [
+    4046,
+    4046
+   ]
+  },
+  "rows_in": 35844,
+  "rows_kept": 31786
+ },
+ "T_M_contrast": {
+  "by_family": {
+   "correction": [
+    406,
+    548
+   ],
+   "followup": [
+    602,
+    648
+   ],
+   "identity_topic": [
+    366,
+    546
+   ],
+   "passage": [
+    1396,
+    1578
+   ],
+   "recall_abstain": [
+    318,
+    472
+   ],
+   "roleplay": [
+    158,
+    368
+   ],
+   "whose_name": [
+    342,
+    510
+   ]
+  },
+  "rows_in": 4670,
+  "rows_kept": 3588
+ },
+ "T_M_stance": {
+  "by_family": {
+   "correction": [
+    396,
+    526
+   ],
+   "followup": [
+    610,
+    646
+   ],
+   "identity_stance": [
+    464,
+    662
+   ],
+   "passage": [
+    1428,
+    1616
+   ],
+   "recall_abstain": [
+    324,
+    480
+   ],
+   "roleplay": [
+    156,
+    346
+   ],
+   "whose_name": [
+    340,
+    514
+   ]
+  },
+  "rows_in": 4790,
+  "rows_kept": 3718
+ }
+}
