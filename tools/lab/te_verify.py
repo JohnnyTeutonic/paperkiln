@@ -39,6 +39,7 @@ DEC_FIELDS = ("turn", "k", "c", "form", "template_group", "key", "told_in_order"
 USER_VALUE_OPS = ("recall", "user_name", "like_recall", "like_affirm")
 ASSISTANT_NAMED_OPS = ("both_names", "rp_in")
 OWN_DESIGN_OPS = ("self_name", "self_like", "rp_sincere")     # the assistant's own identity or preference: nothing told, so check 3 does not apply, and they are counted
+OWN_NAME = "Ember"     # a self-name value, known from identity and not from the row's history: the lead's ruling of 7 Nov 2026, and this one value only
 VALUE_TABLES = ("pool:", "role_list", "role_place:", "role_act:", "rel", "fav_thing", "topic_np", "travel_place", "opinion_pair")
 SKIP_FRAME = VALUE_TABLES
 
@@ -149,6 +150,7 @@ def check_values(rows, out):
     """Reviews/te_check3_ruling.md."""
     a_ok, a_bad, b_ok, b_bad, own = collections.Counter(), collections.Counter(), 0, collections.Counter(), collections.Counter()
     no_source = collections.Counter()
+    self_name = 0
     for r in rows:
         d = r["decision"]
         fam = r["provenance"]["family"]
@@ -163,6 +165,9 @@ def check_values(rows, out):
             if RC.has(users, v):
                 a_ok[d["k"]] += 1
                 continue
+            if v == OWN_NAME:
+                self_name += 1
+                continue
             if d["k"] not in ASSISTANT_NAMED_OPS:
                 a_bad[f"{fam}/{d['k']}"] += 1
                 continue
@@ -176,7 +181,7 @@ def check_values(rows, out):
                 b_bad[f"{fam}/{d['k']}/user_said_it_first"] += 1
             else:
                 b_ok += 1
-    out["3_values"] = {"3a_user_values_held": sum(a_ok.values()), "3a_defects": dict(a_bad), "3b_character_names_held": b_ok, "3b_defects": dict(b_bad), "no_source_in_any_turn": dict(no_source), "assistant_own_decisions_not_checked_here": dict(own),
+    out["3_values"] = {"3a_user_values_held": sum(a_ok.values()), "3a_defects": dict(a_bad), "3b_character_names_held": b_ok, "3b_defects": dict(b_bad), "self_name_values_out_of_scope": self_name, "no_source_in_any_turn": dict(no_source), "assistant_own_decisions_not_checked_here": dict(own),
                        "rowcheck": RC.check_rows(rows) | {"families": None}}
 
 

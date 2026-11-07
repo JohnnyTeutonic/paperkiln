@@ -1,0 +1,142 @@
+{
+ "contrast/correction": {
+  "cap": 0.0195,
+  "distinct_frames": 0,
+  "fractional_optimum_pairs": 121.6,
+  "rows": 0,
+  "rows_in": 3052,
+  "seconds": 3.3,
+  "top_frame_share_of_replies": null,
+  "top_text_share_of_rows": null
+ },
+ "contrast/followup": {
+  "cap": 0.0195,
+  "distinct_frames": 0,
+  "fractional_optimum_pairs": 0.0,
+  "rows": 0,
+  "rows_in": 4796,
+  "seconds": 2.1,
+  "top_frame_share_of_replies": null,
+  "top_text_share_of_rows": null
+ },
+ "contrast/identity_topic": {
+  "cap": 0.0195,
+  "distinct_frames": 484,
+  "fractional_optimum_pairs": 499.4,
+  "rows": 938,
+  "rows_in": 3768,
+  "seconds": 2.7,
+  "top_frame_share_of_replies": 0.01934,
+  "top_text_share_of_rows": 0.01919
+ },
+ "contrast/passage": {
+  "cap": 0.0195,
+  "distinct_frames": 177,
+  "fractional_optimum_pairs": 1961.8,
+  "rows": 3840,
+  "rows_in": 9770,
+  "seconds": 7.5,
+  "top_frame_share_of_replies": 0.0194,
+  "top_text_share_of_rows": 0.01927
+ },
+ "contrast/recall_abstain": {
+  "cap": 0.0195,
+  "distinct_frames": 0,
+  "fractional_optimum_pairs": 52.5,
+  "rows": 0,
+  "rows_in": 3110,
+  "seconds": 4.3,
+  "top_frame_share_of_replies": null,
+  "top_text_share_of_rows": null
+ },
+ "contrast/roleplay": {
+  "cap": 0.0195,
+  "distinct_frames": 0,
+  "fractional_optimum_pairs": 0.0,
+  "rows": 0,
+  "rows_in": 2108,
+  "seconds": 1.8,
+  "top_frame_share_of_replies": null,
+  "top_text_share_of_rows": null
+ },
+ "contrast/whose_name": {
+  "cap": 0.0195,
+  "distinct_frames": 0,
+  "fractional_optimum_pairs": 0.0,
+  "rows": 0,
+  "rows_in": 3994,
+  "seconds": 2.1,
+  "top_frame_share_of_replies": null,
+  "top_text_share_of_rows": null
+ },
+ "stance/correction": {
+  "cap": 0.0195,
+  "distinct_frames": 0,
+  "fractional_optimum_pairs": 141.9,
+  "rows": 0,
+  "rows_in": 3048,
+  "seconds": 2.5,
+  "top_frame_share_of_replies": null,
+  "top_text_share_of_rows": null
+ },
+ "stance/followup": {
+  "cap": 0.0195,
+  "distinct_frames": 0,
+  "fractional_optimum_pairs": 0.0,
+  "rows": 0,
+  "rows_in": 4796,
+  "seconds": 1.7,
+  "top_frame_share_of_replies": null,
+  "top_text_share_of_rows": null
+ },
+ "stance/identity_stance": {
+  "cap": 0.0195,
+  "distinct_frames": 409,
+  "fractional_optimum_pairs": 666.7,
+  "rows": 1268,
+  "rows_in": 4610,
+  "seconds": 2.7,
+  "top_frame_share_of_replies": 0.01937,
+  "top_text_share_of_rows": 0.01893
+ },
+ "stance/passage": {
+  "cap": 0.0195,
+  "distinct_frames": 177,
+  "fractional_optimum_pairs": 1906.9,
+  "rows": 3756,
+  "rows_in": 9730,
+  "seconds": 4.3,
+  "top_frame_share_of_replies": 0.01944,
+  "top_text_share_of_rows": 0.01917
+ },
+ "stance/recall_abstain": {
+  "cap": 0.0195,
+  "distinct_frames": 0,
+  "fractional_optimum_pairs": 65.4,
+  "rows": 0,
+  "rows_in": 3066,
+  "seconds": 1.7,
+  "top_frame_share_of_replies": null,
+  "top_text_share_of_rows": null
+ },
+ "stance/roleplay": {
+  "cap": 0.0195,
+  "distinct_frames": 0,
+  "fractional_optimum_pairs": 0.0,
+  "rows": 0,
+  "rows_in": 2490,
+  "seconds": 1.0,
+  "top_frame_share_of_replies": null,
+  "top_text_share_of_rows": null
+ },
+ "stance/whose_name": {
+  "cap": 0.0195,
+  "distinct_frames": 0,
+  "fractional_optimum_pairs": 0.0,
+  "rows": 0,
+  "rows_in": 4046,
+  "seconds": 1.9,
+  "top_frame_share_of_replies": null,
+  "top_text_share_of_rows": null
+ }
+}

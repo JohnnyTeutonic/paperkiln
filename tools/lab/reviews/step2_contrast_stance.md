@@ -20,4 +20,28 @@ Filter: `build_a19.py` as a black box, then the rewritten last rule, with A19's 
 - T_C: 170 user turns, all a user's bare name in the generator's own inline form, 169 of them up to three words. That form is not a table, and it is a short generic one.
 - T_C 6 and T_M 7 replies that the slot pattern reads as a T_E frame. All are joined from their own part's frames.
 
-**Not done.** The 2% caps have not run on these rows, so they are candidates, not a pool. `nameless_role` and `affirm_in_role` stay at zero in T_C, because recovering them means relaxing that cap, which is a data rule and not mine to move. T_M's dev read, the packet writer and the family map remain step 2 work. T_E's stage B needs a blind author: the spec is written.
+**Caps.** Twin pairs stay whole, and T_M takes no cap. These generators record no frame, so a frame is the reply with the row's values masked. Reply text and frame together, at the 1.95% the earlier pools held:
+
+| Family | Contrast rows kept | Stance rows kept |
+|---|---:|---:|
+| `passage` | 3,840 of 9,770 | 3,756 of 9,730 |
+| `identity_topic`, `identity_stance` | 938 of 3,768 | 1,268 of 4,610 |
+| `correction` | 0 of 3,052 | 0 of 3,048 |
+| `followup` | 0 of 4,796 | 0 of 4,796 |
+| `recall_abstain` | 0 of 3,110 | 0 of 3,066 |
+| `roleplay` | 0 of 2,108 | 0 of 2,490 |
+| `whose_name` | 0 of 3,994 | 0 of 4,046 |
+
+**Ten families reach zero, and I have not relaxed them:** the ruling of 7 Nov covers two other families. The cause is the one that ruling names. A third of a thin table puts a frame above 2% in nearly every pair. Top frame shares run from 3.9% to 10.3%. A19's packets did not meet this on contrast or stance rows: `build_a19.py` caps mixed rows on reply text, and stance rows took no enforced cap. A reply-text-only cap would keep 11 of the 14, and still zero both `followup` sets and contrast `roleplay`.
+
+For that ruling, a read-only what-if, with nothing written: the rule given for the two families, smallest cap from 2% with at least 8 frames, applied to these ten.
+
+| Family | Cap | Contrast rows | Stance rows |
+|---|---:|---:|---:|
+| `whose_name` | 2.5% | 2,264 | 2,408 |
+| `correction` | 2.5, 2.0% | 902 | 202 |
+| `recall_abstain` | 2.5% | 186 | 250 |
+| `roleplay` | 3.5% | 576 | 632 |
+| `followup` | 5.0% | 200 | 450 |
+
+**Not done.** Caps on those ten await a ruling, so they hold no pool yet. T_M's dev read, the packet writer and the family map remain step 2 work. T_E's stage B and the stage A top-up are with a blind author.

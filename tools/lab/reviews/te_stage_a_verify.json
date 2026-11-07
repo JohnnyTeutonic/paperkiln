@@ -19,9 +19,7 @@
   "3a_defects": {},
   "3a_user_values_held": 616,
   "3b_character_names_held": 37,
-  "3b_defects": {
-   "name_use/both_names/not_the_character_name": 20
-  },
+  "3b_defects": {},
   "assistant_own_decisions_not_checked_here": {
    "rp_sincere": 24,
    "self_like": 20,
@@ -39,7 +37,8 @@
    "defects": {},
    "families": null,
    "rows": 700
-  }
+  },
+  "self_name_values_out_of_scope": 20
  },
  "4_twins": {
   "by_kind": {},

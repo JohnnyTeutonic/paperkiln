@@ -7,7 +7,7 @@ Claude Opus 5.5, 7 Nov 2026. Nothing below is authorised by this file. Costs com
 ## Order
 
 1. **CPU, no L4.** T_E stage A and its shortcut reads are done: `reviews/te_stage_a_result.md`. Still open here: S54's J1 read, which the error pilot's parent needs and the signal read does not.
-2. **CPU, engineering.** T_M and T_C hold contrast and stance candidates: `reviews/step2_contrast_stance.md`. Still open: T_E stage B through a blind author, the 2% caps on those rows, a ruling on `nameless_role` and `affirm_in_role` in T_C, the map from packet family to controller family, `mtstudio score` as a per-family read on the VM, the packet writer with its pre-launch recount, the independent target tracker by another hand, and one timed leg boundary.
+2. **CPU, engineering.** T_M and T_C hold contrast and stance candidates: `reviews/step2_contrast_stance.md`. Still open: T_E stage B and the stage A top-up through a blind author, then `te_merge.py`; a ruling on the ten contrast and stance families the 2% caps take to zero; the map from packet family to controller family, `mtstudio score` as a per-family read on the VM, the packet writer with its pre-launch recount, the independent target tracker by another hand, and one timed leg boundary.
 3. **CPU, the signal read,** once, below. It waits for T_E stage B: S54 was dosed on contrast and on nothing mixed, so mixed families alone give these three models too little range to test the signal.
 4. **Registration, an independent review, Jonathan's dated line,** for each L4 step below.
 5. **L4, `pk_sft_v1`:** the noise pair, two fixed seeds excluded from every later comparison, and one mixed-row specialist. This gives `pair_sd_points` and design A's gate.
@@ -28,6 +28,15 @@ Fixed here on 7 Nov 2026, before any T_E row exists, and in code as `verdict.sig
 - **If it does not pass:** the pilot stops at this read. A new metric is a new registration, with a new read on new models. The bar does not move.
 
 The shortcut baselines are fixed in `shortcuts.py`, with a bar of 25 task points overall. A shortcut reaching it sends the instrument back for revision before any model is read on it.
+
+## Caps relaxed by the lead's ruling of 7 Nov 2026
+
+For two families of T_C only, the smallest cap on a 0.5-point grid from 2% that leaves at least 8 distinct reply frames, and no higher than 12.5%. The 2% rule exists to stop stock replies dominating; a family at zero teaches nothing, thin tables cannot meet the rule, and the family's dose is still bounded by the controller's share. Report these at registration.
+
+| Family | Cap | Rows kept of filtered | Distinct frames | Why it was at zero |
+|---|---:|---:|---:|---|
+| `nameless_role` | 4.0% | 384 of 2,270 | 193 | No row set meets 3.5% or under |
+| `affirm_in_role` | 2.0% | 105 of 764 | 90 | The first pool held 1.95%, a margin under the rule. The rule itself leaves rows, so nothing above 2% is used |
 
 ## The two starts
 

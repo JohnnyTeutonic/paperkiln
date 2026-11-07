@@ -6,14 +6,14 @@ Claude Opus 5.5, 7 Nov 2026. Counts only. Rows `eccd5255…`, 700 rows, 350 pair
 |---|---|
 | 1. Inputs and format | Both hashes hold. 700 rows, no format defect. |
 | 2. Entries | 9,416 turns: all fit an entry. 6,408 meta values: 0 from another part. 79 are in no table, and all 79 are the assistant's own name. |
-| 3. Values | 3a: 616 held, 0 defects. 3b: 37 held. **20 defects under the ruling.** Text check: 0 defects on 2,539 checks. |
+| 3. Values | 3a: 616 held, 0 defects. 3b: 37 held, 0 defects. 20 self-name values are out of scope by the amended ruling. Text check: 0 defects on 2,539 checks. |
 | 4. Twins | 350 pairs, no structural defect. Golds pass their own key 700 of 700, and fail the twin's 700 of 700. |
 | 5. Counts | Every family and cell of the table met. 25 S and 25 D per family. No recall or name decision under two told values. Most-recent rule at most 29 per family. No repeat. At least 8 final wordings per family. |
 | 6. Sequences | 0 by text, 0 by metas. 37 rows tell one attribute twice with different values, and each names a different relative: no corrections. |
 | 7. Overlap filter | **396 of 700 rows kept, 198 of 350 pairs.** |
 | 8. Hashes | Rows and inputs match the receipt. |
 
-**Check 3, the 57.** 37 are character names under 3b. The other 20 are `name_use` `both_names` rows, where the value is the assistant's own name, Ember. They fail 3b's second condition, because Ember is no character. The ruling is not changed after the run, so they stand as defects under it. Claude Opus 5.5's reading, 7 Nov 2026: the rows are sound, since an assistant's own name has no user-turn source, and the ruling missed a case the verifier already treats that way for `self_name`. That is for the lead to rule on. Check 4 passes on these rows.
+**Check 3, the 57.** 37 are character names under 3b. The other 20 are `name_use` `both_names` rows, where the value is the assistant's own name. The first run read them as defects under the ruling. The lead's ruling of 7 Nov 2026, on row validity with no model read, takes a self-name value out of check 3, since the name comes from identity and not from history. It is dated in `te_check3_ruling.md`, and it covers that one value. Check 4 passes on these rows.
 
 **Check 7.** Kept by family, of 100: `nameless_role` 74, `name_use` 70, `role_mix` 64, `how_are_you` 60, `ended_role` 52, `affirm_in_role` 42, `like_recall` 34. Pairs dropped at each step: `chatflow_v001` 77 rows' worth by id, `contrast_v001` 12, its values 4, the short-string rule 59 pairs. `manual_v001`, `persona_v003` and the transcript rule dropped none. The filter shares T_C's and T_M's path, and A19's self-check held. Every family stays above the signal read's 20 rows.
 

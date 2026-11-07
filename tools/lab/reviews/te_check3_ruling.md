@@ -20,3 +20,7 @@ Anything else among the 57 fails, and is reported as a defect by family and oper
 **Sharing:** the count checked under 3b is reported separately from 3a, so nobody reads a pass of 3a as covering them.
 
 **A limit that stays.** Both parts use the row's metas to say what the value is, as `rowcheck.py` does. Check 4 and the scorer's gold canaries cross-check them against the keys, and neither shares code with `build_te.py`. This verifier does not derive the answer from the text alone.
+
+## Amendment, 7 Nov 2026
+
+Lead's ruling, 7 Nov 2026, fixed after the first run, on row validity, with no model read: the assistant's own name is known to it from identity, not from a row's history, so check 3 does not apply to a self-name value. The 20 `name_use` `both_names` rows are sound, and stay in. This covers the assistant's own name and nothing else: every other value keeps 3a and 3b as written above.

@@ -1,0 +1,62 @@
+{
+ "contrast/correction": {
+  "cap": 0.025,
+  "distinct_frames": 214,
+  "rows": 902,
+  "rows_in": 3052
+ },
+ "contrast/followup": {
+  "cap": 0.05,
+  "distinct_frames": 142,
+  "rows": 200,
+  "rows_in": 4796
+ },
+ "contrast/recall_abstain": {
+  "cap": 0.025,
+  "distinct_frames": 152,
+  "rows": 186,
+  "rows_in": 3110
+ },
+ "contrast/roleplay": {
+  "cap": 0.035,
+  "distinct_frames": 340,
+  "rows": 576,
+  "rows_in": 2108
+ },
+ "contrast/whose_name": {
+  "cap": 0.025,
+  "distinct_frames": 123,
+  "rows": 2264,
+  "rows_in": 3994
+ },
+ "stance/correction": {
+  "cap": 0.02,
+  "distinct_frames": 151,
+  "rows": 202,
+  "rows_in": 3048
+ },
+ "stance/followup": {
+  "cap": 0.05,
+  "distinct_frames": 222,
+  "rows": 450,
+  "rows_in": 4796
+ },
+ "stance/recall_abstain": {
+  "cap": 0.025,
+  "distinct_frames": 164,
+  "rows": 250,
+  "rows_in": 3066
+ },
+ "stance/roleplay": {
+  "cap": 0.035,
+  "distinct_frames": 597,
+  "rows": 632,
+  "rows_in": 2490
+ },
+ "stance/whose_name": {
+  "cap": 0.025,
+  "distinct_frames": 123,
+  "rows": 2408,
+  "rows_in": 4046
+ }
+}

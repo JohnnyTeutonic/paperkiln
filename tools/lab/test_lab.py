@@ -23,6 +23,7 @@ import miner as M  # noqa: E402
 import proposer as P  # noqa: E402
 import rowcheck as SC  # noqa: E402
 import shortcuts as SH  # noqa: E402
+import te_merge as TM  # noqa: E402
 import te_score as TS  # noqa: E402
 import te_verify as TV  # noqa: E402
 import sim as S  # noqa: E402
@@ -1483,6 +1484,15 @@ class TestTEVerify(unittest.TestCase):
         self.assertEqual(v["3b_character_names_held"], 0)
         self.assertEqual(sum(v["3b_defects"].values()), 1)
 
+    def test_the_assistants_own_name_is_out_of_scope_and_nothing_else_is(self):
+        r = te_row("both_names", ["Paris", "Ember"], [], told=("Paris",))
+        r["segments"][0]["text"] = "<|user|>I am Paris.<|assistant|>"
+        v = self.values([r])
+        self.assertEqual((v["self_name_values_out_of_scope"], v["3b_defects"]), (1, {}))
+        other = te_row("both_names", ["Paris", "Zorp"], [], told=("Paris",))
+        other["segments"][0]["text"] = "<|user|>I am Paris.<|assistant|>"
+        self.assertEqual(sum(self.values([other])["3b_defects"].values()) + sum(self.values([other])["no_source_in_any_turn"].values()), 1)
+
     def test_a_value_the_user_said_is_3a(self):
         v = self.values([self.named("Zorp", user_says=True)])
         self.assertEqual(v["3b_character_names_held"], 0)
@@ -1531,6 +1541,47 @@ class TestTEVerify(unittest.TestCase):
         tree = ast.parse((HERE / "te_verify.py").read_text(encoding="utf-8"))
         names = {a.name for n in ast.walk(tree) if isinstance(n, ast.Import) for a in n.names} | {n.module for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)}
         self.assertNotIn("build_te", names)
+
+
+class TestTEMerge(unittest.TestCase):
+    def pair(self, pid, op="recall", c="none", fam="toyfam"):
+        out = []
+        for var in ("a", "b"):
+            r = te_row(op, ["Paris"], [], fam=fam, pid=pid, var=var)
+            r["decision"]["c"] = c
+            r["provenance"]["values"]["pair_op"] = op
+            out.append(r)
+        return out
+
+    SPEC = {"toyfam": {("recall", "none"): 2, ("abstain", "none"): 1}}
+
+    def test_first_file_first_then_the_top_up_within_each_cell(self):
+        first = self.pair("p1") + self.pair("p2") + self.pair("p3")
+        top = self.pair("p1") + self.pair("p9", op="abstain")
+        kept, short, src = TM.merge([("s0", first), ("s1", top)], self.SPEC)
+        self.assertEqual([r["provenance"]["pair_id"] for r in kept][::2], ["s0_p1", "s0_p2", "s1_p9"])
+        self.assertEqual(short, {})
+        self.assertEqual(src, {"s0": 2, "s1": 1})
+
+    def test_a_short_cell_stays_short_and_borrows_nothing(self):
+        kept, short, _ = TM.merge([("s0", self.pair("p1") + self.pair("p2") + self.pair("p3"))], self.SPEC)
+        self.assertEqual(len(kept), 4)
+        self.assertEqual(short, {"toyfam/abstain/none": 1})
+
+    def test_the_same_id_in_two_files_stays_two_pairs(self):
+        kept, _, _ = TM.merge([("s0", self.pair("p1")), ("s1", self.pair("p1"))], self.SPEC)
+        self.assertEqual(len({r["provenance"]["pair_id"] for r in kept}), 2)
+        self.assertEqual(len({r["conversation_id"] for r in kept}), 4)
+
+    def test_half_a_pair_is_refused(self):
+        with self.assertRaises(Malformed):
+            TM.merge([("s0", self.pair("p1")[:1])], self.SPEC)
+
+    def test_nothing_but_the_filter_selects(self):
+        """The merge imports no scorer, and reads no key."""
+        src = (HERE / "te_merge.py").read_text(encoding="utf-8")
+        self.assertNotIn("te_score", src)
+        self.assertNotIn('["key"]', src)
 
 
 class TestReplaySim(unittest.TestCase):

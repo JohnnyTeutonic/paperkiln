@@ -1,0 +1,46 @@
+{
+ "affirm_in_role": {
+  "cap": 0.02,
+  "distinct_frames": 90,
+  "rows": 105,
+  "rows_in": 764,
+  "top_frame_share_of_replies": 0.01979,
+  "top_text_share_of_rows": 0.01905,
+  "tried": {
+   "0.020": [
+    105,
+    90
+   ]
+  }
+ },
+ "nameless_role": {
+  "cap": 0.04,
+  "distinct_frames": 193,
+  "rows": 384,
+  "rows_in": 2270,
+  "top_frame_share_of_replies": 0.03993,
+  "top_text_share_of_rows": 0.03906,
+  "tried": {
+   "0.020": [
+    0,
+    0
+   ],
+   "0.025": [
+    0,
+    0
+   ],
+   "0.030": [
+    0,
+    0
+   ],
+   "0.035": [
+    0,
+    0
+   ],
+   "0.040": [
+    384,
+    193
+   ]
+  }
+ }
+}
