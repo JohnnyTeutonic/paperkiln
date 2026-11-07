@@ -1,0 +1,167 @@
+{
+ "at_floor_on_every_model": [],
+ "models": {
+  "S54": {
+   "at_floor": [
+    "like_recall"
+   ],
+   "families": 12,
+   "signal_order": [
+    "recall_abstain",
+    "correction",
+    "passage",
+    "whose_name",
+    "roleplay",
+    "name_use",
+    "ended_role",
+    "role_mix",
+    "how_are_you",
+    "nameless_role",
+    "affirm_in_role",
+    "like_recall"
+   ],
+   "spearman_within_model": 0.578,
+   "spearman_without_floor_families": 0.451,
+   "te_order": [
+    "whose_name",
+    "roleplay",
+    "how_are_you",
+    "name_use",
+    "recall_abstain",
+    "passage",
+    "ended_role",
+    "correction",
+    "role_mix",
+    "affirm_in_role",
+    "nameless_role",
+    "like_recall"
+   ],
+   "tied_point_values": {
+    "2.0": [
+     "affirm_in_role",
+     "nameless_role"
+    ]
+   },
+   "top3_overlap": 0,
+   "within_one_pair_of_floor": [
+    "affirm_in_role",
+    "nameless_role"
+   ]
+  },
+  "S55": {
+   "at_floor": [
+    "affirm_in_role",
+    "like_recall",
+    "nameless_role",
+    "roleplay"
+   ],
+   "families": 12,
+   "signal_order": [
+    "name_use",
+    "how_are_you",
+    "whose_name",
+    "roleplay",
+    "ended_role",
+    "correction",
+    "like_recall",
+    "role_mix",
+    "affirm_in_role",
+    "recall_abstain",
+    "nameless_role",
+    "passage"
+   ],
+   "spearman_within_model": 0.324,
+   "spearman_without_floor_families": 0.262,
+   "te_order": [
+    "whose_name",
+    "how_are_you",
+    "passage",
+    "name_use",
+    "recall_abstain",
+    "role_mix",
+    "correction",
+    "ended_role",
+    "affirm_in_role",
+    "like_recall",
+    "nameless_role",
+    "roleplay"
+   ],
+   "tied_point_values": {
+    "0.0": [
+     "affirm_in_role",
+     "like_recall",
+     "nameless_role",
+     "roleplay"
+    ]
+   },
+   "top3_overlap": 2,
+   "within_one_pair_of_floor": [
+    "ended_role"
+   ]
+  },
+  "pk_sft_v1": {
+   "at_floor": [
+    "correction",
+    "how_are_you",
+    "nameless_role",
+    "roleplay"
+   ],
+   "families": 12,
+   "signal_order": [
+    "name_use",
+    "whose_name",
+    "correction",
+    "roleplay",
+    "how_are_you",
+    "ended_role",
+    "role_mix",
+    "like_recall",
+    "recall_abstain",
+    "affirm_in_role",
+    "passage",
+    "nameless_role"
+   ],
+   "spearman_within_model": -0.246,
+   "spearman_without_floor_families": -0.289,
+   "te_order": [
+    "passage",
+    "ended_role",
+    "like_recall",
+    "role_mix",
+    "whose_name",
+    "recall_abstain",
+    "affirm_in_role",
+    "name_use",
+    "correction",
+    "how_are_you",
+    "nameless_role",
+    "roleplay"
+   ],
+   "tied_point_values": {
+    "0.0": [
+     "correction",
+     "how_are_you",
+     "nameless_role",
+     "roleplay"
+    ],
+    "2.0": [
+     "affirm_in_role",
+     "name_use"
+    ],
+    "6.0": [
+     "ended_role",
+     "like_recall"
+    ]
+   },
+   "top3_overlap": 0,
+   "within_one_pair_of_floor": [
+    "affirm_in_role",
+    "name_use",
+    "recall_abstain"
+   ]
+  }
+ },
+ "producer": "Claude Opus 5.5, 7 Nov 2026",
+ "source_sha_note": "signal_read_v1.json as committed with the result",
+ "status": "reported, not judged: no rule reads these lines, and the pooled pass stands as read"
+}

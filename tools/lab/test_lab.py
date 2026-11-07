@@ -20,6 +20,7 @@ import firewall as FW  # noqa: E402
 import gate as G  # noqa: E402
 import history as H  # noqa: E402
 import miner as M  # noqa: E402
+import n1_rule as NR  # noqa: E402
 import proposer as P  # noqa: E402
 import rowcheck as SC  # noqa: E402
 import shortcuts as SH  # noqa: E402
@@ -1978,6 +1979,199 @@ class TestFrozenAdapters(unittest.TestCase):
         names = set(AD.mine_score().POLICIES)
         self.assertTrue(set(SH.FROM_MINE_SCORE.values()) <= names)
 
+
+def _read(means, se=0.01, rows=48):
+    return {f: {"mean": m, "se": se, "rows": rows} for f, m in means.items()}
+
+
+TASK12 = ("affirm_in_role", "correction", "ended_role", "how_are_you", "like_recall", "name_use", "nameless_role", "passage", "recall_abstain", "role_mix", "roleplay", "whose_name")
+PAIRS12 = {f: 50 for f in TASK12}
+
+
+class TestN1Rule(unittest.TestCase):
+    """Section 33's rule: gate, naming, targeting. Synthetic numbers only."""
+
+    def fl(self, value=1.0, se=0.01):
+        return {f: {"floor": value, "floor_se": se, "source": NR.FLOOR_SOURCE[f]} for f in NR.FLOOR_SOURCE}
+
+    def target(self, t, c, named, control, sigma=5.0, pairs=PAIRS12, df=11):
+        return NR.targeting(t, c, named, control, TASK12, sigma, pairs, df)
+
+    def test_family_read_is_nats_per_target_with_a_ratio_error(self):
+        rows = [{"family": "x", "sum": 10.0, "n": 5}, {"family": "x", "sum": 30.0, "n": 15}, {"family": "x", "sum": 6.0, "n": 3}]
+        r = NR.family_read(rows)["x"]
+        self.assertAlmostEqual(r["mean"], 2.0)
+        self.assertAlmostEqual(r["se"], 0.0)
+        r = NR.family_read([{"family": "x", "sum": 10.0, "n": 5}, {"family": "x", "sum": 5.0, "n": 5}])["x"]
+        self.assertAlmostEqual(r["mean"], 1.5)
+        self.assertGreater(r["se"], 0)
+
+    def test_floors_come_from_their_registered_source_and_identity_stance_has_none(self):
+        reads = {"lab_sp": _read({f: 0.5 for f in TASK12}), "S54": _read({f: 0.2 for f in NR.FLOOR_SOURCE})}
+        fl = NR.floors(reads)
+        self.assertEqual(fl["like_recall"]["floor"], 0.5)
+        self.assertEqual(fl["passage"]["floor"], 0.2)
+        self.assertNotIn("identity_stance", fl)
+        self.assertNotIn("affirm_in_role", NR.floors({"S54": _read({"affirm_in_role": 0.1})}))
+
+    def test_gate_opens_only_past_min_excess_beyond_noise(self):
+        fl = self.fl(1.0, 0.0)
+        z = NR.Z * 0.01 / 2 ** 0.5
+        at = 1.0 + NR.MIN_EXCESS + z
+        self.assertTrue(NR.gate(_read({"passage": at + 0.001}), _read({"passage": at + 0.001}), fl)["open"])
+        self.assertFalse(NR.gate(_read({"passage": at - 0.002}), _read({"passage": at - 0.002}), fl)["open"])
+
+    def test_seed_spread_widens_the_gate(self):
+        fl = self.fl(1.0, 0.0)
+        self.assertTrue(NR.gate(_read({"passage": 1.5}), _read({"passage": 1.5}), fl)["open"])
+        self.assertFalse(NR.gate(_read({"passage": 1.3}), _read({"passage": 1.7}), fl)["open"])
+
+    def test_a_family_without_a_floor_cannot_open_the_gate(self):
+        self.assertFalse(NR.gate(_read({"identity_stance": 3.0}), _read({"identity_stance": 3.0}), self.fl())["open"])
+
+    def test_naming_takes_the_largest_eligible_never_an_ineligible_and_controls_match_strata(self):
+        means = {f: 1.0 for f in TASK12}
+        means.update({"recall_abstain": 3.0, "affirm_in_role": 3.0, "passage": 2.0, "role_mix": 1.8, "whose_name": 1.6, "correction": 1.4})
+        r = NR.naming(_read(means), _read(means), self.fl(1.0, 0.0))
+        self.assertEqual(r["named"], ["passage", "role_mix", "whose_name"])
+        self.assertTrue(r["enough"])
+        self.assertFalse(set(r["control"]) & set(r["named"]))
+        self.assertTrue(set(r["control"]) <= set(NR.ELIGIBLE))
+        src = lambda fs: sorted(NR.FLOOR_SOURCE[f] for f in fs)  # noqa: E731
+        self.assertEqual(src(r["named"]), src(r["control"]))
+        self.assertEqual(r, NR.naming(_read(means), _read(means), self.fl(1.0, 0.0)))
+
+    def test_a_stratum_keeps_a_control_for_every_named_family(self):
+        means = {f: 1.0 for f in TASK12}
+        means.update({"correction": 2.6, "passage": 2.5, "roleplay": 2.4, "whose_name": 2.3, "like_recall": 1.5})
+        r = NR.naming(_read(means), _read(means), self.fl(1.0, 0.0))
+        self.assertEqual(r["named"], ["correction", "passage", "like_recall"])
+        self.assertEqual(sorted(x for x in r["control"] if NR.FLOOR_SOURCE[x] == "S54"), ["roleplay", "whose_name"])
+
+    def test_an_unfitting_control_set_is_redrawn_at_the_next_seed(self):
+        means = {f: 1.0 for f in TASK12}
+        means.update({"passage": 2.0, "role_mix": 1.8, "whose_name": 1.6, "name_use": 1.5})
+        first = NR.naming(_read(means), _read(means), self.fl(1.0, 0.0))
+        r = NR.naming(_read(means), _read(means), self.fl(1.0, 0.0), feasible=lambda a, b: b != first["control"])
+        self.assertGreater(r["control_seed"], NR.CONTROL_SEED)
+        self.assertNotEqual(r["control"], first["control"])
+        r = NR.naming(_read(means), _read(means), self.fl(1.0, 0.0), feasible=lambda a, b: False)
+        self.assertFalse(r["enough"])
+        self.assertEqual(NR.verdict([], [], {"open": True}, r, None)["outcome"], "TOO_FEW_NAMED")
+
+    def test_one_named_family_is_too_few(self):
+        means = {f: 1.0 for f in TASK12}
+        means["passage"] = 2.0
+        r = NR.naming(_read(means), _read(means), self.fl(1.0, 0.0))
+        self.assertFalse(r["enough"])
+        self.assertEqual(NR.verdict([], [], {"open": True}, r, None)["outcome"], "TOO_FEW_NAMED")
+
+    def test_two_named_families_take_two_controls(self):
+        means = {f: 1.0 for f in TASK12}
+        means.update({"passage": 2.0, "name_use": 2.0})
+        r = NR.naming(_read(means), _read(means), self.fl(1.0, 0.0))
+        self.assertEqual((len(r["named"]), len(r["control"])), (2, 2))
+
+    def test_pair_sd_is_floored_at_the_binomial_difference(self):
+        r = NR.pair_sd(20.0, 20.0, 567)
+        self.assertTrue(r["floored"])
+        self.assertAlmostEqual(r["pair_sd_points"], 100 * (2 * 0.2 * 0.8 / 567) ** 0.5, places=3)
+        self.assertEqual(NR.pair_sd(30.0, 20.0, 567)["pair_sd_points"], 10.0)
+
+    def setup_sets(self):
+        return ["passage", "role_mix", "whose_name"], ["correction", "ended_role", "how_are_you"]
+
+    def test_no_difference_is_unresolved(self):
+        named, control = self.setup_sets()
+        pts = {f: 20.0 for f in TASK12}
+        r = self.target(pts, dict(pts), named, control)
+        self.assertEqual((r["outcome"], r["statistic"]), ("TARGETING_UNRESOLVED", 0.0))
+
+    def test_a_model_level_shift_cancels(self):
+        named, control = self.setup_sets()
+        c = {f: 20.0 for f in TASK12}
+        t = {f: 35.0 for f in TASK12}
+        self.assertEqual(self.target(t, c, named, control)["statistic"], 0.0)
+
+    def test_named_families_moving_more_is_supported_and_the_mirror_reversed(self):
+        named, control = self.setup_sets()
+        c = {f: 20.0 for f in TASK12}
+        t = dict(c, **{f: 45.0 for f in named})
+        self.assertEqual(self.target(t, c, named, control)["outcome"], "TARGETING_SUPPORTED")
+        c2 = dict(c, **{f: 5.0 for f in control})
+        self.assertEqual(self.target(dict(c), c2, named, control)["outcome"], "TARGETING_SUPPORTED", "C fell on the families it doubled")
+        t2 = dict(c, **{f: 5.0 for f in control})
+        self.assertEqual(self.target(t2, c, named, control)["outcome"], "TARGETING_REVERSED", "C rose on the families it doubled")
+
+    def test_equal_dose_response_in_both_sets_is_not_support(self):
+        named, control = self.setup_sets()
+        c = {f: 20.0 for f in TASK12}
+        t = dict(c)
+        for f in named:
+            t[f] = 30.0
+        for f in control:
+            c[f] = 30.0
+        self.assertEqual(self.target(t, c, named, control)["statistic"], 0.0)
+
+    def test_the_bar_is_the_larger_of_the_floor_and_the_noise(self):
+        named, control = self.setup_sets()
+        c = {f: 20.0 for f in TASK12}
+        t = dict(c, **{f: 20.0 + 4.9 for f in named})
+        self.assertEqual(self.target(t, c, named, control, sigma=0.1)["outcome"], "TARGETING_UNRESOLVED")
+        t = dict(c, **{f: 20.0 + 5.0 for f in named})
+        self.assertEqual(self.target(t, c, named, control, sigma=0.1)["outcome"], "TARGETING_SUPPORTED")
+        self.assertEqual(self.target(t, c, named, control, sigma=10.0)["outcome"], "TARGETING_UNRESOLVED")
+
+    def test_small_families_weigh_less(self):
+        named, control = self.setup_sets()
+        small = dict(PAIRS12, passage=10)
+        big = dict(PAIRS12, passage=200)
+        c = {f: 20.0 for f in TASK12}
+        self.assertGreater(self.target(c, dict(c), named, control, pairs=small)["se"], self.target(c, dict(c), named, control, pairs=big)["se"])
+
+    def test_a_set_at_the_floor_in_both_arms_is_unreadable(self):
+        named, control = self.setup_sets()
+        c = {f: 20.0 for f in TASK12}
+        c.update({"passage": 0.0, "role_mix": 0.0})
+        t = dict(c, **{f: 0.0 for f in control})
+        r = self.target(t, c, named, control)
+        self.assertEqual(r["outcome"], "TARGETING_UNREADABLE")
+        self.assertEqual(r["at_a_bound_in_both_arms"], ["passage", "role_mix"])
+
+    def test_noise_alone_rarely_supports(self):
+        named, control = self.setup_sets()
+        rng = random.Random(7)
+        sigma = 8.0
+        hits = 0
+        for _ in range(4000):
+            t = {f: 30 + rng.gauss(0, sigma / 2 ** 0.5) for f in TASK12}
+            c = {f: 30 + rng.gauss(0, sigma / 2 ** 0.5) for f in TASK12}
+            hits += self.target(t, c, named, control, sigma=sigma)["outcome"] == "TARGETING_SUPPORTED"
+        self.assertLess(hits / 4000, 0.035)
+
+    def test_sigma_is_centred_scaled_and_floored(self):
+        a = {f: 10.0 for f in TASK12}
+        b = {f: 0.0 for f in TASK12}
+        s, raw, df, nbar = NR.family_sigma(a, b, TASK12, PAIRS12)
+        self.assertEqual((s, raw, df, nbar), (NR.SIGMA_FLOOR_POINTS, 0.0, 11, 50))
+
+    def test_verdict_order_and_no_authority(self):
+        open_ = {"open": True}
+        named = {"enough": True}
+        self.assertEqual(NR.verdict(["x"], ["y"], {"open": False}, named, None)["outcome"], "VOID")
+        self.assertEqual(NR.verdict([], ["y"], {"open": False}, named, None)["outcome"], "PENDING")
+        self.assertEqual(NR.verdict([], [], {"open": False}, named, None)["outcome"], "GATE_CLOSED")
+        self.assertEqual(NR.verdict([], [], open_, named, None)["outcome"], "PENDING")
+        for o in ("TARGETING_UNREADABLE", "TARGETING_SUPPORTED", "TARGETING_REVERSED", "TARGETING_UNRESOLVED"):
+            v = NR.verdict([], [], open_, named, {"outcome": o})
+            self.assertEqual(v["outcome"], o)
+            self.assertIn("No outcome of this step authorises adaptive allocation", v["authorises"])
+
+    def test_eligible_families_have_floors_and_task_pairs(self):
+        self.assertTrue(set(NR.ELIGIBLE) <= set(NR.FLOOR_SOURCE))
+        self.assertTrue(set(NR.ELIGIBLE) <= set(TASK12))
+        self.assertNotIn("recall_abstain", NR.ELIGIBLE)
+        self.assertNotIn("affirm_in_role", NR.ELIGIBLE)
 
 if __name__ == "__main__":
     unittest.main()

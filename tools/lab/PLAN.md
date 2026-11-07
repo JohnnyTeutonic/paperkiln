@@ -10,8 +10,8 @@ Claude Opus 5.5, 7 Nov 2026. Nothing below is authorised by this file. Costs com
 2. **CPU, engineering.** T_M and T_C hold contrast and stance candidates: `reviews/step2_contrast_stance.md`. Still open: T_E stage B and the stage A top-up through a blind author, then `te_merge.py`; the map from packet family to controller family, `mtstudio score` as a per-family read on the VM, the packet writer with its pre-launch recount, the independent target tracker by another hand, and one timed leg boundary.
 3. **CPU, the signal read,** once, below. It waits for T_E stage B: S54 was dosed on contrast and on nothing mixed, so mixed families alone give these three models too little range to test the signal.
 4. **Registration, an independent review, Jonathan's dated line,** for each L4 step below.
-5. **L4, `pk_sft_v1`:** the noise pair, two fixed seeds excluded from every later comparison, and one mixed-row specialist. This gives `pair_sd_points` and design A's gate.
-6. **L4, `pk_sft_v1`, only if the gate opens:** the comparison, three seed pairs, registered with numbers after step 5.
+5. **L4, `pk_sft_v1`:** the noise pair, two fixed seeds excluded from every later comparison, one mixed-row specialist, and, if the gate opens, a targeting pair: T doubles the families the signal names on N1, C as many drawn by a registered seed, both from N1's weights. This gives `pair_sd_points`, design A's gate and GPT-6's test of whether the signal is actionable. Registered as the lane's PROTOCOL section 33, rule in `n1_rule.py`. The signal read passed (`reviews/signal_read_result.md`), pooled; its within-model rankings are reported beside it and enter no rule. No adaptive allocation is authorised by the pooled pass or by any outcome of this step.
+6. **L4, `pk_sft_v1`, only if step 5 reads `TARGETING_SUPPORTED`:** the comparison, three seed pairs, registered with numbers after step 5.
 7. **L4, `pk_sft_v1`:** the error pilot, as a screen at one seed.
 8. **After the race:** the same on the selected base, skipping what steps 5 to 7 showed to be pointless.
 
@@ -98,7 +98,7 @@ On assumed worlds (`replay-sim`, no evidence about any model), with a seed sprea
 
 ## Stop rules
 
-No comparison if no family stays above 0.15 nats beyond noise after the noise pair. The signal read not passing stops the pilot. No second round of the error pilot under this plan.
+No comparison if no family stays above 0.15 nats beyond noise after the noise pair, or unless the targeting pair reads `TARGETING_SUPPORTED`. The signal read not passing stops the pilot. No second round of the error pilot under this plan.
 
 ## Not built, and why
 

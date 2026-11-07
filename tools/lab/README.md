@@ -37,6 +37,7 @@ history.py: stored receipts, observational, replay harness only. proposer.py: ra
 | Firewall | `firewall.py` | Four disjoint splits, a pinned sealed hash, an allowlisted read, a cap on looks, shortcut baselines, a prefix test for leakage. |
 | Proposer | `proposer.py` | An opinion list with its arithmetic shown. Every entry declares hypothesis to stop rule. Ranks within one base and scale. |
 | Gate | `gate.py` | The door any future launcher must use. Denies by default; no override exists. Procedural: agents never write authorisation records. |
+| Step 1 rule | `n1_rule.py` | PROTOCOL section 33: design A's gate, `pair_sd_points`, the named and control sets, and the targeting statistic. Pure functions; the readers and packet builder live in the lane. |
 | Shortcuts | `shortcuts.py` | Seven trivial policies and their bar, fixed before any T_E row exists. |
 | Reviews | `reviews/` | The adversarial review and an answer to every finding. |
 
