@@ -5,6 +5,7 @@
     python3 tools/colab_chat/tc_b2_stop.py release-volume --arm NAME --state-dir DIR --reason "the lead's word, dated"
     python3 tools/colab_chat/tc_b2_stop.py release-rung --arm NAME --state-dir DIR --rung RUNG_JOB [--ahead] --reason "the verdict or Jonathan's line"
     python3 tools/colab_chat/tc_b2_stop.py reset-failed --arm NAME --state-dir DIR --reason "Codex's go, dated"
+    python3 tools/colab_chat/tc_b2_stop.py resume --arm NAME --state-dir DIR --reason "Codex's go, dated"
 
 stop writes DIR/HALTED (the watchdog's stop_file, which then disables the entry), SIGTERMs a live runner and waits for its pod to go.
 Volume and checkpoints stay. release-volume deletes that arm's volume, by the id its state holds and only if the provider's name for
@@ -100,19 +101,22 @@ def release_rung(home, arm, rung, reason, ahead=False):
         os.replace(marker, os.path.join(home, f"HALTED.{rung}"))
 
 
+BEFORE_STEP_1 = ("cuda_gate", "l12_probe", "data", "overlap", "precheck", "overlap_check")   # the jobs pt_* waits on
+
+
 def reset_failed(home, arm, reason):
     """After a failed data job or boot has been read and repaired: every unfinished job goes back to not started, in state.json here and, through
     prepare(), on the volume, where FAILED otherwise persists. Home jobs and checkpoints are untouched. The marker is kept as HALTED.failed. Only for a
-    stopped arm that failed before training: a failure from training on is repaired by hand under a dated line (PROTOCOL.md section 30)."""
+    stopped arm that failed before training (BEFORE_STEP_1): a failure from training on is repaired by hand under a dated line (PROTOCOL.md section 30)."""
     state = read(home)
     check_arm(state, arm)
     if sweep.runner_alive(home) or state.get("runpod", {}).get("pod"):
         raise SystemExit("the arm is not stopped")
     marker = os.path.join(home, "HALTED")
     held = json.load(open(marker)) if os.path.exists(marker) else None
-    failed_data = bool(held) and held.get("kind") == "JOB_FAILED_STATE_KEPT" and held.get("job") == "data"
-    if not failed_data and (held or not state.get("boot_failed_commit")):
-        raise SystemExit("this arm is not stopped on a failed data job or a failed boot")
+    failed = bool(held) and held.get("kind") == "JOB_FAILED_STATE_KEPT" and held.get("job") in BEFORE_STEP_1
+    if not failed and (held or not state.get("boot_failed_commit")):
+        raise SystemExit("this arm is not stopped on a failure before step 1, or a failed boot")
     names = [n for n, j in state["jobs"].items() if not j.get("home")]
     if any(j.get("relayed_step") for j in state["jobs"].values()):
         raise SystemExit("this arm has trained: a reset here is not for that")
@@ -132,9 +136,30 @@ def reset_failed(home, arm, reason):
     return state
 
 
+def resume(home, arm, reason):
+    """An arm stopped by hand goes back to the watchdog: jobs and volume as they were, the marker kept as HALTED.stopped. The entry stays the lead's to enable."""
+    state = read(home)
+    check_arm(state, arm)
+    if sweep.runner_alive(home) or state.get("runpod", {}).get("pod"):
+        raise SystemExit("the arm is not stopped")
+    if not state.get("runpod", {}).get("volume"):
+        raise SystemExit("this arm's volume has been released")
+    marker = os.path.join(home, "HALTED")
+    if not os.path.exists(marker) or json.load(open(marker)).get("kind") != "RACE_ARM_STOPPED":
+        raise SystemExit("this arm was not stopped by hand")
+    state["booted"] = False
+    state["resume_reason"] = {"reason": reason, "at": time.time()}
+    tmp = os.path.join(home, "state.json.tmp")
+    with open(tmp, "w") as f:
+        json.dump(state, f, indent=1)
+    os.replace(tmp, os.path.join(home, "state.json"))
+    os.replace(marker, os.path.join(home, "HALTED.stopped"))
+    return state
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("cmd", choices=["stop", "release-volume", "release-rung", "reset-failed"])
+    ap.add_argument("cmd", choices=["stop", "release-volume", "release-rung", "reset-failed", "resume"])
     ap.add_argument("--arm", required=True)
     ap.add_argument("--state-dir", required=True)
     ap.add_argument("--reason", required=True)
@@ -148,6 +173,8 @@ def main(argv=None):
         release_volume(home, a.arm, a.reason)
     elif a.cmd == "reset-failed":
         reset_failed(home, a.arm, a.reason)
+    elif a.cmd == "resume":
+        resume(home, a.arm, a.reason)
     else:
         if not a.rung:
             ap.error("--rung is required")

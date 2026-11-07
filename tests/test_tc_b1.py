@@ -138,8 +138,10 @@ def test_the_arms_pause_at_the_reads_and_keep_whole_checkpoints():
             r = jobs[f"rung_{tag}_s{s}"]
             assert r["halt_on_failure"] and r["keep_home_snapshot"] and "model.gguf" in r["outputs"] and "--export-gguf" in r["cmd"]
         assert not jobs[f"rung_{tag}_s40000"].get("halt_on_failure")
-    assert "overlap" not in {j["name"] for j in load("tc_b1_r1.json")["jobs"]}
-    assert "overlap" not in {j["name"] for j in load("tc_b2_l12.json")["jobs"]}
+    for f, train in (("tc_b1_r1.json", "pt_b1_r1"), ("tc_b2_l12.json", "pt_b2_l12")):
+        jobs = {j["name"]: j for j in load(f)["jobs"]}
+        assert {"overlap", "precheck", "overlap_check"} <= set(jobs[train]["after"])   # three things hold step 1
+        assert jobs["precheck"]["halt_on_failure"] and jobs["overlap"]["halt_on_failure"] and jobs["precheck"].get("light") is None
     assert next(j for j in load("tc_b2_l12.json")["jobs"] if j["name"] == "data")["after"] == "l12_probe"
 
 
@@ -401,7 +403,7 @@ def test_reset_failed_only_on_a_stopped_arm_that_never_trained(tmp_path):
     (home / "state.json").write_text(json.dumps(st))
     with pytest.raises(SystemExit):                              # not halted
         X.reset_failed(str(home), "pk-tc-b1-r1", "go")
-    for marker in ({"kind": "RACE_ARM_STOPPED"}, {"kind": "JOB_FAILED_STATE_KEPT", "job": "rung_b1_s1000"}):
+    for marker in ({"kind": "RACE_ARM_STOPPED"}, {"kind": "JOB_FAILED_STATE_KEPT", "job": "rung_b1_s1000"}, {"kind": "JOB_FAILED_STATE_KEPT", "job": "pt_b1_r1"}):
         (home / "HALTED").write_text(json.dumps(marker))         # another stop, or a failure after training began
         with pytest.raises(SystemExit):
             X.reset_failed(str(home), "pk-tc-b1-r1", "go")
@@ -450,6 +452,113 @@ def test_a_failed_job_can_run_again_after_a_reset(tmp_path, monkeypatch):
     assert r["rc"] == 0, r["stderr"][-400:]
     assert r["state"]["jobs"]["data"]["home"] is True and r["state"]["reset_jobs"] == []
     assert "jobs reset on the volume" in r["log"]
+
+
+def test_precheck_runs_the_registered_rung_on_the_arms_own_spec():
+    import tc_b2_precheck as K
+    for f, train, rung in (("tc_b1_r1.json", "pt_b1_r1", "rung_b1_s1000"), ("tc_b2_l12.json", "pt_b2_l12", "rung_l12_s1000")):
+        jobs = {j["name"]: j for j in load(f)["jobs"]}
+        s = K.short_spec(jobs[train]["spec"], "/tmp/run")
+        real = jobs[train]["spec"]
+        assert s["arch"] == real["arch"] and s["data"] == real["data"] and s["train"]["steps"] == K.TRAIN_STEPS > K.STEPS == s["train"]["eval_every"]
+        assert {k: v for k, v in s["train"].items() if k not in ("steps", "checkpoint_every", "eval_every", "lr_schedule")} == \
+               {k: v for k, v in real["train"].items() if k not in ("steps", "checkpoint_every", "eval_every", "lr_schedule")}
+        a = K.rung_argv(jobs[rung]["cmd"], "/o", "/w/model.safetensors", "/w", 60)
+        assert len(a) == len(jobs[rung]["cmd"]) and "--export-gguf" in a and a.count("--panel") == 2
+        assert [x for x, y in zip(a, jobs[rung]["cmd"]) if x != y] == ["/o", "/w/model.safetensors", "/w", "60"]
+        assert jobs["precheck"]["cmd"][jobs["precheck"]["cmd"].index("--rung") + 1] == rung
+
+
+def test_precheck_verdict_fails_closed():
+    import tc_b2_precheck as K
+    par = {leg: {k: 5 for k in ("n", "reply_identical", "token_count", "stop_reason", "prompt_tokens")} for leg in ("cuda", "cpu")}
+    assert K.parity_ok(par, 5) and not K.parity_ok(None, 5) and not K.parity_ok({**par, "cpu": {**par["cpu"], "reply_identical": 4}}, 5)
+    sc = {"on_gpu": True, "cuda": {"n": 5, "max_nats_per_token": 0.001, "argmax_equal": True}, "cpu": {"n": 5, "max_nats_per_token": 0.0, "argmax_equal": True}}
+    assert K.score_ok(sc, 5) and not K.score_ok({**sc, "on_gpu": False}, 5) and not K.score_ok(None, 5)
+    assert not K.score_ok({**sc, "cpu": {"n": 5, "max_nats_per_token": None, "argmax_equal": True}}, 5)
+    assert not K.score_ok({**sc, "cuda": {"n": 5, "max_nats_per_token": 0.01, "argmax_equal": True}}, 5)
+    assert not K.score_ok({**sc, "cuda": {"n": 5, "max_nats_per_token": 0.0, "argmax_equal": False}}, 5)
+    ok = {"train_rc": 0, "rung_rc": 0, "acc_gold": 0.3, "panels": {"fineweb": 8.1, "dialogue": 8.2}, "gguf_state_k": 4, "want_state_k": 4, "parity_ok": True, "score_ok": True,
+          "peak_train_mib": 14080, "peak_total_mib": 19000, "rung_seconds": 800, "trainer_held": True, "resumed_step": 120, "val_loss": 8.9}
+    assert K.verdict(ok) == []
+    for change in ({"train_rc": "no live trainer"}, {"rung_rc": "timeout"}, {"acc_gold": None}, {"panels": {"fineweb": float("nan")}}, {"panels": None}, {"gguf_state_k": 0},
+                   {"gguf_state_k": None, "want_state_k": None}, {"parity_ok": False}, {"score_ok": False}, {"peak_total_mib": None}, {"peak_total_mib": 23035},
+                   {"rung_seconds": 1801}, {"rung_seconds": None}, {"trainer_held": False}, {"resumed_step": None}, {"val_loss": None}, {"val_loss": float("inf")},
+                   {"error": "TimeoutError()"}):
+        assert K.verdict({**ok, **change}), change
+    ref = {"a": {"logprobs": [-1.0, -2.0], "argmax": [3, 4], "over_ctx": False}}
+    same = {"key": "a", "logprobs": [-1.0, -2.0], "argmax": [3, 4], "over_ctx": False}
+    assert K.diffs(ref, [same]) == {"max_nats_per_token": 0.0, "argmax_equal": True}
+    cancels = K.diffs(ref, [{**same, "logprobs": [-1.5, -1.5]}])                 # the sum agrees; the tokens do not
+    assert cancels["max_nats_per_token"] == pytest.approx(0.5)
+    assert K.diffs(ref, [{**same, "argmax": [3, 5]}])["argmax_equal"] is False
+    for gone in ([{"key": "b"}], [{**same, "over_ctx": True}], [], [{**same, "logprobs": [-1.0]}], [{**same, "logprobs": [float("nan"), -2.0]}]):
+        assert K.diffs(ref, gone)["max_nats_per_token"] is None
+
+
+def test_precheck_reads_a_panel_and_keeps_a_state_block_in_every_prompt(tmp_path, monkeypatch):
+    import struct as st
+    import tc_b2_precheck as K
+    ids = tmp_path / "p.ids"
+    ids.write_bytes(b"PKIDS001" + st.pack("<IIQ", 2, 300, 4000) + st.pack("<4000H", *[10 + i % 200 for i in range(4000)]))
+    assert K.read_ids(str(ids), 3) == [10, 11, 12]
+    toks = [f"t{i}" for i in range(300)]
+    toks[1], toks[2], toks[3] = "<|endoftext|>", "<|user|>", "<|assistant|>"
+    monkeypatch.setattr(K, "gguf_kv", lambda p: {"tokenizer.ggml.tokens": toks, "paperkiln.state_tokens.k": 4})
+    reqs = K.score_requests("x", str(ids))
+    assert len(reqs) == K.SCORE_N and {r["key"] for r in reqs} == {f"s{i}" for i in range(K.SCORE_N)}
+    for r in reqs:
+        assert sum(t >= 300 for t in r["prompt_ids"]) >= 12 and len(r["continuation_ids"]) == 48 and max(r["continuation_ids"]) < 300
+        assert r["prompt_ids"][-1] == 3 and len(r["prompt_ids"]) < 1024
+
+
+def test_parity_threads_follow_the_quota_and_each_ember_leg_has_its_directory(tmp_path, monkeypatch):
+    import builtins
+    import io
+    import chat_parity_vm as V
+    real = builtins.open
+
+    def quota(path, *a, **k):
+        return io.StringIO("510000 100000") if str(path) == "/sys/fs/cgroup/cpu.max" else real(path, *a, **k)
+
+    monkeypatch.setattr(builtins, "open", quota)
+    monkeypatch.setattr(V.os, "cpu_count", lambda: 48)
+    assert V.cores() == 5
+    monkeypatch.setattr(builtins, "open", real)
+    seen = {}
+
+    class Proc:
+        returncode = None
+
+        def poll(self):
+            return None
+
+    monkeypatch.setattr(V.subprocess, "Popen", lambda argv, **k: seen.update(k) or Proc())
+    answers = iter([None, {"model": "m"}])
+    monkeypatch.setattr(V, "health", lambda port: next(answers))
+    V.start(["x"], 1, str(tmp_path / "log"), {}, cwd="/leg")
+    assert seen["cwd"] == "/leg"
+
+
+def test_every_job_training_waits_on_can_be_reset():
+    import tc_b2_stop as X
+    for f, train in (("tc_b1_r1.json", "pt_b1_r1"), ("tc_b2_l12.json", "pt_b2_l12")):
+        jobs = {j["name"]: j for j in load(f)["jobs"]}
+        assert set(jobs[train]["after"]) <= set(X.BEFORE_STEP_1)
+
+
+def test_resume_only_an_arm_stopped_by_hand(tmp_path):
+    import tc_b2_stop as X
+    home = tmp_path / "h"
+    race_state(str(home), name="pk-tc-b2-l12")
+    with pytest.raises(SystemExit):
+        X.resume(str(home), "pk-tc-b2-l12", "go")
+    (home / "HALTED").write_text(json.dumps({"kind": "JOB_FAILED_STATE_KEPT", "job": "data"}))
+    with pytest.raises(SystemExit):
+        X.resume(str(home), "pk-tc-b2-l12", "go")
+    (home / "HALTED").write_text(json.dumps({"kind": "RACE_ARM_STOPPED"}))
+    out = X.resume(str(home), "pk-tc-b2-l12", "Codex's go")
+    assert out["booted"] is False and (home / "HALTED.stopped").exists() and not (home / "HALTED").exists()
 
 
 def test_files_are_what_the_generator_writes():

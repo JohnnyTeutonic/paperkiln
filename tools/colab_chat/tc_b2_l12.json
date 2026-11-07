@@ -63,6 +63,27 @@
    ]
   },
   {
+   "name": "overlap",
+   "after": "data",
+   "light": true,
+   "halt_on_failure": true,
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tc_b2_overlap.py",
+    "scan",
+    "--data",
+    "/content/chat/data",
+    "--packet",
+    "/content/chat/upload/targets.keyed.json",
+    "--out",
+    "{out}"
+   ],
+   "outputs": [
+    "overlap_receipt.json",
+    "manifest.json"
+   ]
+  },
+  {
    "name": "overlap_check",
    "after": "data",
    "light": true,
@@ -94,12 +115,44 @@
    ]
   },
   {
+   "name": "precheck",
+   "after": [
+    "data",
+    "cuda_gate"
+   ],
+   "halt_on_failure": true,
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tc_b2_precheck.py",
+    "--out",
+    "{out}",
+    "--jobs",
+    "tools/colab_chat/tc_b2_l12.json",
+    "--train",
+    "pt_b2_l12",
+    "--rung",
+    "rung_l12_s1000",
+    "--ember",
+    "cc6635bee8c89b8b0304edeca633b1903b5d9291"
+   ],
+   "outputs": [
+    "precheck.json",
+    "rung/rung.json",
+    "parity/parity_summary.json",
+    "train.log",
+    "rung.log",
+    "parity.log"
+   ]
+  },
+  {
    "name": "pt_b2_l12",
    "model_name": "tc_b2_l12",
    "after": [
     "data",
     "cuda_gate",
     "l12_probe",
+    "overlap",
+    "precheck",
     "overlap_check"
    ],
    "relay_every_steps": 2500,

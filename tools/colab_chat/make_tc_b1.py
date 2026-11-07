@@ -137,6 +137,14 @@ def cuda_gate():
             "outputs": ["cuda_gate.json", "cuda_gate.log"]}
 
 
+def precheck(train, rung_job, jobs_file, after):
+    """The whole read path before step 1, on the arm's own shape and mix (tc_b2_precheck.py). Training waits on it as well as on the overlap go."""
+    return {"name": "precheck", "after": after, "halt_on_failure": True,
+            "cmd": ["python3", "tools/colab_chat/tc_b2_precheck.py", "--out", "{out}", "--jobs", f"tools/colab_chat/{jobs_file}", "--train", train,
+                    "--rung", rung_job, "--ember", EMBER_SCORE],
+            "outputs": ["precheck.json", "rung/rung.json", "parity/parity_summary.json", "train.log", "rung.log", "parity.log"]}
+
+
 def data(mode, after=None):
     return {"name": "data", "light": True, "halt_on_failure": True, **({"after": after} if after else {}),
             # Keeps the mix's text: Codex's counts-only scan of the final mix reads it (inbox, 7 Nov). Stage 0 needed no scan.
@@ -197,8 +205,8 @@ def b1():
     links = [(f"/content/chat/pt_b1_r1/rung_{s}/model.safetensors", f"b1_s{s}") for s in RUNGS]
     links += [("/content/chat/pt_b1_r1/tc_b1_r1.safetensors", "b1_final"), ("/content/chat/sft_b1_r1/tc_sft_b1_r1.safetensors", "b1_sft")]
     link = " && ".join(f"ln -sf {a} /content/chat/upload/{t}.safetensors" for a, t in links)
-    jobs = [cuda_gate(), data("b1"), *overlap_jobs(False),   # the one scan ran on B's mix (PROTOCOL.md section 31), and this gate reads its decision
-            {"name": "pt_b1_r1", "model_name": "tc_b1_r1", "after": ["data", "cuda_gate", "overlap_check"], "relay_every_steps": 2500,
+    jobs = [cuda_gate(), data("b1"), *overlap_jobs(True), precheck("pt_b1_r1", f"rung_b1_s{SMOKE}", "tc_b1_r1.json", ["data", "cuda_gate"]),
+            {"name": "pt_b1_r1", "model_name": "tc_b1_r1", "after": ["data", "cuda_gate", "overlap", "precheck", "overlap_check"], "relay_every_steps": 2500,
              "snapshot_steps": [SMOKE, *RUNGS], "snapshot_full_steps": PAUSES, "pause_rungs": [f"rung_b1_s{s}" for s in PAUSES],
              "halt_on_failure": True, "env": TXN, "spec": b_spec()}]
     jobs += [rung("pt_b1_r1", SMOKE, "b1", halt=True, exclusive=True)]
@@ -229,8 +237,8 @@ def l12():
             {"name": "l12_probe", "after": "cuda_gate", "halt_on_failure": True,
              "cmd": ["python3", "tools/colab_chat/tc_b2_probe.py", "--out", "{out}", "--spec", "tools/colab_chat/tc_b2_probe_spec.json"],
              "outputs": ["probe.json"]},
-            data("b1", after="l12_probe"), *overlap_jobs(False),
-            {"name": "pt_b2_l12", "model_name": "tc_b2_l12", "after": ["data", "cuda_gate", "l12_probe", "overlap_check"],
+            data("b1", after="l12_probe"), *overlap_jobs(True), precheck("pt_b2_l12", f"rung_l12_s{SMOKE}", "tc_b2_l12.json", ["data", "cuda_gate"]),
+            {"name": "pt_b2_l12", "model_name": "tc_b2_l12", "after": ["data", "cuda_gate", "l12_probe", "overlap", "precheck", "overlap_check"],
              "relay_every_steps": 2500, "snapshot_steps": [SMOKE, *RUNGS], "snapshot_full_steps": PAUSES,
              "pause_rungs": [f"rung_l12_s{s}" for s in PAUSES], "halt_on_failure": True, "env": TXN, "spec": l12_spec()}]
     jobs += [rung("pt_b2_l12", SMOKE, "l12", shape=SHAPE_L12, halt=True, exclusive=True)]

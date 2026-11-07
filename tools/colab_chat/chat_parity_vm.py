@@ -3,7 +3,7 @@
 ember.cpp's server (tiny_chat_run.EMBER_COMMIT, CUDA and CPU) against `mtstudio chat` on the CPU,
 full recompute, the procedure of ember's experiments/pk_base_v1_2026-10-24/gate.py.
 
-    python3 tools/colab_chat/chat_parity_vm.py OUT JOB [N=40]
+    python3 tools/colab_chat/chat_parity_vm.py OUT JOB [N=40] [EMBER_COMMIT]
 
 1. mtstudio chat on JOB's own spec (/content/chat/JOB_spec.json) with data.vocab set to the run's
    f32 GGUF (the vocabulary the export embedded), MICROTORCH_DEVICE=cpu; /health must name the model.
@@ -29,6 +29,22 @@ PE, PM = 8097, 8098
 PROMPTS = f"{REPO}/corpus/eval/tinychat_hf_prompts_v1.jsonl"
 
 
+def cores():
+    """The pod's CPU quota: os.cpu_count() reads the host's (48 against a quota of about 5 on Stage 0's pod), and that many threads crawl under the quota."""
+    try:
+        q, p = open("/sys/fs/cgroup/cpu.max").read().split()
+        if q != "max":
+            return max(1, int(q) // int(p))
+    except (OSError, ValueError):
+        try:
+            q = int(open("/sys/fs/cgroup/cpu/cpu.cfs_quota_us").read())
+            if q > 0:
+                return max(1, q // int(open("/sys/fs/cgroup/cpu/cpu.cfs_period_us").read()))
+        except (OSError, ValueError):
+            pass
+    return os.cpu_count() or 4
+
+
 def health(port):
     try:
         return json.load(urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=2))
@@ -42,10 +58,10 @@ def post(port, body):
     return json.load(urllib.request.urlopen(req, timeout=900))
 
 
-def start(argv, port, log, env):
+def start(argv, port, log, env, cwd=None):
     if health(port) is not None:
         sys.exit(f"port {port} already answers /health; refusing to share it")
-    p = subprocess.Popen(argv, stdout=open(log, "w"), stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, env=env)
+    p = subprocess.Popen(argv, stdout=open(log, "w"), stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, env=env, cwd=cwd)
     for _ in range(900):
         if p.poll() is not None:
             sys.exit(f"{argv[0]} on {port} exited {p.returncode}; see {log}")
@@ -76,6 +92,7 @@ def sha256(path):
 def main():
     out, job = sys.argv[1], sys.argv[2]
     n = int(sys.argv[3]) if len(sys.argv) > 3 else 40
+    commit = sys.argv[4:5]
     os.makedirs(out, exist_ok=True)
     spec = json.load(open(f"{C}/{job}_spec.json"))
     name = spec["name"]
@@ -88,13 +105,14 @@ def main():
     spec_path = f"{out}/mtstudio_chat_spec.json"
     json.dump(spec, open(spec_path, "w"), indent=1)
     r = subprocess.run([sys.executable, f"{REPO}/tools/colab_chat/ensure_ember_vm.py", f"{out}/ember_build.json",
-                        f"{out}/ember_build.log"], cwd=REPO)
+                        f"{out}/ember_build.log", *commit], cwd=REPO)
     if r.returncode != 0:
         sys.exit("ember build failed")
     eb = json.load(open(f"{out}/ember_build.json"))
     ember_bin = eb["bin"]
     parity = os.path.join(os.path.dirname(os.path.dirname(ember_bin)), "src", "tools", "chat_parity.py")
     base_env = {k: v for k, v in os.environ.items() if not k.startswith("MICROTORCH_")}
+    base_env["OMP_NUM_THREADS"] = str(cores())
     procs = []
     summary = {"model": name, "gguf": gguf, "gguf_sha256": sha256(gguf), "ember": eb,
                "paperkiln_commit": subprocess.run(["git", "-C", REPO, "rev-parse", "HEAD"], capture_output=True,
@@ -102,15 +120,16 @@ def main():
                "prompts": PROMPTS, "n": n, "max_new": 60, "mtstudio": "CPU, full recompute"}
     try:
         pm, hm = start([MTS, "chat", spec_path, "--port", str(PM)], PM, f"{out}/mtstudio.log",
-                       {**base_env, "MICROTORCH_DEVICE": "cpu", "OMP_NUM_THREADS": str(os.cpu_count() or 4)})
+                       {**base_env, "MICROTORCH_DEVICE": "cpu"})
         procs.append(pm)
         if hm.get("model") != name:
             sys.exit(f"mtstudio /health names {hm.get('model')!r}, not {name!r}")
         summary["mtstudio_health"] = hm
         for leg, layers in (("cuda", "-1"), ("cpu", "0")):
             t0 = time.time()
+            os.makedirs(f"{out}/ember_{leg}", exist_ok=True)  # a directory each: a start truncates ./debugging.log, where ember's device line goes
             pe, he = start([ember_bin, gguf, str(PE), "127.0.0.1", "-", layers], PE, f"{out}/ember_{leg}.log",
-                           {**base_env, "EMBER_GEMM_TF32": "0"})
+                           {**base_env, "EMBER_GEMM_TF32": "0"}, cwd=f"{out}/ember_{leg}")
             if os.path.realpath(he.get("model", "")) != os.path.realpath(gguf):
                 stop(pe)
                 sys.exit(f"ember /health names {he.get('model')!r}, not {gguf}")
