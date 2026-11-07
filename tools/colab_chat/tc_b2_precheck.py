@@ -39,6 +39,7 @@ import tc_b2_probe as P  # noqa: E402
 STEPS = 60                                  # the checkpoint and evaluation the rung reads; the trainer is stopped soon after
 TRAIN_STEPS = 3 * STEPS                     # never reached: the run must still be alive when it is stopped
 PARITY_N = 5
+PARITY_MAX_NEW = 16                         # the CPU reference recomputes the whole context a token: ember's chat_parity.py allows 300 s a request, and a pod can hold 5 CPUs
 TRAIN_TIMEOUT_S = 900
 PARITY_TIMEOUT_S = 2400
 RESUME_TIMEOUT_S = 900
@@ -474,18 +475,19 @@ def run_check(a, rep):
         time.sleep(60 * (k + 1))
     t0 = time.time()
     try:
-        p = subprocess.run([sys.executable, os.path.join(HERE, "chat_parity_vm.py"), par, "precheck", str(PARITY_N), a.ember], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        p = subprocess.run([sys.executable, os.path.join(HERE, "chat_parity_vm.py"), par, "precheck", str(PARITY_N), a.ember, str(PARITY_MAX_NEW)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                            text=True, env=ember_env, timeout=PARITY_TIMEOUT_S)
-        open(os.path.join(a.out, "parity.log"), "w").write(p.stdout)
+        open(os.path.join(a.out, "parity.log"), "w").write(p.stdout + "\n--- chat_parity_cuda.log\n" + tail(os.path.join(par, "chat_parity_cuda.log"), 2000))
     except subprocess.TimeoutExpired:
-        pass
-    rep["parity_seconds"] = round(time.time() - t0, 1)
+        open(os.path.join(a.out, "parity.log"), "w").write(f"chat_parity_vm.py passed {PARITY_TIMEOUT_S} s\n" + tail(os.path.join(par, "chat_parity_cuda.log"), 2000))
+    rep["parity_seconds"], rep["parity_max_new"] = round(time.time() - t0, 1), PARITY_MAX_NEW
     s = os.path.join(par, "parity_summary.json")
     summary = json.load(open(s)) if os.path.exists(s) else None
     rep["parity_ok"] = parity_ok(summary, PARITY_N) and ON_GPU in tail(os.path.join(par, "ember_cuda", "debugging.log"), 10 ** 7)
     if summary:
         rep["parity"] = {leg: summary.get(leg) for leg in ("cuda", "cpu")}
         rep["ember_commit"] = summary.get("ember", {}).get("commit")
+        rep["parity_threads"] = summary.get("threads")
     t0 = time.time()
     try:
         panel = next(x.split("=", 1)[1] for x in rung["cmd"] if x.startswith("dialogue="))

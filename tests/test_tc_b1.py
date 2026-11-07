@@ -646,6 +646,15 @@ def test_the_diagnosis_fetch_asks_for_each_output_and_never_stops_a_halt(tmp_pat
     assert (tmp_path / "precheck" / "rung").is_dir()
 
 
+def test_the_checks_reply_length_reaches_every_leg_of_parity():
+    import inspect
+    import chat_parity_vm as V
+    import tc_b2_precheck as K
+    src = inspect.getsource(V.main)
+    assert "60" not in src.replace('else 60', '') and src.count("max_new") >= 5 and "sys.argv[5]" in src
+    assert 8 <= K.PARITY_MAX_NEW <= 16 and "str(PARITY_MAX_NEW)]" in inspect.getsource(K.run_check)
+
+
 def test_every_job_training_waits_on_can_be_reset():
     import tc_b2_stop as X
     for f, train in (("tc_b1_r1.json", "pt_b1_r1"), ("tc_b2_l12.json", "pt_b2_l12")):

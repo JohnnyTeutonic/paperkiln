@@ -3,13 +3,13 @@
 ember.cpp's server (tiny_chat_run.EMBER_COMMIT, CUDA and CPU) against `mtstudio chat` on the CPU,
 full recompute, the procedure of ember's experiments/pk_base_v1_2026-10-24/gate.py.
 
-    python3 tools/colab_chat/chat_parity_vm.py OUT JOB [N=40] [EMBER_COMMIT]
+    python3 tools/colab_chat/chat_parity_vm.py OUT JOB [N=40] [EMBER_COMMIT] [MAX_NEW=60]
 
 1. mtstudio chat on JOB's own spec (/content/chat/JOB_spec.json) with data.vocab set to the run's
    f32 GGUF (the vocabulary the export embedded), MICROTORCH_DEVICE=cpu; /health must name the model.
 2. CUDA leg: ember's server on JOB's f32 GGUF, all layers on the GPU, EMBER_GEMM_TF32=0; ember's own
    tools/chat_parity.py (from ember's tree, unchanged) on the first N frozen prompts
-   (tinychat_hf_prompts_v1, greedy, 60 new tokens): reply text, token count, stop reason, and ember's
+   (tinychat_hf_prompts_v1, greedy, MAX_NEW new tokens): reply text, token count, stop reason, and ember's
    prompt token count against paperkiln's tokeniser. OUT/parity_cuda.jsonl.
 3. CPU leg: the same GGUF on ember's CPU path (GPU layers 0), the CUDA leg's prompts replayed through
    ember alone and compared with the recorded mtstudio replies (gate.py's "ref" job). OUT/parity_cpu.jsonl.
@@ -93,6 +93,7 @@ def main():
     out, job = sys.argv[1], sys.argv[2]
     n = int(sys.argv[3]) if len(sys.argv) > 3 else 40
     commit = sys.argv[4:5]
+    max_new = int(sys.argv[5]) if len(sys.argv) > 5 else 60
     os.makedirs(out, exist_ok=True)
     spec = json.load(open(f"{C}/{job}_spec.json"))
     name = spec["name"]
@@ -117,7 +118,7 @@ def main():
     summary = {"model": name, "gguf": gguf, "gguf_sha256": sha256(gguf), "ember": eb,
                "paperkiln_commit": subprocess.run(["git", "-C", REPO, "rev-parse", "HEAD"], capture_output=True,
                                                   text=True).stdout.strip(),
-               "prompts": PROMPTS, "n": n, "max_new": 60, "mtstudio": "CPU, full recompute"}
+               "prompts": PROMPTS, "n": n, "max_new": max_new, "mtstudio": "CPU, full recompute", "threads": base_env["OMP_NUM_THREADS"]}
     try:
         pm, hm = start([MTS, "chat", spec_path, "--port", str(PM)], PM, f"{out}/mtstudio.log",
                        {**base_env, "MICROTORCH_DEVICE": "cpu"})
@@ -137,7 +138,7 @@ def main():
             try:
                 if leg == "cuda":
                     env = {**base_env, "PARITY_EMBER_PORT": str(PE), "PARITY_MTS_PORT": str(PM), "PARITY_GGUF": gguf,
-                           "PARITY_PROMPTS": PROMPTS, "PARITY_MAX_NEW": "60", "PAPERKILN_TOOLS": f"{REPO}/tools"}
+                           "PARITY_PROMPTS": PROMPTS, "PARITY_MAX_NEW": str(max_new), "PAPERKILN_TOOLS": f"{REPO}/tools"}
                     p = subprocess.run([sys.executable, parity, str(n), rec_path], env=env, capture_output=True,
                                        text=True)
                     open(f"{out}/chat_parity_cuda.log", "w").write(p.stdout + p.stderr)
@@ -148,7 +149,7 @@ def main():
                 else:
                     rows = []
                     for r0 in ref_rows:
-                        e = post(PE, {"user_input": r0["prompt"], "max_new_tokens": 60, "temperature": 1.0,
+                        e = post(PE, {"user_input": r0["prompt"], "max_new_tokens": max_new, "temperature": 1.0,
                                       "top_k": 1, "top_p": 1.0, "seed": 0})
                         rows.append({**r0, "ember": e["reply"], "ember_tokens": e["tokens"],
                                      "ember_stop": e["stop_reason"], "ember_prompt_tokens": e["prompt_tokens"],
