@@ -985,6 +985,17 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
     if "DIRS_OK" not in out:
         log(f"prepare: upload dirs not created: {out.strip()[-120:]}")
         return False
+    # tc_b2_stop.py reset-failed: a person has read the failure. A volume holds FAILED until this clears it, and jobs_vm.py runs a job anew.
+    resets = st.d.get("reset_jobs") or []
+    if resets:
+        rc, out = exec_py(f"import os\nfor n in {resets!r}:\n    for f in ('STATUS_' + n, n + '.rc', n + '.pid'):\n"
+                          "        p = '/content/chat/' + f\n        if os.path.exists(p):\n            os.remove(p)\nprint('RESET_OK')\n")
+        if "RESET_OK" not in out:
+            log(f"prepare: failed jobs not reset: {out.strip()[-120:]}")
+            return False
+        st.d["reset_jobs"] = []
+        st.save()
+        log(f"prepare: jobs reset on the volume: {resets}")
     # Jobs already home keep their outcome on this VM: jobs_vm.py runs every job not FINISHED or
     # FAILED, so a fresh VM would otherwise redo them (22 Oct 2026: lever1 rebuilt after it was home).
     # A home job that FAILED stays FAILED, so its dependants still follow it (23 Oct 2026: marking

@@ -304,6 +304,85 @@ def test_relay_copies_one_generation_through_a_commit(tmp_path):
     assert (snap / "state.txt").read_text().startswith("125")
 
 
+def test_fetch_retries_transient_errors_only(monkeypatch):
+    sys.path.insert(0, str(ROOT / "corpus" / "fetchers"))
+    import urllib.error
+    import human_dialogue as H
+    monkeypatch.setattr(H.time, "sleep", lambda s: None)
+    calls = []
+
+    def flaky():
+        calls.append(1)
+        if len(calls) < 3:
+            raise urllib.error.HTTPError("u", 504, "Gateway Timeout", {}, None)
+        return "bytes"
+
+    assert H.with_retries(flaky, "u") == "bytes" and len(calls) == 3
+    calls.clear()
+
+    def down():
+        calls.append(1)
+        raise urllib.error.HTTPError("u", 504, "Gateway Timeout", {}, None)
+
+    with pytest.raises(urllib.error.HTTPError):
+        H.with_retries(down, "u")
+    assert len(calls) == 6                                       # bounded
+    calls.clear()
+
+    def gone():
+        calls.append(1)
+        raise urllib.error.HTTPError("u", 404, "Not Found", {}, None)
+
+    with pytest.raises(urllib.error.HTTPError):
+        H.with_retries(gone, "u")
+    assert len(calls) == 1                                       # a client error stands at once
+
+
+def test_reset_failed_only_on_a_stopped_arm_that_never_trained(tmp_path):
+    import tc_b2_stop as X
+    home = tmp_path / "h"
+    race_state(str(home), name="pk-tc-b1-r1")
+    st = json.load(open(home / "state.json"))
+    st["jobs"] = {"cuda_gate": {"status": "FINISHED", "home": True, "relayed_step": 0}, "data": {"status": "FAILED", "home": False, "relayed_step": 0, "failed_seen": 2},
+                  "pt_b1_r1": {"status": "FAILED", "home": False, "relayed_step": 0}}
+    (home / "state.json").write_text(json.dumps(st))
+    with pytest.raises(SystemExit):                              # not halted
+        X.reset_failed(str(home), "pk-tc-b1-r1", "go")
+    (home / "HALTED").write_text(json.dumps({"kind": "JOB_FAILED_STATE_KEPT", "job": "data"}))
+    out = X.reset_failed(str(home), "pk-tc-b1-r1", "Codex's go")
+    assert out["reset_jobs"] == ["data", "pt_b1_r1"] and out["jobs"]["cuda_gate"]["home"] is True
+    assert out["jobs"]["data"] == {"relayed_step": 0, "status": None, "home": False}
+    assert (home / "HALTED.failed").exists() and not (home / "HALTED").exists()
+    race_state(str(tmp_path / "t"), name="pk-tc-b1-r1")
+    st = json.load(open(tmp_path / "t" / "state.json"))
+    st["jobs"] = {"pt_b1_r1": {"status": "FAILED", "home": False, "relayed_step": 2500}}
+    (tmp_path / "t" / "state.json").write_text(json.dumps(st))
+    (tmp_path / "t" / "HALTED").write_text(json.dumps({"kind": "JOB_FAILED_STATE_KEPT", "job": "pt_b1_r1"}))
+    with pytest.raises(SystemExit):                              # never for an arm that has trained
+        X.reset_failed(str(tmp_path / "t"), "pk-tc-b1-r1", "go")
+
+
+def test_a_failed_job_can_run_again_after_a_reset(tmp_path):
+    """The runner against the fake CLI: halted on a failed job, reset by the tool, run again on the same state, and home."""
+    import run_eq
+    jobs = {"jobs": [{"name": "good", "cmd": ["x"], "outputs": ["out.txt"]},
+                     {"name": "bad", "cmd": ["z"], "outputs": ["x.json"], "after": "good", "fake_fail": True, "halt_on_failure": True}]}
+    r = run_fake(tmp_path, jobs, {})
+    assert r["rc"] == 3 and r["state"]["jobs"]["bad"]["home"] is False
+    assert (tmp_path / "w" / "state" / "HALTED").exists()
+    st = json.load(open(tmp_path / "w" / "state" / "state.json"))
+    st["jobs"]["bad"] = {"relayed_step": 0, "status": None, "home": False}
+    st["reset_jobs"] = ["bad"]
+    st["booted"] = False
+    json.dump(st, open(tmp_path / "w" / "state" / "state.json", "w"))
+    os.replace(tmp_path / "w" / "state" / "HALTED", tmp_path / "w" / "state" / "HALTED.failed")
+    jobs["jobs"][1].pop("fake_fail")
+    r = run_eq.run(str(CC / "runner_multi.py"), str(tmp_path / "w"), {}, jobs=jobs, fresh=False)
+    assert r["rc"] == 0, r["stderr"][-400:]
+    assert r["state"]["jobs"]["bad"]["home"] is True and r["state"]["reset_jobs"] == []
+    assert "jobs reset on the volume" in r["log"]
+
+
 def test_files_are_what_the_generator_writes():
     s0, r1 = load("tc_b1_s0.json"), load("tc_b1_r1.json")
     assert s0 == json.loads(json.dumps(M.stage0()))

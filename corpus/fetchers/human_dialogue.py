@@ -67,6 +67,8 @@ import shutil
 import sys
 import tarfile
 import tempfile
+import time
+import urllib.error
 import urllib.request
 from collections import Counter, defaultdict
 
@@ -187,6 +189,25 @@ def names_for(source):
 
 # ---- downloads --------------------------------------------------------------
 INPUTS = []   # (uri, sha256) read by the current build
+RETRY_WAITS = (5, 15, 45, 120, 300)   # seconds; six tries in all, then the error stands
+RETRY_CODES = {408, 429, 500, 502, 503, 504}
+
+
+def with_retries(call, what):
+    """A network call again after a transient failure, bounded. Bytes and hashes are the caller's and do not change. A 404 or any other
+    client error stands at once (a raced arm's HTTP 504 from raw.githubusercontent.com, 7 Nov 2026, needed only a second try)."""
+    for wait in (*RETRY_WAITS, None):
+        try:
+            return call()
+        except urllib.error.HTTPError as e:
+            if e.code not in RETRY_CODES or wait is None:
+                raise
+            print(f"{what}: HTTP {e.code}; again in {wait} s", flush=True)
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+            if wait is None:
+                raise
+            print(f"{what}: {type(e).__name__}; again in {wait} s", flush=True)
+        time.sleep(wait)
 
 
 def _sha(path):
@@ -201,8 +222,12 @@ def fetch_url(url, raw_dir, want=None):
     if not os.path.exists(dest):
         tmp = dest + ".part"
         req = urllib.request.Request(url, headers={"User-Agent": "paperkiln-corpus-fetcher"})
-        with urllib.request.urlopen(req, timeout=120) as r, open(tmp, "wb") as f:
-            shutil.copyfileobj(r, f, 1 << 22)
+
+        def fetch():
+            with urllib.request.urlopen(req, timeout=120) as r, open(tmp, "wb") as f:
+                shutil.copyfileobj(r, f, 1 << 22)
+
+        with_retries(fetch, url)
         os.replace(tmp, dest)
     h = _sha(dest)
     if want and h != want:
@@ -220,8 +245,11 @@ def github_tree(repo_commit, prefix, suffix):
     repo, commit = repo_commit
     req = urllib.request.Request(f"https://api.github.com/repos/{repo}/git/trees/{commit}?recursive=1",
                                  headers={"User-Agent": "paperkiln-corpus-fetcher"})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        tree = json.load(r)
+    def fetch():
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return json.load(r)
+
+    tree = with_retries(fetch, f"tree of {repo}")
     return sorted(x["path"] for x in tree["tree"]
                   if x["type"] == "blob" and x["path"].startswith(prefix) and x["path"].endswith(suffix))
 
