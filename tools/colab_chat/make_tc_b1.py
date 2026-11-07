@@ -21,6 +21,9 @@ RUNGS = [10000, 20000, 30000, 40000, 50000]
 PAUSES = [20000, 30000]   # the race's reads: both arms stop at each until released (PROTOCOL.md section 30)
 SMOKE = 1000              # a rung early on, so a rung fault or a limit shows here, at about $1, not at step 10,000
 RUNG_TIMEOUT_S = 3600     # a rung runs alone (jobs_vm.py "exclusive"); past this it has failed
+# Carry-5's forward chunks on a rung (PROTOCOL.md section 32): well under the 16,384 Carry-12 registered, because a rung runs beside a stopped
+# trainer's memory, and Carry-5's contexts are short enough that a forward still holds many requests.
+RUNG_SCORE_BATCH = 4096
 # ember's /score for the final benchmarks: the commit tools/colab_chat/bench_v2.json gated (580e1089), under its new id
 # after the history rewrite of 3 Nov (C:/ml_artifacts/purge_20261103/ember.cpp.commit-map).
 EMBER_SCORE = "cc6635bee8c89b8b0304edeca633b1903b5d9291"
@@ -142,7 +145,7 @@ def precheck(train, rung_job, jobs_file, after):
     return {"name": "precheck", "after": after, "halt_on_failure": True,
             "cmd": ["python3", "tools/colab_chat/tc_b2_precheck.py", "--out", "{out}", "--jobs", f"tools/colab_chat/{jobs_file}", "--train", train,
                     "--rung", rung_job, "--ember", EMBER_SCORE],
-            "outputs": ["precheck.json", "rung/rung.json", "parity/parity_summary.json", "train.log", "rung.log", "parity.log"]}
+            "outputs": ["precheck.json", "precheck_train.json", "previous.json", "rung/rung.json", "parity/parity_summary.json", "train.log", "rung.log", "parity.log"]}
 
 
 def data(mode, after=None):
@@ -156,7 +159,7 @@ def data(mode, after=None):
                         "human/human_dialogue_v1.ledger.json"]}
 
 
-def rung(job, step, tag, keep=False, shape=SHAPE, halt=False, exclusive=False):
+def rung(job, step, tag, keep=False, shape=SHAPE, halt=False, exclusive=False, batch=0):
     """keep: a rung the race reads: its GGUF and weights stay at home, and a failure stops the arm, because the read needs it."""
     j = {"name": f"rung_{tag}_s{step}", "after": "data", "light": True, "rung_of": {"job": job, "step": step},
          "env": {"MICROTORCH_POOL_MB": 2048},
@@ -165,7 +168,7 @@ def rung(job, step, tag, keep=False, shape=SHAPE, halt=False, exclusive=False):
                  "--step", str(step), "--job", job, "--cell", tag.upper(), "--seed", "1", "--share", "30",
                  "--panel", "fineweb=/content/chat/data/panel_fineweb.ids",
                  "--panel", "dialogue=/content/chat/data/panel_dialogue.ids",
-                 "--carry5-items", "corpus/eval/carry5_v1.jsonl"],
+                 "--carry5-items", "corpus/eval/carry5_v1.jsonl", *(["--score-batch-tokens", str(batch)] if batch else [])],
          "outputs": ["rung.json"]}
     if exclusive:
         j["exclusive"], j["timeout_s"] = True, RUNG_TIMEOUT_S
@@ -209,8 +212,8 @@ def b1():
             {"name": "pt_b1_r1", "model_name": "tc_b1_r1", "after": ["data", "cuda_gate", "overlap", "precheck", "overlap_check"], "relay_every_steps": 2500,
              "snapshot_steps": [SMOKE, *RUNGS], "snapshot_full_steps": PAUSES, "pause_rungs": [f"rung_b1_s{s}" for s in PAUSES],
              "halt_on_failure": True, "env": TXN, "spec": b_spec()}]
-    jobs += [rung("pt_b1_r1", SMOKE, "b1", halt=True, exclusive=True)]
-    jobs += [rung("pt_b1_r1", s, "b1", keep=s <= PAUSES[-1], exclusive=True) for s in RUNGS]
+    jobs += [rung("pt_b1_r1", SMOKE, "b1", halt=True, exclusive=True, batch=RUNG_SCORE_BATCH)]
+    jobs += [rung("pt_b1_r1", s, "b1", keep=s <= PAUSES[-1], exclusive=True, batch=RUNG_SCORE_BATCH) for s in RUNGS]
     jobs += [{"name": "sft_b1_r1", "model_name": "tc_sft_b1_r1", "after": "pt_b1_r1", "init_job": "pt_b1_r1",
               "relay_every_steps": 500, "halt_on_failure": True, "env": TXN, "spec": sft_spec()},
              {"name": "items", "after": "sft_b1_r1", "light": True, "halt_on_failure": True,
@@ -241,8 +244,8 @@ def l12():
             {"name": "pt_b2_l12", "model_name": "tc_b2_l12", "after": ["data", "cuda_gate", "l12_probe", "overlap", "precheck", "overlap_check"],
              "relay_every_steps": 2500, "snapshot_steps": [SMOKE, *RUNGS], "snapshot_full_steps": PAUSES,
              "pause_rungs": [f"rung_l12_s{s}" for s in PAUSES], "halt_on_failure": True, "env": TXN, "spec": l12_spec()}]
-    jobs += [rung("pt_b2_l12", SMOKE, "l12", shape=SHAPE_L12, halt=True, exclusive=True)]
-    jobs += [rung("pt_b2_l12", s, "l12", keep=s <= PAUSES[-1], shape=SHAPE_L12, exclusive=True) for s in RUNGS]
+    jobs += [rung("pt_b2_l12", SMOKE, "l12", shape=SHAPE_L12, halt=True, exclusive=True, batch=RUNG_SCORE_BATCH)]
+    jobs += [rung("pt_b2_l12", s, "l12", keep=s <= PAUSES[-1], shape=SHAPE_L12, exclusive=True, batch=RUNG_SCORE_BATCH) for s in RUNGS]
     jobs += [{"name": "sft_b2_l12", "model_name": "tc_sft_b2_l12", "after": "pt_b2_l12", "init_job": "pt_b2_l12",
               "relay_every_steps": 500, "halt_on_failure": True, "env": TXN, "spec": sft},
              {"name": "items", "after": "sft_b2_l12", "light": True, "halt_on_failure": True,

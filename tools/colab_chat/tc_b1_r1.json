@@ -120,6 +120,8 @@
    ],
    "outputs": [
     "precheck.json",
+    "precheck_train.json",
+    "previous.json",
     "rung/rung.json",
     "parity/parity_summary.json",
     "train.log",
@@ -251,7 +253,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--score-batch-tokens",
+    "4096"
    ],
    "outputs": [
     "rung.json"
@@ -299,7 +303,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--score-batch-tokens",
+    "4096"
    ],
    "outputs": [
     "rung.json",
@@ -349,7 +355,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--score-batch-tokens",
+    "4096"
    ],
    "outputs": [
     "rung.json",
@@ -399,7 +407,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--score-batch-tokens",
+    "4096"
    ],
    "outputs": [
     "rung.json",
@@ -449,7 +459,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--score-batch-tokens",
+    "4096"
    ],
    "outputs": [
     "rung.json"
@@ -496,7 +508,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--score-batch-tokens",
+    "4096"
    ],
    "outputs": [
     "rung.json"

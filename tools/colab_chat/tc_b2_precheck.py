@@ -50,6 +50,8 @@ COST_RUNG_S = 900                           # race_costs.py's RUNG_H: over this 
 MAX_RUNG_S = 1800                           # section 30 stops an arm by hand over 30 minutes
 SCORE_N = 5
 SCORE_TOL = 0.002                           # nats, on any one token, between engines
+ARGMAX_TIES = 2                             # of about 240 positions: a step-60 model is near unigram, and rounding can turn a near-tie; the log-probs decide
+BATCH_ROUNDING = 5e-5                       # IR_SPEC 4.3's ROUNDING on CUDA: |d log-prob| <= this x max(1, |ref|), batched against unbatched
 PORT = 8197
 ON_GPU = "IR interpreter (CUDA;"            # ember's line (api.cpp), a warning that reaches only ./debugging.log: a CUDA build falls to the CPU without an error
 
@@ -78,10 +80,12 @@ def parity_ok(s, n):
     return all(s.get(leg, {}).get(k) == n for leg in ("cuda", "cpu") for k in ("n", "reply_identical", "token_count", "stop_reason", "prompt_tokens"))
 
 
-def score_ok(s, n):
+def score_ok(s, n, batched=False):
     if not s or not s.get("on_gpu"):
         return False
-    return all(s.get(leg, {}).get("n") == n and s[leg].get("argmax_equal") is True and s[leg].get("max_nats_per_token") is not None
+    if batched and not (s.get("batched", {}).get("n") == n and s["batched"].get("rounding") is True and s["batched"].get("argmax_diffs", n) <= ARGMAX_TIES):
+        return False
+    return all(s.get(leg, {}).get("n") == n and s[leg].get("argmax_diffs", ARGMAX_TIES + 1) <= ARGMAX_TIES and s[leg].get("max_nats_per_token") is not None
                and s[leg]["max_nats_per_token"] <= SCORE_TOL for leg in ("cuda", "cpu"))
 
 
@@ -117,6 +121,12 @@ def verdict(rep):
     if s is None or s > MAX_RUNG_S:
         bad.append(f"the rung took {s} s, past {MAX_RUNG_S} s")
     return bad
+
+
+def carry5_chunks(rung_out):
+    """Carry-5's chunks finished: on a timeout the only record of how far it got, since the rung prints nothing until its end."""
+    d = os.path.join(rung_out, "carry5_base", "m", "score")
+    return sum(f.startswith("chunk") and f.endswith(".json") for f in os.listdir(d)) if os.path.isdir(d) else 0
 
 
 def phase_times(rung_out, t0):
@@ -190,18 +200,33 @@ def score_requests(gguf, panel, n=SCORE_N):
 
 
 def diffs(ref, res):
-    """Token by token against the reference, so that errors cannot cancel: the largest difference in nats, and whether every argmax agrees.
+    """Token by token against the reference, so that errors cannot cancel: the largest difference in nats, and how many argmax positions differ.
     max_nats_per_token is None when anything is missing or over the context."""
-    worst, same = 0.0, len(res) == len(ref)
+    worst, turned = 0.0, 0
     for r in res:
         a = ref.get(r.get("key"))
         if a is None or r.get("over_ctx") or a.get("over_ctx") or not a.get("logprobs") or len(r.get("logprobs") or []) != len(a["logprobs"]):
-            return {"max_nats_per_token": None, "argmax_equal": False}
+            return {"max_nats_per_token": None, "argmax_diffs": None}
         d = [abs(x - y) for x, y in zip(r["logprobs"], a["logprobs"])]
-        if not all(math.isfinite(x) for x in d):
-            return {"max_nats_per_token": None, "argmax_equal": False}
-        worst, same = max(worst, *d), same and r.get("argmax") == a.get("argmax")
-    return {"max_nats_per_token": worst if len(res) == len(ref) else None, "argmax_equal": same}
+        got, want = r.get("argmax") or [], a.get("argmax") or []
+        if not all(math.isfinite(x) for x in d) or len(got) != len(want):
+            return {"max_nats_per_token": None, "argmax_diffs": None}
+        worst, turned = max(worst, *d), turned + sum(x != y for x, y in zip(got, want))
+    return {"max_nats_per_token": worst if len(res) == len(ref) else None, "argmax_diffs": turned}
+
+
+def rounding(ref, rows):
+    """Batched against unbatched, on `mtstudio score`'s rows: every token within ROUNDING, every argmax equal. The receipt of 28 Oct 2026 proved this on
+    a model without state tokens; a causal k = 4 model's prompts, state ids in them, go through the packed forward too (Llama::packable), so it is proved here."""
+    res = {"n": len(rows), **diffs(ref, rows), "rounding": False}
+    if res["max_nats_per_token"] is not None:
+        res["rounding"] = all(abs(x - y) <= BATCH_ROUNDING * max(1.0, abs(y)) for r in rows for x, y in zip(r["logprobs"], ref[r["key"]]["logprobs"]))
+    return res
+
+
+def score_batch(cmd):
+    """The rung command's --score-batch-tokens; 0 when it has none."""
+    return int(cmd[cmd.index("--score-batch-tokens") + 1]) if "--score-batch-tokens" in cmd else 0
 
 
 def serve(ember, gguf, layers, cwd, env):
@@ -221,7 +246,7 @@ def serve(ember, gguf, layers, cwd, env):
     raise RuntimeError("ember did not come up")
 
 
-def score_parity(out, gguf, spec_path, panel, ember):
+def score_parity(out, gguf, spec_path, panel, ember, batch=0):
     """`mtstudio score`, then ember's /score on the same ids, on both of ember's devices. {"cuda", "cpu", "on_gpu"}; "error" when a leg could not run."""
     import carry5_eval
     os.makedirs(out, exist_ok=True)
@@ -241,6 +266,10 @@ def score_parity(out, gguf, spec_path, panel, ember):
         r = json.loads(line)
         ref[r["key"]] = {"logprobs": r.get("logprobs"), "argmax": r.get("argmax"), "over_ctx": r.get("over_ctx"), "sum": r.get("sum")}
     res = {"on_gpu": False, "reference": {k: v["sum"] for k, v in ref.items()}}
+    if batch:
+        packed = os.path.join(out, "score_batched.jsonl")
+        carry5_eval.mtstudio_score(P.BIN, sp, inp, packed, batch_tokens=batch)
+        res["batched"] = {"batch_tokens": batch, **rounding(ref, [json.loads(x) for x in open(packed)])}
     env = {k: v for k, v in os.environ.items() if not k.startswith("MICROTORCH_")}
     env.update(EMBER_GEMM_TF32="0", EMBER_DETERMINISTIC="1")
     body = json.dumps({"requests": reqs}).encode()
@@ -303,8 +332,9 @@ def main(argv=None):
         rep["failed"] = verdict(rep)
         rep["ok"] = not rep["failed"]
         rep["over_cost_allowance"] = bool(rep.get("rung_seconds") and rep["rung_seconds"] > COST_RUNG_S)
-        with open(os.path.join(a.out, "precheck.json"), "w") as f:
+        with open(os.path.join(a.out, "precheck.json.tmp"), "w") as f:
             json.dump(rep, f, indent=1)
+        os.replace(os.path.join(a.out, "precheck.json.tmp"), os.path.join(a.out, "precheck.json"))
         print(json.dumps({k: v for k, v in rep.items() if k != "producer"}), flush=True)
         if rep["failed"]:                       # only the job's log comes home from a failed job
             for f in ("train.log", "rung.log", "parity.log"):
@@ -330,11 +360,40 @@ def main(argv=None):
     return code
 
 
+def keep_previous(out):
+    """What an earlier attempt left on this volume, before it goes: its receipt, spec and log tails, in OUT/previous.json, which comes home as an output."""
+    def load(path):
+        """A diagnostic must not stop a check: a truncated file is recorded as that."""
+        try:
+            return json.load(open(path)) if os.path.exists(path) else None
+        except ValueError:
+            return {"unreadable": tail(path, 2000)}
+
+    p = os.path.join(out, "precheck.json")
+    prev = {"precheck": None}
+    if os.path.exists(p):
+        prev = {"precheck": load(p), "at": os.path.getmtime(p), "carry5_chunks": carry5_chunks(os.path.join(out, "rung"))}
+        prev["precheck_train"] = load(os.path.join(out, "precheck_train.json"))
+        for f in ("train.log", "rung.log", "parity.log"):
+            prev[f] = tail(os.path.join(out, f), 4000)
+        earlier = load(os.path.join(out, "previous.json"))
+        if earlier and earlier.get("precheck"):   # the first failure's receipt survives a second attempt
+            prev["earlier"] = earlier
+    with open(os.path.join(out, "previous.json.tmp"), "w") as f:
+        json.dump(prev, f, indent=1)
+    os.replace(os.path.join(out, "previous.json.tmp"), os.path.join(out, "previous.json"))
+    return prev
+
+
 def run_check(a, rep):
     """Fills rep; returns early when a later step could only repeat the failure."""
     by = {j["name"]: j for j in json.load(open(a.jobs))["jobs"]}
     train, rung = by[a.train], by[a.rung]
     run, rung_out, par, sc = (os.path.join(a.out, x) for x in ("run", "rung", "parity", "score"))
+    keep_previous(a.out)
+    for f in ("precheck.json", "parity.log"):   # what comes home is this attempt's, or nothing
+        if os.path.exists(os.path.join(a.out, f)):
+            os.remove(os.path.join(a.out, f))
     for d in (run, rung_out, par, sc):
         shutil.rmtree(d, ignore_errors=True)   # a replacement pod starts clean
     spec = short_spec(train["spec"], run)
@@ -373,11 +432,15 @@ def run_check(a, rep):
         t1 = time.time()
         renv = {**os.environ, **{k: str(v) for k, v in rung.get("env", {}).items()}}
         with Peak() as pk, open(os.path.join(a.out, "rung.log"), "w") as rlog:
+            rp = subprocess.Popen(argv_r, stdout=rlog, stderr=subprocess.STDOUT, env=renv, start_new_session=True)
             try:
-                rep["rung_rc"] = subprocess.run(argv_r, stdout=rlog, stderr=subprocess.STDOUT, env=renv, timeout=MAX_RUNG_S).returncode
+                rep["rung_rc"] = rp.wait(MAX_RUNG_S)
             except subprocess.TimeoutExpired:
                 rep["rung_rc"] = "timeout"
+                os.killpg(rp.pid, signal.SIGKILL)  # its mtstudio and carry5_eval too: the GPU must be free for the legs below
+                rp.wait()
         rep["rung_seconds"], rep["peak_total_mib"], rep["phases_s"] = round(time.time() - t1, 1), pk.mib, phase_times(rung_out, t1)
+        rep["carry5_chunks"] = carry5_chunks(rung_out)
         rep["trainer_held"] = proc_state(trainer.pid) == "T"
         os.kill(trainer.pid, signal.SIGCONT)   # a raced trainer goes on after a rung
         t1 = time.time()
@@ -398,7 +461,7 @@ def run_check(a, rep):
         rep.update(acc_gold=r.get("acc_gold"), panels=r.get("panels"), gguf_sha256=r.get("gguf_sha256"), val_loss=r.get("val_loss"))
     gguf = os.path.join(snap, "model.gguf")
     rep["gguf_state_k"] = gguf_state_k(gguf) if os.path.exists(gguf) else None
-    if rep["rung_rc"] != 0 or rep["gguf_state_k"] != rep["want_state_k"]:
+    if rep["gguf_state_k"] != rep["want_state_k"]:   # with a good GGUF the legs below still run: one failure must not hide the rest
         return
     shutil.copyfile(os.path.join(rung_out, "export_spec.json"), SPEC_VM)
     os.makedirs(par, exist_ok=True)
@@ -425,8 +488,9 @@ def run_check(a, rep):
     t0 = time.time()
     try:
         panel = next(x.split("=", 1)[1] for x in rung["cmd"] if x.startswith("dialogue="))
-        rep["score"] = score_parity(sc, gguf, os.path.join(rung_out, "export_spec.json"), panel, json.load(open(build))["bin"])
-        rep["score_ok"] = score_ok(rep["score"], SCORE_N)
+        batch = score_batch(rung["cmd"])
+        rep["score"] = score_parity(sc, gguf, os.path.join(rung_out, "export_spec.json"), panel, json.load(open(build))["bin"], batch)
+        rep["score_ok"] = score_ok(rep["score"], SCORE_N, bool(batch))
     except (OSError, ValueError, KeyError, RuntimeError, SystemExit) as e:
         rep["score"], rep["score_ok"] = {"error": repr(e)}, False
     rep["score_seconds"] = round(time.time() - t0, 1)

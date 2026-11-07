@@ -469,6 +469,19 @@ def fetch_outputs(st, name, outputs, best_effort=False):
         log(f"{name}: outputs downloaded")
 
 
+def fetch_diagnosis(name, outputs):
+    """Whatever a halting job left, before its pod ends: a failed job's outputs are its diagnosis. Not fetch_outputs: this job stays unhome, and
+    nothing here may stop the halt."""
+    for f in outputs:
+        dst = os.path.join(ART, name, f)
+        try:
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            if download_file(f"/content/chat/{name}/{f}", dst, 300) == 0:
+                log(f"{name}: {f} downloaded for the halt")
+        except Exception as e:  # noqa: BLE001
+            log(f"{name}: {f} not fetched ({e!r})")
+
+
 def adopt_home(st, jobs):
     """On adopting a state dir (runner start, every launch's prepare): a data job whose outputs are all
     recorded as downloaded is home and FINISHED, whatever status the last VM reported, so prepare() marks
@@ -1429,6 +1442,8 @@ def main():
                 if r[n] == "FAILED" and js["failed_seen"] >= 2 and not js["home"]:
                     if j.get("halt_on_failure") or j.get("halt_drill"):
                         os.makedirs(os.path.join(ART, n), exist_ok=True)
+                        if "cmd" in j:
+                            fetch_diagnosis(n, j.get("outputs", []))
                         T.get(f"/content/chat/{n}_train.log", os.path.join(ART, n, f"{n}_train.log"), 300)
                         if j.get("halt_on_failure"):
                             halt_campaign(n, "job FAILED on the VM")

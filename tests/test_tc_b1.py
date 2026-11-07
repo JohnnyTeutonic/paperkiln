@@ -473,11 +473,12 @@ def test_precheck_verdict_fails_closed():
     import tc_b2_precheck as K
     par = {leg: {k: 5 for k in ("n", "reply_identical", "token_count", "stop_reason", "prompt_tokens")} for leg in ("cuda", "cpu")}
     assert K.parity_ok(par, 5) and not K.parity_ok(None, 5) and not K.parity_ok({**par, "cpu": {**par["cpu"], "reply_identical": 4}}, 5)
-    sc = {"on_gpu": True, "cuda": {"n": 5, "max_nats_per_token": 0.001, "argmax_equal": True}, "cpu": {"n": 5, "max_nats_per_token": 0.0, "argmax_equal": True}}
+    sc = {"on_gpu": True, "cuda": {"n": 5, "max_nats_per_token": 0.001, "argmax_diffs": 0}, "cpu": {"n": 5, "max_nats_per_token": 0.0, "argmax_diffs": 0}}
     assert K.score_ok(sc, 5) and not K.score_ok({**sc, "on_gpu": False}, 5) and not K.score_ok(None, 5)
-    assert not K.score_ok({**sc, "cpu": {"n": 5, "max_nats_per_token": None, "argmax_equal": True}}, 5)
-    assert not K.score_ok({**sc, "cuda": {"n": 5, "max_nats_per_token": 0.01, "argmax_equal": True}}, 5)
-    assert not K.score_ok({**sc, "cuda": {"n": 5, "max_nats_per_token": 0.0, "argmax_equal": False}}, 5)
+    assert not K.score_ok({**sc, "cpu": {"n": 5, "max_nats_per_token": None, "argmax_diffs": 0}}, 5)
+    assert not K.score_ok({**sc, "cuda": {"n": 5, "max_nats_per_token": 0.01, "argmax_diffs": 0}}, 5)
+    assert K.score_ok({**sc, "cuda": {"n": 5, "max_nats_per_token": 0.0, "argmax_diffs": K.ARGMAX_TIES}}, 5)     # a near-tie on a step-60 model
+    assert not K.score_ok({**sc, "cuda": {"n": 5, "max_nats_per_token": 0.0, "argmax_diffs": K.ARGMAX_TIES + 1}}, 5)
     ok = {"train_rc": 0, "rung_rc": 0, "acc_gold": 0.3, "panels": {"fineweb": 8.1, "dialogue": 8.2}, "gguf_state_k": 4, "want_state_k": 4, "parity_ok": True, "score_ok": True,
           "peak_train_mib": 14080, "peak_total_mib": 19000, "rung_seconds": 800, "trainer_held": True, "resumed_step": 120, "val_loss": 8.9}
     assert K.verdict(ok) == []
@@ -488,10 +489,10 @@ def test_precheck_verdict_fails_closed():
         assert K.verdict({**ok, **change}), change
     ref = {"a": {"logprobs": [-1.0, -2.0], "argmax": [3, 4], "over_ctx": False}}
     same = {"key": "a", "logprobs": [-1.0, -2.0], "argmax": [3, 4], "over_ctx": False}
-    assert K.diffs(ref, [same]) == {"max_nats_per_token": 0.0, "argmax_equal": True}
+    assert K.diffs(ref, [same]) == {"max_nats_per_token": 0.0, "argmax_diffs": 0}
     cancels = K.diffs(ref, [{**same, "logprobs": [-1.5, -1.5]}])                 # the sum agrees; the tokens do not
     assert cancels["max_nats_per_token"] == pytest.approx(0.5)
-    assert K.diffs(ref, [{**same, "argmax": [3, 5]}])["argmax_equal"] is False
+    assert K.diffs(ref, [{**same, "argmax": [3, 5]}])["argmax_diffs"] == 1
     for gone in ([{"key": "b"}], [{**same, "over_ctx": True}], [], [{**same, "logprobs": [-1.0]}], [{**same, "logprobs": [float("nan"), -2.0]}]):
         assert K.diffs(ref, gone)["max_nats_per_token"] is None
 
@@ -538,6 +539,83 @@ def test_parity_threads_follow_the_quota_and_each_ember_leg_has_its_directory(tm
     monkeypatch.setattr(V, "health", lambda port: next(answers))
     V.start(["x"], 1, str(tmp_path / "log"), {}, cwd="/leg")
     assert seen["cwd"] == "/leg"
+
+
+def test_rungs_score_in_batches_and_the_flag_reaches_carry5():
+    import tiny_chat_run as T
+    import tc_b2_precheck as K
+    for f in ("tc_b1_r1.json", "tc_b2_l12.json"):
+        rungs = [j for j in load(f)["jobs"] if j["name"].startswith("rung_")]
+        assert rungs and all(K.score_batch(j["cmd"]) == M.RUNG_SCORE_BATCH for j in rungs)
+    assert all("--score-batch-tokens" not in j.get("cmd", []) for j in load("tc_b1_s0.json")["jobs"])   # Stage 0's record stays what ran
+    assert K.score_batch(["x"]) == 0
+    assert "--score-batch-tokens" in subprocess.run([sys.executable, str(CC / "tiny_chat_run.py"), "rung", "--help"], capture_output=True, text=True).stdout
+    old = T.SCORE_BATCH_TOKENS
+    try:
+        T.SCORE_BATCH_TOKENS = 4096
+        assert "--score-batch-tokens" in T.carry5_argv("s", "i", "o", "none", 1)
+    finally:
+        T.SCORE_BATCH_TOKENS = old
+
+
+def test_batched_scoring_must_match_unbatched_on_the_state_prompts():
+    import tc_b2_precheck as K
+    ref = {"a": {"logprobs": [-10.0, -0.5], "argmax": [3, 4], "over_ctx": False}}
+    same = {"key": "a", "logprobs": [-10.0, -0.5], "argmax": [3, 4], "over_ctx": False}
+    assert K.rounding(ref, [same])["rounding"] is True
+    assert K.rounding(ref, [{**same, "logprobs": [-10.0 + 4e-4, -0.5 + 4e-5]}])["rounding"] is True   # scaled by max(1, |ref|)
+    assert K.rounding(ref, [{**same, "logprobs": [-10.0, -0.5 + 6e-5]}])["rounding"] is False
+    assert K.rounding(ref, [{**same, "argmax": [3, 5]}])["argmax_diffs"] == 1
+    sc = {"on_gpu": True, "cuda": {"n": 5, "max_nats_per_token": 0.0, "argmax_diffs": 0}, "cpu": {"n": 5, "max_nats_per_token": 0.0, "argmax_diffs": 0}}
+    good = {"n": 5, "rounding": True, "argmax_diffs": 0}
+    assert K.score_ok(sc, 5) and not K.score_ok(sc, 5, batched=True)               # asked for and not run
+    assert K.score_ok({**sc, "batched": good}, 5, batched=True)
+    assert not K.score_ok({**sc, "batched": {**good, "rounding": False}}, 5, batched=True)
+
+
+def test_a_failed_checks_receipt_survives_the_next_attempt(tmp_path):
+    import tc_b2_precheck as K
+    assert K.keep_previous(str(tmp_path))["precheck"] is None
+    (tmp_path / "precheck.json").write_text(json.dumps({"failed": ["the rung took 1800.1 s"]}))
+    (tmp_path / "precheck_train.json").write_text(json.dumps({"name": "precheck"}))
+    (tmp_path / "rung.log").write_text("x" * 5000 + "end")
+    p = K.keep_previous(str(tmp_path))
+    assert p["precheck"]["failed"] and p["precheck_train"]["name"] == "precheck" and p["rung.log"].endswith("end") and len(p["rung.log"]) == 4000
+    (tmp_path / "precheck.json").write_text(json.dumps({"failed": ["again"]}))
+    p = K.keep_previous(str(tmp_path))
+    assert p["earlier"]["precheck"]["failed"] == ["the rung took 1800.1 s"]
+    assert json.load(open(tmp_path / "previous.json"))["precheck"]["failed"] == ["again"]
+    (tmp_path / "precheck.json").write_text('{"failed": ["trunc')           # a torn receipt must not stop the next attempt
+    assert "unreadable" in K.keep_previous(str(tmp_path))["precheck"]
+    d = tmp_path / "rung" / "carry5_base" / "m" / "score"
+    d.mkdir(parents=True)
+    for f in ("chunk0000.json", "chunk0001.json", "chunk0002.json.in.jsonl"):
+        (d / f).write_text("x")
+    assert K.carry5_chunks(str(tmp_path / "rung")) == 2 and K.carry5_chunks(str(tmp_path / "none")) == 0
+
+
+def test_a_halting_job_stays_unhome_with_outputs_declared(tmp_path):
+    jobs = {"jobs": [{"name": "bad", "cmd": ["z"], "outputs": ["receipt.json"], "fake_fail": True, "halt_on_failure": True}]}
+    r = run_fake(tmp_path, jobs, {})
+    assert r["rc"] == 3 and r["state"]["jobs"]["bad"]["home"] is False and (tmp_path / "w" / "state" / "HALTED").exists()
+
+
+def test_the_diagnosis_fetch_asks_for_each_output_and_never_stops_a_halt(tmp_path, monkeypatch):
+    import runner_multi as R
+    seen = []
+
+    def get(src, dst, timeout):
+        seen.append(src)
+        if src.endswith("broken.json"):
+            raise OSError("gone")
+        return 0
+
+    monkeypatch.setattr(R, "ART", str(tmp_path), raising=False)
+    monkeypatch.setattr(R, "download_file", get)
+    monkeypatch.setattr(R, "log", lambda *a: None)
+    R.fetch_diagnosis("precheck", ["precheck.json", "broken.json", "rung/rung.json"])
+    assert seen == ["/content/chat/precheck/precheck.json", "/content/chat/precheck/broken.json", "/content/chat/precheck/rung/rung.json"]
+    assert (tmp_path / "precheck" / "rung").is_dir()
 
 
 def test_every_job_training_waits_on_can_be_reset():

@@ -1216,6 +1216,8 @@ def ckpt_step(d):
 def cmd_rung(a):
     """A pretraining run's weights at a rung (jobs_vm.py's snapshot at that step): the zero-rate
     panels and base-model Carry-5 (teacher-forced), plus the run's validation loss at that step."""
+    global SCORE_BATCH_TOKENS
+    SCORE_BATCH_TOKENS = max(0, int(getattr(a, "score_batch_tokens", 0) or 0))
     done = os.path.join(a.out, "rung.json")
     if os.path.exists(done) and jload(done).get("acc_gold") is not None:
         print(f"{done}: present")
@@ -1232,7 +1234,7 @@ def cmd_rung(a):
     s = {"mode": "rung", "job": a.job, "cell": a.cell, "seed": a.seed, "share": a.share, "step": a.step,
          "spec": a.spec, "weights_sha256": sha256(a.weights),
          "val_loss": next((e["val_loss"] for e in ev if e.get("event") == "eval" and e.get("step") == a.step), None),
-         "train_loss_last50": sum(tl) / len(tl) if tl else None}
+         "train_loss_last50": sum(tl) / len(tl) if tl else None, "score_batch_tokens": SCORE_BATCH_TOKENS}
     s["panels"] = zero_rate_panels(shape, a.weights, a.out, a.panel)
     if a.export_gguf:  # a state-token shape is scored only through a GGUF that declares its tokens (carry5_eval.py)
         spec = os.path.join(a.out, "export_spec.json")
@@ -1682,6 +1684,7 @@ def main(argv=None):
     p.add_argument("--step", type=int, required=True)
     p.add_argument("--drop-snapshot", action="store_true", help="delete the snapshot's weights once rung.json is saved")
     p.add_argument("--export-gguf", action="store_true", help="export the snapshot's F32 GGUF first; a copy stays in --out")
+    p.add_argument("--score-batch-tokens", type=int, default=0, help="`mtstudio score --batch-tokens N` for Carry-5, as post has it")
     p.add_argument("--job", required=True)
     p.add_argument("--cell", required=True)
     p.add_argument("--seed", type=int, required=True)
