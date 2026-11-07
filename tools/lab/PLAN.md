@@ -27,6 +27,10 @@ Fixed here on 7 Nov 2026, before any T_E row exists, and in code as `verdict.sig
 - **Range:** at least 5 families whose development loss varies by at least 0.30 nats across the three models. Short of that the read is not informative, and it does not pass.
 - **If it does not pass:** the pilot stops at this read. A new metric is a new registration, with a new read on new models. The bar does not move.
 
+**How it runs, fixed 7 Nov 2026 before any of the three models is read, in the root's `AI_ML/chat_screens_claude/signal_read.py`.** No L4. T_M: the numpy forward `diag_family_loss.py` uses, 48 rows a family by seeded hash, or all a family has, on CPU. T_E: one greedy reply per registered row, on gold history, through the CPU ember server `mine_round.py` used, `CUDA_VISIBLE_DEVICES` empty, 64 new tokens. Task points are `te_score.task_pairs`: both twins on the task side.
+
+**The instrument, revised under the rule below, before any model read.** On the registered stage B, `last_entity_copy` read 27.23 of all pairs, over the bar of 25, and 100 on `followup`: there the right answer is the latest topic by construction, so a copy passes both twins of every pair. `followup` therefore leaves task points, and stays a reported family. The bar did not move. Task points also leave out `small_talk` pairs, as the rubric's split requires.
+
 The shortcut baselines are fixed in `shortcuts.py`, with a bar of 25 task points overall. A shortcut reaching it sends the instrument back for revision before any model is read on it.
 
 ## Caps relaxed by the lead's ruling of 7 Nov 2026

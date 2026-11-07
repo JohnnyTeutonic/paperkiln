@@ -1,0 +1,66 @@
+{
+ "kept_by_family": {
+  "affirm_in_role": [
+   130,
+   300
+  ],
+  "ended_role": [
+   174,
+   300
+  ],
+  "how_are_you": [
+   172,
+   300
+  ],
+  "like_recall": [
+   138,
+   300
+  ],
+  "name_use": [
+   240,
+   300
+  ],
+  "nameless_role": [
+   178,
+   300
+  ],
+  "role_mix": [
+   208,
+   300
+  ]
+ },
+ "pairs_dropped_by_last_rule": 162,
+ "rows_before_last_rule": 1564,
+ "rows_in": 2100,
+ "rows_kept": 1240,
+ "steps": {
+  "chatflow_v001": {
+   "ids_dropped": 215,
+   "rows_kept": 1582
+  },
+  "chatflow_v001_short_strings": {
+   "ids_dropped": 0,
+   "rows_kept": 1564
+  },
+  "contrast_v001": {
+   "ids_dropped": 44,
+   "rows_kept": 2012
+  },
+  "contrast_v001_values": {
+   "ids_dropped": 9,
+   "rows_kept": 1564
+  },
+  "manual_v001": {
+   "ids_dropped": 0,
+   "rows_kept": 2012
+  },
+  "persona_v003": {
+   "ids_dropped": 0,
+   "rows_kept": 1582
+  },
+  "transcript_turns_and_i_like_cheese": {
+   "ids_dropped": 0,
+   "rows_kept": 2100
+  }
+ }
+}

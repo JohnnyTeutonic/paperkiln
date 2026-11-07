@@ -1,0 +1,67 @@
+{
+ "producer": "Claude Opus 5.5, 7 Nov 2026",
+ "rows_file": "te_stage_b_registered_v1.jsonl",
+ "rows_sha256": "ece2e15b31160c7528625da3e2734229256b3029be009a19f3df7d36e39472df",
+ "shortcut_read": {
+  "bar_points": 25.0,
+  "by_family": {
+   "correction": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 50.0
+   },
+   "passage": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 35.38
+   },
+   "recall_abstain": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 16.67
+   },
+   "roleplay": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 0.0
+   },
+   "whose_name": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 3.39
+   }
+  },
+  "definitions_sha": "b06b42f5e2320ebe592ed95c2263d4d3f02ec26e3c2f201b295992b5d78bd40e",
+  "overall": {
+   "answer_dump": 0.0,
+   "blanket_abstention": 0.0,
+   "constant_identity": 0.0,
+   "constant_yes": 0.0,
+   "echo_question": 0.0,
+   "generic_acknowledgement": 0.0,
+   "last_entity_copy": 19.82
+  },
+  "pairs": 217,
+  "result": "held"
+ }
+}

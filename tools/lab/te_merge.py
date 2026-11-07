@@ -43,11 +43,26 @@ def merge(sets, spec):
     return kept, {f"{k[0]}/{k[1]}/{k[2]}": n for k, n in sorted(room.items()) if n > 0}, dict(by_source)
 
 
+def keep_all_but(rows, drop, tag):
+    """Stage B: no number to meet, so every filter survivor stands, less the pairs with a counted defect."""
+    out = []
+    for r in rows:
+        p = r["provenance"]
+        if f"{p['family']}|{p['pair_id']}" in drop:
+            continue
+        x = json.loads(json.dumps(r))
+        x["provenance"]["pair_id"] = f"{tag}_{p['pair_id']}"
+        x["conversation_id"] = f"{tag}-{r['conversation_id']}"
+        out.append(x)
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--in", dest="files", nargs="+", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--receipt", required=True)
+    ap.add_argument("--stage-b-drop", help="a stage B verifier report: keep all survivors but its defect pairs")
     a = ap.parse_args()
     if Path(a.out).exists():
         raise SystemExit(f"{a.out} exists")
@@ -55,7 +70,13 @@ def main():
     for i, f in enumerate(a.files):
         with open(f, encoding="utf-8") as h:
             sets.append((f"s{i}", [json.loads(x) for x in h]))
-    kept, short, by_source = merge(sets, STAGE_A)
+    if a.stage_b_drop:
+        with open(a.stage_b_drop, encoding="utf-8") as h:
+            rep = json.load(h)
+            drop = set(rep["3_values"]["defect_pairs"]) | set(rep["5_counts"]["repeated_pairs"])
+        kept, short, by_source = keep_all_but(sets[0][1], drop, "b"), {}, {"defect_pairs_dropped": len(drop)}
+    else:
+        kept, short, by_source = merge(sets, STAGE_A)
     with open(a.out, "w", encoding="utf-8", newline="\n") as f:
         for r in kept:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")

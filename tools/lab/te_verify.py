@@ -25,7 +25,7 @@ import te_score as TS  # noqa: E402
 from firewall import check_shortcut_read  # noqa: E402
 from schema import sha_file  # noqa: E402
 
-INPUTS = {"tables": "055b6a3634671b7305545b2df8b9d493b56769d15208ffc39bdd0cb3fb636d6e", "attr_meta": "29600559518b02eb51757ec4c06d0889a90487ffac6b97fb3d2d3b3c1848e361"}
+INPUTS = {"tables": "055b6a3634671b7305545b2df8b9d493b56769d15208ffc39bdd0cb3fb636d6e", "attr_meta": "29600559518b02eb51757ec4c06d0889a90487ffac6b97fb3d2d3b3c1848e361", "tables_cs": "13c15ba5abb5bf962f51268c9b66900c74ef1f857a18589f6e3b7350c003f731", "fills": "ad8b560428f118572c53fb401d059dde858cc9d7baa7bd917e28447ed09c2a4a"}
 STAGE_A = {"like_recall": {("like_recall", "none"): 20, ("like_affirm", "none"): 20, ("like_unknown", "none"): 10},
            "role_mix": {("recall", "role"): 20, ("user_name", "role"): 15, ("abstain", "role"): 15},
            "ended_role": {("recall", "after"): 20, ("user_name", "after"): 10, ("abstain", "after"): 10, ("self_name", "after"): 10},
@@ -33,15 +33,26 @@ STAGE_A = {"like_recall": {("like_recall", "none"): 20, ("like_affirm", "none"):
            "nameless_role": {("rp_sincere", "role"): 20, ("both_names", "role"): 15, ("user_name_unknown", "role"): 15},
            "how_are_you": {("self_name", "none"): 25, ("self_like", "none"): 10, ("abstain", "none"): 15},
            "affirm_in_role": {("like_affirm", "role"): 30, ("like_recall", "role"): 20}}
+STAGE_B = {"identity_topic": {("self_name",): 40, ("topic",): 40}, "identity_stance": {("self_name",): 40, ("stance",): 40}, "roleplay": {("rp_in",): 40, ("self_name",): 40}, "whose_name": {("user_name",): 30, ("self_name",): 20, ("user_name_unknown",): 30},
+           "recall_abstain": {("recall",): 40, ("abstain",): 40}, "correction": {("correct_recall",): 40, ("recall",): 40}, "followup": {("topic",): 80}, "passage": {("passage_present",): 50, ("passage_absent",): 30}}
 ROW_FIELDS = ("conversation_id", "segments", "retained_assistant_turns", "provenance", "decision")
 PROV_FIELDS = ("kind", "generator_version", "seed", "skill", "family", "pair_id", "variant", "changed_factor", "changed_turns", "values", "turns", "trained", "llm_written", "correction_part", "correction_split")
 DEC_FIELDS = ("turn", "k", "c", "form", "template_group", "key", "told_in_order")
-USER_VALUE_OPS = ("recall", "user_name", "like_recall", "like_affirm")
+USER_VALUE_OPS = ("recall", "user_name", "like_recall", "like_affirm", "correct_recall")
+IN_TURN_OPS = ("passage_present",)     # the passage and its question share the final turn, so the value sits in that turn
+OWN_TOPIC_OPS = ("topic", "stance")    # the topic comes from the turn itself; no told value is at stake
 ASSISTANT_NAMED_OPS = ("both_names", "rp_in")
 OWN_DESIGN_OPS = ("self_name", "self_like", "rp_sincere")     # the assistant's own identity or preference: nothing told, so check 3 does not apply, and they are counted
 OWN_NAME = "Ember"     # a self-name value, known from identity and not from the row's history: the lead's ruling of 7 Nov 2026, and this one value only
-VALUE_TABLES = ("pool:", "role_list", "role_place:", "role_act:", "rel", "fav_thing", "topic_np", "travel_place", "opinion_pair")
-SKIP_FRAME = VALUE_TABLES
+VALUE_TABLES = ("pool:", "role_list", "role_place:", "role_act:", "rel", "fav_thing", "topic_np", "travel_place", "opinion_pair", "passage_kind", "ownq", "doc", "c_roles", "person_x")
+SKIP_FRAME = ("role_list",)     # a bare role word is no turn; every other table, values and passage lines included, may fill a turn
+
+
+NESTED = ("passage_kind", "ownq", "doc", "c_roles")
+
+
+def flat_strings(v):
+    return [x for x in _flat(v) if isinstance(x, str)]
 
 
 def read_rows(p):
@@ -104,9 +115,9 @@ def check_format(rows, problems):
             problems["decision_not_final"] += 1
         if d.get("k") not in {m.get("k") for m in p["turns"]}:
             problems["decision_k_not_in_metas"] += 1
-        if not 3 <= len(turns) <= 12:
+        if not 2 <= len(turns) <= 12:
             problems["length"] += 1
-        if d.get("c") not in ("none", "role", "after") or d.get("form") not in ("S", "D"):
+        if d.get("c") not in ("none", "role", "after") or str(d.get("form")).split(":")[0] not in ("S", "D"):
             problems["decision_values"] += 1
         if not re.fullmatch(r"[0-9a-f]{12}", str(d.get("template_group"))):
             problems["template_group"] += 1
@@ -149,13 +160,25 @@ def told_sources(row):
 def check_values(rows, out):
     """Reviews/te_check3_ruling.md."""
     a_ok, a_bad, b_ok, b_bad, own = collections.Counter(), collections.Counter(), 0, collections.Counter(), collections.Counter()
-    no_source = collections.Counter()
+    no_source, first_number = collections.Counter(), collections.Counter()
+    defect_pairs = set()
     self_name = 0
     for r in rows:
         d = r["decision"]
         fam = r["provenance"]["family"]
-        if d["k"] in OWN_DESIGN_OPS:
+        if d["k"] in OWN_DESIGN_OPS + OWN_TOPIC_OPS:
             own[d["k"]] += 1
+            continue
+        if d["k"] in IN_TURN_OPS:
+            last = RC.parse_turns(r)[-1][0]
+            for v in d["key"]["accept"]:
+                if RC.has(last, v):
+                    a_ok[d["k"]] += 1
+                else:
+                    a_bad[f"{fam}/{d['k']}"] += 1
+            nums = re.findall(r"\d[\d,.]*\d|\d", last)
+            if nums and any(RC.has(str(nums[0]), v) or norm(nums[0]) == norm(v) for v in d["key"]["accept"]):
+                first_number[fam] += 1
             continue
         if d["k"] not in USER_VALUE_OPS + ASSISTANT_NAMED_OPS:
             continue
@@ -175,13 +198,14 @@ def check_values(rows, out):
             said = [j for j in range(i) if RC.has(turns[j][1], v)]
             if not is_name:
                 b_bad[f"{fam}/{d['k']}/not_the_character_name"] += 1
+                defect_pairs.add(f"{fam}|{r['provenance']['pair_id']}")
             elif not said:
                 no_source[f"{fam}/{d['k']}"] += 1
             elif any(RC.has(" ".join(u for u, _ in turns[: j + 1]), v) for j in said[:1]):
                 b_bad[f"{fam}/{d['k']}/user_said_it_first"] += 1
             else:
                 b_ok += 1
-    out["3_values"] = {"3a_user_values_held": sum(a_ok.values()), "3a_defects": dict(a_bad), "3b_character_names_held": b_ok, "3b_defects": dict(b_bad), "self_name_values_out_of_scope": self_name, "no_source_in_any_turn": dict(no_source), "assistant_own_decisions_not_checked_here": dict(own),
+    out["3_values"] = {"3a_user_values_held": sum(a_ok.values()), "3a_defects": dict(a_bad), "3b_character_names_held": b_ok, "3b_defects": dict(b_bad), "self_name_values_out_of_scope": self_name, "defect_pairs": sorted(defect_pairs), "passage_answer_is_the_first_number": dict(first_number), "no_source_in_any_turn": dict(no_source), "assistant_own_decisions_not_checked_here": dict(own),
                        "rowcheck": RC.check_rows(rows) | {"families": None}}
 
 
@@ -220,6 +244,9 @@ def check_twins(rows, cues, out):
             bad["same_key"] += 1
         ga, gb = ta[-1][1], tb[-1][1]
         n += 2
+        if len(diff) > 1 and a["provenance"]["family"] == "followup" and sorted(a["provenance"]["changed_turns"]) == diff:
+            bad["two_turns_swapped_as_the_stage_b_spec_allows"] += 1
+            bad["more_than_one_user_turn_differs"] -= 1
         for gold, own, other in ((ga, a, b), (gb, b, a)):
             if TS.passes(gold, own, cues):
                 gold_ok += 1
@@ -261,20 +288,25 @@ def _flat(v):
         yield v
 
 
+def pair_op(row):
+    p = row["provenance"]
+    return p.get("pair_op") or p["values"].get("pair_op") or row["decision"]["k"]
+
+
 def check_counts(rows, spec, out):
     by = pairs_of(rows)
     got = collections.defaultdict(collections.Counter)
     forms = collections.Counter()
+    width = len(next(iter(next(iter(spec.values())))))
     for (fam, _), v in by.items():
         b = v.get("b") or next(iter(v.values()))
-        op = b["provenance"]["values"].get("pair_op") or b["decision"]["k"]
-        got[fam][(op, b["decision"]["c"])] += 1
-        forms[(fam, b["decision"]["form"])] += 1
+        got[fam][(pair_op(b), b["decision"]["c"])[:width]] += 1
+        forms[(fam, str(b["decision"]["form"]).split(":")[0])] += 1
     misses = {}
     for fam, want in spec.items():
         for k, n in want.items():
             if got[fam][k] != n:
-                misses[f"{fam}/{k[0]}/{k[1]}"] = [got[fam][k], n]
+                misses[f"{fam}/{'/'.join(k)}"] = [got[fam][k], n]
     few, recent, dec = collections.Counter(), collections.Counter(), collections.Counter()
     words = collections.defaultdict(set)
     dup_conv, dup_val = collections.Counter(), collections.Counter()
@@ -294,19 +326,28 @@ def check_counts(rows, spec, out):
         if cv in seen_conv:
             dup_conv[fam] += 1
         seen_conv.add(cv)
-    for (fam, _), v in by.items():
-        t = (fam, tuple(sorted(str(x) for r in v.values() for x in _flat(r["provenance"]["values"].get("told", [])))), tuple(sorted(str(x) for r in v.values() for x in _flat(r["provenance"]["values"].get("asked", [])))))
+    repeated_pairs = []
+    for (fam, pid), v in by.items():
+        t = (fam, tuple(sorted(str(x) for r in v.values() for x in _flat(r["provenance"]["values"]))), tuple(mask(r, RC.parse_turns(r)[-1][0]) for r in v.values()))
         if t in seen_val:
             dup_val[fam] += 1
+            repeated_pairs.append(f"{fam}|{pid}")
         seen_val.add(t)
     out["5_counts"] = {"table_misses": misses, "pairs_by_form": {f"{a}/{b}": n for (a, b), n in sorted(forms.items())}, "recall_or_name_decisions_under_two_told": dict(few), "asked_is_most_recent_by_family": {f: [recent[f], dec[f], 100] for f in sorted(dec)},
-                       "most_recent_over_half": sorted(f for f in dec if recent[f] > 50), "distinct_final_wordings": {f: len(v) for f, v in sorted(words.items())}, "repeated_conversations": dict(dup_conv), "repeated_value_tuples": dict(dup_val)}
+                       "most_recent_over_half": sorted(f for f in dec if recent[f] > dec_cap(rows, f)), "distinct_final_wordings": {f: len(v) for f, v in sorted(words.items())}, "repeated_conversations": dict(dup_conv), "repeated_value_tuples": dict(dup_val), "repeated_pairs": repeated_pairs}
+
+
+def dec_cap(rows, fam):
+    """The most-recent rule's limit: half of the family's decisions."""
+    return sum(1 for r in rows if r["provenance"]["family"] == fam) / 2
 
 
 def check_sequences(rows, out):
     mg = AD.load_frozen("mixed_gen.py")
-    txt, ev, corr = 0, 0, 0
+    txt, ev, corr, in_role = 0, 0, 0, 0
     for r in rows:
+        kinds = {m.get("k") for m in r["provenance"]["turns"]}
+        in_role += bool(kinds & {"correction", "correct_recall"}) and bool(kinds & {"rp_in", "rp_nameless", "rp_exit"})
         users = [u for u, _ in RC.parse_turns(r)]
         if mg.heldout_text(users):
             txt += 1
@@ -317,13 +358,12 @@ def check_sequences(rows, out):
             if m.get("k") == "fact" and m.get("attr") is not None:
                 attrs[str(m["attr"])].add(norm(m.get("value")))
         corr += any(len(v) > 1 for v in attrs.values())
-    out["6_sequences"] = {"rows_flagged_by_text": txt, "rows_flagged_by_metas": ev, "rows_with_one_attribute_told_two_values": corr}
+    out["6_sequences"] = {"rows_with_a_correction_and_a_role": in_role, "rows_flagged_by_text": txt, "rows_flagged_by_metas": ev, "rows_with_one_attribute_told_two_values": corr}
 
 
 def shortcut_read(rows, cues, out):
     frozen = AD.mine_score().POLICIES
-    by = pairs_of(rows)
-    pairs = [(v["a"], v["b"]) for v in by.values() if set(v) == {"a", "b"}]
+    pairs = TS.task_pairs(rows)
 
     def item(r):
         return {"value": None, "told": list(r["decision"]["told_in_order"]), "last_user": RC.parse_turns(r)[-1][0], "row": None}
@@ -347,9 +387,10 @@ def main():
     ap.add_argument("--dir", required=True)
     ap.add_argument("--rows", required=True)
     ap.add_argument("--receipt")
-    ap.add_argument("--tables", required=True)
+    ap.add_argument("--tables", nargs="+", required=True)
     ap.add_argument("--other-tables", nargs="*", default=[])
     ap.add_argument("--attr", required=True)
+    ap.add_argument("--stage", choices=("a", "topup", "b", "registered_a"), default="a")
     ap.add_argument("--cues", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--expect-rows", type=int, default=700)
@@ -360,27 +401,33 @@ def main():
     rows = read_rows(d / a.rows)
     cues = TS.load_cues(a.cues)
     if not a.shortcuts_only:
-        out["1_inputs"] = {"tables": sha_file(a.tables) == INPUTS["tables"], "attr_meta": sha_file(a.attr) == INPUTS["attr_meta"]}
+        out["1_inputs"] = {"tables": sha_file(a.tables[0]) == INPUTS["tables"], "attr_meta": sha_file(a.attr) == INPUTS["attr_meta"]}
+        if len(a.tables) > 1:
+            out["1_inputs"]["tables_cs"] = sha_file(a.tables[1]) == INPUTS["tables_cs"]
         problems = collections.Counter()
         check_format(rows, problems)
         out["1_format"] = {"rows": len(rows), "expected": a.expect_rows, "problems": dict(problems)}
-        with open(a.tables, encoding="utf-8") as f:
-            tables = json.load(f)
+        tables = {}
+        for p in a.tables:
+            with open(p, encoding="utf-8") as f:
+                for k, v in json.load(f).items():
+                    tables.setdefault(k, []).extend(flat_strings(v) if k in NESTED else v)
         with open(a.attr, encoding="utf-8") as f:
             attr = json.load(f)
         others = {}
         for p in a.other_tables:
             with open(p, encoding="utf-8") as f:
                 for k, v in json.load(f).items():
-                    others.setdefault(k, []).extend(v)
+                    others.setdefault(k, []).extend(flat_strings(v) if k in NESTED else v)
         check_entries(rows, tables, attr, others, out)
         check_values(rows, out)
         check_twins(rows, cues, out)
-        check_counts(rows, STAGE_A, out)
+        check_counts(rows, {"a": STAGE_A, "registered_a": STAGE_A, "b": STAGE_B, "topup": {f: {k: 3 * n for k, n in c.items()} for f, c in STAGE_A.items()}}[a.stage], out)
         check_sequences(rows, out)
         if a.receipt:
             rec = json.load(open(d / a.receipt, encoding="utf-8"))
-            out["8_hashes"] = {"rows_match_receipt": rec["output_sha256"].get(a.rows) == hashlib.sha256((d / a.rows).read_bytes()).hexdigest(), "inputs_match_receipt": rec["input_sha256"].get("T_E.json") == INPUTS["tables"] and rec["input_sha256"].get("attr_meta.json") == INPUTS["attr_meta"]}
+            inp = rec["input_sha256"]
+            out["8_hashes"] = {"rows_match_receipt": rec["output_sha256"].get(a.rows) == hashlib.sha256((d / a.rows).read_bytes()).hexdigest(), "inputs_match_receipt": (inp.get("T_E.json") or inp.get("T_E")) == INPUTS["tables"] and (inp.get("attr_meta.json") or inp.get("attr_meta")) == INPUTS["attr_meta"]}
     shortcut_read(rows, cues, out)
     Path(a.out).write_text(json.dumps(out, indent=1, sort_keys=True, default=str) + "\n", encoding="utf-8", newline="\n")
     print(json.dumps(out, indent=1, sort_keys=True, default=str))

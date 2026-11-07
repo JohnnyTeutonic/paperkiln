@@ -1,0 +1,213 @@
+{
+ "1_format": {
+  "expected": 700,
+  "problems": {
+   "id_pattern": 700
+  },
+  "rows": 700
+ },
+ "1_inputs": {
+  "attr_meta": true,
+  "tables": true
+ },
+ "2_entries": {
+  "meta_values_checked": 6358,
+  "meta_values_in_another_part": 0,
+  "meta_values_in_no_table": 82,
+  "turns_checked": 9292,
+  "turns_fitting_no_entry": {}
+ },
+ "3_values": {
+  "3a_defects": {},
+  "3a_user_values_held": 614,
+  "3b_character_names_held": 35,
+  "3b_defects": {},
+  "assistant_own_decisions_not_checked_here": {
+   "rp_sincere": 25,
+   "self_like": 20,
+   "self_name": 35
+  },
+  "defect_pairs": [],
+  "no_source_in_any_turn": {},
+  "passage_answer_is_the_first_number": {},
+  "rowcheck": {
+   "checks_run": {
+    "abstain_clean": 65,
+    "gold_carries": 512,
+    "no_lookahead": 1662,
+    "told_before_asked": 289
+   },
+   "defective_rows": 0,
+   "defects": {},
+   "families": null,
+   "rows": 700
+  },
+  "self_name_values_out_of_scope": 22
+ },
+ "4_twins": {
+  "by_kind": {},
+  "gold_fails_twin_key": "700 of 700",
+  "gold_passes_own_key": "700 of 700",
+  "pairs": 350,
+  "structural_defects": {}
+ },
+ "5_counts": {
+  "asked_is_most_recent_by_family": {
+   "affirm_in_role": [
+    22,
+    100,
+    100
+   ],
+   "ended_role": [
+    16,
+    75,
+    100
+   ],
+   "how_are_you": [
+    6,
+    31,
+    100
+   ],
+   "like_recall": [
+    21,
+    90,
+    100
+   ],
+   "name_use": [
+    21,
+    78,
+    100
+   ],
+   "nameless_role": [
+    11,
+    25,
+    100
+   ],
+   "role_mix": [
+    13,
+    80,
+    100
+   ]
+  },
+  "distinct_final_wordings": {
+   "affirm_in_role": 7,
+   "ended_role": 25,
+   "how_are_you": 31,
+   "like_recall": 7,
+   "name_use": 19,
+   "nameless_role": 21,
+   "role_mix": 22
+  },
+  "most_recent_over_half": [],
+  "pairs_by_form": {
+   "affirm_in_role/D": 27,
+   "affirm_in_role/S": 23,
+   "ended_role/D": 28,
+   "ended_role/S": 22,
+   "how_are_you/D": 26,
+   "how_are_you/S": 24,
+   "like_recall/D": 27,
+   "like_recall/S": 23,
+   "name_use/D": 22,
+   "name_use/S": 28,
+   "nameless_role/D": 25,
+   "nameless_role/S": 25,
+   "role_mix/D": 25,
+   "role_mix/S": 25
+  },
+  "recall_or_name_decisions_under_two_told": {},
+  "repeated_conversations": {},
+  "repeated_pairs": [],
+  "repeated_value_tuples": {},
+  "table_misses": {}
+ },
+ "6_sequences": {
+  "rows_flagged_by_metas": 0,
+  "rows_flagged_by_text": 0,
+  "rows_with_a_correction_and_a_role": 0,
+  "rows_with_one_attribute_told_two_values": 50
+ },
+ "producer": "Claude Opus 5.5, 7 Nov 2026",
+ "rows_file": "te_stage_a_registered_v1.jsonl",
+ "rows_sha256": "3d7fc157b70afdb9e0983e06357c974f68133858987b3698554dde6bd8bdbdfc",
+ "shortcut_read": {
+  "bar_points": 25.0,
+  "by_family": {
+   "affirm_in_role": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 0.0
+   },
+   "ended_role": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 4.0
+   },
+   "how_are_you": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 0.0
+   },
+   "like_recall": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 0.0
+   },
+   "name_use": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 14.0
+   },
+   "nameless_role": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 0.0
+   },
+   "role_mix": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 2.0
+   }
+  },
+  "definitions_sha": "b06b42f5e2320ebe592ed95c2263d4d3f02ec26e3c2f201b295992b5d78bd40e",
+  "overall": {
+   "answer_dump": 0.0,
+   "blanket_abstention": 0.0,
+   "constant_identity": 0.0,
+   "constant_yes": 0.0,
+   "echo_question": 0.0,
+   "generic_acknowledgement": 0.0,
+   "last_entity_copy": 2.86
+  },
+  "pairs": 350,
+  "result": "held"
+ }
+}

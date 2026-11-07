@@ -1,0 +1,70 @@
+{
+ "kept_by_family": {
+  "correction": [
+   44,
+   160
+  ],
+  "followup": [
+   138,
+   160
+  ],
+  "identity_stance": [
+   116,
+   160
+  ],
+  "identity_topic": [
+   126,
+   160
+  ],
+  "passage": [
+   130,
+   160
+  ],
+  "recall_abstain": [
+   84,
+   160
+  ],
+  "roleplay": [
+   112,
+   160
+  ],
+  "whose_name": [
+   118,
+   160
+  ]
+ },
+ "pairs_dropped_by_last_rule": 80,
+ "rows_before_last_rule": 1028,
+ "rows_in": 1280,
+ "rows_kept": 868,
+ "steps": {
+  "chatflow_v001": {
+   "ids_dropped": 90,
+   "rows_kept": 1052
+  },
+  "chatflow_v001_short_strings": {
+   "ids_dropped": 0,
+   "rows_kept": 1028
+  },
+  "contrast_v001": {
+   "ids_dropped": 24,
+   "rows_kept": 1232
+  },
+  "contrast_v001_values": {
+   "ids_dropped": 4,
+   "rows_kept": 1028
+  },
+  "manual_v001": {
+   "ids_dropped": 0,
+   "rows_kept": 1232
+  },
+  "persona_v003": {
+   "ids_dropped": 8,
+   "rows_kept": 1036
+  },
+  "transcript_turns_and_i_like_cheese": {
+   "ids_dropped": 0,
+   "rows_kept": 1280
+  }
+ }
+}

@@ -1453,6 +1453,15 @@ class TestTEScore(unittest.TestCase):
         self.assertEqual(TS.pair_points([(a, b)], lambda r: "You said Paris.", CUES), 0.0)
         self.assertEqual(TS.pair_points([(a, b)], lambda r: "You said " + r["decision"]["key"]["accept"][0] + ".", CUES), 100.0)
 
+    def test_task_pairs_leave_out_small_talk_and_followup(self):
+        a, b = te_row("recall", ["Paris"], ["Lima"], var="a"), te_row("recall", ["Lima"], ["Paris"], var="b")
+        self.assertEqual(len(TS.task_pairs([a, b])), 1)
+        c, d = te_row("stance", ["tea"], [], var="a", pid="p2"), te_row("self_name", ["Ember"], [], var="b", pid="p2")
+        c["decision"]["side"] = "small_talk"
+        self.assertEqual(len(TS.task_pairs([a, b, c, d])), 1)
+        e, f = te_row("topic", ["tea"], [], var="a", pid="p3", fam="followup"), te_row("topic", ["jam"], [], var="b", pid="p3", fam="followup")
+        self.assertEqual(len(TS.task_pairs([a, b, e, f])), 1)
+
     def test_the_cue_list_is_pinned(self):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / "c.json"

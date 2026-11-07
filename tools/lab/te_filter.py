@@ -87,7 +87,15 @@ def main():
         ap.add_argument(k, required=True)
     a = ap.parse_args()
     rows = [json.loads(x) for x in lines(a.rows)]
+    bare = {}
+    for r in rows:   # the filter drops by pair id, and stage B's ids repeat across families, so ids are made whole for the run and restored after
+        p = r["provenance"]
+        whole = f"{p['family']}|{p['pair_id']}"
+        bare[whole] = p["pair_id"]
+        p["pair_id"] = whole
     keep, rep = run(rows, a.scratch)
+    for r in keep:
+        r["provenance"]["pair_id"] = bare[r["provenance"]["pair_id"]]
     if Path(a.out).exists():
         raise SystemExit(f"{a.out} exists")
     jl(a.out, keep)

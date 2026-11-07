@@ -10,8 +10,8 @@ import re
 
 from schema import Malformed, sha_file
 
-CUES_SHA = "2b9d1576ead6b5e3edad9d020ad04ee2ad6362c231774dd9d91d9f102ba69e12"
-ABSTENTION = ("abstain", "like_unknown", "user_name_unknown")
+CUES_SHA = "2d21a69bd3334df43aad9306385e3a6fdf65aec4cc3ca7ed0731d5d856731d0f"
+ABSTENTION = ("abstain", "like_unknown", "user_name_unknown", "passage_absent")
 
 
 def load_cues(path, pin=CUES_SHA):
@@ -72,6 +72,25 @@ def passes(reply, row, cues):
         negated = cues["no"].search(text) is not None
         return negated if row["provenance"]["turns"][d["turn"]].get("pol") == "no" else not negated
     return True
+
+
+NOT_TASK_FAMILIES = ("followup",)     # fixed 7 Nov 2026 before any model was read: a followup's right answer is the latest topic by construction, so a last-entity copy passes both twins of every pair
+
+
+def task_pairs(rows):
+    """[(row_a, row_b)] that count as task points: both twins on the task side, and the family one where a copy of the last told value cannot pass by construction."""
+    by = {}
+    for r in rows:
+        p = r["provenance"]
+        by.setdefault((p["family"], p["pair_id"]), {})[p["variant"]] = r
+    out = []
+    for (fam, _), v in by.items():
+        if fam in NOT_TASK_FAMILIES or set(v) != {"a", "b"}:
+            continue
+        if any(x["decision"].get("side") == "small_talk" for x in v.values()):
+            continue
+        out.append((v["a"], v["b"]))
+    return out
 
 
 def pair_points(pairs, reply_of, cues):

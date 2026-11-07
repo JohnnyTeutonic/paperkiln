@@ -1,0 +1,85 @@
+{
+ "producer": "Claude Opus 5.5, 7 Nov 2026",
+ "rows_file": "te_stage_a_registered_v1.jsonl",
+ "rows_sha256": "3d7fc157b70afdb9e0983e06357c974f68133858987b3698554dde6bd8bdbdfc",
+ "shortcut_read": {
+  "bar_points": 25.0,
+  "by_family": {
+   "affirm_in_role": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 0.0
+   },
+   "ended_role": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 4.0
+   },
+   "how_are_you": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 0.0
+   },
+   "like_recall": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 0.0
+   },
+   "name_use": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 14.0
+   },
+   "nameless_role": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 0.0
+   },
+   "role_mix": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 2.0
+   }
+  },
+  "definitions_sha": "b06b42f5e2320ebe592ed95c2263d4d3f02ec26e3c2f201b295992b5d78bd40e",
+  "overall": {
+   "answer_dump": 0.0,
+   "blanket_abstention": 0.0,
+   "constant_identity": 0.0,
+   "constant_yes": 0.0,
+   "echo_question": 0.0,
+   "generic_acknowledgement": 0.0,
+   "last_entity_copy": 2.86
+  },
+  "pairs": 350,
+  "result": "held"
+ }
+}

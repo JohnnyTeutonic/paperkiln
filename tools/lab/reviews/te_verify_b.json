@@ -1,0 +1,254 @@
+{
+ "1_format": {
+  "expected": 700,
+  "problems": {},
+  "rows": 1280
+ },
+ "1_inputs": {
+  "attr_meta": true,
+  "tables": true,
+  "tables_cs": true
+ },
+ "2_entries": {
+  "meta_values_checked": 2588,
+  "meta_values_in_another_part": 0,
+  "meta_values_in_no_table": 70,
+  "turns_checked": 14544,
+  "turns_fitting_no_entry": {}
+ },
+ "3_values": {
+  "3a_defects": {},
+  "3a_user_values_held": 541,
+  "3b_character_names_held": 0,
+  "3b_defects": {
+   "roleplay/rp_in/not_the_character_name": 39
+  },
+  "assistant_own_decisions_not_checked_here": {
+   "self_name": 254,
+   "stance": 106,
+   "topic": 240
+  },
+  "defect_pairs": [
+   "roleplay|001",
+   "roleplay|003",
+   "roleplay|004",
+   "roleplay|005",
+   "roleplay|006",
+   "roleplay|011",
+   "roleplay|012",
+   "roleplay|014",
+   "roleplay|015",
+   "roleplay|017",
+   "roleplay|020",
+   "roleplay|027",
+   "roleplay|028",
+   "roleplay|029",
+   "roleplay|031",
+   "roleplay|034",
+   "roleplay|036",
+   "roleplay|040",
+   "roleplay|041",
+   "roleplay|042",
+   "roleplay|044",
+   "roleplay|047",
+   "roleplay|051",
+   "roleplay|054",
+   "roleplay|055",
+   "roleplay|061",
+   "roleplay|062",
+   "roleplay|063",
+   "roleplay|064",
+   "roleplay|065",
+   "roleplay|066",
+   "roleplay|067",
+   "roleplay|069",
+   "roleplay|070",
+   "roleplay|071",
+   "roleplay|072",
+   "roleplay|074",
+   "roleplay|075",
+   "roleplay|077"
+  ],
+  "no_source_in_any_turn": {},
+  "passage_answer_is_the_first_number": {},
+  "rowcheck": {
+   "checks_run": {
+    "abstain_clean": 70,
+    "gold_carries": 304,
+    "no_lookahead": 754,
+    "told_before_asked": 304
+   },
+   "defective_rows": 0,
+   "defects": {},
+   "families": null,
+   "rows": 1280
+  },
+  "self_name_values_out_of_scope": 0
+ },
+ "4_twins": {
+  "by_kind": {},
+  "gold_fails_twin_key": "1280 of 1280",
+  "gold_passes_own_key": "1280 of 1280",
+  "pairs": 640,
+  "structural_defects": {
+   "more_than_one_user_turn_differs": 0,
+   "two_turns_swapped_as_the_stage_b_spec_allows": 40
+  }
+ },
+ "5_counts": {
+  "asked_is_most_recent_by_family": {
+   "correction": [
+    32,
+    160,
+    100
+   ],
+   "recall_abstain": [
+    43,
+    120,
+    100
+   ],
+   "whose_name": [
+    27,
+    90,
+    100
+   ]
+  },
+  "distinct_final_wordings": {
+   "correction": 24,
+   "followup": 8,
+   "identity_stance": 54,
+   "identity_topic": 25,
+   "passage": 160,
+   "recall_abstain": 27,
+   "roleplay": 17,
+   "whose_name": 19
+  },
+  "most_recent_over_half": [],
+  "pairs_by_form": {
+   "correction/S": 80,
+   "followup/S": 80,
+   "identity_stance/D": 67,
+   "identity_stance/S": 13,
+   "identity_topic/D": 80,
+   "passage/S": 80,
+   "recall_abstain/S": 80,
+   "roleplay/S": 80,
+   "whose_name/D": 40,
+   "whose_name/S": 40
+  },
+  "recall_or_name_decisions_under_two_told": {},
+  "repeated_conversations": {},
+  "repeated_pairs": [
+   "followup|064",
+   "followup|071",
+   "identity_topic|073"
+  ],
+  "repeated_value_tuples": {
+   "followup": 2,
+   "identity_topic": 1
+  },
+  "table_misses": {}
+ },
+ "6_sequences": {
+  "rows_flagged_by_metas": 0,
+  "rows_flagged_by_text": 0,
+  "rows_with_a_correction_and_a_role": 0,
+  "rows_with_one_attribute_told_two_values": 3
+ },
+ "8_hashes": {
+  "inputs_match_receipt": true,
+  "rows_match_receipt": true
+ },
+ "producer": "Claude Opus 5.5, 7 Nov 2026",
+ "rows_file": "te_stage_b_v1.jsonl",
+ "rows_sha256": "8b5def5fd20fa9533ac9d8c9c374b1f520d4befe907f76ad57b830267237ff04",
+ "shortcut_read": {
+  "bar_points": 25.0,
+  "by_family": {
+   "correction": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 40.0
+   },
+   "followup": {
+    "answer_dump": 50.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 100.0
+   },
+   "identity_stance": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 0.0
+   },
+   "identity_topic": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 0.0
+   },
+   "passage": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 35.0
+   },
+   "recall_abstain": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 17.5
+   },
+   "roleplay": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 0.0
+   },
+   "whose_name": {
+    "answer_dump": 0.0,
+    "blanket_abstention": 0.0,
+    "constant_identity": 0.0,
+    "constant_yes": 0.0,
+    "echo_question": 0.0,
+    "generic_acknowledgement": 0.0,
+    "last_entity_copy": 3.75
+   }
+  },
+  "definitions_sha": "b06b42f5e2320ebe592ed95c2263d4d3f02ec26e3c2f201b295992b5d78bd40e",
+  "overall": {
+   "answer_dump": 6.25,
+   "blanket_abstention": 0.0,
+   "constant_identity": 0.0,
+   "constant_yes": 0.0,
+   "echo_question": 0.0,
+   "generic_acknowledgement": 0.0,
+   "last_entity_copy": 24.53
+  },
+  "pairs": 640,
+  "result": "held"
+ }
+}
