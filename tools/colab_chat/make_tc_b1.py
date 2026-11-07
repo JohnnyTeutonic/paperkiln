@@ -16,6 +16,7 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 V = "/content/chat/upload/vocab_llama3_bpe.gguf"
 TXN = {"MICROTORCH_CHECKPOINT_TXN": "1"}
 SHAPE = "experiments/tiny_chat_long_2026-10/specs/cell_Sfull.json"
+SHAPE_L12 = "experiments/tiny_chat_long_2026-10/specs/cell_b2_l12.json"
 RUNGS = [10000, 20000, 30000, 40000, 50000]
 # ember's /score for the final benchmarks: the commit tools/colab_chat/bench_v2.json gated (580e1089), under its new id
 # after the history rewrite of 3 Nov (C:/ml_artifacts/purge_20261103/ember.cpp.commit-map).
@@ -36,6 +37,44 @@ def b_spec():
                       "checkpoint_every": 125, "gradmap_every": 0, "seed": 1, "optimizer": "adamw",
                       "lr_schedule": {"warmup_steps": 2000, "decay": "cosine", "min_lr_frac": 0.1}},
             "export": {"formats": ["safetensors", "gguf"]}, "out_dir": "/content/chat/pt_b1_r1"}
+
+
+def arch_l12():
+    """October's shape, pk_base_v1 [BP], with state tokens: 97,539,840 parameters."""
+    return {"preset": "llama-tiny", "rope_heads": "all", "custom": {"d": 768, "layers": 12, "heads": 12, "d_ff": 2048},
+            "state_tokens": {"k": 4, "mask": "causal"}}
+
+
+def l12_spec():
+    """B's spec with the shape changed and nothing else that reaches the arithmetic. 8 x 2 is 16 rows a step, drawn one by one from
+    the same stream as 16 x 1 (mtstudio's loop takes one rng() per row), so the same windows land in the same steps and the
+    positions match step for step: 16,384 a step, 327.68M at step 20,000, 983.04M at 60,000. checkpoint_every is I/O only: 100 keeps
+    a save about every 3.5 minutes at this rate."""
+    s = b_spec()
+    s["name"], s["out_dir"], s["arch"] = "tc_b2_l12", "/content/chat/pt_b2_l12", arch_l12()
+    s["train"].update(batch=8, accum=2, checkpoint_every=100)
+    return s
+
+
+def l12_probe_spec():
+    """60 steps of the real shape, no eval, no save, on the sample text boot_jobs.sh fetches: it needs only a tokenised window."""
+    s = l12_spec()
+    s["name"] = "probe"
+    s.pop("out_dir")
+    s["data"] = {"corpus": "corpus/data/fineweb_edu_sample_v1/pretrain_train.txt", "vocab": V, "vocab_cap": 16384, "T": 1024, "max_tokens": 2000000}
+    s["train"].update(steps=60, eval_every=1000, checkpoint_every=1000)
+    s["train"]["lr_schedule"]["warmup_steps"] = 10
+    s["export"] = {"formats": []}
+    return s
+
+
+def l12_cell():
+    s = l12_spec()
+    s.pop("out_dir")
+    s["data"].pop("anneal")
+    s["data"]["corpus"] = "/content/chat/data/mix_s35.ids"
+    s["_shape"] = {"note": "the rung job's shape: arch and T only reach it"}
+    return s
 
 
 def s0_spec():
@@ -78,16 +117,19 @@ def cuda_gate():
 
 def data(mode):
     return {"name": "data", "light": True, "halt_on_failure": True,
+            # Keeps the mix's text: Codex's counts-only scan of the final mix reads it (inbox, 7 Nov). Stage 0 needed no scan.
+            "env": {} if mode == "stage0" else {"TC_B1_KEEP_MIX_TEXT": "1"},
             "cmd": ["bash", "tools/colab_chat/base_b1_data.sh", "{out}", V, mode],
             "outputs": ["data.ledger.json", "human_decontam.json", "mix_b1.ledger.json", "filter.ledger.json",
                         "fineweb_b1.ledger.json", "ids_b1.json", "tc_b1_pins_observed.json",
-                        "long/human_dialogue_v1.ledger.json", "lever2/dialogue_pt_v1.ledger.json"]}
+                        "long/human_dialogue_v1.ledger.json", "lever2/dialogue_pt_v1.ledger.json",
+                        "human/human_dialogue_v1.ledger.json"]}
 
 
-def rung(job, step, tag, keep=False):
+def rung(job, step, tag, keep=False, shape=SHAPE):
     j = {"name": f"rung_{tag}_s{step}", "after": "data", "light": True, "rung_of": {"job": job, "step": step},
          "env": {"MICROTORCH_POOL_MB": 2048},
-         "cmd": ["python3", "tools/colab_chat/tiny_chat_run.py", "rung", "--out", "{out}", "--spec", SHAPE,
+         "cmd": ["python3", "tools/colab_chat/tiny_chat_run.py", "rung", "--out", "{out}", "--spec", shape,
                  "--weights", f"/content/chat/{job}/rung_{step}/model.safetensors", "--pt-dir", f"/content/chat/{job}",
                  "--step", str(step), "--job", job, "--cell", "B1", "--seed", "1", "--share", "30",
                  "--panel", "fineweb=/content/chat/data/panel_fineweb.ids",
@@ -143,8 +185,38 @@ def b1():
             "max_parallel": 1, "max_parallel_light": 2, "jobs": jobs}, tags
 
 
-def bench_spec(tag):
-    return {"name": tag, "arch": arch(), "data": {"vocab": V, "vocab_cap": 16384, "T": 1024},
+def l12():
+    """The race's 12x768 arm, pod B. The same corpus pins, schedule and seed as tc_b1_r1.json; its own SFT stage at 8 x 2."""
+    tags = [f"l12_s{s}" for s in RUNGS] + ["l12_final", "l12_sft", "sfull_sft1500"]
+    links = [(f"/content/chat/pt_b2_l12/rung_{s}/model.safetensors", f"l12_s{s}") for s in RUNGS]
+    links += [("/content/chat/pt_b2_l12/tc_b2_l12.safetensors", "l12_final"),
+              ("/content/chat/sft_b2_l12/tc_sft_b2_l12.safetensors", "l12_sft")]
+    link = " && ".join(f"ln -sf {a} /content/chat/upload/{t}.safetensors" for a, t in links)
+    sft = sft_spec()
+    sft["name"], sft["arch"] = "tc_sft_b2_l12", arch_l12()
+    sft["train"].update(batch=8, accum=2)
+    jobs = [cuda_gate(),
+            {"name": "l12_probe", "after": "cuda_gate", "halt_on_failure": True,
+             "cmd": ["python3", "tools/colab_chat/tc_b2_probe.py", "--out", "{out}", "--spec", "tools/colab_chat/tc_b2_probe_spec.json"],
+             "outputs": ["probe.json"]},
+            data("b1"),
+            {"name": "pt_b2_l12", "model_name": "tc_b2_l12", "after": ["data", "cuda_gate", "l12_probe"], "relay_every_steps": 2500,
+             "snapshot_steps": RUNGS, "halt_on_failure": True, "env": TXN, "spec": l12_spec()}]
+    jobs += [rung("pt_b2_l12", s, "l12", keep=s <= 20000, shape=SHAPE_L12) for s in RUNGS]
+    jobs += [{"name": "sft_b2_l12", "model_name": "tc_sft_b2_l12", "after": "pt_b2_l12", "init_job": "pt_b2_l12",
+              "relay_every_steps": 500, "halt_on_failure": True, "env": TXN, "spec": sft},
+             {"name": "items", "after": "sft_b2_l12", "light": True, "halt_on_failure": True,
+              "cmd": ["bash", "tools/colab_chat/bench_vm.sh", "items", "{out}"], "outputs": ["items_build.json", "fetch.log"]},
+             {"name": "bench_l12", "after": ["items", "sft_b2_l12"], "halt_on_failure": True,
+              "cmd": ["sh", "-c", f"{link} && env BENCH_SCORE_COMMIT={EMBER_SCORE} EMBER_DETERMINISTIC=1 bash "
+                      f"tools/colab_chat/bench_vm.sh ember {{out}} 100 1 {' '.join(tags)}"],
+              "outputs": ["results.tar.gz"]}]
+    return {"_comment": "The race's 12x768 arm (PROTOCOL section 30). Not admitted. It continues past the verdict at 327.68M positions only "
+                        "if it wins, and then only inside its cap.", "max_parallel": 1, "max_parallel_light": 2, "jobs": jobs}, tags
+
+
+def bench_spec(tag, a=None):
+    return {"name": tag, "arch": a or arch(), "data": {"vocab": V, "vocab_cap": 16384, "T": 1024},
             "train": {"steps": 1, "lr": 0.001, "batch": 16, "seed": 1}, "export": {"formats": []}, "out_dir": f"/content/eval/{tag}"}
 
 
@@ -161,6 +233,13 @@ def main():
     write(os.path.join(HERE, "tc_b1_probe_spec.json"), probe_spec())
     for t in tags:
         write(os.path.join(ROOT, f"experiments/benchmarks_2026-10-26/specs/{t}.spec.json"), bench_spec(t))
+    jobs, tags = l12()
+    write(os.path.join(HERE, "tc_b2_l12.json"), jobs)
+    write(os.path.join(HERE, "tc_b2_probe_spec.json"), l12_probe_spec())
+    write(os.path.join(ROOT, "experiments/tiny_chat_long_2026-10/specs/cell_b2_l12.json"), l12_cell())
+    for t in tags:
+        if t != "sfull_sft1500":
+            write(os.path.join(ROOT, f"experiments/benchmarks_2026-10-26/specs/{t}.spec.json"), bench_spec(t, arch_l12()))
 
 
 if __name__ == "__main__":

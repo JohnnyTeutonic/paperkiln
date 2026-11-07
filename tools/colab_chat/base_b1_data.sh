@@ -31,7 +31,7 @@ python3 tools/colab_chat/tiny_chat_data.py --out "$OUT" --vocab "$V" --fineweb c
 touch "$OUT/.split_done"
 
 # msc has no stated licence and aya_en carries a documented LLM risk: both in by Jonathan's ruling of 7 Nov 2026, recorded
-# per source by the fetcher's report and the mix ledger.
+# per source by the fetchers' ledgers and filter.ledger.json.
 # Each ledger is written last, so it marks a whole fetch.
 [ -s "$OUT/long/human_dialogue_v1.ledger.json" ] || \
   python3 corpus/fetchers/human_dialogue.py "$LONG" --allow-llm-risk --allow-unstated-licence --out-dir "$OUT/long"
@@ -73,6 +73,8 @@ if [ ! -s "$OUT/mix_b1.main.ids" ] || [ ! -s "$OUT/mix_b1.tail.ids" ]; then
     mv "$OUT/mix_b1.$part.ids.tmp" "$OUT/mix_b1.$part.ids"
   done
   mv "$OUT/ids_b1.json.tmp" "$OUT/ids_b1.json"
-  rm -f "$FW" "$HUMAN" "$OUT/mix_b1.main.txt" "$OUT/mix_b1.tail.txt"  # the ledger holds their hashes; the ids are what trains
+  rm -f "$FW" "$HUMAN"
+  # The ledger holds the text's hashes and the ids are what trains. TC_B1_KEEP_MIX_TEXT keeps it for a scan of the final mix.
+  [ "${TC_B1_KEEP_MIX_TEXT:-0}" = 1 ] || rm -f "$OUT/mix_b1.main.txt" "$OUT/mix_b1.tail.txt"
 fi
 python3 tools/colab_chat/tc_b1_pins.py "$OUT" "$MODE"

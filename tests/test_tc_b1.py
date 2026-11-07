@@ -25,11 +25,121 @@ def load(n):
     return json.load(open(CC / n))
 
 
+def test_race_arms_differ_in_shape_alone():
+    a = next(j for j in load("tc_b1_r1.json")["jobs"] if j["name"] == "pt_b1_r1")["spec"]
+    b = next(j for j in load("tc_b2_l12.json")["jobs"] if j["name"] == "pt_b2_l12")["spec"]
+    assert a["data"] == b["data"]
+    assert a["train"]["steps"] == b["train"]["steps"] == 60000
+    assert a["train"]["batch"] * a["train"]["accum"] == b["train"]["batch"] * b["train"]["accum"] == 16
+    drop = ("batch", "accum", "checkpoint_every")
+    assert {k: v for k, v in a["train"].items() if k not in drop} == {k: v for k, v in b["train"].items() if k not in drop}
+    assert b["arch"]["custom"] == {"d": 768, "layers": 12, "heads": 12, "d_ff": 2048}
+    assert b["arch"]["state_tokens"] == a["arch"]["state_tokens"]
+    assert (b["train"]["batch"], b["train"]["accum"]) == (8, 2)
+    assert 20000 * 16 * 1024 == 327680000
+
+
+def test_race_arm_gates_on_its_probe_and_the_same_pins():
+    jobs = {j["name"]: j for j in load("tc_b2_l12.json")["jobs"]}
+    assert "l12_probe" in jobs["pt_b2_l12"]["after"] and jobs["l12_probe"]["halt_on_failure"]
+    assert jobs["data"]["cmd"][-1] == "b1" and jobs["data"]["env"]["TC_B1_KEEP_MIX_TEXT"] == "1"
+    assert jobs["rung_l12_s20000"].get("keep_home_snapshot") and "cell_b2_l12" in " ".join(jobs["rung_l12_s20000"]["cmd"])
+    assert jobs["sft_b2_l12"]["spec"]["train"]["accum"] == 2 and jobs["sft_b2_l12"]["init_job"] == "pt_b2_l12"
+    pins = load("tc_b1_pins.json")
+    assert all(pins["mix"].values())
+
+
+def test_probe_bars():
+    import tc_b2_probe as Q
+    ok = {"peak_pool_mib": 17000, "peak_smi_mib": 18000, "s_per_step": 2.1}
+    assert Q.verdict(ok) == []
+    assert Q.verdict({**ok, "peak_smi_mib": 21000})
+    assert Q.verdict({**ok, "s_per_step": 2.7})
+    assert Q.verdict({"peak_pool_mib": None, "peak_smi_mib": None, "s_per_step": None})
+
+
+def race_state(home, name="pk-tc-b2-l12", pod=None):
+    os.makedirs(home, exist_ok=True)
+    st = {"runpod": {"pod": pod, "volume": {"id": "v1", "dc": "X", "gb": 80},
+                     "ledger": {"pods": [{"id": "p", "name": name, "usd_per_hr": 0.59, "start": 0, "stop": 3600}],
+                                "volumes": [{"id": "v1", "gb": 80, "created": 0}]}}}
+    json.dump(st, open(os.path.join(home, "state.json"), "w"))
+
+
+def test_stop_releases_only_its_own_volume(tmp_path, monkeypatch):
+    import runpod_api as api
+    import tc_b2_stop as X
+    home = str(tmp_path / "s")
+    race_state(home)
+    deleted = []
+    monkeypatch.setattr(api, "list_volumes", lambda: [{"id": "v1"}, {"id": "other"}])
+    monkeypatch.setattr(api, "delete_volume", lambda i: deleted.append(i) or True)
+    st = X.stop(home, "lost at the cut-off", True, sleep=lambda s: None)
+    assert deleted == ["v1"] and st["runpod"]["volume"] is None
+    assert json.load(open(os.path.join(home, "HALTED")))["kind"] == "RACE_ARM_STOPPED"
+
+
+def test_stop_keeps_the_volume_unless_told_and_refuses_a_stranger(tmp_path, monkeypatch):
+    import runpod_api as api
+    import tc_b2_stop as X
+    monkeypatch.setattr(api, "delete_volume", lambda i: pytest.fail("no delete"))
+    home = str(tmp_path / "s")
+    race_state(home)
+    X.stop(home, "held", False, sleep=lambda s: None)
+    other = str(tmp_path / "o")
+    race_state(other, name="pk-c12-sfull-r1")
+    with pytest.raises(SystemExit):
+        X.stop(other, "no", True, sleep=lambda s: None)
+    assert not os.path.exists(os.path.join(other, "HALTED"))
+
+
+def test_relay_copies_one_generation_through_a_commit(tmp_path):
+    """The relay's real exec code on a generation layout, with a commit landing during the copy."""
+    import re as _re
+    import runner_multi as rm
+    out = tmp_path / "chat" / "pt"
+    gens = out / "ckpt_gen"
+    for step in (125, 250):
+        g = gens / f"g{step}"
+        g.mkdir(parents=True)
+        (g / "model.safetensors").write_text(f"m{step}")
+        (g / "optim.safetensors").write_text(f"o{step}")
+        (g / "state.txt").write_text(f"{step}\n{{}}\n")
+    (gens / "live").symlink_to("g125")
+    (out / "events.jsonl").write_text("{}\n")
+    captured = {}
+
+    class T:
+        def exec(self, code, timeout=200):
+            captured["code"] = code
+            return 0, ""
+
+    rm.T = T()
+    rm.HOME, rm.ART = str(tmp_path), str(tmp_path / "art")
+
+    class St:
+        def job(self, n):
+            return {"relayed_step": 0}
+
+    rm.relay(St(), "pt", 0)
+    code = captured["code"].replace("/content/chat/", str(tmp_path / "chat") + "/")
+    # The commit lands after the generation is named and before the copy: g125 outlives it.
+    code = code.replace("s0 = step()\n", "s0 = step()\nos.unlink(live); os.symlink('g250', live)\n")
+    r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    assert _re.search(r"SNAP 125", r.stdout)
+    snap = tmp_path / "chat" / "relay_pt"
+    assert (snap / "model.safetensors").read_text() == "m125" and (snap / "optim.safetensors").read_text() == "o125"
+    assert (snap / "state.txt").read_text().startswith("125")
+
+
 def test_files_are_what_the_generator_writes():
     s0, r1 = load("tc_b1_s0.json"), load("tc_b1_r1.json")
     assert s0 == json.loads(json.dumps(M.stage0()))
     assert r1 == json.loads(json.dumps(M.b1()[0]))
     assert load("tc_b1_probe_spec.json") == json.loads(json.dumps(M.probe_spec()))
+    assert load("tc_b2_l12.json") == json.loads(json.dumps(M.l12()[0]))
+    assert load("tc_b2_probe_spec.json") == json.loads(json.dumps(M.l12_probe_spec()))
 
 
 def test_b_spec_is_section_9():

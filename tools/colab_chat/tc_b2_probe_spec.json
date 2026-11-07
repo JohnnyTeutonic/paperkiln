@@ -1,0 +1,45 @@
+{
+ "name": "probe",
+ "arch": {
+  "preset": "llama-tiny",
+  "rope_heads": "all",
+  "custom": {
+   "d": 768,
+   "layers": 12,
+   "heads": 12,
+   "d_ff": 2048
+  },
+  "state_tokens": {
+   "k": 4,
+   "mask": "causal"
+  }
+ },
+ "data": {
+  "corpus": "corpus/data/fineweb_edu_sample_v1/pretrain_train.txt",
+  "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+  "vocab_cap": 16384,
+  "T": 1024,
+  "max_tokens": 2000000
+ },
+ "train": {
+  "steps": 60,
+  "lr": 0.0005,
+  "batch": 8,
+  "accum": 2,
+  "clip": 1.0,
+  "eval_every": 1000,
+  "eval_windows": 32,
+  "checkpoint_every": 1000,
+  "gradmap_every": 0,
+  "seed": 1,
+  "optimizer": "adamw",
+  "lr_schedule": {
+   "warmup_steps": 10,
+   "decay": "cosine",
+   "min_lr_frac": 0.1
+  }
+ },
+ "export": {
+  "formats": []
+ }
+}

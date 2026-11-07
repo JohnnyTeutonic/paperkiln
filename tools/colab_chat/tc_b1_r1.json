@@ -22,6 +22,9 @@
    "name": "data",
    "light": true,
    "halt_on_failure": true,
+   "env": {
+    "TC_B1_KEEP_MIX_TEXT": "1"
+   },
    "cmd": [
     "bash",
     "tools/colab_chat/base_b1_data.sh",
@@ -38,7 +41,8 @@
     "ids_b1.json",
     "tc_b1_pins_observed.json",
     "long/human_dialogue_v1.ledger.json",
-    "lever2/dialogue_pt_v1.ledger.json"
+    "lever2/dialogue_pt_v1.ledger.json",
+    "human/human_dialogue_v1.ledger.json"
    ]
   },
   {
