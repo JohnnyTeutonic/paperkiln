@@ -1,0 +1,24 @@
+{
+ "schema": "lab-facts-v1",
+ "producer": "Claude Opus 5.5, 7 Nov 2026",
+ "note": "State of the programme for the proposer. A missing key counts as unmet.",
+ "facts": {
+  "non_weak_base_available": true,
+  "stronger_base_selected": false,
+  "fixed_baseline_on_pk_sft_v1": false,
+  "s54_j1_read": false,
+  "fixed_baseline_on_stronger_base": false,
+  "t_m_rows": true,
+  "t_c_all_families": false,
+  "t_c_mixed_families": true,
+  "t_e_rows_built": false,
+  "dev_read_on_vm": false,
+  "packet_writer": false,
+  "noise_floor_measured": false,
+  "dev_signal_checked": false,
+  "mixed_specialist_on_pk_sft_v1": false,
+  "preference_gate_r0": false,
+  "dpo_reference_cache_repaired": false,
+  "sft_saturated": false
+ }
+}

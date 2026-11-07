@@ -1,0 +1,505 @@
+{
+ "banner": "OBSERVATIONAL: historical receipts, one seed per model, one base, allocations not randomised. Not a controlled comparison, and not evidence that adaptive selection works.",
+ "base_id": "sfull_lineage",
+ "families": [
+  "contrast:correction",
+  "contrast:followup",
+  "contrast:identity_topic",
+  "contrast:passage",
+  "contrast:recall_abstain",
+  "contrast:roleplay",
+  "contrast:whose_name",
+  "mixed:ended_role",
+  "mixed:how_are_you",
+  "mixed:like_recall",
+  "mixed:name_use",
+  "mixed:nameless_role",
+  "mixed:role_mix",
+  "s23:ops",
+  "s30:human",
+  "s30:identity",
+  "s30:ops",
+  "stance:identity_stance",
+  "tail:human"
+ ],
+ "gain_se": {
+  "contrast:correction": {
+   "S23": 0.0592,
+   "S30": 0.0418,
+   "S34": 0.0649,
+   "S51": 0.0659,
+   "S52": 0.0641
+  },
+  "contrast:followup": {
+   "S23": 0.0337,
+   "S30": 0.0243,
+   "S34": 0.062,
+   "S51": 0.0854,
+   "S52": 0.0661
+  },
+  "contrast:identity_topic": {
+   "S23": 0.045,
+   "S30": 0.0578,
+   "S34": 0.061,
+   "S51": 0.0703,
+   "S52": 0.0539
+  },
+  "contrast:passage": {
+   "S23": 0.0459,
+   "S30": 0.0303,
+   "S34": 0.1096,
+   "S51": 0.1142,
+   "S52": 0.1059
+  },
+  "contrast:recall_abstain": {
+   "S23": 0.057,
+   "S30": 0.0364,
+   "S34": 0.0628,
+   "S51": 0.0662,
+   "S52": 0.0619
+  },
+  "contrast:roleplay": {
+   "S23": 0.0504,
+   "S30": 0.0523,
+   "S34": 0.0541,
+   "S51": 0.0756,
+   "S52": 0.0565
+  },
+  "contrast:whose_name": {
+   "S23": 0.0493,
+   "S30": 0.0834,
+   "S34": 0.0571,
+   "S51": 0.0586,
+   "S52": 0.0577
+  },
+  "mixed:ended_role": {
+   "S23": 0.0242,
+   "S30": 0.0338,
+   "S34": 0.0874,
+   "S51": 0.0493,
+   "S52": 0.0949
+  },
+  "mixed:how_are_you": {
+   "S23": 0.0409,
+   "S30": 0.0705,
+   "S34": 0.1494,
+   "S51": 0.0897,
+   "S52": 0.158
+  },
+  "mixed:like_recall": {
+   "S23": 0.0376,
+   "S30": 0.0313,
+   "S34": 0.0551,
+   "S51": 0.0448,
+   "S52": 0.0651
+  },
+  "mixed:name_use": {
+   "S23": 0.0486,
+   "S30": 0.0627,
+   "S34": 0.1111,
+   "S51": 0.0538,
+   "S52": 0.122
+  },
+  "mixed:nameless_role": {
+   "S23": 0.0427,
+   "S30": 0.0594,
+   "S34": 0.087,
+   "S51": 0.0693,
+   "S52": 0.0888
+  },
+  "mixed:role_mix": {
+   "S23": 0.0358,
+   "S30": 0.0272,
+   "S34": 0.0732,
+   "S51": 0.0536,
+   "S52": 0.0789
+  },
+  "s23:ops": {
+   "S23": 0.045,
+   "S30": 0.0431,
+   "S34": 0.0397,
+   "S51": 0.0417,
+   "S52": 0.0422
+  },
+  "s30:human": {
+   "S23": 0.048,
+   "S30": 0.0432,
+   "S34": 0.0553,
+   "S51": 0.086,
+   "S52": 0.0566
+  },
+  "s30:identity": {
+   "S23": 0.0609,
+   "S30": 0.0812,
+   "S34": 0.0964,
+   "S51": 0.1256,
+   "S52": 0.1068
+  },
+  "s30:ops": {
+   "S23": 0.0632,
+   "S30": 0.0597,
+   "S34": 0.0447,
+   "S51": 0.044,
+   "S52": 0.0496
+  },
+  "stance:identity_stance": {
+   "S23": 0.0611,
+   "S30": 0.0936,
+   "S34": 0.1669,
+   "S51": 0.0881,
+   "S52": 0.1698
+  },
+  "tail:human": {
+   "S23": 0.0818,
+   "S30": 0.0688,
+   "S34": 0.0906,
+   "S51": 0.0989,
+   "S52": 0.0993
+  }
+ },
+ "leg_dose": {
+  "C0_on_S34": {
+   "contrast:correction": 13526,
+   "contrast:followup": 25306,
+   "contrast:identity_topic": 29914,
+   "contrast:passage": 65193,
+   "contrast:recall_abstain": 28233,
+   "contrast:roleplay": 31938,
+   "contrast:whose_name": 21102,
+   "mixed:ended_role": 0,
+   "mixed:how_are_you": 0,
+   "mixed:like_recall": 0,
+   "mixed:name_use": 0,
+   "mixed:nameless_role": 0,
+   "mixed:role_mix": 0,
+   "s23:ops": 0,
+   "s30:human": 0,
+   "s30:identity": 0,
+   "s30:ops": 0,
+   "stance:identity_stance": 0,
+   "tail:human": 1635817
+  },
+  "M1_on_S34": {
+   "contrast:correction": 6370,
+   "contrast:followup": 16172,
+   "contrast:identity_topic": 0,
+   "contrast:passage": 50054,
+   "contrast:recall_abstain": 19146,
+   "contrast:roleplay": 21035,
+   "contrast:whose_name": 14922,
+   "mixed:ended_role": 36410,
+   "mixed:how_are_you": 10227,
+   "mixed:like_recall": 96468,
+   "mixed:name_use": 43781,
+   "mixed:nameless_role": 15046,
+   "mixed:role_mix": 53655,
+   "s23:ops": 0,
+   "s30:human": 0,
+   "s30:identity": 0,
+   "s30:ops": 0,
+   "stance:identity_stance": 19158,
+   "tail:human": 388372
+  }
+ },
+ "leg_supervised_total": {
+  "C0_on_S34": 2356725,
+  "M1_on_S34": 1322814
+ },
+ "loss": {
+  "contrast:correction": {
+   "P": 2.7537,
+   "S23": 2.7947,
+   "S30": 2.3889,
+   "S34": 0.1835,
+   "S51": 0.2914,
+   "S52": 0.1781
+  },
+  "contrast:followup": {
+   "P": 3.1583,
+   "S23": 3.3698,
+   "S30": 3.0559,
+   "S34": 0.4166,
+   "S51": 0.4497,
+   "S52": 0.3693
+  },
+  "contrast:identity_topic": {
+   "P": 3.4139,
+   "S23": 3.6189,
+   "S30": 2.8712,
+   "S34": 0.4044,
+   "S51": 0.5894,
+   "S52": 0.3682
+  },
+  "contrast:passage": {
+   "P": 3.1868,
+   "S23": 3.4095,
+   "S30": 3.0563,
+   "S34": 0.259,
+   "S51": 0.313,
+   "S52": 0.2571
+  },
+  "contrast:recall_abstain": {
+   "P": 2.8632,
+   "S23": 3.0951,
+   "S30": 2.6074,
+   "S34": 0.2044,
+   "S51": 0.3598,
+   "S52": 0.1872
+  },
+  "contrast:roleplay": {
+   "P": 3.1448,
+   "S23": 3.2108,
+   "S30": 1.9933,
+   "S34": 0.3375,
+   "S51": 0.4548,
+   "S52": 0.2849
+  },
+  "contrast:whose_name": {
+   "P": 3.0693,
+   "S23": 3.4452,
+   "S30": 2.2853,
+   "S34": 0.2991,
+   "S51": 0.3859,
+   "S52": 0.2895
+  },
+  "mixed:ended_role": {
+   "P": 3.3022,
+   "S23": 3.4449,
+   "S30": 2.6197,
+   "S34": 1.9281,
+   "S51": 0.4442,
+   "S52": 1.9912
+  },
+  "mixed:how_are_you": {
+   "P": 3.0323,
+   "S23": 3.281,
+   "S30": 2.551,
+   "S34": 2.9423,
+   "S51": 0.607,
+   "S52": 3.0779
+  },
+  "mixed:like_recall": {
+   "P": 2.8331,
+   "S23": 3.0341,
+   "S30": 2.6191,
+   "S34": 2.9644,
+   "S51": 0.3545,
+   "S52": 3.0856
+  },
+  "mixed:name_use": {
+   "P": 2.8878,
+   "S23": 3.1329,
+   "S30": 2.3079,
+   "S34": 1.6517,
+   "S51": 0.3649,
+   "S52": 1.7396
+  },
+  "mixed:nameless_role": {
+   "P": 3.6665,
+   "S23": 3.8539,
+   "S30": 3.0885,
+   "S34": 2.3886,
+   "S51": 0.5753,
+   "S52": 2.4788
+  },
+  "mixed:role_mix": {
+   "P": 3.2508,
+   "S23": 3.4365,
+   "S30": 2.9167,
+   "S34": 2.2078,
+   "S51": 0.4359,
+   "S52": 2.2973
+  },
+  "s23:ops": {
+   "P": 2.8317,
+   "S23": 0.2238,
+   "S30": 0.4488,
+   "S34": 2.7769,
+   "S51": 3.0586,
+   "S52": 2.9339
+  },
+  "s30:human": {
+   "P": 3.5794,
+   "S23": 3.8825,
+   "S30": 3.5621,
+   "S34": 4.1519,
+   "S51": 4.5072,
+   "S52": 4.3076
+  },
+  "s30:identity": {
+   "P": 3.0512,
+   "S23": 3.02,
+   "S30": 1.4796,
+   "S34": 1.5344,
+   "S51": 1.5285,
+   "S52": 1.5766
+  },
+  "s30:ops": {
+   "P": 2.9542,
+   "S23": 0.2166,
+   "S30": 0.3892,
+   "S34": 2.9918,
+   "S51": 3.2967,
+   "S52": 3.1343
+  },
+  "stance:identity_stance": {
+   "P": 3.1336,
+   "S23": 3.3824,
+   "S30": 2.5911,
+   "S34": 1.0904,
+   "S51": 0.4538,
+   "S52": 1.1137
+  },
+  "tail:human": {
+   "P": 2.7922,
+   "S23": 2.2981,
+   "S30": 2.3385,
+   "S34": 2.3132,
+   "S51": 2.4193,
+   "S52": 2.3329
+  }
+ },
+ "noise": {
+  "told_of_108_null_p95": 12.0,
+  "told_of_108_null_sd": 7.45
+ },
+ "outcomes": {
+  "a19_reach_bar": 13,
+  "a19_reach_gain_items": 7,
+  "a19_verdict": "guard",
+  "analytic_v2_small_talk": {
+   "S23": 0.77,
+   "S30": 0.676,
+   "S34": 0.554,
+   "S51": 0.392,
+   "S52": 0.514
+  },
+  "analytic_v2_task": {
+   "S23": 0.286,
+   "S30": 0.229,
+   "S34": 0.457,
+   "S51": 0.329,
+   "S52": 0.5
+  },
+  "j1_relevance": {
+   "S23": 2.92,
+   "S30": 2.54,
+   "S34": 2.15,
+   "S51": 2.0,
+   "S52": 2.08
+  },
+  "told_of_108": {
+   "S30": 31,
+   "S34": 28,
+   "S51": 37,
+   "S52": 30
+  }
+ },
+ "per_family_rows": 24,
+ "producer": "Claude Opus 5.5, 7 Nov 2026",
+ "s51_minus_s52": {
+  "contrast:correction": [
+   -0.1133,
+   -0.1428,
+   -0.0796
+  ],
+  "contrast:followup": [
+   -0.0804,
+   -0.1723,
+   0.0096
+  ],
+  "contrast:identity_topic": [
+   -0.2211,
+   -0.2819,
+   -0.1533
+  ],
+  "contrast:passage": [
+   -0.0559,
+   -0.1064,
+   -0.0098
+  ],
+  "contrast:recall_abstain": [
+   -0.1726,
+   -0.2103,
+   -0.1395
+  ],
+  "contrast:roleplay": [
+   -0.1699,
+   -0.2351,
+   -0.1157
+  ],
+  "contrast:whose_name": [
+   -0.0963,
+   -0.1201,
+   -0.0669
+  ],
+  "mixed:ended_role": [
+   1.547,
+   1.3869,
+   1.6927
+  ],
+  "mixed:how_are_you": [
+   2.471,
+   2.2728,
+   2.6613
+  ],
+  "mixed:like_recall": [
+   2.731,
+   2.5806,
+   2.8931
+  ],
+  "mixed:name_use": [
+   1.3747,
+   1.153,
+   1.6285
+  ],
+  "mixed:nameless_role": [
+   1.9035,
+   1.7442,
+   2.0752
+  ],
+  "mixed:role_mix": [
+   1.8613,
+   1.725,
+   1.9895
+  ],
+  "s23:ops": [
+   -0.1247,
+   -0.1661,
+   -0.0871
+  ],
+  "s30:human": [
+   -0.1996,
+   -0.3327,
+   -0.0631
+  ],
+  "s30:identity": [
+   0.048,
+   -0.0965,
+   0.2182
+  ],
+  "s30:ops": [
+   -0.1624,
+   -0.2151,
+   -0.1086
+  ],
+  "stance:identity_stance": [
+   0.6599,
+   0.4496,
+   0.9471
+  ],
+  "tail:human": [
+   -0.0864,
+   -0.1182,
+   -0.0489
+  ]
+ },
+ "schema": "lab-history-v1",
+ "sources_sha256": {
+  "analysis/a19_score_s2.json": "eef180e30c7fe04304c14f0fec2113ea5b3359b9c3a72b1ae19d3303a75c4eb4",
+  "analysis/a20_bars.json": "a1589f0ef9434993a8a7a8eec184d5eedb12088c800a02d12b4b69f7febdf8c5",
+  "analysis/analytic_rubric_v2.json": "c02b449029499f3cc296f13022d49aeff511bb368f7e467bf4cfb2e651406db9",
+  "analysis/family_exposure.json": "2771affae05c142970c0ccadaf3e465794381579bdcf3710a2cabb7e85de2572",
+  "analysis/family_loss.json": "d210121737c622c894dc622d294ac3080e0f1ad10a702490e318572536312b8d"
+ }
+}

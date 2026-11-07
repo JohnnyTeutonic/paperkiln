@@ -1,0 +1,56 @@
+{
+ "schema": "lab-pilot-draft-v1",
+ "status": "DRAFT, not registered. Nothing here is frozen, reviewed or authorised.",
+ "producer": "Claude Opus 5.5, 7 Nov 2026",
+ "names": "Lab ids are lab_fixed_N and lab_adaptive_N, and lab_e0, lab_e1, lab_e2. PROTOCOL already uses C0 and M1 for A19's arms, and the correction note uses E1 and E2 for clean and wrong-history shapes; the brief's names would collide on the ledger.",
+ "noise_pair": {
+  "experiment_id": "lab-noise-v1",
+  "what": "Two seeds of the balanced fixed curriculum, four 512-step legs each, read on T_M and T_E. Excluded from every later comparison, so selecting on it biases nothing. It gives pair_sd_points, and the stage gate.",
+  "stage_gate": "The comparison is registered only if, after this pair, some family stays above 0.15 nats excess beyond its noise. Otherwise the fixed curriculum stands.",
+  "pair_sd_rule": "pair_sd_points = max(measured, 6.9). One pair measures its own spread with one degree of freedom, and 6.9 points is the one-seed null on record, a20_bars.json, on another scale."
+ },
+ "adaptive_pilot": {
+  "experiment_id": "lab-b-v1",
+  "registered": "after the noise pair, with numbers in the rule, before any comparison model exists",
+  "changed_facet": "allocation policy",
+  "arms": {"lab_fixed_1": "fixed", "lab_adaptive_1": "adaptive", "lab_fixed_2": "fixed", "lab_adaptive_2": "adaptive", "lab_fixed_3": "fixed", "lab_adaptive_3": "adaptive"},
+  "control_arm": "lab_fixed_1",
+  "legs": 4,
+  "steps_per_leg": 512,
+  "dev_reads": "the start checkpoint, then steps 512, 1024 and 1536, in every arm",
+  "seed_pairs": 3,
+  "replay_share": 0.30,
+  "family_shares": "of sampled decision tokens, with equal decision and supervised totals in both arms",
+  "multiplier_range": [0.5, 2.0],
+  "z": 2.5,
+  "excess_scale": 1.0,
+  "min_excess": 0.15,
+  "development_instrument": "T_M, family loss in nats per target, frozen before the signal read. If the signal read fails, the pilot stops; a change of metric is a new registration.",
+  "signal_read": "Spearman of family-by-model loss on T_M against T_E cell score, on pk_sft_v1, S54, S55 and the noise pair, at least 0.5 over at least 10 cells, frozen before the read",
+  "primary": "request-turn task points on T_E, by template group, fixed against adaptive, paired bootstrap of 10,000 draws, with between-seed variance added",
+  "reported_apart": ["statement-turn small talk", "performance against compute"],
+  "guards": ["faithfulness", "warranted abstention", "identity", "role", "worst-family excess on T_E no more than 0.15 nats beyond fixed"],
+  "practical_points": "max(7.0, 2 x pair_sd_points / sqrt(3)), computed before the comparison is registered",
+  "min_seed_pairs": 3,
+  "min_groups": 8,
+  "tolerances": {"sampled_supervised_each_leg": 0.005, "sampled_decision_each_leg": 0.02, "compute": 0.05, "distinct_scenarios_void": 0.25}
+ },
+ "error_pilot": {
+  "experiment_id": "lab-e-v1",
+  "changed_facet": "row selection",
+  "arms": {"lab_e0": "ordinary continuation on the parent's packet", "lab_e1": "random verified rows from T_C", "lab_e2": "verified rows from T_C, cells weighted by T_M failure, within 0.25 to 3 times the verified share"},
+  "control_arm": "lab_e1",
+  "steps": 1024,
+  "seeds": "one seed is a screen, and can reach SCREEN_PROMISING at most. A claim needs three.",
+  "replay": "the same allocation in all three arms",
+  "primary": "lab_e2 against lab_e1, told recall on T_E, by frame",
+  "history": "clean histories only. Recovery from the model's own wrong turns is a separate later experiment, and the earlier self-copy cascade was history-specific",
+  "rounds": 1,
+  "continuation_rule": "none here: another round needs its own registered criteria",
+  "min_failure_precision": 0.85
+ },
+ "starts": {
+  "pk_sft_v1": {"base_id": "pk_sft_v1", "shape": "12x768, k = 0, 8x2", "adaptive_start": "pk_sft_v1", "error_parent": "S54", "floors": "S54, S55, and one mixed-row specialist to train"},
+  "stronger_base": {"base_id": "the race's winner", "shape": "by the race", "adaptive_start": "its SFT1500", "error_parent": "the fixed recipe on it", "floors": "three specialists to train"}
+ }
+}

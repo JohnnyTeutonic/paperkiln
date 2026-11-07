@@ -1,0 +1,466 @@
+{
+ "schema": "lab-interventions-v1",
+ "producer": "Claude Opus 5.5, 7 Nov 2026",
+ "interventions": [
+  {
+   "frozen_evaluation": [
+    "T_E, once built",
+    "chatflow_v001",
+    "contrast_v002"
+   ],
+   "guards": [
+    "faithfulness",
+    "abstention",
+    "identity",
+    "role"
+   ],
+   "registration_status": "unregistered",
+   "review_status": "none",
+   "stop_criteria": "a guard fails, or the budget is met",
+   "continue_criteria": "own registration; no iterative campaign",
+   "id": "noise_pair_pk_sft_v1",
+   "group": "pk_task",
+   "class": "measurement",
+   "hypothesis": "Two seeds of the balanced fixed curriculum, excluded from any comparison, set the noise floor and show whether any family stays above 0.15 nats excess",
+   "prerequisites": [
+    "non_weak_base_available",
+    "t_m_rows",
+    "t_c_all_families",
+    "dev_read_on_vm",
+    "packet_writer",
+    "t_e_rows_built"
+   ],
+   "estimated_l4_hours": 3.04,
+   "starting_checkpoint": "pk_sft_v1",
+   "control_condition": "itself, second seed",
+   "changed_facet": "seed",
+   "primary_endpoint": "same-allocation spread on T_E",
+   "effect_prior": {
+    "mean_points": 0.0,
+    "sd_points": 7.0,
+    "noise_sd_points": 4.0,
+    "producer": "Claude Opus 5.5's reading, 7 Nov 2026"
+   }
+  },
+  {
+   "frozen_evaluation": [
+    "T_E, once built",
+    "chatflow_v001",
+    "contrast_v002"
+   ],
+   "guards": [
+    "faithfulness",
+    "abstention",
+    "identity",
+    "role"
+   ],
+   "registration_status": "unregistered",
+   "review_status": "none",
+   "stop_criteria": "a guard fails, or the budget is met",
+   "continue_criteria": "own registration; no iterative campaign",
+   "id": "fixed_balanced_stronger",
+   "group": "stronger_task",
+   "class": "sft",
+   "hypothesis": "Design A: a balanced fixed mixture beats the recipe on the stronger base",
+   "prerequisites": [
+    "stronger_base_selected",
+    "fixed_baseline_on_stronger_base",
+    "t_c_all_families",
+    "packet_writer",
+    "t_e_rows_built",
+    "noise_floor_measured"
+   ],
+   "estimated_l4_hours": 1.23,
+   "starting_checkpoint": "B-SFT",
+   "control_condition": "S34b",
+   "changed_facet": "mixture",
+   "primary_endpoint": "told recall and request scorecard",
+   "effect_prior": {
+    "mean_points": 4.0,
+    "sd_points": 6.0,
+    "noise_sd_points": 7.0,
+    "producer": "Claude Opus 5.5's reading, 7 Nov 2026"
+   }
+  },
+  {
+   "frozen_evaluation": [
+    "T_E, once built",
+    "chatflow_v001",
+    "contrast_v002"
+   ],
+   "guards": [
+    "faithfulness",
+    "abstention",
+    "identity",
+    "role"
+   ],
+   "registration_status": "unregistered",
+   "review_status": "none",
+   "stop_criteria": "a guard fails, or the budget is met",
+   "continue_criteria": "own registration; no iterative campaign",
+   "id": "adaptive_three_pairs_pk_sft_v1",
+   "group": "pk_task",
+   "class": "sft",
+   "hypothesis": "Between-leg adaptive allocation beats the fixed curriculum at matched exposure",
+   "prerequisites": [
+    "non_weak_base_available",
+    "mixed_specialist_on_pk_sft_v1",
+    "t_c_all_families",
+    "dev_read_on_vm",
+    "packet_writer",
+    "dev_signal_checked",
+    "t_e_rows_built",
+    "noise_floor_measured"
+   ],
+   "estimated_l4_hours": 9.12,
+   "starting_checkpoint": "pk_sft_v1",
+   "control_condition": "the fixed pair",
+   "changed_facet": "allocation policy",
+   "primary_endpoint": "T_E task points",
+   "effect_prior": {
+    "mean_points": 1.0,
+    "sd_points": 4.0,
+    "noise_sd_points": 7.0,
+    "producer": "Claude Opus 5.5's reading, 7 Nov 2026"
+   }
+  },
+  {
+   "frozen_evaluation": [
+    "T_E, once built",
+    "chatflow_v001",
+    "contrast_v002"
+   ],
+   "guards": [
+    "faithfulness",
+    "abstention",
+    "identity",
+    "role"
+   ],
+   "registration_status": "unregistered",
+   "review_status": "none",
+   "stop_criteria": "a guard fails, or the budget is met",
+   "continue_criteria": "own registration; no iterative campaign",
+   "id": "adaptive_three_pairs_stronger",
+   "group": "stronger_task",
+   "class": "sft",
+   "hypothesis": "The same, on the selected base",
+   "prerequisites": [
+    "stronger_base_selected",
+    "fixed_baseline_on_stronger_base",
+    "t_c_all_families",
+    "dev_read_on_vm",
+    "packet_writer",
+    "dev_signal_checked",
+    "t_e_rows_built",
+    "noise_floor_measured"
+   ],
+   "estimated_l4_hours": 8.43,
+   "starting_checkpoint": "B-SFT",
+   "control_condition": "fixed curriculum",
+   "changed_facet": "allocation policy",
+   "primary_endpoint": "T_E task points",
+   "effect_prior": {
+    "mean_points": 1.5,
+    "sd_points": 4.0,
+    "noise_sd_points": 5.0,
+    "producer": "Claude Opus 5.5's reading, 7 Nov 2026"
+   }
+  },
+  {
+   "frozen_evaluation": [
+    "T_E, once built",
+    "chatflow_v001",
+    "contrast_v002"
+   ],
+   "guards": [
+    "faithfulness",
+    "abstention",
+    "identity",
+    "role"
+   ],
+   "registration_status": "unregistered",
+   "review_status": "none",
+   "stop_criteria": "a guard fails, or the budget is met",
+   "continue_criteria": "own registration; no iterative campaign",
+   "id": "error_directed_pk_sft_v1",
+   "group": "pk_task",
+   "class": "sft",
+   "hypothesis": "Rows selected from cells the model fails beat random verified rows",
+   "prerequisites": [
+    "non_weak_base_available",
+    "s54_j1_read",
+    "t_m_rows",
+    "t_c_mixed_families",
+    "packet_writer",
+    "t_e_rows_built",
+    "noise_floor_measured"
+   ],
+   "estimated_l4_hours": 2.35,
+   "starting_checkpoint": "S54",
+   "control_condition": "random verified rows",
+   "changed_facet": "row selection",
+   "primary_endpoint": "T_E told recall",
+   "effect_prior": {
+    "mean_points": 1.0,
+    "sd_points": 3.5,
+    "noise_sd_points": 7.0,
+    "producer": "Claude Opus 5.5's reading, 7 Nov 2026"
+   }
+  },
+  {
+   "frozen_evaluation": [
+    "T_E, once built",
+    "chatflow_v001",
+    "contrast_v002"
+   ],
+   "guards": [
+    "faithfulness",
+    "abstention",
+    "identity",
+    "role"
+   ],
+   "registration_status": "unregistered",
+   "review_status": "none",
+   "stop_criteria": "a guard fails, or the budget is met",
+   "continue_criteria": "own registration; no iterative campaign",
+   "id": "error_directed_stronger",
+   "group": "stronger_task",
+   "class": "sft",
+   "hypothesis": "The same, on the selected base",
+   "prerequisites": [
+    "stronger_base_selected",
+    "fixed_baseline_on_stronger_base",
+    "t_m_rows",
+    "t_c_mixed_families",
+    "packet_writer",
+    "t_e_rows_built",
+    "noise_floor_measured"
+   ],
+   "estimated_l4_hours": 1.85,
+   "starting_checkpoint": "fixed recipe on B-SFT",
+   "control_condition": "random verified rows",
+   "changed_facet": "row selection",
+   "primary_endpoint": "T_E told recall",
+   "effect_prior": {
+    "mean_points": 1.5,
+    "sd_points": 3.5,
+    "noise_sd_points": 7.0,
+    "producer": "Claude Opus 5.5's reading, 7 Nov 2026"
+   }
+  },
+  {
+   "frozen_evaluation": [
+    "T_E, once built",
+    "chatflow_v001",
+    "contrast_v002"
+   ],
+   "guards": [
+    "faithfulness",
+    "abstention",
+    "identity",
+    "role"
+   ],
+   "registration_status": "unregistered",
+   "review_status": "none",
+   "stop_criteria": "a guard fails, or the budget is met",
+   "continue_criteria": "own registration; no iterative campaign",
+   "id": "context_annotations",
+   "group": "stronger_task",
+   "class": "architecture",
+   "hypothesis": "Typed per-turn state supervises attribution and supersession",
+   "prerequisites": [
+    "stronger_base_selected",
+    "dev_signal_checked"
+   ],
+   "estimated_l4_hours": 4.0,
+   "starting_checkpoint": "B-SFT",
+   "control_condition": "state tokens without targets",
+   "changed_facet": "state supervision",
+   "primary_endpoint": "attribution and correction cells",
+   "effect_prior": {
+    "mean_points": 3.0,
+    "sd_points": 6.0,
+    "noise_sd_points": 7.0,
+    "producer": "Claude Opus 5.5's reading, 7 Nov 2026"
+   }
+  },
+  {
+   "frozen_evaluation": [
+    "T_E, once built",
+    "chatflow_v001",
+    "contrast_v002"
+   ],
+   "guards": [
+    "faithfulness",
+    "abstention",
+    "identity",
+    "role"
+   ],
+   "registration_status": "unregistered",
+   "review_status": "none",
+   "stop_criteria": "a guard fails, or the budget is met",
+   "continue_criteria": "own registration; no iterative campaign",
+   "id": "pairwise_preference",
+   "group": "stronger_task",
+   "class": "loss",
+   "hypothesis": "Verified chosen and rejected pairs raise context pairs",
+   "prerequisites": [
+    "stronger_base_selected",
+    "preference_gate_r0"
+   ],
+   "estimated_l4_hours": 2.2,
+   "starting_checkpoint": "B-SFT",
+   "control_condition": "equal-budget SFT on the chosen replies",
+   "changed_facet": "objective",
+   "primary_endpoint": "context pairs",
+   "effect_prior": {
+    "mean_points": 2.0,
+    "sd_points": 5.0,
+    "noise_sd_points": 7.0,
+    "producer": "Claude Opus 5.5's reading, 7 Nov 2026"
+   }
+  },
+  {
+   "frozen_evaluation": [
+    "T_E, once built",
+    "chatflow_v001",
+    "contrast_v002"
+   ],
+   "guards": [
+    "faithfulness",
+    "abstention",
+    "identity",
+    "role"
+   ],
+   "registration_status": "unregistered",
+   "review_status": "none",
+   "stop_criteria": "a guard fails, or the budget is met",
+   "continue_criteria": "own registration; no iterative campaign",
+   "id": "dpo",
+   "group": "stronger_task",
+   "class": "loss",
+   "hypothesis": "DPO after SFT raises relevance at chat scale",
+   "prerequisites": [
+    "stronger_base_selected",
+    "dpo_reference_cache_repaired"
+   ],
+   "estimated_l4_hours": 3.0,
+   "starting_checkpoint": "best SFT",
+   "control_condition": "SFT alone",
+   "changed_facet": "objective",
+   "primary_endpoint": "J1 relevance",
+   "effect_prior": {
+    "mean_points": 1.0,
+    "sd_points": 4.0,
+    "noise_sd_points": 7.0,
+    "producer": "Claude Opus 5.5's reading, 7 Nov 2026"
+   }
+  },
+  {
+   "frozen_evaluation": [
+    "T_E, once built",
+    "chatflow_v001",
+    "contrast_v002"
+   ],
+   "guards": [
+    "faithfulness",
+    "abstention",
+    "identity",
+    "role"
+   ],
+   "registration_status": "unregistered",
+   "review_status": "none",
+   "stop_criteria": "a guard fails, or the budget is met",
+   "continue_criteria": "own registration; no iterative campaign",
+   "id": "more_pretraining",
+   "group": "stronger_base_read",
+   "class": "base",
+   "hypothesis": "More exposure lifts knowledge and carries into chat",
+   "prerequisites": [
+    "stronger_base_selected"
+   ],
+   "estimated_l4_hours": 14.0,
+   "starting_checkpoint": "the winner's last checkpoint",
+   "control_condition": "the winner",
+   "changed_facet": "exposure",
+   "primary_endpoint": "LAMBADA, then chat",
+   "effect_prior": {
+    "mean_points": 4.0,
+    "sd_points": 7.0,
+    "noise_sd_points": 7.0,
+    "producer": "Claude Opus 5.5's reading, 7 Nov 2026"
+   }
+  },
+  {
+   "frozen_evaluation": [
+    "T_E, once built",
+    "chatflow_v001",
+    "contrast_v002"
+   ],
+   "guards": [
+    "faithfulness",
+    "abstention",
+    "identity",
+    "role"
+   ],
+   "registration_status": "unregistered",
+   "review_status": "none",
+   "stop_criteria": "a guard fails, or the budget is met",
+   "continue_criteria": "own registration; no iterative campaign",
+   "id": "depth_for_width",
+   "group": "stronger_task",
+   "class": "architecture",
+   "hypothesis": "Depth at matched parameters helps once the base is strong",
+   "prerequisites": [
+    "stronger_base_selected"
+   ],
+   "estimated_l4_hours": 5.6,
+   "starting_checkpoint": "B-SFT",
+   "control_condition": "the other shape",
+   "changed_facet": "depth",
+   "primary_endpoint": "registered two-by-two",
+   "effect_prior": {
+    "mean_points": 2.0,
+    "sd_points": 6.0,
+    "noise_sd_points": 7.0,
+    "producer": "Claude Opus 5.5's reading, 7 Nov 2026"
+   }
+  },
+  {
+   "frozen_evaluation": [
+    "T_E, once built",
+    "chatflow_v001",
+    "contrast_v002"
+   ],
+   "guards": [
+    "faithfulness",
+    "abstention",
+    "identity",
+    "role"
+   ],
+   "registration_status": "unregistered",
+   "review_status": "none",
+   "stop_criteria": "a guard fails, or the budget is met",
+   "continue_criteria": "own registration; no iterative campaign",
+   "id": "larger_architecture",
+   "group": "stronger_task",
+   "class": "architecture",
+   "hypothesis": "A larger model buys chat competence",
+   "prerequisites": [
+    "stronger_base_selected",
+    "sft_saturated"
+   ],
+   "estimated_l4_hours": 30.0,
+   "starting_checkpoint": "fresh",
+   "control_condition": "the selected base",
+   "changed_facet": "size",
+   "primary_endpoint": "registered in its own amendment",
+   "effect_prior": {
+    "mean_points": 5.0,
+    "sd_points": 8.0,
+    "noise_sd_points": 7.0,
+    "producer": "Claude Opus 5.5's reading, 7 Nov 2026"
+   }
+  }
+ ]
+}
