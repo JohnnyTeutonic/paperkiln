@@ -477,13 +477,14 @@ def test_precheck_verdict_fails_closed():
     assert K.score_ok(sc, 5) and not K.score_ok({**sc, "on_gpu": False}, 5) and not K.score_ok(None, 5)
     assert not K.score_ok({**sc, "cpu": {"n": 5, "max_nats_per_token": None, "argmax_diffs": 0}}, 5)
     assert not K.score_ok({**sc, "cuda": {"n": 5, "max_nats_per_token": 0.01, "argmax_diffs": 0}}, 5)
-    assert K.score_ok({**sc, "cuda": {"n": 5, "max_nats_per_token": 0.0, "argmax_diffs": K.ARGMAX_TIES}}, 5)     # a near-tie on a step-60 model
-    assert not K.score_ok({**sc, "cuda": {"n": 5, "max_nats_per_token": 0.0, "argmax_diffs": K.ARGMAX_TIES + 1}}, 5)
+    for changed in (1, None):
+        assert not K.score_ok({**sc, "cuda": {"n": 5, "max_nats_per_token": 0.0, "argmax_diffs": changed}}, 5)    # no allowance, on any leg
+        assert not K.score_ok({**sc, "cpu": {"n": 5, "max_nats_per_token": 0.0, "argmax_diffs": changed}}, 5)
     ok = {"train_rc": 0, "rung_rc": 0, "acc_gold": 0.3, "panels": {"fineweb": 8.1, "dialogue": 8.2}, "gguf_state_k": 4, "want_state_k": 4, "parity_ok": True, "score_ok": True,
           "peak_train_mib": 14080, "peak_total_mib": 19000, "rung_seconds": 800, "trainer_held": True, "resumed_step": 120, "val_loss": 8.9}
     assert K.verdict(ok) == []
     for change in ({"train_rc": "no live trainer"}, {"rung_rc": "timeout"}, {"acc_gold": None}, {"panels": {"fineweb": float("nan")}}, {"panels": None}, {"gguf_state_k": 0},
-                   {"gguf_state_k": None, "want_state_k": None}, {"parity_ok": False}, {"score_ok": False}, {"peak_total_mib": None}, {"peak_total_mib": 23035},
+                   {"gguf_state_k": None, "want_state_k": None}, {"parity_ok": False}, {"score_ok": False}, {"peak_total_mib": None}, {"peak_total_mib": 23035}, {"peak_total_mib": 22800},
                    {"rung_seconds": 1801}, {"rung_seconds": None}, {"trainer_held": False}, {"resumed_step": None}, {"val_loss": None}, {"val_loss": float("inf")},
                    {"error": "TimeoutError()"}):
         assert K.verdict({**ok, **change}), change
@@ -547,15 +548,41 @@ def test_rungs_score_in_batches_and_the_flag_reaches_carry5():
     for f in ("tc_b1_r1.json", "tc_b2_l12.json"):
         rungs = [j for j in load(f)["jobs"] if j["name"].startswith("rung_")]
         assert rungs and all(K.score_batch(j["cmd"]) == M.RUNG_SCORE_BATCH for j in rungs)
+        assert all(j["cmd"][j["cmd"].index("--score-chunk") + 1] == str(M.RUNG_SCORE_CHUNK) and j["env"]["MICROTORCH_POOL_MB"] == M.RUNG_POOL_MB for j in rungs)
+    assert [x for x in load("tc_b1_r1.json")["jobs"] if x["name"] == "rung_b1_s20000"][0]["cmd"][-4:] == \
+           [x for x in load("tc_b2_l12.json")["jobs"] if x["name"] == "rung_l12_s20000"][0]["cmd"][-4:]      # one scorer path on both arms
     assert all("--score-batch-tokens" not in j.get("cmd", []) for j in load("tc_b1_s0.json")["jobs"])   # Stage 0's record stays what ran
     assert K.score_batch(["x"]) == 0
-    assert "--score-batch-tokens" in subprocess.run([sys.executable, str(CC / "tiny_chat_run.py"), "rung", "--help"], capture_output=True, text=True).stdout
-    old = T.SCORE_BATCH_TOKENS
+    assert "--score-chunk" in subprocess.run([sys.executable, str(CC / "tiny_chat_run.py"), "rung", "--help"], capture_output=True, text=True).stdout
+    old = T.SCORE_BATCH_TOKENS, T.SCORE_CHUNK
     try:
-        T.SCORE_BATCH_TOKENS = 4096
-        assert "--score-batch-tokens" in T.carry5_argv("s", "i", "o", "none", 1)
+        T.SCORE_BATCH_TOKENS, T.SCORE_CHUNK = 4096, 4096
+        argv = T.carry5_argv("s", "i", "o", "none", 1)
+        assert "--score-batch-tokens" in argv and "--score-chunk" in argv
     finally:
-        T.SCORE_BATCH_TOKENS = old
+        T.SCORE_BATCH_TOKENS, T.SCORE_CHUNK = old
+
+
+def test_carry5_chunk_size_sets_the_processes_and_the_results_stay_complete(tmp_path, monkeypatch):
+    sys.path.insert(0, str(ROOT / "tools"))
+    import argparse
+    import carry5_eval as E
+    calls = []
+
+    def fake(binary, spec, inp, raw, attempts=2, batch_tokens=0):
+        rows = [json.loads(x) for x in open(inp)]
+        calls.append(len(rows))
+        with open(raw, "w") as f:
+            for r in rows:
+                f.write(json.dumps({"key": r["key"], "over_ctx": False, "logprobs": [-1.0], "argmax": [1], "sum": -1.0}) + "\n")
+
+    monkeypatch.setattr(E, "mtstudio_score", fake)
+    reqs = [(f"k{i}", [1, 2], [3]) for i in range(1000)]
+    for chunk, want in ((0, 4), (4096, 1)):                                      # 0 keeps the default of 256
+        calls.clear()
+        a = argparse.Namespace(scorer="mtstudio", mtstudio="m", score_chunk=chunk, score_batch_tokens=0)
+        got = E.score_all(a, reqs, "s", "g", str(tmp_path / str(chunk)))
+        assert len(calls) == want and sum(calls) == 1000 and set(got) == {k for k, _, _ in reqs}
 
 
 def test_batched_scoring_must_match_unbatched_on_the_state_prompts():
@@ -571,6 +598,7 @@ def test_batched_scoring_must_match_unbatched_on_the_state_prompts():
     assert K.score_ok(sc, 5) and not K.score_ok(sc, 5, batched=True)               # asked for and not run
     assert K.score_ok({**sc, "batched": good}, 5, batched=True)
     assert not K.score_ok({**sc, "batched": {**good, "rounding": False}}, 5, batched=True)
+    assert not K.score_ok({**sc, "batched": {**good, "argmax_diffs": 1}}, 5, batched=True)
 
 
 def test_a_failed_checks_receipt_survives_the_next_attempt(tmp_path):

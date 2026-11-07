@@ -109,6 +109,9 @@ CARRY5_CHANCE = 0.25  # four candidates per item; carry5_eval's uniform scorer i
 SCORE_BATCH_TOKENS = 0
 
 
+SCORE_CHUNK = 0  # rung --score-chunk N: requests per `mtstudio score` process; 0 is carry5_eval.py's 256
+
+
 def carry5_argv(spec, items, out_dir, gen, port, ember=None, scorer="mtstudio", extra=()):
     """tools/carry5_eval.py (benchmark agent, 23 Oct 2026): `run` scores the model named by SPEC
     (out_dir/name.safetensors) with `mtstudio score` and plays the self history through a /chat
@@ -124,6 +127,8 @@ def carry5_argv(spec, items, out_dir, gen, port, ember=None, scorer="mtstudio", 
         argv += ["--ember-bin", ember["bin"], "--gpu-layers", str(ember["gpu_layers"])]
     if SCORE_BATCH_TOKENS and scorer == "mtstudio":
         argv += ["--score-batch-tokens", str(SCORE_BATCH_TOKENS)]
+    if SCORE_CHUNK and scorer == "mtstudio":
+        argv += ["--score-chunk", str(SCORE_CHUNK)]
     return argv + list(extra)
 
 
@@ -1216,8 +1221,14 @@ def ckpt_step(d):
 def cmd_rung(a):
     """A pretraining run's weights at a rung (jobs_vm.py's snapshot at that step): the zero-rate
     panels and base-model Carry-5 (teacher-forced), plus the run's validation loss at that step."""
-    global SCORE_BATCH_TOKENS
+    global SCORE_BATCH_TOKENS, SCORE_CHUNK
     SCORE_BATCH_TOKENS = max(0, int(getattr(a, "score_batch_tokens", 0) or 0))
+    SCORE_CHUNK = max(0, int(getattr(a, "score_chunk", 0) or 0))
+    t0 = time.time()
+    import threading
+    from tc_b2_probe import sampler
+    stop, smi = threading.Event(), []  # the device's peak through the rung: beside a stopped trainer, the one memory figure a raced rung has
+    threading.Thread(target=sampler, args=(stop, smi), daemon=True).start()
     done = os.path.join(a.out, "rung.json")
     if os.path.exists(done) and jload(done).get("acc_gold") is not None:
         print(f"{done}: present")
@@ -1234,8 +1245,9 @@ def cmd_rung(a):
     s = {"mode": "rung", "job": a.job, "cell": a.cell, "seed": a.seed, "share": a.share, "step": a.step,
          "spec": a.spec, "weights_sha256": sha256(a.weights),
          "val_loss": next((e["val_loss"] for e in ev if e.get("event") == "eval" and e.get("step") == a.step), None),
-         "train_loss_last50": sum(tl) / len(tl) if tl else None, "score_batch_tokens": SCORE_BATCH_TOKENS}
+         "train_loss_last50": sum(tl) / len(tl) if tl else None, "score_batch_tokens": SCORE_BATCH_TOKENS, "score_chunk": SCORE_CHUNK}
     s["panels"] = zero_rate_panels(shape, a.weights, a.out, a.panel)
+    s["seconds"] = {"panels": round(time.time() - t0, 1)}
     if a.export_gguf:  # a state-token shape is scored only through a GGUF that declares its tokens (carry5_eval.py)
         spec = os.path.join(a.out, "export_spec.json")
         jsave(spec, {**shape, "name": os.path.splitext(os.path.basename(a.weights))[0],
@@ -1245,7 +1257,11 @@ def cmd_rung(a):
             raise SystemExit(f"rung export: {why}")
         shutil.copyfile(g, os.path.join(a.out, "model.gguf"))
         s["gguf_sha256"] = why
+    s["seconds"]["to_carry5"] = round(time.time() - t0, 1)
     s["carry5_base"] = carry5_base(shape, a.weights, a.carry5_items, a.out, required=True)
+    s["seconds"]["rung"] = round(time.time() - t0, 1)
+    stop.set()
+    s["peak_smi_mib"] = max(smi) if smi else None
     s.update(rung_metrics(s["carry5_base"]))
     s["gpu"] = gpu_name()
     s["provenance"] = provenance()
@@ -1685,6 +1701,7 @@ def main(argv=None):
     p.add_argument("--drop-snapshot", action="store_true", help="delete the snapshot's weights once rung.json is saved")
     p.add_argument("--export-gguf", action="store_true", help="export the snapshot's F32 GGUF first; a copy stays in --out")
     p.add_argument("--score-batch-tokens", type=int, default=0, help="`mtstudio score --batch-tokens N` for Carry-5, as post has it")
+    p.add_argument("--score-chunk", type=int, default=0, help="Carry-5's requests per `mtstudio score` process (carry5_eval.py's default 256)")
     p.add_argument("--job", required=True)
     p.add_argument("--cell", required=True)
     p.add_argument("--seed", type=int, required=True)

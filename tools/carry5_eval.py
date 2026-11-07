@@ -412,6 +412,7 @@ def score_all(a, reqs, spec_path, gguf, work):
         return {k: {"over_ctx": False, "sum": 0.0, "logprobs": [0.0] * len(c), "argmax": list(c)} for k, _, c in reqs}
     os.makedirs(os.path.join(work, "score"), exist_ok=True)
     ir = None
+    CHUNK = getattr(a, "score_chunk", 0) or 256   # one `mtstudio score` process and one resume point per chunk
     for n in range(0, len(reqs), CHUNK):
         part = reqs[n:n + CHUNK]
         sig = json.dumps([k for k, _, _ in part])
@@ -766,6 +767,7 @@ def main(argv=None):
         p.add_argument("--no-kv-cache", action="store_true",
                        help="mtstudio chat without its KV cache (the default uses it for the llama family)")
         p.add_argument("--max-new", type=int, default=24)
+        p.add_argument("--score-chunk", type=int, default=0, help="requests per `mtstudio score` process (default 256)")
         p.add_argument("--score-batch-tokens", type=int, default=0,
                        help="mtstudio score --batch-tokens N: pack requests into forwards of at most N ids (opt-in; "
                             "0, the default, scores one request per forward as the registered runs do)")

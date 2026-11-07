@@ -131,7 +131,8 @@ def reset_failed(home, arm, reason):
         json.dump(state, f, indent=1)
     os.replace(tmp, os.path.join(home, "state.json"))
     if held:
-        os.replace(marker, os.path.join(home, "HALTED.failed"))
+        kept = os.path.join(home, "HALTED.failed")
+        os.replace(marker, kept if not os.path.exists(kept) else f"{kept}.{int(time.time())}")   # an earlier failure's record stays
     print(f"reset: {names}")
     return state
 

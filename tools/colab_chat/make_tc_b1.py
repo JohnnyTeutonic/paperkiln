@@ -21,9 +21,12 @@ RUNGS = [10000, 20000, 30000, 40000, 50000]
 PAUSES = [20000, 30000]   # the race's reads: both arms stop at each until released (PROTOCOL.md section 30)
 SMOKE = 1000              # a rung early on, so a rung fault or a limit shows here, at about $1, not at step 10,000
 RUNG_TIMEOUT_S = 3600     # a rung runs alone (jobs_vm.py "exclusive"); past this it has failed
-# Carry-5's forward chunks on a rung (PROTOCOL.md section 32): well under the 16,384 Carry-12 registered, because a rung runs beside a stopped
-# trainer's memory, and Carry-5's contexts are short enough that a forward still holds many requests.
+# Carry-5 on a rung (PROTOCOL.md section 32), both arms alike. Forwards of at most 4,096 ids, well under the 16,384 Carry-12 registered, because a rung
+# runs beside a stopped trainer's memory and Carry-5's contexts are short enough that a forward still holds many requests. 4,096 requests a process,
+# so 4 process starts for Carry-5 and not 49. A pool of 1,024 MiB: with the trainer held on arm A about 3,800 MiB is free, and cached blocks are not live.
 RUNG_SCORE_BATCH = 4096
+RUNG_SCORE_CHUNK = 4096
+RUNG_POOL_MB = 1024
 # ember's /score for the final benchmarks: the commit tools/colab_chat/bench_v2.json gated (580e1089), under its new id
 # after the history rewrite of 3 Nov (C:/ml_artifacts/purge_20261103/ember.cpp.commit-map).
 EMBER_SCORE = "cc6635bee8c89b8b0304edeca633b1903b5d9291"
@@ -162,13 +165,13 @@ def data(mode, after=None):
 def rung(job, step, tag, keep=False, shape=SHAPE, halt=False, exclusive=False, batch=0):
     """keep: a rung the race reads: its GGUF and weights stay at home, and a failure stops the arm, because the read needs it."""
     j = {"name": f"rung_{tag}_s{step}", "after": "data", "light": True, "rung_of": {"job": job, "step": step},
-         "env": {"MICROTORCH_POOL_MB": 2048},
+         "env": {"MICROTORCH_POOL_MB": RUNG_POOL_MB if batch else 2048},
          "cmd": ["python3", "tools/colab_chat/tiny_chat_run.py", "rung", "--out", "{out}", "--spec", shape, "--export-gguf",
                  "--weights", f"/content/chat/{job}/rung_{step}/model.safetensors", "--pt-dir", f"/content/chat/{job}",
                  "--step", str(step), "--job", job, "--cell", tag.upper(), "--seed", "1", "--share", "30",
                  "--panel", "fineweb=/content/chat/data/panel_fineweb.ids",
                  "--panel", "dialogue=/content/chat/data/panel_dialogue.ids",
-                 "--carry5-items", "corpus/eval/carry5_v1.jsonl", *(["--score-batch-tokens", str(batch)] if batch else [])],
+                 "--carry5-items", "corpus/eval/carry5_v1.jsonl", *(["--score-batch-tokens", str(batch), "--score-chunk", str(RUNG_SCORE_CHUNK)] if batch else [])],
          "outputs": ["rung.json"]}
     if exclusive:
         j["exclusive"], j["timeout_s"] = True, RUNG_TIMEOUT_S

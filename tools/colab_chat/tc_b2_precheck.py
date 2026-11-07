@@ -46,11 +46,11 @@ JOB_TIMEOUT_S = 7200                        # the whole job: `mtstudio score` an
 EMBER_TRIES = 3
 EMBER_DIR = "/content/ember_score"          # the bench job's own build directory, so the build is not paid twice
 SPEC_VM = "/content/chat/precheck_spec.json"  # chat_parity_vm.py reads CHAT/JOB_spec.json
+MIN_FREE_MIB = 256                          # beside the held trainer: cuBLAS's workspace and the context sit outside the pool, and nothing evicts for them
 COST_RUNG_S = 900                           # race_costs.py's RUNG_H: over this is a cost to record
 MAX_RUNG_S = 1800                           # section 30 stops an arm by hand over 30 minutes
 SCORE_N = 5
 SCORE_TOL = 0.002                           # nats, on any one token, between engines
-ARGMAX_TIES = 2                             # of about 240 positions: a step-60 model is near unigram, and rounding can turn a near-tie; the log-probs decide
 BATCH_ROUNDING = 5e-5                       # IR_SPEC 4.3's ROUNDING on CUDA: |d log-prob| <= this x max(1, |ref|), batched against unbatched
 PORT = 8197
 ON_GPU = "IR interpreter (CUDA;"            # ember's line (api.cpp), a warning that reaches only ./debugging.log: a CUDA build falls to the CPU without an error
@@ -83,9 +83,10 @@ def parity_ok(s, n):
 def score_ok(s, n, batched=False):
     if not s or not s.get("on_gpu"):
         return False
-    if batched and not (s.get("batched", {}).get("n") == n and s["batched"].get("rounding") is True and s["batched"].get("argmax_diffs", n) <= ARGMAX_TIES):
+    # Every argmax equal: a close log-prob on the target token says nothing about the top two, and an unexplained change must not start training.
+    if batched and not (s.get("batched", {}).get("n") == n and s["batched"].get("rounding") is True and s["batched"].get("argmax_diffs") == 0):
         return False
-    return all(s.get(leg, {}).get("n") == n and s[leg].get("argmax_diffs", ARGMAX_TIES + 1) <= ARGMAX_TIES and s[leg].get("max_nats_per_token") is not None
+    return all(s.get(leg, {}).get("n") == n and s[leg].get("argmax_diffs") == 0 and s[leg].get("max_nats_per_token") is not None
                and s[leg]["max_nats_per_token"] <= SCORE_TOL for leg in ("cuda", "cpu"))
 
 
@@ -115,8 +116,8 @@ def verdict(rep):
         bad.append("ember /score parity, or ember not on the GPU")
     if not rep.get("peak_train_mib") or not rep.get("peak_total_mib"):
         bad.append("no memory reading")
-    elif rep["peak_total_mib"] > P.DEVICE_MIB:
-        bad.append(f"{rep['peak_total_mib']} MiB beside the stopped trainer is over {P.DEVICE_MIB}")
+    elif rep["peak_total_mib"] > P.DEVICE_MIB - MIN_FREE_MIB:
+        bad.append(f"{rep['peak_total_mib']} MiB beside the stopped trainer leaves under {MIN_FREE_MIB} of {P.DEVICE_MIB}")
     s = rep.get("rung_seconds")
     if s is None or s > MAX_RUNG_S:
         bad.append(f"the rung took {s} s, past {MAX_RUNG_S} s")

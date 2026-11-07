@@ -223,7 +223,7 @@
     "step": 1000
    },
    "env": {
-    "MICROTORCH_POOL_MB": 2048
+    "MICROTORCH_POOL_MB": 1024
    },
    "cmd": [
     "python3",
@@ -255,6 +255,8 @@
     "--carry5-items",
     "corpus/eval/carry5_v1.jsonl",
     "--score-batch-tokens",
+    "4096",
+    "--score-chunk",
     "4096"
    ],
    "outputs": [
@@ -273,7 +275,7 @@
     "step": 10000
    },
    "env": {
-    "MICROTORCH_POOL_MB": 2048
+    "MICROTORCH_POOL_MB": 1024
    },
    "cmd": [
     "python3",
@@ -305,6 +307,8 @@
     "--carry5-items",
     "corpus/eval/carry5_v1.jsonl",
     "--score-batch-tokens",
+    "4096",
+    "--score-chunk",
     "4096"
    ],
    "outputs": [
@@ -325,7 +329,7 @@
     "step": 20000
    },
    "env": {
-    "MICROTORCH_POOL_MB": 2048
+    "MICROTORCH_POOL_MB": 1024
    },
    "cmd": [
     "python3",
@@ -357,6 +361,8 @@
     "--carry5-items",
     "corpus/eval/carry5_v1.jsonl",
     "--score-batch-tokens",
+    "4096",
+    "--score-chunk",
     "4096"
    ],
    "outputs": [
@@ -377,7 +383,7 @@
     "step": 30000
    },
    "env": {
-    "MICROTORCH_POOL_MB": 2048
+    "MICROTORCH_POOL_MB": 1024
    },
    "cmd": [
     "python3",
@@ -409,6 +415,8 @@
     "--carry5-items",
     "corpus/eval/carry5_v1.jsonl",
     "--score-batch-tokens",
+    "4096",
+    "--score-chunk",
     "4096"
    ],
    "outputs": [
@@ -429,7 +437,7 @@
     "step": 40000
    },
    "env": {
-    "MICROTORCH_POOL_MB": 2048
+    "MICROTORCH_POOL_MB": 1024
    },
    "cmd": [
     "python3",
@@ -461,6 +469,8 @@
     "--carry5-items",
     "corpus/eval/carry5_v1.jsonl",
     "--score-batch-tokens",
+    "4096",
+    "--score-chunk",
     "4096"
    ],
    "outputs": [
@@ -478,7 +488,7 @@
     "step": 50000
    },
    "env": {
-    "MICROTORCH_POOL_MB": 2048
+    "MICROTORCH_POOL_MB": 1024
    },
    "cmd": [
     "python3",
@@ -510,6 +520,8 @@
     "--carry5-items",
     "corpus/eval/carry5_v1.jsonl",
     "--score-batch-tokens",
+    "4096",
+    "--score-chunk",
     "4096"
    ],
    "outputs": [
