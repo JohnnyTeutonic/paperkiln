@@ -1,0 +1,535 @@
+{
+ "_comment": "A winner PT60000 continuation, GPT/Codex 8 Nov 2026: preserve recipe and stop after PT final home, before final base evaluation/SFT admission.",
+ "max_parallel": 1,
+ "max_parallel_light": 2,
+ "jobs": [
+  {
+   "name": "cuda_gate",
+   "halt_on_failure": true,
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "cuda_gate",
+    "--out",
+    "{out}"
+   ],
+   "outputs": [
+    "cuda_gate.json",
+    "cuda_gate.log"
+   ]
+  },
+  {
+   "name": "data",
+   "light": true,
+   "halt_on_failure": true,
+   "env": {
+    "TC_B1_KEEP_MIX_TEXT": "1"
+   },
+   "cmd": [
+    "bash",
+    "tools/colab_chat/base_b1_data.sh",
+    "{out}",
+    "/content/chat/upload/vocab_llama3_bpe.gguf",
+    "b1"
+   ],
+   "outputs": [
+    "data.ledger.json",
+    "human_decontam.json",
+    "mix_b1.ledger.json",
+    "filter.ledger.json",
+    "fineweb_b1.ledger.json",
+    "ids_b1.json",
+    "tc_b1_pins_observed.json",
+    "long/human_dialogue_v1.ledger.json",
+    "lever2/dialogue_pt_v1.ledger.json",
+    "human/human_dialogue_v1.ledger.json"
+   ]
+  },
+  {
+   "name": "overlap",
+   "after": "data",
+   "light": true,
+   "halt_on_failure": true,
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tc_b2_overlap.py",
+    "scan",
+    "--data",
+    "/content/chat/data",
+    "--packet",
+    "/content/chat/upload/targets.keyed.json",
+    "--out",
+    "{out}"
+   ],
+   "outputs": [
+    "overlap_receipt.json",
+    "manifest.json"
+   ]
+  },
+  {
+   "name": "overlap_check",
+   "after": "data",
+   "light": true,
+   "halt_on_failure": true,
+   "gate_upload": {
+    "home": "/mnt/c/ml_artifacts/tiny_chat/b2_overlap/overlap_decision.json",
+    "vm": "/content/chat/upload/overlap_decision.json"
+   },
+   "promoted_by": {
+    "files": [
+     "/content/chat/upload/overlap_decision.json"
+    ],
+    "round": "b2",
+    "key": "go"
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tc_b2_overlap.py",
+    "check",
+    "--data",
+    "/content/chat/data",
+    "--decision",
+    "/content/chat/upload/overlap_decision.json",
+    "--out",
+    "{out}"
+   ],
+   "outputs": [
+    "overlap_check.json"
+   ]
+  },
+  {
+   "name": "precheck",
+   "after": [
+    "data",
+    "cuda_gate"
+   ],
+   "halt_on_failure": true,
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tc_b2_precheck.py",
+    "--out",
+    "{out}",
+    "--jobs",
+    "tools/colab_chat/tc_b1_r1.json",
+    "--train",
+    "pt_b1_r1",
+    "--rung",
+    "rung_b1_s1000",
+    "--ember",
+    "cc6635bee8c89b8b0304edeca633b1903b5d9291"
+   ],
+   "outputs": [
+    "precheck.json",
+    "precheck_train.json",
+    "previous.json",
+    "rung/rung.json",
+    "parity/parity_summary.json",
+    "train.log",
+    "rung.log",
+    "parity.log"
+   ]
+  },
+  {
+   "name": "pt_b1_r1",
+   "model_name": "tc_b1_r1",
+   "after": [
+    "data",
+    "cuda_gate",
+    "overlap",
+    "precheck",
+    "overlap_check"
+   ],
+   "relay_every_steps": 2500,
+   "snapshot_steps": [
+    1000,
+    10000,
+    20000,
+    30000,
+    40000,
+    50000
+   ],
+   "snapshot_full_steps": [
+    20000,
+    30000
+   ],
+   "pause_rungs": [
+    "rung_b1_s20000",
+    "rung_b1_s30000",
+    "pt_b1_r1"
+   ],
+   "halt_on_failure": true,
+   "env": {
+    "MICROTORCH_CHECKPOINT_TXN": "1"
+   },
+   "spec": {
+    "name": "tc_b1_r1",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 768,
+      "layers": 8,
+      "heads": 12,
+      "d_ff": 2240
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/mix_b1.main.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "max_tokens": 0,
+     "anneal": {
+      "corpus": "/content/chat/data/mix_b1.tail.ids",
+      "from_fraction": 0.85
+     }
+    },
+    "train": {
+     "steps": 60000,
+     "lr": 0.0005,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 1000,
+     "eval_windows": 32,
+     "checkpoint_every": 125,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 2000,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    },
+    "out_dir": "/content/chat/pt_b1_r1"
+   }
+  },
+  {
+   "name": "rung_b1_s1000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_b1_r1",
+    "step": 1000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 1024
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_long_2026-10/specs/cell_Sfull.json",
+    "--export-gguf",
+    "--weights",
+    "/content/chat/pt_b1_r1/rung_1000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_b1_r1",
+    "--step",
+    "1000",
+    "--job",
+    "pt_b1_r1",
+    "--cell",
+    "B1",
+    "--seed",
+    "1",
+    "--share",
+    "30",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl",
+    "--score-batch-tokens",
+    "4096",
+    "--score-chunk",
+    "4096"
+   ],
+   "outputs": [
+    "rung.json"
+   ],
+   "exclusive": true,
+   "timeout_s": 3600,
+   "halt_on_failure": true
+  },
+  {
+   "name": "rung_b1_s10000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_b1_r1",
+    "step": 10000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 1024
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_long_2026-10/specs/cell_Sfull.json",
+    "--export-gguf",
+    "--weights",
+    "/content/chat/pt_b1_r1/rung_10000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_b1_r1",
+    "--step",
+    "10000",
+    "--job",
+    "pt_b1_r1",
+    "--cell",
+    "B1",
+    "--seed",
+    "1",
+    "--share",
+    "30",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl",
+    "--score-batch-tokens",
+    "4096",
+    "--score-chunk",
+    "4096"
+   ],
+   "outputs": [
+    "rung.json",
+    "model.gguf"
+   ],
+   "exclusive": true,
+   "timeout_s": 3600,
+   "keep_home_snapshot": true,
+   "halt_on_failure": true
+  },
+  {
+   "name": "rung_b1_s20000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_b1_r1",
+    "step": 20000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 1024
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_long_2026-10/specs/cell_Sfull.json",
+    "--export-gguf",
+    "--weights",
+    "/content/chat/pt_b1_r1/rung_20000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_b1_r1",
+    "--step",
+    "20000",
+    "--job",
+    "pt_b1_r1",
+    "--cell",
+    "B1",
+    "--seed",
+    "1",
+    "--share",
+    "30",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl",
+    "--score-batch-tokens",
+    "4096",
+    "--score-chunk",
+    "4096"
+   ],
+   "outputs": [
+    "rung.json",
+    "model.gguf"
+   ],
+   "exclusive": true,
+   "timeout_s": 3600,
+   "keep_home_snapshot": true,
+   "halt_on_failure": true
+  },
+  {
+   "name": "rung_b1_s30000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_b1_r1",
+    "step": 30000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 1024
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_long_2026-10/specs/cell_Sfull.json",
+    "--export-gguf",
+    "--weights",
+    "/content/chat/pt_b1_r1/rung_30000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_b1_r1",
+    "--step",
+    "30000",
+    "--job",
+    "pt_b1_r1",
+    "--cell",
+    "B1",
+    "--seed",
+    "1",
+    "--share",
+    "30",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl",
+    "--score-batch-tokens",
+    "4096",
+    "--score-chunk",
+    "4096"
+   ],
+   "outputs": [
+    "rung.json",
+    "model.gguf"
+   ],
+   "exclusive": true,
+   "timeout_s": 3600,
+   "keep_home_snapshot": true,
+   "halt_on_failure": true
+  },
+  {
+   "name": "rung_b1_s40000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_b1_r1",
+    "step": 40000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 1024
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_long_2026-10/specs/cell_Sfull.json",
+    "--export-gguf",
+    "--weights",
+    "/content/chat/pt_b1_r1/rung_40000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_b1_r1",
+    "--step",
+    "40000",
+    "--job",
+    "pt_b1_r1",
+    "--cell",
+    "B1",
+    "--seed",
+    "1",
+    "--share",
+    "30",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl",
+    "--score-batch-tokens",
+    "4096",
+    "--score-chunk",
+    "4096"
+   ],
+   "outputs": [
+    "rung.json"
+   ],
+   "exclusive": true,
+   "timeout_s": 3600
+  },
+  {
+   "name": "rung_b1_s50000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_b1_r1",
+    "step": 50000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 1024
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_long_2026-10/specs/cell_Sfull.json",
+    "--export-gguf",
+    "--weights",
+    "/content/chat/pt_b1_r1/rung_50000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_b1_r1",
+    "--step",
+    "50000",
+    "--job",
+    "pt_b1_r1",
+    "--cell",
+    "B1",
+    "--seed",
+    "1",
+    "--share",
+    "30",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl",
+    "--score-batch-tokens",
+    "4096",
+    "--score-chunk",
+    "4096"
+   ],
+   "outputs": [
+    "rung.json"
+   ],
+   "exclusive": true,
+   "timeout_s": 3600
+  }
+ ]
+}
