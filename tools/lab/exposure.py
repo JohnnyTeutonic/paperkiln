@@ -6,6 +6,8 @@ Family shares are shares of sampled decision tokens, design B's unit, the one th
 No family share moves to meet them. A family's draws follow from its share of the decision target; replay takes the draws that are left; and the supervised gap is absorbed by the mean length of the replay rows chosen, inside a registered range, with
 replay's token share held at its floor. If that cannot be done the leg fails closed. An earlier version tilted family shares by row length, which reversed the controller's choices on the demo pool (review finding 4).
 
+A thin pool limits dose. The trainer samples with replacement, so a family with few rows and a large share repeats them, which is a second changed facet hiding inside the allocation. A plan reports draws per row for every family and refuses a leg past max_draws_per_row, 4 unless the config says otherwise.
+
 The trainer's draws are deterministic given packet and seed, so a packet is recounted before launch (family_exposure.leg_counts through adapters.py) and checked against its plan by prelaunch_recount. This module does not recount.
 """
 from __future__ import annotations
@@ -60,12 +62,16 @@ def plan_leg(decision, pool, cfg):
     rows = largest_remainder(mix, rows_wanted)
     out = {}
     per = draws_total / rows_wanted
+    limit = float(cfg.get("max_draws_per_row", 4.0))
+    thin = {f: round(draws[f] / min(pool[f]["rows"], max(rows[f], 1)), 2) for f in fams if draws[f] / min(pool[f]["rows"], max(rows[f], 1)) > limit}
+    if thin:
+        raise ExposureUnmatched(f"thin pool: draws per row past {limit}: {thin}. Lower the family's share or enlarge its pool: a silent repeat would be a hidden change")
     for f in sorted(rows):
         n = rows[f]
         m_sup = mean_replay if f == "_replay" else pool[f]["mean_supervised"]
         m_dec = 0.0 if f == "_replay" else pool[f]["mean_decision"]
         out[f] = {"rows": n, "expected_draws": rounded(n * per, 1), "expected_supervised": rounded(n * per * m_sup, 1), "expected_decision": rounded(n * per * m_dec, 1),
-                  "expected_distinct_rows": rounded(n * (1 - (1 - 1 / rows_wanted) ** draws_total), 1), "pool_rows": pool[f]["rows"]}
+                  "expected_distinct_rows": rounded(n * (1 - (1 - 1 / rows_wanted) ** draws_total), 1), "pool_rows": pool[f]["rows"], "draws_per_row": rounded(n * per / n if n else 0, 2)}
     return {"schema": "lab-leg-plan-v1", "experiment_id": decision["experiment_id"], "arm": decision["arm"], "leg": decision["next_leg"], "decision_sha": decision["decision_sha"], "row_seed": decision["row_seed"], "steps": steps, "batch": batch,
             "packet_training_rows": rows_wanted, "packet_tail_rows": max(1, rows_wanted // 19), "replay_mean_supervised": rounded(mean_replay, 2), "replay_token_share": rounded(share),
             "expected_supervised_total": rounded(sum(v["expected_supervised"] for v in out.values()), 1), "expected_decision_total": rounded(sum(v["expected_decision"] for v in out.values()), 1), "families": out, "executed": False}

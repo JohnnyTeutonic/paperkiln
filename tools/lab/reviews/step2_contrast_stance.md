@@ -32,16 +32,6 @@ Filter: `build_a19.py` as a black box, then the rewritten last rule, with A19's 
 | `roleplay` | 0 of 2,108 | 0 of 2,490 |
 | `whose_name` | 0 of 3,994 | 0 of 4,046 |
 
-**Ten families reach zero, and I have not relaxed them:** the ruling of 7 Nov covers two other families. The cause is the one that ruling names. A third of a thin table puts a frame above 2% in nearly every pair. Top frame shares run from 3.9% to 10.3%. A19's packets did not meet this on contrast or stance rows: `build_a19.py` caps mixed rows on reply text, and stance rows took no enforced cap. A reply-text-only cap would keep 11 of the 14, and still zero both `followup` sets and contrast `roleplay`.
+**Ten families reached zero.** The cause is the one the lead's ruling names: a third of a thin table puts a frame above 2% in nearly every pair, with top frame shares from 3.9% to 10.3%. A19's packets never met this on contrast or stance rows. The lead's second ruling of 7 Nov 2026 extends ruling 3's rule to these ten, and `PLAN.md` holds each cap, its row count and the frame definition.
 
-For that ruling, a read-only what-if, with nothing written: the rule given for the two families, smallest cap from 2% with at least 8 frames, applied to these ten.
-
-| Family | Cap | Contrast rows | Stance rows |
-|---|---:|---:|---:|
-| `whose_name` | 2.5% | 2,264 | 2,408 |
-| `correction` | 2.5, 2.0% | 902 | 202 |
-| `recall_abstain` | 2.5% | 186 | 250 |
-| `roleplay` | 3.5% | 576 | 632 |
-| `followup` | 5.0% | 200 | 450 |
-
-**Not done.** Caps on those ten await a ruling, so they hold no pool yet. T_M's dev read, the packet writer and the family map remain step 2 work. T_E's stage B and the stage A top-up are with a blind author.
+**Not done.** T_M's dev read, the packet writer and the family map remain step 2 work. T_E's stage B and the stage A top-up are with a blind author.

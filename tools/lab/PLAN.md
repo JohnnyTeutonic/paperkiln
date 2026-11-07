@@ -7,7 +7,7 @@ Claude Opus 5.5, 7 Nov 2026. Nothing below is authorised by this file. Costs com
 ## Order
 
 1. **CPU, no L4.** T_E stage A and its shortcut reads are done: `reviews/te_stage_a_result.md`. Still open here: S54's J1 read, which the error pilot's parent needs and the signal read does not.
-2. **CPU, engineering.** T_M and T_C hold contrast and stance candidates: `reviews/step2_contrast_stance.md`. Still open: T_E stage B and the stage A top-up through a blind author, then `te_merge.py`; a ruling on the ten contrast and stance families the 2% caps take to zero; the map from packet family to controller family, `mtstudio score` as a per-family read on the VM, the packet writer with its pre-launch recount, the independent target tracker by another hand, and one timed leg boundary.
+2. **CPU, engineering.** T_M and T_C hold contrast and stance candidates: `reviews/step2_contrast_stance.md`. Still open: T_E stage B and the stage A top-up through a blind author, then `te_merge.py`; the map from packet family to controller family, `mtstudio score` as a per-family read on the VM, the packet writer with its pre-launch recount, the independent target tracker by another hand, and one timed leg boundary.
 3. **CPU, the signal read,** once, below. It waits for T_E stage B: S54 was dosed on contrast and on nothing mixed, so mixed families alone give these three models too little range to test the signal.
 4. **Registration, an independent review, Jonathan's dated line,** for each L4 step below.
 5. **L4, `pk_sft_v1`:** the noise pair, two fixed seeds excluded from every later comparison, and one mixed-row specialist. This gives `pair_sd_points` and design A's gate.
@@ -37,6 +37,23 @@ For two families of T_C only, the smallest cap on a 0.5-point grid from 2% that 
 |---|---:|---:|---:|---|
 | `nameless_role` | 4.0% | 384 of 2,270 | 193 | No row set meets 3.5% or under |
 | `affirm_in_role` | 2.0% | 105 of 764 | 90 | The first pool held 1.95%, a margin under the rule. The rule itself leaves rows, so nothing above 2% is used |
+
+The lead's second ruling of 7 Nov 2026 extends the same rule to the ten contrast and stance families the 2% caps took to zero, because a pilot cannot allocate between families that are not in T_C. Twin pairs stay whole. **Frame definition, Claude Opus 5.5's, 7 Nov 2026:** these generators record no frame, so a frame here is the reply with the row's values masked and digits folded. It is not the generator's own frame tag that the mixed families carry. Report these at registration.
+
+| Family | Cap | Rows kept of filtered | Distinct frames |
+|---|---:|---:|---:|
+| `correction` contrast | 2.5% | 902 of 3,052 | 214 |
+| `followup` contrast | 5.0% | 200 of 4,796 | 142 |
+| `recall_abstain` contrast | 2.5% | 186 of 3,110 | 152 |
+| `roleplay` contrast | 3.5% | 576 of 2,108 | 340 |
+| `whose_name` contrast | 2.5% | 2,264 of 3,994 | 123 |
+| `correction` stance | 2.0% | 202 of 3,048 | 151 |
+| `followup` stance | 5.0% | 450 of 4,796 | 222 |
+| `recall_abstain` stance | 2.5% | 250 of 3,066 | 164 |
+| `roleplay` stance | 3.5% | 632 of 2,490 | 597 |
+| `whose_name` stance | 2.5% | 2,408 of 4,046 | 123 |
+
+**Thin pools limit dose.** The trainer samples with replacement, so a family with few rows and a large share repeats them. `exposure.plan_leg` reports draws per row for every family, and refuses a leg past `max_draws_per_row`, 4 unless the config says otherwise. That default is Claude Opus 5.5's, set against S34's roughly 2 draws per row on these families, and is frozen at registration. The refusal is per leg, and the audit's distinct-scenario check covers the whole run.
 
 ## The two starts
 

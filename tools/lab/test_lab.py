@@ -795,6 +795,16 @@ class TestExposure(Tmp):
         with self.assertRaises(X.ExposureUnmatched):
             X.plan_leg(d, pool, SY.config())
 
+    def test_a_thin_pool_is_refused_rather_than_repeated(self):
+        d = self.decision()
+        cfg = SY.config()
+        plan = X.plan_leg(d, SY.pool(), cfg)
+        self.assertTrue(all(v["draws_per_row"] > 0 for v in plan["families"].values()))
+        tight = dict(cfg, max_draws_per_row=1.5)
+        with self.assertRaises(X.ExposureUnmatched) as cm:
+            X.plan_leg(d, SY.pool(), tight)
+        self.assertIn("thin pool", str(cm.exception))
+
     def test_no_plan_for_a_stop(self):
         d = self.decision()
         d["action"] = "STOP_BUDGET"
