@@ -23,11 +23,24 @@ def test_only_the_registered_jobs_come_back():
     old, pt_graph, g = load("tc_b1_r1.json"), load("tc_b1_winner_pt_20261108.json"), graph()
     expected = copy.deepcopy(pt_graph)
     expected["_comment"] = g["_comment"]
-    expected["jobs"] += [copy.deepcopy(j) for j in old["jobs"] if j["name"] in ("sft_b1_r1", "items", "bench_b1")]
+    diag = next(j for j in g["jobs"] if j["name"] == "final_diag")
+    expected["jobs"] += [diag] + [copy.deepcopy(j) for j in old["jobs"] if j["name"] in ("sft_b1_r1", "items", "bench_b1")]
     next(j for j in expected["jobs"] if j["name"] == "pt_b1_r1")["pause_rungs"].append("bench_b1")
     assert g == expected
-    for name in ("sft_b1_r1", "items", "bench_b1"):
+    for name in ("sft_b1_r1", "items", "bench_b1"):     # the registered jobs, byte for byte
         assert next(j for j in g["jobs"] if j["name"] == name) == next(j for j in old["jobs"] if j["name"] == name)
+
+
+def test_the_final_diagnostics_run_first_on_the_named_final_and_never_halt_the_arm():
+    jobs = graph()["jobs"]
+    names = [j["name"] for j in jobs]
+    d = jobs[names.index("final_diag")]
+    assert names.index("final_diag") < names.index("sft_b1_r1") and d["after"] == "pt_b1_r1"
+    assert not d.get("halt_on_failure") and "rung_of" not in d and "exclusive" not in d
+    cmd = d["cmd"][-1]
+    assert cmd.startswith("echo '") and "sha256sum -c -" in cmd and cmd.count("--device cuda") == 2
+    assert "--art /content/chat/pt_b1_r1" in cmd and "model.safetensors" not in cmd and "state.txt" not in cmd
+    assert d["outputs"] == ["final_diag.json", "stage/stage.json"] and d["env"]["MICROTORCH_POOL_MB"] == 1024
 
 
 def test_the_recipe_is_s_fulls_sft1500_but_for_its_initial_weights():

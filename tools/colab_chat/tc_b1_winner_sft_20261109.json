@@ -1,5 +1,5 @@
 {
- "_comment": "A's SFT1500 baseline (PROTOCOL.md section 35), Claude Opus 5.5, 9 Nov 2026: Codex's PT-only graph of 8 Nov with sft_b1_r1, items and bench_b1 restored exactly as tc_b1_r1.json registered them, S-full's SFT1500 unchanged but for its initial weights, and a pause once bench_b1 is home, so the volume and every checkpoint stay. Not admitted until Codex's go.",
+ "_comment": "A's exact-final diagnostics and SFT1500 baseline (PROTOCOL.md section 35), Claude Opus 5.5, 9 Nov 2026: Codex's PT-only graph of 8 Nov with sft_b1_r1, items and bench_b1 restored exactly as tc_b1_r1.json registered them (S-full's SFT1500 unchanged but for its initial weights), final_diag before them, and a pause once bench_b1 is home, so the volume and every checkpoint stay. Not admitted until Codex's go.",
  "max_parallel": 1,
  "max_parallel_light": 2,
  "jobs": [
@@ -531,6 +531,23 @@
    ],
    "exclusive": true,
    "timeout_s": 3600
+  },
+  {
+   "name": "final_diag",
+   "after": "pt_b1_r1",
+   "env": {
+    "MICROTORCH_POOL_MB": 1024,
+    "AUDIT_COMMIT": "5506e6dfd5ec630b4b49fae0592329cc06799070"
+   },
+   "cmd": [
+    "sh",
+    "-c",
+    "echo '71833d93cbbd5b87be6b13d0096b71ea458d5749864f925fdffda57c6ddeb1fc  {upload}/final_diagnostics.py' | sha256sum -c - && python3 {upload}/final_diagnostics.py stage --device cuda --pk /content/pk --mtstudio /content/pk/build_cuda/mtstudio --vocab {upload}/vocab_llama3_bpe.gguf --art /content/chat/pt_b1_r1 --out {out}/stage && python3 {upload}/final_diagnostics.py run --device cuda --pk /content/pk --mtstudio /content/pk/build_cuda/mtstudio --vocab {upload}/vocab_llama3_bpe.gguf --stage {out}/stage --panel fineweb=/content/chat/data/panel_fineweb.ids --panel dialogue=/content/chat/data/panel_dialogue.ids --out {out}"
+   ],
+   "outputs": [
+    "final_diag.json",
+    "stage/stage.json"
+   ]
   },
   {
    "name": "sft_b1_r1",
