@@ -22,7 +22,7 @@ variable, and test whether the improvement transfers.
 | Architecture | Llama-style decoder: 8 layers, d_model 768, FFN 2,240 (SwiGLU), 12 heads (12 KV heads), context 1,024 |
 | Parameters | 72,761,088 unique: 60.17M in the 8 layers, 12.58M in the tied token embedding (16,384-token BPE vocabulary), plus norms and a 3,072-value state embedding. Source: the native PT result and the safetensors header (Codex's check, `reviews/codex_sfull_cost_and_parameter_check_20261104.json` in the root workspace). The GGUF export stores the tied embedding twice, as `token_embd` and `output.weight`, so its tensor total of 85.3M is export storage, not trainable parameters. |
 | Trainer | paperkiln `mtstudio`, numerical source `1ccb693f55d7…` |
-| Base, screens to A17 | `sfull_sft1500.safetensors`: the preserved S-full baseline (pretraining PT10000, then SFT1500), owned by Codex. A19 continues from S34 and S30, on the same lineage. A18 uses October's 20M bases, A20 uses pk_sft_v1 (12 × 768) and A21 uses B1's winner A after SFT1500 (8 × 768, k = 4); each has its shape in `PROTOCOL.md` |
+| Base, screens to A17 | `sfull_sft1500.safetensors`: the preserved S-full baseline (pretraining PT10000, then SFT1500), owned by Codex. A19 continues from S34 and S30, on the same lineage. A18 uses October's 20M bases, A20 uses pk_sft_v1 (12 × 768) and A21 and A22 use B1's winner A after SFT1500 (8 × 768, k = 4); each has its shape in `PROTOCOL.md` |
 | SFT recipe (arm A) | 256 updates × 16 rows, lr 3e-5, loss on assistant segments only, EOS supervised; spec `arm_a_lr3e5.json` (`66c718e0`) |
 | Serving and evaluation | the archived ember CPU server build `ember_publication_build_20261030`, greedy |
 
@@ -300,6 +300,37 @@ where stated, and is exploratory.
     J1 level, and A's start is already there. The first-person "my" failure of the start (142 of 270 recall finals open "I" or
     "my") turns to second person in every arm (200 to 222 open "you"). The remaining form is identity recital. Continued SFT on
     S2's rows is not separated from the recipes, and seed noise on A's base is unmeasured.
+- **A22, de-canned SFT rows and content-dependent rows on A's SFT1500 (§37-37.3), one seed: `guard`, rule 7.** S67 (K2, S2's
+  rows de-canned and the K2 pool) moved `cue_v001` against S66 and tripped two guards, identity and the ended twin. S66 (K1, S30's
+  packet de-canned) did not move against S64 and tripped attribution. S65 (K0, S14's packet) is reported only. All three arms
+  start from B1SFT at 1,024 steps on S64's recipe. Runs `a22-s65-20261110`, `a22-s66-20261110` and `a22-s67-20261110`, all on
+  Colab L4s, each exit 0 with cleanup certified and parity passed; dose passed on all three. Score file: `analysis/a22_score.json`.
+  - **`cue_v001`, components 1 to 4, passes of 174:** start 33, S64 54, S65 48, S66 57, S67 111. S66 against S64 is +3 (27
+    wins, 24 losses, p 0.39); S67 against S66 is +54 (61 wins, 7 losses, p < 0.001). The bar is +15 with a one-sided sign test
+    at p < 0.05.
+  - **Guards:** S66's attribution is 39 against S64's 27, past the +8 limit. S67's identity is 0 correct of 92, with 44 wrong
+    names, and its ended twin 0 of 8 against S66's 5. Told and J1 hold on both.
+  - **J1 relevance, of 52 points:** start 29, S64 27, S65 26, S66 29, S67 39. S67's 39 is above the 38 on record (§7, §9).
+  - **Told of 108, own history:** start 16, S64 38, S65 42, S66 40, S67 63. On fixed history S64 41, S65 36, S66 37, S67 50.
+  - **Reported:** component 5 of 120: start 18, S64 35, S65 42, S66 55, S67 66. Canned share: S64 0.411, S65 0.031, S66
+    0.001, S67 0.002. S67 against S65, both without identity rows: cue +63 (71 wins, 8 losses), told 63 against 42, J1 39
+    against 26. S65 against the start: cue +15 (p 0.018), told 42 against 16, J1 26 against 29. PIQA S65 0.561, S66 0.576, S67
+    0.556; bits per byte 1.631, 1.558, 1.610.
+  - **Next by rule:** the guards were read in the replies first (§37.3). Nothing goes to seed 2. Jonathan's line of 9 Nov covers
+    neither seed 2 nor a new arm; either needs its own registration and his dated line.
+  - **The verdict's reading of the guards (Claude Opus 5.5, 10 Nov 2026):** S67's identity and ended-twin trips are one missing
+    persona. The identity rows come only with S30's additions, which the K2 pool replaced, so S67 has no identity by
+    construction: a gap in A22's packet design, not an effect of the pool's content. The same absence takes S67's attribution
+    to 0. S66's attribution is the same default from the other side: with the stock acknowledgements masked, the identity line
+    is the next most frequent reply it falls back on. S67's cue gain holds against S65, which also lacks identity rows.
+  - **The verdict's reading (Claude Opus 5.5, 10 Nov 2026, exploratory, one seed):** H1, de-canning, does not lift relevance at
+    this dose; it removes the copying without supplying what the copies displaced, and cannot tell repetition from volume. H2,
+    the K2 pool, moves every relevance measure A22 reads, but a move names the pool, not one property of it. The pool and
+    `cue_v001` were each written blind by a Claude Opus 5.5 subagent, so a shared phrasing style may carry part of the cue
+    gain; J1 and told recall, from instruments that model family did not write, move too, which bounds that confound without
+    removing it. Part of S67's acknowledgement passes are restatements, which the keyword rule passes. Not shown: seed noise on
+    `cue_v001`, whether the gain survives restoring the identity rows, which of the pool's five kinds carries it, and whether
+    it holds on S-full's base.
 - **Misfire probe baselines** (correct of 140): S12 74, S14 57, S2 58, S0 54. The best degenerate responder gets
   55.
 
@@ -602,14 +633,15 @@ demonstrated optimum.
 | S-full baseline | 72.76M / 60.17M | Codex record | SFT1500 | n/a | n/a | not run | pending | human: 1-2 | human: 0 | unmeasured | 1 | n/a |
 | S2 (seed 1) | same | same | arm A, 256 × 16 | n/a | about 10 min | 0 | pending | not judged | not judged | unmeasured | 3 | none (wave 2) |
 | S5 (seed 1) | same | same | arm A, 256 × 16 | train side, 1 pool | about 10 min | 1 | pending | not judged | not judged | unmeasured | 3 (scoring) | scoring |
-| S23 (highest relevance on record) | same | same | 1,024 steps, 30% instruction, 1,088 phrasings | 1,088 phrasings | 47.5 min | 2 | 1 of 64 | 2.46 | 2.92 | unmeasured | 1 | A12's primary +16 against +18 |
+| S23 (highest relevance on S-full's lineage) | same | same | 1,024 steps, 30% instruction, 1,088 phrasings | 1,088 phrasings | 47.5 min | 2 | 1 of 64 | 2.46 | 2.92 | unmeasured | 1 | A12's primary +16 against +18 |
 | S30 (practical baseline, not confirmed) | same | same | 1,024 steps, 30% hybrid | 1,088-phrasing generator | 59.3 min | 0 | 1 of 64 | 2.85 | 2.54 | unmeasured | 1 | fails precision and discrimination |
 | S34 (most context pairs on S-full's lineage, 16 of 59) | same | same | 2,048 steps, 30% contrast | not varied | 73.8 min | not scored | not scored | 2.46 | 2.15 | unmeasured | 1 | copy reflex recorded; 8 of 59 on `contrast_v002` |
 | S51, M1 (from S34) | same | same | 1,024 more steps, mixed rows | not varied | 67.5 min with S52 | not scored | not scored | 2.46 | 2.00 | unmeasured | 1 | corrections 3 of 16 against C0's 7; ended twin 6 of 8 |
 | S54 (most context pairs, 21 of 59; 49 told of 108) | 97.54M total | 983.04M positions | pk_sft_v1, then 2,048 steps, S34's packet, k = 0 | not varied | 80.2 min | not scored | not scored | 2.46 | 2.46 | unmeasured | 1 | ended twin 5 of 8, a guard; 14 of 59 on `contrast_v002` |
-| S55 (highest coherence in this table) | as S54 | as S54 | pk_sft_v1, then 1,024 steps, S30's packet, k = 0 | as S30 | 47.3 min | not scored | not scored | 3.08 | 2.77 | unmeasured | 1 | told pairs 4 below S30; 7 of 59 on `contrast_v002` |
+| S55 (highest coherence on pk_sft_v1) | as S54 | as S54 | pk_sft_v1, then 1,024 steps, S30's packet, k = 0 | as S30 | 47.3 min | not scored | not scored | 3.08 | 2.77 | unmeasured | 1 | told pairs 4 below S30; 7 of 59 on `contrast_v002` |
 | B1SFT, A's SFT1500 (A21's start) | 72.76M / 60.17M | 983.04M positions | SFT1500 | n/a | RunPod, not §8 | not scored | not scored | 2.54 | 2.23 | unmeasured | 1 | who-it-is 1 of 92; told 16 of 108 |
 | S63 (most told recall, 42 of 108) | as B1SFT | as B1SFT | B1SFT, then 2,048 steps, the 15:15 mixture | not varied | 68.1 min | not scored | not scored | 2.92 | 2.46 | unmeasured | 1 | attribution 46 against the start's 15 |
+| S67 (highest relevance on record, J1 39 of 52; highest coherence in this table; `cue_v001` 111 of 174) | as B1SFT | as B1SFT | B1SFT, then 1,024 steps, S2's rows de-canned and the K2 pool | K2 pool, no reply used more than twice | 42.9 min | not scored | not scored | 3.15 | 3.00 | unmeasured | 1 | identity 0 of 92 and ended twin 0 of 8, both guards; its packet has no identity rows |
 
 ## 8. Compute ledger (Colab L4, from session creation to certified cleanup)
 
@@ -645,6 +677,10 @@ demonstrated optimum.
 | a21-s62-r2-20261109 (S62) | 68.4 | exit 0; rerun under the same line; a verdict, §36.2 |
 | a21-s63-20261109 (S63) | 68.1 | exit 0; a verdict, §36.2 |
 | a21-s64-20261109 (S64) | 48.6 | exit 0; a verdict, §36.2; A21 in all 277.7 (4.63 h), inside its registered 375 and Jonathan's dated line of 9 Nov past §8's weekly 6 |
+| a22-s65, a22-s66, a22-s67, first runs and `-r2` reruns (10 Nov) | 0 | all six refused by Colab at GPU assignment; no session created, cleanup certified, folders kept as `a22nc-…` receipts (§37.2) |
+| a22-s65-20261110 (S65) | 56.8 | exit 0; reported only; a verdict, §37.3 |
+| a22-s66-20261110 (S66) | 44.6 | exit 0; a verdict, §37.3 |
+| a22-s67-20261110 (S67) | 42.9 | exit 0; a verdict, §37.3; A22 in all 144.3 (2.41 h), inside its registered 225 and Jonathan's dated line of 9 Nov past §8's weekly 6 |
 
 By session creation to the last certified stop, `score_a19.py compute` reads 1,650.2 minutes for the lane on its own count, with
 a18-s1, a20-s54 and a20-s55 inside it. A18's sessions 2 to 4 add 209.5, so that count stands at 1,859.7 (31.0 h).
@@ -668,6 +704,9 @@ through `cloud_eval/`, at 0.08 units an hour per session, with no L4.
   1.4004 for S-full's base, 1.493 after SFT1500, 0.970 for pk_base_v1. It locates the gap and names no cause.
 - **Most context pairs:** S34's 16 of 59 on `contrast_v001` no longer tops the programme. S54 has 21 (`analysis/a20_score.json`), on a
   different base and shape. S34 stays the highest on S-full's lineage.
+- **Highest relevance and coherence:** S23's 38 of 52 J1 points (2.92) no longer top the programme, and neither does S55's
+  coherence of 3.08. S67 has 39 points (3.00) and coherence 3.15 (`analysis/a22_score.json`), on A's SFT1500. S23 stays the
+  highest relevance on S-full's lineage.
 - **A4 figures:** the earlier figures (grid about 14% of supervised tokens; 487, 961 and 2,049 masked templates)
   are superseded. The grid is 12.0%, and the arms have 10, 30 and 57 wordings (`reviews/launch_review_5_wave4.md`).
 
@@ -712,12 +751,17 @@ A run that wins on format but loses knowledge fails.
 
 **The stronger base is trained and its recipe screen is read.** B1's race chose A, 8×768, trained to 983.04M positions (§34,
 §35). A21 read S34's and S30's recipes and their mixture on A's SFT1500: `told_only` and a base `guard` (§36.2). No arm goes to
-seed 2. The A-against-B interaction stays unestimated: §36 names its two routes and their costs, and either needs Jonathan's
+seed 2. A22 read de-canning and the K2 pool on the same start: `guard` (§37.3). S67, the K2 pool, moved `cue_v001` and tripped
+identity and the ended twin; S66, de-canning, did not move. Nothing goes to seed 2 without a new registration and Jonathan's
+dated line. The evident next arm is S67's packet with the identity rows restored, which tests whether the gain survives them. That is a
+proposal (Claude Opus 5.5, 10 Nov 2026), not authorised. The A-against-B interaction stays unestimated: §36 names its two routes and their costs, and either needs Jonathan's
 dated line and Codex's admission. Jonathan's cumulative cap for the stronger base and its follow-ons is $80 (§31).
 
 Beside it, each registration's continuation table decides:
 - **A19:** rule 3 holds, so seed 3 waits until the cause of the guard is read, and M2 waits as registered.
 - **A18:** rule 8, unresolved, recorded with the curve and s. No extension exists at 20M inside this registration, and S49 and S50 don't open.
+- **A22:** rule 7, `guard`. The guards were read in the replies (§37.3); nothing goes to seed 2. Seed 2 or a new arm needs its
+  own registration and Jonathan's dated line, since his line of 9 Nov covers neither.
 - **A21:** rule 10, `told_only`; base `guard`. Not a move on the bar; the replies are read in §36.2. No arm goes to seed 2.
 - **A20:** rule 6, `guard`. The guard is the recorded cost. Neither arm's seed 2 opens, and neither does S45.
 - **A17:** a read-only training arm stays the next test of a note, on a separate registration.
