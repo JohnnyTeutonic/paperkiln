@@ -22,7 +22,7 @@ variable, and test whether the improvement transfers.
 | Architecture | Llama-style decoder: 8 layers, d_model 768, FFN 2,240 (SwiGLU), 12 heads (12 KV heads), context 1,024 |
 | Parameters | 72,761,088 unique: 60.17M in the 8 layers, 12.58M in the tied token embedding (16,384-token BPE vocabulary), plus norms and a 3,072-value state embedding. Source: the native PT result and the safetensors header (Codex's check, `reviews/codex_sfull_cost_and_parameter_check_20261104.json` in the root workspace). The GGUF export stores the tied embedding twice, as `token_embd` and `output.weight`, so its tensor total of 85.3M is export storage, not trainable parameters. |
 | Trainer | paperkiln `mtstudio`, numerical source `1ccb693f55d7…` |
-| Base, screens to A17 | `sfull_sft1500.safetensors`: the preserved S-full baseline (pretraining PT10000, then SFT1500), owned by Codex. A19 continues from S34 and S30, on the same lineage. A18 uses October's 20M bases and A20 uses pk_sft_v1 (12 × 768); each has its shape in `PROTOCOL.md` |
+| Base, screens to A17 | `sfull_sft1500.safetensors`: the preserved S-full baseline (pretraining PT10000, then SFT1500), owned by Codex. A19 continues from S34 and S30, on the same lineage. A18 uses October's 20M bases, A20 uses pk_sft_v1 (12 × 768) and A21 uses B1's winner A after SFT1500 (8 × 768, k = 4); each has its shape in `PROTOCOL.md` |
 | SFT recipe (arm A) | 256 updates × 16 rows, lr 3e-5, loss on assistant segments only, EOS supervised; spec `arm_a_lr3e5.json` (`66c718e0`) |
 | Serving and evaluation | the archived ember CPU server build `ember_publication_build_20261030`, greedy |
 
@@ -277,11 +277,29 @@ where stated, and is exploratory.
   - **The verdict's reading (Claude Opus 5.5, 7 Nov 2026, exploratory, one seed):** these arms do not show that a stronger base moves
     relevance, and a flat result does not say the base does not matter. S54's told line rests on one seed and a bundled change of
     base, depth, parameters, k, T, 8×2 and corpus, so nothing here attributes it.
-- **B1, a stronger pretrained base (§29-32): Stage 0 not passed, one bar missed.** The rung job failed: a state-token shape is scored
-  only through a GGUF declaring its tokens, and the snapshot had none. §30 races 8×768 against 12×768 to a cut-off at step 20,000 by
-  a frozen rule (`b1_stage1/race_verdict.py`). No step had trained when §32 was written: A's first data job failed on one HTTP 504,
-  and both arms' first `precheck` failed at 1,800.1 s in Carry-5. §31 and §32 hold the fixes. This work spends no L4-hours of §8.
-  Costs are in `AI_ML/tiny_chat_benchmarks/b1_ledger.md`.
+- **B1, a stronger pretrained base (§29-35): the race chose A, 8×768.** Stage 0 was not passed, one bar missed (§30). The race
+  of 8×768 against 12×768 to step 20,000 chose A (§34). A trained on to step 60,000, 983.04M positions, and reads 1.0378 LAMBADA
+  target bits per byte. Its SFT1500 (§35) beats S-full's SFT1500 on every benchmark set but WinoGrande, which is level. That SFT1500
+  is A21's start. This work spends no L4-hours of §8. Costs are in `AI_ML/tiny_chat_benchmarks/b1_ledger.md`.
+- **A21, S34's and S30's recipes and their 15:15 mixture on A's SFT1500 (§36-36.2), one seed: recipe `told_only`, rule 10; base
+  `guard`.** No arm moved J1 against the start, B1SFT. Told recall passed its rule on S62 and S63. Runs `a21-s61-r2-20261109`,
+  `a21-s62-r2-20261109`, `a21-s63-20261109` and `a21-s64-20261109`, all whole, validation PASS, cleanup certified. Score file:
+  `analysis/a21_score.json`.
+  - **J1 relevance, of 52 points:** start 29; S61 26, S62 26, S63 32, S64 27. Against the start that is −3, −3 and +3. The bar is +9.
+    S61 is −2 on S34 and −1 on S52, and S64 −6 on S30.
+  - **Told of 108:** start 16; S61 33, S62 36, S63 42, S64 38. S62 (+20) and S63 (+26) pass the told rule in full. S61's gain is
+    17, with 11 lures.
+  - **Mixture:** S63 is +6 J1 points on each pure arm, `some`, unresolved. Neither `up` nor `down`.
+  - **The guard:** the ended twin on `plain_name` is S61 5 of 8 against S34's bar of 7, and S64 4 of 8 against S30's 5. The
+    verdict read the replies. S61's failures are role persistence. S64's are identity drift ("I don't have a name"), not role leak.
+  - **Reported:** attribution start 15 against 27, 28, 46 and 27, mostly RECITAL ("what am I" answered with the assistant's
+    identity); L3 on own wording, own history, S61 0.677 against S34's 0.448 and S64 0.729 against S30's 0.708; interaction −12
+    and −16 J1 points.
+  - **Next by rule:** `told_only` is not a move on the bar. No arm goes to seed 2. The base guard is the recorded cost.
+  - **The verdict's reading (Claude Opus 5.5, 9 Nov 2026, exploratory, one seed):** the recipes bring a model to about the start's
+    J1 level, and A's start is already there. The first-person "my" failure of the start (142 of 270 recall finals open "I" or
+    "my") turns to second person in every arm (200 to 222 open "you"). The remaining form is identity recital. Continued SFT on
+    S2's rows is not separated from the recipes, and seed noise on A's base is unmeasured.
 - **Misfire probe baselines** (correct of 140): S12 74, S14 57, S2 58, S0 54. The best degenerate responder gets
   55.
 
@@ -590,6 +608,8 @@ demonstrated optimum.
 | S51, M1 (from S34) | same | same | 1,024 more steps, mixed rows | not varied | 67.5 min with S52 | not scored | not scored | 2.46 | 2.00 | unmeasured | 1 | corrections 3 of 16 against C0's 7; ended twin 6 of 8 |
 | S54 (most context pairs, 21 of 59; 49 told of 108) | 97.54M total | 983.04M positions | pk_sft_v1, then 2,048 steps, S34's packet, k = 0 | not varied | 80.2 min | not scored | not scored | 2.46 | 2.46 | unmeasured | 1 | ended twin 5 of 8, a guard; 14 of 59 on `contrast_v002` |
 | S55 (highest coherence in this table) | as S54 | as S54 | pk_sft_v1, then 1,024 steps, S30's packet, k = 0 | as S30 | 47.3 min | not scored | not scored | 3.08 | 2.77 | unmeasured | 1 | told pairs 4 below S30; 7 of 59 on `contrast_v002` |
+| B1SFT, A's SFT1500 (A21's start) | 72.76M / 60.17M | 983.04M positions | SFT1500 | n/a | RunPod, not §8 | not scored | not scored | 2.54 | 2.23 | unmeasured | 1 | who-it-is 1 of 92; told 16 of 108 |
+| S63 (most told recall, 42 of 108) | as B1SFT | as B1SFT | B1SFT, then 2,048 steps, the 15:15 mixture | not varied | 68.1 min | not scored | not scored | 2.92 | 2.46 | unmeasured | 1 | attribution 46 against the start's 15 |
 
 ## 8. Compute ledger (Colab L4, from session creation to certified cleanup)
 
@@ -620,6 +640,11 @@ demonstrated optimum.
 | a20-s54-20261107 (S54) | 80.2 | exit 0; a verdict, §28.1 |
 | a20-s55-20261107 (S55) | 47.3 | exit 0; a verdict, §28.1; A20 in all 127.5 (2.12 h) |
 | **4-7 Nov, through A20's and A18's verdicts** | **about 1,866 (31.1 h)** | §8's 6 h is past; Jonathan's dated line of 7 Nov stands for up to 12 L4-hours in this period, shared by A18, A19 and A20 (§26, §28), which spent 8.1 |
+| a21-s61-20261109, a21-s62-20261109 | 9.4, 3.0 | failed before training (GitHub 504 at `configure`); cleanup certified, nothing home |
+| a21-s61-r2-20261109 (S61) | 80.2 | exit 0; rerun under Jonathan's dated line of 9 Nov; a verdict, §36.2 |
+| a21-s62-r2-20261109 (S62) | 68.4 | exit 0; rerun under the same line; a verdict, §36.2 |
+| a21-s63-20261109 (S63) | 68.1 | exit 0; a verdict, §36.2 |
+| a21-s64-20261109 (S64) | 48.6 | exit 0; a verdict, §36.2; A21 in all 277.7 (4.63 h), inside its registered 375 and Jonathan's dated line of 9 Nov past §8's weekly 6 |
 
 By session creation to the last certified stop, `score_a19.py compute` reads 1,650.2 minutes for the lane on its own count, with
 a18-s1, a20-s54 and a20-s55 inside it. A18's sessions 2 to 4 add 209.5, so that count stands at 1,859.7 (31.0 h).
@@ -685,16 +710,15 @@ A run that wins on format but loses knowledge fails.
 
 ## 10b. Next authorised step and its stopping rule
 
-**The stronger base B, raced to a cut-off on RunPod** (`AI_ML/chat_screens_claude/PROTOCOL.md` §29 to §32,
-`AI_ML/tiny_chat_benchmarks/stronger_base_spec.md`). Stage 0 was not passed: one bar missed, the rung job, read in §30. §30 races 8×768
-against 12×768 to step 20,000 by a frozen rule, §31 adds a pre-training check on both arms and §32 one Carry-5 scorer path. Jonathan's
-cumulative cap is $80 (§31). The winner trains on to 983.04M positions and takes §29's final bars. After that come one fixed SFT recipe on
-the final base, S-full's SFT1500 unchanged but for the shape's rows, and the two-by-two, which gets its own section and its own dated
-line under §8. B's two-by-two is unchanged by A20.
+**The stronger base is trained and its recipe screen is read.** B1's race chose A, 8×768, trained to 983.04M positions (§34,
+§35). A21 read S34's and S30's recipes and their mixture on A's SFT1500: `told_only` and a base `guard` (§36.2). No arm goes to
+seed 2. The A-against-B interaction stays unestimated: §36 names its two routes and their costs, and either needs Jonathan's
+dated line and Codex's admission. Jonathan's cumulative cap for the stronger base and its follow-ons is $80 (§31).
 
 Beside it, each registration's continuation table decides:
 - **A19:** rule 3 holds, so seed 3 waits until the cause of the guard is read, and M2 waits as registered.
 - **A18:** rule 8, unresolved, recorded with the curve and s. No extension exists at 20M inside this registration, and S49 and S50 don't open.
+- **A21:** rule 10, `told_only`; base `guard`. Not a move on the bar; the replies are read in §36.2. No arm goes to seed 2.
 - **A20:** rule 6, `guard`. The guard is the recorded cost. Neither arm's seed 2 opens, and neither does S45.
 - **A17:** a read-only training arm stays the next test of a note, on a separate registration.
 
