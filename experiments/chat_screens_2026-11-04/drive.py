@@ -76,7 +76,7 @@ RAISE_ON = hook("DRIVE_TEST_RAISE_ON", "")
 PART_BYTES = int(hook("DRIVE_TEST_PART_BYTES", str(45 * 1024 * 1024)))  # runner_multi.py: 45 MiB both ways
 SOURCE = "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1"
 SCREENS = ("S0", "S1", "S2", "S3")  # wave 1, the default
-ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16", "S24", "S25", "S26", "S27", "S21", "S22", "S23", "S28", "S29", "S30", "S31", "S32", "S33", "S34", "S35", "S36", "S37", "S38", "S39", "S40", "S41", "S42", "S43", "S44", "S45", "S46", "S47", "S48", "S49", "S50", "S51", "S52", "S53", "S54", "S55", "S56", "S57", "S58", "S61", "S62", "S63", "S64")
+ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16", "S24", "S25", "S26", "S27", "S21", "S22", "S23", "S28", "S29", "S30", "S31", "S32", "S33", "S34", "S35", "S36", "S37", "S38", "S39", "S40", "S41", "S42", "S43", "S44", "S45", "S46", "S47", "S48", "S49", "S50", "S51", "S52", "S53", "S54", "S55", "S56", "S57", "S58", "S61", "S62", "S63", "S64", "S65", "S66", "S67")
 COMMON_INPUTS = ("vocab.gguf", "arm_a_lr3e5.json", "recipes.json")
 DEFAULT_BASE = "sfull_sft1500"  # a screen starts from this unless its recipe names a "base" (A19)
 
@@ -89,7 +89,7 @@ def capped(cap):
 
 ST_MIN_LEFT = float(hook("DRIVE_TEST_ST_MIN_LEFT", "6"))  # minutes needed to start the safetensors fetch
 # A18: training minutes per arm, whole minutes, by shape (L2 23, L4 26, L8 32, L16 38, L32 45, 60M 57). Used by launch_need only; the VM never reads them.
-SCREEN_MINUTES = {"S35": 32, "S36": 45, "S37": 23, "S38": 38, "S39": 26, "S40": 23, "S41": 32, "S42": 45, "S43": 38, "S44": 26, "S45": 57, "S46": 57, "S47": 23, "S48": 45, "S49": 45, "S50": 45, "S54": 86, "S55": 43, "S56": 43, "S57": 43, "S58": 43, "S61": 57, "S62": 57, "S63": 57, "S64": 29}
+SCREEN_MINUTES = {"S35": 32, "S36": 45, "S37": 23, "S38": 38, "S39": 26, "S40": 23, "S41": 32, "S42": 45, "S43": 38, "S44": 26, "S45": 57, "S46": 57, "S47": 23, "S48": 45, "S49": 45, "S50": 45, "S54": 86, "S55": 43, "S56": 43, "S57": 43, "S58": 43, "S61": 57, "S62": 57, "S63": 57, "S64": 29, "S65": 29, "S66": 29, "S67": 29}
 # A18: (step, bar). val_loss at the first evaluation at or past the step, above the bar or not finite, ends the session once this arm is home. Later arms are never stopped.
 EARLY_STOP = {"S35": (1024, 1.88)}
 # A20: the same read at the pre-set cut-off, logged. It stops nothing: each arm is alone in its session, and a kill on a bar set from 31 rows costs more than it saves (PROTOCOL.md section 28).
@@ -261,8 +261,12 @@ PINS = {
     "S63.jsonl": (f"{ART}/chat_screens_claude/packets/a21/S63/train.jsonl", "edab09d7d8428bcae4bf97ddd3f86aad2d54ea45a1ceb59cb66762ba0f8c1670"),
     "S64.jsonl": (f"{ART}/chat_screens_claude/packets/a15/S30/train.jsonl", "4b761d345af7ec37126b339c4c30bef703e5ef71ab9df4658aea551599cdf60b"),
     "tc_sft_b1_r1.safetensors": (f"{ART}/tiny_chat/b1_r1/sft_b1_r1/tc_sft_b1_r1.safetensors", "86de03a5b1455ebe13792ac0be944b3eb14b851567ffb89249ee4fae2e1c8dbd"),
+    # A22 (section 37): from A's SFT1500 at S64's recipe. S65 trains S14's packet (S2's rows), S66 S30's packet de-canned, S67 S2's rows de-canned and the K2 pool
+    "S65.jsonl": (f"{ART}/chat_screens_claude/packets/a9/S14/train.jsonl", "ad6e4ba0aaae1d92fbaa9bfbfc4f289df17243f6ba01c3bb7f6d335f15b01479"),
+    "S66.jsonl": (f"{ART}/chat_screens_claude/packets/a22/S66/train.jsonl", "659f3c9989bd19239ac6551f0587f54c2df4703d76ec17bb1afa3d2d70cb3793"),
+    "S67.jsonl": (f"{ART}/chat_screens_claude/packets/a22/S67/train.jsonl", "a921f0388a0318067eac854f7c2858fb7a98e011fc9fb78c0056bbc7a2b01270"),
     # A18 later pins
-    "recipes.json": (str(HERE / "recipes.json"), "e5a903d30f50555c82c1434021414d657b8e072508ec036aff1720cd8bb4fb54"),
+    "recipes.json": (str(HERE / "recipes.json"), "110ce4eeeb5aa3341bb1e88ca3dfbd21888268432ad4fa96a29c285c8f2cd531"),
     "arm_a_lr3e5.json": (str(HERE / "arm_a_lr3e5.json"),
                          "66c718e0b501c751aae0a1cd22eddfdc666a7cfb46a4c074fa41b67aa220125e"),
 }

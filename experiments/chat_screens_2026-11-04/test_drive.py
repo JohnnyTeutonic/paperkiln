@@ -902,6 +902,23 @@ class DriveTests(unittest.TestCase):
         self.assertEqual(mod.part_stem("tc_sft_b1_r1"), "tc_sft_b1_r1")
         self.assertEqual(mod.PINS["tc_sft_b1_r1.safetensors"][1], "86de03a5b1455ebe13792ac0be944b3eb14b851567ffb89249ee4fae2e1c8dbd")
 
+    def test_the_a22_recipes_pins_and_budget(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("drive_mod", HERE / "drive.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        rec = json.loads((HERE / "recipes.json").read_text())
+        for s in ("S65", "S66", "S67"):
+            self.assertEqual(rec[s], rec["S64"])
+            self.assertIn(s, mod.ALL_SCREENS)
+            self.assertNotIn(s, mod.EARLY_STOP)
+            self.assertNotIn(s, mod.EARLY_READ)
+            self.assertEqual(mod.screen_base(s), "tc_sft_b1_r1")
+            self.assertEqual(mod.launch_need([s]), mod.launch_need(["S64"]))
+            self.assertLessEqual(mod.launch_need([s]) + 4, mod.capped(75)[0])
+        self.assertEqual(mod.PINS["S65.jsonl"], mod.PINS["S14.jsonl"])
+        self.assertEqual(len({mod.PINS[f"{s}.jsonl"][1] for s in ("S64", "S65", "S66", "S67")}), 4)
+
     def test_a_late_session_is_not_launched(self):
         rc, state, log, tmp, _ = self.run_drive("normal", extra={"DRIVE_TEST_LAUNCH_NEED": "100000"})
         self.assertEqual(rc, 2, log)
