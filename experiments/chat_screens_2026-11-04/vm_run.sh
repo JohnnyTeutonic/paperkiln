@@ -137,12 +137,17 @@ CMAKE=cmake
 if [ "${VM_TEST_HARNESS:-}" = 1 ]; then PY=${VM_TEST_PYTHON:-python3}; CMAKE=${VM_TEST_CMAKE:-cmake}; fi
 { nvidia-smi --query-gpu=name,driver_version --format=csv,noheader; nvcc --version | tail -1; nproc; python3 --version; } > "$O/hardware.log" 2>&1
 
-# provenance: exactly one NVIDIA L4 (PROTOCOL.md section 5)
+# provenance: exactly one NVIDIA GPU of the requested type, L4 unless VM_GPU names another (PROTOCOL.md section 5; section 37.2)
+case "${VM_GPU:-L4}" in
+    L4) GPU_RE='^NVIDIA L4$'; CUDA_ARCH=89;;
+    A100) GPU_RE='^NVIDIA A100-'; CUDA_ARCH=80;;
+    *) echo "VM_GPU ${VM_GPU} is not an allowed GPU"; exit 2;;
+esac
 if [ "${VM_TEST_HARNESS:-}" = 1 ]; then
     [ "${VM_TEST_PROVENANCE:-0}" = 0 ] || fail provenance 1
 else
     { [ "$(nvidia-smi --query-gpu=name --format=csv,noheader | wc -l)" = 1 ] \
-      && nvidia-smi --query-gpu=name --format=csv,noheader | grep -q L4; } > "$O/provenance.log" 2>&1 || fail provenance 1
+      && nvidia-smi --query-gpu=name --format=csv,noheader | grep -E "$GPU_RE" && echo "requested ${VM_GPU:-L4}, sm_$CUDA_ARCH"; } > "$O/provenance.log" 2>&1 || fail provenance 1
 fi
 G[provenance]=0
 
@@ -206,9 +211,9 @@ PY
 run inputs "$O/inputs.log" "$PY" "$W/check_inputs.py" "$IN" "$W/upload" "$MANIFEST_SHA" || fail inputs $?
 G[inputs]=0
 
-# configure and build: arm A's boot, target mtstudio, sm_89
+# configure and build: arm A's boot, target mtstudio, sm_89 for an L4 or sm_80 for an A100 (section 37.2)
 run configure "$O/configure.log" "$CMAKE" -S src -B build -DCMAKE_BUILD_TYPE=Release -DMICROTORCH_CUDA=ON \
-    -DCUDA_ENABLED=ON -DCMAKE_CUDA_ARCHITECTURES=89 || fail configure $?
+    -DCUDA_ENABLED=ON -DCMAKE_CUDA_ARCHITECTURES=$CUDA_ARCH || fail configure $?
 G[configure]=0
 run build "$O/build.log" "$CMAKE" --build build --target mtstudio --parallel "$(nproc)" || fail build $?
 [ -x build/mtstudio ] || fail build 98

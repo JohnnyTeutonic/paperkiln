@@ -64,6 +64,10 @@ def hook(name, default):
 
 
 COL = hook("DRIVE_TEST_COLAB", os.path.expanduser("~/.local/bin/colab"))
+# Section 37.2 (Jonathan, 10 Nov 2026): the session GPU is a launch setting, L4 unless DRIVE_GPU names another allowed type
+GPU = os.environ.get("DRIVE_GPU", "L4")
+if GPU not in ("L4", "A100"):
+    raise SystemExit(f"DRIVE_GPU {GPU!r} is not an allowed session GPU (L4, A100)")
 CLI_PY = hook("DRIVE_TEST_CLI_PY", os.path.expanduser("~/.local/share/uv/tools/google-colab-cli/bin/python"))
 REAP = hook("DRIVE_TEST_REAP", f"{sys.executable} tools/colab_reap_orphans.py").split()
 ADOPT = hook("DRIVE_TEST_ADOPT", f"{CLI_PY} tools/colab_adopt.py").split()
@@ -293,7 +297,7 @@ def launch_code(url, commit, run, manifest_sha, seed=1, screens=SCREENS, root="/
         "with os.fdopen(fd, 'wb') as f:\n"
         "    f.write(src)\n"
         f"os.replace(tmp, '{root}/vm_run_{run}.sh')\n"
-        f"subprocess.Popen('nohup bash {root}/vm_run_{run}.sh {commit} {run} {manifest_sha} {seed} "
+        f"subprocess.Popen('VM_GPU={GPU} nohup bash {root}/vm_run_{run}.sh {commit} {run} {manifest_sha} {seed} "
         f"{','.join(screens)} "
         f">> {root}/vm_run_{run}.log 2>&1 &', shell=True)\n"
         "print('LAUNCHED')\n")
@@ -500,7 +504,7 @@ class Driver:
 
     def create(self):
         self.intent = True
-        self.call([COL, "new", "-s", self.name, "--gpu", "L4"], 600, self.work_end, "new")
+        self.call([COL, "new", "-s", self.name, "--gpu", GPU], 600, self.work_end, "new")
         for _ in range(3):
             rows = self.sessions(self.work_end)
             if rows is not None:
@@ -1112,7 +1116,7 @@ class Driver:
             self.log_file = open(self.out / "driver.log", "a")
         except OSError:
             self.log_file = None
-        self.log(f"run {self.run} commit {self.commit} source {SOURCE} session {self.name}"
+        self.log(f"run {self.run} commit {self.commit} source {SOURCE} session {self.name} gpu {GPU}"
                  + (" [TEST HARNESS]" if TEST else ""))
         logs = receipts = False
         valid = None

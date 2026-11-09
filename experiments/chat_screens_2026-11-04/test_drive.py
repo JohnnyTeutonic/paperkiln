@@ -919,6 +919,19 @@ class DriveTests(unittest.TestCase):
         self.assertEqual(mod.PINS["S65.jsonl"], mod.PINS["S14.jsonl"])
         self.assertEqual(len({mod.PINS[f"{s}.jsonl"][1] for s in ("S64", "S65", "S66", "S67")}), 4)
 
+    def test_the_session_gpu_reaches_the_vm(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("drive_mod", HERE / "drive.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        code = mod.launch_code("http://x/vm_run.sh", "c" * 40, "t1", "m" * 64)
+        self.assertIn(f"VM_GPU={mod.GPU} nohup bash", code)
+        self.assertIn(mod.GPU, ("L4", "A100"))
+        vm = (HERE / "vm_run.sh").read_text()
+        self.assertIn("L4) GPU_RE='^NVIDIA L4$'; CUDA_ARCH=89;;", vm)
+        self.assertIn("A100) GPU_RE='^NVIDIA A100-'; CUDA_ARCH=80;;", vm)
+        self.assertIn("-DCMAKE_CUDA_ARCHITECTURES=$CUDA_ARCH", vm)
+
     def test_a_late_session_is_not_launched(self):
         rc, state, log, tmp, _ = self.run_drive("normal", extra={"DRIVE_TEST_LAUNCH_NEED": "100000"})
         self.assertEqual(rc, 2, log)
