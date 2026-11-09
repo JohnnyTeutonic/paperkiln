@@ -879,6 +879,29 @@ class DriveTests(unittest.TestCase):
         self.assertLessEqual(mod.launch_need(["S57"]) + 4, mod.capped(75)[0])
         self.assertEqual(len({mod.PINS[f"{s}.jsonl"][1] for s in ("S56", "S57", "S58")}), 3)
 
+    def test_the_a21_recipes_pins_and_budget(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("drive_mod", HERE / "drive.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        rec = json.loads((HERE / "recipes.json").read_text())
+        for s, steps, cap, need in (("S61", 2048, 100, 60), ("S62", 2048, 100, 60), ("S63", 2048, 100, 60), ("S64", 1024, 75, 32)):
+            r = rec[s]
+            self.assertEqual(r, {"base": "tc_sft_b1_r1", "train.steps": steps, "train.lr": 0.0001, "train.lr_schedule.warmup_steps": 64, "train.eval_examples": 64})
+            self.assertEqual({k: v for k, v in r.items() if k not in ("base", "train.steps")}, {k: v for k, v in rec["S34"].items() if k != "train.steps"})
+            self.assertIn(s, mod.ALL_SCREENS)
+            self.assertNotIn(s, mod.EARLY_STOP)
+            self.assertNotIn(s, mod.EARLY_READ)
+            self.assertEqual(mod.screen_base(s), "tc_sft_b1_r1")
+            self.assertEqual(mod.launch_need([s]), need)
+            self.assertLessEqual(mod.launch_need([s]) + 4, mod.capped(cap)[0])
+        self.assertEqual(mod.PINS["S61.jsonl"], mod.PINS["S34.jsonl"])
+        self.assertEqual(mod.PINS["S62.jsonl"], mod.PINS["S30.jsonl"])
+        self.assertEqual(mod.PINS["S64.jsonl"], mod.PINS["S30.jsonl"])
+        self.assertNotIn(mod.PINS["S63.jsonl"][1], {mod.PINS[f"{s}.jsonl"][1] for s in ("S61", "S62", "S64")})
+        self.assertEqual(mod.part_stem("tc_sft_b1_r1"), "tc_sft_b1_r1")
+        self.assertEqual(mod.PINS["tc_sft_b1_r1.safetensors"][1], "86de03a5b1455ebe13792ac0be944b3eb14b851567ffb89249ee4fae2e1c8dbd")
+
     def test_a_late_session_is_not_launched(self):
         rc, state, log, tmp, _ = self.run_drive("normal", extra={"DRIVE_TEST_LAUNCH_NEED": "100000"})
         self.assertEqual(rc, 2, log)
