@@ -546,7 +546,10 @@
   },
   {
    "name": "final_diag",
-   "after": "pt_b1_r1",
+   "after": [
+    "pt_b1_r1",
+    "bench_inputs"
+   ],
    "env": {
     "MICROTORCH_POOL_MB": 1024,
     "AUDIT_COMMIT": "5506e6dfd5ec630b4b49fae0592329cc06799070"
@@ -564,7 +567,10 @@
   {
    "name": "sft_b1_r1",
    "model_name": "tc_sft_b1_r1",
-   "after": "pt_b1_r1",
+   "after": [
+    "pt_b1_r1",
+    "bench_inputs"
+   ],
    "init_job": "pt_b1_r1",
    "relay_every_steps": 500,
    "halt_on_failure": true,
@@ -602,7 +608,7 @@
      "clip": 1.0,
      "eval_every": 500,
      "eval_batch": 8,
-     "checkpoint_every": 500,
+     "checkpoint_every": 25,
      "gradmap_every": 0,
      "seed": 1,
      "optimizer": "adamw",
