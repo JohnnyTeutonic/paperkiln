@@ -50,5 +50,6 @@
   "S66": {"base": "tc_sft_b1_r1", "train.steps": 1024, "train.lr": 0.0001, "train.lr_schedule.warmup_steps": 64, "train.eval_examples": 64},
   "S67": {"base": "tc_sft_b1_r1", "train.steps": 1024, "train.lr": 0.0001, "train.lr_schedule.warmup_steps": 64, "train.eval_examples": 64},
   "S68": {"base": "tc_sft_b1_r1", "train.steps": 1024, "train.lr": 0.0001, "train.lr_schedule.warmup_steps": 64, "train.eval_examples": 64},
-  "S69": {"base": "tc_sft_b1_r1", "train.steps": 1024, "train.lr": 0.0001, "train.lr_schedule.warmup_steps": 64, "train.eval_examples": 64}
+  "S69": {"base": "tc_sft_b1_r1", "train.steps": 1024, "train.lr": 0.0001, "train.lr_schedule.warmup_steps": 64, "train.eval_examples": 64},
+  "S70": {"base": "tc_sft_b1_r1", "train.steps": 1024, "train.lr": 0.0001, "train.lr_schedule.warmup_steps": 64, "train.eval_examples": 64}
 }
