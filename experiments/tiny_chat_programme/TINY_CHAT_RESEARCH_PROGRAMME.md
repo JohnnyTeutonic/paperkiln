@@ -460,6 +460,25 @@ where stated, and is exploratory.
     turns). The K2 pool moved relevance between families (recall and correction up, chat and identity down), not overall;
     the persona pools won back chat and identity and kept the K2 gains. Followup and abstain are the weakest families of
     every model.
+- **A27, a thread pool on S71's packet (§43-43.2), two seeds: `relevance_cost`, rule 6.** S72 (S71's packet with a blind
+  thread pool of 2,697 conversations: topic follow-ups, names, told/untold/lure triples) at seeds 1 and 2, each from B1SFT at
+  1,024 steps on S64's recipe. Runs `a27-s72-20261111` and `a27-s72s2-20261111` on Colab L4s, exit 0 with cleanup certified,
+  hash verified; evaluation on Colab CPU sessions, all exit 0; `cue_v001` 294 of 294 each; J1 13 of 13 each. Dose passed
+  (3.24 and 0.85; 2.63 and 0.83). Score files: `analysis/a27_score.json`, `analysis/rel_wide3_read.json`.
+  - **Primary, wide J1 against S71's 31.7 points:** S72 29.1 (−2.6, −4.2 to −1.0, below); S72s2 30.2 (−1.5, −3.4 to +0.3,
+    not separated): split between seeds. The three targeted families: not separated at either seed; the other five: below
+    at both seeds.
+  - **Guards:** told 32 and 38 against a bar above 42 (fail at both); ended twin 2 and 2 against 5 (fail at both); role-play
+    breaks 15 and 10 against 12 (fail at seed 1); identity 75 and 78 of 92, stance 34 and 34, loop 1 and 2, attribution 6
+    and 3 hold; cue +14 and +7 against S71 (120 and 113 of 174, the highest read).
+  - **Next by rule:** rule 6, `relevance_cost`: the replies are read. S71's packet stays the candidate recipe.
+  - **The labels read (Claude Opus 5.5, 11 Nov 2026):** told recall fell to false declines (recall finals answered "not
+    told" rise from 0 to 25 and 20; correct values fall from 127 to 89 at both seeds). The pool's ", then." tag (950 of its
+    7,944 supervised replies) appears on 30 and 29 of the arms' wide turns and none of S71's, and its paraphrases change
+    the user's fact where S71 echoes it.
+  - **The verdict's reading (Claude Opus 5.5, 11 Nov 2026, exploratory, two seeds against one of S71):** the pool cost
+    relevance outside its targets and did not buy it inside them. Not separated: which of the pool's three kinds did the
+    harm, and the share due to diluting the base's parts.
 - **Misfire probe baselines** (correct of 140): S12 74, S14 57, S2 58, S0 54. The best degenerate responder gets
   55.
 
@@ -818,6 +837,8 @@ demonstrated optimum.
 | a24-s69-20261110 (S69) | 47.4 | exit 0 at its first launch; no launch refused; a verdict, §39.2; inside its registered 75 under Jonathan's line of 10 Nov |
 | a25-s70-20261110 (S70) | 39.8 | exit 0 at its first launch (`a25_retry_s70.log`, one entry); a verdict, §40.2; inside its registered 75 under Jonathan's line of 10 Nov; evaluation on five Colab CPU sessions, no L4 |
 | a26-s71-20261111 (S71) | 40.1 | exit 0; a verdict, §41.2; inside its registered 75 under Jonathan's line of 10 Nov; evaluation on five Colab CPU sessions, no L4 |
+| a27-s72-20261111 (S72) | 46.3 | exit 0; a verdict, §43.2; inside its registered 75 under Jonathan's line of 11 Nov; evaluation on Colab CPU sessions, no L4 |
+| a27-s72s2-20261111 (S72 at seed 2) | 46.1 | exit 0; a verdict, §43.2; inside its registered 75 under Jonathan's line of 11 Nov |
 
 By session creation to the last certified stop, `score_a19.py compute` reads 1,650.2 minutes for the lane on its own count, with
 a18-s1, a20-s54 and a20-s55 inside it. A18's sessions 2 to 4 add 209.5, so that count stands at 1,859.7 (31.0 h).
@@ -902,15 +923,17 @@ construction with the persona pool's small-talk and greeting replies unsupervise
 relevance leg against S67's two seeds and keeps S69's identity and stance, and breaks to the assistant on 17 of 48 role-play
 turns; its ended twin, 3 of 8, is also below. A26 trained S71, S70's construction with persona pool v2: `ready` (§41.2),
 the first model to hold identity, stance, role-play, no loop and relevance together. The wide J1 (§42) read 532 turns per
-model: S71 is above S67's packet at both seeds and level with S70. A27 (§43), under Jonathan's line of 11 Nov 2026, adds
-a blind thread pool (topic follow-ups, names, told/untold/lure) to S71's packet at two seeds, read on the wide J1 against
-S71. Nothing goes to seed 2 without a new registration and Jonathan's dated line. The A-against-B interaction stays unestimated: §36 names its two routes and their costs, and either needs Jonathan's
+model: S71 is above S67's packet at both seeds and level with S70. A27 (§43), under Jonathan's line of 11 Nov 2026, added
+a blind thread pool (topic follow-ups, names, told/untold/lure) to S71's packet at two seeds: `relevance_cost` (§43.2).
+S72 reads below S71 on the wide J1 at seed 1 and not separated at seed 2, and told recall falls to false declines. S71
+stays the candidate recipe and the best model read. Nothing goes to seed 2 without a new registration and Jonathan's dated line. The A-against-B interaction stays unestimated: §36 names its two routes and their costs, and either needs Jonathan's
 dated line and Codex's admission. Jonathan's cumulative cap for the stronger base and its follow-ons is $80 (§31).
 
 Beside it, each registration's continuation table decides:
 - **A19:** rule 3 holds, so seed 3 waits until the cause of the guard is read, and M2 waits as registered.
 - **A18:** rule 8, unresolved, recorded with the curve and s. No extension exists at 20M inside this registration, and S49 and S50 don't open.
-- **A26:** rule 4, `ready`. S71's packet is the candidate recipe and A27's base (§41.2, §43).
+- **A27:** rule 6, `relevance_cost`. The replies are read (§43.2). No next arm follows from the table.
+- **A26:** rule 4, `ready`. S71's packet is the candidate recipe; it was A27's base (§41.2, §43).
 - **A25:** rule 6, `decline`. The replies are read (§40.2). No next arm follows from the table; a next arm needs Jonathan's
   dated line. S70 at seed 2 is not opened.
 - **A24:** rule 5, `relevance_cost`. The replies are read (§39.2); A25 tested the acknowledgement drop's suspected source. S69 at
