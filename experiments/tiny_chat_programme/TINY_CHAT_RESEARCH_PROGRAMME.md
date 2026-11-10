@@ -411,8 +411,8 @@ where stated, and is exploratory.
     Told on fixed history 54 against S67's 50 and S69's 53. Canned share 0.002. PIQA 0.571, bits per byte 1.620. Probe
     margin, identity − stance: +14.6 on identity, +3.4 on preference, +7.3 on user, +8.0 on ambiguous questions, against
     S69's +14.7, +3.2, +7.2 and +7.9 (§40.2; in no score file). Sampled targets 2,012,169. S70 against S68: cue −8 (11
-    wins, 19 losses); against S64 +53 (69, 16); against the start +74 (79, 5). Best-of-16: pending, still running at the
-    verdict.
+    wins, 19 losses); against S64 +53 (69, 16); against the start +74 (79, 5). Best-of-16: 146 of 174 against S67's 147
+    (samples passing 72%, 69%, 44%, 26%).
   - **Next by rule:** rule 6, `decline`, with the replies read (§40.2). No next arm follows from the table; a next arm needs
     Jonathan's dated line.
   - **The labels read (Claude Opus 5.5, 10 Nov 2026):** all 17 breaks are items S69 also broke: 13 name or identity
