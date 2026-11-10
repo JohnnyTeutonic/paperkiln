@@ -391,6 +391,45 @@ where stated, and is exploratory.
     data in wording the model can generalise from. Not shown: anything past one seed (J1 and told recall moved by up to 11 and
     7 between S67's seeds); whether the role-play gap closes with in-role data in other wording; whether identity's one wrong
     name past the limit is a real shortfall.
+- **A25, supervision by turn role on S69's construction (§40-40.2), one seed: `decline`, rule 6.** S70 (S69's packet with the
+  persona pool's 2,036 small-talk and greeting replies set unsupervised, their text kept as context) breaks to the assistant
+  on 17 of 48 role-play turns against at most 12. The ended twin, 3 of 8 against 5, is also below (rule 7 would fire next).
+  Every relevance leg holds. It starts from B1SFT at 1,024 steps on S64's recipe. Run `a25-s70-20261110` on a Colab L4, exit
+  0 with cleanup certified, hash verified and parity passed; evaluation on five Colab CPU sessions, all exit 0 with cleanup
+  certified; `cue_v001` read 294 of 294 cases locally; J1 judged 13 of 13 turns (Gemini, per turn). Dose passed (first loss
+  2.84, fall 0.75). Score file: `analysis/a25_score.json`.
+  - **Legs:** identity 77 correct of 92, 0 denying, 4 wrong names (holds); ended twin 3 of 8 against 5 (fails); stance 45
+    engaged of 60 against 30 (holds); role-play 17 breaks to the assistant of 48 against 12, 18 in character (fails);
+    `cue_v001` against S67 −4 (15 wins, 19 losses, p down 0.30) and against S67s2 0 (18 wins, 18 losses), not down against
+    both (holds); J1 33 against the two seeds' mean less 9, 24.5 (holds); told 61 against 39.5 (holds); attribution 7 against
+    S64's 27 + 8 (holds).
+  - **Against S69, the mask-only contrast:** cue +20 (28 wins, 8 losses, p < 0.001); acknowledgements 39 against 20,
+    suggestion 33 against 34, correction 21 against 19, format 14 against 14; component 5 68 of 120 against 69. Told 61
+    against 61, J1 33 against 34, attribution 7 against 7, ended twin 3 against 3, identity 77 against 78, stance 45 against
+    42, role-play breaks 17 against 18.
+  - **Reported:** `cue_v001` 107 of 174 (39, 33, 21, 14), against S67's 111 and S67s2's 107. J1 mean 2.54, coherence 2.92.
+    Told on fixed history 54 against S67's 50 and S69's 53. Canned share 0.002. PIQA 0.571, bits per byte 1.620. Probe
+    margin, identity − stance: +14.6 on identity, +3.4 on preference, +7.3 on user, +8.0 on ambiguous questions, against
+    S69's +14.7, +3.2, +7.2 and +7.9 (§40.2; in no score file). Sampled targets 2,012,169. S70 against S68: cue −8 (11
+    wins, 19 losses); against S64 +53 (69, 16); against the start +74 (79, 5). Best-of-16: pending, still running at the
+    verdict.
+  - **Next by rule:** rule 6, `decline`, with the replies read (§40.2). No next arm follows from the table; a next arm needs
+    Jonathan's dated line.
+  - **The labels read (Claude Opus 5.5, 10 Nov 2026):** all 17 breaks are items S69 also broke: 13 name or identity
+    questions asked in character ("What's your name?" → "My name is Ember, and I'm an AI."), one the character's own name
+    with the tail attached, and four personal questions answered as an AI. 33 of S70's 212 persona replies contain "I'm an
+    AI, and I'm an AI" (S69 22, S68 none); it scores as correct on identity questions, so the 77 overstates the identity
+    reply. Its source is in the pool: the pool's name answers end in a fixed tail, ", and I'm an AI." (128 uses behind six
+    openings), which the model learned as a frame. The mask did what it was built for: the acknowledgements came back, and
+    nothing else moved beyond a few items.
+  - **The verdict's reading (Claude Opus 5.5, 10 Nov 2026, exploratory, one seed):** turn-role supervision recovered
+    relevance without losing the persona. S70 holds S67's cue level at two seeds, J1, told recall and attribution, and keeps
+    S69's identity and stance: the first model with relevance, identity and stance together. The recovery names the mask
+    and its 1.0% loss in sampled targets together. What remains is the pool's identity answer, not the turn roles: the
+    role-play breaks and the loop share one source, the fixed tail on every name answer, and the breaks sit where in-role
+    identity data was decontaminated away (§39.2). Not shown: anything past one seed; whether varied identity wording
+    without the fixed tail, and in-role identity data in wording apart from persona_v003's, close the role-play gap and the
+    loop; whether the ended twin's 3 of 8 is the same boundary or another failure.
 - **Misfire probe baselines** (correct of 140): S12 74, S14 57, S2 58, S0 54. The best degenerate responder gets
   55.
 
@@ -703,6 +742,7 @@ demonstrated optimum.
 | S63 (most told recall, 42 of 108) | as B1SFT | as B1SFT | B1SFT, then 2,048 steps, the 15:15 mixture | not varied | 68.1 min | not scored | not scored | 2.92 | 2.46 | unmeasured | 1 | attribution 46 against the start's 15 |
 | S67 (highest relevance on record at one seed, J1 39 of 52; 28 at seed 2; highest coherence in this table; `cue_v001` 111 of 174, 107 at seed 2) | as B1SFT | as B1SFT | B1SFT, then 1,024 steps, S2's rows de-canned and the K2 pool | K2 pool, no reply used more than twice | 42.9 min; seed 2 51.1 | not scored | not scored | 3.15; seed 2 2.46 | 3.00; seed 2 2.15 | unmeasured | 2 | identity 0 of 92 and ended twin 0 of 8, both guards, at both seeds; its packet has no identity rows |
 | S69 (first model with identity and stance together: who it is 78 of 92, stance 42 of 60) | as B1SFT | as B1SFT | B1SFT, then 1,024 steps, S67's packet with the persona pool | persona pool, decontaminated, 1,945 conversations | 47.4 min | not scored | not scored | 2.85 | 2.62 | unmeasured | 1 | `cue_v001` 87 of 174 against S67's 111; 5 wrong names, past the limit; role-play breaks 18 of 48; ended twin 3 of 8 |
+| S70 (first model with relevance, identity and stance together, by A25's reading: `cue_v001` 107 of 174, who it is 77 of 92, stance 45 of 60; verdict `decline`, not `ready`) | as B1SFT | as B1SFT | B1SFT, then 1,024 steps, S69's packet with the persona pool's small-talk and greeting replies unsupervised | persona pool, decontaminated; 2,036 filler replies kept as context | 39.8 min | not scored | not scored | 2.92 | 2.54 | unmeasured | 1 | role-play breaks 17 of 48, past the gate; ended twin 3 of 8; "I'm an AI, and I'm an AI" in 33 of 212 persona replies, so who it is overstates the identity reply |
 
 ## 8. Compute ledger (Colab L4, from session creation to certified cleanup)
 
@@ -745,6 +785,7 @@ demonstrated optimum.
 | a23-s68-20261110 (S68) | 46.2 | exit 0; a verdict, §38.3 |
 | a23-s67s2-20261110 (S67 at seed 2) | 51.1 | exit 0; a verdict, §38.3; A23 in all 97.3 (1.62 h), inside its registered 150 under Jonathan's line of 10 Nov |
 | a24-s69-20261110 (S69) | 47.4 | exit 0 at its first launch; no launch refused; a verdict, §39.2; inside its registered 75 under Jonathan's line of 10 Nov |
+| a25-s70-20261110 (S70) | 39.8 | exit 0 at its first launch (`a25_retry_s70.log`, one entry); a verdict, §40.2; inside its registered 75 under Jonathan's line of 10 Nov; evaluation on five Colab CPU sessions, no L4 |
 
 By session creation to the last certified stop, `score_a19.py compute` reads 1,650.2 minutes for the lane on its own count, with
 a18-s1, a20-s54 and a20-s55 inside it. A18's sessions 2 to 4 add 209.5, so that count stands at 1,859.7 (31.0 h).
@@ -824,16 +865,19 @@ seed 2. A22 read de-canning and the K2 pool on the same start: `guard` (§37.3).
 identity and the ended twin; S66, de-canning, did not move. A23 read S67 at seed 2 and S67's packet with A13's identity rows
 restored: `identity_gap` (§38.3). S67's cue gain held at seed 2 (+50 against S66), and S68 brought identity back while
 failing §38.2's stance and role-play gate. A24 replaced those rows with a persona pool: `relevance_cost` (§39.2). S69 reads
-identity (78 of 92) and stance (42 of 60) together and falls 24 `cue_v001` items against S67. The next arm is A25 (§40),
-registered and training under Jonathan's line of 10 Nov 2026: S70, S69's construction with the persona pool's small-talk and
-greeting replies unsupervised, its relevance read against S67's two seeds. Its verdict is not in. Nothing goes to seed 2
-without a new registration and Jonathan's dated line. The A-against-B interaction stays unestimated: §36 names its two routes and their costs, and either needs Jonathan's
+identity (78 of 92) and stance (42 of 60) together and falls 24 `cue_v001` items against S67. A25 trained S70, S69's
+construction with the persona pool's small-talk and greeting replies unsupervised: `decline` (§40.2). S70 holds every
+relevance leg against S67's two seeds and keeps S69's identity and stance, and breaks to the assistant on 17 of 48 role-play
+turns; its ended twin, 3 of 8, is also below. No next arm follows from the table: a next arm needs Jonathan's dated line.
+Nothing goes to seed 2 without a new registration and Jonathan's dated line. The A-against-B interaction stays unestimated: §36 names its two routes and their costs, and either needs Jonathan's
 dated line and Codex's admission. Jonathan's cumulative cap for the stronger base and its follow-ons is $80 (§31).
 
 Beside it, each registration's continuation table decides:
 - **A19:** rule 3 holds, so seed 3 waits until the cause of the guard is read, and M2 waits as registered.
 - **A18:** rule 8, unresolved, recorded with the curve and s. No extension exists at 20M inside this registration, and S49 and S50 don't open.
-- **A24:** rule 5, `relevance_cost`. The replies are read (§39.2); A25 tests the acknowledgement drop's suspected source. S69 at
+- **A25:** rule 6, `decline`. The replies are read (§40.2). No next arm follows from the table; a next arm needs Jonathan's
+  dated line. S70 at seed 2 is not opened.
+- **A24:** rule 5, `relevance_cost`. The replies are read (§39.2); A25 tested the acknowledgement drop's suspected source. S69 at
   seed 2 is not opened.
 - **A23:** rule 7, `identity_gap`. §38.2's gate fails on both counts, so S68's packet does not go forward under any verdict; A24
   is the next arm it names.
