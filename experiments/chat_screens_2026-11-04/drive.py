@@ -276,7 +276,7 @@ PINS = {
     # A25 (section 40): S70 trains S69's construction with the persona pool's small talk and greetings unsupervised
     "S70.jsonl": (f"{ART}/chat_screens_claude/packets/a25/S70/train.jsonl", "072957b11534489762a68c3cf25ee129ff3b6ed05c9851fb3f09fb4ebdfc16ae"),
     # A26 (section 41): S71 trains S70's construction with persona pool v2
-    "S71.jsonl": (f"{ART}/chat_screens_claude/packets/a26/S71/train.jsonl", "e64bc1a8e616551b114b3f9a84085f97ad99c2e60b5ddca1e6e4e1fae74b58d0"),
+    "S71.jsonl": (f"{ART}/chat_screens_claude/packets/a26/S71/train.jsonl", "37afd630ca0a4a6977e2431fb9d5de6ebfcf6a62171eca66c071c24812a2de05"),
     # A18 later pins
     "recipes.json": (str(HERE / "recipes.json"), "dcf46d9e942f8c6edc7579637fa2c9473ef30ee3591a2c398ec7632a2ee9a155"),
     "arm_a_lr3e5.json": (str(HERE / "arm_a_lr3e5.json"),
