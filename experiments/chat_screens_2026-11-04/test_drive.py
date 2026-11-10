@@ -976,6 +976,20 @@ class DriveTests(unittest.TestCase):
         self.assertEqual(mod.launch_need(["S70"]), mod.launch_need(["S64"]))
         self.assertEqual(len({mod.PINS[f"{s}.jsonl"][1] for s in ("S64", "S65", "S66", "S67", "S68", "S69", "S70")}), 7)
 
+    def test_the_a26_recipe_pin_and_budget(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("drive_mod", HERE / "drive.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        rec = json.loads((HERE / "recipes.json").read_text())
+        self.assertEqual(rec["S71"], rec["S64"])
+        self.assertIn("S71", mod.ALL_SCREENS)
+        self.assertNotIn("S71", mod.EARLY_STOP)
+        self.assertNotIn("S71", mod.EARLY_READ)
+        self.assertEqual(mod.screen_base("S71"), "tc_sft_b1_r1")
+        self.assertEqual(mod.launch_need(["S71"]), mod.launch_need(["S64"]))
+        self.assertEqual(len({mod.PINS[f"{s}.jsonl"][1] for s in ("S64", "S65", "S66", "S67", "S68", "S69", "S70", "S71")}), 8)
+
     def test_a_late_session_is_not_launched(self):
         rc, state, log, tmp, _ = self.run_drive("normal", extra={"DRIVE_TEST_LAUNCH_NEED": "100000"})
         self.assertEqual(rc, 2, log)

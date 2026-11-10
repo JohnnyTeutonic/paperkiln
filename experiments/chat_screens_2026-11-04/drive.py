@@ -80,7 +80,7 @@ RAISE_ON = hook("DRIVE_TEST_RAISE_ON", "")
 PART_BYTES = int(hook("DRIVE_TEST_PART_BYTES", str(45 * 1024 * 1024)))  # runner_multi.py: 45 MiB both ways
 SOURCE = "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1"
 SCREENS = ("S0", "S1", "S2", "S3")  # wave 1, the default
-ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16", "S24", "S25", "S26", "S27", "S21", "S22", "S23", "S28", "S29", "S30", "S31", "S32", "S33", "S34", "S35", "S36", "S37", "S38", "S39", "S40", "S41", "S42", "S43", "S44", "S45", "S46", "S47", "S48", "S49", "S50", "S51", "S52", "S53", "S54", "S55", "S56", "S57", "S58", "S61", "S62", "S63", "S64", "S65", "S66", "S67", "S68", "S69", "S70")
+ALL_SCREENS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16", "S24", "S25", "S26", "S27", "S21", "S22", "S23", "S28", "S29", "S30", "S31", "S32", "S33", "S34", "S35", "S36", "S37", "S38", "S39", "S40", "S41", "S42", "S43", "S44", "S45", "S46", "S47", "S48", "S49", "S50", "S51", "S52", "S53", "S54", "S55", "S56", "S57", "S58", "S61", "S62", "S63", "S64", "S65", "S66", "S67", "S68", "S69", "S70", "S71")
 COMMON_INPUTS = ("vocab.gguf", "arm_a_lr3e5.json", "recipes.json")
 DEFAULT_BASE = "sfull_sft1500"  # a screen starts from this unless its recipe names a "base" (A19)
 
@@ -93,7 +93,7 @@ def capped(cap):
 
 ST_MIN_LEFT = float(hook("DRIVE_TEST_ST_MIN_LEFT", "6"))  # minutes needed to start the safetensors fetch
 # A18: training minutes per arm, whole minutes, by shape (L2 23, L4 26, L8 32, L16 38, L32 45, 60M 57). Used by launch_need only; the VM never reads them.
-SCREEN_MINUTES = {"S35": 32, "S36": 45, "S37": 23, "S38": 38, "S39": 26, "S40": 23, "S41": 32, "S42": 45, "S43": 38, "S44": 26, "S45": 57, "S46": 57, "S47": 23, "S48": 45, "S49": 45, "S50": 45, "S54": 86, "S55": 43, "S56": 43, "S57": 43, "S58": 43, "S61": 57, "S62": 57, "S63": 57, "S64": 29, "S65": 29, "S66": 29, "S67": 29, "S68": 29, "S69": 29, "S70": 29}
+SCREEN_MINUTES = {"S35": 32, "S36": 45, "S37": 23, "S38": 38, "S39": 26, "S40": 23, "S41": 32, "S42": 45, "S43": 38, "S44": 26, "S45": 57, "S46": 57, "S47": 23, "S48": 45, "S49": 45, "S50": 45, "S54": 86, "S55": 43, "S56": 43, "S57": 43, "S58": 43, "S61": 57, "S62": 57, "S63": 57, "S64": 29, "S65": 29, "S66": 29, "S67": 29, "S68": 29, "S69": 29, "S70": 29, "S71": 29}
 # A18: (step, bar). val_loss at the first evaluation at or past the step, above the bar or not finite, ends the session once this arm is home. Later arms are never stopped.
 EARLY_STOP = {"S35": (1024, 1.88)}
 # A20: the same read at the pre-set cut-off, logged. It stops nothing: each arm is alone in its session, and a kill on a bar set from 31 rows costs more than it saves (PROTOCOL.md section 28).
@@ -275,8 +275,10 @@ PINS = {
     "S69.jsonl": (f"{ART}/chat_screens_claude/packets/a24/S69/train.jsonl", "6578069f58aa24b78a96890e910ae9a987b22851f71baf528fb5c74feccb68fe"),
     # A25 (section 40): S70 trains S69's construction with the persona pool's small talk and greetings unsupervised
     "S70.jsonl": (f"{ART}/chat_screens_claude/packets/a25/S70/train.jsonl", "072957b11534489762a68c3cf25ee129ff3b6ed05c9851fb3f09fb4ebdfc16ae"),
+    # A26 (section 41): S71 trains S70's construction with persona pool v2
+    "S71.jsonl": (f"{ART}/chat_screens_claude/packets/a26/S71/train.jsonl", "e64bc1a8e616551b114b3f9a84085f97ad99c2e60b5ddca1e6e4e1fae74b58d0"),
     # A18 later pins
-    "recipes.json": (str(HERE / "recipes.json"), "bf66221ed47bfcd647d4ab3fccf061891479b35b8b52954421cdf4fc448dba51"),
+    "recipes.json": (str(HERE / "recipes.json"), "dcf46d9e942f8c6edc7579637fa2c9473ef30ee3591a2c398ec7632a2ee9a155"),
     "arm_a_lr3e5.json": (str(HERE / "arm_a_lr3e5.json"),
                          "66c718e0b501c751aae0a1cd22eddfdc666a7cfb46a4c074fa41b67aa220125e"),
 }
