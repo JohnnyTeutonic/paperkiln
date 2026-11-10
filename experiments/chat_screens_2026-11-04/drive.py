@@ -272,7 +272,7 @@ PINS = {
     # A23 (section 38): S68 trains S67's packet with S30's identity rows restored, at S64's recipe from A's SFT1500
     "S68.jsonl": (f"{ART}/chat_screens_claude/packets/a23/S68/train.jsonl", "395af1e8b7ace59351def36aa77d9d7a0afc9bacedd41d057fded68d1ec8d29e"),
     # A24 (section 39): S69 trains S67's packet with the persona pool, at S64's recipe from A's SFT1500
-    "S69.jsonl": (f"{ART}/chat_screens_claude/packets/a24/S69/train.jsonl", "d79a39d3bdadf32c4e44f4b79988f8a8cabb7a5a376fa162ff396a9be6010053"),
+    "S69.jsonl": (f"{ART}/chat_screens_claude/packets/a24/S69/train.jsonl", "6578069f58aa24b78a96890e910ae9a987b22851f71baf528fb5c74feccb68fe"),
     # A18 later pins
     "recipes.json": (str(HERE / "recipes.json"), "74f9f03eb9f767b7cfc570cdaa40b82ad70f19a024d1dd003c00660433cb0d11"),
     "arm_a_lr3e5.json": (str(HERE / "arm_a_lr3e5.json"),
