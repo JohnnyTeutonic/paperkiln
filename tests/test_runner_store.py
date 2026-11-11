@@ -196,6 +196,7 @@ def test_with_the_store_nothing_of_a_checkpoint_crosses_the_home_link(tmp_path):
     assert cfg["repo"] == f"dir:{repo}" and cfg["branches"] == {"pt": "ckpt-N"} and cfg["campaign"] == "pk-store"
     assert cfg["epoch"] == 2 and cfg["min_step"] == {"pt": 200} and cfg["first_start"] == []
     assert cfg["reclaim"] is False and cfg["min_push_interval_s"] == 0 and cfg["repo_type"] == "dataset"
+    assert cfg["release_grace_s"] == 7200
     # The token: its path in two upload calls and nowhere else; its text in no call, log, state or exec code; in
     # the tmpfs from the call after the upload; and no file anywhere when the session is stopped.
     assert log.count("store: config and token file sent") == 2

@@ -410,6 +410,23 @@ def test_prune_waits_for_verified_generations_and_spares_an_unpushed_marks_gener
     assert fresh(tmp_path).steps("ckpt-N") == [600, 700]
 
 
+def test_release_runs_only_when_the_config_asks_and_with_its_grace(tmp_path):
+    chat, backend, store, c, logs, _ = setup(tmp_path)
+    asked = []
+    store.release = lambda owner, grace=None: asked.append((owner, grace)) or 0
+    for step in (100, 300, 400):
+        S.make_gen(str(chat / "pt"), step)
+        c.tick()
+    assert store.steps("ckpt-N") == [300, 400] and asked == []  # pruned, and release is off unless asked for
+    chat2, backend2, store2, c2, logs2, _ = setup(tmp_path / "b", cfg={**CFG, "release_grace_s": 60})
+    store2.reclaim_on = True
+    store2.release = lambda owner, grace=None: asked.append((owner, grace)) or 3
+    for step in (100, 300, 400):
+        S.make_gen(str(chat2 / "pt"), step)
+        c2.tick()
+    assert asked == [(c2.boot, 60.0)] and any("storage release: 3 objects deleted" in ln for ln in logs2)
+
+
 def test_a_failed_push_is_retried_and_then_sends_the_newest(tmp_path):
     chat, backend, store, c, logs, clock = setup(tmp_path)
     out = str(chat / "pt")

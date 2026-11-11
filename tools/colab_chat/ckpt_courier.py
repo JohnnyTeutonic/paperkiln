@@ -375,7 +375,8 @@ class Courier:
             if gone:
                 self.log(f"{name}: generations {gone} removed from the store")
                 if self.store.reclaim_on:
-                    n = self.call(lambda: self.store.release(self.boot))
+                    grace = float(self.cfg.get("release_grace_s", hf_store.RELEASE_GRACE_S))
+                    n = self.call(lambda: self.store.release(self.boot, grace=grace))
                     self.log(f"{name}: storage release: " + ("another writer holds the lock" if n is None else f"{n} objects deleted"))
         except Exception as e:  # noqa: BLE001 the verified generations are in the store; the next push prunes again
             self.log(f"{name}: prune or release failed ({type(e).__name__}: {e}); will try after the next push")

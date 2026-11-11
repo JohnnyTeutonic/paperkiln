@@ -1025,6 +1025,7 @@ def store_config(a, ap):
         ap.error(f"--ckpt-store hf runs with --boot-script {STORE_BOOT}")
     doc = json.load(open(os.path.join(os.path.dirname(os.path.dirname(HERE)), a.jobs)))
     return {"repo": a.store_repo, "repo_type": a.store_repo_type, "reclaim": a.store_release_storage,
+            "release_grace_s": a.store_release_grace_s,
             "min_push_interval_s": a.store_min_push_interval, "campaign": a.store_campaign or a.name,
             "first_start": a.store_first_start, "inputs": doc.get("store_inputs", []),
             "call_limit": a.store_call_limit_s, "stall_min": a.store_stall_min, "stall_halt": a.store_stall_halt,
@@ -1112,6 +1113,7 @@ def store_send(st, jobs):
     a tmpfs by the very next call. The token is never in exec code, a command line or a log; only its path is."""
     names = store_branches(jobs)
     cfg = {"repo": STORE["repo"], "repo_type": STORE["repo_type"], "reclaim": STORE["reclaim"],
+           "release_grace_s": STORE["release_grace_s"],
            "min_push_interval_s": STORE["min_push_interval_s"], "branches": names, "campaign": STORE["campaign"],
            "epoch": st.d["launches"], "min_step": {n: st.job(n)["relayed_step"] for n in names},
            "first_start": [n for n in names if STORE["first_start"] and not st.job(n)["relayed_step"]]}
@@ -1630,6 +1632,9 @@ def main():
                     help="seconds between a job's generation pushes (0: every save), for a store that limits commits")
     ap.add_argument("--store-release-storage", action="store_true",
                     help="after a prune, delete for good the LFS objects no branch names (off: safe to leave off)")
+    ap.add_argument("--store-release-grace-s", type=float, default=7200,
+                    help="release spares objects younger than this (another writer's upload not yet committed); a "
+                         "short rehearsal that is the store's only writer can lower it to see storage fall")
     ap.add_argument("--store-first-start", action="store_true",
                     help="admit a job whose branch holds no generation, and that home has never seen pushed, to start from step 0")
     ap.add_argument("--store-campaign", default=None, help="campaign name written into every generation (default: --name)")
