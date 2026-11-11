@@ -20,9 +20,16 @@ Nothing here opens a socket.
     HUB_STANDIN_ROOT/commit_log.jsonl           one line a create_commit that reached the limit check:
                                                 {"at", "branch", "message", "ok", "adds", "deletes"}
     HUB_STANDIN_ROOT/lfs.json                   the object store: {sha256: {"size", "pushed_at"}} for every *.safetensors
-                                                file ever committed and not yet deleted for good. A listing gives such a
-                                                file its sha256; list_lfs_files and permanently_delete_lfs_files work on
-                                                this index; a download of a file whose object is gone fails.
+                                                file ever UPLOADED and not yet deleted for good. create_commit uploads
+                                                first (the object is there before the commit is asked for, and stays
+                                                when the commit is refused), then commits; a commit that names an object
+                                                the store does not hold is refused (400). A listing gives such a file
+                                                its sha256; list_lfs_files and permanently_delete_lfs_files work on this
+                                                index; a download of a file whose object is gone fails.
+    HUB_STANDIN_ROOT/damage.json                optional: {"path": P, "bytes": N}: the next commit that adds P leaves
+                                                it N bytes long on the hub (a file that arrived short). Used once.
+A new branch starts from main's tree (create_branch), as on the hub, and its creation counts against limit.json.
+DiskApi.after_upload, when a test sets it, is called between a commit's upload and its commit.
 """
 import datetime
 import fcntl
@@ -112,8 +119,16 @@ class DiskApi:
 
     # -- the calls hf_store.HfBackend makes, every argument by keyword
     def create_branch(self, *, repo_id, branch, exist_ok=False, repo_type=None, token=None):
+        """A new branch starts from main's head, as on the hub: its tree is main's tree. Its creation is counted
+        against the repository's commit limit and refused with the same 429 (the rehearsal's logs, 12 Nov 2026)."""
         self._gate("create_branch", branch)
-        os.makedirs(os.path.join(self.root, "branches", branch), exist_ok=True)
+        d = os.path.join(self.root, "branches", branch)
+        if os.path.isdir(d):
+            return
+        with open(os.path.join(self.root, ".lock"), "w") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            self._limited(branch, "create_branch", [])
+            shutil.copytree(os.path.join(self.root, "branches", "main"), d)
 
     def list_repo_refs(self, *, repo_id, repo_type=None, token=None):
         self._gate("list_repo_refs")
@@ -171,26 +186,51 @@ class DiskApi:
         self._gate("create_commit", f"{revision} {commit_message}")
         branch, d = self._dir(revision)
         operations = list(operations)
+        big = [o for o in operations if type(o).__name__ == "CommitOperationAdd" and o.path_in_repo.endswith(LFS_SUFFIX)]
+        # Phase one, the upload, as the library does it: every LFS file's object is in the object store BEFORE the
+        # commit is asked for, and stays there whatever the commit's answer is. An object the store holds already
+        # is not sent again and keeps its time.
+        with open(os.path.join(self.root, ".lock"), "w") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            objects = self._json("lfs.json", {})
+            for o in big:
+                sha = file_sha(o.path_or_fileobj)
+                if sha not in objects:
+                    objects[sha] = {"size": os.path.getsize(o.path_or_fileobj), "pushed_at": self._now()}
+                    self._note(f"  upload {o.path_in_repo} {sha[:12]}")
+            self._put("lfs.json", objects)
+        if callable(getattr(self, "after_upload", None)):
+            self.after_upload(branch, operations)  # a test's hook: what another party does between the two phases
+        # Phase two, the commit: refused for a stale parent, past the limit, or when it names an object that is
+        # not in the object store.
         with open(os.path.join(self.root, ".lock"), "w") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
             heads = self._heads()
             if parent_commit is not None and parent_commit != f"{branch}@{heads.get(branch, 0)}":
                 raise HfHubHTTPError("412 Client Error: Precondition Failed (a commit has happened since)")
-            now = self._limited(branch, commit_message, operations)
+            self._limited(branch, commit_message, operations)
             objects = self._json("lfs.json", {})
+            for o in big:
+                if file_sha(o.path_or_fileobj) not in objects:
+                    self._note(f"  raise 400 create_commit {branch}: {o.path_in_repo} names a missing object")
+                    raise HfHubHTTPError(f"400 Client Error: Bad Request for url: .../commit/{branch} (LFS object of "
+                                         f"{o.path_in_repo} does not exist)")
+            damage = self._json("damage.json", {})
             for o in operations:
                 dst = os.path.join(d, *o.path_in_repo.rstrip("/").split("/"))
                 if type(o).__name__ == "CommitOperationAdd":
                     os.makedirs(os.path.dirname(dst), exist_ok=True)
                     shutil.copyfile(o.path_or_fileobj, dst + ".incoming")
                     os.replace(dst + ".incoming", dst)
-                    if dst.endswith(LFS_SUFFIX):
-                        objects.setdefault(file_sha(dst), {"size": os.path.getsize(dst), "pushed_at": now})
+                    if damage.get("path") == o.path_in_repo:  # the file arrives short: damage.json, used once
+                        with open(dst, "r+b") as f:
+                            f.truncate(int(damage.get("bytes", 0)))
+                        os.remove(os.path.join(self.root, "damage.json"))
+                        self._note(f"  damaged {o.path_in_repo}")
                 elif o.is_folder:  # CommitOperationDelete reads a path that ends in "/" as a folder
                     shutil.rmtree(dst, ignore_errors=True)
                 elif os.path.exists(dst):
                     os.remove(dst)
-            self._put("lfs.json", objects)
             heads[branch] = heads.get(branch, 0) + 1
             self._put("heads.json", heads)
 

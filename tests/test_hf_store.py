@@ -235,7 +235,8 @@ def test_prune_only_behind_two_verified_generations(tmp_path):
     assert store.steps("ckpt-N") == [300, 400, 500]
     assert store.b.tree("main") == main_before and store.mark_steps("pt") == [100]
     c = commits(tmp_path)[-1]
-    assert c["adds"] == [] and c["deletes"] == ["gens/g100/", "gens/g200/"]      # each generation as its folder
+    assert c["deletes"] == ["gens/g100/", "gens/g200/"]                           # each generation as its folder
+    assert c["adds"] == ["pruned/g100.json", "pruned/g200.json"]                  # and its ledger, in the same commit
     assert sorted(os.listdir(tmp_path / "repo" / "ckpt-N" / "gens")) == ["g300", "g400", "g500"]
     for branch in ("main", "marks", "ckpt"):
         with pytest.raises(hf_store.StoreError):
@@ -572,8 +573,9 @@ def hstore(tmp_path, api, **kw):
     tf.write_text(TOKEN + "\n")
     tf.chmod(0o600)
     logs = []
+    clock = kw.pop("clock", None)  # the time a removed generation's ledger carries (the fake hub's own clock)
     cfg = {"repo": "someone/base2-store", "repo_type": "dataset", "token_file": str(tf), **kw}
-    return hf_store.open_store(cfg, log=logs.append, api=api, delay=0), logs
+    return hf_store.open_store(cfg, log=logs.append, api=api, delay=0, **({"clock": clock} if clock else {})), logs
 
 
 def test_hf_backend_calls(tmp_path):
@@ -627,7 +629,7 @@ def test_hf_backend_calls(tmp_path):
 
 def release_setup(tmp_path, lfs_by="oid"):
     api = FakeApi(lfs_by)
-    store, logs = hstore(tmp_path, api, reclaim=True)
+    store, logs = hstore(tmp_path, api, clock=lambda: api.now)
     mark = tmp_path / "mark"
     mark.mkdir(exist_ok=True)
     (mark / "model.safetensors").write_bytes(S.state_at(100)[0])
@@ -642,31 +644,53 @@ def release_setup(tmp_path, lfs_by="oid"):
 
 
 def test_release_by_difference_under_a_lock(tmp_path):
-    """After a prune, the bytes to free are every LFS object minus every object named in the tree of every branch.
-    A mark keeps its generation's weights, another branch keeps what it names, an object not yet in any tree
-    (another writer's upload before its commit) is spared while it is young, and a held lock means no release."""
+    """A release deletes only what a commit once named and a later commit removed: the objects in a removed
+    generation's ledger, once the ledger is older than the grace, that no branch's tree names and no other ledger
+    lists. A mark keeps its generation's weights, another branch keeps what it names, and an object in no tree and
+    no ledger (another writer's upload before its commit) is NEVER deleted, however old. A held lock means no
+    release."""
     api, store, logs = release_setup(tmp_path)
     assert store.prune("ckpt-N", verified=[200, 300]) == [100]
     m100, o100 = S.state_at(100)
+    ledger = json.loads(api.branches["ckpt-N"]["pruned/g100.json"])    # written by the commit that removed g100
+    assert ledger["step"] == 100 and ledger["at"] == api.now and ledger["format"] == hf_store.PRUNED_FORMAT
+    assert sorted((o["path"], o["sha256"], o["bytes"]) for o in ledger["objects"]) == [
+        ("gens/g100/model.safetensors", S.sha(m100), len(m100)), ("gens/g100/optim.safetensors", S.sha(o100), len(o100))]
     uncommitted = S.sha(b"another arm's upload, not committed yet")
-    api.lfs[uncommitted] = api.now  # young
+    api.lfs[uncommitted] = api.now - 30 * 86400                        # a month old, and in no tree and no ledger
+    api.sizes[uncommitted] = 39
     api.calls.clear()
-    # Too early: everything is younger than the grace period, nothing is deleted.
-    assert store.release("boot-a", now=api.now + 60) == 0
+    # Too early: the ledger is younger than the grace period, nothing is deleted.
+    early = store.release_report("boot-a", now=api.now + 60)
+    assert early["objects"] == 0 and early["pending"] == {"ckpt-N": {S.sha(o100): len(o100)}} and early["ledgers_done"] == 0
     assert "permanently_delete_lfs_files" not in [c[0] for c in api.calls]
-    # Later: only the removed generation's optimiser has no name left; the uncommitted upload is now old too.
-    api.lfs[uncommitted] = api.now + hf_store.RELEASE_GRACE_S  # pushed a moment ago, at the later time
+    with pytest.raises(hf_store.StoreError, match="under the minimum of 600 s"):
+        store.release_report("boot-a", grace=599, now=api.now + 10 ** 6)
+    # Later: only the removed generation's optimiser goes. Its weights are the mark's; the old upload is nobody's.
     api.calls.clear()
-    assert store.release("boot-a", now=api.now + hf_store.RELEASE_GRACE_S + 60) == 1
+    rep = store.release_report("boot-a", now=api.now + hf_store.RELEASE_GRACE_S + 60)
+    assert (rep["objects"], rep["bytes"]) == (1, len(o100)) and rep["pending"] == {} and rep["ledgers_done"] == 1
+    assert (rep["orphan_objects"], rep["orphan_bytes"]) == (1, 39)
     dele = dict(api.calls)["permanently_delete_lfs_files"]
     assert dele["oids"] == [S.sha(o100)] and dele["rewrite_history"] is False
     for kept in (S.sha(m100), S.sha(S.state_at(200)[0]), S.sha(b"build bytes"), uncommitted):
         assert kept in api.lfs
-    # The lock: taken by a conditional commit on main, removed afterwards; every branch's tree was read.
+    # The lock: taken by a conditional commit on main, removed afterwards; every branch's tree was read. The
+    # removal's commit also records the ledger that is finished with (its objects gone, or named by a tree).
     cc = [c[1] for c in api.calls if c[0] == "create_commit"]
     assert cc[0]["ops"] == [("CommitOperationAdd", hf_store.LOCK)] and cc[0]["parent"] is not None
-    assert cc[-1]["ops"] == [("CommitOperationDelete", hf_store.LOCK)] and hf_store.LOCK not in api.branches["main"]
+    assert cc[-1]["ops"] == [("CommitOperationAdd", hf_store.RELEASED), ("CommitOperationDelete", hf_store.LOCK)]
+    assert hf_store.LOCK not in api.branches["main"] and json.loads(api.branches["main"][hf_store.RELEASED]) == {"ckpt-N": [100]}
     assert {c[1]["revision"] for c in api.calls if c[0] == "list_repo_tree"} >= {"main", "ckpt-N", "ckpt-S", "base2-build"}
+    # The branch's next save removes the finished ledger in its own commit; the release after that drops the record.
+    store.push_generation("ckpt-N", "pt", 400, staged_gen(tmp_path, 400), None, store.head("ckpt-N")["commit"],
+                          prune={"keep": 2, "verified": [200, 300]})
+    assert "pruned/g100.json" not in api.branches["ckpt-N"] and store.steps("ckpt-N") == [200, 300, 400]
+    assert store.release("boot-a", now=api.now + hf_store.RELEASE_GRACE_S + 60) == 0
+    assert hf_store.RELEASED not in api.branches["main"]
+    # By hand, with no VM writing: --orphans also takes what is in no tree and no ledger.
+    assert store.release_report("boot-a", now=api.now + hf_store.RELEASE_GRACE_S + 60, orphans=True)["objects"] == 1
+    assert uncommitted not in api.lfs and S.sha(m100) in api.lfs
     # Another releaser holds a fresh lock: nothing is listed or deleted. A stale lock is taken over.
     api.branches["main"][hf_store.LOCK] = json.dumps({"owner": "boot-b", "at": api.now}).encode()
     api.calls.clear()
@@ -738,18 +762,28 @@ def test_the_release_lock_reads_the_head_first_and_is_released_only_by_its_owner
     assert store.prune("ckpt-N", verified=[200, 300]) == [100]
     rep = store.release_report("boot-a", now=api.now + hf_store.RELEASE_GRACE_S + 60)
     assert (rep["held"], rep["objects"], rep["bytes"]) == (False, 1, len(S.state_at(100)[1]))
-    # What the store then holds, for the storage guard at home: every object left; the bytes each branch's tree
-    # names; the marks by their folder; and nothing unnamed, since the one unnamed object was old and is gone.
-    sizes = {s: sum(len(b) for b in S.state_at(s)) for s in (200, 300)}
-    assert rep["tree_bytes"]["ckpt-N"] == sizes[200] + sizes[300] and rep["tree_bytes"]["ckpt-S"] == sizes[200]
-    assert rep["mark_bytes"] == {"pt": len(S.state_at(100)[0])} and rep["unnamed_bytes"] == 0
-    assert rep["stored_bytes"] == sum(api.sizes[o] for o in api.lfs if o in api.sizes)
+    # What the store then holds, for the storage guard at home, each object by its sha256 so that it counts once:
+    # what each branch names under gens/, the marks by their folder, nothing pending and no orphan.
+    files = {s: {S.sha(b): len(b) for b in S.state_at(s)} for s in (100, 200, 300)}
+    assert rep["gens"]["ckpt-N"] == {**files[200], **files[300]} and rep["gens"]["ckpt-S"] == files[200]
+    assert rep["gens"]["base2-build"] == {} and "main" not in rep["gens"]
+    m100 = S.state_at(100)[0]
+    assert rep["marks"] == {"pt": {S.sha(m100): len(m100)}} and rep["pending"] == {} and rep["orphan_objects"] == 0
+    # Two campaigns that hold the same bytes each count them; one campaign counts an object once, by whatever path.
+    assert hf_store.campaign_bytes(rep, ["ckpt-N"], ["pt"]) == sum(files[200].values()) + sum(files[300].values()) + len(m100)
+    assert hf_store.campaign_bytes(rep, ["ckpt-S"], []) == sum(files[200].values())
+    assert hf_store.campaign_bytes(rep, ["ckpt-N", "ckpt-S"], ["pt"]) == hf_store.campaign_bytes(rep, ["ckpt-N"], ["pt"])
+    # A size the store does not give is not taken for zero: the total is unknown, and said to be.
+    assert rep["unknown_sizes"] == 1 and rep["stored_bytes"] is None      # the build branch's object carries none
+    api.sizes[S.sha(b"build bytes")] = len(b"build bytes")
     again = other.release_report("boot-b", now=api.now + hf_store.RELEASE_GRACE_S + 60)
-    assert (again["held"], again["objects"], again["bytes"]) == (False, 0, 0) and again["stored_bytes"] == rep["stored_bytes"]
-    # An object no tree names that is too young to delete is still stored, and is counted as such.
+    assert (again["held"], again["objects"], again["bytes"], again["unknown_sizes"]) == (False, 0, 0, 0)
+    assert again["stored_bytes"] == sum(api.sizes[o] for o in api.lfs)
+    # An object no tree and no ledger names is still stored and is reported, never deleted, whatever its age.
     young = b"an upload that is not committed yet"
-    api.lfs[S.sha(young)], api.sizes[S.sha(young)] = api.now + hf_store.RELEASE_GRACE_S, len(young)
-    assert other.release_report("boot-b", now=api.now + hf_store.RELEASE_GRACE_S + 60)["unnamed_bytes"] == len(young)
+    api.lfs[S.sha(young)], api.sizes[S.sha(young)] = api.now - 10 ** 7, len(young)
+    orphan = other.release_report("boot-b", now=api.now + hf_store.RELEASE_GRACE_S + 60)
+    assert (orphan["objects"], orphan["orphan_objects"], orphan["orphan_bytes"]) == (0, 1, len(young)) and S.sha(young) in api.lfs
     del api.lfs[S.sha(young)]
     # 4. Ownership. A holds the lock, it goes stale, B takes it over; A's unlock then leaves B's lock where it is.
     mine = store._lock("boot-a", later)
@@ -772,10 +806,10 @@ def test_the_release_lock_reads_the_head_first_and_is_released_only_by_its_owner
     assert store.release("boot-a", now=later + 10 * hf_store.LOCK_STALE_S) is None
     api.hf_hub_download = real
     assert json.loads(api.branches["main"][hf_store.LOCK])["owner"] == "boot-b"
-    # What the code says of itself: the lock is between releasers, and a small grace needs one writer.
-    for text in (hf_store.Store.release_report.__doc__, hf_store.__doc__):
-        assert "one writer at a time" in " ".join(text.split())
-    assert "NOT SAFE BESIDE ANOTHER WRITER WITH A SMALL GRACE" in hf_store.Store.release_report.__doc__
+    # What the code says of itself: a release never takes an upload from under its commit; only --orphans can.
+    assert "is never deleted by a release" in " ".join(hf_store.__doc__.split())
+    assert "WITH NO VM WRITING" in hf_store.Store.release_report.__doc__
+    assert "THE BUDGET IS PER WRITER, NOT PER REPOSITORY" in hf_store.__doc__
 
 
 def test_marks_have_a_namespace_and_the_refused_repo_is_refused_in_any_case(tmp_path):
@@ -870,49 +904,61 @@ class Tick:
         return self.t
 
 
+def fresh_manifest(tmp_path, step):
+    return json.loads((tmp_path / "repo" / "ckpt-N" / "gens" / f"g{step}" / "manifest.json").read_text())
+
+
 def test_a_save_is_one_commit_that_adds_the_generation_and_removes_the_pruned_ones(tmp_path):
     """The hub limits commit creation per repository, and a save used to cost a push and then a prune. Now the
-    commit that adds a generation removes the ones behind two verified generations: the one being added and the
-    newest the caller verified before that is whole in the listing. The rules are prune()'s."""
+    commit that adds a generation removes the ones behind the two newest generations the caller has verified that
+    are whole in the listing. The generation being added never counts (whether it arrived whole is known only
+    from a listing after its commit), so one more generation stays until the next save. The same commit writes the
+    ledger of each generation it removes. The rules are prune()'s."""
     store = dstore(tmp_path)
     push_gens(tmp_path, store, [100, 200, 300])
     n0 = len(commits(tmp_path))
     man = store.push_generation("ckpt-N", "pt", 400, staged_gen(tmp_path, 400), IDENT, store.head("ckpt-N")["commit"],
                                 prune={"keep": 2, "verified": [200, 300], "protect": []})
     c = commits(tmp_path)
-    assert len(c) == n0 + 1 and man["pruned"] == [100, 200] and man["step"] == 400
-    assert c[-1]["message"] == "generation: gens/g400" and c[-1]["deletes"] == ["gens/g100/", "gens/g200/"]
-    assert "gens/g400/manifest.json" in c[-1]["adds"] and store.steps("ckpt-N") == [300, 400]
+    assert len(c) == n0 + 1 and man["pruned"] == [100] and man["step"] == 400      # behind g200 and g300; not g200
+    assert c[-1]["message"] == "generation: gens/g400" and c[-1]["deletes"] == ["gens/g100/"]
+    assert "gens/g400/manifest.json" in c[-1]["adds"] and "pruned/g100.json" in c[-1]["adds"]
+    assert store.steps("ckpt-N") == [200, 300, 400] and hf_store.ledger_steps(store.b.tree("ckpt-N")) == [100]
     assert "pruned" not in fresh_manifest(tmp_path, 400)             # the store's manifest is the generation's own
-    # One generation is not two: with nothing verified but the one being added, nothing is removed.
+    assert store.listed_whole("ckpt-N", 400, man["files"]) and not store.listed_whole("ckpt-N", 400, {"x": 1})
+    # With the two before it verified and the new one NOT counted, the same call cannot remove g200 however often it
+    # is made: nothing verified but one generation, nothing removed.
     man = store.push_generation("ckpt-N", "pt", 500, staged_gen(tmp_path, 500), None, store.head("ckpt-N")["commit"],
-                                prune={"keep": 2, "verified": []})
-    assert man["pruned"] == [] and store.steps("ckpt-N") == [300, 400, 500]
+                                prune={"keep": 2, "verified": [400]})
+    assert man["pruned"] == [] and store.steps("ckpt-N") == [200, 300, 400, 500]
     # A generation verified once and damaged since is not whole in the listing and does not count: the two are
-    # then 400 and the one being added, so only what is below 400 goes.
+    # then g300 and g400, so only what is below g300 goes.
     (tmp_path / "repo" / "ckpt-N" / "gens" / "g500" / "model.safetensors").write_bytes(b"short")
     store = dstore(tmp_path)
+    assert not store.listed_whole("ckpt-N", 500)
     man = store.push_generation("ckpt-N", "pt", 600, staged_gen(tmp_path, 600), None, store.head("ckpt-N")["commit"],
-                                prune={"keep": 2, "verified": [400, 500]})
-    assert man["pruned"] == [300] and store.steps("ckpt-N") == [400, 500, 600]
+                                prune={"keep": 2, "verified": [300, 400, 500]})
+    assert man["pruned"] == [200] and store.steps("ckpt-N") == [300, 400, 500, 600]
     # Nothing at or above a mark that is staged and not yet pushed.
     man = store.push_generation("ckpt-N", "pt", 700, staged_gen(tmp_path, 700), None, store.head("ckpt-N")["commit"],
-                                prune={"keep": 2, "verified": [400, 600], "protect": [400]})
-    assert man["pruned"] == [] and store.steps("ckpt-N") == [400, 500, 600, 700]
+                                prune={"keep": 2, "verified": [400, 600], "protect": [300]})
+    assert man["pruned"] == [] and store.steps("ckpt-N") == [300, 400, 500, 600, 700]
     # Without `prune` a push removes nothing, as before.
     man = store.push_generation("ckpt-N", "pt", 800, staged_gen(tmp_path, 800), None, store.head("ckpt-N")["commit"])
-    assert man["pruned"] == [] and store.steps("ckpt-N") == [400, 500, 600, 700, 800]
-    # A commit that loses the race is refused whole: neither the generation nor the removal happens.
+    assert man["pruned"] == [] and store.steps("ckpt-N") == [300, 400, 500, 600, 700, 800]
+    # A commit that loses the race is refused whole: neither the generation nor the removal nor a ledger happens.
     head = store.head("ckpt-N")["commit"]
     dstore(tmp_path).push_generation("ckpt-N", "pt", 850, staged_gen(tmp_path, 850, seed=2), None, head)
     with pytest.raises(hf_store.ConflictError, match="moved"):
         store.push_generation("ckpt-N", "pt", 900, staged_gen(tmp_path, 900), None, head,
                               prune={"keep": 2, "verified": [700, 800]})
-    assert store.steps("ckpt-N") == [400, 500, 600, 700, 800, 850]
+    assert store.steps("ckpt-N") == [300, 400, 500, 600, 700, 800, 850]
+    assert hf_store.ledger_steps(store.b.tree("ckpt-N")) == [100, 200]
     with pytest.raises(hf_store.StoreError, match="at least two"):
         store.push_generation("ckpt-N", "pt", 900, staged_gen(tmp_path, 900, seed=3), None, None, prune={"keep": 1, "verified": [800]})
-    # The hub's calls: ONE create_commit, conditional on the head that was read, the generation's files as adds and
-    # each pruned generation as one folder delete (the pinned library reads the trailing slash as a folder).
+    # The hub's calls: ONE create_commit, conditional on the head that was read, the generation's files and the
+    # ledger as adds and each pruned generation as one folder delete (the pinned library reads the trailing slash
+    # as a folder).
     api = FakeApi()
     hs, _ = hstore(tmp_path / "h", api)
     for step in (100, 200, 300):
@@ -922,19 +968,18 @@ def test_a_save_is_one_commit_that_adds_the_generation_and_removes_the_pruned_on
     man = hs.push_generation("ckpt-N", "pt", 400, staged_gen(tmp_path / "h", 400), None, head["commit"],
                              prune={"keep": 2, "verified": [200, 300]})
     cc = [c[1] for c in api.calls if c[0] == "create_commit"]
-    assert len(cc) == 1 and cc[0]["parent"] == head["commit"] == "ckpt-N@3" and man["pruned"] == [100, 200]
-    assert [o for o in cc[0]["ops"] if o[0] == "CommitOperationDelete"] == [("CommitOperationDelete", "gens/g100/"),
-                                                                           ("CommitOperationDelete", "gens/g200/")]
-    assert len([o for o in cc[0]["ops"] if o[0] == "CommitOperationAdd"]) == 6
-    assert sorted({p.split("/")[1] for p in api.branches["ckpt-N"]}) == ["g300", "g400"]
+    assert len(cc) == 1 and cc[0]["parent"] == head["commit"] == "ckpt-N@3" and man["pruned"] == [100]
+    assert [o for o in cc[0]["ops"] if o[0] == "CommitOperationDelete"] == [("CommitOperationDelete", "gens/g100/")]
+    adds = [o[1] for o in cc[0]["ops"] if o[0] == "CommitOperationAdd"]
+    assert len(adds) == 7 and "pruned/g100.json" in adds
+    assert sorted({p.split("/")[1] for p in api.branches["ckpt-N"] if p.startswith("gens/")}) == ["g200", "g300", "g400"]
     assert "create_branch" not in [c[0] for c in api.calls]
+    assert hs.listed_whole("ckpt-N", 400, man["files"])              # the listing after the commit: sizes and LFS hashes
+    api.branches["ckpt-N"]["gens/g400/optim.safetensors"] = b"other bytes of some length"
+    assert not hs.listed_whole("ckpt-N", 400, man["files"])          # a file of another hash is not whole
     from huggingface_hub import CommitOperationDelete
     assert CommitOperationDelete(path_in_repo="gens/g100/").is_folder is True
     assert CommitOperationDelete(path_in_repo="gens/g100/manifest.json").is_folder is False
-
-
-def fresh_manifest(tmp_path, step):
-    return json.loads((tmp_path / "repo" / "ckpt-N" / "gens" / f"g{step}" / "manifest.json").read_text())
 
 
 def test_the_commit_budget_counts_a_rolling_hour_and_keeps_room_for_what_matters(tmp_path):
@@ -945,7 +990,8 @@ def test_the_commit_budget_counts_a_rolling_hour_and_keeps_room_for_what_matters
         clock.t += s
 
     ledger = str(tmp_path / "chat" / "store_commits.json")
-    b = hf_store.CommitBudget(8, ledger, clock=clock, sleep=sleep)
+    # essential_wait as long as the hour: the strict count, without the allowance tested further down.
+    b = hf_store.CommitBudget(8, ledger, clock=clock, sleep=sleep, essential_wait=3600)
     assert b.reserve == 2 and b.count() == 0 and b.wait_s() == 0 and b.report() is None      # the report's hour starts
     t0 = clock.t
     for _ in range(6):                                   # what is not essential stops at the budget less its reserve
@@ -959,23 +1005,30 @@ def test_the_commit_budget_counts_a_rolling_hour_and_keeps_room_for_what_matters
     with pytest.raises(hf_store.BudgetSpent):
         b.admit("generation")
     assert b.count() == 8 and b.wait_s() == t0 + 3600 - clock.t
-    # A second handle on the same file, and a bounded() child, count in the same place: one count a machine.
-    b2 = hf_store.CommitBudget(8, ledger, clock=clock, sleep=sleep)
+    # A second handle on the same file, and a bounded() child, count in the same place: one count a writer.
+    b2 = hf_store.CommitBudget(8, ledger, clock=clock, sleep=sleep, essential_wait=3600)
     assert b2.count() == 8 and b2.wait_s() == b.wait_s()
     clock.t = t0 + 3600 + 1                              # the first commit is an hour old: room for one essential
     assert b.wait_s() == 0 and b.wait_s(essential=False) > 0
     hf_store.bounded(lambda: b.admit("generation") or 1, 20)
     assert b.count() == 8 and b2.count() == 8
-    # A lock is taken only with room for its unlock; the unlock is then counted whatever the count is.
+    # A lock is taken only with room for its unlock, and both are counted at once (the review of 12 Nov 2026: room
+    # was checked for two and one was counted, so another process could take the unlock's place). The unlock that
+    # was counted then is not counted again; an unlock tried a second time is, whatever the count.
     clock.t = t0 + 6601                                  # only the child's commit is younger than an hour
     assert b.count() == 1
-    for _ in range(4):
-        b.admit("files", essential=False)
-    with pytest.raises(hf_store.BudgetSpent):
-        b.admit("lock", essential=False, need=2)         # five sent, six allowed: room for one, not for two
-    b.admit("files", essential=False, need=1)
     for _ in range(3):
-        b.admit("unlock", force=True)
+        b.admit("files", essential=False)
+    b.admit("lock", essential=False, need=2)             # four sent, six allowed: room for two
+    assert b.count() == 6
+    b.admit("unlock", essential=False, reserved=True)
+    assert b.count() == 6
+    with pytest.raises(hf_store.BudgetSpent):
+        b.admit("lock", essential=False, need=2)
+    with pytest.raises(hf_store.BudgetSpent):
+        b.admit("files", essential=False)
+    for _ in range(3):
+        b.admit("unlock", essential=False, force=True)
     assert b.count() == 9                                # forced past the budget: an admitted lock is always removed
     # An essential commit with patience waits for its turn inside the call, in short sleeps, then goes.
     wait = b.wait_s()
@@ -985,20 +1038,28 @@ def test_the_commit_budget_counts_a_rolling_hour_and_keeps_room_for_what_matters
     was = clock.t
     b.admit("generation", patience=wait + 10)
     assert wait <= clock.t - was <= wait + 10 and max(slept) <= 5
-    # After a 429 nothing passes until the hub's wait is over, at least a minute.
+    # After a 429 nothing passes until the hub's wait is over: at least a minute, at most half an hour, and a
+    # reserved or forced unlock waits it out too (it used to go through).
     clock.t += 7200
     assert b.count() == 0 and b.wait_s() == 0
     b.block(1234)
     assert b.wait_s() == 1234 and b.wait_s(essential=False) == 1234
-    with pytest.raises(hf_store.BudgetSpent, match="room in 1234 s"):
-        b.admit("generation")
+    for kw in ({}, {"essential": False, "reserved": True}, {"essential": False, "force": True}):
+        with pytest.raises(hf_store.BudgetSpent, match="room in 1234 s"):
+            b.admit("generation", **kw)
     clock.t += 1234
     b.admit("generation")
     b.block(0)
-    assert b.wait_s() == hf_store.MIN_429_WAIT_S
+    assert b.wait_s() == hf_store.MIN_429_WAIT_S == 60
+    clock.t += 60
+    b.block(86400)                                       # a day: honoured for half an hour
+    assert b.wait_s() == hf_store.MAX_429_WAIT_S == 1800
+    b.block(float("inf"))
+    assert b.wait_s() == 1800
+    clock.t += 1800
     # The hour's report: the commits of the last hour, and what was refused and limited since the last report.
     rep = b.report()
-    assert rep["commits"] == 1 and rep["budget"] == 8 and rep["refused"] >= 5 and rep["http_429"] == 2
+    assert rep["commits"] == 1 and rep["budget"] == 8 and rep["refused"] >= 8 and rep["http_429"] == 4
     assert b.report() is None and b.report(0, peek=True)["refused"] == 0
     # Without a path the count is the process's own, in a file that goes with it.
     own = hf_store.CommitBudget(3)
@@ -1006,9 +1067,151 @@ def test_the_commit_budget_counts_a_rolling_hour_and_keeps_room_for_what_matters
     assert own.count() == 1 and os.path.exists(own.path) and own.path != ledger
 
 
+def test_an_essential_commit_waits_fifteen_minutes_for_the_budget_and_then_goes(tmp_path):
+    """The second review (12 Nov 2026): a budget wait could reach an hour and a 429's any length, while the boot
+    takes the token away a fixed time after the jobs end. An essential commit now waits for room at most
+    ESSENTIAL_WAIT_S from the moment it first asked, then passes whatever the count is, and the hub answers."""
+    clock = Tick()
+    b = hf_store.CommitBudget(4, str(tmp_path / "ledger.json"), clock=clock)
+    assert b.essential_wait == hf_store.ESSENTIAL_WAIT_S == 900
+    t0 = clock.t
+    for _ in range(4):
+        b.admit("generation")
+    assert b.wait_s() == 900                             # the hour's room is 3,600 s away; the allowance is 900
+    with pytest.raises(hf_store.BudgetSpent, match="room in 900 s"):
+        b.admit("generation")
+    clock.t = t0 + 600
+    assert b.wait_s() == 300
+    assert b.wait_s(essential=False) > 2900              # what is not essential has no allowance
+    clock.t = t0 + 900
+    assert b.wait_s() == 0
+    b.admit("generation")                                # past the budget, on purpose: five in the hour
+    assert b.count() == 5
+    assert b.wait_s() == 900                             # and the next one's own wait starts now
+    clock.t = t0 + 1000
+    with pytest.raises(hf_store.BudgetSpent, match="room in 800 s"):
+        b.admit("mark")
+    # A wait that ended because room came is forgotten: a later one starts from its own first asking.
+    clock.t = t0 + 3601 + 900
+    assert b.wait_s() == 0
+    b.admit("generation")
+    # The worst case at the end of a run: a 429's wait (30 minutes at most) and then the budget's (15), inside the
+    # 90 minutes the boot gives the courier, with a whole push limit to spare.
+    assert hf_store.MAX_429_WAIT_S + hf_store.ESSENTIAL_WAIT_S + 1800 <= 5400
+    # The 429's wait is read from seconds or from an HTTP date.
+    import requests
+    from huggingface_hub.errors import HfHubHTTPError
+
+    def refusal(**headers):
+        resp = requests.Response()
+        resp.status_code = 429
+        resp.headers.update(headers)
+        return HfHubHTTPError("429 Client Error: Too Many Requests", response=resp)
+
+    assert hf_store.rate_limited(refusal(**{"Retry-After": "120"})) == 120
+    assert hf_store.rate_limited(refusal(**{"Retry-After": "Thu, 12 Nov 2026 05:10:00 GMT"}), now=1794460200.0 - 600) == \
+        __import__("email.utils").utils.parsedate_to_datetime("Thu, 12 Nov 2026 05:10:00 GMT").timestamp() - (1794460200.0 - 600)
+    when = __import__("email.utils").utils.formatdate(time.time() + 500, usegmt=True)
+    assert 495 <= hf_store.rate_limited(refusal(**{"Retry-After": when})) <= 501
+    assert hf_store.rate_limited(refusal(**{"Retry-After": "Thu, 12 Nov 1998 05:10:00 GMT"})) == 0     # a date gone by
+    assert hf_store.rate_limited(refusal(**{"Retry-After": "soon"})) == 0 and hf_store.rate_limited(refusal()) == 0
+    assert hf_store.rate_limited(refusal(**{"RateLimit": '"api";r=0;t=77'})) == 77
+    assert hf_store.capped_429_wait(10 ** 9) == 1800 and hf_store.capped_429_wait(None) == 60 and hf_store.capped_429_wait("x") == 60
+
+
+CONTEND = """import sys, time
+sys.path.insert(0, {cc!r})
+import hf_store
+b = hf_store.CommitBudget(int(sys.argv[2]), sys.argv[1], essential_wait=3600)
+while time.time() < float(sys.argv[3]):
+    time.sleep(0.001)
+got = 0
+for _ in range(int(sys.argv[4])):
+    try:
+        b.admit("generation", essential=sys.argv[5] == "essential", need=int(sys.argv[6]))
+        got += int(sys.argv[6])
+    except hf_store.BudgetSpent:
+        pass
+print(got)
+"""
+
+
+def test_the_budget_holds_with_several_processes_at_once_and_with_a_ledger_that_is_wrong(tmp_path):
+    """One file, several writers' processes at the same moment: exactly the budget passes, however they interleave
+    (and a lock's two are taken together or not at all). A ledger that is not what it should be never ends the
+    caller and never opens the budget wide: it is moved aside, and the new one counts half the budget as used. A
+    clock that jumps back does not stretch a wait past its bounds; one that jumps forward ages the count."""
+    ledger = str(tmp_path / "vm" / "store_commits.json")
+    script = tmp_path / "contend.py"
+    script.write_text(CONTEND.format(cc=str(ROOT / "tools" / "colab_chat")))
+    start = time.time() + 1.5
+    procs = [subprocess.Popen([sys.executable, str(script), ledger, "24", str(start), "10", "essential", "1"],
+                              stdout=subprocess.PIPE, text=True) for _ in range(8)]
+    got = [int(p.communicate(timeout=120)[0]) for p in procs]
+    assert sum(got) == 24 and max(got) <= 10, got       # eighty asked at once; the budget passed, no more
+    b = hf_store.CommitBudget(24, ledger)
+    assert b.count() == 24
+    ledger2 = str(tmp_path / "home" / "store_commits.json")
+    start = time.time() + 1.5
+    procs = [subprocess.Popen([sys.executable, str(script), ledger2, "9", str(start), "5", "lock", "2"],
+                              stdout=subprocess.PIPE, text=True) for _ in range(6)]
+    got = [int(p.communicate(timeout=120)[0]) for p in procs]
+    b2 = hf_store.CommitBudget(9, ledger2)
+    assert b2.reserve == 2 and sum(got) == 6 == b2.count() and all(g % 2 == 0 for g in got), got    # three locks, each with its unlock
+
+    # A ledger that is wrong, each way. None raises; each is moved aside; the count starts at half the budget.
+    clock = Tick()
+    bad = [b"{not json", b"[1, 2, 3]", json.dumps({"commits": "many"}).encode(), json.dumps({"commits": [["soon", "x"]]}).encode(),
+           json.dumps({"commits": [[1.0, "x"]], "blocked_until": "later"}).encode(),
+           b'{"commits": [], "blocked_until": Infinity}', b'{"commits": [[NaN, "x"]]}',
+           json.dumps({"commits": [], "refused": -3}).encode(), json.dumps({"commits": [], "essential_since": [1]}).encode(),
+           b"\x00\xff\xfe binary"]
+    for i, raw in enumerate(bad):
+        p = tmp_path / f"bad{i}" / "store_commits.json"
+        p.parent.mkdir()
+        p.write_bytes(raw)
+        bb = hf_store.CommitBudget(8, str(p), clock=clock)
+        assert bb.count() == 4, raw                      # half of eight: neither empty nor closed
+        assert bb.wait_s() == 0 and bb.wait_s(essential=False) == 0
+        bb.admit("generation")
+        assert bb.count() == 5 and json.loads(p.read_text())["commits"][-1][1] == "generation"
+        aside = [f for f in os.listdir(p.parent) if ".bad" in f]
+        assert len(aside) == 1 and (p.parent / aside[0]).read_bytes() == raw, raw
+        clock.t += 3601
+        assert bb.count() == 0                           # and what it assumed ages out like anything else
+    # A ledger that cannot be written at all (its folder is a file): counted in memory, nothing raised.
+    (tmp_path / "blocker").write_text("x")
+    mem = hf_store.CommitBudget(2, str(tmp_path / "blocker" / "store_commits.json"), clock=clock)
+    mem.admit("generation")
+    mem.admit("generation")
+    assert mem.count() == 2 and mem.report(0, peek=True)["commits"] == 2
+    with pytest.raises(hf_store.BudgetSpent):
+        mem.admit("generation")
+    mem.note_branch("r", "ckpt-N")
+    assert mem.knows_branch("r", "ckpt-N") is False      # nowhere to remember it: asked again, never an error
+
+    # The clock. Set back: times that are now in the future are brought to now, so a wait is never longer than its
+    # own bound. Set forward: the count ages early, which the hub's own 429 then answers.
+    clock = Tick()
+    cb = hf_store.CommitBudget(4, str(tmp_path / "clock" / "store_commits.json"), clock=clock, essential_wait=3600)
+    for _ in range(4):
+        cb.admit("generation")
+    cb.block(1000)
+    clock.t -= 86400                                     # a day back
+    assert cb.count() == 4 and cb.wait_s() == 3600       # not a day and an hour: the hour, from now
+    stored = json.loads(open(cb.path).read())
+    assert all(c[0] == clock.t for c in stored["commits"]) and stored["blocked_until"] <= clock.t + hf_store.MAX_429_WAIT_S
+    clock.t += 3600
+    assert cb.count() == 0 and cb.wait_s() == 0
+    for _ in range(4):
+        cb.admit("generation")
+    clock.t += 10 * 86400                                # ten days forward
+    assert cb.count() == 0 and cb.wait_s() == 0
+
+
 def test_every_commit_of_a_store_passes_the_budget(tmp_path):
     """A push (a generation, a mark, an input set) is essential; a prune by itself and the release lock are not,
-    and are refused with nothing sent while the budget is within its reserve; the lock needs room for its unlock."""
+    and are refused with nothing sent while the budget is within its reserve; the lock is counted with its unlock."""
     clock = Tick()
     budget = hf_store.CommitBudget(6, str(tmp_path / "ledger.json"), clock=clock)
     store = hf_store.Store(hf_store.DirBackend(str(tmp_path / "repo")), log=lambda m: None, delay=0, budget=budget)
@@ -1016,7 +1219,7 @@ def test_every_commit_of_a_store_passes_the_budget(tmp_path):
     assert budget.count() == 4 == len(commits(tmp_path)) and budget.reserve == 2
     with pytest.raises(hf_store.BudgetSpent):
         store.prune("ckpt-N", verified=[300, 400])                                       # not essential: in the reserve
-    assert store.release_report("home", grace=0)["held"] is True                         # the lock: no room for two
+    assert store.release_report("home", grace=600)["held"] is True                       # the lock: no room for two
     assert len(commits(tmp_path)) == 4 and store.steps("ckpt-N") == [100, 200, 300, 400]
     mark = tmp_path / "mark"
     mark.mkdir()
@@ -1025,14 +1228,14 @@ def test_every_commit_of_a_store_passes_the_budget(tmp_path):
     assert store.push_mark("pt", 100, str(mark)) is True                                 # essential: goes
     store.push_generation("ckpt-N", "pt", 500, staged_gen(tmp_path, 500), None, store.head("ckpt-N")["commit"],
                           prune={"keep": 2, "verified": [300, 400]})                     # and the save's own prune with it
-    assert budget.count() == 6 and store.steps("ckpt-N") == [400, 500]
+    assert budget.count() == 6 and store.steps("ckpt-N") == [300, 400, 500]
     with pytest.raises(hf_store.BudgetSpent, match="generation not sent"):
         store.push_generation("ckpt-N", "pt", 600, staged_gen(tmp_path, 600), None, store.head("ckpt-N")["commit"])
     assert len(commits(tmp_path)) == 6
-    # An hour on: the release takes its lock and gives it back, two commits, and measures what the branches hold.
+    # An hour on: the release takes its lock and gives it back, two commits counted together, and measures.
     clock.t += 3601
-    rep = store.release_report("home", grace=0)
-    assert rep["held"] is False and rep["objects"] == 0 and rep["tree_bytes"]["ckpt-N"] > 0 and rep["unnamed_bytes"] == 0
+    rep = store.release_report("home", grace=600)
+    assert rep["held"] is False and rep["objects"] == 0 and rep["gens"]["ckpt-N"] and rep["orphan_objects"] == 0
     assert [c["message"].split(":")[0] for c in commits(tmp_path)[-2:]] == ["lock", "unlock"] and budget.count() == 2
     # With no budget a Store commits as it always did.
     plain = dstore(tmp_path / "plain")
@@ -1044,6 +1247,7 @@ def test_every_commit_of_a_store_passes_the_budget(tmp_path):
     cfg.write_text(json.dumps({"repo": f"dir:{tmp_path / 'repo2'}", "store_commit_budget_per_hour": 5}))
     s2 = hf_store.open_store(str(cfg))
     assert s2.budget.per_hour == 5 and s2.budget.path == str(cfg.parent / "store_commits.json")
+    assert (s2.budget.window, s2.budget.essential_wait) == (3600, 900)
     assert hf_store.open_store({"repo": f"dir:{tmp_path / 'repo2'}"}).budget is None
     src = tmp_path / "src"
     src.mkdir()
@@ -1067,8 +1271,8 @@ def hub_store(tmp_path, **kw):
     tf.write_text(TOKEN + "\n")
     tf.chmod(0o600)
     logs = []
-    store = hf_store.open_store({"repo": "someone/base2-store", "repo_type": "dataset", "token_file": str(tf)},
-                                api=hub_standin.DiskApi(str(root)), log=logs.append, delay=0, **kw)
+    cfg = {"repo": "someone/base2-store", "repo_type": "dataset", "token_file": str(tf), "mark_ns": kw.pop("mark_ns", "")}
+    store = hf_store.open_store(cfg, api=hub_standin.DiskApi(str(root)), log=logs.append, delay=0, **kw)
     return store, root, logs
 
 
@@ -1080,7 +1284,8 @@ def hub_commits(root):
 def test_the_hubs_429_is_read_with_its_retry_after(tmp_path):
     """The hub refuses a commit past its limit with HTTP 429, as the library raises it (HfHubHTTPError with the
     response). The store reads Retry-After, raises RateLimited with it, and lets nothing through its budget for at
-    least that long; the class and the wait survive a bounded() child; a 412 stays what it was."""
+    least that long, at most half an hour; the class and the wait survive a bounded() child; a 412 stays what it
+    was. A branch's creation is refused by the same limit, and is read and counted the same way."""
     pytest.importorskip("huggingface_hub")
     from huggingface_hub.errors import HfHubHTTPError
     clock = Tick()
@@ -1102,13 +1307,14 @@ def test_the_hubs_429_is_read_with_its_retry_after(tmp_path):
     with pytest.raises(hf_store.BudgetSpent, match="room in 1234 s"):           # not sent: the hub sees no fourth try
         store.push_set("main", "set2", str(src))
     assert len(hub_commits(root)) == 3
-    # Through a bounded() child (how the courier and the runner call): the class and the wait come back.
+    # Through a bounded() child (how the courier and the runner call): the class and the wait come back. The hub
+    # asks for 2,300 s here; half an hour is honoured.
     clock.t += 1300
     (root / "now.txt").write_text(str(clock.t))
     (root / "limit.json").write_text(json.dumps({"per_window": 2, "retry_after": "auto"}))
     with pytest.raises(hf_store.RateLimited) as e:
         hf_store.bounded(lambda: bool(store.push_set("main", "set2", str(src))), 30, TOKEN)
-    assert e.value.retry_after == 3600 - 1300 == budget.wait_s()
+    assert e.value.retry_after == 1800 == budget.wait_s() == hf_store.MAX_429_WAIT_S
     # A 429 that names no wait: at least a minute.
     clock.t += 2300
     (root / "now.txt").write_text(str(clock.t))
@@ -1116,12 +1322,30 @@ def test_the_hubs_429_is_read_with_its_retry_after(tmp_path):
     with pytest.raises(hf_store.RateLimited) as e:
         store.push_set("main", "set2", str(src))
     assert e.value.retry_after == hf_store.MIN_429_WAIT_S == budget.wait_s()
+    # A branch's creation: through the budget, refused by the same limit, read the same way, nothing created.
+    clock.t += 60
+    n = budget.count()
+    with pytest.raises(hf_store.RateLimited, match="the creation of ckpt-N") as e:
+        store.ensure_branch("ckpt-N")
+    assert e.value.retry_after == 60 and budget.count() == n + 1 and budget.wait_s() == 60
+    assert not (root / "branches" / "ckpt-N").exists() and hub_commits(root)[-1]["message"] == "create_branch"
+    with pytest.raises(hf_store.BudgetSpent):
+        store.ensure_branch("ckpt-N")
     # With room again the same set goes, and what the refusals left behind is nothing.
     clock.t += 3600
     (root / "now.txt").write_text(str(clock.t))
     (root / "limit.json").unlink()
     store.push_set("main", "set2", str(src))
     assert sorted(os.listdir(root / "branches" / "main")) == ["set0", "set1", "set2"]
+    # The branch: created once, remembered beside the ledger, so no other process of this writer asks again; and
+    # it starts from main's tree, as on the hub.
+    store.ensure_branch("ckpt-N")
+    store.ensure_branch("ckpt-N")
+    other, _, _ = hub_store(tmp_path, budget=hf_store.CommitBudget(50, str(tmp_path / "ledger.json"), clock=clock))
+    other.push_set("ckpt-N", "x", str(src))             # no parent named: it would have created the branch
+    calls = (root / "calls.log").read_text().splitlines()
+    assert sum(ln.startswith("create_branch ckpt-N") for ln in calls) == 2 and sum("create_branch" == c["message"] and c["ok"] for c in hub_commits(root)) == 1
+    assert sorted(os.listdir(root / "branches" / "ckpt-N")) == ["set0", "set1", "set2", "x"]
     # A stale parent is the library's own error still (the courier reads the head again); it is not a rate limit.
     with pytest.raises(HfHubHTTPError, match="412"):
         store.commit("main", {}, ["set0/a.ids"], "x: y", parent="main@0")
@@ -1135,35 +1359,163 @@ def test_the_hubs_429_is_read_with_its_retry_after(tmp_path):
     assert e.value.retry_after == 77
 
 
-def test_release_through_the_real_backend_frees_only_what_no_branch_names(tmp_path):
-    """The save's one commit and the release from home, through HfBackend over the stand-in hub, whose object
-    store keeps what a removed generation held until it is deleted for good. A release frees exactly the removed
-    generations' objects, reports the bytes, measures what is left, and what is left still resumes."""
+def test_the_data_jobs_separate_processes_create_their_branch_once(tmp_path):
+    """base2_data.sh pushes each set with a process of its own (hf_store.py push). Each used to ask the hub to
+    create the build branch again, a call the hub counts against the repository's commit limit. The first one's
+    answer is kept beside the ledger, and the count is one for them all."""
     pytest.importorskip("huggingface_hub")
+    root = tmp_path / "hub"
+    tok = tmp_path / "token"
+    tok.write_text(TOKEN + "\n")
+    tok.chmod(0o600)
+    cfg = tmp_path / "chat" / "store.json"
+    cfg.parent.mkdir()
+    cfg.write_text(json.dumps({"repo": "someone/base2-store", "repo_type": "dataset", "token_file": str(tok)}))
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "a.txt").write_bytes(b"a")
+    site = ROOT / "tests" / "hub_standin_site"
+    env = {**os.environ, "HUB_STANDIN_ROOT": str(root), "PYTHONPATH": f"{site}{os.pathsep}{os.environ.get('PYTHONPATH', '')}".rstrip(os.pathsep)}
+    for i in range(3):
+        r = subprocess.run([sys.executable, str(ROOT / "tools" / "colab_chat" / "hf_store.py"), "push", "--config", str(cfg),
+                            "--branch", "base2-build", "--prefix", f"build/s{i}", "--dir", str(src), "--limit", "60",
+                            "--commit-budget", "30", "--commit-wait", "900"], capture_output=True, text=True, env=env)
+        assert r.returncode == 0 and TOKEN not in r.stdout + r.stderr, r.stderr
+        assert json.loads(r.stderr.strip().splitlines()[-1][5:])["commits"] == i + 2        # the branch, then one a set
+    calls = (root / "calls.log").read_text().splitlines()
+    assert sum(ln.startswith("create_branch") for ln in calls) == 1 and sum(ln.startswith("create_commit") for ln in calls) == 3
+    assert [c["message"] for c in hub_commits(root)] == ["create_branch", "files: build/s0", "files: build/s1", "files: build/s2"]
+    assert json.loads((cfg.parent / "store_commits.json.branches").read_text())["branches"] == ["base2-build"]
+
+
+def gen_objects(*steps):
+    return {S.sha(b): len(b) for s in steps for b in S.state_at(s)}
+
+
+def test_release_through_the_real_backend_never_takes_an_upload_from_under_its_commit(tmp_path):
+    """The reviews' second blocking point. The library uploads a commit's large files first and commits after; the
+    stand-in hub now does the same, keeps an uploaded object whatever the commit's answer, and refuses a commit that
+    names an object it does not hold. The release from home deleted "every object no tree names that is older than
+    the grace": an upload whose commit was still to come (refused with 429, retried later) was exactly that.
+
+    Now a release deletes only what a removed generation's ledger names. So: an object uploaded long ago and not
+    committed survives every timed release, and its retried commit succeeds; a release that runs BETWEEN a commit's
+    upload and its commit changes nothing for that commit; and the by-hand `--orphans`, in the same place, shows
+    what the old rule did: the commit is refused, because its object is gone."""
+    pytest.importorskip("huggingface_hub")
+    import hub_standin
+    from huggingface_hub.errors import HfHubHTTPError
     store, root, _ = hub_store(tmp_path)
-    store.b.ensure_branch("ckpt-N")
+    home, _, _ = hub_store(tmp_path)                    # the releaser: another process, another handle
+    far = time.time() + 30 * 86400                      # a release a month from now: everything is old by then
+    store.ensure_branch("ckpt-N")
     for step in (100, 200, 300):
         store.push_generation("ckpt-N", "pt", step, staged_gen(tmp_path, step), IDENT, store.head("ckpt-N")["commit"])
     store.push_generation("ckpt-N", "pt", 400, staged_gen(tmp_path, 400), IDENT, store.head("ckpt-N")["commit"],
                           prune={"keep": 2, "verified": [200, 300]})
-    log = hub_commits(root)
-    assert len(log) == 4 and log[-1]["deletes"] == ["gens/g100/", "gens/g200/"] and store.steps("ckpt-N") == [300, 400]
-    objects = json.loads((root / "lfs.json").read_text())
-    assert len(objects) == 8                                         # the removed generations' bytes are still stored
-    gen = {s: sum(len(b) for b in S.state_at(s)) for s in (100, 200, 300, 400)}
-    held = store.release_report("home", grace=3600)                  # too young: nothing freed, and said so
-    assert (held["objects"], held["bytes"], held["unnamed_bytes"]) == (0, 0, gen[100] + gen[200])
-    rep = store.release_report("home", grace=0, now=time.time() + 5)
-    assert (rep["held"], rep["objects"], rep["bytes"]) == (False, 4, gen[100] + gen[200])
-    assert rep["stored_bytes"] == gen[300] + gen[400] == rep["tree_bytes"]["ckpt-N"] and rep["unnamed_bytes"] == 0
-    assert set(json.loads((root / "lfs.json").read_text())) == {S.sha(b) for s in (300, 400) for b in S.state_at(s)}
-    assert [c["message"].split(":")[0] for c in hub_commits(root)[4:]] == ["lock", "unlock", "lock", "unlock"]
+    log = [c for c in hub_commits(root) if c["message"] != "create_branch"]
+    assert len(log) == 4 and log[-1]["deletes"] == ["gens/g100/"] and "pruned/g100.json" in log[-1]["adds"]
+    assert store.steps("ckpt-N") == [200, 300, 400] and len(json.loads((root / "lfs.json").read_text())) == 8
+    # 1. Uploaded, refused, old: g500's objects are in the object store and in no commit.
+    (root / "limit.json").write_text(json.dumps({"per_window": 0, "retry_after": 30}))
+    g500 = staged_gen(tmp_path, 500)
+    with pytest.raises(hf_store.RateLimited):
+        store.push_generation("ckpt-N", "pt", 500, g500, IDENT, store.head("ckpt-N")["commit"],
+                              prune={"keep": 2, "verified": [200, 300, 400]})
+    (root / "limit.json").unlink()
+    assert set(gen_objects(500)) <= set(json.loads((root / "lfs.json").read_text())) and store.steps("ckpt-N") == [200, 300, 400]
+    young = home.release_report("home", grace=600)                        # g100's ledger is a moment old
+    assert (young["objects"], young["pending"]) == (0, {"ckpt-N": gen_objects(100)})
+    assert (young["orphan_objects"], young["orphan_bytes"]) == (2, sum(gen_objects(500).values()))
+    rep = home.release_report("home", grace=600, now=far)
+    assert (rep["held"], rep["objects"], rep["bytes"]) == (False, 2, sum(gen_objects(100).values()))   # g100's two, by its ledger
+    assert (rep["orphan_objects"], rep["orphan_bytes"]) == (2, sum(gen_objects(500).values()))         # g500's: reported, left
+    assert set(json.loads((root / "lfs.json").read_text())) == set(gen_objects(200, 300, 400, 500))
+    # ... and its retried commit succeeds, a month later, with the same bytes.
+    man = store.push_generation("ckpt-N", "pt", 500, g500, IDENT, store.head("ckpt-N")["commit"],
+                                prune={"keep": 2, "verified": [200, 300, 400]})
+    assert man["pruned"] == [200] and store.listed_whole("ckpt-N", 500, man["files"])
+    assert hub_store(tmp_path)[0].verify_by_download("ckpt-N", 500, expect=IDENT)
+    # 2. A timed release between the upload and the commit of g600: the commit goes through, whole.
+    api = store.b.api
+    ran = []
+    api.after_upload = lambda branch, ops: ran.append(home.release_report("home", grace=600, now=far))
+    man = store.push_generation("ckpt-N", "pt", 600, staged_gen(tmp_path, 600), IDENT, store.head("ckpt-N")["commit"],
+                                prune={"keep": 2, "verified": [300, 400, 500]})
+    assert len(ran) == 1 and ran[0]["held"] is False and ran[0]["objects"] == 2       # g200's, by its ledger; not g600's
+    assert ran[0]["orphan_objects"] == 2 and store.listed_whole("ckpt-N", 600, man["files"])
+    assert hub_store(tmp_path)[0].verify_by_download("ckpt-N", 600, expect=IDENT)
+    # 3. The same moment with --orphans (the old rule, kept for a hand with no VM writing): the commit is refused.
+    ran.clear()
+    api.after_upload = lambda branch, ops: ran.append(home.release_report("home", grace=600, now=far, orphans=True))
+    with pytest.raises(HfHubHTTPError, match="does not exist"):
+        store.push_generation("ckpt-N", "pt", 700, staged_gen(tmp_path, 700), IDENT, store.head("ckpt-N")["commit"])
+    api.after_upload = None
+    assert ran[0]["objects"] >= 2 and store.steps("ckpt-N") == [400, 500, 600]         # nothing of g700 was committed
+    # The ledgers that are finished with: recorded on main by the unlock, removed by the branch's next save.
+    assert json.loads((root / "branches" / "main" / "locks" / "released.json").read_text()) == {"ckpt-N": [200, 300]}
+    store.push_generation("ckpt-N", "pt", 700, staged_gen(tmp_path, 700, seed=1), IDENT, store.head("ckpt-N")["commit"],
+                          prune={"keep": 2, "verified": [400, 500, 600]})
+    assert hf_store.ledger_steps(store.b.tree("ckpt-N")) == [400] and store.steps("ckpt-N") == [500, 600, 700]
     assert not (root / "branches" / "main" / "locks" / "release.json").exists()
     step, rejected = hub_store(tmp_path)[0].pull_generation("ckpt-N", str(tmp_path / "r"), expect=IDENT)
-    assert (step, rejected) == (400, [])
-    assert hub_store(tmp_path)[0].verify_by_download("ckpt-N", 300, expect=IDENT)
+    assert (step, rejected) == (700, [])
     calls = (root / "calls.log").read_text().splitlines()
     assert sum(ln.startswith("create_branch") for ln in calls) == 1  # once, for the branch; never before a commit
+    assert isinstance(api, hub_standin.DiskApi)
+
+
+def test_three_campaigns_on_one_repo_are_each_counted_for_what_is_theirs(tmp_path):
+    """The storage guard's measurement, on the stand-in hub, where a new branch starts from main's tree as on the
+    real one: main holds the seed weights (every branch's tree then names them), three campaigns each keep
+    generations and a mark, one has removed a generation that is not released yet, and an upload that nobody
+    committed lies about. Each campaign is counted for the objects under gens/ on its own branch, its own marks
+    and its own ledgers' objects, each object once. Before: every branch's whole tree (main's copy with it) and
+    every unnamed object of the repo, for each campaign."""
+    pytest.importorskip("huggingface_hub")
+    seedw = b"seed weights of base A " * 300
+    seed = tmp_path / "seed"
+    seed.mkdir()
+    (seed / "tc_b1_r1.safetensors").write_bytes(seedw)
+    hub_store(tmp_path)[0].push_set("main", "seed/weights", str(seed))
+    stores, want = {}, {}
+    for k, name in enumerate(("N", "S", "C")):
+        st, root, _ = hub_store(tmp_path, mark_ns=f"arm{name}.")
+        stores[name] = st
+        branch = f"ckpt-{name}"
+        st.ensure_branch(branch)
+        assert "seed/weights/tc_b1_r1.safetensors" in st.b.tree(branch)          # inherited from main, as on the hub
+        steps = [100, 200, 300]
+        for s in steps:
+            st.push_generation(branch, "pt", s, staged_gen(tmp_path / name, s, seed=k), None, st.head(branch)["commit"])
+        mark = tmp_path / name / "mark"
+        mark.mkdir()
+        (mark / "model.safetensors").write_bytes(S.state_at(100, k)[0])           # the mark's weights are g100's
+        (mark / "state.txt").write_text("100\n{}\n")
+        st.push_mark("pt", 100, str(mark))
+        want[name] = {S.sha(b): len(b) for s in steps for b in S.state_at(s, k)}
+    # Campaign N removes g100 (its ledger is young): the optimiser is pending, the weights are still its mark's.
+    stores["N"].push_generation("ckpt-N", "pt", 400, staged_gen(tmp_path / "N", 400, seed=0), None,
+                                stores["N"].head("ckpt-N")["commit"], prune={"keep": 2, "verified": [200, 300]})
+    want["N"].update({S.sha(b): len(b) for b in S.state_at(400, 0)})
+    # An upload nobody committed.
+    (root / "limit.json").write_text(json.dumps({"per_window": 0, "retry_after": 1}))
+    with pytest.raises(hf_store.RateLimited):
+        stores["S"].push_generation("ckpt-S", "pt", 400, staged_gen(tmp_path / "S", 400, seed=1), None, stores["S"].head("ckpt-S")["commit"])
+    (root / "limit.json").unlink()
+    orphan = sum(len(b) for b in S.state_at(400, 1))
+    rep = hub_store(tmp_path)[0].release_report("home", grace=600)
+    assert rep["held"] is False and rep["objects"] == 0 and rep["unknown_sizes"] == 0
+    counted = {n: hf_store.campaign_bytes(rep, [f"ckpt-{n}"], [f"arm{n}.pt"]) for n in "NSC"}
+    assert counted == {n: sum(want[n].values()) for n in "NSC"}                    # each object once: the mark is g100's weights
+    assert rep["pending"] == {"ckpt-N": {S.sha(S.state_at(100, 0)[1]): len(S.state_at(100, 0)[1])}}
+    assert (rep["orphan_objects"], rep["orphan_bytes"]) == (2, orphan)
+    assert rep["stored_bytes"] == sum(counted.values()) + len(seedw) + orphan      # the three, main's seed, the orphan: all of it
+    assert all(S.sha(seedw) not in rep["gens"][f"ckpt-{n}"] for n in "NSC")        # main's copy is nobody's generation
+    assert counted["S"] == counted["C"] < counted["N"]                             # another's pending and orphans are not mine
+    # What the first version of the measurement would have said for S: its tree with main's copy, and everybody's leftovers.
+    old = sum(e["bytes"] for e in stores["S"].b.tree("ckpt-S").values() if e.get("sha256")) + rep["pending_bytes"] + orphan
+    assert old > counted["S"] + len(seedw)
 
 
 # ---------------------------------------------------------------- base2_seed.py
