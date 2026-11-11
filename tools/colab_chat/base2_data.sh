@@ -61,6 +61,12 @@ RETRY_S=${BASE2_STORE_RETRY_S:-20}
 # set (hf_store.py --limit), and each read of a manifest by store-has and store-verify (BASE2_STORE_LIMIT_S, default 300,
 # read by base2_corpus.py). A call that hangs is a failed try and the script stops; it never waits without end.
 XFER_LIMIT_S=${BASE2_STORE_XFER_LIMIT_S:-5400}
+# The hub limits commit creation per repository (128 an hour for every writer together, 12 Nov 2026). The whole build
+# is eight commits (one a set; the rehearsal's corpus is one), each tried at most four times, so 32 at the very worst;
+# they pass a budget all the same, counted beside the
+# store's config with every other process of this VM, and a push that finds the budget spent waits for its turn.
+COMMIT_BUDGET=${BASE2_STORE_COMMIT_BUDGET:-60}
+COMMIT_WAIT_S=${BASE2_STORE_COMMIT_WAIT_S:-900}
 export BASE2_STORE_LIMIT_S=${BASE2_STORE_LIMIT_S:-300}
 S13=oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots
 LONG=taskmaster3,abcd,ccpe,p4g,aya_en,msc
@@ -90,7 +96,8 @@ push_set() {  # BRANCH PREFIX FILE...: the files as one set, one commit, read ba
   for try in 1 2 3 4; do
     rm -rf "$d" && mkdir -p "$d"
     for f in "$@"; do ln -f "$f" "$d/$(basename "$f")" 2> /dev/null || cp "$f" "$d/$(basename "$f")"; done
-    if python3 $CC/hf_store.py push --config "$STORE" --branch "$branch" --prefix "$prefix" --dir "$d" --limit "$XFER_LIMIT_S" > "$OUT/push_$name.log" 2>&1 \
+    if python3 $CC/hf_store.py push --config "$STORE" --branch "$branch" --prefix "$prefix" --dir "$d" --limit "$XFER_LIMIT_S" \
+        --commit-budget "$COMMIT_BUDGET" --commit-wait "$COMMIT_WAIT_S" > "$OUT/push_$name.log" 2>&1 \
         && B2 store-verify "$STORE" "$branch" "$prefix" "$@" --out "$rec"; then
       rm -rf "$d"
       say "published $branch:$prefix (try $try, verified)"

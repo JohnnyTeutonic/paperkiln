@@ -92,6 +92,8 @@ def main(argv=None):
     ap.add_argument("--record", required=True, help="where the JSON record of sizes and hashes is written")
     ap.add_argument("--replace", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--commit-budget", type=int, default=60,
+                    help="commits this run may send (three are needed; the hub limits a repository's commits an hour)")
     a = ap.parse_args(argv)
     token = None
     try:
@@ -102,7 +104,8 @@ def main(argv=None):
             print(json.dumps(rec, indent=1))
             return 0
         store = hf_store.open_store({"repo": a.store_repo, "repo_type": a.store_repo_type,
-                                     "token_file": a.store_token_file})
+                                     "token_file": a.store_token_file,
+                                     "store_commit_budget_per_hour": a.commit_budget})
         token = store.b.token
         rec["result"] = seed(store, sets, a.replace)
     except Exception as e:  # noqa: BLE001 one redacted line

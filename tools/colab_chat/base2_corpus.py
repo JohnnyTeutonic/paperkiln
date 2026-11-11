@@ -18,7 +18,7 @@ the author's research tree). Claude Fable 5.2, 11 Nov 2026.
     base2_corpus.py doc-keys OUT FILE... / subset-docs --n-keys K --scenario F --out J S...   # S within N, by document
     base2_corpus.py token-report --n-ids A --s-ids B --out J   # N's and S's token counts by part
     base2_corpus.py split-docs IN A B BYTES               # whole documents: the first BYTES to A, the rest to B
-    base2_corpus.py drill-watch --config C --chat DIR --job J --out DIR   # the rehearsal: training step against pushed step
+    base2_corpus.py drill-watch --chat DIR --job J --out DIR   # the rehearsal: training step against pushed step, on the VM only
     base2_corpus.py scn-ledger / stage-ledger ...         # the scenario stream's and a stage's records
     base2_corpus.py loadprobe --spec SPEC.json --out DIR  # a short run on the real ids: start-up time and peak memory
 
@@ -617,42 +617,30 @@ def watch_sample(chat, job):
             "live_minus_pushed": None if live is None or pushed is None else live - pushed, "courier": courier}
 
 
-def drill_watch(config, chat, job, out, interval, limit_s, push_limit_s=60.0):
-    """The rehearsal's record of what a forced stop costs. A stopped VM takes its files with it, so every `interval`
-    seconds the trainer's training step, its saved step and the courier's pushed step go to the store as one small
-    set, base2-build:watch/<job>/<this VM's start time>. Each push runs in a child that is ended after `push_limit_s`
-    seconds, so a record in the store is at most `interval` + `push_limit_s` seconds older than the stop, and a push
-    that hangs is a failed round, never a watcher that cannot end. Ends when the job ends or after `limit_s`; a failed
-    push is left for the next round and never stops training."""
+def drill_watch(chat, job, out, interval, limit_s):
+    """The rehearsal's record of the trainer against the courier: every `interval` seconds the trainer's training
+    step, its saved step and the courier's pushed step, appended to OUT/watch.jsonl on the VM. Nothing goes to the
+    store: the hub limits commits per repository, and a watcher that committed every 30 seconds used the whole
+    limit by itself (the rehearsal of 12 Nov 2026). The runner brings watch.jsonl home with the job's outputs when
+    the job ends; a stopped VM takes its copy along, and what a forced stop costs is read by the runner from the VM
+    just before the stop (runner_multi.py store_drill_evidence). Ends when the job ends or after `limit_s`."""
     import time
-    sys.path.insert(0, HERE)
-    import hf_store
     os.makedirs(out, exist_ok=True)
     boot = int(time.time())
-    prefix = f"watch/{job}/{boot}"
-    t0, n, pushed_n, store = time.time(), 0, 0, None
+    t0, n = time.time(), 0
     while True:
         try:
             status = open(os.path.join(chat, f"STATUS_{job}")).read().strip()
         except OSError:
             status = "NONE"
         rec = {**watch_sample(chat, job), "status": status, "vm_started": boot, "sample": n}
-        d = os.path.join(out, "push")
-        os.makedirs(d, exist_ok=True)
-        jsave(os.path.join(d, "watch.json"), rec)
         with open(os.path.join(out, "watch.jsonl"), "a", encoding="utf-8") as f:
             f.write(json.dumps(rec) + "\n")
-        try:
-            store = store or hf_store.open_store(config)
-            hf_store.bounded(lambda: bool(store.push_set("base2-build", prefix, d, kind="watch")), push_limit_s, store.b.token)
-            pushed_n += 1
-        except Exception as e:  # noqa: BLE001 the type alone; the next round tries again
-            print(f"drill-watch: push failed ({type(e).__name__})", flush=True)
         n += 1
         if status in ("FINISHED", "FAILED") or time.time() - t0 > limit_s:
             break
         time.sleep(interval)
-    jsave(os.path.join(out, "watch_summary.json"), {"job": job, "prefix": prefix, "samples": n, "pushed": pushed_n,
+    jsave(os.path.join(out, "watch_summary.json"), {"job": job, "vm_started": boot, "samples": n, "store_commits": 0,
                                                     "last": rec})
     return 0
 
@@ -785,11 +773,13 @@ def main(argv=None):
     p.add_argument("--out", required=True)
     p.add_argument("s", nargs="+")
     p = sub.add_parser("drill-watch")
-    for a in ("--config", "--chat", "--job", "--out"):
+    for a in ("--chat", "--job", "--out"):
         p.add_argument(a, required=True)
     p.add_argument("--interval", type=float, default=30.0)
     p.add_argument("--limit-s", type=float, default=4 * 3600.0)
-    p.add_argument("--push-limit-s", type=float, default=60.0, help="seconds before one push to the store is ended")
+    # A jobs file written before 12 Nov 2026 still passes these two; the watcher no longer opens the store.
+    p.add_argument("--config", default=None, help="ignored: the watcher writes on the VM only")
+    p.add_argument("--push-limit-s", type=float, default=None, help="ignored: nothing is pushed")
     p = sub.add_parser("token-report")
     for a in ("--n-ids", "--s-ids", "--out"):
         p.add_argument(a, required=True)
@@ -874,7 +864,7 @@ def main(argv=None):
         print(json.dumps(r))
         return 0 if r["subset"] else 1
     elif a.cmd == "drill-watch":
-        return drill_watch(a.config, a.chat, a.job, a.out, a.interval, a.limit_s, a.push_limit_s)
+        return drill_watch(a.chat, a.job, a.out, a.interval, a.limit_s)
     elif a.cmd == "token-report":
         r = token_report(a.n_ids, a.s_ids, a.max_rel)
         jsave(a.out, r)

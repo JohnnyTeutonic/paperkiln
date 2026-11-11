@@ -616,9 +616,20 @@ def test_every_store_call_of_the_data_script_has_a_limit():
     assert len(calls) == text.count("$CC/hf_store.py") == 2 and all('--limit "$XFER_LIMIT_S"' in ln for ln in calls), calls
     assert "XFER_LIMIT_S=${BASE2_STORE_XFER_LIMIT_S:-5400}" in text and "export BASE2_STORE_LIMIT_S=${BASE2_STORE_LIMIT_S:-300}" in text
     src = (CC / "base2_corpus.py").read_text()
-    for fn in ("def store_has(", "def store_verify(", "def drill_watch("):
+    for fn in ("def store_has(", "def store_verify("):
         body = src[src.index(fn):src.index("\ndef ", src.index(fn) + 1)]
         assert "hf_store.bounded(" in body, fn
+    # The watcher makes no store call at all (it used the repository's hourly commit limit by itself, 12 Nov 2026).
+    body = src[src.index("def drill_watch("):src.index("\ndef ", src.index("def drill_watch(") + 1)]
+    assert "hf_store" not in body and "open_store" not in body
+    # The build's commits against the hub's limit of 128 an hour: one a set, eight for the whole build and one for
+    # the rehearsal's corpus, each tried at most four times; and every push passes the VM's commit budget.
+    sets = [ln for ln in text.splitlines() if ln.strip().startswith("push_set ")]
+    assert len(sets) == 9 and sum("corpus/rehearsal" in ln for ln in sets) == 1
+    assert "for try in 1 2 3 4; do" in text and 4 * (len(sets) - 1) == 32 < 128 // 2
+    push = next(ln for ln in text.splitlines() if "python3 $CC/hf_store.py push" in ln) + text.split("python3 $CC/hf_store.py push", 1)[1].split("\n", 2)[1]
+    assert '--commit-budget "$COMMIT_BUDGET"' in push and '--commit-wait "$COMMIT_WAIT_S"' in push
+    assert "COMMIT_BUDGET=${BASE2_STORE_COMMIT_BUDGET:-60}" in text
 
 
 # ---------------------------------------------------------------- end to end on toy sources
