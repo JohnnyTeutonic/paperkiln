@@ -22,10 +22,15 @@ run (a daemon the boot starts beside jobs_vm.py, in a process group of its own).
   writing, and it is the one that stops, when it next reads the head. Otherwise the generation goes up as one
   commit against that head, with its campaign, job, spec and inputs hashes, epoch and boot id. A step already in
   the store is never written again.
-- after the push, a listing (a read, not a commit): the generation counts as verified by this VM only when a listing
-  taken AFTER its own commit shows every file of its manifest at the size and LFS sha256 hashed here. One that is
-  not whole is said loudly, never counts, and is left for the restore to skip; a listing that could not be read is
-  asked again before the next push.
+- after the push, a check (reads, not commits): the generation counts as verified by this VM only when a listing
+  taken AFTER its own commit shows every file of its manifest at the size and LFS sha256 hashed here, and one byte
+  of each large file can be read (the listing cannot see a pointer whose object is gone). A check that could not be
+  read (the listing, the manifest, a byte) is NOT a verdict: the step waits in "to_verify" and is asked again on
+  every pass, about every 30 seconds, also when it is the run's last generation, and the courier does not end while
+  one waits. Only a completed comparison that differs makes a generation "not whole": that is said loudly, written
+  to CHAT/COURIER_NOT_WHOLE, it never counts, and a restore skips it. A generation is written once, so a last
+  generation that is not whole is not pushed again: the runner sees it by the same check and halts the campaign
+  at once, by name (STORE_FINAL_GENERATION_NOT_WHOLE), with the two verified generations before it in the store.
 - prune, in the commit of the NEXT save (a save is ONE commit; the hub limits commits per repository): the
   generations behind two that this VM has verified, by that listing or by the download of its restore. The
   generation a commit adds never counts in that commit, so the branch holds three between two saves. Never at or
@@ -36,8 +41,11 @@ run (a daemon the boot starts beside jobs_vm.py, in a process group of its own).
   and branch creation of this VM is counted over a rolling hour in CHAT/store_commits.json (hf_store.CommitBudget;
   a ceiling for this writer, not for the repository). With the budget spent a generation or a mark waits for room,
   at most 15 minutes, and then goes, always the newest. The hub's HTTP 429 is waited out for its Retry-After, at
-  most 30 minutes. So the last generation of a run is sent within 45 minutes of the job's end at the latest, inside
-  the 90 the boot gives the courier before it takes the token away (boot_base2.sh, PK_COURIER_WAIT_S).
+  most 30 minutes for each refusal. These bound each wait, not the delivery: a second refusal starts a second
+  wait, a mark and a generation wait separately, and the pushes and their checks take their own time. What is
+  guaranteed is the end: the boot gives the courier its final window (5,400 s; boot_base2.sh) after the jobs have
+  ended and then takes the token away whether or not everything was delivered, and the runner halts a job whose
+  last generation is not safe when its settle window is over.
 - the push cap ("push_cap_bytes" in the config, 0 for none): the bytes counted are what the store held for this
   campaign when a release from home last measured it (CHAT/store_measure.json, written by the runner; before the
   first one "pushed_bytes_start", what the sessions before this one had counted) plus what this VM has pushed
@@ -178,6 +186,10 @@ class Courier:
         # runner's "pushed_bytes_start", then each measurement a release from home hands over) plus `pushed` (the
         # bytes this boot has pushed). An earlier courier of this same boot left both in the status file.
         prior = self.prior()
+        for n, s in self.s.items():  # what an earlier courier of this boot had pushed and not yet seen checked
+            was = (prior.get("jobs") or {}).get(n) or {}
+            s["to_verify"].update({int(step): None for step in was.get("to_verify") or []})
+            s["not_whole"].update(int(step) for step in was.get("not_whole") or [])
         self.stopping = False
         self.cap = int(self.cfg.get("push_cap_bytes") or 0)
         self.base = int(prior.get("counted_base", self.cfg.get("pushed_bytes_start") or 0) or 0)
@@ -487,6 +499,7 @@ class Courier:
         s["live_step"] = step
         if not self.contact(name) or s["fenced"]:
             return
+        self.reverify(name)  # on every pass, whatever follows: also when nothing new is to be pushed
         head = s["head"]
         if head is not None and step < head:
             if s["refused"] != step:
@@ -501,8 +514,6 @@ class Courier:
             return
         if self.over_cap() or self.no_room(name, f"generation g{step}"):
             return
-        for old, files in sorted(s["to_verify"].items()):  # a listing that could not be read after an earlier push
-            self.verify(name, old, files)
         try:
             staged = self.stage_generation(name, step, gen_dir)
         except VerifyError as e:
@@ -546,28 +557,45 @@ class Courier:
                   bytes_since_release=self.since_release, pruned=gone)
         self.verify(name, step, man["files"])
 
+    def reverify(self, name):
+        """The generations whose check could not be read: asked again, at most every 30 seconds."""
+        s = self.s[name]
+        if not s["to_verify"] or self.clock() < s.get("verify_next", 0):
+            return
+        s["verify_next"] = self.clock() + 30
+        for step, files in sorted(s["to_verify"].items()):
+            self.verify(name, step, files)
+
     def verify(self, name, step, files=None):
-        """After a push: a listing taken now, after the generation's own commit. Whole against the manifest hashed
-        here (every size, every LFS sha256): the generation counts as verified by this VM, and from the next save
-        on a prune may rely on it. Not whole: said loudly, recorded, and it never counts; nothing was removed on
-        its account, and a restore gives it up for the one before. Not read: asked again before the next push."""
+        """After a push: a listing taken now, after the generation's own commit, its manifest read again, and a
+        byte of each large file. Whole against the manifest hashed here: the generation counts as verified by
+        this VM, and from the next save on a prune may rely on it. A completed comparison that differs: NOT WHOLE,
+        said loudly, recorded (status, CHAT/COURIER_NOT_WHOLE), and it never counts; nothing was removed on its
+        account, and a restore gives it up for the one before. Anything that could not be read (a transport or a
+        store error at any of the three reads): no verdict; the step waits in to_verify and is asked again."""
         s = self.s[name]
         try:
             whole = self.call(lambda: self.store.listed_whole(s["branch"], step, files))
         except Exception as e:  # noqa: BLE001
+            if not isinstance(e, Stopping) and step not in s["to_verify"]:
+                self.log(f"{name}: g{step} is pushed; its check could not be read ({type(e).__name__}); it does not "
+                         "count yet and is asked again")
             s["to_verify"][step] = files
-            if not isinstance(e, Stopping):
-                self.log(f"{name}: g{step} is pushed; the listing that verifies it was not read "
-                         f"({type(e).__name__}); it does not count yet")
+            s["verify_next"] = self.clock() + 30
             return
         s["to_verify"].pop(step, None)
         if whole:
             s["verified"].add(step)
         else:
             s["not_whole"].add(step)
-            self.log(f"{name}: g{step} is NOT WHOLE in the store after its own commit (a file is short, missing or "
-                     "of another hash). It does not count as verified, nothing is removed on its account, and a "
-                     "resume takes the generation before it.")
+            live = self.live(name)
+            last = status(self.chat, name) in ("FINISHED", "FAILED") and bool(live) and live[0] == step
+            with open(os.path.join(self.chat, "COURIER_NOT_WHOLE"), "a") as f:
+                f.write(json.dumps({"job": name, "step": step, "last": last, "at": time.time()}) + "\n")
+            self.log(f"{name}: g{step} is NOT WHOLE in the store after its own commit (a file is short, missing, of "
+                     "another hash, or its bytes cannot be had). It does not count as verified, nothing is removed "
+                     "on its account, and a resume takes the generation before it."
+                     + (" It is the run's last generation: the runner halts the campaign." if last else ""))
         self.stat("verify", job=name, step=step, whole=bool(whole))
 
     def tick(self):
@@ -597,6 +625,8 @@ class Courier:
                 return False
             if s["fenced"] or self.capped:
                 continue
+            if s["to_verify"]:
+                return False  # a pushed generation whose check has not been read yet: asked again, not left
             live = self.live(name)
             if live and (not s["known"] or s["head"] is None or live[0] > s["head"]):
                 return False

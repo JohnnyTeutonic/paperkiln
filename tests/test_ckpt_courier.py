@@ -47,12 +47,12 @@ class Flaky(hf_store.DirBackend):
         super().__init__(root)
         self.fail_commits, self.fail_reads, self.commits, self.fail_marks = 0, False, 0, False
 
-    def commit(self, branch, adds, deletes, message, parent=None):
+    def commit(self, branch, adds, deletes, message, parent=None, **kw):
         if self.fail_commits or (self.fail_marks and branch == "main"):
             self.fail_commits = max(0, self.fail_commits - 1)
             raise ConnectionError(f"503 from the hub (Authorization: Bearer {TOKEN})")
         self.commits += 1
-        super().commit(branch, adds, deletes, message, parent=parent)
+        super().commit(branch, adds, deletes, message, parent=parent, **kw)
 
     def tree(self, branch, rev=None):
         if self.fail_reads:
@@ -929,9 +929,109 @@ def test_a_generation_that_arrives_damaged_never_counts_and_two_whole_ones_alway
     c.tick()
     assert store.steps("ckpt-N") == [500, 600, 700] and 700 not in c.s["pt"]["verified"] and list(c.s["pt"]["to_verify"]) == [700]
     store.listed_whole = real
+    at(clock.t + 31)
     S.make_gen(out, 800)
     c.tick()
     assert {700, 800} <= c.s["pt"]["verified"] and c.s["pt"]["to_verify"] == {} and store.steps("ckpt-N") == [600, 700, 800]
+
+
+def test_the_last_generations_check_is_asked_again_until_it_is_read_and_a_damaged_one_is_named(tmp_path):
+    """The second reviews (12 Nov 2026). (1) A check that could not be read is not a verdict. Here the listing
+    after g300's commit is good and its manifest cannot be fetched (the path the earlier test went round: it made
+    the whole check raise). The step waits in to_verify; it is not "not whole". (2) g300 is the run's LAST
+    generation: nothing new is ever pushed after it. The courier asks again on every pass all the same, does not
+    end while the check is unread, and ends once it reads whole. (3) A last generation that arrives damaged, or
+    whose object is gone though the listing shows its pointer, is named: status, log and CHAT/COURIER_NOT_WHOLE,
+    which the runner's own check turns into a halt. Every store call runs in a child, as on a VM."""
+    pytest.importorskip("huggingface_hub")
+    import requests
+    chat, root, store, c, logs, clock, at = hub_courier(tmp_path, per_hour=100, push_timeout=60)
+    out = str(chat / "pt")
+    for step in (100, 200):
+        S.make_gen(out, step)
+        c.tick()
+    api, real = store.b.api, store.b.api.hf_hub_download
+
+    class Asked:                                         # counted in a file: the calls are made in children
+        def __len__(self):
+            return len(read(tmp_path / "asked"))
+
+    asked = Asked()
+
+    def no_manifest_of_g300(**kw):
+        if kw["filename"] == "gens/g300/manifest.json":
+            with open(tmp_path / "asked", "a") as f:
+                f.write("x")
+            raise requests.ConnectionError("HTTPSConnectionPool(host='huggingface.co', port=443): Read timed out.")
+        return real(**kw)
+
+    api.hf_hub_download = no_manifest_of_g300
+    S.make_gen(out, 300)
+    (chat / "STATUS_pt").write_text("FINISHED\n")        # the run has ended: g300 is its last generation
+    c.tick()
+    s = c.s["pt"]
+    assert store.steps("ckpt-N") == [100, 200, 300] and s["head"] == 300 and len(asked) > 0
+    assert list(s["to_verify"]) == [300] and s["not_whole"] == set() and s["verified"] == {100, 200}
+    assert not (chat / "COURIER_NOT_WHOLE").exists() and not any("NOT WHOLE" in ln for ln in logs)
+    assert any("its check could not be read" in ln for ln in logs) and not stats(logs, "verify")[2:]
+    assert c.idle() is False                             # ended, pushed, and not left: the check is still owed
+    n = len(asked)
+    c.tick()                                             # within 30 s: not asked again yet
+    assert len(asked) == n
+    at(clock.t + 31)
+    c.tick()                                             # unread a second time: still no verdict, still not idle
+    assert len(asked) > n and list(s["to_verify"]) == [300] and c.idle() is False and s["not_whole"] == set()
+    st = json.loads((chat / "courier_status.json").read_text())["jobs"]["pt"]
+    assert st["to_verify"] == [300] and st["not_whole"] == [] and st["failures"] == 0
+    # A courier started again on this boot still owes the check.
+    again = cc.Courier(store, str(chat), JOBS, BR, log=logs.append, clock=clock, cfg=CFG, push_timeout=60)
+    assert list(again.s["pt"]["to_verify"]) == [300] and again.idle() is False
+    api.hf_hub_download = real
+    at(clock.t + 31)
+    c.tick()                                             # read: whole
+    assert s["to_verify"] == {} and s["verified"] == {100, 200, 300} and c.idle() is True
+    assert stats(logs, "verify")[-1] == {"what": "verify", "job": "pt", "step": 300, "whole": True}
+    assert len(hub_log(root)) == 5                       # the branch, the mark and three saves: the checks were reads
+
+    # (3a) The last generation arrives short.
+    chat, root, store, c, logs, clock, at = hub_courier(tmp_path / "b", per_hour=100, push_timeout=60)
+    out = str(chat / "pt")
+    for step in (100, 200):
+        S.make_gen(out, step)
+        c.tick()
+    (root / "damage.json").write_text(json.dumps({"path": "gens/g300/optim.safetensors", "bytes": 7}))
+    S.make_gen(out, 300)
+    (chat / "STATUS_pt").write_text("FINISHED\n")
+    c.tick()
+    s = c.s["pt"]
+    assert s["not_whole"] == {300} and s["to_verify"] == {} and s["verified"] == {100, 200}
+    marker = [json.loads(ln) for ln in (chat / "COURIER_NOT_WHOLE").read_text().splitlines()]
+    assert [(m["job"], m["step"], m["last"]) for m in marker] == [("pt", 300, True)]
+    assert any("It is the run's last generation: the runner halts the campaign." in ln for ln in logs)
+    assert c.idle() is True                              # nothing more this VM can do: written once, not pushed again
+    assert hub_fresh(root).pull_generation("ckpt-N", str(tmp_path / "r"))[0] == 200     # the two before it stand
+    # (3b) The commit lands whole and its object is gone afterwards: the listing shows the pointer, size and hash;
+    # only the byte read sees it.
+    chat, root, store, c, logs, clock, at = hub_courier(tmp_path / "c", per_hour=100, push_timeout=60)
+    out = str(chat / "pt")
+    S.make_gen(out, 100)
+    c.tick()
+    (root / "lose.json").write_text(json.dumps({"path": "gens/g200/optim.safetensors"}))
+    S.make_gen(out, 200)
+    c.tick()
+    s = c.s["pt"]
+    assert store.whole_in_listing("ckpt-N", 200, store.b.tree("ckpt-N")) is True       # what the listing alone says
+    assert s["not_whole"] == {200} and s["verified"] == {100}
+    assert json.loads((chat / "COURIER_NOT_WHOLE").read_text().splitlines()[0])["last"] is False
+    assert any("probe 404 from the object store: gens/g200/optim.safetensors" in ln for ln in (root / "calls.log").read_text().splitlines())
+    seen = []
+    for step in (300, 400, 500, 600):                    # training goes on: g200 never counts for a removal
+        S.make_gen(out, step)
+        c.tick()
+        seen.append(store.steps("ckpt-N"))
+    assert seen == [[100, 200, 300], [100, 200, 300, 400],     # behind g100 alone, then behind g100 and g300: nothing
+                    [300, 400, 500], [400, 500, 600]]          # behind g300 and g400; behind g400 and g500
+    assert s["verified"] == {100, 300, 400, 500, 600} and s["not_whole"] == {200}
 
 
 def test_the_budget_is_strict_while_an_essential_commit_may_wait_and_bounded_when_it_may_not(tmp_path):
