@@ -1366,10 +1366,13 @@ def store_fetch_mark(st, jobs):
 
 def store_durable(st, jobs, j):
     """A training job that has FINISHED on the VM is home only when what it leaves is safe: its final generation is
-    in the store, whole by the listing against the manifest the VM wrote from its hashed bytes; every mark at or
-    below the final step is in the store; and every such mark is home, verified by sha256. Until then the state is
-    "finished, durability pending": the session stays (a lost one is recreated and the job resumes to push again),
-    and after --store-settle-min minutes the campaign halts for a person instead of being certified."""
+    in the store, whole by the courier's own check made from here (the listing against the manifest the VM wrote
+    from its hashed bytes, and a byte read of each large file); every mark at or below the final step is in the
+    store; and every such mark is home, verified by sha256. Until then the state is "finished, durability
+    pending": the session stays (a lost one is recreated and the job resumes to push again), and after
+    --store-settle-min minutes the campaign halts for a person instead of being certified. A check that could not
+    be read is pending, not a verdict. A final generation that is in the store and NOT whole halts the campaign at
+    once (STORE_FINAL_GENERATION_NOT_WHOLE): it is written once and waiting cannot mend it."""
     n, now = j["name"], time.time()
     js, branch = st.job(n), store_branches(jobs)[n]
     final = ((j.get("spec") or {}).get("train") or {}).get("steps") or js.get("final_step")
@@ -1384,12 +1387,20 @@ def store_durable(st, jobs, j):
         store = store_open(jobs)
 
         def look():
-            tree = store.b.tree(branch) or {}
-            ok = final in store.steps(branch, tree) and store.whole_in_listing(branch, final, tree) \
-                and store.read_manifest(branch, f"gens/g{final}").get("job") == n
-            return [ok, store.mark_steps(n)]
+            # The courier's own check, made from home: the listing, the manifest read again, and a byte of each
+            # large file. An error (anything unread) leaves the job pending; False is a completed comparison.
+            listed = final in store.steps(branch, store.b.tree(branch) or {})
+            ok = listed and store.listed_whole(branch, final) and store.read_manifest(branch, f"gens/g{final}").get("job") == n
+            return [bool(ok), store.mark_steps(n), listed]
 
-        gen_ok, marks = store_call(look)
+        gen_ok, marks, listed = store_call(look)
+        if listed and not gen_ok:
+            # In the store and not whole: a generation is written once, so waiting cannot mend it. Halt now, by
+            # name, with the reason; the two verified generations before it are in the store.
+            store_halt("STORE_FINAL_GENERATION_NOT_WHOLE", job=n, branch=branch, step=final,
+                       why="the run's last generation is in the store and is not whole (a file is short, missing, of "
+                           "another hash or job, or its bytes cannot be had); it will not be written again")
+            raise SystemExit(3)
         want = [s for s in j.get("snapshot_steps", []) if s <= final]
         if not gen_ok:
             missing.append(f"final generation g{final} not whole in the store")
@@ -1590,6 +1601,14 @@ def store_release(st, jobs, final=False):
         log(f"store: release: the lock was not taken (another releaser holds it, or main or home's commit budget "
             f"gave no room); {again}")
         return
+    if r.get("ledgers_unread"):
+        # A ledger that could not be read: nothing was deleted, and what it holds is in nobody's count. The
+        # guard's count stays as it is (the courier's own, which only grows) until a release reads them all.
+        rec["unread"] = rec.get("unread", 0) + 1
+        st.save()
+        log(f"store: release: {r['ledgers_unread']} ledger(s) could not be read; nothing was deleted and the storage "
+            f"guard's count is left as it is; {again}")
+        return
     names, ns = store_branches(jobs), STORE.get("mark_ns", "")
     import hf_store
     mine = hf_store.campaign_bytes(r, names.values(), [ns + n for n in names])  # each object once
@@ -1638,7 +1657,7 @@ BRING_HOME = (
     "import base64, glob, json, os\n"
     "c = '/content/chat'\n"
     "names = ['courier.log', 'boot.log', 'courier_status.json', 'store_inputs.json', 'COURIER_FENCED', 'COURIER_CAPPED',\n"
-    "         'jobs.log', 'watch/watch.jsonl']\n"
+    "         'COURIER_NOT_WHOLE', 'jobs.log', 'watch/watch.jsonl']\n"
     "names += sorted('store_restore/' + os.path.basename(p) for p in glob.glob(c + '/store_restore/*.json'))[:24]\n"
     "out = {{}}\n"
     "for n in names:\n"

@@ -703,6 +703,65 @@ def test_a_failure_in_the_first_launch_still_removes_the_token_and_stops_the_ses
         assert TOKEN not in text
 
 
+PREFLIGHT_BOOM_WRAP = run_eq.WRAP.replace("rm.main()\n", """def boom(*a, **kw):
+    raise RuntimeError("the store could not be asked")
+rm.store_preflight = boom
+rm.main()
+""")
+
+
+def test_a_failure_before_any_session_exists_ends_cleanly(tmp_path):
+    """The other side of the first launch's clean-up: the failure comes before a session was ever created. The
+    clean-up runs with nothing to clean: no session is created, the stop finds none and is not an alarm (no
+    STOP_UNRESOLVED, exit 1 for the failure itself, not 4), and the pid file goes."""
+    work = tmp_path
+    p, calls = run_store(work, {}, extra=store_args(work, "--store-first-start"), wrap=PREFLIGHT_BOOM_WRAP)
+    log = log_of(work)
+    assert p.returncode == 1 and "RuntimeError: the store could not be asked" in p.stderr, (p.stderr[-1500:], log[-1500:])
+    assert news(calls) == 0 and not any(ln.startswith('["upload"') for ln in calls.splitlines())
+    assert not (work / "state" / "STOP_UNRESOLVED").exists() and not (work / "state" / "HALTED").exists()
+    assert not (work / "state" / "runner.pid").exists()
+    lines = [ln[15:] for ln in log.splitlines()]
+    assert lines[-1] == "session stopped; runner exiting" and "store: session files NOT brought home" not in log
+    assert not (work / "state" / "sessions").exists() and not (work / "fake" / "vm").exists()
+    for text in (calls, log, p.stdout, p.stderr):
+        assert TOKEN not in text
+
+
+def test_a_last_generation_that_is_not_whole_halts_the_campaign_at_once(tmp_path):
+    """The run's last generation arrives short on the hub (its commit is accepted). It is written once, so nothing
+    will mend it. The courier names it; the runner's own check, the same one made from home (the listing, the
+    manifest, a byte of each large file), finds it in the store and not whole and halts at once, by name, instead
+    of waiting out the settle window (95 minutes of an idle session) for something that cannot come."""
+    pytest.importorskip("huggingface_hub")
+    work = tmp_path
+    hub = work / "hub"
+    hub.mkdir()
+    (hub / "damage.json").write_text(json.dumps({"path": "gens/g300/model.safetensors", "bytes": 1000}))
+    extra = [*STORE_ARGS, "--store-repo", "someone/base2-store", "--store-token-file", str(work / "token"), "--store-first-start"]
+    p, calls = run_store(work, {}, jobs=reh_jobs(), extra=extra, more_env=hub_env(hub))
+    log = log_of(work)
+    assert p.returncode == 3, (p.stderr[-2000:], log[-3000:])
+    halted = json.loads((work / "state" / "HALTED").read_text())
+    assert halted["kind"] == "STORE_FINAL_GENERATION_NOT_WHOLE" and (halted["job"], halted["step"], halted["branch"]) == ("pt", 300, "ckpt-N")
+    assert "is not whole" in halted["why"] and "durability pending" not in log        # at once: no settle window
+    state = state_of(work)
+    assert state["jobs"]["pt"]["home"] is False and not state.get("campaign_home")
+    assert calls.rstrip().splitlines()[-1].startswith('["stop"') and json.loads((work / "fake" / "fake.json").read_text())["alive"] is False
+    s1 = work / "state" / "sessions" / "launch01"
+    marker = [json.loads(ln) for ln in (s1 / "COURIER_NOT_WHOLE").read_text().splitlines()]
+    assert [(m["job"], m["step"], m["last"]) for m in marker] == [("pt", 300, True)]
+    st1 = json.loads((s1 / "courier_status.json").read_text())["jobs"]["pt"]
+    assert st1["not_whole"] == [300] and st1["verified"] == [100, 200] and st1["to_verify"] == []
+    sys.path.insert(0, str(ROOT / "tests"))
+    store = hf_store.open_store({"repo": "someone/base2-store", "token_file": str(work / "token")},
+                                api=__import__("hub_standin").DiskApi(str(hub)))
+    assert store.steps("ckpt-N") == [100, 200, 300] and store.verify_by_download("ckpt-N", 200) and store.verify_by_download("ckpt-N", 100)
+    assert store.pull_generation("ckpt-N", str(work / "back"))[0] == 200              # what a person resumes from
+    for text in (calls, log, json.dumps(state), p.stdout, p.stderr):
+        assert TOKEN not in text
+
+
 def test_the_runner_refuses_a_grace_or_a_settle_window_that_is_too_short(tmp_path):
     """--store-release-grace-s under the store's minimum (a restore may be reading what was just removed), and a
     --store-settle-min shorter than the courier's final delivery window and a tick, are refused before anything is
