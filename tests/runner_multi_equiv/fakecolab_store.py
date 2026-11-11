@@ -17,6 +17,7 @@ import json
 import os
 import shutil
 import sys
+import time
 import uuid
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -91,7 +92,12 @@ def after_step():
                                  state=open(os.path.join(out, "state.txt")).read(), flat_links=False)
     if d.get("courier_off_from") and d.get("status_calls", 0) >= d["courier_off_from"]:
         return
-    ckpt_courier.Courier(hf_store.open_store(cfg, log=note, delay=0), CHAT, jobs, branches, log=note, cfg=cfg).tick()
+    # FAKE_VM_LEDGER_AGE_S: the time this VM writes into a removed generation's ledger lies that far back, so a test
+    # of the release from home need not wait out the grace period.
+    age = float(os.environ.get("FAKE_VM_LEDGER_AGE_S", "0"))
+    cfg.setdefault("commit_ledger", os.path.join(CHAT, "store_commits.json"))  # as ckpt_courier.main() sets it
+    store =hf_store.open_store(cfg, log=note, delay=0, clock=lambda: time.time() - age)
+    ckpt_courier.Courier(store, CHAT, jobs, branches, log=note, cfg=cfg).tick()
     # "trainer_ahead": N. A real trainer is past its last save when anyone looks: its event stream then ends on a
     # step above the step it saved and the courier pushed. The fake's trainer saves at every step it takes, so the
     # scenario writes that one later `step` event into the job's own events.jsonl, after the courier's pass.

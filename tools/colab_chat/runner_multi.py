@@ -1083,6 +1083,11 @@ STORE_BOOT = "tools/colab_chat/boot_base2.sh"
 STORE_TOKEN_VM = "/content/chat/upload/store_token"  # on the VM's disk for the seconds until the next call moves it
 STORE_CONFIG_VM = "/content/chat/store.json"
 STORE_BOOT_FAILURES = 2
+# The courier's final delivery window (--store-courier-wait-s; the same number is boot_base2.sh's default, and the
+# boot reads the runner's from store.json). After its jobs end a VM's courier has this long to push the last
+# generation and marks (a budget wait is at most 15 minutes and a 429's at most 30) before the boot takes the token
+# away. --store-settle-min is never shorter than this and a tick.
+STORE_COURIER_WAIT_S = 5400
 _STORE = {}
 
 
@@ -1117,9 +1122,17 @@ def store_config(a, ap):
         else float(doc.get("store_release_every_min") or 120)
     if every <= 0 or a.store_commit_budget_per_hour < 0 or a.store_home_commit_budget_per_hour < 0:
         ap.error("--store-release-every-min must be above 0, and the commit budgets 0 (no limit) or above")
+    if a.store_release_grace_s < hf_store.MIN_RELEASE_GRACE_S:
+        ap.error(f"--store-release-grace-s is at least {hf_store.MIN_RELEASE_GRACE_S}: a restore may be reading a "
+                 "generation that was just removed")
+    if a.store_courier_wait_s < 0 or a.store_settle_min * 60 < a.store_courier_wait_s + TICK:
+        ap.error(f"--store-settle-min is at least {(a.store_courier_wait_s + TICK) / 60:.0f}: the VM's courier has "
+                 f"{a.store_courier_wait_s:.0f} s after its jobs end to deliver the last generation "
+                 "(--store-courier-wait-s), and the runner must not halt before that window and one tick are over")
     return {"repo": a.store_repo, "repo_type": a.store_repo_type, "reclaim": a.store_release_storage,
             "release_grace_s": a.store_release_grace_s, "release_every_min": every,
             "commit_budget": a.store_commit_budget_per_hour, "home_commit_budget": a.store_home_commit_budget_per_hour,
+            "courier_wait_s": a.store_courier_wait_s,
             "branch_suffix": "-" + slug if slug else "", "mark_ns": slug + "." if slug else "",
             "push_cap_bytes": int(cap_gb * 1e9),
             "min_push_interval_s": a.store_min_push_interval, "campaign": a.store_campaign or a.name,
@@ -1235,6 +1248,9 @@ def store_send(st, jobs):
            # A VM never releases storage (store_release does, from home), so its config carries no release
            # setting. Its commits pass a budget: the hub limits commit creation per repository.
            "store_commit_budget_per_hour": STORE.get("commit_budget", 0),
+           # The courier's final delivery window, which the boot reads: after the VM's jobs end the courier has
+           # this long to push the last of it before the boot takes the token away.
+           "courier_wait_s": STORE.get("courier_wait_s", STORE_COURIER_WAIT_S),
            # The storage guard: the cap, and what is counted for this campaign so far: the courier's last word, or
            # the last measurement a release from home took (the new VM's courier counts on from there).
            "push_cap_bytes": STORE.get("push_cap_bytes", 0), "pushed_bytes_start": st.d.get("store_pushed_bytes", 0),
@@ -1534,14 +1550,17 @@ def store_release(st, jobs, final=False):
     by difference over every branch, sparing objects younger than --store-release-grace-s. No VM releases: a
     release costs two commits (the lock and its removal), and the hub limits commits per repository. Several
     runners on one repo (three arms) each keep this timer; the lock arbitrates, and a lock that is not taken
-    (held by another, or no room in home's commit budget) is left until the next turn of the timer.
+    (held by another, or no room in home's commit budget) is left until the next turn of the timer. A release
+    deletes only what a commit removed and recorded in a ledger (hf_store.release_report): never an object on
+    main, never another campaign's live object, never an upload whose commit has not come.
 
-    A release that ran also measured the store. What is counted for this campaign from then on: the LFS bytes its
-    branches and its marks name, plus every object on the store that no branch names (of any campaign: too young
-    to delete, so still stored). That number replaces the storage guard's count: in state.json, and on the VM
+    A release that ran also measured the store. What is counted for this campaign from then on, each LFS object
+    once: what its own branches name under gens/, its own marks, and what its own branches' ledgers name that is
+    still stored. Nothing a branch inherited from main, nothing of another campaign, no object that belongs to
+    nobody. That number replaces the storage guard's count: in state.json, and on the VM
     (CHAT/store_measure.json, with the courier's own pushed-bytes figure as read just before the release, so
-    what it has pushed since is counted on top). Never raises: a release that fails is tried again at the next
-    turn."""
+    what it has pushed since is counted on top). It is this campaign's share, not the account's usage. Never
+    raises: a release that fails is tried again at the next turn."""
     if not STORE["reclaim"]:
         return
     now, every = time.time(), STORE["release_every_min"] * 60
@@ -1572,18 +1591,23 @@ def store_release(st, jobs, final=False):
             f"gave no room); {again}")
         return
     names, ns = store_branches(jobs), STORE.get("mark_ns", "")
-    mine = (sum(r["tree_bytes"].get(b, 0) for b in names.values()) + sum(r["mark_bytes"].get(ns + n, 0) for n in names)
-            + r["unnamed_bytes"])
+    import hf_store
+    mine = hf_store.campaign_bytes(r, names.values(), [ns + n for n in names])  # each object once
     seq = st.d["store_measure_seq"] = st.d.get("store_measure_seq", 0) + 1
     rec.update(count=rec["count"] + 1, objects=rec["objects"] + r["objects"], bytes=rec["bytes"] + r["bytes"],
                last={"at": now, "objects": r["objects"], "bytes": r["bytes"], "stored_bytes": r["stored_bytes"],
-                     "unnamed_bytes": r["unnamed_bytes"], "counted_bytes": mine, "final": final})
+                     "orphan_bytes": r["orphan_bytes"], "orphan_objects": r["orphan_objects"],
+                     "pending_bytes": r["pending_bytes"], "counted_bytes": mine, "final": final})
     st.d["store_pushed_bytes"] = mine
     st.save()
     log(f"store: release: {r['objects']} objects deleted, {r['bytes']} bytes freed; the store holds {r['stored_bytes']} "
-        f"bytes, {r['unnamed_bytes']} of them named by no branch; {mine} counted for this campaign")
+        f"bytes; {r['orphan_objects']} objects ({r['orphan_bytes']} bytes) are in no branch and no ledger and are left "
+        f"alone; {mine} counted for this campaign" + (f"; {r['unknown_sizes']} objects of unknown size" if r["unknown_sizes"] else ""))
     log("store: stat " + json.dumps({"what": "release", "objects": r["objects"], "bytes": r["bytes"],
-                                     "stored_bytes": r["stored_bytes"], "unnamed_bytes": r["unnamed_bytes"],
+                                     "stored_bytes": r["stored_bytes"], "orphan_bytes": r["orphan_bytes"],
+                                     "orphan_objects": r["orphan_objects"], "pending_bytes": r["pending_bytes"],
+                                     "ledgers": r["ledgers"], "ledgers_done": r["ledgers_done"],
+                                     "unknown_sizes": r["unknown_sizes"],
                                      "counted_bytes": mine, "grace_s": STORE["release_grace_s"], "final": final,
                                      "seconds": round(time.time() - t0, 2)}, sort_keys=True))
     if isinstance(c.get("pushed_bytes"), int) and c.get("boot_id"):
@@ -1614,7 +1638,7 @@ BRING_HOME = (
     "import base64, glob, json, os\n"
     "c = '/content/chat'\n"
     "names = ['courier.log', 'boot.log', 'courier_status.json', 'store_inputs.json', 'COURIER_FENCED', 'COURIER_CAPPED',\n"
-    "         'jobs.log']\n"
+    "         'jobs.log', 'watch/watch.jsonl']\n"
     "names += sorted('store_restore/' + os.path.basename(p) for p in glob.glob(c + '/store_restore/*.json'))[:24]\n"
     "out = {{}}\n"
     "for n in names:\n"
@@ -1632,7 +1656,8 @@ def store_bring_home(st, when):
     HOME/sessions/launchNN/, because a stopped VM takes it along. courier.log (each push's bytes and seconds, each
     restore pull's, HTTP 429 counts, each release's objects and bytes freed), boot.log (the build, inputs and
     restore times, the VM's own TOKEN_GONE), courier_status.json, store_restore/*.json, and store_inputs.json,
-    jobs.log and the courier's FENCED and CAPPED markers when they exist. Bounded: one exec with a time limit, the
+    jobs.log, a rehearsal's watch/watch.jsonl (the watcher's samples of this session, which a forced stop would
+    otherwise take along) and the courier's FENCED and CAPPED markers when they exist. Bounded: one exec with a time limit, the
     last 300 KB of each file. None of these files holds the token; its text is removed here all the same. Never
     raises: nothing here may keep a stop from happening."""
     try:
@@ -2040,29 +2065,33 @@ def main():
                     help="seconds between a job's generation pushes (0: every save), for a store that limits commits")
     ap.add_argument("--store-release-storage", action="store_true",
                     help="release storage from home: every --store-release-every-min minutes, and at the campaign's "
-                         "end, this runner deletes for good the LFS objects no branch of the repo names, under the "
-                         "store's release lock (off: safe to leave off; no VM ever releases). Several runners on one "
-                         "repo may each carry the flag: the lock lets one release at a time. NOT safe unless "
-                         "--store-release-grace-s is longer than every writer's slowest upload-to-commit time (a "
-                         "courier's push limit, 1800 s): the lock is between releasers only")
+                         "end, this runner deletes for good the LFS objects of generations that a commit removed "
+                         "and recorded in a ledger, under the store's release lock (off: safe to leave off; no VM "
+                         "ever releases). Never an object a branch names, an object on main, or an upload that is "
+                         "not committed yet; those in no branch and no ledger are reported and left (by hand: "
+                         "hf_store.py release --orphans, with no VM writing). Several runners on one repo may each "
+                         "carry the flag: the lock lets one release at a time")
     ap.add_argument("--store-release-every-min", type=float, default=None,
                     help="minutes between this runner's releases (each costs two commits of the repo's hourly limit). "
                          "Default: the jobs file's \"store_release_every_min\", else 120")
     ap.add_argument("--store-release-grace-s", type=float, default=7200,
-                    help="release spares objects younger than this, which is all that protects a writer's upload that "
-                         "is not yet committed. Never below a courier's push limit (1800 s; the rehearsal runs at that, "
-                         "with one writer on the store)")
-    ap.add_argument("--store-commit-budget-per-hour", type=int, default=30,
-                    help="commits an hour one VM may send to the store (its courier and data job together; the hub "
-                         "allows a repository 128 an hour, all writers together). 0: no limit")
-    ap.add_argument("--store-home-commit-budget-per-hour", type=int, default=20,
-                    help="commits an hour this runner may send to the store (the release's lock and unlock). 0: no limit")
+                    help="release leaves alone what a ledger younger than this names: the time a restore that listed a "
+                         "generation just before its removal has to finish downloading it. Refused under 600")
+    ap.add_argument("--store-commit-budget-per-hour", type=int, default=24,
+                    help="commits and branch creations an hour ONE VM may send to the store (its courier and data "
+                         "job together). A ceiling for that writer, not for the repository: the hub allows a "
+                         "repository 128 an hour, all writers together, and nothing ties the VMs' counts together. "
+                         "The defaults sum under it for three arms (3 x 24 + 3 x 8 = 96). 0: no limit")
+    ap.add_argument("--store-home-commit-budget-per-hour", type=int, default=8,
+                    help="commits an hour THIS runner may send to the store (the release's lock and unlock; a quarter "
+                         "is kept back, so three releases an hour at the most). Per runner, not per repository. 0: no limit")
     ap.add_argument("--store-push-cap-gb", type=float, default=None,
                     help="storage guard: counted are the bytes the store held for this campaign when a release from "
-                         "home last measured it (its branches, its marks, and every object no branch names yet), plus "
-                         "what its courier has pushed since; without a release, everything pushed. At this many GB "
-                         "the courier stops pushing and the runner halts (STORE_PUSH_CAP). Default: the jobs file's "
-                         "\"store_push_cap_gb\", else 0 (off)")
+                         "home last measured it (each object once: what its branches name under gens/, its marks, "
+                         "and what its ledgers name that is still stored), plus what its courier has pushed since; "
+                         "without a release, everything pushed. This campaign's share, not the account's usage. At "
+                         "this many GB the courier stops pushing and the runner halts (STORE_PUSH_CAP). Default: the "
+                         "jobs file's \"store_push_cap_gb\", else 0 (off)")
     ap.add_argument("--store-first-start", action="store_true",
                     help="admit a job whose branch holds no generation, and that home has never seen pushed, to start from step 0")
     ap.add_argument("--store-campaign", default=None,
@@ -2073,8 +2102,13 @@ def main():
     ap.add_argument("--store-stall-min", type=float, default=60,
                     help="say so loudly when a running job's store step has not advanced for this many minutes (0: never)")
     ap.add_argument("--store-stall-halt", action="store_true", help="halt the arm on that alarm")
-    ap.add_argument("--store-settle-min", type=float, default=90,
-                    help="minutes a finished job may stay 'durability pending' before the campaign halts")
+    ap.add_argument("--store-settle-min", type=float, default=95,
+                    help="minutes a finished job may stay 'durability pending' before the campaign halts. Never under "
+                         "the courier's final delivery window (--store-courier-wait-s) and a tick")
+    ap.add_argument("--store-courier-wait-s", type=float, default=STORE_COURIER_WAIT_S,
+                    help="the courier's final delivery window: seconds a VM's courier has, after its jobs have ended, "
+                         "to push the last generation and marks before the boot removes the token (sent to the VM; "
+                         "the courier's own waits are at most 15 minutes for its budget and 30 for a 429)")
     ap.add_argument("--store-boot-limit-min", type=float, default=75,
                     help="minutes without a boot status after which the boot counts as failed and the session is stopped")
     a = ap.parse_args()
@@ -2143,11 +2177,13 @@ def main():
 
     deadline = resolve_deadline(a.max_hours, a.deadline_utc, time.time())
     T.deadline = deadline  # transport must enforce it while a transfer blocks the main loop
-    if listed() is None and not st.d.get("endpoint"):
-        if not launch(st, a.commit, a.jobs, jobs, uploads):
-            if time.time() < deadline and not T.over_budget(st):
-                sleep_tick(deadline)
     try:
+        # The first launch is inside the clean-up below too: a failure after the session exists (its preparation,
+        # the token's hand-over) still takes the token off the VM and stops the session, with confirmation.
+        if listed() is None and not st.d.get("endpoint"):
+            if not launch(st, a.commit, a.jobs, jobs, uploads):
+                if time.time() < deadline and not T.over_budget(st):
+                    sleep_tick(deadline)
         while time.time() < deadline:
             why = T.over_budget(st)
             if why:

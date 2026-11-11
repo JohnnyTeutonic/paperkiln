@@ -102,7 +102,7 @@ STORE_JOBS = {"jobs": [
 STORE_ARGS = ["--ckpt-store", "hf", "--boot-script", "tools/colab_chat/boot_base2.sh"]
 
 
-def run_store(work, scenario, jobs=STORE_JOBS, extra=(), hours="0.2", fresh=True, commit=COMMIT, more_env=None):
+def run_store(work, scenario, jobs=STORE_JOBS, extra=(), hours="0.2", fresh=True, commit=COMMIT, more_env=None, wrap=None):
     """One runner run on the fake VM with the store. fresh=False: again on the same folder (a watchdog's restart)."""
     layout, fake = work / "repo" / "tools" / "colab_chat", work / "fake"
     if fresh:
@@ -121,7 +121,7 @@ def run_store(work, scenario, jobs=STORE_JOBS, extra=(), hours="0.2", fresh=True
         tok = work / "token"
         tok.write_text(TOKEN + "\n")
         tok.chmod(0o600)
-        (work / "wrap.py").write_text(run_eq.WRAP)
+        (work / "wrap.py").write_text(wrap or run_eq.WRAP)
     env = dict(os.environ, FAKE_ROOT=str(fake), FAKE_JOBS=str(layout / "eqjobs.json"), FAKE_STORE_TOOLS=str(layout),
                CUDA_VISIBLE_DEVICES="", PK_STORE_TOKEN_DIR=str(work / "shm"))  # the VM's tmpfs, for the fake
     env.update(more_env or {})
@@ -186,10 +186,10 @@ def test_with_the_store_nothing_of_a_checkpoint_crosses_the_home_link(tmp_path):
     assert "pt: mark snapshot at step 100 fetched from the store" in log
     home = work / "art" / "pt" / "rung_snapshots" / "rung_100" / "model.safetensors"
     assert hashlib.sha256(home.read_bytes()).hexdigest() == w100 == state["store_marks"]["pt/rung_100"]["sha256"]
-    # The store at the end: two generations, the last the run's end, written under the two launches' epochs, and
+    # The store at the end: three generations, the last the run's end, written under the two launches' epochs, and
     # the mark. Home was told the job is home only with these in place.
     store = hf_store.open_store({"repo": f"dir:{repo}"})
-    assert store.steps("ckpt-N") == [200, 300] and store.mark_steps("pt") == [100]
+    assert store.steps("ckpt-N") == [100, 200, 300] and store.mark_steps("pt") == [100]
     m200, m300 = (store.read_manifest("ckpt-N", f"gens/g{s}") for s in (200, 300))
     assert (m200["epoch"], m300["epoch"]) == (1, 2) and m200["boot_id"] != m300["boot_id"]
     assert m300["campaign"] == "pk-store" and m300["job"] == "pt" and not state.get("durability_pending")
@@ -199,7 +199,8 @@ def test_with_the_store_nothing_of_a_checkpoint_crosses_the_home_link(tmp_path):
     assert cfg["epoch"] == 2 and cfg["min_step"] == {"pt": 200} and cfg["first_start"] == []
     assert cfg["min_push_interval_s"] == 0 and cfg["repo_type"] == "dataset"
     # A VM is told nothing about release (it never releases), and it is told its commit budget.
-    assert "reclaim" not in cfg and "release_grace_s" not in cfg and cfg["store_commit_budget_per_hour"] == 30
+    assert "reclaim" not in cfg and "release_grace_s" not in cfg and cfg["store_commit_budget_per_hour"] == 24
+    assert cfg["courier_wait_s"] == 5400                    # the courier's final delivery window, which the boot reads
     # Home commits nothing without --store-release-storage, and every commit on the store is a generation or a mark.
     sent = [json.loads(ln)["message"] for ln in (repo / "commits.jsonl").read_text().splitlines()]
     assert sorted({m.split(":")[0] for m in sent}) == ["generation", "mark"] and "store_releases" not in state
@@ -307,7 +308,8 @@ def test_a_stalled_store_is_said_loudly_and_can_halt_the_arm(tmp_path):
     work = tmp_path / "log"
     work.mkdir()
     p, calls = run_store(work, {"courier_off_from": 5}, extra=store_args(work, "--store-first-start", "--store-stall-min", "0.00001",
-                                                                        "--store-settle-min", "0.00001"))
+                                                                        "--store-settle-min", "0.00001",
+                                                                        "--store-courier-wait-s", "0"))
     log = log_of(work)
     assert "pt: STORE STALLED: no new generation in the store for" in log and "(step 100) while the job runs" in log
     # It trained to the end with nothing newer in the store: finished, but never counted home, and halted.
@@ -456,7 +458,7 @@ def test_the_rehearsal_comes_home_without_a_gguf_with_its_session_files_and_its_
     assert stat_lines(c2, "push")[-1]["step"] == 300
     st1 = json.loads((s1 / "courier_status.json").read_text())
     assert st1["jobs"]["pt"]["pushed_step"] == 200 and st1["http_429"] == 0 and "releases" not in st1
-    assert st1["pushed_bytes"] == st1["bytes_since_release"] and st1["commit_budget_per_hour"] == 30
+    assert st1["pushed_bytes"] == st1["bytes_since_release"] and st1["commit_budget_per_hour"] == 24
     r2 = json.loads((s2 / "store_restore__pt.json").read_text())
     assert r2["store_step"] == 200 and r2["placed"] and r2["pull_bytes"] > fakecolab.BIG and r2["pull_seconds"] >= 0
     assert "boot_base2 (fake) launch 2" in (s2 / "boot.log").read_text()
@@ -523,80 +525,201 @@ def test_the_push_cap_halts_the_campaign_by_name(tmp_path):
     assert p.returncode == 0 and state_of(work2)["campaign_home"], log_of(work2)[-2000:]
 
 
+def hub_env(hub, **more):
+    return {"HUB_STANDIN_ROOT": str(hub), **more,
+            "PYTHONPATH": f"{ROOT / 'tests' / 'hub_standin_site'}{os.pathsep}{os.environ.get('PYTHONPATH', '')}".rstrip(os.pathsep)}
+
+
+def earlier_campaign(hub, tmp):
+    """What the repo holds before a fresh attempt of the rehearsal's part b: main's seed weights; an earlier
+    attempt's branch with two generations and its mark (no ledgers: it ran on the code before them); and an object
+    that attempt uploaded and never committed. Returns (a store on it, the bytes of each of those three)."""
+    sys.path.insert(0, str(ROOT / "tests"))
+    import hub_standin
+    import store_standin as S
+    old = hf_store.Store(hf_store.HfBackend("someone/base2-store", "dataset", TOKEN, api=hub_standin.DiskApi(str(hub))),
+                         log=lambda m: None, delay=0, mark_ns="base2-reh-b1.")
+    seed = tmp / "seed"
+    seed.mkdir()
+    (seed / "tc_b1_r1.safetensors").write_bytes(b"seed weights " * 500)
+    old.push_set("main", "seed/weights", str(seed))
+    branch = "ckpt-Rb-base2-reh-b1"
+    for step in (100, 200):
+        S.make_gen(str(tmp / "oldjob"), step, seed=5)
+        old.push_generation(branch, "pt_reh_b", step, str(tmp / "oldjob" / "ckpt_gen" / f"g{step}"))
+    mark = tmp / "oldmark"
+    mark.mkdir()
+    (mark / "model.safetensors").write_bytes(S.state_at(100, 5)[0])
+    (mark / "state.txt").write_text("100\n{}\n")
+    old.push_mark("pt_reh_b", 100, str(mark))
+    (hub / "limit.json").write_text(json.dumps({"per_window": 0, "retry_after": 1}))
+    left = tmp / "left"
+    left.mkdir()
+    (left / "never_committed.safetensors").write_bytes(b"an upload whose commit never came " * 100)
+    with pytest.raises(hf_store.RateLimited):
+        old.push_set(branch, "x", str(left))
+    (hub / "limit.json").unlink()
+    sizes = {"seed": 13 * 500, "kept": sum(len(b) for s in (100, 200) for b in S.state_at(s, 5)), "orphan": 34 * 100}
+    return old, sizes
+
+
 def test_storage_is_released_from_home_and_the_guards_count_is_carried_never_reset(tmp_path):
-    """Fix round three, on the rehearsal's own sequence, through the real HfBackend over the stand-in hub (the
-    runner at home and the courier on the fake VM both): session one pushes a mark and two generations; the drill
-    loses the VM; session two resumes, and its next save removes the first generation in its own commit.
+    """Fix rounds three and four, on the rehearsal's own sequence, through the real HfBackend over the stand-in hub
+    (the runner at home and the courier on the fake VM both), as a FRESH ATTEMPT BESIDE AN EARLIER ONE on the same
+    repo: --store-campaign gives it its own branch and marks, and the earlier attempt's branch, mark and leftovers
+    are there throughout. Session one pushes a mark and two generations; the drill loses the VM; session two
+    resumes and trains on to step 500, removing g100 and g200 on the way, each in a later save's commit.
 
     1. Commits. A save is one commit. The VM makes no release, no lock and no prune commit, and is sent no release
        setting. The runner, with --store-release-storage, releases on its timer and once more at the end; the lock
        and its removal are the only commits home makes.
-    2. Release from home frees exactly what no branch names: the removed generation's optimiser (its weights are
-       the mark's, and stay).
+    2. Release from home frees exactly what the removed generations' ledgers name and nothing names any more: g100's
+       optimiser (its weights are the mark's, and stay) and g200's two files. Nothing of the earlier attempt: not
+       its generations, not its mark, not the object it uploaded and never committed, which is reported and left.
     3. The storage guard's count (the rehearsal of 12 Nov 2026: state.json read 0 during the second session,
        because the VM's release freed part of what had been pushed and the count started again from nothing). The
-       count is what the store was measured to hold for the campaign, plus what was pushed since; the first
-       session's count is what the second starts from; it is never 0 while the store holds generations."""
+       count is what the store was measured to hold for THIS campaign, each object once (a mark's weights are its
+       generation's), nothing of main's seed although the branch's tree names it, nothing of the earlier attempt;
+       plus what was pushed since. The first session's count is what the second starts from; never 0 while the
+       store holds generations.
+    4. The drill session's watch.jsonl comes home with its other files before the stop."""
     pytest.importorskip("huggingface_hub")
     work = tmp_path
     hub = work / "hub"
-    env = {"HUB_STANDIN_ROOT": str(hub),
-           "PYTHONPATH": f"{ROOT / 'tests' / 'hub_standin_site'}{os.pathsep}{os.environ.get('PYTHONPATH', '')}".rstrip(os.pathsep)}
+    old, there = earlier_campaign(hub, tmp_path)
+    before = {"steps": old.steps("ckpt-Rb-base2-reh-b1"), "tree": old.b.tree("ckpt-Rb-base2-reh-b1"),
+              "objects": json.loads((hub / "lfs.json").read_text()), "n": len((hub / "commit_log.jsonl").read_text().splitlines())}
+    assert before["steps"] == [100, 200] and len(before["objects"]) == 6          # the seed, four of two generations, the orphan
+    jobs = reh_jobs(drill=200, store_push_cap_gb=100)
+    jobs["jobs"][1]["spec"]["train"]["steps"] = 500
+    jobs["jobs"].insert(1, {"name": "watch", "after": "data", "cmd": ["w"], "outputs": ["watch.jsonl"]})
     extra = [*STORE_ARGS, "--store-repo", "someone/base2-store", "--store-token-file", str(work / "token"),
-             "--store-first-start", "--store-release-storage", "--store-release-grace-s", "0",
-             "--store-release-every-min", "0.000001", "--store-home-commit-budget-per-hour", "400"]
-    p, calls = run_store(work, {"trainer_ahead": 37}, jobs=reh_jobs(drill=200, store_push_cap_gb=100), extra=extra, more_env=env)
+             "--store-first-start", "--store-campaign", "base2-reh-b2", "--store-release-storage",
+             "--store-release-grace-s", "600", "--store-release-every-min", "0.000001",
+             "--store-home-commit-budget-per-hour", "400"]
+    p, calls = run_store(work, {"trainer_ahead": 37}, jobs=jobs, extra=extra,
+                         more_env=hub_env(hub, FAKE_STEPS="500", FAKE_VM_LEDGER_AGE_S="100000"))
     log = log_of(work)
     assert p.returncode == 0, (p.stderr[-2000:], log[-3000:])
     state = state_of(work)
     assert state["launches"] == 2 and state["campaign_home"]
-    sent = [json.loads(ln) for ln in (hub / "commit_log.jsonl").read_text().splitlines()]
+    sent = [json.loads(ln) for ln in (hub / "commit_log.jsonl").read_text().splitlines()][before["n"]:]
     assert all(x["ok"] for x in sent)
-    # 1. The branch: three saves, three commits; the third removes g100 itself. Main: the mark, and home's locks.
-    branch = [x for x in sent if x["branch"] == "ckpt-N"]
-    assert [x["message"] for x in branch] == [f"generation: gens/g{s}" for s in (100, 200, 300)]
-    assert [x["deletes"] for x in branch] == [[], [], ["gens/g100/"]]
+    mine, ns = "ckpt-N-base2-reh-b2", "base2-reh-b2."
+    # 1. The branch: its creation, then five saves, five commits; g100 goes in g400's commit and g200 in g500's (two
+    # generations verified by their listings stand above each), with its ledger. Main: the mark, and home's locks.
+    branch = [x for x in sent if x["branch"] == mine]
+    assert [x["message"] for x in branch] == ["create_branch", *[f"generation: gens/g{s}" for s in (100, 200, 300, 400, 500)]]
+    assert [[d for d in x["deletes"] if d.startswith("gens/")] for x in branch[1:]] == [[], [], [], ["gens/g100/"], ["gens/g200/"]]
+    assert "pruned/g100.json" in branch[4]["adds"] and "pruned/g200.json" in branch[5]["adds"]
+    assert {x["branch"] for x in sent} == {mine, "main"}                          # nothing was written to the earlier attempt's
     kinds = [x["message"].split(":")[0] for x in sent if x["branch"] == "main"]
     assert kinds.count("mark") == 1 and set(kinds) == {"mark", "lock", "unlock"}
-    assert kinds.count("lock") == kinds.count("unlock") >= 3
+    assert kinds.count("lock") == kinds.count("unlock") >= 4
     assert all(x["message"] == "lock: release by home:pk-store" for x in sent if x["message"].startswith("lock"))
     assert not (hub / "branches" / "main" / "locks" / "release.json").exists()
     vm_cfg = json.loads((work / "fake" / "vm" / "chat" / "store.json").read_text())
-    assert "reclaim" not in vm_cfg and "release_grace_s" not in vm_cfg and vm_cfg["store_commit_budget_per_hour"] == 30
+    assert "reclaim" not in vm_cfg and "release_grace_s" not in vm_cfg and vm_cfg["store_commit_budget_per_hour"] == 24
+    assert vm_cfg["courier_wait_s"] == 5400 and vm_cfg["branches"] == {"pt": mine} and vm_cfg["mark_ns"] == ns
     s1, s2 = work / "state" / "sessions" / "launch01", work / "state" / "sessions" / "launch02"
     c1, c2 = (s1 / "courier.log").read_text(), (s2 / "courier.log").read_text()
     assert "storage release" not in c1 + c2 and not stat_lines(c1 + c2, "release")
-    assert stat_lines(c2, "push")[-1]["pruned"] == [100]
-    # 2. What home's releases did: one of them freed the removed generation's optimiser, 1,000 bytes, and nothing else.
+    assert [x["pruned"] for x in stat_lines(c2, "push")] == [[], [100], [200]]
+    assert [(v["step"], v["whole"]) for v in stat_lines(c1 + c2, "verify")] == [(s, True) for s in (100, 200, 300, 400, 500)]
+    # 2. What home's releases did.
+    big = fakecolab.BIG
     rel = [json.loads(ln.split("store: stat ", 1)[1]) for ln in log.splitlines() if "store: stat " in ln]
     rel = [r for r in rel if r["what"] == "release"]
     assert len(rel) == state["store_releases"]["count"] == kinds.count("lock") and rel[-1]["final"] is True
-    assert [r["bytes"] for r in rel if r["bytes"]] == [1000] and state["store_releases"]["bytes"] == 1000
-    assert state["store_releases"]["objects"] == 1 and state["store_releases"]["failed"] == 0
+    assert sum(r["bytes"] for r in rel) == state["store_releases"]["bytes"] == big + 2 * 1000       # g100's optimiser, g200's two
+    assert sum(r["objects"] for r in rel) == state["store_releases"]["objects"] == 3 and state["store_releases"]["failed"] == 0
+    assert all((r["orphan_objects"], r["orphan_bytes"]) == (1, there["orphan"]) for r in rel)       # the earlier upload: seen, left
     objects = json.loads((hub / "lfs.json").read_text())
-    w = {s: hashlib.sha256(fakecolab.blob(("pt", s), fakecolab.BIG)).hexdigest() for s in (100, 200, 300)}
-    assert set(w.values()) <= set(objects) and len(objects) == 5          # three weights (g100's is the mark's), two optimisers
-    store = hf_store.open_store({"repo": "someone/base2-store", "token_file": str(work / "token")},
+    assert set(before["objects"]) <= set(objects)                                 # everything that was there is there
+    w = {s: hashlib.sha256(fakecolab.blob(("pt", s), fakecolab.BIG)).hexdigest() for s in (100, 200, 300, 400, 500)}
+    assert {w[100], w[300], w[400], w[500]} <= set(objects) and w[200] not in objects
+    assert len(objects) == len(before["objects"]) + 7                             # four weights (g100's is the mark's), three optimisers
+    assert old.steps("ckpt-Rb-base2-reh-b1") == before["steps"] and old.b.tree("ckpt-Rb-base2-reh-b1") == before["tree"]
+    assert old.verify_by_download("ckpt-Rb-base2-reh-b1", 200) and old.verify_by_download("ckpt-Rb-base2-reh-b1", 100)
+    old.pull_mark("pt_reh_b", 100, str(work / "oldmark_back"))
+    store = hf_store.open_store({"repo": "someone/base2-store", "token_file": str(work / "token"), "mark_ns": ns},
                                 api=__import__("hub_standin").DiskApi(str(hub)))
-    assert store.steps("ckpt-N") == [200, 300] and store.mark_steps("pt") == [100]
-    assert store.verify_by_download("ckpt-N", 300) and store.verify_by_download("ckpt-N", 200)
-    store.pull_mark("pt", 100, str(work / "mark100"))                     # the mark's weights outlived its generation
-    # 3. The count. Every release measured the store; with anything stored, none left the campaign counted at nothing.
-    big = fakecolab.BIG
-    holding = [r for r in rel if r["stored_bytes"]]
-    assert len(holding) >= 3 and all(r["counted_bytes"] > 2 * big for r in holding)
-    freeing = next(r for r in rel if r["bytes"])
-    assert freeing["counted_bytes"] == 3 * big + 2 * 1000 and freeing["unnamed_bytes"] == 0   # g200, g300 and the mark
-    # Session two started from what was counted when session one ended (the mark and two generations), and its
-    # courier counted on from there.
-    assert vm_cfg["pushed_bytes_start"] == 3 * big + 2 * 1000 and vm_cfg["push_cap_bytes"] == 100 * 10 ** 9
+    assert store.steps(mine) == [300, 400, 500] and store.mark_steps("pt") == [100]
+    assert all(store.verify_by_download(mine, s) for s in (300, 400, 500))
+    store.pull_mark("pt", 100, str(work / "mark100"))                             # the mark's weights outlived its generation
+    assert "seed/weights/tc_b1_r1.safetensors" in store.b.tree(mine)              # the branch started from main's tree
+    # 3. The count. Every release measured the store; with a generation of this campaign stored, none left it counted
+    # at nothing; none counted main's seed, the earlier attempt or its orphan.
+    holding = [r for r in rel if r["counted_bytes"]]
+    assert len(holding) >= 4 and all(r["counted_bytes"] >= big + 1000 for r in holding)
+    assert all(r["stored_bytes"] >= r["counted_bytes"] + there["seed"] + there["kept"] + there["orphan"] for r in rel)
+    assert rel[-1]["counted_bytes"] == 4 * big + 3 * 1000 == state["store_pushed_bytes"]     # g300 to g500 and the mark
+    assert rel[-1]["stored_bytes"] == rel[-1]["counted_bytes"] + there["seed"] + there["kept"] + there["orphan"]
+    # Session two started from what was counted when session one ended: two generations, the mark's weights being
+    # g100's own (once, not twice), and its courier counted on from there.
+    assert vm_cfg["pushed_bytes_start"] == 2 * big + 2 * 1000 and vm_cfg["push_cap_bytes"] == 100 * 10 ** 9
     st2 = json.loads((s2 / "courier_status.json").read_text())
     assert st2["bytes_since_release"] >= 3 * big and st2["measure_seq"] >= 1 and st2["capped"] is None
     measures = [m for m in stat_lines(c1 + c2, "measure") if m["store_bytes"]]
-    assert measures and all(m["bytes_since_release"] > 2 * big for m in measures)
-    assert state["store_pushed_bytes"] == rel[-1]["counted_bytes"] == 3 * big + 2 * 1000 > 0
+    assert measures and all(m["bytes_since_release"] >= big for m in measures)
+    # 4. The watcher's samples of the session the drill lost.
+    assert (s1 / "watch__watch.jsonl").read_text() == "watch output watch.jsonl launch 1\n"
+    assert json.loads((s1 / "index.json").read_text())["files"]["watch/watch.jsonl"]["whole"] is True
     for text in (calls, log, json.dumps(state), c1, c2, p.stdout, p.stderr):
         assert TOKEN not in text
+
+
+BOOM_WRAP = run_eq.WRAP.replace("rm.main()\n", """def boom(*a, **kw):
+    raise RuntimeError("the boot could not be launched")
+rm.boot_launch_code = boom
+rm.main()
+""")
+
+
+def test_a_failure_in_the_first_launch_still_removes_the_token_and_stops_the_session(tmp_path):
+    """The second review (12 Nov 2026): the first launch() ran before the runner's try/finally, so a failure after
+    the session had been created (here: after the token has been handed over and adopted, when the boot is
+    launched) left a paid session up with the token on it. It is inside the clean-up now: the token goes, the
+    session's files are asked for, the session is stopped with confirmation, and the runner exits non-zero."""
+    assert "rm.boot_launch_code = boom" in BOOM_WRAP
+    work = tmp_path / "run"
+    work.mkdir()
+    p, calls = run_store(work, {}, extra=store_args(work, "--store-first-start"), wrap=BOOM_WRAP)
+    log = log_of(work)
+    assert p.returncode == 1 and "RuntimeError: the boot could not be launched" in p.stderr, (p.stderr[-1500:], log[-1500:])
+    cl = calls.splitlines()
+    assert news(calls) == 1 and cl[-1].startswith('["stop"')                    # one session was created, and stopped
+    assert json.loads((work / "fake" / "fake.json").read_text())["alive"] is False
+    ups = [k for k, ln in enumerate(cl) if ln.startswith('["upload"') and "store_token" in ln]
+    assert len(ups) == 1                                                         # the token had reached the VM
+    lines = [ln[15:] for ln in log.splitlines()]
+    i = lines.index("store: config and token file sent (dir:%s, branches ['ckpt-N'], epoch 1)" % (work / "store"))
+    assert lines[i + 1] == "store: courier ended and token removed from the VM (before the session stops)"
+    assert lines[-1] == "session stopped; runner exiting" and not (work / "state" / "runner.pid").exists()
+    held = [str(q) for q in [*(work / "fake" / "vm").rglob("*"), *(work / "shm").rglob("*")] if q.is_file()
+            and q.stat().st_size < 4096 and TOKEN.encode() in q.read_bytes()]
+    assert held == [] and not (work / "state" / "STOP_UNRESOLVED").exists()
+    for text in (calls, log, p.stdout, p.stderr):
+        assert TOKEN not in text
+
+
+def test_the_runner_refuses_a_grace_or_a_settle_window_that_is_too_short(tmp_path):
+    """--store-release-grace-s under the store's minimum (a restore may be reading what was just removed), and a
+    --store-settle-min shorter than the courier's final delivery window and a tick, are refused before anything is
+    created."""
+    work = tmp_path
+    p, calls = run_store(work, {}, extra=store_args(work, "--store-first-start", "--store-release-storage",
+                                                   "--store-release-grace-s", "599"))
+    assert p.returncode == 2 and "--store-release-grace-s is at least 600" in p.stderr and news(calls) == 0
+    for settle, wait in (("89", None), ("10", "900")):
+        p, calls = run_store(work, {}, fresh=False, extra=store_args(
+            work, "--store-first-start", "--store-settle-min", settle, *(["--store-courier-wait-s", wait] if wait else [])))
+        assert p.returncode == 2 and "--store-settle-min is at least" in p.stderr and news(calls) == 0, p.stderr[-800:]
+    runner = (CC / "runner_multi.py").read_text()
+    assert '"--store-settle-min", type=float, default=95' in runner and "STORE_COURIER_WAIT_S = 5400" in runner
+    assert '"--store-commit-budget-per-hour", type=int, default=24' in runner
+    assert '"--store-home-commit-budget-per-hour", type=int, default=8' in runner
+    assert 3 * 24 + 3 * 8 == 96 < 128                                            # three arms' ceilings, under the hub's limit
 
 
 def test_a_stop_that_is_not_confirmed_is_said_loudly_and_the_runner_exits_non_zero(tmp_path):
@@ -666,7 +789,7 @@ def test_a_new_attempt_never_resumes_from_an_earlier_attempts_branches(tmp_path)
     assert p.returncode == 0, (p.stderr[-1500:], log_of(first)[-2500:])
     assert state_of(first)["store_attempt"]["campaign"] == "pk-store"
     store = hf_store.open_store({"repo": f"dir:{repo}"})
-    assert store.steps("ckpt-N") == [200, 300] and store.mark_steps("pt") == [100]
+    assert store.steps("ckpt-N") == [100, 200, 300] and store.mark_steps("pt") == [100]
     # A second attempt: a fresh state folder, the same name, jobs and store.
     second = tmp_path / "second"
     second.mkdir()
@@ -683,7 +806,7 @@ def test_a_new_attempt_never_resumes_from_an_earlier_attempts_branches(tmp_path)
     assert "launch 1: pt store_step None placed False" in vm_log and "first start admitted" in vm_log
     cfg = json.loads((second / "fake" / "vm" / "chat" / "store.json").read_text())
     assert cfg["branches"] == {"pt": "ckpt-N-try-2"} and cfg["mark_ns"] == "try-2." and cfg["campaign"] == "try 2"
-    assert store.steps("ckpt-N-try-2") == [200, 300] and store.read_manifest("ckpt-N-try-2", "gens/g300")["campaign"] == "try 2"
+    assert store.steps("ckpt-N-try-2") == [100, 200, 300] and store.read_manifest("ckpt-N-try-2", "gens/g300")["campaign"] == "try 2"
     assert sorted(os.listdir(repo / "main" / "marks")) == ["pt", "try-2.pt"]
     assert store.read_manifest("ckpt-N", "gens/g300")["campaign"] == "pk-store"    # the first attempt's, untouched
     assert state_of(second)["campaign_home"] and state_of(second)["store_marks"]["pt/rung_100"]["sha256"]
