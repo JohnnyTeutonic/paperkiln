@@ -64,7 +64,10 @@ With the store, --commit is the full SHA. Before every stop the runner makes, th
 to STATE/sessions/launchNN/ (courier.log, boot.log, courier_status.json, store_restore/*.json). A "pod_loss_drill_step"
 writes STATE/drill_record.json: the trainer's training step and the courier's pushed step read from the VM just
 before the stop, whether the stop fell between two pushes, and on which side of the tail switch. A courier that
-reaches --store-push-cap-gb halts the campaign (STORE_PUSH_CAP). A state folder that has never launched refuses
+reaches --store-push-cap-gb halts the campaign (STORE_PUSH_CAP). The hub limits commits per repository (128 an hour):
+a save is one commit, each VM's commits pass a budget (--store-commit-budget-per-hour), and storage is released from
+home only, on a timer and at the campaign's end (--store-release-storage, --store-release-every-min), never from a
+VM. A state folder that has never launched refuses
 branches that already hold generations (an earlier attempt's); --store-campaign gives a new attempt its own names.
 A campaign without the option makes exactly the calls it made before (tests/test_runner_store.py).
 
@@ -1068,6 +1071,10 @@ def gate_upload(j, st):
 # - brings mark snapshots home from the store; counts a finished training job as home only when its final
 #   generation and every expected mark are in the store and the marks are home ("durability pending" until then,
 #   a halt after --store-settle-min minutes);
+# - is the store's one releaser (store_release, with --store-release-storage): on a timer and at the campaign's end,
+#   under the store's lock, it deletes the objects no branch names and measures what the store holds, which is the
+#   storage guard's count from then on. A VM never releases: the hub limits commits per repository (128 an hour),
+#   a save is one commit, and the lock's two commits are spent here, a few an hour, within home's own budget;
 # - ends the courier and removes the token from the VM before every stop it makes.
 # Every store call at home runs in a child with a wall-time limit. STORE None (no --ckpt-store): none of this runs
 # and every call is as before (tests/test_runner_store.py).
@@ -1106,8 +1113,13 @@ def store_config(a, ap):
     if a.store_campaign and not slug:
         ap.error("--store-campaign needs a letter or a digit")
     cap_gb = a.store_push_cap_gb if a.store_push_cap_gb is not None else float(doc.get("store_push_cap_gb") or 0)
+    every = a.store_release_every_min if a.store_release_every_min is not None \
+        else float(doc.get("store_release_every_min") or 120)
+    if every <= 0 or a.store_commit_budget_per_hour < 0 or a.store_home_commit_budget_per_hour < 0:
+        ap.error("--store-release-every-min must be above 0, and the commit budgets 0 (no limit) or above")
     return {"repo": a.store_repo, "repo_type": a.store_repo_type, "reclaim": a.store_release_storage,
-            "release_grace_s": a.store_release_grace_s,
+            "release_grace_s": a.store_release_grace_s, "release_every_min": every,
+            "commit_budget": a.store_commit_budget_per_hour, "home_commit_budget": a.store_home_commit_budget_per_hour,
             "branch_suffix": "-" + slug if slug else "", "mark_ns": slug + "." if slug else "",
             "push_cap_bytes": int(cap_gb * 1e9),
             "min_push_interval_s": a.store_min_push_interval, "campaign": a.store_campaign or a.name,
@@ -1125,10 +1137,14 @@ def store_branches(jobs):
 
 
 def store_open(jobs):
-    """The store, opened at home with the same token file (reads only: steps, manifests, mark snapshots)."""
+    """The store, opened at home with the same token file. Reads (steps, manifests, mark snapshots) and, with
+    --store-release-storage, the release: its lock and unlock are the only commits home makes, and they pass a
+    commit budget of their own, counted in HOME/store_commits.json."""
     if "store" not in _STORE:
         import hf_store
         cfg = {k: STORE.get(k) for k in ("repo", "repo_type", "token_file", "mark_ns")}
+        cfg["store_commit_budget_per_hour"] = STORE.get("home_commit_budget") or 0
+        cfg["commit_ledger"] = os.path.join(HOME, "store_commits.json")
         _STORE["store"] = hf_store.open_store(cfg, log=log, tries=2, delay=5)
     return _STORE["store"]
 
@@ -1215,10 +1231,12 @@ def store_send(st, jobs):
     """prepare(), before the boot: the store's config (no secret in it) by exec, then the token as a file, moved to
     a tmpfs by the very next call. The token is never in exec code, a command line or a log; only its path is."""
     names = store_branches(jobs)
-    cfg = {"repo": STORE["repo"], "repo_type": STORE["repo_type"], "reclaim": STORE["reclaim"],
-           "release_grace_s": STORE["release_grace_s"], "mark_ns": STORE.get("mark_ns", ""),
-           # The storage guard: the cap, and what this campaign's sessions had pushed, by the courier's last word,
-           # since a release last freed storage (the new VM's courier counts on from there).
+    cfg = {"repo": STORE["repo"], "repo_type": STORE["repo_type"], "mark_ns": STORE.get("mark_ns", ""),
+           # A VM never releases storage (store_release does, from home), so its config carries no release
+           # setting. Its commits pass a budget: the hub limits commit creation per repository.
+           "store_commit_budget_per_hour": STORE.get("commit_budget", 0),
+           # The storage guard: the cap, and what is counted for this campaign so far: the courier's last word, or
+           # the last measurement a release from home took (the new VM's courier counts on from there).
            "push_cap_bytes": STORE.get("push_cap_bytes", 0), "pushed_bytes_start": st.d.get("store_pushed_bytes", 0),
            "min_push_interval_s": STORE["min_push_interval_s"], "branches": names, "campaign": STORE["campaign"],
            "epoch": st.d["launches"], "min_step": {n: st.job(n)["relayed_step"] for n in names},
@@ -1457,7 +1475,8 @@ STORE_VM_READ = (
     "    cs = json.load(open(c + '/courier_status.json'))\n"
     "except (OSError, ValueError):\n"
     "    cs = None\n"
-    "keep = ('updated', 'boot_id', 'epoch', 'bytes_since_release', 'push_cap_bytes', 'capped', 'http_429', 'releases')\n"
+    "keep = ('updated', 'boot_id', 'epoch', 'bytes_since_release', 'pushed_bytes', 'measure_seq', 'push_cap_bytes', 'capped',\n"
+    "        'http_429', 'commits_last_hour', 'commit_budget_per_hour')\n"
     "jk = ('pushed_step', 'pushed_at', 'live_step', 'pushes', 'failures', 'last_error', 'fenced')\n"
     "r = {{'at': time.time(), 'courier': None, 'training': {{n: last_step(c + '/' + n + '/events.jsonl') for n in names}}}}\n"
     "if isinstance(cs, dict):\n"
@@ -1467,8 +1486,8 @@ STORE_VM_READ = (
 
 
 def store_vm_read(jobs):
-    """One bounded call to the VM: the courier's own status (pushed steps, the bytes pushed since a release last
-    freed storage, a reached push cap, HTTP 429 and release counts) and, per training job, the trainer's current
+    """One bounded call to the VM: the courier's own status (pushed steps, the bytes counted against the push cap
+    and the bytes this boot has pushed, a reached push cap, HTTP 429 and commit counts) and, per training job, the trainer's current
     training step, which is the step of the last `step` event in its own events.jsonl with that file's modification
     time: where the trainer is, not what it has saved. None when the VM does not answer."""
     try:
@@ -1483,9 +1502,10 @@ def store_vm_read(jobs):
 
 
 def store_guard(st, jobs, vm):
-    """The storage guard, each tick. The courier counts the bytes pushed since a release last freed storage and
-    stops pushing at --store-push-cap-gb; its count is kept in state.json so the next VM's courier counts on from
-    it. A courier that has reached the cap halts the campaign here, by name: STORE_PUSH_CAP."""
+    """The storage guard, each tick. The courier counts what the store held for this campaign at the last release
+    from home (store_release hands it the measurement) plus the bytes it has pushed since, and stops pushing at
+    --store-push-cap-gb; its count is kept in state.json so the next VM's courier counts on from it. A courier
+    that has reached the cap halts the campaign here, by name: STORE_PUSH_CAP."""
     c = (vm or {}).get("courier")
     if not c:
         return
@@ -1496,8 +1516,97 @@ def store_guard(st, jobs, vm):
         running = [n for n in store_branches(jobs) if not st.job(n)["home"]]
         store_halt("STORE_PUSH_CAP", job=running[0] if running else None, why=c["capped"].get("why"),
                    bytes_since_release=c["capped"].get("bytes_since_release"), cap_bytes=c["capped"].get("cap"),
-                   releases=c.get("releases"))
+                   releases=st.d.get("store_releases"))
         raise SystemExit(3)
+
+
+STORE_MEASURE_VM = (
+    "import json, os\n"
+    "p = '/content/chat/store_measure.json'\n"
+    "json.dump({m!r}, open(p + '.tmp', 'w'))\n"
+    "os.replace(p + '.tmp', p)\n"
+    "print('MEASURE_OK')\n")
+
+
+def store_release(st, jobs, final=False):
+    """Storage release, from home (--store-release-storage): the one releaser of the whole repo. Every
+    --store-release-every-min minutes, and once more at the campaign's end (final), under the store's release lock,
+    by difference over every branch, sparing objects younger than --store-release-grace-s. No VM releases: a
+    release costs two commits (the lock and its removal), and the hub limits commits per repository. Several
+    runners on one repo (three arms) each keep this timer; the lock arbitrates, and a lock that is not taken
+    (held by another, or no room in home's commit budget) is left until the next turn of the timer.
+
+    A release that ran also measured the store. What is counted for this campaign from then on: the LFS bytes its
+    branches and its marks name, plus every object on the store that no branch names (of any campaign: too young
+    to delete, so still stored). That number replaces the storage guard's count: in state.json, and on the VM
+    (CHAT/store_measure.json, with the courier's own pushed-bytes figure as read just before the release, so
+    what it has pushed since is counted on top). Never raises: a release that fails is tried again at the next
+    turn."""
+    if not STORE["reclaim"]:
+        return
+    now, every = time.time(), STORE["release_every_min"] * 60
+    if st.d.get("store_release_next") is None:  # the first one is a full interval after the campaign's start
+        st.d["store_release_next"] = now + every
+        st.save()
+    if not final and now < st.d["store_release_next"]:
+        return
+    st.d["store_release_next"] = now + every
+    rec = st.d.setdefault("store_releases", {"count": 0, "held": 0, "failed": 0, "objects": 0, "bytes": 0})
+    st.save()
+    again = "at the campaign's end only" if final else f"next turn in {every / 60:.0f} min"
+    c = {} if final else ((store_vm_read(jobs) or {}).get("courier") or {})
+    t0 = time.time()
+    try:
+        store = store_open(jobs)
+        r = store_call(lambda: store.release_report(f"home:{NAME}", grace=STORE["release_grace_s"]),
+                       max(900, STORE["call_limit"]))
+    except Exception as e:  # noqa: BLE001 a release that fails never ends a driver
+        rec["failed"] += 1
+        st.save()
+        log(f"store: release failed ({store_err(e)}); {again}")
+        return
+    if r["held"]:
+        rec["held"] += 1
+        st.save()
+        log(f"store: release: the lock was not taken (another releaser holds it, or main or home's commit budget "
+            f"gave no room); {again}")
+        return
+    names, ns = store_branches(jobs), STORE.get("mark_ns", "")
+    mine = (sum(r["tree_bytes"].get(b, 0) for b in names.values()) + sum(r["mark_bytes"].get(ns + n, 0) for n in names)
+            + r["unnamed_bytes"])
+    seq = st.d["store_measure_seq"] = st.d.get("store_measure_seq", 0) + 1
+    rec.update(count=rec["count"] + 1, objects=rec["objects"] + r["objects"], bytes=rec["bytes"] + r["bytes"],
+               last={"at": now, "objects": r["objects"], "bytes": r["bytes"], "stored_bytes": r["stored_bytes"],
+                     "unnamed_bytes": r["unnamed_bytes"], "counted_bytes": mine, "final": final})
+    st.d["store_pushed_bytes"] = mine
+    st.save()
+    log(f"store: release: {r['objects']} objects deleted, {r['bytes']} bytes freed; the store holds {r['stored_bytes']} "
+        f"bytes, {r['unnamed_bytes']} of them named by no branch; {mine} counted for this campaign")
+    log("store: stat " + json.dumps({"what": "release", "objects": r["objects"], "bytes": r["bytes"],
+                                     "stored_bytes": r["stored_bytes"], "unnamed_bytes": r["unnamed_bytes"],
+                                     "counted_bytes": mine, "grace_s": STORE["release_grace_s"], "final": final,
+                                     "seconds": round(time.time() - t0, 2)}, sort_keys=True))
+    if isinstance(c.get("pushed_bytes"), int) and c.get("boot_id"):
+        m = {"seq": seq, "boot_id": c["boot_id"], "bytes": mine, "at_pushed": c["pushed_bytes"], "at": now}
+        try:
+            rc, out = exec_py(STORE_MEASURE_VM.format(m=m), timeout=120)
+        except Exception:  # noqa: BLE001
+            out = ""
+        if "MEASURE_OK" not in (out or ""):
+            log("store: the measurement did not reach the VM; its courier counts on from its own, higher, number")
+
+
+def store_commit_stat(jobs):
+    """Once an hour: the commits home sent to the store in it (the release's locks), as one line of the log."""
+    if not STORE["reclaim"]:
+        return  # home commits nothing without the release
+    try:
+        b = store_open(jobs).budget
+        rep = b.report() if b else None
+    except Exception:  # noqa: BLE001
+        rep = None
+    if rep:
+        log("store: stat " + json.dumps({"what": "commits", "where": "home", **rep}, sort_keys=True))
 
 
 BRING_HOME_TAIL = 300 * 1024  # bytes of each file's end that come home
@@ -1930,17 +2039,30 @@ def main():
     ap.add_argument("--store-min-push-interval", type=float, default=0,
                     help="seconds between a job's generation pushes (0: every save), for a store that limits commits")
     ap.add_argument("--store-release-storage", action="store_true",
-                    help="after a prune, delete for good the LFS objects no branch names (off: safe to leave off). NOT "
-                         "safe beside another writer on the same store unless --store-release-grace-s is longer than "
-                         "that writer's slowest upload-to-commit time: the release lock is between releasers only")
+                    help="release storage from home: every --store-release-every-min minutes, and at the campaign's "
+                         "end, this runner deletes for good the LFS objects no branch of the repo names, under the "
+                         "store's release lock (off: safe to leave off; no VM ever releases). Several runners on one "
+                         "repo may each carry the flag: the lock lets one release at a time. NOT safe unless "
+                         "--store-release-grace-s is longer than every writer's slowest upload-to-commit time (a "
+                         "courier's push limit, 1800 s): the lock is between releasers only")
+    ap.add_argument("--store-release-every-min", type=float, default=None,
+                    help="minutes between this runner's releases (each costs two commits of the repo's hourly limit). "
+                         "Default: the jobs file's \"store_release_every_min\", else 120")
     ap.add_argument("--store-release-grace-s", type=float, default=7200,
-                    help="release spares objects younger than this, which is all that protects another writer's upload "
-                         "that is not yet committed. Below the default the store must have ONE writer at a time (the "
-                         "rehearsal: 1800, its two parts run one after the other)")
+                    help="release spares objects younger than this, which is all that protects a writer's upload that "
+                         "is not yet committed. Never below a courier's push limit (1800 s; the rehearsal runs at that, "
+                         "with one writer on the store)")
+    ap.add_argument("--store-commit-budget-per-hour", type=int, default=30,
+                    help="commits an hour one VM may send to the store (its courier and data job together; the hub "
+                         "allows a repository 128 an hour, all writers together). 0: no limit")
+    ap.add_argument("--store-home-commit-budget-per-hour", type=int, default=20,
+                    help="commits an hour this runner may send to the store (the release's lock and unlock). 0: no limit")
     ap.add_argument("--store-push-cap-gb", type=float, default=None,
-                    help="storage guard: once the campaign's couriers have pushed this many GB since a release last "
-                         "freed storage, the courier stops pushing and the runner halts (STORE_PUSH_CAP). Default: the "
-                         "jobs file's \"store_push_cap_gb\", else 0 (off)")
+                    help="storage guard: counted are the bytes the store held for this campaign when a release from "
+                         "home last measured it (its branches, its marks, and every object no branch names yet), plus "
+                         "what its courier has pushed since; without a release, everything pushed. At this many GB "
+                         "the courier stops pushing and the runner halts (STORE_PUSH_CAP). Default: the jobs file's "
+                         "\"store_push_cap_gb\", else 0 (off)")
     ap.add_argument("--store-first-start", action="store_true",
                     help="admit a job whose branch holds no generation, and that home has never seen pushed, to start from step 0")
     ap.add_argument("--store-campaign", default=None,
@@ -2187,6 +2309,8 @@ def main():
                 gate_upload(j, st)
             if STORE:
                 store_fetch_mark(st, jobs)
+                store_release(st, jobs, final=done)  # on its timer; and once more when the campaign is home
+                store_commit_stat(jobs)
             if has_rungs and not STORE:
                 try:
                     fetch_rung_snapshot(st, jobs, r, relayed)

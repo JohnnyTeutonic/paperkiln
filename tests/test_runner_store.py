@@ -102,7 +102,7 @@ STORE_JOBS = {"jobs": [
 STORE_ARGS = ["--ckpt-store", "hf", "--boot-script", "tools/colab_chat/boot_base2.sh"]
 
 
-def run_store(work, scenario, jobs=STORE_JOBS, extra=(), hours="0.2", fresh=True, commit=COMMIT):
+def run_store(work, scenario, jobs=STORE_JOBS, extra=(), hours="0.2", fresh=True, commit=COMMIT, more_env=None):
     """One runner run on the fake VM with the store. fresh=False: again on the same folder (a watchdog's restart)."""
     layout, fake = work / "repo" / "tools" / "colab_chat", work / "fake"
     if fresh:
@@ -124,7 +124,8 @@ def run_store(work, scenario, jobs=STORE_JOBS, extra=(), hours="0.2", fresh=True
         (work / "wrap.py").write_text(run_eq.WRAP)
     env = dict(os.environ, FAKE_ROOT=str(fake), FAKE_JOBS=str(layout / "eqjobs.json"), FAKE_STORE_TOOLS=str(layout),
                CUDA_VISIBLE_DEVICES="", PK_STORE_TOKEN_DIR=str(work / "shm"))  # the VM's tmpfs, for the fake
-    args = [sys.executable, str(work / "wrap.py"), str(layout / "runner_multi.py"), str(work / "colab"), str(work / "colpy"),
+    env.update(more_env or {})
+    args =[sys.executable, str(work / "wrap.py"), str(layout / "runner_multi.py"), str(work / "colab"), str(work / "colpy"),
             "--commit", commit, "--jobs", "tools/colab_chat/eqjobs.json", "--name", "pk-store", "--art", str(work / "art"),
             "--state-dir", str(work / "state"), "--max-hours", hours, *extra]
     p = subprocess.run(args, capture_output=True, text=True, env=env, timeout=900)
@@ -196,8 +197,13 @@ def test_with_the_store_nothing_of_a_checkpoint_crosses_the_home_link(tmp_path):
     cfg = json.loads((work / "fake" / "vm" / "chat" / "store.json").read_text())
     assert cfg["repo"] == f"dir:{repo}" and cfg["branches"] == {"pt": "ckpt-N"} and cfg["campaign"] == "pk-store"
     assert cfg["epoch"] == 2 and cfg["min_step"] == {"pt": 200} and cfg["first_start"] == []
-    assert cfg["reclaim"] is False and cfg["min_push_interval_s"] == 0 and cfg["repo_type"] == "dataset"
-    assert cfg["release_grace_s"] == 7200
+    assert cfg["min_push_interval_s"] == 0 and cfg["repo_type"] == "dataset"
+    # A VM is told nothing about release (it never releases), and it is told its commit budget.
+    assert "reclaim" not in cfg and "release_grace_s" not in cfg and cfg["store_commit_budget_per_hour"] == 30
+    # Home commits nothing without --store-release-storage, and every commit on the store is a generation or a mark.
+    sent = [json.loads(ln)["message"] for ln in (repo / "commits.jsonl").read_text().splitlines()]
+    assert sorted({m.split(":")[0] for m in sent}) == ["generation", "mark"] and "store_releases" not in state
+    assert len(sent) == 4                                   # the mark and three saves: one commit each
     # The token: its path in two upload calls and nowhere else; its text in no call, log, state or exec code; in
     # the tmpfs from the call after the upload; and no file anywhere when the session is stopped.
     assert log.count("store: config and token file sent") == 2
@@ -449,7 +455,8 @@ def test_the_rehearsal_comes_home_without_a_gguf_with_its_session_files_and_its_
     assert all(x["bytes"] > fakecolab.BIG and x["seconds"] >= 0 for x in pulls)      # and of every pull of the restore
     assert stat_lines(c2, "push")[-1]["step"] == 300
     st1 = json.loads((s1 / "courier_status.json").read_text())
-    assert st1["jobs"]["pt"]["pushed_step"] == 200 and st1["http_429"] == 0 and st1["releases"]["count"] == 0
+    assert st1["jobs"]["pt"]["pushed_step"] == 200 and st1["http_429"] == 0 and "releases" not in st1
+    assert st1["pushed_bytes"] == st1["bytes_since_release"] and st1["commit_budget_per_hour"] == 30
     r2 = json.loads((s2 / "store_restore__pt.json").read_text())
     assert r2["store_step"] == 200 and r2["placed"] and r2["pull_bytes"] > fakecolab.BIG and r2["pull_seconds"] >= 0
     assert "boot_base2 (fake) launch 2" in (s2 / "boot.log").read_text()
@@ -493,7 +500,7 @@ def test_the_push_cap_halts_the_campaign_by_name(tmp_path):
     assert p.returncode == 3, (p.stderr[-2000:], log[-3000:])
     halted = json.loads((work / "state" / "HALTED").read_text())
     assert halted["kind"] == "STORE_PUSH_CAP" and halted["job"] == "pt" and halted["cap_bytes"] == int(cap * 1e9)
-    assert halted["bytes_since_release"] > 2 * fakecolab.BIG and "since the last release that freed storage" in halted["why"]
+    assert halted["bytes_since_release"] > 2 * fakecolab.BIG and "at the last release from home" in halted["why"]
     store = hf_store.open_store({"repo": f"dir:{work / 'store'}"})
     assert store.steps("ckpt-N") == [100] and store.mark_steps("pt") == [100]      # nothing went up past the cap
     state = state_of(work)
@@ -514,6 +521,82 @@ def test_the_push_cap_halts_the_campaign_by_name(tmp_path):
     p, calls = run_store(work2, {}, jobs=reh_jobs(store_push_cap_gb=cap),
                          extra=store_args(work2, "--store-first-start", "--store-push-cap-gb", "0"))
     assert p.returncode == 0 and state_of(work2)["campaign_home"], log_of(work2)[-2000:]
+
+
+def test_storage_is_released_from_home_and_the_guards_count_is_carried_never_reset(tmp_path):
+    """Fix round three, on the rehearsal's own sequence, through the real HfBackend over the stand-in hub (the
+    runner at home and the courier on the fake VM both): session one pushes a mark and two generations; the drill
+    loses the VM; session two resumes, and its next save removes the first generation in its own commit.
+
+    1. Commits. A save is one commit. The VM makes no release, no lock and no prune commit, and is sent no release
+       setting. The runner, with --store-release-storage, releases on its timer and once more at the end; the lock
+       and its removal are the only commits home makes.
+    2. Release from home frees exactly what no branch names: the removed generation's optimiser (its weights are
+       the mark's, and stay).
+    3. The storage guard's count (the rehearsal of 12 Nov 2026: state.json read 0 during the second session,
+       because the VM's release freed part of what had been pushed and the count started again from nothing). The
+       count is what the store was measured to hold for the campaign, plus what was pushed since; the first
+       session's count is what the second starts from; it is never 0 while the store holds generations."""
+    pytest.importorskip("huggingface_hub")
+    work = tmp_path
+    hub = work / "hub"
+    env = {"HUB_STANDIN_ROOT": str(hub),
+           "PYTHONPATH": f"{ROOT / 'tests' / 'hub_standin_site'}{os.pathsep}{os.environ.get('PYTHONPATH', '')}".rstrip(os.pathsep)}
+    extra = [*STORE_ARGS, "--store-repo", "someone/base2-store", "--store-token-file", str(work / "token"),
+             "--store-first-start", "--store-release-storage", "--store-release-grace-s", "0",
+             "--store-release-every-min", "0.000001", "--store-home-commit-budget-per-hour", "400"]
+    p, calls = run_store(work, {"trainer_ahead": 37}, jobs=reh_jobs(drill=200, store_push_cap_gb=100), extra=extra, more_env=env)
+    log = log_of(work)
+    assert p.returncode == 0, (p.stderr[-2000:], log[-3000:])
+    state = state_of(work)
+    assert state["launches"] == 2 and state["campaign_home"]
+    sent = [json.loads(ln) for ln in (hub / "commit_log.jsonl").read_text().splitlines()]
+    assert all(x["ok"] for x in sent)
+    # 1. The branch: three saves, three commits; the third removes g100 itself. Main: the mark, and home's locks.
+    branch = [x for x in sent if x["branch"] == "ckpt-N"]
+    assert [x["message"] for x in branch] == [f"generation: gens/g{s}" for s in (100, 200, 300)]
+    assert [x["deletes"] for x in branch] == [[], [], ["gens/g100/"]]
+    kinds = [x["message"].split(":")[0] for x in sent if x["branch"] == "main"]
+    assert kinds.count("mark") == 1 and set(kinds) == {"mark", "lock", "unlock"}
+    assert kinds.count("lock") == kinds.count("unlock") >= 3
+    assert all(x["message"] == "lock: release by home:pk-store" for x in sent if x["message"].startswith("lock"))
+    assert not (hub / "branches" / "main" / "locks" / "release.json").exists()
+    vm_cfg = json.loads((work / "fake" / "vm" / "chat" / "store.json").read_text())
+    assert "reclaim" not in vm_cfg and "release_grace_s" not in vm_cfg and vm_cfg["store_commit_budget_per_hour"] == 30
+    s1, s2 = work / "state" / "sessions" / "launch01", work / "state" / "sessions" / "launch02"
+    c1, c2 = (s1 / "courier.log").read_text(), (s2 / "courier.log").read_text()
+    assert "storage release" not in c1 + c2 and not stat_lines(c1 + c2, "release")
+    assert stat_lines(c2, "push")[-1]["pruned"] == [100]
+    # 2. What home's releases did: one of them freed the removed generation's optimiser, 1,000 bytes, and nothing else.
+    rel = [json.loads(ln.split("store: stat ", 1)[1]) for ln in log.splitlines() if "store: stat " in ln]
+    rel = [r for r in rel if r["what"] == "release"]
+    assert len(rel) == state["store_releases"]["count"] == kinds.count("lock") and rel[-1]["final"] is True
+    assert [r["bytes"] for r in rel if r["bytes"]] == [1000] and state["store_releases"]["bytes"] == 1000
+    assert state["store_releases"]["objects"] == 1 and state["store_releases"]["failed"] == 0
+    objects = json.loads((hub / "lfs.json").read_text())
+    w = {s: hashlib.sha256(fakecolab.blob(("pt", s), fakecolab.BIG)).hexdigest() for s in (100, 200, 300)}
+    assert set(w.values()) <= set(objects) and len(objects) == 5          # three weights (g100's is the mark's), two optimisers
+    store = hf_store.open_store({"repo": "someone/base2-store", "token_file": str(work / "token")},
+                                api=__import__("hub_standin").DiskApi(str(hub)))
+    assert store.steps("ckpt-N") == [200, 300] and store.mark_steps("pt") == [100]
+    assert store.verify_by_download("ckpt-N", 300) and store.verify_by_download("ckpt-N", 200)
+    store.pull_mark("pt", 100, str(work / "mark100"))                     # the mark's weights outlived its generation
+    # 3. The count. Every release measured the store; with anything stored, none left the campaign counted at nothing.
+    big = fakecolab.BIG
+    holding = [r for r in rel if r["stored_bytes"]]
+    assert len(holding) >= 3 and all(r["counted_bytes"] > 2 * big for r in holding)
+    freeing = next(r for r in rel if r["bytes"])
+    assert freeing["counted_bytes"] == 3 * big + 2 * 1000 and freeing["unnamed_bytes"] == 0   # g200, g300 and the mark
+    # Session two started from what was counted when session one ended (the mark and two generations), and its
+    # courier counted on from there.
+    assert vm_cfg["pushed_bytes_start"] == 3 * big + 2 * 1000 and vm_cfg["push_cap_bytes"] == 100 * 10 ** 9
+    st2 = json.loads((s2 / "courier_status.json").read_text())
+    assert st2["bytes_since_release"] >= 3 * big and st2["measure_seq"] >= 1 and st2["capped"] is None
+    measures = [m for m in stat_lines(c1 + c2, "measure") if m["store_bytes"]]
+    assert measures and all(m["bytes_since_release"] > 2 * big for m in measures)
+    assert state["store_pushed_bytes"] == rel[-1]["counted_bytes"] == 3 * big + 2 * 1000 > 0
+    for text in (calls, log, json.dumps(state), c1, c2, p.stdout, p.stderr):
+        assert TOKEN not in text
 
 
 def test_a_stop_that_is_not_confirmed_is_said_loudly_and_the_runner_exits_non_zero(tmp_path):
