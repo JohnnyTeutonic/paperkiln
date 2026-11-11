@@ -173,6 +173,10 @@ def arm(a):
                        **({"same_windows_as_S_through_step": int(TAIL_FROM * STEPS["S"]),
                            "note": "C reads S's windows while both read the main part, steps 1 to 212,500; S reads its "
                                    "tail from 212,501 and C from 280,501"} if a == "C" else {})},
+            # The courier's storage guard (runner_multi.py --store-push-cap-gb reads this when the flag is absent):
+            # GB pushed since a release last freed storage at which the courier stops pushing and the runner halts the
+            # arm. 0 is off. The lead sets it before the arms launch.
+            "store_push_cap_gb": 0,
             "store_inputs": [SEED_VOCAB, *([SEED_WEIGHTS] if a == "C" else []), corpus_set(corpus), *PANEL_SETS],
             "max_parallel": 1, "max_parallel_light": 1, "jobs": jobs}
 
@@ -198,22 +202,40 @@ def data():
 
 REH_STEPS = 2000
 REH_TAIL_FROM = 0.5          # the main part through step 1,000, the tail from step 1,001
+# A save every 200 steps: 3.5 minutes at the probe's 1.053 s a step, 0.84 GB a generation. The interval is set by the
+# storage guard, not by the drills. Release spares objects younger than its grace period (1,800 s in the rehearsal), so
+# no release can free anything for the first half hour of pushing, and the guard counts every byte pushed until a
+# release frees some. At a save every 200 steps that is at most 11 generations and a mark, 9.5 GB, inside
+# REH_PUSH_CAP_GB; at every 100 steps it is 17 GB and at every 50 steps 31 GB, and the guard would stop the rehearsal
+# before a release could free anything (tests/test_base2_jobs.py does the sum).
+REH_EVERY = 200
+REH_PUSH_CAP_GB = 12         # the courier stops pushing at this many GB pushed since a release last freed storage
+REH_RELEASE_GRACE_S = 1800   # the launch's --store-release-grace-s; the two parts run one after the other
+STEP_S = 1.053               # D1 at 8 x 2, mixed precision, on an L4 (PROBE_RESULT.md)
+TICK_S = 240                 # runner_multi.TICK
 # One forced stop a runner state (runner_multi.py keeps a single "pod_loss_drill"), so two files. The runner stops the
-# VM at its first tick after the store holds a generation at or past the drill step; a tick is 240 s, about 230 steps of
-# D1, so the stop of "a" falls between steps 300 and about 550, well before the switch at 1,000, and the stop of "b"
-# after step 1,100, past it. Each then resumes from a generation on its own side of the switch.
-REH = {"a": {"job": "pt_reh", "drill": 300, "mark": 100, "held": False, "branch": "ckpt-R", "tag": "R"},
-       "b": {"job": "pt_reh_b", "drill": 1100, "mark": 1500, "held": True, "branch": "ckpt-Rb", "tag": "Rb"}}
+# VM at its first tick after the store holds the generation of the drill step. A push takes about a minute and a tick
+# is 240 s, so the trainer is then between about 50 and 300 steps past the drill step: "a" (drill 400) stops between
+# steps 450 and 700, before the switch at 1,000, and "b" (drill 1,200) between 1,250 and 1,500, after it. Where it
+# really stopped is read from the VM at the stop and written to the drill's record, with `side_missed` when it is not
+# the side meant. Each then resumes from the generation of its drill step or the one after, on its own side.
+REH = {"a": {"job": "pt_reh", "drill": 400, "mark": 200, "held": False, "branch": "ckpt-R", "tag": "R"},
+       "b": {"job": "pt_reh_b", "drill": 1200, "mark": 1800, "held": True, "branch": "ckpt-Rb", "tag": "Rb"}}
+WATCH_LIMIT_S = 7200         # the watcher ends itself by then; `timeout` ends it five minutes later whatever it is doing
 
 
 def rehearsal(which="a"):
-    """Section 5, after the launch reviews of 11 Nov 2026: D1, mixed precision, 8 x 2, T 1,024, 2,000 steps, a save every
-    50, on a main and a tail corpus of different sizes cut from the 50 MB FineWeb-Edu sample, the tail from step 1,001;
-    one forced stop; a mark and its rung; then the same 2,000 steps without interruption, not before the rung has ended.
-    "a": the stop before the tail switch, and a mark at step 100 whose rung runs beside training, so the stop finds it
-    unfinished and the next VM scores the mark from the store's copy. "b": the stop after the switch, and a mark at step
-    1,500 whose rung holds training, as the arms' rungs do. A watcher records the live step against the courier's pushed
-    step in the store every 30 seconds, so the last record of the stopped VM says what the stop cost."""
+    """Section 5: D1, mixed precision, 8 x 2, T 1,024, 2,000 steps, a save every 200, on a main and a tail corpus of
+    different sizes cut from the 50 MB FineWeb-Edu sample, the tail from step 1,001; one forced stop; a mark and its
+    rung; then the same 2,000 steps without interruption, not before the rung has ended.
+    "a": the stop before the tail switch, and a mark at step 200 whose rung runs beside training, so the next VM
+    scores the mark from the store's copy when the stop finds the rung unfinished. "b": the stop after the switch, and
+    a mark at step 1,800 whose rung holds training, as the arms' rungs do. A watcher records the trainer's training
+    step against the courier's pushed step in the store every 30 seconds.
+    The two parts run strictly one after the other, "a" to its end before "b" starts: storage release is on with a
+    grace of 1,800 s, which is safe only with one writer on the store. They share one thing in the store, the corpus
+    main:corpus/rehearsal: "a" builds and publishes it, and "b" finds it there and pulls it. Their jobs, branches and
+    marks are apart."""
     r = REH[which]
     job = r["job"]
     s = spec("N")
@@ -221,7 +243,7 @@ def rehearsal(which="a"):
     s["out_dir"] = f"/content/chat/{job}"
     s["data"] = {"corpus": f"{DATA}/rehearsal.main.ids", "vocab": V, "vocab_cap": 16384, "T": T, "max_tokens": 0,
                  "anneal": {"corpus": f"{DATA}/rehearsal.tail.ids", "from_fraction": REH_TAIL_FROM}}
-    s["train"].update(steps=REH_STEPS, checkpoint_every=50, eval_every=500)
+    s["train"].update(steps=REH_STEPS, checkpoint_every=REH_EVERY, eval_every=REH_EVERY)  # a validation loss at each mark
     s["train"]["lr_schedule"]["warmup_steps"] = 100
     s["export"] = {"formats": ["safetensors"]}
     c = json.loads(json.dumps(s))
@@ -233,17 +255,27 @@ def rehearsal(which="a"):
                         f"{'before' if r['drill'] < last_main else 'after'} the tail switch. The control starts when the "
                         "interrupted run and its rung have both ended.",
             "_base2": {"rehearsal": which, "steps": REH_STEPS, "last_main_step": last_main, "first_tail_step": last_main + 1,
+                       "checkpoint_every": REH_EVERY,
                        "pod_loss_drill_step": r["drill"], "mark": r["mark"], "rung_holds_training": r["held"],
-                       "watch": f"base2-build:watch/{job}/<VM start time>/watch.json"},
+                       "watch": f"base2-build:watch/{job}/<VM start time>/watch.json",
+                       "runs": "alone on the store: part a to its end, then part b",
+                       "after": None if which == "a" else "base2_rehearsal.json",
+                       "shared_with_the_other_part": ["main:corpus/rehearsal"],
+                       "store_release_grace_s": REH_RELEASE_GRACE_S},
+            "store_push_cap_gb": REH_PUSH_CAP_GB,
             "store_inputs": [SEED_VOCAB],
             "max_parallel": 1, "max_parallel_light": 2,   # the watcher and a rung
             "jobs": [
                 {"name": "data", "light": True, "halt_on_failure": True,
                  "cmd": ["bash", "tools/colab_chat/base2_data.sh", "{out}", V, "rehearsal"],
                  "outputs": ["rehearsal.json", "base2_pins_observed.json"]},
+                # Every push of the watcher is ended after 60 s, the watcher ends itself after WATCH_LIMIT_S, and
+                # coreutils' timeout ends it five minutes after that: a watcher cannot keep the campaign open.
                 {"name": "watch", "light": True, "after": "data",
-                 "cmd": ["python3", "tools/colab_chat/base2_corpus.py", "drill-watch", "--config", "/content/chat/store.json",
-                         "--chat", "/content/chat", "--job", job, "--out", "{out}", "--interval", "30"],
+                 "cmd": ["timeout", "-k", "30", str(WATCH_LIMIT_S + 300),
+                         "python3", "tools/colab_chat/base2_corpus.py", "drill-watch", "--config", "/content/chat/store.json",
+                         "--chat", "/content/chat", "--job", job, "--out", "{out}", "--interval", "30",
+                         "--limit-s", str(WATCH_LIMIT_S), "--push-limit-s", "60"],
                  "outputs": ["watch_summary.json", "watch.jsonl"]},
                 {"name": job, "model_name": s["name"], "store_branch": r["branch"], "after": ["data"],
                  "snapshot_steps": [r["mark"]], "pod_loss_drill_step": r["drill"], "halt_on_failure": True, "env": TXN,

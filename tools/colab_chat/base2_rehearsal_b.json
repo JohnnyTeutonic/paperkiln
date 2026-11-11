@@ -5,11 +5,19 @@
   "steps": 2000,
   "last_main_step": 1000,
   "first_tail_step": 1001,
-  "pod_loss_drill_step": 1100,
-  "mark": 1500,
+  "checkpoint_every": 200,
+  "pod_loss_drill_step": 1200,
+  "mark": 1800,
   "rung_holds_training": true,
-  "watch": "base2-build:watch/pt_reh_b/<VM start time>/watch.json"
+  "watch": "base2-build:watch/pt_reh_b/<VM start time>/watch.json",
+  "runs": "alone on the store: part a to its end, then part b",
+  "after": "base2_rehearsal.json",
+  "shared_with_the_other_part": [
+   "main:corpus/rehearsal"
+  ],
+  "store_release_grace_s": 1800
  },
+ "store_push_cap_gb": 12,
  "store_inputs": [
   {
    "branch": "main",
@@ -41,6 +49,10 @@
    "light": true,
    "after": "data",
    "cmd": [
+    "timeout",
+    "-k",
+    "30",
+    "7500",
     "python3",
     "tools/colab_chat/base2_corpus.py",
     "drill-watch",
@@ -53,7 +65,11 @@
     "--out",
     "{out}",
     "--interval",
-    "30"
+    "30",
+    "--limit-s",
+    "7200",
+    "--push-limit-s",
+    "60"
    ],
    "outputs": [
     "watch_summary.json",
@@ -68,9 +84,9 @@
     "data"
    ],
    "snapshot_steps": [
-    1500
+    1800
    ],
-   "pod_loss_drill_step": 1100,
+   "pod_loss_drill_step": 1200,
    "halt_on_failure": true,
    "env": {
     "MICROTORCH_CHECKPOINT_TXN": "1"
@@ -108,9 +124,9 @@
      "batch": 8,
      "accum": 2,
      "clip": 1.0,
-     "eval_every": 500,
+     "eval_every": 200,
      "eval_windows": 32,
-     "checkpoint_every": 50,
+     "checkpoint_every": 200,
      "gradmap_every": 0,
      "seed": 1,
      "optimizer": "adamw",
@@ -131,7 +147,7 @@
    }
   },
   {
-   "name": "rung_Rb_s1500",
+   "name": "rung_Rb_s1800",
    "after": "data",
    "light": true,
    "env": {
@@ -147,11 +163,11 @@
     "tools/colab_chat/base2_rung_D1.json",
     "--export-gguf",
     "--weights",
-    "/content/chat/pt_reh_b/rung_1500/model.safetensors",
+    "/content/chat/pt_reh_b/rung_1800/model.safetensors",
     "--pt-dir",
     "/content/chat/pt_reh_b",
     "--step",
-    "1500",
+    "1800",
     "--job",
     "pt_reh_b",
     "--cell",
@@ -176,7 +192,7 @@
    ],
    "rung_of": {
     "job": "pt_reh_b",
-    "step": 1500
+    "step": 1800
    },
    "exclusive": true,
    "timeout_s": 3600
@@ -187,7 +203,7 @@
    "store_branch": "ckpt-Rbc",
    "after": [
     "pt_reh_b",
-    "rung_Rb_s1500"
+    "rung_Rb_s1800"
    ],
    "after_terminal": true,
    "halt_on_failure": true,
@@ -227,9 +243,9 @@
      "batch": 8,
      "accum": 2,
      "clip": 1.0,
-     "eval_every": 500,
+     "eval_every": 200,
      "eval_windows": 32,
-     "checkpoint_every": 50,
+     "checkpoint_every": 200,
      "gradmap_every": 0,
      "seed": 1,
      "optimizer": "adamw",

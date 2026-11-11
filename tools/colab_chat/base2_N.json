@@ -25,6 +25,7 @@
   },
   "corpus": "N"
  },
+ "store_push_cap_gb": 0,
  "store_inputs": [
   {
    "branch": "main",

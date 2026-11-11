@@ -296,8 +296,8 @@ def test_data_file_builds_the_corpus_then_loads_it():
     assert (s["train"]["batch"], s["train"]["accum"], s["train"]["precision"]) == (8, 2, "bf16")
 
 
-@pytest.mark.parametrize("name,job,drill,mark,held", [("base2_rehearsal.json", "pt_reh", 300, 100, False),
-                                                      ("base2_rehearsal_b.json", "pt_reh_b", 1100, 1500, True)])
+@pytest.mark.parametrize("name,job,drill,mark,held", [("base2_rehearsal.json", "pt_reh", 400, 200, False),
+                                                      ("base2_rehearsal_b.json", "pt_reh_b", 1200, 1800, True)])
 def test_rehearsal_loses_a_session_on_each_side_of_the_tail_switch(name, job, drill, mark, held):
     f = load(name)
     js = {j["name"]: j for j in f["jobs"]}
@@ -306,46 +306,95 @@ def test_rehearsal_loses_a_session_on_each_side_of_the_tail_switch(name, job, dr
     assert js["data"]["cmd"][-1] == "rehearsal" and js[job]["after"] == ["data"]
     s = js[job]["spec"]
     t = s["train"]
+    every = t["checkpoint_every"]
     assert s["arch"] == D1 and s["data"]["T"] == 1024
-    assert (t["steps"], t["checkpoint_every"], t["batch"], t["accum"], t["precision"], t["attention_kernel"]) == \
-        (2000, 50, 8, 2, "bf16", "flash")
+    assert (t["steps"], every, t["batch"], t["accum"], t["precision"], t["attention_kernel"]) == \
+        (2000, 200, 8, 2, "bf16", "flash")
+    assert f["_base2"]["checkpoint_every"] == every == M.REH_EVERY == t["eval_every"]   # each mark has its validation loss
     # A main and a tail corpus of different sizes; the main part through step 1,000, the tail from 1,001.
     assert s["data"]["corpus"] == "/content/chat/data/rehearsal.main.ids"
     assert s["data"]["anneal"] == {"corpus": "/content/chat/data/rehearsal.tail.ids", "from_fraction": 0.5}
     last_main = int(0.5 * 2000)
     assert f["_base2"]["last_main_step"] == last_main == 1000 and f["_base2"]["first_tail_step"] == 1001
-    # The forced stop. The runner fires it at the first tick after the store holds a generation at or past the drill
-    # step; a tick is 240 s, and D1 trains about 230 steps in one (1.053 s a step, PROBE_RESULT.md), so the VM is lost
-    # between the drill step and about 300 steps past it (a tick and a late push).
-    assert js[job]["pod_loss_drill_step"] == drill == f["_base2"]["pod_loss_drill_step"] and drill % 50 == 0
-    assert drill * 1.053 > 240                       # the run is still going when the first tick after it can fire
+    # The forced stop. The runner fires it at its first tick after the store holds the drill step's generation. At
+    # the probe's 1.053 s a step (PROBE_RESULT.md) a tick of 240 s is 228 steps, and a push that takes up to two
+    # minutes is 114 more: the trainer is then past the drill step and at most `late` steps past it.
+    assert js[job]["pod_loss_drill_step"] == drill == f["_base2"]["pod_loss_drill_step"]
+    assert drill % every == 0 and drill in range(every, 2000, every)       # a step the trainer saves, so one the store gets
+    late = int((M.TICK_S + 120) / M.STEP_S) + 1
+    assert late == 342 and M.STEP_S == 1.053 and M.TICK_S == 240
+    assert drill * M.STEP_S > M.TICK_S               # the run is still going when the first tick after it can fire
+    # Between pushes: the next save is `every` steps on and the stop can come at any step of that interval and the
+    # next; the trainer is above the pushed step from the first step after the save.
     if drill < last_main:
-        assert drill + 300 < last_main               # the stop, and the generation resumed from, before the switch
+        assert drill + late < last_main              # the stop, and the generation resumed from, before the switch
     else:
-        assert drill > last_main and drill + 300 < 2000   # after it, and steps left to resume into
+        assert drill > last_main and drill + late < 2000   # after it, and steps left to resume into
     assert sum("pod_loss_drill_step" in j for j in f["jobs"]) == 1     # the runner keeps one drill a state folder
-    # The mark and its rung. Part a's rung runs beside training, so the stop finds it unfinished and the next VM
-    # scores the mark from the store's copy; part b's holds training as the arms' rungs do, after the resume.
+    # The mark and its rung. Part a's rung runs beside training, so the next VM scores the mark from the store's
+    # copy when the stop finds it unfinished; part b's holds training as the arms' rungs do, after the resume.
     assert js[job]["snapshot_steps"] == [mark] and js[rung]["rung_of"] == {"job": job, "step": mark}
+    assert mark % every == 0                         # jobs_vm.take_snapshot copies a checkpoint: a mark is a save step
     assert bool(js[rung].get("exclusive")) == held and js[rung]["after"] == "data" and M.SHAPE_D1 in js[rung]["cmd"]
     if not held:
         assert mark < drill                          # taken before the stop
     else:
-        assert mark > drill + 300                    # taken by the VM that resumed
+        assert mark > drill + late                   # taken by the VM that resumed
     # The control: the same 2,000 steps, and not before the interrupted run and its rung have both ended.
     c = js[f"{job}_control"]
     assert c["after"] == [job, rung] and c["after_terminal"] and c["store_branch"] != js[job]["store_branch"]
     same = dict(c["spec"], name=s["name"], out_dir=s["out_dir"])
     assert same == s
     assert "snapshot_steps" not in c and "pod_loss_drill_step" not in c
-    # The watcher: the live step against the courier's pushed step, to the store every 30 s.
+    # Both training jobs export weights only; the runner fetches what the spec declares (runner_multi.fetch_final).
+    assert s["export"] == {"formats": ["safetensors"]} == c["spec"]["export"]
+    # The watcher: the training step against the courier's pushed step, to the store every 30 s; every push ended
+    # after 60 s, the watcher after two hours, and coreutils' timeout five minutes later whatever it is doing.
     w = js["watch"]["cmd"]
-    assert w[2] == "drill-watch" and w[w.index("--job") + 1] == job and w[w.index("--interval") + 1] == "30"
+    assert w[:4] == ["timeout", "-k", "30", "7500"] and w[6] == "drill-watch"
+    assert w[w.index("--job") + 1] == job and w[w.index("--interval") + 1] == "30"
+    assert w[w.index("--limit-s") + 1] == "7200" and w[w.index("--push-limit-s") + 1] == "60"
     assert w[w.index("--config") + 1] == "/content/chat/store.json" and not js["watch"].get("halt_on_failure")
 
 
-def test_the_two_rehearsals_share_nothing_in_the_store():
+def test_the_storage_guard_fits_the_rehearsal_and_is_off_for_the_arms():
+    """The courier stops pushing at 12 GB pushed since a release last freed storage. Release spares objects younger
+    than its grace period, so for the first grace period of pushing (and the minute or two until the next push
+    prunes and releases) nothing can be freed and everything pushed counts. The save interval keeps that under the
+    cap; the intervals the rehearsal had before (50) and the one first proposed (100) do not."""
+    for name in ("base2_rehearsal.json", "base2_rehearsal_b.json"):
+        f = load(name)
+        assert f["store_push_cap_gb"] == 12 == M.REH_PUSH_CAP_GB
+        assert f["_base2"]["store_release_grace_s"] == 1800 == M.REH_RELEASE_GRACE_S
+    gen_gb = 3 * M.PARAMS["D1"] * 4 / 1e9             # weights and two AdamW moments, 4 bytes a parameter
+    assert 0.83 < gen_gb < 0.85
+
+    def counted(every):                               # GB pushed before a release can first free anything
+        window = M.REH_RELEASE_GRACE_S + 2 * every * M.STEP_S     # the grace, then up to two more saves
+        return (int(window / (every * M.STEP_S)) + 1) * gen_gb + gen_gb / 3     # and the mark's weights
+    assert counted(M.REH_EVERY) < 0.8 * M.REH_PUSH_CAP_GB
+    assert counted(100) > M.REH_PUSH_CAP_GB and counted(50) > 2 * M.REH_PUSH_CAP_GB
+    # The arms carry the field, off: the lead sets it before they launch.
+    for arm in ARMS:
+        assert load(f"base2_{arm}.json")["store_push_cap_gb"] == 0
+
+
+def test_the_two_rehearsals_run_one_after_the_other_and_share_only_the_corpus():
+    """Part a to its end, then part b: storage release runs with a grace of 1,800 s, which is safe with one writer on
+    the store and not with two. In the store they share the corpus, main:corpus/rehearsal, which part a builds and
+    part b finds and pulls (tests/test_base2_data.py runs both through base2_data.sh); nothing else: their training
+    jobs, and so their marks, and their branches are apart, and apart from the arms'."""
     a, b = load("base2_rehearsal.json"), load("base2_rehearsal_b.json")
+    assert a["_base2"]["after"] is None and b["_base2"]["after"] == "base2_rehearsal.json"
+    for f in (a, b):
+        assert f["_base2"]["runs"] == "alone on the store: part a to its end, then part b"
+        assert f["_base2"]["shared_with_the_other_part"] == ["main:corpus/rehearsal"]
+        data = next(j for j in f["jobs"] if j["name"] == "data")
+        assert data["cmd"] == ["bash", "tools/colab_chat/base2_data.sh", "{out}", M.V, "rehearsal"]
+    sh = (CC / "base2_data.sh").read_text()
+    reh = sh[sh.index("\nrehearsal() {"):sh.index("\nloadprobe() {")]
+    assert "if in_store main corpus/rehearsal; then" in reh and "pull_set main corpus/rehearsal" in reh
+    assert "push_set main corpus/rehearsal" in reh
     ja, jb = {j["name"] for j in a["jobs"] if "spec" in j}, {j["name"] for j in b["jobs"] if "spec" in j}
     assert not ja & jb                               # marks are kept by job name on the store's main branch
     ba, bb = {j["store_branch"] for j in a["jobs"] if "spec" in j}, {j["store_branch"] for j in b["jobs"] if "spec" in j}
@@ -353,6 +402,8 @@ def test_the_two_rehearsals_share_nothing_in_the_store():
     sa = next(j for j in a["jobs"] if j["name"] == "pt_reh")["spec"]
     sb = next(j for j in b["jobs"] if j["name"] == "pt_reh_b")["spec"]
     assert dict(sb, name=sa["name"], out_dir=sa["out_dir"]) == sa      # one recipe, stopped at two places
+    # The watcher's records are apart too: watch/<job>/<VM start>.
+    assert a["_base2"]["watch"] != b["_base2"]["watch"]
 
 
 def test_drill_watch_records_live_against_pushed(tmp_path):
@@ -364,6 +415,14 @@ def test_drill_watch_records_live_against_pushed(tmp_path):
     (gen / "g350").mkdir(parents=True)
     os.symlink("g350", gen / "live")
     (chat / "pt_reh" / "state.txt").write_text("350\n{}\n")
+    # The trainer's own event stream: it saved at 350 and is at step 387 now. A torn last line is skipped.
+    with open(chat / "pt_reh" / "events.jsonl", "w") as f:
+        for s in range(340, 388):
+            f.write(json.dumps({"event": "step", "step": s, "loss": 3.0}) + "\n")
+            if s == 350:
+                f.write(json.dumps({"event": "checkpoint", "step": 350, "bytes": 1}) + "\n")
+        f.write(json.dumps({"event": "eval", "step": 400, "val_loss": 3.0}) + "\n")      # not a training step
+        f.write('{"event": "step", "step": 38')
     (chat / "courier_status.json").write_text(json.dumps({"jobs": {"pt_reh": {"branch": "ckpt-R", "pushed_step": 300}}}))
     (chat / "STATUS_pt_reh").write_text("FINISHED\n")
     cfg = tmp_path / "store.json"
@@ -372,11 +431,30 @@ def test_drill_watch_records_live_against_pushed(tmp_path):
                    "--interval", "0"]) == 0
     s = json.load(open(tmp_path / "o" / "watch_summary.json"))
     assert (s["last"]["live_step"], s["last"]["pushed_step"], s["last"]["live_minus_pushed"]) == (350, 300, 50)
+    # The training step is the trainer's own, from its events, not a saved generation's.
+    assert (s["last"]["training_step"], s["last"]["training_minus_pushed"]) == (387, 87)
+    assert abs(s["last"]["training_step_at"] - os.path.getmtime(chat / "pt_reh" / "events.jsonl")) < 1e-3
     assert s["pushed"] == 1 and s["prefix"].startswith("watch/pt_reh/")
     stored = json.load(open(tmp_path / "store" / "base2-build" / s["prefix"] / "watch.json"))
     assert stored["live_step"] == 350 and stored["pushed_step"] == 300 and stored["status"] == "FINISHED"
-    # No courier yet, no checkpoint yet: recorded as unknown, never guessed.
-    assert B.watch_sample(str(tmp_path / "nowhere"), "pt_reh")["live_minus_pushed"] is None
+    assert stored["training_step"] == 387
+    # No courier yet, no checkpoint yet, no event yet: recorded as unknown, never guessed.
+    none = B.watch_sample(str(tmp_path / "nowhere"), "pt_reh")
+    assert none["live_minus_pushed"] is None and none["training_step"] is None and none["training_minus_pushed"] is None
+    # A push that hangs is ended at its limit and the watcher goes on to its end: it cannot keep the job open.
+    import hf_store
+    import time
+    real = hf_store.Store.push_set
+    hf_store.Store.push_set = lambda self, *a, **kw: time.sleep(600)
+    try:
+        t0 = time.time()
+        assert B.main(["drill-watch", "--config", str(cfg), "--chat", str(chat), "--job", "pt_reh", "--out", str(tmp_path / "o2"),
+                       "--interval", "0", "--push-limit-s", "1"]) == 0
+        assert time.time() - t0 < 30
+    finally:
+        hf_store.Store.push_set = real
+    s2 = json.load(open(tmp_path / "o2" / "watch_summary.json"))
+    assert s2["pushed"] == 0 and s2["samples"] == 1 and s2["last"]["training_step"] == 387
 
 
 def test_rung_shape_for_d1():
