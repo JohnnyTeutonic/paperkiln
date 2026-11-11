@@ -212,14 +212,23 @@ TICK_S = 240                 # runner_multi.TICK
 HUB_COMMITS_PER_HOUR = 128
 ARMS_COMMITS_PER_HOUR_MAX = 40
 ARM_RELEASE_EVERY_MIN = 120  # an arm's runner releases storage every two hours: two commits each time
-COURIER_COMMIT_BUDGET = 30   # runner_multi.py --store-commit-budget-per-hour (a VM's ceiling, not its steady state)
-HOME_COMMIT_BUDGET = 20      # runner_multi.py --store-home-commit-budget-per-hour
+ARMS_COMMITS_PER_HOUR_WORST = 64   # the worst case below: half the hub's limit
+# Each writer's own ceiling (per writer, not per repository). Three arms: 3 x 24 + 3 x 8 = 96, under the hub's 128.
+COURIER_COMMIT_BUDGET = 24   # runner_multi.py --store-commit-budget-per-hour (a VM's ceiling, not its steady state)
+HOME_COMMIT_BUDGET = 8       # runner_multi.py --store-home-commit-budget-per-hour (a quarter kept back: six for locks)
 
 
 def commits_per_hour(doc, step_s, release_every_min):
     """A jobs file's steady state against the hub's limit: one commit a save for each training job that runs at a
     time (max_parallel is 1: one), one a mark, and two (the lock and its removal) for each release its runner makes
-    from home. {"generations", "marks", "release", "total"}, commits an hour."""
+    from home. {"generations", "marks", "release", "total"}, commits an hour.
+
+    An average of the planned work, not a bound. Left out: a commit sent again after a refusal (a moved head, a
+    429, a time-out), whose effect on the hub's count is not known; the creation of a branch (once a branch for a
+    VM, so once more after each lost session); an unlock tried again; the release at the campaign's end; the data
+    build (eight commits and a branch, up to 32 with every retry) and the seed (three), which come before the
+    arms; anything done by hand; and the time saves, evaluations and rungs add to the probe's step times, which
+    makes saves rarer. commits_per_hour_worst() puts a number on the first two."""
     out = {"generations": 0.0, "marks": 0.0, "release": 2 * 60.0 / release_every_min if release_every_min else 0.0}
     for j in doc["jobs"]:
         if "spec" not in j:
@@ -232,19 +241,25 @@ def commits_per_hour(doc, step_s, release_every_min):
     return out
 
 
+def commits_per_hour_worst(doc, step_s, release_every_min):
+    """A bad hour of the same jobs file: every commit is sent twice (one retry each, and the hub counts both), and
+    the session is lost once in the hour, so the new VM creates its branch again (one call, tried twice too)."""
+    return 2 * commits_per_hour(doc, step_s, release_every_min)["total"] + 2
+
+
 REH_STEPS = 2000
 REH_TAIL_FROM = 0.5          # the main part through step 1,000, the tail from step 1,001
 # A save every 200 steps: 3.5 minutes at the probe's 1.053 s a step, 0.84 GB a generation, one commit. The interval is
 # set by the storage guard, not by the drills. The guard counts what the store holds for the campaign at each release
-# from home and what is pushed after it. A release (every REH_RELEASE_EVERY_MIN minutes) spares objects younger than
-# its grace period (1,800 s in the rehearsal), so a removed generation stays stored, and counted, for up to the grace
-# and one release interval; on top come the generations the branches keep, the mark, and what is pushed between two
-# releases. At a save every 200 steps that is under REH_PUSH_CAP_GB; at every 100 steps it is not
+# from home and what is pushed after it. A release (every REH_RELEASE_EVERY_MIN minutes) leaves what a ledger younger
+# than its grace period names (600 s in the rehearsal), so a removed generation stays stored, and counted, for up to
+# the grace and one release interval; on top come the three generations each branch keeps, the mark, and what is
+# pushed between two releases. At a save every 200 steps that is under REH_PUSH_CAP_GB; at every 100 steps it is not
 # (tests/test_base2_jobs.py does the sum).
 REH_EVERY = 200
-REH_PUSH_CAP_GB = 24         # the courier stops pushing at this many GB counted for the campaign
-REH_RELEASE_GRACE_S = 1800   # the launch's --store-release-grace-s; the two parts run one after the other
-REH_RELEASE_EVERY_MIN = 10   # the runner's release from home: two commits each, 12 an hour
+REH_PUSH_CAP_GB = 28         # the courier stops pushing at this many GB counted for the campaign
+REH_RELEASE_GRACE_S = 600    # the launch's --store-release-grace-s: the time a restore has to read a removed generation
+REH_RELEASE_EVERY_MIN = 20   # the runner's release from home: two commits each, six an hour, all home's budget lets a lock have
 # One forced stop a runner state (runner_multi.py keeps a single "pod_loss_drill"), so two files. The runner stops the
 # VM at its first tick after the store holds the generation of the drill step. A push takes about a minute and a tick
 # is 240 s, so the trainer is then between about 50 and 300 steps past the drill step: "a" (drill 400) stops between
@@ -265,9 +280,9 @@ def rehearsal(which="a"):
     a mark at step 1,800 whose rung holds training, as the arms' rungs do. A watcher records the trainer's training
     step against the courier's pushed step every 30 seconds, in a file on the VM that comes home with its outputs
     (it commits nothing: in part a's first run its commits used the repository's whole hourly limit).
-    The two parts run strictly one after the other, "a" to its end before "b" starts: storage release runs from
-    home with a grace of 1,800 s, a courier's push limit, which is safe only with one writer on the store. They
-    share one thing in the store, the corpus
+    The two parts run strictly one after the other, "a" to its end before "b" starts. Storage release runs from
+    home with a grace of 600 s; it deletes only what a commit removed and recorded, so it is safe beside the earlier
+    attempts' branches on the repo, whose objects it never touches. They share one thing in the store, the corpus
     main:corpus/rehearsal: "a" builds and publishes it, and "b" finds it there and pulls it. Their jobs, branches and
     marks are apart."""
     r = REH[which]

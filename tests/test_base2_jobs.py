@@ -361,21 +361,24 @@ def test_rehearsal_loses_a_session_on_each_side_of_the_tail_switch(name, job, dr
 
 def test_the_storage_guard_fits_the_rehearsal_and_is_off_for_the_arms():
     """The courier stops pushing once the bytes counted for the campaign reach the cap. Counted are what the store
-    held at the last release from home and what was pushed since. A release spares objects younger than its grace
-    period, so a removed generation stays stored, and counted, for up to the grace and one release interval; on top
-    come what the branches keep, the mark, and what is pushed before the next measurement. The save interval keeps
-    that under the cap; half the interval does not."""
+    held at the last release from home and what was pushed since. A release leaves what a ledger younger than its
+    grace period names, so a removed generation stays stored, and counted, for up to the grace and one release
+    interval; on top come what the branches keep (three generations each: two verified and the newest), the mark,
+    and what is pushed before the next measurement. The save interval keeps that under the cap; half the interval
+    does not."""
     for name in ("base2_rehearsal.json", "base2_rehearsal_b.json"):
         f = load(name)
-        assert f["store_push_cap_gb"] == 24 == M.REH_PUSH_CAP_GB
-        assert f["_base2"]["store_release_grace_s"] == 1800 == M.REH_RELEASE_GRACE_S
-        assert f["store_release_every_min"] == 10 == M.REH_RELEASE_EVERY_MIN
+        assert f["store_push_cap_gb"] == 28 == M.REH_PUSH_CAP_GB
+        assert f["_base2"]["store_release_grace_s"] == 600 == M.REH_RELEASE_GRACE_S
+        assert f["store_release_every_min"] == 20 == M.REH_RELEASE_EVERY_MIN
+    import hf_store
+    assert M.REH_RELEASE_GRACE_S >= hf_store.MIN_RELEASE_GRACE_S          # the store refuses a shorter one
     gen_gb = 3 * M.PARAMS["D1"] * 4 / 1e9             # weights and two AdamW moments, 4 bytes a parameter
     assert 0.83 < gen_gb < 0.85
 
     def counted(every):                               # GB, at the most, that the guard can count in the rehearsal
         save_s, release_s = every * M.STEP_S, M.REH_RELEASE_EVERY_MIN * 60
-        kept = (2 + 2) * gen_gb + gen_gb / 3          # two generations on each of the two branches, and the mark
+        kept = (3 + 3) * gen_gb + gen_gb / 3          # three generations on each of the two branches, and the mark
         removed = (int((M.REH_RELEASE_GRACE_S + release_s) / save_s) + 1) * gen_gb    # removed, not yet deletable
         since = (int(release_s / save_s) + 2) * gen_gb                               # pushed since the measurement,
         return kept + removed + since                                                # one of them counted twice
@@ -412,19 +415,30 @@ def test_three_arms_on_one_repo_stay_far_under_the_hubs_commit_limit():
     # As first built: five commits a save and one a mark.
     old = sum(5 * p["generations"] + p["marks"] for p in per.values())
     assert 100 < old < 128 and old > 2.5 * M.ARMS_COMMITS_PER_HOUR_MAX
-    # The steady state is inside each writer's own ceiling: a courier's budget and a runner's (runner_multi.py's
-    # defaults, which a courier refuses to pass whatever goes wrong), with the reserve a release needs.
+    # The 26.1 is an average of the planned work, not a bound, and its docstring says what it leaves out. A bad
+    # hour: every commit sent twice, and each arm's session lost once, so that its new VM creates the branch again.
+    doc = " ".join(M.commits_per_hour.__doc__.split())
+    for left_out in ("not a bound", "sent again after a refusal", "creation of a branch", "unlock tried again",
+                     "campaign's end", "data build", "seed", "by hand", "probe's step times"):
+        assert left_out in doc, left_out
+    worst = sum(M.commits_per_hour_worst(load(f"base2_{arm}.json"), step_s[arm], M.ARM_RELEASE_EVERY_MIN) for arm in ARMS)
+    assert abs(worst - (2 * total + 3 * 2)) < 1e-9 and round(worst, 1) == 58.2
+    assert worst < M.ARMS_COMMITS_PER_HOUR_WORST == 64 == M.HUB_COMMITS_PER_HOUR / 2
+    # Each writer's own ceiling (per writer, not per repository): the defaults of the courier and of
+    # runner_multi.py. Summed over three arms they stay under the hub's limit, and the steady state is inside each.
     import ckpt_courier
-    assert ckpt_courier.COMMIT_BUDGET == M.COURIER_COMMIT_BUDGET == 30 and M.HOME_COMMIT_BUDGET == 20
+    assert ckpt_courier.COMMIT_BUDGET == M.COURIER_COMMIT_BUDGET == 24 and M.HOME_COMMIT_BUDGET == 8
     runner = (CC / "runner_multi.py").read_text()
-    assert '"--store-commit-budget-per-hour", type=int, default=30' in runner
-    assert '"--store-home-commit-budget-per-hour", type=int, default=20' in runner
+    assert '"--store-commit-budget-per-hour", type=int, default=24' in runner
+    assert '"--store-home-commit-budget-per-hour", type=int, default=8' in runner
+    assert 3 * M.COURIER_COMMIT_BUDGET + 3 * M.HOME_COMMIT_BUDGET == 96 < M.HUB_COMMITS_PER_HOUR
     assert all(p["generations"] + p["marks"] < M.COURIER_COMMIT_BUDGET / 2 for p in per.values())
-    assert all(p["release"] < M.HOME_COMMIT_BUDGET * 3 / 4 for p in per.values())
-    # The rehearsal, alone on the repo: a save every 3.5 minutes and a release every ten.
+    assert all(p["release"] <= M.HOME_COMMIT_BUDGET * 3 / 4 for p in per.values())
+    # The rehearsal, alone on the repo: a save every 3.5 minutes and a release every twenty, which is all the
+    # runner's budget lets a lock have (six of its eight; a quarter is kept back).
     for name in ("base2_rehearsal.json", "base2_rehearsal_b.json"):
         r = M.commits_per_hour(load(name), M.STEP_S, M.REH_RELEASE_EVERY_MIN)
-        assert 17 < r["generations"] < 17.2 and r["release"] == 12 and r["total"] < 32
+        assert 17 < r["generations"] < 17.2 and r["release"] == 6 and r["total"] < 26
         assert r["generations"] + r["marks"] < M.COURIER_COMMIT_BUDGET and r["release"] <= M.HOME_COMMIT_BUDGET * 3 / 4
 
 

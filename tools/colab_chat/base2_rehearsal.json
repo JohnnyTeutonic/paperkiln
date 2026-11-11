@@ -15,10 +15,10 @@
   "shared_with_the_other_part": [
    "main:corpus/rehearsal"
   ],
-  "store_release_grace_s": 1800
+  "store_release_grace_s": 600
  },
- "store_push_cap_gb": 24,
- "store_release_every_min": 10,
+ "store_push_cap_gb": 28,
+ "store_release_every_min": 20,
  "store_inputs": [
   {
    "branch": "main",
