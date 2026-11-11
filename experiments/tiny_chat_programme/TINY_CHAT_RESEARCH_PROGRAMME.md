@@ -491,7 +491,13 @@ where stated, and is exploratory.
     S71's); it is recall of names given earlier, correct facts in follow-ups and reactions that keep the user's sentence.
   - **The verdict's reading (Claude Opus 5.5, 11 Nov 2026, exploratory):** the base was the limit on relevance; the package (base,
     tokeniser, trainer, engine) changed together, so no one ingredient is named. Role-play does not carry over.
-- **A28, S71's packet at seed 2 (§44-44.1):** trained (`a28-s71s2-20261111`, exit 0, cleanup certified); evaluation under way.
+- **A28, S71's packet at seed 2 (§44-44.2), one seed: `wide_only`, rule 6.** Run `a28-s71s2-20261111`, exit 0, cleanup certified.
+  Wide J1 29.7 points: above S67's packet at both of its seeds (+3.3, +3.8), below S71 at seed 1 (−2.0, −3.7 to −0.3), level with
+  S70. A26's legs at seed 2: identity 81 of 92, stance 37, told 58, attribution 4 and cue hold; the ended twin (3 of 8), role-play
+  (15 breaks of 48) and the loop (3 of 212) miss. Score files: `analysis/a28_score.json`, `analysis/rel_wide4_read.json`.
+  - **Reading (Claude Fable 5.2, 11 Nov 2026):** §41.2's `ready` is one seed's. Two seeds of S71's packet differ by 2.0 wide J1
+    points and 9 role-play breaks; A27's arms sit inside that spread on relevance (their told recall does not), and A29's arms sit
+    6.7 to 7.3 points above S71s2, outside it.
 - **Misfire probe baselines** (correct of 140): S12 74, S14 57, S2 58, S0 54. The best degenerate responder gets
   55.
 
@@ -852,6 +858,7 @@ demonstrated optimum.
 | a26-s71-20261111 (S71) | 40.1 | exit 0; a verdict, §41.2; inside its registered 75 under Jonathan's line of 10 Nov; evaluation on five Colab CPU sessions, no L4 |
 | a27-s72-20261111 (S72) | 46.3 | exit 0; a verdict, §43.2; inside its registered 75 under Jonathan's line of 11 Nov; evaluation on Colab CPU sessions, no L4 |
 | a27-s72s2-20261111 (S72 at seed 2) | 46.1 | exit 0; a verdict, §43.2; inside its registered 75 under Jonathan's line of 11 Nov |
+| a28-s71s2-20261111 (S71 at seed 2) | 39.1 | exit 0; a verdict, §44.2; by the driver log; inside its registered 75 under Jonathan's line of 11 Nov |
 | a29-20261111 (A29, first session) | 6.6 | exit 2; out of GPU memory at O2's training; cleanup certified; nothing placed (§45.2) |
 | a29-20261111-r2 (A29: O1, O3, O2, O2s2) | 37.1 | exit 0; a verdict, §45.3; inside its registered 90 under Jonathan's line of 11 Nov |
 
@@ -947,6 +954,7 @@ dated line and Codex's admission. Jonathan's cumulative cap for the stronger bas
 Beside it, each registration's continuation table decides:
 - **A19:** rule 3 holds, so seed 3 waits until the cause of the guard is read, and M2 waits as registered.
 - **A18:** rule 8, unresolved, recorded with the curve and s. No extension exists at 20M inside this registration, and S49 and S50 don't open.
+- **A28:** rule 6, `wide_only`. The replies are read (§44.2); S71's recipe stays the best own-base recipe, at a 2-point seed spread.
 - **A29:** rule 3, `base_up`. On this evidence our base limits relevance; the base question goes to Jonathan (§45.3).
 - **A27:** rule 6, `relevance_cost`. The replies are read (§43.2). No next arm follows from the table.
 - **A26:** rule 4, `ready`. S71's packet is the candidate recipe; it was A27's base (§41.2, §43).
