@@ -9,9 +9,17 @@ Claude Fable 5.2, 11 Nov 2026.
     base2_N.json           arm N: D1 from scratch on the natural corpus
     base2_S.json           arm S: D1 from scratch, the same recipe with 15% scenario tokens
     base2_C.json           arm C: base A continued on S's corpus, for equal compute
-    base2_rehearsal.json   the two-session rehearsal of the store path, and its uninterrupted control
+    base2_rehearsal.json   the rehearsal of the store path: a forced stop before the tail switch, and its control
+    base2_rehearsal_b.json the same run with the forced stop after the tail switch, and its control
     base2_rung_D1.json     the D1 shape for the rung job (arch and T only reach it)
     base2_load_probe.json  the load measurement's spec
+
+What C shares with S. Both read S's corpus with seed 1, and the trainer draws one window a row from one generator, row
+after row, whatever the split of a step's 16 rows into micro-batches (tools/mtstudio.cpp, the `rng() % lim` in the
+micro-step loop; tests/test_base2_jobs.py runs 8 x 2 against 16 x 1 on a CPU build and compares the losses). So C at
+16 x 1 reads the windows S reads at 8 x 2 for as long as both read the main part: steps 1 to 212,500. S reads its tail
+from step 212,501 and C from step 280,501 (`step > int(from_fraction * steps)`), so from 212,501 on they read different
+text. C's marks at 60,000 and 122,000 are at S's windows; its marks from 244,000 on are not.
 
 Every file runs under boot_base2.sh with a checkpoint store (runner_multi.py --ckpt-store hf): "store_inputs" names the
 sets the boot pulls and checks, a training job's "store_branch" is where the courier keeps its generations, and its
@@ -109,13 +117,17 @@ def load_probe():
     return s
 
 
-def rung(job, step, tag, shape, panels, of=True, after=None):
+def rung(job, step, tag, shape, panels, of=True, after=None, held=True):
     """The zero-rate panels and Carry-5 on the weights at a mark, with training held. of: the mark is a snapshot
-    (rung_<step>/); otherwise the run's own last checkpoint, once it has ended."""
+    (rung_<step>/); otherwise the run's own last checkpoint, once it has ended. held False: beside training, not
+    holding it. Every rung has a time limit: jobs_vm.py's own for a rung that holds training ("timeout_s"), and
+    coreutils' timeout around the command for one that does not, which jobs_vm.py does not time."""
     weights = f"/content/chat/{job}/rung_{step}/model.safetensors" if of else f"/content/chat/{job}/model.safetensors"
+    exclusive = of and held
+    limit = [] if exclusive else ["timeout", "-k", "60", str(RUNG_TIMEOUT_S)]
     j = {"name": f"rung_{tag}_s{step}", "after": after or "pins", "light": True,
          "env": {"MICROTORCH_POOL_MB": RUNG_POOL_MB},
-         "cmd": ["python3", "tools/colab_chat/tiny_chat_run.py", "rung", "--out", "{out}", "--spec", shape, "--export-gguf",
+         "cmd": [*limit, "python3", "tools/colab_chat/tiny_chat_run.py", "rung", "--out", "{out}", "--spec", shape, "--export-gguf",
                  "--weights", weights, "--pt-dir", f"/content/chat/{job}", "--step", str(step), "--job", job,
                  "--cell", f"BASE2_{tag}", "--seed", "1", "--share", "28",
                  *[x for name, path in panels for x in ("--panel", f"{name}={path}")],
@@ -124,6 +136,7 @@ def rung(job, step, tag, shape, panels, of=True, after=None):
          "outputs": ["rung.json"]}
     if of:
         j["rung_of"] = {"job": job, "step": step}
+    if exclusive:
         j["exclusive"], j["timeout_s"] = True, RUNG_TIMEOUT_S
     return j
 
@@ -155,8 +168,11 @@ def arm(a):
     return {"_comment": f"Base 2, arm {a}: {what}. Not admitted: the launch gate is two reviews and Jonathan's dated line.",
             "_base2": {"arm": a, "shape": "A" if a == "C" else "D1", "params": PARAMS["A" if a == "C" else "D1"],
                        "positions_per_step": ROWS * T, "steps": steps, "positions": steps * ROWS * T,
-                       "tail_from_step": round(TAIL_FROM * steps), "marks": marks,
-                       "mark_positions": {str(m): m * ROWS * T for m in marks}, "corpus": corpus},
+                       "last_main_step": int(TAIL_FROM * steps), "first_tail_step": int(TAIL_FROM * steps) + 1,
+                       "marks": marks, "mark_positions": {str(m): m * ROWS * T for m in marks}, "corpus": corpus,
+                       **({"same_windows_as_S_through_step": int(TAIL_FROM * STEPS["S"]),
+                           "note": "C reads S's windows while both read the main part, steps 1 to 212,500; S reads its "
+                                   "tail from 212,501 and C from 280,501"} if a == "C" else {})},
             "store_inputs": [SEED_VOCAB, *([SEED_WEIGHTS] if a == "C" else []), corpus_set(corpus), *PANEL_SETS],
             "max_parallel": 1, "max_parallel_light": 1, "jobs": jobs}
 
@@ -171,46 +187,77 @@ def data():
                  "cmd": ["bash", "tools/colab_chat/base2_data.sh", "{out}", V, "all"],
                  "outputs": ["base2_stage1.json", "base2_stage2.json", "base2_stage3.json", "data.ledger.json",
                              "filter.ledger.json", *[f"fineweb_edu_shard{n}_v1.sha256" for n in (2, 3, 4, 5)]]},
+                # S's ids are pulled and checked against the store's manifest first (base2_data.sh loadprobe): a VM on
+                # which the three stages were skipped holds their receipts and no ids. "store_inputs" cannot name
+                # corpus/S here, because on the build's first VM that set does not exist yet and the boot would fail.
                 {"name": "load_probe", "after": "data", "halt_on_failure": True,
-                 "cmd": ["python3", "tools/colab_chat/base2_corpus.py", "loadprobe", "--spec",
-                         "tools/colab_chat/base2_load_probe.json", "--out", "{out}"],
+                 "cmd": ["bash", "tools/colab_chat/base2_data.sh", DATA, V, "loadprobe", "{out}"],
                  "outputs": ["loadprobe.json", "run.log"]},
             ]}
 
 
-def rehearsal():
-    """Section 5: D1, mixed precision, 8 x 2, T 1,024, 400 steps, a save every 50, a mark at step 100, on the ids of the
-    50 MB FineWeb-Edu sample; then the same 400 steps without interruption. The driver stops session one between two saves."""
+REH_STEPS = 2000
+REH_TAIL_FROM = 0.5          # the main part through step 1,000, the tail from step 1,001
+# One forced stop a runner state (runner_multi.py keeps a single "pod_loss_drill"), so two files. The runner stops the
+# VM at its first tick after the store holds a generation at or past the drill step; a tick is 240 s, about 230 steps of
+# D1, so the stop of "a" falls between steps 300 and about 550, well before the switch at 1,000, and the stop of "b"
+# after step 1,100, past it. Each then resumes from a generation on its own side of the switch.
+REH = {"a": {"job": "pt_reh", "drill": 300, "mark": 100, "held": False, "branch": "ckpt-R", "tag": "R"},
+       "b": {"job": "pt_reh_b", "drill": 1100, "mark": 1500, "held": True, "branch": "ckpt-Rb", "tag": "Rb"}}
+
+
+def rehearsal(which="a"):
+    """Section 5, after the launch reviews of 11 Nov 2026: D1, mixed precision, 8 x 2, T 1,024, 2,000 steps, a save every
+    50, on a main and a tail corpus of different sizes cut from the 50 MB FineWeb-Edu sample, the tail from step 1,001;
+    one forced stop; a mark and its rung; then the same 2,000 steps without interruption, not before the rung has ended.
+    "a": the stop before the tail switch, and a mark at step 100 whose rung runs beside training, so the stop finds it
+    unfinished and the next VM scores the mark from the store's copy. "b": the stop after the switch, and a mark at step
+    1,500 whose rung holds training, as the arms' rungs do. A watcher records the live step against the courier's pushed
+    step in the store every 30 seconds, so the last record of the stopped VM says what the stop cost."""
+    r = REH[which]
+    job = r["job"]
     s = spec("N")
-    s["name"] = "base2_rehearsal"
-    s["out_dir"] = "/content/chat/pt_reh"
-    s["data"] = {"corpus": f"{DATA}/rehearsal.ids", "vocab": V, "vocab_cap": 16384, "T": T, "max_tokens": 0}
-    s["train"].update(steps=400, checkpoint_every=50, eval_every=100)
-    s["train"]["lr_schedule"]["warmup_steps"] = 40
+    s["name"] = f"base2_rehearsal_{which}"
+    s["out_dir"] = f"/content/chat/{job}"
+    s["data"] = {"corpus": f"{DATA}/rehearsal.main.ids", "vocab": V, "vocab_cap": 16384, "T": T, "max_tokens": 0,
+                 "anneal": {"corpus": f"{DATA}/rehearsal.tail.ids", "from_fraction": REH_TAIL_FROM}}
+    s["train"].update(steps=REH_STEPS, checkpoint_every=50, eval_every=500)
+    s["train"]["lr_schedule"]["warmup_steps"] = 100
     s["export"] = {"formats": ["safetensors"]}
     c = json.loads(json.dumps(s))
-    c["name"], c["out_dir"] = "base2_rehearsal_control", "/content/chat/pt_reh_control"
-    r = rung("pt_reh", 100, "R", SHAPE_D1, [("sample", f"{DATA}/rehearsal.ids")])
-    r["after"] = "data"
-    return {"_comment": "Base 2's rehearsal of the store path on a small corpus (BASE2_PLAN.md section 5). The control runs "
-                        "after the interrupted run, in session two.",
+    c["name"], c["out_dir"] = f"base2_rehearsal_{which}_control", f"/content/chat/{job}_control"
+    rg = rung(job, r["mark"], r["tag"], SHAPE_D1, [("main", f"{DATA}/rehearsal.main.ids"), ("tail", f"{DATA}/rehearsal.tail.ids")],
+              after="data", held=r["held"])
+    last_main = int(REH_TAIL_FROM * REH_STEPS)
+    return {"_comment": f"Base 2's rehearsal of the store path, part {which} (BASE2_PLAN.md section 5): a forced stop "
+                        f"{'before' if r['drill'] < last_main else 'after'} the tail switch. The control starts when the "
+                        "interrupted run and its rung have both ended.",
+            "_base2": {"rehearsal": which, "steps": REH_STEPS, "last_main_step": last_main, "first_tail_step": last_main + 1,
+                       "pod_loss_drill_step": r["drill"], "mark": r["mark"], "rung_holds_training": r["held"],
+                       "watch": f"base2-build:watch/{job}/<VM start time>/watch.json"},
             "store_inputs": [SEED_VOCAB],
-            "max_parallel": 1, "max_parallel_light": 1,
+            "max_parallel": 1, "max_parallel_light": 2,   # the watcher and a rung
             "jobs": [
                 {"name": "data", "light": True, "halt_on_failure": True,
                  "cmd": ["bash", "tools/colab_chat/base2_data.sh", "{out}", V, "rehearsal"],
                  "outputs": ["rehearsal.json", "base2_pins_observed.json"]},
-                {"name": "pt_reh", "model_name": "base2_rehearsal", "store_branch": "ckpt-R", "after": ["data"],
-                 "snapshot_steps": [100], "halt_on_failure": True, "env": TXN, "spec": s},
-                r,
-                {"name": "pt_reh_control", "model_name": "base2_rehearsal_control", "store_branch": "ckpt-Rc",
-                 "after": ["pt_reh"], "halt_on_failure": True, "env": TXN, "spec": c},
+                {"name": "watch", "light": True, "after": "data",
+                 "cmd": ["python3", "tools/colab_chat/base2_corpus.py", "drill-watch", "--config", "/content/chat/store.json",
+                         "--chat", "/content/chat", "--job", job, "--out", "{out}", "--interval", "30"],
+                 "outputs": ["watch_summary.json", "watch.jsonl"]},
+                {"name": job, "model_name": s["name"], "store_branch": r["branch"], "after": ["data"],
+                 "snapshot_steps": [r["mark"]], "pod_loss_drill_step": r["drill"], "halt_on_failure": True, "env": TXN,
+                 "spec": s},
+                rg,
+                {"name": f"{job}_control", "model_name": c["name"], "store_branch": r["branch"] + "c",
+                 "after": [job, rg["name"]], "after_terminal": True, "halt_on_failure": True, "env": TXN, "spec": c},
             ]}
 
 
 def files():
     return {"base2_data.json": data(), "base2_N.json": arm("N"), "base2_S.json": arm("S"), "base2_C.json": arm("C"),
-            "base2_rehearsal.json": rehearsal(), "base2_rung_D1.json": rung_d1(), "base2_load_probe.json": load_probe()}
+            "base2_rehearsal.json": rehearsal("a"), "base2_rehearsal_b.json": rehearsal("b"),
+            "base2_rung_D1.json": rung_d1(), "base2_load_probe.json": load_probe()}
 
 
 def text(obj):

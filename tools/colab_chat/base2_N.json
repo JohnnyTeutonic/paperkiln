@@ -7,7 +7,8 @@
   "positions_per_step": 16384,
   "steps": 250000,
   "positions": 4096000000,
-  "tail_from_step": 212500,
+  "last_main_step": 212500,
+  "first_tail_step": 212501,
   "marks": [
    10000,
    60000,
@@ -370,6 +371,10 @@
     "MICROTORCH_POOL_MB": 1024
    },
    "cmd": [
+    "timeout",
+    "-k",
+    "60",
+    "3600",
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
     "rung",

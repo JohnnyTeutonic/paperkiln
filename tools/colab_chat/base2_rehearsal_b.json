@@ -1,0 +1,253 @@
+{
+ "_comment": "Base 2's rehearsal of the store path, part b (BASE2_PLAN.md section 5): a forced stop after the tail switch. The control starts when the interrupted run and its rung have both ended.",
+ "_base2": {
+  "rehearsal": "b",
+  "steps": 2000,
+  "last_main_step": 1000,
+  "first_tail_step": 1001,
+  "pod_loss_drill_step": 1100,
+  "mark": 1500,
+  "rung_holds_training": true,
+  "watch": "base2-build:watch/pt_reh_b/<VM start time>/watch.json"
+ },
+ "store_inputs": [
+  {
+   "branch": "main",
+   "prefix": "seed/vocab",
+   "to": "chat/upload"
+  }
+ ],
+ "max_parallel": 1,
+ "max_parallel_light": 2,
+ "jobs": [
+  {
+   "name": "data",
+   "light": true,
+   "halt_on_failure": true,
+   "cmd": [
+    "bash",
+    "tools/colab_chat/base2_data.sh",
+    "{out}",
+    "/content/chat/upload/vocab_llama3_bpe.gguf",
+    "rehearsal"
+   ],
+   "outputs": [
+    "rehearsal.json",
+    "base2_pins_observed.json"
+   ]
+  },
+  {
+   "name": "watch",
+   "light": true,
+   "after": "data",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/base2_corpus.py",
+    "drill-watch",
+    "--config",
+    "/content/chat/store.json",
+    "--chat",
+    "/content/chat",
+    "--job",
+    "pt_reh_b",
+    "--out",
+    "{out}",
+    "--interval",
+    "30"
+   ],
+   "outputs": [
+    "watch_summary.json",
+    "watch.jsonl"
+   ]
+  },
+  {
+   "name": "pt_reh_b",
+   "model_name": "base2_rehearsal_b",
+   "store_branch": "ckpt-Rb",
+   "after": [
+    "data"
+   ],
+   "snapshot_steps": [
+    1500
+   ],
+   "pod_loss_drill_step": 1100,
+   "halt_on_failure": true,
+   "env": {
+    "MICROTORCH_CHECKPOINT_TXN": "1"
+   },
+   "spec": {
+    "name": "base2_rehearsal_b",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/rehearsal.main.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "max_tokens": 0,
+     "anneal": {
+      "corpus": "/content/chat/data/rehearsal.tail.ids",
+      "from_fraction": 0.5
+     }
+    },
+    "train": {
+     "steps": 2000,
+     "lr": 0.0005,
+     "batch": 8,
+     "accum": 2,
+     "clip": 1.0,
+     "eval_every": 500,
+     "eval_windows": 32,
+     "checkpoint_every": 50,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "precision": "bf16",
+     "attention_kernel": "flash",
+     "lr_schedule": {
+      "warmup_steps": 100,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors"
+     ]
+    },
+    "out_dir": "/content/chat/pt_reh_b"
+   }
+  },
+  {
+   "name": "rung_Rb_s1500",
+   "after": "data",
+   "light": true,
+   "env": {
+    "MICROTORCH_POOL_MB": 1024
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "tools/colab_chat/base2_rung_D1.json",
+    "--export-gguf",
+    "--weights",
+    "/content/chat/pt_reh_b/rung_1500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_reh_b",
+    "--step",
+    "1500",
+    "--job",
+    "pt_reh_b",
+    "--cell",
+    "BASE2_Rb",
+    "--seed",
+    "1",
+    "--share",
+    "28",
+    "--panel",
+    "main=/content/chat/data/rehearsal.main.ids",
+    "--panel",
+    "tail=/content/chat/data/rehearsal.tail.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl",
+    "--score-batch-tokens",
+    "4096",
+    "--score-chunk",
+    "4096"
+   ],
+   "outputs": [
+    "rung.json"
+   ],
+   "rung_of": {
+    "job": "pt_reh_b",
+    "step": 1500
+   },
+   "exclusive": true,
+   "timeout_s": 3600
+  },
+  {
+   "name": "pt_reh_b_control",
+   "model_name": "base2_rehearsal_b_control",
+   "store_branch": "ckpt-Rbc",
+   "after": [
+    "pt_reh_b",
+    "rung_Rb_s1500"
+   ],
+   "after_terminal": true,
+   "halt_on_failure": true,
+   "env": {
+    "MICROTORCH_CHECKPOINT_TXN": "1"
+   },
+   "spec": {
+    "name": "base2_rehearsal_b_control",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/rehearsal.main.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "max_tokens": 0,
+     "anneal": {
+      "corpus": "/content/chat/data/rehearsal.tail.ids",
+      "from_fraction": 0.5
+     }
+    },
+    "train": {
+     "steps": 2000,
+     "lr": 0.0005,
+     "batch": 8,
+     "accum": 2,
+     "clip": 1.0,
+     "eval_every": 500,
+     "eval_windows": 32,
+     "checkpoint_every": 50,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "precision": "bf16",
+     "attention_kernel": "flash",
+     "lr_schedule": {
+      "warmup_steps": 100,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors"
+     ]
+    },
+    "out_dir": "/content/chat/pt_reh_b_control"
+   }
+  }
+ ]
+}

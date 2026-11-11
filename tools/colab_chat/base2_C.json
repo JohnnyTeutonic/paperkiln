@@ -7,7 +7,8 @@
   "positions_per_step": 16384,
   "steps": 330000,
   "positions": 5406720000,
-  "tail_from_step": 280500,
+  "last_main_step": 280500,
+  "first_tail_step": 280501,
   "marks": [
    10000,
    60000,
@@ -24,7 +25,9 @@
    "305000": 4997120000,
    "330000": 5406720000
   },
-  "corpus": "S"
+  "corpus": "S",
+  "same_windows_as_S_through_step": 212500,
+  "note": "C reads S's windows while both read the main part, steps 1 to 212,500; S reads its tail from 212,501 and C from 280,501"
  },
  "store_inputs": [
   {
@@ -432,6 +435,10 @@
     "MICROTORCH_POOL_MB": 1024
    },
    "cmd": [
+    "timeout",
+    "-k",
+    "60",
+    "3600",
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
     "rung",

@@ -1,5 +1,15 @@
 {
- "_comment": "Base 2's rehearsal of the store path on a small corpus (BASE2_PLAN.md section 5). The control runs after the interrupted run, in session two.",
+ "_comment": "Base 2's rehearsal of the store path, part a (BASE2_PLAN.md section 5): a forced stop before the tail switch. The control starts when the interrupted run and its rung have both ended.",
+ "_base2": {
+  "rehearsal": "a",
+  "steps": 2000,
+  "last_main_step": 1000,
+  "first_tail_step": 1001,
+  "pod_loss_drill_step": 300,
+  "mark": 100,
+  "rung_holds_training": false,
+  "watch": "base2-build:watch/pt_reh/<VM start time>/watch.json"
+ },
  "store_inputs": [
   {
    "branch": "main",
@@ -8,7 +18,7 @@
   }
  ],
  "max_parallel": 1,
- "max_parallel_light": 1,
+ "max_parallel_light": 2,
  "jobs": [
   {
    "name": "data",
@@ -27,8 +37,32 @@
    ]
   },
   {
+   "name": "watch",
+   "light": true,
+   "after": "data",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/base2_corpus.py",
+    "drill-watch",
+    "--config",
+    "/content/chat/store.json",
+    "--chat",
+    "/content/chat",
+    "--job",
+    "pt_reh",
+    "--out",
+    "{out}",
+    "--interval",
+    "30"
+   ],
+   "outputs": [
+    "watch_summary.json",
+    "watch.jsonl"
+   ]
+  },
+  {
    "name": "pt_reh",
-   "model_name": "base2_rehearsal",
+   "model_name": "base2_rehearsal_a",
    "store_branch": "ckpt-R",
    "after": [
     "data"
@@ -36,12 +70,13 @@
    "snapshot_steps": [
     100
    ],
+   "pod_loss_drill_step": 300,
    "halt_on_failure": true,
    "env": {
     "MICROTORCH_CHECKPOINT_TXN": "1"
    },
    "spec": {
-    "name": "base2_rehearsal",
+    "name": "base2_rehearsal_a",
     "arch": {
      "preset": "llama-tiny",
      "rope_heads": "all",
@@ -57,19 +92,23 @@
      }
     },
     "data": {
-     "corpus": "/content/chat/data/rehearsal.ids",
+     "corpus": "/content/chat/data/rehearsal.main.ids",
      "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
      "vocab_cap": 16384,
      "T": 1024,
-     "max_tokens": 0
+     "max_tokens": 0,
+     "anneal": {
+      "corpus": "/content/chat/data/rehearsal.tail.ids",
+      "from_fraction": 0.5
+     }
     },
     "train": {
-     "steps": 400,
+     "steps": 2000,
      "lr": 0.0005,
      "batch": 8,
      "accum": 2,
      "clip": 1.0,
-     "eval_every": 100,
+     "eval_every": 500,
      "eval_windows": 32,
      "checkpoint_every": 50,
      "gradmap_every": 0,
@@ -78,7 +117,7 @@
      "precision": "bf16",
      "attention_kernel": "flash",
      "lr_schedule": {
-      "warmup_steps": 40,
+      "warmup_steps": 100,
       "decay": "cosine",
       "min_lr_frac": 0.1
      }
@@ -99,6 +138,10 @@
     "MICROTORCH_POOL_MB": 1024
    },
    "cmd": [
+    "timeout",
+    "-k",
+    "60",
+    "3600",
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
     "rung",
@@ -122,7 +165,9 @@
     "--share",
     "28",
     "--panel",
-    "sample=/content/chat/data/rehearsal.ids",
+    "main=/content/chat/data/rehearsal.main.ids",
+    "--panel",
+    "tail=/content/chat/data/rehearsal.tail.ids",
     "--carry5-items",
     "corpus/eval/carry5_v1.jsonl",
     "--score-batch-tokens",
@@ -136,23 +181,23 @@
    "rung_of": {
     "job": "pt_reh",
     "step": 100
-   },
-   "exclusive": true,
-   "timeout_s": 3600
+   }
   },
   {
    "name": "pt_reh_control",
-   "model_name": "base2_rehearsal_control",
+   "model_name": "base2_rehearsal_a_control",
    "store_branch": "ckpt-Rc",
    "after": [
-    "pt_reh"
+    "pt_reh",
+    "rung_R_s100"
    ],
+   "after_terminal": true,
    "halt_on_failure": true,
    "env": {
     "MICROTORCH_CHECKPOINT_TXN": "1"
    },
    "spec": {
-    "name": "base2_rehearsal_control",
+    "name": "base2_rehearsal_a_control",
     "arch": {
      "preset": "llama-tiny",
      "rope_heads": "all",
@@ -168,19 +213,23 @@
      }
     },
     "data": {
-     "corpus": "/content/chat/data/rehearsal.ids",
+     "corpus": "/content/chat/data/rehearsal.main.ids",
      "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
      "vocab_cap": 16384,
      "T": 1024,
-     "max_tokens": 0
+     "max_tokens": 0,
+     "anneal": {
+      "corpus": "/content/chat/data/rehearsal.tail.ids",
+      "from_fraction": 0.5
+     }
     },
     "train": {
-     "steps": 400,
+     "steps": 2000,
      "lr": 0.0005,
      "batch": 8,
      "accum": 2,
      "clip": 1.0,
-     "eval_every": 100,
+     "eval_every": 500,
      "eval_windows": 32,
      "checkpoint_every": 50,
      "gradmap_every": 0,
@@ -189,7 +238,7 @@
      "precision": "bf16",
      "attention_kernel": "flash",
      "lr_schedule": {
-      "warmup_steps": 40,
+      "warmup_steps": 100,
       "decay": "cosine",
       "min_lr_frac": 0.1
      }
