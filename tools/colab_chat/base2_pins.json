@@ -72,6 +72,7 @@
   "tc_b1_r1.safetensors": "4b4afcc212e62a43bd767e3600ae461afdca63beb18fc046db7954b516ffdf97"
  },
  "rehearsal": {
-  "rehearsal.ids": null
+  "rehearsal.main.ids": null,
+  "rehearsal.tail.ids": null
  }
 }

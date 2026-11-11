@@ -194,6 +194,137 @@ def test_data_script_is_the_plans_build():
     assert next(ln for ln in b1.splitlines() if ln.startswith("LONG=")) in text
 
 
+def test_data_script_says_what_decontamination_covers_and_orders_publication():
+    text = (CC / "base2_data.sh").read_text()
+    head = text[:text.index("set -euo pipefail")]
+    assert "What the decontamination covers, source by source, and what it does not:" in head
+    assert "FineWeb-Edu: exact copies of the FineWeb panel's documents are dropped, and repeats inside the shards. Nothing else:" in head
+    assert "FineWeb-Edu is NOT put through the eval rules, Carry-5, Carry-12 or the held-out 13-gram check" in head
+    assert "nothing looser than" in head and "equality is checked against that panel" in head
+    # FineWeb-Edu's only filter in the script is the join that base A's data job used.
+    assert text.count("tc_b1_fineweb.py") == 1 and "docfilter" not in text[text.index("tc_b1_fineweb.py") - 400:text.index("tc_b1_fineweb.py") + 200]
+    # Built is not published: in every stage the receipt is the last push, after the output sets, and a mix's text
+    # and the scratch go only after it.
+    for n, sets, last in ((1, ["build/src", "corpus/panels"], None), (2, ["corpus/N"], "drop_mix_text N"),
+                          (3, ["corpus/panel_scenario", "corpus/S"], "drop_mix_text S")):
+        body = text[text.index(f"\npublish{n}() {{"):]
+        body = body[:body.index("\n}\n")]
+        receipt = body.index(f'push_set "$BB" build/stage{n} ')
+        for s in sets:
+            assert 0 < body.index(f" {s} ") < receipt, (n, s)
+        assert body.count("push_set ") == len(sets) + 1
+        if last:
+            assert body.index(last) > receipt
+        build = text[text.index(f"\nbuild{n}() {{"):text.index(f"\npublish{n}() {{")]
+        assert "push_set" not in build and "drop_mix_text" not in build and 'rm -rf "$OUT/scn"' not in build
+        assert f'"$OUT/base2_stage{n}.json"' not in build        # the receipt's file is written by the publication alone
+    run = text[text.index("\nrun_stage() {"):]
+    assert run.index('in_store "$BB" "build/stage$n"') < run.index('"build$n"') < run.index('"publish$n"')
+    assert '[ -s "$OUT/base2_stage$1.json" ] && return 0' not in text   # a local file never marks a stage finished
+    # A push is tried again, and counts only when the store's manifest is read back against the local bytes.
+    push = text[text.index("\npush_set() {"):text.index("\npull_set() {")]
+    assert "for try in 1 2 3 4; do" in push and push.count("B2 store-verify") == 2 and "exit 1" in push
+
+
+def test_one_version_of_the_stores_client_library():
+    text = (CC / "base2_data.sh").read_text()
+    assert text.count("HF_HUB_VERSION=${BASE2_HF_HUB_VERSION:-0.35.3}") == 1
+    assert 'pip -q install "huggingface_hub==$HF_HUB_VERSION"' in text
+    assert text.count("pip ") == 1 and "export HF_HUB_DISABLE_IMPLICIT_TOKEN=1" in text
+    # The same version as the boot's, whenever the boot names one.
+    import re
+    for other in ("boot_base2.sh", "hf_store.py", "ckpt_courier.py"):
+        p = CC / other
+        if p.exists():
+            for v in re.findall(r"huggingface_hub==([0-9][0-9.]*)", p.read_text()):
+                assert v == "0.35.3", (other, v)
+            for v in re.findall(r"^HUB(?:_VERSION)? ?= ?\"?([0-9][0-9.]*)", p.read_text(), flags=re.M):
+                assert v == "0.35.3", (other, v)    # the store agent's own name for it, in the boot and in hf_store.py
+
+
+# ---------------------------------------------------------------- cached files and their inputs
+def test_a_cached_file_is_reused_only_with_the_inputs_it_was_built_from(tmp_path, monkeypatch):
+    monkeypatch.setenv("BASE2_HASH_CACHE", str(tmp_path / "cache.json"))
+    a, b, out = tmp_path / "a.txt", tmp_path / "b.txt", tmp_path / "recipe.json"
+    a.write_text("one")
+    b.write_text("two")
+    out.write_text("{}")
+    assert not B.bound(str(out), [str(a), str(b)], ["k=1"]) and not out.exists()      # no record: never trusted
+    out.write_text("{}")
+    B.bind(str(out), [str(a), str(b)], ["k=1"])
+    assert B.bound(str(out), [str(a), str(b)], ["k=1"]) and out.exists()
+    assert B.main(["bound", str(out), "--input", str(a), "--input", str(b), "--key", "k=1"]) == 0
+    assert not B.bound(str(out), [str(a), str(b)], ["k=2"]) and not out.exists()      # another setting
+    out.write_text("{}")
+    B.bind(str(out), [str(a), str(b)], ["k=1"])
+    b.write_text("TWO")                                                               # an input's bytes change
+    assert not B.bound(str(out), [str(a), str(b)], ["k=1"])
+    assert not out.exists() and not Path(str(out) + ".inputs.json").exists()          # the stale file is gone
+    out.write_text("{}")
+    B.bind(str(out), [str(a), str(b)], ["k=1"])
+    assert not B.bound(str(out), [str(a)], ["k=1"])                                   # another set of inputs
+    out.write_text("{}")
+    B.bind(str(out), [str(a), str(b)], ["k=1"])
+    b.unlink()
+    assert not B.bound(str(out), [str(a), str(b)], ["k=1"])                           # an input is gone
+    out.write_text("{}")
+    with pytest.raises(SystemExit):
+        B.bind(str(out), [str(a), str(b)], [])
+    # The remembered hash follows the file's size and time: a rewrite is read again.
+    a.write_text("one")
+    h = B.file_sha(str(a))
+    a.write_text("eno")
+    os.utime(a, ns=(1, 1))
+    assert B.file_sha(str(a)) != h == hashlib.sha256(b"one").hexdigest()
+
+
+def test_every_cached_file_of_the_script_is_bound():
+    """No `[ -s FILE ] ||` in front of a recipe, a ledger, an ids record or a share: each goes through cached/stamp."""
+    text = (CC / "base2_data.sh").read_text()
+    for f in ('"$OUT/recipe_N.json"', '"$OUT/recipe_S.json"', '"$OUT/$arm.ledger.json"', '"$OUT/ids_$arm.json"',
+              '"$OUT/share_S.$part.json"', '"$OUT/scenario_sample.json"', '"$OUT/panel_scenario.json"', '"$led"',
+              '"$WORK/scenario.txt"', '"$SRC/fineweb2345.txt"', '"$SRC/simplewiki.txt"', '"$SRC/human1.txt"', '"$OUT/N.keys"',
+              '"$OUT/subset_docs_S_in_N.json"'):
+        assert f"cached {f} " in text and f"stamp {f} " in text, f
+        assert f"[ -s {f} ] ||" not in text, f
+
+
+def test_subset_by_document(tmp_path):
+    n1, n2, scn, s = tmp_path / "n1.txt", tmp_path / "n2.txt", tmp_path / "scn.txt", tmp_path / "s.txt"
+    n1.write_text(f"a\n{SEP}b\n{SEP}a\n{SEP}")
+    n2.write_text(f"c\n{SEP}")
+    scn.write_text(f"x\n{SEP}y\n{SEP}")
+    assert B.doc_keys([str(n1), str(n2)], str(tmp_path / "n.keys")) == {"documents": 4, "distinct": 3}
+    s.write_text(f"a\n{SEP}x\n{SEP}c\n{SEP}a\n{SEP}")
+    r = B.subset_docs(str(tmp_path / "n.keys"), str(scn), [str(s)])
+    assert r == {"natural_documents_in_S": 3, "scenario_documents_in_S": 1, "documents_in_N": 4,
+                 "documents_of_S_not_in_N": 0, "subset": True}
+    s.write_text(f"a\n{SEP}a\n{SEP}a\n{SEP}")                                # a third copy N does not hold
+    assert not B.subset_docs(str(tmp_path / "n.keys"), str(scn), [str(s)])["subset"]
+    s.write_text(f"b\n{SEP}z\n{SEP}")                                        # a document of neither
+    r = B.subset_docs(str(tmp_path / "n.keys"), str(scn), [str(s)])
+    assert not r["subset"] and r["documents_of_S_not_in_N"] == 1
+    assert B.main(["subset-docs", "--n-keys", str(tmp_path / "n.keys"), "--scenario", str(scn), "--out",
+                   str(tmp_path / "r.json"), str(s)]) == 1
+
+
+def test_token_report_and_split(tmp_path):
+    n, s = tmp_path / "ids_N.json", tmp_path / "ids_S.json"
+    n.write_text('{"out": "/d/N.main.ids", "tokens": 1000}\n{"out": "/d/N.tail.ids", "tokens": 200}\n')
+    s.write_text('{"out": "/d/S.main.ids", "tokens": 1004}\n{"out": "/d/S.tail.ids", "tokens": 199}\n')
+    r = B.token_report(str(n), str(s), 0.01)
+    assert r["N"] == {"main": 1000, "tail": 200} and r["S"] == {"main": 1004, "tail": 199} and r["ok"]
+    assert r["N_total"] == 1200 and r["S_total"] == 1203 and abs(r["relative_difference"]["main"] - 0.004) < 1e-12
+    assert not B.token_report(str(n), str(s), 0.003)["ok"]
+    src = tmp_path / "a.txt"
+    src.write_text("".join(f"document {i}\n{SEP}" for i in range(40)), encoding="utf-8")
+    na, nb = B.split_docs(str(src), str(tmp_path / "m.txt"), str(tmp_path / "t.txt"), 700)
+    m, t = (tmp_path / "m.txt").read_text(), (tmp_path / "t.txt").read_text()
+    assert m + t == src.read_text() and na == len(m) <= 700 < na + 30 and nb == len(t) and m.endswith(SEP) and na != nb
+    with pytest.raises(SystemExit):
+        B.split_docs(str(src), str(tmp_path / "m2.txt"), str(tmp_path / "t2.txt"), 10 ** 9)
+
+
 # ---------------------------------------------------------------- pins
 def sha(b):
     return hashlib.sha256(b).hexdigest()
@@ -204,7 +335,7 @@ def toy_pins():
             "N": {"N.main.ids": None, "N.tail.ids": None}, "S": {"S.main.ids": None, "S.tail.ids": None},
             "panels": {"panel_fineweb.ids": sha(b"pf"), "panel_dialogue.ids": sha(b"pd"), "panel_scenario.ids": None},
             "vocab": {"vocab_llama3_bpe.gguf": sha(b"v")}, "a_weights": {"tc_b1_r1.safetensors": sha(b"w")},
-            "rehearsal": {"rehearsal.ids": None}}
+            "rehearsal": {"rehearsal.main.ids": None, "rehearsal.tail.ids": None}}
 
 
 def test_pins_record_on_a_build_and_refuse_on_an_arm(tmp_path):
@@ -295,9 +426,22 @@ def test_pins_cli_writes_each_modes_record(tmp_path):
     assert obs["build-N"]["observed"]["N/N.main.ids"] == sha(b"1") and json.load(open(tmp_path / "o" / "pins.json")) == obs
     with pytest.raises(SystemExit):
         P.main([str(d), "arm-N", "--pins", str(pf), "--upload", str(d)])
-    assert set(json.load(open(d / "base2_pins_observed.json"))) == {"build-N", "arm-N"}
-    assert P.main(["adopt", str(d / "base2_pins_observed.json"), "--pins", str(pf)]) == 0
+    both = json.load(open(d / "base2_pins_observed.json"))
+    assert set(both) == {"build-N", "arm-N"} and both["arm-N"]["differences"]
+    # A record that carries differences comes from a refused run: nothing of it is adopted, not even its clean modes.
+    before = pf.read_text()
+    with pytest.raises(SystemExit) as e:
+        P.main(["adopt", str(d / "base2_pins_observed.json"), "--pins", str(pf)])
+    assert "carries differences" in str(e.value) and pf.read_text() == before
+    clean = tmp_path / "clean.json"
+    clean.write_text(json.dumps({"build-N": both["build-N"]}))
+    assert P.main(["adopt", str(clean), "--pins", str(pf)]) == 0
     assert json.load(open(pf))["N"]["N.main.ids"] == sha(b"1")
+    (d / "N.tail.ids").unlink()                                   # a build with a missing file is refused too
+    with pytest.raises(SystemExit):
+        P.main([str(d), "build-N", "--pins", str(pf)])
+    with pytest.raises(SystemExit):
+        P.main(["adopt", str(d / "base2_pins_observed.json"), "--pins", str(pf)])
 
 
 def test_store_has_reads_a_local_store(tmp_path):
@@ -315,6 +459,75 @@ def test_store_has_reads_a_local_store(tmp_path):
     assert B.store_has(str(cfg), "base2-build", "build/stage1") is True
     assert B.store_has(str(cfg), "main", "build/stage1") is False
     assert B.main(["store-has", str(tmp_path / "absent.json"), "main", "x"]) == 2   # an unreadable store is not "absent"
+    # Read back after a push: the store's manifest against the local bytes.
+    assert B.store_verify(str(cfg), "base2-build", "build/stage1", [str(d / "a.txt")])[0] == []
+    (d / "a.txt").write_text("b")
+    assert B.store_verify(str(cfg), "base2-build", "build/stage1", [str(d / "a.txt")])[0]
+    (d / "c.txt").write_text("c")
+    assert "not in the store's manifest" in B.store_verify(str(cfg), "base2-build", "build/stage1", [str(d / "c.txt")])[0][0]
+    assert B.main(["store-verify", str(cfg), "base2-build", "build/absent", str(d / "c.txt")]) == 2
+
+
+def test_only_a_missing_file_or_branch_reads_as_absent():
+    """A wrong or expired token gets "repository not found"; an outage gets a cache miss. Neither is an unfinished
+    stage. The classes stand in for huggingface_hub's by name, as hf_store.py matches them."""
+    class StoreError(Exception):
+        pass
+
+    def make(name, *bases):
+        return type(name, bases or (Exception,), {})
+    http = make("HfHubHTTPError")
+    entry, rev = make("EntryNotFoundError", http), make("RevisionNotFoundError", http)
+    remote = make("RemoteEntryNotFoundError", entry)
+    local = make("LocalEntryNotFoundError", entry, FileNotFoundError)
+    repo, gated = make("RepositoryNotFoundError", http), None
+    gated = make("GatedRepoError", repo)
+    for e in (entry("x"), rev("x"), remote("x")):
+        assert B.reads_as_absent(e, False, StoreError)
+    for e in (repo("401"), gated("x"), local("offline"), http("500"), ConnectionError("x"), TimeoutError("x"),
+              StoreError("token file not found: /x"), StoreError("main:a/manifest.json is not in the store")):
+        assert not B.reads_as_absent(e, False, StoreError), e      # the last: only a local-disk store says it this way
+    assert B.reads_as_absent(StoreError("main:a/manifest.json is not in the store"), True, StoreError)
+    assert not B.reads_as_absent(StoreError("token file not found: /x"), True, StoreError)
+    # Wrapped by the store's own error, the cause decides.
+    try:
+        try:
+            raise repo("401")
+        except Exception as inner:
+            raise StoreError("fetch failed") from inner
+    except StoreError as wrapped:
+        assert not B.reads_as_absent(wrapped, False, StoreError)
+    try:
+        try:
+            raise entry("404")
+        except Exception as inner:
+            raise StoreError("fetch failed") from inner
+    except StoreError as wrapped:
+        assert B.reads_as_absent(wrapped, False, StoreError)
+
+
+def test_an_unreadable_store_stops_the_build_and_is_not_an_unfinished_stage(tmp_path, monkeypatch):
+    if not (CC / "hf_store.py").exists():
+        pytest.skip("hf_store.py is the store agent's file")
+    import hf_store
+    monkeypatch.setenv("BASE2_STORE_RETRY_S", "0")
+    cfg = tmp_path / "store.json"
+    cfg.write_text(json.dumps({"repo": f"dir:{tmp_path / 'store'}"}))
+    RepositoryNotFoundError = type("RepositoryNotFoundError", (Exception,), {})
+    calls = []
+
+    def refuse(self, branch, path, dest):
+        calls.append(path)
+        raise RepositoryNotFoundError("401 Client Error")
+    monkeypatch.setattr(hf_store.DirBackend, "fetch", refuse)
+    monkeypatch.setattr(hf_store.time, "sleep", lambda s: None)
+    with pytest.raises(RepositoryNotFoundError):
+        B.store_has(str(cfg), "base2-build", "build/stage1")
+    assert len(calls) >= 3                                           # tried again, then it stands
+    assert B.main(["store-has", str(cfg), "base2-build", "build/stage1"]) == 2
+    text = (CC / "base2_data.sh").read_text()
+    fn = text[text.index("\nin_store() {"):text.index("\nsets_of() {")]
+    assert '[ "$rc" = 0 ] && return 0' in fn and '[ "$rc" = 1 ] && return 1' in fn and "exit 1" in fn
 
 
 # ---------------------------------------------------------------- end to end on toy sources
@@ -444,13 +657,18 @@ class Mini:
         assert r.returncode == expect, (r.stdout[-3000:], r.stderr[-3000:])
         return r.stdout + r.stderr
 
-    def fork_store(self, name):
-        """A copy of the store as it stands, with its own config: a second VM that never saw the later stages."""
+    def fork_store(self, name, src=None):
+        """A copy of the store as it stands (or of a kept copy), with its own config: a second VM that never saw the
+        later stages."""
         dst = self.tmp / name
-        shutil.copytree(self.store, dst)
+        shutil.copytree(src or self.store, dst)
         cfg = self.tmp / f"{name}.json"
         cfg.write_text(json.dumps({"repo": f"dir:{dst}"}))
         return cfg
+
+    def after(self, stage, name):
+        """A fresh copy of the store as it stood when that stage had just been published."""
+        return self.fork_store(name, self.tmp / f"snap{stage}")
 
 
 @pytest.fixture(scope="module")
@@ -463,11 +681,11 @@ def mini(tmp_path_factory):
     m.out1 = m.run(m.a, "stage1")
     m.n1 = len(m.commits())
     m.out1_again = m.run(m.a, "stage1")
-    m.after1 = m.fork_store("store_after1")
+    m.fork_store("snap1")
     m.out2 = m.run(m.b, "stage2")
     m.n2 = len(m.commits())
     m.out2_again = m.run(m.b, "stage2")
-    m.after2, m.after2_e, m.after2_f = (m.fork_store(f"store_after2{x}") for x in ("", "_e", "_f"))
+    m.fork_store("snap2")
     m.out3 = m.run(m.b, "stage3")
     m.n3 = len(m.commits())
     m.out3_again = m.run(m.b, "all")
@@ -475,7 +693,13 @@ def mini(tmp_path_factory):
 
 
 def test_stage1_joins_filters_and_pushes(mini):
-    led = json.load(open(mini.a / "base2_stage1.json"))
+    receipt = json.load(open(mini.a / "base2_stage1.json"))
+    led = receipt["built"]
+    # The receipt names what was read back from the store, set by set.
+    assert receipt["published_src"]["verified"] and receipt["published_panels"]["verified"]
+    assert set(receipt["published_src"]["files"]) == {"fineweb2345.txt", "simplewiki.txt", "human1.txt", "soda.txt",
+                                                      "ultrachat.txt", "everyday.txt", "human_val.txt", "human_sft.jsonl"}
+    assert receipt["published_src"]["files"]["fineweb2345.txt"]["sha256"] == P.sha256(str(mini.a / "src" / "fineweb2345.txt"))
     join = led["fineweb_join"]
     # tc_b1_fineweb.py counts the empty piece after the val file's last separator as a 31st key.
     assert join["dropped_equal_val"] == 2 and join["dropped_repeat"] == 2 and join["val_documents"] == 31
@@ -511,25 +735,97 @@ def test_a_lost_stage_rebuilds_the_same_bytes(mini):
     """A second VM that repeats stage 2, and one that repeats stage 3, from what the store held at that point."""
     want = json.load(open(mini.b / "base2_pins_observed.json"))
     c = mini.tmp / "vm_c"
-    out = mini.run(c, "stage2", cfg=mini.after1)
+    cfg_c = mini.after(1, "store_c")
+    out = mini.run(c, "stage2", cfg=cfg_c)
     assert "stage 2 done" in out
     got = json.load(open(c / "base2_pins_observed.json"))
     assert got["build-N"]["observed"] == want["build-N"]["observed"]
     d = mini.tmp / "vm_d"
-    out = mini.run(d, "stage3", cfg=mini.after2)
+    out = mini.run(d, "stage3", cfg=mini.after(2, "store_d"))
     assert "stage 3 done" in out and "pulled base2-build:build/stage2" in out
     got = json.load(open(d / "base2_pins_observed.json"))
     assert got["build-S"]["observed"] == want["build-S"]["observed"]
     assert json.load(open(d / "scenario.ledger.json"))["sha256"] == json.load(open(mini.b / "scenario.ledger.json"))["sha256"]
-    # A stage stopped half-way goes on from what it has: with its record and its ids gone, the mix's text is still
-    # there, so the rerun tokenises again and reaches the same ids.
+    # A stage stopped half-way goes on from what it has: with its receipt and its ids gone, the mix's text is still
+    # there, so the rerun tokenises again and reaches the same ids. The set it had published is found in the store
+    # with the same bytes and is not sent again.
     for f in ("base2_stage2.json", "N.main.ids", "N.tail.ids", "ids_N.json"):
         (c / f).unlink()
-    shutil.rmtree(mini.tmp / "store_after1" / "base2-build" / "build" / "stage2")
+    shutil.rmtree(mini.tmp / "store_c" / "base2-build" / "build" / "stage2")
     before = (c / "N.ledger.json").stat().st_mtime_ns
-    out = mini.run(c, "stage2", cfg=mini.after1)
+    n_commits = len(mini.commits(mini.tmp / "store_c"))
+    out = mini.run(c, "stage2", cfg=cfg_c)
     assert "stage 2 done" in out and (c / "N.ledger.json").stat().st_mtime_ns == before
+    assert "published main:corpus/N (the store held these bytes already)" in out
+    assert len(mini.commits(mini.tmp / "store_c")) == n_commits + 1          # the receipt alone
     assert json.load(open(c / "base2_pins_observed.json"))["build-N"]["observed"] == want["build-N"]["observed"]
+
+
+def test_a_changed_input_rebuilds_everything_built_from_it(mini):
+    """A recipe, a mix and ids left by an earlier run are never reused once a source's bytes differ."""
+    k = mini.tmp / "vm_k"
+    cfg = mini.after(1, "store_k")
+    mini.run(k, "stage2", cfg=cfg)
+    first = json.load(open(k / "base2_pins_observed.json"))["build-N"]["observed"]
+    recipe = json.load(open(k / "recipe_N.json"))
+    (k / "base2_stage2.json").unlink()
+    shutil.rmtree(mini.tmp / "store_k" / "base2-build" / "build" / "stage2")
+    more = "<|user|>a new line of talk here<|assistant|>and its answer" + SEP
+    with open(k / "src" / "everyday.txt", "a", encoding="utf-8") as f:       # one more dialogue in one source
+        f.write(more)
+    out = mini.run(k, "stage2", cfg=cfg)
+    assert "stage 2 done" in out
+    again = json.load(open(k / "recipe_N.json"))
+    assert again["available_bytes"]["everyday"] == recipe["available_bytes"]["everyday"] + len(more)
+    assert again["total_bytes"] != recipe["total_bytes"]
+    second = json.load(open(k / "base2_pins_observed.json"))["build-N"]["observed"]
+    assert second["N/N.main.ids"] != first["N/N.main.ids"]
+    # The store now holds the rebuilt ids, read back against the local bytes.
+    assert P.sha256(str(mini.tmp / "store_k" / "main" / "corpus" / "N" / "N.main.ids")) == second["N/N.main.ids"]
+
+
+def test_a_failed_push_is_not_a_finished_stage_and_the_rerun_publishes_without_rebuilding(mini):
+    p = mini.tmp / "vm_p"
+    cfg = mini.after(1, "store_p")
+    locked = mini.tmp / "store_p" / "main" / "corpus"
+    os.chmod(locked, 0o555)                                          # the store refuses the new set
+    try:
+        out = mini.run(p, "stage2", cfg=cfg, expect=1, BASE2_KEEP_MIX_TEXT="0")
+    finally:
+        os.chmod(locked, 0o755)
+    assert "stage 2 built" in out and "stage 2 done" not in out
+    assert out.count("push of main:corpus/N failed or did not verify") == 4 and "main:corpus/N is not published; stopping" in out
+    assert not (p / "base2_stage2.json").exists() and (p / "base2_stage2.built.json").exists()
+    assert not (mini.tmp / "store_p" / "base2-build" / "build" / "stage2").exists()     # no receipt in the store
+    assert (p / "N.main.txt").exists() and (p / "N.tail.txt").exists()                  # the text waits for publication
+    kept = {f: (p / f).stat().st_mtime_ns for f in ("N.ledger.json", "N.main.ids", "N.tail.ids", "ids_N.json", "recipe_N.json",
+                                                    "N.keys", "N.main.txt")}
+    out = mini.run(p, "stage2", cfg=cfg, BASE2_KEEP_MIX_TEXT="0")
+    assert "stage 2 done" in out and "published main:corpus/N (try 1, verified)" in out
+    for f in ("N.ledger.json", "N.main.ids", "N.tail.ids", "ids_N.json", "recipe_N.json", "N.keys"):
+        assert (p / f).stat().st_mtime_ns == kept[f], f                                 # nothing was built again
+    assert not (p / "N.main.txt").exists() and not (p / "N.tail.txt").exists()          # gone only now
+    receipt = json.load(open(p / "base2_stage2.json"))
+    assert receipt["published_N"]["verified"] and receipt["built"]["documents"]["documents"] > 0
+    stored = mini.tmp / "store_p" / "main" / "corpus" / "N" / "N.main.ids"
+    assert stored.read_bytes() == (p / "N.main.ids").read_bytes()
+    assert (mini.tmp / "store_p" / "base2-build" / "build" / "stage2" / "base2_stage2.json").exists()
+    assert "stage 2: finished already" in mini.run(p, "stage2", cfg=cfg)
+
+
+def test_a_receipt_without_its_outputs_stops_the_build(mini):
+    q = mini.tmp / "vm_q"
+    cfg = mini.after(2, "store_q")
+    shutil.rmtree(mini.tmp / "store_q" / "main" / "corpus" / "N")
+    out = mini.run(q, "stage2", cfg=cfg, expect=1)
+    assert "the store holds stage 2's receipt and not main:corpus/N; stopping" in out and "finished already" not in out
+    # A local receipt the store does not hold is not believed either: the stage builds and publishes.
+    r = mini.tmp / "vm_r"
+    r.mkdir()
+    (r / "base2_stage2.json").write_text(json.dumps({"stage": "2"}))
+    out = mini.run(r, "stage2", cfg=mini.after(1, "store_r"))
+    assert "stage 2 built" in out and "stage 2 done" in out
+    assert json.load(open(r / "base2_stage2.json"))["published_N"]["verified"]
 
 
 def regen_scenario(mini):
@@ -550,29 +846,34 @@ def test_scenario_share_is_fifteen_percent_of_tokens_by_the_real_tokeniser(mini)
     natural = set()
     for p in ("fineweb2345.txt", "simplewiki.txt", "human1.txt", "soda.txt", "ultrachat.txt", "everyday.txt"):
         natural |= set(docs_of(mini.b / "src" / p))
-    rec = json.load(open(mini.b / "base2_stage3.json"))
+    rec = json.load(open(mini.b / "base2_stage3.json"))["built"]
     for part in ("main", "tail"):
         docs = docs_of(mini.b / f"S.{part}.txt")
         scn = [d for d in docs if d not in natural]
         nat = [d for d in docs if d in natural]
         assert scn and nat
+        # An independent count, each document on its own with the newline after it (the other convention).
         t_s = sum(len(x) for x in enc([d + SEP for d in scn]))
         t_n = sum(len(x) for x in enc([d + SEP for d in nat]))
         share = t_s / (t_s + t_n)
         assert 0.14 <= share <= 0.16, (part, share)
         assert abs(share - 0.15) < 0.005, (part, share)       # the measured ratio lands well inside the bounds
-        # The build's own figure: the same scenario tokens over the ids file's count. Counted a document at a time, the
-        # total is within a token a document of the file's.
         ids = ids_tokens(mini.b / f"S.{part}.ids")
-        assert abs(ids - (t_s + t_n)) <= len(docs)
         mine = rec[f"share_{part}"]
-        assert mine["ok"] and mine["scenario_documents"] == len(scn) and mine["scenario_tokens"] == t_s
-        assert mine["tokens"] == ids and mine["tokens_from"] == "ids"
-        assert abs(mine["scenario_share_of_tokens"] - share) < 0.001
+        assert mine["ok"] and mine["scenario_documents"] == len(scn)
+        assert mine["tokens"] == ids and mine["tokens_from"] == "ids" and mine["boundary_error_tokens"] == 0
+        # The two conventions differ by where a newline's tokens fall: at most one token a scenario document.
+        assert abs(mine["scenario_tokens"] - t_s) <= len(scn) and abs(mine["scenario_share_of_tokens"] - share) <= mine["convention_bound"]
+        assert mine["convention_bound"] == len(scn) / ids < 0.002
+        # No boundary error: every document encoded as the file encodes it sums to the ids file's own count, exactly.
         whole = B.share(str(mini.b / f"S.{part}.txt"), str(regen_scenario(mini)), str(mini.vocab))
-        assert whole["tokens"] == t_s + t_n and whole["tokens_from"] == "documents" and whole["scenario_tokens"] == t_s
-        # S keeps N's token count in each part, to the size of a few documents.
-        assert abs(ids - ids_tokens(mini.b / f"N.{part}.ids")) / ids < 0.02, part
+        assert whole["tokens"] == ids and whole["tokens_from"] == "documents"
+        assert whole["scenario_tokens"] == mine["scenario_tokens"]
+        # N's and S's actual token counts, as the receipt reports them: S keeps N's count in each part.
+        counts = rec["token_counts"]
+        assert counts["S"][part] == ids and counts["N"][part] == ids_tokens(mini.b / f"N.{part}.ids")
+        assert abs(counts["relative_difference"][part]) < 0.01 and counts["ok"]
+    assert rec["token_counts"]["N_total"] == sum(rec["token_counts"]["N"].values())
     r = rec["recipe"]
     # The toy natural text tokenises more finely than scenario text, so the byte ratio is well above 15%.
     assert r["scenario_bytes_per_token"] > r["parts"]["main"]["n_bytes_per_token"] and r["main"]["scenario"] > 0.16
@@ -588,6 +889,11 @@ def test_s_takes_natural_documents_that_n_took_and_no_panel_document(mini):
     assert s_nat and not s_nat - n                       # with multiplicity: a copy in S is a copy in N
     assert 0.80 < sum(len(d) * c for d, c in s_nat.items()) / sum(len(d) * c for d, c in n.items()) < 0.88
     assert json.load(open(mini.b / "subset_S_in_N.json")) == {"subset": True, "differences": []}
+    # The build's own check is by document too: S's against the digests of N's, which outlive N's text.
+    by_doc = json.load(open(mini.b / "base2_stage3.json"))["built"]["subset_documents"]
+    assert by_doc["subset"] and by_doc["documents_of_S_not_in_N"] == 0
+    assert by_doc["natural_documents_in_S"] == sum(s_nat.values()) and by_doc["scenario_documents_in_S"] == len(s_scn)
+    assert by_doc["documents_in_N"] == sum(n.values())
     val = {d[:-len(SEP)] for d in mini.known["val"]}
     assert not val & set(n) and not val & set(s_docs)    # the FineWeb panel's documents are in no mix
     # The scenario documents are the pinned engine's training stream; none is a document of the held-out panel.
@@ -626,7 +932,7 @@ def test_dialogue_copies_and_the_stores_final_sets(mini):
 
 def test_a_stream_the_filter_cuts_too_far_is_refused(mini):
     e = mini.tmp / "vm_e"
-    out = mini.run(e, "stage3", cfg=mini.after2_e, expect=1, BASE2_SCN_MAX_DROP="-0.5")
+    out = mini.run(e, "stage3", cfg=mini.after(2, "store_e"), expect=1, BASE2_SCN_MAX_DROP="-0.5")
     assert (e / "scenario.ledger.json.refused").exists() and not (e / "S.main.ids").exists()
     assert "stage 3 done" not in out
 
@@ -637,15 +943,125 @@ def test_an_unpinned_engine_generates_nothing(mini):
     pins["engine"]["files"]["generate.py"] = "0" * 64
     bad = mini.tmp / "pins_bad.json"
     bad.write_text(json.dumps(pins))
-    out = mini.run(f, "stage3", cfg=mini.after2_f, expect=1, BASE2_PINS=str(bad))
+    out = mini.run(f, "stage3", cfg=mini.after(2, "store_f"), expect=1, BASE2_PINS=str(bad))
     assert "not the pinned bytes" in out and not (f / "scn" / "panel_scenario.txt").exists()
 
 
-def test_rehearsal_ids_are_built_once_and_then_pulled(mini):
+STUB_VALIDATOR = """import json
+import os
+import sys
+
+args = sys.argv[1:]
+name = os.path.basename(args[0])
+bad = bool(os.environ.get("STUB_FAIL")) and os.environ["STUB_FAIL"] in name
+with open(args[args.index("--report") + 1], "w") as f:
+    json.dump({"verdict": "FAIL" if bad else "PASS", "file": name, "heldout": "--heldout" in args}, f)
+sys.exit(1 if bad else 0)
+"""
+
+
+def test_the_validator_runs_on_every_scenario_shard(mini):
+    """The engine's own validator enforces rates a few hundred documents cannot meet, so a stand-in with its command
+    line takes its place here: the build must call it on the held-out panel and on every shard, and stop on one FAIL."""
+    eng = mini.tmp / "engine_stub"
+    shutil.copytree(mini.engine, eng, ignore=shutil.ignore_patterns("__pycache__", "base2_pins_observed.json"))
+    (eng / "validate.py").write_text(STUB_VALIDATOR)
+    pins = json.load(open(mini.pins))
+    P.pin_engine(pins, str(eng), commit="stand-in validator", repin=True)
+    pf = mini.tmp / "pins_stub.json"
+    pf.write_text(json.dumps(pins))
+    env = {"BASE2_SCN_VALIDATE": "1", "BASE2_ENGINE_DIR": str(eng), "BASE2_PINS": str(pf)}
+    v = mini.tmp / "vm_v"
+    out = mini.run(v, "stage3", cfg=mini.after(2, "store_v"), **env)
+    assert "stage 3 done" in out and "validator on every shard" in out
+    led = json.load(open(v / "scenario.ledger.json"))
+    shards = json.load(open(v / "recipe_S.json"))["scenario_shards"]
+    assert shards >= 3 and led["validator"] == {"shards": shards, "verdicts": ["PASS"] * shards, "passed": True}
+    assert json.load(open(v / "scenario_validate_heldout.json")) == {"verdict": "PASS", "file": "panel_scenario.txt.tmp",
+                                                                    "heldout": True}
+    # With the validator on, the same stream as with it off.
+    assert led["sha256"] == json.load(open(mini.b / "scenario.ledger.json"))["sha256"]
+    assert json.load(open(mini.b / "scenario.ledger.json"))["validator"]["passed"] is None
+    w = mini.tmp / "vm_w"
+    out = mini.run(w, "stage3", cfg=mini.after(2, "store_w"), expect=1, STUB_FAIL="raw_2.", **env)
+    assert "scenario shard 2 fails the engine's validator" in out and "stage 3 built" not in out
+    assert not (w / "S.main.ids").exists() and not (w / "scenario.ledger.json").exists()
+    assert not (mini.tmp / "store_w" / "main" / "corpus" / "S").exists()
+    # A shard that never met the validator is not accepted where every shard must hold its PASS.
+    led_dir = mini.tmp / "ledger_check"
+    shutil.copytree(w / "scn", led_dir)
+    (led_dir / "validate_2.json").unlink(missing_ok=True)
+    for k in range(shards):
+        if not (led_dir / f"shard_{k}.ledger.json").exists():
+            shutil.copyfile(led_dir / "shard_0.ledger.json", led_dir / f"shard_{k}.ledger.json")
+    r = B.scn_ledger(str(led_dir), shards, str(v / "recipe_S.json"), json.load(open(v / "recipe_S.json")), 20261111, 0.02,
+                     validate=True)
+    assert r["validator"]["passed"] is False and r["validator"]["verdicts"][2] is None and not r["ok"]
+
+
+FAKE_TRAINER = """#!/usr/bin/env python3
+import json
+import os
+import sys
+
+spec = json.load(open(sys.argv[2]))
+os.makedirs(spec["out_dir"], exist_ok=True)
+seen = {f: os.path.exists(os.path.join(os.environ["PROBE_DATA"], f)) for f in ("S.main.ids", "S.tail.ids")}
+json.dump(seen, open(os.environ["PROBE_SAW"], "w"))
+with open(os.path.join(spec["out_dir"], "events.jsonl"), "w") as f:
+    f.write(json.dumps({"event": "step", "step": 1}) + chr(10))
+"""
+
+
+def test_the_load_probe_pulls_and_checks_s_on_a_vm_that_has_no_ids(mini):
+    """Every stage skipped: the VM holds receipts and no ids. The probe's mode brings S's ids and the panels from the
+    store, checked against the manifests, before the trainer starts."""
+    fresh = mini.tmp / "vm_l"
+    out = mini.run(fresh, "all")
+    assert all(f"stage {n}: finished already" in out for n in (1, 2, 3))
+    assert not (fresh / "S.main.ids").exists()
+    fake = mini.tmp / "fake_mtstudio.py"
+    fake.write_text(FAKE_TRAINER)
+    os.chmod(fake, 0o755)
+    saw = mini.tmp / "probe_saw.json"
+    e = {**os.environ, "CUDA_VISIBLE_DEVICES": "", "BASE2_STORE_CONFIG": str(mini.cfg), "BASE2_PINS": str(mini.pins),
+         "BASE2_STORE_RETRY_S": "0", "JOBS_MTSTUDIO": str(fake), "PROBE_DATA": str(fresh), "PROBE_SAW": str(saw)}
+    r = subprocess.run(["bash", "tools/colab_chat/base2_data.sh", str(fresh), str(mini.vocab), "loadprobe", str(mini.tmp / "probe")],
+                       cwd=ROOT, env=e, capture_output=True, text=True)
+    assert r.returncode == 0, (r.stdout[-2000:], r.stderr[-2000:])
+    assert "pulled main:corpus/S" in r.stdout and json.load(open(saw)) == {"S.main.ids": True, "S.tail.ids": True}
+    for f in ("S.main.ids", "S.tail.ids"):
+        assert (fresh / f).read_bytes() == (mini.store / "main" / "corpus" / "S" / f).read_bytes()
+    probe = json.load(open(mini.tmp / "probe" / "loadprobe.json"))
+    assert probe["returncode"] == 0 and probe["seconds_to_first_step"] is not None
+    assert json.load(open(fresh / "base2_pins_observed.json"))["build-S"]["differences"] == []
+    # A copy on the VM that is not the store's bytes is replaced before the probe, never loaded.
+    (fresh / "S.tail.ids").write_bytes(b"not the ids")
+    r = subprocess.run(["bash", "tools/colab_chat/base2_data.sh", str(fresh), str(mini.vocab), "loadprobe", str(mini.tmp / "probe2")],
+                       cwd=ROOT, env=e, capture_output=True, text=True)
+    assert r.returncode == 0, (r.stdout[-2000:], r.stderr[-2000:])
+    assert (fresh / "S.tail.ids").read_bytes() == (mini.store / "main" / "corpus" / "S" / "S.tail.ids").read_bytes()
+    # With no S in the store there is nothing to load, and the probe says so by failing.
+    cfg = mini.after(2, "store_l")
+    r = subprocess.run(["bash", "tools/colab_chat/base2_data.sh", str(mini.tmp / "vm_l2"), str(mini.vocab), "loadprobe",
+                        str(mini.tmp / "probe3")], cwd=ROOT, env={**e, "BASE2_STORE_CONFIG": str(cfg)}, capture_output=True, text=True)
+    assert r.returncode != 0 and not (mini.tmp / "probe3" / "loadprobe.json").exists()
+
+
+def test_rehearsal_corpora_are_two_sizes_built_once_and_then_pulled(mini):
     g, h = mini.tmp / "vm_g", mini.tmp / "vm_h"
     cfg = mini.fork_store("store_reh")
-    out = mini.run(g, "rehearsal", cfg=cfg)
-    assert "pushed main:corpus/rehearsal" in out and ids_tokens(g / "rehearsal.ids") > 10000
-    out = mini.run(h, "rehearsal", cfg=cfg)
-    assert "pulled main:corpus/rehearsal" in out and "pushed" not in out
-    assert (h / "rehearsal.ids").read_bytes() == (g / "rehearsal.ids").read_bytes()
+    out = mini.run(g, "rehearsal", cfg=cfg, BASE2_REH_MAIN_BYTES="200000")
+    assert "published main:corpus/rehearsal" in out
+    main, tail = ids_tokens(g / "rehearsal.main.ids"), ids_tokens(g / "rehearsal.tail.ids")
+    assert main > 1.5 * tail > 10000                                  # a main and a tail of different sizes
+    rec = [json.loads(ln) for ln in open(g / "rehearsal.json")]
+    assert [os.path.basename(x["out"]) for x in rec] == ["rehearsal.main.ids", "rehearsal.tail.ids"]
+    assert [x["tokens"] for x in rec] == [main, tail]
+    obs = json.load(open(g / "base2_pins_observed.json"))["rehearsal"]
+    assert obs["differences"] == [] and set(obs["observed"]) == {"vocab/vocab_llama3_bpe.gguf", "rehearsal/rehearsal.main.ids",
+                                                                 "rehearsal/rehearsal.tail.ids"}
+    out = mini.run(h, "rehearsal", cfg=cfg, BASE2_REH_MAIN_BYTES="200000")
+    assert "pulled main:corpus/rehearsal" in out and "published" not in out
+    for f in ("rehearsal.main.ids", "rehearsal.tail.ids"):
+        assert (h / f).read_bytes() == (g / f).read_bytes()

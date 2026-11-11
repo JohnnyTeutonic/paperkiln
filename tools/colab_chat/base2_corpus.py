@@ -12,6 +12,13 @@ the author's research tree). Claude Fable 5.2, 11 Nov 2026.
     base2_corpus.py subset N.ledger.json S.ledger.json    # S's natural documents are among N's
     base2_corpus.py head-docs IN OUT BYTES                # whole documents from the start of IN, up to BYTES
     base2_corpus.py store-has CONFIG BRANCH PREFIX        # exit 0 when the store holds that set's manifest, 1 when not, 2 unread
+    base2_corpus.py store-verify CONFIG BRANCH PREFIX FILE...   # the store's manifest lists these local files' bytes
+    base2_corpus.py bind OUT --input F... [--key K=V...]  # record what OUT was built from (OUT.inputs.json)
+    base2_corpus.py bound OUT --input F... [--key K=V...] # exit 0 when OUT was built from exactly these; else OUT goes
+    base2_corpus.py doc-keys OUT FILE... / subset-docs --n-keys K --scenario F --out J S...   # S within N, by document
+    base2_corpus.py token-report --n-ids A --s-ids B --out J   # N's and S's token counts by part
+    base2_corpus.py split-docs IN A B BYTES               # whole documents: the first BYTES to A, the rest to B
+    base2_corpus.py drill-watch --config C --chat DIR --job J --out DIR   # the rehearsal: live step against pushed step
     base2_corpus.py scn-ledger / stage-ledger ...         # the scenario stream's and a stage's records
     base2_corpus.py loadprobe --spec SPEC.json --out DIR  # a short run on the real ids: start-up time and peak memory
 
@@ -228,10 +235,16 @@ def ids_tokens(record, mix):
 
 
 def share(mix, scenario, vocab, total=None):
-    """Tokens of the scenario documents in a mixed part over the part's tokens, by the real tokeniser. The scenario
-    documents are found by their bytes and encoded again, each on its own with its closing newline, which the whole-file
-    encoding gives to the next document: the count can differ from the file's by a token a document. total: the part's
-    token count from its ids; without it every other document is encoded too and the two counts are added."""
+    """Tokens of the scenario documents in a mixed part over the part's tokens, by the real tokeniser, with no
+    boundary error. corpus_ids.py cuts the file right after each special token and encodes the pieces one by one, so
+    the newline that closes a document is encoded with the start of the next one. Each scenario document is therefore
+    encoded here as the file encodes it: the newline before it (none for the file's first document), its text, and its
+    end-of-text marker. Summed over every document, plus the file's last newline, these counts are the ids file's count
+    exactly. The one convention is that a document owns the newline before it and not the one after: where a scenario
+    document follows another kind, or the reverse, that is one newline's tokens either way, and
+    `convention_bound` is the largest share that could move (one token a scenario document).
+    total: the part's token count from its ids. Without it every document is encoded and the sum is checked against
+    nothing; `tokens` is then the sum, which a caller can compare with the ids' count."""
     sys.path.insert(0, os.path.dirname(HERE))
     import corpus_ids
     _, enc = corpus_ids.encoder(vocab)
@@ -239,25 +252,163 @@ def share(mix, scenario, vocab, total=None):
     tok = {True: 0, False: 0}
     n = {True: 0, False: 0}
     batch = []
+    eot = SEP[:-1]
 
     def flush():
-        texts = [(t + SEP).decode("utf-8") for _, t in batch]
-        for (is_s, _), ids in zip(batch, enc(texts)):
+        for (is_s, _), ids in zip(batch, enc([t for _, t in batch])):
             tok[is_s] += len(ids)
         batch.clear()
+    first = True
     for d in docs(mix):
         is_s = key(d) in scn
         n[is_s] += 1
         if is_s or total is None:
-            batch.append((is_s, d))
+            batch.append((is_s, ((b"" if first else b"\n") + d + eot).decode("utf-8")))
+        first = False
         if len(batch) >= 4096:
             flush()
     flush()
     by_doc = total is None
-    total = tok[True] + tok[False] if by_doc else total
+    if by_doc:
+        last = len(enc(["\n"])[0]) if not first else 0     # the newline after the file's last document
+        total = tok[True] + tok[False] + last
     return {"mix": os.path.basename(mix), "scenario_documents": n[True], "other_documents": n[False],
             "scenario_tokens": tok[True], "tokens": total, "tokens_from": "documents" if by_doc else "ids",
-            "scenario_share_of_tokens": tok[True] / total}
+            "scenario_share_of_tokens": tok[True] / total, "boundary_error_tokens": 0,
+            "convention": "a document owns the newline before it", "convention_bound": n[True] / total}
+
+
+def token_report(n_ids, s_ids, max_rel):
+    """N's and S's token counts by part, from their ids' own records, and how far S is from N's count."""
+    def read(p):
+        return {os.path.basename(x["out"]).split(".")[1]: x["tokens"] for x in
+                (json.loads(ln) for ln in open(p, encoding="utf-8") if ln.strip())}
+    n, s = read(n_ids), read(s_ids)
+    out = {"N": n, "S": s, "N_total": sum(n.values()), "S_total": sum(s.values()), "max_relative_difference": max_rel,
+           "relative_difference": {p: (s[p] - n[p]) / n[p] for p in ("main", "tail")}}
+    out["ok"] = all(abs(v) <= max_rel for v in out["relative_difference"].values())
+    return out
+
+
+# ---------------------------------------------------------------- cached outputs and their inputs
+def file_sha(path):
+    """sha256 of a file, remembered in BASE2_HASH_CACHE by path, size and modification time, so the build's many
+    checks of one 14 GB file read it once."""
+    cache_path = os.environ.get("BASE2_HASH_CACHE")
+    st = os.stat(path)
+    k = f"{os.path.abspath(path)}|{st.st_size}|{st.st_mtime_ns}"
+    cache = {}
+    if cache_path and os.path.exists(cache_path):
+        try:
+            cache = jload(cache_path)
+        except ValueError:
+            cache = {}
+    if k not in cache:
+        cache[k] = sha256(path)
+        if cache_path:
+            try:
+                fresh = jload(cache_path) if os.path.exists(cache_path) else {}
+            except ValueError:
+                fresh = {}
+            fresh[k] = cache[k]
+            tmp = f"{cache_path}.{os.getpid()}.tmp"
+            with open(tmp, "w") as f:
+                json.dump(fresh, f)
+            os.replace(tmp, cache_path)
+    return cache[k]
+
+
+def binding(inputs, keys):
+    out = {"inputs": {}, "keys": dict(k.split("=", 1) for k in keys)}
+    for p in inputs:
+        out["inputs"][os.path.basename(p)] = file_sha(p) if os.path.isfile(p) else None
+    return out
+
+
+def bind(out, inputs, keys):
+    """Record beside OUT the sha256 of every input it was built from (OUT.inputs.json)."""
+    b = binding(inputs, keys)
+    missing = [k for k, v in b["inputs"].items() if v is None]
+    if missing:
+        raise SystemExit(f"bind {out}: inputs missing: {missing}")
+    jsave(out + ".inputs.json", b)
+
+
+def bound(out, inputs, keys):
+    """True when OUT is there and was built from exactly these inputs. Otherwise OUT and its record go, so a stale
+    recipe, ledger or share file is never read again."""
+    side = out + ".inputs.json"
+    ok = os.path.isfile(out) and os.path.getsize(out) > 0 and os.path.isfile(side)
+    if ok:
+        try:
+            ok = jload(side) == binding(inputs, keys)
+        except ValueError:
+            ok = False
+    if not ok:
+        for p in (out, side):
+            if os.path.exists(p):
+                os.remove(p)
+    return ok
+
+
+def split_docs(src, a, b, limit):
+    """Whole documents of SRC: the first LIMIT bytes' worth to A, the rest to B."""
+    n = m = 0
+    with open(a + ".tmp", "wb") as fa, open(b + ".tmp", "wb") as fb:
+        for d in docs(src):
+            if m == 0 and (n == 0 or n + len(d) + len(SEP) <= limit):
+                fa.write(d + SEP)
+                n += len(d) + len(SEP)
+            else:
+                fb.write(d + SEP)
+                m += len(d) + len(SEP)
+    if not n or not m:
+        raise SystemExit(f"split-docs: {src} gives an empty part at {limit} bytes")
+    os.replace(a + ".tmp", a)
+    os.replace(b + ".tmp", b)
+    return n, m
+
+
+def doc_keys(paths, out):
+    """How many times each document occurs in the files, by a 12-byte digest of its bytes: sorted records of the digest
+    and a 4-byte count. N's own documents, kept so that S's can be compared with them after N's text is gone."""
+    import collections
+    import struct
+    c = collections.Counter()
+    for p in paths:
+        for d in docs(p):
+            c[key(d)] += 1
+    with open(out + ".tmp", "wb") as f:
+        for k in sorted(c):
+            f.write(k + struct.pack("<I", c[k]))
+    os.replace(out + ".tmp", out)
+    return {"documents": sum(c.values()), "distinct": len(c)}
+
+
+def subset_docs(n_keys, scenario, s_paths):
+    """Document by document: every document of S that is not a scenario document occurs in N at least as often."""
+    import collections
+    import struct
+    n = {}
+    with open(n_keys, "rb") as f:
+        while True:
+            rec = f.read(16)
+            if not rec:
+                break
+            n[rec[:12]] = struct.unpack("<I", rec[12:])[0]
+    scn = {key(d) for d in docs(scenario)}
+    s = collections.Counter()
+    n_scn = 0
+    for p in s_paths:
+        for d in docs(p):
+            k = key(d)
+            if k in scn and k not in n:
+                n_scn += 1
+            else:
+                s[k] += 1
+    over = sum(1 for k, v in s.items() if v > n.get(k, 0))
+    return {"natural_documents_in_S": sum(s.values()), "scenario_documents_in_S": n_scn, "documents_in_N": sum(n.values()),
+            "documents_of_S_not_in_N": over, "subset": over == 0}
 
 
 def subset(n_ledger, s_ledger):
@@ -289,12 +440,36 @@ def head_docs(src, dst, limit):
     return n
 
 
+ABSENT = {"EntryNotFoundError", "RevisionNotFoundError"}    # the file, or the branch, is not in a repo that answered
+NOT_ABSENT = {"RepositoryNotFoundError", "LocalEntryNotFoundError", "GatedRepoError"}
+
+
+def reads_as_absent(e, local, store_error):
+    """Only a missing file or a missing branch means "not in the store". "Repository not found" is what a wrong or
+    expired token gets, and a file missing from the local cache is what an outage gets: both are an unreadable store,
+    and a multi-hour stage must not run again because of either. On a local-disk store the one absent case is its own
+    "is not in the store" error."""
+    seen = set()
+    while e is not None and id(e) not in seen:
+        seen.add(id(e))
+        names = {c.__name__ for c in type(e).__mro__}
+        if names & NOT_ABSENT:
+            return False
+        if names & ABSENT:
+            return True
+        if local and isinstance(e, store_error) and str(e).endswith("is not in the store"):
+            return True
+        e = e.__cause__ or e.__context__
+    return False
+
+
 def store_has(config, branch, prefix):
-    """True when the store holds the set's manifest. A set that is not there reads as absent; any other failure is tried
-    again by hf_store.retry and then stands, so a network fault never reads as an unfinished stage for long."""
+    """True when the store holds the set's manifest, False when the store answered and the set (or its branch) is not
+    there. Any other failure is tried again by hf_store.retry and then raised."""
     sys.path.insert(0, HERE)
     import hf_store
     store = hf_store.open_store(config)
+    local = isinstance(store.b, hf_store.DirBackend)
 
     def once():
         try:
@@ -302,12 +477,31 @@ def store_has(config, branch, prefix):
             return True
         except hf_store.VerifyError:
             raise
-        except Exception as e:  # noqa: BLE001 the library's not-found types vary by version; by name, as hf_store does
-            if isinstance(e, hf_store.StoreError) or "NotFound" in type(e).__name__:
+        except Exception as e:  # noqa: BLE001 the library's types vary by version; by name, as hf_store does
+            if reads_as_absent(e, local, hf_store.StoreError):
                 return False
             raise
     return hf_store.retry(once, tries=3, delay=float(os.environ.get("BASE2_STORE_RETRY_S", "20")),
                           what=f"manifest of {prefix}", token=store.b.token)
+
+
+def store_verify(config, branch, prefix, files):
+    """A push is published when the store's manifest for the set lists every one of these local files at its size and
+    sha256. Read back from the store with a fresh handle, after the push."""
+    sys.path.insert(0, HERE)
+    import hf_store
+    store = hf_store.open_store(config)
+    man = hf_store.retry(lambda: store.read_manifest(branch, prefix), tries=3,
+                         delay=float(os.environ.get("BASE2_STORE_RETRY_S", "20")), what=f"manifest of {prefix}",
+                         token=store.b.token)
+    bad = []
+    for p in files:
+        want = man["files"].get(os.path.basename(p))
+        if want is None:
+            bad.append(f"{os.path.basename(p)}: not in the store's manifest")
+        elif want["bytes"] != os.path.getsize(p) or want["sha256"] != file_sha(p):
+            bad.append(f"{os.path.basename(p)}: the store's copy differs")
+    return bad, {f: man["files"][f] for f in sorted(man["files"])}
 
 
 def loadprobe(spec_path, out, binary):
@@ -340,12 +534,18 @@ def loadprobe(spec_path, out, binary):
         p = subprocess.Popen([binary, "run", sp], stdout=log, stderr=subprocess.STDOUT)
         first = None
         ev = os.path.join(spec["out_dir"], "events.jsonl")
+
+        def stepped():
+            if not os.path.exists(ev):
+                return False
+            with open(ev) as f:
+                return any('"event": "step"' in ln or '"event":"step"' in ln for ln in f)
         while p.poll() is None:
-            if first is None and os.path.exists(ev):
-                with open(ev) as f:
-                    if any('"event": "step"' in ln or '"event":"step"' in ln for ln in f):
-                        first = time.time() - t0
+            if first is None and stepped():
+                first = time.time() - t0
             time.sleep(1)
+        if first is None and stepped():   # a run that ended inside one second of polling
+            first = time.time() - t0
     stop.set()
     res = {"spec": os.path.basename(spec_path), "returncode": p.returncode, "seconds": round(time.time() - t0, 1),
            "seconds_to_first_step": None if first is None else round(first, 1),
@@ -359,7 +559,68 @@ def loadprobe(spec_path, out, binary):
     return 0 if p.returncode == 0 else 1
 
 
-def scn_ledger(d, shards, text, recipe, seed, max_drop):
+def watch_sample(chat, job):
+    """The trainer's live step (the generation `live` names), its last saved step, and the courier's pushed step."""
+    import time
+    d = os.path.join(chat, job)
+    try:
+        live = int(os.path.basename(os.readlink(os.path.join(d, "ckpt_gen", "live")))[1:])
+    except (OSError, ValueError):
+        live = None
+    try:
+        state = int(open(os.path.join(d, "state.txt")).readline().strip() or 0)
+    except (OSError, ValueError):
+        state = None
+    try:
+        cs = jload(os.path.join(chat, "courier_status.json"))
+        courier = (cs.get("jobs") or {}).get(job)
+    except (OSError, ValueError):
+        courier = None
+    pushed = courier.get("pushed_step") if isinstance(courier, dict) else None
+    return {"job": job, "at": time.time(), "live_step": live, "state_step": state, "pushed_step": pushed,
+            "live_minus_pushed": None if live is None or pushed is None else live - pushed, "courier": courier}
+
+
+def drill_watch(config, chat, job, out, interval, limit_s):
+    """The rehearsal's record of what a forced stop costs. A stopped VM takes its files with it, so every `interval`
+    seconds the live step and the courier's pushed step go to the store as one small set,
+    base2-build:watch/<job>/<this VM's start time>. The last record of the VM that was stopped is then the live step
+    against the pushed step at most `interval` seconds before the stop. Ends when the job ends; a failed push is
+    left for the next round and never stops training."""
+    import time
+    sys.path.insert(0, HERE)
+    import hf_store
+    os.makedirs(out, exist_ok=True)
+    boot = int(time.time())
+    prefix = f"watch/{job}/{boot}"
+    t0, n, pushed_n, store = time.time(), 0, 0, None
+    while True:
+        try:
+            status = open(os.path.join(chat, f"STATUS_{job}")).read().strip()
+        except OSError:
+            status = "NONE"
+        rec = {**watch_sample(chat, job), "status": status, "vm_started": boot, "sample": n}
+        d = os.path.join(out, "push")
+        os.makedirs(d, exist_ok=True)
+        jsave(os.path.join(d, "watch.json"), rec)
+        with open(os.path.join(out, "watch.jsonl"), "a", encoding="utf-8") as f:
+            f.write(json.dumps(rec) + "\n")
+        try:
+            store = store or hf_store.open_store(config)
+            store.push_set("base2-build", prefix, d, kind="watch")
+            pushed_n += 1
+        except Exception as e:  # noqa: BLE001 the type alone; the next round tries again
+            print(f"drill-watch: push failed ({type(e).__name__})", flush=True)
+        n += 1
+        if status in ("FINISHED", "FAILED") or time.time() - t0 > limit_s:
+            break
+        time.sleep(interval)
+    jsave(os.path.join(out, "watch_summary.json"), {"job": job, "prefix": prefix, "samples": n, "pushed": pushed_n,
+                                                    "last": rec})
+    return 0
+
+
+def scn_ledger(d, shards, text, recipe, seed, max_drop, validate=False):
     """The scenario stream's record from its shards' filter ledgers. Refuses a stream that lost more than max_drop of its
     documents to the filter (the engine's author was blind to the eval sets, so a large loss is a finding to read, not
     to train through) or that is shorter than the mix will take."""
@@ -382,7 +643,17 @@ def scn_ledger(d, shards, text, recipe, seed, max_drop):
            "carry5_v1_sha256": first["carry5_v1_sha256"], "carry12_v1_sha256": first["carry12_v1_sha256"],
            "heldout": first["heldout"], "exclude": first["exclude"],
            "bytes": size, "bytes_the_mix_takes": need, "sha256": sha256(text)}
-    out["ok"] = out["dropped_share"] <= max_drop and size >= need * 1.005
+    # The engine's own validator, on every shard before its filter (scn_shard in base2_data.sh).
+    if validate:
+        verdicts = []
+        for k in range(shards):
+            p = os.path.join(d, f"validate_{k}.json")
+            verdicts.append(jload(p).get("verdict") if os.path.exists(p) else None)
+        out["validator"] = {"shards": shards, "verdicts": verdicts, "passed": all(v == "PASS" for v in verdicts)}
+    else:
+        out["validator"] = {"shards": 0, "verdicts": [], "passed": None, "note": "switched off (BASE2_SCN_VALIDATE=0)"}
+    out["ok"] = (out["dropped_share"] <= max_drop and size >= need * 1.005
+                 and out["validator"]["passed"] is not False)
     return out
 
 
@@ -451,6 +722,40 @@ def main(argv=None):
     p.add_argument("--shards", type=int, required=True)
     p.add_argument("--seed", type=int, required=True)
     p.add_argument("--max-drop", type=float, required=True)
+    p.add_argument("--validated", action="store_true", help="every shard must hold the validator's PASS")
+    p = sub.add_parser("store-verify")
+    p.add_argument("config")
+    p.add_argument("branch")
+    p.add_argument("prefix")
+    p.add_argument("files", nargs="+")
+    p.add_argument("--out")
+    for name in ("bind", "bound"):
+        p = sub.add_parser(name)
+        p.add_argument("out")
+        p.add_argument("--input", action="append", default=[])
+        p.add_argument("--key", action="append", default=[])
+    p = sub.add_parser("split-docs")
+    p.add_argument("src")
+    p.add_argument("a")
+    p.add_argument("b")
+    p.add_argument("bytes", type=int)
+    p = sub.add_parser("doc-keys")
+    p.add_argument("out")
+    p.add_argument("files", nargs="+")
+    p = sub.add_parser("subset-docs")
+    p.add_argument("--n-keys", required=True)
+    p.add_argument("--scenario", required=True)
+    p.add_argument("--out", required=True)
+    p.add_argument("s", nargs="+")
+    p = sub.add_parser("drill-watch")
+    for a in ("--config", "--chat", "--job", "--out"):
+        p.add_argument(a, required=True)
+    p.add_argument("--interval", type=float, default=30.0)
+    p.add_argument("--limit-s", type=float, default=4 * 3600.0)
+    p = sub.add_parser("token-report")
+    for a in ("--n-ids", "--s-ids", "--out"):
+        p.add_argument(a, required=True)
+    p.add_argument("--max-rel", type=float, default=0.01)
     p = sub.add_parser("stage-ledger")
     p.add_argument("--out", required=True)
     for a in ("--file", "--json", "--jsonl", "--kv"):
@@ -500,12 +805,43 @@ def main(argv=None):
             print(f"store-has failed: {type(e).__name__}", file=sys.stderr)
             return 2
     elif a.cmd == "scn-ledger":
-        r = scn_ledger(a.dir, a.shards, a.text, jload(a.recipe), a.seed, a.max_drop)
+        r = scn_ledger(a.dir, a.shards, a.text, jload(a.recipe), a.seed, a.max_drop, a.validated)
         jsave(a.out, r)
         print(json.dumps({k: r[k] for k in ("documents_in", "documents_kept", "dropped_share", "bytes", "ok")}))
         if not r["ok"]:
             os.replace(a.out, a.out + ".refused")
             return 1
+    elif a.cmd == "store-verify":
+        try:
+            bad, files = store_verify(a.config, a.branch, a.prefix, a.files)
+        except Exception as e:  # noqa: BLE001 the type alone, as store-has
+            print(f"store-verify failed: {type(e).__name__}", file=sys.stderr)
+            return 2
+        if a.out:
+            jsave(a.out, {"branch": a.branch, "prefix": a.prefix, "verified": not bad, "differences": bad, "files": files})
+        if bad:
+            print("\n".join(bad), file=sys.stderr)
+        return 1 if bad else 0
+    elif a.cmd == "bind":
+        bind(a.out, a.input, a.key)
+    elif a.cmd == "bound":
+        return 0 if bound(a.out, a.input, a.key) else 1
+    elif a.cmd == "split-docs":
+        print(json.dumps({"bytes": split_docs(a.src, a.a, a.b, a.bytes)}))
+    elif a.cmd == "doc-keys":
+        print(json.dumps(doc_keys(a.files, a.out)))
+    elif a.cmd == "subset-docs":
+        r = subset_docs(a.n_keys, a.scenario, a.s)
+        jsave(a.out, r)
+        print(json.dumps(r))
+        return 0 if r["subset"] else 1
+    elif a.cmd == "drill-watch":
+        return drill_watch(a.config, a.chat, a.job, a.out, a.interval, a.limit_s)
+    elif a.cmd == "token-report":
+        r = token_report(a.n_ids, a.s_ids, a.max_rel)
+        jsave(a.out, r)
+        print(json.dumps(r))
+        return 0 if r["ok"] else 1
     elif a.cmd == "stage-ledger":
         jsave(a.out, stage_ledger(a.file, a.json, a.jsonl, a.kv))
     elif a.cmd == "loadprobe":

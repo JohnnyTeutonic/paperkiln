@@ -24,7 +24,7 @@ tools/colab_chat/base2_pins.json (or --pins, or BASE2_PINS) holds sha256 by grou
 
 Every mode writes what it hashed to DIR/base2_pins_observed.json under its own name and exits non-zero on any difference,
 so an arm never starts on ids, panels, a vocabulary or weights that differ from the pinned ones. `adopt` copies observed
-hashes into the null pins and refuses to change a pin that is set; `pin-engine` records the engine's files as they stand
+hashes into the null pins, refuses to change a pin that is set, and refuses a record that carries differences; `pin-engine` records the engine's files as they stand
 (the engine was still being revised on 11 Nov 2026, so its pins are null until its author is done) and refuses to change
 them without --repin.
 """
@@ -123,7 +123,12 @@ def pin_engine(pins, d, commit=None, repin=False):
 
 
 def adopt(pins, observed):
-    """Observed hashes into null pins. Returns the pins set; raises on a set pin that differs."""
+    """Observed hashes into null pins. Returns the pins set; raises on a set pin that differs. A record that carries
+    differences (a missing file, a hash against a set pin) comes from a run that was refused: nothing of it is adopted."""
+    carrying = {m: r["differences"] for m, r in observed.items() if r.get("differences")}
+    if carrying:
+        raise SystemExit("the observed record carries differences; nothing adopted:\n" +
+                         "\n".join(f"{m}: {d}" for m, ds in sorted(carrying.items()) for d in ds))
     done = []
     for mode, rec in observed.items():
         for k, got in rec["observed"].items():
