@@ -479,6 +479,19 @@ where stated, and is exploratory.
   - **The verdict's reading (Claude Opus 5.5, 11 Nov 2026, exploratory, two seeds against one of S71):** the pool cost
     relevance outside its targets and did not buy it inside them. Not separated: which of the pool's three kinds did the
     harm, and the share due to diluting the base's parts.
+- **A29, S71's packet on an open base (§45-45.3), two seeds: `base_up`, rule 3.** S71's packet and recipe on SmolLM2-135M-Instruct
+  (O2, O2s2), with the released 135M and 360M models reported (O1, O3), replayed greedily on S71's evaluation suites and judged on the
+  wide J1. One Colab L4 session, `a29-20261111-r2`, exit 0 with cleanup certified (a first session, `a29-20261111`, ran out of GPU
+  memory at O2's training and stopped cleanly; §45.2). Score files: `analysis/a29_score.json`, `analysis/rel_wide5_read.json`.
+  - **Primary, wide J1 against S71's 31.7 points:** O2 37.0 (+5.3, +3.2 to +7.4); O2s2 36.4 (+4.7, +2.6 to +6.9): above at both
+    seeds. Identity 83 and 80 of 92 (holds at both). Released: O1 24.5, O3 28.3, both below S71 and mostly at the reply cap.
+  - **Reported:** role-play breaks 14 and 14 of 48 (S71's 6); stance 34 and 40; loop 4 and 0; follow-up family 2.41 and 2.19
+    (S71's 1.66), abstain 2.38 and 2.22 (1.90).
+  - **The labels read (Claude Opus 5.5, 11 Nov 2026):** the gain is not reply length (largest where O2's reply is no longer than
+    S71's); it is recall of names given earlier, correct facts in follow-ups and reactions that keep the user's sentence.
+  - **The verdict's reading (Claude Opus 5.5, 11 Nov 2026, exploratory):** the base was the limit on relevance; the package (base,
+    tokeniser, trainer, engine) changed together, so no one ingredient is named. Role-play does not carry over.
+- **A28, S71's packet at seed 2 (§44-44.1):** trained (`a28-s71s2-20261111`, exit 0, cleanup certified); evaluation under way.
 - **Misfire probe baselines** (correct of 140): S12 74, S14 57, S2 58, S0 54. The best degenerate responder gets
   55.
 
@@ -839,6 +852,8 @@ demonstrated optimum.
 | a26-s71-20261111 (S71) | 40.1 | exit 0; a verdict, §41.2; inside its registered 75 under Jonathan's line of 10 Nov; evaluation on five Colab CPU sessions, no L4 |
 | a27-s72-20261111 (S72) | 46.3 | exit 0; a verdict, §43.2; inside its registered 75 under Jonathan's line of 11 Nov; evaluation on Colab CPU sessions, no L4 |
 | a27-s72s2-20261111 (S72 at seed 2) | 46.1 | exit 0; a verdict, §43.2; inside its registered 75 under Jonathan's line of 11 Nov |
+| a29-20261111 (A29, first session) | 6.6 | exit 2; out of GPU memory at O2's training; cleanup certified; nothing placed (§45.2) |
+| a29-20261111-r2 (A29: O1, O3, O2, O2s2) | 37.1 | exit 0; a verdict, §45.3; inside its registered 90 under Jonathan's line of 11 Nov |
 
 By session creation to the last certified stop, `score_a19.py compute` reads 1,650.2 minutes for the lane on its own count, with
 a18-s1, a20-s54 and a20-s55 inside it. A18's sessions 2 to 4 add 209.5, so that count stands at 1,859.7 (31.0 h).
@@ -932,6 +947,7 @@ dated line and Codex's admission. Jonathan's cumulative cap for the stronger bas
 Beside it, each registration's continuation table decides:
 - **A19:** rule 3 holds, so seed 3 waits until the cause of the guard is read, and M2 waits as registered.
 - **A18:** rule 8, unresolved, recorded with the curve and s. No extension exists at 20M inside this registration, and S49 and S50 don't open.
+- **A29:** rule 3, `base_up`. On this evidence our base limits relevance; the base question goes to Jonathan (§45.3).
 - **A27:** rule 6, `relevance_cost`. The replies are read (§43.2). No next arm follows from the table.
 - **A26:** rule 4, `ready`. S71's packet is the candidate recipe; it was A27's base (§41.2, §43).
 - **A25:** rule 6, `decline`. The replies are read (§40.2). No next arm follows from the table; a next arm needs Jonathan's
