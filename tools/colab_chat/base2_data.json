@@ -1,0 +1,60 @@
+{
+ "_comment": "Base 2's corpus build on one L4 session taken for its processors and memory: three stages, each pushed to the store, so a lost session repeats one at most; then a 20-step load of S's ids.",
+ "store_inputs": [
+  {
+   "branch": "main",
+   "prefix": "seed/vocab",
+   "to": "chat/upload"
+  },
+  {
+   "branch": "main",
+   "prefix": "seed/scenario_engine",
+   "to": "chat/upload/scenario_engine"
+  }
+ ],
+ "max_parallel": 1,
+ "max_parallel_light": 1,
+ "jobs": [
+  {
+   "name": "data",
+   "light": true,
+   "halt_on_failure": true,
+   "cmd": [
+    "bash",
+    "tools/colab_chat/base2_data.sh",
+    "{out}",
+    "/content/chat/upload/vocab_llama3_bpe.gguf",
+    "all"
+   ],
+   "outputs": [
+    "base2_stage1.json",
+    "base2_stage2.json",
+    "base2_stage3.json",
+    "data.ledger.json",
+    "filter.ledger.json",
+    "fineweb_edu_shard2_v1.sha256",
+    "fineweb_edu_shard3_v1.sha256",
+    "fineweb_edu_shard4_v1.sha256",
+    "fineweb_edu_shard5_v1.sha256"
+   ]
+  },
+  {
+   "name": "load_probe",
+   "after": "data",
+   "halt_on_failure": true,
+   "cmd": [
+    "python3",
+    "tools/colab_chat/base2_corpus.py",
+    "loadprobe",
+    "--spec",
+    "tools/colab_chat/base2_load_probe.json",
+    "--out",
+    "{out}"
+   ],
+   "outputs": [
+    "loadprobe.json",
+    "run.log"
+   ]
+  }
+ ]
+}

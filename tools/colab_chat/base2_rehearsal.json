@@ -1,0 +1,206 @@
+{
+ "_comment": "Base 2's rehearsal of the store path on a small corpus (BASE2_PLAN.md section 5). The control runs after the interrupted run, in session two.",
+ "store_inputs": [
+  {
+   "branch": "main",
+   "prefix": "seed/vocab",
+   "to": "chat/upload"
+  }
+ ],
+ "max_parallel": 1,
+ "max_parallel_light": 1,
+ "jobs": [
+  {
+   "name": "data",
+   "light": true,
+   "halt_on_failure": true,
+   "cmd": [
+    "bash",
+    "tools/colab_chat/base2_data.sh",
+    "{out}",
+    "/content/chat/upload/vocab_llama3_bpe.gguf",
+    "rehearsal"
+   ],
+   "outputs": [
+    "rehearsal.json",
+    "base2_pins_observed.json"
+   ]
+  },
+  {
+   "name": "pt_reh",
+   "model_name": "base2_rehearsal",
+   "store_branch": "ckpt-R",
+   "after": [
+    "data"
+   ],
+   "snapshot_steps": [
+    100
+   ],
+   "halt_on_failure": true,
+   "env": {
+    "MICROTORCH_CHECKPOINT_TXN": "1"
+   },
+   "spec": {
+    "name": "base2_rehearsal",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/rehearsal.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "max_tokens": 0
+    },
+    "train": {
+     "steps": 400,
+     "lr": 0.0005,
+     "batch": 8,
+     "accum": 2,
+     "clip": 1.0,
+     "eval_every": 100,
+     "eval_windows": 32,
+     "checkpoint_every": 50,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "precision": "bf16",
+     "attention_kernel": "flash",
+     "lr_schedule": {
+      "warmup_steps": 40,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors"
+     ]
+    },
+    "out_dir": "/content/chat/pt_reh"
+   }
+  },
+  {
+   "name": "rung_R_s100",
+   "after": "data",
+   "light": true,
+   "env": {
+    "MICROTORCH_POOL_MB": 1024
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "tools/colab_chat/base2_rung_D1.json",
+    "--export-gguf",
+    "--weights",
+    "/content/chat/pt_reh/rung_100/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_reh",
+    "--step",
+    "100",
+    "--job",
+    "pt_reh",
+    "--cell",
+    "BASE2_R",
+    "--seed",
+    "1",
+    "--share",
+    "28",
+    "--panel",
+    "sample=/content/chat/data/rehearsal.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl",
+    "--score-batch-tokens",
+    "4096",
+    "--score-chunk",
+    "4096"
+   ],
+   "outputs": [
+    "rung.json"
+   ],
+   "rung_of": {
+    "job": "pt_reh",
+    "step": 100
+   },
+   "exclusive": true,
+   "timeout_s": 3600
+  },
+  {
+   "name": "pt_reh_control",
+   "model_name": "base2_rehearsal_control",
+   "store_branch": "ckpt-Rc",
+   "after": [
+    "pt_reh"
+   ],
+   "halt_on_failure": true,
+   "env": {
+    "MICROTORCH_CHECKPOINT_TXN": "1"
+   },
+   "spec": {
+    "name": "base2_rehearsal_control",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/rehearsal.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "max_tokens": 0
+    },
+    "train": {
+     "steps": 400,
+     "lr": 0.0005,
+     "batch": 8,
+     "accum": 2,
+     "clip": 1.0,
+     "eval_every": 100,
+     "eval_windows": 32,
+     "checkpoint_every": 50,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "precision": "bf16",
+     "attention_kernel": "flash",
+     "lr_schedule": {
+      "warmup_steps": 40,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors"
+     ]
+    },
+    "out_dir": "/content/chat/pt_reh_control"
+   }
+  }
+ ]
+}

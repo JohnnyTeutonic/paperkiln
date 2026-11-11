@@ -1,0 +1,54 @@
+{
+ "name": "base2_rung_D1",
+ "arch": {
+  "preset": "llama-tiny",
+  "rope_heads": "all",
+  "custom": {
+   "d": 512,
+   "layers": 18,
+   "heads": 8,
+   "d_ff": 1536
+  },
+  "state_tokens": {
+   "k": 4,
+   "mask": "causal"
+  }
+ },
+ "data": {
+  "corpus": "/content/chat/data/N.main.ids",
+  "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+  "vocab_cap": 16384,
+  "T": 1024,
+  "max_tokens": 0
+ },
+ "train": {
+  "steps": 250000,
+  "lr": 0.0005,
+  "batch": 8,
+  "accum": 2,
+  "clip": 1.0,
+  "eval_every": 1000,
+  "eval_windows": 32,
+  "checkpoint_every": 500,
+  "gradmap_every": 0,
+  "seed": 1,
+  "optimizer": "adamw",
+  "precision": "bf16",
+  "attention_kernel": "flash",
+  "lr_schedule": {
+   "warmup_steps": 4000,
+   "decay": "cosine",
+   "min_lr_frac": 0.1
+  }
+ },
+ "export": {
+  "formats": [
+   "safetensors",
+   "gguf"
+  ]
+ },
+ "_shape": {
+  "note": "the rung job's shape: arch and T only reach it",
+  "params": 69751296
+ }
+}
