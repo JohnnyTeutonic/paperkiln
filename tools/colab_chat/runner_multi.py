@@ -51,6 +51,13 @@ reruns, per pick, only the home post that pick's own rule (tiny_chat_run.pick_be
 summaries) can still choose; every other home post gets its home summary.json at the path pick reads and
 is marked FINISHED without running (spared_posts). Posts not yet home run anyway. A campaign without pick
 jobs makes exactly the calls it made before (tests/runner_multi_equiv: run_eq.py, run_picks.py).
+
+Checkpoint store (11 Nov 2026, base 2). --ckpt-store hf with --store-repo, --store-token-file and --boot-script
+tools/colab_chat/boot_base2.sh: a training job's generations (weights, optimiser, state) go from the VM to a
+private Hugging Face repo and come back on the next VM (hf_store.py, ckpt_courier.py), so no checkpoint crosses
+the home link and a resume keeps its optimiser. See "checkpoint store" below. A job's branch is its
+"store_branch", else ckpt-<name>; the jobs file's "store_inputs" name what the boot pulls. A campaign without the
+option makes exactly the calls it made before (tests/test_runner_store.py).
 """
 from __future__ import annotations
 
@@ -969,6 +976,191 @@ def gate_upload(j, st):
                 log(f"{j['name']}: gate file sent")
 
 
+# ---------------------------------------------------------------- checkpoint store (--ckpt-store hf)
+# Base 2 (11 Nov 2026; AI_ML/chat_screens_claude/base2/BASE2_PLAN.md section 1.5). With a store, a training job's
+# checkpoints go from the VM to a private Hugging Face repo (ckpt_courier.py) and come back on the next VM
+# (boot_base2.sh), optimiser included. This runner then sends the store's config and the token file before the boot,
+# uploads and relays no checkpoint of a training job, reads each job's pushed step from the store, brings mark
+# snapshots home from the store, and removes the token from the VM before it stops the session. STORE None (no
+# --ckpt-store): none of this runs and every call is as before (tests/test_runner_store.py).
+STORE = None  # {"repo", "repo_type", "token_file", "reclaim"}
+STORE_BOOT = "tools/colab_chat/boot_base2.sh"
+STORE_TOKEN_VM = "/content/chat/upload/store_token"  # boot_base2.sh moves it to a tmpfs
+STORE_CONFIG_VM = "/content/chat/store.json"
+STORE_SETTLE_TICKS = 8  # at the end: ticks to wait for the courier's last pushes before stopping anyway
+_STORE = {}
+
+
+def store_config(a, ap):
+    import hf_store
+    if not a.store_repo:
+        ap.error("--ckpt-store hf needs --store-repo (there is no default store)")
+    if a.store_repo in hf_store.REFUSED_REPOS:
+        ap.error(f"{a.store_repo} is the pinned inputs repo; the store must be its own repo")
+    local = a.store_repo.startswith("dir:")
+    if not local and not a.store_token_file:
+        ap.error("--ckpt-store hf needs --store-token-file (there is no default token path)")
+    if a.store_token_file:
+        try:
+            hf_store.read_token(os.path.expanduser(a.store_token_file))
+        except hf_store.StoreError as e:
+            ap.error(str(e))
+    if a.boot_script != STORE_BOOT:
+        ap.error(f"--ckpt-store hf runs with --boot-script {STORE_BOOT}")
+    return {"repo": a.store_repo, "repo_type": a.store_repo_type, "reclaim": not a.store_keep_history,
+            "min_push_interval_s": a.store_min_push_interval,
+            "token_file": os.path.expanduser(a.store_token_file) if a.store_token_file else None}
+
+
+def store_branches(jobs):
+    """{training job: its branch of the store}: the job's "store_branch", else ckpt-<name>."""
+    return {j["name"]: j.get("store_branch", "ckpt-" + j["name"]) for j in jobs if "cmd" not in j}
+
+
+def store_open(jobs):
+    """The store, opened at home with the same token file (reads only: steps, manifests, mark snapshots)."""
+    if "store" not in _STORE:
+        import hf_store
+        _STORE["store"] = hf_store.open_store({**STORE, "branches": store_branches(jobs)}, log=log)
+    return _STORE["store"]
+
+
+def store_err(e):
+    import hf_store
+    tok = _STORE["store"].b.token if "store" in _STORE else None
+    return hf_store.redact(f"{type(e).__name__}: {e}", tok)[:200]
+
+
+def store_send(jobs):
+    """prepare(), before the boot: the store's config (repo and branches, no secret) by exec, and the token as a
+    file. The token is never in exec code, a command line or a log; only its path is."""
+    cfg = {"repo": STORE["repo"], "repo_type": STORE["repo_type"], "reclaim": STORE["reclaim"],
+           "min_push_interval_s": STORE["min_push_interval_s"], "branches": store_branches(jobs)}
+    rc, out = exec_py("import json, os\n"
+                      f"cfg, p = {cfg!r}, {STORE_CONFIG_VM!r}\n"
+                      "try:\n"
+                      "    old = json.load(open(p))\n"
+                      "except (OSError, ValueError):\n"
+                      "    old = {}\n"
+                      "if old.get('token_file'):\n"
+                      "    cfg['token_file'] = old['token_file']  # adopted by an earlier boot on this VM\n"
+                      "json.dump(cfg, open(p + '.tmp', 'w'), indent=1)\n"
+                      "os.replace(p + '.tmp', p)\n"
+                      "print('STORE_OK')\n")
+    if "STORE_OK" not in out:
+        log(f"prepare: store config not written: {out.strip()[-120:]}")
+        return False
+    if STORE["token_file"]:
+        rc, _ = T.put(STORE["token_file"], STORE_TOKEN_VM, 300)
+        if rc == 0:
+            rc, out = exec_py(f"import os\nos.chmod({STORE_TOKEN_VM!r}, 0o600)\nprint('TOKEN_MODE_OK')\n")
+        if rc != 0 or "TOKEN_MODE_OK" not in out:
+            log("prepare: store token file not sent; will retry")
+            return False
+    log(f"store: config and token file sent ({STORE['repo']}, branches {sorted(cfg['branches'].values())})")
+    return True
+
+
+def store_progress(st, jobs, name):
+    """A running store job: its pushed step, read at home from the newest generation's manifest in the store. No VM
+    call and no checkpoint download; relayed_step then means "pushed to the store"."""
+    js = st.job(name)
+    try:
+        step = store_open(jobs).head_step(store_branches(jobs)[name])
+    except Exception as e:  # noqa: BLE001 a store that does not answer never ends a driver
+        log(f"{name}: store not read ({store_err(e)}); will retry")
+        return
+    if step is not None and step > js["relayed_step"]:
+        js["relayed_step"] = step
+        st.save()
+        log(f"{name}: the store holds its generation at step {step}")
+
+
+def store_fetch_mark(st, jobs):
+    """Each tick: ONE mark snapshot that the store's main branch holds and home does not, straight from the store
+    to ART/<job>/rung_snapshots/rung_<step>/, each file checked by sha256. Never from the VM, and never deleted."""
+    try:
+        store = store_open(jobs)
+        tree = store.b.tree("main") or {}
+        rec = st.d.setdefault("store_marks", {})
+        for j in jobs:
+            if "cmd" in j or not j.get("snapshot_steps"):
+                continue
+            for step in store.mark_steps(j["name"], tree):
+                key = f"{j['name']}/rung_{step}"
+                if key in rec:
+                    continue
+                man = store.pull_mark(j["name"], step, snap_home(j["name"], step))
+                w = man["files"]["model.safetensors"]
+                rec[key] = {"bytes": w["bytes"], "sha256": w["sha256"], "fetched": time.time()}
+                st.save()
+                log(f"{j['name']}: mark snapshot at step {step} fetched from the store ({w['bytes'] / 1e6:.0f} MB)")
+                return
+    except Exception as e:  # noqa: BLE001
+        log(f"store marks: {store_err(e)}; will retry")
+
+
+def store_settled(st, jobs, r):
+    """At the end (every job home): True once the courier has pushed each finished store job's last generation and
+    staged marks, so the end mark is in the store before the VM goes. Waits at most STORE_SETTLE_TICKS ticks."""
+    names = [n for n in store_branches(jobs) if r.get(n) == "FINISHED"]
+    rc, out = exec_py(
+        "import glob, json, os\n"
+        f"names = {names!r}\n"
+        "vm = {}\n"
+        "for n in names:\n"
+        "    d = '/content/chat/' + n\n"
+        "    try:\n"
+        "        live = int(os.path.basename(os.readlink(d + '/ckpt_gen/live'))[1:])\n"
+        "    except (OSError, ValueError):\n"
+        "        live = None\n"
+        "    vm[n] = [live, len(glob.glob(d + '/courier_stage/rung_*'))]\n"
+        "try:\n"
+        "    cs = json.load(open('/content/chat/courier_status.json'))['jobs']\n"
+        "except (OSError, ValueError, KeyError):\n"
+        "    cs = {}\n"
+        "print('SETTLED', json.dumps({'vm': vm, 'courier': {n: (cs.get(n) or {}).get('pushed_step') for n in names}}))\n")
+    m = re.search(r"^SETTLED (.*)$", out, re.M)
+    d = json.loads(m.group(1)) if m else None
+    waiting = None if d is None else [n for n in names if d["vm"][n][1] or (
+        d["vm"][n][0] is not None and (d["courier"].get(n) or 0) < d["vm"][n][0])]
+    if d is not None and not waiting:
+        return True
+    st.d["store_settle"] = st.d.get("store_settle", 0) + 1
+    st.save()
+    if st.d["store_settle"] > STORE_SETTLE_TICKS:
+        log(f"store: last pushes not confirmed after {STORE_SETTLE_TICKS} ticks ({waiting}); ending anyway")
+        return True
+    log(f"store: waiting for the courier's last pushes ({waiting if d is not None else 'no reply'})")
+    return False
+
+
+def store_forget_token():
+    """Before the session stops: end the courier and remove every copy of the token from the VM."""
+    out = ""
+    try:
+        rc, out = exec_py(
+            "import json, os, signal\n"
+            "c = '/content/chat'\n"
+            "try:\n"
+            "    os.kill(int(open(c + '/courier.pid').read()), signal.SIGTERM)\n"
+            "except (OSError, ValueError):\n"
+            "    pass\n"
+            f"paths = [{STORE_TOKEN_VM!r}]\n"
+            "try:\n"
+            "    paths.append(json.load(open(c + '/store.json')).get('token_file'))\n"
+            "except (OSError, ValueError):\n"
+            "    pass\n"
+            "for p in paths:\n"
+            "    if p and os.path.exists(p):\n"
+            "        os.remove(p)\n"
+            "print('TOKEN_LEFT' if any(p and os.path.exists(p) for p in paths) else 'TOKEN_GONE')\n", timeout=120)
+    except Exception:  # noqa: BLE001 the stop below must run whatever happens here
+        pass
+    log("store: token removed from the VM" if "TOKEN_GONE" in out else
+        "store: token removal not confirmed (the VM did not answer, or a copy is left); the session is stopped next")
+
+
 def halt_dpo_checkpoint(error):
     marker = os.path.join(HOME, "HALTED")
     if not os.path.exists(marker):
@@ -1072,6 +1264,8 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
     pend = sorted((j["name"] for j in jobs if not st.job(j["name"])["home"]
                    and os.path.exists(os.path.join(ART, j["name"], "state.txt"))),
                   key=lambda n: os.path.getsize(os.path.join(ART, n, "model.safetensors")))
+    if STORE:  # a training job's checkpoint never crosses the home link: boot_base2.sh pulls it on the VM
+        pend = [n for n in pend if "cmd" in by[n]]
     if T.persistent:  # what the volume already holds is not uploaded again
         has = volume_has(pend, finals)
         if has is None:
@@ -1089,6 +1283,8 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
     if rung_up is None:
         log("prepare: rung snapshot check got no reply; will retry")
         return False
+    if STORE:  # mark snapshots come from the store on the VM (ckpt_courier.py restore), not from home
+        rung_up = [u for u in rung_up if "/rung_" not in u[2]]
     full_leases = []
     if any(j.get("full_checkpoint_v2") for j in jobs):
         from sfull_checkpoint_transport_v2 import home_uploads
@@ -1151,6 +1347,8 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
         log(f"input reassembly failed: {out.strip()[-160:]}")
         return False
     log("inputs: " + " ".join(ln for ln in out.splitlines() if ln and not ln.startswith("[")))
+    if STORE and not store_send(jobs):
+        return False
     rc, out = exec_py(boot_launch_code(commit, jobs_rel, BOOT_SCRIPT))
     if "BOOTED" not in out:
         log(f"boot exec failed: {out.strip()[-160:]}")
@@ -1169,7 +1367,8 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
 
 def boot_launch_code(commit, jobs_rel, boot_script="tools/colab_chat/boot_jobs.sh"):
     """Pinned boot selection; the legacy training boot remains the default."""
-    if boot_script not in ("tools/colab_chat/boot_jobs.sh", "tools/colab_chat/boot_commands.sh", "tools/colab_chat/boot_commands_sparse.sh", "tools/colab_chat/boot_sfull_data_only_20261031.sh", "tools/colab_chat/boot_sfull_v2_20261101.sh", "tools/colab_chat/boot_dpo_checkpoint_v1.sh"):
+    if boot_script not in ("tools/colab_chat/boot_jobs.sh", "tools/colab_chat/boot_commands.sh", "tools/colab_chat/boot_commands_sparse.sh", "tools/colab_chat/boot_sfull_data_only_20261031.sh", "tools/colab_chat/boot_sfull_v2_20261101.sh", "tools/colab_chat/boot_dpo_checkpoint_v1.sh",
+                           "tools/colab_chat/boot_base2.sh"):
         raise ValueError("unsupported boot script")
     url = f"https://raw.githubusercontent.com/JohnnyTeutonic/paperkiln/{commit}/{boot_script}"
     return (
@@ -1239,12 +1438,13 @@ def sleep_tick(deadline):
 
 
 def main():
-    global NAME, ART, HOME, T, BOOT_SCRIPT
+    global NAME, ART, HOME, T, BOOT_SCRIPT, STORE
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--commit", required=True)
     ap.add_argument("--jobs", required=True, help="jobs JSON, path relative to the paperkiln repo root")
     ap.add_argument("--boot-script", default="tools/colab_chat/boot_jobs.sh",
-                    choices=["tools/colab_chat/boot_jobs.sh", "tools/colab_chat/boot_commands.sh", "tools/colab_chat/boot_commands_sparse.sh", "tools/colab_chat/boot_sfull_data_only_20261031.sh", "tools/colab_chat/boot_sfull_v2_20261101.sh", "tools/colab_chat/boot_dpo_checkpoint_v1.sh"],
+                    choices=["tools/colab_chat/boot_jobs.sh", "tools/colab_chat/boot_commands.sh", "tools/colab_chat/boot_commands_sparse.sh", "tools/colab_chat/boot_sfull_data_only_20261031.sh", "tools/colab_chat/boot_sfull_v2_20261101.sh", "tools/colab_chat/boot_dpo_checkpoint_v1.sh",
+                             "tools/colab_chat/boot_base2.sh"],
                     help="pinned VM boot; command-only boot skips trainer and corpus setup")
     ap.add_argument("--max-hours", type=float, default=23.5)
     ap.add_argument("--deadline-utc", type=parse_deadline_utc, default=None,
@@ -1261,11 +1461,25 @@ def main():
     ap.add_argument("--image", default=None, help="RunPod image (default: runpod_transport.IMAGE)")
     ap.add_argument("--max-usd", type=float, default=None,
                     help="RunPod: stop and create nothing once this runner's ledger passes this many dollars")
+    ap.add_argument("--ckpt-store", choices=["hf"], default=None,
+                    help="checkpoints, mark snapshots and inputs go through a store repo from the VM (hf_store.py, "
+                         "ckpt_courier.py, boot_base2.sh), not through the home link")
+    ap.add_argument("--store-repo", default=None, help="the store repo, OWNER/NAME (no default)")
+    ap.add_argument("--store-token-file", default=None, help="file holding the store's write token, mode 600 (no default)")
+    ap.add_argument("--store-repo-type", choices=["dataset", "model"], default="dataset")
+    ap.add_argument("--store-min-push-interval", type=float, default=0,
+                    help="seconds between a job's generation pushes (0: every save), for a store that limits commits")
+    ap.add_argument("--store-keep-history", action="store_true",
+                    help="removed generations stay in the repo's history (their storage is not released)")
     a = ap.parse_args()
     try:
         resolve_deadline(a.max_hours, a.deadline_utc, time.time())
     except ValueError as exc:
         ap.error(str(exc))
+    if a.ckpt_store:
+        STORE = store_config(a, ap)
+    elif a.store_repo or a.store_token_file or a.store_min_push_interval or a.boot_script == STORE_BOOT:
+        ap.error("--store-repo, --store-token-file and boot_base2.sh need --ckpt-store hf")
     BOOT_SCRIPT = a.boot_script
     NAME, ART, HOME = a.name, a.art, os.path.expanduser(a.state_dir)
     os.makedirs(HOME, exist_ok=True)
@@ -1404,12 +1618,17 @@ def main():
                         halt_dpo_checkpoint(error)
                         raise
                 elif r[n] == "RUNNING" and not js["home"] and "cmd" not in j:
-                    relayed = relay(st, n, j.get("relay_every_steps", 0)) or relayed
+                    if STORE:
+                        store_progress(st, jobs, n)
+                    else:
+                        relayed = relay(st, n, j.get("relay_every_steps", 0)) or relayed
                     drill = j.get("pod_loss_drill_step")
                     if drill and js["relayed_step"] >= drill and not st.d.get("pod_loss_drill"):
                         st.d["pod_loss_drill"] = {"job": n, "relayed_step": js["relayed_step"], "at": time.time()}
                         st.save()
                         log(f"{n}: pod loss drill: the pod ends at the provider now; relayed {js['relayed_step']}")
+                        if STORE:  # every stop this runner makes takes the token off the VM first
+                            store_forget_token()
                         T.lose_pod(st)
                         done = False
                         break
@@ -1460,13 +1679,18 @@ def main():
                 done = done and js["home"]
             for j in jobs:
                 gate_upload(j, st)
-            if has_rungs:
+            if STORE:
+                store_fetch_mark(st, jobs)
+            if has_rungs and not STORE:
                 try:
                     fetch_rung_snapshot(st, jobs, r, relayed)
                 except (OSError, ValueError, KeyError, TypeError) as e:  # a backstop must never end a driver
                     log(f"rung snapshots: {e!r}")
             if any(pause_at_rung(j, st) for j in jobs):
                 raise SystemExit(0)
+            if done and STORE and not store_settled(st, jobs, r):
+                sleep_tick(deadline)
+                continue
             if done:
                 log("all jobs finished and home")
                 st.d["campaign_home"] = True
@@ -1474,6 +1698,8 @@ def main():
                 break
             sleep_tick(deadline)
     finally:
+        if STORE:
+            store_forget_token()
         T.stop(st)
         if st.d.get("campaign_home"):
             T.release(st)
