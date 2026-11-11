@@ -629,7 +629,7 @@ def test_every_store_call_of_the_data_script_has_a_limit():
     assert "for try in 1 2 3 4; do" in text and 4 * (len(sets) - 1) == 32 < 128 // 2
     push = next(ln for ln in text.splitlines() if "python3 $CC/hf_store.py push" in ln) + text.split("python3 $CC/hf_store.py push", 1)[1].split("\n", 2)[1]
     assert '--commit-budget "$COMMIT_BUDGET"' in push and '--commit-wait "$COMMIT_WAIT_S"' in push
-    assert "COMMIT_BUDGET=${BASE2_STORE_COMMIT_BUDGET:-60}" in text
+    assert "COMMIT_BUDGET=${BASE2_STORE_COMMIT_BUDGET:-30}" in text and "per writer, not per repository" in text
 
 
 # ---------------------------------------------------------------- end to end on toy sources

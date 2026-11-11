@@ -92,8 +92,9 @@ def main(argv=None):
     ap.add_argument("--record", required=True, help="where the JSON record of sizes and hashes is written")
     ap.add_argument("--replace", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--commit-budget", type=int, default=60,
-                    help="commits this run may send (three are needed; the hub limits a repository's commits an hour)")
+    ap.add_argument("--commit-budget", type=int, default=10,
+                    help="commits this run may send (three are needed). This run's own ceiling: the hub limits a "
+                         "repository's commits an hour for every writer together, so seed before the VMs write")
     a = ap.parse_args(argv)
     token = None
     try:

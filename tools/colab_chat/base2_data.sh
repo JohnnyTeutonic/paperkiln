@@ -62,10 +62,11 @@ RETRY_S=${BASE2_STORE_RETRY_S:-20}
 # read by base2_corpus.py). A call that hangs is a failed try and the script stops; it never waits without end.
 XFER_LIMIT_S=${BASE2_STORE_XFER_LIMIT_S:-5400}
 # The hub limits commit creation per repository (128 an hour for every writer together, 12 Nov 2026). The whole build
-# is eight commits (one a set; the rehearsal's corpus is one), each tried at most four times, so 32 at the very worst;
-# they pass a budget all the same, counted beside the
-# store's config with every other process of this VM, and a push that finds the budget spent waits for its turn.
-COMMIT_BUDGET=${BASE2_STORE_COMMIT_BUDGET:-60}
+# is eight commits (one a set; the rehearsal's corpus is one), each tried at most four times, so 32 at the very worst,
+# and one creation of the build branch, remembered beside the count so that no later process asks for it again. They
+# pass a budget all the same: this VM's ceiling (per writer, not per repository), counted beside the store's config
+# with every other process of this VM. A push that finds the budget spent waits for its turn, at most 15 minutes.
+COMMIT_BUDGET=${BASE2_STORE_COMMIT_BUDGET:-30}
 COMMIT_WAIT_S=${BASE2_STORE_COMMIT_WAIT_S:-900}
 export BASE2_STORE_LIMIT_S=${BASE2_STORE_LIMIT_S:-300}
 S13=oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots
