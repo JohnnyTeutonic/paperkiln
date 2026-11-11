@@ -544,6 +544,41 @@ class FakeApi:
                 del self.branches[revision][o.path_in_repo]
         self.heads[revision] += 1
 
+    def preupload_lfs_files(self, *, repo_id, additions, token=None, repo_type=None, revision=None, create_pr=None,
+                            num_threads=5, free_memory=True, gitignore_content=None):
+        self._rec("preupload_lfs_files", repo=repo_id, revision=revision, repo_type=repo_type, token=token,
+                  paths=[o.path_in_repo for o in additions])
+        self._done("preupload_lfs_files")
+
+    @property
+    def http_session(self):
+        """The ranged one-byte GET of HfBackend.probe: 206, or the object store's 404 after a redirect for an LFS
+        file whose object is gone, or the hub's own 404 for a path that is not there."""
+        api = self
+
+        class Session:
+            def get(self, url, headers=None, timeout=None, stream=False, allow_redirects=True):
+                import io
+                import requests
+                revision, path = url.split("/resolve/", 1)[1].split("/", 1)
+                api._rec("probe", repo="someone/base2-store", revision=revision, filename=path, range=headers.get("Range"),
+                         repo_type="dataset" if "/datasets/" in url else "model",
+                         token=str(headers.get("authorization") or headers.get("Authorization")).replace("Bearer ", ""))
+                resp = requests.Response()
+                resp.url, resp.raw = url, io.BytesIO(b"")
+                files = api._files(revision)
+                if path not in files:
+                    resp.status_code = 404
+                    resp.headers["X-Error-Code"] = "EntryNotFound"
+                elif path.endswith(".safetensors") and S.sha(files[path]) not in api.lfs:
+                    first = requests.Response()
+                    first.status_code = 302
+                    resp.status_code, resp.history, resp.url = 404, [first], "https://cdn-lfs.example/" + S.sha(files[path])
+                else:
+                    resp.status_code, resp.raw = 206, io.BytesIO(files[path][:1])
+                return resp
+        return Session()
+
     def hf_hub_download(self, *, repo_id, filename, revision=None, local_dir=None, repo_type=None, token=None):
         self._rec("hf_hub_download", repo=repo_id, filename=filename, revision=revision, repo_type=repo_type, token=token)
         files = self._files(revision)
@@ -668,7 +703,7 @@ def test_release_by_difference_under_a_lock(tmp_path):
         store.release_report("boot-a", grace=599, now=api.now + 10 ** 6)
     # Later: only the removed generation's optimiser goes. Its weights are the mark's; the old upload is nobody's.
     api.calls.clear()
-    rep = store.release_report("boot-a", now=api.now + hf_store.RELEASE_GRACE_S + 60)
+    rep = store.release_report("boot-a", now=api.now + hf_store.RELEASE_GRACE_S + 600)
     assert (rep["objects"], rep["bytes"]) == (1, len(o100)) and rep["pending"] == {} and rep["ledgers_done"] == 1
     assert (rep["orphan_objects"], rep["orphan_bytes"]) == (1, 39)
     dele = dict(api.calls)["permanently_delete_lfs_files"]
@@ -681,15 +716,16 @@ def test_release_by_difference_under_a_lock(tmp_path):
     assert cc[0]["ops"] == [("CommitOperationAdd", hf_store.LOCK)] and cc[0]["parent"] is not None
     assert cc[-1]["ops"] == [("CommitOperationAdd", hf_store.RELEASED), ("CommitOperationDelete", hf_store.LOCK)]
     assert hf_store.LOCK not in api.branches["main"] and json.loads(api.branches["main"][hf_store.RELEASED]) == {"ckpt-N": [100]}
-    assert {c[1]["revision"] for c in api.calls if c[0] == "list_repo_tree"} >= {"main", "ckpt-N", "ckpt-S", "base2-build"}
+    listed = {c[1]["revision"] for c in api.calls if c[0] == "list_repo_tree"}       # each at the commit read as its head
+    assert {r.split("@")[0] for r in listed} >= {"main", "ckpt-N", "ckpt-S", "base2-build"} and all("@" in r for r in listed)
     # The branch's next save removes the finished ledger in its own commit; the release after that drops the record.
     store.push_generation("ckpt-N", "pt", 400, staged_gen(tmp_path, 400), None, store.head("ckpt-N")["commit"],
                           prune={"keep": 2, "verified": [200, 300]})
     assert "pruned/g100.json" not in api.branches["ckpt-N"] and store.steps("ckpt-N") == [200, 300, 400]
-    assert store.release("boot-a", now=api.now + hf_store.RELEASE_GRACE_S + 60) == 0
+    assert store.release("boot-a", now=api.now + hf_store.RELEASE_GRACE_S + 600) == 0
     assert hf_store.RELEASED not in api.branches["main"]
     # By hand, with no VM writing: --orphans also takes what is in no tree and no ledger.
-    assert store.release_report("boot-a", now=api.now + hf_store.RELEASE_GRACE_S + 60, orphans=True)["objects"] == 1
+    assert store.release_report("boot-a", now=api.now + hf_store.RELEASE_GRACE_S + 600, orphans=True)["objects"] == 1
     assert uncommitted not in api.lfs and S.sha(m100) in api.lfs
     # Another releaser holds a fresh lock: nothing is listed or deleted. A stale lock is taken over.
     api.branches["main"][hf_store.LOCK] = json.dumps({"owner": "boot-b", "at": api.now}).encode()
@@ -715,7 +751,7 @@ def test_release_refuses_when_it_cannot_tell_the_objects_apart(tmp_path):
     nothing is deleted."""
     api, store, _ = release_setup(tmp_path, lfs_by="file_oid")
     assert store.prune("ckpt-N", verified=[200, 300]) == [100]
-    assert store.release("a", now=api.now + hf_store.RELEASE_GRACE_S + 60) == 1
+    assert store.release("a", now=api.now + hf_store.RELEASE_GRACE_S + 600) == 1
     assert S.sha(S.state_at(100)[0]) in api.lfs and S.sha(S.state_at(100)[1]) not in api.lfs
     api2, store2, _ = release_setup(tmp_path / "b")
     assert store2.prune("ckpt-N", verified=[200, 300]) == [100]
@@ -723,7 +759,7 @@ def test_release_refuses_when_it_cannot_tell_the_objects_apart(tmp_path):
     api2.list_lfs_files = lambda **kw: [type("O", (), {"oid": "x" + f.oid[1:], "file_oid": "y", "pushed_at": f.pushed_at})()
                                         for f in real(**kw)]
     with pytest.raises(hf_store.StoreError, match="release refused"):
-        store2.release("a", now=api2.now + hf_store.RELEASE_GRACE_S + 60)
+        store2.release("a", now=api2.now + hf_store.RELEASE_GRACE_S + 600)
     assert "permanently_delete_lfs_files" not in [c[0] for c in api2.calls]
     assert hf_store.LOCK not in api2.branches["main"]  # the lock is given back on the refusal too
     # A prune by itself releases nothing: release is a separate, opt-in call.
@@ -760,7 +796,7 @@ def test_the_release_lock_reads_the_head_first_and_is_released_only_by_its_owner
     other._unlock(took[1])
     # 3. With no one else, the release goes through and reports what it freed.
     assert store.prune("ckpt-N", verified=[200, 300]) == [100]
-    rep = store.release_report("boot-a", now=api.now + hf_store.RELEASE_GRACE_S + 60)
+    rep = store.release_report("boot-a", now=api.now + hf_store.RELEASE_GRACE_S + 600)
     assert (rep["held"], rep["objects"], rep["bytes"]) == (False, 1, len(S.state_at(100)[1]))
     # What the store then holds, for the storage guard at home, each object by its sha256 so that it counts once:
     # what each branch names under gens/, the marks by their folder, nothing pending and no orphan.
@@ -776,13 +812,13 @@ def test_the_release_lock_reads_the_head_first_and_is_released_only_by_its_owner
     # A size the store does not give is not taken for zero: the total is unknown, and said to be.
     assert rep["unknown_sizes"] == 1 and rep["stored_bytes"] is None      # the build branch's object carries none
     api.sizes[S.sha(b"build bytes")] = len(b"build bytes")
-    again = other.release_report("boot-b", now=api.now + hf_store.RELEASE_GRACE_S + 60)
+    again = other.release_report("boot-b", now=api.now + hf_store.RELEASE_GRACE_S + 600)
     assert (again["held"], again["objects"], again["bytes"], again["unknown_sizes"]) == (False, 0, 0, 0)
     assert again["stored_bytes"] == sum(api.sizes[o] for o in api.lfs)
     # An object no tree and no ledger names is still stored and is reported, never deleted, whatever its age.
     young = b"an upload that is not committed yet"
     api.lfs[S.sha(young)], api.sizes[S.sha(young)] = api.now - 10 ** 7, len(young)
-    orphan = other.release_report("boot-b", now=api.now + hf_store.RELEASE_GRACE_S + 60)
+    orphan = other.release_report("boot-b", now=api.now + hf_store.RELEASE_GRACE_S + 600)
     assert (orphan["objects"], orphan["orphan_objects"], orphan["orphan_bytes"]) == (0, 1, len(young)) and S.sha(young) in api.lfs
     del api.lfs[S.sha(young)]
     # 4. Ownership. A holds the lock, it goes stale, B takes it over; A's unlock then leaves B's lock where it is.
@@ -1516,6 +1552,288 @@ def test_three_campaigns_on_one_repo_are_each_counted_for_what_is_theirs(tmp_pat
     # What the first version of the measurement would have said for S: its tree with main's copy, and everybody's leftovers.
     old = sum(e["bytes"] for e in stores["S"].b.tree("ckpt-S").values() if e.get("sha256")) + rep["pending_bytes"] + orphan
     assert old > counted["S"] + len(seedw)
+
+
+# ---------------------------------------------------------------- the second reviews (12 Nov 2026)
+def test_an_unread_check_is_not_a_damaged_generation_and_a_missing_object_is_seen(tmp_path):
+    """listed_whole has three answers. True: whole. False: a COMPLETED comparison that differs. An error: something
+    could not be read, which is no verdict. The reviews: whole_in_listing swallowed the manifest fetch's error, so
+    a good listing followed by an unreadable manifest read as "not whole" for good; and the listing's size and hash
+    of an LFS file come from its pointer, so a pointer whose object is gone read as whole."""
+    pytest.importorskip("huggingface_hub")
+    import requests
+    api = FakeApi()
+    store, _ = hstore(tmp_path, api)
+    man = store.push_generation("ckpt-N", "pt", 100, staged_gen(tmp_path, 100), IDENT)
+    api.calls.clear()
+    assert store.listed_whole("ckpt-N", 100, man["files"]) is True
+    probes = [c[1] for c in api.calls if c[0] == "probe"]
+    assert sorted(p["filename"] for p in probes) == ["gens/g100/model.safetensors", "gens/g100/optim.safetensors"]   # the two large files
+    assert all(p["range"] == "bytes=0-0" and p["token"] == TOKEN and p["revision"] == "ckpt-N" for p in probes)
+    # 1. The listing is good and the manifest cannot be fetched: an error, in this process and through a child.
+    real = api.hf_hub_download
+
+    def no_manifest(**kw):
+        if kw["filename"].endswith("manifest.json"):
+            raise requests.ConnectionError("HTTPSConnectionPool(host='huggingface.co', port=443): Read timed out.")
+        return real(**kw)
+
+    api.hf_hub_download = no_manifest
+    with pytest.raises(requests.ConnectionError):
+        store.listed_whole("ckpt-N", 100, man["files"])
+    with pytest.raises(hf_store.StoreError, match="ConnectionError"):
+        hf_store.bounded(lambda: store.listed_whole("ckpt-N", 100, man["files"]), 30, TOKEN)
+    assert store.whole_in_listing("ckpt-N", 100, store.b.tree("ckpt-N")) is False     # the prune's own reading stays the cautious one
+    api.hf_hub_download = real
+    # The listing cannot be read: an error. A branch that is not there: an error.
+    api.fail = requests.ConnectionError("reset")
+    with pytest.raises(requests.ConnectionError):
+        store.listed_whole("ckpt-N", 100)
+    api.fail = None
+    with pytest.raises(hf_store.StoreError, match="not listed"):
+        store.listed_whole("ckpt-nowhere", 100)
+    # A byte that cannot be read (the hub answers 503): an error.
+    session = FakeApi.http_session.fget(api)
+    broken = type("S", (), {"get": lambda self, url, **kw: _resp(503)})()
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(FakeApi, "http_session", property(lambda self: broken))
+        with pytest.raises(Exception) as e:
+            store.listed_whole("ckpt-N", 100)
+        assert "503" in str(e.value) and not isinstance(e.value, AssertionError)
+        with pytest.raises(Exception):
+            store.b.probe("ckpt-N", "gens/g100/model.safetensors")
+    assert session is not None and store.listed_whole("ckpt-N", 100) is True
+    # 2. Completed comparisons that differ: False, each.
+    assert store.listed_whole("ckpt-N", 200) is False                                    # not listed at all
+    assert store.listed_whole("ckpt-N", 100, {**man["files"], "state.txt": {"bytes": 1, "sha256": "0" * 64}}) is False
+    keep = dict(api.branches["ckpt-N"])
+    api.branches["ckpt-N"]["gens/g100/manifest.json"] = b"{not json"
+    assert store.listed_whole("ckpt-N", 100) is False                                    # read, and not a manifest
+    api.branches["ckpt-N"] = dict(keep)
+    api.branches["ckpt-N"]["gens/g100/optim.safetensors"] = b"short"
+    assert store.listed_whole("ckpt-N", 100) is False                                    # a file of another size
+    api.branches["ckpt-N"] = dict(keep)
+    # 3. The pointer is listed, with its size and hash, and the object is gone: the listing alone says whole; the
+    # byte read says no.
+    gone = S.sha(S.state_at(100)[1])
+    at = api.lfs.pop(gone)
+    assert store.whole_in_listing("ckpt-N", 100, store.b.tree("ckpt-N")) is True and store.listed_whole("ckpt-N", 100, probe=False) is True
+    assert store.listed_whole("ckpt-N", 100, man["files"]) is False
+    assert store.b.probe("ckpt-N", "gens/g100/optim.safetensors") is False and store.b.probe("ckpt-N", "gens/g100/model.safetensors") is True
+    assert store.b.probe("ckpt-N", "gens/g100/nothing.bin") is False                     # the hub's own "no such file"
+    api.lfs[gone] = at
+    # The same through the stand-in hub: a commit that lands and whose object is lost after it.
+    hs, root, _ = hub_store(tmp_path / "hub")
+    hs.ensure_branch("ckpt-N")
+    (root / "lose.json").write_text(json.dumps({"path": "gens/g200/optim.safetensors"}))
+    m2 = hs.push_generation("ckpt-N", "pt", 200, staged_gen(tmp_path / "hub", 200), IDENT, hs.head("ckpt-N")["commit"])
+    assert hs.steps("ckpt-N") == [200] and hs.whole_in_listing("ckpt-N", 200, hs.b.tree("ckpt-N")) is True
+    assert hs.listed_whole("ckpt-N", 200, m2["files"]) is False and not hs.verify_by_download("ckpt-N", 200)
+    (root / "fail.json").write_text(json.dumps({"mode": "transport"}))
+    with pytest.raises(requests.ConnectionError):
+        hs.listed_whole("ckpt-N", 200, m2["files"])
+    (root / "fail.json").unlink()
+    # The calls probe() and the late ledger rely on are in the pinned library as they are used here.
+    import inspect
+    import huggingface_hub
+    from huggingface_hub.utils import build_hf_headers, get_session, hf_raise_for_status
+    params = inspect.signature(huggingface_hub.HfApi.preupload_lfs_files).parameters
+    assert {"repo_id", "additions", "token", "repo_type", "revision"} <= set(params)
+    assert huggingface_hub.hf_hub_url(repo_id="o/n", filename="gens/g1/model.safetensors", repo_type="dataset", revision="ckpt-N") == \
+        "https://huggingface.co/datasets/o/n/resolve/ckpt-N/gens/g1/model.safetensors"
+    assert build_hf_headers(token="hf_x")["authorization"] == "Bearer hf_x" and callable(get_session) and callable(hf_raise_for_status)
+
+
+def _resp(code):
+    import io
+    import requests
+    r = requests.Response()
+    r.status_code, r.url, r.raw = code, "https://huggingface.co/datasets/someone/base2-store/resolve/ckpt-N/x", io.BytesIO(b"")
+    return r
+
+
+def test_release_with_objects_that_several_ledgers_or_a_mark_name(tmp_path):
+    """The rehearsal's interrupted run and its control train the same steps from the same seed: their generations
+    are the same bytes, on two branches. And a mark names its generation's weights. The first ledger rule ("no
+    other ledger names it") never freed what both runs had removed, and left both ledgers unfinished for ever.
+
+    Now an object goes when EVERY ledger that names it is older than the grace (and a margin for the two clocks)
+    and no tree names it; it goes once, and each ledger is finished when all it names is gone or named elsewhere.
+    A ledger that cannot be read stops all deletion in that round. Ledgers are read at the commit the release saw
+    as their branch's head, so a save that removes one in the meantime changes nothing."""
+    api = FakeApi()
+    store, logs = hstore(tmp_path, api, clock=lambda: api.now)
+    t0 = api.now
+    for branch in ("ckpt-R", "ckpt-Rc"):                               # the run and its control: the same bytes
+        for step in (100, 200, 300):
+            store.push_generation(branch, "pt", step, staged_gen(tmp_path / branch, step))
+    mark = tmp_path / "mark"
+    mark.mkdir()
+    m100, o100 = S.state_at(100)
+    (mark / "model.safetensors").write_bytes(m100)
+    (mark / "state.txt").write_text("100\n{}\n")
+    store.push_mark("pt", 100, str(mark))
+    m200, o200 = S.state_at(200)
+    grace, skew = 600, hf_store.RELEASE_SKEW_S
+    assert skew == 120
+    # The run removes g100 and g200 at t0; the control still names them.
+    assert store.prune("ckpt-R", keep=2, verified=[300, 200]) == [100]
+    store.push_generation("ckpt-R", "pt", 400, staged_gen(tmp_path / "ckpt-R", 400), None, store.head("ckpt-R")["commit"],
+                          prune={"keep": 2, "verified": [300, 200]})
+    assert store.prune("ckpt-R", keep=2, verified=[300, 400]) == [200]
+    r = store.release_report("home", grace=grace, now=t0 + 10 ** 5)
+    assert r["objects"] == 0 and r["pending"] == {} and r["ledgers_done"] == 2          # all of it is named by the control's tree
+    assert json.loads(api.branches["main"][hf_store.RELEASED]) == {"ckpt-R": [100, 200]}
+    # The control removes its g100 and g200 later, at t0 + 5,000. Now two ledgers name each object.
+    api.now = t0 + 5000
+    assert store.prune("ckpt-Rc", keep=2, verified=[200, 300]) == [100]
+    store.push_generation("ckpt-Rc", "pt", 400, staged_gen(tmp_path / "ckpt-Rc", 400), None, store.head("ckpt-Rc")["commit"],
+                          prune={"keep": 2, "verified": [200, 300]})
+    assert store.prune("ckpt-Rc", keep=2, verified=[300, 400]) == [200]
+    assert hf_store.ledger_steps(store.b.tree("ckpt-R")) == [100, 200] == hf_store.ledger_steps(store.b.tree("ckpt-Rc"))
+    # One ledger of each pair is old, the other young: nothing shared is deleted, and it waits in both.
+    api.calls.clear()
+    r = store.release_report("home", grace=grace, now=t0 + 5000 + grace + skew - 1)     # inside the margin for the clocks
+    want = {S.sha(o100): len(o100), S.sha(m200): len(m200), S.sha(o200): len(o200)}     # m100 is the mark's: not pending
+    assert r["objects"] == 0 and r["pending"] == {"ckpt-R": want, "ckpt-Rc": want} and r["ledgers_done"] == 0
+    assert r["pending_bytes"] == sum(want.values()) and "permanently_delete_lfs_files" not in [c[0] for c in api.calls]
+    assert hf_store.campaign_bytes(r, ["ckpt-R", "ckpt-Rc"], ["pt"]) == sum(want.values()) + len(m100) + sum(
+        len(b) for s in (300, 400) for b in S.state_at(s))                              # each object once for the campaign
+    # A ledger that cannot be read: nothing at all is deleted in that round, though every readable ledger is old.
+    good = api.branches["ckpt-Rc"]["pruned/g200.json"]
+    api.branches["ckpt-Rc"]["pruned/g200.json"] = b"\x00 not a ledger"
+    late = t0 + 10 ** 6
+    r = store.release_report("home", grace=grace, now=late)
+    assert (r["objects"], r["ledgers_unread"]) == (0, 1) and S.sha(o100) in api.lfs
+    assert S.sha(o100) in r["pending"]["ckpt-R"] and any("nothing is deleted in this round" in ln for ln in logs)
+    api.branches["ckpt-Rc"]["pruned/g200.json"] = good
+    # Every ledger old and read: each object goes once, and all four ledgers are finished. The mark's weights stay.
+    api.calls.clear()
+    r = store.release_report("home", grace=grace, now=late)
+    assert (r["objects"], r["bytes"], r["ledgers_unread"]) == (3, sum(want.values()), 0) and r["pending"] == {}
+    assert sorted(dict(api.calls)["permanently_delete_lfs_files"]["oids"]) == sorted(want)
+    assert S.sha(m100) in api.lfs and r["ledgers_done"] == 4
+    assert json.loads(api.branches["main"][hf_store.RELEASED]) == {"ckpt-R": [100, 200], "ckpt-Rc": [100, 200]}
+    assert store.release_report("home", grace=grace, now=late)["objects"] == 0
+    # A ledger its branch removes while the release is between the listing and the read: read all the same, at
+    # the commit the release saw as the head.
+    api2 = FakeApi()
+    s2, _ = hstore(tmp_path / "two", api2, clock=lambda: api2.now)
+    for step in (100, 200, 300):
+        s2.push_generation("ckpt-N", "pt", step, staged_gen(tmp_path / "two", step))
+    assert s2.prune("ckpt-N", verified=[200, 300]) == [100]
+    seen = []
+
+    def courier_removes_the_ledger():
+        if not seen and api2.calls[-1][1].get("revision", "").startswith("ckpt-N@"):
+            seen.append(1)
+            api2.create_commit(repo_id="r", operations=[type("CommitOperationDelete", (), {"path_in_repo": "pruned/g100.json", "is_folder": False})()],
+                               commit_message="generation: gens/g400", revision="ckpt-N")
+        elif not seen:
+            api2.after["list_repo_tree"] = courier_removes_the_ledger
+
+    api2.after["list_repo_tree"] = courier_removes_the_ledger
+    r = s2.release_report("home", grace=grace, now=api2.now + 10 ** 5)
+    assert seen and "pruned/g100.json" not in api2.branches["ckpt-N"]
+    assert (r["objects"], r["ledgers_unread"]) == (2, 0)                                 # g100's two files, by the ledger as it was
+    fetched = [c[1] for c in api2.calls if c[0] == "hf_hub_download" and c[1]["filename"] == "pruned/g100.json"]
+    assert fetched and all(c["revision"].startswith("ckpt-N@") for c in fetched)         # by commit, not by the moving name
+
+
+def test_a_ledgers_time_is_the_moment_its_commit_is_sent(tmp_path):
+    """The grace a reader of a removed generation is owed runs from the removal. The ledger's time was taken before
+    the new generation was hashed and uploaded, which can take half an hour: the grace could be over before the
+    removal existed. The large files are now uploaded first (the library's preupload_lfs_files), the ledger is
+    written, and the commit is sent."""
+    api = FakeApi()
+    store, _ = hstore(tmp_path, api, clock=lambda: api.now)
+    for step in (100, 200, 300):
+        store.push_generation("ckpt-N", "pt", step, staged_gen(tmp_path, step))
+    t0 = api.now
+    api.after["preupload_lfs_files"] = lambda: setattr(api, "now", api.now + 1500)      # the upload takes 25 minutes
+    api.calls.clear()
+    store.push_generation("ckpt-N", "pt", 400, staged_gen(tmp_path, 400), None, store.head("ckpt-N")["commit"],
+                          prune={"keep": 2, "verified": [200, 300]})
+    order = [c[0] for c in api.calls if c[0] in ("preupload_lfs_files", "create_commit")]
+    assert order == ["preupload_lfs_files", "create_commit"]
+    pre = dict(api.calls)["preupload_lfs_files"]
+    assert "gens/g400/model.safetensors" in pre["paths"] and "pruned/g100.json" not in pre["paths"] and pre["token"] == TOKEN
+    assert ("CommitOperationAdd", "pruned/g100.json") in dict(api.calls)["create_commit"]["ops"]
+    assert json.loads(api.branches["ckpt-N"]["pruned/g100.json"])["at"] == t0 + 1500   # after the upload, not before
+    # So a release 600 s after the upload BEGAN deletes nothing: the removal is 600 s old only 1,500 s later.
+    assert store.release_report("home", grace=600, now=t0 + 1500 + 600)["objects"] == 0
+    assert store.release_report("home", grace=600, now=t0 + 1500 + 600 + hf_store.RELEASE_SKEW_S + 1)["objects"] == 2
+    # A save that removes nothing is one plain create_commit, as before.
+    api.calls.clear()
+    store.push_generation("ckpt-N", "pt", 500, staged_gen(tmp_path, 500), None, store.head("ckpt-N")["commit"],
+                          prune={"keep": 2, "verified": [300]})
+    assert [c[0] for c in api.calls if c[0] in ("preupload_lfs_files", "create_commit")] == ["create_commit"]
+    # A library that does not take the upload call as written: the commit still goes, with its ledger.
+    api.preupload_lfs_files = lambda **kw: (_ for _ in ()).throw(TypeError("unexpected keyword argument"))
+    man = store.push_generation("ckpt-N", "pt", 600, staged_gen(tmp_path, 600), None, store.head("ckpt-N")["commit"],
+                                prune={"keep": 2, "verified": [300, 400, 500]})
+    assert man["pruned"] == [200, 300] and hf_store.ledger_steps(store.b.tree("ckpt-N")) == [200, 300]
+    # A store on local disk writes it under its commit lock; a standalone prune stamps it the same way.
+    clock = Tick()
+    d = hf_store.Store(hf_store.DirBackend(str(tmp_path / "repo")), log=lambda m: None, delay=0, clock=clock)
+    push_gens(tmp_path / "d", d, [100, 200, 300])
+    clock.t += 777
+    assert d.prune("ckpt-N", verified=[200, 300]) == [100]
+    assert json.loads((tmp_path / "repo" / "ckpt-N" / "pruned" / "g100.json").read_text())["at"] == clock.t
+
+
+def test_the_budget_in_memory_keeps_its_history_and_a_bad_record_of_finished_ledgers_is_ignored(tmp_path):
+    """Two smaller points of the second reviews. (1) When the ledger file stops being writable the count goes on
+    in memory: from the history that was in the file, with the edit that was under way applied once, and ageing as
+    it does in the file (it used to start from nothing, could apply the edit twice, and never aged). (2)
+    main:locks/released.json is written by the release alone, and is checked all the same: one that is not
+    {branch: [steps]} is said in the log and ignored, and the save goes on without removing any ledger."""
+    if os.geteuid() == 0:
+        pytest.skip("a folder cannot be made unwritable for root")
+    clock = Tick()
+    folder = tmp_path / "vm"
+    folder.mkdir()
+    b = hf_store.CommitBudget(6, str(folder / "store_commits.json"), clock=clock, essential_wait=3600)
+    for _ in range(3):
+        b.admit("generation")
+        clock.t += 100
+    os.chmod(folder, 0o555)                              # the disk goes read-only under the courier
+    try:
+        b.admit("generation")                            # counted once, on top of the three that were in the file
+        assert b.count() == 4 and b._mem is not None
+        other = hf_store.CommitBudget(6, str(folder / "store_commits.json"), clock=clock, essential_wait=3600)
+        assert other.count() == 3                        # a new process still reads what the file held
+        b.admit("generation")
+        b.admit("generation")
+        with pytest.raises(hf_store.BudgetSpent):
+            b.admit("generation")
+        clock.t += 3501                                  # the three from the file are an hour old; they age in memory too
+        assert b.count() == 3 and b.wait_s() == 0
+        b.admit("generation")
+        clock.t += 3601
+        assert b.count() == 0
+    finally:
+        os.chmod(folder, 0o755)
+    # (2)
+    logs = []
+    store = hf_store.Store(hf_store.DirBackend(str(tmp_path / "repo")), log=logs.append, delay=0)
+    push_gens(tmp_path, store, [100, 200, 300])
+    assert store.prune("ckpt-N", verified=[200, 300]) == [100]
+    locks = tmp_path / "repo" / "main" / "locks"
+    locks.mkdir(parents=True)
+    for bad in ('{"ckpt-N": 5}', '{"ckpt-N": ["100"]}', '[100]', '{"ckpt-N": [true]}', "{not json", "\x00\xff"):
+        (locks / "released.json").write_bytes(bad.encode("latin-1"))
+        logs.clear()
+        step = max(store.steps("ckpt-N")) + 100
+        man = store.push_generation("ckpt-N", "pt", step, staged_gen(tmp_path, step), None, store.head("ckpt-N")["commit"],
+                                    prune={"keep": 2, "verified": store.steps("ckpt-N")[-2:]})
+        assert man["step"] == step and 100 in hf_store.ledger_steps(store.b.tree("ckpt-N")), bad
+        assert any("is not well formed; ignored" in ln for ln in logs), bad
+    (locks / "released.json").write_text(json.dumps({"ckpt-N": [100], "ckpt-other": []}))
+    step = max(store.steps("ckpt-N")) + 100
+    store.push_generation("ckpt-N", "pt", step, staged_gen(tmp_path, step), None, store.head("ckpt-N")["commit"],
+                          prune={"keep": 2, "verified": store.steps("ckpt-N")[-2:]})
+    assert 100 not in hf_store.ledger_steps(store.b.tree("ckpt-N"))                      # a good record is followed
 
 
 # ---------------------------------------------------------------- base2_seed.py

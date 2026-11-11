@@ -37,12 +37,13 @@ generation never counts that generation, so a branch holds three for the time be
 Storage. Removing a generation from a branch does not free its bytes. release() does, and deletes only what a
 commit once named and a later commit removed: the commit that removes a generation writes its ledger
 (pruned/g<step>.json) in the same commit, and a release, under a lock file on main, deletes an LFS object only when
-(a) it is in a ledger older than the grace period, (b) no branch's tree, listed under the lock, names it, and (c) it
-is in that one ledger alone. An object that was uploaded and never committed is in no ledger and is never deleted by
-a release: a writer's upload cannot be taken from under its commit, however long the commit waits. Such objects are
-reported ("orphan_bytes") and removed only by hand, `hf_store.py release --orphans`, with no VM writing. The grace
-period then covers only a reader of a generation that was just removed (a restore's download), and is never under
-MIN_RELEASE_GRACE_S. Release runs from home, by the runner, on a timer (runner_multi.py --store-release-storage); a
+(a) a ledger names it, (b) EVERY ledger that names it is older than the grace period, and (c) no branch's tree,
+listed under the lock, names it. A ledger that cannot be read stops all deletion in that round. An object that was
+uploaded and never committed is in no ledger and is never deleted by a release, however long its commit waits
+(what is not closed: an upload that reuses the bytes of an object a ledger names; see release_report). Such objects
+are reported ("orphan_bytes") and removed only by hand, `hf_store.py release --orphans`, with no VM writing. The
+grace period then covers only a reader of a generation that was just removed (a restore's download), and only if
+that download fits inside it; it is never under MIN_RELEASE_GRACE_S. Release runs from home, by the runner, on a timer (runner_multi.py --store-release-storage); a
 VM never releases. The lock keeps two releases apart and nothing else.
 
 Commits. The hub limits commit creation per repository (128 an hour on 12 Nov 2026, answered with HTTP 429; a
@@ -178,6 +179,7 @@ MIN_429_WAIT_S = 60       # nothing passes the budget for at least this long aft
 MAX_429_WAIT_S = 1800     # nor for longer than this, whatever wait the hub names
 ESSENTIAL_WAIT_S = 900    # an essential commit waits this long for room in the budget, then is sent anyway
 MIN_RELEASE_GRACE_S = 600  # a release never deletes what a ledger younger than this names
+RELEASE_SKEW_S = 120       # added to the grace: a ledger's time is a VM's clock, the release's is home's
 
 
 def rate_limited(e, now=None):
@@ -311,23 +313,35 @@ class CommitBudget:
 
     def _edit(self, fn):
         now = self.clock()
-        if self._mem is not None:
-            return fn(self._mem, now)
-        try:
-            os.makedirs(os.path.dirname(os.path.abspath(self.path)), exist_ok=True)
-            with open(self.path + ".lock", "w") as lock:
-                fcntl.flock(lock, fcntl.LOCK_EX)
-                d = self._read(now)
-                d["commits"] = [c for c in d["commits"] if now - c[0] < self.window]
-                out = fn(d, now)
-                tmp = f"{self.path}.tmp{os.getpid()}"
-                with open(tmp, "w") as f:
-                    json.dump(d, f)
-                os.replace(tmp, self.path)
-                return out
-        except OSError:  # no file to count in: count here (fn changes d in place and has run at most once)
-            self._mem = self._blank()
-            return fn(self._mem, now)
+        if self._mem is None:
+            d, ran, out = None, False, None
+            try:
+                os.makedirs(os.path.dirname(os.path.abspath(self.path)), exist_ok=True)
+                with open(self.path + ".lock", "w") as lock:
+                    fcntl.flock(lock, fcntl.LOCK_EX)
+                    d = self._read(now)
+                    d["commits"] = [c for c in d["commits"] if now - c[0] < self.window]
+                    out, ran = fn(d, now), True
+                    tmp = f"{self.path}.tmp{os.getpid()}"
+                    with open(tmp, "w") as f:
+                        json.dump(d, f)
+                    os.replace(tmp, self.path)
+                    return out
+            except OSError:
+                # The file cannot be used: the count goes on in memory, from the history that could still be
+                # read. An edit that had run before the write failed is kept and is not run a second time.
+                if d is None:
+                    try:
+                        d = self._read(now)
+                    except OSError:
+                        d = self._blank()
+                self._mem = d
+                if ran:
+                    return out
+        d = self._mem
+        d["commits"] = [c for c in d["commits"] if now - c[0] < self.window]  # it ages here as it does in the file
+        d["blocked_until"] = min(d["blocked_until"], now + MAX_429_WAIT_S)
+        return fn(d, now)
 
     def _wait(self, d, now, essential, need, force=False):
         blocked = max(0.0, d["blocked_until"] - now)
@@ -630,10 +644,15 @@ class DirBackend:
                 out[os.path.relpath(p, d).replace(os.sep, "/")] = {"bytes": n, "sha256": sha}
         return out
 
-    def commit(self, branch, adds, deletes, message, parent=None):
+    def probe(self, branch, path, rev=None):
+        return os.path.isfile(self._p(branch, path))
+
+    def commit(self, branch, adds, deletes, message, parent=None, before_send=None):
         self.ensure_branch(branch)
         with open(os.path.join(self.root, ".lock"), "w") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
+            if before_send is not None:
+                adds = {**adds, **before_send()}
             if parent is not None and parent != self.head(branch):
                 raise ConflictError(f"{branch} moved (head {self.head(branch)}, expected {parent})")
             for path, src in sorted(adds.items(), key=lambda kv: kv[0].endswith("/" + MANIFEST) or kv[0] == MANIFEST):
@@ -731,16 +750,56 @@ class HfBackend:
             out[e.path] = {"bytes": size, "sha256": sha}
         return out
 
-    def commit(self, branch, adds, deletes, message, parent=None):
+    def commit(self, branch, adds, deletes, message, parent=None, before_send=None):
         """One create_commit: the adds and the deletes together (a delete whose path ends in "/" is a folder's:
         CommitOperationDelete reads the trailing slash). The branch is the caller's to have created
         (Store.ensure_branch, which passes the budget): a commit that names its parent is on a branch the caller
-        has read."""
+        has read.
+
+        before_send (a ledger's writer): the adds' large files are uploaded first (preupload_lfs_files, which
+        create_commit then does not repeat), before_send() is called, and the {path: file} it returns are added
+        to the commit that is sent next. What it writes therefore carries the time the commit is sent, not the
+        time the upload began. Should the pinned library not take the call as written here (a TypeError or an
+        AttributeError), the upload is left to create_commit and before_send() is called just before it."""
         from huggingface_hub import CommitOperationAdd, CommitOperationDelete
-        ops =[CommitOperationAdd(path_in_repo=p, path_or_fileobj=src) for p, src in sorted(adds.items())]
+        ops = [CommitOperationAdd(path_in_repo=p, path_or_fileobj=src) for p, src in sorted(adds.items())]
+        if before_send is not None:
+            if ops:
+                try:
+                    self.api.preupload_lfs_files(additions=ops, revision=branch, **self._kw())
+                except (TypeError, AttributeError):
+                    pass
+            ops += [CommitOperationAdd(path_in_repo=p, path_or_fileobj=src) for p, src in sorted(before_send().items())]
         ops += [CommitOperationDelete(path_in_repo=p) for p in sorted(deletes)]
         self.api.create_commit(operations=ops, commit_message=message, revision=branch, parent_commit=parent, **self._kw())
         self._known.add(branch)
+
+    def probe(self, branch, path, rev=None):
+        """One byte of a file, read through the hub's download address: True when the bytes are there, False when
+        the hub or its object store answers that they are not (a pointer whose object is gone), an error when the
+        answer could not be had. The listing cannot tell these apart for an LFS file: its size and hash come from
+        the pointer. A ranged GET of the first byte; the token goes in the request's header, as the library builds
+        it, and nowhere else. A redirect to the object store is followed (requests drops the token on the way)."""
+        from huggingface_hub import hf_hub_url
+        from huggingface_hub.utils import build_hf_headers, get_session, hf_raise_for_status
+        url = hf_hub_url(repo_id=self.repo, filename=path, repo_type=self.repo_type, revision=rev or branch)
+        session = getattr(self.api, "http_session", None) or get_session()
+        r = session.get(url, headers={**build_hf_headers(token=self.token), "Range": "bytes=0-0"}, timeout=30,
+                        stream=True, allow_redirects=True)
+        try:
+            if r.status_code == 416:
+                return True  # there, and empty
+            try:
+                hf_raise_for_status(r)
+            except Exception as e:  # noqa: BLE001
+                if type(e).__name__ == "EntryNotFoundError":
+                    return False  # the hub: no such file at this revision
+                if r.status_code in (404, 410) and r.history and type(e).__name__ not in ("RepositoryNotFoundError", "RevisionNotFoundError"):
+                    return False  # the object store, after the hub's redirect: no such object
+                raise
+            return len(next(r.iter_content(1), b"")) == 1
+        finally:
+            r.close()
 
     def fetch(self, branch, path, dest, rev=None):
         """One file. Only the hub saying "no such file" or "no such branch" is Missing; a repository that is not
@@ -817,18 +876,24 @@ class Store:
         if self.budget:
             self.budget.note_branch(b.repo, branch)
 
-    def commit(self, branch, adds, deletes, message, parent=None, essential=True, need=1, force=False, reserved=False):
+    def commit(self, branch, adds, deletes, message, parent=None, essential=True, need=1, force=False, reserved=False,
+               late=None):
         """The one way a commit leaves this Store: through the budget, and with the hub's 429 read. Raises
         BudgetSpent (nothing was sent) or RateLimited (the hub refused; its wait is kept and the budget lets
         nothing through until it is over); any other failure as itself. A commit that names no parent is on a
-        branch nobody has read: the branch is created first, once (ensure_branch)."""
+        branch nobody has read: the branch is created first, once (ensure_branch). late: called when the adds'
+        large files are uploaded and the commit is about to be sent; the {path: file} it returns go into the same
+        commit (a ledger, whose time must be that moment's)."""
         if parent is None:
             self.ensure_branch(branch)
         if self.budget:
             self.budget.admit(message.split(":")[0], essential=essential, need=need, force=force, reserved=reserved,
                               patience=self.budget_wait if essential else 0)
         try:
-            self.b.commit(branch, adds, deletes, message, parent=parent)
+            if late is None:
+                self.b.commit(branch, adds, deletes, message, parent=parent)
+            else:
+                self.b.commit(branch, adds, deletes, message, parent=parent, before_send=late)
         except Exception as e:  # noqa: BLE001
             self._limited(e, f"a commit to {branch}")
             if type(e).__name__ == "RevisionNotFoundError" and hasattr(self.b, "known_branch"):
@@ -858,10 +923,10 @@ class Store:
                 time.sleep(self.delay)
 
     # -- sets
-    def push_set(self, branch, prefix, folder, kind="files", names=None, meta=None, parent=None, deletes=(), extra=None):
+    def push_set(self, branch, prefix, folder, kind="files", names=None, meta=None, parent=None, deletes=(), late=None):
         """Hash `names` (default: every file in folder, not recursive) and commit them with a manifest. One commit,
-        which also removes `deletes` and adds `extra` ({path in the branch: file}; push_generation's pruned
-        generations and their ledgers)."""
+        which also removes `deletes` and adds what `late()` returns at the moment the commit is sent
+        (push_generation's pruned generations and their ledgers)."""
         names = sorted(names if names is not None else
                        [f for f in os.listdir(folder) if os.path.isfile(os.path.join(folder, f)) and f != MANIFEST])
         if not names:
@@ -879,8 +944,7 @@ class Store:
             # hash above and the upload shows there as a refused pull, never as a silent difference.
             adds = {f"{prefix}/{f}": os.path.join(folder, f) for f in names}
             adds[f"{prefix}/{MANIFEST}"] = mp
-            adds.update(extra or {})
-            self.commit(branch, adds, list(deletes), f"{kind}: {prefix}", parent=parent)
+            self.commit(branch, adds, list(deletes), f"{kind}: {prefix}", parent=parent, late=late)
         self._manifests[(branch, prefix)] = man
         return man
 
@@ -974,16 +1038,38 @@ class Store:
         tree = self.b.tree(branch) or {}
         return [s for s in self.steps(branch, tree) if self.whole_in_listing(branch, s, tree)]
 
-    def listed_whole(self, branch, step, files=None):
-        """True when a listing taken NOW shows the generation whole: its manifest, read again from the store, names
-        this step (and, with `files`, exactly the sizes and hashes the pusher computed from its own bytes), and
-        every file of it is listed at that size and, for an LFS file, that sha256. A read, not a commit. This,
-        after the commit that added the generation, is what makes it count as verified for a later prune."""
-        self._manifests.pop((branch, f"gens/g{step}"), None)
-        tree = self.b.tree(branch) or {}
-        if not self.whole_in_listing(branch, step, tree):
+    def listed_whole(self, branch, step, files=None, probe=True):
+        """True when a listing taken NOW shows the generation whole and its large files are really there; False
+        when a COMPLETED comparison says otherwise; an error when anything could not be read. The three are kept
+        apart: an unread manifest or listing is "not verified yet", never "damaged" (the second review, 12 Nov
+        2026: a manifest fetch that failed after a good listing read as not whole for good).
+
+        Whole: the manifest is listed and, read again from the store, names this step (and, with `files`, exactly
+        the sizes and hashes the pusher computed from its own bytes); every file of it is listed at that size and,
+        for an LFS file, that sha256; and (probe) one byte of each LFS file can be read. The listing's size and
+        hash of an LFS file come from its pointer, so only the read shows a pointer whose object is gone.
+        Reads, not commits. This, after the commit that added the generation, is what makes it count as verified."""
+        prefix = f"gens/g{step}"
+        self._manifests.pop((branch, prefix), None)
+        tree = self.b.tree(branch)
+        if tree is None:
+            raise StoreError(f"{branch} is not listed")
+        if f"{prefix}/{MANIFEST}" not in tree:
             return False
-        return files is None or self.read_manifest(branch, f"gens/g{step}")["files"] == files
+        try:
+            man = self.read_manifest(branch, prefix, fresh=True)
+        except VerifyError:
+            return False  # read, and not a manifest
+        if man.get("step") != step or not set(GEN_FILES) <= set(man["files"]) or (files is not None and man["files"] != files):
+            return False
+        large = []
+        for f, want in man["files"].items():
+            e = tree.get(f"{prefix}/{f}")
+            if not e or e["bytes"] != want["bytes"] or (e.get("sha256") and e["sha256"] != want["sha256"]):
+                return False
+            if e.get("sha256"):
+                large.append(f"{prefix}/{f}")
+        return all(self.b.probe(branch, p) for p in large) if probe else True
 
     def push_generation(self, branch, job, step, folder, identity=None, parent=None, prune=None):
         """One generation, staged in `folder` (GEN_FILES and events.jsonl), as one commit computed against the
@@ -997,7 +1083,9 @@ class Store:
         removed with fewer than `keep` such generations, nothing at or above the lowest step in `protect`, nothing
         outside gens/. The same commit writes each removed generation's ledger, pruned/g<step>.json (its LFS
         objects and sizes, the time), which is what lets a release delete those objects and no others, and removes
-        the ledgers a release has finished with (main:locks/released.json). The removed steps come back as
+        the ledgers a release has finished with (main:locks/released.json). The ledger's time is taken after the
+        new generation's files are hashed and uploaded, immediately before the commit is sent, so a slow upload
+        does not use up the grace a reader of the removed generation is owed. The removed steps come back as
         "pruned" beside the manifest's own keys."""
         if not branch.startswith("ckpt-"):
             raise StoreError(f"generations go to a ckpt-* branch, not {branch}")
@@ -1011,10 +1099,11 @@ class Store:
                                        prune.get("protect") or (), tree)
         names = [*GEN_FILES] + (["events.jsonl"] if os.path.exists(os.path.join(folder, "events.jsonl")) else [])
         with tempfile.TemporaryDirectory(prefix="store_ledger.") as tmp:
-            ledgers, finished = self._ledgers(branch, gone, tree, tmp) if prune else ({}, [])
+            finished = self._finished_ledgers(branch, gone, tree) if prune else []
             man = self.push_set(branch, f"gens/g{step}", folder, kind="generation", names=names,
                                 meta={**(identity or {}), "job": job, "step": step}, parent=parent,
-                                deletes=[f"gens/g{s}/" for s in gone] + finished, extra=ledgers)
+                                deletes=[f"gens/g{s}/" for s in gone] + finished,
+                                late=(lambda: self._write_ledgers(branch, gone, tree, tmp)) if gone else None)
         for s in gone:
             self._manifests.pop((branch, f"gens/g{s}"), None)
         return {**man, "pruned": gone}
@@ -1034,30 +1123,37 @@ class Store:
                        and gen_step(p.split("/")[1]) is not None and gen_step(p.split("/")[1]) < floor})
         return gone, f"behind verified g{good[-keep]} and g{good[-1]}"
 
-    def _ledgers(self, branch, gone, tree, tmp):
-        """For the commit that removes the generations `gone` of `tree`: ({path: file} of their ledgers, written
-        into tmp; [paths] of the older ledgers a release has finished with, to remove in the same commit)."""
-        adds = {}
+    def _write_ledgers(self, branch, gone, tree, tmp):
+        """{path: file}: the ledgers of the generations `gone` of `tree`, written into tmp NOW, with this moment as
+        their time. Called immediately before the commit that removes them is sent."""
+        adds, now = {}, self.clock()
         for s in gone:
             objects = [{"path": p, "sha256": e["sha256"], "bytes": e["bytes"]} for p, e in sorted(tree.items())
                        if p.startswith(f"gens/g{s}/") and e.get("sha256")]
             p = os.path.join(tmp, f"g{s}.json")
             with open(p, "w") as f:
-                json.dump({"format": PRUNED_FORMAT, "branch": branch, "step": s, "at": self.clock(), "objects": objects}, f)
+                json.dump({"format": PRUNED_FORMAT, "branch": branch, "step": s, "at": now, "objects": objects}, f)
             adds[f"{PRUNED}/g{s}.json"] = p
+        return adds
+
+    def _finished_ledgers(self, branch, gone, tree):
+        """[paths] of the branch's older ledgers that a release has finished with (main:locks/released.json), to
+        remove in this commit. Whatever is wrong with that record, nothing is removed and the save goes on."""
         have = [s for s in ledger_steps(tree) if s not in gone]
-        finished = []
-        if have:
-            try:
-                done = self._released().get(branch) or []
-            except Exception:  # noqa: BLE001 main not read: the ledgers stay until a later save
-                done = []
-            finished = [f"{PRUNED}/g{s}.json" for s in have if s in done]
-        return adds, finished
+        if not have:
+            return []
+        try:
+            done = self._released().get(branch) or []
+        except Exception as e:  # noqa: BLE001 main not read: the ledgers stay until a later save
+            self.log(f"{branch}: the record of finished ledgers was not read ({type(e).__name__}); none is removed now")
+            done = []
+        return [f"{PRUNED}/g{s}.json" for s in have if s in done]
 
     def _released(self):
         """main:locks/released.json, {branch: [steps]}: the ledgers whose objects a release found all gone or all
-        named again. {} when there is none."""
+        named again. {} when there is none. Checked: a record that is not {text: [whole numbers]} throughout is
+        said in the log and taken for no record at all, so a save never fails on it and never removes a ledger on
+        its word."""
         with tempfile.TemporaryDirectory(prefix="store_lock.") as tmp:
             p = os.path.join(tmp, "r")
             try:
@@ -1065,28 +1161,33 @@ class Store:
             except Missing:
                 return {}
             try:
-                with open(p) as f:
-                    d = json.load(f)
+                with open(p, "rb") as f:
+                    d = json.loads(f.read().decode("utf-8"))
             except ValueError:
-                return {}
-        return d if isinstance(d, dict) else {}
+                d = None
+        ok = isinstance(d, dict) and all(isinstance(k, str) and isinstance(v, list)
+                                         and all(isinstance(s, int) and not isinstance(s, bool) for s in v) for k, v in d.items())
+        if not ok:
+            self.log(f"main:{RELEASED} is not well formed; ignored (no ledger is removed on its word)")
+            return {}
+        return d
 
-    def _read_ledger(self, branch, step):
-        """A ledger as its branch holds it, checked; None for one that cannot be read or is not well formed (a
-        release then deletes nothing it names and leaves it where it is)."""
+    def _read_ledger(self, branch, step, rev=None):
+        """A ledger as its branch holds it (at the commit `rev`, when given), checked; None for one that cannot be
+        read or is not well formed. A release that meets one deletes nothing at all in that round."""
         with tempfile.TemporaryDirectory(prefix="store_ledger.") as tmp:
             p = os.path.join(tmp, "l")
             try:
-                self.fetch(branch, f"{PRUNED}/g{step}.json", p)
-                with open(p) as f:
-                    d = json.load(f)
+                self.fetch(branch, f"{PRUNED}/g{step}.json", p, rev=rev)
+                with open(p, "rb") as f:
+                    d = json.loads(f.read().decode("utf-8"))
             except Exception as e:  # noqa: BLE001
-                self.log(f"{branch}: ledger of g{step} not read ({type(e).__name__}); nothing it names is released")
+                self.log(f"{branch}: ledger of g{step} not read ({type(e).__name__})")
                 return None
         ok = isinstance(d, dict) and d.get("format") == PRUNED_FORMAT and _num(d.get("at")) and isinstance(d.get("objects"), list) \
             and all(isinstance(o, dict) and isinstance(o.get("sha256"), str) and _num(o.get("bytes")) for o in d["objects"])
         if not ok:
-            self.log(f"{branch}: ledger of g{step} is not well formed; nothing it names is released")
+            self.log(f"{branch}: ledger of g{step} is not well formed")
             return None
         return d
 
@@ -1151,9 +1252,9 @@ class Store:
         if not gone:
             return []
         with tempfile.TemporaryDirectory(prefix="store_ledger.") as tmp:
-            ledgers, finished = self._ledgers(branch, gone, tree, tmp)
-            self.commit(branch, ledgers, [f"gens/g{s}/" for s in gone] + finished, f"prune: generations {gone} {why}",
-                        parent=head, essential=False)
+            finished = self._finished_ledgers(branch, gone, tree)
+            self.commit(branch, {}, [f"gens/g{s}/" for s in gone] + finished, f"prune: generations {gone} {why}",
+                        parent=head, essential=False, late=lambda: self._write_ledgers(branch, gone, tree, tmp))
         for s in gone:
             self._manifests.pop((branch, f"gens/g{s}"), None)
         return gone
@@ -1165,13 +1266,30 @@ class Store:
 
     def release_report(self, owner, grace=RELEASE_GRACE_S, now=None, orphans=False):
         """Free the storage of removed generations, and nothing else. An LFS object is deleted for good only when
-        (a) a ledger (pruned/g<step>.json on some branch, written by the commit that removed the generation) names
-        it and is older than `grace` seconds; (b) no branch's tree names it, in listings taken here, under the
-        lock; and (c) no other ledger names it. So what is deleted was committed once, was removed by a commit, and
-        belonged to that one generation: an object on main, a mark's weights, an object two generations shared, and
-        an object that was uploaded and is not committed yet are never deleted, whatever their age. `grace` covers
-        a reader of the generation that was just removed (a restore that listed it before the removal), and is
-        refused under MIN_RELEASE_GRACE_S.
+        (a) at least one ledger (pruned/g<step>.json on some branch, written by the commit that removed the
+        generation) names it; (b) EVERY ledger that names it is older than `grace` + RELEASE_SKEW_S seconds; and
+        (c) no branch's tree names it. Heads, trees and ledgers are all read here, under the lock, each tree and
+        each ledger at the commit that was its branch's head when the release looked (never by the moving branch
+        name). So what is deleted was committed once and has since been removed from every place that held it: an
+        object on main, a mark's weights, an object a kept generation shares with a removed one, and an object
+        that was uploaded and is not committed yet are never deleted, whatever their age. Two removed generations
+        that held the same bytes (a run and its control) are released together, once the later ledger is old
+        enough. A ledger that cannot be read or is not well formed stops ALL deletion in that round: it may name an
+        object another ledger also names, and a round later it may be readable.
+
+        The grace. A ledger's time is the removing VM's clock, taken just before its commit is sent; RELEASE_SKEW_S
+        is added here for a difference between that clock and this one. `grace` protects a reader of a generation
+        that was just removed (a restore that listed it before the removal) ONLY IF ITS DOWNLOAD FITS INSIDE IT;
+        there is no lease, and a download that takes longer can lose the object under it. What keeps that from
+        mattering: a restore takes the newest generation, and a generation is removed only when two newer ones
+        have been verified by its branch's one writer, which the runner starts only after the session before it is
+        stopped. Refused under MIN_RELEASE_GRACE_S.
+
+        Not closed: an upload that reuses the bytes of an object a ledger names (the same weights pushed again
+        under another path). The hub skips such an upload; if every ledger naming the object is old and no tree
+        names it yet, a release in the seconds between that upload's check and its commit deletes it, and the
+        commit names a missing object. The post-commit check (listed_whole) reads a byte of each large file and
+        says so; nothing is removed on that generation's account.
 
         One releaser at a time, by a lock file on main: two commits, the lock and its removal, both counted when
         the lock is taken. The removal's commit also records on main (locks/released.json) the ledgers that are
@@ -1187,9 +1305,10 @@ class Store:
         object counts once: "gens" {branch: {sha256: bytes}} (what each branch names under gens/), "marks" {folder
         under marks/: {sha256: bytes}}, "pending" {branch: {sha256: bytes}} (in that branch's ledgers, still
         stored, not named), "orphan_objects" and "orphan_bytes" (in no tree and no ledger, still stored),
-        "stored_bytes" (every object left), "ledgers" and "ledgers_done". A size the store does not give is not
-        taken for zero: "stored_bytes" and "orphan_bytes" are then None and "unknown_sizes" says how many. Refuses
-        when the listing's hashes cannot be matched to the object ids."""
+        "stored_bytes" (every object left), "ledgers", "ledgers_done" and "ledgers_unread" (with any unread the
+        measurement is incomplete: what those ledgers hold is in nobody's "pending"). A size the store does not
+        give is not taken for zero: "stored_bytes" and "orphan_bytes" are then None and "unknown_sizes" says how
+        many. Refuses when the listing's hashes cannot be matched to the object ids."""
         if grace < MIN_RELEASE_GRACE_S:
             raise StoreError(f"release refused: a grace of {grace:.0f} s is under the minimum of {MIN_RELEASE_GRACE_S} s "
                              "(a restore may be reading a generation that was just removed)")
@@ -1199,7 +1318,8 @@ class Store:
             return {"held": True, "objects": 0, "bytes": 0}
         done = None
         try:
-            trees = {br: self.b.tree(br) or {} for br in self.b.branches()}
+            heads = {br: self.b.head(br) for br in self.b.branches()}
+            trees = {br: (self.b.tree(br, rev=h) if h else self.b.tree(br)) or {} for br, h in heads.items()}
             named = {e["sha256"] for t in trees.values() for e in t.values() if e.get("sha256")}
             gens = {br: {e["sha256"]: e["bytes"] for p, e in t.items() if p.startswith("gens/") and e.get("sha256")}
                     for br, t in trees.items() if br != "main"}
@@ -1208,11 +1328,15 @@ class Store:
                 parts = p.split("/")
                 if len(parts) >= 3 and parts[0] == "marks" and e.get("sha256"):
                     marks.setdefault(parts[1], {})[e["sha256"]] = e["bytes"]
-            ledgers = {(br, s): self._read_ledger(br, s) for br, t in sorted(trees.items()) for s in ledger_steps(t)}
-            seen = {}
+            ledgers = {(br, s): self._read_ledger(br, s, rev=heads[br]) for br, t in sorted(trees.items()) for s in ledger_steps(t)}
+            unread = sorted(k for k, led in ledgers.items() if led is None)
+            young = set()  # objects that some ledger younger than the grace names
+            ledgered = set()
             for led in ledgers.values():
-                for oid in {o["sha256"] for o in (led or {}).get("objects", [])}:
-                    seen[oid] = seen.get(oid, 0) + 1
+                for o in (led or {}).get("objects", []):
+                    ledgered.add(o["sha256"])
+                    if not now - led["at"] > grace + RELEASE_SKEW_S:
+                        young.add(o["sha256"])
             objs = self.b.lfs_objects()
             by_id = {i: o for o in objs for i in o["ids"]}
             if not named <= set(by_id):
@@ -1221,20 +1345,23 @@ class Store:
             for (br, s), led in sorted(ledgers.items()):
                 if led is None:
                     continue
-                old, waiting = now - led["at"] > grace, False
+                waiting = False
                 for o in led["objects"]:
                     obj = by_id.get(o["sha256"])
                     if obj is None or o["sha256"] in named:
                         continue  # gone already, or named by a tree again: counted where it is named
-                    if old and seen[o["sha256"]] == 1:
-                        dead[id(obj)] = (obj, o["bytes"])
+                    if o["sha256"] not in young and not unread:
+                        dead[id(obj)] = (obj, o["bytes"])  # every ledger that names it is old; it goes, once
                     else:
                         pending.setdefault(br, {})[o["sha256"]] = o["bytes"]
                         waiting = True
                 if not waiting:
                     finished.setdefault(br, []).append(s)
-            orphan = [o for o in objs if not named.intersection(o["ids"]) and not set(seen).intersection(o["ids"])]
-            if orphans:
+            if unread:
+                self.log(f"release: {len(unread)} ledger(s) not read ({', '.join(f'{b}:g{s}' for b, s in unread)}); nothing "
+                         "is deleted in this round")
+            orphan = [o for o in objs if not named.intersection(o["ids"]) and not ledgered.intersection(o["ids"])]
+            if orphans and not unread:
                 for o in orphan:
                     if o["pushed_at"] is not None and now - o["pushed_at"] > grace:
                         dead[id(o)] = (o, o.get("bytes"))
@@ -1251,10 +1378,10 @@ class Store:
                     "orphan_bytes": None if any(o.get("bytes") is None for o in left_orphans) else sum(o["bytes"] for o in left_orphans),
                     "unknown_sizes": unknown, "gens": gens, "marks": marks, "pending": pending,
                     "pending_bytes": sum({k: v for d in pending.values() for k, v in d.items()}.values()),
-                    "ledgers": len(ledgers), "ledgers_done": sum(len(v) for v in finished.values())}
+                    "ledgers": len(ledgers), "ledgers_done": sum(len(v) for v in finished.values()),
+                    "ledgers_unread": len(unread)}
         finally:
             self._unlock(mine, done)
-
     def _read_lock(self, head):
         """The lock file as main's commit `head` holds it; {} for one that is not JSON. A lock that cannot be
         fetched raises: an unread lock is never taken for a stale one."""

@@ -28,7 +28,12 @@ Nothing here opens a socket.
                                                 index; a download of a file whose object is gone fails.
     HUB_STANDIN_ROOT/damage.json                optional: {"path": P, "bytes": N}: the next commit that adds P leaves
                                                 it N bytes long on the hub (a file that arrived short). Used once.
+    HUB_STANDIN_ROOT/lose.json                  optional: {"path": P}: the next commit that adds P lands, and P's object
+                                                is then gone from the object store: a pointer whose object is missing.
+                                                The listing still gives P its size and sha256; a read of its bytes
+                                                (DiskSession, hf_hub_download) fails. Used once.
 A new branch starts from main's tree (create_branch), as on the hub, and its creation counts against limit.json.
+preupload_lfs_files is the upload phase by itself; DiskApi.http_session answers the one-byte ranged read.
 DiskApi.after_upload, when a test sets it, is called between a commit's upload and its commit.
 """
 import datetime
@@ -60,6 +65,44 @@ def file_sha(p):
                 h.update(b)
         _SHA[key] = h.hexdigest()
     return _SHA[key]
+
+
+class DiskSession:
+    """The one HTTP call hf_store makes itself: a ranged GET of a file's first byte at the hub's download address
+    (https://huggingface.co/datasets/<repo>/resolve/<revision>/<path>). Answers as the hub and its object store
+    do: 206 and one byte; 404 with the hub's own error code for a path that is not there; a redirect and then the
+    object store's bare 404 for an LFS pointer whose object is gone; the fail.json modes as the API's calls."""
+
+    def __init__(self, api):
+        self.api = api
+
+    def get(self, url, headers=None, timeout=None, stream=False, allow_redirects=True):
+        headers = headers or {}
+        assert headers.get("Range") == "bytes=0-0", headers.get("Range")
+        assert str(headers.get("authorization") or headers.get("Authorization") or "").startswith("Bearer "), "no token header"
+        rest = url.split("/resolve/", 1)[1]
+        revision, path = rest.split("/", 1)
+        self.api._gate("probe", f"{revision}:{path}")
+        resp = requests.Response()
+        resp.url = url
+        resp.raw = __import__("io").BytesIO(b"")
+        d = os.path.join(self.api.root, "branches", revision.split("@")[0])
+        src = os.path.join(d, *path.split("/"))
+        if not os.path.isfile(src):
+            resp.status_code = 404
+            resp.headers["X-Error-Code"] = "EntryNotFound"
+            return resp
+        if src.endswith(LFS_SUFFIX) and file_sha(src) not in self.api._json("lfs.json", {}):
+            self.api._note(f"  probe 404 from the object store: {path}")
+            first = requests.Response()
+            first.status_code, first.url = 302, url
+            resp.status_code, resp.url = 404, "https://cdn-lfs.example/objects/" + file_sha(src)
+            resp.history = [first]
+            return resp
+        resp.status_code = 206
+        with open(src, "rb") as f:
+            resp.raw = __import__("io").BytesIO(f.read(1))
+        return resp
 
 
 class DiskApi:
@@ -182,14 +225,11 @@ class DiskApi:
             f.write(json.dumps(rec) + "\n")
         return now
 
-    def create_commit(self, *, repo_id, operations, commit_message, revision=None, parent_commit=None, repo_type=None, token=None):
-        self._gate("create_commit", f"{revision} {commit_message}")
-        branch, d = self._dir(revision)
-        operations = list(operations)
+    def _upload(self, operations):
+        """Phase one, the upload, as the library does it: every LFS file's object is in the object store BEFORE the
+        commit is asked for, and stays there whatever the commit's answer is. An object the store holds already
+        is not sent again and keeps its time. Returns the LFS adds."""
         big = [o for o in operations if type(o).__name__ == "CommitOperationAdd" and o.path_in_repo.endswith(LFS_SUFFIX)]
-        # Phase one, the upload, as the library does it: every LFS file's object is in the object store BEFORE the
-        # commit is asked for, and stays there whatever the commit's answer is. An object the store holds already
-        # is not sent again and keeps its time.
         with open(os.path.join(self.root, ".lock"), "w") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
             objects = self._json("lfs.json", {})
@@ -199,6 +239,26 @@ class DiskApi:
                     objects[sha] = {"size": os.path.getsize(o.path_or_fileobj), "pushed_at": self._now()}
                     self._note(f"  upload {o.path_in_repo} {sha[:12]}")
             self._put("lfs.json", objects)
+        return big
+
+    def preupload_lfs_files(self, *, repo_id, additions, token=None, repo_type=None, revision=None, create_pr=None,
+                            num_threads=5, free_memory=True, gitignore_content=None):
+        """The library's own first phase, called by itself: the large files of `additions` go to the object store
+        now; a create_commit with the same operations then uploads nothing."""
+        self._gate("preupload_lfs_files", str(revision))
+        self._dir(revision)
+        self._upload(list(additions))
+
+    @property
+    def http_session(self):
+        """What hf_store.HfBackend.probe reads a byte through, in place of the library's requests session."""
+        return DiskSession(self)
+
+    def create_commit(self, *, repo_id, operations, commit_message, revision=None, parent_commit=None, repo_type=None, token=None):
+        self._gate("create_commit", f"{revision} {commit_message}")
+        branch, d = self._dir(revision)
+        operations = list(operations)
+        big = self._upload(operations)
         if callable(getattr(self, "after_upload", None)):
             self.after_upload(branch, operations)  # a test's hook: what another party does between the two phases
         # Phase two, the commit: refused for a stale parent, past the limit, or when it names an object that is
@@ -231,6 +291,13 @@ class DiskApi:
                     shutil.rmtree(dst, ignore_errors=True)
                 elif os.path.exists(dst):
                     os.remove(dst)
+            lose = self._json("lose.json", {})
+            for o in big:  # lose.json, used once: the commit lands, and the object of this file is gone after it
+                if lose.get("path") == o.path_in_repo:
+                    objects.pop(file_sha(o.path_or_fileobj), None)
+                    self._put("lfs.json", objects)
+                    os.remove(os.path.join(self.root, "lose.json"))
+                    self._note(f"  lost the object of {o.path_in_repo}")
             heads[branch] = heads.get(branch, 0) + 1
             self._put("heads.json", heads)
 
