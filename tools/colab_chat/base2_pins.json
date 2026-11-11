@@ -1,0 +1,77 @@
+{
+ "_comment": "Base 2's pins (base2_pins.py). null: not yet measured; a build mode records it and `adopt` writes it here. files: the hashes base A's data job met for the same job on the same pinned sources (tc_b1_pins.json \"files\", Stage 1 of 7 Nov 2026). panels: the FineWeb and dialogue panels are base A's. vocab and a_weights: sha256 of C:/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf and of C:/ml_artifacts/tiny_chat/b1_r1/pt_b1_r1/tc_b1_r1.safetensors, hashed at home on 11 Nov 2026. engine: the scenario engine's files, pinned by `pin-engine` once its author is done; commit is the research tree's.",
+ "files": {
+  "filtered/abcd.txt": "c26d1218a7066641e0cf7105ad8aeb6dd1427bc51f19471dbc41dd4c456b6a93",
+  "filtered/aya_en.txt": "5ee1a1b7f7ff947ce58aa3d1ca08551d0f0231a018999a306d518a5e63ac38d1",
+  "filtered/ccpe.txt": "004279daa172546f5fcbf45933c32df2acdfd36743577c37b00858c0ac8138c0",
+  "filtered/everyday.txt": "5357e6b1dbb5b771617e047a42f377fb46bed5a472c32080b0cbf2c59c55bfb3",
+  "filtered/msc.txt": "560e019e04045f4589415f5297138a5128233833bf2a38bd908ac132e2f6e092",
+  "filtered/p4g.txt": "893c245b108d58074c592bca8d239aba0df2f7a192f5805b9278a0861ea4c6e1",
+  "filtered/soda.txt": "49f199849c837b9cd71245e2180dcbce476b1dd7dbfb12f8284f9b9e6ca233ce",
+  "filtered/taskmaster3.txt": "256346c02f448250dc77f36a871b146b82db0988940b45b0ad4d1a1c3daea503",
+  "filtered/ultrachat.txt": "6a110354cc543acb045a1b74b80b062ddceb80fb9bb972b1f9ddb4cfc1e3c28d",
+  "human_pt.txt": "858b4c7270a80c842a8121d1f5ee2e815bfdcf99ccfa98456207d2a475ea163a",
+  "human_sft.jsonl": "5a7afbabff797aee47c0e2f3b0cda9b3e5cec2a055e4f9d69c6b7f1f785df56a",
+  "human_val.txt": "c77af67ec8d74f34d58a2c6f6b13d287e1df62fd4df2fc4366578c3c482df005",
+  "lever2/dialogue_everyday_v1/dialogues.jsonl": "0f69f6c76468853866151115f697f7c9b73dda657a2d23dff526a7933a6bba90",
+  "lever2/dialogue_everyday_v1/text.txt": "7c29a63b623485fd9711b892b5d33773a02ed105c2cea5ac9136c78ec7460f92",
+  "lever2/dialogue_soda_v1/dialogues.jsonl": "610581c7c264df7d0b1c81349876449134d132d02f4518d5ed94e72f5c724aa3",
+  "lever2/dialogue_soda_v1/text.txt": "f34df8d24288f727497f3df0f30772f18f6bca299e2bb0f134b74c0e353da7f9",
+  "lever2/dialogue_ultrachat_v1/dialogues.jsonl": "b4619e4d207d261a60838c87c5aa78aee599fc4692eccdec23bcc433bc822087",
+  "lever2/dialogue_ultrachat_v1/text.txt": "b09eacf6488401908278cd8c28faa66ec99a4554a01dbac6af8a2725176b3e8f",
+  "long/human_abcd_v1/dialogues.jsonl": "4b74177f96e9154d8d310fae5c527a2b9d47a3c3979ac1547443b794b97b9490",
+  "long/human_abcd_v1/text.txt": "93b96a0ee6bdbd290c48be39faa88272f6af155487ebfd8ff215651fcce01d21",
+  "long/human_aya_en_v1/dialogues.jsonl": "caf9992a863464be8133959318f60de07d41c86cd988ffbbebd603ac09ace0fe",
+  "long/human_aya_en_v1/text.txt": "5ee1a1b7f7ff947ce58aa3d1ca08551d0f0231a018999a306d518a5e63ac38d1",
+  "long/human_ccpe_v1/dialogues.jsonl": "5c536d11b61e8e896c43fe8a3e545d29e6ad5dd4c0e6dbd5bc32c4aec36c6d5b",
+  "long/human_ccpe_v1/text.txt": "d18c6cb78aa178bfc7383739a533d1aedb0124fdf27ab6cc168a462b39793138",
+  "long/human_msc_v1/dialogues.jsonl": "d73b6ddc53826c4c47e07c1931bf3104b4ea7027ac260b6ead352f3e8cf5d310",
+  "long/human_msc_v1/text.txt": "c125a6b256dad6fb4f603cd5908ebf2d093e716bb382981ef614fe33fa0240a2",
+  "long/human_p4g_v1/dialogues.jsonl": "b96e127a125673b5b722b5a28c60a18a1cabdffa055911f8c800310c2af1f43a",
+  "long/human_p4g_v1/text.txt": "0a68d6c96be473f396270d56e3b0de729f04934b17b72077f0a1d6177aa579c8",
+  "long/human_taskmaster3_v1/dialogues.jsonl": "d88612f768612c05998dff80ea2b62cca46a720770193845a2b39a0062eb8aa6",
+  "long/human_taskmaster3_v1/text.txt": "f5951f91704c9bcd5ba23ec6917e3f879814bd78a345475f85c4077ce2c99f20",
+  "mix_s35.ids": "01b9d364ba6547544ca787e6ea49aa877f5c6bb9621002607c21bdef183c4f94",
+  "panel_dialogue.ids": "7881aa1c196e30b692a18ba2704a49333a78d8ce059dedb98e794baa0838258a",
+  "panel_fineweb.ids": "c1aa6d42aafe80d8607b2d1f19235eb1539ccd94997567c506ae68f330c06e6b",
+  "sft_human.jsonl": "4785e1494d34b81970d947e3488897afcdd36d19a8625b6670dfefcc69b42ecb"
+ },
+ "sources": {
+  "src/fineweb2345.txt": null,
+  "src/simplewiki.txt": null,
+  "src/human1.txt": null
+ },
+ "engine": {
+  "commit": null,
+  "files": {
+   "banks.py": null,
+   "engine.py": null,
+   "frames.py": null,
+   "generate.py": null,
+   "rules.py": null,
+   "validate.py": null
+  }
+ },
+ "N": {
+  "N.main.ids": null,
+  "N.tail.ids": null
+ },
+ "S": {
+  "S.main.ids": null,
+  "S.tail.ids": null
+ },
+ "panels": {
+  "panel_fineweb.ids": "c1aa6d42aafe80d8607b2d1f19235eb1539ccd94997567c506ae68f330c06e6b",
+  "panel_dialogue.ids": "7881aa1c196e30b692a18ba2704a49333a78d8ce059dedb98e794baa0838258a",
+  "panel_scenario.ids": null
+ },
+ "vocab": {
+  "vocab_llama3_bpe.gguf": "0b880aa073a7e27c0770d5ecc5215b55d6d415080d20bd3dc7b169ecabadf198"
+ },
+ "a_weights": {
+  "tc_b1_r1.safetensors": "4b4afcc212e62a43bd767e3600ae461afdca63beb18fc046db7954b516ffdf97"
+ },
+ "rehearsal": {
+  "rehearsal.ids": null
+ }
+}
