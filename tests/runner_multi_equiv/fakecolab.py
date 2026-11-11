@@ -223,9 +223,13 @@ def sim_step(d):
         if step >= STEPS:
             m = j.get("model_name", n)
             shutil.copyfile(os.path.join(out, "model.safetensors"), os.path.join(out, f"{m}.safetensors"))
-            open(os.path.join(out, f"{m}.gguf"), "wb").write(blob((n, "g"), 5000))
+            # The trainer exports what the spec's "export": {"formats": [...]} names; a spec that names nothing
+            # (every scenario before base 2) gets the gguf and its ir.json as before.
+            fmts = ((j.get("spec") or {}).get("export") or {}).get("formats")
+            if not isinstance(fmts, list) or "gguf" in fmts:
+                open(os.path.join(out, f"{m}.gguf"), "wb").write(blob((n, "g"), 5000))
+                open(os.path.join(out, f"{m}.ir.json"), "w").write("{}")
             open(os.path.join(out, "result.json"), "w").write(json.dumps({"final_step": step}))
-            open(os.path.join(out, f"{m}.ir.json"), "w").write("{}")
             open(os.path.join(CHAT, f"{n}_spec.json"), "w").write(json.dumps({"name": m}))
             set_status(n, "FINISHED")
         return
@@ -266,6 +270,15 @@ def main():
         print("created")
         return 0
     if cmd == "stop":
+        # Scenarios: "stop_fail": the next N stops fail and the session stays up (true: every stop);
+        # "stop_fail_from_status": N: every stop fails once the VM has answered N status calls.
+        late = d.get("stop_fail_from_status") and d.get("status_calls", 0) >= d["stop_fail_from_status"]
+        if d.get("stop_fail") or late:
+            if d.get("stop_fail") and d["stop_fail"] is not True:
+                d["stop_fail"] -= 1
+            save(d)
+            print("Internal error: the session could not be stopped")
+            return 1
         d["alive"] = False
         save(d)
         return 0

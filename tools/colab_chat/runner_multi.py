@@ -60,7 +60,16 @@ the home link and a resume keeps its optimiser. See "checkpoint store" below. A 
 a campaign needs --store-first-start; after that a branch that lists less than home has seen pushed halts the
 runner. No session is created while the store cannot be read from home, or after two failed boots at one commit.
 A finished training job is home only when its final generation and marks are in the store and the marks at home.
+With the store, --commit is the full SHA. Before every stop the runner makes, the session's own record comes home
+to STATE/sessions/launchNN/ (courier.log, boot.log, courier_status.json, store_restore/*.json). A "pod_loss_drill_step"
+writes STATE/drill_record.json: the trainer's training step and the courier's pushed step read from the VM just
+before the stop, whether the stop fell between two pushes, and on which side of the tail switch. A courier that
+reaches --store-push-cap-gb halts the campaign (STORE_PUSH_CAP). A state folder that has never launched refuses
+branches that already hold generations (an earlier attempt's); --store-campaign gives a new attempt its own names.
 A campaign without the option makes exactly the calls it made before (tests/test_runner_store.py).
+
+Stops (12 Nov 2026). Every Colab stop's return code is read and a failed one tried again; a stop that is not
+confirmed writes STATE/STOP_UNRESOLVED, naming the session, creates no session beside it, and the runner exits 4.
 """
 from __future__ import annotations
 
@@ -148,13 +157,18 @@ class ColabTransport:
         return colab("download", "-s", NAME, src, dst, timeout=timeout)
 
     def stop(self, st):
-        colab("stop", "-s", NAME, timeout=120)
+        return colab("stop", "-s", NAME, timeout=120)[0]  # the return code: stop_session() reads it
+
+    def absent(self):
+        """True only when the listing itself answered and does not hold this session."""
+        rc, out = colab("sessions", timeout=120)
+        return rc == 0 and not re.search(r"^\[" + re.escape(NAME) + r"\]\s+(\S+)", out, re.M)
 
     def release(self, st):
         pass  # nothing outlives a Colab session
 
     def lose_pod(self, st):
-        self.stop(st)  # the drill on the fake CLI; a real campaign's drill runs on RunPod
+        return self.stop(st)  # the drill: the session ends at the provider (the rehearsal's forced loss)
 
     def volume_present(self, st):
         return False
@@ -165,6 +179,45 @@ class ColabTransport:
 
 def exec_py(code, timeout=200):
     return T.exec(code, timeout)
+
+
+STOP_TRIES = 3
+
+
+def stop_session(st, why, lose=False):
+    """Stop the session and know that it stopped. The Colab stop's return code is read; a failed stop is tried
+    again, STOP_TRIES times in all; a stop that keeps failing counts as done only when the listing itself answers
+    and no longer holds the session (there was nothing to stop). Otherwise the session may still be billing: a
+    loud STOP_UNRESOLVED record naming it is written to the state folder and this returns False; the callers then
+    make no new session and the runner exits non-zero. A stop that succeeds makes exactly the one call it made
+    before. Other transports (RunPod) confirm their own stops and are called as before."""
+    call = T.lose_pod if lose else T.stop
+    if getattr(T, "backend", None) != "colab":
+        call(st)
+        return True
+    rc = None
+    for i in range(STOP_TRIES):
+        rc = call(st)
+        if rc is None or rc == 0:  # None: a stand-in transport that reports nothing, as before this check existed
+            resolved = os.path.join(HOME, "STOP_UNRESOLVED")
+            if os.path.exists(resolved):  # an earlier stop of this state folder was left open; this one closed it
+                os.replace(resolved, os.path.join(HOME, "STOP_RESOLVED"))
+            return True
+        if T.absent():
+            log(f"stop ({why}) returned {rc}; the listing answers and does not hold {NAME}: nothing to stop")
+            return True
+        log(f"stop ({why}) returned {rc} and {NAME} is not known to be gone (try {i + 1} of {STOP_TRIES})")
+        time.sleep(min(10, TICK / 24))
+    rec = {"kind": "STOP_UNRESOLVED", "session": NAME, "endpoint": st.d.get("endpoint"), "launch": st.d.get("launches"),
+           "why": why, "return_code": rc, "tries": STOP_TRIES, "at": time.time(),
+           "do": f"the session may still be running and billing: stop it by hand (colab stop -s {NAME}) and check the listing"}
+    with open(os.path.join(HOME, "STOP_UNRESOLVED"), "w") as handle:
+        json.dump(rec, handle, indent=1)
+        handle.flush()
+        os.fsync(handle.fileno())
+    log(f"STOP_UNRESOLVED: the stop of session {NAME} ({why}) failed {STOP_TRIES} times (return code {rc}) and the session "
+        f"is not known to be gone. IT MAY STILL BE BILLING. Stop it by hand: colab stop -s {NAME}")
+    return False
 
 
 def listed():
@@ -417,16 +470,34 @@ def relay(st, name, every=0):
     return True
 
 
-def fetch_final(st, name, model_name):
+def export_formats(j):
+    """The formats a training job's spec says it exports ("export": {"formats": [...]}), or None when the spec
+    does not say (the trainer's default, and every campaign before base 2)."""
+    f = ((j.get("spec") or {}).get("export") or {}).get("formats")
+    return list(f) if isinstance(f, list) else None
+
+
+def fetch_final(st, name, model_name, formats=None):
+    """A finished training job's outputs. formats None (the spec names none): the files and the order of every
+    campaign so far. With the spec's own list: the weights in the formats it declares and no other (a job that
+    exports no gguf is never asked for one, 12 Nov 2026: such a job could not come home and its session billed to
+    the deadline), and events.jsonl, result.json, the spec and the log each fetched whatever happened to the file
+    before it."""
     art = os.path.join(ART, name)
     os.makedirs(art, exist_ok=True)
     ok = True
-    for f in (f"{name}/{model_name}.safetensors", f"{name}/{model_name}.gguf", f"{name}/events.jsonl",
-              f"{name}/result.json", f"{name}_spec.json", f"{name}_train.log"):
-        ok = ok and download_file(f"/content/chat/{f}", os.path.join(art, os.path.basename(f))) == 0
-    # Optional extra exports (e.g. q8_0_all) are fetched best-effort.
-    download_file(f"/content/chat/{name}/{model_name}_q8_0_all.gguf", os.path.join(art, f"{model_name}_q8_0_all.gguf"))
-    T.get(f"/content/chat/{name}/{model_name}.ir.json", os.path.join(art, f"{model_name}.ir.json"), 300)
+    if formats is None:
+        for f in (f"{name}/{model_name}.safetensors", f"{name}/{model_name}.gguf", f"{name}/events.jsonl",
+                  f"{name}/result.json", f"{name}_spec.json", f"{name}_train.log"):
+            ok = ok and download_file(f"/content/chat/{f}", os.path.join(art, os.path.basename(f))) == 0
+    else:
+        need = [f"{name}/{model_name}.{ext}" for ext in ("safetensors", "gguf") if ext in formats]
+        for f in (*need, f"{name}/events.jsonl", f"{name}/result.json", f"{name}_spec.json", f"{name}_train.log"):
+            ok = (download_file(f"/content/chat/{f}", os.path.join(art, os.path.basename(f))) == 0) and ok
+    if formats is None or "gguf" in formats:
+        # Optional extra exports (e.g. q8_0_all) are fetched best-effort.
+        download_file(f"/content/chat/{name}/{model_name}_q8_0_all.gguf", os.path.join(art, f"{model_name}_q8_0_all.gguf"))
+        T.get(f"/content/chat/{name}/{model_name}.ir.json", os.path.join(art, f"{model_name}.ir.json"), 300)
     if ok:
         st.job(name)["home"] = True
         st.save()
@@ -743,7 +814,8 @@ def launch(st, commit, jobs_rel, jobs, uploads):
         if not store_preflight(st, jobs):
             return False
         store_forget_token("before an old session is stopped")
-    T.stop(st)
+    if not stop_session(st, "before a new session is created"):
+        raise SystemExit(4)  # an old session that may still be up: a second one is never created beside it
     if getattr(T, "deadline", None) is not None and time.time() >= T.deadline:
         log("deadline expired while stopping prior session; no replacement created")
         return False
@@ -1011,8 +1083,11 @@ def store_config(a, ap):
     import hf_store
     if not a.store_repo:
         ap.error("--ckpt-store hf needs --store-repo (there is no default store)")
-    if a.store_repo in hf_store.REFUSED_REPOS:
+    if hf_store.refused_repo(a.store_repo):
         ap.error(f"{a.store_repo} is the pinned inputs repo; the store must be its own repo")
+    if not re.fullmatch(r"[0-9a-f]{40}", a.commit):
+        ap.error("--ckpt-store hf takes --commit as the full 40-character SHA (a short one can come to name another "
+                 "commit, and the boot and its failed-boot count are keyed by it)")
     local = a.store_repo.startswith("dir:")
     if not local and not a.store_token_file:
         ap.error("--ckpt-store hf needs --store-token-file (there is no default token path)")
@@ -1024,8 +1099,17 @@ def store_config(a, ap):
     if a.boot_script != STORE_BOOT:
         ap.error(f"--ckpt-store hf runs with --boot-script {STORE_BOOT}")
     doc = json.load(open(os.path.join(os.path.dirname(os.path.dirname(HERE)), a.jobs)))
+    # An explicit --store-campaign is a namespace: it is appended to every job's branch and put before every job's
+    # name in its marks' paths, so a new attempt under a new campaign name never meets an earlier attempt's
+    # generations or marks. Without the flag the names are the jobs file's own.
+    slug = re.sub(r"[^A-Za-z0-9]+", "-", a.store_campaign).strip("-") if a.store_campaign else ""
+    if a.store_campaign and not slug:
+        ap.error("--store-campaign needs a letter or a digit")
+    cap_gb = a.store_push_cap_gb if a.store_push_cap_gb is not None else float(doc.get("store_push_cap_gb") or 0)
     return {"repo": a.store_repo, "repo_type": a.store_repo_type, "reclaim": a.store_release_storage,
             "release_grace_s": a.store_release_grace_s,
+            "branch_suffix": "-" + slug if slug else "", "mark_ns": slug + "." if slug else "",
+            "push_cap_bytes": int(cap_gb * 1e9),
             "min_push_interval_s": a.store_min_push_interval, "campaign": a.store_campaign or a.name,
             "first_start": a.store_first_start, "inputs": doc.get("store_inputs", []),
             "call_limit": a.store_call_limit_s, "stall_min": a.store_stall_min, "stall_halt": a.store_stall_halt,
@@ -1034,15 +1118,17 @@ def store_config(a, ap):
 
 
 def store_branches(jobs):
-    """{training job: its branch of the store}: the job's "store_branch", else ckpt-<name>."""
-    return {j["name"]: j.get("store_branch", "ckpt-" + j["name"]) for j in jobs if "cmd" not in j}
+    """{training job: its branch of the store}: the job's "store_branch", else ckpt-<name>, then the campaign's
+    suffix when --store-campaign was given."""
+    suffix = (STORE or {}).get("branch_suffix", "")
+    return {j["name"]: j.get("store_branch", "ckpt-" + j["name"]) + suffix for j in jobs if "cmd" not in j}
 
 
 def store_open(jobs):
     """The store, opened at home with the same token file (reads only: steps, manifests, mark snapshots)."""
     if "store" not in _STORE:
         import hf_store
-        cfg = {k: STORE[k] for k in ("repo", "repo_type", "token_file")}
+        cfg = {k: STORE.get(k) for k in ("repo", "repo_type", "token_file", "mark_ns")}
         _STORE["store"] = hf_store.open_store(cfg, log=log, tries=2, delay=5)
     return _STORE["store"]
 
@@ -1092,6 +1178,23 @@ def store_preflight(st, jobs):
         return False
     st.d["store_preflight_failures"], st.d["store_preflight_next"] = 0, 0
     st.save()
+    # An attempt belongs to its state folder. A state folder that has never created a session and finds generations
+    # on its jobs' branches is looking at an earlier attempt's: with the same campaign name and jobs file their
+    # identity matches, and the VM would resume from them without a word. Refused here, before any session. Once
+    # this state folder has passed the check it carries "store_attempt", and its own restarts go on.
+    if not st.d.get("store_attempt"):
+        earlier = {b: heads[b] for n, b in store_branches(jobs).items()
+                   if heads.get(b) is not None and not st.job(n)["relayed_step"] and not st.job(n)["home"]}
+        if earlier and not st.d["launches"]:
+            msg = (f"store: {', '.join(f'{b} holds generations up to g{s}' for b, s in sorted(earlier.items()))}, and this "
+                   f"state folder has never launched: they are an earlier attempt's, and this run would resume from them. "
+                   f"Nothing is created. To continue that attempt, start with its own --state-dir. To start again, give "
+                   f"this attempt its own names in the store with --store-campaign NEW_NAME (it is appended to every "
+                   f"branch and put before every mark), or delete those branches and their marks first.")
+            log(msg)
+            raise SystemExit(msg)
+        st.d["store_attempt"] = {"campaign": STORE["campaign"], "at": now}
+        st.save()
     for n, branch in store_branches(jobs).items():
         js, head = st.job(n), heads.get(branch)
         if js["home"]:
@@ -1113,7 +1216,10 @@ def store_send(st, jobs):
     a tmpfs by the very next call. The token is never in exec code, a command line or a log; only its path is."""
     names = store_branches(jobs)
     cfg = {"repo": STORE["repo"], "repo_type": STORE["repo_type"], "reclaim": STORE["reclaim"],
-           "release_grace_s": STORE["release_grace_s"],
+           "release_grace_s": STORE["release_grace_s"], "mark_ns": STORE.get("mark_ns", ""),
+           # The storage guard: the cap, and what this campaign's sessions had pushed, by the courier's last word,
+           # since a release last freed storage (the new VM's courier counts on from there).
+           "push_cap_bytes": STORE.get("push_cap_bytes", 0), "pushed_bytes_start": st.d.get("store_pushed_bytes", 0),
            "min_push_interval_s": STORE["min_push_interval_s"], "branches": names, "campaign": STORE["campaign"],
            "epoch": st.d["launches"], "min_step": {n: st.job(n)["relayed_step"] for n in names},
            "first_start": [n for n in names if STORE["first_start"] and not st.job(n)["relayed_step"]]}
@@ -1311,6 +1417,8 @@ def store_forget_token(when="before the session stops"):
             "except (OSError, ValueError):\n"
             "    tf = None\n"
             "d = os.environ.get('PK_STORE_TOKEN_DIR', '/dev/shm/pk_store')\n"
+            # The tmpfs folder is searched whatever the config says: a hand-over that died after the move and
+            # before the config named the file leaves the token there and nowhere on record.
             "paths += glob.glob(d + '/token*') + ([tf] + glob.glob(tf + '.tmp*') if tf else [])\n"
             "for p in paths:\n"
             "    if os.path.exists(p):\n"
@@ -1320,6 +1428,197 @@ def store_forget_token(when="before the session stops"):
         pass
     log(f"store: courier ended and token removed from the VM ({when})" if "TOKEN_GONE" in out else
         f"store: token removal not confirmed {when} (the VM did not answer, or a copy is left)")
+
+
+STORE_VM_READ = (
+    "import json, os, time\n"
+    "c = '/content/chat'\n"
+    "names = {names!r}\n"
+    "def last_step(p, tail=1 << 18):\n"
+    "    try:\n"
+    "        size = os.path.getsize(p)\n"
+    "        with open(p, 'rb') as f:\n"
+    "            f.seek(max(0, size - tail))\n"
+    "            lines = f.read().split(b'\\n')\n"
+    "        at = os.path.getmtime(p)\n"
+    "    except OSError:\n"
+    "        return [None, None]\n"
+    "    for ln in reversed(lines):\n"
+    "        if b'\"step\"' not in ln:\n"
+    "            continue\n"
+    "        try:\n"
+    "            e = json.loads(ln)\n"
+    "        except ValueError:\n"
+    "            continue\n"
+    "        if isinstance(e, dict) and e.get('event') == 'step' and isinstance(e.get('step'), int):\n"
+    "            return [e['step'], at]\n"
+    "    return [None, None]\n"
+    "try:\n"
+    "    cs = json.load(open(c + '/courier_status.json'))\n"
+    "except (OSError, ValueError):\n"
+    "    cs = None\n"
+    "keep = ('updated', 'boot_id', 'epoch', 'bytes_since_release', 'push_cap_bytes', 'capped', 'http_429', 'releases')\n"
+    "jk = ('pushed_step', 'pushed_at', 'live_step', 'pushes', 'failures', 'last_error', 'fenced')\n"
+    "r = {{'at': time.time(), 'courier': None, 'training': {{n: last_step(c + '/' + n + '/events.jsonl') for n in names}}}}\n"
+    "if isinstance(cs, dict):\n"
+    "    r['courier'] = {{k: cs.get(k) for k in keep}}\n"
+    "    r['courier']['jobs'] = {{n: {{k: (cs.get('jobs') or {{}}).get(n, {{}}).get(k) for k in jk}} for n in names}}\n"
+    "print('STOREVM', json.dumps(r))\n")
+
+
+def store_vm_read(jobs):
+    """One bounded call to the VM: the courier's own status (pushed steps, the bytes pushed since a release last
+    freed storage, a reached push cap, HTTP 429 and release counts) and, per training job, the trainer's current
+    training step, which is the step of the last `step` event in its own events.jsonl with that file's modification
+    time: where the trainer is, not what it has saved. None when the VM does not answer."""
+    try:
+        rc, out = exec_py(STORE_VM_READ.format(names=sorted(store_branches(jobs))), timeout=120)
+    except Exception:  # noqa: BLE001 a read that fails is "no answer"
+        return None
+    m = re.search(r"^STOREVM (.*)$", out or "", re.M)
+    try:
+        return json.loads(m.group(1)) if m else None
+    except ValueError:
+        return None
+
+
+def store_guard(st, jobs, vm):
+    """The storage guard, each tick. The courier counts the bytes pushed since a release last freed storage and
+    stops pushing at --store-push-cap-gb; its count is kept in state.json so the next VM's courier counts on from
+    it. A courier that has reached the cap halts the campaign here, by name: STORE_PUSH_CAP."""
+    c = (vm or {}).get("courier")
+    if not c:
+        return
+    if isinstance(c.get("bytes_since_release"), int) and c["bytes_since_release"] != st.d.get("store_pushed_bytes"):
+        st.d["store_pushed_bytes"] = c["bytes_since_release"]
+        st.save()
+    if c.get("capped"):
+        running = [n for n in store_branches(jobs) if not st.job(n)["home"]]
+        store_halt("STORE_PUSH_CAP", job=running[0] if running else None, why=c["capped"].get("why"),
+                   bytes_since_release=c["capped"].get("bytes_since_release"), cap_bytes=c["capped"].get("cap"),
+                   releases=c.get("releases"))
+        raise SystemExit(3)
+
+
+BRING_HOME_TAIL = 300 * 1024  # bytes of each file's end that come home
+BRING_HOME = (
+    "import base64, glob, json, os\n"
+    "c = '/content/chat'\n"
+    "names = ['courier.log', 'boot.log', 'courier_status.json', 'store_inputs.json', 'COURIER_FENCED', 'COURIER_CAPPED',\n"
+    "         'jobs.log']\n"
+    "names += sorted('store_restore/' + os.path.basename(p) for p in glob.glob(c + '/store_restore/*.json'))[:24]\n"
+    "out = {{}}\n"
+    "for n in names:\n"
+    "    p = os.path.join(c, n)\n"
+    "    if os.path.isfile(p):\n"
+    "        size = os.path.getsize(p)\n"
+    "        with open(p, 'rb') as f:\n"
+    "            f.seek(max(0, size - {tail}))\n"
+    "            out[n] = [size, base64.b64encode(f.read()).decode()]\n"
+    "print('BRINGHOME', json.dumps(out))\n")
+
+
+def store_bring_home(st, when):
+    """Before every stop this runner makes (the drill, the end, a halt): the session's own record comes home, into
+    HOME/sessions/launchNN/, because a stopped VM takes it along. courier.log (each push's bytes and seconds, each
+    restore pull's, HTTP 429 counts, each release's objects and bytes freed), boot.log (the build, inputs and
+    restore times, the VM's own TOKEN_GONE), courier_status.json, store_restore/*.json, and store_inputs.json,
+    jobs.log and the courier's FENCED and CAPPED markers when they exist. Bounded: one exec with a time limit, the
+    last 300 KB of each file. None of these files holds the token; its text is removed here all the same. Never
+    raises: nothing here may keep a stop from happening."""
+    try:
+        if not st.d.get("launches"):
+            return False  # this state folder has never had a session: there is nothing to ask
+        sess = f"launch{int(st.d['launches']):02d}"
+        rc, out = exec_py(BRING_HOME.format(tail=BRING_HOME_TAIL), timeout=200)
+        m = re.search(r"^BRINGHOME (.*)$", out or "", re.M)
+        if not m:
+            log(f"store: session files NOT brought home ({when}): the VM did not answer")
+            return False
+        got = json.loads(m.group(1))
+        dst = os.path.join(HOME, "sessions", sess)
+        os.makedirs(dst, exist_ok=True)
+        tok = _STORE["store"].b.token if "store" in _STORE else None
+        index = {"session": NAME, "launch": st.d.get("launches"), "endpoint": st.d.get("endpoint"), "when": when,
+                 "at": time.time(), "files": {}}
+        for name, (size, b64) in sorted(got.items()):
+            data = base64.b64decode(b64)
+            if tok:
+                data = data.replace(tok.encode(), b"[token]")
+            with open(os.path.join(dst, name.replace("/", "__")), "wb") as f:
+                f.write(data)
+            index["files"][name] = {"bytes_on_vm": size, "bytes_home": len(data), "whole": len(data) >= size}
+        with open(os.path.join(dst, "index.json"), "w") as f:
+            json.dump(index, f, indent=1)
+        log(f"store: session files home in sessions/{sess} ({when}): {', '.join(sorted(got)) or 'none on the VM'}")
+        return True
+    except Exception as e:  # noqa: BLE001
+        log(f"store: session files NOT brought home ({when}): {type(e).__name__}")
+        return False
+
+
+def tail_switch(j):
+    """The last step a job trains on its main corpus (the tail starts at the next one), or None for a job with no
+    tail: int(from_fraction * steps), as the trainer computes it."""
+    spec = j.get("spec") or {}
+    frac = ((spec.get("data") or {}).get("anneal") or {}).get("from_fraction")
+    steps = (spec.get("train") or {}).get("steps")
+    return int(frac * steps) if isinstance(frac, (int, float)) and steps else None
+
+
+def store_drill_evidence(st, jobs, j):
+    """The drill's evidence, read from the VM immediately before the stop (the courier has just been ended, so its
+    pushed step can no longer move): the trainer's training step from its own event stream and the courier's pushed
+    step, each with its time. `between_pushes` is true only when the training step is above the pushed step. The
+    side of the tail switch the trainer is on is recorded beside the side the drill step is on, and `side_missed`
+    says so when they differ (a drill meant for the main part that landed in the tail, or the other way round)."""
+    n = j["name"]
+    rec = st.d["pod_loss_drill"]
+    vm = store_vm_read(jobs)
+    tr = ((vm or {}).get("training") or {}).get(n) or [None, None]
+    cj = (((vm or {}).get("courier") or {}).get("jobs") or {}).get(n) or {}
+    step, pushed = tr[0], cj.get("pushed_step")
+    last_main = tail_switch(j)
+    side = None if step is None or last_main is None else ("tail" if step > last_main else "main")
+    meant = None if last_main is None else ("tail" if j["pod_loss_drill_step"] > last_main else "main")
+    rec.update({
+        "evidence": {"read_at_home": time.time(), "vm_clock": (vm or {}).get("at"), "vm_answered": vm is not None,
+                     "training_step": step, "training_step_at": tr[1],
+                     "pushed_step": pushed, "pushed_at": cj.get("pushed_at"), "saved_step": cj.get("live_step"),
+                     "courier_status_at": ((vm or {}).get("courier") or {}).get("updated")},
+        "between_pushes": step is not None and pushed is not None and step > pushed,
+        "steps_lost": step - pushed if step is not None and pushed is not None else None,
+        "last_main_step": last_main, "drill_side": meant, "side": side,
+        "side_missed": side is not None and meant is not None and side != meant})
+    st.save()
+    log(f"{n}: drill evidence: training step {step}, pushed step {pushed}, between pushes {rec['between_pushes']}, "
+        f"side {side} (the drill step is on the {meant} side)" + ("; SIDE MISSED" if rec["side_missed"] else "")
+        + ("" if vm is not None else "; THE VM DID NOT ANSWER, nothing was read"))
+    if vm is not None:
+        store_guard_count(st, vm)
+
+
+def store_guard_count(st, vm):
+    c = (vm or {}).get("courier") or {}
+    if isinstance(c.get("bytes_since_release"), int):
+        st.d["store_pushed_bytes"] = c["bytes_since_release"]
+        st.save()
+
+
+def store_drill_stopped(st, jobs, j, confirmed):
+    """After the drill's stop: when it returned, whether it was confirmed, and what the store then lists for the
+    job (read from home; None when the store did not answer). The whole record goes to HOME/drill_record.json."""
+    rec = st.d["pod_loss_drill"]
+    rec["stop_returned_at"], rec["stop_confirmed"] = time.time(), bool(confirmed)
+    try:
+        store, branch = store_open(jobs), store_branches(jobs)[j["name"]]
+        rec["store_step_after_stop"] = store_call(lambda: store.head_step(branch))
+    except Exception as e:  # noqa: BLE001
+        rec["store_step_after_stop"], rec["store_read_error"] = None, store_err(e)
+    st.save()
+    with open(os.path.join(HOME, "drill_record.json"), "w") as f:
+        json.dump(rec, f, indent=1)
+    log(f"{j['name']}: drill record written (drill_record.json): {json.dumps(rec)}")
 
 
 def halt_dpo_checkpoint(error):
@@ -1631,13 +1930,23 @@ def main():
     ap.add_argument("--store-min-push-interval", type=float, default=0,
                     help="seconds between a job's generation pushes (0: every save), for a store that limits commits")
     ap.add_argument("--store-release-storage", action="store_true",
-                    help="after a prune, delete for good the LFS objects no branch names (off: safe to leave off)")
+                    help="after a prune, delete for good the LFS objects no branch names (off: safe to leave off). NOT "
+                         "safe beside another writer on the same store unless --store-release-grace-s is longer than "
+                         "that writer's slowest upload-to-commit time: the release lock is between releasers only")
     ap.add_argument("--store-release-grace-s", type=float, default=7200,
-                    help="release spares objects younger than this (another writer's upload not yet committed); a "
-                         "short rehearsal that is the store's only writer can lower it to see storage fall")
+                    help="release spares objects younger than this, which is all that protects another writer's upload "
+                         "that is not yet committed. Below the default the store must have ONE writer at a time (the "
+                         "rehearsal: 1800, its two parts run one after the other)")
+    ap.add_argument("--store-push-cap-gb", type=float, default=None,
+                    help="storage guard: once the campaign's couriers have pushed this many GB since a release last "
+                         "freed storage, the courier stops pushing and the runner halts (STORE_PUSH_CAP). Default: the "
+                         "jobs file's \"store_push_cap_gb\", else 0 (off)")
     ap.add_argument("--store-first-start", action="store_true",
                     help="admit a job whose branch holds no generation, and that home has never seen pushed, to start from step 0")
-    ap.add_argument("--store-campaign", default=None, help="campaign name written into every generation (default: --name)")
+    ap.add_argument("--store-campaign", default=None,
+                    help="campaign name written into every generation (default: --name). Given explicitly it is also a "
+                         "namespace in the store: appended to every job's branch and put before every job's marks, so "
+                         "a new attempt under a new name never resumes from an earlier attempt's generations")
     ap.add_argument("--store-call-limit-s", type=float, default=300, help="wall-time limit of one store call from home")
     ap.add_argument("--store-stall-min", type=float, default=60,
                     help="say so loudly when a running job's store step has not advanced for this many minutes (0: never)")
@@ -1773,6 +2082,8 @@ def main():
                 r["vm"] = "BOOT_FAILED"
             if STORE and r["vm"] == "BOOT_FAILED":
                 store_boot_failed(st, a.commit)
+            if STORE and r["vm"] in ("RUNNING", "FINISHED"):
+                store_guard(st, jobs, store_vm_read(jobs))  # halts, by name, on a courier that reached its push cap
             if r["vm"] == "BOOT_FAILED":
                 log("boot failed on the VM; downloading boot.log")
                 T.get("/content/chat/boot.log", os.path.join(ART, "boot.log"), 120)
@@ -1815,7 +2126,13 @@ def main():
                         log(f"{n}: pod loss drill: the pod ends at the provider now; relayed {js['relayed_step']}")
                         if STORE:  # every stop this runner makes takes the token off the VM first
                             store_forget_token("before the drill's stop")
-                        T.lose_pod(st)
+                            store_bring_home(st, "before the drill's stop")
+                            store_drill_evidence(st, jobs, j)  # last: the read is immediately before the stop
+                        stopped = stop_session(st, "the pod loss drill", lose=True)
+                        if STORE:
+                            store_drill_stopped(st, jobs, j, stopped)
+                        if not stopped:
+                            raise SystemExit(4)
                         done = False
                         break
                 if STORE and r[n] == "FINISHED" and not js["home"] and "cmd" not in j and not store_durable(st, jobs, j):
@@ -1843,7 +2160,7 @@ def main():
                     if "cmd" in j:
                         fetch_outputs(st, n, j.get("outputs", []))
                     else:
-                        fetch_final(st, n, j.get("model_name", n))
+                        fetch_final(st, n, j.get("model_name", n), export_formats(j))
                 # FAILED counts only when seen on two ticks running: a status
                 # read mid-reset (a job being restarted by hand) is not final.
                 js["failed_seen"] = js.get("failed_seen", 0) + 1 if r[n] == "FAILED" else 0
@@ -1886,13 +2203,16 @@ def main():
     finally:
         if STORE:
             store_forget_token()
+            store_bring_home(st, "before the session stops")
             import hf_store
             hf_store.end_children()
-        T.stop(st)
+        stopped = stop_session(st, "at the runner's end")
         if st.d.get("campaign_home"):
             T.release(st)
-        log("session stopped; runner exiting")
+        log("session stopped; runner exiting" if stopped else "SESSION STOP NOT CONFIRMED (STOP_UNRESOLVED); runner exiting")
         os.remove(pid)
+        if not stopped:
+            sys.exit(4)
 
 
 if __name__ == "__main__":

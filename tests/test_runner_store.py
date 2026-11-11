@@ -37,6 +37,7 @@ import run_eq  # noqa: E402
 pytestmark = pytest.mark.skipif(os.name == "nt", reason="the fake colab CLI is a POSIX shell wrapper")
 BASE = "5506e6dfd5ec630b4b49fae0592329cc06799070"  # the trainer commit the branch was cut from
 TOKEN = "hf_FAKEtokenFAKEtokenFAKEtoken0123"
+COMMIT = "abc123" + "0" * 34  # with the store the runner takes --commit as a full SHA
 
 
 @pytest.fixture(scope="module")
@@ -101,7 +102,7 @@ STORE_JOBS = {"jobs": [
 STORE_ARGS = ["--ckpt-store", "hf", "--boot-script", "tools/colab_chat/boot_base2.sh"]
 
 
-def run_store(work, scenario, jobs=STORE_JOBS, extra=(), hours="0.2", fresh=True):
+def run_store(work, scenario, jobs=STORE_JOBS, extra=(), hours="0.2", fresh=True, commit=COMMIT):
     """One runner run on the fake VM with the store. fresh=False: again on the same folder (a watchdog's restart)."""
     layout, fake = work / "repo" / "tools" / "colab_chat", work / "fake"
     if fresh:
@@ -124,7 +125,7 @@ def run_store(work, scenario, jobs=STORE_JOBS, extra=(), hours="0.2", fresh=True
     env = dict(os.environ, FAKE_ROOT=str(fake), FAKE_JOBS=str(layout / "eqjobs.json"), FAKE_STORE_TOOLS=str(layout),
                CUDA_VISIBLE_DEVICES="", PK_STORE_TOKEN_DIR=str(work / "shm"))  # the VM's tmpfs, for the fake
     args = [sys.executable, str(work / "wrap.py"), str(layout / "runner_multi.py"), str(work / "colab"), str(work / "colpy"),
-            "--commit", "abc123", "--jobs", "tools/colab_chat/eqjobs.json", "--name", "pk-store", "--art", str(work / "art"),
+            "--commit", commit, "--jobs", "tools/colab_chat/eqjobs.json", "--name", "pk-store", "--art", str(work / "art"),
             "--state-dir", str(work / "state"), "--max-hours", hours, *extra]
     p = subprocess.run(args, capture_output=True, text=True, env=env, timeout=900)
     calls = (fake / "calls.log").read_text() if (fake / "calls.log").exists() else ""
@@ -200,7 +201,10 @@ def test_with_the_store_nothing_of_a_checkpoint_crosses_the_home_link(tmp_path):
     # The token: its path in two upload calls and nowhere else; its text in no call, log, state or exec code; in
     # the tmpfs from the call after the upload; and no file anywhere when the session is stopped.
     assert log.count("store: config and token file sent") == 2
-    assert log.rstrip().splitlines()[-2].endswith("store: courier ended and token removed from the VM (before the session stops)")
+    tail = [ln[15:] for ln in log.rstrip().splitlines()[-3:]]
+    assert tail[0] == "store: courier ended and token removed from the VM (before the session stops)"
+    assert tail[1].startswith("store: session files home in sessions/launch02 (before the session stops)")
+    assert tail[2] == "session stopped; runner exiting"
     assert calls.rstrip().splitlines()[-1].startswith('["stop"')
     lines = calls.splitlines()
     for i, ln in enumerate(lines):
@@ -255,10 +259,10 @@ def test_no_session_after_two_failed_boots_at_one_commit(tmp_path):
     for n in (1, 2):
         p, calls = run_store(work, {"boot_fail": True}, extra=store_args(work, "--store-first-start"), fresh=n == 1)
         assert p.returncode == 0 and news(calls) == n
-        assert f"store: boot failure {n} of 2 at abc123" in log_of(work)
-    assert state_of(work)["store_boot_failures"] == {"commit": "abc123", "n": 2}
+        assert f"store: boot failure {n} of 2 at {COMMIT}" in log_of(work)
+    assert state_of(work)["store_boot_failures"] == {"commit": COMMIT, "n": 2}
     p, calls = run_store(work, {}, extra=store_args(work, "--store-first-start"), fresh=False)
-    assert p.returncode == 1 and "2 boots failed at abc123" in p.stderr and news(calls) == 2
+    assert p.returncode == 1 and f"2 boots failed at {COMMIT}" in p.stderr and news(calls) == 2
     assert not list((work / "shm").glob("token*"))
     # A boot that never reports a status is ended at the limit and counted the same way.
     work2 = tmp_path / "hang"
@@ -334,10 +338,10 @@ def test_the_option_needs_its_repo_token_and_boot(tmp_path):
     tok.write_text(TOKEN)
     tok.chmod(0o600)
 
-    def refused(*extra):
+    def refused(*extra, **kw):
         work = tmp_path / f"w{len(os.listdir(tmp_path))}"
         work.mkdir()
-        p, calls = run_store(work, {}, extra=list(extra))
+        p, calls = run_store(work, {}, extra=list(extra), **kw)
         assert p.returncode == 2 and calls == "", p.stderr[-500:]
         assert TOKEN not in p.stderr
         return p.stderr
@@ -345,8 +349,268 @@ def test_the_option_needs_its_repo_token_and_boot(tmp_path):
     assert "no default store" in refused(*STORE_ARGS, "--store-token-file", str(tok))
     assert "no default token path" in refused(*STORE_ARGS, "--store-repo", "someone/base2-store")
     assert "inputs repo" in refused(*STORE_ARGS, "--store-repo", hf_store.REFUSED_REPOS[0], "--store-token-file", str(tok))
+    # The hub does not tell case apart in a repo's name, so neither does the refusal.
+    assert "inputs repo" in refused(*STORE_ARGS, "--store-repo", hf_store.REFUSED_REPOS[0].lower(), "--store-token-file", str(tok))
+    # The commit is taken as a full SHA: a short one is refused before anything is created.
+    for short in ("abc123", "5b1d5187", "main"):
+        assert "full 40-character SHA" in refused(*STORE_ARGS, "--store-repo", "someone/base2-store", "--store-token-file", str(tok),
+                                                  commit=short)
     assert "boot_base2.sh" in refused("--ckpt-store", "hf", "--store-repo", "someone/base2-store", "--store-token-file", str(tok))
     assert "need --ckpt-store hf" in refused("--boot-script", "tools/colab_chat/boot_base2.sh")
     assert "need --ckpt-store hf" in refused("--store-repo", "someone/base2-store")
     tok.chmod(0o644)
     assert "readable by others" in refused(*STORE_ARGS, "--store-repo", "someone/base2-store", "--store-token-file", str(tok))
+
+
+# ---------------------------------------------------------------- the rehearsal's own needs (second reviews, 12 Nov 2026)
+def reh_jobs(drill=None, **top):
+    """STORE_JOBS as the rehearsal's files are: a training job whose spec exports safetensors only, with its step
+    count and a tail from half way (the fake trainer ends at step 300, so the main part is steps 1 to 150)."""
+    jobs = json.loads(json.dumps(STORE_JOBS))
+    jobs["jobs"][1]["spec"] = {"train": {"steps": 300}, "data": {"anneal": {"from_fraction": 0.5}},
+                               "export": {"formats": ["safetensors"]}}
+    if drill:
+        jobs["jobs"][1]["pod_loss_drill_step"] = drill
+    return {**jobs, **top}
+
+
+def stat_lines(text, what):
+    return [json.loads(ln[5:]) for ln in text.splitlines() if ln.startswith("stat ") and json.loads(ln[5:])["what"] == what]
+
+
+def test_the_rehearsal_comes_home_without_a_gguf_with_its_session_files_and_its_drill_evidence(tmp_path):
+    """Three things the second reviews found missing, on one run of the rehearsal's shape.
+    1. A job that exports no gguf comes home: the runner fetches what "export.formats" declares and no more, and
+       events.jsonl whatever else happened. (The fake trainer writes no gguf for such a spec; before, the runner
+       asked for one for ever, the job was never home and the session billed to the deadline.) The job is counted
+       home through store_durable, on the same fake.
+    2. Before each stop, the session's own record comes home, named by session: courier.log with each push's bytes
+       and seconds and each restore pull's, boot.log, courier_status.json, store_restore/*.json.
+    3. The drill's record: the trainer's training step, from its own event stream, and the courier's pushed step,
+       read from the VM just before the stop; between_pushes only because the first is above the second; the side
+       of the tail switch."""
+    work = tmp_path / "a"
+    work.mkdir()
+    # "trainer_ahead": the trainer is 37 steps past its last save whenever it is looked at.
+    p, calls = run_store(work, {"trainer_ahead": 37}, jobs=reh_jobs(drill=200), extra=store_args(work, "--store-first-start"))
+    log = log_of(work)
+    assert p.returncode == 0, (p.stderr[-2000:], log[-3000:])
+    state = state_of(work)
+    lines = [ln[15:] for ln in log.splitlines()]
+    # 1. Home, and the session stopped: no wait for a file the job never writes.
+    assert "all jobs finished and home" in lines and calls.rstrip().splitlines()[-1].startswith('["stop"')
+    assert state["launches"] == 2 and all(state["jobs"][n]["home"] for n in ("data", "pt", "rung_100"))
+    assert state.get("campaign_home") and not state.get("durability_pending")
+    asked = [ln for ln in calls.splitlines() if ".gguf" in ln or ".ir.json" in ln]
+    assert asked == [], asked                                            # nothing but what the spec declares
+    assert "pt: final outputs downloaded" in lines
+    art = work / "art" / "pt"
+    assert sorted(f for f in os.listdir(art) if not f.startswith("rung_")) == ["events.jsonl", "m.safetensors", "pt_spec.json",
+                                                                              "pt_train.log", "result.json"]
+    assert hashlib.sha256((art / "m.safetensors").read_bytes()).digest() == hashlib.sha256(fakecolab.blob(("pt", 300), fakecolab.BIG)).digest()
+    assert json.loads((art / "events.jsonl").read_text().splitlines()[-1])["step"] == 300   # the losses' record
+    # 3. The drill's record.
+    rec = json.loads((work / "state" / "drill_record.json").read_text())
+    ev = rec["evidence"]
+    assert rec["job"] == "pt" and ev["vm_answered"] is True
+    assert (ev["training_step"], ev["pushed_step"], ev["saved_step"]) == (237, 200, 200)
+    assert rec["between_pushes"] is True and rec["steps_lost"] == 37
+    assert (rec["last_main_step"], rec["drill_side"], rec["side"], rec["side_missed"]) == (150, "tail", "tail", False)
+    assert rec["stop_confirmed"] is True and rec["store_step_after_stop"] == 200
+    for k in ("read_at_home", "vm_clock", "training_step_at", "pushed_at", "courier_status_at"):
+        assert isinstance(ev[k], float) and abs(ev[k] - rec["at"]) < 600, k         # each reading carries its time
+    assert rec["at"] <= ev["read_at_home"] <= rec["stop_returned_at"]
+    assert state["pod_loss_drill"] == rec
+    # The order at the drill: the courier is ended and the token removed, the session's files come home, the VM is
+    # read, and only then is the session stopped.
+    i = lines.index("pt: pod loss drill: the pod ends at the provider now; relayed 200")
+    assert lines[i + 1] == "store: courier ended and token removed from the VM (before the drill's stop)"
+    assert lines[i + 2].startswith("store: session files home in sessions/launch01 (before the drill's stop): ")
+    assert lines[i + 3] == ("pt: drill evidence: training step 237, pushed step 200, between pushes True, side tail "
+                            "(the drill step is on the tail side)")
+    assert lines[i + 4].startswith("pt: drill record written (drill_record.json): ")
+    cl = calls.splitlines()
+    stops = [k for k, ln in enumerate(cl) if ln.startswith('["stop"')]
+    assert len(stops) == 4                    # before each of the two sessions is created, at the drill, at the end
+    assert all(cl[stops[1] - k].startswith('["exec"') for k in (1, 2, 3))   # token, files home, the read; then the stop
+    # 2. The sessions' own records, at home.
+    s1, s2 = work / "state" / "sessions" / "launch01", work / "state" / "sessions" / "launch02"
+    for d in (s1, s2):
+        assert {"courier.log", "boot.log", "courier_status.json", "store_restore__pt.json", "index.json"} <= set(os.listdir(d))
+    i1, i2 = (json.loads((d / "index.json").read_text()) for d in (s1, s2))
+    assert (i1["when"], i1["launch"], i1["session"]) == ("before the drill's stop", 1, "pk-store")
+    assert (i2["when"], i2["launch"]) == ("before the session stops", 2) and all(f["whole"] for f in i2["files"].values())
+    c1, c2 = (s1 / "courier.log").read_text(), (s2 / "courier.log").read_text()
+    pushes = stat_lines(c1, "push")
+    assert [(x["kind"], x["step"]) for x in pushes] == [("mark", 100), ("generation", 100), ("generation", 200)]
+    assert all(x["bytes"] > fakecolab.BIG and x["seconds"] >= 0 for x in pushes)     # bytes and seconds of every push
+    pulls = stat_lines(c2, "pull")
+    assert [(x["kind"], x["step"]) for x in pulls] == [("generation", 200), ("mark", 100)]
+    assert all(x["bytes"] > fakecolab.BIG and x["seconds"] >= 0 for x in pulls)      # and of every pull of the restore
+    assert stat_lines(c2, "push")[-1]["step"] == 300
+    st1 = json.loads((s1 / "courier_status.json").read_text())
+    assert st1["jobs"]["pt"]["pushed_step"] == 200 and st1["http_429"] == 0 and st1["releases"]["count"] == 0
+    r2 = json.loads((s2 / "store_restore__pt.json").read_text())
+    assert r2["store_step"] == 200 and r2["placed"] and r2["pull_bytes"] > fakecolab.BIG and r2["pull_seconds"] >= 0
+    assert "boot_base2 (fake) launch 2" in (s2 / "boot.log").read_text()
+    for d in (s1, s2):
+        for f in os.listdir(d):
+            assert TOKEN.encode() not in (d / f).read_bytes()
+    # What the first session's courier had pushed is what the second one counted on from (the storage guard).
+    cfg = json.loads((work / "fake" / "vm" / "chat" / "store.json").read_text())
+    assert cfg["pushed_bytes_start"] == st1["bytes_since_release"] > 3 * fakecolab.BIG and cfg["push_cap_bytes"] == 0
+    assert cfg["mark_ns"] == "" and cfg["branches"] == {"pt": "ckpt-N"}
+
+    # A drill meant for the main part that lands in the tail says so. The drill step is 100 (main: the last main
+    # step is 150) and the trainer is 60 steps past its save when the runner looks: step 160, in the tail.
+    work = tmp_path / "b"
+    work.mkdir()
+    p, calls = run_store(work, {"trainer_ahead": 60}, jobs=reh_jobs(drill=100), extra=store_args(work, "--store-first-start"))
+    assert p.returncode == 0, (p.stderr[-2000:], log_of(work)[-3000:])
+    rec = json.loads((work / "state" / "drill_record.json").read_text())
+    assert (rec["evidence"]["training_step"], rec["evidence"]["pushed_step"]) == (160, 100)
+    assert (rec["drill_side"], rec["side"], rec["side_missed"], rec["between_pushes"]) == ("main", "tail", True, True)
+    assert "side tail (the drill step is on the main side); SIDE MISSED" in log_of(work)
+
+    # A trainer that is AT its pushed step is not between pushes, whatever the drill meant: the record says false.
+    work = tmp_path / "c"
+    work.mkdir()
+    p, calls = run_store(work, {}, jobs=reh_jobs(drill=200), extra=store_args(work, "--store-first-start"))
+    assert p.returncode == 0, (p.stderr[-2000:], log_of(work)[-3000:])
+    rec = json.loads((work / "state" / "drill_record.json").read_text())
+    assert (rec["evidence"]["training_step"], rec["evidence"]["pushed_step"]) == (200, 200)
+    assert rec["between_pushes"] is False and rec["steps_lost"] == 0 and rec["side_missed"] is False
+
+
+def test_the_push_cap_halts_the_campaign_by_name(tmp_path):
+    """The storage guard. The jobs file carries the cap ("store_push_cap_gb"; the flag overrides it). The courier
+    counts what it pushes; at the cap it stops pushing and says why; the runner reads that on its next tick, halts
+    with STORE_PUSH_CAP, brings the session's record home and stops the session."""
+    work = tmp_path
+    cap = 1.5 * fakecolab.BIG / 1e9          # passed by the mark and the first generation; the second is not pushed
+    p, calls = run_store(work, {}, jobs=reh_jobs(store_push_cap_gb=cap), extra=store_args(work, "--store-first-start"))
+    log = log_of(work)
+    assert p.returncode == 3, (p.stderr[-2000:], log[-3000:])
+    halted = json.loads((work / "state" / "HALTED").read_text())
+    assert halted["kind"] == "STORE_PUSH_CAP" and halted["job"] == "pt" and halted["cap_bytes"] == int(cap * 1e9)
+    assert halted["bytes_since_release"] > 2 * fakecolab.BIG and "since the last release that freed storage" in halted["why"]
+    store = hf_store.open_store({"repo": f"dir:{work / 'store'}"})
+    assert store.steps("ckpt-N") == [100] and store.mark_steps("pt") == [100]      # nothing went up past the cap
+    state = state_of(work)
+    assert state["store_pushed_bytes"] == halted["bytes_since_release"] and state["jobs"]["pt"]["home"] is False
+    assert not state.get("campaign_home") and "all jobs finished and home" not in log
+    assert calls.rstrip().splitlines()[-1].startswith('["stop"')
+    s1 = work / "state" / "sessions" / "launch01"
+    assert "PUSH CAP" in (s1 / "courier.log").read_text() and (s1 / "COURIER_CAPPED").exists()
+    assert json.loads((s1 / "courier_status.json").read_text())["capped"]["cap"] == int(cap * 1e9)
+    cfg = json.loads((work / "fake" / "vm" / "chat" / "store.json").read_text())
+    assert cfg["push_cap_bytes"] == int(cap * 1e9) and cfg["pushed_bytes_start"] == 0
+    # The marker stops a restart, as every halt does.
+    p, calls2 = run_store(work, {}, jobs=reh_jobs(store_push_cap_gb=cap), extra=store_args(work, "--store-first-start"), fresh=False)
+    assert "HALTED marker present" in p.stderr and news(calls2) == news(calls) == 1
+    # The flag overrides the jobs file: with the guard off the same campaign comes home.
+    work2 = tmp_path / "off"
+    work2.mkdir()
+    p, calls = run_store(work2, {}, jobs=reh_jobs(store_push_cap_gb=cap),
+                         extra=store_args(work2, "--store-first-start", "--store-push-cap-gb", "0"))
+    assert p.returncode == 0 and state_of(work2)["campaign_home"], log_of(work2)[-2000:]
+
+
+def test_a_stop_that_is_not_confirmed_is_said_loudly_and_the_runner_exits_non_zero(tmp_path):
+    """`colab stop` can fail. Its return code is read and the stop tried again; when it keeps failing and the
+    listing still holds the session, STOP_UNRESOLVED names the session and the runner exits 4. A stop that fails
+    where the listing answers without the session had nothing to stop. A later confirmed stop closes the record."""
+    work = tmp_path / "a"
+    work.mkdir()
+    # The boot fails, so the runner goes straight to its end; every stop fails and the session stays up.
+    p, calls = run_store(work, {"boot_fail": True, "stop_fail": True}, extra=store_args(work, "--store-first-start"))
+    log = log_of(work)
+    assert p.returncode == 4, (p.stderr[-1500:], log[-2500:])
+    rec = json.loads((work / "state" / "STOP_UNRESOLVED").read_text())
+    assert rec["kind"] == "STOP_UNRESOLVED" and rec["session"] == "pk-store" and rec["endpoint"] == "fake-endpoint-1"
+    assert rec["return_code"] == 1 and rec["tries"] == 3 and "colab stop -s pk-store" in rec["do"]
+    assert "STOP_UNRESOLVED: the stop of session pk-store" in log and "IT MAY STILL BE BILLING" in log
+    assert log.rstrip().splitlines()[-1].endswith("SESSION STOP NOT CONFIRMED (STOP_UNRESOLVED); runner exiting")
+    cl = calls.splitlines()
+    # Before the session was created the stop failed too, the listing answered without the session, and the
+    # launch went on: one stop, one listing.
+    first_new = next(k for k, ln in enumerate(cl) if ln.startswith('["new"'))
+    assert [ln[:6] for ln in cl[:first_new]].count('["stop') == 1
+    assert "the listing answers and does not hold pk-store: nothing to stop" in log
+    # At the end: three stops, each followed by a listing that still shows the session.
+    end = [ln for ln in cl[first_new:] if ln.startswith('["stop"') or ln.startswith('["sessions"')]
+    assert [ln[:6] for ln in end[-6:]] == ['["stop', '["sess', '["stop', '["sess', '["stop', '["sess']
+    assert json.loads((work / "fake" / "fake.json").read_text())["alive"] is True     # it is, in fact, still up
+    assert log.count("is not known to be gone (try") == 3
+    # The same state folder started again with a provider that answers: its end stops the session and closes the record.
+    fj = work / "fake" / "fake.json"
+    d = json.loads(fj.read_text())
+    d["stop_fail"] = False
+    fj.write_text(json.dumps(d))
+    p, calls = run_store(work, {}, extra=store_args(work, "--store-first-start"), fresh=False)
+    assert p.returncode == 0, (p.stderr[-1500:], log_of(work)[-1500:])
+    assert not (work / "state" / "STOP_UNRESOLVED").exists() and (work / "state" / "STOP_RESOLVED").exists()
+    assert json.loads(fj.read_text())["alive"] is False
+    # A stop that fails twice and then succeeds is confirmed: no record, exit 0.
+    work = tmp_path / "b"
+    work.mkdir()
+    p, calls = run_store(work, {"boot_fail": True, "stop_fail": 3}, extra=store_args(work, "--store-first-start"))
+    assert p.returncode == 0, (p.stderr[-1500:], log_of(work)[-2500:])
+    assert not (work / "state" / "STOP_UNRESOLVED").exists() and log_of(work).count("is not known to be gone (try") == 2
+    assert log_of(work).rstrip().splitlines()[-1].endswith("session stopped; runner exiting")
+    assert json.loads((work / "fake" / "fake.json").read_text())["alive"] is False
+    # A failed stop of the drill's forced loss ends the run the same way, with the drill's record saying so.
+    work = tmp_path / "c"
+    work.mkdir()
+    fail_from = {"trainer_ahead": 37, "stop_fail_from_status": 5}
+    p, calls = run_store(work, fail_from, jobs=reh_jobs(drill=200), extra=store_args(work, "--store-first-start"))
+    assert p.returncode == 4, (p.stderr[-1500:], log_of(work)[-2500:])
+    rec = json.loads((work / "state" / "drill_record.json").read_text())
+    assert rec["stop_confirmed"] is False and rec["between_pushes"] is True
+    assert json.loads((work / "state" / "STOP_UNRESOLVED").read_text())["session"] == "pk-store"
+    assert news(calls) == 1                                               # no second session beside the first
+
+
+def test_a_new_attempt_never_resumes_from_an_earlier_attempts_branches(tmp_path):
+    """A rehearsal run again under the same name and jobs file: the earlier attempt's ckpt-* branches carry the
+    same campaign, job and spec, so the VM would resume from them without a word. A state folder that has never
+    launched refuses branches that hold generations, before any session, and names --store-campaign; that flag
+    gives the new attempt its own branches and marks. The first attempt's own state folder goes on as before."""
+    repo = tmp_path / "shared_store"
+    first = tmp_path / "first"
+    first.mkdir()
+    p, calls = run_store(first, {}, jobs=reh_jobs(), extra=store_args(first, "--store-first-start", repo=repo))
+    assert p.returncode == 0, (p.stderr[-1500:], log_of(first)[-2500:])
+    assert state_of(first)["store_attempt"]["campaign"] == "pk-store"
+    store = hf_store.open_store({"repo": f"dir:{repo}"})
+    assert store.steps("ckpt-N") == [200, 300] and store.mark_steps("pt") == [100]
+    # A second attempt: a fresh state folder, the same name, jobs and store.
+    second = tmp_path / "second"
+    second.mkdir()
+    p, calls = run_store(second, {}, jobs=reh_jobs(), extra=store_args(second, "--store-first-start", repo=repo))
+    assert p.returncode == 1 and news(calls) == 0, (p.stderr[-1500:], log_of(second)[-1500:])
+    for text in (p.stderr, log_of(second)):
+        assert "ckpt-N holds generations up to g300" in text and "an earlier attempt's" in text and "--store-campaign" in text
+    assert "store_attempt" not in state_of(second)
+    # The same state folder with a campaign name of its own: its own branch and marks, from step 0, to the end.
+    p, calls = run_store(second, {}, jobs=reh_jobs(), fresh=False,
+                         extra=store_args(second, "--store-first-start", "--store-campaign", "try 2", repo=repo))
+    assert p.returncode == 0, (p.stderr[-1500:], log_of(second)[-2500:])
+    vm_log = (second / "fake" / "store_vm.log").read_text()
+    assert "launch 1: pt store_step None placed False" in vm_log and "first start admitted" in vm_log
+    cfg = json.loads((second / "fake" / "vm" / "chat" / "store.json").read_text())
+    assert cfg["branches"] == {"pt": "ckpt-N-try-2"} and cfg["mark_ns"] == "try-2." and cfg["campaign"] == "try 2"
+    assert store.steps("ckpt-N-try-2") == [200, 300] and store.read_manifest("ckpt-N-try-2", "gens/g300")["campaign"] == "try 2"
+    assert sorted(os.listdir(repo / "main" / "marks")) == ["pt", "try-2.pt"]
+    assert store.read_manifest("ckpt-N", "gens/g300")["campaign"] == "pk-store"    # the first attempt's, untouched
+    assert state_of(second)["campaign_home"] and state_of(second)["store_marks"]["pt/rung_100"]["sha256"]
+    # The first attempt's own state folder is that attempt: a restart of it is not refused. (Everything is home, so
+    # the restart only has to get past the preflight; a short deadline ends it.)
+    st = json.loads((first / "state" / "state.json").read_text())
+    st["jobs"]["pt"].update(home=False, relayed_step=0)
+    st["endpoint"] = None
+    st.pop("campaign_home", None)
+    (first / "state" / "state.json").write_text(json.dumps(st))
+    p, calls = run_store(first, {}, jobs=reh_jobs(), extra=store_args(first, "--store-first-start", repo=repo), fresh=False,
+                         hours="0.01")
+    assert "an earlier attempt's" not in p.stderr + log_of(first) and news(calls) == 2

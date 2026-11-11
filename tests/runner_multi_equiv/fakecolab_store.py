@@ -36,6 +36,9 @@ FLAT = ("model.safetensors", "optim.safetensors", "state.txt")
 def note(msg):
     with open(os.path.join(fakecolab.ROOT, "store_vm.log"), "a") as f:
         f.write(msg + "\n")
+    if os.path.isdir(CHAT):  # the VM's own courier.log, as ckpt_courier.main() writes it: it dies with the VM
+        with open(os.path.join(CHAT, "courier.log"), "a") as f:
+            f.write(msg + "\n")
 
 
 def jobs_and_branches():
@@ -55,6 +58,8 @@ def boot():
         return
     with open(os.path.join(CHAT, "boot_id"), "w") as f:
         f.write(uuid.uuid4().hex)
+    with open(os.path.join(CHAT, "boot.log"), "a") as f:
+        f.write(f"=== boot_base2 (fake) launch {d['launches']} ===\n")
     jobs, branches, cfg = jobs_and_branches()
     try:
         recs = ckpt_courier.restore(hf_store.open_store(cfg, log=note, delay=0), CHAT, jobs, branches, log=note, cfg=cfg)
@@ -87,6 +92,15 @@ def after_step():
     if d.get("courier_off_from") and d.get("status_calls", 0) >= d["courier_off_from"]:
         return
     ckpt_courier.Courier(hf_store.open_store(cfg, log=note, delay=0), CHAT, jobs, branches, log=note, cfg=cfg).tick()
+    # "trainer_ahead": N. A real trainer is past its last save when anyone looks: its event stream then ends on a
+    # step above the step it saved and the courier pushed. The fake's trainer saves at every step it takes, so the
+    # scenario writes that one later `step` event into the job's own events.jsonl, after the courier's pass.
+    if d.get("trainer_ahead"):
+        for name in branches:
+            step = fakecolab.ckpt_step(os.path.join(CHAT, name))
+            if step and fakecolab.status(name) == "RUNNING":
+                with open(os.path.join(CHAT, name, "events.jsonl"), "a") as f:
+                    f.write(json.dumps({"event": "step", "step": step + d["trainer_ahead"]}) + "\n")
 
 
 def main():
