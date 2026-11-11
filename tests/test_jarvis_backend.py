@@ -74,6 +74,7 @@ class Account:
 @pytest.fixture
 def acct(tmp_path, monkeypatch):
     """A fake `jl` and a private ~/.jarvis for one test."""
+    monkeypatch.setenv("JARVIS_ACCOUNT_CAP", "15")   # required since 11 Nov; tests that need another set their own
     a = Account(tmp_path)
     jl = tmp_path / "bin" / "jl"
     jl.parent.mkdir()
@@ -111,6 +112,7 @@ def tr(acct, tmp_path, monkeypatch):
     home = tmp_path / "state"
     home.mkdir()
     lines = []
+    monkeypatch.setenv("JARVIS_ACCOUNT_CAP", "15")
     t = jt.JarvisTransport("L4", 50, 5.0, "abc123", "camp", str(home), lines.append)
     t.lines = lines
     st = State(home)
@@ -196,6 +198,82 @@ def test_the_runner_refuses_a_bad_account_cap(tmp_path, monkeypatch, env, match)
     monkeypatch.setenv("JARVIS_ACCOUNT_CAP", env)
     with pytest.raises(api.Refused, match=match):
         jt.JarvisTransport("L4", 50, 5.0, "abc123", "camp", str(tmp_path), print)
+
+
+@pytest.mark.parametrize("text", ["{not json", '"camp-1"', '{"a": 1}', "[true]", "[1.5]"])
+def test_a_bad_keep_list_destroys_nothing(acct, text):
+    acct.add_vm(name="hand-made")
+    with open(sweep.KEEP, "w") as f:
+        f.write(text)
+    assert sweep.main([]) == 1
+    assert acct.calls("destroy") == []
+
+
+def test_a_runner_without_an_account_cap_is_refused(tmp_path, monkeypatch):
+    monkeypatch.delenv("JARVIS_ACCOUNT_CAP", raising=False)
+    with pytest.raises(api.Refused, match="JARVIS_ACCOUNT_CAP is required"):
+        jt.JarvisTransport("L4", 50, 5.0, "abc123", "camp", str(tmp_path), print)
+
+
+def test_the_cap_persists_lowers_only_and_bounds_max_usd(acct, tmp_path, monkeypatch):
+    home = tmp_path / "s"
+    home.mkdir()
+    monkeypatch.setenv("JARVIS_ACCOUNT_CAP", "3")
+    t = jt.JarvisTransport("L4", 50, 5.0, "abc123", "camp", str(home), print)
+    assert t.max_usd == 3.0                                     # --max-usd 5 is clamped to the cap
+    st = State(home)
+    assert t.R(st)["account_cap"] == 3.0
+    st.save()
+    monkeypatch.setenv("JARVIS_ACCOUNT_CAP", "15")              # a restart asking for more keeps the lower cap
+    t2 = jt.JarvisTransport("L4", 50, 5.0, "abc123", "camp", str(home), print)
+    st2 = State(home)
+    st2.d = json.loads(st2.path.read_text())                     # the runner's State loads its file; this helper does not
+    t2.R(st2)
+    assert t2.account_cap == 3.0 and t2.max_usd == 3.0
+
+
+def test_the_cap_stops_with_headroom(tr, acct):
+    tr.account_cap = 3.0
+    tr.create(tr.st)
+    acct.set(balance=50 - 2.80)                                 # $2.80 spent: inside $3 less half an hour at $0.50
+    tr.R(tr.st)["balance_start"] = 47.21
+    tr.refresh(tr.st)
+    assert "headroom" in tr.over_budget(tr.st)
+
+
+def test_a_stale_balance_stops_a_standing_vm(tr, acct):
+    tr.create(tr.st)
+    assert tr.over_budget(tr.st) is None
+    tr._balance_at = time.time() - jt.BALANCE_STALE_S - 1
+    assert "no Jarvis balance read" in tr.over_budget(tr.st)
+
+
+def test_a_balance_above_the_opening_credit_stops_and_refuses(tr, acct):
+    tr.create(tr.st)
+    acct.set(balance=60.0)                                      # an unrecorded top-up
+    tr.refresh(tr.st)
+    assert tr.over_budget(tr.st) is not None
+
+
+def test_a_recorded_vm_must_be_prepared_after_a_restart(tr, acct):
+    tr.create(tr.st)
+    assert tr.st.d["booted"] is False or tr.st.d.get("booted") in (False, True)
+    tr._record_vm(tr.st, {"machine_id": 99, "name": "x"}, time.time(), 0.44)
+    assert tr.st.d["booted"] is False
+
+
+def test_no_filesystem_without_a_free_vm(tr, acct):
+    acct.set(stock=0)
+    rc, why = tr.create(tr.st)
+    assert rc == 1 and "no filesystem created" in why and acct.calls("filesystem") == []
+
+
+def test_release_on_exit_removes_the_filesystem(tr, acct, monkeypatch):
+    tr.create(tr.st)
+    tr.stop(tr.st)
+    tr.release_always = True
+    tr._atexit()
+    assert tr.R(tr.st)["volume"].get("deleted")
 
 
 def test_the_running_floor_has_teardown_headroom_above_eight(tr, acct):
@@ -345,6 +423,7 @@ def test_ledger_usd():
 
 # ---------------------------------------------------------------- the transport's interface
 def test_ssh_and_rsync_use_the_key_the_user_and_a_known_hosts_file_per_vm(tmp_path, monkeypatch):
+    monkeypatch.setenv("JARVIS_ACCOUNT_CAP", "15")
     t = jt.JarvisTransport("L4", 50, 5.0, "c", "camp", str(tmp_path), print)
     t.st = State(tmp_path)
     t.R()["pod"] = {"id": "1234", "ip": "203.0.113.7", "port": 22}
@@ -380,8 +459,9 @@ def test_runpod_argv_is_unchanged_by_the_seams(tmp_path, monkeypatch):
     assert seen[1][-2:] == ["/a", "root@1.2.3.4:/content/b"] and seen[2][-2:] == ["root@1.2.3.4:/content/b", "/a"]
 
 
-def test_runner_interface_is_complete():
+def test_runner_interface_is_complete(monkeypatch):
     """Every attribute runner_multi.py calls on a transport, present on the Jarvis one and not abstract."""
+    monkeypatch.setenv("JARVIS_ACCOUNT_CAP", "15")
     t = jt.JarvisTransport("L4", 50, 5.0, "c", "camp", "/tmp", print)
     assert t.backend == "jarvis" and t.whole_files is True and t.persistent is True and t.gpu == "L4"
     for name in ("create", "listed", "adopt", "exec", "put", "get", "stop", "refresh", "gone", "attach", "release",

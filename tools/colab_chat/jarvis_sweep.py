@@ -38,6 +38,21 @@ CREATING_S = 1800
 LOG = None
 
 
+def read_keep():
+    """The ids and names never to touch: an empty set when keep.json is absent; None when it exists but is not a JSON list of
+    strings and integers."""
+    if not os.path.exists(KEEP):
+        return set()
+    try:
+        with open(KEEP) as f:
+            d = json.load(f)
+    except (OSError, ValueError):
+        return None
+    if not isinstance(d, list) or not all(isinstance(x, (str, int)) and not isinstance(x, bool) for x in d):
+        return None
+    return {str(x) for x in d}
+
+
 def log(msg):
     line = f"{time.strftime('%Y-%m-%d %H:%M:%S')} {msg}"
     print(line, flush=True)
@@ -150,7 +165,10 @@ def main(argv=None):
     if reg is None:
         log(f"sweep: {REGISTRY} is unreadable; destroying nothing")
         return 1
-    keep = {str(x) for x in (runpod_sweep.jload(KEEP, []) or [])}
+    keep = read_keep()
+    if keep is None:   # as the registry: a keep list that cannot be read protects nothing, so nothing is destroyed (launch reviews, 11 Nov 2026)
+        log(f"sweep: {KEEP} is unreadable or not a JSON list of ids and names; destroying nothing")
+        return 1
     runners = read_runners(reg, a.state_dir)
     failed = False
     for vm in vms:

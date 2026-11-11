@@ -22,6 +22,7 @@ the renting (BOOT_FAILS_STOP), which a watchdog-restarted runner would otherwise
 """
 from __future__ import annotations
 
+import math
 import os
 import re
 import time
@@ -37,6 +38,9 @@ UP_POLL_S = 10
 DESTROY_BACKOFF_S = 5
 SSH_LOST_S = 900   # continuous ssh failure before a Running VM is given up (AGENTS.md section 5: 15 minutes)
 BOOT_FAILS_STOP = 2  # paid VMs in a row that never reached the boot: the third needs a person, not a retry
+CAP_HEADROOM_H = 0.5   # a running VM stops this many hours (at MAX_USD_PER_HR) short of its account cap (launch reviews, 11 Nov 2026)
+BALANCE_STALE_S = 600  # a VM is stopped when no balance read has succeeded for this long
+BALANCE_EVERY_S = 120  # long operations read the balance again at most this often
 RUNNER_NAME_RE = re.compile(r"[A-Za-z0-9_-]{1,27}\Z")  # fits "-fs" in Jarvis's 30 characters, so a name is never cut
 
 
@@ -56,12 +60,18 @@ class JarvisTransport(rt.RunPodTransport):
         if not RUNNER_NAME_RE.match(name):
             raise api.Refused(f"--name {name!r}: 1 to 27 letters, digits, hyphens or underscores for Jarvis")
         cap = os.environ.get("JARVIS_ACCOUNT_CAP")
-        try:   # account-wide spend since opening, every charge counted (Codex's review, 7 Nov): JARVIS_ACCOUNT_CAP, at most api.ACCOUNT_CAP
-            self.account_cap = api.checked_account_cap(float(cap) if cap is not None else api.ACCOUNT_CAP)
+        if cap is None:   # required, never defaulted: a restart without it must not run under a larger cap (launch reviews, 11 Nov 2026)
+            raise api.Refused("JARVIS_ACCOUNT_CAP is required: the account-wide spend cap for this runner, at most "
+                              f"${api.ACCOUNT_CAP:.0f} (a validation takes 3)")
+        try:   # account-wide spend since opening, every charge counted (Codex's review, 7 Nov)
+            self.account_cap = api.checked_account_cap(float(cap))
         except ValueError:
             raise api.Refused(f"JARVIS_ACCOUNT_CAP {cap!r} is not a number") from None
+        max_usd = min(max_usd, self.account_cap)   # a runner never spends past its account cap
         super().__init__(gpu, "SECURE", volume_gb, None, "jarvis-vm-template", max_usd, commit, name, home, log)
         self._balance = None         # last balance read; refresh() keeps it, over_budget() must not call jl
+        self._balance_at = None      # when that read succeeded: a VM is stopped when it is older than BALANCE_STALE_S
+        self.release_always = os.environ.get("JARVIS_RELEASE_ON_EXIT") == "1"   # validations: no filesystem outlives the run
         self._ssh_down_since = None  # first of an unbroken run of ssh failures
 
     # ------------------------------------------------------------ state
@@ -71,6 +81,10 @@ class JarvisTransport(rt.RunPodTransport):
         r.setdefault("creating", None)
         r.setdefault("balance_start", None)
         r.setdefault("boot_fails", 0)
+        if r.get("account_cap") is not None and r["account_cap"] < self.account_cap:   # persisted and lowered only:
+            self.account_cap = r["account_cap"]                                         # a restart cannot raise it
+            self.max_usd = min(self.max_usd, self.account_cap)
+        r["account_cap"] = self.account_cap
         return r
 
     def _register(self):
@@ -83,6 +97,23 @@ class JarvisTransport(rt.RunPodTransport):
     def _atexit(self):
         if self.st is not None and (self.R().get("pod") or self.R().get("creating")):
             self.stop(self.st)
+        if self.st is not None and self.release_always:
+            self.release_filesystem(self.st)
+
+    def release_filesystem(self, st):
+        """With JARVIS_RELEASE_ON_EXIT=1, the run's filesystem goes on every exit, home or not, once no VM stands (launch reviews,
+        11 Nov 2026: a validation leaves nothing billing). A filesystem that will not go is logged for a person."""
+        R = self.R(st)
+        v = R.get("volume")
+        if not v or v.get("deleted") or R.get("pod"):
+            return
+        if not self._delete_volume(st, v):
+            self.log(f"filesystem {v['id']} NOT removed: it still bills; remove it by hand (jl filesystem remove)")
+
+    def _cap_stop_at(self):
+        """The account spend at which a running VM stops: the cap less CAP_HEADROOM_H hours at the dearest rate, so the tick, the charge
+        lag and the teardown fit under the cap."""
+        return self.account_cap - CAP_HEADROOM_H * api.MAX_USD_PER_HR
 
     def spent(self, st=None):
         """The ledger's estimate, or what the balance has actually fallen by if that is more (VM disk
@@ -98,9 +129,34 @@ class JarvisTransport(rt.RunPodTransport):
             return f"Jarvis spend ${self.spent(st):.2f} reached --max-usd {self.max_usd}; stopping"
         if self._balance is not None and self._balance < api.MIN_BALANCE_RUNNING:
             return f"Jarvis balance ${self._balance:.2f} is below ${api.MIN_BALANCE_RUNNING:.0f}; stopping"
-        if self._balance is not None and api.account_spent(self._balance) >= self.account_cap:
-            return f"Jarvis account spend ${api.account_spent(self._balance):.2f} reached its cap ${self.account_cap:.2f}; stopping"
+        if self._balance is not None and api.account_spent(self._balance) >= self._cap_stop_at():
+            return (f"Jarvis account spend ${api.account_spent(self._balance):.2f} reached its cap ${self.account_cap:.2f} less "
+                    f"{CAP_HEADROOM_H} h of headroom; stopping")
+        if self.R(st).get("pod") and (self._balance_at is None or time.time() - self._balance_at > BALANCE_STALE_S):
+            return f"no Jarvis balance read for {BALANCE_STALE_S} s while a VM stands; stopping"
         return None
+
+    def _operation_limit(self):
+        """As RunPod's, with the balance read again (at most every BALANCE_EVERY_S) during long operations: a prelude or an upload
+        must not run on a stale balance."""
+        if self._balance_at is None or time.time() - self._balance_at > BALANCE_EVERY_S:
+            self._read_balance()
+        return super()._operation_limit()
+
+    def _read_balance(self):
+        try:
+            b = api.balance()
+        except api.JarvisError as e:
+            self.log(f"Jarvis API: {e}")
+            return
+        if not math.isfinite(b):
+            self.log(f"Jarvis API: balance {b!r} is not a number")
+            return
+        if b > api.OPENING_CREDIT + 0.005:   # a top-up would read as negative spend: refuse to trust the account cap
+            self.log(f"Jarvis balance ${b:.2f} is above the opening credit; record the top-up in api.OPENING_CREDIT")
+            self._balance, self._balance_at = 0.0, time.time()   # reads as below every floor: stop and refuse
+            return
+        self._balance, self._balance_at = b, time.time()
 
     # ------------------------------------------------------------ ssh
     def exec(self, code, timeout=200):
@@ -134,10 +190,7 @@ class JarvisTransport(rt.RunPodTransport):
 
     def refresh(self, st):
         self._fetch()
-        try:
-            self._balance = api.balance()
-        except api.JarvisError as e:
-            self.log(f"Jarvis API: {e}")
+        self._read_balance()
 
     def listed(self):
         v = self._fetch()
@@ -163,6 +216,7 @@ class JarvisTransport(rt.RunPodTransport):
                                     "dc": api.REGION, "volume": (R.get("volume") or {}).get("id"), "start": start,
                                     "stop": None, "image": self.image, "image_digest": None})
         st.d["endpoint"] = vm_id
+        st.d["booted"] = False   # a runner restarted before the prelude ends must prepare this VM, not idle it (Explore launch review, 11 Nov)
         st.save()
 
     def _settle_creating(self, st):
@@ -271,9 +325,21 @@ class JarvisTransport(rt.RunPodTransport):
             if R["boot_fails"] >= BOOT_FAILS_STOP:  # a watchdog-restarted runner must not rent VMs in a loop
                 return 1, (f"refused: {R['boot_fails']} VMs in a row failed before the boot (runner.log); "
                            "set jarvis.boot_fails to 0 in state.json once the cause is fixed")
+            if not R.get("volume"):   # no filesystem unless a VM could follow it now (launch reviews, 11 Nov 2026)
+                s = api.stock()
+                if not s or s["free"] < 1:
+                    return 1, f"refused: no {api.GPU_TYPE} VM free in {api.REGION}; no filesystem created"
+                self._read_balance()
+                if self._balance is None:
+                    return 1, "refused: no balance read; no filesystem created"
+                if api.account_spent(self._balance) + s["usd_per_hr"] > self._cap_stop_at() or self._balance < api.MIN_BALANCE:
+                    return 1, "refused: the account cap or the balance floor leaves no hour to run; no filesystem created"
             fs = self._filesystem(st)
             if R.get("balance_start") is None:
-                self._balance = R["balance_start"] = api.balance()
+                self._read_balance()
+                if self._balance is None:
+                    return 1, "refused: no balance read"
+                R["balance_start"] = self._balance
             why = self._operation_limit() or self.over_budget(st)
             if why:
                 return 1, f"refused: {why}"
