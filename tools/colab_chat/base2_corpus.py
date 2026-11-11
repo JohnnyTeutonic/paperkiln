@@ -18,7 +18,7 @@ the author's research tree). Claude Fable 5.2, 11 Nov 2026.
     base2_corpus.py doc-keys OUT FILE... / subset-docs --n-keys K --scenario F --out J S...   # S within N, by document
     base2_corpus.py token-report --n-ids A --s-ids B --out J   # N's and S's token counts by part
     base2_corpus.py split-docs IN A B BYTES               # whole documents: the first BYTES to A, the rest to B
-    base2_corpus.py drill-watch --config C --chat DIR --job J --out DIR   # the rehearsal: live step against pushed step
+    base2_corpus.py drill-watch --config C --chat DIR --job J --out DIR   # the rehearsal: training step against pushed step
     base2_corpus.py scn-ledger / stage-ledger ...         # the scenario stream's and a stage's records
     base2_corpus.py loadprobe --spec SPEC.json --out DIR  # a short run on the real ids: start-up time and peak memory
 
@@ -444,55 +444,63 @@ ABSENT = {"EntryNotFoundError", "RevisionNotFoundError"}    # the file, or the b
 NOT_ABSENT = {"RepositoryNotFoundError", "LocalEntryNotFoundError", "GatedRepoError"}
 
 
-def reads_as_absent(e, local, store_error):
-    """Only a missing file or a missing branch means "not in the store". "Repository not found" is what a wrong or
-    expired token gets, and a file missing from the local cache is what an outage gets: both are an unreadable store,
-    and a multi-hour stage must not run again because of either. On a local-disk store the one absent case is its own
-    "is not in the store" error."""
+def reads_as_absent(e, missing):
+    """Only a missing file or a missing branch means "not in the store". `missing` is hf_store.Missing: what both
+    backends raise for exactly that, the Hugging Face one after the hub's own entry-not-found or revision-not-found
+    (HfBackend.fetch), the local one for a path that is not on disk. The library's two errors are read by name as
+    well, for a caller that hands them over untranslated. "Repository not found" is what a wrong or expired token
+    gets, and a file missing from the local cache is what an outage gets: both are an unreadable store, and a
+    multi-hour stage must not run again because of either. Along a chain of causes the first decisive error wins."""
     seen = set()
     while e is not None and id(e) not in seen:
         seen.add(id(e))
         names = {c.__name__ for c in type(e).__mro__}
         if names & NOT_ABSENT:
             return False
-        if names & ABSENT:
+        if isinstance(e, missing) or names & ABSENT:
             return True
-        if local and isinstance(e, store_error) and str(e).endswith("is not in the store"):
-            return True
-        e = e.__cause__ or e.__context__
+        e = e.__cause__ or (None if e.__suppress_context__ else e.__context__)
     return False
+
+
+def store_limit():
+    """Seconds one small store call of the data job may take (BASE2_STORE_LIMIT_S); the call runs in a child that
+    is ended at the limit, so a request that hangs is a failed try, not a job that never ends."""
+    return float(os.environ.get("BASE2_STORE_LIMIT_S", "300"))
 
 
 def store_has(config, branch, prefix):
     """True when the store holds the set's manifest, False when the store answered and the set (or its branch) is not
-    there. Any other failure is tried again by hf_store.retry and then raised."""
+    there. Any other failure is tried again by hf_store.retry and then raised. Each try has a wall-time limit."""
     sys.path.insert(0, HERE)
     import hf_store
-    store = hf_store.open_store(config)
-    local = isinstance(store.b, hf_store.DirBackend)
+    store = hf_store.open_store(config, tries=1)  # hf_store.retry below does the trying again
 
-    def once():
+    def read():
         try:
             store.read_manifest(branch, prefix)
             return True
         except hf_store.VerifyError:
             raise
         except Exception as e:  # noqa: BLE001 the library's types vary by version; by name, as hf_store does
-            if reads_as_absent(e, local, hf_store.StoreError):
+            if reads_as_absent(e, hf_store.Missing):
                 return False
             raise
+
+    def once():
+        return hf_store.bounded(read, store_limit(), store.b.token)
     return hf_store.retry(once, tries=3, delay=float(os.environ.get("BASE2_STORE_RETRY_S", "20")),
                           what=f"manifest of {prefix}", token=store.b.token)
 
 
 def store_verify(config, branch, prefix, files):
     """A push is published when the store's manifest for the set lists every one of these local files at its size and
-    sha256. Read back from the store with a fresh handle, after the push."""
+    sha256. Read back from the store with a fresh handle, after the push. Each try has a wall-time limit."""
     sys.path.insert(0, HERE)
     import hf_store
-    store = hf_store.open_store(config)
-    man = hf_store.retry(lambda: store.read_manifest(branch, prefix), tries=3,
-                         delay=float(os.environ.get("BASE2_STORE_RETRY_S", "20")), what=f"manifest of {prefix}",
+    store = hf_store.open_store(config, tries=1)
+    man = hf_store.retry(lambda: hf_store.bounded(lambda: store.read_manifest(branch, prefix), store_limit(), store.b.token),
+                         tries=3, delay=float(os.environ.get("BASE2_STORE_RETRY_S", "20")), what=f"manifest of {prefix}",
                          token=store.b.token)
     bad = []
     for p in files:
@@ -559,8 +567,33 @@ def loadprobe(spec_path, out, binary):
     return 0 if p.returncode == 0 else 1
 
 
+def training_step(events, tail=1 << 18):
+    """The trainer's current training step: the step of the last `step` event in its own event stream (events.jsonl),
+    read from the file's last `tail` bytes. With it, the file's modification time. (None, None) when there is none.
+    This is where the trainer is, not what it has saved: a saved generation is `live`, a pushed one the courier's."""
+    try:
+        size = os.path.getsize(events)
+        with open(events, "rb") as f:
+            f.seek(max(0, size - tail))
+            lines = f.read().split(b"\n")
+        at = os.path.getmtime(events)
+    except OSError:
+        return None, None
+    for ln in reversed(lines):
+        if b'"step"' not in ln:
+            continue
+        try:
+            e = json.loads(ln)
+        except ValueError:
+            continue
+        if isinstance(e, dict) and e.get("event") == "step" and isinstance(e.get("step"), int):
+            return e["step"], at
+    return None, None
+
+
 def watch_sample(chat, job):
-    """The trainer's live step (the generation `live` names), its last saved step, and the courier's pushed step."""
+    """The trainer's training step (its last `step` event), the step of the generation it last saved (`live`), the
+    flat state.txt's step, and the courier's pushed step."""
     import time
     d = os.path.join(chat, job)
     try:
@@ -577,16 +610,20 @@ def watch_sample(chat, job):
     except (OSError, ValueError):
         courier = None
     pushed = courier.get("pushed_step") if isinstance(courier, dict) else None
-    return {"job": job, "at": time.time(), "live_step": live, "state_step": state, "pushed_step": pushed,
+    train, train_at = training_step(os.path.join(d, "events.jsonl"))
+    return {"job": job, "at": time.time(), "training_step": train, "training_step_at": train_at,
+            "live_step": live, "state_step": state, "pushed_step": pushed,
+            "training_minus_pushed": None if train is None or pushed is None else train - pushed,
             "live_minus_pushed": None if live is None or pushed is None else live - pushed, "courier": courier}
 
 
-def drill_watch(config, chat, job, out, interval, limit_s):
+def drill_watch(config, chat, job, out, interval, limit_s, push_limit_s=60.0):
     """The rehearsal's record of what a forced stop costs. A stopped VM takes its files with it, so every `interval`
-    seconds the live step and the courier's pushed step go to the store as one small set,
-    base2-build:watch/<job>/<this VM's start time>. The last record of the VM that was stopped is then the live step
-    against the pushed step at most `interval` seconds before the stop. Ends when the job ends; a failed push is
-    left for the next round and never stops training."""
+    seconds the trainer's training step, its saved step and the courier's pushed step go to the store as one small
+    set, base2-build:watch/<job>/<this VM's start time>. Each push runs in a child that is ended after `push_limit_s`
+    seconds, so a record in the store is at most `interval` + `push_limit_s` seconds older than the stop, and a push
+    that hangs is a failed round, never a watcher that cannot end. Ends when the job ends or after `limit_s`; a failed
+    push is left for the next round and never stops training."""
     import time
     sys.path.insert(0, HERE)
     import hf_store
@@ -607,7 +644,7 @@ def drill_watch(config, chat, job, out, interval, limit_s):
             f.write(json.dumps(rec) + "\n")
         try:
             store = store or hf_store.open_store(config)
-            store.push_set("base2-build", prefix, d, kind="watch")
+            hf_store.bounded(lambda: bool(store.push_set("base2-build", prefix, d, kind="watch")), push_limit_s, store.b.token)
             pushed_n += 1
         except Exception as e:  # noqa: BLE001 the type alone; the next round tries again
             print(f"drill-watch: push failed ({type(e).__name__})", flush=True)
@@ -752,6 +789,7 @@ def main(argv=None):
         p.add_argument(a, required=True)
     p.add_argument("--interval", type=float, default=30.0)
     p.add_argument("--limit-s", type=float, default=4 * 3600.0)
+    p.add_argument("--push-limit-s", type=float, default=60.0, help="seconds before one push to the store is ended")
     p = sub.add_parser("token-report")
     for a in ("--n-ids", "--s-ids", "--out"):
         p.add_argument(a, required=True)
@@ -836,7 +874,7 @@ def main(argv=None):
         print(json.dumps(r))
         return 0 if r["subset"] else 1
     elif a.cmd == "drill-watch":
-        return drill_watch(a.config, a.chat, a.job, a.out, a.interval, a.limit_s)
+        return drill_watch(a.config, a.chat, a.job, a.out, a.interval, a.limit_s, a.push_limit_s)
     elif a.cmd == "token-report":
         r = token_report(a.n_ids, a.s_ids, a.max_rel)
         jsave(a.out, r)

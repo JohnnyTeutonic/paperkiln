@@ -474,6 +474,9 @@ def test_only_a_missing_file_or_branch_reads_as_absent():
     class StoreError(Exception):
         pass
 
+    class Missing(StoreError):          # hf_store.Missing: what both backends raise for a path the store lacks
+        pass
+
     def make(name, *bases):
         return type(name, bases or (Exception,), {})
     http = make("HfHubHTTPError")
@@ -482,13 +485,11 @@ def test_only_a_missing_file_or_branch_reads_as_absent():
     local = make("LocalEntryNotFoundError", entry, FileNotFoundError)
     repo, gated = make("RepositoryNotFoundError", http), None
     gated = make("GatedRepoError", repo)
-    for e in (entry("x"), rev("x"), remote("x")):
-        assert B.reads_as_absent(e, False, StoreError)
+    for e in (entry("x"), rev("x"), remote("x"), Missing("main:a/manifest.json is not in the store")):
+        assert B.reads_as_absent(e, Missing)
     for e in (repo("401"), gated("x"), local("offline"), http("500"), ConnectionError("x"), TimeoutError("x"),
               StoreError("token file not found: /x"), StoreError("main:a/manifest.json is not in the store")):
-        assert not B.reads_as_absent(e, False, StoreError), e      # the last: only a local-disk store says it this way
-    assert B.reads_as_absent(StoreError("main:a/manifest.json is not in the store"), True, StoreError)
-    assert not B.reads_as_absent(StoreError("token file not found: /x"), True, StoreError)
+        assert not B.reads_as_absent(e, Missing), e      # the last: the class says "absent", never an error's wording
     # Wrapped by the store's own error, the cause decides.
     try:
         try:
@@ -496,14 +497,91 @@ def test_only_a_missing_file_or_branch_reads_as_absent():
         except Exception as inner:
             raise StoreError("fetch failed") from inner
     except StoreError as wrapped:
-        assert not B.reads_as_absent(wrapped, False, StoreError)
+        assert not B.reads_as_absent(wrapped, Missing)
     try:
         try:
             raise entry("404")
         except Exception as inner:
             raise StoreError("fetch failed") from inner
     except StoreError as wrapped:
-        assert B.reads_as_absent(wrapped, False, StoreError)
+        assert B.reads_as_absent(wrapped, Missing)
+    # The real library's classes, when it is installed: the two that mean absent and the ones that must not.
+    errors = pytest.importorskip("huggingface_hub.errors")
+    import hf_store
+    assert B.reads_as_absent(errors.EntryNotFoundError("404"), hf_store.Missing)
+    assert B.reads_as_absent(errors.RevisionNotFoundError("404"), hf_store.Missing)
+    for cls in (errors.RepositoryNotFoundError, errors.GatedRepoError, errors.LocalEntryNotFoundError, errors.HfHubHTTPError):
+        assert not B.reads_as_absent(cls("x"), hf_store.Missing), cls
+
+
+# ---------------------------------------------------------------- the real HfBackend over a stand-in for the hub
+HUB_SITE = ROOT / "tests" / "hub_standin_site"
+HUB_TOKEN = "hf_FAKEtokenFAKEtokenFAKEtoken0123"
+
+
+def hub_config(tmp, name="hub"):
+    """A store config that names a repo on the hub (not dir:), a token file, and the folder the stand-in hub keeps."""
+    root = tmp / name
+    root.mkdir()
+    tok = tmp / f"{name}.token"
+    tok.write_text(HUB_TOKEN + "\n")
+    tok.chmod(0o600)
+    cfg = tmp / f"{name}.json"
+    cfg.write_text(json.dumps({"repo": "someone/base2-store", "repo_type": "dataset", "token_file": str(tok)}))
+    return cfg, root
+
+
+def hub_env(root):
+    """The environment under which every python child reaches the stand-in through the real HfBackend."""
+    return {"HUB_STANDIN_ROOT": str(root), "PYTHONPATH": f"{HUB_SITE}{os.pathsep}{os.environ.get('PYTHONPATH', '')}".rstrip(os.pathsep)}
+
+
+def test_an_absent_path_or_branch_on_the_real_backend_reads_as_absent_and_nothing_else_does(tmp_path, monkeypatch):
+    """store-has through hf_store.HfBackend, the class the VM uses, over an API that raises the library's own
+    errors. The hub's "no such file" and "no such branch" are answers: False, exit 1, the stage is built. A repo
+    that is not found (a wrong or expired token), a refused login and a dead connection are not answers: they are
+    tried again and then raised, exit 2, and the build stops. (The review of 12 Nov 2026: HfBackend.fetch turned
+    the hub's two errors into hf_store.Missing and reads_as_absent knew that class on a local store only, so the
+    first `in_store main corpus/rehearsal` on the real store stopped the build.)"""
+    huggingface_hub = pytest.importorskip("huggingface_hub")
+    sys.path.insert(0, str(ROOT / "tests"))
+    import hf_store
+    import hub_standin
+    cfg, root = hub_config(tmp_path)
+    monkeypatch.setenv("HUB_STANDIN_ROOT", str(root))
+    monkeypatch.setenv("BASE2_STORE_RETRY_S", "0")
+    monkeypatch.setattr(huggingface_hub, "HfApi", hub_standin.DiskApi)
+    assert isinstance(hf_store.open_store(str(cfg)).b, hf_store.HfBackend)
+    assert B.store_has(str(cfg), "main", "corpus/rehearsal") is False          # EntryNotFoundError at the hub
+    assert B.store_has(str(cfg), "base2-build", "build/stage1") is False       # RevisionNotFoundError: no such branch
+    log = (root / "calls.log").read_text()
+    assert "raise EntryNotFoundError corpus/rehearsal/manifest.json" in log and "raise RevisionNotFoundError base2-build" in log
+    assert B.main(["store-has", str(cfg), "main", "corpus/rehearsal"]) == 1
+    d = tmp_path / "set"
+    d.mkdir()
+    (d / "a.txt").write_text("a")
+    assert hf_store.main(["push", "--config", str(cfg), "--branch", "main", "--prefix", "corpus/rehearsal", "--dir", str(d), "--limit", "60"]) == 0
+    assert B.store_has(str(cfg), "main", "corpus/rehearsal") is True
+    assert B.store_verify(str(cfg), "main", "corpus/rehearsal", [str(d / "a.txt")])[0] == []
+    with monkeypatch.context() as quick:
+        quick.setattr(hf_store.time, "sleep", lambda s: None)        # the waits between tries
+        for mode in ("repo_not_found", "auth", "transport"):
+            (root / "fail.json").write_text(json.dumps({"mode": mode}))
+            (root / "calls.log").write_text("")
+            with pytest.raises(Exception) as err:
+                B.store_has(str(cfg), "main", "corpus/absent")
+            assert not isinstance(err.value, hf_store.Missing), mode
+            assert (root / "calls.log").read_text().count("hf_hub_download") >= 3, mode   # tried again, then it stands
+            assert B.main(["store-has", str(cfg), "main", "corpus/absent"]) == 2, mode
+            assert B.main(["store-verify", str(cfg), "main", "corpus/rehearsal", str(d / "a.txt")]) == 2, mode
+    # A request that never returns is ended at the limit: a failed try, exit 2, not a job that waits without end.
+    (root / "fail.json").write_text(json.dumps({"mode": "hang"}))
+    monkeypatch.setenv("BASE2_STORE_LIMIT_S", "1")
+    import time
+    t0 = time.time()
+    assert B.main(["store-has", str(cfg), "main", "corpus/rehearsal"]) == 2
+    assert B.main(["store-verify", str(cfg), "main", "corpus/rehearsal", str(d / "a.txt")]) == 2
+    assert time.time() - t0 < 60
 
 
 def test_an_unreadable_store_stops_the_build_and_is_not_an_unfinished_stage(tmp_path, monkeypatch):
@@ -514,20 +592,33 @@ def test_an_unreadable_store_stops_the_build_and_is_not_an_unfinished_stage(tmp_
     cfg = tmp_path / "store.json"
     cfg.write_text(json.dumps({"repo": f"dir:{tmp_path / 'store'}"}))
     RepositoryNotFoundError = type("RepositoryNotFoundError", (Exception,), {})
-    calls = []
+    calls = tmp_path / "calls"
 
-    def refuse(self, branch, path, dest):
-        calls.append(path)
+    def refuse(self, branch, path, dest, rev=None):
+        with open(calls, "a") as f:                                   # the call runs in a bounded child: count on disk
+            f.write(path + "\n")
         raise RepositoryNotFoundError("401 Client Error")
     monkeypatch.setattr(hf_store.DirBackend, "fetch", refuse)
     monkeypatch.setattr(hf_store.time, "sleep", lambda s: None)
-    with pytest.raises(RepositoryNotFoundError):
+    with pytest.raises(hf_store.StoreError, match="RepositoryNotFoundError"):
         B.store_has(str(cfg), "base2-build", "build/stage1")
-    assert len(calls) >= 3                                           # tried again, then it stands
+    assert len(calls.read_text().splitlines()) >= 3                   # tried again, then it stands
     assert B.main(["store-has", str(cfg), "base2-build", "build/stage1"]) == 2
     text = (CC / "base2_data.sh").read_text()
     fn = text[text.index("\nin_store() {"):text.index("\nsets_of() {")]
     assert '[ "$rc" = 0 ] && return 0' in fn and '[ "$rc" = 1 ] && return 1' in fn and "exit 1" in fn
+
+
+def test_every_store_call_of_the_data_script_has_a_limit():
+    """The shell passes --limit to every hf_store.py call, and store-has and store-verify bound their own reads."""
+    text = (CC / "base2_data.sh").read_text()
+    calls = [ln for ln in text.splitlines() if "python3 $CC/hf_store.py" in ln]
+    assert len(calls) == text.count("$CC/hf_store.py") == 2 and all('--limit "$XFER_LIMIT_S"' in ln for ln in calls), calls
+    assert "XFER_LIMIT_S=${BASE2_STORE_XFER_LIMIT_S:-5400}" in text and "export BASE2_STORE_LIMIT_S=${BASE2_STORE_LIMIT_S:-300}" in text
+    src = (CC / "base2_corpus.py").read_text()
+    for fn in ("def store_has(", "def store_verify(", "def drill_watch("):
+        body = src[src.index(fn):src.index("\ndef ", src.index(fn) + 1)]
+        assert "hf_store.bounded(" in body, fn
 
 
 # ---------------------------------------------------------------- end to end on toy sources
@@ -1065,3 +1156,35 @@ def test_rehearsal_corpora_are_two_sizes_built_once_and_then_pulled(mini):
     assert "pulled main:corpus/rehearsal" in out and "published" not in out
     for f in ("rehearsal.main.ids", "rehearsal.tail.ids"):
         assert (h / f).read_bytes() == (g / f).read_bytes()
+
+
+def test_the_rehearsal_builds_on_a_hub_that_lacks_its_corpus_and_stops_on_one_it_cannot_read(mini):
+    """base2_data.sh rehearsal, end to end, with every store call of the script going through hf_store.HfBackend
+    (tests/hub_standin.py stands in for the hub and raises the library's own errors). The first VM finds no
+    main:corpus/rehearsal: that is an answer, so it builds, publishes and verifies. The second VM, part b's, finds the
+    first's corpus and pulls it. A hub that says "repository not found", refuses the login, cannot be reached or does
+    not answer stops the build with nothing built."""
+    pytest.importorskip("huggingface_hub")
+    cfg, root = hub_config(mini.tmp, "hub_reh")
+    env = hub_env(root)
+    a, b = mini.tmp / "vm_reh_a", mini.tmp / "vm_reh_b"
+    out = mini.run(a, "rehearsal", cfg=cfg, BASE2_REH_MAIN_BYTES="200000", **env)
+    assert "published main:corpus/rehearsal (try 1, verified)" in out
+    log = (root / "calls.log").read_text()
+    assert "raise EntryNotFoundError corpus/rehearsal/manifest.json" in log        # the absent answer, from the hub
+    assert sum(ln.startswith("create_commit main files: corpus/rehearsal") for ln in log.splitlines()) == 1
+    stored = root / "branches" / "main" / "corpus" / "rehearsal"
+    assert sorted(os.listdir(stored)) == ["manifest.json", "rehearsal.json", "rehearsal.main.ids", "rehearsal.tail.ids"]
+    assert (stored / "rehearsal.main.ids").read_bytes() == (a / "rehearsal.main.ids").read_bytes()
+    out = mini.run(b, "rehearsal", cfg=cfg, BASE2_REH_MAIN_BYTES="200000", **env)
+    assert "pulled main:corpus/rehearsal" in out and "published" not in out          # part b reuses part a's corpus
+    for f in ("rehearsal.main.ids", "rehearsal.tail.ids"):
+        assert (b / f).read_bytes() == (a / f).read_bytes()
+    assert HUB_TOKEN not in "".join(mini.logs[-2:]) and HUB_TOKEN not in (root / "calls.log").read_text()
+    for mode, extra in (("repo_not_found", {}), ("auth", {}), ("transport", {}), ("hang", {"BASE2_STORE_LIMIT_S": "1"})):
+        (root / "fail.json").write_text(json.dumps({"mode": mode}))
+        c = mini.tmp / f"vm_reh_{mode}"
+        out = mini.run(c, "rehearsal", cfg=cfg, expect=1, BASE2_REH_MAIN_BYTES="200000", **env, **extra)
+        assert "the store could not be read (main:corpus/rehearsal); stopping" in out, mode
+        assert not (c / "rehearsal.main.ids").exists() and not (c / "work").exists(), mode
+    (root / "fail.json").unlink()

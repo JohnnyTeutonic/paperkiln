@@ -33,7 +33,7 @@
 # Environment (defaults are the campaign's): BASE2_STORE_CONFIG, BASE2_PINS, BASE2_ENGINE_DIR, BASE2_HF_HUB_VERSION,
 # BASE2_THREADS, BASE2_JOBS, BASE2_SCN_SEED, BASE2_SCN_SHARD_DOCS, BASE2_SCN_HELDOUT_DOCS, BASE2_SCN_MAX_DROP,
 # BASE2_SCN_VALIDATE, BASE2_TOKEN_REL_MAX, BASE2_MIN_FREE_GB, BASE2_TIMING_BYTES, BASE2_REH_MAIN_BYTES,
-# BASE2_STORE_RETRY_S, BASE2_KEEP_MIX_TEXT. BASE2_FIXTURE=DIR stands in for the network fetches of stage 1 with a folder
+# BASE2_STORE_RETRY_S, BASE2_STORE_LIMIT_S, BASE2_STORE_XFER_LIMIT_S, BASE2_KEEP_MIX_TEXT. BASE2_FIXTURE=DIR stands in for the network fetches of stage 1 with a folder
 # of the same files (tests).
 set -euo pipefail
 OUT=${1:?out dir}
@@ -57,6 +57,11 @@ MIN_FREE_GB=${BASE2_MIN_FREE_GB:-80}
 TIMING_BYTES=${BASE2_TIMING_BYTES:-200000000}
 REH_MAIN_BYTES=${BASE2_REH_MAIN_BYTES:-36000000}
 RETRY_S=${BASE2_STORE_RETRY_S:-20}
+# Every store call of this script has a wall-time limit and runs in a child that is ended at it: a push or a pull of a
+# set (hf_store.py --limit), and each read of a manifest by store-has and store-verify (BASE2_STORE_LIMIT_S, default 300,
+# read by base2_corpus.py). A call that hangs is a failed try and the script stops; it never waits without end.
+XFER_LIMIT_S=${BASE2_STORE_XFER_LIMIT_S:-5400}
+export BASE2_STORE_LIMIT_S=${BASE2_STORE_LIMIT_S:-300}
 S13=oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots
 LONG=taskmaster3,abcd,ccpe,p4g,aya_en,msc
 FW_SHARDS="2 3 4 5"   # unseen by base A, whose mix read shards 0 and 1
@@ -85,7 +90,7 @@ push_set() {  # BRANCH PREFIX FILE...: the files as one set, one commit, read ba
   for try in 1 2 3 4; do
     rm -rf "$d" && mkdir -p "$d"
     for f in "$@"; do ln -f "$f" "$d/$(basename "$f")" 2> /dev/null || cp "$f" "$d/$(basename "$f")"; done
-    if python3 $CC/hf_store.py push --config "$STORE" --branch "$branch" --prefix "$prefix" --dir "$d" > "$OUT/push_$name.log" 2>&1 \
+    if python3 $CC/hf_store.py push --config "$STORE" --branch "$branch" --prefix "$prefix" --dir "$d" --limit "$XFER_LIMIT_S" > "$OUT/push_$name.log" 2>&1 \
         && B2 store-verify "$STORE" "$branch" "$prefix" "$@" --out "$rec"; then
       rm -rf "$d"
       say "published $branch:$prefix (try $try, verified)"
@@ -99,7 +104,7 @@ push_set() {  # BRANCH PREFIX FILE...: the files as one set, one commit, read ba
   exit 1
 }
 pull_set() {  # BRANCH PREFIX DIR: every file checked by sha256 against the set's manifest (hf_store.py pull)
-  python3 $CC/hf_store.py pull --config "$STORE" --branch "$1" --prefix "$2" --to "$3" > /dev/null
+  python3 $CC/hf_store.py pull --config "$STORE" --branch "$1" --prefix "$2" --to "$3" --limit "$XFER_LIMIT_S" > /dev/null
   say "pulled $1:$2"
 }
 in_store() {  # BRANCH PREFIX: 0 there, 1 not there; an unreadable store stops the build
