@@ -54,10 +54,10 @@ class Flaky(hf_store.DirBackend):
         self.commits += 1
         super().commit(branch, adds, deletes, message, parent=parent)
 
-    def tree(self, branch):
+    def tree(self, branch, rev=None):
         if self.fail_reads:
             raise ConnectionError("hub unreachable")
-        return super().tree(branch)
+        return super().tree(branch, rev=rev)
 
 
 class Clock:
@@ -264,6 +264,68 @@ def test_fencing_two_couriers_on_one_branch(tmp_path):
     assert stale.s["pt"]["fenced"] and backend.commits == before
 
 
+def test_a_head_of_lower_epoch_never_fences_the_newer_courier(tmp_path):
+    """The other ordering (the review of 12 Nov 2026 reproduced it): the replacement's courier has read the head,
+    and THEN the stale VM pushes a generation the replacement never knew. The old rule (another boot pushed above
+    what I knew, whatever its epoch) fenced the replacement and left the branch to the stale VM. The epoch decides:
+    a head of lower epoch never fences; the stale courier is the one that stops, when it next reads the head."""
+    chat1, backend, store, old, logs, _ = setup(tmp_path)
+    for step in (100, 200):
+        S.make_gen(str(chat1 / "pt"), step)
+        old.tick()
+    chat2 = tmp_path / "vm2" / "chat"
+    (chat2 / "pt").mkdir(parents=True)
+    logs2 = []
+    new = cc.Courier(hf_store.Store(backend, log=logs2.append, delay=0), str(chat2), JOBS, BR, log=logs2.append,
+                     cfg={**CFG, "epoch": 2})
+    S.make_gen(str(chat2 / "pt"), 200)     # the replacement's boot restored g200; its courier reads the head once
+    new.tick()
+    assert new.s["pt"]["known"] and new.s["pt"]["head"] == 200
+    S.make_gen(str(chat1 / "pt"), 300, seed=9)
+    old.tick()                              # the stale VM is still alive and pushes g300, epoch 1
+    assert store.steps("ckpt-N") == [200, 300]
+    S.make_gen(str(chat2 / "pt"), 400)
+    new.tick()                              # the replacement reaches g400: the head is another boot's, above what it knew
+    assert new.s["pt"]["fenced"] is None and not (chat2 / "COURIER_FENCED").exists()
+    assert fresh(tmp_path).read_manifest("ckpt-N", "gens/g400")["boot_id"] == new.boot
+    S.make_gen(str(chat1 / "pt"), 400, seed=9)
+    S.make_gen(str(chat1 / "pt"), 500, seed=9)
+    before = backend.commits
+    old.tick()                              # the stale VM reads a head of epoch 2 and stops for good
+    assert old.s["pt"]["fenced"]["head_epoch"] == 2 and backend.commits == before
+    assert any("FENCED" in ln and "epoch 2" in ln for ln in logs) and not any("FENCED" in ln for ln in logs2)
+    S.make_gen(str(chat2 / "pt"), 500)
+    new.tick()
+    assert store.steps("ckpt-N")[-1] == 500
+    for s in (400, 500):                    # everything above the stale VM's last push is the replacement's
+        man = fresh(tmp_path).read_manifest("ckpt-N", f"gens/g{s}")
+        assert (man["epoch"], man["boot_id"]) == (2, new.boot)
+    assert (tmp_path / "repo" / "ckpt-N" / "gens" / "g500" / "model.safetensors").read_bytes() == S.state_at(500)[0]
+    # A step the stale VM wrote first is not written twice, and does not fence either: the replacement goes past it.
+    chat3, backend3, store3, old3, logs3, _ = setup(tmp_path / "same_step")
+    S.make_gen(str(chat3 / "pt"), 100)
+    old3.tick()
+    chat4 = tmp_path / "same_step" / "vm2" / "chat"
+    (chat4 / "pt").mkdir(parents=True)
+    new3 = cc.Courier(hf_store.Store(backend3, log=logs3.append, delay=0), str(chat4), JOBS, BR, log=logs3.append,
+                      cfg={**CFG, "epoch": 2})
+    S.make_gen(str(chat4 / "pt"), 100)
+    new3.tick()
+    S.make_gen(str(chat3 / "pt"), 300, seed=9)
+    old3.tick()
+    S.make_gen(str(chat4 / "pt"), 300)
+    new3.tick()
+    assert new3.s["pt"]["fenced"] is None and any("g300 is already in the store; not written again" in ln for ln in logs3)
+    S.make_gen(str(chat4 / "pt"), 400)
+    new3.tick()
+    assert fresh(tmp_path / "same_step").read_manifest("ckpt-N", "gens/g400")["epoch"] == 2
+    # The boot rule still holds between writers of ONE epoch (tests above), and an epoch-less head (a generation
+    # written by hand) falls under it too.
+    assert new.foreign("pt", {"step": 900, "epoch": None, "boot_id": "someone"}) is not None
+    assert new.foreign("pt", {"step": 900, "epoch": 1, "boot_id": "someone"}) is None
+    assert new.foreign("pt", {"step": 900, "epoch": 3, "boot_id": "someone"}) is not None
+
+
 def test_a_commit_that_loses_the_race_is_refused_by_the_store(tmp_path, monkeypatch):
     """The head is read, then another writer commits before this push lands: the conditional commit fails, nothing
     is written, and the next pass reads the head again (and is fenced by what it finds)."""
@@ -413,18 +475,153 @@ def test_prune_waits_for_verified_generations_and_spares_an_unpushed_marks_gener
 def test_release_runs_only_when_the_config_asks_and_with_its_grace(tmp_path):
     chat, backend, store, c, logs, _ = setup(tmp_path)
     asked = []
-    store.release = lambda owner, grace=None: asked.append((owner, grace)) or 0
+    store.release_report = lambda owner, grace=None: asked.append((owner, grace)) or {"held": False, "objects": 0, "bytes": 0}
     for step in (100, 300, 400):
         S.make_gen(str(chat / "pt"), step)
         c.tick()
     assert store.steps("ckpt-N") == [300, 400] and asked == []  # pruned, and release is off unless asked for
     chat2, backend2, store2, c2, logs2, _ = setup(tmp_path / "b", cfg={**CFG, "release_grace_s": 60})
     store2.reclaim_on = True
-    store2.release = lambda owner, grace=None: asked.append((owner, grace)) or 3
+    store2.release_report = lambda owner, grace=None: asked.append((owner, grace)) or {"held": False, "objects": 3, "bytes": 6144}
     for step in (100, 300, 400):
         S.make_gen(str(chat2 / "pt"), step)
         c2.tick()
-    assert asked == [(c2.boot, 60.0)] and any("storage release: 3 objects deleted" in ln for ln in logs2)
+    assert asked == [(c2.boot, 60.0)] and any("storage release: 3 objects deleted, 6144 bytes freed" in ln for ln in logs2)
+
+
+def stats(logs, what):
+    return [json.loads(ln[5:]) for ln in logs if ln.startswith("stat ") and json.loads(ln[5:])["what"] == what]
+
+
+def test_the_log_carries_what_each_transfer_cost_and_the_push_cap_stops_the_courier(tmp_path):
+    """courier.log is what comes home from a stopped VM. It holds, as `stat` lines: every push with its bytes and
+    seconds, every release with its objects and bytes freed, and a count of failures that name HTTP 429. The push
+    cap: the bytes pushed since a release last freed storage are counted, across sessions, and at the cap the
+    courier stops pushing, says why, and leaves a marker; a release that frees bytes starts the count again."""
+    gen = sum(len(b) for b in S.state_at(100))                         # model and optimiser; state and manifest on top
+    CAP = 6500 + 2 * gen                                               # reached by the second push, not by the first
+    cfg = {**CFG, "push_cap_bytes": CAP, "pushed_bytes_start": 6500, "release_grace_s": 60}
+    chat, backend, store, c, logs, clock = setup(tmp_path, cfg=cfg)
+    assert c.since_release == 6500 and c.cap == CAP                    # what the sessions before this one had pushed
+    freed = {"bytes": 0}
+    store.reclaim_on = True
+    store.release_report = lambda owner, grace=None: {"held": False, "objects": 1 if freed["bytes"] else 0, "bytes": freed["bytes"]}
+    out = str(chat / "pt")
+    S.make_gen(out, 100)
+    c.tick()
+    S.make_gen(out, 300)
+    c.tick()
+    pushes = stats(logs, "push")
+    assert [(p["kind"], p["step"]) for p in pushes] == [("generation", 100), ("generation", 300)]
+    assert all(p["bytes"] > 6000 and p["seconds"] >= 0 and p["job"] == "pt" for p in pushes)
+    assert pushes[-1]["bytes_since_release"] == c.since_release == 6500 + sum(p["bytes"] for p in pushes) >= c.cap
+    assert gen < pushes[0]["bytes"] < gen + 1000
+    # At the cap: the next generation is not pushed, the status and a marker say why, nothing is retried.
+    S.make_gen(out, 400)
+    before = backend.commits
+    c.tick()
+    c.tick()
+    st = json.loads((chat / "courier_status.json").read_text())
+    assert backend.commits == before and store.steps("ckpt-N") == [100, 300]
+    assert st["capped"]["cap"] == CAP and st["capped"]["bytes_since_release"] == c.since_release
+    assert "since the last release that freed storage" in st["capped"]["why"] and st["push_cap_bytes"] == CAP
+    assert json.loads((chat / "COURIER_CAPPED").read_text().splitlines()[0])["cap"] == CAP
+    assert len((chat / "COURIER_CAPPED").read_text().splitlines()) == 1 and sum("PUSH CAP" in ln for ln in logs) == 1
+    assert c.idle() is False                                           # its job has not ended
+    (chat / "STATUS_pt").write_text("FINISHED\n")
+    assert c.idle() is True                                            # a capped courier holds nothing open
+    # A courier started again on the same boot (the daemon died) is still capped and keeps its count.
+    again = cc.Courier(store, str(chat), JOBS, BR, log=logs.append, clock=clock, cfg=cfg)
+    assert again.capped and again.since_release == c.since_release
+    # With a release that frees bytes after each prune, the count starts again and the cap is never reached.
+    chat2, backend2, store2, c2, logs2, _ = setup(tmp_path / "b", cfg={**cfg, "pushed_bytes_start": 0, "push_cap_bytes": 5 * gen})
+    store2.reclaim_on = True
+    store2.release_report = lambda owner, grace=None: {"held": False, "objects": 2, "bytes": 6144}
+    for step in (100, 200, 300, 400, 500, 600):
+        S.make_gen(str(chat2 / "pt"), step)
+        c2.tick()
+    assert store2.steps("ckpt-N") == [500, 600] and c2.capped is None and c2.since_release == 0
+    rel = stats(logs2, "release")
+    assert len(rel) == 4 and all(r["objects"] == 2 and r["bytes"] == 6144 and r["grace_s"] == 60 and not r["held"] for r in rel)
+    st2 = json.loads((chat2 / "courier_status.json").read_text())
+    assert st2["releases"] == {"count": 4, "objects": 8, "bytes": 4 * 6144} and st2["bytes_since_release"] == 0
+    assert [p["kind"] for p in stats(logs2, "push")].count("mark") == 1 and stats(logs2, "push")[0]["bytes"] > 0
+    # A release that frees nothing does not start the count again.
+    chat3, backend3, store3, c3, logs3, _ = setup(tmp_path / "c", cfg={**cfg, "pushed_bytes_start": 0, "push_cap_bytes": 10 ** 9})
+    store3.reclaim_on = True
+    store3.release_report = lambda owner, grace=None: {"held": False, "objects": 0, "bytes": 0}
+    for step in (100, 300, 400, 500):
+        S.make_gen(str(chat3 / "pt"), step)
+        c3.tick()
+    assert c3.since_release == sum(p["bytes"] for p in stats(logs3, "push")) > 4 * 6000
+    # HTTP 429: counted when a failure names it, and the count is in the log and the status.
+    chat4, backend4, store4, c4, logs4, clock4 = setup(tmp_path / "d")
+    S.make_gen(str(chat4 / "pt"), 100)
+    store4.push_generation = lambda *a, **kw: (_ for _ in ()).throw(RuntimeError("429 Client Error: Too Many Requests"))
+    c4.tick()
+    clock4.t += 31
+    c4.tick()
+    assert [s["count"] for s in stats(logs4, "http_429")] == [1, 2]
+    assert json.loads((chat4 / "courier_status.json").read_text())["http_429"] == 2
+
+
+def test_no_store_call_is_started_after_sigterm(tmp_path):
+    """The runner ends the courier before it removes the token and stops the VM. From the signal on, the courier
+    starts no store call: the pass in hand ends where it is, and nothing new holds the token."""
+    chat, backend, store, c, logs, _ = setup(tmp_path, push_timeout=30)
+    S.make_gen(str(chat / "pt"), 100)
+    c.tick()
+    assert store.steps("ckpt-N") == [100]
+    S.make_gen(str(chat / "pt"), 300)
+    calls = []
+    real_call = cc.bounded
+
+    def counting(fn, timeout, token=None, while_waiting=None):
+        calls.append(1)
+        if len(calls) == 1:
+            c.stopping = True          # SIGTERM arrives while the first call of this pass is in flight
+        return real_call(fn, timeout, token, while_waiting=while_waiting)
+
+    cc.bounded = counting
+    try:
+        c.tick()
+        c.tick()
+    finally:
+        cc.bounded = real_call
+    assert len(calls) == 1 and store.steps("ckpt-N") == [100]          # the head read ran; the push never started
+    assert c.s["pt"]["failures"] == 0 and c.s["pt"]["last_error"] is None   # a stop is not a failure of the store
+    with pytest.raises(cc.Stopping):
+        c.call(lambda: 1)
+    # The daemon itself: a SIGTERM during a slow push ends the push's child and the daemon, and no later call starts.
+    root = tmp_path / "daemon"
+    chat2 = root / "chat"
+    (chat2 / "pt").mkdir(parents=True)
+    cfg = root / "store.json"
+    cfg.write_text(json.dumps({"repo": f"dir:{root / 'repo'}", "branches": BR, **CFG}))
+    jobs = root / "jobs.json"
+    jobs.write_text(json.dumps({"jobs": list(JOBS.values())}))
+    S.make_gen(str(chat2 / "pt"), 100)
+    slow = root / "slow.py"
+    slow.write_text("import sys, time\n"
+                    f"sys.path.insert(0, {str(CC)!r})\n"
+                    "import hf_store, ckpt_courier\n"
+                    "real = hf_store.Store.push_generation\n"
+                    "def push(self, *a, **kw):\n"
+                    f"    open({str(root / 'pushing')!r}, 'a').write('x')\n"
+                    "    time.sleep(120)\n"
+                    "hf_store.Store.push_generation = push\n"
+                    "sys.exit(ckpt_courier.main(sys.argv[1:]))\n")
+    p = subprocess.Popen([sys.executable, str(slow), "run", "--config", str(cfg), "--jobs", str(jobs), "--chat", str(chat2),
+                          "--tick", "0.1", "--push-timeout", "100"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        wait(lambda: (root / "pushing").exists(), "the slow push")
+        p.send_signal(signal.SIGTERM)
+        assert p.wait(timeout=20) == 0
+    finally:
+        if p.poll() is None:
+            p.kill()
+    assert (root / "pushing").read_text() == "x"                        # one push was started, and none after the signal
+    assert not (chat2 / "courier.pid").exists()
 
 
 def test_a_failed_push_is_retried_and_then_sends_the_newest(tmp_path):
@@ -605,6 +802,162 @@ def test_a_kill_during_install_leaves_nothing_to_trust(tmp_path, monkeypatch):
     assert (chat3 / "pt" / "model.safetensors").read_bytes() == S.state_at(100)[0]
     assert cc.restore(fresh(tmp_path / "vm1"), str(chat3), JOBS, BR, log=lambda m: None, cfg=cfg2())["pt"]["placed"]
     assert cc.local_step(str(chat3), "pt") == 200
+
+
+def test_a_kill_after_the_pointer_has_moved_is_completed_by_the_next_boot(tmp_path, monkeypatch):
+    """The boot dies after `live` names the new generation and before the flat names follow. The generation is
+    live and whole, so the next boot installs nothing; it must still put the flat names right, or model.safetensors,
+    optim.safetensors and state.txt stay a mix of two steps for anything that reads them (jobs_vm.take_snapshot
+    copies the flat weights and state)."""
+    backend, store = pushed_store(tmp_path, [100, 200])
+    quiet = lambda m: None  # noqa: E731
+    live_link = os.path.join("ckpt_gen", "live")
+
+    def vm(name):
+        """A VM that holds step 100, whole, with flat names that are files of their own (an older layout)."""
+        chat = tmp_path / name / "chat"
+        chat.mkdir(parents=True)
+        out = chat / "pt"
+        S.make_gen(str(out), 100)
+        for f in cc.FLAT:
+            data = (out / f).read_bytes()
+            os.remove(out / f)
+            (out / f).write_bytes(data)
+        return chat, out
+
+    real = os.replace
+    # 1. Killed at the commit point itself: the pointer has moved, no flat name has.
+    chat, out = vm("vm2")
+
+    def after_commit(a, b):
+        real(a, b)
+        if str(b).endswith(live_link):
+            raise KeyboardInterrupt("the boot is killed right after the commit point")
+    monkeypatch.setattr(os, "replace", after_commit)
+    with pytest.raises(KeyboardInterrupt):
+        cc.restore(fresh(tmp_path / "vm1"), str(chat), JOBS, BR, log=quiet, cfg=cfg2())
+    monkeypatch.setattr(os, "replace", real)
+    assert os.readlink(out / "ckpt_gen" / "live") == "g200" and cc.local_step(str(chat), "pt") == 200
+    assert (out / "state.txt").read_text().startswith("100\n") and not os.path.islink(out / "model.safetensors")  # the mix
+    rec = cc.restore(fresh(tmp_path / "vm1"), str(chat), JOBS, BR, log=quiet, cfg=cfg2())["pt"]
+    assert rec["placed"] is False and rec["local_step"] == 200           # nothing to install: the generation is live
+    assert all(os.readlink(out / f) == os.path.join("ckpt_gen", "live", f) for f in cc.FLAT)
+    assert (out / "state.txt").read_text().startswith("200\n")
+    assert ((out / "model.safetensors").read_bytes(), (out / "optim.safetensors").read_bytes()) == S.state_at(200)
+    # 2. Killed between two flat names: the weights' name is the new link, the optimiser's and the state's are old.
+    chat, out = vm("vm3")
+
+    def between_links(a, b):
+        if str(a).endswith("optim.safetensors.link"):
+            raise KeyboardInterrupt("the boot is killed between two flat names")
+        return real(a, b)
+    monkeypatch.setattr(os, "replace", between_links)
+    with pytest.raises(KeyboardInterrupt):
+        cc.restore(fresh(tmp_path / "vm1"), str(chat), JOBS, BR, log=quiet, cfg=cfg2())
+    monkeypatch.setattr(os, "replace", real)
+    assert (out / "model.safetensors").read_bytes() == S.state_at(200)[0]     # through the new pointer
+    assert (out / "optim.safetensors").read_bytes() == S.state_at(100)[1]     # the old file: a mix of two steps
+    assert all(os.path.lexists(out / f) for f in cc.FLAT)                     # and no name was ever missing
+    assert cc.restore(fresh(tmp_path / "vm1"), str(chat), JOBS, BR, log=quiet, cfg=cfg2())["pt"]["placed"] is False
+    assert not os.path.lexists(out / "optim.safetensors.link")
+    assert ((out / "model.safetensors").read_bytes(), (out / "optim.safetensors").read_bytes()) == S.state_at(200)
+    assert (out / "state.txt").read_text().startswith("200\n")
+    # The stand-in trainer resumes from the live generation on such a folder, with its optimiser.
+    assert cc.local_step(str(chat), "pt") == 200
+
+
+def test_replacing_a_damaged_generation_that_live_names_never_leaves_the_pointer_on_it(tmp_path, monkeypatch):
+    """This VM's live generation is g200 and it is damaged; the store's newest is g200 too. The install replaces
+    the folder `live` names. The pointer is taken away first, so at no kill point does `live` name a folder that
+    is being removed, is gone, or is being put back: a boot killed anywhere leaves a VM with no checkpoint, and the
+    next boot installs."""
+    backend, store = pushed_store(tmp_path, [100, 200])
+    quiet = lambda m: None  # noqa: E731
+    g200 = os.path.join("ckpt_gen", "g200")
+
+    def vm(name):
+        chat = tmp_path / name / "chat"
+        chat.mkdir(parents=True)
+        out = chat / "pt"
+        S.make_gen(str(out), 100)
+        S.make_gen(str(out), 200)
+        with open(out / "ckpt_gen" / "g200" / "optim.safetensors", "ab") as f:
+            f.write(b"torn")
+        assert os.readlink(out / "ckpt_gen" / "live") == "g200" and cc.local_step(str(chat), "pt") == 0
+        return chat, out
+
+    def killed_restore(chat):
+        with pytest.raises(KeyboardInterrupt):
+            cc.restore(fresh(tmp_path / "vm1"), str(chat), JOBS, BR, log=quiet, cfg=cfg2())
+        monkeypatch.undo()
+
+    def nothing_to_trust(chat, out):
+        assert not os.path.lexists(out / "ckpt_gen" / "live")               # the pointer names nothing
+        assert cc.local_step(str(chat), "pt") == 0
+        assert not any(os.path.exists(out / f) for f in cc.FLAT)            # the flat names lead nowhere
+
+    def next_boot(chat, out):
+        rec = cc.restore(fresh(tmp_path / "vm1"), str(chat), JOBS, BR, log=quiet, cfg=cfg2())["pt"]
+        assert rec["placed"] and rec["local_step"] == 0 and os.readlink(out / "ckpt_gen" / "live") == "g200"
+        hf_store.check_generation(str(out / "ckpt_gen" / "g200"), 200)
+        assert ((out / "model.safetensors").read_bytes(), (out / "optim.safetensors").read_bytes()) == S.state_at(200)
+        assert cc.local_step(str(chat), "pt") == 200
+
+    # 1. Killed as the damaged folder is about to be removed (and so at any point while it is being removed).
+    chat, out = vm("vm2")
+    real_rmtree = cc.shutil.rmtree
+
+    def no_rmtree(path, *a, **kw):
+        if str(path).endswith(g200):
+            raise KeyboardInterrupt("the boot is killed while the damaged folder is removed")
+        return real_rmtree(path, *a, **kw)
+    monkeypatch.setattr(cc.shutil, "rmtree", no_rmtree)
+    killed_restore(chat)
+    assert (out / "ckpt_gen" / "g200").is_dir()
+    nothing_to_trust(chat, out)
+    next_boot(chat, out)
+    # 2. Killed after the damaged folder is gone and before the verified one is renamed into its place.
+    chat, out = vm("vm3")
+    real_rename = os.rename
+
+    def no_rename(a, b):
+        if str(b).endswith(g200):
+            raise KeyboardInterrupt("the boot is killed before the rename into place")
+        return real_rename(a, b)
+    monkeypatch.setattr(os, "rename", no_rename)
+    killed_restore(chat)
+    assert not (out / "ckpt_gen" / "g200").exists()
+    nothing_to_trust(chat, out)
+    next_boot(chat, out)
+    # 3. Killed after the rename and before the pointer: the folder is whole and nothing names it yet.
+    chat, out = vm("vm4")
+    real_symlink = os.symlink
+
+    def no_pointer(src, dst, *a, **kw):
+        if str(dst).endswith("live.install"):
+            raise KeyboardInterrupt("the boot is killed before the commit point")
+        return real_symlink(src, dst, *a, **kw)
+    monkeypatch.setattr(os, "symlink", no_pointer)
+    killed_restore(chat)
+    hf_store.check_generation(str(out / "ckpt_gen" / "g200"), 200)
+    nothing_to_trust(chat, out)
+    next_boot(chat, out)
+    # Without a kill: the damaged live generation is replaced and the boot goes on.
+    chat, out = vm("vm5")
+    next_boot(chat, out)
+    # A damaged folder of that step which `live` does NOT name (live is the older, whole g100): the pointer stays on
+    # g100 until the commit point, as before.
+    chat = tmp_path / "vm6" / "chat"
+    chat.mkdir(parents=True)
+    out = chat / "pt"
+    S.make_gen(str(out), 100)
+    (out / "ckpt_gen" / "g200").mkdir()
+    (out / "ckpt_gen" / "g200" / "junk").write_text("half a generation")
+    monkeypatch.setattr(os, "symlink", no_pointer)
+    killed_restore(chat)
+    assert os.readlink(out / "ckpt_gen" / "live") == "g100" and cc.local_step(str(chat), "pt") == 100
+    assert cc.restore(fresh(tmp_path / "vm1"), str(chat), JOBS, BR, log=quiet, cfg=cfg2())["pt"]["placed"]
+    assert cc.local_step(str(chat), "pt") == 200
 
 
 def test_restore_falls_back_only_on_a_verification_error(tmp_path):
@@ -862,6 +1215,37 @@ def test_boot_failure_removes_the_token_and_starts_nothing(tmp_path):
     failed(slow, "boot over 3 s", PK_BOOT_LIMIT_S="3", PATH=f"{slow / 'bin'}:{os.environ['PATH']}")
     (repo / "main" / "seed" / "vocab" / "vocab.gguf").write_bytes(b"vocab bytez")
     failed(make_vm(tmp_path, "d", repo, epoch=1, first_start=["pt"]), "sha256 or size differs")
+
+
+def test_the_token_is_removed_when_the_courier_does_not_end(tmp_path):
+    """When the manager has ended, the boot's last step gives the courier PK_COURIER_WAIT_S to push the last of it
+    and then removes the token whether or not the courier has ended (the review of 12 Nov 2026: the wait had no end,
+    and the token's removal came after it). Here the courier makes one pass at its start and then sleeps for longer
+    than the test, so it never reaches its own end."""
+    repo = seeded(tmp_path)
+    vm = make_vm(tmp_path, "vm1", repo, epoch=1, first_start=["pt"])
+    chat = vm / "chat"
+    try:
+        r = boot(vm, 0, PK_COURIER_ARGS="--tick 600 --push-timeout 30", PK_COURIER_WAIT_S="3")
+        assert r.returncode == 0, read(chat / "boot.log")
+        wait(lambda: read(chat / "STATUS").strip() == "FINISHED", "the manager's end")
+        pid = int(read(chat / "courier.pid"))
+        assert os.path.exists(f"/proc/{pid}") and (vm / "shm" / "token").exists()   # the courier is up and holds the token
+        wait(lambda: "TOKEN_GONE" in read(chat / "boot.log"), "the token's removal", 60)
+        assert "the courier had not ended after 3 s" in read(chat / "boot.log")
+        assert os.listdir(vm / "shm") == [] and not (chat / "upload" / "store_token").exists()
+
+        def gone():
+            try:
+                return open(f"/proc/{pid}/stat").read().rsplit(")", 1)[1].split()[0] == "Z"
+            except OSError:
+                return True
+        wait(gone, "the courier's end", 30)
+        assert TOKEN not in read(chat / "boot.log") + read(chat / "courier.log")
+    finally:
+        kill_vm(vm)
+    boot_text = (CC / "boot_base2.sh").read_text()
+    assert "WAIT=${PK_COURIER_WAIT_S:-1800}" in boot_text and "-lt \\$end" in boot_text
 
 
 # ---------------------------------------------------------------- the real trainer on CPU

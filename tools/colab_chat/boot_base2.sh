@@ -9,7 +9,8 @@
 # The runner has put chat/store.json (repo, branches, campaign, epoch, min_step) and has moved the token to a tmpfs
 # (its path is "token_file" in store.json) before this runs. The token is never echoed: no `set -x` in this file.
 # A failed step, or a boot longer than PK_BOOT_LIMIT_S, ends as BOOT_FAILED with the courier stopped and every copy
-# of the token removed. When every job has ended and the courier has pushed the last of it, the token is removed too.
+# of the token removed. When every job has ended the courier has PK_COURIER_WAIT_S (default 1800) to push the last of
+# it; the token is then removed whether or not the courier has ended.
 # PK_BOOT_ROOT (default /content) moves the whole tree for a local rehearsal with a dir: store.
 set -euo pipefail
 COMMIT=$1
@@ -117,9 +118,16 @@ if [ "$ROOT" != /content ]; then
 fi
 echo RUNNING > "$CHAT/STATUS"
 touch "$CHAT/BOOT_DONE"
-# When the manager has ended: wait for the courier to push the last of it and exit, then take the token off the VM.
+# When the manager has ended: wait for the courier to push the last of it and exit, at most PK_COURIER_WAIT_S, then
+# take the token off the VM whether or not the courier has ended (forget-token ends it first). A courier that
+# cannot finish (a store that refuses, a push that hangs) never keeps the token on the VM past that wait.
+WAIT=${PK_COURIER_WAIT_S:-1800}
+TOKDIR=${PK_STORE_TOKEN_DIR:-/dev/shm/pk_store}
 nohup bash -c "python3 -u tools/colab_chat/jobs_vm.py $JOBS > $CHAT/jobs.log 2>&1; echo FINISHED > $CHAT/STATUS
-  while [ -s $CHAT/courier.pid ] && kill -0 \$(cat $CHAT/courier.pid) 2> /dev/null; do sleep 5; done
-  python3 tools/colab_chat/hf_store.py forget-token --config $CFG --chat $CHAT >> $LOG 2>&1" \
+  end=\$(( \$(date +%s) + $WAIT ))
+  while [ -s $CHAT/courier.pid ] && kill -0 \$(cat $CHAT/courier.pid) 2> /dev/null && [ \$(date +%s) -lt \$end ]; do sleep 5; done
+  [ \$(date +%s) -lt \$end ] || echo \"the courier had not ended after $WAIT s: ended with the token's removal\" >> $LOG
+  python3 tools/colab_chat/hf_store.py forget-token --config $CFG --chat $CHAT >> $LOG 2>&1 \
+    || { rm -f $CHAT/upload/store_token $TOKDIR/token*; echo TOKEN_REMOVED_BY_GLOB >> $LOG; }" \
   > /dev/null 2>&1 &
 echo "jobs launched $(date -u)"
