@@ -30,19 +30,26 @@ only behind two that the caller has verified, by its own push or by download; a 
 
 Storage. Removing a generation from a branch does not free its bytes. release() does, and is opt-in ("reclaim" in
 the config): under a lock file on main it deletes the LFS objects that no branch's tree names and that are older
-than a grace period, so an object another writer has uploaded and not yet committed is not touched.
+than a grace period. The lock keeps two releases apart and nothing else: uploads and commits do not take it. An
+object another writer has uploaded and not yet committed is spared only by its age, so release is UNSAFE beside a
+second writer whenever the grace period is shorter than that writer's longest upload-to-commit time. With a small
+grace the store must have one writer at a time.
 
 STORE.json: {"repo": "owner/name", "repo_type": "dataset", "token_file": PATH, "reclaim": false,
 "min_push_interval_s": 0, "branches": {job: branch}, "campaign": NAME, "epoch": N, "min_step": {job: step},
-"first_start": [jobs]}. There is no default repo and no default token path. "repo": "dir:/some/folder" is a
-store on local disk with the same rules (tests and local rehearsals; no token). A jobs file names the inputs a VM
-needs as "store_inputs": [{"branch": "main", "prefix": P, "to": "chat/upload"}], "to" relative to --root.
+"first_start": [jobs], "mark_ns": "", "push_cap_bytes": 0}. There is no default repo and no default token path.
+"repo": "dir:/some/folder" is a store on local disk with the same rules (tests and local rehearsals; no token). A
+jobs file names the inputs a VM needs as "store_inputs": [{"branch": "main", "prefix": P, "to": "chat/upload"}],
+"to" relative to --root. "mark_ns" is put before the job's name in its marks' paths (marks/<mark_ns><job>/), so a
+second attempt under another campaign name never reads the first one's marks.
 
 The token. It is read from token_file (mode 600, refused otherwise) and handed to the library call by call; it is
 not printed, logged, put on a command line or exported, and every error text passes through redact(). On a VM it
 arrives as an uploaded file on the VM's disk and is moved to a tmpfs by the runner's next call (adopt_token), so
-it is on disk for the seconds between the two. HF_HUB_DISABLE_IMPLICIT_TOKEN is set here, so no other download in a
-process that imported this file sends a token it was not given.
+it is on disk for the seconds between the two. forget_token() removes the file the config names and, always,
+every token* file in the tmpfs folder (PK_STORE_TOKEN_DIR, else /dev/shm/pk_store, and the config's "token_dir"),
+so an adoption that died half way leaves nothing it cannot find. HF_HUB_DISABLE_IMPLICIT_TOKEN is set here, so no
+other download in a process that imported this file sends a token it was not given.
 
 Assumed of Hugging Face and not tested here (the tests run against DirBackend and a recording stand-in for HfApi,
 with huggingface_hub pinned to HUB_VERSION): create_commit is atomic, takes adds and deletes together and refuses
@@ -64,6 +71,7 @@ import signal
 import sys
 import tempfile
 import time
+import uuid
 
 os.environ.setdefault("HF_HUB_DISABLE_IMPLICIT_TOKEN", "1")
 
@@ -79,6 +87,12 @@ LOCK_STALE_S = 1800
 RELEASE_GRACE_S = 7200
 # Repos this tool never writes to or prunes: the screens' and cloud_eval's inputs repo holds pinned revisions.
 REFUSED_REPOS = ("JohnnyTeutonic/chat-screens-inputs",)
+TOKEN_DIR = "/dev/shm/pk_store"  # the VM's tmpfs folder for the adopted token (PK_STORE_TOKEN_DIR moves it)
+
+
+def refused_repo(repo):
+    """True for a repo this tool never writes to. The hub's names do not tell case apart, so neither does this."""
+    return str(repo).lower() in {r.lower() for r in REFUSED_REPOS}
 
 
 class StoreError(Exception):
@@ -251,7 +265,7 @@ class DirBackend:
             return None
         return str(sum(1 for c in self._log() if c.get("branch") == branch and "message" in c))
 
-    def tree(self, branch):
+    def tree(self, branch, rev=None):  # rev: a folder has no history; commit() checks the head under its lock
         d = self._p(branch)
         if not os.path.isdir(d):
             return None
@@ -286,7 +300,7 @@ class DirBackend:
                 f.write(json.dumps({"branch": branch, "adds": sorted(adds), "deletes": sorted(deletes),
                                     "message": message, "at": time.time()}) + "\n")
 
-    def fetch(self, branch, path, dest):
+    def fetch(self, branch, path, dest, rev=None):
         src = self._p(branch, path)
         if not os.path.isfile(src):
             raise Missing(f"{branch}:{path} is not in the store")
@@ -304,7 +318,7 @@ class HfBackend:
     Every library call is made with keyword arguments."""
 
     def __init__(self, repo, repo_type, token, api=None):
-        if repo in REFUSED_REPOS:
+        if refused_repo(repo):
             raise StoreError(f"{repo} is the pinned inputs repo; the store must be its own repo")
         self.repo, self.repo_type, self.token = repo, repo_type, token
         if api is None:
@@ -330,9 +344,10 @@ class HfBackend:
                 return None
             raise
 
-    def tree(self, branch):
+    def tree(self, branch, rev=None):
+        """The branch's listing; with rev (a commit id from head()), the listing of that commit."""
         try:
-            entries = list(self.api.list_repo_tree(recursive=True, revision=branch, **self._kw()))
+            entries = list(self.api.list_repo_tree(recursive=True, revision=rev or branch, **self._kw()))
         except Exception as e:  # noqa: BLE001
             if type(e).__name__ == "RevisionNotFoundError":
                 return None
@@ -354,10 +369,12 @@ class HfBackend:
         ops += [CommitOperationDelete(path_in_repo=p) for p in sorted(deletes)]
         self.api.create_commit(operations=ops, commit_message=message, revision=branch, parent_commit=parent, **self._kw())
 
-    def fetch(self, branch, path, dest):
+    def fetch(self, branch, path, dest, rev=None):
+        """One file. Only the hub saying "no such file" or "no such branch" is Missing; a repository that is not
+        found (what a wrong or expired token gets), a refused login and a transport failure are raised as they are."""
         stage = tempfile.mkdtemp(prefix=".hfstage.", dir=os.path.dirname(os.path.abspath(dest)))
         try:
-            got = self.api.hf_hub_download(filename=path, revision=branch, local_dir=stage, **self._kw())
+            got = self.api.hf_hub_download(filename=path, revision=rev or branch, local_dir=stage, **self._kw())
             os.replace(got, dest)
         except Exception as e:  # noqa: BLE001
             if type(e).__name__ in ("EntryNotFoundError", "RevisionNotFoundError"):
@@ -367,12 +384,14 @@ class HfBackend:
             shutil.rmtree(stage, ignore_errors=True)
 
     def lfs_objects(self):
-        """[{"ids": the object's ids as the library gives them, "pushed_at": epoch seconds or None, "ref": handle}]"""
+        """[{"ids": the object's ids as the library gives them, "pushed_at": epoch seconds or None, "bytes": its
+        size or None, "ref": handle}]"""
         out = []
         for f in self.api.list_lfs_files(**self._kw()):
-            at = getattr(f, "pushed_at", None)
+            at, size = getattr(f, "pushed_at", None), getattr(f, "size", None)
             out.append({"ids": [x for x in (getattr(f, "oid", None), getattr(f, "file_oid", None)) if x],
-                        "pushed_at": at.timestamp() if hasattr(at, "timestamp") else None, "ref": f})
+                        "pushed_at": at.timestamp() if hasattr(at, "timestamp") else None,
+                        "bytes": size if isinstance(size, int) else None, "ref": f})
         return out
 
     def delete_lfs(self, objects):
@@ -381,8 +400,9 @@ class HfBackend:
 
 # ---------------------------------------------------------------- the store
 class Store:
-    def __init__(self, backend, reclaim=False, log=None, tries=4, delay=20):
+    def __init__(self, backend, reclaim=False, log=None, tries=4, delay=20, mark_ns=""):
         self.b, self.reclaim_on, self._log, self.tries, self.delay = backend, reclaim, log, tries, delay
+        self.mark_ns = mark_ns or ""
         self._manifests = {}
 
     def log(self, msg):
@@ -392,11 +412,11 @@ class Store:
         else:
             print(msg, flush=True)
 
-    def fetch(self, branch, path, dest):
+    def fetch(self, branch, path, dest, rev=None):
         """One file, a transport failure tried again (Missing is an answer, not a failure)."""
         for i in range(self.tries):
             try:
-                return self.b.fetch(branch, path, dest)
+                return self.b.fetch(branch, path, dest, rev=rev) if rev else self.b.fetch(branch, path, dest)
             except Missing:
                 raise
             except Exception as e:  # noqa: BLE001
@@ -603,13 +623,25 @@ class Store:
         return gone
 
     def release(self, owner, grace=RELEASE_GRACE_S, now=None):
+        """release_report()'s count of deleted objects, or None when another releaser holds the lock."""
+        r = self.release_report(owner, grace=grace, now=now)
+        return None if r["held"] else r["objects"]
+
+    def release_report(self, owner, grace=RELEASE_GRACE_S, now=None):
         """Free storage by difference: every LFS object that no branch's tree names (main, every ckpt-*, any
         other) and that was pushed more than `grace` seconds ago is deleted for good. One releaser at a time, by a
-        lock file on main taken with a conditional commit. Returns the number deleted, or None when another holds
-        the lock. Refuses when the listing's hashes cannot be matched to the object ids."""
+        lock file on main. Returns {"held": another releaser holds the lock, "objects": deleted, "bytes": freed}.
+        Refuses when the listing's hashes cannot be matched to the object ids.
+
+        NOT SAFE BESIDE ANOTHER WRITER WITH A SMALL GRACE. The lock is between releasers only; uploads and commits
+        do not take it. A writer uploads an object and then commits the tree that names it; a release in between
+        sees an object no tree names and deletes it unless it is younger than `grace`. With a grace shorter than
+        the slowest upload-to-commit time of any other writer (two hours is the default), the store must have one
+        writer at a time."""
         now = time.time() if now is None else now
-        if not self._lock(owner, now):
-            return None
+        mine = self._lock(owner, now)
+        if not mine:
+            return {"held": True, "objects": 0, "bytes": 0}
         try:
             named = set()
             for br in self.b.branches():
@@ -622,43 +654,76 @@ class Store:
                     and now - o["pushed_at"] > grace]
             if dead:
                 self.b.delete_lfs(dead)
-            return len(dead)
+            return {"held": False, "objects": len(dead), "bytes": sum(o.get("bytes") or 0 for o in dead)}
         finally:
-            self._unlock()
+            self._unlock(mine)
 
-    def _lock(self, owner, now):
-        tree = self.b.tree("main") or {}
-        if LOCK in tree:
-            with tempfile.TemporaryDirectory(prefix="store_lock.") as tmp:
-                try:
-                    self.b.fetch("main", LOCK, os.path.join(tmp, "l"))
-                    held = json.load(open(os.path.join(tmp, "l")))
-                except (StoreError, ValueError, OSError):
-                    held = {}
-            if now - held.get("at", 0) < LOCK_STALE_S:
-                return False
+    def _read_lock(self, head):
+        """The lock file as main's commit `head` holds it; {} for one that is not JSON. A lock that cannot be
+        fetched raises: an unread lock is never taken for a stale one."""
         with tempfile.TemporaryDirectory(prefix="store_lock.") as tmp:
             p = os.path.join(tmp, "l")
-            json.dump({"owner": owner, "at": now}, open(p, "w"))
+            self.b.fetch("main", LOCK, p, rev=head)
             try:
-                self.b.commit("main", {LOCK: p}, [], f"lock: release by {owner}", parent=self.b.head("main"))
-            except Exception:  # noqa: BLE001 main moved under us, or the hub refused: someone else may hold it
-                return False
-        return True
+                held = json.load(open(p))
+            except ValueError:
+                return {}
+        return held if isinstance(held, dict) else {}
 
-    def _unlock(self):
+    def _lock(self, owner, now):
+        """Take the release lock; the lock's record, or None when it is not ours. In this order: main's head is
+        read; the lock is looked for in the tree of THAT commit; the lock is committed with that commit as its
+        parent. So a lock (or any other commit) that reaches main after the head was read refuses this commit, and
+        a lock that was there before is seen. Two releasers can never both hold it."""
         try:
-            self.b.commit("main", {}, [LOCK], "unlock: release")
-        except Exception as e:  # noqa: BLE001 a lock left behind goes stale by itself
-            self.log(f"release lock not removed ({type(e).__name__}: {e}); it expires in {LOCK_STALE_S} s")
+            self.b.ensure_branch("main")
+            head = self.b.head("main")
+            if head is None:
+                return None
+            if LOCK in (self.b.tree("main", rev=head) or {}):
+                if now - self._read_lock(head).get("at", 0) < LOCK_STALE_S:
+                    return None
+        except Exception:  # noqa: BLE001 main or the lock could not be read: someone else may hold it
+            return None
+        mine = {"owner": owner, "at": now, "nonce": uuid.uuid4().hex}
+        with tempfile.TemporaryDirectory(prefix="store_lock.") as tmp:
+            p = os.path.join(tmp, "l")
+            with open(p, "w") as f:
+                json.dump(mine, f)
+            try:
+                self.b.commit("main", {LOCK: p}, [], f"lock: release by {owner}", parent=head)
+            except Exception:  # noqa: BLE001 main moved since the head was read, or the hub refused
+                return None
+        return mine
+
+    def _unlock(self, mine):
+        """Remove the lock only while it is the one this release took (same nonce), with a conditional commit on
+        the head it was read at. Main moves under it (marks, inputs), so it is read again a few times."""
+        err = None
+        for _ in range(4):
+            try:
+                head = self.b.head("main")
+                if LOCK not in (self.b.tree("main", rev=head) or {}):
+                    return
+                if self._read_lock(head).get("nonce") != mine["nonce"]:
+                    self.log("release lock is another releaser's now; left as it is")
+                    return
+                self.b.commit("main", {}, [LOCK], "unlock: release", parent=head)
+                return
+            except Exception as e:  # noqa: BLE001 a lock left behind goes stale by itself
+                err = e
+        self.log(f"release lock not removed ({type(err).__name__}: {err}); it expires in {LOCK_STALE_S} s")
 
     # -- marks
+    def mark_prefix(self, job, step):
+        return f"marks/{self.mark_ns}{job}/rung_{step}"
+
     def mark_steps(self, job, tree=None):
         tree = self.b.tree("main") if tree is None else tree
         out = set()
         for p in tree or {}:
             parts = p.split("/")
-            if len(parts) == 4 and parts[0] == "marks" and parts[1] == job and parts[3] == MANIFEST \
+            if len(parts) == 4 and parts[0] == "marks" and parts[1] == self.mark_ns + job and parts[3] == MANIFEST \
                     and parts[2].startswith("rung_") and parts[2][5:].isdigit():
                 out.add(int(parts[2][5:]))
         return sorted(out)
@@ -669,12 +734,12 @@ class Store:
             return False
         if file_step(os.path.join(folder, "state.txt")) != step:
             raise StoreError(f"{job}: mark folder is not at step {step}")
-        self.push_set("main", f"marks/{job}/rung_{step}", folder, kind="mark", names=list(MARK_FILES),
+        self.push_set("main", self.mark_prefix(job, step), folder, kind="mark", names=list(MARK_FILES),
                       meta={**(identity or {}), "job": job, "step": step})
         return True
 
     def pull_mark(self, job, step, dest, expect=None):
-        man = self.pull_set("main", f"marks/{job}/rung_{step}", dest, names=list(MARK_FILES))
+        man = self.pull_set("main", self.mark_prefix(job, step), dest, names=list(MARK_FILES))
         check_identity(man, expect, f"{job}: mark rung_{step}")
         if man.get("step") != step or file_step(os.path.join(dest, "state.txt")) != step:
             raise VerifyError(f"{job}: mark rung_{step} names another step")
@@ -728,7 +793,7 @@ def open_store(cfg, log=None, api=None, **kw):
     if isinstance(cfg, str):
         cfg = load_config(cfg)
     repo = cfg["repo"]
-    kw = {"reclaim": bool(cfg.get("reclaim")), "log": log, **kw}
+    kw = {"reclaim": bool(cfg.get("reclaim")), "log": log, "mark_ns": cfg.get("mark_ns") or "", **kw}
     if repo.startswith("dir:"):
         return Store(DirBackend(repo[4:]), **kw)
     if not cfg.get("token_file"):
@@ -751,25 +816,44 @@ def retry(fn, tries=4, delay=20, log=print, what="store call", token=None):
 
 
 def token_copies(config, also=()):
-    """Every path a token can be at on this machine: the adopted file, its temporaries, and the given paths."""
+    """Every path a token can be at on this machine: the given paths, the file the config names and its
+    temporaries, and, whatever the config says or fails to say, every token* file in the tmpfs folder (the
+    environment's, the default, and the config's "token_dir"). The glob is what finds a token whose adoption died
+    after the move and before the config named it."""
     paths = list(also)
     try:
-        tf = json.load(open(config)).get("token_file")
+        cfg = json.load(open(config))
     except (OSError, ValueError):
-        tf = None
+        cfg = {}
+    cfg = cfg if isinstance(cfg, dict) else {}
+    tf = cfg.get("token_file")
     if tf:
         paths += [tf, *glob.glob(tf + ".tmp*")]
-    return paths
+    for d in (os.environ.get("PK_STORE_TOKEN_DIR") or TOKEN_DIR, cfg.get("token_dir")):
+        if d:
+            paths += glob.glob(os.path.join(d, "token*"))
+    return list(dict.fromkeys(paths))
+
+
+def _write_config(config, cfg):
+    with open(config + ".tmp", "w") as f:
+        json.dump(cfg, f, indent=1)
+    os.replace(config + ".tmp", config)
 
 
 def adopt_token(config, src, directory):
     """Move the uploaded token to `directory` (a tmpfs on the VM), mode 600, and record its path in the config.
-    With no new upload, an adopted token stays as it is. No temporary is left behind on a failure."""
+    With no new upload, an adopted token stays as it is. The folder is recorded in the config ("token_dir") before
+    the token moves, and forget_token() removes every token* file in it, so a failure at any later step (the move,
+    the removal of the upload, the config's second write) leaves no copy that the clean-up cannot find."""
     cfg = json.load(open(config))
     if cfg["repo"].startswith("dir:") and not os.path.exists(src):
         return
     if os.path.exists(src):
         os.makedirs(directory, mode=0o700, exist_ok=True)
+        if cfg.get("token_dir") != directory:
+            cfg["token_dir"] = directory
+            _write_config(config, cfg)
         dst = os.path.join(directory, "token")
         tmp = f"{dst}.tmp{os.getpid()}"
         try:
@@ -782,9 +866,7 @@ def adopt_token(config, src, directory):
                 os.remove(tmp)
         os.remove(src)
         cfg["token_file"] = dst
-        with open(config + ".tmp", "w") as f:
-            json.dump(cfg, f, indent=1)
-        os.replace(config + ".tmp", config)
+        _write_config(config, cfg)
     elif not (cfg.get("token_file") and os.path.exists(cfg["token_file"])):
         raise StoreError("no token was uploaded and none is adopted")
 

@@ -342,6 +342,65 @@ def test_adopt_and_forget_token(tmp_path, monkeypatch):
     assert hf_store.forget_token(str(cfg)) is True  # nothing left to remove is still "gone"
 
 
+def test_an_adoption_that_fails_after_the_move_leaves_nothing_the_clean_up_cannot_find(tmp_path, monkeypatch):
+    """The token has been renamed into the tmpfs folder and its upload removed; the config's write that would name
+    it then fails. No record says where the token is. forget_token() finds it all the same: by the folder the
+    adoption wrote into the config before it moved anything, and by the tmpfs folder it always searches."""
+    def setup(name):
+        d = tmp_path / name
+        d.mkdir()
+        cfg, up, shm = d / "store.json", d / "upload_token", d / "shm"
+        cfg.write_text(json.dumps({"repo": "someone/base2-store"}))
+        up.write_text(TOKEN)
+        return cfg, up, shm
+
+    real = os.replace
+    state = {"moved": False}
+
+    def fail_config_after_move(a, b):
+        if str(b).endswith("token"):
+            state["moved"] = True
+        elif state["moved"] and str(b).endswith("store.json"):
+            raise OSError("disk full")
+        return real(a, b)
+
+    # 1. The folder is the one the VM's environment names (or the default): the glob finds the token.
+    cfg, up, shm = setup("env")
+    monkeypatch.setenv("PK_STORE_TOKEN_DIR", str(shm))
+    monkeypatch.setattr(os, "replace", fail_config_after_move)
+    with pytest.raises(OSError, match="disk full"):
+        hf_store.adopt_token(str(cfg), str(up), str(shm))
+    monkeypatch.setattr(os, "replace", real)
+    left = json.loads(cfg.read_text())
+    assert (shm / "token").read_text() == TOKEN and not up.exists() and "token_file" not in left   # moved, and unrecorded
+    assert str(shm / "token") in hf_store.token_copies(str(cfg))
+    assert hf_store.forget_token(str(cfg)) is True and os.listdir(shm) == []
+    # 2. Another folder, which no environment names: the config's "token_dir", written before the move, finds it.
+    state["moved"] = False
+    cfg, up, shm = setup("named")
+    monkeypatch.setenv("PK_STORE_TOKEN_DIR", str(tmp_path / "elsewhere"))
+    monkeypatch.setattr(os, "replace", fail_config_after_move)
+    with pytest.raises(OSError, match="disk full"):
+        hf_store.adopt_token(str(cfg), str(up), str(shm))
+    monkeypatch.setattr(os, "replace", real)
+    assert json.loads(cfg.read_text()) == {"repo": "someone/base2-store", "token_dir": str(shm)}
+    assert (shm / "token").exists() and hf_store.forget_token(str(cfg)) is True and os.listdir(shm) == []
+    # 3. No config at all (it was never written, or is damaged): the tmpfs folder is searched all the same.
+    cfg, up, shm = setup("noconfig")
+    shm.mkdir()
+    (shm / "token").write_text(TOKEN)
+    (shm / "token.tmp9").write_text(TOKEN)
+    cfg.write_text("{not json")
+    monkeypatch.setenv("PK_STORE_TOKEN_DIR", str(shm))
+    assert hf_store.main(["forget-token", "--config", str(cfg)]) == 0 and os.listdir(shm) == []
+    # The boot's own last step and its failure path both go through this clean-up; the runner's exec at home
+    # searches the same folder (runner_multi.store_forget_token).
+    boot = (ROOT / "tools" / "colab_chat" / "boot_base2.sh").read_text()
+    assert boot.count("forget-token --config") >= 2
+    runner = (ROOT / "tools" / "colab_chat" / "runner_multi.py").read_text()
+    assert "glob.glob(d + '/token*')" in runner
+
+
 def test_forget_token_ends_the_courier_and_its_children_first(tmp_path):
     """A process group standing for the courier and a push in flight: both are gone before the file is."""
     chat = tmp_path / "chat"
@@ -371,12 +430,17 @@ def test_forget_token_ends_the_courier_and_its_children_first(tmp_path):
 
 
 # ---------------------------------------------------------------- the Hugging Face backend, on a recording stand-in
-class RevisionNotFoundError(Exception):
-    pass
+try:  # the library's own classes, as the hub raises them; stand-ins of the same names only without the library
+    from huggingface_hub.errors import EntryNotFoundError, RepositoryNotFoundError, RevisionNotFoundError
+except ImportError:
+    class RevisionNotFoundError(Exception):
+        pass
 
+    class EntryNotFoundError(Exception):
+        pass
 
-class EntryNotFoundError(Exception):
-    pass
+    class RepositoryNotFoundError(Exception):
+        pass
 
 
 class FakeFile:
@@ -391,9 +455,10 @@ class FakeFolder:
 
 
 class FakeLfs:
-    def __init__(self, sha, at, by="oid"):
+    def __init__(self, sha, at, by="oid", size=None):
         self.oid, self.file_oid = (sha, "blob" + sha[:8]) if by == "oid" else ("blob" + sha[:8], sha)
         self.pushed_at = datetime.datetime.fromtimestamp(at, datetime.timezone.utc)
+        self.size = size
 
 
 class Ref:
@@ -408,11 +473,30 @@ class FakeApi:
     def __init__(self, lfs_by="oid"):
         self.calls, self.branches, self.lfs, self.fail, self.lfs_by = [], {"main": {}}, {}, None, lfs_by
         self.heads, self.now = {"main": 0}, 1_000_000.0
+        self.snaps, self.sizes, self.after = {}, {}, {}
 
     def _rec(self, name, **kw):
         self.calls.append((name, kw))
         if self.fail:
             raise self.fail
+
+    def _done(self, name):
+        """A test's hook that runs once, right after the named call has answered (another writer acting then)."""
+        hook = self.after.pop(name, None)
+        if hook:
+            hook()
+
+    def _files(self, revision):
+        """A branch's files now, or, for a commit id "<branch>@<n>" that is no longer the head, as that commit left
+        them."""
+        if revision in self.branches:
+            return self.branches[revision]
+        branch, _, n = str(revision).partition("@")
+        if branch in self.branches and n.isdigit():
+            if int(n) == self.heads[branch] or revision not in self.snaps:
+                return self.branches[branch]
+            return self.snaps[revision]
+        raise RevisionNotFoundError(str(revision))
 
     def create_branch(self, *, repo_id, branch, exist_ok=False, repo_type=None, token=None):
         self._rec("create_branch", repo=repo_id, branch=branch, repo_type=repo_type, token=token, exist_ok=exist_ok)
@@ -427,13 +511,14 @@ class FakeApi:
         self._rec("repo_info", repo=repo_id, revision=revision, repo_type=repo_type, token=token)
         if revision not in self.branches:
             raise RevisionNotFoundError(revision)
-        return type("Info", (), {"sha": f"{revision}@{self.heads[revision]}"})()
+        sha = f"{revision}@{self.heads[revision]}"
+        self._done("repo_info")
+        return type("Info", (), {"sha": sha})()
 
     def list_repo_tree(self, *, repo_id, recursive=False, revision=None, repo_type=None, token=None):
         self._rec("list_repo_tree", repo=repo_id, revision=revision, repo_type=repo_type, token=token, recursive=recursive)
-        if revision not in self.branches:
-            raise RevisionNotFoundError(revision)
-        files = self.branches[revision]
+        files = dict(self._files(revision))
+        self._done("list_repo_tree")
         return [FakeFolder("gens")] + [FakeFile(p, b, lfs=p.endswith(".safetensors")) for p, b in sorted(files.items())]
 
     def create_commit(self, *, repo_id, operations, commit_message, revision=None, parent_commit=None, repo_type=None, token=None):
@@ -442,28 +527,31 @@ class FakeApi:
                   parent=parent_commit, ops=[(type(o).__name__, o.path_in_repo) for o in ops])
         if parent_commit is not None and parent_commit != f"{revision}@{self.heads[revision]}":
             raise RuntimeError("412 Precondition Failed: parent commit is not the head")
+        self.snaps[f"{revision}@{self.heads[revision]}"] = dict(self.branches[revision])  # the commit being replaced
         for o in ops:
             if type(o).__name__ == "CommitOperationAdd":
                 data = open(o.path_or_fileobj, "rb").read()
                 self.branches[revision][o.path_in_repo] = data
                 if o.path_in_repo.endswith(".safetensors"):
                     self.lfs.setdefault(S.sha(data), self.now)
+                    self.sizes[S.sha(data)] = len(data)
             else:
                 del self.branches[revision][o.path_in_repo]
         self.heads[revision] += 1
 
     def hf_hub_download(self, *, repo_id, filename, revision=None, local_dir=None, repo_type=None, token=None):
         self._rec("hf_hub_download", repo=repo_id, filename=filename, revision=revision, repo_type=repo_type, token=token)
-        if filename not in self.branches.get(revision, {}):
+        files = self._files(revision)
+        if filename not in files:
             raise EntryNotFoundError(filename)
         p = os.path.join(local_dir, filename)
         os.makedirs(os.path.dirname(p), exist_ok=True)
-        open(p, "wb").write(self.branches[revision][filename])
+        open(p, "wb").write(files[filename])
         return p
 
     def list_lfs_files(self, *, repo_id, repo_type=None, token=None):
         self._rec("list_lfs_files", repo=repo_id, repo_type=repo_type, token=token)
-        return [FakeLfs(o, at, self.lfs_by) for o, at in sorted(self.lfs.items())]
+        return [FakeLfs(o, at, self.lfs_by, self.sizes.get(o)) for o, at in sorted(self.lfs.items())]
 
     def permanently_delete_lfs_files(self, *, repo_id, lfs_files, rewrite_history=True, repo_type=None, token=None):
         gone = [f.oid if self.lfs_by == "oid" else f.file_oid for f in lfs_files]
@@ -602,6 +690,87 @@ def test_release_refuses_when_it_cannot_tell_the_objects_apart(tmp_path):
     api3.calls.clear()
     assert store3.prune("ckpt-N", verified=[200, 300]) == [100]
     assert not {"list_lfs_files", "permanently_delete_lfs_files"} & {c[0] for c in api3.calls}
+
+
+def test_the_release_lock_reads_the_head_first_and_is_released_only_by_its_owner(tmp_path):
+    """Two releasers. The order is: read main's head, look for the lock in the tree of that commit, commit the lock
+    with that commit as parent. So a second releaser's lock that lands after the head was read refuses the first
+    one's commit, wherever in between it lands (the review of 12 Nov 2026: the old order listed the tree, then read
+    the head, and a lock committed between the two was overwritten). And a lock is removed only by the release
+    that took it."""
+    api, store, logs = release_setup(tmp_path)
+    other, other_logs = hstore(tmp_path / "other", api, reclaim=True)
+    later = api.now + 10
+    took = []
+    # 1. B's lock lands right after A has read the head, before A lists the tree.
+    api.after["repo_info"] = lambda: took.append(other._lock("boot-b", later))
+    api.calls.clear()
+    assert store.release("boot-a", now=later) is None
+    assert took[0] and json.loads(api.branches["main"][hf_store.LOCK])["nonce"] == took[0]["nonce"]
+    assert "list_lfs_files" not in [c[0] for c in api.calls]            # A released nothing
+    locks = [c[1] for c in api.calls if c[0] == "create_commit" and c[1]["ops"] == [("CommitOperationAdd", hf_store.LOCK)]]
+    assert len(locks) == 2 and locks[0]["parent"] == locks[1]["parent"]  # both named the head they read; the hub took one
+    other._unlock(took[0])
+    assert hf_store.LOCK not in api.branches["main"]
+    # 2. B's lock lands after A has listed the tree and found no lock (the old code read the head only now).
+    api.after["list_repo_tree"] = lambda: took.append(other._lock("boot-b", later))
+    assert store.release("boot-a", now=later) is None
+    assert took[1] and json.loads(api.branches["main"][hf_store.LOCK])["nonce"] == took[1]["nonce"]
+    other._unlock(took[1])
+    # 3. With no one else, the release goes through and reports what it freed.
+    assert store.prune("ckpt-N", verified=[200, 300]) == [100]
+    rep = store.release_report("boot-a", now=api.now + hf_store.RELEASE_GRACE_S + 60)
+    assert rep == {"held": False, "objects": 1, "bytes": len(S.state_at(100)[1])}
+    assert other.release_report("boot-b", now=api.now + hf_store.RELEASE_GRACE_S + 60) == {"held": False, "objects": 0, "bytes": 0}
+    # 4. Ownership. A holds the lock, it goes stale, B takes it over; A's unlock then leaves B's lock where it is.
+    mine = store._lock("boot-a", later)
+    theirs = other._lock("boot-b", later + hf_store.LOCK_STALE_S + 1)
+    assert mine and theirs and mine["nonce"] != theirs["nonce"]
+    store._unlock(mine)
+    assert json.loads(api.branches["main"][hf_store.LOCK])["nonce"] == theirs["nonce"]
+    assert any("another releaser's" in ln for ln in logs)
+    other._unlock(theirs)
+    assert hf_store.LOCK not in api.branches["main"]
+    # 5. Main moves under the unlock (a mark, an input): the conditional delete is refused, read again, and done.
+    mine = store._lock("boot-a", later)
+    api.after["list_repo_tree"] = lambda: api.create_commit(repo_id="r", operations=[], commit_message="a mark", revision="main")
+    store._unlock(mine)
+    assert hf_store.LOCK not in api.branches["main"]
+    # 6. A lock that cannot be read is never taken for a stale one.
+    api.branches["main"][hf_store.LOCK] = json.dumps({"owner": "boot-b", "at": later, "nonce": "n"}).encode()
+    real = api.hf_hub_download
+    api.hf_hub_download = lambda **kw: (_ for _ in ()).throw(ConnectionError("reset"))
+    assert store.release("boot-a", now=later + 10 * hf_store.LOCK_STALE_S) is None
+    api.hf_hub_download = real
+    assert json.loads(api.branches["main"][hf_store.LOCK])["owner"] == "boot-b"
+    # What the code says of itself: the lock is between releasers, and a small grace needs one writer.
+    for text in (hf_store.Store.release_report.__doc__, hf_store.__doc__):
+        assert "one writer at a time" in " ".join(text.split())
+    assert "NOT SAFE BESIDE ANOTHER WRITER WITH A SMALL GRACE" in hf_store.Store.release_report.__doc__
+
+
+def test_marks_have_a_namespace_and_the_refused_repo_is_refused_in_any_case(tmp_path):
+    """A second attempt under another campaign name keeps its marks apart from the first one's (the runner's
+    --store-campaign sets "mark_ns"); without one the paths are as they were."""
+    mark = tmp_path / "mark"
+    mark.mkdir()
+    (mark / "model.safetensors").write_bytes(b"w")
+    (mark / "state.txt").write_text("100\n{}\n")
+    plain = dstore(tmp_path)
+    second = hf_store.open_store({"repo": f"dir:{tmp_path / 'repo'}", "mark_ns": "reh2."}, delay=0)
+    assert plain.push_mark("pt", 100, str(mark)) is True
+    assert second.mark_steps("pt") == [] and second.push_mark("pt", 100, str(mark)) is True
+    assert plain.mark_steps("pt") == [100] == second.mark_steps("pt") and plain.mark_steps("reh2.pt") == [100]
+    assert sorted(os.listdir(tmp_path / "repo" / "main" / "marks")) == ["pt", "reh2.pt"]
+    second.pull_mark("pt", 100, str(tmp_path / "got"))
+    tf = tmp_path / "token"
+    tf.write_text(TOKEN)
+    tf.chmod(0o600)
+    for repo in ("johnnyteutonic/chat-screens-inputs", "JOHNNYTEUTONIC/Chat-Screens-Inputs"):
+        assert hf_store.refused_repo(repo)
+        with pytest.raises(hf_store.StoreError, match="inputs repo"):
+            hf_store.open_store({"repo": repo, "token_file": str(tf)}, api=FakeApi())
+    assert not hf_store.refused_repo("johnnyteutonic/base2-store")
 
 
 def test_cli_never_prints_the_token(tmp_path, monkeypatch, capsys):
