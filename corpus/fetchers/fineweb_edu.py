@@ -4,13 +4,15 @@ text for the chat model's base (experiments/chat_general/PLAN.md; registry
 fineweb_edu_v1, licence odc-by).
 
     python corpus/fetchers/fineweb_edu.py shard0_v1 [--pin]   # one 2.15 GB shard, ~750M GPT-2 tokens
-    python corpus/fetchers/fineweb_edu.py shard1_v1 [--pin]   # the next shards (lever 3), shard1-3
+    python corpus/fetchers/fineweb_edu.py shard1_v1 [--pin]   # the next shards, shard1 to shard13
     python corpus/fetchers/fineweb_edu.py sample_v1 [--pin]   # the first 50 MB of shard0's train text
 
-One pinned parquet shard (sample/10BT/00N_00000.parquet at revision REV)
+One pinned parquet shard (sample/10BT/0NN_00000.parquet at revision REV)
 covers far more tokens than a night of training uses; shardN_v1 is shard N
-(0-3; 1-3 are lever 3's more pretraining tokens, pinned on their first
-fetch, on a VM, with the hashes file brought home). Each document goes
+(0-13, every shard of the sample at REV; shard 13 is a quarter of the size
+of the others). Shards 0 and 1 are pinned; any other is pinned on its first
+fetch, on a VM, with the hashes file brought home (base 2 reads shards 2 to
+5: tools/colab_chat/base2_data.sh). Each document goes
 to train or val by a hash of its id (99.5 / 0.5), independent of order.
 Outputs in corpus/data/<id>/:
   pretrain_train.txt   train documents, <|endoftext|> between them
@@ -30,7 +32,7 @@ import _common as C  # noqa: E402
 
 REPO = "HuggingFaceFW/fineweb-edu"
 REV = "87f09149ef4734204d70ed1d046ddc9ca3f2b8f9"
-SHARDS = {f"shard{n}_v1": f"sample/10BT/{n:03d}_00000.parquet" for n in range(4)}  # 14 shards at REV
+SHARDS = {f"shard{n}_v1": f"sample/10BT/{n:03d}_00000.parquet" for n in range(14)}  # all 14 shards at REV
 SAMPLE_BYTES = 50 * 1024 * 1024
 EOT = "<|endoftext|>"
 
