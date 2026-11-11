@@ -336,10 +336,10 @@ def test_a_commit_that_loses_the_race_is_refused_by_the_store(tmp_path, monkeypa
     real = store.push_generation
     other = tmp_path / "other"
 
-    def late(branch, job, step, folder, identity=None, parent=None):
+    def late(branch, job, step, folder, identity=None, parent=None, prune=None):
         S.make_gen(str(other), 150, seed=3)  # the other writer's commit lands between the read and the push
         fresh(tmp_path).push_generation(branch, job, 150, str(other / "ckpt_gen" / "g150"), {"epoch": 1, "boot_id": "other"})
-        return real(branch, job, step, folder, identity, parent)
+        return real(branch, job, step, folder, identity, parent, prune=prune)
 
     monkeypatch.setattr(store, "push_generation", late)
     c.tick()
@@ -472,21 +472,30 @@ def test_prune_waits_for_verified_generations_and_spares_an_unpushed_marks_gener
     assert fresh(tmp_path).steps("ckpt-N") == [600, 700]
 
 
-def test_release_runs_only_when_the_config_asks_and_with_its_grace(tmp_path):
-    chat, backend, store, c, logs, _ = setup(tmp_path)
+def test_a_save_is_one_commit_and_the_courier_never_releases(tmp_path):
+    """The hub limits commit creation per repository (128 an hour; the rehearsal of 12 Nov 2026 met it). A save
+    was a push, a prune, and with release on a lock and an unlock: up to five commits. It is one: the commit that
+    adds the generation removes the pruned ones. No VM releases storage, whatever its config says (the keys an
+    older runner sent are ignored): release is the runner's, from home."""
+    chat, backend, store, c, logs, _ = setup(tmp_path, cfg={**CFG, "reclaim": True, "release_grace_s": 60})
     asked = []
-    store.release_report = lambda owner, grace=None: asked.append((owner, grace)) or {"held": False, "objects": 0, "bytes": 0}
-    for step in (100, 300, 400):
+    store.release_report = lambda *a, **kw: asked.append("release") or {"held": False, "objects": 0, "bytes": 0}
+    store.prune = lambda *a, **kw: asked.append("prune") or []
+    for step in (100, 300, 400, 500):
         S.make_gen(str(chat / "pt"), step)
         c.tick()
-    assert store.steps("ckpt-N") == [300, 400] and asked == []  # pruned, and release is off unless asked for
-    chat2, backend2, store2, c2, logs2, _ = setup(tmp_path / "b", cfg={**CFG, "release_grace_s": 60})
-    store2.reclaim_on = True
-    store2.release_report = lambda owner, grace=None: asked.append((owner, grace)) or {"held": False, "objects": 3, "bytes": 6144}
-    for step in (100, 300, 400):
-        S.make_gen(str(chat2 / "pt"), step)
-        c2.tick()
-    assert asked == [(c2.boot, 60.0)] and any("storage release: 3 objects deleted, 6144 bytes freed" in ln for ln in logs2)
+        c.tick()
+    assert store.steps("ckpt-N") == [400, 500] and asked == [] and backend.commits == 4
+    sent = [json.loads(ln) for ln in (tmp_path / "repo" / "commits.jsonl").read_text().splitlines()]
+    assert [x["message"] for x in sent] == [f"generation: gens/g{s}" for s in (100, 300, 400, 500)]
+    assert [x["deletes"] for x in sent] == [[], [], ["gens/g100/"], ["gens/g300/"]] and {x["branch"] for x in sent} == {"ckpt-N"}
+    assert [p["pruned"] for p in stats(logs, "push")] == [[], [], [100], [300]]
+    assert any("generations [100] removed from the store in the same commit" in ln for ln in logs)
+    st = json.loads((chat / "courier_status.json").read_text())
+    assert "releases" not in st and st["commit_budget_per_hour"] == 0 and st["jobs"]["pt"]["verified"] == [100, 300, 400, 500]
+    src = (CC / "ckpt_courier.py").read_text()
+    assert "release_report(" not in src and ".release(" not in src and ".prune(" not in src
+    assert "A VM never releases storage" in " ".join(cc.__doc__.split())
 
 
 def stats(logs, what):
@@ -495,17 +504,15 @@ def stats(logs, what):
 
 def test_the_log_carries_what_each_transfer_cost_and_the_push_cap_stops_the_courier(tmp_path):
     """courier.log is what comes home from a stopped VM. It holds, as `stat` lines: every push with its bytes and
-    seconds, every release with its objects and bytes freed, and a count of failures that name HTTP 429. The push
-    cap: the bytes pushed since a release last freed storage are counted, across sessions, and at the cap the
-    courier stops pushing, says why, and leaves a marker; a release that frees bytes starts the count again."""
+    seconds, every measurement taken over from a release at home, and a count of failures that name HTTP 429. The
+    push cap: counted are what the store held for the campaign at the last release from home and the bytes pushed
+    since, across sessions; at the cap the courier stops pushing, says why, and leaves a marker. A release never
+    sets the count to zero: it replaces it by what the store was measured to hold."""
     gen = sum(len(b) for b in S.state_at(100))                         # model and optimiser; state and manifest on top
     CAP = 6500 + 2 * gen                                               # reached by the second push, not by the first
-    cfg = {**CFG, "push_cap_bytes": CAP, "pushed_bytes_start": 6500, "release_grace_s": 60}
+    cfg = {**CFG, "push_cap_bytes": CAP, "pushed_bytes_start": 6500}
     chat, backend, store, c, logs, clock = setup(tmp_path, cfg=cfg)
-    assert c.since_release == 6500 and c.cap == CAP                    # what the sessions before this one had pushed
-    freed = {"bytes": 0}
-    store.reclaim_on = True
-    store.release_report = lambda owner, grace=None: {"held": False, "objects": 1 if freed["bytes"] else 0, "bytes": freed["bytes"]}
+    assert c.since_release == 6500 and c.cap == CAP                    # what the sessions before this one had counted
     out = str(chat / "pt")
     S.make_gen(out, 100)
     c.tick()
@@ -524,7 +531,7 @@ def test_the_log_carries_what_each_transfer_cost_and_the_push_cap_stops_the_cour
     st = json.loads((chat / "courier_status.json").read_text())
     assert backend.commits == before and store.steps("ckpt-N") == [100, 300]
     assert st["capped"]["cap"] == CAP and st["capped"]["bytes_since_release"] == c.since_release
-    assert "since the last release that freed storage" in st["capped"]["why"] and st["push_cap_bytes"] == CAP
+    assert "at the last release from home, and what was pushed since" in st["capped"]["why"] and st["push_cap_bytes"] == CAP
     assert json.loads((chat / "COURIER_CAPPED").read_text().splitlines()[0])["cap"] == CAP
     assert len((chat / "COURIER_CAPPED").read_text().splitlines()) == 1 and sum("PUSH CAP" in ln for ln in logs) == 1
     assert c.idle() is False                                           # its job has not ended
@@ -533,27 +540,69 @@ def test_the_log_carries_what_each_transfer_cost_and_the_push_cap_stops_the_cour
     # A courier started again on the same boot (the daemon died) is still capped and keeps its count.
     again = cc.Courier(store, str(chat), JOBS, BR, log=logs.append, clock=clock, cfg=cfg)
     assert again.capped and again.since_release == c.since_release
-    # With a release that frees bytes after each prune, the count starts again and the cap is never reached.
-    chat2, backend2, store2, c2, logs2, _ = setup(tmp_path / "b", cfg={**cfg, "pushed_bytes_start": 0, "push_cap_bytes": 5 * gen})
-    store2.reclaim_on = True
-    store2.release_report = lambda owner, grace=None: {"held": False, "objects": 2, "bytes": 6144}
-    for step in (100, 200, 300, 400, 500, 600):
-        S.make_gen(str(chat2 / "pt"), step)
-        c2.tick()
-    assert store2.steps("ckpt-N") == [500, 600] and c2.capped is None and c2.since_release == 0
-    rel = stats(logs2, "release")
-    assert len(rel) == 4 and all(r["objects"] == 2 and r["bytes"] == 6144 and r["grace_s"] == 60 and not r["held"] for r in rel)
-    st2 = json.loads((chat2 / "courier_status.json").read_text())
-    assert st2["releases"] == {"count": 4, "objects": 8, "bytes": 4 * 6144} and st2["bytes_since_release"] == 0
-    assert [p["kind"] for p in stats(logs2, "push")].count("mark") == 1 and stats(logs2, "push")[0]["bytes"] > 0
-    # A release that frees nothing does not start the count again.
+    # Without a release from home nothing is ever taken off the count: it is every byte this campaign has pushed.
     chat3, backend3, store3, c3, logs3, _ = setup(tmp_path / "c", cfg={**cfg, "pushed_bytes_start": 0, "push_cap_bytes": 10 ** 9})
-    store3.reclaim_on = True
-    store3.release_report = lambda owner, grace=None: {"held": False, "objects": 0, "bytes": 0}
     for step in (100, 300, 400, 500):
         S.make_gen(str(chat3 / "pt"), step)
         c3.tick()
-    assert c3.since_release == sum(p["bytes"] for p in stats(logs3, "push")) > 4 * 6000
+    assert c3.since_release == c3.pushed == sum(p["bytes"] for p in stats(logs3, "push")) > 4 * 6000
+
+    # The real sequence of the rehearsal (12 Nov 2026). Session one pushes; its count goes home; the VM is lost.
+    # Session two's courier starts from that count and counts on. A release from home then frees part of what was
+    # pushed and hands over what the store still holds. The count becomes that plus what was pushed since: never
+    # zero while the store holds generations. (It read 0 in state.json during the second session: the VM's own
+    # release freed 0.56 GB of 3.6 GB pushed and the count started again from nothing.)
+    chat1, _, store1, c1, logs1, _ = setup(tmp_path / "s1", cfg={**CFG, "push_cap_bytes": 10 ** 9})
+    for step in (100, 300):
+        S.make_gen(str(chat1 / "pt"), step)
+        c1.tick()
+    carried = json.loads((chat1 / "courier_status.json").read_text())["bytes_since_release"]
+    assert carried == c1.since_release == sum(p["bytes"] for p in stats(logs1, "push")) > 2 * gen
+    cfg2 = {**CFG, "epoch": 2, "push_cap_bytes": carried + 5 * gen, "pushed_bytes_start": carried, "first_start": []}
+    chat2 = tmp_path / "s2" / "chat"
+    (chat2 / "pt").mkdir(parents=True)
+    logs2 = []
+    c2 = cc.Courier(store1, str(chat2), JOBS, BR, log=logs2.append, cfg=cfg2)       # a new VM, the same store
+    assert c2.since_release == carried and c2.pushed == 0
+    S.make_gen(str(chat2 / "pt"), 400)
+    c2.tick()
+    p400 = stats(logs2, "push")[-1]["bytes"]
+    assert c2.since_release == carried + p400 == stats(logs2, "push")[-1]["bytes_since_release"]
+
+    def measure(seq, held, at_pushed, boot=None):
+        (chat2 / "store_measure.json").write_text(json.dumps({"seq": seq, "boot_id": boot or c2.boot, "bytes": held,
+                                                             "at_pushed": at_pushed, "at": time.time()}))
+
+    held = 2 * gen + 700                                               # what the branch names after the release
+    measure(1, held, at_pushed=c2.pushed)
+    S.make_gen(str(chat2 / "pt"), 500)
+    c2.tick()
+    p500 = stats(logs2, "push")[-1]["bytes"]
+    assert c2.since_release == held + p500 > 0 and c2.measure_seq == 1
+    m = stats(logs2, "measure")
+    assert len(m) == 1 and m[0]["store_bytes"] == held and m[0]["counted_before"] == carried + p400
+    assert m[0]["bytes_since_release"] == held                         # taken over before the push of that tick
+    st2 = json.loads((chat2 / "courier_status.json").read_text())
+    assert st2["bytes_since_release"] == held + p500 and st2["pushed_bytes"] == p400 + p500 and st2["measure_seq"] == 1
+    # A measurement of another boot, or one already taken, changes nothing; a courier started again on the same
+    # boot keeps the count; what was pushed between the runner's read and its measurement is counted twice.
+    measure(2, 1, at_pushed=0, boot="another-boot")
+    c2.tick()
+    measure(1, 1, at_pushed=0)
+    c2.tick()
+    assert c2.since_release == held + p500 and c2.measure_seq == 1
+    again2 = cc.Courier(store1, str(chat2), JOBS, BR, log=logs2.append, cfg=cfg2)
+    assert again2.since_release == held + p500 and again2.measure_seq == 1 and again2.pushed == p400 + p500
+    measure(2, held, at_pushed=p400)                                   # the runner had read the count before g500
+    again2.tick()
+    assert again2.since_release == held + p500 and again2.capped is None
+    # With measurements the cap is not reached by a long run whose store stays small; without them it is.
+    for step in (600, 700, 800, 900, 1000, 1100):
+        S.make_gen(str(chat2 / "pt"), step)
+        measure(step, held, at_pushed=again2.pushed)
+        again2.tick()
+    assert again2.capped is None and store1.steps("ckpt-N") == [1000, 1100] and again2.since_release < held + 2 * gen
+    assert sum(p["bytes"] for p in stats(logs2, "push")) > 5 * gen     # far more than the cap's room was pushed
     # HTTP 429: counted when a failure names it, and the count is in the log and the status.
     chat4, backend4, store4, c4, logs4, clock4 = setup(tmp_path / "d")
     S.make_gen(str(chat4 / "pt"), 100)
@@ -675,6 +724,140 @@ def test_min_interval_spaces_pushes_but_not_the_last(tmp_path):
     assert not c.idle()
     c.tick()
     assert store.steps("ckpt-N") == [100, 400] and c.idle()  # a job that ended: its last generation goes at once
+
+
+def hub_courier(tmp_path, per_hour, push_timeout=None, cfg=CFG):
+    """A courier on the real HfBackend over the stand-in hub (tests/hub_standin.py), with a commit budget, one
+    clock for the courier, the budget and the hub, and a trainer that saves when the test says."""
+    import hub_standin
+    root, chat = tmp_path / "hub", tmp_path / "chat"
+    (chat / "pt").mkdir(parents=True)
+    tf = tmp_path / "hub.token"
+    tf.write_text(TOKEN + "\n")
+    tf.chmod(0o600)
+    logs, clock = [], Clock()
+    budget = hf_store.CommitBudget(per_hour, str(chat / "store_commits.json"), clock=clock)
+    store = hf_store.open_store({"repo": "someone/base2-store", "repo_type": "dataset", "token_file": str(tf)},
+                                api=hub_standin.DiskApi(str(root)), log=logs.append, delay=0, budget=budget)
+    c = cc.Courier(store, str(chat), JOBS, BR, log=logs.append, clock=clock, cfg=cfg, push_timeout=push_timeout)
+
+    def at(t):
+        clock.t = t
+        (root / "now.txt").write_text(str(t))
+
+    at(clock.t)
+    return chat, root, store, c, logs, clock, at
+
+
+def hub_log(root):
+    p = root / "commit_log.jsonl"
+    return [json.loads(ln) for ln in p.read_text().splitlines()] if p.exists() else []
+
+
+def test_a_courier_under_the_hubs_commit_limit_waits_out_the_429_and_loses_no_generation(tmp_path):
+    """Part a of the rehearsal, 12 Nov 2026: another writer on the repo (the watcher of then) had used the hub's
+    hourly limit, and the courier's commits were refused with HTTP 429 for 25 minutes. Here the hub refuses with
+    the library's own error and a Retry-After. The courier sends nothing more until that wait is over (it used to
+    try again after 60, 120, 240 and 480 s, each a refused commit), training goes on, and then the mark and the
+    NEWEST generation go up and resume. Every store call runs in a child, as on a VM."""
+    pytest.importorskip("huggingface_hub")
+    import hub_standin
+    chat, root, store, c, logs, clock, at = hub_courier(tmp_path, per_hour=30, push_timeout=60)
+    t0 = clock.t
+    (root / "limit.json").write_text(json.dumps({"per_window": 6, "retry_after": "auto"}))
+    other = hf_store.Store(hf_store.HfBackend("someone/base2-store", "dataset", TOKEN, api=hub_standin.DiskApi(str(root))))
+    watch = tmp_path / "watch"
+    watch.mkdir()
+    (watch / "watch.json").write_text("{}")
+    for i in range(5):                                   # the other writer takes five of the hour's six commits
+        at(t0 + i)
+        other.push_set("base2-build", f"watch/{i}", str(watch))
+    out = str(chat / "pt")
+    at(t0 + 10)
+    S.make_gen(out, 100)
+    c.tick()                                             # the sixth: taken
+    assert store.steps("ckpt-N") == [100] and [x["ok"] for x in hub_log(root)] == [True] * 6
+    at(t0 + 510)
+    S.make_gen(out, 200)                                 # a mark step: the mark goes first, and is the one refused
+    c.tick()
+    n429 = stats(logs, "http_429")
+    assert len(n429) == 1 and n429[0]["count"] == 1
+    refused = [x for x in hub_log(root) if not x["ok"]]
+    assert len(refused) == 1 and store.steps("ckpt-N") == [100] and store.mark_steps("pt") == []
+    wait = 3600 - 510                                    # the hub's Retry-After: until its hour has room
+    assert store.budget.wait_s() == wait and any(f"retry in {wait} s" in ln for ln in logs)
+    assert c.staged_marks("pt") == [200]                 # staged: the rung job may drop its copy
+    for k, step in enumerate((300, 400, 500, 600, 700), start=2):       # training goes on; nothing is sent
+        at(t0 + 10 + 500 * k)
+        S.make_gen(out, step)
+        c.tick()
+        c.tick()
+    assert len(hub_log(root)) == 7 and len(stats(logs, "http_429")) == 1    # not one more refused commit
+    st = json.loads((chat / "courier_status.json").read_text())
+    assert st["http_429"] == 1 and st["jobs"]["pt"]["live_step"] == 700 and st["jobs"]["pt"]["pushed_step"] == 100
+    assert st["jobs"]["pt"]["failures"] == 0             # a wait for room is not a failure of the generation's push
+    at(t0 + 3601)                                        # the hub's hour has room again
+    S.make_gen(out, 800)
+    c.tick()
+    assert store.mark_steps("pt") == [200] and store.steps("ckpt-N") == [100, 800]   # the mark, and the newest
+    assert c.staged_marks("pt") == [] and all(x["ok"] for x in hub_log(root)[7:])
+    at(t0 + 4101)
+    S.make_gen(out, 900)
+    c.tick()
+    assert store.steps("ckpt-N") == [800, 900] and hub_log(root)[-1]["deletes"] == ["gens/g100/"]
+    got = tmp_path / "got"
+    fresh_hub = hf_store.Store(hf_store.HfBackend("someone/base2-store", "dataset", TOKEN, api=hub_standin.DiskApi(str(root))))
+    assert fresh_hub.pull_generation("ckpt-N", str(got), expect=cc.identity(CFG, str(chat), JOBS["pt"])) == (900, [])
+    fresh_hub.pull_mark("pt", 200, str(tmp_path / "mark"))
+    assert (tmp_path / "mark" / "model.safetensors").read_bytes() == S.state_at(200)[0]
+    # The courier's own commits: four that the hub took (g100, the mark, g800, g900) and one it refused.
+    mine = [x for x in hub_log(root) if x["branch"] != "base2-build"]
+    assert [(x["message"], x["ok"]) for x in mine] == [
+        ("generation: gens/g100", True), ("mark: marks/pt/rung_200", False), ("mark: marks/pt/rung_200", True),
+        ("generation: gens/g800", True), ("generation: gens/g900", True)]
+    assert not any(TOKEN in ln for ln in logs)
+    assert sum(ln.startswith("create_branch ckpt-N") for ln in (root / "calls.log").read_text().splitlines()) == 1
+
+
+def test_a_courier_never_exceeds_its_commit_budget_and_still_pushes_the_last_generation(tmp_path):
+    """The budget is the courier's own ceiling: with saves far more frequent than it allows, the courier sends at
+    most that many commits in any rolling hour, each the newest generation then on disk, waits without counting a
+    failure, says each wait once, logs the hour's count, and pushes the run's last generation before it is idle."""
+    pytest.importorskip("huggingface_hub")
+    chat, root, store, c, logs, clock, at = hub_courier(tmp_path, per_hour=4)
+    t0 = clock.t
+    out = str(chat / "pt")
+    for k in range(1, 41):                               # a save every 300 s for 200 minutes: 12 an hour
+        at(t0 + 300 * k)
+        S.make_gen(out, 100 * k)
+        c.tick()
+        at(t0 + 300 * k + 20)
+        c.tick()
+    (chat / "STATUS_pt").write_text("FINISHED\n")
+    ticks = 0
+    while not c.idle():                                  # the daemon's loop at the end of the job
+        at(clock.t + 60)
+        c.tick()
+        ticks += 1
+        assert ticks < 200
+    sent = hub_log(root)
+    times = [x["at"] for x in sent]
+    assert all(x["ok"] for x in sent) and len(sent) >= 12
+    assert max(sum(1 for u in times if t - 3600 < u <= t) for t in times) == 4      # never a fifth in an hour
+    assert store.steps("ckpt-N")[-1] == 4000 == store.head_step("ckpt-N")              # the last save is in the store
+    assert store.mark_steps("pt") == [200]
+    pushed = [p["step"] for p in stats(logs, "push") if p["kind"] == "generation"]
+    assert pushed == sorted(pushed) and pushed[-1] == 4000 and len(pushed) < 20        # the newest each time, not every one
+    st = json.loads((chat / "courier_status.json").read_text())
+    assert st["jobs"]["pt"]["failures"] == 0 and st["http_429"] == 0 and st["commit_budget_per_hour"] == 4
+    assert st["commits_last_hour"] <= 4
+    waits = stats(logs, "budget_wait")
+    assert waits and all(w["seconds"] > 0 for w in waits)
+    assert len(waits) == len({w["waits"] for w in waits}) <= 41                          # said once for each that waits
+    hours = stats(logs, "commits")
+    assert len(hours) >= 3 and all(h["commits"] <= 4 and h["budget"] == 4 for h in hours)
+    step, rejected = store.pull_generation("ckpt-N", str(tmp_path / "got"))
+    assert (step, rejected) == (4000, [])
 
 
 def test_every_store_call_of_the_daemon_is_bounded(tmp_path):

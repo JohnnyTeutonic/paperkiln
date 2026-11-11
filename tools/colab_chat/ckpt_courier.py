@@ -22,17 +22,26 @@ run (a daemon the boot starts beside jobs_vm.py, in a process group of its own).
   writing, and it is the one that stops, when it next reads the head. Otherwise the generation goes up as one
   commit against that head, with its campaign, job, spec and inputs hashes, epoch and boot id. A step already in
   the store is never written again.
-- prune: only behind two generations this VM has verified, by its own push or by the download of its restore, and
-  never at or above a mark that is staged and not yet pushed. Storage release is off unless the config says so.
-- the push cap ("push_cap_bytes" in the config, 0 for none): the bytes pushed since the last release that freed
-  storage are counted (from "pushed_bytes_start", what the sessions before this one had pushed); at the cap this
-  courier pushes nothing more, says why in its status ("capped") and log, and writes CHAT/COURIER_CAPPED.
-A failed push is retried with a growing wait (at most ten minutes) and always with the newest generation; the
-trainer never waits on any of this. Every store call runs in a child with a time limit, and none is started after
-SIGTERM.
-Status: CHAT/courier_status.json. Log: CHAT/courier.log, with one `stat {json}` line per push (bytes, seconds),
-per pull of the restore (bytes, seconds), per release (objects and bytes freed) and per failure whose text names
-HTTP 429 (a running count). One courier per VM (CHAT/courier.pid, created exclusively).
+- prune, in that same commit (a save is ONE commit; the hub limits commits per repository): the generations behind
+  two that this VM has verified, by its own push (the one being added counts) or by the download of its restore,
+  and never at or above a mark that is staged and not yet pushed. A VM never releases storage: the runner does,
+  from home, on a timer (runner_multi.py --store-release-storage).
+- the commit budget ("store_commit_budget_per_hour" in the config, 30 by default here, 0 for none): every commit of
+  this VM is counted over a rolling hour in CHAT/store_commits.json (hf_store.CommitBudget). With the budget spent a
+  generation or a mark waits for room and then goes, always the newest. The hub's HTTP 429 is waited out for at
+  least its Retry-After.
+- the push cap ("push_cap_bytes" in the config, 0 for none): the bytes counted are what the store held for this
+  campaign when a release from home last measured it (CHAT/store_measure.json, written by the runner; before the
+  first one "pushed_bytes_start", what the sessions before this one had counted) plus what this VM has pushed
+  since; at the cap this courier pushes nothing more, says why in its status ("capped") and log, and writes
+  CHAT/COURIER_CAPPED.
+A failed push is retried with a growing wait (at most ten minutes, or the hub's Retry-After when that is longer) and
+always with the newest generation; the trainer never waits on any of this. Every store call runs in a child with a
+time limit, and none is started after SIGTERM.
+Status: CHAT/courier_status.json. Log: CHAT/courier.log, with one `stat {json}` line per push (bytes, seconds, the
+generations removed in its commit), per pull of the restore (bytes, seconds), per measurement taken over from home,
+per failure whose text names HTTP 429 (a running count), per wait for the commit budget, and one an hour with the
+hour's commit count. One courier per VM (CHAT/courier.pid, created exclusively).
 
 restore (the boot, before jobs_vm.py). Per unfinished job: the newest generation of its branch that verifies by
 sha256 is downloaded to a temporary folder and installed as a trainer generation: CHAT/<job>/ckpt_gen/g<step>
@@ -63,7 +72,8 @@ import hf_store  # noqa: E402
 from hf_store import GEN_FILES, MARK_FILES, StoreError, VerifyError, bounded, file_step, gen_step  # noqa: E402,F401
 
 BACKOFF_MAX = 600
-FLAT = ("model.safetensors", "optim.safetensors", "state.txt")
+COMMIT_BUDGET = 30  # commits an hour from one VM, of the hub's 128 for the whole repo (three arms share it)
+FLAT =("model.safetensors", "optim.safetensors", "state.txt")
 
 
 class Stopping(StoreError):
@@ -156,15 +166,63 @@ class Courier:
                       "last_error": None, "pushed_at": None, "live_step": None, "refused": None, "pushes": 0,
                       "fenced": None, "verified": set(self.restored(n))}
                   for n, b in self.branches.items()}
-        # The push cap. An earlier courier of this same boot left its count in the status file; otherwise the
-        # count starts at what the runner says the sessions before this one had pushed.
+        # The push cap. The count is `base` (what the store held for this campaign before this VM's pushes: the
+        # runner's "pushed_bytes_start", then each measurement a release from home hands over) plus `pushed` (the
+        # bytes this boot has pushed). An earlier courier of this same boot left both in the status file.
         prior = self.prior()
         self.stopping = False
         self.cap = int(self.cfg.get("push_cap_bytes") or 0)
-        self.since_release = int(prior.get("bytes_since_release", self.cfg.get("pushed_bytes_start") or 0) or 0)
+        self.base = int(prior.get("counted_base", self.cfg.get("pushed_bytes_start") or 0) or 0)
+        self.pushed = int(prior.get("pushed_bytes") or 0)
+        self.measure_seq = int(prior.get("measure_seq") or 0)
         self.capped = prior.get("capped")
         self.http_429 = int(prior.get("http_429") or 0)
-        self.releases = prior.get("releases") or {"count": 0, "objects": 0, "bytes": 0}
+
+    @property
+    def since_release(self):
+        """The bytes counted against the push cap: what the store held for this campaign when a release from home
+        last measured it, plus what has been pushed since."""
+        return max(0, self.base + self.pushed)
+
+    def read_measure(self):
+        """CHAT/store_measure.json, which the runner writes after a release from home: {"seq", "boot_id", "bytes":
+        what the store then held for this campaign, "at_pushed": this boot's `pushed` as the runner had read it
+        just before}. The count goes on from there: bytes + (pushed - at_pushed). Whatever was pushed between the
+        runner's read and its measurement is counted twice, never left out."""
+        try:
+            m = json.load(open(os.path.join(self.chat, "store_measure.json")))
+            seq, size, at = int(m["seq"]), int(m["bytes"]), int(m["at_pushed"])
+        except (OSError, ValueError, KeyError, TypeError):
+            return
+        if m.get("boot_id") != self.boot or seq <= self.measure_seq:
+            return
+        before = self.since_release
+        self.base, self.measure_seq = size - at, seq
+        self.stat("measure", seq=seq, store_bytes=size, at_pushed=at, counted_before=before, bytes_since_release=self.since_release)
+
+    def budget(self):
+        return getattr(self.store, "budget", None)
+
+    def no_room(self, name, what):
+        """True while the commit budget has no room for an essential commit: it waits (training goes on) and is
+        tried again on a later tick, the newest generation then. Said once a wait."""
+        b, s, key = self.budget(), self.s[name], "waiting_" + what.split()[0]
+        w = b.wait_s(essential=True) if b else 0
+        if w <= 0:
+            s.pop(key, None)
+            return False
+        if s.get(key) != what:
+            s[key] = what
+            self.log(f"{name}: {what} waits for the commit budget ({b.per_hour} an hour): room in {w:.0f} s; training goes on")
+            self.stat("budget_wait", job=name, waits=what, seconds=round(w))
+        return True
+
+    def commit_stat(self, final=False):
+        """One `stat` line an hour with the commits this VM sent in it (and one when the daemon ends)."""
+        b = self.budget()
+        rep = b.report(0 if final else None) if b else None
+        if rep:
+            self.stat("commits", **rep, final=final)
 
     def prior(self):
         """The status an earlier courier of this boot wrote, or {}."""
@@ -192,14 +250,15 @@ class Courier:
             self.stat("http_429", count=self.http_429, during=what)
 
     def over_cap(self):
-        """True once the bytes pushed since the last release that freed storage have reached the cap. From then on
-        this courier pushes nothing: release is unproven on the real store, and the account's storage is finite."""
+        """True once the bytes counted (since_release) have reached the cap. From then on this courier pushes
+        nothing: the account's storage is finite, and a release that does not keep up must be seen by a person."""
         if self.capped:
             return True
         if not self.cap or self.since_release < self.cap:
             return False
-        self.capped = {"why": f"{self.since_release} bytes pushed since the last release that freed storage; the cap "
-                              f"is {self.cap}", "bytes_since_release": self.since_release, "cap": self.cap, "at": time.time()}
+        self.capped = {"why": f"{self.since_release} bytes counted (what the store held for this campaign at the last "
+                              f"release from home, and what was pushed since); the cap is {self.cap}",
+                       "bytes_since_release": self.since_release, "cap": self.cap, "at": time.time()}
         with open(os.path.join(self.chat, "COURIER_CAPPED"), "a") as f:
             f.write(json.dumps(self.capped) + "\n")
         self.log(f"PUSH CAP: {self.capped['why']}. Nothing more is pushed from this VM; training goes on unsaved in "
@@ -318,10 +377,16 @@ class Courier:
         generation back, and the other way round."""
         if isinstance(e, Stopping):
             return  # not a failure of the store: the daemon is ending
-        self.saw(what, e)
         n, t = ("mark_failures", "mark_next") if marks else ("failures", "next_try")
+        if isinstance(e, hf_store.BudgetSpent):  # nothing was sent: a wait for room, not a failure
+            s[t] = self.clock() + e.wait_s
+            self.log(f"{what}: {e}; training goes on")
+            return
+        self.saw(what, e)
         s[n] = s.get(n, 0) + 1
         wait = min(BACKOFF_MAX, 15 * 2 ** min(s[n], 10))
+        if isinstance(e, hf_store.RateLimited):  # the hub's own wait, when it is the longer one
+            wait = max(wait, e.retry_after)
         s[t] = self.clock() + wait
         if marks:
             self.log(hf_store.redact(f"{what}: {type(e).__name__}: {e}", self.store.b.token)[:400]
@@ -365,7 +430,9 @@ class Courier:
             return False
         try:
             self.call(lambda: self.store.b.ensure_branch(s["branch"]))
-            head = self.call(lambda: self.store.head(s["branch"]))
+            if hasattr(self.store.b, "known_branch"):
+                self.store.b.known_branch(s["branch"])  # the child that created it is gone: no second create_branch
+            head =self.call(lambda: self.store.head(s["branch"]))
             s["marks"] = set(self.call(lambda: self.store.mark_steps(name)))
         except Exception as e:  # noqa: BLE001
             self.fail(s, f"{name}: store not read", e)
@@ -386,14 +453,14 @@ class Courier:
             src = os.path.join(self.stage(name), f"rung_{step}")
             try:
                 if step not in s["marks"]:
-                    if self.over_cap():
+                    if self.over_cap() or self.no_room(name, f"mark {step}"):
                         return
                     t0 = time.monotonic()
                     new = self.call(lambda step=step, src=src: self.store.push_mark(name, step, src, ident))
                     self.log(f"{name}: mark at step {step} " + ("pushed" if new else "already in the store"))
                     if new:
                         size = folder_bytes(src, MARK_FILES)
-                        self.since_release += size
+                        self.pushed += size
                         self.stat("push", job=name, kind="mark", step=step, bytes=size,
                                   seconds=round(time.monotonic() - t0, 2), bytes_since_release=self.since_release)
                 s["marks"].add(step)
@@ -424,7 +491,7 @@ class Courier:
         ended = status(self.chat, name) in ("FINISHED", "FAILED")
         if self.min_interval and s["pushed_at"] and self.clock() - s["pushed_at"] < self.min_interval and not ended:
             return
-        if self.over_cap():
+        if self.over_cap() or self.no_room(name, f"generation g{step}"):
             return
         try:
             staged = self.stage_generation(name, step, gen_dir)
@@ -447,42 +514,29 @@ class Courier:
                 self.log(f"{name}: g{step} is already in the store; not written again")
                 return
             ident = {**identity(self.cfg, self.chat, self.jobs[name]), "epoch": self.epoch, "boot_id": self.boot}
-            man = self.call(lambda: self.store.push_generation(s["branch"], name, step, staged, ident, now["commit"]))
+            # The same commit removes what is behind two verified generations (this one and the newest this VM
+            # verified before, whole in the listing of the head just read), never at or above an unpushed mark.
+            prune = {"keep": self.keep, "verified": sorted(s["verified"]),
+                     "protect": [m for m in self.staged_marks(name) if m not in s["marks"]]}
+            man = self.call(lambda: self.store.push_generation(s["branch"], name, step, staged, ident, now["commit"],
+                                                               prune=prune))
         except Exception as e:  # noqa: BLE001 a ConflictError too: the next pass reads the head again
             self.fail(s, f"{name}: generation g{step} not pushed", e)
             return
         size = sum(f["bytes"] for f in man["files"].values())
+        gone = list((man or {}).get("pruned") or [])
         mb = size / 1e6
         s.update(head=step, failures=0, last_error=None, pushed_at=self.clock(), pushes=s["pushes"] + 1)
         s["verified"].add(step)  # these bytes were hashed here and the commit holding them was accepted
         shutil.rmtree(staged, ignore_errors=True)
-        self.since_release += size
-        self.log(f"{name}: generation g{step} pushed ({mb:.1f} MB in {self.clock() - t0:.0f} s)")
+        self.pushed += size
+        self.log(f"{name}: generation g{step} pushed ({mb:.1f} MB in {self.clock() - t0:.0f} s)"
+                 + (f"; generations {gone} removed from the store in the same commit" if gone else ""))
         self.stat("push", job=name, kind="generation", step=step, bytes=size, seconds=round(time.monotonic() - m0, 2),
-                  bytes_since_release=self.since_release)
-        try:
-            protect = [m for m in self.staged_marks(name) if m not in s["marks"]]
-            gone = self.call(lambda: self.store.prune(s["branch"], self.keep, sorted(s["verified"]), protect))
-            if gone:
-                self.log(f"{name}: generations {gone} removed from the store")
-                if self.store.reclaim_on:
-                    grace = float(self.cfg.get("release_grace_s", hf_store.RELEASE_GRACE_S))
-                    r0 = time.monotonic()
-                    r = self.call(lambda: self.store.release_report(self.boot, grace=grace))
-                    self.log(f"{name}: storage release: " + ("another writer holds the lock" if r["held"] else
-                                                             f"{r['objects']} objects deleted, {r['bytes']} bytes freed"))
-                    self.releases = {"count": self.releases["count"] + 1, "objects": self.releases["objects"] + r["objects"],
-                                     "bytes": self.releases["bytes"] + r["bytes"]}
-                    if r["bytes"] > 0:
-                        self.since_release = 0  # the count is of bytes pushed since a release last freed storage
-                    self.stat("release", held=r["held"], objects=r["objects"], bytes=r["bytes"], grace_s=grace,
-                              seconds=round(time.monotonic() - r0, 2), bytes_since_release=self.since_release)
-        except Exception as e:  # noqa: BLE001 the verified generations are in the store; the next push prunes again
-            if not isinstance(e, Stopping):
-                self.saw(f"{name}: prune or release", e)
-                self.log(f"{name}: prune or release failed ({type(e).__name__}: {e}); will try after the next push")
+                  bytes_since_release=self.since_release, pruned=gone)
 
     def tick(self):
+        self.read_measure()
         self.stage_all_marks()  # before any network call
         for name in self.branches:
             for step in (self.push_marks, self.generation, self.push_marks):
@@ -494,6 +548,7 @@ class Courier:
                     break
                 except Exception as e:  # noqa: BLE001 nothing here may end the daemon
                     self.log(f"{name}: courier pass failed ({type(e).__name__}: {e})")
+        self.commit_stat()
         self.write_status()
 
     def idle(self):
@@ -512,9 +567,12 @@ class Courier:
         return True
 
     def write_status(self):
+        b = self.budget()
         rec = {"updated": time.time(), "boot_id": self.boot, "epoch": self.epoch, "huggingface_hub": hf_store.hub_version(),
-               "bytes_since_release": self.since_release, "push_cap_bytes": self.cap, "capped": self.capped,
-               "http_429": self.http_429, "releases": self.releases,
+               "bytes_since_release": self.since_release, "pushed_bytes": self.pushed, "counted_base": self.base,
+               "measure_seq": self.measure_seq, "push_cap_bytes": self.cap, "capped": self.capped,
+               "http_429": self.http_429, "commit_budget_per_hour": b.per_hour if b else 0,
+               "commits_last_hour": b.count() if b else None,
                "jobs": {n: {"branch": s["branch"], "pushed_step": s["head"], "pushed_at": s["pushed_at"],
                             "live_step": s["live_step"], "pushes": s["pushes"], "marks": sorted(s["marks"] or []),
                             "staged_marks": self.staged_marks(n), "verified": sorted(s["verified"]),
@@ -712,11 +770,18 @@ def main(argv=None):
     ap.add_argument("--min-interval", type=float, default=None,
                     help="seconds between generation pushes, for a store that limits commits (default: the config's "
                          "\"min_push_interval_s\", else 0: every save)")
+    ap.add_argument("--commit-budget", type=int, default=None,
+                    help="commits an hour this VM may send to the store, counted in CHAT/store_commits.json (default: "
+                         f"the config's \"store_commit_budget_per_hour\", else {COMMIT_BUDGET}; 0: no limit)")
     ap.add_argument("--push-timeout", type=float, default=1800, help="seconds before a store call is ended; 0: none")
     ap.add_argument("--retry-delay", type=float, default=20)
     ap.add_argument("--limit", type=float, default=0, help="restore: seconds before the whole restore is ended; 0: none")
     a = ap.parse_args(argv)
     cfg = hf_store.load_config(a.config)
+    if a.commit_budget is not None:
+        cfg["store_commit_budget_per_hour"] = a.commit_budget
+    cfg.setdefault("store_commit_budget_per_hour", COMMIT_BUDGET)
+    cfg.setdefault("commit_ledger", os.path.join(a.chat, "store_commits.json"))  # one count for the whole VM
     jobs = {j["name"]: j for j in json.load(open(a.jobs))["jobs"]}
     branches = store_jobs(cfg, jobs)
     logf = os.path.join(a.chat, "courier.log")
@@ -750,6 +815,7 @@ def main(argv=None):
     signal.signal(signal.SIGTERM, ended)
     log(f"courier up: {branches}, epoch {c.epoch}, boot {c.boot[:8]}, huggingface_hub {hf_store.hub_version()}"
         + (f", at most one generation push every {gap:.0f} s" if gap else "")
+        + (f", at most {store.budget.per_hour} commits an hour ({store.budget.count()} sent in the last)" if store.budget else "")
         + (f", push cap {c.cap} bytes ({c.since_release} counted so far)" if c.cap else ""))
     quiet = 0
     while not stop:
@@ -763,6 +829,7 @@ def main(argv=None):
         end = time.monotonic() + a.tick
         while not stop and time.monotonic() < end:  # in short sleeps: a SIGTERM ends the daemon at once
             time.sleep(min(0.2, max(0.0, end - time.monotonic())))
+    c.commit_stat(final=True)
     c.write_status()
     try:
         os.remove(os.path.join(a.chat, "courier.pid"))
