@@ -165,6 +165,59 @@ def test_guardrails_refuse_before_any_create(acct, account, args, match):
     assert acct.calls("create") == []
 
 
+@pytest.mark.parametrize("balance,cap,match", [
+    (9.99, 15.0, r"below \$10"),            # no create under MIN_BALANCE, $2 above Jonathan's $8 floor
+    (47.2, 3.0, "account cap"),             # $2.80 spent since opening + an hour at $0.44 passes a $3 validation cap
+    (35.3, 15.0, "account cap"),            # $14.70 spent + an hour at $0.44 passes the $15 working limit
+])
+def test_account_wide_spend_and_floors_refuse_before_any_create(acct, balance, cap, match):
+    """Codex's review of 7 Nov: the floor at least $8 with teardown headroom, and spend bounded account-wide since opening."""
+    acct.set(balance=balance)
+    with pytest.raises(api.Refused, match=match):
+        api.create_vm("camp-1", FS_ID, 0.0, 5.0, account_cap=cap)
+    assert acct.calls("create") == []
+
+
+def test_a_validation_cap_allows_the_first_run(acct):
+    acct.set(balance=49.96)                 # the mount test's $0.04 already counted
+    api.create_vm("camp-1", FS_ID, 0.0, 3.0, account_cap=3.0)
+    assert len(acct.calls("create")) == 1
+
+
+@pytest.mark.parametrize("cap", [0, -1, 15.01, None])
+def test_an_account_cap_above_the_working_limit_is_refused(acct, cap):
+    with pytest.raises(api.Refused, match="account-wide cap"):
+        api.create_vm("camp-1", FS_ID, 0.0, 5.0, account_cap=cap)
+    assert acct.calls("create") == []
+
+
+@pytest.mark.parametrize("env,match", [("20", "account-wide cap"), ("three", "not a number")])
+def test_the_runner_refuses_a_bad_account_cap(tmp_path, monkeypatch, env, match):
+    monkeypatch.setenv("JARVIS_ACCOUNT_CAP", env)
+    with pytest.raises(api.Refused, match=match):
+        jt.JarvisTransport("L4", 50, 5.0, "abc123", "camp", str(tmp_path), print)
+
+
+def test_the_running_floor_has_teardown_headroom_above_eight(tr, acct):
+    assert api.MIN_BALANCE_RUNNING >= api.FLOOR + 1 and api.MIN_BALANCE > api.MIN_BALANCE_RUNNING and api.SPEND_CEILING <= 15
+    tr.create(tr.st)
+    acct.set(balance=8.95)
+    tr.R(tr.st)["balance_start"] = 9.0      # the run's own spend is small: the floor is what stops it
+    tr.account_cap = 15.0
+    tr.refresh(tr.st)
+    assert r"below $9" in tr.over_budget(tr.st)
+
+
+def test_account_spend_at_its_cap_stops_a_run(tr, acct):
+    tr.account_cap = 3.0
+    tr.create(tr.st)
+    assert tr.over_budget(tr.st) is None
+    acct.set(balance=46.95)                 # $3.05 spent since opening
+    tr.R(tr.st)["balance_start"] = 46.96     # the run's own spend is small; the account's is what stops it
+    tr.refresh(tr.st)
+    assert "account spend" in tr.over_budget(tr.st)
+
+
 def test_live_instances_are_counted_before_every_create(acct):
     acct.add_vm(status="Paused")  # a paused VM still bills its disk, so it counts
     with pytest.raises(api.Refused, match="cap 1"):

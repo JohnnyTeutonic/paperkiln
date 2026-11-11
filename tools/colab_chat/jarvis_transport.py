@@ -55,6 +55,11 @@ class JarvisTransport(rt.RunPodTransport):
             raise api.Refused(f"--backend jarvis needs --max-usd, up to {api.SPEND_CEILING:.0f}")
         if not RUNNER_NAME_RE.match(name):
             raise api.Refused(f"--name {name!r}: 1 to 27 letters, digits, hyphens or underscores for Jarvis")
+        cap = os.environ.get("JARVIS_ACCOUNT_CAP")
+        try:   # account-wide spend since opening, every charge counted (Codex's review, 7 Nov): JARVIS_ACCOUNT_CAP, at most api.ACCOUNT_CAP
+            self.account_cap = api.checked_account_cap(float(cap) if cap is not None else api.ACCOUNT_CAP)
+        except ValueError:
+            raise api.Refused(f"JARVIS_ACCOUNT_CAP {cap!r} is not a number") from None
         super().__init__(gpu, "SECURE", volume_gb, None, "jarvis-vm-template", max_usd, commit, name, home, log)
         self._balance = None         # last balance read; refresh() keeps it, over_budget() must not call jl
         self._ssh_down_since = None  # first of an unbroken run of ssh failures
@@ -93,6 +98,8 @@ class JarvisTransport(rt.RunPodTransport):
             return f"Jarvis spend ${self.spent(st):.2f} reached --max-usd {self.max_usd}; stopping"
         if self._balance is not None and self._balance < api.MIN_BALANCE_RUNNING:
             return f"Jarvis balance ${self._balance:.2f} is below ${api.MIN_BALANCE_RUNNING:.0f}; stopping"
+        if self._balance is not None and api.account_spent(self._balance) >= self.account_cap:
+            return f"Jarvis account spend ${api.account_spent(self._balance):.2f} reached its cap ${self.account_cap:.2f}; stopping"
         return None
 
     # ------------------------------------------------------------ ssh
@@ -276,7 +283,7 @@ class JarvisTransport(rt.RunPodTransport):
             st.save()
             start = time.time()
             try:
-                vm = api.create_vm(name, fs["id"], self.spent(st), self.max_usd, timeout=self._create_timeout())
+                vm = api.create_vm(name, fs["id"], self.spent(st), self.max_usd, timeout=self._create_timeout(), account_cap=self.account_cap)
             except api.Refused:
                 R["creating"] = None  # nothing was sent to Jarvis
                 st.save()

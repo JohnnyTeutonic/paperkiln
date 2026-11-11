@@ -44,10 +44,13 @@ VM_DISK_GB = 100           # Jarvis's minimum for a VM
 SSH_USER = "ubuntu"
 MAX_VMS = 1                # account-wide, every create: one validated job, then raise it deliberately
 MAX_FILESYSTEMS = 2        # one per campaign
-MIN_BALANCE = 8.0          # dollars; no create below it
-MIN_BALANCE_RUNNING = 5.0  # dollars; a running VM is destroyed below it, well clear of the zero-balance deletion
+FLOOR = 8.0                # Jonathan's working floor (7 Nov 2026): the balance never goes under it
+MIN_BALANCE = 10.0         # dollars; no create below it
+MIN_BALANCE_RUNNING = 9.0  # dollars; a running VM is destroyed below it: $1 above FLOOR covers teardown (an L4 at $0.50/h for two hours)
 MAX_USD_PER_HR = 0.50      # the listed L4 price is 0.44; a rise beyond this needs a person
-SPEND_CEILING = 40.0       # the most any one runner's --max-usd may be
+SPEND_CEILING = 15.0       # the most any one runner's --max-usd may be: Jonathan's working limit of $15 spent (7 Nov 2026)
+OPENING_CREDIT = 50.0      # the account's credit when Jonathan opened it (7 Nov 2026); spend since then is OPENING_CREDIT - balance
+ACCOUNT_CAP = 15.0         # account-wide spend since opening, every runner and charge included (mount tests, filesystems, VMs)
 FS_MIN_GB, FS_MAX_GB = 50, 200
 FS_USD_PER_GB_MONTH = 0.10
 JL_TIMEOUT = 90            # one read or destroy; jl's own HTTP limits are 10 s connect + 120 s read
@@ -121,6 +124,19 @@ def balance():
         return float(d["balance"]["balance"])
     except (KeyError, TypeError, ValueError):
         raise JarvisError("jl status: no balance in the reply") from None
+
+
+def account_spent(bal):
+    """Dollars spent on the account since it opened, from the balance: every charge counts, whoever made it (Codex's review, 7 Nov 2026).
+    A top-up would make this read low, so the balance floors still apply on their own."""
+    return OPENING_CREDIT - bal
+
+
+def checked_account_cap(cap):
+    """An account-wide cap for one runner: at most ACCOUNT_CAP; a validation run takes a smaller one (cuda_validate_v1: $3)."""
+    if cap is None or not 0 < cap <= ACCOUNT_CAP:
+        raise Refused(f"an account-wide cap up to ${ACCOUNT_CAP:.0f} is required, got {cap}")
+    return cap
 
 
 def stock():
@@ -200,9 +216,10 @@ def vm_faults(vm):
     return faults
 
 
-def create_vm(name, fs_id, spent, max_usd, gpu=GPU_TYPE, timeout=CREATE_TIMEOUT):
+def create_vm(name, fs_id, spent, max_usd, gpu=GPU_TYPE, timeout=CREATE_TIMEOUT, account_cap=ACCOUNT_CAP):
     """`jl create` for one on-demand L4 VM behind the guardrails; returns the instance. Refused means
     nothing was sent to Jarvis; JarvisError means a VM may exist, so look its name up."""
+    account_cap = checked_account_cap(account_cap)
     if gpu != GPU_TYPE:
         raise Refused(f"only {GPU_TYPE} runs on Jarvis, not {gpu}")
     if not NAME_RE.match(name or ""):
@@ -225,6 +242,10 @@ def create_vm(name, fs_id, spent, max_usd, gpu=GPU_TYPE, timeout=CREATE_TIMEOUT)
             raise Refused(f"{GPU_TYPE} lists at ${s['usd_per_hr']:.2f}/h, above ${MAX_USD_PER_HR:.2f}/h")
         if spent + s["usd_per_hr"] > max_usd:
             raise Refused(f"${spent:.2f} spent plus an hour at ${s['usd_per_hr']:.2f} passes the ${max_usd:.2f} cap")
+        if account_spent(bal) + s["usd_per_hr"] > account_cap:
+            raise Refused(f"${account_spent(bal):.2f} spent on the account plus an hour at ${s['usd_per_hr']:.2f} passes the account cap ${account_cap:.2f}")
+        if bal - s["usd_per_hr"] < MIN_BALANCE_RUNNING:
+            raise Refused(f"an hour at ${s['usd_per_hr']:.2f} would take the balance ${bal:.2f} under ${MIN_BALANCE_RUNNING:.0f}")
         vm = _jl(["create", "--gpu", GPU_TYPE, "--vm", "--region", REGION, "--storage", str(VM_DISK_GB),
                   "--fs-id", str(fs_id), "--name", name, "--yes"], timeout)
     if not isinstance(vm, dict) or not vm.get("machine_id"):
