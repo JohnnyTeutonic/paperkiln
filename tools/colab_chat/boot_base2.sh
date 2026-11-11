@@ -9,8 +9,12 @@
 # The runner has put chat/store.json (repo, branches, campaign, epoch, min_step) and has moved the token to a tmpfs
 # (its path is "token_file" in store.json) before this runs. The token is never echoed: no `set -x` in this file.
 # A failed step, or a boot longer than PK_BOOT_LIMIT_S, ends as BOOT_FAILED with the courier stopped and every copy
-# of the token removed. When every job has ended the courier has PK_COURIER_WAIT_S (default 1800) to push the last of
-# it; the token is then removed whether or not the courier has ended.
+# of the token removed. When every job has ended the courier has PK_COURIER_WAIT_S (else store.json's
+# "courier_wait_s", which the runner sends; else 5400) to push the last of
+# it; the token is then removed whether or not the courier has ended. That window is the one number the end of a run
+# hangs on: the courier's waits fit inside it (at most 15 minutes for room in its commit budget and 30 for a 429 of the
+# hub, hf_store.py), and the runner's --store-settle-min is never shorter than it and a tick (runner_multi.py,
+# STORE_COURIER_WAIT_S).
 # PK_BOOT_ROOT (default /content) moves the whole tree for a local rehearsal with a dir: store.
 set -euo pipefail
 COMMIT=$1
@@ -121,7 +125,7 @@ touch "$CHAT/BOOT_DONE"
 # When the manager has ended: wait for the courier to push the last of it and exit, at most PK_COURIER_WAIT_S, then
 # take the token off the VM whether or not the courier has ended (forget-token ends it first). A courier that
 # cannot finish (a store that refuses, a push that hangs) never keeps the token on the VM past that wait.
-WAIT=${PK_COURIER_WAIT_S:-1800}
+WAIT=${PK_COURIER_WAIT_S:-$(python3 -c "import json, sys; print(int(json.load(open(sys.argv[1])).get('courier_wait_s', 5400)))" "$CFG" 2> /dev/null || echo 5400)}
 TOKDIR=${PK_STORE_TOKEN_DIR:-/dev/shm/pk_store}
 nohup bash -c "python3 -u tools/colab_chat/jobs_vm.py $JOBS > $CHAT/jobs.log 2>&1; echo FINISHED > $CHAT/STATUS
   end=\$(( \$(date +%s) + $WAIT ))

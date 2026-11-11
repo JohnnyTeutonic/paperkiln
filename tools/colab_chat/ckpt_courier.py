@@ -22,20 +22,28 @@ run (a daemon the boot starts beside jobs_vm.py, in a process group of its own).
   writing, and it is the one that stops, when it next reads the head. Otherwise the generation goes up as one
   commit against that head, with its campaign, job, spec and inputs hashes, epoch and boot id. A step already in
   the store is never written again.
-- prune, in that same commit (a save is ONE commit; the hub limits commits per repository): the generations behind
-  two that this VM has verified, by its own push (the one being added counts) or by the download of its restore,
-  and never at or above a mark that is staged and not yet pushed. A VM never releases storage: the runner does,
-  from home, on a timer (runner_multi.py --store-release-storage).
-- the commit budget ("store_commit_budget_per_hour" in the config, 30 by default here, 0 for none): every commit of
-  this VM is counted over a rolling hour in CHAT/store_commits.json (hf_store.CommitBudget). With the budget spent a
-  generation or a mark waits for room and then goes, always the newest. The hub's HTTP 429 is waited out for at
-  least its Retry-After.
+- after the push, a listing (a read, not a commit): the generation counts as verified by this VM only when a listing
+  taken AFTER its own commit shows every file of its manifest at the size and LFS sha256 hashed here. One that is
+  not whole is said loudly, never counts, and is left for the restore to skip; a listing that could not be read is
+  asked again before the next push.
+- prune, in the commit of the NEXT save (a save is ONE commit; the hub limits commits per repository): the
+  generations behind two that this VM has verified, by that listing or by the download of its restore. The
+  generation a commit adds never counts in that commit, so the branch holds three between two saves. Never at or
+  above a mark that is staged and not yet pushed. The commit also writes the ledger of each generation it removes
+  (hf_store.py: what a release may delete). A VM never releases storage: the runner does, from home, on a timer
+  (runner_multi.py --store-release-storage).
+- the commit budget ("store_commit_budget_per_hour" in the config, 24 by default here, 0 for none): every commit
+  and branch creation of this VM is counted over a rolling hour in CHAT/store_commits.json (hf_store.CommitBudget;
+  a ceiling for this writer, not for the repository). With the budget spent a generation or a mark waits for room,
+  at most 15 minutes, and then goes, always the newest. The hub's HTTP 429 is waited out for its Retry-After, at
+  most 30 minutes. So the last generation of a run is sent within 45 minutes of the job's end at the latest, inside
+  the 90 the boot gives the courier before it takes the token away (boot_base2.sh, PK_COURIER_WAIT_S).
 - the push cap ("push_cap_bytes" in the config, 0 for none): the bytes counted are what the store held for this
   campaign when a release from home last measured it (CHAT/store_measure.json, written by the runner; before the
   first one "pushed_bytes_start", what the sessions before this one had counted) plus what this VM has pushed
   since; at the cap this courier pushes nothing more, says why in its status ("capped") and log, and writes
   CHAT/COURIER_CAPPED.
-A failed push is retried with a growing wait (at most ten minutes, or the hub's Retry-After when that is longer) and
+A failed push is retried with a growing wait (at most ten minutes, or the hub's Retry-After, capped at 30) and
 always with the newest generation; the trainer never waits on any of this. Every store call runs in a child with a
 time limit, and none is started after SIGTERM.
 Status: CHAT/courier_status.json. Log: CHAT/courier.log, with one `stat {json}` line per push (bytes, seconds, the
@@ -72,8 +80,8 @@ import hf_store  # noqa: E402
 from hf_store import GEN_FILES, MARK_FILES, StoreError, VerifyError, bounded, file_step, gen_step  # noqa: E402,F401
 
 BACKOFF_MAX = 600
-COMMIT_BUDGET = 30  # commits an hour from one VM, of the hub's 128 for the whole repo (three arms share it)
-FLAT =("model.safetensors", "optim.safetensors", "state.txt")
+COMMIT_BUDGET = 24  # commits an hour from one VM, of the hub's 128 for the whole repo (three arms share it)
+FLAT = ("model.safetensors", "optim.safetensors", "state.txt")
 
 
 class Stopping(StoreError):
@@ -164,7 +172,7 @@ class Courier:
         self.epoch, self.boot = int(self.cfg.get("epoch") or 0), boot or boot_id(chat)
         self.s = {n: {"branch": b, "head": None, "known": False, "marks": None, "failures": 0, "next_try": 0,
                       "last_error": None, "pushed_at": None, "live_step": None, "refused": None, "pushes": 0,
-                      "fenced": None, "verified": set(self.restored(n))}
+                      "fenced": None, "verified": set(self.restored(n)), "to_verify": {}, "not_whole": set()}
                   for n, b in self.branches.items()}
         # The push cap. The count is `base` (what the store held for this campaign before this VM's pushes: the
         # runner's "pushed_bytes_start", then each measurement a release from home hands over) plus `pushed` (the
@@ -429,10 +437,10 @@ class Courier:
         if self.clock() < s["next_try"]:
             return False
         try:
-            self.call(lambda: self.store.b.ensure_branch(s["branch"]))
+            self.call(lambda: self.store.ensure_branch(s["branch"]))  # through the budget; its 429 read as a commit's
             if hasattr(self.store.b, "known_branch"):
                 self.store.b.known_branch(s["branch"])  # the child that created it is gone: no second create_branch
-            head =self.call(lambda: self.store.head(s["branch"]))
+            head = self.call(lambda: self.store.head(s["branch"]))
             s["marks"] = set(self.call(lambda: self.store.mark_steps(name)))
         except Exception as e:  # noqa: BLE001
             self.fail(s, f"{name}: store not read", e)
@@ -493,6 +501,8 @@ class Courier:
             return
         if self.over_cap() or self.no_room(name, f"generation g{step}"):
             return
+        for old, files in sorted(s["to_verify"].items()):  # a listing that could not be read after an earlier push
+            self.verify(name, old, files)
         try:
             staged = self.stage_generation(name, step, gen_dir)
         except VerifyError as e:
@@ -514,9 +524,10 @@ class Courier:
                 self.log(f"{name}: g{step} is already in the store; not written again")
                 return
             ident = {**identity(self.cfg, self.chat, self.jobs[name]), "epoch": self.epoch, "boot_id": self.boot}
-            # The same commit removes what is behind two verified generations (this one and the newest this VM
-            # verified before, whole in the listing of the head just read), never at or above an unpushed mark.
-            prune = {"keep": self.keep, "verified": sorted(s["verified"]),
+            # The same commit removes what is behind the two newest generations this VM has verified (each by a
+            # listing after its own commit, or by the restore's download; whole in the listing of the head just
+            # read), never at or above an unpushed mark. The generation being added does not count yet.
+            prune ={"keep": self.keep, "verified": sorted(s["verified"]),
                      "protect": [m for m in self.staged_marks(name) if m not in s["marks"]]}
             man = self.call(lambda: self.store.push_generation(s["branch"], name, step, staged, ident, now["commit"],
                                                                prune=prune))
@@ -527,13 +538,37 @@ class Courier:
         gone = list((man or {}).get("pruned") or [])
         mb = size / 1e6
         s.update(head=step, failures=0, last_error=None, pushed_at=self.clock(), pushes=s["pushes"] + 1)
-        s["verified"].add(step)  # these bytes were hashed here and the commit holding them was accepted
         shutil.rmtree(staged, ignore_errors=True)
         self.pushed += size
         self.log(f"{name}: generation g{step} pushed ({mb:.1f} MB in {self.clock() - t0:.0f} s)"
                  + (f"; generations {gone} removed from the store in the same commit" if gone else ""))
         self.stat("push", job=name, kind="generation", step=step, bytes=size, seconds=round(time.monotonic() - m0, 2),
                   bytes_since_release=self.since_release, pruned=gone)
+        self.verify(name, step, man["files"])
+
+    def verify(self, name, step, files=None):
+        """After a push: a listing taken now, after the generation's own commit. Whole against the manifest hashed
+        here (every size, every LFS sha256): the generation counts as verified by this VM, and from the next save
+        on a prune may rely on it. Not whole: said loudly, recorded, and it never counts; nothing was removed on
+        its account, and a restore gives it up for the one before. Not read: asked again before the next push."""
+        s = self.s[name]
+        try:
+            whole = self.call(lambda: self.store.listed_whole(s["branch"], step, files))
+        except Exception as e:  # noqa: BLE001
+            s["to_verify"][step] = files
+            if not isinstance(e, Stopping):
+                self.log(f"{name}: g{step} is pushed; the listing that verifies it was not read "
+                         f"({type(e).__name__}); it does not count yet")
+            return
+        s["to_verify"].pop(step, None)
+        if whole:
+            s["verified"].add(step)
+        else:
+            s["not_whole"].add(step)
+            self.log(f"{name}: g{step} is NOT WHOLE in the store after its own commit (a file is short, missing or "
+                     "of another hash). It does not count as verified, nothing is removed on its account, and a "
+                     "resume takes the generation before it.")
+        self.stat("verify", job=name, step=step, whole=bool(whole))
 
     def tick(self):
         self.read_measure()
@@ -548,8 +583,11 @@ class Courier:
                     break
                 except Exception as e:  # noqa: BLE001 nothing here may end the daemon
                     self.log(f"{name}: courier pass failed ({type(e).__name__}: {e})")
-        self.commit_stat()
-        self.write_status()
+        for last in (self.commit_stat, self.write_status):
+            try:
+                last()
+            except Exception as e:  # noqa: BLE001 a count or a status that cannot be written never ends the daemon
+                self.log(f"courier: {last.__name__} failed ({type(e).__name__}: {e})")
 
     def idle(self):
         """True when every job has ended and all it left is in the store (or this courier is fenced off it, or
@@ -576,6 +614,7 @@ class Courier:
                "jobs": {n: {"branch": s["branch"], "pushed_step": s["head"], "pushed_at": s["pushed_at"],
                             "live_step": s["live_step"], "pushes": s["pushes"], "marks": sorted(s["marks"] or []),
                             "staged_marks": self.staged_marks(n), "verified": sorted(s["verified"]),
+                            "not_whole": sorted(s["not_whole"]), "to_verify": sorted(s["to_verify"]),
                             "failures": s["failures"], "last_error": s["last_error"], "refused_step": s["refused"],
                             "fenced": s["fenced"]} for n, s in self.s.items()}}
         p = os.path.join(self.chat, "courier_status.json")

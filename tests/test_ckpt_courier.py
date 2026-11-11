@@ -94,7 +94,7 @@ def commit_lines(tmp_path, what):
     return [ln for ln in (tmp_path / "repo" / "commits.jsonl").read_text().splitlines() if f'"{what}: ' in ln]
 
 
-def test_pushes_each_new_generation_once_and_keeps_two(tmp_path):
+def test_pushes_each_new_generation_once_and_keeps_two_verified_and_the_newest(tmp_path):
     chat, backend, store, c, logs, _ = setup(tmp_path)
     c.tick()  # nothing saved yet
     assert backend.commits == 0
@@ -103,7 +103,8 @@ def test_pushes_each_new_generation_once_and_keeps_two(tmp_path):
         events(chat, range(step - 99, step + 3))  # the trainer is two steps past the save when the courier looks
         c.tick()
         c.tick()  # nothing new: no second push
-    assert store.steps("ckpt-N") == [300, 400]
+    assert store.steps("ckpt-N") == [200, 300, 400]   # two verified when g400 went up, and g400 itself
+    assert [v["step"] for v in stats(logs, "verify")] == [100, 200, 300, 400] and all(v["whole"] for v in stats(logs, "verify"))
     assert len(commit_lines(tmp_path, "generation")) == 4
     doc = json.loads((chat / "courier_status.json").read_text())
     st = doc["jobs"]["pt"]
@@ -179,7 +180,7 @@ def test_a_step_behind_the_store_is_refused_and_no_step_is_written_twice(tmp_pat
     before = backend.commits
     c2.tick()
     c2.tick()
-    assert backend.commits == before and store.steps("ckpt-N") == [200, 300]
+    assert backend.commits == before and store.steps("ckpt-N") == [100, 200, 300]
     st = json.loads((chat2 / "courier_status.json").read_text())["jobs"]["pt"]
     assert st["refused_step"] == 100 and st["pushed_step"] == 300
     assert sum("is behind the store's g300; refused" in ln for ln in logs) == 1
@@ -190,10 +191,13 @@ def test_a_step_behind_the_store_is_refused_and_no_step_is_written_twice(tmp_pat
     assert (tmp_path / "repo" / "ckpt-N" / "gens" / "g300" / "model.safetensors").read_bytes() == S.state_at(300)[0]
     S.make_gen(str(chat2 / "pt"), 400, seed=7)
     c2.tick()
-    assert store.steps("ckpt-N") == [200, 300, 400]  # one generation verified on this VM so far: nothing pruned yet
+    assert store.steps("ckpt-N") == [100, 200, 300, 400]  # nothing verified on this VM when g400 went up: nothing pruned
     S.make_gen(str(chat2 / "pt"), 500, seed=7)
     c2.tick()
-    assert store.steps("ckpt-N") == [400, 500]
+    assert store.steps("ckpt-N") == [100, 200, 300, 400, 500]  # one generation verified on this VM (g400): not two
+    S.make_gen(str(chat2 / "pt"), 600, seed=7)
+    c2.tick()
+    assert store.steps("ckpt-N") == [400, 500, 600]  # two, g400 and g500: what is behind them goes
 
 
 def test_fencing_two_couriers_on_one_branch(tmp_path):
@@ -283,7 +287,7 @@ def test_a_head_of_lower_epoch_never_fences_the_newer_courier(tmp_path):
     assert new.s["pt"]["known"] and new.s["pt"]["head"] == 200
     S.make_gen(str(chat1 / "pt"), 300, seed=9)
     old.tick()                              # the stale VM is still alive and pushes g300, epoch 1
-    assert store.steps("ckpt-N") == [200, 300]
+    assert store.steps("ckpt-N") == [100, 200, 300]
     S.make_gen(str(chat2 / "pt"), 400)
     new.tick()                              # the replacement reaches g400: the head is another boot's, above what it knew
     assert new.s["pt"]["fenced"] is None and not (chat2 / "COURIER_FENCED").exists()
@@ -392,7 +396,7 @@ def test_marks_are_staged_first_pushed_first_once_and_never_removed(tmp_path):
     for step in (300, 400, 500, 600):
         S.make_gen(str(out), step)
         c2.tick()
-    assert store.steps("ckpt-N") == [500, 600] and store.mark_steps("pt") == [100, 200]
+    assert store.steps("ckpt-N") == [400, 500, 600] and store.mark_steps("pt") == [100, 200]
     assert not any('"branch": "main"' in ln and '"deletes": ["' in ln
                    for ln in (tmp_path / "repo" / "commits.jsonl").read_text().splitlines())
 
@@ -436,30 +440,33 @@ def test_prune_waits_for_verified_generations_and_spares_an_unpushed_marks_gener
     for step in (10, 20, 30):
         S.make_gen(str(tmp_path / "vm0" / "chat" / "pt"), step)
         other.tick()
-    assert store.steps("ckpt-N") == [20, 30]
+    assert store.steps("ckpt-N") == [10, 20, 30]   # three: the one a commit adds never counts in that commit
     S.make_gen(out, 100)
     c.tick()
-    assert store.steps("ckpt-N") == [20, 30, 100]  # one generation verified here: the two before it are not removed
+    assert store.steps("ckpt-N") == [10, 20, 30, 100]  # nothing verified here when g100 went up
     S.make_gen(out, 150)
     c.tick()
-    assert store.steps("ckpt-N") == [100, 150] and c.s["pt"]["verified"] == {100, 150}
+    assert store.steps("ckpt-N") == [10, 20, 30, 100, 150]  # one generation verified here (g100, by its listing)
+    S.make_gen(out, 180)
+    c.tick()                                        # two verified here, g100 and g150: what is behind g100 goes
+    assert store.steps("ckpt-N") == [100, 150, 180] and c.s["pt"]["verified"] == {100, 150, 180}
     # Step 200 is a mark step and main refuses commits: the mark stays staged, the generation still goes up, and
     # from then on nothing at or above 200 is pruned, so the mark's weights stay recoverable from the store.
     backend.fail_marks = True
     S.make_gen(out, 200)
     c.tick()
-    assert c.staged_marks("pt") == [200] and store.mark_steps("pt") == []
+    assert c.staged_marks("pt") == [200] and store.mark_steps("pt") == [] and store.steps("ckpt-N") == [150, 180, 200]
     for step in (300, 400, 500):
         clock.t += 3600
         S.make_gen(out, step)
         c.tick()
-    assert store.steps("ckpt-N") == [200, 300, 400, 500]
+    assert store.steps("ckpt-N") == [200, 300, 400, 500]   # without the mark's hold g200 would have gone with g500
     assert json.loads((chat / "courier_status.json").read_text())["jobs"]["pt"]["staged_marks"] == [200]
     backend.fail_marks = False
     clock.t += 3600
     S.make_gen(out, 600)
     c.tick()
-    assert store.mark_steps("pt") == [200] and store.steps("ckpt-N") == [500, 600]
+    assert store.mark_steps("pt") == [200] and store.steps("ckpt-N") == [400, 500, 600]
     # A restore's download counts as a verification on the VM that made it, and only there.
     chat2 = tmp_path / "vm2" / "chat"
     chat2.mkdir(parents=True)
@@ -469,7 +476,10 @@ def test_prune_waits_for_verified_generations_and_spares_an_unpushed_marks_gener
     assert c2.s["pt"]["verified"] == {600}
     S.make_gen(str(chat2 / "pt"), 700)
     c2.tick()
-    assert fresh(tmp_path).steps("ckpt-N") == [600, 700]
+    assert fresh(tmp_path).steps("ckpt-N") == [400, 500, 600, 700]   # one verified on this VM: nothing removed yet
+    S.make_gen(str(chat2 / "pt"), 800)
+    c2.tick()
+    assert fresh(tmp_path).steps("ckpt-N") == [600, 700, 800] and c2.s["pt"]["verified"] == {600, 700, 800}
 
 
 def test_a_save_is_one_commit_and_the_courier_never_releases(tmp_path):
@@ -485,11 +495,18 @@ def test_a_save_is_one_commit_and_the_courier_never_releases(tmp_path):
         S.make_gen(str(chat / "pt"), step)
         c.tick()
         c.tick()
-    assert store.steps("ckpt-N") == [400, 500] and asked == [] and backend.commits == 4
+    assert store.steps("ckpt-N") == [300, 400, 500] and asked == [] and backend.commits == 4
     sent = [json.loads(ln) for ln in (tmp_path / "repo" / "commits.jsonl").read_text().splitlines()]
     assert [x["message"] for x in sent] == [f"generation: gens/g{s}" for s in (100, 300, 400, 500)]
-    assert [x["deletes"] for x in sent] == [[], [], ["gens/g100/"], ["gens/g300/"]] and {x["branch"] for x in sent} == {"ckpt-N"}
-    assert [p["pruned"] for p in stats(logs, "push")] == [[], [], [100], [300]]
+    # The commit that adds g500 removes g100, behind g300 and g400, each verified by a listing after its own commit;
+    # g400 did not count in the commit that added it. The same commit writes g100's ledger.
+    assert [x["deletes"] for x in sent] == [[], [], [], ["gens/g100/"]] and {x["branch"] for x in sent} == {"ckpt-N"}
+    assert "pruned/g100.json" in sent[-1]["adds"] and not any("pruned/" in a for x in sent[:-1] for a in x["adds"])
+    ledger = json.loads((tmp_path / "repo" / "ckpt-N" / "pruned" / "g100.json").read_text())
+    m100, o100 = S.state_at(100)
+    assert ledger["step"] == 100 and ledger["format"] == hf_store.PRUNED_FORMAT and abs(ledger["at"] - time.time()) < 60
+    assert {S.sha(m100), S.sha(o100)} <= {o["sha256"] for o in ledger["objects"]}
+    assert [p["pruned"] for p in stats(logs, "push")] == [[], [], [], [100]]
     assert any("generations [100] removed from the store in the same commit" in ln for ln in logs)
     st = json.loads((chat / "courier_status.json").read_text())
     assert "releases" not in st and st["commit_budget_per_hour"] == 0 and st["jobs"]["pt"]["verified"] == [100, 300, 400, 500]
@@ -601,7 +618,7 @@ def test_the_log_carries_what_each_transfer_cost_and_the_push_cap_stops_the_cour
         S.make_gen(str(chat2 / "pt"), step)
         measure(step, held, at_pushed=again2.pushed)
         again2.tick()
-    assert again2.capped is None and store1.steps("ckpt-N") == [1000, 1100] and again2.since_release < held + 2 * gen
+    assert again2.capped is None and store1.steps("ckpt-N") == [900, 1000, 1100] and again2.since_release < held + 2 * gen
     assert sum(p["bytes"] for p in stats(logs2, "push")) > 5 * gen     # far more than the cap's room was pushed
     # HTTP 429: counted when a failure names it, and the count is in the log and the status.
     chat4, backend4, store4, c4, logs4, clock4 = setup(tmp_path / "d")
@@ -726,7 +743,7 @@ def test_min_interval_spaces_pushes_but_not_the_last(tmp_path):
     assert store.steps("ckpt-N") == [100, 400] and c.idle()  # a job that ended: its last generation goes at once
 
 
-def hub_courier(tmp_path, per_hour, push_timeout=None, cfg=CFG):
+def hub_courier(tmp_path, per_hour, push_timeout=None, cfg=CFG, essential_wait=hf_store.ESSENTIAL_WAIT_S):
     """A courier on the real HfBackend over the stand-in hub (tests/hub_standin.py), with a commit budget, one
     clock for the courier, the budget and the hub, and a trainer that saves when the test says."""
     import hub_standin
@@ -736,9 +753,9 @@ def hub_courier(tmp_path, per_hour, push_timeout=None, cfg=CFG):
     tf.write_text(TOKEN + "\n")
     tf.chmod(0o600)
     logs, clock = [], Clock()
-    budget = hf_store.CommitBudget(per_hour, str(chat / "store_commits.json"), clock=clock)
+    budget = hf_store.CommitBudget(per_hour, str(chat / "store_commits.json"), clock=clock, essential_wait=essential_wait)
     store = hf_store.open_store({"repo": "someone/base2-store", "repo_type": "dataset", "token_file": str(tf)},
-                                api=hub_standin.DiskApi(str(root)), log=logs.append, delay=0, budget=budget)
+                                api=hub_standin.DiskApi(str(root)), log=logs.append, delay=0, budget=budget, clock=clock)
     c = cc.Courier(store, str(chat), JOBS, BR, log=logs.append, clock=clock, cfg=cfg, push_timeout=push_timeout)
 
     def at(t):
@@ -754,29 +771,36 @@ def hub_log(root):
     return [json.loads(ln) for ln in p.read_text().splitlines()] if p.exists() else []
 
 
+def hub_fresh(root):
+    import hub_standin
+    return hf_store.Store(hf_store.HfBackend("someone/base2-store", "dataset", TOKEN, api=hub_standin.DiskApi(str(root))),
+                          log=lambda m: None, delay=0)
+
+
 def test_a_courier_under_the_hubs_commit_limit_waits_out_the_429_and_loses_no_generation(tmp_path):
     """Part a of the rehearsal, 12 Nov 2026: another writer on the repo (the watcher of then) had used the hub's
     hourly limit, and the courier's commits were refused with HTTP 429 for 25 minutes. Here the hub refuses with
     the library's own error and a Retry-After. The courier sends nothing more until that wait is over (it used to
     try again after 60, 120, 240 and 480 s, each a refused commit), training goes on, and then the mark and the
-    NEWEST generation go up and resume. Every store call runs in a child, as on a VM."""
+    NEWEST generation go up and resume. Every store call runs in a child, as on a VM. The hub counts a branch's
+    creation as a commit, and so does the courier's budget."""
     pytest.importorskip("huggingface_hub")
-    import hub_standin
     chat, root, store, c, logs, clock, at = hub_courier(tmp_path, per_hour=30, push_timeout=60)
     t0 = clock.t
-    (root / "limit.json").write_text(json.dumps({"per_window": 6, "retry_after": "auto"}))
-    other = hf_store.Store(hf_store.HfBackend("someone/base2-store", "dataset", TOKEN, api=hub_standin.DiskApi(str(root))))
+    (root / "limit.json").write_text(json.dumps({"per_window": 7, "retry_after": "auto"}))
+    other = hub_fresh(root)
     watch = tmp_path / "watch"
     watch.mkdir()
     (watch / "watch.json").write_text("{}")
-    for i in range(5):                                   # the other writer takes five of the hour's six commits
-        at(t0 + i)
+    for i in range(4):                                   # the other writer takes five of the hour's seven: its
+        at(t0 - 1500 + i)                                # branch and four commits, 25 minutes ago
         other.push_set("base2-build", f"watch/{i}", str(watch))
     out = str(chat / "pt")
     at(t0 + 10)
     S.make_gen(out, 100)
-    c.tick()                                             # the sixth: taken
-    assert store.steps("ckpt-N") == [100] and [x["ok"] for x in hub_log(root)] == [True] * 6
+    c.tick()                                             # the courier's branch and g100: the sixth and the seventh
+    assert store.steps("ckpt-N") == [100] and [x["ok"] for x in hub_log(root)] == [True] * 7
+    assert store.budget.count() == 2 and c.s["pt"]["verified"] == {100}
     at(t0 + 510)
     S.make_gen(out, 200)                                 # a mark step: the mark goes first, and is the one refused
     c.tick()
@@ -784,47 +808,140 @@ def test_a_courier_under_the_hubs_commit_limit_waits_out_the_429_and_loses_no_ge
     assert len(n429) == 1 and n429[0]["count"] == 1
     refused = [x for x in hub_log(root) if not x["ok"]]
     assert len(refused) == 1 and store.steps("ckpt-N") == [100] and store.mark_steps("pt") == []
-    wait = 3600 - 510                                    # the hub's Retry-After: until its hour has room
+    wait = 3600 - 1500 - 510                             # the hub's Retry-After: until its hour has room
     assert store.budget.wait_s() == wait and any(f"retry in {wait} s" in ln for ln in logs)
     assert c.staged_marks("pt") == [200]                 # staged: the rung job may drop its copy
-    for k, step in enumerate((300, 400, 500, 600, 700), start=2):       # training goes on; nothing is sent
+    for k, step in enumerate((300, 400, 500), start=2):  # training goes on; nothing is sent
         at(t0 + 10 + 500 * k)
         S.make_gen(out, step)
         c.tick()
         c.tick()
-    assert len(hub_log(root)) == 7 and len(stats(logs, "http_429")) == 1    # not one more refused commit
+    assert len(hub_log(root)) == 8 and len(stats(logs, "http_429")) == 1    # not one more refused commit
     st = json.loads((chat / "courier_status.json").read_text())
-    assert st["http_429"] == 1 and st["jobs"]["pt"]["live_step"] == 700 and st["jobs"]["pt"]["pushed_step"] == 100
+    assert st["http_429"] == 1 and st["jobs"]["pt"]["live_step"] == 500 and st["jobs"]["pt"]["pushed_step"] == 100
     assert st["jobs"]["pt"]["failures"] == 0             # a wait for room is not a failure of the generation's push
-    at(t0 + 3601)                                        # the hub's hour has room again
-    S.make_gen(out, 800)
+    at(t0 + 510 + wait + 1)                              # the hub's hour has room again
+    S.make_gen(out, 600)
     c.tick()
-    assert store.mark_steps("pt") == [200] and store.steps("ckpt-N") == [100, 800]   # the mark, and the newest
-    assert c.staged_marks("pt") == [] and all(x["ok"] for x in hub_log(root)[7:])
-    at(t0 + 4101)
-    S.make_gen(out, 900)
-    c.tick()
-    assert store.steps("ckpt-N") == [800, 900] and hub_log(root)[-1]["deletes"] == ["gens/g100/"]
-    got = tmp_path / "got"
-    fresh_hub = hf_store.Store(hf_store.HfBackend("someone/base2-store", "dataset", TOKEN, api=hub_standin.DiskApi(str(root))))
-    assert fresh_hub.pull_generation("ckpt-N", str(got), expect=cc.identity(CFG, str(chat), JOBS["pt"])) == (900, [])
-    fresh_hub.pull_mark("pt", 200, str(tmp_path / "mark"))
+    assert store.mark_steps("pt") == [200] and store.steps("ckpt-N") == [100, 600]   # the mark, and the newest
+    assert c.staged_marks("pt") == [] and all(x["ok"] for x in hub_log(root)[8:])
+    for k, step in enumerate((700, 800), start=1):
+        at(t0 + 510 + wait + 1 + 500 * k)
+        S.make_gen(out, step)
+        c.tick()
+    assert store.steps("ckpt-N") == [600, 700, 800] and hub_log(root)[-1]["deletes"] == ["gens/g100/"]
+    assert hub_fresh(root).pull_generation("ckpt-N", str(tmp_path / "got"), expect=cc.identity(CFG, str(chat), JOBS["pt"])) == (800, [])
+    hub_fresh(root).pull_mark("pt", 200, str(tmp_path / "mark"))
     assert (tmp_path / "mark" / "model.safetensors").read_bytes() == S.state_at(200)[0]
-    # The courier's own commits: four that the hub took (g100, the mark, g800, g900) and one it refused.
+    # The courier's own calls on the hub: its branch, five commits the hub took, and the one it refused.
     mine = [x for x in hub_log(root) if x["branch"] != "base2-build"]
     assert [(x["message"], x["ok"]) for x in mine] == [
-        ("generation: gens/g100", True), ("mark: marks/pt/rung_200", False), ("mark: marks/pt/rung_200", True),
-        ("generation: gens/g800", True), ("generation: gens/g900", True)]
+        ("create_branch", True), ("generation: gens/g100", True), ("mark: marks/pt/rung_200", False),
+        ("mark: marks/pt/rung_200", True), ("generation: gens/g600", True), ("generation: gens/g700", True),
+        ("generation: gens/g800", True)]
     assert not any(TOKEN in ln for ln in logs)
     assert sum(ln.startswith("create_branch ckpt-N") for ln in (root / "calls.log").read_text().splitlines()) == 1
 
 
-def test_a_courier_never_exceeds_its_commit_budget_and_still_pushes_the_last_generation(tmp_path):
-    """The budget is the courier's own ceiling: with saves far more frequent than it allows, the courier sends at
-    most that many commits in any rolling hour, each the newest generation then on disk, waits without counting a
-    failure, says each wait once, logs the hour's count, and pushes the run's last generation before it is idle."""
+def test_a_branch_creation_is_counted_and_its_429_is_read_and_a_long_retry_after_is_capped(tmp_path):
+    """The rehearsal's logs show the hub refusing /branch/ with the commit limit's 429. The courier's first contact
+    creates its branch through the budget; the 429 is counted, read and waited out like a commit's, and a later
+    courier process on the same VM does not ask again. A Retry-After of hours is honoured for 30 minutes."""
     pytest.importorskip("huggingface_hub")
-    chat, root, store, c, logs, clock, at = hub_courier(tmp_path, per_hour=4)
+    chat, root, store, c, logs, clock, at = hub_courier(tmp_path, per_hour=30)
+    t0 = clock.t
+    (root / "limit.json").write_text(json.dumps({"per_window": 0, "retry_after": 86400}))
+    S.make_gen(str(chat / "pt"), 100)
+    c.tick()
+    assert [s["count"] for s in stats(logs, "http_429")] == [1] and not (root / "branches" / "ckpt-N").exists()
+    assert any("store not read" in ln and "the creation of ckpt-N" in ln for ln in logs)
+    assert store.budget.wait_s() == hf_store.MAX_429_WAIT_S == 1800 and store.budget.count() == 1
+    assert any("retry in 1800 s" in ln for ln in logs) and [x["message"] for x in hub_log(root)] == ["create_branch"]
+    at(t0 + 1700)
+    c.tick()
+    assert len(hub_log(root)) == 1                       # nothing is asked inside the wait
+    (root / "limit.json").unlink()
+    at(t0 + 1801)
+    c.tick()
+    assert store.steps("ckpt-N") == [100] and [x["message"] for x in hub_log(root)][1:] == ["create_branch", "generation: gens/g100"]
+    assert store.budget.count() == 3                     # the refused creation, the creation, the commit
+    # A second process of this VM (the courier started again; the data job's separate calls) asks for no branch.
+    import hub_standin
+    budget2 = hf_store.CommitBudget(30, str(chat / "store_commits.json"), clock=clock)
+    again = hf_store.open_store({"repo": "someone/base2-store", "token_file": str(tmp_path / "hub.token")},
+                                api=hub_standin.DiskApi(str(root)), log=logs.append, delay=0, budget=budget2)
+    again.ensure_branch("ckpt-N")
+    c2 = cc.Courier(again, str(chat), JOBS, BR, log=logs.append, clock=clock, cfg=CFG)
+    S.make_gen(str(chat / "pt"), 300)
+    c2.tick()
+    assert again.steps("ckpt-N") == [100, 300]
+    assert sum(ln.startswith("create_branch") for ln in (root / "calls.log").read_text().splitlines()) == 2
+    assert json.loads((chat / "store_commits.json.branches").read_text()) == {"repo": "someone/base2-store", "branches": ["ckpt-N"]}
+
+
+def test_a_generation_that_arrives_damaged_never_counts_and_two_whole_ones_always_remain(tmp_path):
+    """The first review of the commit budget (12 Nov 2026): the commit that added a generation counted it as
+    verified at once and removed down to the one before it; a generation that arrived short then left ONE whole
+    generation in the store. Now a generation counts only after a listing taken after its own commit shows it
+    whole, and the commit that adds it never relies on it. Here g300's weights arrive short on the hub in g300's
+    own commit. Whatever is pushed after, two whole generations that this VM verified are in the store at every
+    moment, and a restore skips the bad one."""
+    pytest.importorskip("huggingface_hub")
+    chat, root, store, c, logs, clock, at = hub_courier(tmp_path, per_hour=100)
+    out = str(chat / "pt")
+    ident = cc.identity(CFG, str(chat), JOBS["pt"])
+
+    def whole():
+        fresh_store = hub_fresh(root)
+        return [s for s in fresh_store.steps("ckpt-N") if fresh_store.verify_by_download("ckpt-N", s, expect=ident)]
+
+    for step in (100, 200):
+        S.make_gen(out, step)
+        c.tick()
+    assert c.s["pt"]["verified"] == {100, 200} and whole() == [100, 200]
+    (root / "damage.json").write_text(json.dumps({"path": "gens/g300/model.safetensors", "bytes": 100}))
+    S.make_gen(out, 300)
+    c.tick()
+    # The commit was accepted and the generation is listed, short. It is not whole, and is said so.
+    assert store.steps("ckpt-N") == [100, 200, 300] and (root / "branches" / "ckpt-N" / "gens" / "g300" / "model.safetensors").stat().st_size == 100
+    assert c.s["pt"]["verified"] == {100, 200} and c.s["pt"]["not_whole"] == {300} and whole() == [100, 200]
+    assert stats(logs, "verify")[-1] == {"what": "verify", "job": "pt", "step": 300, "whole": False}
+    assert any("g300 is NOT WHOLE in the store after its own commit" in ln for ln in logs)
+    assert hub_log(root)[-1]["deletes"] == []            # its commit removed nothing: g100 and g200 both stand
+    step, rejected = hub_fresh(root).pull_generation("ckpt-N", str(tmp_path / "r1"), expect=ident)
+    assert step == 200 and [s for s, _ in rejected] == [300]      # a restore gives the bad one up for the one before
+    # The pushes after it: nothing is ever removed on g300's account.
+    seen = []
+    for step in (400, 500, 600):
+        S.make_gen(out, step)
+        c.tick()
+        seen.append((store.steps("ckpt-N"), whole()))
+        assert len(whole()) >= 2 and len([s for s in whole() if s in c.s["pt"]["verified"]]) >= 2
+    assert seen == [([100, 200, 300, 400], [100, 200, 400]),      # two verified before g400: g100, g200; nothing below g100
+                    ([200, 300, 400, 500], [200, 400, 500]),      # g200 and g400: g100 goes
+                    ([400, 500, 600], [400, 500, 600])]           # g400 and g500: g200 and the bad g300 go
+    st = json.loads((chat / "courier_status.json").read_text())["jobs"]["pt"]
+    assert st["not_whole"] == [300] and st["verified"] == [100, 200, 400, 500, 600] and st["failures"] == 0
+    # A listing that cannot be read leaves the generation uncounted until it is read: asked again before the next push.
+    real = store.listed_whole
+    store.listed_whole = lambda *a, **kw: (_ for _ in ()).throw(ConnectionError("hub unreachable"))
+    S.make_gen(out, 700)
+    c.tick()
+    assert store.steps("ckpt-N") == [500, 600, 700] and 700 not in c.s["pt"]["verified"] and list(c.s["pt"]["to_verify"]) == [700]
+    store.listed_whole = real
+    S.make_gen(out, 800)
+    c.tick()
+    assert {700, 800} <= c.s["pt"]["verified"] and c.s["pt"]["to_verify"] == {} and store.steps("ckpt-N") == [600, 700, 800]
+
+
+def test_the_budget_is_strict_while_an_essential_commit_may_wait_and_bounded_when_it_may_not(tmp_path):
+    """With saves far more frequent than the budget allows the courier waits, without counting a failure, says each
+    wait once, logs the hour's count, and sends the newest generation when there is room. While the wait an
+    essential commit is allowed (essential_wait) is as long as the budget's hour, no rolling hour holds more than
+    the budget. With the real allowance, 15 minutes, a generation goes at the latest 15 minutes after it first
+    asked, whatever the count: that is what lets a run's last generation arrive inside the courier's final window."""
+    pytest.importorskip("huggingface_hub")
+    chat, root, store, c, logs, clock, at = hub_courier(tmp_path, per_hour=4, essential_wait=3600)
     t0 = clock.t
     out = str(chat / "pt")
     for k in range(1, 41):                               # a save every 300 s for 200 minutes: 12 an hour
@@ -858,6 +975,27 @@ def test_a_courier_never_exceeds_its_commit_budget_and_still_pushes_the_last_gen
     assert len(hours) >= 3 and all(h["commits"] <= 4 and h["budget"] == 4 for h in hours)
     step, rejected = store.pull_generation("ckpt-N", str(tmp_path / "got"))
     assert (step, rejected) == (4000, [])
+
+    # The real allowance. The budget is spent when the job ends; its last generation waits 15 minutes at the most.
+    chat, root, store, c, logs, clock, at = hub_courier(tmp_path / "b", per_hour=4)
+    t0 = clock.t
+    out = str(chat / "pt")
+    for k in range(1, 5):                                # the branch, g100, the mark of step 200 and g200 spend the
+        at(t0 + 60 * k)                                  # budget; g300 and g400 wait, and are overtaken
+        S.make_gen(out, 100 * k)
+        c.tick()
+    assert store.budget.count() == 4 and store.budget.wait_s() > 0
+    S.make_gen(out, 500)                                 # the run's last save
+    (chat / "STATUS_pt").write_text("FINISHED\n")
+    ended = clock.t
+    while not c.idle():
+        at(clock.t + 20)
+        c.tick()
+        assert clock.t - ended < 3600
+    assert clock.t - ended <= hf_store.ESSENTIAL_WAIT_S + 60 < 1800     # inside the 5,400 s the boot gives the courier
+    assert store.steps("ckpt-N")[-1] == 500 and store.mark_steps("pt") == [200]
+    assert json.loads((chat / "courier_status.json").read_text())["jobs"]["pt"]["failures"] == 0
+    assert all(w["seconds"] <= hf_store.ESSENTIAL_WAIT_S for w in stats(logs, "budget_wait"))
 
 
 def test_every_store_call_of_the_daemon_is_bounded(tmp_path):
@@ -1316,8 +1454,8 @@ def test_rehearsal_two_vms_through_the_real_boot(tmp_path):
         kill_vm(vm1)
         assert read(vm1 / "chat" / "STATUS_pt").strip() == "RUNNING"  # it never finished
         steps = store.steps("ckpt-N")
-        assert len(steps) == 2 and store.mark_steps("pt") == [MARK]
-        prev, newest = steps
+        assert len(steps) == 3 and store.mark_steps("pt") == [MARK]   # two verified by their listings, and the newest
+        _, prev, newest = steps
         lost_at = int(read(vm1 / "chat" / "pt" / "state.txt").split("\n")[0])
         # The newest generation is damaged in the store before the next session.
         bad = repo / "ckpt-N" / "gens" / f"g{newest}" / "optim.safetensors"
@@ -1343,8 +1481,8 @@ def test_rehearsal_two_vms_through_the_real_boot(tmp_path):
         # The rung on the new VM scored the mark pulled from the store: the weights of step MARK, from session one.
         assert json.loads(read(chat / "rung_mark" / "rung.json"))["weights_sha256"] == S.sha(S.state_at(MARK)[0])
         wait(lambda: "courier done" in read(chat / "courier.log"), "the courier's last push")
-        end = store.steps("ckpt-N")  # two generations, the last one the run's end, and the mark from session one
-        assert len(end) == 2 and end[-1] == STEPS and store.mark_steps("pt") == [MARK]
+        end = store.steps("ckpt-N")  # three generations, the last one the run's end, and the mark from session one
+        assert len(end) == 3 and end[-1] == STEPS and store.mark_steps("pt") == [MARK]
         final = fresh(tmp_path)
         assert final.pull_generation("ckpt-N", str(tmp_path / "final")) == (STEPS, [])
         man = final.read_manifest("ckpt-N", f"gens/g{STEPS}")
@@ -1428,7 +1566,58 @@ def test_the_token_is_removed_when_the_courier_does_not_end(tmp_path):
     finally:
         kill_vm(vm)
     boot_text = (CC / "boot_base2.sh").read_text()
-    assert "WAIT=${PK_COURIER_WAIT_S:-1800}" in boot_text and "-lt \\$end" in boot_text
+    assert "WAIT=${PK_COURIER_WAIT_S:-$(python3 -c" in boot_text and ".get('courier_wait_s', 5400)" in boot_text
+    assert "|| echo 5400)}" in boot_text and "-lt \\$end" in boot_text
+
+
+def test_the_last_generation_delayed_by_the_budget_still_arrives_before_the_token_goes(tmp_path):
+    """One number governs the end of a run: the courier's final delivery window (store.json's "courier_wait_s",
+    which the runner sends; 5,400 s by default). When the jobs have ended the boot waits that long for the courier
+    and then takes the token away. The courier's own waits fit inside it: a commit that finds the budget spent
+    waits at most its allowance (15 minutes; 6 s here) and then goes. So a run whose budget is spent at its end
+    still delivers its last generation, the courier ends by itself, and the token goes after it. (Before: the
+    budget's wait could be an hour and the window was 30 minutes.) With a window shorter than the wait, the same
+    run shows the bounded failure: the token goes on time and the last generation is not in the store."""
+    repo = seeded(tmp_path)
+    store = fresh(tmp_path)
+    slow = {"store_commit_budget_per_hour": 3, "commit_essential_wait_s": 6}
+    vm = make_vm(tmp_path, "vm1", repo, epoch=1, first_start=["pt"], courier_wait_s=60, **slow)
+    chat = vm / "chat"
+    try:
+        r = boot(vm, 0.03)                               # 200 steps and 20 saves in about six seconds
+        assert r.returncode == 0, read(chat / "boot.log")
+        wait(lambda: read(chat / "STATUS").strip() == "FINISHED", "the manager's end")
+        ended = time.time()
+        wait(lambda: "TOKEN_GONE" in read(chat / "boot.log"), "the token's removal", 60)
+        took = time.time() - ended
+        log = read(chat / "courier.log")
+        assert store.steps("ckpt-N")[-1] == STEPS and store.mark_steps("pt") == [MARK]      # the last generation arrived
+        assert "courier done" in log and "the courier had not ended" not in read(chat / "boot.log")
+        waits = [json.loads(ln.split("stat ", 1)[1]) for ln in log.splitlines() if '"what": "budget_wait"' in ln]
+        assert waits and all(w["seconds"] <= 6 for w in waits)                               # it had to wait, and did
+        assert took < 45                                                                     # well inside the window of 60
+        assert json.loads(read(chat / "courier_status.json"))["jobs"]["pt"]["pushed_step"] == STEPS
+        assert os.listdir(vm / "shm") == [] and TOKEN not in log + read(chat / "boot.log")
+    finally:
+        kill_vm(vm)
+    # The same run with a wait the window cannot hold: the token goes at the window's end, the generation does not arrive.
+    (tmp_path / "b").mkdir()
+    repo2 = seeded(tmp_path / "b")
+    vm2 = make_vm(tmp_path / "b", "vm1", repo2, epoch=1, first_start=["pt"], courier_wait_s=3,
+                  store_commit_budget_per_hour=3, commit_essential_wait_s=600)
+    try:
+        r = boot(vm2, 0.03)
+        assert r.returncode == 0, read(vm2 / "chat" / "boot.log")
+        wait(lambda: "TOKEN_GONE" in read(vm2 / "chat" / "boot.log"), "the token's removal", 60)
+        assert "the courier had not ended after 3 s" in read(vm2 / "chat" / "boot.log") and os.listdir(vm2 / "shm") == []
+        assert (fresh(tmp_path / "b").steps("ckpt-N") or [0])[-1] < STEPS
+    finally:
+        kill_vm(vm2)
+    # The runner's side of the same number (runner_multi.py): it sends it, and never settles for less.
+    runner = (CC / "runner_multi.py").read_text()
+    assert "STORE_COURIER_WAIT_S = 5400" in runner and '"courier_wait_s": STORE.get("courier_wait_s", STORE_COURIER_WAIT_S)' in runner
+    assert "a.store_settle_min * 60 < a.store_courier_wait_s + TICK" in runner
+    assert hf_store.ESSENTIAL_WAIT_S + hf_store.MAX_429_WAIT_S + 1800 <= 5400   # both waits and a full push limit fit
 
 
 # ---------------------------------------------------------------- the real trainer on CPU
