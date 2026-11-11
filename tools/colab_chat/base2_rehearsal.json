@@ -9,7 +9,7 @@
   "pod_loss_drill_step": 400,
   "mark": 200,
   "rung_holds_training": false,
-  "watch": "base2-build:watch/pt_reh/<VM start time>/watch.json",
+  "watch": "ART/watch/watch.jsonl: the watch job's own file on the VM, home with its outputs (pt_reh)",
   "runs": "alone on the store: part a to its end, then part b",
   "after": null,
   "shared_with_the_other_part": [
@@ -17,7 +17,8 @@
   ],
   "store_release_grace_s": 1800
  },
- "store_push_cap_gb": 12,
+ "store_push_cap_gb": 24,
+ "store_release_every_min": 10,
  "store_inputs": [
   {
    "branch": "main",
@@ -56,8 +57,6 @@
     "python3",
     "tools/colab_chat/base2_corpus.py",
     "drill-watch",
-    "--config",
-    "/content/chat/store.json",
     "--chat",
     "/content/chat",
     "--job",
@@ -67,9 +66,7 @@
     "--interval",
     "30",
     "--limit-s",
-    "7200",
-    "--push-limit-s",
-    "60"
+    "7200"
    ],
    "outputs": [
     "watch_summary.json",

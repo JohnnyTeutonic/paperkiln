@@ -348,35 +348,84 @@ def test_rehearsal_loses_a_session_on_each_side_of_the_tail_switch(name, job, dr
     assert "snapshot_steps" not in c and "pod_loss_drill_step" not in c
     # Both training jobs export weights only; the runner fetches what the spec declares (runner_multi.fetch_final).
     assert s["export"] == {"formats": ["safetensors"]} == c["spec"]["export"]
-    # The watcher: the training step against the courier's pushed step, to the store every 30 s; every push ended
-    # after 60 s, the watcher after two hours, and coreutils' timeout five minutes later whatever it is doing.
+    # The watcher: the training step against the courier's pushed step every 30 s, in a file on the VM. It never
+    # opens the store (its commits, 120 an hour, used the repository's whole limit in part a's first run). It ends
+    # itself after two hours, and coreutils' timeout five minutes later whatever it is doing.
     w = js["watch"]["cmd"]
     assert w[:4] == ["timeout", "-k", "30", "7500"] and w[6] == "drill-watch"
     assert w[w.index("--job") + 1] == job and w[w.index("--interval") + 1] == "30"
-    assert w[w.index("--limit-s") + 1] == "7200" and w[w.index("--push-limit-s") + 1] == "60"
-    assert w[w.index("--config") + 1] == "/content/chat/store.json" and not js["watch"].get("halt_on_failure")
+    assert w[w.index("--limit-s") + 1] == "7200" and "--push-limit-s" not in w and "--config" not in w
+    assert not any("store.json" in x for x in w) and not js["watch"].get("halt_on_failure")
+    assert js["watch"]["outputs"] == ["watch_summary.json", "watch.jsonl"]     # home with the job's outputs
 
 
 def test_the_storage_guard_fits_the_rehearsal_and_is_off_for_the_arms():
-    """The courier stops pushing at 12 GB pushed since a release last freed storage. Release spares objects younger
-    than its grace period, so for the first grace period of pushing (and the minute or two until the next push
-    prunes and releases) nothing can be freed and everything pushed counts. The save interval keeps that under the
-    cap; the intervals the rehearsal had before (50) and the one first proposed (100) do not."""
+    """The courier stops pushing once the bytes counted for the campaign reach the cap. Counted are what the store
+    held at the last release from home and what was pushed since. A release spares objects younger than its grace
+    period, so a removed generation stays stored, and counted, for up to the grace and one release interval; on top
+    come what the branches keep, the mark, and what is pushed before the next measurement. The save interval keeps
+    that under the cap; half the interval does not."""
     for name in ("base2_rehearsal.json", "base2_rehearsal_b.json"):
         f = load(name)
-        assert f["store_push_cap_gb"] == 12 == M.REH_PUSH_CAP_GB
+        assert f["store_push_cap_gb"] == 24 == M.REH_PUSH_CAP_GB
         assert f["_base2"]["store_release_grace_s"] == 1800 == M.REH_RELEASE_GRACE_S
+        assert f["store_release_every_min"] == 10 == M.REH_RELEASE_EVERY_MIN
     gen_gb = 3 * M.PARAMS["D1"] * 4 / 1e9             # weights and two AdamW moments, 4 bytes a parameter
     assert 0.83 < gen_gb < 0.85
 
-    def counted(every):                               # GB pushed before a release can first free anything
-        window = M.REH_RELEASE_GRACE_S + 2 * every * M.STEP_S     # the grace, then up to two more saves
-        return (int(window / (every * M.STEP_S)) + 1) * gen_gb + gen_gb / 3     # and the mark's weights
+    def counted(every):                               # GB, at the most, that the guard can count in the rehearsal
+        save_s, release_s = every * M.STEP_S, M.REH_RELEASE_EVERY_MIN * 60
+        kept = (2 + 2) * gen_gb + gen_gb / 3          # two generations on each of the two branches, and the mark
+        removed = (int((M.REH_RELEASE_GRACE_S + release_s) / save_s) + 1) * gen_gb    # removed, not yet deletable
+        since = (int(release_s / save_s) + 2) * gen_gb                               # pushed since the measurement,
+        return kept + removed + since                                                # one of them counted twice
     assert counted(M.REH_EVERY) < 0.8 * M.REH_PUSH_CAP_GB
-    assert counted(100) > M.REH_PUSH_CAP_GB and counted(50) > 2 * M.REH_PUSH_CAP_GB
+    assert counted(100) > M.REH_PUSH_CAP_GB
     # The arms carry the field, off: the lead sets it before they launch.
     for arm in ARMS:
         assert load(f"base2_{arm}.json")["store_push_cap_gb"] == 0
+
+
+def test_three_arms_on_one_repo_stay_far_under_the_hubs_commit_limit():
+    """The hub refuses commits past 128 an hour for a repository, every writer together (the rehearsal of
+    12 Nov 2026), and the three arms share one repo for four days. As first built an arm spent about five commits
+    a save (push, prune, lock, release, unlock): about 105 an hour for the three. Now: one commit a save, one a
+    mark, and two for each release an arm's runner makes from home. Computed here from the arms' jobs files and
+    the probe's step times, and held under 40 an hour."""
+    step_s = {"N": M.STEP_S, "S": M.STEP_S, "C": M.STEP_S_A}
+    assert (M.STEP_S, M.STEP_S_A) == (1.053, 0.783)                    # PROBE_RESULT.md: D1 at 8 x 2, A at 16 x 1, mixed
+    per = {}
+    for arm in ARMS:
+        f = load(f"base2_{arm}.json")
+        assert f["store_release_every_min"] == M.ARM_RELEASE_EVERY_MIN == 120
+        assert sum("spec" in j for j in f["jobs"]) == 1 and f["max_parallel"] == 1       # one training job a file
+        t = train(arm)["spec"]["train"]
+        per[arm] = M.commits_per_hour(f, step_s[arm], f["store_release_every_min"])
+        save_min = t["checkpoint_every"] * step_s[arm] / 60
+        assert abs(per[arm]["generations"] - 60 / save_min) < 1e-9
+        assert per[arm]["release"] == 1.0                              # a lock and its removal every two hours
+        assert per[arm]["marks"] < 0.1                                 # five or six marks in about three days
+    assert 8.7 < 500 * 1.053 / 60 < 8.8 and 6.5 < 500 * 0.783 / 60 < 6.6   # a save every 8.8 minutes, and every 6.5
+    total = sum(p["total"] for p in per.values())
+    assert round(total, 1) == 26.1, total
+    assert total <= M.ARMS_COMMITS_PER_HOUR_MAX == 40 < M.HUB_COMMITS_PER_HOUR == 128
+    # As first built: five commits a save and one a mark.
+    old = sum(5 * p["generations"] + p["marks"] for p in per.values())
+    assert 100 < old < 128 and old > 2.5 * M.ARMS_COMMITS_PER_HOUR_MAX
+    # The steady state is inside each writer's own ceiling: a courier's budget and a runner's (runner_multi.py's
+    # defaults, which a courier refuses to pass whatever goes wrong), with the reserve a release needs.
+    import ckpt_courier
+    assert ckpt_courier.COMMIT_BUDGET == M.COURIER_COMMIT_BUDGET == 30 and M.HOME_COMMIT_BUDGET == 20
+    runner = (CC / "runner_multi.py").read_text()
+    assert '"--store-commit-budget-per-hour", type=int, default=30' in runner
+    assert '"--store-home-commit-budget-per-hour", type=int, default=20' in runner
+    assert all(p["generations"] + p["marks"] < M.COURIER_COMMIT_BUDGET / 2 for p in per.values())
+    assert all(p["release"] < M.HOME_COMMIT_BUDGET * 3 / 4 for p in per.values())
+    # The rehearsal, alone on the repo: a save every 3.5 minutes and a release every ten.
+    for name in ("base2_rehearsal.json", "base2_rehearsal_b.json"):
+        r = M.commits_per_hour(load(name), M.STEP_S, M.REH_RELEASE_EVERY_MIN)
+        assert 17 < r["generations"] < 17.2 and r["release"] == 12 and r["total"] < 32
+        assert r["generations"] + r["marks"] < M.COURIER_COMMIT_BUDGET and r["release"] <= M.HOME_COMMIT_BUDGET * 3 / 4
 
 
 def test_the_two_rehearsals_run_one_after_the_other_and_share_only_the_corpus():
@@ -434,27 +483,34 @@ def test_drill_watch_records_live_against_pushed(tmp_path):
     # The training step is the trainer's own, from its events, not a saved generation's.
     assert (s["last"]["training_step"], s["last"]["training_minus_pushed"]) == (387, 87)
     assert abs(s["last"]["training_step_at"] - os.path.getmtime(chat / "pt_reh" / "events.jsonl")) < 1e-3
-    assert s["pushed"] == 1 and s["prefix"].startswith("watch/pt_reh/")
-    stored = json.load(open(tmp_path / "store" / "base2-build" / s["prefix"] / "watch.json"))
-    assert stored["live_step"] == 350 and stored["pushed_step"] == 300 and stored["status"] == "FINISHED"
-    assert stored["training_step"] == 387
+    # The record is the watch job's own file on the VM, one line a sample; the runner brings it home with the job's
+    # outputs. NOTHING goes to the store: a commit every 30 s is 120 an hour, and the hub allows the repository 128.
+    assert s["store_commits"] == 0 and s["samples"] == 1 and "prefix" not in s
+    lines = [json.loads(ln) for ln in open(tmp_path / "o" / "watch.jsonl")]
+    assert len(lines) == 1 and lines[0] == s["last"] and lines[0]["status"] == "FINISHED"
+    assert lines[0]["live_step"] == 350 and lines[0]["pushed_step"] == 300 and lines[0]["training_step"] == 387
+    assert not (tmp_path / "store").exists()                         # the store named by --config was never opened
     # No courier yet, no checkpoint yet, no event yet: recorded as unknown, never guessed.
     none = B.watch_sample(str(tmp_path / "nowhere"), "pt_reh")
     assert none["live_minus_pushed"] is None and none["training_step"] is None and none["training_minus_pushed"] is None
-    # A push that hangs is ended at its limit and the watcher goes on to its end: it cannot keep the job open.
+    # The watcher cannot commit: it does not import the store, whatever a jobs file of before passes it.
     import hf_store
-    import time
     real = hf_store.Store.push_set
-    hf_store.Store.push_set = lambda self, *a, **kw: time.sleep(600)
+    hf_store.Store.push_set = lambda self, *a, **kw: pytest.fail("the watcher pushed")
+    hf_store.Store.commit, real_commit = (lambda self, *a, **kw: pytest.fail("the watcher committed")), hf_store.Store.commit
     try:
-        t0 = time.time()
+        (chat / "STATUS_pt_reh").write_text("RUNNING\n")             # three samples, then its own time limit ends it
         assert B.main(["drill-watch", "--config", str(cfg), "--chat", str(chat), "--job", "pt_reh", "--out", str(tmp_path / "o2"),
-                       "--interval", "0", "--push-limit-s", "1"]) == 0
-        assert time.time() - t0 < 30
+                       "--interval", "0.2", "--limit-s", "0.5", "--push-limit-s", "1"]) == 0
+        assert B.main(["drill-watch", "--chat", str(chat), "--job", "pt_reh", "--out", str(tmp_path / "o3"),
+                       "--interval", "0", "--limit-s", "0"]) == 0     # as the regenerated jobs files call it
     finally:
-        hf_store.Store.push_set = real
+        hf_store.Store.push_set, hf_store.Store.commit = real, real_commit
     s2 = json.load(open(tmp_path / "o2" / "watch_summary.json"))
-    assert s2["pushed"] == 0 and s2["samples"] == 1 and s2["last"]["training_step"] == 387
+    assert s2["samples"] >= 3 and s2["samples"] == len(open(tmp_path / "o2" / "watch.jsonl").read().splitlines()) and s2["last"]["training_step"] == 387
+    src = (CC / "base2_corpus.py").read_text()
+    watch = src[src.index("def drill_watch("):src.index("def scn_ledger(")]
+    assert "hf_store" not in watch and "push_set" not in watch and "open_store" not in watch
 
 
 def test_rung_shape_for_d1():

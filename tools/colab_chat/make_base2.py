@@ -174,9 +174,13 @@ def arm(a):
                            "note": "C reads S's windows while both read the main part, steps 1 to 212,500; S reads its "
                                    "tail from 212,501 and C from 280,501"} if a == "C" else {})},
             # The courier's storage guard (runner_multi.py --store-push-cap-gb reads this when the flag is absent):
-            # GB pushed since a release last freed storage at which the courier stops pushing and the runner halts the
-            # arm. 0 is off. The lead sets it before the arms launch.
+            # GB counted for the arm (what the store held for it at the last release from home, and what it has
+            # pushed since) at which the courier stops pushing and the runner halts the arm. 0 is off. The lead
+            # sets it before the arms launch.
             "store_push_cap_gb": 0,
+            # Minutes between an arm's runner's storage releases (--store-release-every-min reads this when the flag
+            # is absent). Each release is two commits of the repository's hourly limit, which the three arms share.
+            "store_release_every_min": ARM_RELEASE_EVERY_MIN,
             "store_inputs": [SEED_VOCAB, *([SEED_WEIGHTS] if a == "C" else []), corpus_set(corpus), *PANEL_SETS],
             "max_parallel": 1, "max_parallel_light": 1, "jobs": jobs}
 
@@ -200,19 +204,47 @@ def data():
             ]}
 
 
+STEP_S = 1.053               # D1 at 8 x 2, mixed precision, on an L4 (PROBE_RESULT.md)
+STEP_S_A = 0.783             # base A's shape at 16 x 1, mixed precision, on an L4 (PROBE_RESULT.md): arm C
+TICK_S = 240                 # runner_multi.TICK
+# The hub's limit on commit creation, per repository, for every writer together (HTTP 429 in the rehearsal of
+# 12 Nov 2026: "128 per hour"), and what the three arms, which share one repo, may use of it in steady state.
+HUB_COMMITS_PER_HOUR = 128
+ARMS_COMMITS_PER_HOUR_MAX = 40
+ARM_RELEASE_EVERY_MIN = 120  # an arm's runner releases storage every two hours: two commits each time
+COURIER_COMMIT_BUDGET = 30   # runner_multi.py --store-commit-budget-per-hour (a VM's ceiling, not its steady state)
+HOME_COMMIT_BUDGET = 20      # runner_multi.py --store-home-commit-budget-per-hour
+
+
+def commits_per_hour(doc, step_s, release_every_min):
+    """A jobs file's steady state against the hub's limit: one commit a save for each training job that runs at a
+    time (max_parallel is 1: one), one a mark, and two (the lock and its removal) for each release its runner makes
+    from home. {"generations", "marks", "release", "total"}, commits an hour."""
+    out = {"generations": 0.0, "marks": 0.0, "release": 2 * 60.0 / release_every_min if release_every_min else 0.0}
+    for j in doc["jobs"]:
+        if "spec" not in j:
+            continue
+        t = j["spec"]["train"]
+        hours = t["steps"] * step_s / 3600
+        out["generations"] = max(out["generations"], 3600 / (t["checkpoint_every"] * step_s))
+        out["marks"] = max(out["marks"], len(j.get("snapshot_steps", [])) / hours)
+    out["total"] = out["generations"] + out["marks"] + out["release"]
+    return out
+
+
 REH_STEPS = 2000
 REH_TAIL_FROM = 0.5          # the main part through step 1,000, the tail from step 1,001
-# A save every 200 steps: 3.5 minutes at the probe's 1.053 s a step, 0.84 GB a generation. The interval is set by the
-# storage guard, not by the drills. Release spares objects younger than its grace period (1,800 s in the rehearsal), so
-# no release can free anything for the first half hour of pushing, and the guard counts every byte pushed until a
-# release frees some. At a save every 200 steps that is at most 11 generations and a mark, 9.5 GB, inside
-# REH_PUSH_CAP_GB; at every 100 steps it is 17 GB and at every 50 steps 31 GB, and the guard would stop the rehearsal
-# before a release could free anything (tests/test_base2_jobs.py does the sum).
+# A save every 200 steps: 3.5 minutes at the probe's 1.053 s a step, 0.84 GB a generation, one commit. The interval is
+# set by the storage guard, not by the drills. The guard counts what the store holds for the campaign at each release
+# from home and what is pushed after it. A release (every REH_RELEASE_EVERY_MIN minutes) spares objects younger than
+# its grace period (1,800 s in the rehearsal), so a removed generation stays stored, and counted, for up to the grace
+# and one release interval; on top come the generations the branches keep, the mark, and what is pushed between two
+# releases. At a save every 200 steps that is under REH_PUSH_CAP_GB; at every 100 steps it is not
+# (tests/test_base2_jobs.py does the sum).
 REH_EVERY = 200
-REH_PUSH_CAP_GB = 12         # the courier stops pushing at this many GB pushed since a release last freed storage
+REH_PUSH_CAP_GB = 24         # the courier stops pushing at this many GB counted for the campaign
 REH_RELEASE_GRACE_S = 1800   # the launch's --store-release-grace-s; the two parts run one after the other
-STEP_S = 1.053               # D1 at 8 x 2, mixed precision, on an L4 (PROBE_RESULT.md)
-TICK_S = 240                 # runner_multi.TICK
+REH_RELEASE_EVERY_MIN = 10   # the runner's release from home: two commits each, 12 an hour
 # One forced stop a runner state (runner_multi.py keeps a single "pod_loss_drill"), so two files. The runner stops the
 # VM at its first tick after the store holds the generation of the drill step. A push takes about a minute and a tick
 # is 240 s, so the trainer is then between about 50 and 300 steps past the drill step: "a" (drill 400) stops between
@@ -231,9 +263,11 @@ def rehearsal(which="a"):
     "a": the stop before the tail switch, and a mark at step 200 whose rung runs beside training, so the next VM
     scores the mark from the store's copy when the stop finds the rung unfinished. "b": the stop after the switch, and
     a mark at step 1,800 whose rung holds training, as the arms' rungs do. A watcher records the trainer's training
-    step against the courier's pushed step in the store every 30 seconds.
-    The two parts run strictly one after the other, "a" to its end before "b" starts: storage release is on with a
-    grace of 1,800 s, which is safe only with one writer on the store. They share one thing in the store, the corpus
+    step against the courier's pushed step every 30 seconds, in a file on the VM that comes home with its outputs
+    (it commits nothing: in part a's first run its commits used the repository's whole hourly limit).
+    The two parts run strictly one after the other, "a" to its end before "b" starts: storage release runs from
+    home with a grace of 1,800 s, a courier's push limit, which is safe only with one writer on the store. They
+    share one thing in the store, the corpus
     main:corpus/rehearsal: "a" builds and publishes it, and "b" finds it there and pulls it. Their jobs, branches and
     marks are apart."""
     r = REH[which]
@@ -257,25 +291,26 @@ def rehearsal(which="a"):
             "_base2": {"rehearsal": which, "steps": REH_STEPS, "last_main_step": last_main, "first_tail_step": last_main + 1,
                        "checkpoint_every": REH_EVERY,
                        "pod_loss_drill_step": r["drill"], "mark": r["mark"], "rung_holds_training": r["held"],
-                       "watch": f"base2-build:watch/{job}/<VM start time>/watch.json",
+                       "watch": f"ART/watch/watch.jsonl: the watch job's own file on the VM, home with its outputs ({job})",
                        "runs": "alone on the store: part a to its end, then part b",
                        "after": None if which == "a" else "base2_rehearsal.json",
                        "shared_with_the_other_part": ["main:corpus/rehearsal"],
                        "store_release_grace_s": REH_RELEASE_GRACE_S},
             "store_push_cap_gb": REH_PUSH_CAP_GB,
+            "store_release_every_min": REH_RELEASE_EVERY_MIN,
             "store_inputs": [SEED_VOCAB],
             "max_parallel": 1, "max_parallel_light": 2,   # the watcher and a rung
             "jobs": [
                 {"name": "data", "light": True, "halt_on_failure": True,
                  "cmd": ["bash", "tools/colab_chat/base2_data.sh", "{out}", V, "rehearsal"],
                  "outputs": ["rehearsal.json", "base2_pins_observed.json"]},
-                # Every push of the watcher is ended after 60 s, the watcher ends itself after WATCH_LIMIT_S, and
+                # The watcher writes on the VM only and never opens the store. It ends itself after WATCH_LIMIT_S, and
                 # coreutils' timeout ends it five minutes after that: a watcher cannot keep the campaign open.
                 {"name": "watch", "light": True, "after": "data",
                  "cmd": ["timeout", "-k", "30", str(WATCH_LIMIT_S + 300),
-                         "python3", "tools/colab_chat/base2_corpus.py", "drill-watch", "--config", "/content/chat/store.json",
+                         "python3", "tools/colab_chat/base2_corpus.py", "drill-watch",
                          "--chat", "/content/chat", "--job", job, "--out", "{out}", "--interval", "30",
-                         "--limit-s", str(WATCH_LIMIT_S), "--push-limit-s", "60"],
+                         "--limit-s", str(WATCH_LIMIT_S)],
                  "outputs": ["watch_summary.json", "watch.jsonl"]},
                 {"name": job, "model_name": s["name"], "store_branch": r["branch"], "after": ["data"],
                  "snapshot_steps": [r["mark"]], "pod_loss_drill_step": r["drill"], "halt_on_failure": True, "env": TXN,

@@ -30,6 +30,7 @@
   "note": "C reads S's windows while both read the main part, steps 1 to 212,500; S reads its tail from 212,501 and C from 280,501"
  },
  "store_push_cap_gb": 0,
+ "store_release_every_min": 120,
  "store_inputs": [
   {
    "branch": "main",
