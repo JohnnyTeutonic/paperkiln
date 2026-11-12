@@ -198,8 +198,8 @@ def adopt_receipts(pins, build, repo, state_dir=None):
     - the load probe's 20-step run completed (load_probe/loadprobe.json: return code 0 and a first step seen);
     - each stage's published sets, as the store's manifests listed them after the push, equal to what the build
       hashed (published_against_pins);
-    - state_dir (the build runner's state folder; required): it exists and holds no HALTED, DEADLINE,
-      STOP_UNRESOLVED or OWNERSHIP_MISMATCH.
+    - state_dir (the build runner's state folder; required): it exists and holds no HALTED, STOP_UNRESOLVED or
+      OWNERSHIP_MISMATCH, and no DEADLINE whose record shows a job not home or a stop not confirmed.
     Returns (adopted pins, files written, relative to repo); raises SystemExit naming every refusal."""
     data, bad = os.path.join(build, "data"), []
     if not state_dir or not os.path.isdir(state_dir):
@@ -208,9 +208,23 @@ def adopt_receipts(pins, build, repo, state_dir=None):
         # Any of these says the build did not end well, or its session's end is not settled: HALTED (a halt),
         # DEADLINE (a start after its deadline), STOP_UNRESOLVED (a stop not confirmed), OWNERSHIP_MISMATCH (a
         # session under its name it left alone). No arm starts on such a build.
-        for f in ("HALTED", "DEADLINE", "STOP_UNRESOLVED", "OWNERSHIP_MISMATCH"):
+        for f in ("HALTED", "STOP_UNRESOLVED", "OWNERSHIP_MISMATCH"):
             if os.path.exists(os.path.join(state_dir, f)):
                 bad.append(f"the build's state folder holds {f} ({os.path.join(state_dir, f)}): the build did not end well")
+        # DEADLINE: a runner started after its deadline wrote it. On a build that came home and whose session's
+        # stop was confirmed (the watchdog restarting a finished runner), that is no failure: refused only when
+        # its record shows a job not home or a stop not confirmed (or cannot be read).
+        dp = os.path.join(state_dir, "DEADLINE")
+        if os.path.exists(dp):
+            try:
+                rec = json.load(open(dp, encoding="utf-8"))
+            except (OSError, ValueError):
+                rec = None
+            if not isinstance(rec, dict) or rec.get("stopped") is not True or rec.get("jobs_not_home") != []:
+                bad.append(f"the build's state folder holds DEADLINE ({dp}) and its record shows "
+                           + ("no readable record" if not isinstance(rec, dict) else
+                              f"jobs not home {rec.get('jobs_not_home')!r}, stop confirmed {rec.get('stopped')!r}")
+                           + ": the build did not end well")
     try:
         lp = json.load(open(os.path.join(build, "load_probe", "loadprobe.json"), encoding="utf-8"))
     except (OSError, ValueError) as e:

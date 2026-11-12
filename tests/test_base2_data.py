@@ -546,6 +546,18 @@ def test_adopt_receipts_checks_the_load_probe_and_writes_the_shard_hashes_where_
             adopt()
         assert f"the build's state folder holds {f}" in str(e.value) and pf.read_text() == before, f
         (state_dir / f).unlink()
+    # The fifth launch review (Explore B3): a good build's folder gets a DEADLINE too (the watchdog restarts a runner
+    # that is home, after its deadline). Refused only when its record shows a job not home or a stop not confirmed.
+    for rec in ({"kind": "DEADLINE", "stopped": True, "jobs_not_home": ["load_probe"]},
+                {"kind": "DEADLINE", "stopped": False, "jobs_not_home": []},
+                {"kind": "DEADLINE", "stopped": True}):
+        (state_dir / "DEADLINE").write_text(json.dumps(rec))
+        with pytest.raises(SystemExit) as e:
+            adopt()
+        assert "the build's state folder holds DEADLINE" in str(e.value) and pf.read_text() == before, rec
+    (state_dir / "DEADLINE").write_text(json.dumps({"kind": "DEADLINE", "stopped": True, "jobs_not_home": [],
+                                                    "session": "none", "jobs_home": ["data", "load_probe"]}))
+    # (it stays: the good build below is adopted with it there)
     for body in ("{}", "null", "[0]", '"done"', '{"returncode": "0", "seconds_to_first_step": 1}',
                  '{"returncode": true, "seconds_to_first_step": 1}', '{"returncode": 0, "seconds_to_first_step": "1"}',
                  '{"returncode": 0, "seconds_to_first_step": null}', '{"returncode": 0, "seconds_to_first_step": NaN}',

@@ -257,6 +257,12 @@ def main():
         call_log(argv, hashlib.sha256(code.encode()).hexdigest()[:16])
     else:
         call_log(argv)
+    if cmd == "sessions" and d.get("listing_fail_every"):   # "listing_fail_every": k: every kth listing fails (it flaps)
+        d["sessions_calls"] = d.get("sessions_calls", 0) + 1
+        save(d)
+        if d["sessions_calls"] % d["listing_fail_every"] == 0:
+            print("Traceback (most recent call last):\nrequests.exceptions.ConnectionError: listing flaps")
+            return 1
     if cmd == "sessions" and os.path.exists(os.path.join(ROOT, "listing_down")):   # a test's: the listing fails
         print("Traceback (most recent call last):\nrequests.exceptions.ConnectionError: listing down")
         return 1
@@ -283,6 +289,14 @@ def main():
         os.makedirs(CHAT)
         save(d)
         print("created")
+        return 0
+    if cmd == "version":
+        print("Version: 0.6.0-fake")
+        return 0
+    if cmd == "stop" and d.get("stop_not_found"):
+        # "stop_not_found": the CLI's local store has lost the session, which the server still runs: its stop says
+        # "not found" and exits 0 without asking the service; the session stays up and listed.
+        print(f"[colab] Session '{argv[argv.index('-s') + 1]}' not found.")
         return 0
     if cmd == "stop" and "-s" in argv and d.get("name") and argv[argv.index("-s") + 1] != d["name"]:
         # As the CLI: a name it does not hold is looked up in its local store only (commands/session.py). (Before

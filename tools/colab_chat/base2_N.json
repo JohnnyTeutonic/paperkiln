@@ -31,6 +31,7 @@
  "store_stall_min": 120,
  "store_unverified_halt_min": 90,
  "store_no_progress_min": 260,
+ "store_no_progress_launches": 4,
  "store_inputs": [
   {
    "branch": "main",

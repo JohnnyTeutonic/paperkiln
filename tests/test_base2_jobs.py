@@ -456,7 +456,7 @@ def test_the_registrations_store_switches_are_set_in_make_base2_and_the_files_do
     import hf_store
     assert M.ARM_STORE == {"store_push_cap_gb": 0, "store_release_every_min": 60, "store_release_grace_s": 7200,
                            "store_stall_halt": True, "store_stall_min": 120, "store_unverified_halt_min": 90,
-                           "store_release_offset_min": 0, "store_no_progress_min": 260}
+                           "store_release_offset_min": 0, "store_no_progress_min": 260, "store_no_progress_launches": 4}
     assert M.ARM_STORE_BY_ARM == {"N": {"store_push_cap_gb": 200, "store_release_offset_min": 0},
                                   "S": {"store_push_cap_gb": 200, "store_release_offset_min": 20},
                                   "C": {"store_push_cap_gb": 250, "store_release_offset_min": 40}}
@@ -464,14 +464,16 @@ def test_the_registrations_store_switches_are_set_in_make_base2_and_the_files_do
     for arm, cap, off in (("N", 200, None), ("S", 200, 20), ("C", 250, 40)):
         f = load(f"base2_{arm}.json")
         assert (f["store_push_cap_gb"], f["store_release_every_min"], f["store_stall_halt"], f["store_stall_min"],
-                f["store_unverified_halt_min"], f["store_no_progress_min"], f.get("store_release_offset_min")) == (
-                    cap, 60, True, 120, 90, 260, off)
+                f["store_unverified_halt_min"], f["store_no_progress_min"], f.get("store_release_offset_min"),
+                f["store_no_progress_launches"]) == (cap, 60, True, 120, 90, 260, off, 4)
         assert "store_release_grace_s" not in f
-    # The registered no-progress limit against a held rung: a save, a hold lost at its end, the loss noticed, a boot
-    # at its limit, the hold again, a save: 9 + 65 + 21 + 75 + 65 + 9 = 244, under 260.
+    # The registered no-progress limits (the fifth launch review's counters): 260 minutes in which Colab lists the
+    # session, and the 4th launch, without a new generation; any new generation resets both.
     assert 9 + 65 + 21 + 75 + 65 + 9 == 244 < M.ARM_STORE["store_no_progress_min"]
+    assert M.arm("N", store={"store_no_progress_launches": 5})["store_no_progress_launches"] == 5
+    assert 'doc.get("store_no_progress_launches")' in (CC / "runner_multi.py").read_text()
     keys = ("store_release_grace_s", "store_stall_halt", "store_stall_min", "store_unverified_halt_min", "store_release_offset_min",
-            "store_no_progress_min")
+            "store_no_progress_min", "store_no_progress_launches")
     # The no-progress halt (the fourth reviews): a switch like the others; 0 leaves the runner's own default, which
     # with the stall halt on is the stall's minutes, the boot limit and 15 more: 210 at a stall of 120.
     assert M.arm("N", store={"store_no_progress_min": 240})["store_no_progress_min"] == 240
