@@ -134,6 +134,12 @@ def run_store(work, scenario, jobs=STORE_JOBS, extra=(), hours="0.2", fresh=True
 
 
 def store_args(work, *more, repo=None):
+    # The timed release's turns are on the UTC grid (store_release_turn): with the default interval of 120 minutes a
+    # run that crosses an even UTC hour met a regular turn, and a test that counts release lines or lock commits
+    # failed by the time of day. A test that wants timed releases gives its own interval; the rest get one whose
+    # next turn is generations away.
+    if "--store-release-every-min" not in more:
+        more = (*more, "--store-release-every-min", "100000000")
     return [*STORE_ARGS, "--store-repo", f"dir:{repo or work / 'store'}", "--store-token-file", str(work / "token"), *more]
 
 
