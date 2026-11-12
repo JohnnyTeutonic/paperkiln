@@ -2542,22 +2542,42 @@ def keep():
     with open(path, "w") as f:
         f.write(repr(clock.off))
 atexit.register(keep)
+keep()                      # the fake VM reads it: its clock is the runner's (fakecolab_store.py, FAKE_CLOCK_FILE)
 rm.time = clock
 ticks = [0]
+outage = os.path.join(os.environ["FAKE_ROOT"], "outage")
 def tick(deadline):         # a tick takes TICK_MIN minutes of the runner's time; KILL_AT_TICK: the runner dies there
     clock.off += float(os.environ["TICK_MIN"]) * 60
     ticks[0] += 1
+    keep()
     if ticks[0] == int(os.environ.get("KILL_AT_TICK", "0")):
+        os._exit(9)
+    # OUTAGE=A,B: home's network is down from tick A to before tick B: every colab call fails and the store cannot
+    # be read from home (its preflight fails).
+    a, _, b = os.environ.get("OUTAGE", "0,0").partition(",")
+    if int(a) <= ticks[0] < int(b):
+        open(outage, "w").close()
+    elif os.path.exists(outage):
+        os.remove(outage)
+rm.sleep_tick = tick
+real_preflight = rm.store_preflight
+rm.store_preflight = lambda st, jobs: False if os.path.exists(outage) else real_preflight(st, jobs)
+began = [0]
+real_began = rm.store_session_began
+def began_then_die(st, jobs):  # KILL_IN_BEGAN=N: the runner dies in the Nth launch, after its create and before its save
+    began[0] += 1
+    if began[0] == int(os.environ.get("KILL_IN_BEGAN", "0")):
         keep()
         os._exit(9)
-rm.sleep_tick = tick
+    return real_began(st, jobs)
+rm.store_session_began = began_then_die
 rm.main()
 """)
 GAP_ARGS = ("--store-first-start", "--store-stall-halt", "--store-stall-min", "120")
 
 
 def gap_env(work, **more):
-    return {"TICK_MIN": "17", "CLOCK_FILE": str(work / "clock_off"), **more}
+    return {"TICK_MIN": "17", "CLOCK_FILE": str(work / "clock_off"), "FAKE_CLOCK_FILE": str(work / "clock_off"), **more}
 
 
 def test_no_progress_does_not_count_four_hours_in_which_no_session_could_be_created(tmp_path):
@@ -2612,7 +2632,8 @@ def test_no_progress_reads_the_store_before_it_halts_an_arm_whose_home_was_down(
     step = work / "vmstep.py"
     step.write_text("# VMJSON: one step of the fake VM\nprint('{}')\n")
     vm_env = dict(os.environ, FAKE_ROOT=str(work / "fake"), FAKE_JOBS=str(layout / "eqjobs.json"), FAKE_STORE_TOOLS=str(layout),
-                  CUDA_VISIBLE_DEVICES="", PK_STORE_TOKEN_DIR=str(work / "shm"), FAKE_STEPS="800")
+                  CUDA_VISIBLE_DEVICES="", PK_STORE_TOKEN_DIR=str(work / "shm"), FAKE_STEPS="800",
+                  FAKE_CLOCK_FILE=str(work / "clock_off"))     # the VM's clock is the runner's, as on a real one
     for _ in range(2):
         subprocess.run([sys.executable, str(EQ / "fakecolab_store.py"), "exec", "-s", "pk-store", "-f", str(step)],
                        env=vm_env, capture_output=True, text=True, timeout=300)
@@ -2675,3 +2696,144 @@ def test_an_expired_no_progress_clock_creates_no_session_and_the_gap_is_taken_ou
     clock.t += 30 * 60
     rm.store_session_began(st, jobs)
     assert st.job("pt")["store_progress_at"] == clock.t
+    # The sixth reviews: a preflight that fails starts no gap (no stop was confirmed on that path).
+    st.d.pop("store_no_session_since", None)
+    rm.store_preflight = lambda st, jobs: False
+    assert rm.launch(st, "c" * 40, "j.json", jobs, []) is False and "store_no_session_since" not in st.d
+
+
+def test_a_runner_killed_after_a_create_and_before_its_save_does_not_freeze_the_clock(tmp_path):
+    """GPT's blocker in the sixth reviews of the arms' round (and Explore's iii): launch() saves after T.create and
+    the listing, so a runner killed in between left "store_no_session_since" on disk from the stop before the
+    create. The restart records the new session and ran with the clock frozen at that stop, for the whole of the
+    session's life. Here the first session is lost before a save, the runner dies in the second launch after its
+    create, and the restart records the listed session: the gap is dropped and NOT taken off (the uncertain
+    stretch counts), so the clock runs."""
+    work = tmp_path
+    p, calls = run_store(work, {"reclaim_at": [4]}, extra=store_args(work, *GAP_ARGS), wrap=GAP_WRAP, hours="100",
+                         more_env=gap_env(work, KILL_IN_BEGAN="2", FAKE_STEPS="2000"))
+    assert p.returncode == 9, (p.returncode, p.stderr[-1500:], log_of(work)[-2000:])
+    state = state_of(work)
+    since, at = state["store_no_session_since"], state["jobs"]["pt"]["store_progress_at"]
+    assert news(calls) == 2 and state["endpoint"] == "fake-endpoint-1"           # the second create's bookkeeping: not saved
+    p2, calls2 = run_store(work, {}, extra=store_args(work, *GAP_ARGS), wrap=GAP_WRAP, hours="100", fresh=False,
+                           more_env=gap_env(work, FAKE_STEPS="2000"))
+    log2 = log_of(work)
+    assert "session listed at fake-endpoint-2 (recorded: fake-endpoint-1); recorded" in log2
+    assert "store: a session of this folder is listed: the no-progress clock runs (no gap taken off it)" in log2
+    # That session was never prepared (the runner died first): the restart counts it as a failed boot, as the
+    # boot limit says, and ends with a confirmed stop. The gap now held is that stop's, a new one; the gap from
+    # before the create was dropped, and nothing was taken off the clock (no create in this run).
+    assert p2.returncode == 0 and "boot over 75 min without a status; counted as a failed boot" in log2, (p2.stderr[-1500:], log2[-2000:])
+    state2 = state_of(work)
+    assert news(calls2) == 2 and state2["store_no_session_since"] > since > at
+    assert state2["jobs"]["pt"]["store_progress_at"] == at
+
+
+def test_a_network_outage_takes_nothing_off_the_no_progress_clock(tmp_path):
+    """Explore's second condition in the sixth reviews: the third silent tick and a failed preflight each started a
+    gap, though nothing had confirmed that the session was gone. Home's network down for five ticks: three silent
+    ticks, a launch whose preflight fails, and then the session is listed again and carries on. No gap is held, so
+    nothing comes off the clock at a later create."""
+    work = tmp_path
+    p, calls = run_store(work, {}, extra=store_args(work, *GAP_ARGS), wrap=GAP_WRAP, hours="100",
+                         more_env=gap_env(work, OUTAGE="4,9", KILL_AT_TICK="12", FAKE_STEPS="2000"))
+    log = log_of(work)
+    assert p.returncode == 9, (p.returncode, p.stderr[-1500:], log[-3000:])
+    assert "session gone on 3 consecutive ticks; relaunching from the relayed checkpoints" in log and '["OUTAGE"' in calls
+    assert news(calls) == 1 and json.loads((work / "fake" / "fake.json").read_text())["alive"] is True   # never stopped
+    state = state_of(work)
+    assert "store_no_session_since" not in state and not (work / "state" / "HALTED").exists()
+    assert state["jobs"]["pt"]["relayed_step"] > 0 and state["jobs"]["pt"]["status"] == "RUNNING"        # it carried on
+
+
+def unread_runner(tmp_path, name, heads, vm, pushed=None):
+    """An in-process runner whose store answers `heads` in turn (an exception is raised) and whose VM answers vm."""
+    rm = load_runner(tmp_path / name)
+    clock = rm.time = FakeTime()
+    rm.STORE = {"stall_min": 120, "stall_halt": True, "no_progress_min": 260, "branch_suffix": "", "call_limit": 300}
+
+    class Store:
+        def head_step(self, branch):
+            h = heads.pop(0) if len(heads) > 1 else heads[0]
+            if isinstance(h, Exception):
+                raise h
+            return h
+
+        def read_manifest(self, branch, prefix):
+            assert prefix == "gens/g1500"
+            return {"pushed_at": pushed(clock.t) if pushed else clock.t}
+
+    rm.store_open = lambda jobs: Store()
+    rm.store_call = lambda fn, limit=None: fn()
+    rm.vm_status = lambda jobs: vm
+    st, jobs = St(), [{"name": "pt", "spec": {}}]
+    st.jobs["pt"] = st.d.setdefault("jobs", {}).setdefault("pt", {"home": False, "relayed_step": 1000, "status": "RUNNING",
+                                                                  "store_progress_at": clock.t})
+    return rm, clock, st, jobs
+
+
+def test_an_unread_store_does_not_halt_an_arm_whose_vm_answers_running(tmp_path):
+    """Explore's first condition in the sixth reviews: home comes back after five hours (a Windows update) and its
+    first call to the hub fails; the no-progress check halted on that, and stopped a session that was training.
+    A read that fails halts nothing while the VM answers that the job runs, for 60 minutes past the limit at the
+    most; the next tick reads the store, and its new generation is progress."""
+    down = ConnectionError("Temporary failure in name resolution")
+    rm, clock, st, jobs = unread_runner(tmp_path, "a", [down, 1500], {"vm": "RUNNING", "pt": "RUNNING"},
+                                        pushed=lambda now: now - 180)
+    t0 = clock.t
+    clock.t += 300 * 60                                  # 300 minutes: over 260, within 260 + 60
+    rm.store_no_progress(st, jobs)
+    assert not (tmp_path / "a" / "HALTED").exists()
+    assert "the store was not read and the VM reads RUNNING: no halt while that holds, for 60 min past the limit" in \
+        (tmp_path / "a" / "runner.log").read_text()
+    clock.t += 4 * 60
+    rm.store_no_progress(st, jobs)                       # the next tick: the store answers, with a new generation
+    assert st.job("pt")["relayed_step"] == 1500 and st.job("pt")["store_progress_at"] == clock.t - 180 > t0
+    assert rm.STORE_NO_PROGRESS_UNREAD_S == 3600
+    # Still unread past the limit and the 60 minutes: halted. And unread with the VM silent too: halted at once.
+    for name, vm, minutes in (("b", {"vm": "RUNNING", "pt": "RUNNING"}, 321), ("c", None, 261), ("d", {"vm": "RUNNING", "pt": "WAITING"}, 261)):
+        rm2, clock2, st2, jobs2 = unread_runner(tmp_path, name, [down], vm)
+        clock2.t += minutes * 60
+        with pytest.raises(SystemExit):
+            rm2.store_no_progress(st2, jobs2)
+        rec = json.loads((tmp_path / name / "HALTED").read_text())
+        assert rec["kind"] == "STORE_NO_PROGRESS" and rec["store_read"].startswith("the store was not read"), name
+
+
+def test_a_generation_found_by_the_read_before_a_halt_is_credited_at_its_push_time(tmp_path):
+    """Explore's (i) in the sixth reviews: the session is listed but its exec has died, and the VM hung just after a
+    push that home never saw. Every tick ends at "vm status: no reply", so this clock is the only backstop. The
+    read before the halt found the generation and started the clock at the read: a second whole limit. It is set
+    to the generation's push time (its manifest's pushed_at, capped at now, never moved back), so the halt comes
+    once the limit has passed since that push. The HALTED record says how to clear it (the fourth item)."""
+    rm, clock, st, jobs = unread_runner(tmp_path, "h", [1500], None, pushed=lambda now: t0 + 10 * 60)
+    t0 = clock.t
+    clock.t += 265 * 60
+    rm.store_no_progress(st, jobs)                       # the read finds g1500, pushed ten minutes after the clock's start
+    assert st.job("pt")["relayed_step"] == 1500 and st.job("pt")["store_progress_at"] == t0 + 10 * 60
+    halted_at = None
+    for _ in range(4):                                   # ticks of four minutes; the hung VM never answers
+        clock.t += 4 * 60
+        try:
+            rm.store_no_progress(st, jobs)
+        except SystemExit:
+            halted_at = clock.t
+            break
+    assert halted_at is not None and halted_at - (t0 + 10 * 60) <= 260 * 60 + 8 * 60       # not a second 260 minutes
+    rec = json.loads((tmp_path / "h" / "HALTED").read_text())
+    assert rec["store_read"] == "the store's newest generation is at step 1500; the VM did not answer"
+    # (4) The record names the key to delete, and that removing HALTED alone halts again.
+    assert "jobs.pt.store_progress_at" in rec["do"] and "Removing HALTED alone halts again" in rec["do"]
+    # Capped at now, and never moved back.
+    for pushed, want in ((lambda now: now + 3600, "now"), (lambda now: t0 - 3600, "kept")):
+        rm2, clock2, st2, jobs2 = unread_runner(tmp_path, f"cap{want}", [1500], None, pushed=pushed)
+        t0 = clock2.t
+        clock2.t += 265 * 60
+        rm2.store_no_progress(st2, jobs2)
+        assert st2.job("pt")["store_progress_at"] == (clock2.t if want == "now" else t0)
+    # (5) The texts the reviews named.
+    runner, mb = (CC / "runner_multi.py").read_text(), (CC / "make_base2.py").read_text()
+    assert "jobs.<job>.store_progress_at in state.json as well as HALTED" in runner
+    assert "so four of those an hour" not in runner and "12 - 3 - 2 = 7, so timed rounds send 10" in runner
+    assert "sets it before the arms launch" not in mb

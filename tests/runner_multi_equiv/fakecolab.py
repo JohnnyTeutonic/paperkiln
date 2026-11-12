@@ -239,6 +239,10 @@ def main():
     argv = sys.argv[1:]
     d = load()
     cmd = argv[0]
+    if os.path.exists(os.path.join(ROOT, "outage")):  # home's network is down (a test's file): every call fails
+        call_log(["OUTAGE", *argv[:1]])
+        print("Error: network is unreachable")
+        return 1
     if cmd == "adopt":
         call_log(["ADOPT", *argv[1:]])
         if argv[1] == "--adopt":

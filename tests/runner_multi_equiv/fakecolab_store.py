@@ -20,6 +20,13 @@ import sys
 import time
 import uuid
 
+# FAKE_CLOCK_FILE: the runner's clock offset (a test that moves the runner's clock writes it there), so the VM's
+# times (a manifest's pushed_at, the courier's) are on the runner's clock. Before the store's modules are imported:
+# their defaults take time.time as it is then.
+if os.environ.get("FAKE_CLOCK_FILE") and os.path.exists(os.environ["FAKE_CLOCK_FILE"]):
+    _off, _real = float(open(os.environ["FAKE_CLOCK_FILE"]).read()), time.time
+    time.time = lambda: _real() + _off
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.dirname(HERE))

@@ -182,8 +182,8 @@ def arm(a, store=None):
                                    "tail from 212,501 and C from 280,501"} if a == "C" else {})},
             # The courier's storage guard (runner_multi.py --store-push-cap-gb reads this when the flag is absent):
             # GB counted for the arm (what the store held for it at the last release from home, and what it has
-            # pushed since) at which the courier stops pushing and the runner halts the arm. 0 is off. The lead
-            # sets it before the arms launch.
+            # pushed since) at which the courier stops pushing and the runner halts the arm. 0 is off. The
+            # registered caps (12 Nov 2026) are in ARM_STORE_BY_ARM: 45, 45 and 60 GB.
             "store_push_cap_gb": sw["store_push_cap_gb"],
             # Minutes between an arm's runner's storage releases (--store-release-every-min reads this when the flag
             # is absent). Each release is two commits of the repository's hourly limit, which the three arms share.
