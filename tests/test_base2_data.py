@@ -745,8 +745,21 @@ class Mini:
         p = (store or self.store) / "commits.jsonl"
         return [json.loads(ln) for ln in open(p)] if p.exists() else []
 
+    def vm_config(self, out, cfg=None):
+        """The store config as ONE VM holds it: the same store, with that VM's own commit ledger. On a real VM the
+        ledger lies beside the VM's config (CHAT/store_commits.json) and counts that VM's commits alone. Here every
+        "VM" is a folder of one test session, and with one config for all of them they shared one ledger: the 31st
+        push of the whole file met the data job's budget of 30 an hour and waited its 15 minutes, which no VM of
+        the real build does (eight commits and a branch, 32 with every retry)."""
+        src = Path(cfg or self.cfg)
+        d = json.loads(src.read_text())
+        d.setdefault("commit_ledger", str(self.tmp / f"{Path(out).name}.store_commits.json"))
+        dst = self.tmp / f"{Path(out).name}.{src.name}"
+        dst.write_text(json.dumps(d))
+        return dst
+
     def run(self, out, mode, cfg=None, expect=0, **env):
-        e = {**os.environ, "CUDA_VISIBLE_DEVICES": "", "BASE2_STORE_CONFIG": str(cfg or self.cfg), "BASE2_PINS": str(self.pins),
+        e = {**os.environ, "CUDA_VISIBLE_DEVICES": "", "BASE2_STORE_CONFIG": str(self.vm_config(out, cfg)), "BASE2_PINS": str(self.pins),
              "BASE2_ENGINE_DIR": str(self.engine), "BASE2_FIXTURE": str(self.fx), "BASE2_THREADS": "2", "BASE2_JOBS": "2",
              "BASE2_SCN_SHARD_DOCS": "400", "BASE2_SCN_HELDOUT_DOCS": "200", "BASE2_MIN_FREE_GB": "0",
              "BASE2_TIMING_BYTES": "150000", "BASE2_KEEP_MIX_TEXT": "1", "BASE2_STORE_RETRY_S": "0",

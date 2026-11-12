@@ -237,6 +237,20 @@ def http_status(e):
     return int(m.group(1) or m.group(2)) if m else None
 
 
+def no_query(text):
+    """`text` with the query string of every address in it removed. After the hub's redirect an address is a signed
+    one, and a transport error carries it ("Max retries exceeded with url: /path?X-Amz-Signature=..."): what is
+    written to a log or a state file keeps the path and drops the signature."""
+    return re.sub(r"((?:https?://|/)[^\s?'\"<>]*)\?[^\s'\"<>)\]]+", r"\1?[query removed]", str(text))
+
+
+def auth_failure(e):
+    """True when `e` is the HUB refusing the credential: HTTP 401 or 403 that did not come from the object store
+    after the hub's redirect (whose 403 may be a refused signed address or a missing key; HfBackend.probe names
+    that side in its error). An expired or revoked token reads so on every commit, listing and download."""
+    return http_status(e) in (401, 403) and "from the object store" not in str(e)
+
+
 def range_total(resp):
     """The whole size a ranged reply names (Content-Range: "bytes 0-0/N", or "bytes */N" with a 416); None when it
     names none."""
@@ -580,7 +594,7 @@ def bounded(fn, timeout, token=None, while_waiting=None):
         try:
             out = {"ok": fn()}
         except BaseException as e:  # noqa: BLE001
-            out = {"err": redact(f"{e}", token)[:2000], "type": type(e).__name__}
+            out = {"err": no_query(redact(f"{e}", token))[:2000], "type": type(e).__name__}
             code = http_status(e)
             if code is not None and http_status(Exception(out["err"])) != code:
                 out["err"] += f" [HTTP {code}]"  # the status crosses the pipe when the text does not name it
@@ -842,6 +856,8 @@ class HfBackend:
                     return False  # the object there is of another size than the listing gives the file
                 raise StoreError(f"HTTP 416 on the byte read of {branch}:{path} ({where}): no byte in the range, and "
                                  f"the reply cannot be held against the listed size ({size})")
+            if r.status_code in (401, 403):  # before any reading of the library's error class: never a verdict
+                raise StoreError(f"HTTP {r.status_code} on the byte read of {branch}:{path} ({where}; refused)")
             try:
                 hf_raise_for_status(r)
             except Exception as e:  # noqa: BLE001
@@ -896,6 +912,8 @@ class Store:
         self.mark_ns = mark_ns or ""
         self.budget, self.budget_wait, self.clock = budget, budget_wait, clock
         self._manifests = {}
+        self._ledger_why = {}  # (branch, step): why a ledger did not read, for a release's report
+        self.not_whole_why = None
 
     def _limited(self, e, what):
         """Raise RateLimited when `e` is the hub's 429 (its wait kept, and the budget closed for that long, between
@@ -1110,26 +1128,47 @@ class Store:
         Reads, not commits. This, after the commit that added the generation, is what makes it count as verified."""
         prefix = f"gens/g{step}"
         self._manifests.pop((branch, prefix), None)
+        self.not_whole_why = None  # what a False answer saw, for the caller's record (why_not_whole)
         head = self.b.head(branch)
         tree = self.b.tree(branch, rev=head) if head else None
         if tree is None:
             raise StoreError(f"{branch} is not listed")
-        if f"{prefix}/{MANIFEST}" not in tree:
+
+        def no(why):
+            self.not_whole_why = f"at {str(head)[:12]}: {why}"
             return False
+
+        if f"{prefix}/{MANIFEST}" not in tree:
+            return no("the manifest is not listed")
         try:
             man = self.read_manifest(branch, prefix, fresh=True, rev=head)
         except VerifyError:
-            return False  # read, and not a manifest
-        if man.get("step") != step or not set(GEN_FILES) <= set(man["files"]) or (files is not None and man["files"] != files):
-            return False
+            return no("the manifest was read and is not a manifest")
+        if man.get("step") != step or not set(GEN_FILES) <= set(man["files"]):
+            return no("the manifest names another step or lacks a file")
+        if files is not None and man["files"] != files:
+            return no("the manifest's sizes or hashes are not the pusher's")
         large = []
         for f, want in man["files"].items():
             e = tree.get(f"{prefix}/{f}")
-            if not e or e["bytes"] != want["bytes"] or (e.get("sha256") and e["sha256"] != want["sha256"]):
-                return False
+            if not e:
+                return no(f"{f} is not listed")
+            if e["bytes"] != want["bytes"]:
+                return no(f"{f} is listed at {e['bytes']} bytes, the manifest says {want['bytes']}")
+            if e.get("sha256") and e["sha256"] != want["sha256"]:
+                return no(f"{f} is listed with another sha256 than the manifest's")
             if e.get("sha256"):
                 large.append((f"{prefix}/{f}", e["bytes"]))
-        return all(self.b.probe(branch, p, rev=head, size=n) for p, n in large) if probe else True
+        for p, n in large if probe else ():
+            if not self.b.probe(branch, p, rev=head, size=n):
+                return no(f"the byte read of {p.rsplit('/', 1)[1]} answered that its bytes are not there")
+        return True
+
+    def why_not_whole(self, branch, step, files=None):
+        """[whole, what a False answer saw]: listed_whole with its reason, for a caller on the far side of a
+        bounded() child."""
+        whole = self.listed_whole(branch, step, files)
+        return [whole, None if whole else self.not_whole_why]
 
     def push_generation(self, branch, job, step, folder, identity=None, parent=None, prune=None):
         """One generation, staged in `folder` (GEN_FILES and events.jsonl), as one commit computed against the
@@ -1245,11 +1284,14 @@ class Store:
                 with open(p, "rb") as f:
                     d = json.loads(f.read().decode("utf-8"))
             except Exception as e:  # noqa: BLE001
-                self.log(f"{branch}: ledger of g{step} not read ({type(e).__name__})")
+                # Fetched and not JSON is a file that will never read; anything else may read in a later round.
+                self._ledger_why[(branch, step)] = "not well formed" if isinstance(e, ValueError) else f"not read ({type(e).__name__})"
+                self.log(f"{branch}: ledger of g{step} {self._ledger_why[(branch, step)]}")
                 return None
         ok = isinstance(d, dict) and d.get("format") == PRUNED_FORMAT and _num(d.get("at")) and isinstance(d.get("objects"), list) \
             and all(isinstance(o, dict) and isinstance(o.get("sha256"), str) and _num(o.get("bytes")) for o in d["objects"])
         if not ok:
+            self._ledger_why[(branch, step)] = "not well formed"
             self.log(f"{branch}: ledger of g{step} is not well formed")
             return None
         return d
@@ -1327,7 +1369,7 @@ class Store:
         r = self.release_report(owner, grace=grace, now=now)
         return None if r["held"] else r["objects"]
 
-    def release_report(self, owner, grace=RELEASE_GRACE_S, now=None, orphans=False, essential=False):
+    def release_report(self, owner, grace=RELEASE_GRACE_S, now=None, orphans=False, essential=False, takeover=False):
         """Free the storage of removed generations, and nothing else. An LFS object is deleted for good only when
         (a) at least one ledger (pruned/g<step>.json on some branch, written by the commit that removed the
         generation) names it; (b) EVERY ledger that names it is older than `grace` + RELEASE_SKEW_S seconds; and
@@ -1372,6 +1414,13 @@ class Store:
         whatever the count is (CommitBudget). The waiting is the caller's: with no room now this returns held,
         and "why" carries the seconds until there is room.
 
+        takeover=True (a runner, whose `owner` names it and which runs one release at a time): a lock that carries
+        this same owner was left by a process of this releaser that died or whose unlock failed, and is taken
+        again at once instead of being waited out for LOCK_STALE_S. Never for a name two people may use at once.
+
+        "unread" in the result names each ledger that did not read, as "branch:pruned/g<step>.json (why)": "not
+        well formed" is a file that will not read in any later round either, and wants a person.
+
         Returns {"held": the lock was not taken (another releaser holds it, main could not be read, or the budget
         had no room; "why" says which, the budget as "budget: room in N s"), "objects": deleted, "bytes": freed}
         and, for a release that ran, a measurement in which every
@@ -1386,7 +1435,7 @@ class Store:
             raise StoreError(f"release refused: a grace of {grace:.0f} s is under the minimum of {MIN_RELEASE_GRACE_S} s "
                              "(a restore may be reading a generation that was just removed)")
         now = time.time() if now is None else now
-        mine = self._lock(owner, now, essential=essential)
+        mine = self._lock(owner, now, essential=essential, takeover=takeover)
         if not mine:
             return {"held": True, "objects": 0, "bytes": 0, "why": self._lock_why}
         done = None
@@ -1457,7 +1506,8 @@ class Store:
                     "unknown_sizes": unknown, "gens": gens, "marks": marks, "pending": pending,
                     "pending_bytes": sum({k: v for d in pending.values() for k, v in d.items()}.values()),
                     "ledgers": len(ledgers), "ledgers_done": sum(len(v) for v in finished.values()),
-                    "ledgers_unread": len(unread)}
+                    "ledgers_unread": len(unread),
+                    "unread": [f"{b}:{PRUNED}/g{s}.json ({self._ledger_why.get((b, s), 'not read')})" for b, s in unread]}
         finally:
             self._unlock(mine, done)
     def _read_lock(self, head):
@@ -1473,7 +1523,7 @@ class Store:
                 return {}
         return held if isinstance(held, dict) else {}
 
-    def _lock(self, owner, now, essential=False):
+    def _lock(self, owner, now, essential=False, takeover=False):
         """Take the release lock; the lock's record, or None when it is not ours. In this order: main's head is
         read; the lock is looked for in the tree of THAT commit; the lock is committed with that commit as its
         parent. So a lock (or any other commit) that reaches main after the head was read refuses this commit, and
@@ -1496,8 +1546,11 @@ class Store:
                 self._lock_why = "main could not be listed"
                 return None
             if LOCK in tree:
-                if now - self._read_lock(head).get("at", 0) < LOCK_STALE_S:
+                held = self._read_lock(head)
+                if now - held.get("at", 0) < LOCK_STALE_S and not (takeover and held.get("owner") == owner):
                     return None
+                if takeover and held.get("owner") == owner:
+                    self.log(f"release lock: one left by {owner} itself is taken again")
         except Exception as e:  # noqa: BLE001 main or the lock could not be read: someone else may hold it
             self._lock_why = f"main or the lock could not be read ({type(e).__name__})"
             return None

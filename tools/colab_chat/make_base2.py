@@ -27,6 +27,7 @@ sets the boot pulls and checks, a training job's "store_branch" is where the cou
 vocabulary (and, for C, base A's weights) against base2_pins.json and training waits on it, on every VM.
 """
 import json
+import math
 import os
 import sys
 
@@ -212,8 +213,13 @@ TICK_S = 240                 # runner_multi.TICK
 HUB_COMMITS_PER_HOUR = 128
 ARMS_COMMITS_PER_HOUR_MAX = 40
 ARM_RELEASE_EVERY_MIN = 120  # an arm's runner releases storage every two hours: two commits each time
-ARMS_COMMITS_PER_HOUR_WORST = 96   # the worst case below stays under this: three quarters of the hub's limit
+# A TEST THRESHOLD for commits_per_hour_bad_model (tests/test_base2_jobs.py), three quarters of the hub's limit. No
+# code enforces it, and it was 64 before that model counted home's retries and the end's release. What the code
+# does enforce is each writer's own ceiling, below: they sum to 108 for three arms, and an essential commit passes
+# its ceiling after 15 minutes. Only the hub's own 429 bounds the repository.
+ARMS_BAD_HOUR_TEST_THRESHOLD = 96
 # Each writer's own ceiling (per writer, not per repository). Three arms: 3 x 24 + 3 x 12 = 108, under the hub's 128.
+# Three runners keep three budget files (one a state folder) and three couriers one each: six counts, tied by nothing.
 COURIER_COMMIT_BUDGET = 24   # runner_multi.py --store-commit-budget-per-hour (a VM's ceiling, not its steady state)
 # runner_multi.py --store-home-commit-budget-per-hour. Home commits a release's lock and unlock and nothing else. A
 # quarter is kept back from the timed release (nine of the twelve: four timed releases an hour at the most); the
@@ -221,17 +227,32 @@ COURIER_COMMIT_BUDGET = 24   # runner_multi.py --store-commit-budget-per-hour (a
 # (PROTOCOL section 47.2), where three timed releases in the hour left the last one no room.
 HOME_COMMIT_BUDGET = 12
 HOME_RELEASE_COMMITS_WORST = 5   # one release at its worst: the lock, and the unlock sent four times (hf_store._unlock)
-# The generations a branch holds at the most: two verified and the newest between two saves, and one more for the
-# one save after a session is replaced (the new VM removes nothing until it has verified a generation itself; its
-# next save removes two in one commit). The storage guard's sums count this many for each branch.
-GENS_KEPT_MAX = 4
+# The generations a branch holds. The rule: THREE (two verified and the newest, between two saves) PLUS ONE FOR EACH
+# SESSION LOSS BETWEEN TWO VERIFIED SAVES. A new VM has verified only the generation it restored and removes nothing
+# until it has verified one of its own; if it is lost before that, the next VM starts the same way with one more
+# generation on the branch. One loss: four, and the next save removes two in one commit. Two in a row: five. This
+# is not a bound on what a branch can hold: while checks stay unread or not whole nothing is removed at all, and
+# only the push cap (or runner_multi.py --store-unverified-halt-min) ends that. The storage sums take
+# ARM_SESSION_LOSSES losses in a row.
+GENS_KEPT = 3
+ARM_SESSION_LOSSES = 2
+ARM_RELEASE_GRACE_S = 7200   # runner_multi.py --store-release-grace-s, its default: what the arms run with
+PUSH_CAP_HEADROOM = 0.8      # the sum is held under this share of the cap (as the rehearsal's 28 GB was sized)
 
 
-def home_commits_worst(release_every_min):
+def gens_kept_max(losses=ARM_SESSION_LOSSES):
+    """Generations on a branch at the most with `losses` session losses between two verified saves: 3 + losses."""
+    return GENS_KEPT + losses
+
+
+def home_commits_worst(release_every_min, ledger_retry=False):
     """One runner's worst rolling hour at home: every timed release that fits in an hour and the release at the
-    campaign's end, each at HOME_RELEASE_COMMITS_WORST. 10 at the arms' two hours; inside HOME_COMMIT_BUDGET."""
+    campaign's end, each at HOME_RELEASE_COMMITS_WORST. 10 at the arms' two hours; inside HOME_COMMIT_BUDGET.
+    ledger_retry: one round more, which the end's release is allowed after the stop when its round ran and a
+    ledger did not read (runner_multi.store_release_owed): 15. Past the budget of 12 only through the waits the
+    budget itself gives an essential commit and a forced unlock."""
     timed = -(-60 // release_every_min) if release_every_min else 0
-    return HOME_RELEASE_COMMITS_WORST * (int(timed) + 1)
+    return HOME_RELEASE_COMMITS_WORST * (int(timed) + 1 + (1 if ledger_retry else 0))
 
 
 def commits_per_hour(doc, step_s, release_every_min):
@@ -244,7 +265,7 @@ def commits_per_hour(doc, step_s, release_every_min):
     VM, so once more after each lost session); an unlock tried again; the release at the campaign's end; the data
     build (eight commits and a branch, up to 32 with every retry) and the seed (three), which come before the
     arms; anything done by hand; and the time saves, evaluations and rungs add to the probe's step times, which
-    makes saves rarer. commits_per_hour_worst() puts a number on the first four."""
+    makes saves rarer. commits_per_hour_bad_model() and commits_rolling_hour() put numbers on the first four."""
     out = {"generations": 0.0, "marks": 0.0, "release": 2 * 60.0 / release_every_min if release_every_min else 0.0}
     for j in doc["jobs"]:
         if "spec" not in j:
@@ -257,13 +278,79 @@ def commits_per_hour(doc, step_s, release_every_min):
     return out
 
 
-def commits_per_hour_worst(doc, step_s, release_every_min):
-    """A bad hour of the same jobs file, everything at once: every save and mark is sent twice (one retry each, and
-    the hub counts both); the session is lost once in the hour, so the new VM creates its branch again (one call,
-    tried twice too); and home has its worst hour (home_commits_worst: a timed release and the release at the
-    campaign's end, each a lock and an unlock sent four times)."""
+def commits_per_hour_bad_model(doc, step_s, release_every_min):
+    """A MODELLED BAD HOUR FROM AVERAGE RATES, not a worst rolling hour: the average saves and marks an hour, each
+    sent twice (one retry each, and the hub counts both); the session lost once in the hour, so the new VM creates
+    its branch again (one call, tried twice too); and home's worst hour (home_commits_worst: a timed release and
+    the release at the campaign's end, each a lock and an unlock sent four times). A real hour holds whole saves
+    and may hold a whole mark: commits_rolling_hour(). More retries than one a commit are in neither."""
     p = commits_per_hour(doc, step_s, release_every_min)
     return 2 * (p["generations"] + p["marks"]) + 2 + home_commits_worst(release_every_min)
+
+
+def commits_rolling_hour(doc, step_s, release_every_min):
+    """One ROLLING HOUR of the same jobs file with everything in it at once, in whole commits: the saves that fit
+    in an hour, rounded up; one mark; each of those sent twice; the branch created again after a lost session,
+    tried twice; and at home a timed release, the release at the campaign's end and the one more round that
+    release is allowed when a ledger did not read, each a lock and an unlock sent four times. Still a model: it
+    takes one retry a commit, and the hub's own count is the only thing that bounds the repository.
+    {"saves", "marks", "sent_twice", "branch", "home", "total"}."""
+    saves = max(math.ceil(3600 / (j["spec"]["train"]["checkpoint_every"] * step_s)) for j in doc["jobs"] if "spec" in j)
+    out = {"saves": saves, "marks": 1, "sent_twice": 2 * (saves + 1), "branch": 2,
+           "home": home_commits_worst(release_every_min, ledger_retry=True)}
+    out["total"] = out["sent_twice"] + out["branch"] + out["home"]
+    return out
+
+
+def gen_gb(shape):
+    """GB of one generation of a shape: weights and two AdamW moments, 4 bytes a parameter."""
+    return 3 * PARAMS[shape] * 4 / 1e9
+
+
+def push_cap_gb(shape, checkpoint_every, step_s, marks, release_every_min, grace_s, losses=ARM_SESSION_LOSSES):
+    """What the storage guard can count for ONE campaign on one branch while everything works, and the cap that
+    leaves it PUSH_CAP_HEADROOM: in generations,
+        kept     3 + losses on the branch (gens_kept_max);
+        removed  removed and not yet deletable: a release leaves what a ledger younger than the grace names, so a
+                 removed generation stays stored, and counted, for the grace and one release interval:
+                 int((grace + release) / save) + 1;
+        since    pushed since the release that last measured, one of them counted twice: int(release / save) + 2;
+    and every mark's weights (a third of a generation each; marks are never removed). The guard counts this
+    campaign's share, each object once, not the account's usage. Under the cap a run that works never stops; a
+    run whose checks stay unread or not whole removes nothing, grows by a generation a save, and is stopped by the
+    cap after about (cap - counted) / generation saves."""
+    g, save_s, release_s = gen_gb(shape), checkpoint_every * step_s, release_every_min * 60
+    out = {"gen_gb": round(g, 3), "kept": gens_kept_max(losses), "removed": int((grace_s + release_s) / save_s) + 1,
+           "since": int(release_s / save_s) + 2, "marks": marks}
+    out["counted_gb"] = round((out["kept"] + out["removed"] + out["since"]) * g + marks * g / 3, 1)
+    out["suggested_cap_gb"] = math.ceil(out["counted_gb"] / PUSH_CAP_HEADROOM)
+    return out
+
+
+def rates():
+    """The arms' commit figures and suggested push caps, from the jobs as this file makes them and the probe's
+    step times. `make_base2.py --rates` prints it. The caps are a suggestion for the lead: the arms' files carry 0."""
+    step_s = {"N": STEP_S, "S": STEP_S, "C": STEP_S_A}
+    per, caps = {}, {}
+    for a in ("N", "S", "C"):
+        doc = files()[f"base2_{a}.json"]
+        j = next(j for j in doc["jobs"] if "spec" in j)
+        every = doc["store_release_every_min"]
+        per[a] = {"steady": commits_per_hour(doc, step_s[a], every), "bad_model": commits_per_hour_bad_model(doc, step_s[a], every),
+                  "rolling": commits_rolling_hour(doc, step_s[a], every)}
+        caps[a] = push_cap_gb(doc["_base2"]["shape"], j["spec"]["train"]["checkpoint_every"], step_s[a],
+                              len(j.get("snapshot_steps", [])), every, ARM_RELEASE_GRACE_S)
+    return {"commits_an_hour_three_arms": {
+                "steady_state_average": round(sum(p["steady"]["total"] for p in per.values()), 1),
+                "modelled_bad_hour_from_average_rates": round(sum(p["bad_model"] for p in per.values()), 1),
+                "rolling_hour_whole_commits_everything_at_once": sum(p["rolling"]["total"] for p in per.values()),
+                "per_writer_ceilings_summed": 3 * COURIER_COMMIT_BUDGET + 3 * HOME_COMMIT_BUDGET,
+                "hub_limit": HUB_COMMITS_PER_HOUR},
+            "per_arm": per,
+            "generations_kept": {"rule": "three plus one for each session loss between two verified saves",
+                                 "losses_taken": ARM_SESSION_LOSSES, "kept": gens_kept_max()},
+            "suggested_store_push_cap_gb": {a: c["suggested_cap_gb"] for a, c in caps.items()},
+            "push_cap_sum": caps, "release_grace_s": ARM_RELEASE_GRACE_S, "headroom": PUSH_CAP_HEADROOM}
 
 
 REH_STEPS = 2000
@@ -272,8 +359,8 @@ REH_TAIL_FROM = 0.5          # the main part through step 1,000, the tail from s
 # set by the storage guard, not by the drills. The guard counts what the store holds for the campaign at each release
 # from home and what is pushed after it. A release (every REH_RELEASE_EVERY_MIN minutes) leaves what a ledger younger
 # than its grace period names (600 s in the rehearsal), so a removed generation stays stored, and counted, for up to
-# the grace and one release interval; on top come the generations each branch keeps (GENS_KEPT_MAX: three, and four
-# for one save after a session is replaced, which the drill does), the mark, and what is
+# the grace and one release interval; on top come the generations each branch keeps (gens_kept_max: three, and one
+# more for each session loss between two verified saves; the drill is one), the mark, and what is
 # pushed between two releases. At a save every 200 steps that is under REH_PUSH_CAP_GB; at every 100 steps it is not
 # (tests/test_base2_jobs.py does the sum).
 REH_EVERY = 200
@@ -368,6 +455,9 @@ def text(obj):
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
+    if "--rates" in argv:  # the arms' three commit figures and the suggested push caps; nothing is written
+        print(json.dumps(rates(), indent=1))
+        return 0
     check = "--check" in argv
     bad = []
     for name, obj in files().items():

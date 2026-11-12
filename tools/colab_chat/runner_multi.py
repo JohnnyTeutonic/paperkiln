@@ -1089,10 +1089,9 @@ STORE_BOOT_FAILURES = 2
 # away. --store-settle-min is never shorter than this and a tick.
 STORE_COURIER_WAIT_S = 5400
 # A finished run's last generation that reads "in the store and not whole" is read again before the campaign is
-# halted on it: this many completed checks in all, this many seconds apart. One listing that is transiently wrong
-# must not halt a finished four-day run; a generation that really is damaged reads the same every time.
+# halted on it: this many completed checks that differ, one a tick, each kept in state.json. One listing that is
+# transiently wrong must not halt a finished four-day run; a generation that really is damaged reads the same every time.
 STORE_FINAL_CHECKS = 3
-STORE_FINAL_RECHECK_S = 30
 # The release at the campaign's end. Its lock is an essential commit of home's budget: it may use the whole budget
 # and is owed the budget's essential wait (15 minutes), after which it goes whatever the count is. When it cannot
 # run at once it is tried again AFTER the session has been stopped (the wait bills nothing), every
@@ -1150,7 +1149,10 @@ def store_config(a, ap):
             "push_cap_bytes": int(cap_gb * 1e9),
             "min_push_interval_s": a.store_min_push_interval, "campaign": a.store_campaign or a.name,
             "first_start": a.store_first_start, "inputs": doc.get("store_inputs", []),
-            "call_limit": a.store_call_limit_s, "stall_min": a.store_stall_min, "stall_halt": a.store_stall_halt,
+            "call_limit": a.store_call_limit_s, "stall_min": a.store_stall_min,
+            "stall_halt": a.store_stall_halt or bool(doc.get("store_stall_halt")),
+            "unverified_halt_min": a.store_unverified_halt_min if a.store_unverified_halt_min is not None
+            else float(doc.get("store_unverified_halt_min") or 0),
             "settle_min": a.store_settle_min, "boot_limit_min": a.store_boot_limit_min,
             "token_file": os.path.expanduser(a.store_token_file) if a.store_token_file else None}
 
@@ -1185,9 +1187,28 @@ def store_open(jobs):
 
 
 def store_err(e):
+    """An error for the log or the state file: the token's text removed, and the query string of every address
+    (after the hub's redirect an address is a signed one, and a transport error carries it)."""
     import hf_store
     tok = _STORE["store"].b.token if "store" in _STORE else None
-    return hf_store.redact(f"{type(e).__name__}: {e}", tok)[:200]
+    return hf_store.no_query(hf_store.redact(f"{type(e).__name__}: {e}", tok))[:200]
+
+
+def store_auth(st, name, e):
+    """The HUB refused home's token (HTTP 401 or 403 on a listing, a manifest or a commit; not the object store's
+    403 after a redirect): said as that, by name, once until a store read from home succeeds again. The runner
+    reads the token file once, when the store is opened, and each courier holds the token its session was given,
+    so a new token takes: the file replaced at home (mode 600), this runner ended (its end stops the session with
+    confirmation) and started again; the new session gets the new token and resumes from the store. With
+    --store-stall-halt the arm is halted when nothing has reached the store for --store-stall-min minutes."""
+    import hf_store
+    if not hf_store.auth_failure(e) or st.d.get("store_auth_failure"):
+        return
+    st.d["store_auth_failure"] = {"since": time.time(), "http_status": hf_store.http_status(e), "job": name}
+    st.save()
+    log(f"{name}: STORE AUTHENTICATION FAILURE at home: the hub refused the token (HTTP {hf_store.http_status(e)}). An "
+        f"expired or revoked token reads so on every call, here and on the VM. To mend it: replace the token file "
+        f"(mode 600), end this runner and start it again; the new session resumes from the store")
 
 
 def store_call(fn, limit=None):
@@ -1341,7 +1362,11 @@ def store_progress(st, jobs, name):
         step = store_call(lambda: store.head_step(branch))
     except Exception as e:  # noqa: BLE001 a store that does not answer never ends a driver by itself
         log(f"{name}: store not read ({store_err(e)}); will retry")
+        store_auth(st, name, e)
         step = None
+    else:
+        if st.d.pop("store_auth_failure", None):
+            log(f"{name}: the store answers home's token again")
     if step is not None and step > js["relayed_step"]:
         js["relayed_step"], js["store_seen_at"] = step, now
         st.save()
@@ -1396,9 +1421,10 @@ def store_durable(st, jobs, j):
     be read is pending, not a verdict; five running are said apart, with the HTTP status (STORE CHECK UNREAD), and
     the halt's record carries the count. A final generation that is in the store and NOT whole halts the campaign
     without the settle window (STORE_FINAL_GENERATION_NOT_WHOLE): it is written once and waiting cannot mend it.
-    Before that halt the check is made again, STORE_FINAL_CHECKS completed checks in all, STORE_FINAL_RECHECK_S
-    apart, in the same call: one listing that is transiently wrong must not halt a finished run. A repeat that
-    reads whole is whole; one that cannot be read leaves the job pending."""
+    Before that halt the check is made again: STORE_FINAL_CHECKS completed checks that differ, ONE A TICK (so the
+    three span two ticks, eight minutes, and no single bounded store call has to hold them), each kept in
+    state.json with what it saw as soon as it is made. A check that cannot be read in between leaves them as they
+    are; one that reads whole clears them. The halt's record carries every one of them."""
     import hf_store
     n, now = j["name"], time.time()
     js, branch = st.job(n), store_branches(jobs)[n]
@@ -1408,6 +1434,7 @@ def store_durable(st, jobs, j):
         m = re.search(r"^FINALSTEP (\d+)$", out, re.M)
         final = js["final_step"] = int(m.group(1)) if m else None
     missing, unread = [], None
+    pend = st.d.setdefault("durability_pending", {})
     try:
         if not final:
             raise ValueError("the final step is not known yet")
@@ -1416,27 +1443,34 @@ def store_durable(st, jobs, j):
         def look():
             # The courier's own check, made from home: the listing, the manifest read again, and a byte of each
             # large file. An error (anything unread) leaves the job pending; False is a completed comparison,
-            # and is made again before it is believed.
-            for i in range(1, STORE_FINAL_CHECKS + 1):
-                listed = final in store.steps(branch, store.b.tree(branch) or {})
-                ok = listed and store.listed_whole(branch, final) and store.read_manifest(branch, f"gens/g{final}").get("job") == n
-                if ok or not listed or i == STORE_FINAL_CHECKS:
-                    return [bool(ok), store.mark_steps(n), listed, i]
-                log(f"{n}: the final generation g{final} read as in the store and not whole (check {i} of "
-                    f"{STORE_FINAL_CHECKS}); read again in {STORE_FINAL_RECHECK_S:.0f} s before anything is halted")
-                time.sleep(STORE_FINAL_RECHECK_S)
+            # returned with what it saw.
+            listed = final in store.steps(branch, store.b.tree(branch) or {})
+            whole, saw = store.why_not_whole(branch, final) if listed else (False, None)
+            if whole and store.read_manifest(branch, f"gens/g{final}").get("job") != n:
+                whole, saw = False, "the manifest names another job"
+            return [bool(whole), store.mark_steps(n), listed, saw]
 
-        gen_ok, marks, listed, checks = store_call(look)
-        if gen_ok and checks > 1:
-            log(f"{n}: the final generation g{final} reads whole at check {checks}; the earlier reading was not the store's state")
+        gen_ok, marks, listed, saw = store_call(look)
+        differ = (pend.get(n) or {}).get("final_checks") or []
+        if gen_ok and differ:
+            pend[n].pop("final_checks")
+            log(f"{n}: the final generation g{final} reads whole after {len(differ)} reading(s) that differed; they "
+                "were not the store's state")
         if listed and not gen_ok:
-            # In the store and not whole, STORE_FINAL_CHECKS times: a generation is written once, so waiting
-            # cannot mend it. Halt now, by name, with the reason; the two verified generations before it are in
-            # the store.
-            store_halt("STORE_FINAL_GENERATION_NOT_WHOLE", job=n, branch=branch, step=final, checks=checks,
-                       why="the run's last generation is in the store and is not whole (a file is short, missing, of "
-                           "another hash or job, or its bytes cannot be had); it will not be written again")
-            raise SystemExit(3)
+            # In the store and not whole. Kept at once, with what it saw; believed at the STORE_FINAL_CHECKS-th:
+            # a generation is written once, so waiting cannot mend it. The halt is by name, with every check; the
+            # two verified generations before it are in the store.
+            p = pend.setdefault(n, {"since": now})
+            differ = p["final_checks"] = differ + [{"at": now, "saw": saw}]
+            st.save()
+            if len(differ) >= STORE_FINAL_CHECKS:
+                store_halt("STORE_FINAL_GENERATION_NOT_WHOLE", job=n, branch=branch, step=final, checks=len(differ), seen=differ,
+                           why="the run's last generation is in the store and is not whole (a file is short, missing, of "
+                               "another hash or job, or its bytes cannot be had); it will not be written again")
+                raise SystemExit(3)
+            log(f"{n}: finished; the final generation g{final} read as in the store and not whole (check {len(differ)} of "
+                f"{STORE_FINAL_CHECKS}: {saw}); read again at the next tick before anything is halted")
+            return False
         want = [s for s in j.get("snapshot_steps", []) if s <= final]
         if not gen_ok:
             missing.append(f"final generation g{final} not whole in the store")
@@ -1446,7 +1480,7 @@ def store_durable(st, jobs, j):
         missing.append(f"store not read ({store_err(e)})")
         if final:
             unread = hf_store.http_status(e) or "no HTTP status"
-    pend = st.d.setdefault("durability_pending", {})
+            store_auth(st, n, e)
     if not missing:
         if pend.pop(n, None):
             log(f"{n}: durable: final generation g{final} and marks in the store, marks home")
@@ -1466,7 +1500,8 @@ def store_durable(st, jobs, j):
     st.save()
     if now - p["since"] > STORE["settle_min"] * 60:
         store_halt("STORE_DURABILITY_PENDING", job=n, missing=missing, minutes=STORE["settle_min"],
-                   unread_checks_running=p["unread"], http_status=p["http_status"])
+                   unread_checks_running=p["unread"], http_status=p["http_status"],
+                   final_checks_that_differed=p.get("final_checks") or [])
         raise SystemExit(3)
     return False
 
@@ -1550,7 +1585,8 @@ STORE_VM_READ = (
     "    cs = None\n"
     "keep = ('updated', 'boot_id', 'epoch', 'bytes_since_release', 'pushed_bytes', 'measure_seq', 'push_cap_bytes', 'capped',\n"
     "        'http_429', 'commits_last_hour', 'commit_budget_per_hour')\n"
-    "jk = ('pushed_step', 'pushed_at', 'live_step', 'pushes', 'failures', 'last_error', 'fenced', 'check_unread')\n"
+    "jk = ('pushed_step', 'pushed_at', 'live_step', 'pushes', 'failures', 'last_error', 'fenced', 'check_unread',\n"
+    "      'unverified_since', 'auth_failure', 'to_verify', 'not_whole')\n"
     "r = {{'at': time.time(), 'courier': None, 'training': {{n: last_step(c + '/' + n + '/events.jsonl') for n in names}}}}\n"
     "if isinstance(cs, dict):\n"
     "    r['courier'] = {{k: cs.get(k) for k in keep}}\n"
@@ -1582,20 +1618,45 @@ def store_guard(st, jobs, vm):
 
     Also here: a pushed generation whose check the courier could not read ten times running or more (its status,
     "check_unread") is said in this log once for each generation, with the HTTP status the courier met, so that a
-    store that refuses the byte read every time is seen at home while the run goes on. It halts nothing."""
+    store that refuses the byte read every time is seen at home while the run goes on. A refusal of the VM's token
+    by the hub (the courier's "auth_failure") is said as an authentication failure, once for each run of them.
+    Neither line halts anything by itself.
+
+    What does halt, when the registration switches it on (--store-unverified-halt-min, or the jobs file's
+    "store_unverified_halt_min"; 0, the default, is off): the courier's "unverified_since", the time of the oldest
+    push since which no check of a push has read whole, older than that many minutes by the VM's own clock. That
+    is the state in which every check is unread or every generation is not whole: nothing is pruned, the store
+    grows by a generation a save and training bills with nothing that counts. The campaign halts by name,
+    STORE_UNVERIFIED, through the confirmed stop. Pushes that do not arrive at all are --store-stall-halt's."""
     c = (vm or {}).get("courier")
     if not c:
         return
     said = st.d.get("store_check_unread_said") or []
     for n, cj in sorted((c.get("jobs") or {}).items()):
-        for step, u in sorted(((cj or {}).get("check_unread") or {}).items()):
+        cj = cj or {}
+        for step, u in sorted((cj.get("check_unread") or {}).items()):
             if isinstance(u, dict) and (u.get("count") or 0) >= 10 and f"{n}/g{step}" not in said:
                 said.append(f"{n}/g{step}")
                 st.d["store_check_unread_said"] = said
                 st.save()
                 log(f"{n}: STORE CHECK UNREAD on the VM: the courier could not read the check of g{step} {u['count']} "
                     f"times running ({u.get('error')}). The generation counts for nothing until it is read and nothing "
-                    "is removed on its account; a status that stays (403, 404) wants a person to read the store")
+                    "is removed on its account; a refusal that stays wants a person to read the store")
+        au = cj.get("auth_failure")
+        if isinstance(au, dict) and au.get("since") != (st.d.get("store_auth_vm_said") or {}).get(n):
+            st.d.setdefault("store_auth_vm_said", {})[n] = au.get("since")
+            st.save()
+            log(f"{n}: STORE AUTHENTICATION FAILURE on the VM: the hub refused the courier's token (HTTP "
+                f"{au.get('http_status')}, during {au.get('during')}). Nothing is stored while it lasts. To mend it: "
+                "replace the token file at home (mode 600), end this runner and start it again")
+        lim, since, at = STORE.get("unverified_halt_min") or 0, cj.get("unverified_since"), (vm or {}).get("at")
+        if lim and isinstance(since, (int, float)) and isinstance(at, (int, float)) and at - since > lim * 60:
+            store_halt("STORE_UNVERIFIED", job=n, minutes=round((at - since) / 60), limit_min=lim,
+                       why="pushes have reached the store and no check of one has read whole for that long: every check "
+                           "unread, or every generation not whole; nothing is pruned and nothing counts",
+                       to_verify=cj.get("to_verify"), not_whole=cj.get("not_whole"), check_unread=cj.get("check_unread"),
+                       auth_failure=au, pushed_step=cj.get("pushed_step"))
+            raise SystemExit(3)
     if isinstance(c.get("bytes_since_release"), int) and c["bytes_since_release"] != st.d.get("store_pushed_bytes"):
         st.d["store_pushed_bytes"] = c["bytes_since_release"]
         st.save()
@@ -1615,7 +1676,7 @@ STORE_MEASURE_VM = (
     "print('MEASURE_OK')\n")
 
 
-def store_release(st, jobs, final=False):
+def store_release(st, jobs, final=False, limit=None):
     """Storage release, from home (--store-release-storage): the one releaser of the whole repo. Every
     --store-release-every-min minutes, and once more at the campaign's end (final), under the store's release lock,
     by difference over every branch, sparing objects younger than --store-release-grace-s. No VM releases: a
@@ -1626,9 +1687,13 @@ def store_release(st, jobs, final=False):
     main, never another campaign's live object, never an upload whose commit has not come.
 
     The release at the campaign's end (final) is an essential commit of home's budget: it may use the whole budget,
-    without the reserve a timed lock leaves. When it does not run (no room yet, the lock is another runner's, or
-    the call failed) it is owed (state.json "store_release_final_owed") and store_release_owed() makes it after
-    the session has been stopped, waiting a bounded time for room.
+    without the reserve a timed lock leaves. Its FIRST attempt is made in the loop, before the session is stopped,
+    and can take up to the call's limit while the session still bills. It is a debt from before that attempt
+    (state.json "store_release_final_owed", written first) until it is recorded as made
+    ("store_release_final_done"); store_release_owed() pays it after the session has been stopped, or at the next
+    start of a runner that died. limit: seconds this call may take at the most (the owed wait's remainder).
+    Returns, for the caller of a final release: "done", "held", "failed" or "ledgers" (the round ran and a ledger
+    did not read); None for a timed release that was not due.
 
     A release that ran also measured the store. What is counted for this campaign from then on, each LFS object
     once: what its own branches name under gens/, its own marks, and what its own branches' ledgers name that is
@@ -1648,40 +1713,60 @@ def store_release(st, jobs, final=False):
     st.d["store_release_next"] = now + every
     rec = st.d.setdefault("store_releases", {"count": 0, "held": 0, "failed": 0, "objects": 0, "bytes": 0})
     st.save()
-    again = "tried again after the session has stopped" if final else f"next turn in {every / 60:.0f} min"
+    again = "it stays owed" if final else f"next turn in {every / 60:.0f} min"
     c = {} if final else ((store_vm_read(jobs) or {}).get("courier") or {})
     t0 = time.time()
+
+    def say(msg, why):
+        # A timed release says every outcome. The end's release is tried many times: one line a change of state.
+        key = re.sub(r"\d+", "N", why)
+        if not final or _STORE.get("owed_said") != key:
+            log(msg)
+        if final:
+            _STORE["owed_said"] = key
+
     if final:
-        st.d["store_release_final_owed"] = "not tried yet"
+        # The debt is in state.json BEFORE the release is attempted: a runner that dies in the call, or after it
+        # and before its success is recorded, finds it at its next start (main() services it without a session).
+        st.d["store_release_final_owed"] = st.d.get("store_release_final_owed") or "not tried yet"
+        st.save()
+    lim = max(900, STORE["call_limit"]) if limit is None else max(1, min(max(900, STORE["call_limit"]), limit))
     try:
         store = store_open(jobs)
-        r = store_call(lambda: store.release_report(f"home:{NAME}", grace=STORE["release_grace_s"], essential=final),
-                       max(900, STORE["call_limit"]))
+        # takeover: a lock that carries this runner's own name was left by a process of it that died (or by an
+        # unlock that failed); one runner makes one release at a time, so it is taken again, not waited out.
+        r = store_call(lambda: store.release_report(f"home:{NAME}", grace=STORE["release_grace_s"], essential=final,
+                                                    takeover=True), lim)
     except Exception as e:  # noqa: BLE001 a release that fails never ends a driver
         rec["failed"] += 1
         if final:
             st.d["store_release_final_owed"] = f"the release failed ({store_err(e)})"
         st.save()
-        log(f"store: release failed ({store_err(e)}); {again}")
-        return
+        say(f"store: release failed ({store_err(e)}); {again}", "failed " + type(e).__name__)
+        return "failed"
     if r["held"]:
         rec["held"] += 1
         if final:
             st.d["store_release_final_owed"] = f"the lock was not taken ({r.get('why')})"
         st.save()
-        log(f"store: release: the lock was not taken ({r.get('why') or 'another releaser holds it, or main or the budget gave no room'}); {again}")
-        return
-    st.d.pop("store_release_final_owed", None)
+        say(f"store: release: the lock was not taken ({r.get('why') or 'another releaser holds it, or main or the budget gave no room'}); {again}",
+            "held " + str(r.get("why")))
+        return "held"
     if r.get("ledgers_unread"):
         # A ledger that could not be read: nothing was deleted, and what it holds is in nobody's count. The
         # guard's count stays as it is (the courier's own, which only grows) until a release reads them all.
         rec["unread"] = rec.get("unread", 0) + 1
+        named = ", ".join(r.get("unread") or []) or f"{r['ledgers_unread']} of them"
         if final:
-            st.d["store_release_final_owed"] = f"{r['ledgers_unread']} ledger(s) could not be read"
+            st.d["store_release_final_owed"] = f"the round ran and {r['ledgers_unread']} ledger(s) could not be read: {named}"
         st.save()
-        log(f"store: release: {r['ledgers_unread']} ledger(s) could not be read; nothing was deleted and the storage "
-            f"guard's count is left as it is; {again}")
-        return
+        say(f"store: release: {r['ledgers_unread']} ledger(s) could not be read ({named}); nothing was deleted and the "
+            f"storage guard's count is left as it is; {again}", "ledgers " + named)
+        return "ledgers"
+    if final:  # made: recorded at once, before the measurement is used
+        st.d.pop("store_release_final_owed", None)
+        st.d["store_release_final_done"] = True
+        st.save()
     names, ns = store_branches(jobs), STORE.get("mark_ns", "")
     import hf_store
     mine = hf_store.campaign_bytes(r, names.values(), [ns + n for n in names])  # each object once
@@ -1710,37 +1795,93 @@ def store_release(st, jobs, final=False):
             out = ""
         if "MEASURE_OK" not in (out or ""):
             log("store: the measurement did not reach the VM; its courier counts on from its own, higher, number")
+    return "done"
 
 
-def store_release_owed(st, jobs):
-    """After the session has been stopped: the release at the campaign's end, when it did not run in the loop. It
-    is tried again every STORE_FINAL_RELEASE_NAP_S seconds for at most STORE_FINAL_RELEASE_WAIT_S. Its lock is
-    essential to home's budget, which lets it pass at the latest STORE_HOME_ESSENTIAL_WAIT_S after it first asked,
-    so only a lock another runner keeps, a 429's wait or a store that does not answer can outlast the wait. Then
-    ONE line says that it did not run, why, and the command that does it by hand; the command's config (no secret
-    in it: the repo and the token file's path) is written beside the state. Never raises."""
+def store_release_debt(st):
+    """Why the release at the campaign's end is still owed, or None: with --store-release-storage, until it is
+    recorded as made. The text an attempt left, else the plain fact for a campaign that is home."""
+    if not STORE or not STORE["reclaim"] or st.d.get("store_release_final_done"):
+        return None
+    return st.d.get("store_release_final_owed") or \
+        ("the campaign is home and its last release is not recorded as made" if st.d.get("campaign_home") else None)
+
+
+def store_release_owed(st, jobs, stopped=True):
+    """The release at the campaign's end, when it is still owed at the runner's end: because its first attempt, made
+    in the loop BEFORE the session was stopped, did not run; or because an earlier runner died before or during it
+    or before recording it (main() comes here without creating a session).
+
+    stopped=True (the session's stop is confirmed, so the wait bills nothing): it is tried now and then every
+    STORE_FINAL_RELEASE_NAP_S seconds, for STORE_FINAL_RELEASE_WAIT_S in all and no longer: each call is given what
+    is left of that time as its limit, and is ended at it. Its lock is essential to home's budget, which lets it
+    pass at the latest STORE_HOME_ESSENTIAL_WAIT_S after it first asked. A round that RAN and met a ledger that
+    could not be read is tried once more and no further (each round is a lock and an unlock: two commits, up to
+    five), and the loop's own round, when this process made it, counts as the first; with a ledger that is not
+    well formed it is not tried again at all, since that file reads the same in every round. The log has one line
+    for each change of state, not one a try.
+
+    stopped=False (STOP_UNRESOLVED): nothing is tried; the debt is said.
+
+    On every way out with the debt unpaid, ONE line says that the release did not run, why (a ledger by branch and
+    path), and the command that makes it by hand, and the command's config is written beside the state
+    (store_by_hand). The debt stays in state.json for the next start. Never raises."""
+    if not store_release_debt(st):
+        return
     try:
-        if not STORE or not STORE["reclaim"] or not st.d.get("store_release_final_owed"):
-            return
-        end = time.time() + STORE_FINAL_RELEASE_WAIT_S
-        log(f"store: the release at the campaign's end is owed ({st.d['store_release_final_owed']}); the session is "
-            f"stopped, and it is tried for at most {STORE_FINAL_RELEASE_WAIT_S:.0f} s more")
-        while st.d.get("store_release_final_owed") and time.time() + STORE_FINAL_RELEASE_NAP_S <= end:
-            time.sleep(STORE_FINAL_RELEASE_NAP_S)
-            store_release(st, jobs, final=True)
-        why = st.d.get("store_release_final_owed")
+        # A round of this same process that ran in the loop and met a ledger counts as the first: one more, or
+        # none when the ledger is not well formed.
+        rounds = 1 if str(_STORE.get("owed_said", "")).startswith("ledgers") else 0
+        if stopped and not (rounds and "not well formed" in str(store_release_debt(st))):
+            end = time.time() + STORE_FINAL_RELEASE_WAIT_S
+            log(f"store: the release at the campaign's end is owed ({store_release_debt(st)}); no session bills, and it is "
+                f"tried for at most {STORE_FINAL_RELEASE_WAIT_S:.0f} s")
+            while end - time.time() >= 1:
+                out = store_release(st, jobs, final=True, limit=end - time.time())
+                if out == "done":
+                    return
+                rounds += out == "ledgers"
+                if out == "ledgers" and (rounds >= 2 or "not well formed" in str(st.d.get("store_release_final_owed"))):
+                    break  # it ran, and reads the same again: no more commits are spent on it
+                nap = min(STORE_FINAL_RELEASE_NAP_S, end - time.time() - 1)
+                if nap <= 0:
+                    break
+                time.sleep(nap)
+    except Exception as e:  # noqa: BLE001 nothing here may keep the runner from ending, or the line below from being written
+        log(f"store: the release at the campaign's end stopped on an error ({type(e).__name__})")
+    store_by_hand(st, "" if stopped else "the session's stop is not confirmed (STOP_UNRESOLVED), so the release was not tried; ")
+
+
+def store_by_hand(st, note=""):
+    """The one line for a release at the campaign's end that did not run, and the config its command reads:
+    HOME/store_release_by_hand.json, mode 600, written whole and renamed into place. It holds no secret (the repo
+    and the token file's PATH) and no commit budget, so the command is not held back by home's count. Never raises."""
+    try:
+        import shlex
+        why = store_release_debt(st)
         if not why:
             return
         cfg = os.path.join(HOME, "store_release_by_hand.json")
-        with open(cfg, "w") as f:
+        tmp = f"{cfg}.tmp{os.getpid()}"
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as f:
             json.dump({**{k: STORE.get(k) for k in ("repo", "repo_type", "token_file", "mark_ns")},
                        "store_commit_budget_per_hour": 0}, f, indent=1)
-        log(f"store: THE RELEASE AT THE CAMPAIGN'S END DID NOT RUN: {why}. Nothing is lost: the removed generations' "
-            f"ledgers and objects stay in the store until a release reads them. By hand: python3 "
-            f"{os.path.join(HERE, 'hf_store.py')} release --config {cfg} --grace {STORE['release_grace_s']:.0f} "
-            f"--owner hand:{NAME}")
-    except Exception as e:  # noqa: BLE001 nothing here may keep the runner from ending
-        log(f"store: the release at the campaign's end was not made ({type(e).__name__})")
+            f.flush()
+            os.fsync(f.fileno())
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, cfg)
+        cmd = (f"python3 {shlex.quote(os.path.join(HERE, 'hf_store.py'))} release --config {shlex.quote(cfg)} "
+               f"--grace {STORE['release_grace_s']:.0f} --owner {shlex.quote('hand:' + str(NAME))}")
+        bad = " A ledger that is not well formed stops every release, this command's too: read the file named above and " \
+              "repair or remove it first." if "not well formed" in why else ""
+        log(f"store: THE RELEASE AT THE CAMPAIGN'S END DID NOT RUN: {note}{why}. Nothing is lost: the removed generations' "
+            f"ledgers and objects stay in the store until a release reads them, and the debt stays in state.json for "
+            f"this runner's next start.{bad} By hand: {cmd} (it prints \"released\": the objects deleted; exit 0 with "
+            f"\"released\": null means the lock was held and NOTHING was released: run it again)")
+    except Exception as e:  # noqa: BLE001
+        log(f"store: THE RELEASE AT THE CAMPAIGN'S END DID NOT RUN, and its by-hand config could not be written "
+            f"({type(e).__name__}); by hand: hf_store.py release, with a config that names the repo and the token file")
 
 
 def store_commit_stat(jobs):
@@ -2226,7 +2367,18 @@ def main():
     ap.add_argument("--store-call-limit-s", type=float, default=300, help="wall-time limit of one store call from home")
     ap.add_argument("--store-stall-min", type=float, default=60,
                     help="say so loudly when a running job's store step has not advanced for this many minutes (0: never)")
-    ap.add_argument("--store-stall-halt", action="store_true", help="halt the arm on that alarm")
+    ap.add_argument("--store-stall-halt", action="store_true",
+                    help="halt the arm on that alarm (STORE_STALLED, through the confirmed stop). It covers pushes that "
+                         "do not arrive, whatever the cause (a refused token, 429s, a transport that fails): what is "
+                         "watched is the newest generation the store lists, read from home, while the job runs. It does "
+                         "not cover pushes that arrive and cannot be checked (--store-unverified-halt-min). Also the "
+                         "jobs file's \"store_stall_halt\": true")
+    ap.add_argument("--store-unverified-halt-min", type=float, default=None,
+                    help="halt the arm (STORE_UNVERIFIED, through the confirmed stop) when the courier has gone this "
+                         "many minutes with pushes in the store and none of them read back whole: every check unread "
+                         "(a store that refuses the byte read) or every one not whole. Nothing is pruned in that "
+                         "state, so the store grows by a generation a save. Default: the jobs file's "
+                         "\"store_unverified_halt_min\", else 0 (off)")
     ap.add_argument("--store-settle-min", type=float, default=95,
                     help="minutes a finished job may stay 'durability pending' before the campaign halts. Never under "
                          "the courier's final delivery window (--store-courier-wait-s) and a tick")
@@ -2302,14 +2454,27 @@ def main():
 
     deadline = resolve_deadline(a.max_hours, a.deadline_utc, time.time())
     T.deadline = deadline  # transport must enforce it while a transfer blocks the main loop
+    # With the store, a state folder in which every job is home has nothing to run: a runner started on it (after a
+    # crash or a kill at the campaign's end, or by a watchdog) creates NO session. It goes straight to the clean-up
+    # below, which stops a session an earlier runner left up, and pays what the campaign's end still owes: the
+    # release (store_release_owed).
+    home_already = bool(STORE) and bool(jobs) and all(st.d["jobs"].get(j["name"], {}).get("home") for j in jobs)
+    vm_cleanup = True
     try:
         # The first launch is inside the clean-up below too: a failure after the session exists (its preparation,
         # the token's hand-over) still takes the token off the VM and stops the session, with confirmation.
-        if listed() is None and not st.d.get("endpoint"):
+        if home_already:
+            vm_cleanup = listed() is not None
+            log("every job is home in this state folder: no session is created"
+                + ("; the session an earlier runner left is stopped" if vm_cleanup else "")
+                + ("; the release at the campaign's end is owed" if STORE["reclaim"] and not st.d.get("store_release_final_done") else ""))
+            st.d["campaign_home"] = True
+            st.save()
+        elif listed() is None and not st.d.get("endpoint"):
             if not launch(st, a.commit, a.jobs, jobs, uploads):
                 if time.time() < deadline and not T.over_budget(st):
                     sleep_tick(deadline)
-        while time.time() < deadline:
+        while not home_already and time.time() < deadline:
             why = T.over_budget(st)
             if why:
                 log(why)
@@ -2487,15 +2652,18 @@ def main():
             sleep_tick(deadline)
     finally:
         if STORE:
-            store_forget_token()
-            store_bring_home(st, "before the session stops")
+            if vm_cleanup:  # not for a start on a state folder that is home and has no session: there is no VM to ask
+                store_forget_token()
+                store_bring_home(st, "before the session stops")
             import hf_store
             hf_store.end_children()
         stopped = stop_session(st, "at the runner's end")
         if st.d.get("campaign_home"):
             T.release(st)
-        if STORE and stopped:
-            store_release_owed(st, jobs)  # the campaign's last release, when the loop could not make it: no session bills now
+        if STORE:
+            # The campaign's last release, when it is still owed: tried now that no session bills; with a stop that
+            # is not confirmed it is not tried, and the debt is said with its by-hand command all the same.
+            store_release_owed(st, jobs, stopped=stopped)
         log("session stopped; runner exiting" if stopped else "SESSION STOP NOT CONFIRMED (STOP_UNRESOLVED); runner exiting")
         os.remove(pid)
         if not stopped:

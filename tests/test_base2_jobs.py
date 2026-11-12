@@ -380,13 +380,34 @@ def test_the_storage_guard_fits_the_rehearsal_and_is_off_for_the_arms():
 
     def counted(every):                               # GB, at the most, that the guard can count in the rehearsal
         save_s, release_s = every * M.STEP_S, M.REH_RELEASE_EVERY_MIN * 60
-        kept = 2 * M.GENS_KEPT_MAX * gen_gb + gen_gb / 3   # four generations on each of the two branches, and the mark
+        kept = 2 * M.gens_kept_max() * gen_gb + gen_gb / 3   # five generations on each of the two branches, and the mark
         removed = (int((M.REH_RELEASE_GRACE_S + release_s) / save_s) + 1) * gen_gb    # removed, not yet deletable
         since = (int(release_s / save_s) + 2) * gen_gb                               # pushed since the measurement,
         return kept + removed + since                                                # one of them counted twice
-    assert M.GENS_KEPT_MAX == 4 and 20 < counted(M.REH_EVERY) < 21
+    # The rule (the reviews of the arms' round): three, plus one for each session loss between two verified saves.
+    # Four after one loss, as the rerun saw; five after two in a row, which is what the sums take. Not a bound:
+    # while no check reads whole nothing is removed at all, and only the cap or the runner's halt ends that.
+    assert (M.gens_kept_max(0), M.gens_kept_max(1), M.gens_kept_max(2), M.gens_kept_max()) == (3, 4, 5, 5) and M.ARM_SESSION_LOSSES == 2
+    assert 22 < counted(M.REH_EVERY) < 22.2
     assert counted(M.REH_EVERY) < 0.8 * M.REH_PUSH_CAP_GB
     assert counted(100) > M.REH_PUSH_CAP_GB
+    # The same sum, as make_base2.push_cap_gb, for one branch; and what it suggests for the arms, whose files carry
+    # 0 until the lead sets it: kept + removed-and-not-yet-deletable within the grace + pushed since the release,
+    # and every mark, held under 0.8 of the cap.
+    one = M.push_cap_gb("D1", M.REH_EVERY, M.STEP_S, 1, M.REH_RELEASE_EVERY_MIN, M.REH_RELEASE_GRACE_S)
+    assert (one["kept"], one["removed"], one["since"], one["marks"]) == (5, 9, 7, 1)
+    r = M.rates()
+    assert r["generations_kept"] == {"rule": "three plus one for each session loss between two verified saves", "losses_taken": 2, "kept": 5}
+    caps = r["push_cap_sum"]
+    assert {a: (c["kept"], c["removed"], c["since"], c["marks"]) for a, c in caps.items()} == {
+        "N": (5, 28, 15, 5), "S": (5, 28, 15, 5), "C": (5, 37, 20, 6)}
+    assert {a: (c["gen_gb"], c["counted_gb"]) for a, c in caps.items()} == {"N": (0.837, 41.6), "S": (0.837, 41.6), "C": (0.873, 55.9)}
+    assert r["suggested_store_push_cap_gb"] == {"N": 52, "S": 52, "C": 70} and r["release_grace_s"] == 7200 == M.ARM_RELEASE_GRACE_S
+    for a, c in caps.items():
+        assert abs(c["counted_gb"] - ((c["kept"] + c["removed"] + c["since"]) * c["gen_gb"] + c["marks"] * c["gen_gb"] / 3)) < 0.1
+        assert c["counted_gb"] <= M.PUSH_CAP_HEADROOM * c["suggested_cap_gb"] < c["counted_gb"] + 1
+    runner = (CC / "runner_multi.py").read_text()
+    assert '"--store-release-grace-s", type=float, default=7200' in runner                 # the grace the arms' sum takes
     import ckpt_courier
     for doc in (hf_store.__doc__, ckpt_courier.__doc__, hf_store.Store.push_generation.__doc__):
         assert "four" in doc.lower()                                     # the docstrings say four, not only three
@@ -429,12 +450,34 @@ def test_three_arms_on_one_repo_stay_far_under_the_hubs_commit_limit():
     for left_out in ("not a bound", "sent again after a refusal", "creation of a branch", "unlock tried again",
                      "campaign's end", "data build", "seed", "by hand", "probe's step times"):
         assert left_out in doc, left_out
-    worst = sum(M.commits_per_hour_worst(load(f"base2_{arm}.json"), step_s[arm], M.ARM_RELEASE_EVERY_MIN) for arm in ARMS)
+    worst = sum(M.commits_per_hour_bad_model(load(f"base2_{arm}.json"), step_s[arm], M.ARM_RELEASE_EVERY_MIN) for arm in ARMS)
     saves = sum(p["generations"] + p["marks"] for p in per.values())
     assert round(saves, 1) == 23.1 and M.HOME_RELEASE_COMMITS_WORST == 5 and M.home_commits_worst(120) == 10
     assert abs(worst - (2 * saves + 3 * 2 + 3 * 10)) < 1e-9 and round(worst, 1) == 82.2
-    assert worst < M.ARMS_COMMITS_PER_HOUR_WORST == 96 == M.HUB_COMMITS_PER_HOUR * 3 / 4
-    assert M.HUB_COMMITS_PER_HOUR - worst > 45                         # what that hour leaves of the hub's limit
+    # 82.2 is a MODELLED BAD HOUR FROM AVERAGE RATES (fractional saves and marks), and 96 is this test's threshold
+    # for it: no code enforces either. What the code enforces is each writer's ceiling, 108 summed, which an
+    # essential commit passes after 15 minutes; only the hub's 429 bounds the repository.
+    assert worst < M.ARMS_BAD_HOUR_TEST_THRESHOLD == 96 and not hasattr(M, "ARMS_COMMITS_PER_HOUR_WORST")
+    assert "MODELLED BAD HOUR FROM AVERAGE RATES, not a worst rolling hour" in " ".join(M.commits_per_hour_bad_model.__doc__.split())
+    # A ROLLING HOUR in whole commits, everything at once (the reviews of the arms' round): the saves that fit in
+    # an hour rounded up (7, 7, 10) and one mark an arm, each sent twice; the branch created again, tried twice; at
+    # home a timed release, the end's release and the one more round it is allowed when a ledger did not read
+    # (three end releases in the one hour), each a lock and an unlock sent four times.
+    roll = {arm: M.commits_rolling_hour(load(f"base2_{arm}.json"), step_s[arm], M.ARM_RELEASE_EVERY_MIN) for arm in ARMS}
+    assert {a: (x["saves"], x["marks"], x["sent_twice"], x["branch"], x["home"], x["total"]) for a, x in roll.items()} == {
+        "N": (7, 1, 16, 2, 15, 33), "S": (7, 1, 16, 2, 15, 33), "C": (10, 1, 22, 2, 15, 39)}
+    assert M.home_commits_worst(120, ledger_retry=True) == 15
+    rolling = sum(x["total"] for x in roll.values())
+    assert rolling == 2 * (7 + 7 + 10 + 3) + 3 * 2 + 3 * 15 == 105 < 3 * M.COURIER_COMMIT_BUDGET + 3 * M.HOME_COMMIT_BUDGET == 108 < M.HUB_COMMITS_PER_HOUR
+    assert M.rates()["commits_an_hour_three_arms"] == {
+        "steady_state_average": 26.1, "modelled_bad_hour_from_average_rates": 82.2,
+        "rolling_hour_whole_commits_everything_at_once": 105, "per_writer_ceilings_summed": 108, "hub_limit": 128}
+    import io
+    import contextlib
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        assert M.main(["--rates"]) == 0                                # printed by make_base2.py --rates; nothing is written
+    assert json.loads(out.getvalue())["commits_an_hour_three_arms"]["rolling_hour_whole_commits_everything_at_once"] == 105
     # Each writer's own ceiling (per writer, not per repository): the defaults of the courier and of
     # runner_multi.py. Summed over three arms they stay under the hub's limit, and the steady state is inside each.
     # Home's budget was 8 until the rerun of 12 Nov 2026, where the release at the campaign's end found no room.

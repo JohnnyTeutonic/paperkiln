@@ -2092,6 +2092,103 @@ def test_which_upload_order_ran_comes_back_with_the_push(tmp_path):
     assert "FOUR" in hf_store.__doc__ and "3 x 12" in hf_store.__doc__
 
 
+# ---------------------------------------------------------------- the arms' round, second pass (its two reviews, 12 Nov 2026)
+def test_a_refusal_is_never_read_as_absence_and_no_signed_address_is_kept(tmp_path):
+    """The reviews of the arms' round. (1) probe() read the library's error class before the status, so a 401 or
+    403 that the library happened to class as "entry not found" was an absence, a verdict. The status is looked
+    at first now. (2) A transport error after the hub's redirect carries the signed address ("Max retries exceeded
+    with url: /path?X-Amz-..."); what crosses bounded()'s pipe, and what no_query() is given, keeps the path and
+    drops the query. (3) auth_failure() tells the hub's refusal of the token from the object store's 403."""
+    pytest.importorskip("huggingface_hub")
+    api = FakeApi()
+    store, _ = hstore(tmp_path, api)
+    man = store.push_generation("ckpt-N", "pt", 100, staged_gen(tmp_path, 100), IDENT)
+    size = man["files"]["model.safetensors"]["bytes"]
+    for code in (401, 403):
+        r = _reply(code)
+        r.headers["X-Error-Code"] = "EntryNotFound"          # the library raises EntryNotFoundError for this header
+        session = type("S", (), {"get": lambda self, url, r=r, **kw: r})()
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(FakeApi, "http_session", property(lambda self: session))
+            with pytest.raises(hf_store.StoreError, match=f"HTTP {code} on the byte read") as e:
+                store.b.probe("ckpt-N", "gens/g100/model.safetensors", size=size)
+            assert hf_store.auth_failure(e.value)                # from the hub: the token's refusal
+            with pytest.raises(hf_store.StoreError, match=f"HTTP {code}"):
+                store.listed_whole("ckpt-N", 100, man["files"])  # unread, never "not whole"
+    r404 = _reply(404)
+    r404.headers["X-Error-Code"] = "EntryNotFound"
+    session = type("S", (), {"get": lambda self, url, **kw: r404})()
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(FakeApi, "http_session", property(lambda self: session))
+        assert store.b.probe("ckpt-N", "gens/g100/model.safetensors", size=size) is False   # the hub's own absence stays one
+    # (3)
+    assert hf_store.auth_failure(hf_store.StoreError("HTTP 403 on the byte read of b:p (from the hub; refused)"))
+    assert not hf_store.auth_failure(hf_store.StoreError("HTTP 403 on the byte read of b:p (from the object store, after the hub's redirect; refused)"))
+    assert hf_store.auth_failure(Exception("401 Client Error. Repository Not Found for url: https://huggingface.co/api/datasets/x"))
+    assert not hf_store.auth_failure(Exception("503 Server Error")) and not hf_store.auth_failure(ConnectionError("reset"))
+    # (2)
+    signed = ("HTTPSConnectionPool(host='cdn-lfs.example', port=443): Max retries exceeded with url: "
+              "/repos/ab/cd/0123?X-Amz-Algorithm=AWS4&X-Amz-Signature=SECRETSIG (Caused by ReadTimeoutError)")
+    assert hf_store.no_query(signed) == ("HTTPSConnectionPool(host='cdn-lfs.example', port=443): Max retries exceeded with url: "
+                                         "/repos/ab/cd/0123?[query removed] (Caused by ReadTimeoutError)")
+    assert hf_store.no_query("for url: https://cdn-lfs.example/o/1?sig=SECRETSIG&x=1.") == "for url: https://cdn-lfs.example/o/1?[query removed]"
+    assert hf_store.no_query("no address here? none") == "no address here? none"
+
+    def transport():
+        raise ConnectionError(signed)
+    with pytest.raises(hf_store.StoreError) as e:
+        hf_store.bounded(transport, 30, TOKEN)
+    assert "SECRETSIG" not in str(e.value) and "/repos/ab/cd/0123?[query removed]" in str(e.value)
+    # What a completed "not whole" saw is kept for the caller's record.
+    assert store.why_not_whole("ckpt-N", 100, man["files"]) == [True, None]
+    assert store.why_not_whole("ckpt-N", 200) == [False, "at ckpt-N@1: the manifest is not listed"]
+    api.branches["ckpt-N"]["gens/g100/optim.safetensors"] = b"short"
+    whole, saw = store.why_not_whole("ckpt-N", 100)
+    assert whole is False and "optim.safetensors is listed at 5 bytes, the manifest says" in saw
+
+
+def test_a_release_names_the_ledger_that_did_not_read_and_a_runner_takes_its_own_lock_again(tmp_path):
+    """The reviews of the arms' round. (1) A release that met a ledger it could not read said how many, not which:
+    a ledger that is not well formed never reads, stops every release of the repo, and a person has to find it.
+    The result names each by branch and path, and says which kind. (2) A runner that died inside a release left
+    its lock on main for half an hour, and the runner started again in its place could not release. A lock that
+    carries the releaser's own name is taken again when the caller says it is the only one of that name."""
+    pytest.importorskip("huggingface_hub")
+    api = FakeApi()
+    store, logs = hstore(tmp_path, api, clock=lambda: api.now)
+    for step in (100, 200, 300, 400):
+        store.push_generation("ckpt-N", "pt", step, staged_gen(tmp_path, step))
+    assert store.prune("ckpt-N", verified=[200, 300, 400]) == [100, 200]
+    late = api.now + 10 ** 6
+    api.branches["ckpt-N"]["pruned/g200.json"] = b"{not a ledger"
+    real = api.hf_hub_download
+
+    def g100_times_out(**kw):
+        if kw["filename"] == "pruned/g100.json":
+            raise ConnectionError("read timed out")
+        return real(**kw)
+
+    api.hf_hub_download = g100_times_out
+    r = store.release_report("home:pk", grace=600, now=late)
+    assert (r["held"], r["objects"], r["ledgers_unread"]) == (False, 0, 2)
+    assert r["unread"] == ["ckpt-N:pruned/g100.json (not read (ConnectionError))", "ckpt-N:pruned/g200.json (not well formed)"]
+    api.hf_hub_download = real
+    r = store.release_report("home:pk", grace=600, now=late)
+    assert r["unread"] == ["ckpt-N:pruned/g200.json (not well formed)"] and r["objects"] == 0   # it stops the round by itself
+    api.branches["ckpt-N"]["pruned/g200.json"] = json.dumps({"format": hf_store.PRUNED_FORMAT, "at": "yesterday", "objects": []}).encode()
+    assert store.release_report("home:pk", grace=600, now=late)["unread"] == ["ckpt-N:pruned/g200.json (not well formed)"]
+    del api.branches["ckpt-N"]["pruned/g200.json"]
+    # (2) The releaser dies with the lock taken.
+    mine = store._lock("home:pk", late)
+    assert mine and hf_store.LOCK in api.branches["main"]
+    r = store.release_report("home:pk", grace=600, now=late + 60)
+    assert r["held"] is True and r["why"] == "another releaser holds the lock"            # as before: waited out
+    assert store.release_report("home:other", grace=600, now=late + 60, takeover=True)["held"] is True   # not another name's
+    r = store.release_report("home:pk", grace=600, now=late + 60, takeover=True)
+    assert (r["held"], r["objects"], r["unread"]) == (False, 2, []) and hf_store.LOCK not in api.branches["main"]
+    assert any("one left by home:pk itself is taken again" in ln for ln in logs)
+
+
 # ---------------------------------------------------------------- base2_seed.py
 def test_seed_pushes_once_and_never_overwrites(tmp_path):
     w, v, eng = tmp_path / "tc_b1_r1.safetensors", tmp_path / "vocab.gguf", tmp_path / "engine"

@@ -33,6 +33,13 @@ run (a daemon the boot starts beside jobs_vm.py, in a process group of its own).
   it lasts; the runner repeats it at home. (An object store that answers 403 for a missing key reads so: no single
   reply is taken for "gone"; hf_store.HfBackend.probe says why.) A step that a later save removed while its check
   was still unread is owed nothing: it leaves "to_verify" with one line in the log and is never called not whole.
+  A pass asks again for at most the REVERIFY_PER_PASS newest owed checks, so a store that refuses every read costs
+  a bounded number of calls however long it lasts. The status carries "unverified_since" (the oldest push since
+  which no check of a push has read whole; the runner can halt the campaign on its age:
+  runner_multi.py --store-unverified-halt-min) and the unread counts, which a courier started again on the same
+  boot takes up. The hub's refusal of this VM's token (HTTP 401 or 403 that is not the object store's) is named
+  an AUTHENTICATION FAILURE, loudly once and in the status ("auth_failure") until a call succeeds: the courier
+  holds the token it started with, so only a new session mends it.
   Only a completed comparison that differs makes a generation "not whole": that is said loudly, written
   to CHAT/COURIER_NOT_WHOLE, it never counts, and a restore skips it. A generation is written once, so a last
   generation that is not whole is not pushed again: the runner sees it by the same check, made three times so
@@ -103,6 +110,7 @@ BACKOFF_MAX = 600
 COMMIT_BUDGET = 24  # commits an hour from one VM, of the hub's 128 for the whole repo (three arms share it)
 FLAT = ("model.safetensors", "optim.safetensors", "state.txt")
 UNREAD_REPORT_AFTER = 10  # a check unread this many times running (about five minutes) is reported apart, then hourly
+REVERIFY_PER_PASS = 4     # owed checks asked again in one pass, the newest first
 
 
 class Stopping(StoreError):
@@ -194,7 +202,7 @@ class Courier:
         self.s = {n: {"branch": b, "head": None, "known": False, "marks": None, "failures": 0, "next_try": 0,
                       "last_error": None, "pushed_at": None, "live_step": None, "refused": None, "pushes": 0,
                       "fenced": None, "verified": set(self.restored(n)), "to_verify": {}, "not_whole": set(),
-                      "unread": {}}
+                      "unread": {}, "unverified_since": None, "auth_failure": None}
                   for n, b in self.branches.items()}
         self.fallback_said = False  # the upload-first fallback is said loudly once; each push's stat line carries it
         # The push cap. The count is `base` (what the store held for this campaign before this VM's pushes: the
@@ -204,6 +212,11 @@ class Courier:
         for n, s in self.s.items():  # what an earlier courier of this boot had pushed and not yet seen checked
             was = (prior.get("jobs") or {}).get(n) or {}
             s["to_verify"].update({int(step): None for step in was.get("to_verify") or []})
+            for step, u in (was.get("check_unread") or {}).items():  # the counts go on where that courier left them
+                if isinstance(u, dict) and str(step).isdigit() and int(step) in s["to_verify"]:
+                    s["unread"][int(step)] = dict(u)
+            s["unverified_since"] = was.get("unverified_since")
+            s["auth_failure"] = was.get("auth_failure")
             s["not_whole"].update(int(step) for step in was.get("not_whole") or [])
         self.stopping = False
         self.cap = int(self.cfg.get("push_cap_bytes") or 0)
@@ -418,17 +431,35 @@ class Courier:
             self.log(f"{what}: {e}; training goes on")
             return
         self.saw(what, e)
+        self.auth(s, what, e)
         s[n] = s.get(n, 0) + 1
         wait = min(BACKOFF_MAX, 15 * 2 ** min(s[n], 10))
         if isinstance(e, hf_store.RateLimited):  # the hub's own wait, when it is the longer one
             wait = max(wait, e.retry_after)
         s[t] = self.clock() + wait
+        text = hf_store.no_query(hf_store.redact(f"{what}: {type(e).__name__}: {e}", self.store.b.token))[:400]
         if marks:
-            self.log(hf_store.redact(f"{what}: {type(e).__name__}: {e}", self.store.b.token)[:400]
-                     + f"; kept staged, retry in {wait} s (failure {s[n]})")
+            self.log(text + f"; kept staged, retry in {wait} s (failure {s[n]})")
             return
-        s["last_error"] = hf_store.redact(f"{what}: {type(e).__name__}: {e}", self.store.b.token)[:400]
+        s["last_error"] = text
         self.log(f"{s['last_error']}; training goes on, retry in {wait} s (failure {s['failures']})")
+
+    def auth(self, s, what, e):
+        """The HUB refused this VM's credential (HTTP 401 or 403 on a commit, a listing or a download; not the
+        object store's 403 after a redirect): named as that, loudly at the first of a run of them, and kept in
+        the status ("auth_failure": count, status, since) until a store call succeeds again. A token that has
+        expired or been revoked reads so on every call; the courier holds the token it started with, so only a new
+        session (the runner sends the token file again) mends it. The runner repeats it at home."""
+        if not hf_store.auth_failure(e):
+            return
+        a = s.get("auth_failure") or {"count": 0, "since": time.time()}
+        a.update(count=a["count"] + 1, http_status=hf_store.http_status(e), during=what, at=time.time())
+        s["auth_failure"] = a
+        if a["count"] == 1:
+            self.log(f"{what}: AUTHENTICATION FAILURE: the hub refused this VM's token (HTTP {a['http_status']}). Nothing "
+                     "is stored while it lasts; training goes on unsaved in the store. The token this courier holds "
+                     "is the one it started with: a new session, with a token that is valid, is what mends it.")
+            self.stat("auth_failure", during=what, http_status=a["http_status"])
 
     def fence(self, name, head, why):
         s = self.s[name]
@@ -497,7 +528,9 @@ class Courier:
                         size = folder_bytes(src, MARK_FILES)
                         self.pushed += size
                         self.stat("push", job=name, kind="mark", step=step, bytes=size,
-                                  seconds=round(time.monotonic() - t0, 2), bytes_since_release=self.since_release)
+                                  seconds=round(time.monotonic() - t0, 2), bytes_since_release=self.since_release,
+                                  ledger_upload=None)  # a mark's commit removes nothing and writes no ledger
+                    s["auth_failure"] = None
                 s["marks"].add(step)
                 s["mark_failures"] = 0
                 shutil.rmtree(src, ignore_errors=True)
@@ -563,7 +596,8 @@ class Courier:
         size = sum(f["bytes"] for f in man["files"].values())
         gone = list((man or {}).get("pruned") or [])
         mb = size / 1e6
-        s.update(head=step, failures=0, last_error=None, pushed_at=self.clock(), pushes=s["pushes"] + 1)
+        s.update(head=step, failures=0, last_error=None, pushed_at=self.clock(), pushes=s["pushes"] + 1, auth_failure=None,
+                 unverified_since=s.get("unverified_since") or time.time())  # until a check of a push reads whole
         shutil.rmtree(staged, ignore_errors=True)
         self.pushed += size
         self.log(f"{name}: generation g{step} pushed ({mb:.1f} MB in {self.clock() - t0:.0f} s)"
@@ -587,12 +621,21 @@ class Courier:
         self.verify(name, step, man["files"])
 
     def reverify(self, name):
-        """The generations whose check could not be read: asked again, at most every 30 seconds."""
+        """The generations whose check could not be read: asked again, at most every 30 seconds, and at most the
+        REVERIFY_PER_PASS newest of them in one pass. The newest are what a prune and the run's end wait for; an
+        older one is asked when a newer one has been read, or leaves with the save that removes it. So a store
+        that refuses every read costs a bounded number of calls a pass however long it lasts, and the pushes
+        behind those calls are not held up by a list that grows with every save. Said once when it first applies."""
         s = self.s[name]
         if not s["to_verify"] or self.clock() < s.get("verify_next", 0):
             return
         s["verify_next"] = self.clock() + 30
-        for step, files in sorted(s["to_verify"].items()):
+        owed = sorted(s["to_verify"].items(), reverse=True)
+        if len(owed) > REVERIFY_PER_PASS and not s.get("reverify_capped"):
+            s["reverify_capped"] = True
+            self.log(f"{name}: {len(owed)} pushed generations wait for a check that could not be read; from now on the "
+                     f"{REVERIFY_PER_PASS} newest are asked in each pass and the older ones after them")
+        for step, files in owed[:REVERIFY_PER_PASS]:
             self.verify(name, step, files)
 
     def verify(self, name, step, files=None):
@@ -617,19 +660,26 @@ class Courier:
                 return
         except Exception as e:  # noqa: BLE001
             code = hf_store.http_status(e)
-            said = f"{type(e).__name__}, " + (f"HTTP {code}" if code else "no HTTP status")
+            # Which side answered: the byte read's error says so; a 401 or 403 from anything else is the hub's.
+            side = " from the object store" if "from the object store" in str(e) else \
+                " from the hub" if "from the hub" in str(e) or hf_store.auth_failure(e) else ""
+            said = f"{type(e).__name__}, " + (f"HTTP {code}{side}" if code else "no HTTP status")
             if not isinstance(e, Stopping):
                 if step not in s["to_verify"]:
                     self.log(f"{name}: g{step} is pushed; its check could not be read ({said}); it does not "
                              "count yet and is asked again")
+                self.auth(s, f"{name}: the check of g{step}", e)
                 self.unread_report(name, step, code, said)
             s["to_verify"][step] = files
             s["verify_next"] = self.clock() + 30
             return
         s["to_verify"].pop(step, None)
         s["unread"].pop(step, None)
+        s["auth_failure"] = None
         if whole:
             s["verified"].add(step)
+            if step >= (s["head"] or 0):
+                s["unverified_since"] = None  # the newest push reads whole: the store is receiving and answering
         else:
             s["not_whole"].add(step)
             live = self.live(name)
@@ -659,8 +709,12 @@ class Courier:
                                     "since": u["since"], "at": time.time()}) + "\n")
             self.log(f"{name}: CHECK UNREAD: the check of g{step} could not be read {n} times running ({said}). It is "
                      "not a verdict: the generation counts for nothing until it is read, nothing is removed on its "
-                     "account, and the courier does not end while it is owed. A status of 403 or 404 that stays is "
-                     "what an object store answers for bytes that are not there: a person reads the store.")
+                     "account, and the courier does not end while it is owed. "
+                     + ("The hub refused the token: an authentication failure, which only a new session with a valid "
+                        "token mends." if " from the hub" in said and code in (401, 403) else
+                        "A 403 from the object store that stays is what one answers for a signed address it refuses "
+                        "and for bytes that are not there alike: a person reads the store." if code == 403 else
+                        "A person reads the store if it lasts."))
 
     def tick(self):
         self.read_measure()
@@ -710,6 +764,7 @@ class Courier:
                             "staged_marks": self.staged_marks(n), "verified": sorted(s["verified"]),
                             "not_whole": sorted(s["not_whole"]), "to_verify": sorted(s["to_verify"]),
                             "check_unread": {str(k): v for k, v in sorted(s["unread"].items())},
+                            "unverified_since": s.get("unverified_since"), "auth_failure": s.get("auth_failure"),
                             "failures": s["failures"], "last_error": s["last_error"], "refused_step": s["refused"],
                             "fenced": s["fenced"]} for n, s in self.s.items()}}
         p = os.path.join(self.chat, "courier_status.json")

@@ -1050,7 +1050,7 @@ def test_a_check_that_stays_unread_is_reported_apart_with_its_http_status(tmp_pa
     c.tick()
     s = c.s["pt"]
     first = [ln for ln in logs if "its check could not be read" in ln]
-    assert first == ["pt: g100 is pushed; its check could not be read (StoreError, HTTP 403); it does not count yet and is asked again"]
+    assert first == ["pt: g100 is pushed; its check could not be read (StoreError, HTTP 403 from the object store); it does not count yet and is asked again"]
     assert list(s["to_verify"]) == [100] and s["unread"][100]["count"] == 1 and not stats(logs, "check_unread")
     at(clock.t + 31)
     c.tick()
@@ -1058,11 +1058,11 @@ def test_a_check_that_stays_unread_is_reported_apart_with_its_http_status(tmp_pa
     at(clock.t + 31)
     c.tick()                                             # the third running: reported apart
     assert stats(logs, "check_unread") == [{"what": "check_unread", "job": "pt", "step": 100, "count": 3, "http_status": 403,
-                                            "error": "StoreError, HTTP 403"}]
+                                            "error": "StoreError, HTTP 403 from the object store"}]
     marker = [json.loads(ln) for ln in (chat / "COURIER_CHECK_UNREAD").read_text().splitlines()]
     assert [(m["job"], m["step"], m["count"], m["http_status"]) for m in marker] == [("pt", 100, 3, 403)]
     loud = [ln for ln in logs if "CHECK UNREAD" in ln]
-    assert len(loud) == 1 and "g100 could not be read 3 times running (StoreError, HTTP 403)" in loud[0]
+    assert len(loud) == 1 and "g100 could not be read 3 times running (StoreError, HTTP 403 from the object store)" in loud[0]
     st = json.loads((chat / "courier_status.json").read_text())["jobs"]["pt"]
     assert st["check_unread"]["100"]["count"] == 3 and st["check_unread"]["100"]["http_status"] == 403
     assert st["to_verify"] == [100] and st["not_whole"] == [] and st["verified"] == []
@@ -1085,6 +1085,95 @@ def test_a_check_that_stays_unread_is_reported_apart_with_its_http_status(tmp_pa
     S.make_gen(out, 200)
     c.tick()
     assert any("g200 is pushed; its check could not be read (StoreError, no HTTP status)" in ln for ln in logs)
+
+
+def test_a_store_that_stays_unread_costs_a_bounded_number_of_checks_and_is_seen_at_home(tmp_path, monkeypatch):
+    """The reviews of the arms' round. With every byte read refused, to_verify grew by one a save and reverify asked
+    for every owed step on every pass, before each push: the calls a pass grew without bound over four days. Now a
+    pass asks for the REVERIFY_PER_PASS newest and says so once. The status carries what home needs to bound the
+    state in time: "unverified_since", the oldest push since which no check of a push read whole. The unread
+    counts in the status are taken up by a courier started again on the same boot. A mark's stat line carries
+    "ledger_upload" too (None: a mark's commit writes no ledger)."""
+    pytest.importorskip("huggingface_hub")
+    monkeypatch.setattr(cc, "REVERIFY_PER_PASS", 2)
+    chat, root, store, c, logs, clock, at = hub_courier(tmp_path, per_hour=100)
+    out = str(chat / "pt")
+    s = c.s["pt"]
+    S.make_gen(out, 100)
+    c.tick()
+    assert s["verified"] == {100} and s["unverified_since"] is None                       # read whole: nothing is open
+    asked = []
+    real = store.listed_whole
+
+    def refused(branch, step, files=None, probe=True):
+        asked.append(step)
+        raise hf_store.StoreError("HTTP 403 on the byte read of ckpt-N:gens/g%d/model.safetensors (from the object store, "
+                                  "after the hub's redirect; refused)" % step)
+
+    store.listed_whole = refused
+    t0 = None
+    for step in (200, 300, 400, 500, 600):
+        at(clock.t + 31)
+        del asked[:]
+        S.make_gen(out, step)
+        c.tick()
+        t0 = t0 or s["unverified_since"]
+        owed_before = [x for x in (200, 300, 400, 500, 600) if x < step]
+        assert asked == sorted(owed_before, reverse=True)[:2] + [step]                  # the two newest owed, then its own
+    assert sorted(s["to_verify"]) == [200, 300, 400, 500, 600] and s["verified"] == {100}
+    assert s["unverified_since"] == t0 and t0 is not None                              # from the first push that was not read
+    assert len([ln for ln in logs if "newest are asked in each pass" in ln]) == 1
+    assert store.steps("ckpt-N") == [100, 200, 300, 400, 500, 600]                      # nothing verified: nothing removed
+    st = json.loads((chat / "courier_status.json").read_text())["jobs"]["pt"]
+    assert st["unverified_since"] == t0 and st["to_verify"] == [200, 300, 400, 500, 600] and st["auth_failure"] is None
+    assert st["check_unread"]["600"]["count"] == 1 and st["check_unread"]["500"]["count"] == 2
+    marks = [p for p in stats(logs, "push") if p["kind"] == "mark"]
+    assert len(marks) == 1 and "ledger_upload" in marks[0] and marks[0]["ledger_upload"] is None
+    # A courier started again on this boot goes on from those counts.
+    again = cc.Courier(store, str(chat), JOBS, BR, log=logs.append, clock=clock, cfg=CFG)
+    assert again.s["pt"]["unread"][500]["count"] == 2 and again.s["pt"]["unverified_since"] == t0
+    del asked[:]
+    at(clock.t + 31)
+    again.tick()
+    assert asked == [600, 500] and again.s["pt"]["unread"][500]["count"] == 3
+    # The store answers again: the newest are read first, the older ones after them, and the state closes.
+    store.listed_whole = real
+    for _ in range(3):
+        at(clock.t + 31)
+        again.tick()
+    assert again.s["pt"]["to_verify"] == {} and again.s["pt"]["unverified_since"] is None
+    assert again.s["pt"]["verified"] >= {200, 300, 400, 500, 600}
+
+
+def test_the_hubs_refusal_of_the_token_is_named_as_an_authentication_failure(tmp_path):
+    """The reviews of the arms' round: a token that expires or is revoked mid-campaign stops every push and every
+    check, and the reports read like any other failure, or like missing bytes. A 401 or 403 from the hub (not the
+    object store's after a redirect) is named: loudly once, as a stat line, and in the status until a call succeeds."""
+    pytest.importorskip("huggingface_hub")
+    chat, root, store, c, logs, clock, at = hub_courier(tmp_path, per_hour=100, push_timeout=60)
+    out = str(chat / "pt")
+    S.make_gen(out, 100)
+    c.tick()
+    (root / "fail.json").write_text(json.dumps({"mode": "auth"}))        # every call: 401 from the hub
+    S.make_gen(out, 200)
+    at(clock.t + 31)
+    c.tick()
+    s = c.s["pt"]
+    loud = [ln for ln in logs if "AUTHENTICATION FAILURE" in ln]
+    assert len(loud) == 1 and "the hub refused this VM's token (HTTP 401)" in loud[0]
+    assert s["auth_failure"]["http_status"] == 401 and s["auth_failure"]["count"] >= 1
+    assert [a["http_status"] for a in stats(logs, "auth_failure")] == [401]
+    st = json.loads((chat / "courier_status.json").read_text())["jobs"]["pt"]
+    assert st["auth_failure"]["http_status"] == 401 and st["pushed_step"] == 100
+    at(clock.t + 700)
+    c.tick()                                             # still refused: counted, said once
+    assert len([ln for ln in logs if "AUTHENTICATION FAILURE" in ln]) == 1 and s["auth_failure"]["count"] >= 2
+    (root / "fail.json").unlink()
+    at(clock.t + 700)
+    c.tick()
+    assert s["auth_failure"] is None and s["head"] == 200 and s["verified"] == {100, 200}
+    for text in logs:
+        assert TOKEN not in text
 
 
 def test_the_upload_first_fallback_is_said_loudly_once_and_in_every_stat_line(tmp_path):
