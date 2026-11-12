@@ -1088,6 +1088,19 @@ STORE_BOOT_FAILURES = 2
 # generation and marks (a budget wait is at most 15 minutes and a 429's at most 30) before the boot takes the token
 # away. --store-settle-min is never shorter than this and a tick.
 STORE_COURIER_WAIT_S = 5400
+# A finished run's last generation that reads "in the store and not whole" is read again before the campaign is
+# halted on it: this many completed checks in all, this many seconds apart. One listing that is transiently wrong
+# must not halt a finished four-day run; a generation that really is damaged reads the same every time.
+STORE_FINAL_CHECKS = 3
+STORE_FINAL_RECHECK_S = 30
+# The release at the campaign's end. Its lock is an essential commit of home's budget: it may use the whole budget
+# and is owed the budget's essential wait (15 minutes), after which it goes whatever the count is. When it cannot
+# run at once it is tried again AFTER the session has been stopped (the wait bills nothing), every
+# STORE_FINAL_RELEASE_NAP_S seconds for at most STORE_FINAL_RELEASE_WAIT_S; if it still has not run, one line says
+# so and names the command that does it by hand.
+STORE_FINAL_RELEASE_WAIT_S = 1200
+STORE_FINAL_RELEASE_NAP_S = 30
+STORE_HOME_ESSENTIAL_WAIT_S = 900  # hf_store.ESSENTIAL_WAIT_S, for home's budget
 _STORE = {}
 
 
@@ -1152,12 +1165,21 @@ def store_branches(jobs):
 def store_open(jobs):
     """The store, opened at home with the same token file. Reads (steps, manifests, mark snapshots) and, with
     --store-release-storage, the release: its lock and unlock are the only commits home makes, and they pass a
-    commit budget of their own, counted in HOME/store_commits.json."""
+    commit budget of their own, counted in HOME/store_commits.json.
+
+    What home commits, from the code: nothing but a release's two (hf_store.Store._lock and _unlock; the watcher,
+    the marks' fetch, the preflight and the durability checks are reads, and main's branch is never created). A
+    timed release's lock is counted with its removal (two) and refused within the budget's reserve (a quarter);
+    an unlock that fails is sent up to three more times, each counted. So one runner's worst rolling hour at the
+    arms' release interval of two hours is one timed release and the release at the campaign's end, each a lock
+    and an unlock sent four times: 10 commits. The default budget of 12 holds that, and its nine outside the
+    reserve hold four timed releases an hour (a release every 15 minutes or slower)."""
     if "store" not in _STORE:
         import hf_store
         cfg = {k: STORE.get(k) for k in ("repo", "repo_type", "token_file", "mark_ns")}
         cfg["store_commit_budget_per_hour"] = STORE.get("home_commit_budget") or 0
         cfg["commit_ledger"] = os.path.join(HOME, "store_commits.json")
+        cfg["commit_essential_wait_s"] = STORE_HOME_ESSENTIAL_WAIT_S
         _STORE["store"] = hf_store.open_store(cfg, log=log, tries=2, delay=5)
     return _STORE["store"]
 
@@ -1371,8 +1393,13 @@ def store_durable(st, jobs, j):
     store; and every such mark is home, verified by sha256. Until then the state is "finished, durability
     pending": the session stays (a lost one is recreated and the job resumes to push again), and after
     --store-settle-min minutes the campaign halts for a person instead of being certified. A check that could not
-    be read is pending, not a verdict. A final generation that is in the store and NOT whole halts the campaign at
-    once (STORE_FINAL_GENERATION_NOT_WHOLE): it is written once and waiting cannot mend it."""
+    be read is pending, not a verdict; five running are said apart, with the HTTP status (STORE CHECK UNREAD), and
+    the halt's record carries the count. A final generation that is in the store and NOT whole halts the campaign
+    without the settle window (STORE_FINAL_GENERATION_NOT_WHOLE): it is written once and waiting cannot mend it.
+    Before that halt the check is made again, STORE_FINAL_CHECKS completed checks in all, STORE_FINAL_RECHECK_S
+    apart, in the same call: one listing that is transiently wrong must not halt a finished run. A repeat that
+    reads whole is whole; one that cannot be read leaves the job pending."""
+    import hf_store
     n, now = j["name"], time.time()
     js, branch = st.job(n), store_branches(jobs)[n]
     final = ((j.get("spec") or {}).get("train") or {}).get("steps") or js.get("final_step")
@@ -1380,7 +1407,7 @@ def store_durable(st, jobs, j):
         rc, out = exec_py(f"print('FINALSTEP', open('/content/chat/{n}/state.txt').readline().strip())\n")
         m = re.search(r"^FINALSTEP (\d+)$", out, re.M)
         final = js["final_step"] = int(m.group(1)) if m else None
-    missing = []
+    missing, unread = [], None
     try:
         if not final:
             raise ValueError("the final step is not known yet")
@@ -1388,16 +1415,25 @@ def store_durable(st, jobs, j):
 
         def look():
             # The courier's own check, made from home: the listing, the manifest read again, and a byte of each
-            # large file. An error (anything unread) leaves the job pending; False is a completed comparison.
-            listed = final in store.steps(branch, store.b.tree(branch) or {})
-            ok = listed and store.listed_whole(branch, final) and store.read_manifest(branch, f"gens/g{final}").get("job") == n
-            return [bool(ok), store.mark_steps(n), listed]
+            # large file. An error (anything unread) leaves the job pending; False is a completed comparison,
+            # and is made again before it is believed.
+            for i in range(1, STORE_FINAL_CHECKS + 1):
+                listed = final in store.steps(branch, store.b.tree(branch) or {})
+                ok = listed and store.listed_whole(branch, final) and store.read_manifest(branch, f"gens/g{final}").get("job") == n
+                if ok or not listed or i == STORE_FINAL_CHECKS:
+                    return [bool(ok), store.mark_steps(n), listed, i]
+                log(f"{n}: the final generation g{final} read as in the store and not whole (check {i} of "
+                    f"{STORE_FINAL_CHECKS}); read again in {STORE_FINAL_RECHECK_S:.0f} s before anything is halted")
+                time.sleep(STORE_FINAL_RECHECK_S)
 
-        gen_ok, marks, listed = store_call(look)
+        gen_ok, marks, listed, checks = store_call(look)
+        if gen_ok and checks > 1:
+            log(f"{n}: the final generation g{final} reads whole at check {checks}; the earlier reading was not the store's state")
         if listed and not gen_ok:
-            # In the store and not whole: a generation is written once, so waiting cannot mend it. Halt now, by
-            # name, with the reason; the two verified generations before it are in the store.
-            store_halt("STORE_FINAL_GENERATION_NOT_WHOLE", job=n, branch=branch, step=final,
+            # In the store and not whole, STORE_FINAL_CHECKS times: a generation is written once, so waiting
+            # cannot mend it. Halt now, by name, with the reason; the two verified generations before it are in
+            # the store.
+            store_halt("STORE_FINAL_GENERATION_NOT_WHOLE", job=n, branch=branch, step=final, checks=checks,
                        why="the run's last generation is in the store and is not whole (a file is short, missing, of "
                            "another hash or job, or its bytes cannot be had); it will not be written again")
             raise SystemExit(3)
@@ -1408,6 +1444,8 @@ def store_durable(st, jobs, j):
         missing += [f"mark {s} not home" for s in want if s in marks and f"{n}/rung_{s}" not in st.d.get("store_marks", {})]
     except Exception as e:  # noqa: BLE001
         missing.append(f"store not read ({store_err(e)})")
+        if final:
+            unread = hf_store.http_status(e) or "no HTTP status"
     pend = st.d.setdefault("durability_pending", {})
     if not missing:
         if pend.pop(n, None):
@@ -1418,9 +1456,17 @@ def store_durable(st, jobs, j):
     if p.get("why") != missing:
         log(f"{n}: finished, durability pending: {'; '.join(missing)}")
     p["why"] = missing
+    # Checks that could not be read, one after another: said apart at the fifth, with the HTTP status, so that a
+    # store that answers the same refusal every time is not left to the settle window without a word.
+    p["unread"], p["http_status"] = (p.get("unread", 0) + 1, unread) if unread else (0, None)
+    if p["unread"] == 5:
+        log(f"{n}: STORE CHECK UNREAD: the check of the final generation g{final} could not be read from home "
+            f"{p['unread']} times running (HTTP status: {unread}). No verdict is drawn from it; the campaign halts "
+            f"with STORE_DURABILITY_PENDING when the settle window is over unless a check is read before")
     st.save()
     if now - p["since"] > STORE["settle_min"] * 60:
-        store_halt("STORE_DURABILITY_PENDING", job=n, missing=missing, minutes=STORE["settle_min"])
+        store_halt("STORE_DURABILITY_PENDING", job=n, missing=missing, minutes=STORE["settle_min"],
+                   unread_checks_running=p["unread"], http_status=p["http_status"])
         raise SystemExit(3)
     return False
 
@@ -1504,7 +1550,7 @@ STORE_VM_READ = (
     "    cs = None\n"
     "keep = ('updated', 'boot_id', 'epoch', 'bytes_since_release', 'pushed_bytes', 'measure_seq', 'push_cap_bytes', 'capped',\n"
     "        'http_429', 'commits_last_hour', 'commit_budget_per_hour')\n"
-    "jk = ('pushed_step', 'pushed_at', 'live_step', 'pushes', 'failures', 'last_error', 'fenced')\n"
+    "jk = ('pushed_step', 'pushed_at', 'live_step', 'pushes', 'failures', 'last_error', 'fenced', 'check_unread')\n"
     "r = {{'at': time.time(), 'courier': None, 'training': {{n: last_step(c + '/' + n + '/events.jsonl') for n in names}}}}\n"
     "if isinstance(cs, dict):\n"
     "    r['courier'] = {{k: cs.get(k) for k in keep}}\n"
@@ -1532,10 +1578,24 @@ def store_guard(st, jobs, vm):
     """The storage guard, each tick. The courier counts what the store held for this campaign at the last release
     from home (store_release hands it the measurement) plus the bytes it has pushed since, and stops pushing at
     --store-push-cap-gb; its count is kept in state.json so the next VM's courier counts on from it. A courier
-    that has reached the cap halts the campaign here, by name: STORE_PUSH_CAP."""
+    that has reached the cap halts the campaign here, by name: STORE_PUSH_CAP.
+
+    Also here: a pushed generation whose check the courier could not read ten times running or more (its status,
+    "check_unread") is said in this log once for each generation, with the HTTP status the courier met, so that a
+    store that refuses the byte read every time is seen at home while the run goes on. It halts nothing."""
     c = (vm or {}).get("courier")
     if not c:
         return
+    said = st.d.get("store_check_unread_said") or []
+    for n, cj in sorted((c.get("jobs") or {}).items()):
+        for step, u in sorted(((cj or {}).get("check_unread") or {}).items()):
+            if isinstance(u, dict) and (u.get("count") or 0) >= 10 and f"{n}/g{step}" not in said:
+                said.append(f"{n}/g{step}")
+                st.d["store_check_unread_said"] = said
+                st.save()
+                log(f"{n}: STORE CHECK UNREAD on the VM: the courier could not read the check of g{step} {u['count']} "
+                    f"times running ({u.get('error')}). The generation counts for nothing until it is read and nothing "
+                    "is removed on its account; a status that stays (403, 404) wants a person to read the store")
     if isinstance(c.get("bytes_since_release"), int) and c["bytes_since_release"] != st.d.get("store_pushed_bytes"):
         st.d["store_pushed_bytes"] = c["bytes_since_release"]
         st.save()
@@ -1560,10 +1620,15 @@ def store_release(st, jobs, final=False):
     --store-release-every-min minutes, and once more at the campaign's end (final), under the store's release lock,
     by difference over every branch, sparing objects younger than --store-release-grace-s. No VM releases: a
     release costs two commits (the lock and its removal), and the hub limits commits per repository. Several
-    runners on one repo (three arms) each keep this timer; the lock arbitrates, and a lock that is not taken
+    runners on one repo (three arms) each keep this timer; the lock arbitrates, and a timed lock that is not taken
     (held by another, or no room in home's commit budget) is left until the next turn of the timer. A release
     deletes only what a commit removed and recorded in a ledger (hf_store.release_report): never an object on
     main, never another campaign's live object, never an upload whose commit has not come.
+
+    The release at the campaign's end (final) is an essential commit of home's budget: it may use the whole budget,
+    without the reserve a timed lock leaves. When it does not run (no room yet, the lock is another runner's, or
+    the call failed) it is owed (state.json "store_release_final_owed") and store_release_owed() makes it after
+    the session has been stopped, waiting a bounded time for room.
 
     A release that ran also measured the store. What is counted for this campaign from then on, each LFS object
     once: what its own branches name under gens/, its own marks, and what its own branches' ledgers name that is
@@ -1583,28 +1648,36 @@ def store_release(st, jobs, final=False):
     st.d["store_release_next"] = now + every
     rec = st.d.setdefault("store_releases", {"count": 0, "held": 0, "failed": 0, "objects": 0, "bytes": 0})
     st.save()
-    again = "at the campaign's end only" if final else f"next turn in {every / 60:.0f} min"
+    again = "tried again after the session has stopped" if final else f"next turn in {every / 60:.0f} min"
     c = {} if final else ((store_vm_read(jobs) or {}).get("courier") or {})
     t0 = time.time()
+    if final:
+        st.d["store_release_final_owed"] = "not tried yet"
     try:
         store = store_open(jobs)
-        r = store_call(lambda: store.release_report(f"home:{NAME}", grace=STORE["release_grace_s"]),
+        r = store_call(lambda: store.release_report(f"home:{NAME}", grace=STORE["release_grace_s"], essential=final),
                        max(900, STORE["call_limit"]))
     except Exception as e:  # noqa: BLE001 a release that fails never ends a driver
         rec["failed"] += 1
+        if final:
+            st.d["store_release_final_owed"] = f"the release failed ({store_err(e)})"
         st.save()
         log(f"store: release failed ({store_err(e)}); {again}")
         return
     if r["held"]:
         rec["held"] += 1
+        if final:
+            st.d["store_release_final_owed"] = f"the lock was not taken ({r.get('why')})"
         st.save()
-        log(f"store: release: the lock was not taken (another releaser holds it, or main or home's commit budget "
-            f"gave no room); {again}")
+        log(f"store: release: the lock was not taken ({r.get('why') or 'another releaser holds it, or main or the budget gave no room'}); {again}")
         return
+    st.d.pop("store_release_final_owed", None)
     if r.get("ledgers_unread"):
         # A ledger that could not be read: nothing was deleted, and what it holds is in nobody's count. The
         # guard's count stays as it is (the courier's own, which only grows) until a release reads them all.
         rec["unread"] = rec.get("unread", 0) + 1
+        if final:
+            st.d["store_release_final_owed"] = f"{r['ledgers_unread']} ledger(s) could not be read"
         st.save()
         log(f"store: release: {r['ledgers_unread']} ledger(s) could not be read; nothing was deleted and the storage "
             f"guard's count is left as it is; {again}")
@@ -1639,6 +1712,37 @@ def store_release(st, jobs, final=False):
             log("store: the measurement did not reach the VM; its courier counts on from its own, higher, number")
 
 
+def store_release_owed(st, jobs):
+    """After the session has been stopped: the release at the campaign's end, when it did not run in the loop. It
+    is tried again every STORE_FINAL_RELEASE_NAP_S seconds for at most STORE_FINAL_RELEASE_WAIT_S. Its lock is
+    essential to home's budget, which lets it pass at the latest STORE_HOME_ESSENTIAL_WAIT_S after it first asked,
+    so only a lock another runner keeps, a 429's wait or a store that does not answer can outlast the wait. Then
+    ONE line says that it did not run, why, and the command that does it by hand; the command's config (no secret
+    in it: the repo and the token file's path) is written beside the state. Never raises."""
+    try:
+        if not STORE or not STORE["reclaim"] or not st.d.get("store_release_final_owed"):
+            return
+        end = time.time() + STORE_FINAL_RELEASE_WAIT_S
+        log(f"store: the release at the campaign's end is owed ({st.d['store_release_final_owed']}); the session is "
+            f"stopped, and it is tried for at most {STORE_FINAL_RELEASE_WAIT_S:.0f} s more")
+        while st.d.get("store_release_final_owed") and time.time() + STORE_FINAL_RELEASE_NAP_S <= end:
+            time.sleep(STORE_FINAL_RELEASE_NAP_S)
+            store_release(st, jobs, final=True)
+        why = st.d.get("store_release_final_owed")
+        if not why:
+            return
+        cfg = os.path.join(HOME, "store_release_by_hand.json")
+        with open(cfg, "w") as f:
+            json.dump({**{k: STORE.get(k) for k in ("repo", "repo_type", "token_file", "mark_ns")},
+                       "store_commit_budget_per_hour": 0}, f, indent=1)
+        log(f"store: THE RELEASE AT THE CAMPAIGN'S END DID NOT RUN: {why}. Nothing is lost: the removed generations' "
+            f"ledgers and objects stay in the store until a release reads them. By hand: python3 "
+            f"{os.path.join(HERE, 'hf_store.py')} release --config {cfg} --grace {STORE['release_grace_s']:.0f} "
+            f"--owner hand:{NAME}")
+    except Exception as e:  # noqa: BLE001 nothing here may keep the runner from ending
+        log(f"store: the release at the campaign's end was not made ({type(e).__name__})")
+
+
 def store_commit_stat(jobs):
     """Once an hour: the commits home sent to the store in it (the release's locks), as one line of the log."""
     if not STORE["reclaim"]:
@@ -1657,7 +1761,7 @@ BRING_HOME = (
     "import base64, glob, json, os\n"
     "c = '/content/chat'\n"
     "names = ['courier.log', 'boot.log', 'courier_status.json', 'store_inputs.json', 'COURIER_FENCED', 'COURIER_CAPPED',\n"
-    "         'COURIER_NOT_WHOLE', 'jobs.log', 'watch/watch.jsonl']\n"
+    "         'COURIER_NOT_WHOLE', 'COURIER_CHECK_UNREAD', 'jobs.log', 'watch/watch.jsonl']\n"
     "names += sorted('store_restore/' + os.path.basename(p) for p in glob.glob(c + '/store_restore/*.json'))[:24]\n"
     "out = {{}}\n"
     "for n in names:\n"
@@ -2100,10 +2204,12 @@ def main():
                     help="commits and branch creations an hour ONE VM may send to the store (its courier and data "
                          "job together). A ceiling for that writer, not for the repository: the hub allows a "
                          "repository 128 an hour, all writers together, and nothing ties the VMs' counts together. "
-                         "The defaults sum under it for three arms (3 x 24 + 3 x 8 = 96). 0: no limit")
-    ap.add_argument("--store-home-commit-budget-per-hour", type=int, default=8,
-                    help="commits an hour THIS runner may send to the store (the release's lock and unlock; a quarter "
-                         "is kept back, so three releases an hour at the most). Per runner, not per repository. 0: no limit")
+                         "The defaults sum under it for three arms (3 x 24 + 3 x 12 = 108). 0: no limit")
+    ap.add_argument("--store-home-commit-budget-per-hour", type=int, default=12,
+                    help="commits an hour THIS runner may send to the store (the release's lock and unlock, and an "
+                         "unlock sent again). A quarter is kept back from the timed release, so four of those an hour "
+                         "at the most; the release at the campaign's end may use it all and waits for room. Per "
+                         "runner, not per repository. 0: no limit")
     ap.add_argument("--store-push-cap-gb", type=float, default=None,
                     help="storage guard: counted are the bytes the store held for this campaign when a release from "
                          "home last measured it (each object once: what its branches name under gens/, its marks, "
@@ -2388,6 +2494,8 @@ def main():
         stopped = stop_session(st, "at the runner's end")
         if st.d.get("campaign_home"):
             T.release(st)
+        if STORE and stopped:
+            store_release_owed(st, jobs)  # the campaign's last release, when the loop could not make it: no session bills now
         log("session stopped; runner exiting" if stopped else "SESSION STOP NOT CONFIRMED (STOP_UNRESOLVED); runner exiting")
         os.remove(pid)
         if not stopped:

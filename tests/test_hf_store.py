@@ -559,8 +559,10 @@ class FakeApi:
         class Session:
             def get(self, url, headers=None, timeout=None, stream=False, allow_redirects=True):
                 import io
+                import urllib.parse
                 import requests
                 revision, path = url.split("/resolve/", 1)[1].split("/", 1)
+                revision = urllib.parse.unquote(revision)    # the library quotes it: a commit id is "<branch>@<n>" here
                 api._rec("probe", repo="someone/base2-store", revision=revision, filename=path, range=headers.get("Range"),
                          repo_type="dataset" if "/datasets/" in url else "model",
                          token=str(headers.get("authorization") or headers.get("Authorization")).replace("Bearer ", ""))
@@ -576,6 +578,7 @@ class FakeApi:
                     resp.status_code, resp.history, resp.url = 404, [first], "https://cdn-lfs.example/" + S.sha(files[path])
                 else:
                     resp.status_code, resp.raw = 206, io.BytesIO(files[path][:1])
+                    resp.headers["Content-Range"] = f"bytes 0-0/{len(files[path])}"
                 return resp
         return Session()
 
@@ -1569,7 +1572,7 @@ def test_an_unread_check_is_not_a_damaged_generation_and_a_missing_object_is_see
     assert store.listed_whole("ckpt-N", 100, man["files"]) is True
     probes = [c[1] for c in api.calls if c[0] == "probe"]
     assert sorted(p["filename"] for p in probes) == ["gens/g100/model.safetensors", "gens/g100/optim.safetensors"]   # the two large files
-    assert all(p["range"] == "bytes=0-0" and p["token"] == TOKEN and p["revision"] == "ckpt-N" for p in probes)
+    assert all(p["range"] == "bytes=0-0" and p["token"] == TOKEN and p["revision"] == "ckpt-N@1" for p in probes)   # at the commit
     # 1. The listing is good and the manifest cannot be fetched: an error, in this process and through a child.
     real = api.hf_hub_download
 
@@ -1834,6 +1837,259 @@ def test_the_budget_in_memory_keeps_its_history_and_a_bad_record_of_finished_led
     store.push_generation("ckpt-N", "pt", step, staged_gen(tmp_path, step), None, store.head("ckpt-N")["commit"],
                           prune={"keep": 2, "verified": store.steps("ckpt-N")[-2:]})
     assert 100 not in hf_store.ledger_steps(store.b.tree("ckpt-N"))                      # a good record is followed
+
+
+# ---------------------------------------------------------------- the arms' round (third reviews and the rerun, 12 Nov 2026)
+def _reply(code, body=b"", content_range=None, redirected=False):
+    """A reply to the one-byte ranged read, as requests hands it over; after the hub's redirect when asked."""
+    r = _resp(code)
+    r.raw = __import__("io").BytesIO(body)
+    if content_range:
+        r.headers["Content-Range"] = content_range
+    if redirected:
+        first = _resp(302)
+        r.history, r.url = [first], "https://cdn-lfs.example/objects/abc?X-Amz-Signature=SIGNED"
+    return r
+
+
+def test_the_byte_read_is_held_against_the_listed_size_and_made_at_the_listings_commit(tmp_path):
+    """The third reviews. (1) The byte read took a 416 for "there" whatever the file's size, and any successful
+    reply for the file's bytes. Now it is given the listed size: a 416 is "there" only for a file listed as empty,
+    a reply that names another whole size (Content-Range) is "not there", and a 416 that cannot be held against a
+    size is no answer. (2) The listing was taken at the branch's name and the bytes were read at the branch's name
+    a moment later. Now the head is read once, and the listing, the manifest and every byte are read at that
+    commit. (3) A 403 is no verdict, from the hub or from the object store; its error names the status and where
+    it came from, never the signed address, and the status survives a bounded() child."""
+    pytest.importorskip("huggingface_hub")
+    api = FakeApi()
+    store, _ = hstore(tmp_path, api)
+    man = store.push_generation("ckpt-N", "pt", 100, staged_gen(tmp_path, 100), IDENT)
+    size = man["files"]["model.safetensors"]["bytes"]
+    path = "gens/g100/model.safetensors"
+
+    def answers(reply):
+        seen = []
+
+        def get(self, url, **kw):
+            seen.append(url)
+            return reply
+        return type("S", (), {"get": get})(), seen
+
+    def probe(reply, **kw):
+        session, _ = answers(reply)
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(FakeApi, "http_session", property(lambda self: session))
+            return store.b.probe("ckpt-N", path, **kw)
+
+    # (1) 416: there only when the file is listed as empty.
+    assert probe(_reply(416), size=0) is True
+    assert probe(_reply(416, content_range="bytes */0"), size=0) is True
+    assert probe(_reply(416, content_range="bytes */0"), size=size) is False         # an empty object for a file that is not
+    for kw in ({"size": size}, {}, {"size": 0, "content_range": "bytes */7"}):
+        cr = kw.pop("content_range", None)
+        with pytest.raises(hf_store.StoreError, match="HTTP 416") as e:               # no answer: asked again
+            probe(_reply(416, content_range=cr), **kw)
+        assert hf_store.http_status(e.value) == 416
+    # A successful reply is held against the listed size where it names one.
+    assert probe(_reply(206, b"x", f"bytes 0-0/{size}"), size=size) is True
+    assert probe(_reply(206, b"x", f"bytes 0-0/{size - 1}"), size=size) is False    # the bytes of another object
+    assert probe(_reply(206, b"x", "bytes 0-0/*"), size=size) is True               # it names none: one byte is the evidence
+    assert probe(_reply(200, b"x"), size=size) is True                              # the range was ignored: a byte all the same
+    assert probe(_reply(206, b""), size=size) is False and probe(_reply(200, b""), size=0) is True
+    assert hf_store.range_total(_reply(206, b"x", "bytes 0-0/12")) == 12 and hf_store.range_total(_reply(206)) is None
+    # listed_whole passes each file's listed size, so a 416 for a large file is never "whole".
+    session, _ = answers(_reply(416))
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(FakeApi, "http_session", property(lambda self: session))
+        with pytest.raises(hf_store.StoreError, match="HTTP 416"):
+            store.listed_whole("ckpt-N", 100, man["files"])
+    session, _ = answers(_reply(206, b"x", "bytes 0-0/5"))
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(FakeApi, "http_session", property(lambda self: session))
+        assert store.listed_whole("ckpt-N", 100, man["files"]) is False
+    # (3) 403 and 401: no verdict, from either side; 404 after the redirect is "gone", as before.
+    for code, redirected, where in ((403, True, "from the object store"), (403, False, "from the hub"), (401, False, "from the hub")):
+        with pytest.raises(hf_store.StoreError) as e:
+            probe(_reply(code, redirected=redirected), size=size)
+        text = str(e.value)
+        assert f"HTTP {code} on the byte read of ckpt-N:{path}" in text and where in text and hf_store.http_status(e.value) == code
+        assert "cdn-lfs" not in text and "SIGNED" not in text and TOKEN not in text  # not the signed address
+    assert probe(_reply(404, redirected=True), size=size) is False
+    session, _ = answers(_reply(403, redirected=True))
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(FakeApi, "http_session", property(lambda self: session))
+        with pytest.raises(hf_store.StoreError) as e:
+            hf_store.bounded(lambda: store.listed_whole("ckpt-N", 100, man["files"]), 30, TOKEN)
+    assert hf_store.http_status(e.value) == 403 and "from the object store" in str(e.value)
+    # An error whose text names no status carries its response's across the pipe; one without a status names none.
+    class Refused(Exception):
+        response = type("R", (), {"status_code": 418})()
+
+    def refuse():
+        raise Refused("the hub said no")
+    with pytest.raises(hf_store.StoreError) as e:
+        hf_store.bounded(refuse, 30, TOKEN)
+    assert hf_store.http_status(e.value) == 418 and hf_store.http_status(ConnectionError("reset by peer")) is None
+    # (2) One commit for all three reads.
+    api.calls.clear()
+    assert store.listed_whole("ckpt-N", 100, man["files"]) is True
+    head = "ckpt-N@1"
+    assert [c[1]["revision"] for c in api.calls if c[0] == "list_repo_tree"] == [head]
+    assert [c[1]["revision"] for c in api.calls if c[0] == "hf_hub_download"] == [head]
+    assert [c[1]["revision"] for c in api.calls if c[0] == "probe"] == [head, head]
+    # The branch moves between the listing and the byte read (a later save removes a file under the same name):
+    # the check is of the commit it listed, where the bytes are.
+
+    def a_commit_lands():
+        api.create_commit(repo_id="r", operations=[type("CommitOperationDelete", (), {"path_in_repo": "gens/g100/optim.safetensors",
+                                                                                      "is_folder": False})()],
+                          commit_message="generation: gens/g200", revision="ckpt-N")
+
+    api.after["list_repo_tree"] = a_commit_lands
+    assert store.listed_whole("ckpt-N", 100, man["files"]) is True
+    assert api.heads["ckpt-N"] == 2 and "gens/g100/optim.safetensors" not in api.branches["ckpt-N"]
+    assert store.listed_whole("ckpt-N", 100, man["files"]) is False                 # asked again, at the new head: a file is missing
+    # The stand-in hub answers the ranged read at a commit id too, and names the whole size.
+    hs, root, _ = hub_store(tmp_path / "hub")
+    hs.ensure_branch("ckpt-N")
+    m2 = hs.push_generation("ckpt-N", "pt", 200, staged_gen(tmp_path / "hub", 200), IDENT, hs.head("ckpt-N")["commit"])
+    assert hs.listed_whole("ckpt-N", 200, m2["files"]) is True
+    asked = [ln for ln in (root / "calls.log").read_text().splitlines() if ln.startswith("probe ")]
+    assert asked and all(ln.startswith("probe ckpt-N@1:gens/g200/") for ln in asked)
+    (root / "probe.json").write_text(json.dumps({"status": 403}))
+    with pytest.raises(hf_store.StoreError, match="HTTP 403") as e:
+        hs.listed_whole("ckpt-N", 200, m2["files"])
+    assert "SIGNED" not in str(e.value)
+
+
+def test_release_refuses_a_round_in_which_a_tree_cannot_be_read(tmp_path):
+    """The third review: release read `tree(...) or {}`, so a branch whose listing was not given counted as a
+    branch that names nothing, and what it names could be deleted from under it. Here a run and its control hold
+    the same bytes; the run has removed g100 and its ledger is old; the control still names g100. With the
+    control's tree unread the round must be refused, not run as if the control were empty. A head that is not
+    found is the same case, and so is a main that cannot be listed when the lock is looked for."""
+    pytest.importorskip("huggingface_hub")
+    api = FakeApi()
+    store, logs = hstore(tmp_path, api, clock=lambda: api.now)
+    for branch in ("ckpt-R", "ckpt-Rc"):
+        for step in (100, 200, 300):
+            store.push_generation(branch, "pt", step, staged_gen(tmp_path / branch, step))
+    assert store.prune("ckpt-R", keep=2, verified=[200, 300]) == [100]
+    late = api.now + 10 ** 6
+    objects = dict(api.lfs)
+    real_tree, real_info = api.list_repo_tree, api.repo_info
+
+    def no_tree_of_the_control(**kw):
+        if str(kw.get("revision")).startswith("ckpt-Rc"):
+            raise RevisionNotFoundError(str(kw.get("revision")))
+        return real_tree(**kw)
+
+    api.list_repo_tree = no_tree_of_the_control
+    api.calls.clear()
+    with pytest.raises(hf_store.StoreError, match="release refused: the tree of ckpt-Rc could not be read"):
+        store.release_report("home", grace=600, now=late)
+    assert api.lfs == objects and "permanently_delete_lfs_files" not in [c[0] for c in api.calls]
+    assert hf_store.LOCK not in api.branches["main"]                                    # the lock was removed all the same
+    api.list_repo_tree = real_tree
+
+    def no_head_of_the_control(**kw):
+        if kw.get("revision") == "ckpt-Rc":
+            raise RevisionNotFoundError("ckpt-Rc")
+        return real_info(**kw)
+
+    api.repo_info = no_head_of_the_control
+    with pytest.raises(hf_store.StoreError, match="release refused: the tree of ckpt-Rc"):
+        store.release_report("home", grace=600, now=late)
+    assert api.lfs == objects and hf_store.LOCK not in api.branches["main"]
+    api.repo_info = real_info
+    # Main cannot be listed: the lock is not taken on the word of a listing that was not given.
+
+    def no_tree_of_main(**kw):
+        if str(kw.get("revision")).startswith("main"):
+            raise RevisionNotFoundError(str(kw.get("revision")))
+        return real_tree(**kw)
+
+    api.list_repo_tree = no_tree_of_main
+    n = len([c for c in api.calls if c[0] == "create_commit"])
+    r = store.release_report("home", grace=600, now=late)
+    assert r["held"] is True and r["why"] == "main could not be listed"
+    assert len([c for c in api.calls if c[0] == "create_commit"]) == n and api.lfs == objects
+    api.list_repo_tree = real_tree
+    # Every tree read: the round runs, and the control's tree keeps what it names.
+    r = store.release_report("home", grace=600, now=late)
+    assert (r["held"], r["objects"]) == (False, 0) and api.lfs == objects and r["ledgers_done"] == 1
+
+
+def test_the_release_at_a_campaigns_end_is_essential_and_waits_for_room(tmp_path):
+    """The rerun of 12 Nov 2026 (PROTOCOL 47.2): home's budget was 8 an hour and a timed lock may use six of it;
+    three timed releases in the hour left the release at the campaign's end no room, and six ledgers stayed. That
+    release is essential now: it may use the whole budget, it is owed the budget's essential wait and then goes
+    whatever the count is, and a release that is not made says why. With the new default of 12: four timed releases
+    an hour, and one runner's worst hour (ten commits) fits."""
+    def home(per_hour, where):
+        clock = Tick()
+        budget = hf_store.CommitBudget(per_hour, str(tmp_path / where / "store_commits.json"), clock=clock)
+        store = hf_store.Store(hf_store.DirBackend(str(tmp_path / where / "repo")), log=lambda m: None, delay=0, budget=budget)
+        return store, budget, clock
+
+    store, budget, clock = home(8, "eight")
+    for _ in range(3):                                   # the rehearsal's hour: a timed release every twenty minutes
+        assert store.release_report("home", grace=600)["held"] is False
+        clock.t += 1200
+    clock.t -= 1200 - 60                                 # a minute after the third: the campaign ends
+    assert budget.count() == 6
+    r = store.release_report("home", grace=600)          # as it was: a timed lock has no room
+    assert r["held"] is True and r["why"].startswith("budget: room in ")
+    r = store.release_report("home", grace=600, essential=True)
+    assert r["held"] is False and budget.count() == 8    # the end's release: the whole budget is its to use
+    # With the budget full an essential release waits: held, with the seconds; never longer than the essential wait.
+    r = store.release_report("home", grace=600, essential=True)
+    assert r["held"] is True and r["why"].startswith("budget: room in ")
+    assert 0 < int(r["why"].split()[-2]) <= hf_store.ESSENTIAL_WAIT_S
+    clock.t += hf_store.ESSENTIAL_WAIT_S - 2
+    assert store.release_report("home", grace=600, essential=True)["held"] is True
+    clock.t += 3
+    assert store.release_report("home", grace=600, essential=True)["held"] is False and budget.count() == 10   # sent whatever the count
+    # The default of 12 (runner_multi.py): nine for timed locks, so four an hour; the end's release on top; ten in all.
+    store, budget, clock = home(12, "twelve")
+    for _ in range(4):
+        assert store.release_report("home", grace=600)["held"] is False
+        clock.t += 60
+    assert store.release_report("home", grace=600)["held"] is True and budget.count() == 8
+    assert store.release_report("home", grace=600, essential=True)["held"] is False and budget.count() == 10
+    assert not os.path.exists(tmp_path / "twelve" / "repo" / "main" / "locks" / "release.json")
+
+
+def test_which_upload_order_ran_comes_back_with_the_push(tmp_path):
+    """The third reviews: when the library does not take preupload_lfs_files as it is called, the commit falls back
+    to the old order (the ledger stamped before the upload) and nothing said so. The push now hands back which
+    order ran, for the courier to log (tests/test_ckpt_courier.py)."""
+    pytest.importorskip("huggingface_hub")
+    api = FakeApi()
+    store, _ = hstore(tmp_path, api, clock=lambda: api.now)
+    for step in (100, 200, 300):
+        man = store.push_generation("ckpt-N", "pt", step, staged_gen(tmp_path, step), None, None if step == 100 else store.head("ckpt-N")["commit"],
+                                    prune={"keep": 2, "verified": []})
+        assert man["pruned"] == [] and man["ledger_upload"] is None           # no ledger was written: neither order ran
+    man = store.push_generation("ckpt-N", "pt", 400, staged_gen(tmp_path, 400), None, store.head("ckpt-N")["commit"],
+                                prune={"keep": 2, "verified": [200, 300]})
+    assert man["pruned"] == [100] and man["ledger_upload"] == "upload_first"
+
+    def refused(**kw):
+        raise TypeError(f"preupload_lfs_files() got an unexpected keyword argument (token {TOKEN})")
+
+    api.preupload_lfs_files = refused
+    man = store.push_generation("ckpt-N", "pt", 500, staged_gen(tmp_path, 500), None, store.head("ckpt-N")["commit"],
+                                prune={"keep": 2, "verified": [300, 400]})
+    assert man["pruned"] == [200] and man["ledger_upload"].startswith("fallback (TypeError: preupload_lfs_files() got an unexpected")
+    assert TOKEN not in man["ledger_upload"] and hf_store.ledger_steps(store.b.tree("ckpt-N")) == [100, 200]
+    # A store on local disk has no upload phase: nothing to say.
+    d = dstore(tmp_path)
+    push_gens(tmp_path / "d", d, [100, 200, 300])
+    man = d.push_generation("ckpt-N", "pt", 400, staged_gen(tmp_path / "d", 400), None, d.head("ckpt-N")["commit"],
+                            prune={"keep": 2, "verified": [200, 300]})
+    assert man["pruned"] == [100] and man["ledger_upload"] is None
+    assert "FOUR" in hf_store.__doc__ and "3 x 12" in hf_store.__doc__
 
 
 # ---------------------------------------------------------------- base2_seed.py

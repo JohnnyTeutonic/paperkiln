@@ -32,7 +32,9 @@ error (a transport error is retried, then raised), refuses a generation of anoth
 and refuses when the branch lists nothing at or above the step home has seen pushed. Generations are removed only
 behind two that the caller has verified: by a download, or by a listing taken AFTER the commit that added the
 generation, which shows every file of its manifest at its size and LFS sha256 (listed_whole). The commit that adds a
-generation never counts that generation, so a branch holds three for the time between two saves.
+generation never counts that generation, so a branch holds three for the time between two saves, and FOUR for
+one save after a session is replaced: the new VM has verified only the generation it restored, removes nothing
+until it has verified one of its own, and its next save then removes two in one commit, each with its ledger.
 
 Storage. Removing a generation from a branch does not free its bytes. release() does, and deletes only what a
 commit once named and a later commit removed: the commit that removes a generation writes its ledger
@@ -54,10 +56,11 @@ client-side budget (CommitBudget: "store_commit_budget_per_hour" in the config, 
 small file, "commit_ledger"). THE BUDGET IS PER WRITER, NOT PER REPOSITORY: the processes that share one ledger file
 (a VM's courier and its data job; one runner at home) share one count, and nothing ties the ledgers of different
 machines together. The defaults are set so that three arms' ceilings sum under the hub's limit (3 x 24 for the
-couriers and 3 x 8 for the runners: 96 of 128); only the hub's own 429 bounds the repository. A generation, a mark, an
-input set and a branch are essential: with the budget spent they wait their turn, at most ESSENTIAL_WAIT_S (15
-minutes), and are then sent whatever the count is, for the hub to answer. A lock, a prune by itself and anything
-else are refused once the budget is within its reserve (a quarter) of spent. A call the hub answers with 429 is
+couriers and 3 x 12 for the runners: 108 of 128); only the hub's own 429 bounds the repository. A generation, a mark,
+an input set, a branch and the lock of the release at a campaign's end are essential: with the budget spent they
+wait their turn, at most ESSENTIAL_WAIT_S (15 minutes), and are then sent whatever the count is, for the hub to
+answer. A timed release's lock, a prune by itself and anything else are refused once the budget is within its
+reserve (a quarter) of spent. A call the hub answers with 429 is
 raised as RateLimited with the hub's Retry-After (seconds or an HTTP date), and nothing passes the budget for at
 least that long, at most MAX_429_WAIT_S (30 minutes).
 
@@ -222,6 +225,24 @@ def capped_429_wait(seconds):
 
 def _num(x):
     return isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x)
+
+
+def http_status(e):
+    """The HTTP status an error carries: its response's, else the one its text names ("HTTP 403", "403 Client
+    Error"); None for an error that names none (a transport failure, a time-out)."""
+    code = getattr(getattr(e, "response", None), "status_code", None)
+    if isinstance(code, int) and not isinstance(code, bool):
+        return code
+    m = re.search(r"\bHTTP (\d{3})\b|\b([1-5]\d\d) (?:Client|Server) Error", str(e))
+    return int(m.group(1) or m.group(2)) if m else None
+
+
+def range_total(resp):
+    """The whole size a ranged reply names (Content-Range: "bytes 0-0/N", or "bytes */N" with a 416); None when it
+    names none."""
+    text = str((getattr(resp, "headers", None) or {}).get("Content-Range") or "")
+    m = re.fullmatch(r"\s*bytes\s+(?:\d+-\d+|\*)/(\d+)\s*", text)
+    return int(m.group(1)) if m else None
 
 
 class CommitBudget:
@@ -560,6 +581,9 @@ def bounded(fn, timeout, token=None, while_waiting=None):
             out = {"ok": fn()}
         except BaseException as e:  # noqa: BLE001
             out = {"err": redact(f"{e}", token)[:2000], "type": type(e).__name__}
+            code = http_status(e)
+            if code is not None and http_status(Exception(out["err"])) != code:
+                out["err"] += f" [HTTP {code}]"  # the status crosses the pipe when the text does not name it
         try:
             sys.stdout.flush()  # what fn printed: _exit below drops unwritten buffers
             sys.stderr.flush()
@@ -644,8 +668,9 @@ class DirBackend:
                 out[os.path.relpath(p, d).replace(os.sep, "/")] = {"bytes": n, "sha256": sha}
         return out
 
-    def probe(self, branch, path, rev=None):
-        return os.path.isfile(self._p(branch, path))
+    def probe(self, branch, path, rev=None, size=None):
+        p = self._p(branch, path)
+        return os.path.isfile(p) and (size is None or os.path.getsize(p) == size)
 
     def commit(self, branch, adds, deletes, message, parent=None, before_send=None):
         self.ensure_branch(branch)
@@ -705,6 +730,7 @@ class HfBackend:
             api = HfApi()
         self.api = api
         self._known = {"main"}  # branches known to exist: create_branch is called once for each, not before every commit
+        self.upload_path = None  # of the last commit that wrote a ledger: "upload_first", or "fallback (the error)"
 
     def _kw(self):
         return {"repo_id": self.repo, "repo_type": self.repo_type, "token": self.token}
@@ -760,26 +786,46 @@ class HfBackend:
         create_commit then does not repeat), before_send() is called, and the {path: file} it returns are added
         to the commit that is sent next. What it writes therefore carries the time the commit is sent, not the
         time the upload began. Should the pinned library not take the call as written here (a TypeError or an
-        AttributeError), the upload is left to create_commit and before_send() is called just before it."""
+        AttributeError), the upload is left to create_commit and before_send() is called just before it: the old
+        order, in which the ledger's time is the upload's START. Which of the two ran is kept in `upload_path`
+        ("upload_first", or "fallback (the error)"); push_generation hands it back and the courier logs it."""
         from huggingface_hub import CommitOperationAdd, CommitOperationDelete
         ops = [CommitOperationAdd(path_in_repo=p, path_or_fileobj=src) for p, src in sorted(adds.items())]
+        self.upload_path = None
         if before_send is not None:
             if ops:
                 try:
                     self.api.preupload_lfs_files(additions=ops, revision=branch, **self._kw())
-                except (TypeError, AttributeError):
-                    pass
+                    self.upload_path = "upload_first"
+                except (TypeError, AttributeError) as e:
+                    self.upload_path = redact(f"fallback ({type(e).__name__}: {e})", self.token)[:200]
             ops += [CommitOperationAdd(path_in_repo=p, path_or_fileobj=src) for p, src in sorted(before_send().items())]
         ops += [CommitOperationDelete(path_in_repo=p) for p in sorted(deletes)]
         self.api.create_commit(operations=ops, commit_message=message, revision=branch, parent_commit=parent, **self._kw())
         self._known.add(branch)
 
-    def probe(self, branch, path, rev=None):
+    def probe(self, branch, path, rev=None, size=None):
         """One byte of a file, read through the hub's download address: True when the bytes are there, False when
         the hub or its object store answers that they are not (a pointer whose object is gone), an error when the
         answer could not be had. The listing cannot tell these apart for an LFS file: its size and hash come from
-        the pointer. A ranged GET of the first byte; the token goes in the request's header, as the library builds
-        it, and nowhere else. A redirect to the object store is followed (requests drops the token on the way)."""
+        the pointer. A ranged GET of the first byte, at the commit `rev` when one is given (the commit the caller's
+        listing was taken at), else at the branch's name; the token goes in the request's header, as the library
+        builds it, and nowhere else. A redirect to the object store is followed (requests drops the token on the
+        way).
+
+        size: the file's size as the listing gives it. With it the reply is held against the listing: a reply that
+        names the object's whole size (Content-Range) and names another one is False, and a 416 (no byte in that
+        range) is True only for a file listed as empty whose reply names no other size. A 416 that cannot be held
+        against a size is an error, not an answer.
+
+        A 403 or a 401, from the hub or from the object store after the redirect, is NO VERDICT: an error. An
+        object store may answer 403 for a key that is not there, and it answers 403 for a signed address that has
+        expired or that it refuses; one reply cannot tell these apart, and "gone" is never taken back (the
+        generation is not whole for good, and a run's last one halts its campaign). What keeps such a check from
+        reading "unread" for ever without a word is the caller's count: the courier reports a check that stays
+        unread ckpt_courier.UNREAD_REPORT_AFTER times running, with this status (log, status and
+        CHAT/COURIER_CHECK_UNREAD), and the runner repeats it at home. The error's text names the HTTP status and
+        where it came from, and not the address (after a redirect that is a signed one)."""
         from huggingface_hub import hf_hub_url
         from huggingface_hub.utils import build_hf_headers, get_session, hf_raise_for_status
         url = hf_hub_url(repo_id=self.repo, filename=path, repo_type=self.repo_type, revision=rev or branch)
@@ -787,8 +833,15 @@ class HfBackend:
         r = session.get(url, headers={**build_hf_headers(token=self.token), "Range": "bytes=0-0"}, timeout=30,
                         stream=True, allow_redirects=True)
         try:
+            where = "from the object store, after the hub's redirect" if r.history else "from the hub"
+            total = range_total(r)
             if r.status_code == 416:
-                return True  # there, and empty
+                if size == 0 and total in (None, 0):
+                    return True  # there, and empty, as listed
+                if size and total is not None and total != size:
+                    return False  # the object there is of another size than the listing gives the file
+                raise StoreError(f"HTTP 416 on the byte read of {branch}:{path} ({where}): no byte in the range, and "
+                                 f"the reply cannot be held against the listed size ({size})")
             try:
                 hf_raise_for_status(r)
             except Exception as e:  # noqa: BLE001
@@ -796,8 +849,11 @@ class HfBackend:
                     return False  # the hub: no such file at this revision
                 if r.status_code in (404, 410) and r.history and type(e).__name__ not in ("RepositoryNotFoundError", "RevisionNotFoundError"):
                     return False  # the object store, after the hub's redirect: no such object
-                raise
-            return len(next(r.iter_content(1), b"")) == 1
+                raise StoreError(f"HTTP {r.status_code} on the byte read of {branch}:{path} ({where}; "
+                                 f"{type(e).__name__})") from None
+            if size is not None and total is not None and total != size:
+                return False  # a reply for an object of another size than the listing gives the file
+            return len(next(r.iter_content(1), b"")) == 1 or size == 0
         finally:
             r.close()
 
@@ -948,12 +1004,12 @@ class Store:
         self._manifests[(branch, prefix)] = man
         return man
 
-    def read_manifest(self, branch, prefix, fresh=False):
+    def read_manifest(self, branch, prefix, fresh=False, rev=None):
         key = (branch, prefix)
         if fresh or key not in self._manifests:
             with tempfile.TemporaryDirectory(prefix="store_manifest.") as tmp:
                 p = os.path.join(tmp, MANIFEST)
-                self.fetch(branch, f"{prefix}/{MANIFEST}", p)
+                self.fetch(branch, f"{prefix}/{MANIFEST}", p, rev=rev)
                 try:
                     man = json.load(open(p))
                 except ValueError:
@@ -1048,16 +1104,20 @@ class Store:
         the sizes and hashes the pusher computed from its own bytes); every file of it is listed at that size and,
         for an LFS file, that sha256; and (probe) one byte of each LFS file can be read. The listing's size and
         hash of an LFS file come from its pointer, so only the read shows a pointer whose object is gone.
+        All three reads are of ONE commit, the branch's head when this check looked: the listing is taken at it,
+        and the manifest and the bytes are read at it, never at the moving branch name, so a save that lands in
+        between changes nothing here. Each byte read is held against the file's listed size (HfBackend.probe).
         Reads, not commits. This, after the commit that added the generation, is what makes it count as verified."""
         prefix = f"gens/g{step}"
         self._manifests.pop((branch, prefix), None)
-        tree = self.b.tree(branch)
+        head = self.b.head(branch)
+        tree = self.b.tree(branch, rev=head) if head else None
         if tree is None:
             raise StoreError(f"{branch} is not listed")
         if f"{prefix}/{MANIFEST}" not in tree:
             return False
         try:
-            man = self.read_manifest(branch, prefix, fresh=True)
+            man = self.read_manifest(branch, prefix, fresh=True, rev=head)
         except VerifyError:
             return False  # read, and not a manifest
         if man.get("step") != step or not set(GEN_FILES) <= set(man["files"]) or (files is not None and man["files"] != files):
@@ -1068,8 +1128,8 @@ class Store:
             if not e or e["bytes"] != want["bytes"] or (e.get("sha256") and e["sha256"] != want["sha256"]):
                 return False
             if e.get("sha256"):
-                large.append(f"{prefix}/{f}")
-        return all(self.b.probe(branch, p) for p in large) if probe else True
+                large.append((f"{prefix}/{f}", e["bytes"]))
+        return all(self.b.probe(branch, p, rev=head, size=n) for p, n in large) if probe else True
 
     def push_generation(self, branch, job, step, folder, identity=None, parent=None, prune=None):
         """One generation, staged in `folder` (GEN_FILES and events.jsonl), as one commit computed against the
@@ -1079,14 +1139,17 @@ class Store:
         removes the generations behind the `keep` newest of the caller's verified steps that are whole in the
         listing the commit is computed against. The generation being added NEVER counts among them: whether it
         arrived whole is known only from a listing after this commit (listed_whole), so it can protect nothing
-        yet, and the branch holds one generation more until the next save. The rules are prune()'s: nothing is
+        yet, and the branch holds one generation more until the next save (two more, four in all, for the one save
+        after a session is replaced: the new VM's first save has one verified generation, the restored one, and
+        removes nothing; its second removes two, each with its own ledger). The rules are prune()'s: nothing is
         removed with fewer than `keep` such generations, nothing at or above the lowest step in `protect`, nothing
         outside gens/. The same commit writes each removed generation's ledger, pruned/g<step>.json (its LFS
         objects and sizes, the time), which is what lets a release delete those objects and no others, and removes
         the ledgers a release has finished with (main:locks/released.json). The ledger's time is taken after the
         new generation's files are hashed and uploaded, immediately before the commit is sent, so a slow upload
         does not use up the grace a reader of the removed generation is owed. The removed steps come back as
-        "pruned" beside the manifest's own keys."""
+        "pruned" beside the manifest's own keys, and with them "ledger_upload": which order ran in a commit that
+        wrote a ledger on the hub ("upload_first", or "fallback (the error)": HfBackend.commit), else None."""
         if not branch.startswith("ckpt-"):
             raise StoreError(f"generations go to a ckpt-* branch, not {branch}")
         check_generation(folder, step)
@@ -1106,7 +1169,7 @@ class Store:
                                 late=(lambda: self._write_ledgers(branch, gone, tree, tmp)) if gone else None)
         for s in gone:
             self._manifests.pop((branch, f"gens/g{s}"), None)
-        return {**man, "pruned": gone}
+        return {**man, "pruned": gone, "ledger_upload": getattr(self.b, "upload_path", None) if gone else None}
 
     def _prune_plan(self, branch, keep, verified, protect, tree):
         """(steps to remove, the two it is behind): the generations of `tree` below the `keep` newest of the
@@ -1264,7 +1327,7 @@ class Store:
         r = self.release_report(owner, grace=grace, now=now)
         return None if r["held"] else r["objects"]
 
-    def release_report(self, owner, grace=RELEASE_GRACE_S, now=None, orphans=False):
+    def release_report(self, owner, grace=RELEASE_GRACE_S, now=None, orphans=False, essential=False):
         """Free the storage of removed generations, and nothing else. An LFS object is deleted for good only when
         (a) at least one ledger (pruned/g<step>.json on some branch, written by the commit that removed the
         generation) names it; (b) EVERY ledger that names it is older than `grace` + RELEASE_SKEW_S seconds; and
@@ -1300,8 +1363,18 @@ class Store:
         came, and what was removed before there were ledgers. Beside a writer this can delete an upload from under
         its commit; the timed release never does it.
 
+        A tree that cannot be read REFUSES the round (StoreError; nothing is deleted and the lock is removed): a
+        branch whose head is not found, or whose listing at that head is not given, is never taken for a branch
+        that names nothing, because what it names would then be deleted from under it.
+
+        essential=True (the release at a campaign's end): its lock may use the whole commit budget, without the
+        reserve, and from the moment it first asks it is owed the budget's essential wait, after which it passes
+        whatever the count is (CommitBudget). The waiting is the caller's: with no room now this returns held,
+        and "why" carries the seconds until there is room.
+
         Returns {"held": the lock was not taken (another releaser holds it, main could not be read, or the budget
-        had no room), "objects": deleted, "bytes": freed} and, for a release that ran, a measurement in which every
+        had no room; "why" says which, the budget as "budget: room in N s"), "objects": deleted, "bytes": freed}
+        and, for a release that ran, a measurement in which every
         object counts once: "gens" {branch: {sha256: bytes}} (what each branch names under gens/), "marks" {folder
         under marks/: {sha256: bytes}}, "pending" {branch: {sha256: bytes}} (in that branch's ledgers, still
         stored, not named), "orphan_objects" and "orphan_bytes" (in no tree and no ledger, still stored),
@@ -1313,13 +1386,18 @@ class Store:
             raise StoreError(f"release refused: a grace of {grace:.0f} s is under the minimum of {MIN_RELEASE_GRACE_S} s "
                              "(a restore may be reading a generation that was just removed)")
         now = time.time() if now is None else now
-        mine = self._lock(owner, now)
+        mine = self._lock(owner, now, essential=essential)
         if not mine:
-            return {"held": True, "objects": 0, "bytes": 0}
+            return {"held": True, "objects": 0, "bytes": 0, "why": self._lock_why}
         done = None
         try:
             heads = {br: self.b.head(br) for br in self.b.branches()}
-            trees = {br: (self.b.tree(br, rev=h) if h else self.b.tree(br)) or {} for br, h in heads.items()}
+            trees = {br: self.b.tree(br, rev=h) if h else None for br, h in heads.items()}
+            unlisted = sorted(br for br, t in trees.items() if t is None)
+            if unlisted:
+                raise StoreError(f"release refused: the tree of {', '.join(unlisted)} could not be read (no head, or no "
+                                 "listing at it); an unread tree is never taken for an empty one, and nothing is "
+                                 "deleted in this round")
             named = {e["sha256"] for t in trees.values() for e in t.values() if e.get("sha256")}
             gens = {br: {e["sha256"]: e["bytes"] for p, e in t.items() if p.startswith("gens/") and e.get("sha256")}
                     for br, t in trees.items() if br != "main"}
@@ -1395,24 +1473,33 @@ class Store:
                 return {}
         return held if isinstance(held, dict) else {}
 
-    def _lock(self, owner, now):
+    def _lock(self, owner, now, essential=False):
         """Take the release lock; the lock's record, or None when it is not ours. In this order: main's head is
         read; the lock is looked for in the tree of THAT commit; the lock is committed with that commit as its
         parent. So a lock (or any other commit) that reaches main after the head was read refuses this commit, and
         a lock that was there before is seen. Two releasers can never both hold it. With a commit budget the lock
-        is not essential, is taken only with room for itself and its removal, and both are counted here."""
-        if self.budget and self.budget.wait_s(essential=False, need=2) > 0:
-            self.log("release lock not taken: the commit budget has no room for it now")
-            return None
+        is not essential, is taken only with room for itself and its removal, and both are counted here. An
+        essential lock (the release at a campaign's end) may use the whole budget and is owed the budget's
+        essential wait. Why a lock was not taken is left in self._lock_why."""
+        self._lock_why = "another releaser holds the lock"
+        if self.budget:
+            w = self.budget.wait_s(essential=essential, need=2)
+            if w > 0:
+                self._lock_why = f"budget: room in {math.ceil(w)} s"
+                self.log(f"release lock not taken: the commit budget has no room for it now (room in {math.ceil(w)} s)")
+                return None
         try:
             self.b.ensure_branch("main")
             head = self.b.head("main")
-            if head is None:
+            tree = self.b.tree("main", rev=head) if head else None
+            if tree is None:  # an unread main is never taken for one that holds no lock
+                self._lock_why = "main could not be listed"
                 return None
-            if LOCK in (self.b.tree("main", rev=head) or {}):
+            if LOCK in tree:
                 if now - self._read_lock(head).get("at", 0) < LOCK_STALE_S:
                     return None
-        except Exception:  # noqa: BLE001 main or the lock could not be read: someone else may hold it
+        except Exception as e:  # noqa: BLE001 main or the lock could not be read: someone else may hold it
+            self._lock_why = f"main or the lock could not be read ({type(e).__name__})"
             return None
         mine = {"owner": owner, "at": now, "nonce": uuid.uuid4().hex}
         with tempfile.TemporaryDirectory(prefix="store_lock.") as tmp:
@@ -1420,8 +1507,9 @@ class Store:
             with open(p, "w") as f:
                 json.dump(mine, f)
             try:
-                self.commit("main", {LOCK: p}, [], f"lock: release by {owner}", parent=head, essential=False, need=2)
-            except Exception:  # noqa: BLE001 main moved since the head was read, or the hub refused
+                self.commit("main", {LOCK: p}, [], f"lock: release by {owner}", parent=head, essential=essential, need=2)
+            except Exception as e:  # noqa: BLE001 main moved since the head was read, or the hub refused
+                self._lock_why = f"the lock's commit was refused ({type(e).__name__})"
                 return None
         return mine
 
@@ -1435,7 +1523,9 @@ class Store:
         for i in range(4):
             try:
                 head = self.b.head("main")
-                tree = self.b.tree("main", rev=head) or {}
+                tree = self.b.tree("main", rev=head) if head else None
+                if tree is None:
+                    raise StoreError("main could not be listed")  # not "no lock there": it is read again
                 if LOCK not in tree:
                     return
                 if self._read_lock(head).get("nonce") != mine["nonce"]:

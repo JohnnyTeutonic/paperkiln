@@ -1034,6 +1034,187 @@ def test_the_last_generations_check_is_asked_again_until_it_is_read_and_a_damage
     assert s["verified"] == {100, 300, 400, 500, 600} and s["not_whole"] == {200}
 
 
+def test_a_check_that_stays_unread_is_reported_apart_with_its_http_status(tmp_path, monkeypatch):
+    """The third reviews. The byte read of a pushed generation is redirected to the object store, which answers
+    403: what one does for a key it will not show, and for a signed address it refuses. That is no verdict, so the
+    generation stays unread; but it read "unread" for ever, and the courier's log said only "(StoreError)". Now the
+    first line names the HTTP status, and a check that stays unread UNREAD_REPORT_AFTER times running for the same
+    generation is reported apart: log, stat line, status and CHAT/COURIER_CHECK_UNREAD. It is never called not
+    whole, and it counts once it is read. Every store call runs in a child, as on a VM."""
+    pytest.importorskip("huggingface_hub")
+    monkeypatch.setattr(cc, "UNREAD_REPORT_AFTER", 3)
+    chat, root, store, c, logs, clock, at = hub_courier(tmp_path, per_hour=100, push_timeout=60)
+    out = str(chat / "pt")
+    (root / "probe.json").write_text(json.dumps({"status": 403}))
+    S.make_gen(out, 100)
+    c.tick()
+    s = c.s["pt"]
+    first = [ln for ln in logs if "its check could not be read" in ln]
+    assert first == ["pt: g100 is pushed; its check could not be read (StoreError, HTTP 403); it does not count yet and is asked again"]
+    assert list(s["to_verify"]) == [100] and s["unread"][100]["count"] == 1 and not stats(logs, "check_unread")
+    at(clock.t + 31)
+    c.tick()
+    assert s["unread"][100]["count"] == 2 and not (chat / "COURIER_CHECK_UNREAD").exists()
+    at(clock.t + 31)
+    c.tick()                                             # the third running: reported apart
+    assert stats(logs, "check_unread") == [{"what": "check_unread", "job": "pt", "step": 100, "count": 3, "http_status": 403,
+                                            "error": "StoreError, HTTP 403"}]
+    marker = [json.loads(ln) for ln in (chat / "COURIER_CHECK_UNREAD").read_text().splitlines()]
+    assert [(m["job"], m["step"], m["count"], m["http_status"]) for m in marker] == [("pt", 100, 3, 403)]
+    loud = [ln for ln in logs if "CHECK UNREAD" in ln]
+    assert len(loud) == 1 and "g100 could not be read 3 times running (StoreError, HTTP 403)" in loud[0]
+    st = json.loads((chat / "courier_status.json").read_text())["jobs"]["pt"]
+    assert st["check_unread"]["100"]["count"] == 3 and st["check_unread"]["100"]["http_status"] == 403
+    assert st["to_verify"] == [100] and st["not_whole"] == [] and st["verified"] == []
+    assert not (chat / "COURIER_NOT_WHOLE").exists() and not any("NOT WHOLE" in ln for ln in logs)   # no verdict
+    (chat / "STATUS_pt").write_text("FINISHED\n")
+    assert c.idle() is False                             # still owed
+    at(clock.t + 31)
+    c.tick()                                             # a fourth: counted, not said again
+    assert s["unread"][100]["count"] == 4 and len([ln for ln in logs if "CHECK UNREAD" in ln]) == 1
+    for text in logs:
+        assert "SIGNED" not in text and TOKEN not in text                            # never the signed address
+    (root / "probe.json").unlink()
+    at(clock.t + 31)
+    c.tick()                                             # read: whole, and the count is gone
+    assert s["verified"] == {100} and s["to_verify"] == {} and s["unread"] == {}
+    assert json.loads((chat / "courier_status.json").read_text())["jobs"]["pt"]["check_unread"] == {}
+    # A failure that names no status says so.
+    store.listed_whole = lambda *a, **kw: (_ for _ in ()).throw(ConnectionError("hub unreachable"))
+    (chat / "STATUS_pt").unlink()
+    S.make_gen(out, 200)
+    c.tick()
+    assert any("g200 is pushed; its check could not be read (StoreError, no HTTP status)" in ln for ln in logs)
+
+
+def test_the_upload_first_fallback_is_said_loudly_once_and_in_every_stat_line(tmp_path):
+    """The third reviews: a library that does not take preupload_lfs_files as called sends the commit in the old
+    order, with the ledger stamped before the upload, and nothing said so. Now every push that wrote a ledger says
+    in its stat line which order ran, a fallback has a stat line of its own, and the log says it loudly, once."""
+    pytest.importorskip("huggingface_hub")
+    chat, root, store, c, logs, clock, at = hub_courier(tmp_path, per_hour=100)
+    out = str(chat / "pt")
+    for step in (100, 200, 300, 400):
+        S.make_gen(out, step)
+        c.tick()
+    gens = [p for p in stats(logs, "push") if p["kind"] == "generation"]
+    assert [(p["step"], p["pruned"], p["ledger_upload"]) for p in gens] == [
+        (100, [], None), (200, [], None), (300, [], None), (400, [100], "upload_first")]
+    assert not stats(logs, "upload_fallback") and not any("UPLOAD-FIRST" in ln for ln in logs)
+
+    def refused(**kw):
+        raise TypeError("preupload_lfs_files() got an unexpected keyword argument 'additions'")
+
+    store.b.api.preupload_lfs_files = refused
+    for step in (500, 600):
+        S.make_gen(out, step)
+        c.tick()
+    gens = [p for p in stats(logs, "push") if p["kind"] == "generation"][4:]
+    assert [(p["step"], p["pruned"]) for p in gens] == [(500, [200]), (600, [300])]
+    assert all(p["ledger_upload"].startswith("fallback (TypeError: preupload_lfs_files() got an unexpected") for p in gens)
+    fb = stats(logs, "upload_fallback")
+    assert [(f["job"], f["step"], f["pruned"]) for f in fb] == [("pt", 500, [200]), ("pt", 600, [300])]
+    loud = [ln for ln in logs if "UPLOAD-FIRST DID NOT RUN" in ln]
+    assert len(loud) == 1 and "at g500" in loud[0] and "TypeError" in loud[0] and "BEFORE that upload" in loud[0]
+    assert store.steps("ckpt-N") == [400, 500, 600] and c.s["pt"]["verified"] >= {400, 500, 600}   # the saves went on
+
+
+def test_a_step_removed_while_its_check_was_unread_is_never_called_not_whole(tmp_path):
+    """The third review: g300's check cannot be read while g400 and g500 verify; g600's commit then removes g300
+    with what else is behind g400. The courier went on asking for g300, found it missing from the listing, called
+    it NOT WHOLE and wrote CHAT/COURIER_NOT_WHOLE for a generation it had removed itself. A removed generation is
+    owed no check: it leaves to_verify in the commit that removes it; and one a restarted courier still carries is
+    recognised by the listing (gone, and behind the newest pushed step)."""
+    pytest.importorskip("huggingface_hub")
+    chat, root, store, c, logs, clock, at = hub_courier(tmp_path, per_hour=100)
+    out = str(chat / "pt")
+    real = store.listed_whole
+
+    def g300_unread(branch, step, files=None, probe=True):
+        if step == 300:
+            raise ConnectionError("hub unreachable")
+        return real(branch, step, files, probe)
+
+    store.listed_whole = g300_unread
+    s = c.s["pt"]
+    for step in (100, 200, 300, 400, 500):
+        S.make_gen(out, step)
+        c.tick()
+    assert s["verified"] == {100, 200, 400, 500} and list(s["to_verify"]) == [300] and store.steps("ckpt-N") == [200, 300, 400, 500]
+    S.make_gen(out, 600)
+    c.tick()                                             # behind g400 and g500: g200 and the unread g300 go
+    assert hub_log(root)[-1]["deletes"] == ["gens/g200/", "gens/g300/"] and store.steps("ckpt-N") == [400, 500, 600]
+    assert s["to_verify"] == {} and s["unread"] == {}
+    assert any("g300 was removed in this commit with its check still unread; no check is owed for it" in ln for ln in logs)
+    store.listed_whole = real
+    for _ in range(2):
+        at(clock.t + 31)
+        c.tick()
+    assert s["not_whole"] == set() and not (chat / "COURIER_NOT_WHOLE").exists() and not any("NOT WHOLE" in ln for ln in logs)
+    # A courier started again on this boot carries g200 as owed, from a status written before the removal.
+    st = json.loads((chat / "courier_status.json").read_text())
+    st["jobs"]["pt"]["to_verify"] = [200]
+    (chat / "courier_status.json").write_text(json.dumps(st))
+    again = cc.Courier(store, str(chat), JOBS, BR, log=logs.append, clock=clock, cfg=CFG)
+    assert list(again.s["pt"]["to_verify"]) == [200]
+    again.tick()
+    assert again.s["pt"]["to_verify"] == {} and again.s["pt"]["not_whole"] == set() and not (chat / "COURIER_NOT_WHOLE").exists()
+    assert any("g200 is no longer in the store (a later save removed it before its check was read)" in ln for ln in logs)
+    # A generation that IS listed and differs is still named, as before.
+    (root / "damage.json").write_text(json.dumps({"path": "gens/g700/model.safetensors", "bytes": 9}))
+    S.make_gen(out, 700)
+    again.tick()
+    assert again.s["pt"]["not_whole"] == {700} and (chat / "COURIER_NOT_WHOLE").exists()
+
+
+def test_after_a_session_is_replaced_the_branch_holds_four_and_the_next_save_removes_two_with_their_ledgers(tmp_path):
+    """The rerun of 12 Nov 2026 (PROTOCOL 47.2), and intended: a new VM has verified ONE generation, the one its
+    restore downloaded, and does not take the lost VM's word for the others. Its first save therefore removes
+    nothing and the branch holds four; once that save is read back whole it has two, and its second save removes
+    two generations in one commit, each with its own ledger, which a release from home then follows."""
+    pytest.importorskip("huggingface_hub")
+    chat, root, store, c, logs, clock, at = hub_courier(tmp_path, per_hour=100)
+    for step in (100, 200, 300, 400):
+        S.make_gen(str(chat / "pt"), step)
+        c.tick()
+    assert store.steps("ckpt-N") == [200, 300, 400]
+    # The session is lost. The new VM: another boot, the next epoch, a restore that downloaded g400.
+    chat2 = tmp_path / "chat2"
+    (chat2 / "pt").mkdir(parents=True)
+    (chat2 / "store_restore").mkdir()
+    (chat2 / "boot_id").write_text("b" * 32)
+    (chat2 / "store_restore" / "pt.json").write_text(json.dumps({"verified_step": 400, "boot_id": "b" * 32}))
+    logs2 = []
+    c2 = cc.Courier(store, str(chat2), JOBS, BR, log=logs2.append, clock=clock, cfg={**CFG, "epoch": 2})
+    assert c2.s["pt"]["verified"] == {400}
+    S.make_gen(str(chat2 / "pt"), 500)
+    c2.tick()
+    assert store.steps("ckpt-N") == [200, 300, 400, 500]                     # four: one verified generation removes nothing
+    assert hub_log(root)[-1]["deletes"] == [] and c2.s["pt"]["verified"] == {400, 500} and not c2.s["pt"]["fenced"]
+    S.make_gen(str(chat2 / "pt"), 600)
+    c2.tick()
+    last = hub_log(root)[-1]
+    assert last["message"] == "generation: gens/g600" and last["deletes"] == ["gens/g200/", "gens/g300/"]   # two, in the one commit
+    assert {"pruned/g200.json", "pruned/g300.json"} <= set(last["adds"]) and store.steps("ckpt-N") == [400, 500, 600]
+    assert [p["pruned"] for p in stats(logs2, "push") if p["kind"] == "generation"] == [[], [200, 300]]
+    assert stats(logs2, "push")[-1]["ledger_upload"] == "upload_first"
+    led = {s: json.loads((root / "branches" / "ckpt-N" / "pruned" / f"g{s}.json").read_text()) for s in (200, 300)}
+    for s, d in led.items():
+        m, o = S.state_at(s)
+        assert d["step"] == s and d["branch"] == "ckpt-N" and d["at"] == clock.t
+        assert sorted((x["path"], x["sha256"], x["bytes"]) for x in d["objects"]) == sorted(
+            [(f"gens/g{s}/model.safetensors", S.sha(m), len(m)), (f"gens/g{s}/optim.safetensors", S.sha(o), len(o))])
+    # Home follows the ledgers in one round (these two and g100's, from the first session): g200's weights are the
+    # mark's and stay; g100's two objects, g200's optimiser and g300's two go.
+    home = hub_fresh(root)
+    r = home.release_report("home", grace=600, now=clock.t + 10 ** 5)
+    assert (r["objects"], r["ledgers"], r["ledgers_done"], r["ledgers_unread"]) == (5, 3, 3, 0)
+    objects = json.loads((root / "lfs.json").read_text())
+    assert S.sha(S.state_at(200)[0]) in objects and S.sha(S.state_at(200)[1]) not in objects
+    assert all(home.verify_by_download("ckpt-N", s) for s in (400, 500, 600))
+    assert "FOUR" in cc.__doc__ and "removes two in one commit" in cc.__doc__
+
+
 def test_the_budget_is_strict_while_an_essential_commit_may_wait_and_bounded_when_it_may_not(tmp_path):
     """With saves far more frequent than the budget allows the courier waits, without counting a failure, says each
     wait once, logs the hour's count, and sends the newest generation when there is room. While the wait an

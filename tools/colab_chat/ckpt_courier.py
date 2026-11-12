@@ -27,16 +27,28 @@ run (a daemon the boot starts beside jobs_vm.py, in a process group of its own).
   of each large file can be read (the listing cannot see a pointer whose object is gone). A check that could not be
   read (the listing, the manifest, a byte) is NOT a verdict: the step waits in "to_verify" and is asked again on
   every pass, about every 30 seconds, also when it is the run's last generation, and the courier does not end while
-  one waits. Only a completed comparison that differs makes a generation "not whole": that is said loudly, written
+  one waits. The log line of a check that could not be read names the HTTP status when there was one. A check that
+  stays unread UNREAD_REPORT_AFTER times running for one generation is reported apart, with that status: loudly in
+  the log, as a `stat` line, in the status ("check_unread") and in CHAT/COURIER_CHECK_UNREAD, and again every hour
+  it lasts; the runner repeats it at home. (An object store that answers 403 for a missing key reads so: no single
+  reply is taken for "gone"; hf_store.HfBackend.probe says why.) A step that a later save removed while its check
+  was still unread is owed nothing: it leaves "to_verify" with one line in the log and is never called not whole.
+  Only a completed comparison that differs makes a generation "not whole": that is said loudly, written
   to CHAT/COURIER_NOT_WHOLE, it never counts, and a restore skips it. A generation is written once, so a last
-  generation that is not whole is not pushed again: the runner sees it by the same check and halts the campaign
-  at once, by name (STORE_FINAL_GENERATION_NOT_WHOLE), with the two verified generations before it in the store.
+  generation that is not whole is not pushed again: the runner sees it by the same check, made three times so
+  that one wrong listing halts nothing, and then halts the campaign without the settle window, by name
+  (STORE_FINAL_GENERATION_NOT_WHOLE), with the two verified generations before it in the store.
 - prune, in the commit of the NEXT save (a save is ONE commit; the hub limits commits per repository): the
   generations behind two that this VM has verified, by that listing or by the download of its restore. The
-  generation a commit adds never counts in that commit, so the branch holds three between two saves. Never at or
+  generation a commit adds never counts in that commit, so the branch holds three between two saves. After a
+  session is replaced it holds FOUR for one save, and this is intended: the new VM has verified one generation
+  (the one it restored) and does not take the old VM's word for the others, so its first save removes nothing and
+  its second removes two in one commit, each with its own ledger. Never at or
   above a mark that is staged and not yet pushed. The commit also writes the ledger of each generation it removes
-  (hf_store.py: what a release may delete). A VM never releases storage: the runner does, from home, on a timer
-  (runner_multi.py --store-release-storage).
+  (hf_store.py: what a release may delete). Its large files go up before the ledger is stamped; when the library
+  does not take that call the old order runs instead, which is said loudly once (UPLOAD-FIRST DID NOT RUN) and
+  recorded in every such push's `stat` line ("ledger_upload") and in a `stat` line of its own. A VM never releases
+  storage: the runner does, from home, on a timer (runner_multi.py --store-release-storage).
 - the commit budget ("store_commit_budget_per_hour" in the config, 24 by default here, 0 for none): every commit
   and branch creation of this VM is counted over a rolling hour in CHAT/store_commits.json (hf_store.CommitBudget;
   a ceiling for this writer, not for the repository). With the budget spent a generation or a mark waits for room,
@@ -90,6 +102,7 @@ from hf_store import GEN_FILES, MARK_FILES, StoreError, VerifyError, bounded, fi
 BACKOFF_MAX = 600
 COMMIT_BUDGET = 24  # commits an hour from one VM, of the hub's 128 for the whole repo (three arms share it)
 FLAT = ("model.safetensors", "optim.safetensors", "state.txt")
+UNREAD_REPORT_AFTER = 10  # a check unread this many times running (about five minutes) is reported apart, then hourly
 
 
 class Stopping(StoreError):
@@ -180,8 +193,10 @@ class Courier:
         self.epoch, self.boot = int(self.cfg.get("epoch") or 0), boot or boot_id(chat)
         self.s = {n: {"branch": b, "head": None, "known": False, "marks": None, "failures": 0, "next_try": 0,
                       "last_error": None, "pushed_at": None, "live_step": None, "refused": None, "pushes": 0,
-                      "fenced": None, "verified": set(self.restored(n)), "to_verify": {}, "not_whole": set()}
+                      "fenced": None, "verified": set(self.restored(n)), "to_verify": {}, "not_whole": set(),
+                      "unread": {}}
                   for n, b in self.branches.items()}
+        self.fallback_said = False  # the upload-first fallback is said loudly once; each push's stat line carries it
         # The push cap. The count is `base` (what the store held for this campaign before this VM's pushes: the
         # runner's "pushed_bytes_start", then each measurement a release from home hands over) plus `pushed` (the
         # bytes this boot has pushed). An earlier courier of this same boot left both in the status file.
@@ -553,8 +568,22 @@ class Courier:
         self.pushed += size
         self.log(f"{name}: generation g{step} pushed ({mb:.1f} MB in {self.clock() - t0:.0f} s)"
                  + (f"; generations {gone} removed from the store in the same commit" if gone else ""))
+        path = man.get("ledger_upload")  # which order ran in a commit that wrote a ledger: upload first, or the fallback
         self.stat("push", job=name, kind="generation", step=step, bytes=size, seconds=round(time.monotonic() - m0, 2),
-                  bytes_since_release=self.since_release, pruned=gone)
+                  bytes_since_release=self.since_release, pruned=gone, ledger_upload=path)
+        if str(path or "").startswith("fallback"):
+            self.stat("upload_fallback", job=name, step=step, pruned=gone, path=path)
+            if not self.fallback_said:
+                self.fallback_said = True
+                self.log(f"{name}: UPLOAD-FIRST DID NOT RUN at g{step}: {path}. The library did not take "
+                         "preupload_lfs_files as it is called here, so the commit uploaded its own files and each "
+                         f"ledger of {gone} was stamped BEFORE that upload (the old order): a reader of a removed "
+                         "generation has that much less of the release's grace. Said once; every such push's stat "
+                         "line carries \"ledger_upload\".")
+        for old in gone:  # removed while its check was still unread: nothing is owed for it, and it is no verdict
+            if s["to_verify"].pop(old, "no") != "no":
+                s["unread"].pop(old, None)
+                self.log(f"{name}: g{old} was removed in this commit with its check still unread; no check is owed for it")
         self.verify(name, step, man["files"])
 
     def reverify(self, name):
@@ -572,18 +601,33 @@ class Courier:
         this VM, and from the next save on a prune may rely on it. A completed comparison that differs: NOT WHOLE,
         said loudly, recorded (status, CHAT/COURIER_NOT_WHOLE), and it never counts; nothing was removed on its
         account, and a restore gives it up for the one before. Anything that could not be read (a transport or a
-        store error at any of the three reads): no verdict; the step waits in to_verify and is asked again."""
+        store error at any of the three reads): no verdict; the step waits in to_verify and is asked again. The
+        log names the HTTP status; UNREAD_REPORT_AFTER unread checks running for one generation are reported
+        apart (unread_report). A step that is no longer listed and is behind the newest pushed one was removed by
+        a later save while its check was unread: no verdict either, and nothing more is owed for it."""
         s = self.s[name]
         try:
             whole = self.call(lambda: self.store.listed_whole(s["branch"], step, files))
+            if not whole and s["head"] is not None and step < s["head"] \
+                    and step not in self.call(lambda: self.store.steps(s["branch"])):
+                s["to_verify"].pop(step, None)
+                s["unread"].pop(step, None)
+                self.log(f"{name}: g{step} is no longer in the store (a later save removed it before its check was "
+                         "read); no check is owed for it and it is not called not whole")
+                return
         except Exception as e:  # noqa: BLE001
-            if not isinstance(e, Stopping) and step not in s["to_verify"]:
-                self.log(f"{name}: g{step} is pushed; its check could not be read ({type(e).__name__}); it does not "
-                         "count yet and is asked again")
+            code = hf_store.http_status(e)
+            said = f"{type(e).__name__}, " + (f"HTTP {code}" if code else "no HTTP status")
+            if not isinstance(e, Stopping):
+                if step not in s["to_verify"]:
+                    self.log(f"{name}: g{step} is pushed; its check could not be read ({said}); it does not "
+                             "count yet and is asked again")
+                self.unread_report(name, step, code, said)
             s["to_verify"][step] = files
             s["verify_next"] = self.clock() + 30
             return
         s["to_verify"].pop(step, None)
+        s["unread"].pop(step, None)
         if whole:
             s["verified"].add(step)
         else:
@@ -597,6 +641,26 @@ class Courier:
                      "on its account, and a resume takes the generation before it."
                      + (" It is the run's last generation: the runner halts the campaign." if last else ""))
         self.stat("verify", job=name, step=step, whole=bool(whole))
+
+    def unread_report(self, name, step, code, said):
+        """One more unread check of g<step>, counted while they come one after another. At UNREAD_REPORT_AFTER
+        running, and then every 120 more (about an hour), it is reported apart from the first quiet line: loudly in
+        the log with the HTTP status, as a stat line, and as a line of CHAT/COURIER_CHECK_UNREAD, which goes home
+        with the session's files. The count and the last status are in the status file ("check_unread"), which the
+        runner reads on every tick. No verdict is drawn from the count: the generation stays unread."""
+        s = self.s[name]
+        u = s["unread"].setdefault(step, {"count": 0, "since": time.time()})
+        u.update(count=u["count"] + 1, http_status=code, error=said)
+        n = u["count"]
+        if n == UNREAD_REPORT_AFTER or (n > UNREAD_REPORT_AFTER and (n - UNREAD_REPORT_AFTER) % 120 == 0):
+            self.stat("check_unread", job=name, step=step, count=n, http_status=code, error=said)
+            with open(os.path.join(self.chat, "COURIER_CHECK_UNREAD"), "a") as f:
+                f.write(json.dumps({"job": name, "step": step, "count": n, "http_status": code, "error": said,
+                                    "since": u["since"], "at": time.time()}) + "\n")
+            self.log(f"{name}: CHECK UNREAD: the check of g{step} could not be read {n} times running ({said}). It is "
+                     "not a verdict: the generation counts for nothing until it is read, nothing is removed on its "
+                     "account, and the courier does not end while it is owed. A status of 403 or 404 that stays is "
+                     "what an object store answers for bytes that are not there: a person reads the store.")
 
     def tick(self):
         self.read_measure()
@@ -645,6 +709,7 @@ class Courier:
                             "live_step": s["live_step"], "pushes": s["pushes"], "marks": sorted(s["marks"] or []),
                             "staged_marks": self.staged_marks(n), "verified": sorted(s["verified"]),
                             "not_whole": sorted(s["not_whole"]), "to_verify": sorted(s["to_verify"]),
+                            "check_unread": {str(k): v for k, v in sorted(s["unread"].items())},
                             "failures": s["failures"], "last_error": s["last_error"], "refused_step": s["refused"],
                             "fenced": s["fenced"]} for n, s in self.s.items()}}
         p = os.path.join(self.chat, "courier_status.json")

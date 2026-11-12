@@ -212,10 +212,26 @@ TICK_S = 240                 # runner_multi.TICK
 HUB_COMMITS_PER_HOUR = 128
 ARMS_COMMITS_PER_HOUR_MAX = 40
 ARM_RELEASE_EVERY_MIN = 120  # an arm's runner releases storage every two hours: two commits each time
-ARMS_COMMITS_PER_HOUR_WORST = 64   # the worst case below: half the hub's limit
-# Each writer's own ceiling (per writer, not per repository). Three arms: 3 x 24 + 3 x 8 = 96, under the hub's 128.
+ARMS_COMMITS_PER_HOUR_WORST = 96   # the worst case below stays under this: three quarters of the hub's limit
+# Each writer's own ceiling (per writer, not per repository). Three arms: 3 x 24 + 3 x 12 = 108, under the hub's 128.
 COURIER_COMMIT_BUDGET = 24   # runner_multi.py --store-commit-budget-per-hour (a VM's ceiling, not its steady state)
-HOME_COMMIT_BUDGET = 8       # runner_multi.py --store-home-commit-budget-per-hour (a quarter kept back: six for locks)
+# runner_multi.py --store-home-commit-budget-per-hour. Home commits a release's lock and unlock and nothing else. A
+# quarter is kept back from the timed release (nine of the twelve: four timed releases an hour at the most); the
+# release at the campaign's end may use all twelve and waits for room. It was 8 until the rerun of 12 Nov 2026
+# (PROTOCOL section 47.2), where three timed releases in the hour left the last one no room.
+HOME_COMMIT_BUDGET = 12
+HOME_RELEASE_COMMITS_WORST = 5   # one release at its worst: the lock, and the unlock sent four times (hf_store._unlock)
+# The generations a branch holds at the most: two verified and the newest between two saves, and one more for the
+# one save after a session is replaced (the new VM removes nothing until it has verified a generation itself; its
+# next save removes two in one commit). The storage guard's sums count this many for each branch.
+GENS_KEPT_MAX = 4
+
+
+def home_commits_worst(release_every_min):
+    """One runner's worst rolling hour at home: every timed release that fits in an hour and the release at the
+    campaign's end, each at HOME_RELEASE_COMMITS_WORST. 10 at the arms' two hours; inside HOME_COMMIT_BUDGET."""
+    timed = -(-60 // release_every_min) if release_every_min else 0
+    return HOME_RELEASE_COMMITS_WORST * (int(timed) + 1)
 
 
 def commits_per_hour(doc, step_s, release_every_min):
@@ -228,7 +244,7 @@ def commits_per_hour(doc, step_s, release_every_min):
     VM, so once more after each lost session); an unlock tried again; the release at the campaign's end; the data
     build (eight commits and a branch, up to 32 with every retry) and the seed (three), which come before the
     arms; anything done by hand; and the time saves, evaluations and rungs add to the probe's step times, which
-    makes saves rarer. commits_per_hour_worst() puts a number on the first two."""
+    makes saves rarer. commits_per_hour_worst() puts a number on the first four."""
     out = {"generations": 0.0, "marks": 0.0, "release": 2 * 60.0 / release_every_min if release_every_min else 0.0}
     for j in doc["jobs"]:
         if "spec" not in j:
@@ -242,9 +258,12 @@ def commits_per_hour(doc, step_s, release_every_min):
 
 
 def commits_per_hour_worst(doc, step_s, release_every_min):
-    """A bad hour of the same jobs file: every commit is sent twice (one retry each, and the hub counts both), and
-    the session is lost once in the hour, so the new VM creates its branch again (one call, tried twice too)."""
-    return 2 * commits_per_hour(doc, step_s, release_every_min)["total"] + 2
+    """A bad hour of the same jobs file, everything at once: every save and mark is sent twice (one retry each, and
+    the hub counts both); the session is lost once in the hour, so the new VM creates its branch again (one call,
+    tried twice too); and home has its worst hour (home_commits_worst: a timed release and the release at the
+    campaign's end, each a lock and an unlock sent four times)."""
+    p = commits_per_hour(doc, step_s, release_every_min)
+    return 2 * (p["generations"] + p["marks"]) + 2 + home_commits_worst(release_every_min)
 
 
 REH_STEPS = 2000
@@ -253,13 +272,14 @@ REH_TAIL_FROM = 0.5          # the main part through step 1,000, the tail from s
 # set by the storage guard, not by the drills. The guard counts what the store holds for the campaign at each release
 # from home and what is pushed after it. A release (every REH_RELEASE_EVERY_MIN minutes) leaves what a ledger younger
 # than its grace period names (600 s in the rehearsal), so a removed generation stays stored, and counted, for up to
-# the grace and one release interval; on top come the three generations each branch keeps, the mark, and what is
+# the grace and one release interval; on top come the generations each branch keeps (GENS_KEPT_MAX: three, and four
+# for one save after a session is replaced, which the drill does), the mark, and what is
 # pushed between two releases. At a save every 200 steps that is under REH_PUSH_CAP_GB; at every 100 steps it is not
 # (tests/test_base2_jobs.py does the sum).
 REH_EVERY = 200
 REH_PUSH_CAP_GB = 28         # the courier stops pushing at this many GB counted for the campaign
 REH_RELEASE_GRACE_S = 600    # the launch's --store-release-grace-s: the time a restore has to read a removed generation
-REH_RELEASE_EVERY_MIN = 20   # the runner's release from home: two commits each, six an hour, all home's budget lets a lock have
+REH_RELEASE_EVERY_MIN = 20   # the runner's release from home: two commits each, six an hour, of the nine home's budget lets a timed lock have
 # One forced stop a runner state (runner_multi.py keeps a single "pod_loss_drill"), so two files. The runner stops the
 # VM at its first tick after the store holds the generation of the drill step. A push takes about a minute and a tick
 # is 240 s, so the trainer is then between about 50 and 300 steps past the drill step: "a" (drill 400) stops between

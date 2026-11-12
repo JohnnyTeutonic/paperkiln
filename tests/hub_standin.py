@@ -32,6 +32,10 @@ Nothing here opens a socket.
                                                 is then gone from the object store: a pointer whose object is missing.
                                                 The listing still gives P its size and sha256; a read of its bytes
                                                 (DiskSession, hf_hub_download) fails. Used once.
+    HUB_STANDIN_ROOT/probe.json                 optional: {"status": 403}: while it is there, the ranged read of every
+                                                large file is redirected and the object store answers with that status
+                                                (what one does for a key it will not show: no verdict for the reader).
+The ranged read's revision may be a commit id ("<branch>@<n>", quoted by the library); a 206 names the whole size.
 A new branch starts from main's tree (create_branch), as on the hub, and its creation counts against limit.json.
 preupload_lfs_files is the upload phase by itself; DiskApi.http_session answers the one-byte ranged read.
 DiskApi.after_upload, when a test sets it, is called between a commit's upload and its commit.
@@ -44,6 +48,7 @@ import math
 import os
 import shutil
 import time
+import urllib.parse
 
 from huggingface_hub.errors import EntryNotFoundError, HfHubHTTPError, RepositoryNotFoundError, RevisionNotFoundError
 import requests
@@ -82,6 +87,7 @@ class DiskSession:
         assert str(headers.get("authorization") or headers.get("Authorization") or "").startswith("Bearer "), "no token header"
         rest = url.split("/resolve/", 1)[1]
         revision, path = rest.split("/", 1)
+        revision = urllib.parse.unquote(revision)  # the library quotes it: a commit id "<branch>@<n>"
         self.api._gate("probe", f"{revision}:{path}")
         resp = requests.Response()
         resp.url = url
@@ -92,6 +98,14 @@ class DiskSession:
             resp.status_code = 404
             resp.headers["X-Error-Code"] = "EntryNotFound"
             return resp
+        refuse = self.api._json("probe.json", {}).get("status")
+        if refuse and src.endswith(LFS_SUFFIX):  # probe.json: the object store's answer to every read of a large file
+            self.api._note(f"  probe {refuse} from the object store: {path}")
+            first = requests.Response()
+            first.status_code, first.url = 302, url
+            resp.status_code, resp.url = int(refuse), "https://cdn-lfs.example/objects/" + file_sha(src) + "?X-Amz-Signature=SIGNED"
+            resp.history = [first]
+            return resp
         if src.endswith(LFS_SUFFIX) and file_sha(src) not in self.api._json("lfs.json", {}):
             self.api._note(f"  probe 404 from the object store: {path}")
             first = requests.Response()
@@ -100,6 +114,7 @@ class DiskSession:
             resp.history = [first]
             return resp
         resp.status_code = 206
+        resp.headers["Content-Range"] = f"bytes 0-0/{os.path.getsize(src)}"
         with open(src, "rb") as f:
             resp.raw = __import__("io").BytesIO(f.read(1))
         return resp
