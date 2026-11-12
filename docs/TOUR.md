@@ -682,7 +682,9 @@ The reply is then checked without the API: the schema (structural slips repaired
 values never invented), every quote against the LaTeX (whitespace-normalised), numbers inside
 their own quotes, flavours named by their quotes, inherited values against the curated ancestor
 table, size arithmetic (heads divide d_model, kv heads divide heads), and every `expr` against
-the grammar. Only verified values are asserted; anything unverified, new or outside the IR blocks
+the grammar. Only values whose quote is in the source are asserted (verified, or quote_only where
+no further check applies); a found quote is provenance, not proof of the right reading, which the
+benchmark below measures. Anything unverified, new or outside the IR blocks
 the build by name, so `tools/arxiv_to_chat.py` refuses rather than approximates. Every call's
 tokens, cost and request id go to `papers/llm_extract_receipts/ledger.jsonl`, and `--budget-usd`
 refuses a call before it is sent if its worst case would pass the cap.

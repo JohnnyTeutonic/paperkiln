@@ -37,6 +37,10 @@ per claim, retractions included. Then
 [`../atlas/SEED_LOTTERY.md`](../atlas/SEED_LOTTERY.md) for the two
 results the methodology rests on.
 
+**"Where is the evidence the README cites from research branches?"**
+→ [`PROVENANCE.md`](PROVENANCE.md) — every pinned commit, what it holds and
+its branch, then the live branches and the latest results.
+
 **"What happened recently?"**
 → [`../CHANGELOG.md`](../CHANGELOG.md), then `git log`.
 

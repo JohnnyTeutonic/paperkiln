@@ -29,7 +29,9 @@ formerly `microtorch`.
 - **Base A, a chat base of our own.** An 8-layer, 768-wide Llama-style model, 72.76M unique
   parameters, pretrained from scratch on paperkiln for 60,000 steps of 16,384 positions
   (983M positions) on pinned corpora, then fine-tuned for chat. A registered race chose it over a
-  12-layer arm. Shape and schedule: [`make_tc_b1.py`](https://github.com/JohnnyTeutonic/paperkiln/blob/ab15db97f1d7d4f032c4b66915e808b69824247f/tools/colab_chat/make_tc_b1.py);
+  12-layer arm. Its LAMBADA target bits per byte are 1.038, against 1.400 for the earlier base it
+  replaced (S-full's; registry sections 4 and 9), with paired gains on four standard benchmarks
+  in [docs/CAPABILITY.md](docs/CAPABILITY.md). Shape and schedule: [`make_tc_b1.py`](https://github.com/JohnnyTeutonic/paperkiln/blob/ab15db97f1d7d4f032c4b66915e808b69824247f/tools/colab_chat/make_tc_b1.py);
   parameter count and lineage: [the programme registry, section 2](https://github.com/JohnnyTeutonic/paperkiln/blob/36523b27c93223a48cb10503adfc8bc6bf0a8c23/experiments/tiny_chat_programme/TINY_CHAT_RESEARCH_PROGRAMME.md#2-the-model).
 - **A registered research programme on it.** The question: how much conversational coherence,
   salience and relevance a compute-constrained model of this size can reach, and which
@@ -43,9 +45,23 @@ formerly `microtorch`.
   running on Colab with checkpoints pushed to a private Hugging Face store, so a lost session does
   not lose the run. No results are claimed.
 - **Earlier models.** pk_base_v1 (12 × 768) and its chat model pk_sft_v1 were trained here and
-  published on the Hugging Face Hub ([CHANGELOG](CHANGELOG.md),
+  published on the Hugging Face Hub in October 2026 ([CHANGELOG](CHANGELOG.md),
   [results](experiments/chat_general/RESULTS.md)); pk_sft_v1 runs
   [in the browser](https://huggingface.co/spaces/johnnyteutonic/ember-chat) through ember.cpp.
+  It is October's model: the programme's current best, S71, is not served there.
+
+**What the models can do now.** [docs/CAPABILITY.md](docs/CAPABILITY.md) is the measured record
+of the current chat models, dated: the current best model (S71) with its lineage and hashes; every
+number with its instrument, denominator and receipt; strict answer-and-format checks kept apart
+from judged and rule-scored results; comparisons only within one protocol; and the early
+baselines, the 3 November 2026 S-full pilot among them, with the experiments that failed their
+bars.
+
+The links above into the research programme point at fixed commits. The registry and the run
+scripts live on research branches, not on master, and a pinned commit shows each cited file as
+it stood when the result was read, however the branch moves on afterwards.
+[docs/PROVENANCE.md](docs/PROVENANCE.md) lists every pin, what it holds and which branch it
+came from, beside the live branches and the latest results.
 
 ## What is in the engine
 
@@ -71,8 +87,13 @@ Chat with a model you train on your own CPU (Linux, macOS, or Windows through WS
 ```bash
 git clone https://github.com/JohnnyTeutonic/paperkiln.git && cd paperkiln
 bash quickstart_chat.sh            # checks your tools, builds, trains (about 10 minutes), opens a chat page
-bash quickstart_chat.sh --help     # --mode default skips training and uses the ready-made model
+bash quickstart_chat.sh --help     # --mode default skips training and downloads the ready-made model
 ```
+
+The ready-made model is a browser bundle from the [`chat-v1` release](https://github.com/JohnnyTeutonic/paperkiln/releases/tag/chat-v1);
+the script checks its pinned SHA-256 before unpacking it and stops on a mismatch. On 13 November
+2026 a fresh clone on four CPU cores went from start to a running chat server in about 9 minutes
+in training mode (2 minutes 20 seconds of build) and in 2 seconds in download mode.
 
 Train from a spec. One JSON file describes the run (`arch`, `data`, `train`, `export`, `serve`;
 [the spec format](docs/TOUR.md#custom-configuration--the-spec-format), [examples](specs/)):
@@ -112,11 +133,18 @@ unedited.
 ![the studio loop: arXiv fetch, architecture diagram, training, loss curve, downloads, chat](docs/media/studio_loop.gif)
 
 The LLM extractor (`papers/llm_extract.py`) sends a paper's LaTeX to Claude in one call and gets
-back the architecture as an IR graph, with a verbatim quote for every value; a deterministic
-verifier checks each quote against the source before anything trains, and anything unverified
-makes the chain refuse rather than approximate. On the 40-paper benchmark its flavour verdicts
-were 81 correct, 11 abstentions and 0 wrong, against 73, 19 and 0 for the rule-based extractor
-([scores](papers/llm_extract_receipts/2026-10-27_bench_scores.json)). The rule-based extractor (`pip install paperkiln-fetch`) needs no API key.
+back the architecture as an IR graph, with a verbatim quote for every value. A deterministic
+verifier checks that each quote is in the source (and, where it can, that the value appears in
+its quote) before anything trains; a value whose quote is not found makes the chain refuse rather
+than approximate. A found quote shows where a value came from, not that it is the right reading:
+correctness is measured separately, against labels read off the LaTeX. On the 40-paper benchmark
+(27 Oct 2026, [scores](papers/llm_extract_receipts/2026-10-27_bench_scores.json)), on the three
+family fields (norm, activation and positional encoding; 92 labelled fields) the LLM extractor was
+correct on 81, abstained on 11 and was wrong on 0, against 73, 19 and 0 for the rule-based
+extractor. On the 642 labelled size fields it was correct on 569, abstained on 71 and was wrong
+on 2 (rule-based: 136, 498 and 8). Every field's counts, including the block-graph fields with
+their two wrong answers, are in [docs/FEATURES.md](docs/FEATURES.md#what-the-extraction-benchmark-measured).
+The rule-based extractor (`pip install paperkiln-fetch`) needs no API key.
 
 ```bash
 python papers/llm_extract.py extract 2302.13971 --out llama.extraction.json   # needs ANTHROPIC_API_KEY
@@ -135,9 +163,16 @@ Each result holds under its own protocol and scale; none is a state-of-the-art c
   relevance together (A26, `ready`). At a second seed it missed three of A26's bars (role-play
   breaks, loops and the ended twin; A28, `wide_only`), so `ready` is one seed's reading. As a
   diagnostic comparison, the same recipe on an open-weight 135M model read about 5 points higher
-  on the wide judged read (J1) at two seeds (A29, `base_up`): on this evidence our base limits relevance, which is why base 2 exists.
+  on the wide judged read (J1) at two seeds (A29, `base_up`). That comparison changes the whole
+  package at once: size, tokeniser, pretraining, the open model's own instruction tuning, trainer
+  and engine. On this evidence the limit on relevance sits in our base package, which is why
+  base 2 exists.
   Adding a thread pool to S71's data lowered relevance at one seed and told recall at both (A27,
   `relevance_cost`). Registry section 4 holds these and every other screen's verdict.
+- **Strict answer-and-format checks lag the judged results.** On tinychat-eval's release suite
+  (dev split, the model's own generated history, one harness for every row), S71 passes 1 of 11
+  cases at both repeats, against 4 for S70 and 0 for S-full's 3 November baseline. No model on
+  base A passes the strict delayed-recall case ([the record](docs/CAPABILITY.md)).
 - **In one protocol, size did not buy conversational memory.** At 20M, 60M and 150M
   non-embedding parameters and a fixed token budget, five seeds each, the carry score's slope
   with size is inside the registered equivalence interval, while language-model loss improves

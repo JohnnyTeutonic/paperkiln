@@ -28,7 +28,7 @@ rather than finite differences of the discontinuous quantized forward.
 | **The IR** | the graph format both engines share, specified in **keramos** (its own repository; vendored here at a pinned tag in [`spec/`](../spec/), `spec/KERAMOS_PIN.json`): IR version 1, specification revision 1.6 (vendored tag v1.6.0), with profiles core, state, recursion, chat, thirdparty and recurrence (a per-token state update declared in the document); every op EXACT (bit-identical on every backend) or ROUNDING (within a stated tolerance); the document's digest (RFC 8785 + SHA-256, `paperkiln.ir_sha256`); exact values for every stored tensor type; a JSON Schema, a validator, a numpy reference interpreter and a conformance suite that any engine joins through a JSON Lines adapter ([`spec/README.md`](../spec/README.md)) |
 | **Export** | safetensors (HF round trip), Hugging Face `from_pretrained` folders, GGUF with the tokeniser embedded, **Q8_0 and 4-bit (Q4_0, Q4_K_M, Q4_K_S) GGUFs** (byte-identical to the reference quantisers), and the **model graph as IR** in every GGUF, so [ember.cpp](https://github.com/JohnnyTeutonic/ember.cpp) runs every family; opt-in, **ember's corpus draft table** beside a chat model's GGUF (`export.draft_table`, `tools/draft_table.py`: the most frequent next token per context of up to 4 tokens of its own SFT text, byte-identical to ember's builder; `EMBER_DRAFT=table` speculation is 1.9-2.2x plain decode on chat on an L4, replies unchanged) |
 | **Studio** | one JSON spec runs train → eval → export → serve; a zero-dependency dashboard with live loss, gradient glow, spec builder, architecture diagram, from-paper flow and chat; clone a full saved spec with one typed change, overlay two saved event logs, and explore typed-factor sweep heatmaps without uploading files |
-| **From papers** | **LLM extractor** (`papers/llm_extract.py`): one Claude call reads the paper's LaTeX and returns the architecture as an IR op graph, new operations as runtime-defined `expr` ops, and a verbatim quote for every value; a deterministic verifier checks each quote against the source before anything trains. On the 40-paper benchmark (27 Oct prompt): flavours 81 correct, 11 abstain, 0 wrong, against the rule-based extractor's 73 / 19 / 0; sizes 569 / 2 / 71 against 136 / 8 / 498. The rule-based extractor (`papers/fetch.py` / `pip install paperkiln-fetch`, no API key) stays as the offline path |
+| **From papers** | **LLM extractor** (`papers/llm_extract.py`): one Claude call reads the paper's LaTeX and returns the architecture as an IR op graph, new operations as runtime-defined `expr` ops, and a verbatim quote for every value; a deterministic verifier checks that each quote is in the source before anything trains (a found quote is provenance, not proof the value is right). On the 40-paper benchmark (26 Oct prompt, run 27 Oct): family fields (norm, activation, positional; 92 labelled) 81 correct, 11 abstain, 0 wrong, against the rule-based extractor's 73 correct, 19 abstain, 0 wrong; size fields (642 labelled) 569 correct, 71 abstain, 2 wrong, against 136 correct, 498 abstain, 8 wrong. [Every field](#what-the-extraction-benchmark-measured). The rule-based extractor (`papers/fetch.py` / `pip install paperkiln-fetch`, no API key) stays as the offline path |
 | **Research tooling** | the Architecture Atlas (designed experiments, multi-seed cells, a findings registry with retractions), falsifiers built into the modules, one-command replication |
 
 Experimental GPT2 training can opt into `train.attention_precision: "bf16"` for exact two-block `gpt2-nano` LM/SFT with FP32 projections. This is a per-model training recipe: score, sample, chat and exported inference remain FP32. CPU default-bit, gradient, save/reload and NumPy/Ember inference checks pass; CUDA model validation and performance remain open. The VRAM planner refuses this uncalibrated mode. [Scope and evidence](receipts/gpt2_attention_precision_20261031/RESULTS.md).
@@ -84,7 +84,8 @@ device/host boundaries stay explicitly scoped.
 
 1. **Papers in, running models out, with provenance.** An LLM reads the paper; every value it
    returns carries the sentence, equation or table cell it came from, and a deterministic check
-   confirms that quote is in the LaTeX before the value is used. Unresolved fields are reported,
+   confirms that quote is in the LaTeX before the value is used. That check establishes where a
+   value came from; whether it is the right reading is what the benchmark measures. Unresolved fields are reported,
    never guessed, and a new operation the paper proposes comes back as an `expr` op both
    engines run without recompiling.
 2. **The paper's architecture is what trains.** Depth, d_ff, norm, activation and positions
@@ -92,7 +93,8 @@ device/host boundaries stay explicitly scoped.
    ReLU and sinusoidal positions.
 3. **The extraction is measured.** A 40-paper benchmark with ground truth, CIs and a growth
    protocol scores both extractors side by side, with every call's tokens and cost receipted.
-   Every wrong assertion it found is registered with its cause and fixed.
+   Wrong answers and abstentions are reported beside the correct ones
+   ([the counts](#what-the-extraction-benchmark-measured)); the two block-graph errors are still open.
 4. **Falsifiers ship inside the modules,** and failed claims are
    [published](SPARSE_ATTENTION.md).
 5. **The loop closes across two engines.** Models export to GGUF and run in ember.cpp, a
@@ -114,8 +116,10 @@ The script checks your tools (and tells you how to install anything missing), bu
 paperkiln, makes a practice corpus, trains a model on your CPU (about 10 minutes for the Quick
 preset), writes a plain-language model card and opens a chat page at http://127.0.0.1:8080. It
 can also make a temporary public link. Linux, macOS and Windows through WSL2. `--mode default`
-skips training and chats with the ready-made browser model. Scripted flags:
-`--mode default|train --preset quick|better --share|--no-share --port N --yes|-y`.
+skips training and chats with the ready-made browser model, downloaded from the `chat-v1`
+release and checked against the SHA-256 pinned in the script before it is unpacked (an
+interrupted download resumes on the next run). Scripted flags:
+`--mode default|train --preset quick|better --share|--no-share --port N --no-browser --yes|-y`.
 
 ## Train from a spec
 
@@ -150,8 +154,13 @@ python tools/arxiv_to_chat.py 2302.13971 --extraction llama.extraction.json --ru
 ```
 
 `llm_extract.py` sends the LaTeX in one call (about $0.3-0.5 a paper with Claude Opus), verifies
-every quote, and writes the `extraction.json` that `tools/arxiv_to_chat.py` trains from; anything
-unverified or outside the IR makes the chain refuse rather than approximate. Without an API key,
+every quote, and writes the `extraction.json` that `tools/arxiv_to_chat.py` trains from. A field
+whose quote is not in the source, or whose value is not in its quote, is marked unverified. An
+unverified architecture field (norm, activation, positions and the like) makes the chain refuse by
+name (exit 2, `refusal.json`, no spec written) unless the operator settles it with `--assert`; an
+unverified size is left unresolved, and the run's own sizes apply. Anything outside the IR refuses
+the same way. A failed call (refused,
+truncated or unparseable) writes no `extraction.json` at all. Without an API key,
 the rule-based extractor does the same job more conservatively:
 
 ```bash
@@ -175,6 +184,43 @@ unresolved values and mechanism blockers, with the original extraction available
 and the `arxiv_to_chat.py --extraction` handoff. The coarse form builder stays unchanged rather
 than approximating unsupported mechanisms. Rule-based extraction remains a separate, explicitly
 selected mode; an LLM failure never switches to it. Tests and cached verifier checks require no key.
+
+### What the extraction benchmark measured
+
+40 papers, labels read off each paper's LaTeX
+(`papers/bench_truth_structure.json`, `papers/flavor_bench.py`), scored by `papers/bench_score.py`.
+The LLM extractor ran the 26 Oct prompt on 27 Oct 2026 ($18.08):
+[`2026-10-27_bench_scores.json`](../papers/llm_extract_receipts/2026-10-27_bench_scores.json).
+Each cell is correct / abstain / wrong over the labelled fields of that group.
+
+| Field group | Labelled fields | LLM extractor | Rule-based extractor |
+|---|---|---|---|
+| Family: norm, activation, positional encoding | 92 (27, 31, 34) | 81 / 11 / 0 | 73 / 19 / 0 |
+| Sizes: d_model, layers, heads, kv heads, d_ff, vocabulary, context, per labelled config | 642 | 569 / 71 / 2 | 136 / 498 / 8 |
+| Block graph: norm placement per sublayer, parallel block, gated FFN, RoPE node, absolute position table | 95 | 91 / 2 / 2 | not scored |
+| Fields added by the 26 Oct prompt (placement per sublayer 34, q/k norm 40, SSM 40, learned inputs 40, positions outside the old set 7, T5 buckets and distance 2, new-op input roles 7) | 170 | 167 / 3 / 0 | not scored |
+
+- **Abstain** means the extractor asserted nothing usable for that field (not stated, an
+  unverified quote, or an answer outside the buildable set). For a family field the chain then
+  refuses until the operator asserts one, so an abstention costs a build, not a wrong model. It
+  never counts as correct, except on the 7 family labels below.
+- **Family fields:** 7 of the 92 are papers whose family is outside the standard set (relative
+  positions in five, Primer's own norm and activation); there, abstaining or naming a new op
+  counts as correct for either extractor. On the other 85: LLM 74 / 11 / 0, rule-based 66 / 19 / 0.
+  Of the LLM's 81 correct, 79 passed a value check and 2 (Primer's new ops) had their quote found
+  with no further check applicable. Its 11 abstentions: 6 unverified quotes, 4 not stated,
+  1 answer outside the set (GPT-NeoX's GELU of unstated form).
+- **Sizes:** sizes the extractor asserted where the labels have none (53 LLM, 226 rule-based) are
+  counted apart and not scored. The 2 LLM errors are DeepSeek-V2's context length, read as the
+  extended 128K and the Lite model's 32K where the labels hold the 4K pre-training length.
+- **Block graph:** the 2 errors are ALBERT's and OPT's learned position tables, missing from the
+  extracted embed graph. Both are open.
+- **The added fields** for q/k norm, SSM and learned inputs: no paper of the 40 has one, so those
+  120 fields count false assertions only.
+- A 28 Oct rescore of the same replies offline, under a later verifier and with DeepSeek-V2's
+  context-length label widened to accept the extended lengths
+  ([`2026-10-28_bench_scores.json`](../papers/llm_extract_receipts/2026-10-28_bench_scores.json)),
+  reads higher. It is not a fresh run, so the 27 Oct receipt is the one quoted.
 
 The **Research** panel also works by opening `studio/index.html` directly. Load a complete
 `saved spec.json`, choose one existing parameter and enter a value of the same JSON type.

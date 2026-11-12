@@ -397,6 +397,47 @@ def test_unverified_flavour_is_refused_by_name():
     assert fam == "llama"
 
 
+@pytest.mark.parametrize("quote_ok", [True, False])
+def test_unverified_quote_through_the_chain_cli_writes_no_spec(tmp_path, quote_ok):
+    # End to end through tools/arxiv_to_chat.py's CLI: the same reply with its norm quote intact
+    # writes the training specs; with a quote the LaTeX lacks, the chain exits 2 (refused), writes
+    # refusal.json naming the field, and leaves no spec that mtstudio could run.
+    import arxiv_to_chat as A
+    out = llama_output()
+    if not quote_ok:
+        out["flavours"]["norm"]["quote"] = "a sentence the paper never wrote"
+    ext = L.to_extraction("2302.13971", out, L.verify(out, src(LLAMA_TEX)), {"extractor": "papers/llm_extract.py"})
+    p = tmp_path / "2302.13971.extraction.json"
+    p.write_text(json.dumps(ext), encoding="utf-8")
+    run = tmp_path / "run"
+    rc = A.main(["2302.13971", "--run-dir", str(run), "--extraction", str(p), "--skip-relevance-gate",
+                 "--stop-after", "spec", "--d", "64", "--heads", "2"])
+    specs = [run / "pretrain_spec.json", run / "sft_spec.json"]
+    if quote_ok:
+        assert rc == 0 and all(s.exists() for s in specs)
+        return
+    assert rc == A.EXIT_REFUSED
+    assert not any(s.exists() for s in specs)
+    reasons = json.loads((run / "refusal.json").read_text(encoding="utf-8"))["reasons"]
+    assert any("norm = rmsnorm has verdict 'unverified'" in r for r in reasons)
+    assert json.loads((run / "manifest.json").read_text(encoding="utf-8"))["stages"]["spec"]["refused"]
+
+
+def test_failed_extraction_writes_no_extraction_file(isolated, tmp_path, monkeypatch):
+    # A reply cut off at max_tokens fails the extract command; no extraction.json appears for the
+    # chain to pick up, and nothing is cached.
+    tex = tmp_path / "paper.tex"
+    tex.write_text(LLAMA_TEX, encoding="utf-8")
+    out = tmp_path / "x.extraction.json"
+    monkeypatch.setattr(L, "make_client", lambda: fake_client([reply('{"title": "trunc', stop="max_tokens")]))
+    real = L.run_extraction
+    monkeypatch.setattr(L, "run_extraction", lambda *a, **k: real(*a, ledger=isolated, **k))
+    with pytest.raises(SystemExit, match="truncated"):
+        L.main(["extract", "--tex", str(tex), "--id", "2302.13971", "--out", str(out)])
+    assert not out.exists()
+    assert not list(L.LLM_CACHE.glob("*.json"))
+
+
 def test_grouped_query_and_moe_block():
     out = llama_output()
     out["configs"][0]["n_kv_heads"] = ev("16", "stated", ROW_SMALL, "Table 1")
