@@ -64,9 +64,11 @@ import json
 import os
 import re
 import shutil
+import ssl
 import sys
 import tarfile
 import tempfile
+import urllib.error
 import urllib.request
 from collections import Counter, defaultdict
 
@@ -193,6 +195,20 @@ def _sha(path):
     return C.sha256_file(path)
 
 
+def expired_certificate(e):
+    """True when a URLError is a TLS verification failure because the server's certificate has expired."""
+    reason = getattr(e, "reason", None)
+    return isinstance(reason, ssl.SSLCertVerificationError) and "expired" in str(reason)
+
+
+def unverified_context():
+    """A TLS context that skips certificate checks: used only for a pinned download, whose sha256 decides."""
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    return ctx
+
+
 def fetch_url(url, raw_dir, want=None):
     """Download url into raw_dir (atomic: a .part file, then rename); verify want if given."""
     os.makedirs(raw_dir, exist_ok=True)
@@ -202,14 +218,27 @@ def fetch_url(url, raw_dir, want=None):
         tmp = dest + ".part"
         req = urllib.request.Request(url, headers={"User-Agent": "paperkiln-corpus-fetcher"})
 
-        def fetch():
-            with urllib.request.urlopen(req, timeout=120) as r, open(tmp, "wb") as f:
+        def fetch(context=None):
+            with urllib.request.urlopen(req, timeout=120, context=context) as r, open(tmp, "wb") as f:
                 shutil.copyfileobj(r, f, 1 << 22)
                 length = r.headers.get("Content-Length")
             if length and os.path.getsize(tmp) != int(length):   # urllib raises nothing for a short body
                 raise ConnectionError(f"{url}: {os.path.getsize(tmp)} of {length} bytes")
 
-        C.with_retries(fetch, url)
+        def attempt():
+            """One try under the original retry policy: verified first; for a pinned download whose host's
+            TLS certificate has expired (dl.fbaipublicfiles.com, 13 Nov 2026), the same try goes on without
+            certificate verification, and the sha256 check below decides whether the bytes are accepted."""
+            try:
+                fetch()
+            except urllib.error.URLError as e:
+                if not (want and expired_certificate(e)):
+                    raise
+                print(f"{url}: the host's TLS certificate has expired; fetching without verification, "
+                      f"accepted only at the pinned sha256", flush=True)
+                fetch(unverified_context())
+
+        C.with_retries(attempt, url)
         os.replace(tmp, dest)
     h = _sha(dest)
     if want and h != want:
