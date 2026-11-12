@@ -2172,6 +2172,11 @@ def test_a_release_names_the_ledger_that_did_not_read_and_a_runner_takes_its_own
     r = store.release_report("home:pk", grace=600, now=late)
     assert (r["held"], r["objects"], r["ledgers_unread"]) == (False, 0, 2)
     assert r["unread"] == ["ckpt-N:pruned/g100.json (not read (ConnectionError))", "ckpt-N:pruned/g200.json (not well formed)"]
+    # The third reviews of the arms' round: a ledger that is not well formed is told by its OWN identity, its path
+    # and the sha256 of its bytes, not by its branch's head, which every save of a training arm moves.
+    assert r["malformed"] == {"ckpt-N:pruned/g200.json": S.sha(b"{not a ledger")}
+    assert store.file_sha256("ckpt-N", "pruned/g200.json") == S.sha(b"{not a ledger")
+    assert store.file_sha256("ckpt-N", "pruned/g999.json") is None
     api.hf_hub_download = real
     r = store.release_report("home:pk", grace=600, now=late)
     assert r["unread"] == ["ckpt-N:pruned/g200.json (not well formed)"] and r["objects"] == 0   # it stops the round by itself
@@ -2203,6 +2208,27 @@ def test_a_release_names_the_ledger_that_did_not_read_and_a_runner_takes_its_own
         assert (r["held"] is False) == taken, rec
         api.branches["main"].pop(hf_store.LOCK, None)
     assert any("itself is taken again (its process is gone)" in ln for ln in logs)
+    # The third reviews: "may last" is the limit of the call that TOOK the lock, which its record carries; a later
+    # call with a short limit (the last second of the owed wait) does not take a young lock of a live process.
+    mine = store._lock("home:pk", late + 5000, takeover=900)
+    assert mine["limit"] == 900.0
+    r = store.release_report("home:pk", grace=600, now=late + 5060, takeover=1)
+    assert r["held"] is True and "may still be running" in r["why"]
+    assert store.release_report("home:pk", grace=600, now=late + 5901, takeover=1)["held"] is False
+    # An unlock is sent at most twice; a lock that is left is said, and is not removed by anyone else's nonce.
+    real_commit, sent = api.create_commit, []
+
+    def no_unlock(**kw):
+        if kw["commit_message"].startswith("unlock"):
+            sent.append(1)
+            raise RuntimeError("412 Precondition Failed: main moved")
+        return real_commit(**kw)
+
+    api.create_commit = no_unlock
+    r = store.release_report("home:pk", grace=600, now=late + 9000)
+    assert r["held"] is False and len(sent) == 2 == hf_store.UNLOCK_TRIES and hf_store.LOCK in api.branches["main"]
+    assert any("release lock not removed (RuntimeError" in ln and "it expires in 1800 s" in ln for ln in logs)
+    api.create_commit = real_commit
 
 
 def test_a_store_call_dies_with_the_process_that_made_it(tmp_path):
@@ -2247,6 +2273,17 @@ def test_a_store_call_dies_with_the_process_that_made_it(tmp_path):
         p.kill()
         if child and hf_store._alive(child):
             os.kill(child, 9)
+    # The third reviews: prctl answers a failure by its return value, which nothing read; the comment said the
+    # call's limit would still end the child, and the limit is kept by the parent that is then gone. On Linux a
+    # signal that could not be set fails the call, before the function runs.
+    ran = tmp_path / "ran"
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(hf_store, "_set_pdeathsig", lambda: -1)
+        with pytest.raises(hf_store.StoreError, match="parent-death signal could not be set"):
+            hf_store.bounded(lambda: ran.write_text("x") and 1, 30)
+    assert not ran.exists()
+    assert hf_store.bounded(lambda: ran.write_text("x") and 1, 30) == 1 and ran.exists()     # set: the call is made
+    assert hf_store._LIBC and hf_store._LIBC[0] is not None                                # libc was loaded before the fork
 
 
 def test_no_signed_address_is_kept_and_a_refusal_is_the_hubs_only_when_it_is_known_to_be(tmp_path, capsys):
@@ -2308,6 +2345,11 @@ def test_no_signed_address_is_kept_and_a_refusal_is_the_hubs_only_when_it_is_kno
     assert hf_store.auth_failure(hub) and not hf_store.auth_failure(cdn) and not hf_store.auth_failure(s3)
     assert hf_store.reply_side(Exception("403 Forbidden")) is None and not hf_store.auth_failure(Exception("403 Client Error: Forbidden"))
     assert not hf_store.auth_failure(http_error(404, "https://huggingface.co/api/datasets/x"))
+    # The third reviews: the host of the FINAL reply decides; a redirect that ends back on the hub (a renamed repo)
+    # is the hub's refusal, not an object store's.
+    back = http_error(403, "https://huggingface.co/api/datasets/someone/renamed/tree/main")
+    back.response.history = [_resp(301)]
+    assert hf_store.reply_side(back) == "hub" and hf_store.auth_failure(back)
     # The side crosses bounded()'s pipe, in words.
     for e, side in ((hub, "hub"), (s3, "object store")):
         def refuse(e=e):

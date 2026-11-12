@@ -1220,8 +1220,42 @@ elif at == "after":         # ... after it has succeeded, before the success is 
             os.kill(os.getpid(), 9)
         return r
     rm.store_call = call
+if os.environ.get("EMPTY_FIRST_LISTING"):   # the first listing that would show the session comes back empty
+    real_listed = rm.listed
+    def listed():
+        ep = real_listed()
+        if ep is not None and not os.path.exists(os.environ["EMPTY_FIRST_LISTING"]):
+            open(os.environ["EMPTY_FIRST_LISTING"], "w").write("x")
+            return None
+        return ep
+    rm.listed = listed
 rm.main()
 """)
+
+
+def test_a_launch_whose_listing_came_back_empty_still_knows_its_session_at_the_next_start(tmp_path):
+    """The third reviews' blocker. The endpoint was recorded once, from the one listing just after the session's
+    creation, and that listing can come back empty while the VM is fine. The run went on by name; a runner killed
+    at the campaign's end then left a folder that recorded no endpoint, and the next start took its own live
+    session for "another runner's", stopped nothing and exited 0 saying "session stopped". The loop now records
+    the endpoint a listing shows, so the next start knows the session and stops it."""
+    work = tmp_path
+    args = store_args(work, "--store-first-start", "--store-release-storage")
+    p, calls = run_store(work, {}, extra=args, wrap=DIE_WRAP,
+                         more_env={"DIE_AT": "before", "EMPTY_FIRST_LISTING": str(work / "listed_once")})
+    assert p.returncode == -9, (p.returncode, p.stderr[-1500:], log_of(work)[-2000:])
+    first = log_of(work)
+    assert "session up, endpoint None (launch 1)" in first                         # the launch's listing: empty
+    assert "session listed at fake-endpoint-1 (recorded: None); recorded" in first   # the loop's: recorded
+    state = state_of(work)
+    assert state["endpoint"] == "fake-endpoint-1" and json.loads((work / "fake" / "fake.json").read_text())["alive"] is True
+    p2, calls2 = run_store(work, {}, extra=args, fresh=False)
+    log = log_of(work)[len(first):]
+    assert p2.returncode == 0, (p2.stderr[-1500:], log[-2000:])
+    assert "the session an earlier runner left is stopped" in log and "is left alone (no token" not in log
+    assert calls2.rstrip().splitlines()[-1].startswith('["stop"') and json.loads((work / "fake" / "fake.json").read_text())["alive"] is False
+    assert news(calls2) == 1 and state_of(work)["store_release_final_done"] is True
+    assert log.rstrip().endswith("session stopped; runner exiting")
 
 
 def ended(pid):
@@ -1403,25 +1437,29 @@ def test_the_owed_release_keeps_to_its_bound_spends_no_commits_on_a_ledger_that_
         rm.store_release_owed(st, [])
         assert len(rounds) == want, home
         line = [ln for ln in (tmp_path / home / "runner.log").read_text().splitlines() if "DID NOT RUN" in ln]
-        assert len(line) == 1 and ("2 rounds ran and met a ledger that could not be read, and no more are made" in line[0]) == (want == 0)
-    # A ledger that is not well formed is kept with its branch's head, and gets NO new round on any start until that
-    # head moves or a person removes the key: the start reads the head (a read, no commit), writes the line, ends.
+        assert len(line) == 1 and "2 rounds of the release were begun and none was recorded as made" in line[0]
+    # A ledger that is not well formed gets NO new round on any start while that same file is still there: the
+    # start reads the file (a read, no commit), writes the line, ends. The third reviews: it was kept with its
+    # BRANCH'S HEAD, which every save of an arm that still trains moves, so a finished arm's folder ran a round at
+    # every start for as long as another arm trained. It is kept by its own path and the sha256 of its bytes.
     bad = "the round ran and 1 ledger(s) could not be read: ckpt-N:pruned/g100.json (not well formed)"
+    key, key2 = "ckpt-N:pruned/g100.json", "ckpt-S:pruned/g7.json"
 
-    class Heads:
-        def __init__(self, head):
-            self.head_now, self.b, self.asked = head, self, 0
+    class Files:
+        def __init__(self, shas):
+            self.shas, self.asked = shas, 0
 
-        def head(self, branch):
+        def file_sha256(self, branch, path):
             self.asked += 1
-            if isinstance(self.head_now, Exception):
-                raise self.head_now
-            return self.head_now
+            v = self.shas[f"{branch}:{path}"]
+            if isinstance(v, Exception):
+                raise v
+            return v
 
-    for home, head_now, want in (("g", "ckpt-N@7", 0), ("h", ConnectionError("unreachable"), 0), ("h2", "ckpt-N@8", 2)):
+    for home, now_, want in (("g", "aa", 0), ("h", ConnectionError("unreachable"), 0), ("h2", None, 2), ("h3", "bb", 2)):
         rm, st = owed(tmp_path, home, debt=bad)
-        st.d.update(store_release_final_malformed={"ckpt-N": "ckpt-N@7"}, store_release_final_rounds=1)
-        store = Heads(head_now)
+        st.d.update(store_release_final_malformed={key: "aa"}, store_release_final_rounds=1)
+        store = Files({key: now_})
         rm.store_open = lambda jobs, store=store: store
         rm.store_call = lambda fn, limit=None: fn()
         del rounds[:]
@@ -1431,8 +1469,50 @@ def test_the_owed_release_keeps_to_its_bound_spends_no_commits_on_a_ledger_that_
         line = [ln for ln in (tmp_path / home / "runner.log").read_text().splitlines() if "DID NOT RUN" in ln]
         assert len(line) == 1 and "ckpt-N:pruned/g100.json (not well formed)" in line[0]
         assert "A ledger that is not well formed stops every release, this command's too" in line[0]
-        assert ("no new round is made until that head moves or store_release_final_malformed is removed" in line[0]) == (want == 0)
-        assert ("store_release_final_malformed" in st.d) == (want == 0)             # the head moved: the key is gone, a round ran
+        assert ("is still in the store as it was, and no new round is made while it is" in line[0]) == (want == 0)
+        assert ("store_release_final_malformed" in st.d) == (want == 0)             # gone or other bytes: the key is gone, rounds ran
+    # Several: each is kept, and only its own change clears it.
+    rm, st = owed(tmp_path, "h4", debt=bad)
+    st.d.update(store_release_final_malformed={key: "aa", key2: "cc"}, store_release_final_rounds=1)
+    store = Files({key: "aa", key2: None})               # the second was removed; the first is there as it was
+    rm.store_open = lambda jobs: store
+    rm.store_call = lambda fn, limit=None: fn()
+    del rounds[:]
+    rm.store_release = ledger_round
+    rm.store_release_owed(st, [])
+    assert rounds == [] and st.d["store_release_final_malformed"] == {key: "aa"} and st.d["store_release_final_rounds"] == 1
+    assert "is gone or has changed (['ckpt-S:pruned/g7.json']); ['ckpt-N:pruned/g100.json'] is still there as it was" in (
+        tmp_path / "h4" / "runner.log").read_text()
+    # On a real store, with the ledger on a branch whose head moves at every save (an arm that still trains).
+    import store_standin as S
+    real = hf_store.open_store({"repo": f"dir:{tmp_path / 'mrepo'}"})
+    made = tmp_path / "mgen"
+
+    def save(step):
+        S.make_gen(str(made), step)
+        real.push_generation("ckpt-N", "pt", step, str(made / "ckpt_gen" / f"g{step}"), None, real.head("ckpt-N")["commit"])
+        return real.b.head("ckpt-N")
+
+    heads = [save(100)]
+    ledger = tmp_path / "mrepo" / "ckpt-N" / "pruned" / "g50.json"
+    ledger.parent.mkdir()
+    ledger.write_bytes(b"{not a ledger")
+    rm, st = owed(tmp_path, "m", debt=bad.replace("g100", "g50"))
+    st.d.update(store_release_final_malformed={"ckpt-N:pruned/g50.json": hashlib.sha256(b"{not a ledger").hexdigest()},
+                store_release_final_rounds=1)
+    rm.store_open = lambda jobs: real
+    rm.store_call = lambda fn, limit=None: fn()
+    rm.store_release = ledger_round
+    for step in (200, 300, 400):                         # a start after each save: the head has moved every time
+        heads.append(save(step))
+        del rounds[:]
+        rm.store_release_owed(st, [])
+        assert rounds == [] and "store_release_final_malformed" in st.d, step
+    assert len(set(heads)) == 4
+    ledger.write_bytes(b"{repaired, or at least other bytes")   # the file itself changes: the release is tried again
+    del rounds[:]
+    rm.store_release_owed(st, [])
+    assert len(rounds) == 2 and "store_release_final_malformed" not in st.d
     # A KeyboardInterrupt in the wait: the line all the same, and the interrupt goes on.
     rm, st = owed(tmp_path, "k")
 
@@ -1496,8 +1576,8 @@ def test_a_malformed_ledger_at_the_campaigns_end_is_named_and_costs_one_round(tm
     # The second reviews of the arms' round: every later start of this folder made another round (a lock and an
     # unlock) and found the same file. The ledger is in state.json with its branch's head: a start now reads that
     # head, makes NO commit, writes the line and exits 0.
-    head = hf_store.open_store({"repo": f"dir:{work / 'store'}"}).b.head("ckpt-N")
-    assert state["store_release_final_malformed"] == {"ckpt-N": head} and state["store_release_final_rounds"] == 1
+    assert state["store_release_final_malformed"] == {"ckpt-N:pruned/g50.json": hashlib.sha256(b"{not a ledger").hexdigest()}
+    assert state["store_release_final_rounds"] == 1
     for _ in range(2):
         before = log_of(work)
         p2, calls2 = run_store(work, {}, extra=store_args(work, "--store-first-start", "--store-release-storage"), fresh=False,
@@ -1505,14 +1585,11 @@ def test_a_malformed_ledger_at_the_campaigns_end_is_named_and_costs_one_round(tm
         log2 = log_of(work)[len(before):]
         assert p2.returncode == 0 and news(calls2) == 1, (p2.stderr[-1500:], log2[-2000:])
         said2 = [ln for ln in log2.splitlines() if "DID NOT RUN" in ln]
-        assert len(said2) == 1 and "no new round is made until that head moves or store_release_final_malformed is removed" in said2[0]
+        assert len(said2) == 1 and "is still in the store as it was, and no new round is made while it is" in said2[0]
         assert "ckpt-N:pruned/g50.json (not well formed)" in said2[0]
         assert [json.loads(ln)["message"] for ln in (work / "store" / "commits.jsonl").read_text().splitlines()] == sent   # no commit
-    # A person removes the bad file and the key: the next start makes the release.
+    # A person removes the bad file: the next start finds it gone and makes the release.
     (bad / "g50.json").unlink()
-    state = state_of(work)
-    state.pop("store_release_final_malformed")
-    (work / "state" / "state.json").write_text(json.dumps(state))
     p3, calls3 = run_store(work, {}, extra=store_args(work, "--store-first-start", "--store-release-storage"), fresh=False,
                            more_env={"OWED_WAIT_S": "30", "OWED_ESSENTIAL_S": "900"})
     assert p3.returncode == 0 and news(calls3) == 1
@@ -1561,17 +1638,53 @@ def test_a_state_folder_has_one_runner_one_name_one_set_of_jobs_and_acts_only_on
     jobs_file.write_text(json.dumps(changed))
     q, new, log = again()
     assert q.returncode != 0 and "this state folder ran other jobs" in q.stderr and "Use a new --state-dir" in q.stderr and new == []
+    # The third reviews: the fingerprint was names and specs only. It is every job's whole entry: a changed command,
+    # dependency or snapshot step alone is refused too, once a job is home.
+    for change in (lambda d: d["jobs"][0].update(cmd=["y"]), lambda d: d["jobs"][1].update(snapshot_steps=[200]),
+                   lambda d: d["jobs"][2].update(after=["data"]), lambda d: d["jobs"].append({"name": "extra", "cmd": ["z"]})):
+        changed = json.loads(kept)
+        change(changed)
+        jobs_file.write_text(json.dumps(changed))
+        q, new, log = again()
+        assert q.returncode != 0 and "this state folder ran other jobs" in q.stderr and new == []
     jobs_file.write_text(kept)
+    # A pid file decides nothing now that the folder's lock does (a pid from before a restart of WSL can be some
+    # other live process, and the old check then refused every start): here it names this test, which is alive.
+    (work / "state" / "runner.pid").write_text(str(os.getpid()))
+    q, new, log = again()
+    assert q.returncode == 0 and "another runner is live" not in q.stderr and "every job is home in this state folder" in log
     # (d) A session IS listed under the name, at another endpoint than the one this folder recorded: another
     # runner's. It is left alone: no exec (no token removed), no stop.
     fake = work / "fake" / "fake.json"
     d = json.loads(fake.read_text())
     fake.write_text(json.dumps({**d, "alive": True, "launches": d["launches"] + 1}))
     q, new, log = again()
-    assert q.returncode == 0, (q.stderr[-1500:], log[-1500:])
-    assert ("a session is listed under this name at fake-endpoint-2, which is NOT the endpoint this folder recorded "
-            "(fake-endpoint-1): it is another runner's and is left alone (no token removed, no stop)") in log
+    # The third reviews: it is not this runner's to call "stopped" either. It says how to stop it by hand, in case
+    # it is this folder's after all, and exits 4.
+    assert q.returncode == 4, (q.returncode, q.stderr[-1500:], log[-1500:])
+    assert ("A SESSION IS LISTED UNDER THIS NAME at fake-endpoint-2, which is NOT the endpoint this folder recorded "
+            "(fake-endpoint-1): it is taken for another runner's and is left alone (no token removed, no stop)") in log
+    assert "stop it by hand (colab stop -s pk-store)" in log and "session stopped; runner exiting" not in log
+    assert log.rstrip().endswith("SESSION STOP NOT CONFIRMED (STOP_UNRESOLVED); runner exiting")
     assert new and all(ln.startswith('["sessions"') for ln in new) and json.loads(fake.read_text())["alive"] is True
+    # The third reviews' blocker: "other" needs a recorded endpoint that differs. A folder that recorded NONE (its
+    # launch's one listing came back empty) or that left a stop unresolved takes the listed session for its own.
+    for rec, unresolved in ((None, False), ("fake-endpoint-9", True)):
+        state = state_of(work)
+        state["endpoint"] = rec
+        (work / "state" / "state.json").write_text(json.dumps(state))
+        if unresolved:
+            (work / "state" / "STOP_UNRESOLVED").write_text(json.dumps({"kind": "STOP_UNRESOLVED", "session": "pk-store"}))
+        fake.write_text(json.dumps({**json.loads(fake.read_text()), "alive": True}))
+        q, new, log = again()
+        assert q.returncode == 0 and "the session an earlier runner left is stopped" in log, (rec, q.stderr[-800:], log[-1500:])
+        assert new[-1].startswith('["stop"') and json.loads(fake.read_text())["alive"] is False
+        assert log.rstrip().endswith("session stopped; runner exiting")
+    assert not (work / "state" / "STOP_UNRESOLVED").exists() and (work / "state" / "STOP_RESOLVED").exists()   # the stop closed it
+    fake.write_text(json.dumps({**json.loads(fake.read_text()), "alive": True}))
+    state = state_of(work)
+    state["endpoint"] = "fake-endpoint-1"
+    (work / "state" / "state.json").write_text(json.dumps(state))
     # (e) The folder's own session (the recorded endpoint): its token is removed and it is stopped.
     state = state_of(work)
     state["endpoint"] = "fake-endpoint-2"
@@ -1653,7 +1766,17 @@ def test_a_timed_release_that_did_not_run_is_tried_again_soon_and_a_lost_measure
         clock.t += 240
     assert [a[0] for a in asked] == [t0 + 7200, t0 + 7440, t0 + 7680] and st.d["store_releases"]["count"] == 1
     assert all(a[1] is False and a[2] == 900 and a[3] == a[0] for a in asked)        # timed; its call's limit; the runner's clock
-    assert st.d["store_release_next"] == t0 + 7680 + 7200 and "store_measure_pending" not in st.d and len(sent) == 1
+    # The third reviews: the turns are ANCHORED. The round ran eight minutes late; the next turn is two hours after
+    # the turn it belonged to, not after the moment it ran (a late round no longer shifts the arm's turns).
+    assert st.d["store_release_next"] == t0 + 14400 == st.d["store_release_regular"]
+    assert "store_measure_pending" not in st.d and len(sent) == 1
+    # And they start from the arm's offset (the registration's 0, a third and two thirds of the interval).
+    rm_o = load_runner(tmp_path / "offset")
+    rm_o.time, rm_o.STORE = FakeTime(), {**rm.STORE, "release_offset_min": 40}
+    st_o = St()
+    rm_o.store_release(st_o, jobs)
+    assert st_o.d["store_release_next"] == rm_o.time.t + 7200 + 2400 == st_o.d["store_release_regular"]
+    assert '"--store-release-offset-min", type=float, default=None' in (CC / "runner_multi.py").read_text()
     log = (tmp_path / "home" / "runner.log").read_text()
     assert log.count("the lock was not taken (another releaser holds the lock); nothing was sent; tried again at the next tick") == 1
     # A round that ran and met a ledger it could not read, and one that failed: once more in ten minutes, then
@@ -1876,3 +1999,226 @@ def test_refusals_are_named_by_who_refused_and_what_comes_home_holds_no_signed_a
     assert st3.d["jobs"]["rung_100"]["home"] is False
     assert not any(k in st3.d for k in ("campaign_home", "store_release_final_done", "store_release_final_rounds",
                                         "store_release_final_malformed", "store_release_final_owed"))
+
+
+# ---------------------------------------------------------------- the arms' round, fourth pass (the third reviews, 12 Nov 2026)
+class Killed(BaseException):
+    """The runner is killed: nothing after this point in the process happens."""
+
+
+class Disk(St):
+    """A state whose save() is what state.json would hold: what a new process finds."""
+
+    def __init__(self, d=None):
+        super().__init__()
+        self.d, self.disk = json.loads(json.dumps(d or {})), json.loads(json.dumps(d or {}))
+
+    def save(self):
+        self.disk = json.loads(json.dumps(self.d))
+
+
+@pytest.mark.parametrize("kind", ["unread", "malformed"])
+def test_a_round_of_the_ends_release_is_counted_before_it_is_made(tmp_path, kind):
+    """The third reviews of the arms' round: the count of the end's rounds was saved after the round, so a runner
+    killed once its release's child had finished (the lock and the unlock sent) and before the outcome was saved
+    left no trace of it, and the next start had its two rounds whole. The round is reserved in state.json before
+    the call. Here the runner dies at exactly that point, for a round that met an unread ledger and for one that
+    met a ledger that is not well formed: two rounds are made in all, over every start."""
+    key = "ckpt-N:pruned/g100.json"
+    result = {**RAN, "ledgers_unread": 1,
+              "unread": [f"{key} ({'not well formed' if kind == 'malformed' else 'not read (ConnectionError)'})"],
+              "malformed": {key: "aa"} if kind == "malformed" else {}}
+    made = []
+
+    class Store:
+        def release_report(self, owner, grace=None, essential=False, takeover=None, now=None):
+            made.append(essential)                       # a lock and an unlock have gone out
+            return dict(result)
+
+        def file_sha256(self, branch, path):
+            return "aa"                                  # the malformed ledger is still there as it was
+
+    def start(home, state, die=False):
+        rm = load_runner(tmp_path / home)
+        rm.time = FakeTime()
+        rm.STORE = {"reclaim": True, "release_every_min": 120, "release_grace_s": 7200, "call_limit": 300, "mark_ns": "",
+                    "branch_suffix": "", "repo": "dir:x", "repo_type": "dataset", "token_file": None}
+        rm.store_open = lambda jobs: Store()
+
+        def call(fn, limit=None):
+            r = fn()
+            if die:
+                raise Killed()                           # the child has finished; its outcome never reaches state.json
+            return r
+
+        rm.store_call = call
+        return rm, Disk(state)
+
+    jobs = [{"name": "pt", "spec": {}}]
+    rm, st = start("one", {})
+    rm.store_release(st, jobs)                           # the timer's first tick
+    rm, st = start("one", st.disk, die=True)
+    with pytest.raises(Killed):
+        rm.store_release(st, jobs, final=True)           # the loop's attempt at the campaign's end
+    assert made == [True] and st.disk["store_release_final_rounds"] == 1 and st.disk["store_release_final_owed"] == "not tried yet"
+    assert "store_release_final_malformed" not in st.disk                    # the outcome was never saved
+    # The next start: one round is left, and it is the last.
+    rm, st = start("two", {**st.disk, "campaign_home": True})
+    rm.store_release_owed(st, jobs)
+    assert made == [True, True] and st.disk["store_release_final_rounds"] == 2
+    assert ("store_release_final_malformed" in st.disk) == (kind == "malformed")
+    line = [ln for ln in (tmp_path / "two" / "runner.log").read_text().splitlines() if "DID NOT RUN" in ln]
+    assert len(line) == 1 and key in line[0]
+    # Every start after that: no round.
+    for home in ("three", "four"):
+        rm, st = start(home, st.disk)
+        rm.store_release_owed(st, jobs)
+        assert made == [True, True], home
+        assert (tmp_path / home / "runner.log").read_text().count("DID NOT RUN") == 1
+
+
+def test_a_final_round_that_fails_after_its_lock_is_counted_and_given_five_minutes_and_a_held_one_is_not(tmp_path):
+    """The third reviews of the arms' round: a round of the end's release that failed AFTER taking the lock (a tree
+    that could not be read, a delete error) was not counted, and the owed wait made another every 30 seconds,
+    each a lock and an unlock. Every attempt that was not merely held is counted now, and a failed one is followed
+    by five minutes. A held attempt sent nothing: it is not counted, and is tried again every 30 seconds."""
+    outcomes, asked = [], []
+
+    class Store:
+        def release_report(self, owner, grace=None, essential=False, takeover=None, now=None):
+            asked.append(clock.t)
+            a = outcomes.pop(0)
+            if isinstance(a, Exception):
+                raise a
+            return a
+
+    rm = load_runner(tmp_path / "home")
+    clock = rm.time = FakeTime()
+    rm.STORE = {"reclaim": True, "release_every_min": 120, "release_grace_s": 7200, "call_limit": 300, "mark_ns": "",
+                "branch_suffix": "", "repo": "dir:x", "repo_type": "dataset", "token_file": None}
+    rm.store_open = lambda jobs: Store()
+    rm.store_call = lambda fn, limit=None: fn()
+    st, jobs = Disk({"store_release_final_owed": "not tried yet", "campaign_home": True}), [{"name": "pt", "spec": {}}]
+    refused = hf_store.StoreError("release refused: the tree of ckpt-S could not be read (no head, or no listing at it)")
+    held = {"held": True, "objects": 0, "bytes": 0, "why": "another releaser holds the lock"}
+    lost = {"held": True, "objects": 0, "bytes": 0, "why": "the lock's commit was refused (ConflictError)"}
+    t0 = clock.t
+    outcomes[:] = [held, held, refused, lost, dict(RAN)]
+    rm.store_release_owed(st, jobs)
+    # Held twice (30 s apart, not counted); a failure (counted; five minutes); a lock commit that went out and was
+    # refused (counted): two rounds are used, and no more is made though one would have succeeded.
+    assert asked == [t0, t0 + 30, t0 + 60, t0 + 360] and st.d["store_release_final_rounds"] == 2
+    assert (rm.STORE_FINAL_RELEASE_NAP_S, rm.STORE_FINAL_RELEASE_FAILED_NAP_S) == (30, 300)
+    line = [ln for ln in (tmp_path / "home" / "runner.log").read_text().splitlines() if "DID NOT RUN" in ln]
+    assert len(line) == 1 and "2 rounds of the release were begun and none was recorded as made" in line[0]
+    # Held through the whole wait: nothing is counted, and the folder's allowance is whole for its next start.
+    rm = load_runner(tmp_path / "home2")
+    clock = rm.time = FakeTime()
+    rm.STORE = {"reclaim": True, "release_every_min": 120, "release_grace_s": 7200, "call_limit": 300, "mark_ns": "",
+                "branch_suffix": "", "repo": "dir:x", "repo_type": "dataset", "token_file": None}
+    rm.store_open = lambda jobs: Store()
+    rm.store_call = lambda fn, limit=None: fn()
+    st = Disk({"store_release_final_owed": "not tried yet", "campaign_home": True})
+    del asked[:]
+    outcomes[:] = [dict(held) for _ in range(100)]
+    rm.store_release_owed(st, jobs)
+    assert 40 <= len(asked) <= 41 and st.d["store_release_final_rounds"] == 0 and clock.t - asked[0] <= 1200
+    # A round that is made clears the count.
+    outcomes[:] = [dict(RAN)]
+    rm.store_release_owed(st, jobs)
+    assert st.d["store_release_final_done"] is True and "store_release_final_rounds" not in st.d
+
+
+def test_a_measurement_is_written_on_the_vm_only_on_its_boot_and_over_an_older_one(tmp_path):
+    """The third reviews of the arms' round: the VM-side write replaced the file whatever was there, so a call that
+    was delayed and completed after a newer measurement put the older one back, before the courier had read the
+    newer one: the courier lost that reset and counted too much. The write is conditional (this boot, a higher
+    sequence than the file there) and atomic."""
+    rm = load_runner(tmp_path / "home")
+    chat = tmp_path / "vm" / "chat"
+    chat.mkdir(parents=True)
+    (chat / "boot_id").write_text("boot-b\n")
+
+    def on_vm(m):                                        # the code as the VM runs it, on this folder
+        code = rm.STORE_MEASURE_VM.format(m=m).replace("/content/", str(tmp_path / "vm") + "/")
+        p = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+        assert p.returncode == 0, p.stderr
+        return p.stdout.strip()
+
+    def there():
+        return json.loads((chat / "store_measure.json").read_text())["seq"]
+
+    m4 = {"seq": 4, "boot_id": "boot-b", "bytes": 400, "at_pushed": 40, "at": 1.0}
+    m5 = {"seq": 5, "boot_id": "boot-b", "bytes": 500, "at_pushed": 50, "at": 2.0}
+    assert on_vm(m5) == "MEASURE_OK" and there() == 5
+    assert on_vm(m4) == "MEASURE_OLDER" and there() == 5         # the delayed older call: the newer one stays
+    assert on_vm(m5) == "MEASURE_OLDER" and there() == 5         # the same one again changes nothing
+    assert on_vm({**m5, "seq": 6}) == "MEASURE_OK" and there() == 6
+    assert on_vm({**m5, "seq": 9, "boot_id": "boot-a"}) == "MEASURE_OTHER_BOOT" and there() == 6   # another boot's: not written
+    assert sorted(os.listdir(chat)) == ["boot_id", "store_measure.json"]                         # no temporary left
+    (chat / "store_measure.json").write_text(json.dumps({**m5, "seq": 99, "boot_id": "boot-a"}))  # the last boot's file
+    assert on_vm({**m5, "seq": 1}) == "MEASURE_OK" and there() == 1                              # a new boot starts again
+    # The runner takes "older" and "another boot" for settled: nothing is sent again.
+    rm.STORE = {}
+    for answer, said in (("MEASURE_OLDER", "a newer one is there"), ("MEASURE_OTHER_BOOT", "the session is of another boot now")):
+        st = St()
+        st.d["store_measure_pending"] = dict(m4)
+        rm.exec_py = lambda code, timeout=200, answer=answer: (0, answer)
+        rm.store_measure_send(st)
+        assert "store_measure_pending" not in st.d
+        assert f"the measurement was not taken on the VM ({said})" in (tmp_path / "home" / "runner.log").read_text()
+
+
+def test_the_stall_clock_starts_again_at_every_launch_and_a_log_that_comes_home_alone_is_cleaned(tmp_path):
+    """The third reviews of the arms' round. (1) With the stall halt at 120 minutes a healthy arm must not halt
+    after a lost session: the time to notice the loss, to create the next session and to boot it (up to 75
+    minutes) is not a stall; then come the first save and, possibly, a rung that holds training for an hour. The
+    clock starts again at every launch and counts from the first tick the job is seen running on the new session.
+    (2) boot.log fetched after a failed boot went to ART as it was; it can hold a signed address."""
+    rm = load_runner(tmp_path / "home")
+    clock = rm.time = FakeTime()
+    rm.STORE = {"stall_min": 120, "stall_halt": True, "branch_suffix": "", "call_limit": 300}
+    head = [1000]
+    rm.store_open = lambda jobs: type("S", (), {"head_step": lambda self, branch: head[0]})()
+    rm.store_call = lambda fn, limit=None: fn()
+    st, jobs = St(), [{"name": "pt", "spec": {}}]
+    st.jobs["pt"] = st.d.setdefault("jobs", {}).setdefault("pt", {"home": False, "relayed_step": 0})
+    rm.store_progress(st, jobs, "pt")                    # the store holds step 1,000: seen
+    assert st.job("pt")["relayed_step"] == 1000
+    clock.t += 30 * 60
+    rm.store_progress(st, jobs, "pt")                    # thirty quiet minutes, then the session is lost
+    clock.t += 20 * 60                                   # three silent ticks and more: noticed
+    rm.store_stall_reset(st, jobs)                       # launch(): a new session is created
+    assert "store_seen_at" not in st.job("pt")
+    clock.t += 75 * 60                                   # its boot, at the limit
+    rm.store_stall_reset(st, jobs)                       # prepare() on it
+    rm.store_progress(st, jobs, "pt")                    # the first tick the job runs again: the clock starts HERE
+    assert st.job("pt")["store_seen_at"] == clock.t
+    clock.t += 9 * 60
+    head[0] = 1500
+    rm.store_progress(st, jobs, "pt")                    # the first save of the new session
+    for _ in range(17):                                  # then a rung holds training: 65 minutes and a save, no new generation
+        clock.t += 240
+        rm.store_progress(st, jobs, "pt")
+    clock.t += 10 * 60
+    rm.store_progress(st, jobs, "pt")                    # 78 minutes since the last generation: under the 120
+    assert not (tmp_path / "home" / "HALTED").exists()
+    head[0] = 2000
+    rm.store_progress(st, jobs, "pt")
+    # Without the reset the same hours would have halted it: what a session's loss and boot take, counted in.
+    runner = (CC / "runner_multi.py").read_text()
+    assert runner.count("store_stall_reset(st, jobs)") >= 2 and "a new session: what the old one's loss and this one's boot take is no stall" in runner
+    clock.t += 121 * 60
+    with pytest.raises(SystemExit):
+        rm.store_progress(st, jobs, "pt")                # and a real stall, within one session, still halts
+    assert json.loads((tmp_path / "home" / "HALTED").read_text())["kind"] == "STORE_STALLED"
+    # (2)
+    boot = tmp_path / "boot.log"
+    boot.write_text("pulling inputs\nError while downloading from https://cdn-lfs.example/repos/ab/cd/0123?X-Amz-Signature=SECRETSIG: "
+                    "timed out. Trying to resume download...\nBOOT FAILED\n")
+    rm.store_clean_log(str(boot))
+    text = boot.read_text()
+    assert "SECRETSIG" not in text and "https://cdn-lfs.example/repos/ab/cd/0123?[query removed]" in text and text.endswith("BOOT FAILED\n")
+    assert not (tmp_path / "boot.log.tmp").exists()
+    rm.store_clean_log(str(tmp_path / "not_there.log"))  # never raises
+    assert "store_clean_log(os.path.join(ART, \"boot.log\"))" in runner

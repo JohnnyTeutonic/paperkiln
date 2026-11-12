@@ -185,6 +185,7 @@ ESSENTIAL_WAIT_S = 900    # an essential commit waits this long for room in the 
 MIN_RELEASE_GRACE_S = 600  # a release never deletes what a ledger younger than this names
 RELEASE_SKEW_S = 120       # added to the grace: a ledger's time is a VM's clock, the release's is home's
 HOST = socket.gethostname()  # in a release lock's record, with the pid of the process that took it
+UNLOCK_TRIES = 2           # an unlock is sent at most this many times; a release is then three commits at the worst
 
 
 def _alive(pid):
@@ -269,13 +270,14 @@ def reply_side(e):
         return "hub"
     resp = getattr(e, "response", None)
     url = getattr(resp, "url", None) if resp is not None else None
-    if resp is not None and getattr(resp, "history", None):
-        return "object store"
+    if not url and resp is not None and getattr(resp, "history", None):
+        return "object store"  # redirected, and the final address is not known
     if not url:
         m = re.search(r"for url: (\S+)", text)
         url = m.group(1) if m else None
     if not url:
         return None
+    # The host of the FINAL reply decides: a redirect that ends back on the hub (a renamed repo) is the hub's.
     host = re.sub(r"^https?://", "", str(url)).split("/")[0].lower()
     hub = re.sub(r"^https?://", "", os.environ.get("HF_ENDPOINT") or "https://huggingface.co").split("/")[0].lower()
     return "hub" if host == hub else "object store"
@@ -617,6 +619,32 @@ def end_children():
             pass
 
 
+_LIBC = []
+
+
+def _libc():
+    """libc, loaded once (in the parent, before any fork); None where there is none to load."""
+    if not _LIBC:
+        try:
+            import ctypes
+            _LIBC.append(ctypes.CDLL(None, use_errno=True))
+        except Exception:  # noqa: BLE001
+            _LIBC.append(None)
+    return _LIBC[0]
+
+
+def _set_pdeathsig():
+    """In a forked child: ask the kernel to SIGKILL this process when its parent dies (PR_SET_PDEATHSIG). 0 when it
+    is set, or when this is not Linux (there the call's limit, kept by a living parent, is all there is); else
+    prctl's return value, or -1 when libc could not be called at all."""
+    if not sys.platform.startswith("linux"):
+        return 0
+    try:
+        return int(_libc().prctl(1, signal.SIGKILL, 0, 0, 0))
+    except Exception:  # noqa: BLE001
+        return -1
+
+
 def bounded(fn, timeout, token=None, while_waiting=None):
     """fn() in a forked child that is ended after `timeout` seconds, so a hung transfer stops nothing else. The
     result (JSON-able, of any size: the pipe is read while the child runs) or the child's error, of the same store
@@ -627,19 +655,21 @@ def bounded(fn, timeout, token=None, while_waiting=None):
     sys.stderr.flush()
     r, w = os.pipe()
     parent = os.getpid()
+    _libc()  # loaded here, before the fork: the child only calls it
     pid = os.fork()
     if pid == 0:
         os.close(r)
         # The child dies with its parent (Linux: a parent-death signal): a runner or a courier that is killed never
-        # leaves a store call running on its own, holding the token and, for a release, the lock.
-        try:
-            import ctypes
-            ctypes.CDLL(None, use_errno=True).prctl(1, signal.SIGKILL, 0, 0, 0)  # PR_SET_PDEATHSIG
-        except Exception:  # noqa: BLE001 no prctl here: the limit still ends the child
-            pass
+        # leaves a store call running on its own, holding the token and, for a release, the lock. Nothing else
+        # would end it: the limit is kept by the parent, which is then gone. So on Linux a signal that could not
+        # be set FAILS the call, before fn runs.
+        rc = _set_pdeathsig()
         if os.getppid() != parent:  # the parent went between the fork and the call above
             os._exit(1)
         try:
+            if rc != 0:
+                raise StoreError(f"the parent-death signal could not be set for this store call (prctl returned {rc}); the "
+                                 "call was not made: it could outlive a killed parent")
             out = {"ok": fn()}
         except BaseException as e:  # noqa: BLE001
             out = {"err": no_query(redact(f"{e}", token))[:2000], "type": type(e).__name__}
@@ -963,6 +993,7 @@ class Store:
         self.budget, self.budget_wait, self.clock = budget, budget_wait, clock
         self._manifests = {}
         self._ledger_why = {}  # (branch, step): why a ledger did not read, for a release's report
+        self._ledger_sha = {}  # (branch, step): the sha256 of the ledger file as it was fetched
         self.not_whole_why = None
 
     def _limited(self, e, what):
@@ -1332,7 +1363,9 @@ class Store:
             try:
                 self.fetch(branch, f"{PRUNED}/g{step}.json", p, rev=rev)
                 with open(p, "rb") as f:
-                    d = json.loads(f.read().decode("utf-8"))
+                    raw = f.read()
+                self._ledger_sha[(branch, step)] = hashlib.sha256(raw).hexdigest()  # the file's own identity
+                d = json.loads(raw.decode("utf-8"))
             except Exception as e:  # noqa: BLE001
                 # Fetched and not JSON is a file that will never read; anything else may read in a later round.
                 self._ledger_why[(branch, step)] = "not well formed" if isinstance(e, ValueError) else f"not read ({type(e).__name__})"
@@ -1345,6 +1378,17 @@ class Store:
             self.log(f"{branch}: ledger of g{step} is not well formed")
             return None
         return d
+
+    def file_sha256(self, branch, path):
+        """The sha256 of one file's bytes as the branch holds them now; None when the branch does not hold it. A
+        read: an error is raised as itself."""
+        with tempfile.TemporaryDirectory(prefix="store_file.") as tmp:
+            p = os.path.join(tmp, "f")
+            try:
+                self.fetch(branch, path, p)
+            except Missing:
+                return None
+            return sha256_file(p)[0]
 
     def pull_generation(self, branch, dest, expect=None, min_step=0):
         """The newest generation that verifies, into dest/g<step>; the one before it only when the newer one fails
@@ -1471,7 +1515,9 @@ class Store:
         lock's record) is no longer alive on this host. A bounded() child dies with its parent, so a killed
         runner leaves no release running. Never for a name two people may use at once.
 
-        "unread_heads" in the result: {branch: its head} for the branches whose ledger was not well formed.
+        "malformed" in the result: {"branch:pruned/g<step>.json": the sha256 of that file's bytes} for each ledger
+        that was not well formed: the file's own identity (file_sha256 reads it again), which a save on its branch
+        does not change.
 
         "unread" in the result names each ledger that did not read, as "branch:pruned/g<step>.json (why)": "not
         well formed" is a file that will not read in any later round either, and wants a person.
@@ -1563,7 +1609,8 @@ class Store:
                     "ledgers": len(ledgers), "ledgers_done": sum(len(v) for v in finished.values()),
                     "ledgers_unread": len(unread),
                     "unread": [f"{b}:{PRUNED}/g{s}.json ({self._ledger_why.get((b, s), 'not read')})" for b, s in unread],
-                    "unread_heads": {b: heads[b] for b, s in unread if self._ledger_why.get((b, s)) == "not well formed"}}
+                    "malformed": {f"{b}:{PRUNED}/g{s}.json": self._ledger_sha.get((b, s)) for b, s in unread
+                                  if self._ledger_why.get((b, s)) == "not well formed"}}
         finally:
             self._unlock(mine, done)
     def _read_lock(self, head):
@@ -1609,18 +1656,22 @@ class Store:
                 # it, on this host, is no longer alive.
                 own = bool(takeover) and held.get("owner") == owner
                 dead = held.get("host") == HOST and isinstance(held.get("pid"), int) and not _alive(held["pid"])
-                if age < LOCK_STALE_S and not (own and (dead or age > float(takeover))):
+                # "may last": the limit of the call that TOOK the lock, which is in its record; the present call's
+                # (it can be a second, late in the owed wait) only for a lock that names none.
+                last = float(held["limit"]) if own and _num(held.get("limit")) else takeover
+                if age < LOCK_STALE_S and not (own and (dead or age > float(last))):
                     if own:
                         self._lock_why = (f"this releaser's own earlier release may still be running (pid {held.get('pid')} on "
                                           f"{held.get('host')}, {age:.0f} s ago)")
                     return None
                 if own and age < LOCK_STALE_S:
                     self.log(f"release lock: one left by {owner} itself is taken again (its process is "
-                             + ("gone" if dead else f"past the {float(takeover):.0f} s a release call may last") + ")")
+                             + ("gone" if dead else f"past the {float(last):.0f} s a release call may last") + ")")
         except Exception as e:  # noqa: BLE001 main or the lock could not be read: someone else may hold it
             self._lock_why = f"main or the lock could not be read ({type(e).__name__})"
             return None
-        mine = {"owner": owner, "at": now, "nonce": uuid.uuid4().hex, "pid": os.getpid(), "host": HOST}
+        mine = {"owner": owner, "at": now, "nonce": uuid.uuid4().hex, "pid": os.getpid(), "host": HOST,
+                "limit": float(takeover) if takeover else None}  # how long this release's call may last
         with tempfile.TemporaryDirectory(prefix="store_lock.") as tmp:
             p = os.path.join(tmp, "l")
             with open(p, "w") as f:
@@ -1634,12 +1685,14 @@ class Store:
 
     def _unlock(self, mine, done=None):
         """Remove the lock only while it is the one this release took (same nonce), with a conditional commit on
-        the head it was read at. Main moves under it (marks, inputs), so it is read again a few times. The first
-        try was counted with the lock; a later one is counted as it is sent. Neither is sent into a 429's wait: a
-        lock left behind goes stale by itself. done ({branch: [steps]}, from a release that ran to its end): the
+        the head it was read at. Main moves under it (marks, inputs), so it is read again and sent once more:
+        UNLOCK_TRIES (two) sends at the most. The first was counted with the lock; the second is counted as it
+        is sent. Neither is sent into a 429's wait. A lock left behind is said in the log; its owner takes it again
+        at its next release (the process that took it is gone), and for anyone else it goes stale by itself.
+        done ({branch: [steps]}, from a release that ran to its end): the
         same commit writes it to locks/released.json, or removes that file when there is nothing to say."""
         err = None
-        for i in range(4):
+        for i in range(UNLOCK_TRIES):
             try:
                 head = self.b.head("main")
                 tree = self.b.tree("main", rev=head) if head else None

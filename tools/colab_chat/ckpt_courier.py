@@ -287,7 +287,8 @@ class Courier:
         return st if isinstance(st, dict) and st.get("boot_id") == self.boot else {}
 
     def log(self, msg):
-        self._log(hf_store.redact(msg, self.store.b.token))
+        # No token, and no signed address (the query string of every address goes): this is CHAT/courier.log.
+        self._log(hf_store.no_query(hf_store.redact(msg, self.store.b.token)))
 
     def stat(self, what, **kw):
         self.log(stat_line(what, **kw))
@@ -524,9 +525,16 @@ class Courier:
             # watches is opened. (A courier with no earlier status on its boot has verified what its restore
             # downloaded and takes nothing else for checked: the store's newest is then the restored one.)
             s["to_verify"][head["step"]] = None
-            s["unverified_since"] = s.get("unverified_since") or time.time()
+            s["unverified_since"] = s.get("unverified_since") or self.clock()
             self.log(f"{name}: g{head['step']}, the newest generation in the store, has no check on record from this VM; "
                      "it is checked now")
+        elif s.get("unverified_since") and head["step"] in s["verified"]:
+            # An open timer taken over from an earlier status, while the store's newest generation is one this VM
+            # has verified: by the timer's own rule it is closed (nothing is pushed and unchecked). Left open it
+            # would run on through a rung that holds training, and the runner's halt would fire on a healthy arm.
+            s["unverified_since"] = None
+            self.log(f"{name}: g{head['step']}, the newest generation in the store, is verified by this VM: the open "
+                     "timer an earlier status left is closed")
         return True
 
     def push_marks(self, name):
@@ -616,7 +624,7 @@ class Courier:
         gone = list((man or {}).get("pruned") or [])
         mb = size / 1e6
         s.update(head=step, failures=0, last_error=None, pushed_at=self.clock(), pushes=s["pushes"] + 1, auth_failure=None,
-                 unverified_since=s.get("unverified_since") or time.time())  # until a check of a push reads whole
+                 unverified_since=s.get("unverified_since") or self.clock())  # until a check of a push reads whole
         shutil.rmtree(staged, ignore_errors=True)
         self.pushed += size
         self.log(f"{name}: generation g{step} pushed ({mb:.1f} MB in {self.clock() - t0:.0f} s)"
@@ -1008,7 +1016,7 @@ def main(argv=None):
             bounded(lambda: len(restore(store, a.chat, jobs, branches, log=log, cfg=cfg)), a.limit, token)
             return 0
     except Exception as e:  # noqa: BLE001 one redacted line; the boot's ERR trap does the rest
-        log(hf_store.redact(f"courier {a.cmd} failed: {type(e).__name__}: {e}", token))
+        log(hf_store.no_query(hf_store.redact(f"courier {a.cmd} failed: {type(e).__name__}: {e}", token)))
         return 1
     take_pid(a.chat)
     stop = []

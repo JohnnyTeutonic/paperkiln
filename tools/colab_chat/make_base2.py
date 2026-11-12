@@ -236,7 +236,8 @@ COURIER_COMMIT_BUDGET = 24   # runner_multi.py --store-commit-budget-per-hour (a
 # release at the campaign's end may use all twelve and waits for room. It was 8 until the rerun of 12 Nov 2026
 # (PROTOCOL section 47.2), where three timed releases in the hour left the last one no room.
 HOME_COMMIT_BUDGET = 12
-HOME_RELEASE_COMMITS_WORST = 5   # one release at its worst: the lock, and the unlock sent four times (hf_store._unlock)
+UNLOCK_TRIES = 2                 # hf_store.UNLOCK_TRIES: an unlock is sent at most twice (it was four until 12 Nov 2026)
+HOME_RELEASE_COMMITS_WORST = 1 + UNLOCK_TRIES   # one release at its worst: the lock, and the unlock sent twice
 # The generations a branch holds. The rule: THREE (two verified and the newest, between two saves) PLUS ONE FOR EACH
 # SESSION LOSS BETWEEN TWO VERIFIED SAVES. A new VM has verified only the generation it restored and removes nothing
 # until it has verified one of its own; if it is lost before that, the next VM starts the same way with one more
@@ -256,7 +257,8 @@ FINAL_LEDGER_ROUNDS = 2      # runner_multi.STORE_FINAL_LEDGER_ROUNDS: rounds of
 # absent; `--check` then compares the files on disk with these values. As they stand: no cap, no halt, the
 # release every two hours with the runner's default grace. THE LEAD SETS THEM AT REGISTRATION.
 RUNNER_STORE_DEFAULTS = {"store_release_grace_s": 7200, "store_stall_halt": False, "store_stall_min": 60,
-                         "store_unverified_halt_min": 0}   # runner_multi.py's own, when neither flag nor key is given
+                         "store_unverified_halt_min": 0,   # runner_multi.py's own, when neither flag nor key is given
+                         "store_release_offset_min": 0}    # minutes an arm's release turns are set off from the start
 ARM_STORE = {"store_push_cap_gb": 0, "store_release_every_min": ARM_RELEASE_EVERY_MIN, **RUNNER_STORE_DEFAULTS}
 ARM_STORE_BY_ARM = {"N": {}, "S": {}, "C": {}}
 
@@ -268,21 +270,40 @@ def gens_kept_max(losses=ARM_SESSION_LOSSES):
 
 def home_commits_worst(release_every_min):
     """Home's part of the modelled bad hour: every timed release that fits in an hour and the release at the
-    campaign's end, each at HOME_RELEASE_COMMITS_WORST. 10 at the arms' two hours; inside HOME_COMMIT_BUDGET."""
+    campaign's end, each at HOME_RELEASE_COMMITS_WORST. 6 at the arms' two hours; inside HOME_COMMIT_BUDGET."""
     timed = -(-60 // release_every_min) if release_every_min else 0
     return HOME_RELEASE_COMMITS_WORST * (int(timed) + 1)
 
 
-def home_commits_rolling(release_every_min, unlock_tries=4):
+def home_commits_rolling(release_every_min, unlock_tries=UNLOCK_TRIES):
     """One runner's worst rolling hour at home as the runner now stands, in whole commits. Timed: each turn that
     fits in the hour and the ONE early retry a turn has when its round failed or met a ledger it could not read
     (runner_multi.STORE_RELEASE_RETRY_S; a round that was held sends nothing), but never more than the budget,
     below whose reserve a timed lock is admitted. The end: FINAL_LEDGER_ROUNDS rounds, which is all the end's
-    release makes when a ledger does not read, across every start of the state folder. A round is a lock and an
-    unlock sent `unlock_tries` times: 5 at the worst, 2 when the unlock lands at once. 20 at the arms' two hours."""
+    release makes across every start of the state folder when its rounds are not recorded as made (each is
+    counted before it is made). A round is a lock and an unlock sent `unlock_tries` times: 3 at the worst, 2 when
+    the unlock lands at once. 12 at the arms' two hours."""
     per = 1 + unlock_tries
     timed = -(-60 // release_every_min) if release_every_min else 0
     return int(min(HOME_COMMIT_BUDGET, 2 * per * int(timed)) + FINAL_LEDGER_ROUNDS * per)
+
+
+def timed_turns_in_an_hour(release_every_min, offsets_min):
+    """The most regular release turns of the arms that fall in one rolling hour: each arm's turns are
+    `release_every_min` apart (anchored: runner_multi.store_release) and set off from the start by its offset.
+    Three arms with no offset: three turns an hour at an interval of an hour or more. With 0, a third and two
+    thirds of the interval: two at two hours, three at one hour (every arm still has a turn in every hour)."""
+    turns = sorted((off % release_every_min) + k * release_every_min for off in offsets_min for k in range(-2, 4))
+    return max(sum(1 for t in turns if s <= t < s + 60) for s in turns)
+
+
+def commits_rolling_three_arms(per_arm, release_every_min, offsets_min, unlock_tries=UNLOCK_TRIES):
+    """The rolling hour for the three arms together, with their release turns set off by `offsets_min`: every arm's
+    saves, mark, branch and its end's rounds as in commits_rolling_hour, and for the timed releases the turns that
+    can fall in one hour (timed_turns_in_an_hour), each with its one early retry."""
+    per = 1 + unlock_tries
+    timed = min(3 * HOME_COMMIT_BUDGET, 2 * per * timed_turns_in_an_hour(release_every_min, offsets_min))
+    return sum(p["sent_twice"] + p["branch"] for p in per_arm) + 3 * FINAL_LEDGER_ROUNDS * per + timed
 
 
 def commits_per_hour(doc, step_s, release_every_min):
@@ -312,7 +333,7 @@ def commits_per_hour_bad_model(doc, step_s, release_every_min):
     """A MODELLED BAD HOUR FROM AVERAGE RATES, not a worst rolling hour: the average saves and marks an hour, each
     sent twice (one retry each, and the hub counts both); the session lost once in the hour, so the new VM creates
     its branch again (one call, tried twice too); and home's worst hour (home_commits_worst: a timed release and
-    the release at the campaign's end, each a lock and an unlock sent four times). A real hour holds whole saves
+    the release at the campaign's end, each a lock and an unlock sent twice). A real hour holds whole saves
     and may hold a whole mark: commits_rolling_hour(). More retries than one a commit are in neither."""
     p = commits_per_hour(doc, step_s, release_every_min)
     return 2 * (p["generations"] + p["marks"]) + 2 + home_commits_worst(release_every_min)
@@ -322,7 +343,7 @@ def commits_rolling_hour(doc, step_s, release_every_min):
     """One ROLLING HOUR of the same jobs file with everything in it at once, in whole commits: the saves that fit
     in an hour, rounded up; one mark; each of those sent twice; the branch created again after a lost session,
     tried twice; and at home home_commits_rolling(): a timed release with its one early retry, and the two rounds
-    the end's release has when a ledger does not read, each a lock and an unlock sent four times. Still a model:
+    the end's release has at the most, each a lock and an unlock sent twice. Still a model:
     it takes one retry a commit, and the hub's own count is the only thing that bounds the repository.
     {"saves", "marks", "sent_twice", "branch", "home", "total"}, and "total_if_unlocks_land_at_once": the same
     hour with every unlock taken at its first try (home's rounds at two commits each)."""
@@ -363,29 +384,37 @@ def push_cap_gb(shape, checkpoint_every, step_s, marks, release_every_min, grace
     return out
 
 
-def rates(release_every_min=None, grace_s=None, losses=ARM_SESSION_LOSSES, missed_releases=ARM_MISSED_RELEASES):
+def rates(release_every_min=None, grace_s=None, losses=ARM_SESSION_LOSSES, missed_releases=ARM_MISSED_RELEASES,
+          offsets_min=None):
     """The arms' commit figures and suggested push caps, from the jobs as this file makes them and the probe's
-    step times, at a release interval and a grace (default: the arms' own, as arm() writes them).
-    `make_base2.py --rates [--release-every-min M] [--grace-s S] [--missed-releases N] [--session-losses N]` prints
-    it; nothing is written. The caps are a suggestion for the lead."""
+    step times, at a release interval, a grace and the three arms' release offsets (default: the arms' own, as
+    arm() writes them). `make_base2.py --rates [--release-every-min M] [--grace-s S] [--release-offsets-min A,B,C]
+    [--missed-releases N] [--session-losses N]` prints it; nothing is written. The rolling hour is given with the
+    offsets and without. The caps are a suggestion for the lead."""
     step_s = {"N": STEP_S, "S": STEP_S, "C": STEP_S_A}
     per, caps, used = {}, {}, {}
-    for a in ("N", "S", "C"):
+    for k, a in enumerate(("N", "S", "C")):
         doc = files()[f"base2_{a}.json"]
         j = next(j for j in doc["jobs"] if "spec" in j)
         every = release_every_min or doc["store_release_every_min"]
         grace = grace_s or doc.get("store_release_grace_s", ARM_RELEASE_GRACE_S)
-        used[a] = {"release_every_min": every, "release_grace_s": grace}
+        used[a] = {"release_every_min": every, "release_grace_s": grace,
+                   "release_offset_min": offsets_min[k] if offsets_min else doc.get("store_release_offset_min", 0)}
         per[a] = {"steady": commits_per_hour(doc, step_s[a], every), "bad_model": commits_per_hour_bad_model(doc, step_s[a], every),
                   "rolling": commits_rolling_hour(doc, step_s[a], every)}
         caps[a] = push_cap_gb(doc["_base2"]["shape"], j["spec"]["train"]["checkpoint_every"], step_s[a],
                               len(j.get("snapshot_steps", [])), every, grace, losses, missed_releases)
+    rolls = [p["rolling"] for p in per.values()]
+    every = max(u["release_every_min"] for u in used.values())
+    offs = [u["release_offset_min"] for u in used.values()]
     return {"settings": used,
             "commits_an_hour_three_arms": {
                 "steady_state_average": round(sum(p["steady"]["total"] for p in per.values()), 1),
                 "modelled_bad_hour_from_average_rates": round(sum(p["bad_model"] for p in per.values()), 1),
-                "rolling_hour_whole_commits_everything_at_once": sum(p["rolling"]["total"] for p in per.values()),
-                "rolling_hour_if_every_unlock_lands_at_once": sum(p["rolling"]["total_if_unlocks_land_at_once"] for p in per.values()),
+                "rolling_hour_whole_commits_everything_at_once": commits_rolling_three_arms(rolls, every, offs),
+                "rolling_hour_without_the_offsets": commits_rolling_three_arms(rolls, every, [0, 0, 0]),
+                "rolling_hour_if_every_unlock_lands_at_once": commits_rolling_three_arms(rolls, every, offs, unlock_tries=1),
+                "timed_release_turns_in_one_hour": timed_turns_in_an_hour(every, offs),
                 "per_writer_ceilings_summed": 3 * COURIER_COMMIT_BUDGET + 3 * HOME_COMMIT_BUDGET,
                 "hub_limit": HUB_COMMITS_PER_HOUR},
             "per_arm": per,
@@ -503,7 +532,8 @@ def main(argv=None):
     if "--rates" in argv:  # the arms' commit figures and the suggested push caps, at given settings; nothing is written
         def opt(name, kind):
             return kind(argv[argv.index(name) + 1]) if name in argv else None
-        kw = {"release_every_min": opt("--release-every-min", float), "grace_s": opt("--grace-s", float)}
+        kw = {"release_every_min": opt("--release-every-min", float), "grace_s": opt("--grace-s", float),
+              "offsets_min": opt("--release-offsets-min", lambda s: [float(x) for x in s.split(",")])}
         for name, key in (("--missed-releases", "missed_releases"), ("--session-losses", "losses")):
             if opt(name, int) is not None:
                 kw[key] = opt(name, int)

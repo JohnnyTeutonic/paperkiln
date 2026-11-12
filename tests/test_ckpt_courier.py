@@ -1202,7 +1202,7 @@ def test_a_courier_that_died_between_a_commit_and_its_status_has_its_last_push_c
     assert again.resumed is True
     again.tick()
     s = again.s["pt"]
-    assert s["head"] == 300 and list(s["to_verify"]) == [300] and s["unverified_since"] is not None   # owed, and the timer runs
+    assert s["head"] == 300 and list(s["to_verify"]) == [300] and s["unverified_since"] == clock.t   # owed; the timer runs, on the courier's clock
     assert any("g300, the newest generation in the store, has no check on record from this VM" in ln for ln in logs)
     assert json.loads((chat / "courier_status.json").read_text())["jobs"]["pt"]["unverified_since"] == s["unverified_since"]
     assert len(hub_log(root)) == 5                       # the branch, the mark, three saves: g300 was not written again
@@ -1224,6 +1224,32 @@ def test_a_courier_that_died_between_a_commit_and_its_status_has_its_last_push_c
     c2.tick()
     assert c2.resumed is False and c2.s["pt"]["verified"] == {200} and c2.s["pt"]["to_verify"] == {}
     assert "boot_base2.sh writes a new boot id on every run" in " ".join(cc.__doc__.split())
+    # The third reviews of the arms' round: an open timer taken over from an earlier status, while the store's
+    # newest generation is one this VM HAS verified, stayed open until the next save: through a rung that holds
+    # training for an hour the runner's halt (--store-unverified-halt-min) would fire on a healthy arm. It is
+    # closed at contact. The timer is on the courier's own clock.
+    st = json.loads((chat / "courier_status.json").read_text())
+    assert st["jobs"]["pt"]["verified"] == [100, 200, 300] and st["jobs"]["pt"]["unverified_since"] is None
+    st["jobs"]["pt"]["unverified_since"] = clock.t - 5400            # stale: ninety minutes open, by the status
+    (chat / "courier_status.json").write_text(json.dumps(st))
+    third = cc.Courier(store, str(chat), JOBS, BR, log=logs.append, clock=clock, cfg=CFG)
+    assert third.s["pt"]["unverified_since"] == clock.t - 5400
+    third.tick()                                         # training is held: nothing new to push
+    assert third.s["pt"]["unverified_since"] is None and third.s["pt"]["to_verify"] == {}
+    assert json.loads((chat / "courier_status.json").read_text())["jobs"]["pt"]["unverified_since"] is None
+    assert any("the open timer an earlier status left is closed" in ln for ln in logs)
+    sys.path.insert(0, str(ROOT / "tests"))
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("runner_multi_for_courier", CC / "runner_multi.py")
+    rm = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(rm)
+    rm.HOME, rm.STORE = str(tmp_path), {"unverified_halt_min": 60}
+    vm_status = json.loads((chat / "courier_status.json").read_text())
+    rm.store_guard(type("St", (), {"d": {}, "save": lambda self: None})(), [], {"at": clock.t, "courier": vm_status})   # the halt is on: no halt
+    assert not (tmp_path / "HALTED").exists()
+    # The courier's own log (CHAT/courier.log) keeps no signed address, whatever line it is given.
+    third.log("a library's line: Error while downloading from https://cdn-lfs.example/repos/ab/cd/0123?X-Amz-Signature=SECRETSIG: timed out")
+    assert "SECRETSIG" not in logs[-1] and "https://cdn-lfs.example/repos/ab/cd/0123?[query removed]" in logs[-1]
     # A push that the OBJECT STORE refuses (an upload's signed address) is not the token's failure.
     import requests
 
