@@ -211,7 +211,7 @@ def data():
                 # corpus/S here, because on the build's first VM that set does not exist yet and the boot would fail.
                 {"name": "load_probe", "after": "data", "halt_on_failure": True,
                  "cmd": ["bash", "tools/colab_chat/base2_data.sh", DATA, V, "loadprobe", "{out}"],
-                 "outputs": ["loadprobe.json", "run.log"]},
+                 "outputs": ["loadprobe.json", "run.log", "loadprobe_pins.json"]},
             ]}
 
 

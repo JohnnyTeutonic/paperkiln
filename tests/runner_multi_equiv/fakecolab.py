@@ -239,7 +239,9 @@ def main():
     argv = sys.argv[1:]
     d = load()
     cmd = argv[0]
-    if os.path.exists(os.path.join(ROOT, "outage")):  # home's network is down (a test's file): every call fails
+    # Home's network is down (a test's file): every call from home fails. FAKE_ON_VM: the VM's own step (a test that
+    # trains the VM on while home is cut off), which home's network does not touch.
+    if os.path.exists(os.path.join(ROOT, "outage")) and not os.environ.get("FAKE_ON_VM"):
         call_log(["OUTAGE", *argv[:1]])
         print("Error: network is unreachable")
         return 1

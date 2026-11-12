@@ -1613,11 +1613,14 @@ def store_no_progress(st, jobs, start=False):
     --store-no-progress-min. It is checked against fresh facts first (store_no_progress_fresh): ONE bounded read
     of the store's newest generation (an advance is progress, and the clock is set to that generation's push time:
     a runner that was down while its courier pushed is not halted), and, when a session may be up, the VM's status
-    (a job that has FINISHED there is the settle window's, not this clock's). A read of the store that FAILS halts
-    nothing while the VM answers that the job is RUNNING, until the limit is passed by STORE_NO_PROGRESS_UNREAD_S
-    more (60 minutes) with every read failing; with no answer from the VM either, it halts. main() checks it at
-    the top of every tick, and launch() just before every create, the first launch too: once the limit has passed
-    no session is created. The HALTED record says how to clear it: removing HALTED alone halts again at the next
+    (a job that has FINISHED there is the settle window's, not this clock's). It halts only on a store read that
+    COMPLETED and shows no advance, with the VM silent or the job not RUNNING (a job that runs and pushes nothing
+    is the stall halt's, within its session); or, with the store unread, when the VM answers RUNNING and the limit
+    has been passed by STORE_NO_PROGRESS_UNREAD_S more (60 minutes). A store that cannot be read with a VM that
+    does not answer either (home's network down, the laptop just awake) halts nothing, whatever the age: that
+    halt's stop could not be confirmed, and it would only take the watchdog away. main() checks it at the top of
+    every tick, after the session key is refreshed, and launch() just before every create, the first launch too:
+    once the limit has passed no session is created. The HALTED record says how to clear it: removing HALTED alone halts again at the next
     start, since the clock is in state.json ("jobs.<job>.store_progress_at"); that key is deleted with it.
 
     The default, with the stall halt on: --store-stall-min + --store-boot-limit-min + 15 (210 minutes at a stall of
@@ -1643,16 +1646,26 @@ def store_no_progress(st, jobs, start=False):
         age = max(0.0, (min(now, held) if held is not None else now) - at)  # billing time only
         if age <= lim * 60:
             continue
-        read, unread, running = store_no_progress_fresh(st, jobs, n, vm=held is None)
+        read, unread, vm_job = store_no_progress_fresh(st, jobs, n, vm=held is None)
         if read in ("progress", "finished"):
             continue
-        if unread and running and age <= lim * 60 + STORE_NO_PROGRESS_UNREAD_S:
-            # The store could not be read (a network or hub failure, often the first call after home comes back)
-            # and the VM answers that the job runs: not known to be stuck. No halt this tick.
-            if _STORE.get("no_progress_unread") != n:
-                log(f"{n}: the no-progress limit has passed, the store was not read and the VM reads RUNNING: no halt "
-                    f"while that holds, for {STORE_NO_PROGRESS_UNREAD_S / 60:.0f} min past the limit at the most")
-            _STORE["no_progress_unread"] = n
+        if unread and not (vm_job == "RUNNING" and age > lim * 60 + STORE_NO_PROGRESS_UNREAD_S):
+            # The store could not be read. With the VM silent too (home's network down, the laptop just awake) a
+            # halt's stop could not be confirmed: it would only take the watchdog away while the sessions bill on.
+            # With the VM answering, the job is not known to be stuck. No halt this tick, whatever the age; the
+            # one bound is a VM that reads RUNNING while the store stays unread 60 minutes past the limit.
+            key = f"{n}:{vm_job}"
+            if _STORE.get("no_progress_unread") != key:
+                log(f"{n}: the no-progress limit has passed and the store was not read; the VM "
+                    + ("does not answer either: no halt while neither can be read" if vm_job is None else
+                       f"reads {vm_job}: no halt" + (f", for {STORE_NO_PROGRESS_UNREAD_S / 60:.0f} min past the limit "
+                                                     "at the most" if vm_job == "RUNNING" else "")))
+            _STORE["no_progress_unread"] = key
+            continue
+        if not unread and vm_job == "RUNNING":
+            # The store answers with no new generation and the VM says the job runs: a job that runs and pushes
+            # nothing is the stall halt's, within its session (--store-stall-min); this clock is for sessions that
+            # are lost before a save, or never come up.
             continue
         store_halt("STORE_NO_PROGRESS", job=n, step=js.get("relayed_step"), minutes=round(age / 60), limit_min=lim,
                    launches=st.d.get("launches"), store_read=read,
@@ -1667,10 +1680,12 @@ def store_no_progress(st, jobs, start=False):
 
 def store_no_progress_fresh(st, jobs, n, vm):
     """The fresh facts before a no-progress halt of job n: ONE bounded read of the store's newest generation, and
-    with vm (a session may be up) the VM's status. (what, unread, running): what is "progress" (the store holds a
+    with vm (a session may be up) the VM's status. (what, unread, vm_job): what is "progress" (the store holds a
     newer generation: the clock is set to that generation's push time, from its manifest, capped at now and never
     moved back), "finished" (the job has FINISHED on the VM), or what the read gave, for the halt's record; unread:
-    the store could not be read; running: the VM answered and the job reads RUNNING."""
+    the store could not be read; vm_job: the job's state as the VM answered it, None when the VM was not asked or
+    did not answer. The push time is the manifest's "pushed_at", stamped when the courier wrote the manifest, just
+    before the upload and its commit: a little early, so the clock is if anything ahead."""
     js, now = st.job(n), time.time()
     seen = js.get("relayed_step", 0)
     unread = False
@@ -1696,9 +1711,9 @@ def store_no_progress_fresh(st, jobs, n, vm):
             st.save()
             log(f"{n}: the store holds its generation at step {step} (read before the no-progress halt): progress"
                 + (f", pushed {(now - when) / 60:.0f} min ago" if now - when >= 60 else ""))
-            return "progress", False, False
+            return "progress", False, None
         said = f"the store's newest generation is at step {step}"
-    running = False
+    vm_job = None
     if vm:
         try:
             r = vm_status(jobs)
@@ -1708,10 +1723,30 @@ def store_no_progress_fresh(st, jobs, n, vm):
             js["status"] = "FINISHED"
             st.save()
             log(f"{n}: FINISHED on the VM (read before the no-progress halt): the settle window's")
-            return "finished", unread, False
-        running = bool(r) and r.get(n) == "RUNNING"
+            return "finished", unread, "FINISHED"
+        vm_job = r.get(n) if r else None
         said += "; the VM " + ("did not answer" if not r else f"reads {r.get(n)}")
-    return said, unread, running
+    return said, unread, vm_job
+
+
+def stop_request(st):
+    """The lead's stop: a file STATE/STOP_REQUEST (its text is the reason; base2_units_guard.py writes one when the
+    units reach their bound). At the next tick the runner halts by name: HALTED with kind LEAD_STOP and the
+    reason, then SystemExit(3), so main()'s clean-up runs as at any halt: the token off the VM, the session's logs
+    home, the confirmed stop, and the release at the campaign's end when it is owed. The request is moved to
+    STOP_REQUEST.taken, so it is not taken again once a person has cleared HALTED."""
+    p = os.path.join(HOME, "STOP_REQUEST")
+    if not os.path.exists(p):
+        return
+    try:
+        reason = open(p, encoding="utf-8", errors="replace").read().strip()[:2000]
+    except OSError as e:
+        reason = f"(the request could not be read: {type(e).__name__})"
+    os.replace(p, p + ".taken")
+    log(f"STOP_REQUEST: the lead asks for a stop ({reason or 'no reason given'}); halting through the confirmed stop")
+    store_halt("LEAD_STOP", reason=reason, launches=st.d.get("launches"),
+               do="a stop the lead asked for: read the reason; remove HALTED to run again")
+    raise SystemExit(3)
 
 
 def store_fetch_mark(st, jobs):
@@ -2957,8 +2992,9 @@ def main():
                          "session of this folder may be billing: time known to have no session (after a confirmed "
                          "stop or a failed create, until the next create) is not counted. Before it halts it reads "
                          "the store once (a newer generation is progress, from its push time) and, with a session "
-                         "up, the VM (FINISHED is exempt); a store that cannot be read while the VM reads RUNNING "
-                         "halts nothing for 60 minutes past the limit. To clear the halt, delete "
+                         "up, the VM (FINISHED is exempt; RUNNING with a store that answers is the stall halt's); a "
+                         "store that cannot be read halts nothing while the VM is silent too, and for 60 minutes past "
+                         "the limit while the VM reads RUNNING. To clear the halt, delete "
                          "jobs.<job>.store_progress_at in state.json as well as HALTED. Default: the jobs file's "
                          "\"store_no_progress_min\" (the arms: 260), else --store-stall-min + --store-boot-limit-min "
                          "+ 15 (210 at a stall of 120); 0 without the stall halt")
@@ -2978,8 +3014,12 @@ def main():
     ap.add_argument("--store-boot-limit-min", type=float, default=75,
                     help="minutes without a boot status after which the boot counts as failed and the session is stopped")
     a = ap.parse_args()
+    # A start after --deadline-utc does not refuse: it creates nothing, and still cleans up after the session this
+    # folder recorded (its token off, its logs home, a confirmed stop), under the rules of a folder that is home,
+    # then writes DEADLINE and exits. Refusing here would leave that session billing with no runner.
+    expired = a.deadline_utc is not None and a.deadline_utc <= time.time()
     try:
-        resolve_deadline(a.max_hours, a.deadline_utc, time.time())
+        resolve_deadline(a.max_hours, None if expired else a.deadline_utc, time.time())
     except ValueError as exc:
         ap.error(str(exc))
     if a.ckpt_store:
@@ -3047,10 +3087,11 @@ def main():
     # Nor for a campaign that is home (a restart after the end would otherwise launch a pod and find nothing to do).
     if a.backend != "colab" and all(st.d["jobs"].get(j["name"], {}).get("home") for j in jobs):
         sys.exit("every job is home; nothing to run (no pod rented)")
-    try:
-        resolve_deadline(a.max_hours, a.deadline_utc, time.time())
-    except ValueError as exc:
-        ap.error(str(exc))
+    if not expired:
+        try:
+            resolve_deadline(a.max_hours, a.deadline_utc, time.time())
+        except ValueError as exc:
+            ap.error(str(exc))
     T = make_transport(a)
     open(pid, "w").write(str(os.getpid()))
     if a.backend != "colab":
@@ -3059,7 +3100,7 @@ def main():
         st.save()
         T.attach(st)  # registers the runner for runpod_sweep.py; atexit and signal handlers end the pod
 
-    deadline = resolve_deadline(a.max_hours, a.deadline_utc, time.time())
+    deadline = a.deadline_utc if expired else resolve_deadline(a.max_hours, a.deadline_utc, time.time())
     T.deadline = deadline  # transport must enforce it while a transfer blocks the main loop
     # With the store, a state folder in which every job is home has nothing to run: a runner started on it (after a
     # crash or a kill at the campaign's end, or by a watchdog) creates NO session. It goes straight to the clean-up
@@ -3069,15 +3110,21 @@ def main():
     # has its token removed and is stopped. Any other session under the name is left alone. (RunPod is not covered
     # by this path: its runner exits above, at "every job is home", and pays no debt.)
     home_already = bool(STORE) and bool(jobs) and all(st.d["jobs"].get(j["name"], {}).get("home") for j in jobs)
-    vm_cleanup, stop_wanted, stop_unknown = True, True, False
+    vm_cleanup, stop_wanted, stop_unknown, left = True, True, False, None
     try:
         # The first launch is inside the clean-up below too: a failure after the session exists (its preparation,
         # the token's hand-over) still takes the token off the VM and stops the session, with confirmation.
-        if home_already:
+        if STORE and not (home_already or expired):
+            stop_request(st)  # the lead's stop, before any session is created
+        if home_already or expired:
+            # A folder that is home, and a start after the deadline: no session is created; the session this folder
+            # recorded, if it is listed, is cleaned up after and stopped (the same endpoint rules for both).
             left, ep = store_left_session(st)
             vm_cleanup = stop_wanted = left == "ours"
             stop_unknown = left in ("unknown", "other")  # neither is a stop this runner can call confirmed
-            log("every job is home in this state folder: no session is created"
+            log(("every job is home in this state folder" if home_already and not expired else
+                 "THE DEADLINE (--deadline-utc " + time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(a.deadline_utc))
+                 + ") HAS PASSED") + ": no session is created"
                 + {"ours": "; the session an earlier runner left is stopped",
                    "none": "; the listing answers and holds no session of this name: no token to remove, nothing to stop",
                    "other": f"; A SESSION IS LISTED UNDER THIS NAME at {ep}, which is NOT the endpoint this folder recorded "
@@ -3087,23 +3134,26 @@ def main():
                    "unknown": f"; THE LISTING DID NOT ANSWER, so it is not known whether the session this folder recorded "
                               f"({st.d.get('endpoint')}) is still up: its token was NOT removed and it was NOT stopped. "
                               f"Check `colab sessions`, and stop it by hand if it is there (colab stop -s {NAME})"}[left]
-                + ("; the release at the campaign's end is owed" if STORE["reclaim"] and not st.d.get("store_release_final_done") else ""))
+                + ("; the release at the campaign's end is owed" if home_already and STORE and STORE["reclaim"]
+                   and not st.d.get("store_release_final_done") else ""))
             if left == "other":
                 # The record this exit names. With it the next start takes the listed session for this folder's own
                 # and stops it: under names that are one an arm it can be nobody else's.
-                stop_unresolved(st, f"at a start on a folder that is home, a session is listed under this name at {ep}, "
-                                    f"not at the endpoint this folder recorded; it was left alone", listed_endpoint=ep)
+                stop_unresolved(st, f"at a start on a folder that is home or past its deadline, a session is listed under "
+                                    f"this name at {ep}, not at the endpoint this folder recorded; it was left alone",
+                                listed_endpoint=ep)
             elif left == "unknown":
                 # The exit's last line names STOP_UNRESOLVED: the record is written, so the next start takes a session
                 # listed under the name for this folder's own and stops it.
-                stop_unresolved(st, "at a start on a folder that is home, the listing did not answer: the session this "
-                                    "folder recorded may still be up; it was not stopped")
+                stop_unresolved(st, "at a start on a folder that is home or past its deadline, the listing did not "
+                                    "answer: the session this folder recorded may still be up; it was not stopped")
             elif left == "none" and os.path.exists(os.path.join(HOME, "STOP_UNRESOLVED")):
                 os.replace(os.path.join(HOME, "STOP_UNRESOLVED"), os.path.join(HOME, "STOP_RESOLVED"))
                 log(f"the listing answers and holds no session {NAME}: the stop this folder left unresolved is resolved "
                     "(STOP_UNRESOLVED moved to STOP_RESOLVED)")
-            st.d["campaign_home"] = True
-            st.save()
+            if home_already:
+                st.d["campaign_home"] = True
+                st.save()
         elif listed() is None and not st.d.get("endpoint"):
             if not launch(st, a.commit, a.jobs, jobs, uploads):
                 if time.time() < deadline and not T.over_budget(st):
@@ -3114,8 +3164,12 @@ def main():
                 log(why)
                 break
             if STORE:
-                store_no_progress(st, jobs)  # before anything that could create a session: halts, by name
+                stop_request(st)  # the lead's stop, at every tick: halts, by name, through the confirmed stop
+            # The session key is refreshed BEFORE the no-progress check: after a long outage that check may ask
+            # the VM, and an old key would make a VM that answers look silent.
             T.refresh(st)
+            if STORE:
+                store_no_progress(st, jobs)  # before anything that could create a session: halts, by name
             seen = listed()
             if STORE and seen is not None and seen != st.d.get("endpoint"):
                 # The endpoint is recorded at the launch from ONE listing, which can come back empty while the VM is
@@ -3322,6 +3376,15 @@ def main():
             # The campaign's last release, when it is still owed: tried now that no session bills; with a stop that
             # is not confirmed it is not tried, and the debt is said with its by-hand command all the same.
             store_release_owed(st, jobs, stopped=stopped)
+        if expired:
+            # The record of a start after the deadline: what was found under the name and whether its stop is
+            # confirmed. The campaign is not home; its generations stay in the store.
+            rec = {"kind": "DEADLINE", "deadline_utc": a.deadline_utc, "at": time.time(), "session": left,
+                   "endpoint": st.d.get("endpoint"), "stopped": stopped,
+                   "jobs_home": sorted(n for n, js in st.d["jobs"].items() if js.get("home"))}
+            with open(os.path.join(HOME, "DEADLINE"), "w") as handle:
+                json.dump(rec, handle, indent=1)
+            log(f"DEADLINE written: the session found under the name: {left}; stop confirmed: {stopped}")
         log("session stopped; runner exiting" if stopped else "SESSION STOP NOT CONFIRMED (STOP_UNRESOLVED); runner exiting")
         os.remove(pid)
         if not stopped:

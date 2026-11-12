@@ -444,6 +444,94 @@ def test_pins_cli_writes_each_modes_record(tmp_path):
         P.main(["adopt", str(d / "base2_pins_observed.json"), "--pins", str(pf)])
 
 
+def test_adopt_receipts_checks_the_load_probe_and_writes_the_shard_hashes_where_they_are_committed(tmp_path, capsys):
+    """The launch reviews of 12 Nov 2026: the adoption was a by-hand extraction of each receipt's built.pins, the
+    load probe's hashes were never compared with what stage 3 published (the S pins are null while it runs), and
+    the FineWeb-Edu shard 2 to 5 hash files the plan commits (work item 6: corpus/hashes/, beside shards 0 and 1)
+    went nowhere. adopt-receipts does all of it in one step, refuses before writing anything, and prints the
+    adoption commit's files."""
+    vm = tmp_path / "vm"
+    (vm / "src").mkdir(parents=True)
+    for name, body in (("N.main.ids", b"nm"), ("N.tail.ids", b"nt"), ("S.main.ids", b"sm"), ("S.tail.ids", b"st"),
+                       ("panel_fineweb.ids", b"pf"), ("panel_dialogue.ids", b"pd"), ("panel_scenario.ids", b"ps"),
+                       ("src/a.txt", b"a")):
+        (vm / name).write_bytes(body)
+    repo = tmp_path / "repo"
+    (repo / "corpus" / "hashes").mkdir(parents=True)
+    (repo / "tools" / "colab_chat").mkdir(parents=True)
+    pf = repo / "tools" / "colab_chat" / "base2_pins.json"
+    pf.write_text(json.dumps(toy_pins()))
+    obs = {m: {"observed": P.check(toy_pins(), str(vm), m)[1], "differences": []} for m in ("stage1", "build-N", "build-S")}
+    build = tmp_path / "build"
+    (build / "data").mkdir(parents=True)
+    (build / "load_probe").mkdir()
+    # The observed record grows on one VM: stage 3's receipt carries every mode run before it.
+    for n, modes in ((1, ["stage1"]), (2, ["stage1", "build-N"]), (3, ["stage1", "build-N", "build-S"])):
+        (build / "data" / f"base2_stage{n}.json").write_text(json.dumps(
+            {"stage": str(n), "built": {"stage": str(n), "pins": {m: obs[m] for m in modes}}}))
+    for n in (2, 3, 4, 5):
+        (build / "data" / f"fineweb_edu_shard{n}_v1.sha256").write_text(f"{sha(bytes([n]))}  pretrain_train.txt\n")
+    probe = build / "load_probe" / "loadprobe_pins.json"
+
+    def adopt():
+        return P.main(["adopt-receipts", str(build), "--pins", str(pf), "--repo", str(repo)])
+
+    before = pf.read_text()
+    # (1) The probe pulled S's tail with other bytes than stage 3 hashed before it published: refused, nothing written.
+    other = json.loads(json.dumps(obs["build-S"]))
+    other["observed"]["S/S.tail.ids"] = sha(b"other")
+    probe.write_text(json.dumps({"build-S": other}))
+    with pytest.raises(SystemExit) as e:
+        adopt()
+    assert "S/S.tail.ids: stage 3 hashed" in str(e.value) and "the load probe pulled" in str(e.value)
+    assert pf.read_text() == before and not list((repo / "corpus" / "hashes").iterdir())
+    # (2) A probe with a difference of its own, and a stage receipt with no pins (N would stay null): refused.
+    probe.write_text(json.dumps({"build-S": {**obs["build-S"], "differences": ["panels/panel_fineweb.ids: x against y"]}}))
+    stage2 = (build / "data" / "base2_stage2.json").read_text()
+    (build / "data" / "base2_stage2.json").write_text(json.dumps({"stage": "2", "built": {"stage": "2"}}))
+    (build / "data" / "base2_stage3.json").write_text(json.dumps(
+        {"stage": "3", "built": {"pins": {m: obs[m] for m in ("stage1", "build-S")}}}))
+    with pytest.raises(SystemExit) as e:
+        adopt()
+    said = str(e.value)
+    assert "load probe: panels/panel_fineweb.ids" in said and "stage 2: its receipt carries no built.pins" in said
+    assert "N/N.main.ids: still no pin after the adoption, and an arm reads it" in said and pf.read_text() == before
+    (build / "data" / "base2_stage2.json").write_text(stage2)
+    (build / "data" / "base2_stage3.json").write_text(json.dumps(
+        {"stage": "3", "built": {"pins": {m: obs[m] for m in ("stage1", "build-N", "build-S")}}}))
+    # (3) A shard hash file already committed with other contents: refused.
+    probe.write_text(json.dumps({"build-S": obs["build-S"]}))
+    (repo / "corpus" / "hashes" / "fineweb_edu_shard3_v1.sha256").write_text("something else\n")
+    with pytest.raises(SystemExit) as e:
+        adopt()
+    assert "corpus/hashes/fineweb_edu_shard3_v1.sha256: committed, and the build's first fetch wrote another" in str(e.value)
+    # (4) The build as it should be: every pin an arm reads is set, the shard hashes are where the plan commits them
+    # (one already there with the same bytes is left), and the adoption commit's files are printed.
+    (repo / "corpus" / "hashes" / "fineweb_edu_shard3_v1.sha256").write_text(
+        (build / "data" / "fineweb_edu_shard3_v1.sha256").read_text())
+    capsys.readouterr()
+    assert adopt() == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["commit_files"] == ["corpus/hashes/fineweb_edu_shard2_v1.sha256", "corpus/hashes/fineweb_edu_shard4_v1.sha256",
+                                   "corpus/hashes/fineweb_edu_shard5_v1.sha256", "tools/colab_chat/base2_pins.json"]
+    assert sorted(out["adopted"]) == ["N/N.main.ids", "N/N.tail.ids", "S/S.main.ids", "S/S.tail.ids",
+                                      "panels/panel_scenario.ids", "sources/src/a.txt"]
+    pins = json.loads(pf.read_text())
+    up = tmp_path / "up"
+    up.mkdir()
+    (up / "vocab_llama3_bpe.gguf").write_bytes(b"v")
+    (up / "tc_b1_r1.safetensors").write_bytes(b"w")
+    for mode in ("arm-N", "arm-S", "arm-C"):
+        assert P.check(pins, str(vm), mode, str(up))[0] == [], mode
+    for n in (2, 4, 5):
+        assert (repo / "corpus" / "hashes" / f"fineweb_edu_shard{n}_v1.sha256").read_text() == f"{sha(bytes([n]))}  pretrain_train.txt\n"
+    # The plan's place for them: beside the committed shards 0 and 1, which fineweb_edu.py --pin writes.
+    assert (ROOT / "corpus" / "hashes" / "fineweb_edu_shard0_v1.sha256").exists() and P.FW_HASHES[0] == "fineweb_edu_shard2_v1.sha256"
+    # The load probe's job sends its hashes home, so this check has them.
+    assert "loadprobe_pins.json" in next(j for j in json.load(open(CC / "base2_data.json"))["jobs"] if j["name"] == "load_probe")["outputs"]
+    assert 'PINS "$OUT" build-S --out "${1:?probe out dir}/loadprobe_pins.json"' in (CC / "base2_data.sh").read_text()
+
+
 def test_store_has_reads_a_local_store(tmp_path):
     if not (CC / "hf_store.py").exists():
         pytest.skip("hf_store.py is the store agent's file")

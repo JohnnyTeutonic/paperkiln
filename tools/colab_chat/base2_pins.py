@@ -5,6 +5,7 @@ research tree). Claude Fable 5.2, 11 Nov 2026.
     python3 tools/colab_chat/base2_pins.py DIR MODE [--upload DIR] [--pins FILE] [--out COPY.json]
     python3 tools/colab_chat/base2_pins.py pin-engine ENGINE_DIR [--commit HASH] [--repin] [--pins FILE]   # at home
     python3 tools/colab_chat/base2_pins.py adopt OBSERVED.json [...] [--pins FILE]                         # at home
+    python3 tools/colab_chat/base2_pins.py adopt-receipts BUILD_ART [--pins FILE] [--repo ROOT]          # at home
 
 tools/colab_chat/base2_pins.json (or --pins, or BASE2_PINS) holds sha256 by group. A null pin is one not yet measured.
 
@@ -24,7 +25,8 @@ tools/colab_chat/base2_pins.json (or --pins, or BASE2_PINS) holds sha256 by grou
 
 Every mode writes what it hashed to DIR/base2_pins_observed.json under its own name and exits non-zero on any difference,
 so an arm never starts on ids, panels, a vocabulary or weights that differ from the pinned ones. `adopt` copies observed
-hashes into the null pins, refuses to change a pin that is set, and refuses a record that carries differences; `pin-engine` records the engine's files as they stand
+hashes into the null pins, refuses to change a pin that is set, and refuses a record that carries differences.
+`adopt-receipts` is the adoption after the build, in one step (adopt_receipts below); `pin-engine` records the engine's files as they stand
 (the engine was still being revised on 11 Nov 2026, so its pins are null until its author is done) and refuses to change
 them without --repin.
 """
@@ -146,13 +148,84 @@ def adopt(pins, observed):
     return done
 
 
+ARM_GROUPS = ("N", "S", "panels", "vocab", "a_weights")   # what the arms' modes read: none may be null at the arms
+FW_HASHES = [f"fineweb_edu_shard{n}_v1.sha256" for n in (2, 3, 4, 5)]   # pinned on the build's first fetch
+
+
+def adopt_receipts(pins, build, repo):
+    """The adoption after the build, from its home output folder `build` (the runner's ART: build/data/ and
+    build/load_probe/). Every check is made before anything is written:
+    - each stage receipt's "built.pins" (the hashes the build took of what it published), adopted as `adopt` does;
+    - the load probe's own hashes of S's ids and the three panels, as it pulled them back from the store
+      (load_probe/loadprobe_pins.json), equal to stage 3's, key by key, with no difference recorded;
+    - no pin an arm reads (ARM_GROUPS) left null;
+    - the FineWeb-Edu shard 2 to 5 hash files the build's first fetch wrote (plan, work item 6: committed in
+      corpus/hashes/, beside shards 0 and 1): written there, or equal to what is there.
+    Returns (adopted pins, files written, relative to repo); raises SystemExit naming every refusal."""
+    data, bad = os.path.join(build, "data"), []
+    stages = {}
+    for n in (1, 2, 3):
+        p = os.path.join(data, f"base2_stage{n}.json")
+        try:
+            got = (json.load(open(p, encoding="utf-8")).get("built") or {}).get("pins")
+        except (OSError, ValueError) as e:
+            got, bad = None, bad + [f"stage {n}: receipt not read ({type(e).__name__}: {p})"]
+        if got is not None and not isinstance(got, dict):
+            got = None
+        if got is None and not any(b.startswith(f"stage {n}:") for b in bad):
+            bad.append(f"stage {n}: its receipt carries no built.pins")
+        stages[n] = got or {}
+    s3 = (stages[3].get("build-S") or {}).get("observed") or {}
+    try:
+        probe = json.load(open(os.path.join(build, "load_probe", "loadprobe_pins.json"), encoding="utf-8"))["build-S"]
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        probe, bad = {}, bad + [f"load probe: loadprobe_pins.json not read ({type(e).__name__})"]
+    if probe.get("differences"):
+        bad += [f"load probe: {d}" for d in probe["differences"]]
+    want = {k: v for k, v in s3.items() if k.split("/", 1)[0] in ("S", "panels")}
+    seen = {k: v for k, v in (probe.get("observed") or {}).items() if k.split("/", 1)[0] in ("S", "panels")}
+    if not want:
+        bad.append("stage 3: no build-S hashes of S's ids and the panels")
+    for k in sorted(set(want) | set(seen)):
+        if want.get(k) is None or want.get(k) != seen.get(k):
+            bad.append(f"{k}: stage 3 hashed {want.get(k)}, the load probe pulled {seen.get(k)}")
+    adopted = []
+    for n in (1, 2, 3):
+        try:
+            adopted += adopt(pins, stages[n])
+        except SystemExit as e:
+            bad.append(f"stage {n}: {e}")
+    null = [f"{g}/{k}" for g in ARM_GROUPS for k, v in group(pins, g).items() if v is None and not k.startswith("_")]
+    bad += [f"{k}: still no pin after the adoption, and an arm reads it" for k in null]
+    files = []
+    for f in FW_HASHES:
+        src, dst = os.path.join(data, f), os.path.join(repo, "corpus", "hashes", f)
+        if not os.path.isfile(src):
+            bad.append(f"{f}: not in the build's outputs")
+            continue
+        new = open(src, "rb").read()
+        if os.path.exists(dst):
+            if open(dst, "rb").read() != new:
+                bad.append(f"corpus/hashes/{f}: committed, and the build's first fetch wrote another")
+        else:
+            files.append((dst, new))
+    if bad:
+        raise SystemExit("nothing adopted, nothing written:\n" + "\n".join(bad))
+    for dst, new in files:
+        with open(dst + ".tmp", "wb") as fh:
+            fh.write(new)
+        os.replace(dst + ".tmp", dst)
+    return sorted(set(adopted)), [os.path.relpath(d, repo) for d, _ in files]
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("dir", help="the data dir, or pin-engine / adopt")
-    ap.add_argument("mode", help="a mode, the engine dir, or the first observed file")
+    ap.add_argument("dir", help="the data dir, or pin-engine / adopt / adopt-receipts")
+    ap.add_argument("mode", help="a mode, the engine dir, the first observed file, or the build's home output folder")
     ap.add_argument("more", nargs="*")
     ap.add_argument("--upload", default="/content/chat/upload")
     ap.add_argument("--pins")
+    ap.add_argument("--repo", default=os.path.dirname(os.path.dirname(HERE)), help="adopt-receipts: the repo root")
     ap.add_argument("--out", help="a second copy of this mode's record (a job's own output folder)")
     ap.add_argument("--commit")
     ap.add_argument("--repin", action="store_true")
@@ -163,6 +236,12 @@ def main(argv=None):
         got = pin_engine(pins, a.mode, a.commit, a.repin)
         write_pins(path, pins)
         print(json.dumps({"engine": got, "commit": a.commit}, indent=1))
+        return 0
+    if a.dir == "adopt-receipts":
+        done, written = adopt_receipts(pins, a.mode, a.repo)
+        write_pins(path, pins)
+        commit = sorted([os.path.relpath(os.path.abspath(path), a.repo), *written])
+        print(json.dumps({"adopted": done, "written": written, "commit_files": commit}, indent=1))
         return 0
     if a.dir == "adopt":
         done = []

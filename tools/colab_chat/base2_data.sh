@@ -536,7 +536,9 @@ loadprobe() {  # PROBE_OUT: S's ids and the panels are on this VM, checked again
   pull_set main corpus/S "$OUT"
   pull_set main corpus/panels "$OUT"
   pull_set main corpus/panel_scenario "$OUT"
-  PINS "$OUT" build-S
+  # The hashes of what was pulled go home in the probe's outputs: base2_pins.py adopt-receipts compares them with
+  # what stage 3 hashed before it published (the S and panel pins are still null here, so this records).
+  PINS "$OUT" build-S --out "${1:?probe out dir}/loadprobe_pins.json"
   B2 loadprobe --spec $CC/base2_load_probe.json --out "${1:?probe out dir}"
 }
 

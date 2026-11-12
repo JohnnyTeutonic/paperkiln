@@ -2557,11 +2557,24 @@ def tick(deadline):         # a tick takes TICK_MIN minutes of the runner's time
     a, _, b = os.environ.get("OUTAGE", "0,0").partition(",")
     if int(a) <= ticks[0] < int(b):
         open(outage, "w").close()
+        if os.environ.get("OUTAGE_VM_STEP"):  # the VM trains on and pushes: one step of it, on the VM's side
+            import subprocess
+            subprocess.run([sys.executable, os.environ["FAKE_STORE_CLI"], "exec", "-s", "vm", "-f", os.environ["OUTAGE_VM_STEP"]],
+                           env=dict(os.environ, FAKE_ON_VM="1"), capture_output=True, timeout=300)
     elif os.path.exists(outage):
         os.remove(outage)
+    if ticks[0] == int(os.environ.get("STOP_AT_TICK", "0")):  # the lead asks for a stop
+        with open(os.environ["STOP_FILE"], "w") as f:
+            f.write(os.environ["STOP_TEXT"])
 rm.sleep_tick = tick
 real_preflight = rm.store_preflight
 rm.store_preflight = lambda st, jobs: False if os.path.exists(outage) else real_preflight(st, jobs)
+real_call = rm.store_call
+def store_call(fn, limit=None):   # in an outage no store call from home answers
+    if os.path.exists(outage):
+        raise ConnectionError("network is unreachable")
+    return real_call(fn, limit)
+rm.store_call = store_call
 began = [0]
 real_began = rm.store_session_began
 def began_then_die(st, jobs):  # KILL_IN_BEGAN=N: the runner dies in the Nth launch, after its create and before its save
@@ -2785,20 +2798,33 @@ def test_an_unread_store_does_not_halt_an_arm_whose_vm_answers_running(tmp_path)
     clock.t += 300 * 60                                  # 300 minutes: over 260, within 260 + 60
     rm.store_no_progress(st, jobs)
     assert not (tmp_path / "a" / "HALTED").exists()
-    assert "the store was not read and the VM reads RUNNING: no halt while that holds, for 60 min past the limit" in \
+    assert "the store was not read; the VM reads RUNNING: no halt, for 60 min past the limit at the most" in \
         (tmp_path / "a" / "runner.log").read_text()
     clock.t += 4 * 60
     rm.store_no_progress(st, jobs)                       # the next tick: the store answers, with a new generation
     assert st.job("pt")["relayed_step"] == 1500 and st.job("pt")["store_progress_at"] == clock.t - 180 > t0
     assert rm.STORE_NO_PROGRESS_UNREAD_S == 3600
-    # Still unread past the limit and the 60 minutes: halted. And unread with the VM silent too: halted at once.
-    for name, vm, minutes in (("b", {"vm": "RUNNING", "pt": "RUNNING"}, 321), ("c", None, 261), ("d", {"vm": "RUNNING", "pt": "WAITING"}, 261)):
-        rm2, clock2, st2, jobs2 = unread_runner(tmp_path, name, [down], vm)
-        clock2.t += minutes * 60
-        with pytest.raises(SystemExit):
-            rm2.store_no_progress(st2, jobs2)
-        rec = json.loads((tmp_path / name / "HALTED").read_text())
-        assert rec["kind"] == "STORE_NO_PROGRESS" and rec["store_read"].startswith("the store was not read"), name
+    # Still unread past the limit and the 60 minutes, the VM reading RUNNING: halted.
+    rm2, clock2, st2, jobs2 = unread_runner(tmp_path, "b", [down], {"vm": "RUNNING", "pt": "RUNNING"})
+    clock2.t += 321 * 60
+    with pytest.raises(SystemExit):
+        rm2.store_no_progress(st2, jobs2)
+    rec = json.loads((tmp_path / "b" / "HALTED").read_text())
+    assert rec["kind"] == "STORE_NO_PROGRESS" and rec["store_read"].startswith("the store was not read")
+    # The launch reviews (Explore B1): unread with the VM silent too, or answering with the job not RUNNING, is no
+    # halt, however long: that halt's stop could not be confirmed. Nor is a store that answers with no advance
+    # while the VM says the job runs: that job is the stall halt's, in its session.
+    for name, heads, vm in (("c", [down], None), ("d", [down], {"vm": "RUNNING", "pt": "WAITING"}),
+                            ("e", [1000], {"vm": "RUNNING", "pt": "RUNNING"})):
+        rm2, clock2, st2, jobs2 = unread_runner(tmp_path, name, heads, vm)
+        clock2.t += 2000 * 60
+        rm2.store_no_progress(st2, jobs2)
+        assert not (tmp_path / name / "HALTED").exists(), name
+    # A store that answers with no advance and a VM that is silent: halted (the hung-VM case below).
+    rm2, clock2, st2, jobs2 = unread_runner(tmp_path, "f", [1000], None)
+    clock2.t += 261 * 60
+    with pytest.raises(SystemExit):
+        rm2.store_no_progress(st2, jobs2)
 
 
 def test_a_generation_found_by_the_read_before_a_halt_is_credited_at_its_push_time(tmp_path):
@@ -2837,3 +2863,82 @@ def test_a_generation_found_by_the_read_before_a_halt_is_credited_at_its_push_ti
     assert "jobs.<job>.store_progress_at in state.json as well as HALTED" in runner
     assert "so four of those an hour" not in runner and "12 - 3 - 2 = 7, so timed rounds send 10" in runner
     assert "sets it before the arms launch" not in mb
+
+
+def test_a_home_outage_longer_than_the_limit_halts_nothing_and_stops_nothing(tmp_path):
+    """The launch review (Explore B1): home's network down for about five hours while the VM trains and pushes. Every
+    Colab call and every store call from home fails. The no-progress clock passed its limit with the store unread
+    and the VM silent, and halted: a halt whose stop could not be confirmed (STOP_UNRESOLVED, the token left on
+    the VM, the watchdog off). With neither readable there is no halt, whatever the age; when the reads come back
+    the store's newest generation is progress, credited at its push time, and the job carries on on the same
+    session. The session key is refreshed before that check."""
+    work = tmp_path
+    step = work / "vmstep.py"
+    work.mkdir(exist_ok=True)
+    step.write_text("# VMJSON: one step of the fake VM\nprint('{}')\n")
+    env = gap_env(work, OUTAGE="4,22", KILL_AT_TICK="25", FAKE_STEPS="5000", OUTAGE_VM_STEP=str(step),
+                  FAKE_STORE_CLI=str(EQ / "fakecolab_store.py"))
+    p, calls = run_store(work, {}, extra=store_args(work, *GAP_ARGS), wrap=GAP_WRAP, hours="100", more_env=env)
+    log = log_of(work)
+    assert p.returncode == 9, (p.returncode, p.stderr[-1500:], log[-3000:])
+    assert not (work / "state" / "HALTED").exists() and not (work / "state" / "STOP_UNRESOLVED").exists()
+    assert "the no-progress limit has passed and the store was not read; the VM does not answer either: no halt" in log
+    lines = calls.splitlines()
+    first = next(i for i, ln in enumerate(lines) if ln.startswith('["new"'))   # the first launch's own stop comes before
+    assert news(calls) == 1 and not any(ln.startswith('["stop"') for ln in lines[first:])
+    assert json.loads((work / "fake" / "fake.json").read_text())["alive"] is True
+    got = [ln for ln in log.splitlines() if "(read before the no-progress halt): progress, pushed" in ln]
+    assert len(got) == 1, log[-3000:]
+    state = state_of(work)
+    assert state["jobs"]["pt"]["status"] == "RUNNING" and state["jobs"]["pt"]["relayed_step"] >= 1800   # trained on
+    src = (CC / "runner_multi.py").read_text()
+    assert src.index("            T.refresh(st)\n            if STORE:\n                store_no_progress(st, jobs)") > 0
+
+
+def test_a_start_after_the_deadline_cleans_up_and_stops_the_folders_session(tmp_path):
+    """The launch review (GPT 2): a runner started after its --deadline-utc refused at its arguments, before its
+    clean-up, so a session left up by a runner that died stayed up and billing. Now it creates nothing, cleans up
+    after the session this folder recorded (token off, logs home, a confirmed stop: the rules of a folder that is
+    home), writes DEADLINE and exits."""
+    import datetime
+    work = tmp_path
+    when = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    args = store_args(work, *GAP_ARGS, "--deadline-utc", when)
+    p, calls = run_store(work, {}, extra=args, wrap=GAP_WRAP, hours="100",
+                         more_env=gap_env(work, KILL_AT_TICK="2", FAKE_STEPS="5000"))
+    assert p.returncode == 9 and json.loads((work / "fake" / "fake.json").read_text())["alive"] is True
+    n_calls = len(calls.splitlines())
+    p2, calls2 = run_store(work, {}, extra=args, wrap=GAP_WRAP, hours="100", fresh=False,
+                           more_env=gap_env(work, GAP_MIN="120", FAKE_STEPS="5000"))
+    log2 = log_of(work)
+    assert p2.returncode == 0, (p2.returncode, p2.stderr[-1500:], log2[-2000:])
+    assert (f"THE DEADLINE (--deadline-utc {when}) HAS PASSED: no session is created; the session an earlier runner "
+            "left is stopped") in log2
+    assert "store: courier ended and token removed from the VM (before the session stops)" in log2
+    later = calls2.splitlines()[n_calls:]
+    assert news(calls2) == 1 and later[-1].startswith('["stop"') and json.loads((work / "fake" / "fake.json").read_text())["alive"] is False
+    rec = json.loads((work / "state" / "DEADLINE").read_text())
+    assert rec["kind"] == "DEADLINE" and rec["session"] == "ours" and rec["stopped"] is True and rec["endpoint"] == "fake-endpoint-1"
+    assert log2.rstrip().endswith("session stopped; runner exiting") and not state_of(work).get("campaign_home")
+
+
+def test_a_stop_the_lead_asks_for_is_a_confirmed_stop_and_a_halt_by_name(tmp_path):
+    """The launch reviews: the registration's stops (the units bound, a bar at a mark) had no means but a kill.
+    STATE/STOP_REQUEST, whose text is the reason, is taken at the next tick: the token off the VM, the session's
+    logs home, the confirmed stop, HALTED with kind LEAD_STOP and the reason, exit 3."""
+    work = tmp_path
+    stop = work / "state" / "STOP_REQUEST"
+    p, calls = run_store(work, {}, extra=store_args(work, *GAP_ARGS), wrap=GAP_WRAP, hours="100",
+                         more_env=gap_env(work, STOP_AT_TICK="5", STOP_FILE=str(stop), STOP_TEXT="units: 641 of 640",
+                                          FAKE_STEPS="5000"))
+    log = log_of(work)
+    assert p.returncode == 3, (p.returncode, p.stderr[-1500:], log[-2000:])
+    halted = json.loads((work / "state" / "HALTED").read_text())
+    assert halted["kind"] == "LEAD_STOP" and halted["reason"] == "units: 641 of 640"
+    assert not stop.exists() and (work / "state" / "STOP_REQUEST.taken").read_text() == "units: 641 of 640"
+    assert "STOP_REQUEST: the lead asks for a stop (units: 641 of 640); halting through the confirmed stop" in log
+    assert "store: courier ended and token removed from the VM (before the session stops)" in log
+    assert log.rstrip().endswith("session stopped; runner exiting") and calls.splitlines()[-1].startswith('["stop"')
+    assert json.loads((work / "fake" / "fake.json").read_text())["alive"] is False
+    p2, _ = run_store(work, {}, extra=store_args(work, *GAP_ARGS), wrap=GAP_WRAP, hours="100", fresh=False, more_env=gap_env(work))
+    assert p2.returncode != 0 and "HALTED marker present" in p2.stderr                   # not run again until read

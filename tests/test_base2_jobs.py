@@ -884,3 +884,53 @@ def test_eight_by_two_and_sixteen_by_one_read_the_same_windows(tmp_path):
         Path(os.environ["BASE2_SAMPLING_RECORD"]).write_text(json.dumps(record, indent=1))
     assert same < 2e-3, (a, b)
     assert other_main > 50 * max(same, 1e-4) and other_tail > 50 * max(same, 1e-4), (b, c)
+
+
+def test_the_units_guard_asks_every_arm_to_stop_once_at_the_bound(tmp_path):
+    """The launch reviews of 12 Nov 2026: the 640-unit bound had no observer. base2_units_guard.py reads the balance
+    as ccu_read.py does (numbers only), logs every reading, and when the units spent since the starting balance
+    reach the bound writes STOP_REQUEST into every listed state folder, once. Here with a stubbed reader."""
+    import base2_units_guard as G
+    dirs = [tmp_path / f"arm_{a}" for a in ARMS]
+    for d in dirs:
+        d.mkdir()
+    log = tmp_path / "guard.jsonl"
+    argv = ["--stop-at", "640", "--once", "--log", str(log), *[x for d in dirs for x in ("--state-dir", str(d))],
+            "--state-dir", str(tmp_path / "no_such_folder")]
+    readings = iter([{"currentBalance": 1000.0, "consumptionRateHourly": 5.82, "eligibleGpus": 3},
+                     {"error": 401},
+                     {"currentBalance": 700.5, "consumptionRateHourly": 5.82},
+                     {"currentBalance": 359.0, "consumptionRateHourly": 5.82},
+                     {"currentBalance": 300.0, "consumptionRateHourly": 3.88}])
+    for _ in range(3):
+        assert G.main(argv, read=lambda: next(readings)) == 0
+    assert not any((d / "STOP_REQUEST").exists() for d in dirs)
+    assert G.main(argv, read=lambda: next(readings)) == 0                      # 641 spent: at the bound
+    text = (dirs[0] / "STOP_REQUEST").read_text()
+    assert all((d / "STOP_REQUEST").read_text() == text for d in dirs)
+    assert text.startswith("units: 641.00 spent since a balance of 1000.00, at or over the bound of 640.00")
+    for d in dirs:                                                             # the runners took them
+        os.replace(d / "STOP_REQUEST", d / "STOP_REQUEST.taken")
+    assert G.main(argv, read=lambda: next(readings)) == 0                      # still over: not asked again
+    assert not any((d / "STOP_REQUEST").exists() for d in dirs)
+    recs = [json.loads(ln) for ln in log.read_text().splitlines()]
+    assert [r.get("spent") for r in recs] == [0.0, None, 299.5, 641.0, 700.0] and recs[1] == {"at": recs[1]["at"], "error": 401}
+    assert recs[3]["stop_requested"] is True and recs[3]["state_dirs_written"] == 3 and "stop_requested" not in recs[4]
+    assert all(r["start"] == 1000.0 for r in recs if "start" in r)            # the first reading, recorded and kept
+    for r in recs:                                                             # numbers only in the log
+        assert all(isinstance(v, (int, float)) for v in r.values()), r
+    # A given starting balance wins; the bound is a number above 0.
+    with pytest.raises(SystemExit):
+        G.main(["--stop-at", "0", "--once", "--state-dir", str(dirs[0]), "--log", str(log)], read=lambda: {})
+    log2 = tmp_path / "guard2.jsonl"
+    G.main(["--stop-at", "640", "--once", "--start-balance", "900", "--state-dir", str(dirs[0]), "--log", str(log2)],
+           read=lambda: {"currentBalance": 800.0})
+    assert json.loads(log2.read_text())["spent"] == 100.0
+    # The real reader runs ccu_read.py with the CLI's Python and keeps numbers only; a failure is a code, not text.
+    stub = tmp_path / "ccu_stub.py"
+    stub.write_text("import json\nprint(json.dumps({'currentBalance': 12.5, 'note': 'secret-text', 'ok': True}))\n")
+    assert G.read_ccu(sys.executable, str(stub)) == {"currentBalance": 12.5}
+    stub.write_text("import sys\nprint('Traceback: secret-text')\nsys.exit(2)\n")
+    assert G.read_ccu(sys.executable, str(stub)) == {"error": "exit 2"}
+    assert G.CCU_READ.endswith("AI_ML/chat_screens_claude/cloud_eval/ccu_read.py")
+    assert G.CLI_PY == "~/.local/share/uv/tools/google-colab-cli/bin/python"

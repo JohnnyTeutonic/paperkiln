@@ -52,7 +52,8 @@
    ],
    "outputs": [
     "loadprobe.json",
-    "run.log"
+    "run.log",
+    "loadprobe_pins.json"
    ]
   }
  ]
