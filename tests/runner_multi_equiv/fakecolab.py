@@ -284,8 +284,9 @@ def main():
         save(d)
         print("created")
         return 0
-    if cmd == "stop" and "-s" in argv and argv[argv.index("-s") + 1] != d.get("name"):
-        # As the CLI: a name it does not hold is looked up in its local store only (commands/session.py).
+    if cmd == "stop" and "-s" in argv and d.get("name") and argv[argv.index("-s") + 1] != d["name"]:
+        # As the CLI: a name it does not hold is looked up in its local store only (commands/session.py). (Before
+        # any session the fake keeps its older behaviour, which the scenarios of stops that fail rely on.)
         print(f"[colab] Session '{argv[argv.index('-s') + 1]}' not found.")
         return 0
     if cmd == "stop":
