@@ -34,10 +34,15 @@ run (a daemon the boot starts beside jobs_vm.py, in a process group of its own).
   reply is taken for "gone"; hf_store.HfBackend.probe says why.) A step that a later save removed while its check
   was still unread is owed nothing: it leaves "to_verify" with one line in the log and is never called not whole.
   A pass asks again for at most the REVERIFY_PER_PASS newest owed checks, so a store that refuses every read costs
-  a bounded number of calls however long it lasts. The status carries "unverified_since" (the oldest push since
-  which no check of a push has read whole; the runner can halt the campaign on its age:
-  runner_multi.py --store-unverified-halt-min) and the unread counts, which a courier started again on the same
-  boot takes up. The hub's refusal of this VM's token (HTTP 401 or 403 that is not the object store's) is named
+  a bounded number of calls however long it lasts. The status carries "unverified_since", which the runner can
+  halt the campaign on (runner_multi.py --store-unverified-halt-min). The rule: it is opened by a push while it is
+  closed (and at the first contact of a courier started again on the same boot, when the store's newest
+  generation is in none of its predecessor's lists), and it is closed ONLY by a check that reads the CURRENT HEAD, the newest pushed generation, whole;
+  an older owed check that reads whole does not close it. The status also carries the unread counts. A courier
+  started again BY HAND on the same boot takes both up, with the owed checks, and checks the store's newest
+  generation when its predecessor died between a commit and its status. A courier the boot starts takes up
+  nothing from an earlier one: boot_base2.sh writes a new boot id on every run of the boot, and a status of
+  another boot id is not read. That courier has verified what its restore downloaded, and nothing else. The hub's refusal of this VM's token (HTTP 401 or 403 that is not the object store's) is named
   an AUTHENTICATION FAILURE, loudly once and in the status ("auth_failure") until a call succeeds: the courier
   holds the token it started with, so only a new session mends it.
   Only a completed comparison that differs makes a generation "not whole": that is said loudly, written
@@ -209,6 +214,7 @@ class Courier:
         # runner's "pushed_bytes_start", then each measurement a release from home hands over) plus `pushed` (the
         # bytes this boot has pushed). An earlier courier of this same boot left both in the status file.
         prior = self.prior()
+        self.resumed = bool(prior)  # an earlier courier of this same boot left a status: this one goes on from it
         for n, s in self.s.items():  # what an earlier courier of this boot had pushed and not yet seen checked
             was = (prior.get("jobs") or {}).get(n) or {}
             s["to_verify"].update({int(step): None for step in was.get("to_verify") or []})
@@ -438,6 +444,8 @@ class Courier:
             wait = max(wait, e.retry_after)
         s[t] = self.clock() + wait
         text = hf_store.no_query(hf_store.redact(f"{what}: {type(e).__name__}: {e}", self.store.b.token))[:400]
+        if hf_store.http_status(e) in (401, 403) and hf_store.reply_side(e) == "object store":
+            text += " [refused by the object store, not by the hub: the token is not the cause]"
         if marks:
             self.log(text + f"; kept staged, retry in {wait} s (failure {s[n]})")
             return
@@ -508,6 +516,17 @@ class Courier:
         self.log(f"{name}: store branch {s['branch']} holds step {s['head']}, marks {sorted(s['marks'])}")
         if why:
             self.fence(name, head, why)
+        elif self.resumed and head["step"] is not None \
+                and not ({head["step"]} & (s["verified"] | s["not_whole"] | set(s["to_verify"]))):
+            # This courier goes on from an earlier one's status on this boot, and the newest generation in the
+            # store is in none of that status's lists: the earlier courier died between the commit and its status.
+            # The generation is checked now, although nothing new is to be pushed, and the timer the runner
+            # watches is opened. (A courier with no earlier status on its boot has verified what its restore
+            # downloaded and takes nothing else for checked: the store's newest is then the restored one.)
+            s["to_verify"][head["step"]] = None
+            s["unverified_since"] = s.get("unverified_since") or time.time()
+            self.log(f"{name}: g{head['step']}, the newest generation in the store, has no check on record from this VM; "
+                     "it is checked now")
         return True
 
     def push_marks(self, name):

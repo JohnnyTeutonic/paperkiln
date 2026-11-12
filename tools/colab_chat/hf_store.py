@@ -107,6 +107,7 @@ import re
 import select
 import shutil
 import signal
+import socket
 import sys
 import tempfile
 import time
@@ -183,6 +184,18 @@ MAX_429_WAIT_S = 1800     # nor for longer than this, whatever wait the hub name
 ESSENTIAL_WAIT_S = 900    # an essential commit waits this long for room in the budget, then is sent anyway
 MIN_RELEASE_GRACE_S = 600  # a release never deletes what a ledger younger than this names
 RELEASE_SKEW_S = 120       # added to the grace: a ledger's time is a VM's clock, the release's is home's
+HOST = socket.gethostname()  # in a release lock's record, with the pid of the process that took it
+
+
+def _alive(pid):
+    """True while a process of this host with that pid exists (or cannot be told not to)."""
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except OSError:
+        return True
+    return True
 
 
 def rate_limited(e, now=None):
@@ -244,11 +257,36 @@ def no_query(text):
     return re.sub(r"((?:https?://|/)[^\s?'\"<>]*)\?[^\s'\"<>)\]]+", r"\1?[query removed]", str(text))
 
 
+def reply_side(e):
+    """Who answered an HTTP error: "hub", "object store", or None when that is not known. Known from the words
+    HfBackend.probe and bounded() put in an error's text ("from the hub", "from the object store"); else from the
+    reply itself: one that came after a redirect, or from another host than the hub's, is the object store's (an
+    upload's or a download's signed address: S3, a CDN); else from the address the text names ("for url: ...")."""
+    text = str(e)
+    if "from the object store" in text:
+        return "object store"
+    if "from the hub" in text:
+        return "hub"
+    resp = getattr(e, "response", None)
+    url = getattr(resp, "url", None) if resp is not None else None
+    if resp is not None and getattr(resp, "history", None):
+        return "object store"
+    if not url:
+        m = re.search(r"for url: (\S+)", text)
+        url = m.group(1) if m else None
+    if not url:
+        return None
+    host = re.sub(r"^https?://", "", str(url)).split("/")[0].lower()
+    hub = re.sub(r"^https?://", "", os.environ.get("HF_ENDPOINT") or "https://huggingface.co").split("/")[0].lower()
+    return "hub" if host == hub else "object store"
+
+
 def auth_failure(e):
-    """True when `e` is the HUB refusing the credential: HTTP 401 or 403 that did not come from the object store
-    after the hub's redirect (whose 403 may be a refused signed address or a missing key; HfBackend.probe names
-    that side in its error). An expired or revoked token reads so on every commit, listing and download."""
-    return http_status(e) in (401, 403) and "from the object store" not in str(e)
+    """True when `e` is the HUB refusing the credential: HTTP 401 or 403 on a reply KNOWN to be the hub's
+    (reply_side). An expired or revoked token reads so on every commit, listing and download. A 401 or 403 from an
+    object store or a CDN (an upload's or a download's signed address that has expired or is refused, a key that
+    is not there) is not one, and neither is a refusal whose side is not known: the token is not what mends it."""
+    return http_status(e) in (401, 403) and reply_side(e) == "hub"
 
 
 def range_total(resp):
@@ -588,16 +626,28 @@ def bounded(fn, timeout, token=None, while_waiting=None):
     sys.stdout.flush()  # so the child does not inherit, and write again, what is still buffered here
     sys.stderr.flush()
     r, w = os.pipe()
+    parent = os.getpid()
     pid = os.fork()
     if pid == 0:
         os.close(r)
+        # The child dies with its parent (Linux: a parent-death signal): a runner or a courier that is killed never
+        # leaves a store call running on its own, holding the token and, for a release, the lock.
+        try:
+            import ctypes
+            ctypes.CDLL(None, use_errno=True).prctl(1, signal.SIGKILL, 0, 0, 0)  # PR_SET_PDEATHSIG
+        except Exception:  # noqa: BLE001 no prctl here: the limit still ends the child
+            pass
+        if os.getppid() != parent:  # the parent went between the fork and the call above
+            os._exit(1)
         try:
             out = {"ok": fn()}
         except BaseException as e:  # noqa: BLE001
             out = {"err": no_query(redact(f"{e}", token))[:2000], "type": type(e).__name__}
-            code = http_status(e)
+            code, side = http_status(e), reply_side(e)
             if code is not None and http_status(Exception(out["err"])) != code:
                 out["err"] += f" [HTTP {code}]"  # the status crosses the pipe when the text does not name it
+            if code is not None and side and reply_side(Exception(out["err"])) != side:
+                out["err"] += f" [from the {side}]"  # and so does the side that answered
         try:
             sys.stdout.flush()  # what fn printed: _exit below drops unwritten buffers
             sys.stderr.flush()
@@ -812,7 +862,7 @@ class HfBackend:
                     self.api.preupload_lfs_files(additions=ops, revision=branch, **self._kw())
                     self.upload_path = "upload_first"
                 except (TypeError, AttributeError) as e:
-                    self.upload_path = redact(f"fallback ({type(e).__name__}: {e})", self.token)[:200]
+                    self.upload_path = no_query(redact(f"fallback ({type(e).__name__}: {e})", self.token))[:200]
             ops += [CommitOperationAdd(path_in_repo=p, path_or_fileobj=src) for p, src in sorted(before_send().items())]
         ops += [CommitOperationDelete(path_in_repo=p) for p in sorted(deletes)]
         self.api.create_commit(operations=ops, commit_message=message, revision=branch, parent_commit=parent, **self._kw())
@@ -977,7 +1027,7 @@ class Store:
             raise
 
     def log(self, msg):
-        msg = redact(msg, self.b.token)
+        msg = no_query(redact(msg, self.b.token))  # no token, and no signed address: this is what is kept
         if self._log:
             self._log(msg)
         else:
@@ -1414,9 +1464,14 @@ class Store:
         whatever the count is (CommitBudget). The waiting is the caller's: with no room now this returns held,
         and "why" carries the seconds until there is room.
 
-        takeover=True (a runner, whose `owner` names it and which runs one release at a time): a lock that carries
-        this same owner was left by a process of this releaser that died or whose unlock failed, and is taken
-        again at once instead of being waited out for LOCK_STALE_S. Never for a name two people may use at once.
+        takeover=SECONDS (a runner, whose `owner` names it and which runs one release at a time; the seconds are the
+        limit of its release call): a lock that carries this same owner was left by a process of this releaser.
+        It is taken again, instead of being waited out for LOCK_STALE_S, only when that release is known to be
+        over: the lock is older than those seconds, or the process that took it (its pid and host are in the
+        lock's record) is no longer alive on this host. A bounded() child dies with its parent, so a killed
+        runner leaves no release running. Never for a name two people may use at once.
+
+        "unread_heads" in the result: {branch: its head} for the branches whose ledger was not well formed.
 
         "unread" in the result names each ledger that did not read, as "branch:pruned/g<step>.json (why)": "not
         well formed" is a file that will not read in any later round either, and wants a person.
@@ -1507,7 +1562,8 @@ class Store:
                     "pending_bytes": sum({k: v for d in pending.values() for k, v in d.items()}.values()),
                     "ledgers": len(ledgers), "ledgers_done": sum(len(v) for v in finished.values()),
                     "ledgers_unread": len(unread),
-                    "unread": [f"{b}:{PRUNED}/g{s}.json ({self._ledger_why.get((b, s), 'not read')})" for b, s in unread]}
+                    "unread": [f"{b}:{PRUNED}/g{s}.json ({self._ledger_why.get((b, s), 'not read')})" for b, s in unread],
+                    "unread_heads": {b: heads[b] for b, s in unread if self._ledger_why.get((b, s)) == "not well formed"}}
         finally:
             self._unlock(mine, done)
     def _read_lock(self, head):
@@ -1547,14 +1603,24 @@ class Store:
                 return None
             if LOCK in tree:
                 held = self._read_lock(head)
-                if now - held.get("at", 0) < LOCK_STALE_S and not (takeover and held.get("owner") == owner):
+                age = now - held.get("at", 0)
+                # A lock of this same owner is taken again only when the release that took it is known to be
+                # over: it is older than a release call may last (`takeover`, seconds), or the process that took
+                # it, on this host, is no longer alive.
+                own = bool(takeover) and held.get("owner") == owner
+                dead = held.get("host") == HOST and isinstance(held.get("pid"), int) and not _alive(held["pid"])
+                if age < LOCK_STALE_S and not (own and (dead or age > float(takeover))):
+                    if own:
+                        self._lock_why = (f"this releaser's own earlier release may still be running (pid {held.get('pid')} on "
+                                          f"{held.get('host')}, {age:.0f} s ago)")
                     return None
-                if takeover and held.get("owner") == owner:
-                    self.log(f"release lock: one left by {owner} itself is taken again")
+                if own and age < LOCK_STALE_S:
+                    self.log(f"release lock: one left by {owner} itself is taken again (its process is "
+                             + ("gone" if dead else f"past the {float(takeover):.0f} s a release call may last") + ")")
         except Exception as e:  # noqa: BLE001 main or the lock could not be read: someone else may hold it
             self._lock_why = f"main or the lock could not be read ({type(e).__name__})"
             return None
-        mine = {"owner": owner, "at": now, "nonce": uuid.uuid4().hex}
+        mine = {"owner": owner, "at": now, "nonce": uuid.uuid4().hex, "pid": os.getpid(), "host": HOST}
         with tempfile.TemporaryDirectory(prefix="store_lock.") as tmp:
             p = os.path.join(tmp, "l")
             with open(p, "w") as f:
@@ -1710,7 +1776,7 @@ def retry(fn, tries=4, delay=20, log=print, what="store call", token=None):
         except Exception as e:  # noqa: BLE001
             if i == tries - 1:
                 raise
-            log(redact(f"{what} failed ({type(e).__name__}: {e}); try {i + 2} of {tries} in {delay} s", token))
+            log(no_query(redact(f"{what} failed ({type(e).__name__}: {e}); try {i + 2} of {tries} in {delay} s", token)))
             time.sleep(delay)
 
 
@@ -1945,7 +2011,7 @@ def main(argv=None):
             rep = store.budget.report(0, peek=True)
             print("stat " + json.dumps({"what": "commits", **rep}, sort_keys=True), file=sys.stderr)
     except Exception as e:  # noqa: BLE001 one redacted line, never a traceback that could carry a header
-        print(redact(f"hf_store {a.cmd} failed: {type(e).__name__}: {e}", token), file=sys.stderr)
+        print(no_query(redact(f"hf_store {a.cmd} failed: {type(e).__name__}: {e}", token)), file=sys.stderr)
         return 1
     return 0
 

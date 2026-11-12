@@ -2178,15 +2178,151 @@ def test_a_release_names_the_ledger_that_did_not_read_and_a_runner_takes_its_own
     api.branches["ckpt-N"]["pruned/g200.json"] = json.dumps({"format": hf_store.PRUNED_FORMAT, "at": "yesterday", "objects": []}).encode()
     assert store.release_report("home:pk", grace=600, now=late)["unread"] == ["ckpt-N:pruned/g200.json (not well formed)"]
     del api.branches["ckpt-N"]["pruned/g200.json"]
-    # (2) The releaser dies with the lock taken.
+    # (2) The releaser dies with the lock taken. The lock's record names the process that took it.
     mine = store._lock("home:pk", late)
     assert mine and hf_store.LOCK in api.branches["main"]
+    assert (mine["pid"], mine["host"]) == (os.getpid(), hf_store.HOST)
     r = store.release_report("home:pk", grace=600, now=late + 60)
     assert r["held"] is True and r["why"] == "another releaser holds the lock"            # as before: waited out
-    assert store.release_report("home:other", grace=600, now=late + 60, takeover=True)["held"] is True   # not another name's
-    r = store.release_report("home:pk", grace=600, now=late + 60, takeover=True)
+    assert store.release_report("home:other", grace=600, now=late + 60, takeover=900)["held"] is True   # not another name's
+    # The name alone is not enough (the second reviews of the arms' round): the process that took the lock is
+    # alive here (it is this test), and the lock is younger than a release call may last: it may still be running.
+    r = store.release_report("home:pk", grace=600, now=late + 60, takeover=900)
+    assert r["held"] is True and "own earlier release may still be running (pid %d on %s" % (os.getpid(), hf_store.HOST) in r["why"]
+    assert hf_store.LOCK in api.branches["main"]
+    # Older than a release call may last: over, whatever the pid says. Taken again.
+    r = store.release_report("home:pk", grace=600, now=late + 901, takeover=900)
     assert (r["held"], r["objects"], r["unread"]) == (False, 2, []) and hf_store.LOCK not in api.branches["main"]
-    assert any("one left by home:pk itself is taken again" in ln for ln in logs)
+    assert any("one left by home:pk itself is taken again (its process is past the 900 s" in ln for ln in logs)
+    # Young, and its process is gone from this host: taken again at once. On another host, or with no pid: not.
+    gone = subprocess.Popen([sys.executable, "-c", "pass"])
+    gone.wait()
+    for rec, taken in (({"pid": gone.pid, "host": hf_store.HOST}, True), ({"pid": gone.pid, "host": "elsewhere"}, False), ({}, False)):
+        api.branches["main"][hf_store.LOCK] = json.dumps({"owner": "home:pk", "at": late + 2000, "nonce": "n", **rec}).encode()
+        r = store.release_report("home:pk", grace=600, now=late + 2060, takeover=900)
+        assert (r["held"] is False) == taken, rec
+        api.branches["main"].pop(hf_store.LOCK, None)
+    assert any("itself is taken again (its process is gone)" in ln for ln in logs)
+
+
+def test_a_store_call_dies_with_the_process_that_made_it(tmp_path):
+    """The second reviews of the arms' round: bounded() forked a child that outlived a parent killed with SIGKILL:
+    a dead runner's release went on, holding the token and the lock, while the runner started in its place took
+    that lock again by its name. The child now carries a parent-death signal."""
+    pidfile = tmp_path / "child.pid"
+    script = tmp_path / "caller.py"
+    script.write_text(
+        "import os, sys, time\n"
+        f"sys.path.insert(0, {str(ROOT / 'tools' / 'colab_chat')!r})\n"
+        "import hf_store\n"
+        "def call():\n"
+        f"    open({str(pidfile)!r}, 'w').write(str(os.getpid()))\n"
+        "    time.sleep(600)\n"
+        "hf_store.bounded(call, 900)\n")
+    p = subprocess.Popen([sys.executable, str(script)])
+    child = None
+    try:
+        for _ in range(100):
+            if pidfile.exists() and pidfile.read_text().strip():
+                break
+            time.sleep(0.1)
+        child = int(pidfile.read_text())
+        assert child != p.pid and hf_store._alive(child)
+        p.kill()                                         # SIGKILL: the parent runs no clean-up of its own
+        p.wait()
+        def ended(pid):                                  # gone, or dead and not yet reaped
+            try:
+                return open(f"/proc/{pid}/stat").read().rsplit(")", 1)[1].split()[0] == "Z"
+            except OSError:
+                return True
+
+        gone = False
+        for _ in range(50):
+            if ended(child):
+                gone = True
+                break
+            time.sleep(0.1)
+        assert gone, "the store call's child outlived its parent"
+    finally:
+        p.kill()
+        if child and hf_store._alive(child):
+            os.kill(child, 9)
+
+
+def test_no_signed_address_is_kept_and_a_refusal_is_the_hubs_only_when_it_is_known_to_be(tmp_path, capsys):
+    """The second reviews of the arms' round. (1) Query strings were stripped where an error crossed bounded() or
+    went through the runner's store_err, and not where the store itself writes: fetch()'s retry line (in the child,
+    before the pipe), retry(), the CLI's failure text, the upload fallback's text. A download that fails after the
+    hub's redirect carries the signed address in its error; none of those keeps it now. (2) Any 401 or 403 that did
+    not say "object store" was named the hub's refusal of the token. It is the hub's only when the reply is known
+    to be: no redirect before it and the hub's own host. An object store's or a CDN's is said as that."""
+    pytest.importorskip("huggingface_hub")
+    import requests
+    api = FakeApi()
+    store, logs = hstore(tmp_path, api)
+    signed = ("HTTPSConnectionPool(host='cdn-lfs.example', port=443): Max retries exceeded with url: "
+              "/repos/ab/cd/0123?X-Amz-Algorithm=AWS4&X-Amz-Signature=SECRETSIG (Caused by ReadTimeoutError)")
+
+    def redirected_download_fails(**kw):
+        raise requests.ConnectionError(signed)
+
+    api.hf_hub_download = redirected_download_fails
+    with pytest.raises(requests.ConnectionError):
+        store.fetch("main", "marks/pt/rung_100/model.safetensors", str(tmp_path / "m"))
+    kept = [ln for ln in logs if "fetch of main:marks/pt/rung_100/model.safetensors failed" in ln]
+    assert len(kept) == 3 and all("SECRETSIG" not in ln and "/repos/ab/cd/0123?[query removed]" in ln for ln in kept)
+    said = []
+    with pytest.raises(requests.ConnectionError):
+        hf_store.retry(lambda: redirected_download_fails(), tries=2, delay=0, log=said.append, what="pull", token=TOKEN)
+    assert len(said) == 1 and "SECRETSIG" not in said[0] and "?[query removed]" in said[0]
+    store.log(f"anything at all: https://cdn-lfs.example/o/1?sig=SECRETSIG and {TOKEN}")
+    assert "SECRETSIG" not in logs[-1] and TOKEN not in logs[-1]
+    cfg = tmp_path / "cli.json"
+    cfg.write_text(json.dumps({"repo": "someone/base2-store", "token_file": str(tmp_path / "token")}))
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(hf_store.HfBackend, "tree", lambda self, branch, rev=None: (_ for _ in ()).throw(requests.ConnectionError(signed)))
+        assert hf_store.main(["steps", "--config", str(cfg), "--branch", "ckpt-N"]) == 1
+    err = capsys.readouterr().err
+    assert "hf_store steps failed: ConnectionError" in err and "SECRETSIG" not in err and TOKEN not in err
+    api.hf_hub_download = FakeApi.hf_hub_download.__get__(api)
+    for step in (100, 200, 300):
+        store.push_generation("ckpt-N", "pt", step, staged_gen(tmp_path, step), None, None if step == 100 else store.head("ckpt-N")["commit"])
+    api.preupload_lfs_files = lambda **kw: (_ for _ in ()).throw(TypeError("bad call for https://cdn-lfs.example/up?sig=SECRETSIG"))
+    man = store.push_generation("ckpt-N", "pt", 400, staged_gen(tmp_path, 400), None, store.head("ckpt-N")["commit"],
+                                prune={"keep": 2, "verified": [200, 300]})
+    assert man["ledger_upload"].startswith("fallback (TypeError") and "SECRETSIG" not in man["ledger_upload"]
+
+    # (2)
+    def http_error(code, url, redirected=False):
+        r = _reply(code, redirected=redirected)
+        if not redirected:
+            r.url = url
+        e = requests.HTTPError(f"{code} Client Error: refused for url: {r.url}")
+        e.response = r
+        return e
+
+    hub = http_error(403, "https://huggingface.co/api/datasets/someone/base2-store/commit/ckpt-N")
+    cdn = http_error(403, "https://cdn-lfs.example/objects/abc", redirected=True)
+    s3 = http_error(403, "https://s3.example/presigned/put/abc")                 # an upload's signed address: no redirect, another host
+    assert (hf_store.reply_side(hub), hf_store.reply_side(cdn), hf_store.reply_side(s3)) == ("hub", "object store", "object store")
+    assert hf_store.auth_failure(hub) and not hf_store.auth_failure(cdn) and not hf_store.auth_failure(s3)
+    assert hf_store.reply_side(Exception("403 Forbidden")) is None and not hf_store.auth_failure(Exception("403 Client Error: Forbidden"))
+    assert not hf_store.auth_failure(http_error(404, "https://huggingface.co/api/datasets/x"))
+    # The side crosses bounded()'s pipe, in words.
+    for e, side in ((hub, "hub"), (s3, "object store")):
+        def refuse(e=e):
+            raise e
+        with pytest.raises(hf_store.StoreError) as got:
+            hf_store.bounded(refuse, 30, TOKEN)
+        assert hf_store.reply_side(got.value) == side and hf_store.auth_failure(got.value) == (side == "hub")
+    class Bare(Exception):
+        response = type("R", (), {"status_code": 403, "url": "https://s3.example/put/abc?sig=SECRETSIG", "history": []})()
+
+    def bare():
+        raise Bare("refused")
+    with pytest.raises(hf_store.StoreError) as got:
+        hf_store.bounded(bare, 30, TOKEN)
+    assert "[HTTP 403] [from the object store]" in str(got.value) and "SECRETSIG" not in str(got.value)
 
 
 # ---------------------------------------------------------------- base2_seed.py

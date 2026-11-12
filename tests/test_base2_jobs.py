@@ -394,20 +394,74 @@ def test_the_storage_guard_fits_the_rehearsal_and_is_off_for_the_arms():
     # The same sum, as make_base2.push_cap_gb, for one branch; and what it suggests for the arms, whose files carry
     # 0 until the lead sets it: kept + removed-and-not-yet-deletable within the grace + pushed since the release,
     # and every mark, held under 0.8 of the cap.
+    # The second reviews of the arms' round: the guard's count is what the last release that RAN measured plus all
+    # pushed since. Removed and still stored at that release: what is younger than the grace PLUS the release's
+    # 120 s skew. Pushed since: through ARM_MISSED_RELEASES (2) turns in a row that did not run.
+    assert M.RELEASE_SKEW_S == hf_store.RELEASE_SKEW_S == 120 and M.ARM_MISSED_RELEASES == 2
     one = M.push_cap_gb("D1", M.REH_EVERY, M.STEP_S, 1, M.REH_RELEASE_EVERY_MIN, M.REH_RELEASE_GRACE_S)
-    assert (one["kept"], one["removed"], one["since"], one["marks"]) == (5, 9, 7, 1)
+    assert (one["kept"], one["removed"], one["since"], one["marks"]) == (5, 4, 19, 1)
+    assert M.push_cap_gb("D1", M.REH_EVERY, M.STEP_S, 1, M.REH_RELEASE_EVERY_MIN, M.REH_RELEASE_GRACE_S, missed_releases=0)["since"] == 7
     r = M.rates()
     assert r["generations_kept"] == {"rule": "three plus one for each session loss between two verified saves", "losses_taken": 2, "kept": 5}
+    assert r["settings"]["C"] == {"release_every_min": 120, "release_grace_s": 7200} and r["missed_releases_taken"] == 2
     caps = r["push_cap_sum"]
     assert {a: (c["kept"], c["removed"], c["since"], c["marks"]) for a, c in caps.items()} == {
-        "N": (5, 28, 15, 5), "S": (5, 28, 15, 5), "C": (5, 37, 20, 6)}
-    assert {a: (c["gen_gb"], c["counted_gb"]) for a, c in caps.items()} == {"N": (0.837, 41.6), "S": (0.837, 41.6), "C": (0.873, 55.9)}
-    assert r["suggested_store_push_cap_gb"] == {"N": 52, "S": 52, "C": 70} and r["release_grace_s"] == 7200 == M.ARM_RELEASE_GRACE_S
+        "N": (5, 14, 43, 5), "S": (5, 14, 43, 5), "C": (5, 19, 57, 6)}
+    assert {a: (c["gen_gb"], c["counted_gb"]) for a, c in caps.items()} == {"N": (0.837, 53.3), "S": (0.837, 53.3), "C": (0.873, 72.5)}
+    assert r["suggested_store_push_cap_gb"] == {"N": 67, "S": 67, "C": 91} and (r["counted_gb_three_arms"], r["caps_gb_three_arms"]) == (179.1, 225)
     for a, c in caps.items():
         assert abs(c["counted_gb"] - ((c["kept"] + c["removed"] + c["since"]) * c["gen_gb"] + c["marks"] * c["gen_gb"] / 3)) < 0.1
         assert c["counted_gb"] <= M.PUSH_CAP_HEADROOM * c["suggested_cap_gb"] < c["counted_gb"] + 1
+    # Other settings are read without editing a file: make_base2.py --rates --release-every-min M --grace-s S.
+    assert M.rates(60, 7200)["suggested_store_push_cap_gb"] == {"N": 45, "S": 45, "C": 60}
+    assert M.rates(60, 3600)["suggested_store_push_cap_gb"] == {"N": 39, "S": 39, "C": 51}
+    assert M.rates(30, 1800)["suggested_store_push_cap_gb"] == {"N": 24, "S": 24, "C": 30}
+    assert M.rates(120, 7200, missed_releases=0, losses=1)["suggested_store_push_cap_gb"]["N"] < 40
+    import contextlib
+    import io
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        assert M.main(["--rates", "--release-every-min", "60", "--grace-s", "3600"]) == 0
+    got = json.loads(out.getvalue())
+    assert got["settings"]["N"] == {"release_every_min": 60.0, "release_grace_s": 3600.0} and got["caps_gb_three_arms"] == 129
+    assert got["commits_an_hour_three_arms"]["steady_state_average"] == 29.1
     runner = (CC / "runner_multi.py").read_text()
-    assert '"--store-release-grace-s", type=float, default=7200' in runner                 # the grace the arms' sum takes
+    assert '"--store-release-grace-s", type=float, default=None' in runner and 'doc.get("store_release_grace_s") or 7200' in runner
+
+
+def test_the_registrations_store_switches_are_set_in_make_base2_and_the_files_do_not_move_until_one_does():
+    """The second reviews of the arms' round: the arms' cap, release interval, grace and halts are the
+    registration's to set, and a value edited into a jobs file by hand fails --check. They are parameters of
+    arm(): ARM_STORE for all arms, ARM_STORE_BY_ARM for one, as they stand (no cap, no halt, two hours, the
+    runner's default grace). A switch that is the runner's own default is not written, so the files on disk are
+    what they were; runner_multi.py reads each key when its flag is absent."""
+    import hf_store
+    assert M.ARM_STORE == {"store_push_cap_gb": 0, "store_release_every_min": 120, "store_release_grace_s": 7200,
+                           "store_stall_halt": False, "store_stall_min": 60, "store_unverified_halt_min": 0}
+    assert M.ARM_STORE_BY_ARM == {"N": {}, "S": {}, "C": {}}
+    keys = ("store_release_grace_s", "store_stall_halt", "store_stall_min", "store_unverified_halt_min")
+    for arm in ARMS:
+        assert M.arm(arm) == load(f"base2_{arm}.json") and not any(k in M.arm(arm) for k in keys)       # --check stays equal
+    assert M.main(["--check"]) == 0
+    set_ = {"store_push_cap_gb": 45, "store_release_every_min": 60, "store_release_grace_s": 3600, "store_stall_halt": True,
+            "store_stall_min": 120, "store_unverified_halt_min": 60}
+    doc = M.arm("N", store=set_)
+    assert {k: doc[k] for k in set_} == set_ and doc["jobs"] == M.arm("N")["jobs"]
+    assert list(doc).index("store_release_grace_s") == list(doc).index("store_release_every_min") + 1    # beside the others
+    with pytest.raises(ValueError, match="unknown store switch"):
+        M.arm("N", store={"store_push_cap": 45})
+    try:                                                 # the per-arm table is what a cap is set in
+        M.ARM_STORE_BY_ARM["C"] = {"store_push_cap_gb": 60}
+        assert M.arm("C")["store_push_cap_gb"] == 60 and M.arm("N")["store_push_cap_gb"] == 0
+        assert M.rates()["settings"]["C"]["release_every_min"] == 120
+    finally:
+        M.ARM_STORE_BY_ARM["C"] = {}
+    # The runner reads every one of them from the jobs file when its flag is absent.
+    runner = (CC / "runner_multi.py").read_text()
+    for key in ("store_push_cap_gb", "store_release_every_min", "store_release_grace_s", "store_stall_halt", "store_stall_min",
+                "store_unverified_halt_min"):
+        assert f'doc.get("{key}"' in runner, key
+    assert '"--store-stall-min", type=float, default=None' in runner
     import ckpt_courier
     for doc in (hf_store.__doc__, ckpt_courier.__doc__, hf_store.Store.push_generation.__doc__):
         assert "four" in doc.lower()                                     # the docstrings say four, not only three
@@ -463,21 +517,33 @@ def test_three_arms_on_one_repo_stay_far_under_the_hubs_commit_limit():
     # an hour rounded up (7, 7, 10) and one mark an arm, each sent twice; the branch created again, tried twice; at
     # home a timed release, the end's release and the one more round it is allowed when a ledger did not read
     # (three end releases in the one hour), each a lock and an unlock sent four times.
+    # Home's part as the runner now stands (the second reviews): a timed turn and its ONE early retry when its
+    # round failed or met an unread ledger (a held round sends nothing), never past the budget; and the two rounds
+    # that are all the end's release makes when a ledger does not read, counted across every start.
     roll = {arm: M.commits_rolling_hour(load(f"base2_{arm}.json"), step_s[arm], M.ARM_RELEASE_EVERY_MIN) for arm in ARMS}
     assert {a: (x["saves"], x["marks"], x["sent_twice"], x["branch"], x["home"], x["total"]) for a, x in roll.items()} == {
-        "N": (7, 1, 16, 2, 15, 33), "S": (7, 1, 16, 2, 15, 33), "C": (10, 1, 22, 2, 15, 39)}
-    assert M.home_commits_worst(120, ledger_retry=True) == 15
+        "N": (7, 1, 16, 2, 20, 38), "S": (7, 1, 16, 2, 20, 38), "C": (10, 1, 22, 2, 20, 44)}
+    assert (M.home_commits_rolling(120), M.home_commits_rolling(60), M.home_commits_rolling(30)) == (20, 20, 22)
+    assert M.home_commits_rolling(120, unlock_tries=1) == 8 and M.FINAL_LEDGER_ROUNDS == 2
+    runner = (CC / "runner_multi.py").read_text()
+    assert "STORE_FINAL_LEDGER_ROUNDS = 2" in runner and "STORE_RELEASE_RETRY_S = 600" in runner
     rolling = sum(x["total"] for x in roll.values())
-    assert rolling == 2 * (7 + 7 + 10 + 3) + 3 * 2 + 3 * 15 == 105 < 3 * M.COURIER_COMMIT_BUDGET + 3 * M.HOME_COMMIT_BUDGET == 108 < M.HUB_COMMITS_PER_HOUR
+    assert rolling == 2 * (7 + 7 + 10 + 3) + 3 * 2 + 3 * 20 == 120 < M.HUB_COMMITS_PER_HOUR
+    # 120 of the hub's 128 is the hour in which every save is sent twice, every arm loses a session, every home
+    # round runs at its worst and EVERY unlock is sent four times. With the unlocks landing at once it is 84. Above
+    # the summed ceilings (108): forced unlocks and essential waits pass a ceiling; only the hub's 429 bounds it.
     assert M.rates()["commits_an_hour_three_arms"] == {
         "steady_state_average": 26.1, "modelled_bad_hour_from_average_rates": 82.2,
-        "rolling_hour_whole_commits_everything_at_once": 105, "per_writer_ceilings_summed": 108, "hub_limit": 128}
+        "rolling_hour_whole_commits_everything_at_once": 120, "rolling_hour_if_every_unlock_lands_at_once": 84,
+        "per_writer_ceilings_summed": 108, "hub_limit": 128}
+    assert M.rates(60, 7200)["commits_an_hour_three_arms"]["steady_state_average"] == 29.1
+    assert M.rates(30, 1800)["commits_an_hour_three_arms"]["rolling_hour_whole_commits_everything_at_once"] == 126
     import io
     import contextlib
     out = io.StringIO()
     with contextlib.redirect_stdout(out):
         assert M.main(["--rates"]) == 0                                # printed by make_base2.py --rates; nothing is written
-    assert json.loads(out.getvalue())["commits_an_hour_three_arms"]["rolling_hour_whole_commits_everything_at_once"] == 105
+    assert json.loads(out.getvalue())["commits_an_hour_three_arms"]["rolling_hour_whole_commits_everything_at_once"] == 120
     # Each writer's own ceiling (per writer, not per repository): the defaults of the courier and of
     # runner_multi.py. Summed over three arms they stay under the hub's limit, and the steady state is inside each.
     # Home's budget was 8 until the rerun of 12 Nov 2026, where the release at the campaign's end found no room.

@@ -88,6 +88,11 @@ import subprocess
 import sys
 import time
 
+try:
+    import fcntl  # the state folder's lock (POSIX; the runner runs in WSL)
+except ImportError:  # pragma: no cover
+    fcntl = None
+
 COL = os.path.expanduser("~/.local/bin/colab")
 COLPY = os.path.expanduser("~/.local/share/uv/tools/google-colab-cli/bin/python")
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -803,7 +808,11 @@ def apply_rung_resets(st, jobs):
         st.d["jobs"][n] = {"relayed_step": 0, "status": None, "home": False, "rung_reset": time.time()}
         done.append(n)
     if done:
-        st.d.pop("campaign_home", None)  # a RunPod release would otherwise delete the volume at the end
+        # The campaign is open again. A RunPod release would otherwise delete the volume at the end; and the release
+        # at the campaign's end is owed again when it ends again, with a new allowance of rounds.
+        for k in ("campaign_home", "store_release_final_done", "store_release_final_owed", "store_release_final_rounds",
+                  "store_release_final_malformed"):
+            st.d.pop(k, None)
         st.save()
         log(f"rung jobs reset to WAITING (their snapshots go up at the next prepare): {done}")
     os.remove(p)
@@ -1100,6 +1109,14 @@ STORE_FINAL_CHECKS = 3
 STORE_FINAL_RELEASE_WAIT_S = 1200
 STORE_FINAL_RELEASE_NAP_S = 30
 STORE_HOME_ESSENTIAL_WAIT_S = 900  # hf_store.ESSENTIAL_WAIT_S, for home's budget
+# A round of the end's release that ran and met a ledger it could not read: this many in all, counted in state.json
+# across every start of this state folder ("store_release_final_rounds").
+STORE_FINAL_LEDGER_ROUNDS = 2
+# A TIMED release that did not run is not left for a full interval (the storage guard's count is only reset by a
+# release that ran, so two missed turns in a row can carry a healthy arm past its push cap). One that was held (no
+# commit was sent: another runner's lock, or no room in the budget) is tried again at the next tick; one that failed
+# or met a ledger it could not read is tried again once, this many seconds later, and then at its regular turn.
+STORE_RELEASE_RETRY_S = 600
 _STORE = {}
 
 
@@ -1134,7 +1151,10 @@ def store_config(a, ap):
         else float(doc.get("store_release_every_min") or 120)
     if every <= 0 or a.store_commit_budget_per_hour < 0 or a.store_home_commit_budget_per_hour < 0:
         ap.error("--store-release-every-min must be above 0, and the commit budgets 0 (no limit) or above")
-    if a.store_release_grace_s < hf_store.MIN_RELEASE_GRACE_S:
+    # The registration's switches may be the jobs file's keys (make_base2.arm() writes them): a flag wins.
+    grace = a.store_release_grace_s if a.store_release_grace_s is not None else float(doc.get("store_release_grace_s") or 7200)
+    stall_min = a.store_stall_min if a.store_stall_min is not None else float(doc.get("store_stall_min", 60))
+    if grace < hf_store.MIN_RELEASE_GRACE_S:
         ap.error(f"--store-release-grace-s is at least {hf_store.MIN_RELEASE_GRACE_S}: a restore may be reading a "
                  "generation that was just removed")
     if a.store_courier_wait_s < 0 or a.store_settle_min * 60 < a.store_courier_wait_s + TICK:
@@ -1142,14 +1162,14 @@ def store_config(a, ap):
                  f"{a.store_courier_wait_s:.0f} s after its jobs end to deliver the last generation "
                  "(--store-courier-wait-s), and the runner must not halt before that window and one tick are over")
     return {"repo": a.store_repo, "repo_type": a.store_repo_type, "reclaim": a.store_release_storage,
-            "release_grace_s": a.store_release_grace_s, "release_every_min": every,
+            "release_grace_s": grace, "release_every_min": every,
             "commit_budget": a.store_commit_budget_per_hour, "home_commit_budget": a.store_home_commit_budget_per_hour,
             "courier_wait_s": a.store_courier_wait_s,
             "branch_suffix": "-" + slug if slug else "", "mark_ns": slug + "." if slug else "",
             "push_cap_bytes": int(cap_gb * 1e9),
             "min_push_interval_s": a.store_min_push_interval, "campaign": a.store_campaign or a.name,
             "first_start": a.store_first_start, "inputs": doc.get("store_inputs", []),
-            "call_limit": a.store_call_limit_s, "stall_min": a.store_stall_min,
+            "call_limit": a.store_call_limit_s, "stall_min": stall_min,
             "stall_halt": a.store_stall_halt or bool(doc.get("store_stall_halt")),
             "unverified_halt_min": a.store_unverified_halt_min if a.store_unverified_halt_min is not None
             else float(doc.get("store_unverified_halt_min") or 0),
@@ -1195,13 +1215,20 @@ def store_err(e):
 
 
 def store_auth(st, name, e):
-    """The HUB refused home's token (HTTP 401 or 403 on a listing, a manifest or a commit; not the object store's
-    403 after a redirect): said as that, by name, once until a store read from home succeeds again. The runner
+    """The HUB refused home's token (HTTP 401 or 403 on a reply known to be the hub's: hf_store.auth_failure; a
+    listing, a manifest, a commit, the preflight, a mark's fetch): said as that, by name, once until a store read
+    from home succeeds again. A 401 or 403 from an object store or a CDN (a signed address that has expired, on a
+    download after the hub's redirect) is said as that and nothing about the token: the next try gets a new
+    address. The runner
     reads the token file once, when the store is opened, and each courier holds the token its session was given,
     so a new token takes: the file replaced at home (mode 600), this runner ended (its end stops the session with
     confirmation) and started again; the new session gets the new token and resumes from the store. With
     --store-stall-halt the arm is halted when nothing has reached the store for --store-stall-min minutes."""
     import hf_store
+    if hf_store.http_status(e) in (401, 403) and hf_store.reply_side(e) == "object store":
+        log(f"{name}: the refusal (HTTP {hf_store.http_status(e)}) is the object store's, not the hub's: the token is not "
+            "the cause, and the next try is given a new address")
+        return
     if not hf_store.auth_failure(e) or st.d.get("store_auth_failure"):
         return
     st.d["store_auth_failure"] = {"since": time.time(), "http_status": hf_store.http_status(e), "job": name}
@@ -1209,6 +1236,47 @@ def store_auth(st, name, e):
     log(f"{name}: STORE AUTHENTICATION FAILURE at home: the hub refused the token (HTTP {hf_store.http_status(e)}). An "
         f"expired or revoked token reads so on every call, here and on the VM. To mend it: replace the token file "
         f"(mode 600), end this runner and start it again; the new session resumes from the store")
+
+
+def store_left_session(st):
+    """At a start on a state folder that is home: what is up under this folder's name. ("ours", endpoint) when the
+    listing shows a session at the endpoint this folder recorded at its launch; ("other", endpoint) for one at any
+    other endpoint (another runner's, under the same name); ("none", None) when the listing itself answers and
+    holds none; ("unknown", None) when the listing did not answer, three times."""
+    for i in range(3):
+        ep = listed()
+        if ep is not None:
+            return ("ours" if ep == st.d.get("endpoint") else "other"), ep
+        if T.absent():
+            return "none", None
+        time.sleep(min(5, TICK / 48))
+    return "unknown", None
+
+
+def store_jobs_fingerprint(jobs):
+    """The sha256 of the jobs file's job names and specs, in the file's order."""
+    return hashlib.sha256(json.dumps([[j.get("name"), j.get("spec")] for j in jobs], sort_keys=True,
+                                     separators=(",", ":")).encode()).hexdigest()
+
+
+def store_owner(st, name, jobs):
+    """A state folder belongs to one session name and one set of jobs, both recorded in state.json at its first
+    start with the store ("store_name", "store_jobs_sha256"; the session's endpoint is recorded at each launch).
+    A start under another --name is refused: the name is what a stop, a token's removal and the release lock's
+    takeover act on, and a finished folder started under a live arm's name would act on that arm. A start with
+    other jobs on a folder that already has a job home is refused: its `home` flags are of the jobs it ran, and
+    would skip work the new jobs need. Before any session, call or commit."""
+    was = st.d.get("store_name")
+    if was not in (None, name):
+        sys.exit(f"this state folder belongs to the session name {was!r}; refusing --name {name!r} (a state folder keeps "
+                 "one name: start the arm with its own --state-dir, or this folder with its own --name)")
+    fp, had = store_jobs_fingerprint(jobs), st.d.get("store_jobs_sha256")
+    if had not in (None, fp) and any(js.get("home") for js in st.d.get("jobs", {}).values()):
+        sys.exit("this state folder ran other jobs (their names or specs differ from this jobs file's) and has jobs "
+                 "marked home; refusing: its home flags would skip work these jobs need. Use a new --state-dir")
+    if (was, had) != (name, fp):
+        st.d["store_name"], st.d["store_jobs_sha256"] = name, fp
+        st.save()
 
 
 def store_call(fn, limit=None):
@@ -1247,6 +1315,7 @@ def store_preflight(st, jobs):
         st.d["store_preflight_next"] = now + wait
         st.save()
         log(f"store: not readable from home ({store_err(e)}); no session is created; next try in {wait} s (failure {n})")
+        store_auth(st, "preflight", e)
         return False
     st.d["store_preflight_failures"], st.d["store_preflight_next"] = 0, 0
     st.save()
@@ -1403,6 +1472,7 @@ def store_fetch_mark(st, jobs):
         got = store_call(one, max(1800, STORE["call_limit"]))
     except Exception as e:  # noqa: BLE001
         log(f"store marks: {store_err(e)}; will retry")
+        store_auth(st, "marks", e)
         return
     if got:
         name, step, size, sha = got
@@ -1706,24 +1776,43 @@ def store_release(st, jobs, final=False, limit=None):
         return
     now, every = time.time(), STORE["release_every_min"] * 60
     if st.d.get("store_release_next") is None:  # the first one is a full interval after the campaign's start
-        st.d["store_release_next"] = now + every
+        st.d["store_release_next"] = st.d["store_release_regular"] = now + every
         st.save()
+    if not final:
+        store_measure_send(st)  # a measurement that did not reach the VM is sent again, each tick, until it does
     if not final and now < st.d["store_release_next"]:
         return
+    if not final and now >= st.d.get("store_release_regular", 0):  # a regular turn: its one early retry is whole again
+        st.d["store_release_regular"], st.d["store_release_spent"] = now + every, 0
     st.d["store_release_next"] = now + every
     rec = st.d.setdefault("store_releases", {"count": 0, "held": 0, "failed": 0, "objects": 0, "bytes": 0})
     st.save()
-    again = "it stays owed" if final else f"next turn in {every / 60:.0f} min"
     c = {} if final else ((store_vm_read(jobs) or {}).get("courier") or {})
     t0 = time.time()
 
-    def say(msg, why):
-        # A timed release says every outcome. The end's release is tried many times: one line a change of state.
-        key = re.sub(r"\d+", "N", why)
-        if not final or _STORE.get("owed_said") != key:
-            log(msg)
+    def again(sent):
+        """When a release that did not run is tried again, as words; for a timed one the time is set here. sent:
+        commits may have gone out (a failure, a round that ran), so the early retry is one, STORE_RELEASE_RETRY_S
+        later; with nothing sent it is the next tick."""
         if final:
-            _STORE["owed_said"] = key
+            return "it stays owed"
+        if not sent:
+            st.d["store_release_next"] = now
+            return "nothing was sent; tried again at the next tick"
+        if st.d.get("store_release_spent", 0) < 1:
+            st.d["store_release_spent"] = 1
+            st.d["store_release_next"] = now + min(every, STORE_RELEASE_RETRY_S)
+            return f"tried again in {min(every, STORE_RELEASE_RETRY_S) / 60:.0f} min, once"
+        st.d["store_release_next"] = max(now, st.d.get("store_release_regular", now + every))
+        return "its early retry is used; next at its regular turn"
+
+    def say(msg, why):
+        # A release that does not run is tried again and again (at each tick, or through the owed wait): one line
+        # for each change of state, not one a try.
+        slot, key = ("owed_said" if final else "timed_said"), re.sub(r"\d+", "N", why)
+        if _STORE.get(slot) != key:
+            log(msg)
+        _STORE[slot] = key
 
     if final:
         # The debt is in state.json BEFORE the release is attempted: a runner that dies in the call, or after it
@@ -1735,21 +1824,25 @@ def store_release(st, jobs, final=False, limit=None):
         store = store_open(jobs)
         # takeover: a lock that carries this runner's own name was left by a process of it that died (or by an
         # unlock that failed); one runner makes one release at a time, so it is taken again, not waited out.
+        # (takeover, with this call's limit: hf_store.release_report says when a lock of this runner's own name
+        # is taken again.)
         r = store_call(lambda: store.release_report(f"home:{NAME}", grace=STORE["release_grace_s"], essential=final,
-                                                    takeover=True), lim)
+                                                    takeover=lim, now=now), lim)
     except Exception as e:  # noqa: BLE001 a release that fails never ends a driver
         rec["failed"] += 1
         if final:
             st.d["store_release_final_owed"] = f"the release failed ({store_err(e)})"
+        when = again(True)
         st.save()
-        say(f"store: release failed ({store_err(e)}); {again}", "failed " + type(e).__name__)
+        say(f"store: release failed ({store_err(e)}); {when}", "failed " + type(e).__name__)
         return "failed"
     if r["held"]:
         rec["held"] += 1
         if final:
             st.d["store_release_final_owed"] = f"the lock was not taken ({r.get('why')})"
+        when = again("commit was refused" in str(r.get("why")))
         st.save()
-        say(f"store: release: the lock was not taken ({r.get('why') or 'another releaser holds it, or main or the budget gave no room'}); {again}",
+        say(f"store: release: the lock was not taken ({r.get('why') or 'another releaser holds it, or main or the budget gave no room'}); {when}",
             "held " + str(r.get("why")))
         return "held"
     if r.get("ledgers_unread"):
@@ -1758,15 +1851,25 @@ def store_release(st, jobs, final=False, limit=None):
         rec["unread"] = rec.get("unread", 0) + 1
         named = ", ".join(r.get("unread") or []) or f"{r['ledgers_unread']} of them"
         if final:
+            # Counted in state.json, so the allowance of rounds holds across every start of this folder; and a
+            # ledger that is not well formed is kept with its branch's head: no new round until that head moves.
             st.d["store_release_final_owed"] = f"the round ran and {r['ledgers_unread']} ledger(s) could not be read: {named}"
+            st.d["store_release_final_rounds"] = st.d.get("store_release_final_rounds", 0) + 1
+            if r.get("unread_heads"):
+                st.d["store_release_final_malformed"] = r["unread_heads"]
+        when = again(True)
         st.save()
         say(f"store: release: {r['ledgers_unread']} ledger(s) could not be read ({named}); nothing was deleted and the "
-            f"storage guard's count is left as it is; {again}", "ledgers " + named)
+            f"storage guard's count is left as it is; {when}", "ledgers " + named)
         return "ledgers"
+    _STORE["timed_said" if not final else "owed_said"] = None
     if final:  # made: recorded at once, before the measurement is used
-        st.d.pop("store_release_final_owed", None)
+        for k in ("store_release_final_owed", "store_release_final_rounds", "store_release_final_malformed"):
+            st.d.pop(k, None)
         st.d["store_release_final_done"] = True
         st.save()
+    else:
+        st.d["store_release_regular"], st.d["store_release_spent"] = now + every, 0
     names, ns = store_branches(jobs), STORE.get("mark_ns", "")
     import hf_store
     mine = hf_store.campaign_bytes(r, names.values(), [ns + n for n in names])  # each object once
@@ -1788,14 +1891,33 @@ def store_release(st, jobs, final=False, limit=None):
                                      "counted_bytes": mine, "grace_s": STORE["release_grace_s"], "final": final,
                                      "seconds": round(time.time() - t0, 2)}, sort_keys=True))
     if isinstance(c.get("pushed_bytes"), int) and c.get("boot_id"):
-        m = {"seq": seq, "boot_id": c["boot_id"], "bytes": mine, "at_pushed": c["pushed_bytes"], "at": now}
-        try:
-            rc, out = exec_py(STORE_MEASURE_VM.format(m=m), timeout=120)
-        except Exception:  # noqa: BLE001
-            out = ""
-        if "MEASURE_OK" not in (out or ""):
-            log("store: the measurement did not reach the VM; its courier counts on from its own, higher, number")
+        st.d["store_measure_pending"] = {"seq": seq, "boot_id": c["boot_id"], "bytes": mine, "at_pushed": c["pushed_bytes"], "at": now}
+        st.save()
+        store_measure_send(st)
     return "done"
+
+
+def store_measure_send(st):
+    """A release's measurement, to the VM (CHAT/store_measure.json). One that did not arrive is kept in state.json
+    and sent again at each tick until it does: until then the courier counts on from its own, higher, number, and
+    a measurement lost for good would count as a release that never ran. The courier takes it only on the boot it
+    was measured for, so one that arrives after the session was replaced does nothing."""
+    m = st.d.get("store_measure_pending")
+    if not m:
+        return
+    try:
+        rc, out = exec_py(STORE_MEASURE_VM.format(m=m), timeout=120)
+    except Exception:  # noqa: BLE001
+        out = ""
+    if "MEASURE_OK" in (out or ""):
+        st.d.pop("store_measure_pending")
+        st.save()
+        if _STORE.pop("measure_said", None):
+            log("store: the measurement has reached the VM")
+    elif not _STORE.get("measure_said"):
+        _STORE["measure_said"] = True
+        log("store: the measurement did not reach the VM; its courier counts on from its own, higher, number; it is "
+            "sent again at each tick")
 
 
 def store_release_debt(st):
@@ -1810,16 +1932,19 @@ def store_release_debt(st):
 def store_release_owed(st, jobs, stopped=True):
     """The release at the campaign's end, when it is still owed at the runner's end: because its first attempt, made
     in the loop BEFORE the session was stopped, did not run; or because an earlier runner died before or during it
-    or before recording it (main() comes here without creating a session).
+    or before recording it (main() comes here without creating a session). NOT COVERED: a RunPod runner started on a
+    state folder that is home exits earlier, at main()'s "every job is home; nothing to run", and pays no debt; the
+    start-up path is Colab's.
 
     stopped=True (the session's stop is confirmed, so the wait bills nothing): it is tried now and then every
     STORE_FINAL_RELEASE_NAP_S seconds, for STORE_FINAL_RELEASE_WAIT_S in all and no longer: each call is given what
     is left of that time as its limit, and is ended at it. Its lock is essential to home's budget, which lets it
     pass at the latest STORE_HOME_ESSENTIAL_WAIT_S after it first asked. A round that RAN and met a ledger that
     could not be read is tried once more and no further (each round is a lock and an unlock: two commits, up to
-    five), and the loop's own round, when this process made it, counts as the first; with a ledger that is not
-    well formed it is not tried again at all, since that file reads the same in every round. The log has one line
-    for each change of state, not one a try.
+    five), the loop's own round and those of earlier starts counted, in state.json; with a ledger that is not
+    well formed it is not tried again at all until its branch moves (store_release_blocked). A start on a folder
+    in that state makes no commit: it writes the line and ends. The wait is measured on the monotonic clock. The
+    log has one line for each change of state, not one a try.
 
     stopped=False (STOP_UNRESOLVED): nothing is tried; the debt is said.
 
@@ -1828,28 +1953,59 @@ def store_release_owed(st, jobs, stopped=True):
     (store_by_hand). The debt stays in state.json for the next start. Never raises."""
     if not store_release_debt(st):
         return
+    note = "" if stopped else "the session's stop is not confirmed (STOP_UNRESOLVED), so the release was not tried; "
     try:
-        # A round of this same process that ran in the loop and met a ledger counts as the first: one more, or
-        # none when the ledger is not well formed.
-        rounds = 1 if str(_STORE.get("owed_said", "")).startswith("ledgers") else 0
-        if stopped and not (rounds and "not well formed" in str(store_release_debt(st))):
-            end = time.time() + STORE_FINAL_RELEASE_WAIT_S
+        blocked = store_release_blocked(st, jobs) if stopped else None
+        if blocked:
+            note = blocked + "; "
+        elif stopped:
+            end = time.monotonic() + STORE_FINAL_RELEASE_WAIT_S  # monotonic: a clock set back cannot stretch the wait
             log(f"store: the release at the campaign's end is owed ({store_release_debt(st)}); no session bills, and it is "
                 f"tried for at most {STORE_FINAL_RELEASE_WAIT_S:.0f} s")
-            while end - time.time() >= 1:
-                out = store_release(st, jobs, final=True, limit=end - time.time())
+            while end - time.monotonic() >= 1:
+                out = store_release(st, jobs, final=True, limit=end - time.monotonic())
                 if out == "done":
                     return
-                rounds += out == "ledgers"
-                if out == "ledgers" and (rounds >= 2 or "not well formed" in str(st.d.get("store_release_final_owed"))):
+                if out == "ledgers" and store_release_blocked(st, jobs, read=False):
                     break  # it ran, and reads the same again: no more commits are spent on it
-                nap = min(STORE_FINAL_RELEASE_NAP_S, end - time.time() - 1)
+                nap = min(STORE_FINAL_RELEASE_NAP_S, end - time.monotonic() - 1)
                 if nap <= 0:
                     break
                 time.sleep(nap)
-    except Exception as e:  # noqa: BLE001 nothing here may keep the runner from ending, or the line below from being written
+    except Exception as e:  # noqa: BLE001 nothing here may keep the runner from ending
         log(f"store: the release at the campaign's end stopped on an error ({type(e).__name__})")
-    store_by_hand(st, "" if stopped else "the session's stop is not confirmed (STOP_UNRESOLVED), so the release was not tried; ")
+    finally:  # on EVERY way out, a KeyboardInterrupt too: the line, when the debt is still there
+        store_by_hand(st, note)
+
+
+def store_release_blocked(st, jobs, read=True):
+    """Why no further round of the end's release is made, or None. Both reasons are in state.json, so they hold
+    across every start of this state folder (a watchdog that starts a finished runner again spends no commit):
+    - a ledger that was not well formed ("store_release_final_malformed": {branch: its head then}) reads the same
+      in every round. No new round until that branch's head has moved (read here, from the store: a read, not a
+      commit; a read that fails changes nothing) or a person removes the key;
+    - STORE_FINAL_LEDGER_ROUNDS rounds have run and met a ledger that could not be read
+      ("store_release_final_rounds"): no more until a person removes the key."""
+    bad = st.d.get("store_release_final_malformed")
+    if bad:
+        if read:
+            try:
+                store = store_open(jobs)
+                heads = store_call(lambda: {b: store.b.head(b) for b in sorted(bad)})
+            except Exception:  # noqa: BLE001
+                heads = bad
+            if heads != bad:
+                log(f"store: the branch of the ledger that was not well formed has moved ({sorted(bad)}); the release is tried again")
+                st.d.pop("store_release_final_malformed")
+                st.d.pop("store_release_final_rounds", None)
+                st.save()
+                return None
+        return (f"a ledger that is not well formed was met with its branch at {bad}, and no new round is made until that "
+                "head moves or store_release_final_malformed is removed from state.json")
+    if st.d.get("store_release_final_rounds", 0) >= STORE_FINAL_LEDGER_ROUNDS:
+        return (f"{STORE_FINAL_LEDGER_ROUNDS} rounds ran and met a ledger that could not be read, and no more are made until "
+                "store_release_final_rounds is removed from state.json")
+    return None
 
 
 def store_by_hand(st, note=""):
@@ -1941,11 +2097,17 @@ def store_bring_home(st, when):
                  "at": time.time(), "files": {}}
         for name, (size, b64) in sorted(got.items()):
             data = base64.b64decode(b64)
+            whole = len(data) >= size
             if tok:
                 data = data.replace(tok.encode(), b"[token]")
+            if name.endswith(".log"):
+                # A log on the VM can hold a signed address (the library's own warning for a download it resumes,
+                # in boot.log): the query string of every address is removed from what is kept at home.
+                import hf_store
+                data = hf_store.no_query(data.decode("utf-8", "replace")).encode("utf-8")
             with open(os.path.join(dst, name.replace("/", "__")), "wb") as f:
                 f.write(data)
-            index["files"][name] = {"bytes_on_vm": size, "bytes_home": len(data), "whole": len(data) >= size}
+            index["files"][name] = {"bytes_on_vm": size, "bytes_home": len(data), "whole": whole}
         with open(os.path.join(dst, "index.json"), "w") as f:
             json.dump(index, f, indent=1)
         log(f"store: session files home in sessions/{sess} ({when}): {', '.join(sorted(got)) or 'none on the VM'}")
@@ -2338,8 +2500,9 @@ def main():
     ap.add_argument("--store-release-every-min", type=float, default=None,
                     help="minutes between this runner's releases (each costs two commits of the repo's hourly limit). "
                          "Default: the jobs file's \"store_release_every_min\", else 120")
-    ap.add_argument("--store-release-grace-s", type=float, default=7200,
-                    help="release leaves alone what a ledger younger than this names: the time a restore that listed a "
+    ap.add_argument("--store-release-grace-s", type=float, default=None,
+                    help="(default: the jobs file's \"store_release_grace_s\", else 7200) "
+                         "release leaves alone what a ledger younger than this names: the time a restore that listed a "
                          "generation just before its removal has to finish downloading it. Refused under 600")
     ap.add_argument("--store-commit-budget-per-hour", type=int, default=24,
                     help="commits and branch creations an hour ONE VM may send to the store (its courier and data "
@@ -2365,8 +2528,11 @@ def main():
                          "namespace in the store: appended to every job's branch and put before every job's marks, so "
                          "a new attempt under a new name never resumes from an earlier attempt's generations")
     ap.add_argument("--store-call-limit-s", type=float, default=300, help="wall-time limit of one store call from home")
-    ap.add_argument("--store-stall-min", type=float, default=60,
-                    help="say so loudly when a running job's store step has not advanced for this many minutes (0: never)")
+    ap.add_argument("--store-stall-min", type=float, default=None,
+                    help="say so loudly when a running job's store step has not advanced for this many minutes (0: never). "
+                         "Default: the jobs file's \"store_stall_min\", else 60. A rung that holds training (jobs_vm.py: "
+                         "\"exclusive\", up to its \"timeout_s\" of an hour) leaves the job RUNNING with no new "
+                         "generation for that long, so with --store-stall-halt this must be well over an hour")
     ap.add_argument("--store-stall-halt", action="store_true",
                     help="halt the arm on that alarm (STORE_STALLED, through the confirmed stop). It covers pushes that "
                          "do not arrive, whatever the cause (a refused token, 429s, a transport that fails): what is "
@@ -2417,7 +2583,17 @@ def main():
             sys.exit("another runner is live (pid file); refusing")
         except (OSError, ValueError):
             pass
+    # The pid file is read and then written, so two starts at once could both pass it. The state folder's lock
+    # cannot be shared: it is taken here without waiting and held, open, for this process's life.
+    if fcntl is not None:
+        _STORE["runner_lock"] = open(os.path.join(HOME, "runner.lock"), "a")
+        try:
+            fcntl.flock(_STORE["runner_lock"], fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            sys.exit("another runner holds this state folder (runner.lock); refusing")
     st = State()
+    if STORE:
+        store_owner(st, a.name, jobs)
     adopt_home(st, jobs)
     has_rungs = any(j.get("rung_of") for j in jobs)
     if has_rungs:
@@ -2458,15 +2634,26 @@ def main():
     # crash or a kill at the campaign's end, or by a watchdog) creates NO session. It goes straight to the clean-up
     # below, which stops a session an earlier runner left up, and pays what the campaign's end still owes: the
     # release (store_release_owed).
+    # Only a session whose listed endpoint is the one this folder recorded at its launch is this folder's: that one
+    # has its token removed and is stopped. Any other session under the name is left alone. (RunPod is not covered
+    # by this path: its runner exits above, at "every job is home", and pays no debt.)
     home_already = bool(STORE) and bool(jobs) and all(st.d["jobs"].get(j["name"], {}).get("home") for j in jobs)
-    vm_cleanup = True
+    vm_cleanup, stop_wanted, stop_unknown = True, True, False
     try:
         # The first launch is inside the clean-up below too: a failure after the session exists (its preparation,
         # the token's hand-over) still takes the token off the VM and stops the session, with confirmation.
         if home_already:
-            vm_cleanup = listed() is not None
+            left, ep = store_left_session(st)
+            vm_cleanup = stop_wanted = left == "ours"
+            stop_unknown = left == "unknown"
             log("every job is home in this state folder: no session is created"
-                + ("; the session an earlier runner left is stopped" if vm_cleanup else "")
+                + {"ours": "; the session an earlier runner left is stopped",
+                   "none": "; the listing answers and holds no session of this name: no token to remove, nothing to stop",
+                   "other": f"; a session is listed under this name at {ep}, which is NOT the endpoint this folder recorded "
+                            f"({st.d.get('endpoint')}): it is another runner's and is left alone (no token removed, no stop)",
+                   "unknown": f"; THE LISTING DID NOT ANSWER, so it is not known whether the session this folder recorded "
+                              f"({st.d.get('endpoint')}) is still up: its token was NOT removed and it was NOT stopped. "
+                              f"Check `colab sessions`, and stop it by hand if it is there (colab stop -s {NAME})"}[left]
                 + ("; the release at the campaign's end is owed" if STORE["reclaim"] and not st.d.get("store_release_final_done") else ""))
             st.d["campaign_home"] = True
             st.save()
@@ -2657,7 +2844,9 @@ def main():
                 store_bring_home(st, "before the session stops")
             import hf_store
             hf_store.end_children()
-        stopped = stop_session(st, "at the runner's end")
+        # A start on a folder that is home stops only its own session; with a listing that did not answer nothing
+        # was stopped and that is not a confirmed stop.
+        stopped = stop_session(st, "at the runner's end") if stop_wanted else not stop_unknown
         if st.d.get("campaign_home"):
             T.release(st)
         if STORE:

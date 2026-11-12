@@ -1176,6 +1176,73 @@ def test_the_hubs_refusal_of_the_token_is_named_as_an_authentication_failure(tmp
         assert TOKEN not in text
 
 
+def test_a_courier_that_died_between_a_commit_and_its_status_has_its_last_push_checked(tmp_path):
+    """The second reviews of the arms' round: a courier that dies after its commit has landed and before its
+    status is written leaves a generation in the store that is in none of its lists. The courier started again on
+    that boot found `step == head`, pushed nothing and checked nothing: the push was never verified, and the timer
+    the runner halts on ("unverified_since") was never opened. It is checked at the first contact now, and the
+    timer is opened until that check reads whole. A courier with no earlier status on its boot (one the boot
+    starts: a new boot id) takes up nothing and checks nothing it did not push or restore."""
+    pytest.importorskip("huggingface_hub")
+    chat, root, store, c, logs, clock, at = hub_courier(tmp_path, per_hour=100)
+    out = str(chat / "pt")
+    for step in (100, 200):
+        S.make_gen(out, step)
+        c.tick()
+    assert c.s["pt"]["verified"] == {100, 200}
+    # The commit of g300 lands; the courier dies before its check and before its status.
+    S.make_gen(out, 300)
+    ident = {**cc.identity(CFG, str(chat), JOBS["pt"]), "epoch": 1, "boot_id": c.boot}
+    store.push_generation("ckpt-N", "pt", 300, c.stage_generation("pt", 300, c.live("pt")[1]), ident, store.head("ckpt-N")["commit"])
+    st = json.loads((chat / "courier_status.json").read_text())["jobs"]["pt"]
+    assert st["pushed_step"] == 200 and st["verified"] == [100, 200] and st["unverified_since"] is None
+    real = store.listed_whole
+    store.listed_whole = lambda *a, **kw: (_ for _ in ()).throw(ConnectionError("hub unreachable"))
+    again = cc.Courier(store, str(chat), JOBS, BR, log=logs.append, clock=clock, cfg=CFG)
+    assert again.resumed is True
+    again.tick()
+    s = again.s["pt"]
+    assert s["head"] == 300 and list(s["to_verify"]) == [300] and s["unverified_since"] is not None   # owed, and the timer runs
+    assert any("g300, the newest generation in the store, has no check on record from this VM" in ln for ln in logs)
+    assert json.loads((chat / "courier_status.json").read_text())["jobs"]["pt"]["unverified_since"] == s["unverified_since"]
+    assert len(hub_log(root)) == 5                       # the branch, the mark, three saves: g300 was not written again
+    store.listed_whole = real
+    at(clock.t + 31)
+    again.tick()
+    assert s["verified"] == {100, 200, 300} and s["to_verify"] == {} and s["unverified_since"] is None
+    assert stats(logs, "verify")[-1] == {"what": "verify", "job": "pt", "step": 300, "whole": True}
+    # A courier of another boot (the boot writes a new boot id on every run) reads no earlier status: it has
+    # verified what its restore downloaded, takes nothing else for checked and checks nothing it did not push.
+    chat2 = tmp_path / "chat2"
+    (chat2 / "pt").mkdir(parents=True)
+    (chat2 / "store_restore").mkdir()
+    (chat2 / "boot_id").write_text("c" * 32)
+    (chat2 / "store_restore" / "pt.json").write_text(json.dumps({"verified_step": 200, "boot_id": "c" * 32}))
+    S.make_gen(str(chat2 / "pt"), 300)
+    logs2 = []
+    c2 = cc.Courier(store, str(chat2), JOBS, BR, log=logs2.append, clock=clock, cfg={**CFG, "epoch": 2})
+    c2.tick()
+    assert c2.resumed is False and c2.s["pt"]["verified"] == {200} and c2.s["pt"]["to_verify"] == {}
+    assert "boot_base2.sh writes a new boot id on every run" in " ".join(cc.__doc__.split())
+    # A push that the OBJECT STORE refuses (an upload's signed address) is not the token's failure.
+    import requests
+
+    def s3_refuses(**kw):
+        r = requests.Response()
+        r.status_code, r.url = 403, "https://s3.example/presigned/put/abc?X-Amz-Signature=SECRETSIG"
+        e = requests.HTTPError("403 Client Error: Forbidden for url: " + r.url)
+        e.response = r
+        raise e
+
+    store.b.api.create_commit = s3_refuses
+    S.make_gen(out, 400)
+    at(clock.t + 31)
+    again.tick()
+    assert s["auth_failure"] is None and not any("AUTHENTICATION FAILURE" in ln for ln in logs)
+    assert any("generation g400 not pushed" in ln and "[refused by the object store, not by the hub: the token is not the cause]" in ln
+               and "SECRETSIG" not in ln for ln in logs)
+
+
 def test_the_upload_first_fallback_is_said_loudly_once_and_in_every_stat_line(tmp_path):
     """The third reviews: a library that does not take preupload_lfs_files as called sends the commit in the old
     order, with the ledger stamped before the upload, and nothing said so. Now every push that wrote a ledger says

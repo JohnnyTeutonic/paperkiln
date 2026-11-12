@@ -148,7 +148,13 @@ def pins_job(mode):
             "outputs": ["pins.json"]}
 
 
-def arm(a):
+def arm(a, store=None):
+    """Arm a's jobs file. The store's switches come from ARM_STORE, then ARM_STORE_BY_ARM[a], then `store` (a test's):
+    the registration sets them there, so that --check stays equal to what is on disk. A switch that is the
+    runner's own default is not written, so the files do not change until a value does."""
+    sw = {**ARM_STORE, **ARM_STORE_BY_ARM.get(a, {}), **(store or {})}
+    if set(sw) != set(ARM_STORE):
+        raise ValueError(f"unknown store switch: {sorted(set(sw) - set(ARM_STORE))}")
     job = f"pt_base2_{a}"
     corpus = "N" if a == "N" else "S"
     s = spec(a)
@@ -178,10 +184,14 @@ def arm(a):
             # GB counted for the arm (what the store held for it at the last release from home, and what it has
             # pushed since) at which the courier stops pushing and the runner halts the arm. 0 is off. The lead
             # sets it before the arms launch.
-            "store_push_cap_gb": 0,
+            "store_push_cap_gb": sw["store_push_cap_gb"],
             # Minutes between an arm's runner's storage releases (--store-release-every-min reads this when the flag
             # is absent). Each release is two commits of the repository's hourly limit, which the three arms share.
-            "store_release_every_min": ARM_RELEASE_EVERY_MIN,
+            "store_release_every_min": sw["store_release_every_min"],
+            # The other switches of the registration (runner_multi.py reads each when its flag is absent), written
+            # only when they are not the runner's own defaults: the release's grace, the stall halt and its
+            # minutes, the minutes after which pushes with no verified check halt the arm.
+            **{k: sw[k] for k in RUNNER_STORE_DEFAULTS if sw[k] != RUNNER_STORE_DEFAULTS[k]},
             "store_inputs": [SEED_VOCAB, *([SEED_WEIGHTS] if a == "C" else []), corpus_set(corpus), *PANEL_SETS],
             "max_parallel": 1, "max_parallel_light": 1, "jobs": jobs}
 
@@ -238,6 +248,17 @@ GENS_KEPT = 3
 ARM_SESSION_LOSSES = 2
 ARM_RELEASE_GRACE_S = 7200   # runner_multi.py --store-release-grace-s, its default: what the arms run with
 PUSH_CAP_HEADROOM = 0.8      # the sum is held under this share of the cap (as the rehearsal's 28 GB was sized)
+RELEASE_SKEW_S = 120         # hf_store.RELEASE_SKEW_S: a release adds it to the grace
+ARM_MISSED_RELEASES = 2      # timed releases in a row that do not run, which the cap's sum survives
+FINAL_LEDGER_ROUNDS = 2      # runner_multi.STORE_FINAL_LEDGER_ROUNDS: rounds of the end's release that meet an unread ledger
+# The store's switches the registration sets, and where: ARM_STORE for all three arms, ARM_STORE_BY_ARM for one
+# (a push cap differs by arm). arm() writes them into the jobs files, which runner_multi.py reads when the flag is
+# absent; `--check` then compares the files on disk with these values. As they stand: no cap, no halt, the
+# release every two hours with the runner's default grace. THE LEAD SETS THEM AT REGISTRATION.
+RUNNER_STORE_DEFAULTS = {"store_release_grace_s": 7200, "store_stall_halt": False, "store_stall_min": 60,
+                         "store_unverified_halt_min": 0}   # runner_multi.py's own, when neither flag nor key is given
+ARM_STORE = {"store_push_cap_gb": 0, "store_release_every_min": ARM_RELEASE_EVERY_MIN, **RUNNER_STORE_DEFAULTS}
+ARM_STORE_BY_ARM = {"N": {}, "S": {}, "C": {}}
 
 
 def gens_kept_max(losses=ARM_SESSION_LOSSES):
@@ -245,14 +266,23 @@ def gens_kept_max(losses=ARM_SESSION_LOSSES):
     return GENS_KEPT + losses
 
 
-def home_commits_worst(release_every_min, ledger_retry=False):
-    """One runner's worst rolling hour at home: every timed release that fits in an hour and the release at the
-    campaign's end, each at HOME_RELEASE_COMMITS_WORST. 10 at the arms' two hours; inside HOME_COMMIT_BUDGET.
-    ledger_retry: one round more, which the end's release is allowed after the stop when its round ran and a
-    ledger did not read (runner_multi.store_release_owed): 15. Past the budget of 12 only through the waits the
-    budget itself gives an essential commit and a forced unlock."""
+def home_commits_worst(release_every_min):
+    """Home's part of the modelled bad hour: every timed release that fits in an hour and the release at the
+    campaign's end, each at HOME_RELEASE_COMMITS_WORST. 10 at the arms' two hours; inside HOME_COMMIT_BUDGET."""
     timed = -(-60 // release_every_min) if release_every_min else 0
-    return HOME_RELEASE_COMMITS_WORST * (int(timed) + 1 + (1 if ledger_retry else 0))
+    return HOME_RELEASE_COMMITS_WORST * (int(timed) + 1)
+
+
+def home_commits_rolling(release_every_min, unlock_tries=4):
+    """One runner's worst rolling hour at home as the runner now stands, in whole commits. Timed: each turn that
+    fits in the hour and the ONE early retry a turn has when its round failed or met a ledger it could not read
+    (runner_multi.STORE_RELEASE_RETRY_S; a round that was held sends nothing), but never more than the budget,
+    below whose reserve a timed lock is admitted. The end: FINAL_LEDGER_ROUNDS rounds, which is all the end's
+    release makes when a ledger does not read, across every start of the state folder. A round is a lock and an
+    unlock sent `unlock_tries` times: 5 at the worst, 2 when the unlock lands at once. 20 at the arms' two hours."""
+    per = 1 + unlock_tries
+    timed = -(-60 // release_every_min) if release_every_min else 0
+    return int(min(HOME_COMMIT_BUDGET, 2 * per * int(timed)) + FINAL_LEDGER_ROUNDS * per)
 
 
 def commits_per_hour(doc, step_s, release_every_min):
@@ -291,14 +321,16 @@ def commits_per_hour_bad_model(doc, step_s, release_every_min):
 def commits_rolling_hour(doc, step_s, release_every_min):
     """One ROLLING HOUR of the same jobs file with everything in it at once, in whole commits: the saves that fit
     in an hour, rounded up; one mark; each of those sent twice; the branch created again after a lost session,
-    tried twice; and at home a timed release, the release at the campaign's end and the one more round that
-    release is allowed when a ledger did not read, each a lock and an unlock sent four times. Still a model: it
-    takes one retry a commit, and the hub's own count is the only thing that bounds the repository.
-    {"saves", "marks", "sent_twice", "branch", "home", "total"}."""
+    tried twice; and at home home_commits_rolling(): a timed release with its one early retry, and the two rounds
+    the end's release has when a ledger does not read, each a lock and an unlock sent four times. Still a model:
+    it takes one retry a commit, and the hub's own count is the only thing that bounds the repository.
+    {"saves", "marks", "sent_twice", "branch", "home", "total"}, and "total_if_unlocks_land_at_once": the same
+    hour with every unlock taken at its first try (home's rounds at two commits each)."""
     saves = max(math.ceil(3600 / (j["spec"]["train"]["checkpoint_every"] * step_s)) for j in doc["jobs"] if "spec" in j)
     out = {"saves": saves, "marks": 1, "sent_twice": 2 * (saves + 1), "branch": 2,
-           "home": home_commits_worst(release_every_min, ledger_retry=True)}
+           "home": home_commits_rolling(release_every_min)}
     out["total"] = out["sent_twice"] + out["branch"] + out["home"]
+    out["total_if_unlocks_land_at_once"] = out["sent_twice"] + out["branch"] + home_commits_rolling(release_every_min, unlock_tries=1)
     return out
 
 
@@ -307,50 +339,63 @@ def gen_gb(shape):
     return 3 * PARAMS[shape] * 4 / 1e9
 
 
-def push_cap_gb(shape, checkpoint_every, step_s, marks, release_every_min, grace_s, losses=ARM_SESSION_LOSSES):
-    """What the storage guard can count for ONE campaign on one branch while everything works, and the cap that
-    leaves it PUSH_CAP_HEADROOM: in generations,
-        kept     3 + losses on the branch (gens_kept_max);
-        removed  removed and not yet deletable: a release leaves what a ledger younger than the grace names, so a
-                 removed generation stays stored, and counted, for the grace and one release interval:
-                 int((grace + release) / save) + 1;
-        since    pushed since the release that last measured, one of them counted twice: int(release / save) + 2;
-    and every mark's weights (a third of a generation each; marks are never removed). The guard counts this
-    campaign's share, each object once, not the account's usage. Under the cap a run that works never stops; a
-    run whose checks stay unread or not whole removes nothing, grows by a generation a save, and is stopped by the
-    cap after about (cap - counted) / generation saves."""
+def push_cap_gb(shape, checkpoint_every, step_s, marks, release_every_min, grace_s, losses=ARM_SESSION_LOSSES,
+                missed_releases=ARM_MISSED_RELEASES):
+    """The most the storage guard counts for ONE campaign on one branch while saves, checks and prunes work, and
+    the cap that leaves it PUSH_CAP_HEADROOM. The guard's count is what the last release that RAN measured for the
+    campaign plus everything pushed since; only a release that ran sets it back. In generations:
+        kept     on the branch: 3 + losses (gens_kept_max);
+        removed  removed and still stored when that release measured: it deletes what every ledger older than the
+                 grace plus RELEASE_SKEW_S names, so what is younger stays: int((grace + skew) / save) + 1;
+        since    pushed since that release, through `missed_releases` turns in a row that did not run (held, failed,
+                 an unread ledger; the runner tries such a turn again within minutes, so this is slack), one of
+                 them counted twice: int((1 + missed) * release / save) + 2;
+    and every mark's weights (a third of a generation each; marks are never removed). Sizing assumptions, not
+    bounds: a release measures within one save, saves come at the probe's step time, and the count is this
+    campaign's share, each object once, not the account's usage (the caps reserve nothing there). A run whose
+    checks stay unread or not whole removes nothing, grows by a generation a save, and is stopped by the cap after
+    about (cap - counted) / generation saves, or sooner by runner_multi.py --store-unverified-halt-min."""
     g, save_s, release_s = gen_gb(shape), checkpoint_every * step_s, release_every_min * 60
-    out = {"gen_gb": round(g, 3), "kept": gens_kept_max(losses), "removed": int((grace_s + release_s) / save_s) + 1,
-           "since": int(release_s / save_s) + 2, "marks": marks}
+    out = {"gen_gb": round(g, 3), "kept": gens_kept_max(losses), "removed": int((grace_s + RELEASE_SKEW_S) / save_s) + 1,
+           "since": int((1 + missed_releases) * release_s / save_s) + 2, "marks": marks}
     out["counted_gb"] = round((out["kept"] + out["removed"] + out["since"]) * g + marks * g / 3, 1)
     out["suggested_cap_gb"] = math.ceil(out["counted_gb"] / PUSH_CAP_HEADROOM)
     return out
 
 
-def rates():
+def rates(release_every_min=None, grace_s=None, losses=ARM_SESSION_LOSSES, missed_releases=ARM_MISSED_RELEASES):
     """The arms' commit figures and suggested push caps, from the jobs as this file makes them and the probe's
-    step times. `make_base2.py --rates` prints it. The caps are a suggestion for the lead: the arms' files carry 0."""
+    step times, at a release interval and a grace (default: the arms' own, as arm() writes them).
+    `make_base2.py --rates [--release-every-min M] [--grace-s S] [--missed-releases N] [--session-losses N]` prints
+    it; nothing is written. The caps are a suggestion for the lead."""
     step_s = {"N": STEP_S, "S": STEP_S, "C": STEP_S_A}
-    per, caps = {}, {}
+    per, caps, used = {}, {}, {}
     for a in ("N", "S", "C"):
         doc = files()[f"base2_{a}.json"]
         j = next(j for j in doc["jobs"] if "spec" in j)
-        every = doc["store_release_every_min"]
+        every = release_every_min or doc["store_release_every_min"]
+        grace = grace_s or doc.get("store_release_grace_s", ARM_RELEASE_GRACE_S)
+        used[a] = {"release_every_min": every, "release_grace_s": grace}
         per[a] = {"steady": commits_per_hour(doc, step_s[a], every), "bad_model": commits_per_hour_bad_model(doc, step_s[a], every),
                   "rolling": commits_rolling_hour(doc, step_s[a], every)}
         caps[a] = push_cap_gb(doc["_base2"]["shape"], j["spec"]["train"]["checkpoint_every"], step_s[a],
-                              len(j.get("snapshot_steps", [])), every, ARM_RELEASE_GRACE_S)
-    return {"commits_an_hour_three_arms": {
+                              len(j.get("snapshot_steps", [])), every, grace, losses, missed_releases)
+    return {"settings": used,
+            "commits_an_hour_three_arms": {
                 "steady_state_average": round(sum(p["steady"]["total"] for p in per.values()), 1),
                 "modelled_bad_hour_from_average_rates": round(sum(p["bad_model"] for p in per.values()), 1),
                 "rolling_hour_whole_commits_everything_at_once": sum(p["rolling"]["total"] for p in per.values()),
+                "rolling_hour_if_every_unlock_lands_at_once": sum(p["rolling"]["total_if_unlocks_land_at_once"] for p in per.values()),
                 "per_writer_ceilings_summed": 3 * COURIER_COMMIT_BUDGET + 3 * HOME_COMMIT_BUDGET,
                 "hub_limit": HUB_COMMITS_PER_HOUR},
             "per_arm": per,
             "generations_kept": {"rule": "three plus one for each session loss between two verified saves",
-                                 "losses_taken": ARM_SESSION_LOSSES, "kept": gens_kept_max()},
+                                 "losses_taken": losses, "kept": gens_kept_max(losses)},
+            "missed_releases_taken": missed_releases,
             "suggested_store_push_cap_gb": {a: c["suggested_cap_gb"] for a, c in caps.items()},
-            "push_cap_sum": caps, "release_grace_s": ARM_RELEASE_GRACE_S, "headroom": PUSH_CAP_HEADROOM}
+            "counted_gb_three_arms": round(sum(c["counted_gb"] for c in caps.values()), 1),
+            "caps_gb_three_arms": sum(c["suggested_cap_gb"] for c in caps.values()),
+            "push_cap_sum": caps, "headroom": PUSH_CAP_HEADROOM}
 
 
 REH_STEPS = 2000
@@ -455,8 +500,14 @@ def text(obj):
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    if "--rates" in argv:  # the arms' three commit figures and the suggested push caps; nothing is written
-        print(json.dumps(rates(), indent=1))
+    if "--rates" in argv:  # the arms' commit figures and the suggested push caps, at given settings; nothing is written
+        def opt(name, kind):
+            return kind(argv[argv.index(name) + 1]) if name in argv else None
+        kw = {"release_every_min": opt("--release-every-min", float), "grace_s": opt("--grace-s", float)}
+        for name, key in (("--missed-releases", "missed_releases"), ("--session-losses", "losses")):
+            if opt(name, int) is not None:
+                kw[key] = opt(name, int)
+        print(json.dumps(rates(**kw), indent=1))
         return 0
     check = "--check" in argv
     bad = []
