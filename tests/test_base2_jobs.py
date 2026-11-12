@@ -438,9 +438,16 @@ def test_the_registrations_store_switches_are_set_in_make_base2_and_the_files_do
     import hf_store
     assert M.ARM_STORE == {"store_push_cap_gb": 0, "store_release_every_min": 120, "store_release_grace_s": 7200,
                            "store_stall_halt": False, "store_stall_min": 60, "store_unverified_halt_min": 0,
-                           "store_release_offset_min": 0}
+                           "store_release_offset_min": 0, "store_no_progress_min": 0}
     assert M.ARM_STORE_BY_ARM == {"N": {}, "S": {}, "C": {}}
-    keys = ("store_release_grace_s", "store_stall_halt", "store_stall_min", "store_unverified_halt_min", "store_release_offset_min")
+    keys = ("store_release_grace_s", "store_stall_halt", "store_stall_min", "store_unverified_halt_min", "store_release_offset_min",
+            "store_no_progress_min")
+    # The no-progress halt (the fourth reviews): a switch like the others; 0 leaves the runner's own default, which
+    # with the stall halt on is the stall's minutes, the boot limit and 15 more: 210 at a stall of 120.
+    assert M.arm("N", store={"store_no_progress_min": 240})["store_no_progress_min"] == 240
+    src = (CC / "runner_multi.py").read_text()
+    assert 'doc.get("store_no_progress_min")' in src and "stall_min + a.store_boot_limit_min + 15" in src
+    assert '"--store-boot-limit-min", type=float, default=75' in src and 120 + 75 + 15 == 210
     # The release offset (the third reviews): a per-arm switch like the cap; the runner reads it from the jobs file.
     assert M.arm("S", store={"store_release_offset_min": 20})["store_release_offset_min"] == 20
     assert 'doc.get("store_release_offset_min")' in (CC / "runner_multi.py").read_text()
@@ -530,20 +537,27 @@ def test_three_arms_on_one_repo_stay_far_under_the_hubs_commit_limit():
     # that are all the end's release makes when a ledger does not read, counted across every start.
     roll = {arm: M.commits_rolling_hour(load(f"base2_{arm}.json"), step_s[arm], M.ARM_RELEASE_EVERY_MIN) for arm in ARMS}
     assert {a: (x["saves"], x["marks"], x["sent_twice"], x["branch"], x["home"], x["total"]) for a, x in roll.items()} == {
-        "N": (7, 1, 16, 2, 12, 30), "S": (7, 1, 16, 2, 12, 30), "C": (10, 1, 22, 2, 12, 36)}
-    assert (M.home_commits_rolling(120), M.home_commits_rolling(60), M.home_commits_rolling(30)) == (12, 12, 18)
-    assert M.home_commits_rolling(120, unlock_tries=1) == 8 and M.FINAL_LEDGER_ROUNDS == 2
+        "N": (7, 1, 16, 2, 16, 34), "S": (7, 1, 16, 2, 16, 34), "C": (10, 1, 22, 2, 16, 40)}
+    assert all((x["home_timed_cap_by_the_budget"], x["home_final_rounds"]) == (10, 6) for x in roll.values())   # printed
+    # The fourth reviews of the arms' round: the model counted a runner's timed commits by its turns (a turn and its
+    # early retry: 6), and with the turns anchored a late round, its retry, the next turn and that turn's retry can
+    # share an hour. It now takes what the BUDGET allows, which a count of turns cannot understate: a timed lock is
+    # admitted while the hour's count is at most 12 - 3 - 2 = 7, and its round sends at most three: 10. With the
+    # end's two rounds: 16, whatever the interval and the offsets.
+    assert M.HOME_BUDGET_RESERVE == 3 == hf_store.CommitBudget(M.HOME_COMMIT_BUDGET).reserve and M.home_timed_cap() == 10
+    assert (M.home_commits_rolling(120), M.home_commits_rolling(60), M.home_commits_rolling(30)) == (16, 16, 16)
+    assert M.home_commits_rolling(120, unlock_tries=1) == 13 and M.FINAL_LEDGER_ROUNDS == 2
     runner = (CC / "runner_multi.py").read_text()
     assert "STORE_FINAL_LEDGER_ROUNDS = 2" in runner and "STORE_RELEASE_RETRY_S = 600" in runner
     rolling = sum(x["total"] for x in roll.values())
-    assert rolling == 2 * (7 + 7 + 10 + 3) + 3 * 2 + 3 * 12 == 96 < M.HUB_COMMITS_PER_HOUR
-    # 96 of the hub's 128 (it was 120 with four unlock sends) is the hour in which every save is sent twice, every
-    # arm loses a session, every home round runs at its worst and every unlock is sent twice. Under the summed
+    assert rolling == 2 * (7 + 7 + 10 + 3) + 3 * 2 + 3 * 16 == 108 < M.HUB_COMMITS_PER_HOUR
+    # 108 of the hub's 128 is the hour in which every save is sent twice, every arm loses a session, and every
+    # runner's home sends all its budget allows its timed releases and both of its end's rounds. Equal to the summed
     # ceilings (108); only the hub's 429 bounds the repository.
     assert M.rates()["commits_an_hour_three_arms"] == {
         "steady_state_average": 26.1, "modelled_bad_hour_from_average_rates": 70.2,
-        "rolling_hour_whole_commits_everything_at_once": 96, "rolling_hour_without_the_offsets": 96,
-        "rolling_hour_if_every_unlock_lands_at_once": 84, "timed_release_turns_in_one_hour": 3,
+        "rolling_hour_whole_commits_everything_at_once": 108, "rolling_hour_without_the_offsets": 108,
+        "rolling_hour_if_every_unlock_lands_at_once": 99, "timed_release_turns_in_one_hour": 3,
         "per_writer_ceilings_summed": 108, "hub_limit": 128}
     assert M.rates(60, 7200)["commits_an_hour_three_arms"]["steady_state_average"] == 29.1
     # The arms' release turns set off from each other (0, a third and two thirds of the interval; anchored, so the
@@ -552,18 +566,19 @@ def test_three_arms_on_one_repo_stay_far_under_the_hubs_commit_limit():
     assert (M.timed_turns_in_an_hour(120, [0, 0, 0]), M.timed_turns_in_an_hour(120, [0, 40, 80])) == (3, 2)
     assert (M.timed_turns_in_an_hour(60, [0, 0, 0]), M.timed_turns_in_an_hour(60, [0, 20, 40])) == (3, 3)
     c120 = M.rates(120, 7200, offsets_min=[0, 40, 80])["commits_an_hour_three_arms"]
-    assert (c120["rolling_hour_whole_commits_everything_at_once"], c120["rolling_hour_without_the_offsets"]) == (90, 96)
+    assert (c120["rolling_hour_whole_commits_everything_at_once"], c120["rolling_hour_without_the_offsets"]) == (108, 108)
+    assert c120["timed_release_turns_in_one_hour"] == 2          # what the offsets change: the turns that share an hour
     for grace in (7200, 3600):
         c60 = M.rates(60, grace, offsets_min=[0, 20, 40])
         assert c60["settings"]["S"] == {"release_every_min": 60, "release_grace_s": grace, "release_offset_min": 20}
         assert (c60["commits_an_hour_three_arms"]["rolling_hour_whole_commits_everything_at_once"],
-                c60["commits_an_hour_three_arms"]["rolling_hour_without_the_offsets"]) == (96, 96)
+                c60["commits_an_hour_three_arms"]["rolling_hour_without_the_offsets"]) == (108, 108)
     import io
     import contextlib
     out = io.StringIO()
     with contextlib.redirect_stdout(out):
         assert M.main(["--rates", "--release-every-min", "120", "--release-offsets-min", "0,40,80"]) == 0   # nothing is written
-    assert json.loads(out.getvalue())["commits_an_hour_three_arms"]["rolling_hour_whole_commits_everything_at_once"] == 90
+    assert json.loads(out.getvalue())["commits_an_hour_three_arms"]["rolling_hour_whole_commits_everything_at_once"] == 108
     # Each writer's own ceiling (per writer, not per repository): the defaults of the courier and of
     # runner_multi.py. Summed over three arms they stay under the hub's limit, and the steady state is inside each.
     # Home's budget was 8 until the rerun of 12 Nov 2026, where the release at the campaign's end found no room.

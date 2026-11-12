@@ -216,16 +216,23 @@ def stop_session(st, why, lose=False):
             return True
         log(f"stop ({why}) returned {rc} and {NAME} is not known to be gone (try {i + 1} of {STOP_TRIES})")
         time.sleep(min(10, TICK / 24))
+    stop_unresolved(st, why, return_code=rc, tries=STOP_TRIES)
+    log(f"STOP_UNRESOLVED: the stop of session {NAME} ({why}) failed {STOP_TRIES} times (return code {rc}) and the session "
+        f"is not known to be gone. IT MAY STILL BE BILLING. Stop it by hand: colab stop -s {NAME}")
+    return False
+
+
+def stop_unresolved(st, why, **more):
+    """The STOP_UNRESOLVED record in the state folder: a session under this folder's name may be up and billing, and
+    this runner has not stopped it. Whoever starts the folder next takes a session listed under the name for its
+    own and stops it (store_left_session); a stop that succeeds moves the record to STOP_RESOLVED."""
     rec = {"kind": "STOP_UNRESOLVED", "session": NAME, "endpoint": st.d.get("endpoint"), "launch": st.d.get("launches"),
-           "why": why, "return_code": rc, "tries": STOP_TRIES, "at": time.time(),
+           "why": why, **more, "at": time.time(),
            "do": f"the session may still be running and billing: stop it by hand (colab stop -s {NAME}) and check the listing"}
     with open(os.path.join(HOME, "STOP_UNRESOLVED"), "w") as handle:
         json.dump(rec, handle, indent=1)
         handle.flush()
         os.fsync(handle.fileno())
-    log(f"STOP_UNRESOLVED: the stop of session {NAME} ({why}) failed {STOP_TRIES} times (return code {rc}) and the session "
-        f"is not known to be gone. IT MAY STILL BE BILLING. Stop it by hand: colab stop -s {NAME}")
-    return False
 
 
 def listed():
@@ -840,6 +847,7 @@ def launch(st, commit, jobs_rel, jobs, uploads):
     st.d["booted"] = False
     if STORE:
         store_stall_reset(st, jobs)  # a new session: what the old one's loss and this one's boot take is no stall
+        store_no_progress(st, jobs, start=True)  # the clock that launches do NOT reset starts at the first of them
     st.save()
     log(f"session up, endpoint {st.d['endpoint']} (launch {st.d['launches']})")
     return prepare(st, commit, jobs_rel, jobs, uploads)
@@ -1112,9 +1120,15 @@ STORE_FINAL_RELEASE_WAIT_S = 1200
 STORE_FINAL_RELEASE_NAP_S = 30
 STORE_FINAL_RELEASE_FAILED_NAP_S = 300  # after a round that failed (it may have sent its commits): not 30 s
 STORE_HOME_ESSENTIAL_WAIT_S = 900  # hf_store.ESSENTIAL_WAIT_S, for home's budget
-# A round of the end's release that ran and met a ledger it could not read: this many in all, counted in state.json
-# across every start of this state folder ("store_release_final_rounds").
+# Rounds of the end's release that are begun and not recorded as made, this many in all, counted in state.json
+# across every start of this state folder ("store_release_final_rounds"): a round is counted BEFORE it is made and
+# given back only when nothing was sent (held by another's lock or the budget, or ended at its limit before it had
+# the lock). So a round that met a ledger it could not read counts, one that failed after its lock counts, and so
+# does one in which the runner died.
 STORE_FINAL_LEDGER_ROUNDS = 2
+# No call of the end's release is started with less than this of the owed wait left: a call ended at a limit of a
+# few seconds has done nothing, and could be taken for a round.
+STORE_FINAL_RELEASE_MIN_CALL_S = 120
 # A TIMED release that did not run is not left for a full interval (the storage guard's count is only reset by a
 # release that ran, so two missed turns in a row can carry a healthy arm past its push cap). One that was held (no
 # commit was sent: another runner's lock, or no room in the budget) is tried again at the next tick; one that failed
@@ -1176,6 +1190,11 @@ def store_config(a, ap):
             "first_start": a.store_first_start, "inputs": doc.get("store_inputs", []),
             "call_limit": a.store_call_limit_s, "stall_min": stall_min,
             "stall_halt": a.store_stall_halt or bool(doc.get("store_stall_halt")),
+            # The clock no launch resets: with the stall halt on, its default is the stall's minutes, a boot at its
+            # limit, and 15 more; 0 without the stall halt (store_no_progress).
+            "no_progress_min": a.store_no_progress_min if a.store_no_progress_min is not None
+            else float(doc.get("store_no_progress_min") or 0)
+            or ((stall_min + a.store_boot_limit_min + 15) if (a.store_stall_halt or doc.get("store_stall_halt")) and stall_min else 0),
             "unverified_halt_min": a.store_unverified_halt_min if a.store_unverified_halt_min is not None
             else float(doc.get("store_unverified_halt_min") or 0),
             "settle_min": a.store_settle_min, "boot_limit_min": a.store_boot_limit_min,
@@ -1245,8 +1264,11 @@ def store_auth(st, name, e):
 
 def store_clean_log(path):
     """A log that came home from a VM by itself (boot.log after a failed boot): the token's text and the query string
-    of every address (a signed one, in the library's warning for a download it resumes) are removed in place. Never
-    raises."""
+    of every address (a signed one, in the library's warning for a download it resumes) are removed in place. A
+    rewrite that fails is said in one line, and the raw file is REMOVED, not left: what stays at home is the
+    cleaned file or none. Never raises."""
+    if not os.path.exists(path):
+        return
     try:
         import hf_store
         tok = _STORE["store"].b.token if "store" in _STORE else None
@@ -1257,8 +1279,15 @@ def store_clean_log(path):
         with open(path + ".tmp", "wb") as f:
             f.write(hf_store.no_query(data.decode("utf-8", "replace")).encode("utf-8"))
         os.replace(path + ".tmp", path)
-    except OSError:
-        pass
+    except Exception as e:  # noqa: BLE001
+        for p in (path, path + ".tmp"):
+            try:
+                os.remove(p)
+            except OSError:
+                pass
+        left = " IT COULD NOT BE REMOVED EITHER: remove it by hand" if os.path.exists(path) else ""
+        log(f"store: {os.path.basename(path)} could not be cleaned of signed addresses ({type(e).__name__}); the raw file is "
+            f"removed, not kept{left}")
 
 
 def store_stall_reset(st, jobs):
@@ -1472,7 +1501,9 @@ def store_progress(st, jobs, name):
     new generation. Every launch starts the clock again (store_stall_reset), so the minutes it took to notice a
     lost session, to create the next one and to boot it are not in it. What can be in it on a healthy arm: the
     first save after the resume (one save interval) and a rung that holds training (jobs_vm.py's "exclusive": up
-    to its timeout of an hour, and five minutes more): about 85 minutes, so 120 is the least a stall halt takes."""
+    to its timeout of an hour, and five minutes more): about 85 minutes, so 120 is the least a stall halt takes.
+    So this halt covers pushes that do not arrive WITHIN ONE SESSION, while the job reads RUNNING. It does not see
+    an arm whose sessions are lost again and again before a save: that is store_no_progress()'s."""
     js, now = st.job(name), time.time()
     js.setdefault("store_seen_at", now)
     try:
@@ -1487,6 +1518,7 @@ def store_progress(st, jobs, name):
             log(f"{name}: the store answers home's token again")
     if step is not None and step > js["relayed_step"]:
         js["relayed_step"], js["store_seen_at"] = step, now
+        js["store_progress_at"] = now  # the clock no launch resets (store_no_progress): the store has a new generation
         st.save()
         log(f"{name}: the store holds its generation at step {step}")
         return
@@ -1497,6 +1529,42 @@ def store_progress(st, jobs, name):
             "the job runs; a session lost now loses that much training")
         if STORE["stall_halt"]:
             store_halt("STORE_STALLED", job=name, step=js["relayed_step"], minutes=round(idle))
+            raise SystemExit(3)
+
+
+def store_no_progress(st, jobs, start=False):
+    """The halt for an arm that bills and stores nothing ACROSS sessions. A second clock for each store job,
+    "store_progress_at" in state.json, which NO LAUNCH RESETS: it is set when the job's first session is launched
+    (start=True, from launch()) and whenever the store's newest generation for the job advances (store_progress).
+    With the stall halt on, and whether or not the job reads RUNNING (a session lost in its boot never does), the
+    campaign halts by name, STORE_NO_PROGRESS, through the confirmed stop, when that clock passes
+    --store-no-progress-min; main() checks it at the top of every tick, before any session is created, so no
+    further session follows. A job that has FINISHED on the VM is the settle window's, not this clock's.
+
+    The default, with the stall halt on: --store-stall-min + --store-boot-limit-min + 15 (210 minutes at a stall of
+    120 and the boot limit of 75). Against a rung that holds training, at a save every 9 to 10 minutes, a hold of at
+    most 65 and a loss noticed within 21 (three silent ticks, and a stop):
+    - no loss: a save, the hold, a save: about 85 minutes;
+    - a loss, and the rung holds training again on the resume: 10 + 21 + boot + 65 + 10: 121 with a boot of 15
+      minutes, 181 with one that takes the whole limit of 75;
+    - a loss at the END of a hold, and the rung held again on the resume: 65 + 21 + boot + 65 + 10: 176 with a boot
+      of 15 minutes; 236 with a boot of 75, which is over 210. So this last case does not trip it while the boot
+      takes under 49 minutes; a boot slower than that, after a loss at the end of a hold, would. The registration
+      can give the clock more with --store-no-progress-min."""
+    lim, now = STORE.get("no_progress_min") or 0, time.time()
+    for n in store_branches(jobs):
+        js = st.job(n)
+        if start:
+            js.setdefault("store_progress_at", now)
+            continue
+        at = js.get("store_progress_at")
+        if not lim or at is None or js.get("home") or js.get("status") == "FINISHED":
+            continue
+        if now - at > lim * 60:
+            store_halt("STORE_NO_PROGRESS", job=n, step=js.get("relayed_step"), minutes=round((now - at) / 60), limit_min=lim,
+                       launches=st.d.get("launches"),
+                       why="no new generation of this job has reached the store for that long, over every session it had "
+                           "(sessions lost before a save, or in their boot); no further session is created")
             raise SystemExit(3)
 
 
@@ -1791,28 +1859,55 @@ def store_guard(st, jobs, vm):
 # figure it carries) and has a sequence number: it is written only on that boot, and only over a file of a lower
 # sequence, so a call that was delayed and arrives after a newer measurement cannot put the older one back (the
 # courier would lose the newer reset and count too much). The file is written whole and renamed into place.
+# "That boot" is the COURIER'S own boot id, as its status file carries it: the id the courier read when it started
+# and tells the measurement by. Not CHAT/boot_id: the boot rewrites that file on every run of it, also when it
+# finds its jobs running and starts no new courier, and every measurement after that would be dropped as another
+# boot's. The read, the comparison and the replacement are ONE step, under a lock file on the VM: a writer that
+# has read the file and is paused cannot replace a newer one that was written in between. The courier reads
+# without the lock (the rename gives it a whole file either way).
 STORE_MEASURE_VM = (
-    "import json, os\n"
+    "import fcntl, json, os\n"
     "c = '/content/chat'\n"
     "m, p = {m!r}, c + '/store_measure.json'\n"
-    "try:\n"
-    "    boot = open(c + '/boot_id').read().strip()\n"
-    "except OSError:\n"
-    "    boot = None\n"
-    "try:\n"
-    "    old = json.load(open(p))\n"
-    "except (OSError, ValueError):\n"
-    "    old = None\n"
-    "if boot != m['boot_id']:\n"
-    "    print('MEASURE_OTHER_BOOT')\n"
-    "elif isinstance(old, dict) and old.get('boot_id') == m['boot_id'] and isinstance(old.get('seq'), int) and old['seq'] >= m['seq']:\n"
-    "    print('MEASURE_OLDER')\n"
-    "else:\n"
-    "    tmp = p + '.tmp%d' % os.getpid()\n"
-    "    with open(tmp, 'w') as f:\n"
-    "        json.dump(m, f)\n"
-    "    os.replace(tmp, p)\n"
-    "    print('MEASURE_OK')\n")
+    "with open(c + '/store_measure.lock', 'a') as lock:\n"
+    "    fcntl.flock(lock, fcntl.LOCK_EX)\n"
+    "    try:\n"
+    "        courier = json.load(open(c + '/courier_status.json')).get('boot_id')\n"
+    "    except (OSError, ValueError, AttributeError):\n"
+    "        courier = None\n"
+    "    try:\n"
+    "        old = json.load(open(p))\n"
+    "    except (OSError, ValueError):\n"
+    "        old = None\n"
+    "    if courier is None:\n"
+    "        print('MEASURE_NO_COURIER')\n"
+    "    elif courier != m['boot_id']:\n"
+    "        print('MEASURE_OTHER_BOOT')\n"
+    "    elif isinstance(old, dict) and old.get('boot_id') == m['boot_id'] and isinstance(old.get('seq'), int) and old['seq'] >= m['seq']:\n"
+    "        print('MEASURE_OLDER')\n"
+    "    else:\n"
+    "        tmp = p + '.tmp%d' % os.getpid()\n"
+    "        with open(tmp, 'w') as f:\n"
+    "            json.dump(m, f)\n"
+    "        os.replace(tmp, p)\n"
+    "        print('MEASURE_OK')\n")
+
+
+def store_release_turn(now):
+    """The first regular release turn after `now`: the next multiple of the interval since the epoch, plus this
+    arm's offset (--store-release-offset-min). The same turns whenever the runner is started."""
+    every, off = STORE["release_every_min"] * 60, STORE.get("release_offset_min", 0) * 60
+    return (math.floor((now - off) / every) + 1) * every + off
+
+
+def store_release_lock_is_ours(jobs):
+    """True when main holds a release lock of this runner's own name, or when that could not be read (the cautious
+    answer for a call of the end's release that was ended at its limit: it may then have had the lock)."""
+    try:
+        store = store_open(jobs)
+        return store_call(lambda: store.lock_owner(), min(120, STORE["call_limit"])) == f"home:{NAME}"
+    except Exception:  # noqa: BLE001
+        return True
 
 
 def store_release(st, jobs, final=False, limit=None):
@@ -1846,23 +1941,24 @@ def store_release(st, jobs, final=False, limit=None):
         return
     now, every = time.time(), STORE["release_every_min"] * 60
     if st.d.get("store_release_next") is None:
-        # The first regular turn: a full interval after the campaign's start, and this arm's offset after that
-        # (--store-release-offset-min: the registration gives the three arms 0, a third and two thirds of the
-        # interval, so that their rounds do not fall due together).
-        st.d["store_release_next"] = st.d["store_release_regular"] = now + every + STORE.get("release_offset_min", 0) * 60
+        # The first regular turn: the next one on the UTC grid (store_release_turn; the registration gives the
+        # three arms offsets of 0, a third and two thirds of the interval, so their rounds do not fall due together).
+        st.d["store_release_next"] = st.d["store_release_regular"] = store_release_turn(now)
         st.save()
     if not final:
         store_measure_send(st)  # a measurement that did not reach the VM is sent again, each tick, until it does
     if not final and now < st.d["store_release_next"]:
         return
     if not final:
-        # The regular turns are ANCHORED: each is `every` after the one before it, not after the moment a round
-        # happened to run, so a round that was held and ran a tick later does not shift the arm's turns (and the
-        # arms' offsets last). A regular turn gives the one early retry back.
-        regular = st.d.get("store_release_regular") or now
+        # The regular turns are ANCHORED TO UTC (store_release_turn): the multiples of the interval since the epoch,
+        # plus the arm's offset. Not to this runner's start, and not to the moment a round happened to run: an arm
+        # that starts late, or a round that was held and ran a tick later, keeps the arm's turns where the
+        # registration put them, so the three arms' offsets hold for the whole campaign. A turn that was missed
+        # (the runner was down) is not made up: the next one is the next multiple. A regular turn gives the one
+        # early retry back.
+        regular = st.d.get("store_release_regular") or store_release_turn(now)
         if now >= regular:
-            while regular <= now:
-                regular += every
+            regular = store_release_turn(now)
             st.d["store_release_regular"], st.d["store_release_spent"] = regular, 0
         st.d["store_release_next"] = regular
     rec = st.d.setdefault("store_releases", {"count": 0, "held": 0, "failed": 0, "objects": 0, "bytes": 0})
@@ -1898,11 +1994,15 @@ def store_release(st, jobs, final=False, limit=None):
     if final:
         # The debt is in state.json BEFORE the release is attempted: a runner that dies in the call, or after it
         # and before its success is recorded, finds it at its next start (main() services it without a session).
-        st.d["store_release_final_owed"] = st.d.get("store_release_final_owed") or "not tried yet"
         # And the round is COUNTED before it is made: a runner that dies after the round's commits have gone out
         # and before its outcome is saved has still spent one of the folder's STORE_FINAL_LEDGER_ROUNDS. Only a
-        # round that was merely held (nothing was sent) is given back, below; one that is made clears the count.
-        st.d["store_release_final_rounds"] = st.d.get("store_release_final_rounds", 0) + 1
+        # round in which nothing was sent is given back, below; one that is made clears the count. The record says
+        # which round was begun and when, so a line written after a death says what is and is not known.
+        import datetime
+        k = st.d["store_release_final_rounds"] = st.d.get("store_release_final_rounds", 0) + 1
+        st.d["store_release_final_owed"] = (f"round {k} was begun at "
+                                            f"{datetime.datetime.fromtimestamp(now, datetime.timezone.utc):%Y-%m-%d %H:%M:%S} UTC "
+                                            "and is not recorded as completed")
         st.save()
     lim = max(900, STORE["call_limit"]) if limit is None else max(1, min(max(900, STORE["call_limit"]), limit))
     try:
@@ -1914,6 +2014,16 @@ def store_release(st, jobs, final=False, limit=None):
         r = store_call(lambda: store.release_report(f"home:{NAME}", grace=STORE["release_grace_s"], essential=final,
                                                     takeover=lim, now=now), lim)
     except Exception as e:  # noqa: BLE001 a release that fails never ends a driver
+        if final and "store call over" in str(e) and not store_release_lock_is_ours(jobs):
+            # The call was ended at its limit and main holds no lock of this runner: it never had the lock, so
+            # nothing was sent. Held, not a round. (When that cannot be read, it is counted.)
+            rec["held"] += 1
+            st.d["store_release_final_owed"] = f"the call was ended at its limit of {lim:.0f} s before it had the lock"
+            st.d["store_release_final_rounds"] = max(0, st.d.get("store_release_final_rounds", 1) - 1)
+            st.save()
+            say(f"store: release: the call was ended at its limit of {lim:.0f} s before it had the lock; nothing was "
+                "sent; it stays owed", "held limit")
+            return "held"
         rec["failed"] += 1
         if final:
             st.d["store_release_final_owed"] = f"the release failed ({store_err(e)})"
@@ -2039,7 +2149,9 @@ def store_release_owed(st, jobs, stopped=True):
     three), the loop's own round and those of earlier starts counted, in state.json, each BEFORE it is made (a
     round that failed after its lock counts, a runner killed in one has spent it; only a round that was merely
     held is given back); a round that failed is followed by five minutes, not thirty seconds; with a ledger that is not
-    well formed it is not tried again at all until its branch moves (store_release_blocked). A start on a folder
+    well formed it is not tried again at all while that same file is still there (store_release_blocked: kept by
+    its path and the sha256 of its bytes, not by its branch). No call is started with less than
+    STORE_FINAL_RELEASE_MIN_CALL_S of the wait left. A start on a folder
     in that state makes no commit: it writes the line and ends. The wait is measured on the monotonic clock. The
     log has one line for each change of state, not one a try.
 
@@ -2059,7 +2171,9 @@ def store_release_owed(st, jobs, stopped=True):
             end = time.monotonic() + STORE_FINAL_RELEASE_WAIT_S  # monotonic: a clock set back cannot stretch the wait
             log(f"store: the release at the campaign's end is owed ({store_release_debt(st)}); no session bills, and it is "
                 f"tried for at most {STORE_FINAL_RELEASE_WAIT_S:.0f} s")
-            while end - time.monotonic() >= 1:
+            # No call is started with less than STORE_FINAL_RELEASE_MIN_CALL_S of the wait left: a call that is ended
+            # at a limit of a few seconds has done nothing, and would be taken for a round.
+            while end - time.monotonic() >= STORE_FINAL_RELEASE_MIN_CALL_S:
                 out = store_release(st, jobs, final=True, limit=end - time.monotonic())
                 if out == "done":
                     return
@@ -2072,7 +2186,7 @@ def store_release_owed(st, jobs, stopped=True):
                 # A held round sent nothing and is tried again soon; one that failed after taking the lock sent
                 # commits, and is given five minutes before the one round that is left.
                 nap = min(STORE_FINAL_RELEASE_FAILED_NAP_S if out == "failed" else STORE_FINAL_RELEASE_NAP_S,
-                          end - time.monotonic() - 1)
+                          end - time.monotonic() - STORE_FINAL_RELEASE_MIN_CALL_S)
                 if nap <= 0:
                     break
                 time.sleep(nap)
@@ -2147,10 +2261,16 @@ def store_by_hand(st, note=""):
                f"--grace {STORE['release_grace_s']:.0f} --owner {shlex.quote('hand:' + str(NAME))}")
         bad = " A ledger that is not well formed stops every release, this command's too: read the file named above and " \
               "repair or remove it first." if "not well formed" in why else ""
-        log(f"store: THE RELEASE AT THE CAMPAIGN'S END DID NOT RUN: {note}{why}. Nothing is lost: the removed generations' "
+        # What is known: with no round begun it did not run; with one begun and none recorded as made, a round may
+        # have run to its end (a runner that died after it), in part, or not at all.
+        begun = st.d.get("store_release_final_rounds", 0) > 0
+        head = ("IS NOT RECORDED AS COMPLETED (a round of it was begun: it may have run, in part or to its end)" if begun
+                else "DID NOT RUN")
+        log(f"store: THE RELEASE AT THE CAMPAIGN'S END {head}: {note}{why}. Nothing is lost: the removed generations' "
             f"ledgers and objects stay in the store until a release reads them, and the debt stays in state.json for "
             f"this runner's next start.{bad} By hand: {cmd} (it prints \"released\": the objects deleted; exit 0 with "
-            f"\"released\": null means the lock was held and NOTHING was released: run it again)")
+            f"\"released\": null means the lock was held and NOTHING was released: run it again. A lock that a round "
+            f"left behind holds the by-hand command too, for up to 30 minutes from that round)")
     except Exception as e:  # noqa: BLE001
         log(f"store: THE RELEASE AT THE CAMPAIGN'S END DID NOT RUN, and its by-hand config could not be written "
             f"({type(e).__name__}); by hand: hf_store.py release, with a config that names the repo and the token file")
@@ -2656,10 +2776,18 @@ def main():
                          "generation for that long, so with --store-stall-halt this must be well over an hour")
     ap.add_argument("--store-stall-halt", action="store_true",
                     help="halt the arm on that alarm (STORE_STALLED, through the confirmed stop). It covers pushes that "
-                         "do not arrive, whatever the cause (a refused token, 429s, a transport that fails): what is "
-                         "watched is the newest generation the store lists, read from home, while the job runs. It does "
-                         "not cover pushes that arrive and cannot be checked (--store-unverified-halt-min). Also the "
-                         "jobs file's \"store_stall_halt\": true")
+                         "do not arrive WITHIN ONE SESSION while the job reads RUNNING (a refused token, 429s, a "
+                         "transport that fails): what is watched is the newest generation the store lists, read from "
+                         "home, and every launch starts its clock again. It does not cover sessions that are lost again "
+                         "and again before a save (--store-no-progress-min, which this flag switches on), nor pushes "
+                         "that arrive and cannot be checked (--store-unverified-halt-min). Also the jobs file's "
+                         "\"store_stall_halt\": true")
+    ap.add_argument("--store-no-progress-min", type=float, default=None,
+                    help="with the stall halt on: halt the arm (STORE_NO_PROGRESS, through the confirmed stop, and no "
+                         "further session) when no new generation of a job has reached the store for this many "
+                         "minutes over ALL its sessions; this clock is not reset by a launch. Default: the jobs file's "
+                         "\"store_no_progress_min\", else --store-stall-min + --store-boot-limit-min + 15 (210 at a "
+                         "stall of 120); 0 without the stall halt")
     ap.add_argument("--store-unverified-halt-min", type=float, default=None,
                     help="halt the arm (STORE_UNVERIFIED, through the confirmed stop) when the courier has gone this "
                          "many minutes with pushes in the store and none of them read back whole: every check unread "
@@ -2719,6 +2847,10 @@ def main():
     st = State()
     if STORE:
         store_owner(st, a.name, jobs)
+        if STORE.get("no_progress_min"):
+            log(f"store: this arm halts (STORE_NO_PROGRESS) when no new generation of a job reaches the store for "
+                f"{STORE['no_progress_min']:.0f} min over all its sessions (a launch does not reset that clock), and "
+                f"(STORE_STALLED) for {STORE['stall_min']:.0f} min within one session")
     adopt_home(st, jobs)
     has_rungs = any(j.get("rung_of") for j in jobs)
     if has_rungs:
@@ -2782,6 +2914,15 @@ def main():
                               f"({st.d.get('endpoint')}) is still up: its token was NOT removed and it was NOT stopped. "
                               f"Check `colab sessions`, and stop it by hand if it is there (colab stop -s {NAME})"}[left]
                 + ("; the release at the campaign's end is owed" if STORE["reclaim"] and not st.d.get("store_release_final_done") else ""))
+            if left == "other":
+                # The record this exit names. With it the next start takes the listed session for this folder's own
+                # and stops it: under names that are one an arm it can be nobody else's.
+                stop_unresolved(st, f"at a start on a folder that is home, a session is listed under this name at {ep}, "
+                                    f"not at the endpoint this folder recorded; it was left alone", listed_endpoint=ep)
+            elif left == "none" and os.path.exists(os.path.join(HOME, "STOP_UNRESOLVED")):
+                os.replace(os.path.join(HOME, "STOP_UNRESOLVED"), os.path.join(HOME, "STOP_RESOLVED"))
+                log(f"the listing answers and holds no session {NAME}: the stop this folder left unresolved is resolved "
+                    "(STOP_UNRESOLVED moved to STOP_RESOLVED)")
             st.d["campaign_home"] = True
             st.save()
         elif listed() is None and not st.d.get("endpoint"):
@@ -2793,6 +2934,8 @@ def main():
             if why:
                 log(why)
                 break
+            if STORE:
+                store_no_progress(st, jobs)  # before anything that could create a session: halts, by name
             T.refresh(st)
             seen = listed()
             if STORE and seen is not None and seen != st.d.get("endpoint"):

@@ -258,7 +258,8 @@ FINAL_LEDGER_ROUNDS = 2      # runner_multi.STORE_FINAL_LEDGER_ROUNDS: rounds of
 # release every two hours with the runner's default grace. THE LEAD SETS THEM AT REGISTRATION.
 RUNNER_STORE_DEFAULTS = {"store_release_grace_s": 7200, "store_stall_halt": False, "store_stall_min": 60,
                          "store_unverified_halt_min": 0,   # runner_multi.py's own, when neither flag nor key is given
-                         "store_release_offset_min": 0}    # minutes an arm's release turns are set off from the start
+                         "store_release_offset_min": 0,    # minutes an arm's release turns are set off on the UTC grid
+                         "store_no_progress_min": 0}       # 0: the runner's own (stall minutes + boot limit + 15, with the stall halt)
 ARM_STORE = {"store_push_cap_gb": 0, "store_release_every_min": ARM_RELEASE_EVERY_MIN, **RUNNER_STORE_DEFAULTS}
 ARM_STORE_BY_ARM = {"N": {}, "S": {}, "C": {}}
 
@@ -275,17 +276,25 @@ def home_commits_worst(release_every_min):
     return HOME_RELEASE_COMMITS_WORST * (int(timed) + 1)
 
 
-def home_commits_rolling(release_every_min, unlock_tries=UNLOCK_TRIES):
-    """One runner's worst rolling hour at home as the runner now stands, in whole commits. Timed: each turn that
-    fits in the hour and the ONE early retry a turn has when its round failed or met a ledger it could not read
-    (runner_multi.STORE_RELEASE_RETRY_S; a round that was held sends nothing), but never more than the budget,
-    below whose reserve a timed lock is admitted. The end: FINAL_LEDGER_ROUNDS rounds, which is all the end's
-    release makes across every start of the state folder when its rounds are not recorded as made (each is
-    counted before it is made). A round is a lock and an unlock sent `unlock_tries` times: 3 at the worst, 2 when
-    the unlock lands at once. 12 at the arms' two hours."""
-    per = 1 + unlock_tries
-    timed = -(-60 // release_every_min) if release_every_min else 0
-    return int(min(HOME_COMMIT_BUDGET, 2 * per * int(timed)) + FINAL_LEDGER_ROUNDS * per)
+HOME_BUDGET_RESERVE = max(2, HOME_COMMIT_BUDGET // 4)   # hf_store.CommitBudget's reserve, kept from every timed lock: 3
+
+
+def home_timed_cap(unlock_tries=UNLOCK_TRIES):
+    """The most commits one runner's TIMED releases can send in a rolling hour, by the budget's own rule and not by
+    counting turns (a late round, its early retry, the next turn and that turn's retry can share an hour, so a
+    count of turns understates it). A timed lock is admitted, counted with its unlock (two), only while that keeps
+    the hour's count within the budget less its reserve: the count before it is at most 12 - 3 - 2 = 7. The round
+    it starts then sends at most a lock and `unlock_tries` unlocks. 7 + 3 = 10 with two unlock sends; 9 with one."""
+    return HOME_COMMIT_BUDGET - HOME_BUDGET_RESERVE - 2 + 1 + unlock_tries
+
+
+def home_commits_rolling(release_every_min=None, unlock_tries=UNLOCK_TRIES):
+    """One runner's worst rolling hour at home, in whole commits, as the BUDGET allows it (whatever the interval
+    and the offsets): its timed releases at home_timed_cap, and the end's FINAL_LEDGER_ROUNDS rounds, which are
+    all the end's release makes across every start of the state folder (each is counted before it is made) and
+    are essential, so the reserve does not hold them back. A round is a lock and an unlock sent `unlock_tries`
+    times. 10 + 2 x 3 = 16."""
+    return home_timed_cap(unlock_tries) + FINAL_LEDGER_ROUNDS * (1 + unlock_tries)
 
 
 def timed_turns_in_an_hour(release_every_min, offsets_min):
@@ -298,12 +307,11 @@ def timed_turns_in_an_hour(release_every_min, offsets_min):
 
 
 def commits_rolling_three_arms(per_arm, release_every_min, offsets_min, unlock_tries=UNLOCK_TRIES):
-    """The rolling hour for the three arms together, with their release turns set off by `offsets_min`: every arm's
-    saves, mark, branch and its end's rounds as in commits_rolling_hour, and for the timed releases the turns that
-    can fall in one hour (timed_turns_in_an_hour), each with its one early retry."""
-    per = 1 + unlock_tries
-    timed = min(3 * HOME_COMMIT_BUDGET, 2 * per * timed_turns_in_an_hour(release_every_min, offsets_min))
-    return sum(p["sent_twice"] + p["branch"] for p in per_arm) + 3 * FINAL_LEDGER_ROUNDS * per + timed
+    """The rolling hour for the three arms together: every arm's saves, mark and branch as in commits_rolling_hour,
+    and each runner's home at what its budget allows (home_commits_rolling). The offsets do not enter: they keep
+    the arms' rounds off each other's lock (timed_turns_in_an_hour says how many regular turns share an hour), and
+    the budget's cap on a runner's timed commits holds with them or without."""
+    return sum(p["sent_twice"] + p["branch"] for p in per_arm) + 3 * home_commits_rolling(release_every_min, unlock_tries)
 
 
 def commits_per_hour(doc, step_s, release_every_min):
@@ -342,14 +350,17 @@ def commits_per_hour_bad_model(doc, step_s, release_every_min):
 def commits_rolling_hour(doc, step_s, release_every_min):
     """One ROLLING HOUR of the same jobs file with everything in it at once, in whole commits: the saves that fit
     in an hour, rounded up; one mark; each of those sent twice; the branch created again after a lost session,
-    tried twice; and at home home_commits_rolling(): a timed release with its one early retry, and the two rounds
-    the end's release has at the most, each a lock and an unlock sent twice. Still a model:
+    tried twice; and at home home_commits_rolling(): the timed releases at what the runner's budget allows them,
+    and the two rounds the end's release has at the most, each a lock and an unlock sent twice. Still a model:
     it takes one retry a commit, and the hub's own count is the only thing that bounds the repository.
-    {"saves", "marks", "sent_twice", "branch", "home", "total"}, and "total_if_unlocks_land_at_once": the same
+    {"saves", "marks", "sent_twice", "branch", "home" (= "home_timed_cap_by_the_budget" + "home_final_rounds", both
+    printed), "total"}, and "total_if_unlocks_land_at_once": the same
     hour with every unlock taken at its first try (home's rounds at two commits each)."""
     saves = max(math.ceil(3600 / (j["spec"]["train"]["checkpoint_every"] * step_s)) for j in doc["jobs"] if "spec" in j)
     out = {"saves": saves, "marks": 1, "sent_twice": 2 * (saves + 1), "branch": 2,
-           "home": home_commits_rolling(release_every_min)}
+           "home": home_commits_rolling(release_every_min),
+           "home_timed_cap_by_the_budget": home_timed_cap(),       # 12 - 3 - 2 + 1 + 2: what the budget lets timed rounds send
+           "home_final_rounds": FINAL_LEDGER_ROUNDS * (1 + UNLOCK_TRIES)}
     out["total"] = out["sent_twice"] + out["branch"] + out["home"]
     out["total_if_unlocks_land_at_once"] = out["sent_twice"] + out["branch"] + home_commits_rolling(release_every_min, unlock_tries=1)
     return out

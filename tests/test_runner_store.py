@@ -1090,6 +1090,7 @@ def test_a_store_that_takes_pushes_and_verifies_none_halts_the_arm_when_the_regi
 OWED_WRAP = run_eq.WRAP.replace("rm.main()\n", """import os
 rm.STORE_FINAL_RELEASE_WAIT_S, rm.STORE_FINAL_RELEASE_NAP_S = float(os.environ["OWED_WAIT_S"]), 1
 rm.STORE_HOME_ESSENTIAL_WAIT_S = float(os.environ["OWED_ESSENTIAL_S"])
+rm.STORE_FINAL_RELEASE_MIN_CALL_S = 1          # the waits here are seconds; the registered minimum (120 s) has its own test
 rm.main()
 """)
 
@@ -1125,7 +1126,7 @@ def test_the_release_at_the_campaigns_end_waits_for_room_after_the_session_has_s
     assert len(held) == 1 and len(owed) == 1 and len(ran) == 1 and json.loads(lines[ran[0]][12:])["final"] is True   # one line a state, not a try
     assert held[0] < home[-1] < owed[0] < ran[0] and lines[-1] == "session stopped; runner exiting"   # tried, stopped, made
     assert calls.rstrip().splitlines()[-1].startswith('["stop"')                # no call to a VM after the stop
-    assert state["store_releases"]["count"] == 1 and "DID NOT RUN" not in log and state["store_release_final_done"] is True
+    assert state["store_releases"]["count"] == 1 and "THE RELEASE AT THE CAMPAIGN'S END" not in log and state["store_release_final_done"] is True
     assert state["store_releases"]["held"] >= 2                                # tried more than once, said once
     sent = [json.loads(ln)["message"] for ln in (work / "store" / "commits.jsonl").read_text().splitlines()]
     assert sent[-2:] == ["lock: release by home:pk-store", "unlock: release"] and sent.count("unlock: release") == 1
@@ -1144,7 +1145,7 @@ def test_a_release_at_the_campaigns_end_that_cannot_run_says_so_and_names_the_co
     state = state_of(work)
     assert state["campaign_home"] and state["store_release_final_owed"].startswith("the lock was not taken (budget: room in ")
     lines = [ln[15:] for ln in log.splitlines()]
-    said = [ln for ln in lines if "THE RELEASE AT THE CAMPAIGN'S END DID NOT RUN" in ln]
+    said = [ln for ln in lines if "THE RELEASE AT THE CAMPAIGN'S END" in ln]
     cfg = work / "state" / "store_release_by_hand.json"
     layout = work / "repo" / "tools" / "colab_chat"
     command = f"python3 {layout / 'hf_store.py'} release --config {cfg} --grace 7200 --owner hand:pk-store"
@@ -1173,7 +1174,7 @@ def test_a_release_at_the_campaigns_end_that_cannot_run_says_so_and_names_the_co
     assert later and all(ln.startswith('["sessions"') for ln in later)          # the listing was asked, and nothing else
     state2 = state_of(work)
     assert state2["store_release_final_done"] is True and "store_release_final_owed" not in state2 and state2["store_releases"]["count"] == 1
-    assert "DID NOT RUN" not in log2 and "NOT brought home" not in log2 and log2.rstrip().endswith("session stopped; runner exiting")
+    assert "THE RELEASE AT THE CAMPAIGN'S END" not in log2 and "NOT brought home" not in log2 and log2.rstrip().endswith("session stopped; runner exiting")
     sent = [json.loads(ln)["message"] for ln in (work / "store" / "commits.jsonl").read_text().splitlines()]
     assert sent[-2:] == ["lock: release by home:pk-store", "unlock: release"]
     # A third start has nothing left to do, and commits nothing.
@@ -1297,7 +1298,8 @@ def test_a_runner_that_dies_at_the_campaigns_end_leaves_its_release_as_a_debt_th
                 os.kill(child, 9)
     state = state_of(work)
     assert all(state["jobs"][n]["home"] for n in ("data", "pt", "rung_100")) and not state.get("campaign_home")
-    assert state["store_release_final_owed"] == "not tried yet" and "store_release_final_done" not in state   # on disk before the call
+    assert state["store_release_final_owed"].startswith("round 1 was begun at 20") and "store_release_final_done" not in state   # on disk before the call
+    assert state["store_release_final_owed"].endswith(" UTC and is not recorded as completed") and state["store_release_final_rounds"] == 1
     assert json.loads((work / "fake" / "fake.json").read_text())["alive"] is True                    # the dead runner's session bills
     sent = [json.loads(ln)["message"] for ln in (work / "store" / "commits.jsonl").read_text().splitlines()]
     assert sent.count("lock: release by home:pk-store") == (0 if at == "before" else 1)
@@ -1317,7 +1319,7 @@ def test_a_runner_that_dies_at_the_campaigns_end_leaves_its_release_as_a_debt_th
     assert calls2.rstrip().splitlines()[-1].startswith('["stop"') and json.loads((work / "fake" / "fake.json").read_text())["alive"] is False
     state = state_of(work)
     assert state["store_release_final_done"] is True and "store_release_final_owed" not in state and state["campaign_home"]
-    assert "DID NOT RUN" not in log and not (work / "state" / "store_release_by_hand.json").exists()
+    assert "THE RELEASE AT THE CAMPAIGN'S END" not in log and not (work / "state" / "store_release_by_hand.json").exists()
     sent = [json.loads(ln)["message"] for ln in (work / "store" / "commits.jsonl").read_text().splitlines()]
     assert sent.count("lock: release by home:pk-store") == {"before": 1, "during": 2, "orphan": 2, "after": 2}[at]
     assert sent[-1] == "unlock: release" and not (work / "store" / "main" / "locks" / "release.json").exists()
@@ -1340,7 +1342,7 @@ def test_a_stop_that_is_not_confirmed_does_not_drop_the_release_that_is_owed(tmp
     log = log_of(work)
     assert p.returncode == 4 and (work / "state" / "STOP_UNRESOLVED").exists(), (p.stderr[-1500:], log[-2500:])
     lines = [ln[15:] for ln in log.splitlines()]
-    said = [ln for ln in lines if "THE RELEASE AT THE CAMPAIGN'S END DID NOT RUN" in ln]
+    said = [ln for ln in lines if "THE RELEASE AT THE CAMPAIGN'S END" in ln]
     assert len(said) == 1 and "the session's stop is not confirmed (STOP_UNRESOLVED), so the release was not tried; " in said[0]
     assert "hf_store.py release --config" in said[0] and (work / "state" / "store_release_by_hand.json").exists()
     assert lines[-2] == said[0] and lines[-1] == "SESSION STOP NOT CONFIRMED (STOP_UNRESOLVED); runner exiting"
@@ -1353,7 +1355,7 @@ def owed(tmp_path, home="home", debt="the lock was not taken (another releaser h
     rm = load_runner(tmp_path / home)
     rm.STORE = {"reclaim": True, "release_grace_s": 7200, "repo": "someone/base2-store", "repo_type": "dataset",
                 "token_file": str(tmp_path / "a token"), "mark_ns": ""}
-    rm.STORE_FINAL_RELEASE_WAIT_S, rm.STORE_FINAL_RELEASE_NAP_S = 3, 1
+    rm.STORE_FINAL_RELEASE_WAIT_S, rm.STORE_FINAL_RELEASE_NAP_S, rm.STORE_FINAL_RELEASE_MIN_CALL_S = 3, 1, 1
     st = St()
     st.d = {"store_release_final_owed": debt}
     return rm, st
@@ -1383,7 +1385,7 @@ def test_the_owed_release_keeps_to_its_bound_spends_no_commits_on_a_ledger_that_
     rm.store_release_owed(st, [])
     assert time.time() - t0 < 3 + 1 and limits and all(0 < x <= 3 for x in limits) and len(limits) == 1
     log = (tmp_path / "a" / "runner.log").read_text()
-    assert log.count("THE RELEASE AT THE CAMPAIGN'S END DID NOT RUN") == 1
+    assert log.count("THE RELEASE AT THE CAMPAIGN'S END") == 1
     # Quick tries: several inside the wait, each with a smaller limit, and still the one line.
     rm, st = owed(tmp_path, "b")
     limits = []
@@ -1391,7 +1393,7 @@ def test_the_owed_release_keeps_to_its_bound_spends_no_commits_on_a_ledger_that_
     t0 = time.time()
     rm.store_release_owed(st, [])
     assert time.time() - t0 < 4 and 2 <= len(limits) <= 4 and limits == sorted(limits, reverse=True)
-    assert (tmp_path / "b" / "runner.log").read_text().count("DID NOT RUN") == 1
+    assert (tmp_path / "b" / "runner.log").read_text().count("THE RELEASE AT THE CAMPAIGN'S END") == 1
     # A try that succeeds ends it without the line.
     rm, st = owed(tmp_path, "c")
 
@@ -1402,7 +1404,7 @@ def test_the_owed_release_keeps_to_its_bound_spends_no_commits_on_a_ledger_that_
 
     rm.store_release = made
     rm.store_release_owed(st, [])
-    assert "DID NOT RUN" not in (tmp_path / "c" / "runner.log").read_text() and not (tmp_path / "c" / "store_release_by_hand.json").exists()
+    assert "THE RELEASE AT THE CAMPAIGN'S END" not in (tmp_path / "c" / "runner.log").read_text() and not (tmp_path / "c" / "store_release_by_hand.json").exists()
     # A failure of the try itself: the line all the same.
     rm, st = owed(tmp_path, "d")
 
@@ -1412,7 +1414,7 @@ def test_the_owed_release_keeps_to_its_bound_spends_no_commits_on_a_ledger_that_
     rm.store_release = boom
     rm.store_release_owed(st, [])
     log = (tmp_path / "d" / "runner.log").read_text()
-    assert "stopped on an error (RuntimeError)" in log and log.count("DID NOT RUN") == 1
+    assert "stopped on an error (RuntimeError)" in log and log.count("THE RELEASE AT THE CAMPAIGN'S END") == 1
     # (2) A ledger that was not read: one more round, then no more.
     unread = "the round ran and 1 ledger(s) could not be read: ckpt-N:pruned/g100.json (not read (ConnectionError))"
     rounds = []
@@ -1436,7 +1438,7 @@ def test_the_owed_release_keeps_to_its_bound_spends_no_commits_on_a_ledger_that_
         rm.store_release = ledger_round
         rm.store_release_owed(st, [])
         assert len(rounds) == want, home
-        line = [ln for ln in (tmp_path / home / "runner.log").read_text().splitlines() if "DID NOT RUN" in ln]
+        line = [ln for ln in (tmp_path / home / "runner.log").read_text().splitlines() if "THE RELEASE AT THE CAMPAIGN'S END" in ln]
         assert len(line) == 1 and "2 rounds of the release were begun and none was recorded as made" in line[0]
     # A ledger that is not well formed gets NO new round on any start while that same file is still there: the
     # start reads the file (a read, no commit), writes the line, ends. The third reviews: it was kept with its
@@ -1466,7 +1468,7 @@ def test_the_owed_release_keeps_to_its_bound_spends_no_commits_on_a_ledger_that_
         rm.store_release = ledger_round
         rm.store_release_owed(st, [])
         assert len(rounds) == want and store.asked == 1, home
-        line = [ln for ln in (tmp_path / home / "runner.log").read_text().splitlines() if "DID NOT RUN" in ln]
+        line = [ln for ln in (tmp_path / home / "runner.log").read_text().splitlines() if "THE RELEASE AT THE CAMPAIGN'S END" in ln]
         assert len(line) == 1 and "ckpt-N:pruned/g100.json (not well formed)" in line[0]
         assert "A ledger that is not well formed stops every release, this command's too" in line[0]
         assert ("is still in the store as it was, and no new round is made while it is" in line[0]) == (want == 0)
@@ -1522,7 +1524,7 @@ def test_the_owed_release_keeps_to_its_bound_spends_no_commits_on_a_ledger_that_
     rm.store_release = interrupted
     with pytest.raises(KeyboardInterrupt):
         rm.store_release_owed(st, [])
-    assert (tmp_path / "k" / "runner.log").read_text().count("DID NOT RUN") == 1
+    assert (tmp_path / "k" / "runner.log").read_text().count("THE RELEASE AT THE CAMPAIGN'S END") == 1
     runner = (CC / "runner_multi.py").read_text()
     assert "end = time.monotonic() + STORE_FINAL_RELEASE_WAIT_S" in runner and "limit=end - time.monotonic()" in runner
     # (3) The stop not confirmed: nothing is tried, the line is written. Paths with a space are quoted.
@@ -1531,7 +1533,7 @@ def test_the_owed_release_keeps_to_its_bound_spends_no_commits_on_a_ledger_that_
     rm.store_release = lambda st_, jobs, final=False, limit=None: rounds.append(1) or "held"
     rm.store_release_owed(st, [], stopped=False)
     home = tmp_path / "with space" / "i"
-    line = [ln for ln in (home / "runner.log").read_text().splitlines() if "DID NOT RUN" in ln]
+    line = [ln for ln in (home / "runner.log").read_text().splitlines() if "THE RELEASE AT THE CAMPAIGN'S END" in ln]
     assert rounds == [] and len(line) == 1 and "the session's stop is not confirmed (STOP_UNRESOLVED)" in line[0]
     cmd = line[0].split("By hand: ", 1)[1].split(" (it prints", 1)[0]
     cfg = home / "store_release_by_hand.json"
@@ -1566,7 +1568,7 @@ def test_a_malformed_ledger_at_the_campaigns_end_is_named_and_costs_one_round(tm
     log = log_of(work)
     assert p.returncode == 0, (p.stderr[-2000:], log[-3000:])
     lines = [ln[15:] for ln in log.splitlines()]
-    said = [ln for ln in lines if "THE RELEASE AT THE CAMPAIGN'S END DID NOT RUN" in ln]
+    said = [ln for ln in lines if "THE RELEASE AT THE CAMPAIGN'S END" in ln]
     assert len(said) == 1 and "ckpt-N:pruned/g50.json (not well formed)" in said[0] and "repair or remove it first" in said[0]
     assert len([ln for ln in lines if ln.startswith("store: release: 1 ledger(s) could not be read (ckpt-N:pruned/g50.json (not well formed))")]) == 1
     sent = [json.loads(ln)["message"] for ln in (work / "store" / "commits.jsonl").read_text().splitlines()]
@@ -1584,7 +1586,7 @@ def test_a_malformed_ledger_at_the_campaigns_end_is_named_and_costs_one_round(tm
                                more_env={"OWED_WAIT_S": "30", "OWED_ESSENTIAL_S": "900"})
         log2 = log_of(work)[len(before):]
         assert p2.returncode == 0 and news(calls2) == 1, (p2.stderr[-1500:], log2[-2000:])
-        said2 = [ln for ln in log2.splitlines() if "DID NOT RUN" in ln]
+        said2 = [ln for ln in log2.splitlines() if "THE RELEASE AT THE CAMPAIGN'S END" in ln]
         assert len(said2) == 1 and "is still in the store as it was, and no new round is made while it is" in said2[0]
         assert "ckpt-N:pruned/g50.json (not well formed)" in said2[0]
         assert [json.loads(ln)["message"] for ln in (work / "store" / "commits.jsonl").read_text().splitlines()] == sent   # no commit
@@ -1667,6 +1669,25 @@ def test_a_state_folder_has_one_runner_one_name_one_set_of_jobs_and_acts_only_on
     assert "stop it by hand (colab stop -s pk-store)" in log and "session stopped; runner exiting" not in log
     assert log.rstrip().endswith("SESSION STOP NOT CONFIRMED (STOP_UNRESOLVED); runner exiting")
     assert new and all(ln.startswith('["sessions"') for ln in new) and json.loads(fake.read_text())["alive"] is True
+    # The fourth reviews: that exit named STOP_UNRESOLVED and wrote no such record, so every later start read
+    # "other" again and exited 4 again, for ever. The record is written; the next start then takes the session for
+    # this folder's own (under names that are one an arm it can be nobody else's), stops it, and resolves the record.
+    rec = json.loads((work / "state" / "STOP_UNRESOLVED").read_text())
+    assert rec["kind"] == "STOP_UNRESOLVED" and rec["session"] == "pk-store" and rec["listed_endpoint"] == "fake-endpoint-2"
+    assert rec["endpoint"] == "fake-endpoint-1" and "colab stop -s pk-store" in rec["do"]
+    q, new, log = again()
+    assert q.returncode == 0 and "the session an earlier runner left is stopped" in log and new[-1].startswith('["stop"')
+    assert json.loads(fake.read_text())["alive"] is False
+    assert not (work / "state" / "STOP_UNRESOLVED").exists() and (work / "state" / "STOP_RESOLVED").exists()
+    # A record left from a stop that could not be confirmed, and the listing now answers that there is no session:
+    # it is resolved (moved), not left for ever.
+    (work / "state" / "STOP_RESOLVED").unlink()
+    (work / "state" / "STOP_UNRESOLVED").write_text(json.dumps({"kind": "STOP_UNRESOLVED", "session": "pk-store"}))
+    q, new, log = again()
+    assert q.returncode == 0 and "the stop this folder left unresolved is resolved (STOP_UNRESOLVED moved to STOP_RESOLVED)" in log
+    assert not (work / "state" / "STOP_UNRESOLVED").exists() and (work / "state" / "STOP_RESOLVED").exists()
+    assert all(ln.startswith('["sessions"') for ln in new)
+    (work / "state" / "STOP_RESOLVED").unlink()
     # The third reviews' blocker: "other" needs a recorded endpoint that differs. A folder that recorded NONE (its
     # launch's one listing came back empty) or that left a stop unresolved takes the listed session for its own.
     for rec, unresolved in ((None, False), ("fake-endpoint-9", True)):
@@ -1775,7 +1796,16 @@ def test_a_timed_release_that_did_not_run_is_tried_again_soon_and_a_lost_measure
     rm_o.time, rm_o.STORE = FakeTime(), {**rm.STORE, "release_offset_min": 40}
     st_o = St()
     rm_o.store_release(st_o, jobs)
-    assert st_o.d["store_release_next"] == rm_o.time.t + 7200 + 2400 == st_o.d["store_release_regular"]
+    # The fourth reviews: the turns are on the UTC grid (the multiples of the interval since the epoch, plus the
+    # offset), not counted from this runner's first tick: an arm that starts late has the same turns.
+    grid = rm_o.time.t                                   # a multiple of two hours
+    assert grid % 7200 == 0 and st_o.d["store_release_next"] == grid + 2400 == st_o.d["store_release_regular"]
+    for late in (50 * 60, 3 * 3600 + 7):                 # started fifty minutes later; three hours and seven seconds later
+        rm_l = load_runner(tmp_path / f"late{late}")
+        rm_l.time, rm_l.STORE = FakeTime(grid + late), {**rm.STORE, "release_offset_min": 40}
+        st_l = St()
+        rm_l.store_release(st_l, jobs)
+        assert (st_l.d["store_release_next"] - (grid + 2400)) % 7200 == 0 and 0 < st_l.d["store_release_next"] - (grid + late) <= 7200
     assert '"--store-release-offset-min", type=float, default=None' in (CC / "runner_multi.py").read_text()
     log = (tmp_path / "home" / "runner.log").read_text()
     assert log.count("the lock was not taken (another releaser holds the lock); nothing was sent; tried again at the next tick") == 1
@@ -1904,8 +1934,8 @@ def test_three_runners_whose_timers_start_together_all_release_and_no_arm_reache
         for a in arms:
             a.release()
     # Every turn ran for every arm: five turns in twelve hours (the first is one interval after the start).
-    assert [a.st.d["store_releases"]["count"] for a in arms] == [5, 5, 5]
-    assert [a.st.d["store_releases"]["held"] for a in arms] == [0, 5, 5]              # S and C met N's lock at each turn
+    assert [a.st.d["store_releases"]["count"] for a in arms] == [6, 6, 6]            # the turns on the two-hour grid
+    assert [a.st.d["store_releases"]["held"] for a in arms] == [0, 6, 6]              # S and C met N's lock at each turn
     assert all(a.st.d["store_releases"]["failed"] == 0 and "unread" not in a.st.d["store_releases"] for a in arms)
     assert sum(a.st.d["store_releases"]["objects"] for a in arms) > 100                # and they freed what the prunes removed
     # No arm's count reached the cap the formula gives for these settings (in generations of this size); without a
@@ -1928,11 +1958,11 @@ def test_three_runners_whose_timers_start_together_all_release_and_no_arm_reache
     for a in (s, c):
         a.rm.store_release_owed(a.st, a.jobs)
     assert all(a.st.d.get("store_release_final_done") is True and "store_release_final_owed" not in a.st.d for a in arms)
-    assert not any("DID NOT RUN" in (tmp_path / a.name / "runner.log").read_text() for a in arms)
+    assert not any("THE RELEASE AT THE CAMPAIGN'S END" in (tmp_path / a.name / "runner.log").read_text() for a in arms)
     assert not (root / "branches" / "main" / "locks" / "release.json").exists()
     log = [json.loads(ln) for ln in (root / "commit_log.jsonl").read_text().splitlines()]
     locks = [x["message"] for x in log if x["branch"] == "main"]
-    assert all(locks.count(f"lock: release by home:pk-{a.name}") == 6 for a in arms) and locks.count("unlock: release") == 18
+    assert all(locks.count(f"lock: release by home:pk-{a.name}") == 7 for a in arms) and locks.count("unlock: release") == 21
     assert all(x["ok"] for x in log)
     # Every branch still holds its three newest generations, whole.
     for a in arms:
@@ -2060,21 +2090,22 @@ def test_a_round_of_the_ends_release_is_counted_before_it_is_made(tmp_path, kind
     rm, st = start("one", st.disk, die=True)
     with pytest.raises(Killed):
         rm.store_release(st, jobs, final=True)           # the loop's attempt at the campaign's end
-    assert made == [True] and st.disk["store_release_final_rounds"] == 1 and st.disk["store_release_final_owed"] == "not tried yet"
+    assert made == [True] and st.disk["store_release_final_rounds"] == 1
+    assert st.disk["store_release_final_owed"] == "round 1 was begun at 2027-01-15 08:00:00 UTC and is not recorded as completed"
     assert "store_release_final_malformed" not in st.disk                    # the outcome was never saved
     # The next start: one round is left, and it is the last.
     rm, st = start("two", {**st.disk, "campaign_home": True})
     rm.store_release_owed(st, jobs)
     assert made == [True, True] and st.disk["store_release_final_rounds"] == 2
     assert ("store_release_final_malformed" in st.disk) == (kind == "malformed")
-    line = [ln for ln in (tmp_path / "two" / "runner.log").read_text().splitlines() if "DID NOT RUN" in ln]
+    line = [ln for ln in (tmp_path / "two" / "runner.log").read_text().splitlines() if "THE RELEASE AT THE CAMPAIGN'S END" in ln]
     assert len(line) == 1 and key in line[0]
     # Every start after that: no round.
     for home in ("three", "four"):
         rm, st = start(home, st.disk)
         rm.store_release_owed(st, jobs)
         assert made == [True, True], home
-        assert (tmp_path / home / "runner.log").read_text().count("DID NOT RUN") == 1
+        assert (tmp_path / home / "runner.log").read_text().count("THE RELEASE AT THE CAMPAIGN'S END") == 1
 
 
 def test_a_final_round_that_fails_after_its_lock_is_counted_and_given_five_minutes_and_a_held_one_is_not(tmp_path):
@@ -2109,7 +2140,7 @@ def test_a_final_round_that_fails_after_its_lock_is_counted_and_given_five_minut
     # refused (counted): two rounds are used, and no more is made though one would have succeeded.
     assert asked == [t0, t0 + 30, t0 + 60, t0 + 360] and st.d["store_release_final_rounds"] == 2
     assert (rm.STORE_FINAL_RELEASE_NAP_S, rm.STORE_FINAL_RELEASE_FAILED_NAP_S) == (30, 300)
-    line = [ln for ln in (tmp_path / "home" / "runner.log").read_text().splitlines() if "DID NOT RUN" in ln]
+    line = [ln for ln in (tmp_path / "home" / "runner.log").read_text().splitlines() if "THE RELEASE AT THE CAMPAIGN'S END" in ln]
     assert len(line) == 1 and "2 rounds of the release were begun and none was recorded as made" in line[0]
     # Held through the whole wait: nothing is counted, and the folder's allowance is whole for its next start.
     rm = load_runner(tmp_path / "home2")
@@ -2122,7 +2153,8 @@ def test_a_final_round_that_fails_after_its_lock_is_counted_and_given_five_minut
     del asked[:]
     outcomes[:] = [dict(held) for _ in range(100)]
     rm.store_release_owed(st, jobs)
-    assert 40 <= len(asked) <= 41 and st.d["store_release_final_rounds"] == 0 and clock.t - asked[0] <= 1200
+    assert len(asked) == 37 and st.d["store_release_final_rounds"] == 0 and clock.t - asked[0] <= 1200
+    assert asked[-1] - asked[0] == 1080                  # the last call is begun with 120 s of the wait left, none after
     # A round that is made clears the count.
     outcomes[:] = [dict(RAN)]
     rm.store_release_owed(st, jobs)
@@ -2138,6 +2170,12 @@ def test_a_measurement_is_written_on_the_vm_only_on_its_boot_and_over_an_older_o
     chat = tmp_path / "vm" / "chat"
     chat.mkdir(parents=True)
     (chat / "boot_id").write_text("boot-b\n")
+    # The fourth reviews: "this boot" was CHAT/boot_id, which the boot rewrites on every run of it. A boot that ran
+    # twice on one VM (its "BOOTED" was not read back; the second finds the jobs running and starts no courier) left
+    # the courier on the first id, and every measurement after it was dropped as another boot's: the courier then
+    # counted every push, towards a false push cap. The boot is the COURIER's, as its status file carries it.
+    (chat / "courier_status.json").write_text(json.dumps({"boot_id": "boot-b", "jobs": {}}))
+    (chat / "boot_id").write_text("boot-c\n")            # the boot ran again: the file moved on, the courier did not
 
     def on_vm(m):                                        # the code as the VM runs it, on this folder
         code = rm.STORE_MEASURE_VM.format(m=m).replace("/content/", str(tmp_path / "vm") + "/")
@@ -2155,7 +2193,28 @@ def test_a_measurement_is_written_on_the_vm_only_on_its_boot_and_over_an_older_o
     assert on_vm(m5) == "MEASURE_OLDER" and there() == 5         # the same one again changes nothing
     assert on_vm({**m5, "seq": 6}) == "MEASURE_OK" and there() == 6
     assert on_vm({**m5, "seq": 9, "boot_id": "boot-a"}) == "MEASURE_OTHER_BOOT" and there() == 6   # another boot's: not written
-    assert sorted(os.listdir(chat)) == ["boot_id", "store_measure.json"]                         # no temporary left
+    assert sorted(os.listdir(chat)) == ["boot_id", "courier_status.json", "store_measure.json", "store_measure.lock"]   # no temporary left
+    # The courier of that boot takes it (measure_seq advances), though CHAT/boot_id names another.
+    import ckpt_courier
+    courier = ckpt_courier.Courier(hf_store.open_store({"repo": f"dir:{tmp_path / 'crepo'}"}), str(chat), {}, {}, log=lambda m_: None,
+                                   boot="boot-b")
+    courier.read_measure()
+    assert courier.measure_seq == 6 and courier.base == 500 - 50
+    # The paused older writer: it has read the file (sequence 6 there) and is paused before it compares; a newer
+    # writer comes meanwhile. Without one lock round the read, the comparison and the replacement the newer one
+    # wrote 8, and the older one, resumed, put 7 over it. With the lock the newer one waits its turn: 8 stays.
+    import time
+    paused = rm.STORE_MEASURE_VM.format(m={**m5, "seq": 7}).replace("/content/", str(tmp_path / "vm") + "/").replace(
+        "    if courier is None:\n", "    import time\n    time.sleep(1.5)\n    if courier is None:\n")
+    assert "time.sleep(1.5)" in paused
+    older = subprocess.Popen([sys.executable, "-c", paused], stdout=subprocess.PIPE, text=True)
+    time.sleep(0.5)                                      # the older writer has read, and sleeps
+    assert on_vm({**m5, "seq": 8}) == "MEASURE_OK"
+    assert older.communicate(timeout=20)[0].strip() == "MEASURE_OK" and there() == 8
+    # No courier on the VM yet (no status): not written, and the runner keeps it to send again.
+    (chat / "courier_status.json").unlink()
+    assert on_vm({**m5, "seq": 9}) == "MEASURE_NO_COURIER" and there() == 8
+    (chat / "courier_status.json").write_text(json.dumps({"boot_id": "boot-b", "jobs": {}}))
     (chat / "store_measure.json").write_text(json.dumps({**m5, "seq": 99, "boot_id": "boot-a"}))  # the last boot's file
     assert on_vm({**m5, "seq": 1}) == "MEASURE_OK" and there() == 1                              # a new boot starts again
     # The runner takes "older" and "another boot" for settled: nothing is sent again.
@@ -2222,3 +2281,190 @@ def test_the_stall_clock_starts_again_at_every_launch_and_a_log_that_comes_home_
     assert not (tmp_path / "boot.log.tmp").exists()
     rm.store_clean_log(str(tmp_path / "not_there.log"))  # never raises
     assert "store_clean_log(os.path.join(ART, \"boot.log\"))" in runner
+    # The fourth reviews: a rewrite that failed left the raw file where it was, without a word. It is said in one
+    # line, and the raw file is removed.
+    raw = tmp_path / "boot2.log"
+    raw.write_text("Error while downloading from https://cdn-lfs.example/o/1?X-Amz-Signature=SECRETSIG\n")
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(hf_store, "no_query", lambda text: (_ for _ in ()).throw(RuntimeError("no")))
+        rm.store_clean_log(str(raw))
+    assert not raw.exists() and not (tmp_path / "boot2.log.tmp").exists()
+    said = [ln for ln in (tmp_path / "home" / "runner.log").read_text().splitlines() if "could not be cleaned" in ln]
+    assert len(said) == 1 and "boot2.log could not be cleaned of signed addresses (RuntimeError); the raw file is removed, not kept" in said[0]
+    assert "SECRETSIG" not in (tmp_path / "home" / "runner.log").read_text()
+
+
+# ---------------------------------------------------------------- the arms' round, fifth pass (the fourth reviews, 12 Nov 2026)
+LOST_WRAP = run_eq.WRAP.replace("rm.main()\n", """import os, time as real_time
+class Clock:                # the runner's clock: real, plus what the ticks have "slept"
+    off = 0.0
+    def __getattr__(self, k):
+        return getattr(real_time, k)
+    def time(self):
+        return real_time.time() + self.off
+clock = Clock()
+rm.time = clock
+def tick(deadline):         # a tick takes TICK_MIN minutes of the runner's time, and none of the test's
+    clock.off += float(os.environ["TICK_MIN"]) * 60
+rm.sleep_tick = tick
+rm.main()
+""")
+
+
+def test_an_arm_whose_sessions_are_lost_again_and_again_before_a_save_halts_and_gets_no_further_session(tmp_path):
+    """The fourth reviews' blocker. The stall clock counts within one session and every launch starts it again, so
+    an arm whose sessions died after the job was running and before any save (or in their boot) never stalled: it
+    was relaunched after three silent ticks for as long as the deadline allowed, billing each boot, with nothing
+    stored. A second clock, which no launch resets, is set at the first launch and when the store's newest
+    generation advances; with the stall halt on the campaign halts by name when it passes its limit (by default
+    the stall's minutes, the boot limit and 15 more: 210 at a stall of 120), and no further session is created.
+    Here the transport loses the session three times, each time after RUNNING and before a save; a tick is 17
+    minutes of the runner's clock."""
+    work = tmp_path
+    args = store_args(work, "--store-first-start", "--store-stall-halt", "--store-stall-min", "120")
+    # Status calls: 1, 2 the data job; 3 the training job starts; the 4th would bring its first save: lost there.
+    # The next session's first status call (5) finds the job running again; lost at the 6th; and again at the 8th.
+    p, calls = run_store(work, {"reclaim_at": [4, 6, 8]}, extra=args, wrap=LOST_WRAP, hours="100", more_env={"TICK_MIN": "17"})
+    log = log_of(work)
+    assert p.returncode == 3, (p.returncode, p.stderr[-1500:], log[-3000:])
+    assert "this arm halts (STORE_NO_PROGRESS) when no new generation of a job reaches the store for 210 min over all its sessions" in log
+    halted = json.loads((work / "state" / "HALTED").read_text())
+    assert halted["kind"] == "STORE_NO_PROGRESS" and (halted["job"], halted["limit_min"], halted["launches"]) == ("pt", 210, 3)
+    assert 210 < halted["minutes"] <= 210 + 2 * 17 and halted["step"] == 0
+    assert news(calls) == 3                                                      # three sessions, and no fourth
+    state = state_of(work)
+    assert state["launches"] == 3 and state["jobs"]["pt"]["home"] is False and state["jobs"]["pt"]["relayed_step"] == 0
+    assert "STORE STALLED" not in log                                            # the per-session clock never saw it
+    store = hf_store.open_store({"repo": f"dir:{work / 'store'}"})
+    assert store.steps("ckpt-N") == []                                           # nothing was ever stored
+    assert log.rstrip().endswith("session stopped; runner exiting") and json.loads((work / "fake" / "fake.json").read_text())["alive"] is False
+    # The marker stays: the same folder started again creates nothing.
+    p2, calls2 = run_store(work, {}, extra=args, fresh=False, hours="100", more_env={"TICK_MIN": "17"})
+    assert p2.returncode != 0 and "HALTED marker present" in p2.stderr and news(calls2) == 3
+
+
+def test_the_no_progress_clock_is_not_reset_by_a_launch_and_a_healthy_arm_does_not_trip_it(tmp_path):
+    """The clock's rule, on a moved clock: set at the first launch and at each new generation in the store; not
+    reset by a launch, by the job running or not, or by a restart of the runner; off without the stall halt; and a
+    job that has finished on the VM is the settle window's. A healthy arm with a lost session and a rung that
+    holds training stays under the default of 210 minutes."""
+    rm = load_runner(tmp_path / "home")
+    clock = rm.time = FakeTime()
+    rm.STORE = {"stall_min": 120, "stall_halt": True, "no_progress_min": 210, "branch_suffix": "", "call_limit": 300}
+    head = [0]
+    rm.store_open = lambda jobs: type("S", (), {"head_step": lambda self, branch: head[0] or None})()
+    rm.store_call = lambda fn, limit=None: fn()
+    st, jobs = St(), [{"name": "pt", "spec": {}}, {"name": "data", "cmd": ["x"]}]
+    st.jobs["pt"] = st.d.setdefault("jobs", {}).setdefault("pt", {"home": False, "relayed_step": 0, "status": "RUNNING"})
+    rm.store_no_progress(st, jobs)                       # before any launch: no clock, nothing
+    t0 = clock.t
+    rm.store_no_progress(st, jobs, start=True)           # launch(): the first session
+    assert st.job("pt")["store_progress_at"] == t0 and "data" not in st.jobs
+    clock.t += 100 * 60
+    rm.store_no_progress(st, jobs, start=True)           # a second launch: NOT reset
+    assert st.job("pt")["store_progress_at"] == t0
+    clock.t += 100 * 60
+    rm.store_no_progress(st, jobs)                       # 200 minutes: under
+    head[0] = 500
+    rm.store_progress(st, jobs, "pt")                    # a generation reaches the store: the clock moves
+    assert st.job("pt")["store_progress_at"] == clock.t
+    # A healthy arm: the session is lost at the end of nothing in particular; 21 minutes to notice, a boot of 40, a
+    # rung that holds training for 65 on the resume, and the save: 146 minutes without a generation.
+    for minutes in (10, 21, 40, 65, 10):
+        clock.t += minutes * 60
+        rm.store_no_progress(st, jobs)
+    assert not (tmp_path / "home" / "HALTED").exists()
+    head[0] = 1000
+    rm.store_progress(st, jobs, "pt")
+    # A job that has FINISHED on the VM waits for its durability: the settle window's, not this clock's.
+    st.job("pt")["status"] = "FINISHED"
+    clock.t += 400 * 60
+    rm.store_no_progress(st, jobs)
+    st.job("pt")["status"] = "RUNNING"
+    # Off without the stall halt (no limit): nothing, however long.
+    rm.STORE["no_progress_min"] = 0
+    rm.store_no_progress(st, jobs)
+    assert not (tmp_path / "home" / "HALTED").exists()
+    rm.STORE["no_progress_min"] = 210
+    with pytest.raises(SystemExit) as e:
+        rm.store_no_progress(st, jobs)                   # whether or not the job reads RUNNING
+    halted = json.loads((tmp_path / "home" / "HALTED").read_text())
+    assert e.value.code == 3 and halted["kind"] == "STORE_NO_PROGRESS" and halted["minutes"] == 400 and halted["step"] == 1000
+    doc = " ".join(rm.store_no_progress.__doc__.split())
+    assert "65 + 21 + boot + 65 + 10" in doc and "boot takes under 49 minutes" in doc and "210 minutes at a stall of 120" in doc
+    assert "WITHIN ONE SESSION" in " ".join(rm.store_progress.__doc__.split())
+    assert "whatever the cause" not in (CC / "runner_multi.py").read_text()
+
+
+def test_the_ends_release_starts_no_call_it_cannot_finish_and_counts_no_round_that_sent_nothing(tmp_path):
+    """The fourth reviews of the arms' round. (1) The owed wait gave each call what was left of it, down to a
+    second; a call ended at such a limit was "failed", and counted as a round, though it had not reached the lock:
+    two such starts used up the folder's allowance with no commit sent. No call is started now with less than 120 s
+    of the wait left. Here the store's calls take ten seconds and another arm's lock holds through the whole wait:
+    the count stays 0. (2) A call that IS ended at its limit is held, not a round, when main shows no lock of this
+    runner (it never had the lock); it is counted when main shows one, or cannot be read."""
+    asked, limits = [], []
+
+    class Store:
+        owner = None
+
+        def release_report(self, owner, grace=None, essential=False, takeover=None, now=None):
+            asked.append(clock.t)
+            clock.t += 10                                # the call takes ten seconds
+            return {"held": True, "objects": 0, "bytes": 0, "why": "another releaser holds the lock"}
+
+        def lock_owner(self):
+            if isinstance(self.owner, Exception):
+                raise self.owner
+            return self.owner
+
+    def bounded(fn, limit=None):                         # as hf_store.bounded: a ten-second call is ended at a shorter limit
+        limits.append(limit)
+        if limit < 10:
+            raise hf_store.StoreError(f"store call over {limit:.0f} s: ended")
+        return fn()
+
+    rm = load_runner(tmp_path / "home")
+    clock = rm.time = FakeTime()
+    rm.STORE = {"reclaim": True, "release_every_min": 60, "release_grace_s": 7200, "call_limit": 300, "mark_ns": "",
+                "branch_suffix": "", "repo": "dir:x", "repo_type": "dataset", "token_file": None}
+    store = Store()
+    rm.store_open = lambda jobs: store
+    rm.store_call = bounded
+    st, jobs = Disk({"store_release_final_owed": "the lock was not taken (another releaser holds the lock)", "campaign_home": True}), \
+        [{"name": "pt", "spec": {}}]
+    t0 = clock.t
+    rm.store_release_owed(st, jobs)
+    assert st.d["store_release_final_rounds"] == 0 and len(asked) >= 20          # held through the whole wait: no round
+    assert min(limits) >= rm.STORE_FINAL_RELEASE_MIN_CALL_S == 120 and clock.t - t0 <= 1200
+    line = [ln for ln in (tmp_path / "home" / "runner.log").read_text().splitlines() if "THE RELEASE AT THE CAMPAIGN'S END" in ln]
+    assert len(line) == 1 and "DID NOT RUN" in line[0] and "NOT RECORDED AS COMPLETED" not in line[0]   # no round was begun
+    assert "holds the by-hand command too, for up to 30 minutes" in line[0]
+    # (2) A call that is ended at its limit.
+    def ended(fn, limit=None):
+        if not ended.reads:                              # the release's call: ended; then the read of main's lock
+            ended.reads.append(1)
+            raise hf_store.StoreError("store call over 900 s: ended")
+        return fn()
+
+    for owner, want_out, want_rounds in ((None, "held", 0), ("home:pk-other", "held", 0), ("home:pk-inproc", "failed", 1),
+                                         (ConnectionError("main unreachable"), "failed", 1)):
+        rm2 = load_runner(tmp_path / f"h{len(str(owner))}")
+        rm2.time, rm2.STORE = FakeTime(), dict(rm.STORE)
+        store.owner = owner
+        rm2.store_open = lambda jobs: store
+        ended.reads = []
+        rm2.store_call = ended
+        st2 = Disk({"campaign_home": True})
+        assert rm2.store_release(st2, jobs, final=True) == want_out, owner
+        assert st2.disk.get("store_release_final_rounds", 0) == want_rounds, owner
+        assert ("before it had the lock" in st2.disk["store_release_final_owed"]) == (want_out == "held")
+    # A round that was begun and not recorded: the line says what is known.
+    rm3 = load_runner(tmp_path / "begun")
+    rm3.time, rm3.STORE = FakeTime(), dict(rm.STORE)
+    st3 = Disk({"campaign_home": True, "store_release_final_rounds": 2,
+                "store_release_final_owed": "round 2 was begun at 2027-01-15 08:00:00 UTC and is not recorded as completed"})
+    rm3.store_release_owed(st3, jobs)
+    line = (tmp_path / "begun" / "runner.log").read_text()
+    assert "THE RELEASE AT THE CAMPAIGN'S END IS NOT RECORDED AS COMPLETED (a round of it was begun: it may have run" in line
+    assert "round 2 was begun at 2027-01-15 08:00:00 UTC" in line and "DID NOT RUN" not in line

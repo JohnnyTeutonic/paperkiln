@@ -278,6 +278,13 @@ def reply_side(e):
     if not url:
         return None
     # The host of the FINAL reply decides: a redirect that ends back on the hub (a renamed repo) is the hub's.
+    return url_side(url)
+
+
+def url_side(url):
+    """ "hub" for an address on the hub's own host, "object store" for one on any other host; None for no address."""
+    if not url:
+        return None
     host = re.sub(r"^https?://", "", str(url)).split("/")[0].lower()
     hub = re.sub(r"^https?://", "", os.environ.get("HF_ENDPOINT") or "https://huggingface.co").split("/")[0].lower()
     return "hub" if host == hub else "object store"
@@ -927,7 +934,10 @@ class HfBackend:
         r = session.get(url, headers={**build_hf_headers(token=self.token), "Range": "bytes=0-0"}, timeout=30,
                         stream=True, allow_redirects=True)
         try:
-            where = "from the object store, after the hub's redirect" if r.history else "from the hub"
+            # Which side answered goes by the FINAL reply's host, as reply_side does: a redirect that ends back on
+            # the hub (a renamed repo) is the hub's answer.
+            where = "from the hub" if not r.history or url_side(getattr(r, "url", None)) == "hub" \
+                else "from the object store, after the hub's redirect"
             total = range_total(r)
             if r.status_code == 416:
                 if size == 0 and total in (None, 0):
@@ -1626,6 +1636,15 @@ class Store:
                 return {}
         return held if isinstance(held, dict) else {}
 
+    def lock_owner(self):
+        """The owner named by the release lock on main as it is now, or None when main holds no lock. A read; an
+        error is raised as itself."""
+        head = self.b.head("main")
+        tree = self.b.tree("main", rev=head) if head else None
+        if tree is None:
+            raise StoreError("main could not be listed")
+        return self._read_lock(head).get("owner") if LOCK in tree else None
+
     def _lock(self, owner, now, essential=False, takeover=False):
         """Take the release lock; the lock's record, or None when it is not ours. In this order: main's head is
         read; the lock is looked for in the tree of THAT commit; the lock is committed with that commit as its
@@ -1678,6 +1697,9 @@ class Store:
                 json.dump(mine, f)
             try:
                 self.commit("main", {LOCK: p}, [], f"lock: release by {owner}", parent=head, essential=essential, need=2)
+            except BudgetSpent as e:  # refused at the budget's own door: nothing was sent, so this is "held"
+                self._lock_why = f"budget: room in {e.wait_s} s"
+                return None
             except Exception as e:  # noqa: BLE001 main moved since the head was read, or the hub refused
                 self._lock_why = f"the lock's commit was refused ({type(e).__name__})"
                 return None

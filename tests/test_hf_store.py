@@ -2058,6 +2058,25 @@ def test_the_release_at_a_campaigns_end_is_essential_and_waits_for_room(tmp_path
     assert store.release_report("home", grace=600)["held"] is True and budget.count() == 8
     assert store.release_report("home", grace=600, essential=True)["held"] is False and budget.count() == 10
     assert not os.path.exists(tmp_path / "twelve" / "repo" / "main" / "locks" / "release.json")
+    # The fourth reviews: a lock refused at the budget's own door, when the commit is admitted (another process
+    # took the room after the look), was reported as "the lock's commit was refused", as if it had been sent, and
+    # the end's release counted a round for it. Nothing was sent: it is the budget's "held", with its seconds.
+    assert store.lock_owner() is None
+    real_admit = budget.admit
+
+    def no_room(*a, **kw):
+        raise hf_store.BudgetSpent("the commit budget of 12 an hour has no room (lock not sent); room in 77 s")
+
+    budget.admit = no_room
+    n = len(commits(tmp_path / "twelve"))
+    r = store.release_report("home", grace=600, essential=True)
+    assert r["held"] is True and r["why"] == "budget: room in 77 s" and len(commits(tmp_path / "twelve")) == n
+    budget.admit = real_admit
+    # And the owner a lock on main names can be read (what a call that was ended at its limit is told by).
+    mine = store._lock("home:pk-N", time.time(), essential=True, takeover=900)
+    assert mine and store.lock_owner() == "home:pk-N"
+    store._unlock(mine)
+    assert store.lock_owner() is None
 
 
 def test_which_upload_order_ran_comes_back_with_the_push(tmp_path):
@@ -2350,6 +2369,18 @@ def test_no_signed_address_is_kept_and_a_refusal_is_the_hubs_only_when_it_is_kno
     back = http_error(403, "https://huggingface.co/api/datasets/someone/renamed/tree/main")
     back.response.history = [_resp(301)]
     assert hf_store.reply_side(back) == "hub" and hf_store.auth_failure(back)
+    # The fourth reviews: the byte read wrote "from the object store" for any redirected reply, and those words then
+    # decided. It goes by the final host too.
+    for final, side in (("https://huggingface.co/datasets/someone/renamed/resolve/x/f", "from the hub"),
+                        ("https://cdn-lfs.example/objects/abc", "from the object store")):
+        r = _reply(403, redirected=True)
+        r.url = final
+        session = type("S", (), {"get": lambda self, url, r=r, **kw: r})()
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(FakeApi, "http_session", property(lambda self: session))
+            with pytest.raises(hf_store.StoreError) as got:
+                store.b.probe("ckpt-N", "gens/g100/model.safetensors", size=1)
+        assert side in str(got.value) and hf_store.auth_failure(got.value) == (side == "from the hub")
     # The side crosses bounded()'s pipe, in words.
     for e, side in ((hub, "hub"), (s3, "object store")):
         def refuse(e=e):
