@@ -994,3 +994,50 @@ def test_the_units_guard_is_one_campaigns_takes_only_good_readings_and_alarms_wh
         G.main(["--campaign", "x", "--stop-at", "0", "--once", "--state-dir", str(d), "--log", str(tmp_path / "x.jsonl")],
                read=guard_reads({}))
 
+
+def test_the_units_guard_delivers_past_a_folder_it_cannot_write_and_retries_it(tmp_path, capsys, monkeypatch):
+    """The third launch review (GPT 3): a request that could not be written into one folder (or whose delivery could
+    not be logged) raised out of the loop: the later folders were never asked, and no ALARM said so. Each folder is
+    tried on its own; the ones that fail are named in ALARM and tried again at the next reading, a failed reading
+    included."""
+    import base2_units_guard as G
+    dirs = [tmp_path / f"arm_{a}" for a in ARMS]
+    for d in dirs:
+        d.mkdir()
+    log = tmp_path / "g" / "guard.jsonl"
+    argv = ["--campaign", "base2", "--stop-at", "640", "--once", "--log", str(log),
+            *[x for d in dirs for x in ("--state-dir", str(d))]]
+    G.main(argv, read=guard_reads({"currentBalance": 1000.0}))
+    os.chmod(dirs[0], 0o500)                             # arm N's folder cannot be written
+    real_append = G.append
+
+    def append(path, rec):                               # and arm S's delivery cannot be logged, once
+        if rec.get("delivered") == str(dirs[1]) and not append.failed:
+            append.failed = True
+            raise OSError("disk full")
+        return real_append(path, rec)
+
+    append.failed = False
+    monkeypatch.setattr(G, "append", append)
+    try:
+        capsys.readouterr()
+        G.main(argv, read=guard_reads({"currentBalance": 350.0}))               # 650 spent: at the bound
+        alarm = (tmp_path / "g" / "ALARM").read_text()
+        assert f"could not be delivered to {dirs[0]} (PermissionError)" in alarm
+        assert f"could not be delivered to {dirs[1]} (OSError)" in alarm
+        assert "ALARM (base2_units_guard): the stop is requested and it could not be delivered to" in capsys.readouterr().out
+        assert not (dirs[0] / "STOP_REQUEST").exists() and (dirs[2] / "STOP_REQUEST").exists()   # C was asked all the same
+        assert (dirs[1] / "STOP_REQUEST").exists()                              # written, its record not
+        recs = [json.loads(ln) for ln in log.read_text().splitlines()]
+        assert [r["delivered"] for r in recs if "delivered" in r] == [str(dirs[2])]
+    finally:
+        os.chmod(dirs[0], 0o700)
+    # The next reading fails (the balance cannot be read): the deliveries outstanding are made all the same.
+    G.main(argv, read=guard_reads({"error": 401}))
+    assert (dirs[0] / "STOP_REQUEST").exists()
+    recs = [json.loads(ln) for ln in log.read_text().splitlines()]
+    assert sorted(r["delivered"] for r in recs if "delivered" in r) == sorted(map(str, dirs))
+    assert (dirs[1] / "STOP_REQUEST").read_text() == (dirs[2] / "STOP_REQUEST").read_text()  # not written twice over
+    G.main(argv, read=guard_reads({"currentBalance": 340.0}))                    # a good reading: nothing outstanding
+    assert not (tmp_path / "g" / "ALARM").exists()
+

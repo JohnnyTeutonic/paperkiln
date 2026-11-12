@@ -528,12 +528,35 @@ def test_adopt_receipts_checks_the_load_probe_and_writes_the_shard_hashes_where_
     with pytest.raises(SystemExit) as e:
         adopt()
     said = str(e.value)
-    assert "load probe: its 20-step run did not complete (return code 1, first step None)" in said
+    assert "load probe: its 20-step run is not shown to have completed (loadprobe.json: dict, return code 1, first step None)" in said
     assert "the build's state folder holds HALTED" in said
     assert f"stage 2: published_N lists N.tail.ids at {sha(b'published other bytes')}, and the build hashed {sha(b'nt')}" in said
     assert pf.read_text() == before
-    lp.write_text(json.dumps({"returncode": 0, "seconds_to_first_step": 41.5}))
+    # The third launch review (GPT 2): the probe's record is required, unconditionally: {} or null, or a record of
+    # other types, is no evidence that its 20 steps ran.
     (state_dir / "HALTED").unlink()
+    pubs[2]["published_N"]["files"]["N.tail.ids"]["sha256"] = sha(b"nt")
+    receipt(2, ["stage1", "build-N"])
+    for body in ("{}", "null", "[0]", '"done"', '{"returncode": "0", "seconds_to_first_step": 1}',
+                 '{"returncode": true, "seconds_to_first_step": 1}', '{"returncode": 0, "seconds_to_first_step": "1"}',
+                 '{"returncode": 0, "seconds_to_first_step": null}', '{"returncode": 0, "seconds_to_first_step": NaN}',
+                 '{"returncode": 0, "seconds_to_first_step": -1}', '{"returncode": 0.0, "seconds_to_first_step": 1}'):
+        lp.write_text(body)
+        with pytest.raises(SystemExit) as e:
+            adopt()
+        assert "load probe: its 20-step run is not shown to have completed" in str(e.value), body
+        assert pf.read_text() == before
+    # The third launch review (GPT 1, Explore B2): --state-dir is required, and must be a folder.
+    lp.write_text(json.dumps({"returncode": 0, "seconds_to_first_step": 41.5}))
+    with pytest.raises(SystemExit) as e:
+        P.main(["adopt-receipts", str(build), "--pins", str(pf), "--repo", str(repo)])
+    assert e.value.code == 2 and "adopt-receipts needs --state-dir" in capsys.readouterr().err
+    with pytest.raises(SystemExit) as e:
+        P.main(["adopt-receipts", str(build), "--pins", str(pf), "--repo", str(repo), "--state-dir", str(tmp_path / "nowhere")])
+    assert "the build runner's state folder is required (--state-dir) and must exist" in str(e.value)
+    with pytest.raises(SystemExit) as e:
+        P.adopt_receipts(json.loads(before), str(build), str(repo), None)
+    assert "the build runner's state folder is required" in str(e.value) and pf.read_text() == before
     pubs[2]["published_N"]["files"]["N.tail.ids"]["sha256"] = sha(b"nt")
     receipt(2, ["stage1", "build-N"])
     # (3) A shard hash file already committed with other contents: refused.
@@ -1290,6 +1313,59 @@ def test_the_load_probe_pulls_and_checks_s_on_a_vm_that_has_no_ids(mini):
     r = subprocess.run(["bash", "tools/colab_chat/base2_data.sh", str(mini.tmp / "vm_l2"), str(mini.vocab), "loadprobe",
                         str(mini.tmp / "probe3")], cwd=ROOT, env={**e, "BASE2_STORE_CONFIG": str(cfg)}, capture_output=True, text=True)
     assert r.returncode != 0 and not (mini.tmp / "probe3" / "loadprobe.json").exists()
+
+
+def test_adopt_receipts_on_a_real_builds_records(mini, tmp_path, capsys):
+    """The third launch review (Explore 2): adopt-receipts was tested on receipts written by hand, in the format it
+    assumed. Here it runs on what base2_data.sh itself wrote: the three stage receipts with their store-verify
+    records, the load probe's loadprobe.json and loadprobe_pins.json from a real run of its mode (a fake trainer),
+    laid out as the build runner brings them home (ART/data, ART/load_probe)."""
+    build = tmp_path / "build"
+    (build / "data").mkdir(parents=True)
+    for n in (1, 2, 3):
+        shutil.copyfile(mini.b / f"base2_stage{n}.json", build / "data" / f"base2_stage{n}.json")
+    for n in (2, 3, 4, 5):   # the first fetch's hash files (fixture builds fetch nothing: stand-ins where none)
+        src = mini.a / f"fineweb_edu_shard{n}_v1.sha256"
+        dst = build / "data" / src.name
+        if src.exists():
+            shutil.copyfile(src, dst)
+        else:
+            dst.write_text(f"{sha(bytes([n]))}  pretrain_train.txt\n")
+    fake = tmp_path / "fake_mtstudio.py"
+    fake.write_text(FAKE_TRAINER)
+    os.chmod(fake, 0o755)
+    fresh = tmp_path / "vm_probe"
+    out = mini.run(fresh, "all")
+    assert all(f"stage {n}: finished already" in out for n in (1, 2, 3))
+    e = {**os.environ, "CUDA_VISIBLE_DEVICES": "", "BASE2_STORE_CONFIG": str(mini.cfg), "BASE2_PINS": str(mini.pins),
+         "BASE2_STORE_RETRY_S": "0", "JOBS_MTSTUDIO": str(fake), "PROBE_DATA": str(fresh), "PROBE_SAW": str(tmp_path / "saw.json")}
+    r = subprocess.run(["bash", "tools/colab_chat/base2_data.sh", str(fresh), str(mini.vocab), "loadprobe", str(build / "load_probe")],
+                       cwd=ROOT, env=e, capture_output=True, text=True)
+    assert r.returncode == 0, (r.stdout[-2000:], r.stderr[-2000:])
+    for f in ("loadprobe.json", "loadprobe_pins.json"):
+        assert (build / "load_probe" / f).exists(), f
+    repo = tmp_path / "repo"
+    (repo / "tools" / "colab_chat").mkdir(parents=True)
+    (repo / "corpus" / "hashes").mkdir(parents=True)
+    pf = repo / "tools" / "colab_chat" / "base2_pins.json"
+    shutil.copyfile(mini.pins, pf)
+    git = ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false"]
+    subprocess.run([*git, "init", "-q"], check=True)
+    subprocess.run([*git, "add", "-A"], check=True)
+    subprocess.run([*git, "commit", "-q", "-m", "start"], check=True)
+    state_dir = tmp_path / "base2_data_runner"
+    state_dir.mkdir()
+    capsys.readouterr()
+    assert P.main(["adopt-receipts", str(build), "--pins", str(pf), "--repo", str(repo), "--state-dir", str(state_dir)]) == 0
+    got = json.loads(capsys.readouterr().out)
+    assert got["commit_files"] == sorted(["tools/colab_chat/base2_pins.json",
+                                          *[f"corpus/hashes/fineweb_edu_shard{n}_v1.sha256" for n in (2, 3, 4, 5)]])
+    pins = json.loads(pf.read_text())
+    store = mini.store / "main" / "corpus"
+    for group, name, where in (("N", "N.main.ids", "N"), ("N", "N.tail.ids", "N"), ("S", "S.main.ids", "S"),
+                               ("S", "S.tail.ids", "S"), ("panels", "panel_scenario.ids", "panel_scenario")):
+        assert pins[group][name] == P.sha256(str(store / where / name)), name            # the store's own bytes
+    assert all(v is not None for g in P.ARM_GROUPS for v in P.group(pins, g).values())
 
 
 def test_rehearsal_corpora_are_two_sizes_built_once_and_then_pulled(mini):

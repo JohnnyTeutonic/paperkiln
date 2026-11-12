@@ -2540,7 +2540,7 @@ def test_a_final_round_that_sent_its_lock_and_was_ended_before_it_returned_is_co
     assert store.send_mark is None and not (tmp_path / "home" / "store_release_lock_send.mark").exists()
 
 
-GAP_WRAP = run_eq.WRAP.replace("rm.main()\n", """import atexit, os, time as real_time
+GAP_WRAP = run_eq.WRAP.replace("rm.main()\n", """import atexit, json, os, time as real_time
 class Clock:                # the runner's clock: real, plus what the ticks have "slept", kept across runs
     off = 0.0
     def __getattr__(self, k):
@@ -2578,7 +2578,19 @@ def tick(deadline):         # a tick takes TICK_MIN minutes of the runner's time
     if ticks[0] == int(os.environ.get("STOP_AT_TICK", "0")):  # the lead asks for a stop
         with open(os.environ["STOP_FILE"], "w") as f:
             f.write(os.environ["STOP_TEXT"])
+    if ticks[0] == int(os.environ.get("SESSION_END_TICK", "0")):  # Colab's own limit ends the session
+        fj = os.path.join(os.environ["FAKE_ROOT"], "fake.json")
+        d = json.load(open(fj))
+        d["alive"] = False
+        json.dump(d, open(fj, "w"))
 rm.sleep_tick = tick
+real_stop = rm.stop_session
+def stop_or_die(st, why, lose=False):   # KILL_IN_STOP: the runner dies after writing HALTED, before its stop
+    if os.environ.get("KILL_IN_STOP") and os.path.exists(os.path.join(rm.HOME, "HALTED")):
+        keep()
+        os._exit(9)
+    return real_stop(st, why, lose)
+rm.stop_session = stop_or_die
 real_preflight = rm.store_preflight
 rm.store_preflight = lambda st, jobs: False if os.path.exists(outage) else real_preflight(st, jobs)
 real_call = rm.store_call
@@ -3062,3 +3074,153 @@ def test_an_arm_capped_after_a_home_outage_restarts_and_pushes(tmp_path):
     assert after > before and news(calls2) == 2, (before, after, log2[-2000:])
     cfg = json.loads((work / "fake" / "vm" / "chat" / "store.json").read_text())
     assert cfg["pushed_bytes_start"] < int(cap * 1e9) - fakecolab.BIG               # the new courier had room
+
+
+def outage_env(work, **more):
+    """A 40-hour home outage on 60-minute ticks: from tick 4 to tick 44 every Colab and store call from home fails,
+    while the VM trains on and pushes (one step a tick)."""
+    step = work / "vmstep.py"
+    if not step.exists():
+        step.write_text("# VMJSON: one step of the fake VM\nprint('{}')\n")
+    return gap_env(work, TICK_MIN="60", OUTAGE="4,44", OUTAGE_VM_STEP=str(step), FAKE_STORE_CLI=str(EQ / "fakecolab_store.py"),
+                   FAKE_STEPS="5000", FAKE_VM_LEDGER_AGE_S="100000", **more)
+
+
+def test_a_40_hour_home_outage_ends_in_a_relaunch_not_a_halt(tmp_path):
+    """The third launch review (Explore B1). Home is down for 40 hours; the VM trains on and pushes; its courier
+    reaches a small cap (no release reaches it); Colab's own limit ends the session at hour 14. When home comes
+    back the store holds generations pushed while home could not see the session: that is progress, and the clock
+    starts again at the read, not at the push (the session's time after its last push was not seen). The listing
+    shows the session gone, so the arm relaunches on a new session and pushes. Before, the clock took the push's
+    time, hours old, and the launch's check halted STORE_NO_PROGRESS."""
+    work = tmp_path
+    cap = 8 * fakecolab.BIG / 1e9
+    args = store_args(work, *GAP_ARGS, "--store-release-storage", "--store-release-grace-s", "600", "--store-push-cap-gb", f"{cap}")
+    p, calls = run_store(work, {}, extra=args, wrap=GAP_WRAP, hours="100",
+                         more_env=outage_env(work, SESSION_END_TICK="14", KILL_AT_TICK="50"))
+    log = log_of(work)
+    assert p.returncode == 9, (p.returncode, p.stderr[-1500:], log[-3000:])
+    assert not (work / "state" / "HALTED").exists(), log[-3000:]
+    assert "PUSH CAP" in (work / "fake" / "store_vm.log").read_text()                  # the courier capped, unseen
+    assert "pushed while home could not see the session: the clock starts again now" in log
+    assert "Colab's listing answers again after" in log
+    assert news(calls) == 2 and "session gone on 3 consecutive ticks; relaunching" in log
+    state = state_of(work)
+    assert state["launches"] == 2 and state["jobs"]["pt"]["status"] == "RUNNING"
+    restored = [ln for ln in (work / "fake" / "store_vm.log").read_text().splitlines() if ln.startswith("launch 2: pt store_step")]
+    assert restored and int(restored[0].split("store_step ")[1].split()[0]) > 0     # resumed from what was pushed unseen
+
+
+def test_a_capped_arm_seen_when_home_returns_restarts_without_a_no_progress_halt(tmp_path):
+    """The third launch review (Explore B1, the trace as written). Home is down for 40 hours, the session stays up,
+    its courier reaches the cap. When home is back it reads the cap and halts STORE_PUSH_CAP; that halt starts the
+    no-progress clock again (pushing to the cap proves the arm trained). Restarted, the runner's launch makes the
+    capped arm's release first (its measurement starts the clock again too), then the clock's check, then the
+    create: it pushes. Before, the clock held the capped generation's push time, many hours old, and the launch
+    halted STORE_NO_PROGRESS before it reached the release."""
+    work = tmp_path
+    cap = 8 * fakecolab.BIG / 1e9
+    args = store_args(work, *GAP_ARGS, "--store-release-storage", "--store-release-grace-s", "600", "--store-push-cap-gb", f"{cap}")
+    p, calls = run_store(work, {}, extra=args, wrap=GAP_WRAP, hours="100", more_env=outage_env(work))
+    log = log_of(work)
+    assert p.returncode == 3, (p.returncode, p.stderr[-1500:], log[-3000:])
+    halted = json.loads((work / "state" / "HALTED").read_text())
+    assert halted["kind"] == "STORE_PUSH_CAP" and halted["stop_confirmed"] is True
+    assert "the no-progress clock starts again (the courier pushed to its cap: the arm trained)" in log
+    before = hf_store.open_store({"repo": f"dir:{work / 'store'}"}).head_step("ckpt-N")
+    (work / "state" / "HALTED").unlink()                 # a person has read it
+    p2, calls2 = run_store(work, {}, extra=args, wrap=GAP_WRAP, hours="100", fresh=False,
+                           more_env=gap_env(work, TICK_MIN="60", FAKE_STEPS="5000", FAKE_VM_LEDGER_AGE_S="100000", KILL_AT_TICK="8"))
+    log2 = log_of(work)[len(log):]
+    assert p2.returncode == 9, (p2.returncode, p2.stderr[-1500:], log2[-3000:])
+    assert not (work / "state" / "HALTED").exists() and "store: STORE_NO_PROGRESS:" not in log2
+    assert "a release from home is made before the create" in log2 and "under the cap: the new courier starts there" in log2
+    assert "the no-progress clock starts again (a release measured what the arm pushed to its cap: it trained)" in log2
+    assert news(calls2) == 2
+    assert hf_store.open_store({"repo": f"dir:{work / 'store'}"}).head_step("ckpt-N") > before
+
+
+def test_a_halt_whose_stop_did_not_happen_is_stopped_at_the_next_start(tmp_path):
+    """The third launch review (Explore 2): a runner killed after writing HALTED and before its stop left the
+    session billing; every later start read HALTED and exited, and the watchdog's stop file kept it from trying.
+    The halt record says whether its stop was confirmed; a start that finds it unconfirmed stops this folder's own
+    session (the rules of a folder that is home), records that, and exits as with any HALTED."""
+    work = tmp_path
+    stop = work / "state" / "STOP_REQUEST"
+    p, calls = run_store(work, {}, extra=store_args(work, *GAP_ARGS), wrap=GAP_WRAP, hours="100",
+                         more_env=gap_env(work, STOP_AT_TICK="4", STOP_FILE=str(stop), STOP_TEXT="units: 641 of 640",
+                                          FAKE_STEPS="5000", KILL_IN_STOP="1"))
+    assert p.returncode == 9, (p.returncode, p.stderr[-1500:], log_of(work)[-2000:])
+    halted = json.loads((work / "state" / "HALTED").read_text())
+    assert halted["kind"] == "LEAD_STOP" and "stop_confirmed" not in halted
+    assert json.loads((work / "fake" / "fake.json").read_text())["alive"] is True        # left billing
+    n_calls = len(calls.splitlines())
+    p2, calls2 = run_store(work, {}, extra=store_args(work, *GAP_ARGS), wrap=GAP_WRAP, hours="100", fresh=False,
+                           more_env=gap_env(work))
+    assert p2.returncode != 0 and "its stop was finished at this start: ours, confirmed True" in p2.stderr, p2.stderr[-1500:]
+    later = calls2.splitlines()[n_calls:]
+    assert later[-1].startswith('["stop"') and json.loads((work / "fake" / "fake.json").read_text())["alive"] is False
+    assert "store: courier ended and token removed from the VM (before a halted session is stopped)" in log_of(work)
+    halted = json.loads((work / "state" / "HALTED").read_text())
+    assert halted["kind"] == "LEAD_STOP" and halted["stop_confirmed"] is True and halted["stop_finished_at_start"] == "ours"
+    p3, calls3 = run_store(work, {}, extra=store_args(work, *GAP_ARGS), wrap=GAP_WRAP, hours="100", fresh=False,
+                           more_env=gap_env(work))
+    assert "HALTED marker present: nothing runs until a person has read it (the marker stays)" in p3.stderr
+    assert len(calls3.splitlines()) == len(calls2.splitlines())                         # nothing asked of Colab
+
+
+def test_the_listing_answers_only_on_positive_evidence(tmp_path):
+    """The third launch review (Explore 2): absent() and the outage rule took any zero exit of `colab sessions` with
+    no line for this session as "the listing answers, no session". The Colab CLI (commands/session.py, read on 12
+    Nov 2026) prints one line a session, "[name] endpoint | Hardware: ... | Variant: ...", or exactly
+    "[colab] No active sessions found on server." for none; a service it cannot reach raises out of requests (a
+    traceback, exit 1). Only those forms are an answer."""
+    rm = load_runner(tmp_path / "home")
+    T = rm.T = rm.ColabTransport()
+    for rc_out, answered, absent, listed in (
+            ((0, ""), False, False, None),
+            ((0, "\n"), False, False, None),
+            ((0, "[colab] Pruned 1 stale local session(s).\n"), False, False, None),
+            ((1, "Traceback (most recent call last):\nrequests.exceptions.ConnectionError: ...\n"), False, False, None),
+            ((124, "TIMEOUT"), False, False, None),
+            ((0, "[colab] No active sessions found on server.\n"), True, True, None),
+            ((0, "[other] gpu-l4-x | Hardware: L4 | Variant: GPU\n"), True, True, None),
+            ((0, "[pk-inproc] gpu-l4-y | Hardware: L4 | Variant: GPU\n"), True, False, "gpu-l4-y")):
+        rm.colab = lambda *a, timeout=240, rc_out=rc_out: rc_out
+        assert T.listed() == listed and T.answered() is answered and T.absent() is absent, rc_out
+        assert rm.store_listing_answers() is answered, rc_out
+    assert rm.COLAB_EMPTY_LISTING == r"^\[colab\] No active sessions found on server\.$"
+
+
+def test_a_capped_arms_release_that_never_runs_halts_by_name(tmp_path):
+    """The third launch review (Explore 2): a release before the create that is held or fails every time left the
+    arm idle, a line a tick, for ever. After six tries it halts STORE_CAP_RELEASE_FAILED, with the by-hand release."""
+    rm = load_runner(tmp_path / "home")
+    rm.time = FakeTime()
+    rm.STORE = {"push_cap_bytes": 1000, "reclaim": True, "release_grace_s": 7200, "repo": "dir:x", "repo_type": "dataset",
+                "token_file": "/t", "mark_ns": "", "branch_suffix": ""}
+    tries = []
+    rm.store_release = lambda st, jobs, force=False, **k: tries.append(force) or "held"
+    st, jobs = St(), [{"name": "pt", "spec": {}}]
+    st.d.update(store_pushed_bytes=1200, store_capped={"cap": 1000})
+    for n in range(5):
+        assert rm.store_cap_before_create(st, jobs) is False
+    assert st.d["store_cap_release_attempts"] == 5 and not (tmp_path / "home" / "HALTED").exists()
+    with pytest.raises(SystemExit) as e:
+        rm.store_cap_before_create(st, jobs)
+    halted = json.loads((tmp_path / "home" / "HALTED").read_text())
+    assert e.value.code == 3 and tries == [True] * 6 and rm.STORE_CAP_RELEASE_TRIES == 6
+    assert halted["kind"] == "STORE_CAP_RELEASE_FAILED" and halted["attempts"] == 6 and halted["last"] == "held"
+    assert "hf_store.py release --config" in halted["do"] and "store_release_by_hand.json" in halted["do"]
+    assert (tmp_path / "home" / "store_release_by_hand.json").exists()
+    # A release that runs clears the count of tries and starts the clock again.
+    (tmp_path / "home" / "HALTED").unlink()
+    st.d["store_cap_release_attempts"] = 3
+
+    def done(st, jobs, force=False, **k):
+        st.d["store_pushed_bytes"] = 400
+        return "done"
+
+    rm.store_release = done
+    assert rm.store_cap_before_create(st, jobs) is True and "store_cap_release_attempts" not in st.d
+    assert st.job("pt")["store_progress_at"] == rm.time.time()

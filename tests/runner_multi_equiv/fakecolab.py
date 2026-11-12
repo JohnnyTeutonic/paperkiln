@@ -258,9 +258,15 @@ def main():
     else:
         call_log(argv)
     if cmd == "sessions":
+        # The Colab CLI's own form (commands/session.py): one line a session, or its one line for none.
+        if d.get("listing_empty_silent"):   # a zero exit with nothing printed: not an answer (a test's)
+            return 0
         if d["alive"]:
-            print(f"[{d['name']}] fake-endpoint-{d['launches']}  L4  running")
-        print("[other] somebody-else")
+            print(f"[{d['name']}] fake-endpoint-{d['launches']} | Hardware: L4 | Variant: GPU")
+        if not d.get("listing_alone"):
+            print("[other] somebody-else | Hardware: L4 | Variant: GPU")
+        elif not d["alive"]:
+            print("[colab] No active sessions found on server.")
         return 0
     if cmd == "new":
         d["new_calls"] = d.get("new_calls", 0) + 1

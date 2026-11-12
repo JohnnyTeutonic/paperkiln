@@ -124,6 +124,12 @@ def colab(*args, timeout=240):
     return sh([COL, *args], timeout)
 
 
+# What `colab sessions` prints when it answered (the Colab CLI's commands/session.py, read on 12 Nov 2026): one line a
+# session, "[name] endpoint | Hardware: X | Variant: Y", or this one line for none.
+COLAB_SESSION_LINE = r"^\[[^\]]+\] \S+ \| Hardware: "
+COLAB_EMPTY_LISTING = r"^\[colab\] No active sessions found on server\.$"
+
+
 # ---------------------------------------------------------------- transports
 class ColabTransport:
     """The colab CLI, call for call what this runner did before the Transport existed."""
@@ -139,8 +145,19 @@ class ColabTransport:
 
     def listed(self):
         rc, out = colab("sessions", timeout=120)
+        self.last_listing = (rc, out)
         m = re.search(r"^\[" + re.escape(NAME) + r"\]\s+(\S+)", out, re.M)
         return m.group(1) if m else None
+
+    def answered(self, rc_out=None):
+        """True only on POSITIVE evidence that `colab sessions` answered: exit 0, and either a session line in the
+        CLI's own form ("[name] endpoint | Hardware: ..."), or the exact line it prints for an empty listing. Not
+        a zero exit with empty or other output. (The CLI, read on 12 Nov 2026: an empty listing prints
+        "[colab] No active sessions found on server." and exits 0; a service it cannot reach raises out of
+        requests, so a traceback and exit 1; an expired token offline falls to the interactive login, which reads
+        the runner's empty stdin and exits 1.) rc_out: a listing already made, else the last one listed() made."""
+        rc, out = rc_out or getattr(self, "last_listing", (1, ""))
+        return rc == 0 and bool(re.search(COLAB_EMPTY_LISTING, out, re.M) or re.search(COLAB_SESSION_LINE, out, re.M))
 
     def refresh(self, st):
         sh([COLPY, ADOPT, "--refresh"], 180)
@@ -168,9 +185,11 @@ class ColabTransport:
         return colab("stop", "-s", NAME, timeout=120)[0]  # the return code: stop_session() reads it
 
     def absent(self):
-        """True only when the listing itself answered and does not hold this session."""
+        """True only when the listing itself answered (positive evidence: answered()) and does not hold this
+        session."""
         rc, out = colab("sessions", timeout=120)
-        return rc == 0 and not re.search(r"^\[" + re.escape(NAME) + r"\]\s+(\S+)", out, re.M)
+        self.last_listing = (rc, out)
+        return self.answered((rc, out)) and not re.search(r"^\[" + re.escape(NAME) + r"\]\s+(\S+)", out, re.M)
 
     def release(self, st):
         pass  # nothing outlives a Colab session
@@ -236,6 +255,59 @@ def stop_unresolved(st, why, **more):
         json.dump(rec, handle, indent=1)
         handle.flush()
         os.fsync(handle.fileno())
+
+
+def halt_record():
+    """HOME/HALTED as a dict ({} when it is not JSON, or not there)."""
+    try:
+        rec = json.load(open(os.path.join(HOME, "HALTED")))
+    except (OSError, ValueError):
+        return {}
+    return rec if isinstance(rec, dict) else {}
+
+
+def halt_record_update(**fields):
+    """Fields added to HOME/HALTED (written whole, then renamed). Never raises."""
+    p = os.path.join(HOME, "HALTED")
+    try:
+        if not os.path.exists(p):
+            return
+        rec = halt_record() or {"kind": "HALTED (not JSON)"}
+        with open(p + ".tmp", "w") as f:
+            json.dump({**rec, **fields}, f)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(p + ".tmp", p)
+    except OSError:
+        pass
+
+
+def finish_halted_stop(st):
+    """A start that finds HALTED whose stop was not confirmed: the stop is finished now, for this folder's own
+    recorded session only, by the rules of a start on a folder that is home (store_left_session): the session
+    listed at the recorded endpoint (or with no endpoint recorded, or a stop already unresolved) has its token
+    removed, its logs brought home and is stopped, with confirmation; one at another endpoint is left alone
+    (OWNERSHIP_MISMATCH); a listing that does not answer leaves STOP_UNRESOLVED. The outcome goes into the halt
+    record; then the start exits as with any HALTED."""
+    rec = halt_record()
+    log(f"HALTED ({rec.get('kind')}) is here and its stop was not confirmed: the stop is finished now")
+    left, ep = store_left_session(st)
+    stopped = False
+    if left == "ours":
+        store_forget_token("before a halted session is stopped")
+        store_bring_home(st, "before a halted session is stopped")
+        stopped = stop_session(st, "finishing a halt's stop")
+    elif left == "none":
+        stopped = True
+    elif left == "other":
+        ownership_mismatch(st, ep, "at a start that finished a halt's stop")
+    else:
+        stop_unresolved(st, "at a start that finished a halt's stop, the listing did not answer: the session may "
+                            "still be up; it was not stopped")
+    halt_record_update(stop_confirmed=bool(stopped), stop_finished_at_start=left, stop_finished_at=time.time())
+    log(f"the halt's stop at this start: {left}; confirmed: {stopped}")
+    sys.exit("HALTED marker present: nothing runs until a person has read it (the marker stays; its stop was finished "
+             f"at this start: {left}, confirmed {stopped})")
 
 
 def ownership_mismatch(st, ep, where):
@@ -864,9 +936,11 @@ def launch(st, commit, jobs_rel, jobs, uploads):
         log("deadline expired while stopping prior session; no replacement created")
         return False
     if STORE:
-        store_no_progress(st, jobs)  # a clock past its limit creates no session: it halts here, by name
+        # The cap first: a capped arm's release measures it down and starts the no-progress clock again (pushing
+        # to the cap proves the arm trained), before that clock is checked.
         if not store_cap_before_create(st, jobs):
             return False
+        store_no_progress(st, jobs)  # a clock past its limit creates no session: it halts here, by name
     rc, out = T.create(st)
     if rc != 0:
         log(f"no {T.gpu} ({out.strip()[-120:]}); retry later")
@@ -1169,6 +1243,8 @@ STORE_RELEASE_RETRY_S = 600
 # for this long past the limit (store_no_progress). One failed read, the first call after home comes back, does not
 # stop a session that is training.
 STORE_NO_PROGRESS_UNREAD_S = 3600
+# Tries of the release a capped arm makes before a create (store_cap_before_create), then STORE_CAP_RELEASE_FAILED.
+STORE_CAP_RELEASE_TRIES = 6
 _STORE = {}
 
 
@@ -1726,8 +1802,28 @@ def store_cap_before_create(st, jobs):
         "home is made before the create, so the new VM's courier starts from what the store holds")
     out = store_release(st, jobs, force=True)
     if out != "done":
-        log(f"store: that release did not run ({out}); no session is created this tick")
+        # A release that never runs (held by a lock, failing, or meeting a ledger it cannot read) would leave the arm
+        # idle with a line a tick: after STORE_CAP_RELEASE_TRIES of them it halts by name, with the by-hand release.
+        n = st.d["store_cap_release_attempts"] = st.d.get("store_cap_release_attempts", 0) + 1
+        st.save()
+        log(f"store: that release did not run ({out}; attempt {n} of {STORE_CAP_RELEASE_TRIES}); no session is created "
+            "this tick")
+        if n >= STORE_CAP_RELEASE_TRIES:
+            import shlex
+            cfg = store_by_hand_config()
+            cmd = (f"python3 {shlex.quote(os.path.join(HERE, 'hf_store.py'))} release --config {shlex.quote(cfg)} "
+                   f"--grace {STORE['release_grace_s']:.0f} --owner {shlex.quote('hand:' + str(NAME))}")
+            st.d.pop("store_cap_release_attempts", None)
+            st.save()
+            store_halt("STORE_CAP_RELEASE_FAILED", attempts=n, last=out, bytes_since_release=count, cap_bytes=cap,
+                       why="the saved count is at the push cap, and the release from home that measures it down did "
+                           f"not run in {n} tries before a create",
+                       do=f"read the log for why; make the release by hand: {cmd} (it prints \"released\"; with "
+                          "\"released\": null the lock was held and nothing was released: run it again); then remove "
+                          "HALTED, and the next start releases and measures again")
+            raise SystemExit(3)
         return False
+    st.d.pop("store_cap_release_attempts", None)
     mine = st.d.get("store_pushed_bytes") or 0
     st.d.pop("store_capped", None)
     st.save()
@@ -1737,14 +1833,60 @@ def store_cap_before_create(st, jobs):
                        "push cap")
         raise SystemExit(3)
     log(f"store: the release measured {mine} bytes for this campaign, under the cap: the new courier starts there")
+    store_clock_reset(st, jobs, "a release measured what the arm pushed to its cap: it trained")
     return True
 
 
+def store_blind_track(st, seen):
+    """Each tick, from the listing the loop has just made: the stretches in which home could not see the session
+    (Colab's listing did not answer: home's network down, the laptop asleep). "store_blind_since" while one lasts;
+    when the listing answers again it becomes "store_blind_last" [from, to]. A generation the store took inside such a
+    stretch was pushed while home could not see it (store_no_progress_fresh)."""
+    now = time.time()
+    answered = seen is not None or (bool(T.answered()) if hasattr(T, "answered") else True)
+    if not answered:
+        if st.d.get("store_blind_since") is None:
+            st.d["store_blind_since"] = now
+            st.save()
+    elif st.d.get("store_blind_since") is not None:
+        st.d["store_blind_last"] = [st.d.pop("store_blind_since"), now]
+        st.save()
+        log(f"store: Colab's listing answers again after {(now - st.d['store_blind_last'][0]) / 60:.0f} min in which home "
+            "could not see the session")
+
+
+def store_pushed_unseen(st, pushed):
+    """True when a generation pushed at `pushed` (the VM's clock) went up while home could not see the session: in
+    the stretch that lasts now, or in the last one (store_blind_track)."""
+    if not isinstance(pushed, (int, float)):
+        return False
+    since = st.d.get("store_blind_since")
+    if since is not None and pushed >= since - TICK:
+        return True
+    last = st.d.get("store_blind_last")
+    return bool(last) and last[0] - TICK <= pushed <= last[1]
+
+
+def store_clock_reset(st, jobs, why):
+    """The no-progress clock starts again now for every store job: the arm was shown to have trained (its courier
+    pushed to the cap; a release measured what it pushed)."""
+    now = time.time()
+    for n in store_branches(jobs):
+        js = st.job(n)
+        if not js.get("home"):
+            js["store_progress_at"] = now
+    st.save()
+    log(f"store: the no-progress clock starts again ({why})")
+
+
 def store_listing_answers():
-    """True when Colab's listing answers: it lists a session under this name, or answers that it holds none. False
-    when it does not answer (or the transport cannot say)."""
+    """True when Colab's listing answers, on positive evidence (ColabTransport.answered): it lists a session under
+    this name, or answers in its own words that it holds none. False when it does not answer, or answers in a form
+    that is not one of those (a zero exit with nothing printed is no answer), or the transport cannot say."""
     try:
-        return listed() is not None or bool(T.absent())
+        if listed() is not None:
+            return True
+        return bool(T.answered()) if hasattr(T, "answered") else bool(T.absent())
     except Exception:  # noqa: BLE001
         return False
 
@@ -1775,13 +1917,19 @@ def store_no_progress_fresh(st, jobs, n, vm):
     else:
         if step is not None and step > seen:
             # The clock is set to when the generation was pushed, not to this read: a VM that hung just after a
-            # push home never saw is not given a whole new limit by it.
+            # push home never saw is not given a whole new limit by it. EXCEPT for a generation pushed while home
+            # could not see the session (its network down: store_blind_track): the arm trained through that time,
+            # and what its session did after the push (trained on, or was ended by Colab's own limit) was not
+            # seen, so that time is not counted: the clock starts again at this read. A real crash loop is not
+            # helped by it: sessions lost before a save push nothing, and their time counts.
             at = js.get("store_progress_at") or now
-            when = min(now, float(pushed)) if isinstance(pushed, (int, float)) else now
+            unseen = store_pushed_unseen(st, pushed)
+            when = now if unseen else min(now, float(pushed)) if isinstance(pushed, (int, float)) else now
             js["relayed_step"], js["store_seen_at"], js["store_progress_at"] = step, now, max(at, when)
             st.save()
             log(f"{n}: the store holds its generation at step {step} (read before the no-progress halt): progress"
-                + (f", pushed {(now - when) / 60:.0f} min ago" if now - when >= 60 else ""))
+                + (", pushed while home could not see the session: the clock starts again now" if unseen else
+                   f", pushed {(now - when) / 60:.0f} min ago" if now - when >= 60 else ""))
             return "progress", False, None
         said = f"the store's newest generation is at step {step}"
     vm_job = None
@@ -2113,6 +2261,9 @@ def store_guard(st, jobs, vm):
         # would pass it), and a new VM must not start from it (store_cap_before_create).
         st.d["store_capped"] = {"bytes_since_release": c["capped"].get("bytes_since_release"), "cap": c["capped"].get("cap")}
         st.save()
+        # Pushing to the cap proves the arm trained: the no-progress clock starts again, so the restart after this
+        # halt (store_cap_before_create, then the clock's check) is not halted by time spent in an outage.
+        store_clock_reset(st, jobs, "the courier pushed to its cap: the arm trained")
         store_halt("STORE_PUSH_CAP", job=running[0] if running else None, why=c["capped"].get("why"),
                    bytes_since_release=c["capped"].get("bytes_since_release"), cap_bytes=c["capped"].get("cap"),
                    releases=st.d.get("store_releases"))
@@ -2526,6 +2677,22 @@ def store_release_blocked(st, jobs, read=True):
     return None
 
 
+def store_by_hand_config():
+    """HOME/store_release_by_hand.json, mode 600, written whole and renamed into place: the config a by-hand release
+    reads. No secret (the repo and the token file's PATH) and no commit budget. Its path."""
+    cfg = os.path.join(HOME, "store_release_by_hand.json")
+    tmp = f"{cfg}.tmp{os.getpid()}"
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        json.dump({**{k: STORE.get(k) for k in ("repo", "repo_type", "token_file", "mark_ns")},
+                   "store_commit_budget_per_hour": 0}, f, indent=1)
+        f.flush()
+        os.fsync(f.fileno())
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, cfg)
+    return cfg
+
+
 def store_by_hand(st, note=""):
     """The one line for a release at the campaign's end that did not run, and the config its command reads:
     HOME/store_release_by_hand.json, mode 600, written whole and renamed into place. It holds no secret (the repo
@@ -2535,16 +2702,7 @@ def store_by_hand(st, note=""):
         why = store_release_debt(st)
         if not why:
             return
-        cfg = os.path.join(HOME, "store_release_by_hand.json")
-        tmp = f"{cfg}.tmp{os.getpid()}"
-        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-        with os.fdopen(fd, "w") as f:
-            json.dump({**{k: STORE.get(k) for k in ("repo", "repo_type", "token_file", "mark_ns")},
-                       "store_commit_budget_per_hour": 0}, f, indent=1)
-            f.flush()
-            os.fsync(f.fileno())
-        os.chmod(tmp, 0o600)
-        os.replace(tmp, cfg)
+        cfg = store_by_hand_config()
         cmd = (f"python3 {shlex.quote(os.path.join(HERE, 'hf_store.py'))} release --config {shlex.quote(cfg)} "
                f"--grace {STORE['release_grace_s']:.0f} --owner {shlex.quote('hand:' + str(NAME))}")
         bad = " A ledger that is not well formed stops every release, this command's too: read the file named above and " \
@@ -3124,8 +3282,14 @@ def main():
     for k, src in uploads:
         if not os.path.exists(src):
             sys.exit(f"--upload {k}: {src} does not exist")
+    halted_unstopped = False
     if os.path.exists(os.path.join(HOME, "HALTED")):
-        sys.exit("HALTED marker present: nothing runs until a person has read it (the marker stays)")
+        # A halt whose stop was not confirmed (the runner died between writing HALTED and its stop, or its stop
+        # failed): with the store, this start finishes that stop first (below, once the lock and the transport are
+        # there), then exits as with any HALTED. Otherwise nothing runs.
+        halted_unstopped = bool(a.ckpt_store) and halt_record().get("stop_confirmed") is not True
+        if not halted_unstopped:
+            sys.exit("HALTED marker present: nothing runs until a person has read it (the marker stays)")
     if os.path.exists(os.path.join(HOME, "OWNERSHIP_MISMATCH")):
         print("OWNERSHIP_MISMATCH present: a session under this name was found at an endpoint this folder did not "
               "record and was left alone; nothing runs until a person has read the record and removed it", file=sys.stderr)
@@ -3170,7 +3334,7 @@ def main():
     # A paid pod per watchdog restart must not loop on a boot that cannot succeed: a RunPod runner whose boot
     # failed at this commit stays down until the commit changes (or boot_failed_commit is removed from state.json).
     bf = st.d.get("store_boot_failures") or {}
-    if STORE and bf.get("commit") == a.commit and bf.get("n", 0) >= STORE_BOOT_FAILURES:
+    if STORE and bf.get("commit") == a.commit and bf.get("n", 0) >= STORE_BOOT_FAILURES and not halted_unstopped:
         sys.exit(f"{bf['n']} boots failed at {a.commit} (ART/boot.log); refusing to create another session for it "
                  "(remove store_boot_failures from state.json once the cause is fixed)")
     if a.backend != "colab" and st.d.get("boot_failed_commit") == a.commit:
@@ -3193,6 +3357,8 @@ def main():
 
     deadline = a.deadline_utc if expired else resolve_deadline(a.max_hours, a.deadline_utc, time.time())
     T.deadline = deadline  # transport must enforce it while a transfer blocks the main loop
+    if halted_unstopped:
+        finish_halted_stop(st)  # exits
     # With the store, a state folder in which every job is home has nothing to run: a runner started on it (after a
     # crash or a kill at the campaign's end, or by a watchdog) creates NO session. It goes straight to the clean-up
     # below, which stops a session an earlier runner left up, and pays what the campaign's end still owes: the
@@ -3262,6 +3428,8 @@ def main():
             if STORE:
                 store_no_progress(st, jobs)  # before anything that could create a session: halts, by name
             seen = listed()
+            if STORE:
+                store_blind_track(st, seen)  # the stretches in which home could not see the session
             if STORE and seen is not None and seen != st.d.get("endpoint"):
                 # The endpoint is recorded at the launch from ONE listing, which can come back empty while the VM is
                 # fine. A session listed under this runner's own name while it holds the state folder's lock is its
@@ -3461,6 +3629,9 @@ def main():
         # A start on a folder that is home stops only its own session; with a listing that did not answer nothing
         # was stopped and that is not a confirmed stop.
         stopped = stop_session(st, "at the runner's end") if stop_wanted else not stop_unknown
+        # A halt's record says whether its stop was confirmed: a start that finds it unconfirmed finishes it.
+        if STORE and halt_record().get("stop_confirmed") is not True:
+            halt_record_update(stop_confirmed=bool(stopped))
         if st.d.get("campaign_home"):
             T.release(st)
         if STORE:

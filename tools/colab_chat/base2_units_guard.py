@@ -23,9 +23,10 @@ delivers to any listed folder not yet delivered to (a folder that holds a STOP_R
 already counts as delivered). runner_multi.py takes the request at its next tick: the confirmed stop, HALTED with
 kind LEAD_STOP.
 
-ALARM, a file beside the log (and a loud line on stdout): any listed state folder that does not exist once the
-stop is requested (that arm cannot be asked), or ALARM_AFTER failed readings in a row (two hours at the default
-30 minutes). The next good reading with nothing missing removes it. Nothing here starts, stops or touches a
+ALARM, a file beside the log (and a loud line on stdout): once the stop is requested, any listed state folder that
+does not exist or whose request (or its delivery record) could not be written: that arm is not asked yet, the
+others are, and it is tried again at every reading, a failed reading too; or ALARM_AFTER failed readings in a row
+(two hours at the default 30 minutes). The next good reading with nothing outstanding removes it. Nothing here starts, stops or touches a
 session itself. Claude Opus 5.5, 12 Nov 2026.
 """
 from __future__ import annotations
@@ -112,24 +113,29 @@ def alarm(a, lines):
 
 
 def deliver(a, past, text, now):
-    """STOP_REQUEST to every listed folder not yet delivered to, each delivery logged as it is made. The listed
-    folders that do not exist."""
+    """STOP_REQUEST to every listed folder not yet delivered to, each delivery logged as it is made. A folder that
+    does not exist, or whose request or delivery record could not be written, does not stop the others: it is
+    named in the lines returned (for ALARM) and tried again at the next reading."""
     done = {r["delivered"] for r in past if isinstance(r.get("delivered"), str)}
-    missing = []
+    lines = []
     for d in a.state_dir:
         d = os.path.abspath(os.path.expanduser(d))
         if d in done:
             continue
         if not os.path.isdir(d):
-            missing.append(d)
+            lines.append(f"the stop is requested and the state folder {d} does not exist: that arm is not asked")
             continue
         req = os.path.join(d, "STOP_REQUEST")
-        if not (os.path.exists(req) or os.path.exists(req + ".taken")):
-            with open(req + ".tmp", "w", encoding="utf-8") as f:
-                f.write(text + "\n")
-            os.replace(req + ".tmp", req)
-        append(a.log, {"at": now, "campaign": a.campaign, "delivered": d})
-    return missing
+        try:
+            if not (os.path.exists(req) or os.path.exists(req + ".taken")):
+                with open(req + ".tmp", "w", encoding="utf-8") as f:
+                    f.write(text + "\n")
+                os.replace(req + ".tmp", req)
+            append(a.log, {"at": now, "campaign": a.campaign, "delivered": d})
+        except OSError as e:
+            lines.append(f"the stop is requested and it could not be delivered to {d} ({type(e).__name__}): that arm "
+                         "is not asked yet; tried again at the next reading")
+    return lines
 
 
 def once(a, read):
@@ -148,8 +154,11 @@ def once(a, read):
             if "error" not in r:
                 break
             failed += 1
-        if failed >= ALARM_AFTER:
-            alarm(a, [f"{failed} readings of the balance have failed in a row: the units are not watched"])
+        lines = [f"{failed} readings of the balance have failed in a row: the units are not watched"] if failed >= ALARM_AFTER else []
+        if requested:   # a stop already requested is delivered on, whatever this reading gave
+            lines += deliver(a, records(a.log, a.campaign), stop_text(a, past), now)
+        if lines:
+            alarm(a, lines)
         return rec
     bal = float(d["currentBalance"])
     start = a.start_balance
@@ -163,14 +172,18 @@ def once(a, read):
     if new:
         rec["stop_requested"] = True
     append(a.log, rec)   # the request is in the log before any file is written
-    missing = []
+    lines = []
     if requested or new:
-        reason = next((r for r in past if r.get("stop_requested")), rec)
-        text = (f"units: {reason['spent']:.2f} spent since a balance of {reason['start']:.2f}, at or over the bound of "
-                f"{reason['stop_at']:.2f} (base2_units_guard.py, campaign {a.campaign})")
-        missing = deliver(a, records(a.log, a.campaign), text, now)
-    alarm(a, [f"the stop is requested and the state folder {m} does not exist: that arm is not asked" for m in missing])
+        lines = deliver(a, records(a.log, a.campaign), stop_text(a, [*past, rec]), now)
+    alarm(a, lines)
     return rec
+
+
+def stop_text(a, recs):
+    """The STOP_REQUEST's text: the reading that reached the bound."""
+    reason = next(r for r in recs if r.get("stop_requested"))
+    return (f"units: {reason['spent']:.2f} spent since a balance of {reason['start']:.2f}, at or over the bound of "
+            f"{reason['stop_at']:.2f} (base2_units_guard.py, campaign {a.campaign})")
 
 
 def main(argv=None, read=None):

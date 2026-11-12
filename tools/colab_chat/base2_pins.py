@@ -5,7 +5,7 @@ research tree). Claude Fable 5.2, 11 Nov 2026.
     python3 tools/colab_chat/base2_pins.py DIR MODE [--upload DIR] [--pins FILE] [--out COPY.json]
     python3 tools/colab_chat/base2_pins.py pin-engine ENGINE_DIR [--commit HASH] [--repin] [--pins FILE]   # at home
     python3 tools/colab_chat/base2_pins.py adopt OBSERVED.json [...] [--pins FILE]                         # at home
-    python3 tools/colab_chat/base2_pins.py adopt-receipts BUILD_ART [--state-dir DIR] [--pins FILE] [--repo ROOT]   # at home
+    python3 tools/colab_chat/base2_pins.py adopt-receipts BUILD_ART --state-dir DIR [--pins FILE] [--repo ROOT]   # at home
 
 tools/colab_chat/base2_pins.json (or --pins, or BASE2_PINS) holds sha256 by group. A null pin is one not yet measured.
 
@@ -35,6 +35,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -197,18 +198,27 @@ def adopt_receipts(pins, build, repo, state_dir=None):
     - the load probe's 20-step run completed (load_probe/loadprobe.json: return code 0 and a first step seen);
     - each stage's published sets, as the store's manifests listed them after the push, equal to what the build
       hashed (published_against_pins);
-    - with state_dir (the build runner's state folder): no HALTED there.
+    - state_dir (the build runner's state folder; required): it exists and holds no HALTED.
     Returns (adopted pins, files written, relative to repo); raises SystemExit naming every refusal."""
     data, bad = os.path.join(build, "data"), []
-    if state_dir and os.path.exists(os.path.join(state_dir, "HALTED")):
+    if not state_dir or not os.path.isdir(state_dir):
+        bad.append(f"the build runner's state folder is required (--state-dir) and must exist: {state_dir}")
+    elif os.path.exists(os.path.join(state_dir, "HALTED")):
         bad.append(f"the build's state folder holds HALTED ({os.path.join(state_dir, 'HALTED')}): the build did not end well")
     try:
         lp = json.load(open(os.path.join(build, "load_probe", "loadprobe.json"), encoding="utf-8"))
     except (OSError, ValueError) as e:
-        lp, bad = {}, bad + [f"load probe: loadprobe.json not read ({type(e).__name__})"]
-    if lp and (lp.get("returncode") != 0 or lp.get("seconds_to_first_step") is None):
-        bad.append(f"load probe: its 20-step run did not complete (return code {lp.get('returncode')}, first step "
-                   f"{lp.get('seconds_to_first_step')})")
+        lp, bad = None, bad + [f"load probe: loadprobe.json not read ({type(e).__name__})"]
+    else:
+        # Unconditionally: a dict, return code 0 (an int, not a bool), and a finite first-step time. {}, null or a
+        # record of other types is no evidence that the probe ran.
+        rc = lp.get("returncode") if isinstance(lp, dict) else None
+        first = lp.get("seconds_to_first_step") if isinstance(lp, dict) else None
+        ok_rc = isinstance(rc, int) and not isinstance(rc, bool) and rc == 0
+        ok_first = isinstance(first, (int, float)) and not isinstance(first, bool) and math.isfinite(first) and first >= 0
+        if not (ok_rc and ok_first):
+            bad.append(f"load probe: its 20-step run is not shown to have completed (loadprobe.json: "
+                       f"{type(lp).__name__}, return code {rc!r}, first step {first!r})")
     stages, receipts = {}, {}
     for n in (1, 2, 3):
         p = os.path.join(data, f"base2_stage{n}.json")
@@ -288,6 +298,8 @@ def main(argv=None):
         print(json.dumps({"engine": got, "commit": a.commit}, indent=1))
         return 0
     if a.dir == "adopt-receipts":
+        if not a.state_dir:
+            ap.error("adopt-receipts needs --state-dir, the build runner's state folder (a build that halted is refused)")
         done, written = adopt_receipts(pins, a.mode, a.repo, a.state_dir)
         write_pins(path, pins)
         # The commit's files as git sees them (a new hash file is untracked, and `git diff` would not show it).
