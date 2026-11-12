@@ -54,8 +54,15 @@ number occurs in its own quote, that a flavour's quote names it, that an
 inherited value matches the curated ancestor table in fetch.py, that every
 expr parses in the grammar with only declared inputs, and the arithmetic
 between sizes (heads divide d_model, kv heads divide heads, top-k <= experts).
-Each field is marked verified, quote_only, unverified or not_stated, and
-only verified values are asserted in extraction.json, which is the format
+Each field is marked verified (the quote is in the source and the value's own
+check passed), quote_only (the quote is in the source; no further check applies
+to that value, such as a new_op: or other: flavour or a norm placement),
+unverified or not_stated. Verified and quote_only values are asserted in
+extraction.json; an unverified flavour is kept with verdict "unverified" so the
+chain refuses it by name, and an unverified size is left unresolved. A found
+quote shows the value was taken from the paper, not that it is the right
+reading of it: the benchmark (bench_score.py) measures that against labels.
+extraction.json is the format
 tools/arxiv_to_chat.py consumes (--extraction); new ops, MoE, grouped-query
 attention and every mechanism outside the IR enter its mechanism_scan as
 blocking, so the chain refuses rather than approximates.

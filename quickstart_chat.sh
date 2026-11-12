@@ -17,9 +17,17 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 BUILD="${PAPERKILN_BUILD_DIR:-$ROOT/build}"
 PORT=8080
-MODE="" PRESET="" SHARE="" ASSUME_YES=0
+MODE="" PRESET="" SHARE="" ASSUME_YES=0 NO_BROWSER=0
 # The ready-made model as a browser bundle (tools/export_web_chat.py): it runs in the browser, so no build is needed.
-DEFAULT_MODEL_URL="${PAPERKILN_DEFAULT_MODEL_URL:-https://github.com/JohnnyTeutonic/paperkiln/releases/download/chat-v1/tinychat-v2-web.tar.gz}"
+# The release asset's SHA-256 is pinned here and checked before anything is unpacked: a changed or damaged
+# download stops the script. It matches the digest GitHub reports for the asset (release chat-v1, 1,728,786 bytes).
+# Another bundle needs both variables: PAPERKILN_DEFAULT_MODEL_URL and PAPERKILN_DEFAULT_MODEL_SHA256.
+DEFAULT_MODEL_URL="https://github.com/JohnnyTeutonic/paperkiln/releases/download/chat-v1/tinychat-v2-web.tar.gz"
+DEFAULT_MODEL_SHA256="16ae917498bc3a30e816b140e2fbced1d6b8a62426607a077e9fb1f1e9dd0fb2"
+if [ -n "${PAPERKILN_DEFAULT_MODEL_URL:-}" ]; then
+  DEFAULT_MODEL_URL="$PAPERKILN_DEFAULT_MODEL_URL"
+  DEFAULT_MODEL_SHA256="${PAPERKILN_DEFAULT_MODEL_SHA256:-}"
+fi
 TOOLS_DIR="$HOME/.paperkiln/bin"
 
 usage() {
@@ -29,6 +37,7 @@ Usage: bash quickstart_chat.sh [options]
   --preset quick|better  quick: about 10 minutes on a laptop CPU; better: about an hour
   --share | --no-share   give the chat a public link (Cloudflare quick tunnel) or keep it on this machine
   --port N               local port for the chat page (default 8080)
+  --no-browser           print the chat address instead of opening a browser
   --yes                  accept the defaults instead of asking
 EOF
 }
@@ -40,6 +49,7 @@ while [ $# -gt 0 ]; do
     --share) SHARE=yes; shift ;;
     --no-share) SHARE=no; shift ;;
     --port) PORT="$2"; shift 2 ;;
+    --no-browser) NO_BROWSER=1; shift ;;
     --yes|-y) ASSUME_YES=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "unknown option: $1"; usage; exit 2 ;;
@@ -161,6 +171,53 @@ build_mtstudio() {
   say "Built $MTSTUDIO"
 }
 
+sha256_of() {
+  if have sha256sum; then sha256sum "$1" | awk '{print $1}'
+  elif have shasum; then shasum -a 256 "$1" | awk '{print $1}'
+  else return 1; fi
+}
+
+# fetch_default_model URL SHA256 DEST: download into DEST.tar.gz.part (an interrupted download resumes on
+# the next run), check its SHA-256 against the pinned digest before unpacking anything, refuse members
+# that could land outside DEST (absolute paths, "..", links, devices), unpack into a temporary folder
+# and only then move it into place, so a failure never leaves a half-unpacked model behind.
+fetch_default_model() {
+  local url="$1" want="$2" dest="$3" part got top tmp bad attempt=1
+  [[ "$want" =~ ^[0-9a-f]{64}$ ]] \
+    || die "no SHA-256 to check $url against: set PAPERKILN_DEFAULT_MODEL_SHA256 to the bundle's 64-character digest."
+  sha256_of /dev/null >/dev/null 2>&1 || die "sha256sum (or shasum) is needed to check the download."
+  mkdir -p "$(dirname "$dest")"
+  part="$dest.tar.gz.part"
+  while :; do
+    curl -fL --retry 3 --progress-bar -C - -o "$part" "$url" \
+      || die "the download from $url stopped. Run the script again to resume it, or choose 2 to train your own model."
+    got="$(sha256_of "$part")"
+    [ "$got" = "$want" ] && break
+    rm -f "$part"
+    [ "$attempt" -ge 2 ] && die "the downloaded model's SHA-256 is $got, not the pinned $want. Nothing was unpacked; the download was deleted."
+    say "The download did not match its pinned SHA-256; fetching it once more from the start."
+    attempt=2
+  done
+  say "SHA-256 checked: $got"
+  tar -tzf "$part" >"$part.list" 2>/dev/null || { rm -f "$part" "$part.list"; die "the download is not a readable .tar.gz."; }
+  top="$(head -1 "$part.list" | cut -d/ -f1)"
+  case "$top" in ""|.|..) rm -f "$part.list"; die "the bundle does not unpack into one folder; nothing was unpacked." ;; esac
+  bad="$(awk -v top="$top" '{ n = $0; if (n != top && index(n, top "/") != 1) { print; next }
+                             k = split(n, c, "/"); for (i = 1; i <= k; i++) if (c[i] == "..") { print; next } }' "$part.list")"
+  bad="$bad$(tar -tvzf "$part" | cut -c1 | grep -v '^[-d]$' || true)"
+  rm -f "$part.list"
+  [ -z "$bad" ] || die "the bundle holds entries outside its folder, links or special files; nothing was unpacked: $bad"
+  tmp="$dest.tmp.$$"
+  rm -rf "$tmp" && mkdir -p "$tmp"
+  tar -xzf "$part" -C "$tmp" --strip-components=1 --no-same-owner \
+    || { rm -rf "$tmp"; die "unpacking the bundle failed; nothing was installed."; }
+  { [ -f "$tmp/index.html" ] && [ -f "$tmp/model/manifest.json" ]; } \
+    || { rm -rf "$tmp"; die "the bundle has no index.html or model/manifest.json; nothing was installed."; }
+  printf '%s\n' "$want" >"$tmp/.bundle_sha256"
+  rm -rf "$dest" && mv "$tmp" "$dest" && rm -f "$part"
+  say "Unpacked into $dest"
+}
+
 # ---------------------------------------------------------------- 4. the model
 if [ "$MODE" = train ]; then
   if [ -z "$PRESET" ]; then
@@ -185,12 +242,10 @@ if [ "$MODE" = train ]; then
   "$MTSTUDIO" run "$SPEC" | python3 tools/train_progress.py "$SPEC"
 else
   OUT="runs/tinychat-default-web"
-  if [ ! -f "$OUT/index.html" ]; then
+  # A bundle unpacked by this script carries the digest it was checked against; anything else is fetched again.
+  if [ ! -f "$OUT/index.html" ] || [ "$(cat "$OUT/.bundle_sha256" 2>/dev/null)" != "$DEFAULT_MODEL_SHA256" ]; then
     step "Downloading the ready-made chat model"
-    curl -fsIL "$DEFAULT_MODEL_URL" >/dev/null 2>&1 \
-      || die "the ready-made model is not published yet. Run again and choose 2 to train your own."
-    mkdir -p "$OUT"
-    curl -fL --progress-bar "$DEFAULT_MODEL_URL" | tar -xz -C "$OUT" --strip-components=1
+    fetch_default_model "$DEFAULT_MODEL_URL" "$DEFAULT_MODEL_SHA256" "$OUT"
   fi
 fi
 
@@ -281,5 +336,5 @@ bold "Your model is ready."
 say "Chat on this computer:  $LOCAL_URL"
 [ -n "$PUBLIC_URL" ] && say "Public link to share:    $PUBLIC_URL   (anyone with it can chat; it ends when you stop this script)"
 say "Stop everything with Ctrl+C."
-open_browser "$LOCAL_URL"
+[ "$NO_BROWSER" = 1 ] || open_browser "$LOCAL_URL"
 wait "${PIDS[0]}"
