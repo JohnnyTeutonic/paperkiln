@@ -413,8 +413,18 @@ def test_the_storage_guard_fits_the_rehearsal_and_the_arms_registered_caps():
         "N": (5, 14, 22, 5), "S": (5, 14, 22, 5), "C": (5, 19, 29, 6)}
     assert {a: (c["gen_gb"], c["counted_gb"]) for a, c in caps.items()} == {"N": (0.837, 35.7), "S": (0.837, 35.7), "C": (0.873, 48.0)}
     assert r["suggested_store_push_cap_gb"] == {"N": 45, "S": 45, "C": 60} and (r["counted_gb_three_arms"], r["caps_gb_three_arms"]) == (119.4, 150)
-    # The arms' files carry the registered caps, which are the sums' own suggestion at the registered settings.
-    assert {a: load(f"base2_{a}.json")["store_push_cap_gb"] for a in ARMS} == r["suggested_store_push_cap_gb"]
+    # The second launch review (Explore B1): at the sums' caps a home outage of 4 to 5 hours capped every arm (only
+    # a release from home lowers a courier's count). The lead's caps are 200, 200 and 250 GB: an outage of about 31
+    # hours (N, S) or 27 (C) at the worst, 650 GB in all against the account's 1 TB. Printed by --rates.
+    assert {a: load(f"base2_{a}.json")["store_push_cap_gb"] for a in ARMS} == r["registered_store_push_cap_gb"] == {
+        "N": 200, "S": 200, "C": 250}
+    assert r["registered_caps_gb_three_arms"] == 650 < r["account_storage_gb"] == 1000
+    out_h = r["home_outage_hours_to_cap"]
+    assert {a: (o["at_release_gb"], o["gb_an_hour"], o["hours_to_cap"], o["hours_to_cap_worst"]) for a, o in out_h.items()} == {
+        "N": (15.6, 5.72, 32.2, 31.2), "S": (15.6, 5.72, 32.2, 31.2), "C": (21.0, 8.03, 28.5, 27.5)}
+    # Explore's arithmetic at the old caps: about 5 hours for N and 4.9 for C from the last release.
+    old = M.home_outage_hours("D1", 500, M.STEP_S, 5, 60, 7200, 45)
+    assert 5.0 < old["hours_to_cap"] < 5.2 and 4.8 < M.home_outage_hours("A", 500, M.STEP_S_A, 6, 60, 7200, 60)["hours_to_cap"] < 5.0
     for a, c in caps.items():
         assert abs(c["counted_gb"] - ((c["kept"] + c["removed"] + c["since"]) * c["gen_gb"] + c["marks"] * c["gen_gb"] / 3)) < 0.1
         assert c["counted_gb"] <= M.PUSH_CAP_HEADROOM * c["suggested_cap_gb"] < c["counted_gb"] + 1
@@ -440,17 +450,18 @@ def test_the_registrations_store_switches_are_set_in_make_base2_and_the_files_do
     registration's to set, and a value edited into a jobs file by hand fails --check. They are parameters of
     arm(): ARM_STORE for all arms, ARM_STORE_BY_ARM for one. A switch that is the runner's own default is not
     written; runner_multi.py reads each key when its flag is absent. The values are the lead's registration (12 Nov
-    2026): a release every 60 minutes with the default grace of 7,200 s; offsets 0, 20, 40; caps 45, 45, 60 GB; the
-    stall halt on at 120 minutes; the unverified halt at 90; the no-progress halt at 260."""
+    2026): a release every 60 minutes with the default grace of 7,200 s; offsets 0, 20, 40; caps 200, 200, 250 GB
+    (after the second launch review); the stall halt on at 120 minutes; the unverified halt at 90; the no-progress
+    halt at 260."""
     import hf_store
     assert M.ARM_STORE == {"store_push_cap_gb": 0, "store_release_every_min": 60, "store_release_grace_s": 7200,
                            "store_stall_halt": True, "store_stall_min": 120, "store_unverified_halt_min": 90,
                            "store_release_offset_min": 0, "store_no_progress_min": 260}
-    assert M.ARM_STORE_BY_ARM == {"N": {"store_push_cap_gb": 45, "store_release_offset_min": 0},
-                                  "S": {"store_push_cap_gb": 45, "store_release_offset_min": 20},
-                                  "C": {"store_push_cap_gb": 60, "store_release_offset_min": 40}}
+    assert M.ARM_STORE_BY_ARM == {"N": {"store_push_cap_gb": 200, "store_release_offset_min": 0},
+                                  "S": {"store_push_cap_gb": 200, "store_release_offset_min": 20},
+                                  "C": {"store_push_cap_gb": 250, "store_release_offset_min": 40}}
     # Each file carries them, the grace (the runner's own default) and N's offset of 0 left out.
-    for arm, cap, off in (("N", 45, None), ("S", 45, 20), ("C", 60, 40)):
+    for arm, cap, off in (("N", 200, None), ("S", 200, 20), ("C", 250, 40)):
         f = load(f"base2_{arm}.json")
         assert (f["store_push_cap_gb"], f["store_release_every_min"], f["store_stall_halt"], f["store_stall_min"],
                 f["store_unverified_halt_min"], f["store_no_progress_min"], f.get("store_release_offset_min")) == (
@@ -484,7 +495,7 @@ def test_the_registrations_store_switches_are_set_in_make_base2_and_the_files_do
     was = dict(M.ARM_STORE_BY_ARM["C"])
     try:                                                 # the per-arm table is what a cap is set in
         M.ARM_STORE_BY_ARM["C"] = {**was, "store_push_cap_gb": 70}
-        assert M.arm("C")["store_push_cap_gb"] == 70 and M.arm("N")["store_push_cap_gb"] == 45
+        assert M.arm("C")["store_push_cap_gb"] == 70 and M.arm("N")["store_push_cap_gb"] == 200
         assert M.rates()["settings"]["C"]["release_every_min"] == 60
     finally:
         M.ARM_STORE_BY_ARM["C"] = was
@@ -886,51 +897,100 @@ def test_eight_by_two_and_sixteen_by_one_read_the_same_windows(tmp_path):
     assert other_main > 50 * max(same, 1e-4) and other_tail > 50 * max(same, 1e-4), (b, c)
 
 
-def test_the_units_guard_asks_every_arm_to_stop_once_at_the_bound(tmp_path):
-    """The launch reviews of 12 Nov 2026: the 640-unit bound had no observer. base2_units_guard.py reads the balance
-    as ccu_read.py does (numbers only), logs every reading, and when the units spent since the starting balance
-    reach the bound writes STOP_REQUEST into every listed state folder, once. Here with a stubbed reader."""
+def guard_reads(*values):
+    it = iter(values)
+    return lambda: next(it)
+
+
+def test_the_units_guard_asks_every_arm_to_stop_at_the_bound_and_delivers_to_each_folder(tmp_path, capsys):
+    """The launch reviews of 12 Nov 2026: the units bound had no observer. base2_units_guard.py reads the balance as
+    ccu_read.py does, logs every reading, and at the bound asks every listed runner to stop (STOP_REQUEST). The
+    second launch review: delivery is per folder, each delivery logged, and retried at every later reading for a
+    folder not yet delivered to; a listed folder that does not exist is said loudly (stdout and ALARM beside the
+    log); the request is logged before any file is written. Here with a stubbed reader."""
     import base2_units_guard as G
     dirs = [tmp_path / f"arm_{a}" for a in ARMS]
-    for d in dirs:
-        d.mkdir()
-    log = tmp_path / "guard.jsonl"
-    argv = ["--stop-at", "640", "--once", "--log", str(log), *[x for d in dirs for x in ("--state-dir", str(d))],
-            "--state-dir", str(tmp_path / "no_such_folder")]
-    readings = iter([{"currentBalance": 1000.0, "consumptionRateHourly": 5.82, "eligibleGpus": 3},
-                     {"error": 401},
-                     {"currentBalance": 700.5, "consumptionRateHourly": 5.82},
-                     {"currentBalance": 359.0, "consumptionRateHourly": 5.82},
-                     {"currentBalance": 300.0, "consumptionRateHourly": 3.88}])
-    for _ in range(3):
-        assert G.main(argv, read=lambda: next(readings)) == 0
-    assert not any((d / "STOP_REQUEST").exists() for d in dirs)
-    assert G.main(argv, read=lambda: next(readings)) == 0                      # 641 spent: at the bound
+    for d in dirs[:2]:
+        d.mkdir()                                       # arm C's folder does not exist yet
+    log = tmp_path / "g" / "guard.jsonl"
+    argv = ["--campaign", "base2", "--stop-at", "640", "--once", "--log", str(log),
+            *[x for d in dirs for x in ("--state-dir", str(d))]]
+    for value in ({"currentBalance": 1000.0, "consumptionRateHourly": 5.82, "eligibleGpus": 3},
+                  {"currentBalance": 700.5, "consumptionRateHourly": 5.82}):
+        assert G.main(argv, read=guard_reads(value)) == 0
+    assert not any((d / "STOP_REQUEST").exists() for d in dirs[:2]) and not (tmp_path / "g" / "ALARM").exists()
+    capsys.readouterr()
+    assert G.main(argv, read=guard_reads({"currentBalance": 359.0})) == 0     # 641 spent: at the bound
     text = (dirs[0] / "STOP_REQUEST").read_text()
-    assert all((d / "STOP_REQUEST").read_text() == text for d in dirs)
     assert text.startswith("units: 641.00 spent since a balance of 1000.00, at or over the bound of 640.00")
-    for d in dirs:                                                             # the runners took them
-        os.replace(d / "STOP_REQUEST", d / "STOP_REQUEST.taken")
-    assert G.main(argv, read=lambda: next(readings)) == 0                      # still over: not asked again
-    assert not any((d / "STOP_REQUEST").exists() for d in dirs)
+    assert (dirs[1] / "STOP_REQUEST").read_text() == text
+    alarm = (tmp_path / "g" / "ALARM").read_text()
+    assert f"the state folder {dirs[2]} does not exist: that arm is not asked" in alarm
+    assert f"ALARM (base2_units_guard): the stop is requested and the state folder {dirs[2]}" in capsys.readouterr().out
     recs = [json.loads(ln) for ln in log.read_text().splitlines()]
-    assert [r.get("spent") for r in recs] == [0.0, None, 299.5, 641.0, 700.0] and recs[1] == {"at": recs[1]["at"], "error": 401}
-    assert recs[3]["stop_requested"] is True and recs[3]["state_dirs_written"] == 3 and "stop_requested" not in recs[4]
-    assert all(r["start"] == 1000.0 for r in recs if "start" in r)            # the first reading, recorded and kept
-    for r in recs:                                                             # numbers only in the log
-        assert all(isinstance(v, (int, float)) for v in r.values()), r
-    # A given starting balance wins; the bound is a number above 0.
-    with pytest.raises(SystemExit):
-        G.main(["--stop-at", "0", "--once", "--state-dir", str(dirs[0]), "--log", str(log)], read=lambda: {})
-    log2 = tmp_path / "guard2.jsonl"
-    G.main(["--stop-at", "640", "--once", "--start-balance", "900", "--state-dir", str(dirs[0]), "--log", str(log2)],
-           read=lambda: {"currentBalance": 800.0})
-    assert json.loads(log2.read_text())["spent"] == 100.0
-    # The real reader runs ccu_read.py with the CLI's Python and keeps numbers only; a failure is a code, not text.
+    at = next(i for i, r in enumerate(recs) if r.get("stop_requested"))
+    assert [r.get("delivered") for r in recs[at + 1:]] == [str(dirs[0]), str(dirs[1])]   # logged after the request
+    # The runners take theirs; arm C's folder appears; the next reading delivers to it alone, and the alarm goes.
+    for d in dirs[:2]:
+        os.replace(d / "STOP_REQUEST", d / "STOP_REQUEST.taken")
+    dirs[2].mkdir()
+    assert G.main(argv, read=guard_reads({"currentBalance": 340.0})) == 0
+    assert not any((d / "STOP_REQUEST").exists() for d in dirs[:2]) and (dirs[2] / "STOP_REQUEST").read_text() == text
+    assert not (tmp_path / "g" / "ALARM").exists()
+    assert G.main(argv, read=guard_reads({"currentBalance": 330.0})) == 0     # every folder delivered: nothing more
+    recs = [json.loads(ln) for ln in log.read_text().splitlines()]
+    assert sum(1 for r in recs if r.get("stop_requested")) == 1 and sum(1 for r in recs if "delivered" in r) == 3
+    assert all(r["campaign"] == "base2" for r in recs) and all(r["start"] == 1000.0 for r in recs if "start" in r)
+    # A crash after the request was logged and before any file: the next reading delivers (the request stands).
+    log3, d3 = tmp_path / "g3" / "guard.jsonl", tmp_path / "arm3"
+    d3.mkdir()
+    log3.parent.mkdir()
+    log3.write_text(json.dumps({"at": 1.0, "campaign": "c3", "balance": 300.0, "start": 1000.0, "spent": 700.0,
+                                "stop_at": 640.0, "stop_requested": True}) + "\n")
+    G.main(["--campaign", "c3", "--stop-at", "640", "--once", "--log", str(log3), "--state-dir", str(d3)],
+           read=guard_reads({"currentBalance": 299.0}))
+    assert (d3 / "STOP_REQUEST").read_text().startswith("units: 700.00 spent since a balance of 1000.00")
+
+
+def test_the_units_guard_is_one_campaigns_takes_only_good_readings_and_alarms_when_it_cannot_read(tmp_path, capsys):
+    """The second launch review: an old log for another campaign supplied the start and an already-fired latch; a
+    reader that exited non-zero, or printed a non-finite balance, was taken; and failed readings went on for ever
+    with nothing but a log line. Now the log is one campaign's (refused otherwise); a reading counts only from a zero
+    exit and a finite "currentBalance"; four failed readings in a row write ALARM, which the next good one clears."""
+    import base2_units_guard as G
+    d = tmp_path / "arm"
+    d.mkdir()
+    log = tmp_path / "g" / "guard.jsonl"
+    argv = ["--campaign", "base2", "--stop-at", "640", "--once", "--log", str(log), "--state-dir", str(d)]
+    G.main(argv, read=guard_reads({"currentBalance": 1000.0}))
+    with pytest.raises(SystemExit) as e:
+        G.main(["--campaign", "other", *argv[2:]], read=guard_reads({"currentBalance": 1.0}))
+    assert "holds a record of campaign 'base2', not 'other'" in str(e.value)
+    for n in range(3):                                   # three failed readings: no alarm yet
+        G.main(argv, read=guard_reads({"error": 401}))
+        assert not (tmp_path / "g" / "ALARM").exists(), n
+    capsys.readouterr()
+    G.main(argv, read=guard_reads({"error": "exit 1"}))                       # the fourth
+    assert "4 readings of the balance have failed in a row" in (tmp_path / "g" / "ALARM").read_text()
+    assert "ALARM (base2_units_guard): 4 readings" in capsys.readouterr().out
+    G.main(argv, read=guard_reads({"currentBalance": 990.0}))                 # a good one clears it
+    assert not (tmp_path / "g" / "ALARM").exists()
+    G.main(argv, read=guard_reads({"currentBalance": float("nan")}))          # not finite: a failed reading
+    assert json.loads(log.read_text().splitlines()[-1])["error"] == "no finite balance"
+    # The real reader: only a zero exit with a finite balance; never the reply's text.
     stub = tmp_path / "ccu_stub.py"
-    stub.write_text("import json\nprint(json.dumps({'currentBalance': 12.5, 'note': 'secret-text', 'ok': True}))\n")
-    assert G.read_ccu(sys.executable, str(stub)) == {"currentBalance": 12.5}
-    stub.write_text("import sys\nprint('Traceback: secret-text')\nsys.exit(2)\n")
-    assert G.read_ccu(sys.executable, str(stub)) == {"error": "exit 2"}
-    assert G.CCU_READ.endswith("AI_ML/chat_screens_claude/cloud_eval/ccu_read.py")
+    for code, want in (("import json\nprint(json.dumps({'currentBalance': 12.5, 'note': 'secret-text', 'ok': True}))\n",
+                        {"currentBalance": 12.5}),
+                       ("import json, sys\nprint(json.dumps({'currentBalance': 12.5}))\nsys.exit(3)\n", {"error": "exit 3"}),
+                       ("import sys\nprint('Traceback: secret-text')\nsys.exit(2)\n", {"error": "exit 2"}),
+                       ("print('[1, 2]')\n", {"error": "not an object"}),
+                       ("print('{\"currentBalance\": \"12\"}')\n", {"error": "no finite balance"}),
+                       ("print('{\"currentBalance\": Infinity}')\n", {"error": "no finite balance"})):
+        stub.write_text(code)
+        assert G.read_ccu(sys.executable, str(stub)) == want, code
+    assert G.CCU_READ.endswith("AI_ML/chat_screens_claude/cloud_eval/ccu_read.py") and G.ALARM_AFTER == 4
     assert G.CLI_PY == "~/.local/share/uv/tools/google-colab-cli/bin/python"
+    with pytest.raises(SystemExit):
+        G.main(["--campaign", "x", "--stop-at", "0", "--once", "--state-dir", str(d), "--log", str(tmp_path / "x.jsonl")],
+               read=guard_reads({}))
+

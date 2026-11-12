@@ -183,7 +183,7 @@ def arm(a, store=None):
             # The courier's storage guard (runner_multi.py --store-push-cap-gb reads this when the flag is absent):
             # GB counted for the arm (what the store held for it at the last release from home, and what it has
             # pushed since) at which the courier stops pushing and the runner halts the arm. 0 is off. The
-            # registered caps (12 Nov 2026) are in ARM_STORE_BY_ARM: 45, 45 and 60 GB.
+            # registered caps (12 Nov 2026) are in ARM_STORE_BY_ARM: 200, 200 and 250 GB.
             "store_push_cap_gb": sw["store_push_cap_gb"],
             # Minutes between an arm's runner's storage releases (--store-release-every-min reads this when the flag
             # is absent). Each release is two commits of the repository's hourly limit, which the three arms share.
@@ -256,7 +256,7 @@ FINAL_LEDGER_ROUNDS = 2      # runner_multi.STORE_FINAL_LEDGER_ROUNDS: rounds of
 # (a push cap differs by arm). arm() writes them into the jobs files, which runner_multi.py reads when the flag is
 # absent; `--check` then compares the files on disk with these values. The values the lead registered (12 Nov
 # 2026): a release every 60 minutes with the runner's default grace of 7,200 s, the arms' turns set off by 0, 20
-# and 40 minutes; push caps of 45, 45 and 60 GB; the stall halt on at 120 minutes; the unverified halt at 90; the
+# and 40 minutes; push caps of 200, 200 and 250 GB; the stall halt on at 120 minutes; the unverified halt at 90; the
 # no-progress halt at 260 (9 + 65 + 21 + 75 + 65 + 9 = 244: a save, a held rung lost at its end, the loss noticed,
 # a boot at its limit, the rung held again, a save; and 16 minutes over). The rehearsal's files set their own.
 RUNNER_STORE_DEFAULTS = {"store_release_grace_s": 7200, "store_stall_halt": False, "store_stall_min": 60,
@@ -266,9 +266,14 @@ RUNNER_STORE_DEFAULTS = {"store_release_grace_s": 7200, "store_stall_halt": Fals
 ARM_STORE = {**RUNNER_STORE_DEFAULTS, "store_push_cap_gb": 0, "store_release_every_min": ARM_RELEASE_EVERY_MIN,
              "store_release_grace_s": ARM_RELEASE_GRACE_S, "store_stall_halt": True, "store_stall_min": 120,
              "store_unverified_halt_min": 90, "store_no_progress_min": 260}
-ARM_STORE_BY_ARM = {"N": {"store_push_cap_gb": 45, "store_release_offset_min": 0},
-                    "S": {"store_push_cap_gb": 45, "store_release_offset_min": 20},
-                    "C": {"store_push_cap_gb": 60, "store_release_offset_min": 40}}
+# The caps (the lead's decision after the second launch review, 12 Nov 2026): 200, 200 and 250 GB, not the sums'
+# 45, 45 and 60. Only a release from home lowers a courier's count, so with home down every save adds to it: at the
+# sums' caps an outage of about 4 to 5 hours capped every arm. At these, about 31 hours for N and S and 27 for C
+# (home_outage_hours, worst case). 650 GB in all, against the account's 1 TB.
+ACCOUNT_STORAGE_GB = 1000
+ARM_STORE_BY_ARM = {"N": {"store_push_cap_gb": 200, "store_release_offset_min": 0},
+                    "S": {"store_push_cap_gb": 200, "store_release_offset_min": 20},
+                    "C": {"store_push_cap_gb": 250, "store_release_offset_min": 40}}
 
 
 def gens_kept_max(losses=ARM_SESSION_LOSSES):
@@ -403,6 +408,20 @@ def push_cap_gb(shape, checkpoint_every, step_s, marks, release_every_min, grace
     return out
 
 
+def home_outage_hours(shape, checkpoint_every, step_s, marks, release_every_min, grace_s, cap_gb):
+    """How long an arm's courier pushes with home down before it reaches its cap. Only a release from home lowers
+    the courier's count, so with home down it grows by every save. Just after a release that ran, the count is
+    what the store holds for the campaign: GENS_KEPT generations on the branch, those removed and not yet
+    deletable within the grace (as in push_cap_gb), and the marks. It grows by a generation a save. Hours from that
+    release to the cap; the outage can begin up to one release interval after it, hence "worst"."""
+    g, save_s = gen_gb(shape), checkpoint_every * step_s
+    base = (GENS_KEPT + int((grace_s + RELEASE_SKEW_S) / save_s) + 1) * g + marks * g / 3
+    rate = 3600 / save_s * g
+    h = (cap_gb - base) / rate
+    return {"at_release_gb": round(base, 1), "gb_an_hour": round(rate, 2), "hours_to_cap": round(h, 1),
+            "hours_to_cap_worst": round(h - release_every_min / 60, 1)}
+
+
 def rates(release_every_min=None, grace_s=None, losses=ARM_SESSION_LOSSES, missed_releases=ARM_MISSED_RELEASES,
           offsets_min=None):
     """The arms' commit figures and suggested push caps, from the jobs as this file makes them and the probe's
@@ -411,7 +430,7 @@ def rates(release_every_min=None, grace_s=None, losses=ARM_SESSION_LOSSES, misse
     [--missed-releases N] [--session-losses N]` prints it; nothing is written. The rolling hour is given with the
     offsets and without. The caps are a suggestion for the lead."""
     step_s = {"N": STEP_S, "S": STEP_S, "C": STEP_S_A}
-    per, caps, used = {}, {}, {}
+    per, caps, used, outage, registered = {}, {}, {}, {}, {}
     for k, a in enumerate(("N", "S", "C")):
         doc = files()[f"base2_{a}.json"]
         j = next(j for j in doc["jobs"] if "spec" in j)
@@ -423,6 +442,9 @@ def rates(release_every_min=None, grace_s=None, losses=ARM_SESSION_LOSSES, misse
                   "rolling": commits_rolling_hour(doc, step_s[a], every)}
         caps[a] = push_cap_gb(doc["_base2"]["shape"], j["spec"]["train"]["checkpoint_every"], step_s[a],
                               len(j.get("snapshot_steps", [])), every, grace, losses, missed_releases)
+        registered[a] = doc.get("store_push_cap_gb") or 0
+        outage[a] = home_outage_hours(doc["_base2"]["shape"], j["spec"]["train"]["checkpoint_every"], step_s[a],
+                                      len(j.get("snapshot_steps", [])), every, grace, registered[a])
     rolls = [p["rolling"] for p in per.values()]
     every = max(u["release_every_min"] for u in used.values())
     offs = [u["release_offset_min"] for u in used.values()]
@@ -443,7 +465,13 @@ def rates(release_every_min=None, grace_s=None, losses=ARM_SESSION_LOSSES, misse
             "suggested_store_push_cap_gb": {a: c["suggested_cap_gb"] for a, c in caps.items()},
             "counted_gb_three_arms": round(sum(c["counted_gb"] for c in caps.values()), 1),
             "caps_gb_three_arms": sum(c["suggested_cap_gb"] for c in caps.values()),
-            "push_cap_sum": caps, "headroom": PUSH_CAP_HEADROOM}
+            "push_cap_sum": caps, "headroom": PUSH_CAP_HEADROOM,
+            # The caps the jobs files carry (the registration's, set for home outages), against the account, and
+            # how long each arm's courier pushes with home down before it reaches its cap.
+            "registered_store_push_cap_gb": registered,
+            "registered_caps_gb_three_arms": sum(registered.values()),
+            "account_storage_gb": ACCOUNT_STORAGE_GB,
+            "home_outage_hours_to_cap": outage}
 
 
 REH_STEPS = 2000

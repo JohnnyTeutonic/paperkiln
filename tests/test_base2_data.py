@@ -461,20 +461,39 @@ def test_adopt_receipts_checks_the_load_probe_and_writes_the_shard_hashes_where_
     (repo / "tools" / "colab_chat").mkdir(parents=True)
     pf = repo / "tools" / "colab_chat" / "base2_pins.json"
     pf.write_text(json.dumps(toy_pins()))
+    (repo / "corpus" / "hashes" / "fineweb_edu_shard0_v1.sha256").write_text("committed\n")
+    git = ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false"]
+    subprocess.run([*git, "init", "-q"], check=True)
+    subprocess.run([*git, "add", "-A"], check=True)
+    subprocess.run([*git, "commit", "-q", "-m", "start"], check=True)
     obs = {m: {"observed": P.check(toy_pins(), str(vm), m)[1], "differences": []} for m in ("stage1", "build-N", "build-S")}
     build = tmp_path / "build"
     (build / "data").mkdir(parents=True)
     (build / "load_probe").mkdir()
+
+    def published(*names):                              # store-verify's record of a published set
+        return {"verified": True, "differences": [], "files": {f: {"bytes": 2, "sha256": sha((vm / f).read_bytes())} for f in names}}
+
+    pubs = {1: {"published_panels": published("panel_fineweb.ids", "panel_dialogue.ids")},
+            2: {"published_N": published("N.main.ids", "N.tail.ids")},
+            3: {"published_S": published("S.main.ids", "S.tail.ids"), "published_panel_scenario": published("panel_scenario.ids")}}
+
+    def receipt(n, modes, **more):
+        (build / "data" / f"base2_stage{n}.json").write_text(json.dumps(
+            {"stage": str(n), "built": {"stage": str(n), "pins": {m: obs[m] for m in modes}}, **pubs[n], **more}))
+
     # The observed record grows on one VM: stage 3's receipt carries every mode run before it.
     for n, modes in ((1, ["stage1"]), (2, ["stage1", "build-N"]), (3, ["stage1", "build-N", "build-S"])):
-        (build / "data" / f"base2_stage{n}.json").write_text(json.dumps(
-            {"stage": str(n), "built": {"stage": str(n), "pins": {m: obs[m] for m in modes}}}))
+        receipt(n, modes)
     for n in (2, 3, 4, 5):
         (build / "data" / f"fineweb_edu_shard{n}_v1.sha256").write_text(f"{sha(bytes([n]))}  pretrain_train.txt\n")
     probe = build / "load_probe" / "loadprobe_pins.json"
+    (build / "load_probe" / "loadprobe.json").write_text(json.dumps({"returncode": 0, "seconds_to_first_step": 41.5}))
+    state_dir = tmp_path / "build_runner"
+    state_dir.mkdir()
 
     def adopt():
-        return P.main(["adopt-receipts", str(build), "--pins", str(pf), "--repo", str(repo)])
+        return P.main(["adopt-receipts", str(build), "--pins", str(pf), "--repo", str(repo), "--state-dir", str(state_dir)])
 
     before = pf.read_text()
     # (1) The probe pulled S's tail with other bytes than stage 3 hashed before it published: refused, nothing written.
@@ -484,7 +503,7 @@ def test_adopt_receipts_checks_the_load_probe_and_writes_the_shard_hashes_where_
     with pytest.raises(SystemExit) as e:
         adopt()
     assert "S/S.tail.ids: stage 3 hashed" in str(e.value) and "the load probe pulled" in str(e.value)
-    assert pf.read_text() == before and not list((repo / "corpus" / "hashes").iterdir())
+    assert pf.read_text() == before and [p.name for p in (repo / "corpus" / "hashes").iterdir()] == ["fineweb_edu_shard0_v1.sha256"]
     # (2) A probe with a difference of its own, and a stage receipt with no pins (N would stay null): refused.
     probe.write_text(json.dumps({"build-S": {**obs["build-S"], "differences": ["panels/panel_fineweb.ids: x against y"]}}))
     stage2 = (build / "data" / "base2_stage2.json").read_text()
@@ -497,8 +516,26 @@ def test_adopt_receipts_checks_the_load_probe_and_writes_the_shard_hashes_where_
     assert "load probe: panels/panel_fineweb.ids" in said and "stage 2: its receipt carries no built.pins" in said
     assert "N/N.main.ids: still no pin after the adoption, and an arm reads it" in said and pf.read_text() == before
     (build / "data" / "base2_stage2.json").write_text(stage2)
-    (build / "data" / "base2_stage3.json").write_text(json.dumps(
-        {"stage": "3", "built": {"pins": {m: obs[m] for m in ("stage1", "build-N", "build-S")}}}))
+    receipt(3, ["stage1", "build-N", "build-S"])
+    # The second launch review: (a) the load probe's 20 steps did not complete; (b) the build's runner halted; (c) a
+    # published set the store's manifest lists at other bytes than the build hashed (N, from stage 2's receipt).
+    probe.write_text(json.dumps({"build-S": obs["build-S"]}))
+    lp = build / "load_probe" / "loadprobe.json"
+    lp.write_text(json.dumps({"returncode": 1, "seconds_to_first_step": None}))
+    (state_dir / "HALTED").write_text("{}")
+    pubs[2]["published_N"]["files"]["N.tail.ids"]["sha256"] = sha(b"published other bytes")
+    receipt(2, ["stage1", "build-N"])
+    with pytest.raises(SystemExit) as e:
+        adopt()
+    said = str(e.value)
+    assert "load probe: its 20-step run did not complete (return code 1, first step None)" in said
+    assert "the build's state folder holds HALTED" in said
+    assert f"stage 2: published_N lists N.tail.ids at {sha(b'published other bytes')}, and the build hashed {sha(b'nt')}" in said
+    assert pf.read_text() == before
+    lp.write_text(json.dumps({"returncode": 0, "seconds_to_first_step": 41.5}))
+    (state_dir / "HALTED").unlink()
+    pubs[2]["published_N"]["files"]["N.tail.ids"]["sha256"] = sha(b"nt")
+    receipt(2, ["stage1", "build-N"])
     # (3) A shard hash file already committed with other contents: refused.
     probe.write_text(json.dumps({"build-S": obs["build-S"]}))
     (repo / "corpus" / "hashes" / "fineweb_edu_shard3_v1.sha256").write_text("something else\n")
@@ -506,14 +543,18 @@ def test_adopt_receipts_checks_the_load_probe_and_writes_the_shard_hashes_where_
         adopt()
     assert "corpus/hashes/fineweb_edu_shard3_v1.sha256: committed, and the build's first fetch wrote another" in str(e.value)
     # (4) The build as it should be: every pin an arm reads is set, the shard hashes are where the plan commits them
-    # (one already there with the same bytes is left), and the adoption commit's files are printed.
+    # (one already there with the same bytes is left as it is), and the adoption commit's files are printed as git
+    # sees them: the new, untracked hash files too (`git diff` would not show them), shard 3's among them.
     (repo / "corpus" / "hashes" / "fineweb_edu_shard3_v1.sha256").write_text(
         (build / "data" / "fineweb_edu_shard3_v1.sha256").read_text())
     capsys.readouterr()
     assert adopt() == 0
     out = json.loads(capsys.readouterr().out)
-    assert out["commit_files"] == ["corpus/hashes/fineweb_edu_shard2_v1.sha256", "corpus/hashes/fineweb_edu_shard4_v1.sha256",
-                                   "corpus/hashes/fineweb_edu_shard5_v1.sha256", "tools/colab_chat/base2_pins.json"]
+    assert out["commit_files"] == ["corpus/hashes/fineweb_edu_shard2_v1.sha256", "corpus/hashes/fineweb_edu_shard3_v1.sha256",
+                                   "corpus/hashes/fineweb_edu_shard4_v1.sha256", "corpus/hashes/fineweb_edu_shard5_v1.sha256",
+                                   "tools/colab_chat/base2_pins.json"]
+    assert out["written"] == ["corpus/hashes/fineweb_edu_shard2_v1.sha256", "corpus/hashes/fineweb_edu_shard4_v1.sha256",
+                              "corpus/hashes/fineweb_edu_shard5_v1.sha256"]
     assert sorted(out["adopted"]) == ["N/N.main.ids", "N/N.tail.ids", "S/S.main.ids", "S/S.tail.ids",
                                       "panels/panel_scenario.ids", "sources/src/a.txt"]
     pins = json.loads(pf.read_text())

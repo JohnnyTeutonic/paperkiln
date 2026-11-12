@@ -1673,21 +1673,27 @@ def test_a_state_folder_has_one_runner_one_name_one_set_of_jobs_and_acts_only_on
     assert ("A SESSION IS LISTED UNDER THIS NAME at fake-endpoint-2, which is NOT the endpoint this folder recorded "
             "(fake-endpoint-1): it is taken for another runner's and is left alone (no token removed, no stop)") in log
     assert "stop it by hand (colab stop -s pk-store)" in log and "session stopped; runner exiting" not in log
-    assert log.rstrip().endswith("SESSION STOP NOT CONFIRMED (STOP_UNRESOLVED); runner exiting")
+    assert log.rstrip().endswith("A SESSION UNDER THIS NAME WAS LEFT ALONE (OWNERSHIP_MISMATCH); runner exiting")
     assert new and all(ln.startswith('["sessions"') for ln in new) and json.loads(fake.read_text())["alive"] is True
-    # The fourth reviews: that exit named STOP_UNRESOLVED and wrote no such record, so every later start read
-    # "other" again and exited 4 again, for ever. The record is written; the next start then takes the session for
-    # this folder's own (under names that are one an arm it can be nobody else's), stops it, and resolves the record.
-    rec = json.loads((work / "state" / "STOP_UNRESOLVED").read_text())
-    assert rec["kind"] == "STOP_UNRESOLVED" and rec["session"] == "pk-store" and rec["listed_endpoint"] == "fake-endpoint-2"
-    assert rec["endpoint"] == "fake-endpoint-1" and "colab stop -s pk-store" in rec["do"]
+    # The second launch review (GPT B1): that exit wrote STOP_UNRESOLVED, and the next start took the foreign session
+    # for its own and stopped it. It writes OWNERSHIP_MISMATCH, and every start exits 4 at once while that stands:
+    # nothing is asked of Colab, and the session is left alone. Only a person removes it.
+    assert not (work / "state" / "STOP_UNRESOLVED").exists()
+    rec = json.loads((work / "state" / "OWNERSHIP_MISMATCH").read_text())
+    assert rec["kind"] == "OWNERSHIP_MISMATCH" and rec["session"] == "pk-store" and rec["listed_endpoint"] == "fake-endpoint-2"
+    assert rec["recorded_endpoint"] == "fake-endpoint-1" and "colab stop -s pk-store" in rec["do"]
+    for _ in range(2):
+        q, new, log = again()
+        assert q.returncode == 4 and "OWNERSHIP_MISMATCH present" in q.stderr and new == [], (q.returncode, q.stderr[-800:])
+        assert json.loads(fake.read_text())["alive"] is True
+    # A person reads the listing, stops the session by hand, and removes the record: the folder runs again.
+    fake.write_text(json.dumps({**json.loads(fake.read_text()), "alive": False}))
+    (work / "state" / "OWNERSHIP_MISMATCH").unlink()
     q, new, log = again()
-    assert q.returncode == 0 and "the session an earlier runner left is stopped" in log and new[-1].startswith('["stop"')
-    assert json.loads(fake.read_text())["alive"] is False
-    assert not (work / "state" / "STOP_UNRESOLVED").exists() and (work / "state" / "STOP_RESOLVED").exists()
+    assert q.returncode == 0 and all(ln.startswith('["sessions"') for ln in new)
     # A record left from a stop that could not be confirmed, and the listing now answers that there is no session:
     # it is resolved (moved), not left for ever.
-    (work / "state" / "STOP_RESOLVED").unlink()
+    (work / "state" / "STOP_RESOLVED").unlink(missing_ok=True)
     (work / "state" / "STOP_UNRESOLVED").write_text(json.dumps({"kind": "STOP_UNRESOLVED", "session": "pk-store"}))
     q, new, log = again()
     assert q.returncode == 0 and "the stop this folder left unresolved is resolved (STOP_UNRESOLVED moved to STOP_RESOLVED)" in log
@@ -2766,9 +2772,12 @@ def test_a_network_outage_takes_nothing_off_the_no_progress_clock(tmp_path):
     assert state["jobs"]["pt"]["relayed_step"] > 0 and state["jobs"]["pt"]["status"] == "RUNNING"        # it carried on
 
 
-def unread_runner(tmp_path, name, heads, vm, pushed=None):
-    """An in-process runner whose store answers `heads` in turn (an exception is raised) and whose VM answers vm."""
+def unread_runner(tmp_path, name, heads, vm, pushed=None, listing="fails"):
+    """An in-process runner whose store answers `heads` in turn (an exception is raised) and whose VM answers vm.
+    listing: Colab's listing "lists" the session, answers that it holds none ("absent"), or "fails"."""
     rm = load_runner(tmp_path / name)
+    rm.listed = lambda: "ep-1" if listing == "lists" else None
+    rm.T = type("T", (), {"absent": lambda self: listing == "absent"})()
     clock = rm.time = FakeTime()
     rm.STORE = {"stall_min": 120, "stall_halt": True, "no_progress_min": 260, "branch_suffix": "", "call_limit": 300}
 
@@ -2799,33 +2808,42 @@ def test_an_unread_store_does_not_halt_an_arm_whose_vm_answers_running(tmp_path)
     most; the next tick reads the store, and its new generation is progress."""
     down = ConnectionError("Temporary failure in name resolution")
     rm, clock, st, jobs = unread_runner(tmp_path, "a", [down, 1500], {"vm": "RUNNING", "pt": "RUNNING"},
-                                        pushed=lambda now: now - 180)
+                                        pushed=lambda now: now - 180, listing="lists")
     t0 = clock.t
     clock.t += 300 * 60                                  # 300 minutes: over 260, within 260 + 60
     rm.store_no_progress(st, jobs)
     assert not (tmp_path / "a" / "HALTED").exists()
-    assert "the store was not read; the VM reads RUNNING: no halt, for 60 min past the limit at the most" in \
+    assert "the store was not read; the listing answers (the VM: RUNNING): no halt for 60 min past the limit" in \
         (tmp_path / "a" / "runner.log").read_text()
     clock.t += 4 * 60
     rm.store_no_progress(st, jobs)                       # the next tick: the store answers, with a new generation
     assert st.job("pt")["relayed_step"] == 1500 and st.job("pt")["store_progress_at"] == clock.t - 180 > t0
     assert rm.STORE_NO_PROGRESS_UNREAD_S == 3600
-    # Still unread past the limit and the 60 minutes, the VM reading RUNNING: halted.
-    rm2, clock2, st2, jobs2 = unread_runner(tmp_path, "b", [down], {"vm": "RUNNING", "pt": "RUNNING"})
-    clock2.t += 321 * 60
-    with pytest.raises(SystemExit):
-        rm2.store_no_progress(st2, jobs2)
-    rec = json.loads((tmp_path / "b" / "HALTED").read_text())
-    assert rec["kind"] == "STORE_NO_PROGRESS" and rec["store_read"].startswith("the store was not read")
-    # The launch reviews (Explore B1): unread with the VM silent too, or answering with the job not RUNNING, is no
-    # halt, however long: that halt's stop could not be confirmed. Nor is a store that answers with no advance
-    # while the VM says the job runs: that job is the stall halt's, in its session.
-    for name, heads, vm in (("c", [down], None), ("d", [down], {"vm": "RUNNING", "pt": "WAITING"}),
-                            ("e", [1000], {"vm": "RUNNING", "pt": "RUNNING"})):
-        rm2, clock2, st2, jobs2 = unread_runner(tmp_path, name, heads, vm)
+    # The second launch review (Explore 2a, 2b): the exemption without a bound is for a session whose state is not
+    # known: Colab's listing fails too. With the listing answering (the session listed, or known to be gone), a
+    # store that stays unread halts at the limit plus 60 minutes, whatever the VM answers: silent (a hung kernel),
+    # not RUNNING, or RUNNING.
+    for name, vm, listing in (("b", {"vm": "RUNNING", "pt": "RUNNING"}, "lists"), ("b2", None, "lists"),
+                              ("b3", {"vm": "RUNNING", "pt": "WAITING"}, "lists"), ("b4", None, "absent")):
+        rm2, clock2, st2, jobs2 = unread_runner(tmp_path, name, [down], vm, listing=listing)
+        clock2.t += 319 * 60
+        rm2.store_no_progress(st2, jobs2)                # within the 60 minutes: no halt
+        assert not (tmp_path / name / "HALTED").exists(), name
+        clock2.t += 2 * 60
+        with pytest.raises(SystemExit):
+            rm2.store_no_progress(st2, jobs2)
+        rec = json.loads((tmp_path / name / "HALTED").read_text())
+        assert rec["kind"] == "STORE_NO_PROGRESS" and rec["store_read"].startswith("the store was not read"), name
+    # The listing fails too (home's network down): no halt, however long. Nor is a store that answers with no
+    # advance while the VM says the job runs: that job is the stall halt's, in its session.
+    for name, heads, vm, listing in (("c", [down], None, "fails"), ("d", [down], {"vm": "RUNNING", "pt": "WAITING"}, "fails"),
+                                     ("e", [1000], {"vm": "RUNNING", "pt": "RUNNING"}, "lists")):
+        rm2, clock2, st2, jobs2 = unread_runner(tmp_path, name, heads, vm, listing=listing)
         clock2.t += 2000 * 60
         rm2.store_no_progress(st2, jobs2)
         assert not (tmp_path / name / "HALTED").exists(), name
+    assert "Colab's listing does not answer either: no halt while the session's state is not known" in \
+        (tmp_path / "c" / "runner.log").read_text()
     # A store that answers with no advance and a VM that is silent: halted (the hung-VM case below).
     rm2, clock2, st2, jobs2 = unread_runner(tmp_path, "f", [1000], None)
     clock2.t += 261 * 60
@@ -2888,7 +2906,8 @@ def test_a_home_outage_longer_than_the_limit_halts_nothing_and_stops_nothing(tmp
     log = log_of(work)
     assert p.returncode == 9, (p.returncode, p.stderr[-1500:], log[-3000:])
     assert not (work / "state" / "HALTED").exists() and not (work / "state" / "STOP_UNRESOLVED").exists()
-    assert "the no-progress limit has passed and the store was not read; the VM does not answer either: no halt" in log
+    assert ("the no-progress limit has passed and the store was not read; Colab's listing does not answer either: no "
+            "halt while the session's state is not known") in log
     lines = calls.splitlines()
     first = next(i for i, ln in enumerate(lines) if ln.startswith('["new"'))   # the first launch's own stop comes before
     assert news(calls) == 1 and not any(ln.startswith('["stop"') for ln in lines[first:])
@@ -2948,3 +2967,98 @@ def test_a_stop_the_lead_asks_for_is_a_confirmed_stop_and_a_halt_by_name(tmp_pat
     assert json.loads((work / "fake" / "fake.json").read_text())["alive"] is False
     p2, _ = run_store(work, {}, extra=store_args(work, *GAP_ARGS), wrap=GAP_WRAP, hours="100", fresh=False, more_env=gap_env(work))
     assert p2.returncode != 0 and "HALTED marker present" in p2.stderr                   # not run again until read
+
+
+def test_a_stop_request_survives_a_crash_between_its_halt_and_its_rename(tmp_path, monkeypatch):
+    """The second launch review (GPT B2, Explore): the request was renamed to .taken BEFORE HALTED was written, so a
+    runner killed between the two lost it and the next start ran on. HALTED is written first; and a
+    STOP_REQUEST.taken found with no HALTED is an active request."""
+    home = tmp_path / "home"
+    rm = load_runner(home)
+    rm.time = FakeTime()
+    st = St()
+    (home / "STOP_REQUEST").write_text("units: 700.00 of 640.00")
+
+    def crash(*a, **k):                                  # the runner dies at the rename
+        raise RuntimeError("killed")
+
+    monkeypatch.setattr(rm.os, "replace", crash)
+    with pytest.raises(RuntimeError):
+        rm.stop_request(st)
+    monkeypatch.undo()
+    halted = json.loads((home / "HALTED").read_text())
+    assert halted["kind"] == "LEAD_STOP" and halted["reason"] == "units: 700.00 of 640.00"   # written before the rename
+    assert (home / "STOP_REQUEST").exists()                                                    # and the request stands
+    assert "remove HALTED and STOP_REQUEST.taken" in halted["do"]
+    # A STOP_REQUEST.taken with no HALTED (a person removed HALTED alone, or the old order's crash): taken again.
+    (home / "HALTED").unlink()
+    os.replace(home / "STOP_REQUEST", home / "STOP_REQUEST.taken")
+    with pytest.raises(SystemExit) as e:
+        rm.stop_request(st)
+    assert e.value.code == 3 and json.loads((home / "HALTED").read_text())["reason"] == "units: 700.00 of 640.00"
+    assert "(STOP_REQUEST.taken with no HALTED: taken as active)" in (home / "runner.log").read_text()
+    # Both removed: nothing.
+    (home / "HALTED").unlink()
+    (home / "STOP_REQUEST.taken").unlink()
+    rm.stop_request(st)
+    assert not (home / "HALTED").exists()
+
+
+def test_a_small_download_is_checked_against_the_vms_sha256(tmp_path):
+    """The second launch review (GPT): a file at or under the chunk size came home whole and was returned without
+    its sha256 checked, though the VM's was at hand: receipts, probe records and rung results among them. A copy
+    that differs is removed and fetched again by the exec path, which checks its bytes; failing that, no file."""
+    import hashlib as hl
+    rm = load_runner(tmp_path / "home")
+    good = b'{"returncode": 0}'
+    rm.exec_py = lambda code, timeout=200: (0, "DLMETA " + json.dumps({"size": len(good), "sha256": hl.sha256(good).hexdigest(),
+                                                                         "parts": []}))
+
+    class T:
+        whole_files = False
+        body = b'{"returncode": 1}'                      # a copy that is not the VM's
+
+        def get(self, src, dst, timeout):
+            open(dst, "wb").write(self.body)
+            return 0, ""
+
+    rm.T, fetched = T(), []
+    rm.exec_fetch = lambda src, size, dst: (open(dst, "wb").write(good), fetched.append(src))[1] is None
+    dst = tmp_path / "loadprobe.json"
+    assert rm.download_file("/content/chat/load_probe/loadprobe.json", str(dst)) == 0
+    assert dst.read_bytes() == good and fetched == ["/content/chat/load_probe/loadprobe.json"]
+    assert "the copy's sha256 is not the VM's; it is removed and fetched again" in (tmp_path / "home" / "runner.log").read_text()
+    rm.exec_fetch = lambda src, size, dst: False         # and when that fails too: no file, and not success
+    dst.unlink()
+    assert rm.download_file("/content/chat/load_probe/loadprobe.json", str(dst)) == 1 and not dst.exists()
+    T.body, fetched[:] = good, []                         # the right bytes: kept at once
+    assert rm.download_file("/content/chat/load_probe/loadprobe.json", str(dst)) == 0 and dst.read_bytes() == good
+
+
+def test_an_arm_capped_after_a_home_outage_restarts_and_pushes(tmp_path):
+    """The second launch review (Explore B1): with home down, no release reaches a VM and its courier's count only
+    grows, to the cap; the arm halts STORE_PUSH_CAP when home is back. Restarted (HALTED removed), the new VM's
+    courier started from the saved, capped count and capped at its first push. Now a release from home is made
+    before the create, and its measurement (what the store holds for the campaign, the removed generations
+    deleted) is what the new courier starts from: it pushes."""
+    work = tmp_path
+    cap = 6.5 * fakecolab.BIG / 1e9                      # the mark and five generations; the sixth is not pushed
+    jobs = reh_jobs(store_push_cap_gb=cap)
+    args = store_args(work, "--store-first-start", "--store-release-storage", "--store-release-grace-s", "600")
+    env = {"FAKE_STEPS": "3000", "FAKE_VM_LEDGER_AGE_S": "100000"}   # the removed generations' ledgers are old
+    p, calls = run_store(work, {}, jobs=jobs, extra=args, more_env=env, hours="1")
+    log = log_of(work)
+    assert p.returncode == 3, (p.returncode, p.stderr[-1500:], log[-2000:])
+    assert json.loads((work / "state" / "HALTED").read_text())["kind"] == "STORE_PUSH_CAP"
+    store = hf_store.open_store({"repo": f"dir:{work / 'store'}"})
+    before, state = store.head_step("ckpt-N"), state_of(work)
+    assert state["store_capped"] and state["store_pushed_bytes"] > 5 * fakecolab.BIG
+    (work / "state" / "HALTED").unlink()                 # a person has read it
+    p2, calls2 = run_store(work, {}, jobs=jobs, extra=args, fresh=False, more_env=env, hours="1")
+    log2 = log_of(work)[len(log):]
+    assert "is at the push cap" in log2 and "a release from home is made before the create" in log2, log2[-3000:]
+    assert "under the cap: the new courier starts there" in log2
+    after = hf_store.open_store({"repo": f"dir:{work / 'store'}"}).head_step("ckpt-N")
+    assert after > before and news(calls2) == 2, (before, after, log2[-2000:])
+    cfg = json.loads((work / "fake" / "vm" / "chat" / "store.json").read_text())
+    assert cfg["pushed_bytes_start"] < int(cap * 1e9) - fakecolab.BIG               # the new courier had room

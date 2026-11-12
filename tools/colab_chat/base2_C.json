@@ -29,7 +29,7 @@
   "same_windows_as_S_through_step": 212500,
   "note": "C reads S's windows while both read the main part, steps 1 to 212,500; S reads its tail from 212,501 and C from 280,501"
  },
- "store_push_cap_gb": 60,
+ "store_push_cap_gb": 250,
  "store_release_every_min": 60,
  "store_stall_halt": true,
  "store_stall_min": 120,

@@ -238,6 +238,20 @@ def stop_unresolved(st, why, **more):
         os.fsync(handle.fileno())
 
 
+def ownership_mismatch(st, ep, where):
+    """The OWNERSHIP_MISMATCH record: a session is listed under this folder's name at an endpoint the folder did not
+    record, so it is taken for another runner's and left alone (no token removed, no stop). Every start of the
+    folder exits 4 while the record is there (main()); only a person removes it, after reading the listing."""
+    rec = {"kind": "OWNERSHIP_MISMATCH", "session": NAME, "recorded_endpoint": st.d.get("endpoint"), "listed_endpoint": ep,
+           "where": where, "at": time.time(),
+           "do": f"a session under this name is not this folder's by its record: check `colab sessions`. If it is "
+                 f"this folder's after all, stop it by hand (colab stop -s {NAME}); then remove OWNERSHIP_MISMATCH"}
+    with open(os.path.join(HOME, "OWNERSHIP_MISMATCH"), "w") as handle:
+        json.dump(rec, handle, indent=1)
+        handle.flush()
+        os.fsync(handle.fileno())
+
+
 def listed():
     return T.listed()
 
@@ -379,9 +393,15 @@ def download_file(src, dst, timeout=1800):
     if not meta:
         return 1
     if not meta["parts"]:
+        # A file at or under CHUNK comes whole, and is checked against the VM's sha256 like every other download:
+        # a copy that differs is not kept; the exec path below is tried once more, and it checks its bytes too.
         rc, _ = T.get(src, dst, timeout)
-        if rc == 0:
-            return 0
+        if rc == 0 and os.path.exists(dst):
+            with open(dst, "rb") as f:
+                if hashlib.sha256(f.read()).hexdigest() == meta["sha256"]:
+                    return 0
+            os.remove(dst)
+            log(f"download of {src}: the copy's sha256 is not the VM's; it is removed and fetched again")
         if not exec_fetch(src, meta["size"], dst + ".dltmp"):
             return 1
         with open(dst + ".dltmp", "rb") as f:
@@ -845,6 +865,8 @@ def launch(st, commit, jobs_rel, jobs, uploads):
         return False
     if STORE:
         store_no_progress(st, jobs)  # a clock past its limit creates no session: it halts here, by name
+        if not store_cap_before_create(st, jobs):
+            return False
     rc, out = T.create(st)
     if rc != 0:
         log(f"no {T.gpu} ({out.strip()[-120:]}); retry later")
@@ -1615,10 +1637,11 @@ def store_no_progress(st, jobs, start=False):
     a runner that was down while its courier pushed is not halted), and, when a session may be up, the VM's status
     (a job that has FINISHED there is the settle window's, not this clock's). It halts only on a store read that
     COMPLETED and shows no advance, with the VM silent or the job not RUNNING (a job that runs and pushes nothing
-    is the stall halt's, within its session); or, with the store unread, when the VM answers RUNNING and the limit
-    has been passed by STORE_NO_PROGRESS_UNREAD_S more (60 minutes). A store that cannot be read with a VM that
-    does not answer either (home's network down, the laptop just awake) halts nothing, whatever the age: that
-    halt's stop could not be confirmed, and it would only take the watchdog away. main() checks it at the top of
+    is the stall halt's, within its session); or, with the store unread and Colab's listing answering, when the
+    limit has been passed by STORE_NO_PROGRESS_UNREAD_S more (60 minutes), whatever the VM answers. A store that
+    cannot be read with a listing that does not answer either (home's network down, the laptop just awake) halts
+    nothing, whatever the age: that halt's stop could not be confirmed, and it would only take the watchdog away.
+    main() checks it at the top of
     every tick, after the session key is refreshed, and launch() just before every create, the first launch too:
     once the limit has passed no session is created. The HALTED record says how to clear it: removing HALTED alone halts again at the next
     start, since the clock is in state.json ("jobs.<job>.store_progress_at"); that key is deleted with it.
@@ -1649,19 +1672,23 @@ def store_no_progress(st, jobs, start=False):
         read, unread, vm_job = store_no_progress_fresh(st, jobs, n, vm=held is None)
         if read in ("progress", "finished"):
             continue
-        if unread and not (vm_job == "RUNNING" and age > lim * 60 + STORE_NO_PROGRESS_UNREAD_S):
-            # The store could not be read. With the VM silent too (home's network down, the laptop just awake) a
-            # halt's stop could not be confirmed: it would only take the watchdog away while the sessions bill on.
-            # With the VM answering, the job is not known to be stuck. No halt this tick, whatever the age; the
-            # one bound is a VM that reads RUNNING while the store stays unread 60 minutes past the limit.
-            key = f"{n}:{vm_job}"
-            if _STORE.get("no_progress_unread") != key:
-                log(f"{n}: the no-progress limit has passed and the store was not read; the VM "
-                    + ("does not answer either: no halt while neither can be read" if vm_job is None else
-                       f"reads {vm_job}: no halt" + (f", for {STORE_NO_PROGRESS_UNREAD_S / 60:.0f} min past the limit "
-                                                     "at the most" if vm_job == "RUNNING" else "")))
-            _STORE["no_progress_unread"] = key
-            continue
+        if unread:
+            # The store could not be read. When Colab's listing cannot be read either, the session's state is not
+            # known (home's network down, the laptop just awake): a halt's stop could not be confirmed, and would
+            # only take the watchdog away while the sessions bill on. No halt then, whatever the age. When the
+            # listing answers (the session is listed, or known to be gone), home's network works: the store
+            # unread is home's problem or the hub's, and the halt comes when the limit has been passed by
+            # STORE_NO_PROGRESS_UNREAD_S more, whatever the VM answers.
+            known = store_listing_answers()
+            if not known or age <= lim * 60 + STORE_NO_PROGRESS_UNREAD_S:
+                key = f"{n}:{known}"
+                if _STORE.get("no_progress_unread") != key:
+                    log(f"{n}: the no-progress limit has passed and the store was not read; "
+                        + ("Colab's listing does not answer either: no halt while the session's state is not known"
+                           if not known else f"the listing answers (the VM: {vm_job or 'no answer'}): no halt for "
+                                             f"{STORE_NO_PROGRESS_UNREAD_S / 60:.0f} min past the limit"))
+                _STORE["no_progress_unread"] = key
+                continue
         if not unread and vm_job == "RUNNING":
             # The store answers with no new generation and the VM says the job runs: a job that runs and pushes
             # nothing is the stall halt's, within its session (--store-stall-min); this clock is for sessions that
@@ -1676,6 +1703,50 @@ def store_no_progress(st, jobs, start=False):
                       f"{os.path.join(HOME, 'state.json')} as \"jobs\" -> \"{n}\" -> \"store_progress_at\" "
                       f"(jobs.{n}.store_progress_at). To give the arm a new clock, delete that key, then HALTED")
         raise SystemExit(3)
+
+
+def store_cap_before_create(st, jobs):
+    """Before a create: the count the new VM's courier starts from (state.json "store_pushed_bytes", sent as its
+    pushed_bytes_start) must be under the push cap. A count at or over it (an arm halted with STORE_PUSH_CAP after
+    home was down for hours: only a release from home measures the count down, and none reached the VM) would cap
+    the new courier at its first push. So a release is made now, with no session up, and its measurement replaces
+    the count. True when the count is under the cap (now or after that release); False when the release could
+    not run this tick (it is tried again at the next); halts STORE_PUSH_CAP when the store itself holds the cap's
+    worth for this campaign, or when this runner releases nothing (no --store-release-storage) and so cannot
+    measure."""
+    cap, count = STORE.get("push_cap_bytes") or 0, st.d.get("store_pushed_bytes") or 0
+    if not cap or (count < cap and not st.d.get("store_capped")):
+        return True
+    if not STORE["reclaim"]:
+        store_halt("STORE_PUSH_CAP", bytes_since_release=count, cap_bytes=cap,
+                   why="the saved count is at the push cap and this runner makes no release from home "
+                       "(--store-release-storage), the one thing that measures it down; a new VM would cap at once")
+        raise SystemExit(3)
+    log(f"store: the saved count ({count} bytes) is at the push cap ({cap}), or its courier capped: a release from "
+        "home is made before the create, so the new VM's courier starts from what the store holds")
+    out = store_release(st, jobs, force=True)
+    if out != "done":
+        log(f"store: that release did not run ({out}); no session is created this tick")
+        return False
+    mine = st.d.get("store_pushed_bytes") or 0
+    st.d.pop("store_capped", None)
+    st.save()
+    if mine >= cap:
+        store_halt("STORE_PUSH_CAP", bytes_since_release=mine, cap_bytes=cap,
+                   why="a release from home measured what the store holds for this campaign, and it is at or over the "
+                       "push cap")
+        raise SystemExit(3)
+    log(f"store: the release measured {mine} bytes for this campaign, under the cap: the new courier starts there")
+    return True
+
+
+def store_listing_answers():
+    """True when Colab's listing answers: it lists a session under this name, or answers that it holds none. False
+    when it does not answer (or the transport cannot say)."""
+    try:
+        return listed() is not None or bool(T.absent())
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def store_no_progress_fresh(st, jobs, n, vm):
@@ -1733,19 +1804,27 @@ def stop_request(st):
     """The lead's stop: a file STATE/STOP_REQUEST (its text is the reason; base2_units_guard.py writes one when the
     units reach their bound). At the next tick the runner halts by name: HALTED with kind LEAD_STOP and the
     reason, then SystemExit(3), so main()'s clean-up runs as at any halt: the token off the VM, the session's logs
-    home, the confirmed stop, and the release at the campaign's end when it is owed. The request is moved to
-    STOP_REQUEST.taken, so it is not taken again once a person has cleared HALTED."""
+    home, the confirmed stop, and the release at the campaign's end when it is owed.
+
+    Durable in this order: HALTED is written FIRST (with fsync), and only then is the request renamed to
+    STOP_REQUEST.taken. A runner killed between the two leaves HALTED and the request: nothing runs. And a
+    STOP_REQUEST.taken found with no HALTED is an active request too (a HALTED that was lost, or removed alone), so
+    the stop is taken again. To run again a person removes HALTED and STOP_REQUEST.taken, as HALTED says."""
     p = os.path.join(HOME, "STOP_REQUEST")
-    if not os.path.exists(p):
+    src = p if os.path.exists(p) else p + ".taken" if os.path.exists(p + ".taken") else None
+    if src is None:
         return
     try:
-        reason = open(p, encoding="utf-8", errors="replace").read().strip()[:2000]
+        reason = open(src, encoding="utf-8", errors="replace").read().strip()[:2000]
     except OSError as e:
         reason = f"(the request could not be read: {type(e).__name__})"
-    os.replace(p, p + ".taken")
-    log(f"STOP_REQUEST: the lead asks for a stop ({reason or 'no reason given'}); halting through the confirmed stop")
+    log(f"STOP_REQUEST: the lead asks for a stop ({reason or 'no reason given'})"
+        + ("" if src == p else " (STOP_REQUEST.taken with no HALTED: taken as active)") + "; halting through the confirmed stop")
     store_halt("LEAD_STOP", reason=reason, launches=st.d.get("launches"),
-               do="a stop the lead asked for: read the reason; remove HALTED to run again")
+               do="a stop the lead asked for: read the reason; to run again remove HALTED and STOP_REQUEST.taken "
+                  "(a STOP_REQUEST.taken left alone is taken as a request again)")
+    if src == p:
+        os.replace(p, p + ".taken")
     raise SystemExit(3)
 
 
@@ -2030,6 +2109,10 @@ def store_guard(st, jobs, vm):
         st.save()
     if c.get("capped"):
         running = [n for n in store_branches(jobs) if not st.job(n)["home"]]
+        # Kept for the next start: its saved count can be just under the cap (the courier stops at a push that
+        # would pass it), and a new VM must not start from it (store_cap_before_create).
+        st.d["store_capped"] = {"bytes_since_release": c["capped"].get("bytes_since_release"), "cap": c["capped"].get("cap")}
+        st.save()
         store_halt("STORE_PUSH_CAP", job=running[0] if running else None, why=c["capped"].get("why"),
                    bytes_since_release=c["capped"].get("bytes_since_release"), cap_bytes=c["capped"].get("cap"),
                    releases=st.d.get("store_releases"))
@@ -2093,7 +2176,7 @@ def store_release_turn(now):
     return (math.floor((now - off) / every) + 1) * every + off
 
 
-def store_release(st, jobs, final=False, limit=None):
+def store_release(st, jobs, final=False, limit=None, force=False):
     """Storage release, from home (--store-release-storage): the one releaser of the whole repo. Every
     --store-release-every-min minutes, and once more at the campaign's end (final), under the store's release lock,
     by difference over every branch, sparing objects younger than --store-release-grace-s. No VM releases: a
@@ -2119,7 +2202,10 @@ def store_release(st, jobs, final=False, limit=None):
     nobody. That number replaces the storage guard's count: in state.json, and on the VM
     (CHAT/store_measure.json, with the courier's own pushed-bytes figure as read just before the release, so
     what it has pushed since is counted on top). It is this campaign's share, not the account's usage. Never
-    raises: a release that fails is tried again at the next turn."""
+    raises: a release that fails is tried again at the next turn.
+
+    force: a round made now, off the timer, with no session up (store_cap_before_create, before a create when the
+    saved count is at the push cap): its measurement replaces the count the next VM's courier starts from."""
     if not STORE["reclaim"]:
         return
     now, every = time.time(), STORE["release_every_min"] * 60
@@ -2128,11 +2214,12 @@ def store_release(st, jobs, final=False, limit=None):
         # three arms offsets of 0, a third and two thirds of the interval, so their rounds do not fall due together).
         st.d["store_release_next"] = st.d["store_release_regular"] = store_release_turn(now)
         st.save()
-    if not final:
+    timed = not final and not force
+    if timed:
         store_measure_send(st)  # a measurement that did not reach the VM is sent again, each tick, until it does
-    if not final and now < st.d["store_release_next"]:
+    if timed and now < st.d["store_release_next"]:
         return
-    if not final:
+    if timed:
         # The regular turns are ANCHORED TO UTC (store_release_turn): the multiples of the interval since the epoch,
         # plus the arm's offset. Not to this runner's start, and not to the moment a round happened to run: an arm
         # that starts late, or a round that was held and ran a tick later, keeps the arm's turns where the
@@ -2146,7 +2233,7 @@ def store_release(st, jobs, final=False, limit=None):
         st.d["store_release_next"] = regular
     rec = st.d.setdefault("store_releases", {"count": 0, "held": 0, "failed": 0, "objects": 0, "bytes": 0})
     st.save()
-    c = {} if final else ((store_vm_read(jobs) or {}).get("courier") or {})
+    c = {} if (final or force) else ((store_vm_read(jobs) or {}).get("courier") or {})
     t0 = time.time()
 
     def again(sent):
@@ -2993,8 +3080,8 @@ def main():
                          "stop or a failed create, until the next create) is not counted. Before it halts it reads "
                          "the store once (a newer generation is progress, from its push time) and, with a session "
                          "up, the VM (FINISHED is exempt; RUNNING with a store that answers is the stall halt's); a "
-                         "store that cannot be read halts nothing while the VM is silent too, and for 60 minutes past "
-                         "the limit while the VM reads RUNNING. To clear the halt, delete "
+                         "store that cannot be read halts nothing while Colab's listing does not answer either, and "
+                         "for 60 minutes past the limit while it does. To clear the halt, delete "
                          "jobs.<job>.store_progress_at in state.json as well as HALTED. Default: the jobs file's "
                          "\"store_no_progress_min\" (the arms: 260), else --store-stall-min + --store-boot-limit-min "
                          "+ 15 (210 at a stall of 120); 0 without the stall halt")
@@ -3039,6 +3126,10 @@ def main():
             sys.exit(f"--upload {k}: {src} does not exist")
     if os.path.exists(os.path.join(HOME, "HALTED")):
         sys.exit("HALTED marker present: nothing runs until a person has read it (the marker stays)")
+    if os.path.exists(os.path.join(HOME, "OWNERSHIP_MISMATCH")):
+        print("OWNERSHIP_MISMATCH present: a session under this name was found at an endpoint this folder did not "
+              "record and was left alone; nothing runs until a person has read the record and removed it", file=sys.stderr)
+        sys.exit(4)
     pid = os.path.join(HOME, "runner.pid")
     # One runner a state folder, by the folder's lock: taken here without waiting and held, open, for this process's
     # life (a forked store call shares it and dies with this process). The pid file is written further down for
@@ -3137,11 +3228,11 @@ def main():
                 + ("; the release at the campaign's end is owed" if home_already and STORE and STORE["reclaim"]
                    and not st.d.get("store_release_final_done") else ""))
             if left == "other":
-                # The record this exit names. With it the next start takes the listed session for this folder's own
-                # and stops it: under names that are one an arm it can be nobody else's.
-                stop_unresolved(st, f"at a start on a folder that is home or past its deadline, a session is listed under "
-                                    f"this name at {ep}, not at the endpoint this folder recorded; it was left alone",
-                                listed_endpoint=ep)
+                # A session under this name at an endpoint this folder never recorded is not taken for its own: not
+                # now, and not at a later start. OWNERSHIP_MISMATCH (not STOP_UNRESOLVED, which would make the next
+                # start take it and stop it) stops every start of this folder, with exit 4, until a person has
+                # looked and removed it.
+                ownership_mismatch(st, ep, "at a start on a folder that is home or past its deadline")
             elif left == "unknown":
                 # The exit's last line names STOP_UNRESOLVED: the record is written, so the next start takes a session
                 # listed under the name for this folder's own and stops it.
@@ -3385,7 +3476,9 @@ def main():
             with open(os.path.join(HOME, "DEADLINE"), "w") as handle:
                 json.dump(rec, handle, indent=1)
             log(f"DEADLINE written: the session found under the name: {left}; stop confirmed: {stopped}")
-        log("session stopped; runner exiting" if stopped else "SESSION STOP NOT CONFIRMED (STOP_UNRESOLVED); runner exiting")
+        log("session stopped; runner exiting" if stopped else
+            "A SESSION UNDER THIS NAME WAS LEFT ALONE (OWNERSHIP_MISMATCH); runner exiting" if left == "other" else
+            "SESSION STOP NOT CONFIRMED (STOP_UNRESOLVED); runner exiting")
         os.remove(pid)
         if not stopped:
             sys.exit(4)

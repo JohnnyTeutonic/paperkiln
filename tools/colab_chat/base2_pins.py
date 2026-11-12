@@ -5,7 +5,7 @@ research tree). Claude Fable 5.2, 11 Nov 2026.
     python3 tools/colab_chat/base2_pins.py DIR MODE [--upload DIR] [--pins FILE] [--out COPY.json]
     python3 tools/colab_chat/base2_pins.py pin-engine ENGINE_DIR [--commit HASH] [--repin] [--pins FILE]   # at home
     python3 tools/colab_chat/base2_pins.py adopt OBSERVED.json [...] [--pins FILE]                         # at home
-    python3 tools/colab_chat/base2_pins.py adopt-receipts BUILD_ART [--pins FILE] [--repo ROOT]          # at home
+    python3 tools/colab_chat/base2_pins.py adopt-receipts BUILD_ART [--state-dir DIR] [--pins FILE] [--repo ROOT]   # at home
 
 tools/colab_chat/base2_pins.json (or --pins, or BASE2_PINS) holds sha256 by group. A null pin is one not yet measured.
 
@@ -152,7 +152,40 @@ ARM_GROUPS = ("N", "S", "panels", "vocab", "a_weights")   # what the arms' modes
 FW_HASHES = [f"fineweb_edu_shard{n}_v1.sha256" for n in (2, 3, 4, 5)]   # pinned on the build's first fetch
 
 
-def adopt_receipts(pins, build, repo):
+def published_against_pins(stages):
+    """Each stage receipt's published sets (the store's manifests as store-verify read them back after the push),
+    against what the build hashed before it published (built.pins): N from stage 2, S, the scenario panel and the
+    two earlier panels (published by stage 1) against stage 3's build-S. The differences, as lines."""
+    bad = []
+    n_obs = (stages[2].get("_pins", {}).get("build-N") or {}).get("observed") or {}
+    s_obs = (stages[3].get("_pins", {}).get("build-S") or {}).get("observed") or {}
+    for n, key, group, obs, names in ((2, "published_N", "N", n_obs, ("N.main.ids", "N.tail.ids")),
+                                      (3, "published_S", "S", s_obs, ("S.main.ids", "S.tail.ids")),
+                                      (3, "published_panel_scenario", "panels", s_obs, ("panel_scenario.ids",)),
+                                      (1, "published_panels", "panels", s_obs, ("panel_fineweb.ids", "panel_dialogue.ids"))):
+        pub = stages[n].get(key)
+        if not isinstance(pub, dict) or not pub.get("verified") or pub.get("differences"):
+            bad.append(f"stage {n}: {key} is not a verified publication ({(pub or {}).get('differences') if isinstance(pub, dict) else 'missing'})")
+            continue
+        for f in names:
+            got = ((pub.get("files") or {}).get(f) or {}).get("sha256")
+            if got is None or got != obs.get(f"{group}/{f}"):
+                bad.append(f"stage {n}: {key} lists {f} at {got}, and the build hashed {obs.get(f'{group}/{f}')}")
+    return bad
+
+
+def commit_files(repo, paths):
+    """What a commit of these paths would hold, by `git status --porcelain` (a new, untracked file shows as well as
+    a changed one): the paths, relative to the repo. Raises SystemExit when git cannot say."""
+    import subprocess
+    p = subprocess.run(["git", "-C", repo, "status", "--porcelain", "--untracked-files=all", "--", *paths],
+                       capture_output=True, text=True)
+    if p.returncode != 0:
+        raise SystemExit(f"git status failed in {repo}: {p.stderr.strip()[:300]}")
+    return sorted(ln[3:].strip() for ln in p.stdout.splitlines() if ln.strip())
+
+
+def adopt_receipts(pins, build, repo, state_dir=None):
     """The adoption after the build, from its home output folder `build` (the runner's ART: build/data/ and
     build/load_probe/). Every check is made before anything is written:
     - each stage receipt's "built.pins" (the hashes the build took of what it published), adopted as `adopt` does;
@@ -160,21 +193,37 @@ def adopt_receipts(pins, build, repo):
       (load_probe/loadprobe_pins.json), equal to stage 3's, key by key, with no difference recorded;
     - no pin an arm reads (ARM_GROUPS) left null;
     - the FineWeb-Edu shard 2 to 5 hash files the build's first fetch wrote (plan, work item 6: committed in
-      corpus/hashes/, beside shards 0 and 1): written there, or equal to what is there.
+      corpus/hashes/, beside shards 0 and 1): written there, or equal to what is there;
+    - the load probe's 20-step run completed (load_probe/loadprobe.json: return code 0 and a first step seen);
+    - each stage's published sets, as the store's manifests listed them after the push, equal to what the build
+      hashed (published_against_pins);
+    - with state_dir (the build runner's state folder): no HALTED there.
     Returns (adopted pins, files written, relative to repo); raises SystemExit naming every refusal."""
     data, bad = os.path.join(build, "data"), []
-    stages = {}
+    if state_dir and os.path.exists(os.path.join(state_dir, "HALTED")):
+        bad.append(f"the build's state folder holds HALTED ({os.path.join(state_dir, 'HALTED')}): the build did not end well")
+    try:
+        lp = json.load(open(os.path.join(build, "load_probe", "loadprobe.json"), encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        lp, bad = {}, bad + [f"load probe: loadprobe.json not read ({type(e).__name__})"]
+    if lp and (lp.get("returncode") != 0 or lp.get("seconds_to_first_step") is None):
+        bad.append(f"load probe: its 20-step run did not complete (return code {lp.get('returncode')}, first step "
+                   f"{lp.get('seconds_to_first_step')})")
+    stages, receipts = {}, {}
     for n in (1, 2, 3):
         p = os.path.join(data, f"base2_stage{n}.json")
         try:
-            got = (json.load(open(p, encoding="utf-8")).get("built") or {}).get("pins")
+            rec = json.load(open(p, encoding="utf-8"))
+            got = (rec.get("built") or {}).get("pins")
         except (OSError, ValueError) as e:
-            got, bad = None, bad + [f"stage {n}: receipt not read ({type(e).__name__}: {p})"]
+            rec, got, bad = {}, None, bad + [f"stage {n}: receipt not read ({type(e).__name__}: {p})"]
         if got is not None and not isinstance(got, dict):
             got = None
         if got is None and not any(b.startswith(f"stage {n}:") for b in bad):
             bad.append(f"stage {n}: its receipt carries no built.pins")
         stages[n] = got or {}
+        receipts[n] = {**rec, "_pins": got or {}}
+    bad += published_against_pins(receipts)
     s3 = (stages[3].get("build-S") or {}).get("observed") or {}
     try:
         probe = json.load(open(os.path.join(build, "load_probe", "loadprobe_pins.json"), encoding="utf-8"))["build-S"]
@@ -226,6 +275,7 @@ def main(argv=None):
     ap.add_argument("--upload", default="/content/chat/upload")
     ap.add_argument("--pins")
     ap.add_argument("--repo", default=os.path.dirname(os.path.dirname(HERE)), help="adopt-receipts: the repo root")
+    ap.add_argument("--state-dir", default=None, help="adopt-receipts: the build runner's state folder (refused with HALTED)")
     ap.add_argument("--out", help="a second copy of this mode's record (a job's own output folder)")
     ap.add_argument("--commit")
     ap.add_argument("--repin", action="store_true")
@@ -238,9 +288,10 @@ def main(argv=None):
         print(json.dumps({"engine": got, "commit": a.commit}, indent=1))
         return 0
     if a.dir == "adopt-receipts":
-        done, written = adopt_receipts(pins, a.mode, a.repo)
+        done, written = adopt_receipts(pins, a.mode, a.repo, a.state_dir)
         write_pins(path, pins)
-        commit = sorted([os.path.relpath(os.path.abspath(path), a.repo), *written])
+        # The commit's files as git sees them (a new hash file is untracked, and `git diff` would not show it).
+        commit = commit_files(a.repo, [os.path.relpath(os.path.abspath(path), a.repo), os.path.join("corpus", "hashes")])
         print(json.dumps({"adopted": done, "written": written, "commit_files": commit}, indent=1))
         return 0
     if a.dir == "adopt":
