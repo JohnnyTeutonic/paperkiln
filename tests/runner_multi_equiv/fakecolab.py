@@ -257,6 +257,9 @@ def main():
         call_log(argv, hashlib.sha256(code.encode()).hexdigest()[:16])
     else:
         call_log(argv)
+    if cmd == "sessions" and os.path.exists(os.path.join(ROOT, "listing_down")):   # a test's: the listing fails
+        print("Traceback (most recent call last):\nrequests.exceptions.ConnectionError: listing down")
+        return 1
     if cmd == "sessions":
         # The Colab CLI's own form (commands/session.py): one line a session, or its one line for none.
         if d.get("listing_empty_silent"):   # a zero exit with nothing printed: not an answer (a test's)
@@ -280,6 +283,10 @@ def main():
         os.makedirs(CHAT)
         save(d)
         print("created")
+        return 0
+    if cmd == "stop" and "-s" in argv and argv[argv.index("-s") + 1] != d.get("name"):
+        # As the CLI: a name it does not hold is looked up in its local store only (commands/session.py).
+        print(f"[colab] Session '{argv[argv.index('-s') + 1]}' not found.")
         return 0
     if cmd == "stop":
         # Scenarios: "stop_fail": the next N stops fail and the session stays up (true: every stop);

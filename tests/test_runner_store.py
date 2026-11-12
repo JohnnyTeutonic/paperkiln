@@ -2342,6 +2342,7 @@ rm.time = clock
 def tick(deadline):         # a tick takes TICK_MIN minutes of the runner's time, and none of the test's
     clock.off += float(os.environ["TICK_MIN"]) * 60
 rm.sleep_tick = tick
+rm.STORE_GAP_TICK_S = float(os.environ["TICK_MIN"]) * 60
 rm.main()
 """)
 
@@ -2578,6 +2579,12 @@ def tick(deadline):         # a tick takes TICK_MIN minutes of the runner's time
     if ticks[0] == int(os.environ.get("STOP_AT_TICK", "0")):  # the lead asks for a stop
         with open(os.environ["STOP_FILE"], "w") as f:
             f.write(os.environ["STOP_TEXT"])
+    down = os.path.join(os.environ["FAKE_ROOT"], "listing_down")   # LISTING_DOWN_EVERY=k: the listing fails every kth tick
+    every = int(os.environ.get("LISTING_DOWN_EVERY", "0"))
+    if every and ticks[0] % every == 0:
+        open(down, "w").close()
+    elif os.path.exists(down):
+        os.remove(down)
     if ticks[0] == int(os.environ.get("SESSION_END_TICK", "0")):  # Colab's own limit ends the session
         fj = os.path.join(os.environ["FAKE_ROOT"], "fake.json")
         d = json.load(open(fj))
@@ -2594,11 +2601,14 @@ rm.stop_session = stop_or_die
 real_preflight = rm.store_preflight
 rm.store_preflight = lambda st, jobs: False if os.path.exists(outage) else real_preflight(st, jobs)
 real_call = rm.store_call
-def store_call(fn, limit=None):   # in an outage no store call from home answers
-    if os.path.exists(outage):
+failing = [int(os.environ.get("FAIL_STORE_CALLS", "0"))]
+def store_call(fn, limit=None):   # in an outage no store call from home answers; FAIL_STORE_CALLS: the first N fail
+    if os.path.exists(outage) or failing[0] > 0:
+        failing[0] -= 1
         raise ConnectionError("network is unreachable")
     return real_call(fn, limit)
 rm.store_call = store_call
+rm.STORE_GAP_TICK_S = float(os.environ["TICK_MIN"]) * 60   # this runner's ticks are the moved clock's
 began = [0]
 real_began = rm.store_session_began
 def began_then_die(st, jobs):  # KILL_IN_BEGAN=N: the runner dies in the Nth launch, after its create and before its save
@@ -2929,7 +2939,10 @@ def test_a_home_outage_longer_than_the_limit_halts_nothing_and_stops_nothing(tmp
     state = state_of(work)
     assert state["jobs"]["pt"]["status"] == "RUNNING" and state["jobs"]["pt"]["relayed_step"] >= 1800   # trained on
     src = (CC / "runner_multi.py").read_text()
-    assert src.index("            T.refresh(st)\n            if STORE:\n                store_no_progress(st, jobs)") > 0
+    # The key refreshed, then the listing taken (the fourth launch review: the blind window it closes is known to the
+    # check), then the no-progress check.
+    assert src.index("            T.refresh(st)\n            seen = listed()\n            if STORE:\n"
+                     "                store_blind_track(st, seen)") < src.index("                store_no_progress(st, jobs)  # before anything")
 
 
 def test_a_start_after_the_deadline_cleans_up_and_stops_the_folders_session(tmp_path):
@@ -3001,7 +3014,8 @@ def test_a_stop_request_survives_a_crash_between_its_halt_and_its_rename(tmp_pat
     halted = json.loads((home / "HALTED").read_text())
     assert halted["kind"] == "LEAD_STOP" and halted["reason"] == "units: 700.00 of 640.00"   # written before the rename
     assert (home / "STOP_REQUEST").exists()                                                    # and the request stands
-    assert "remove HALTED and STOP_REQUEST.taken" in halted["do"]
+    # The fourth launch review: the clearing names both files (a crash before the rename leaves STOP_REQUEST).
+    assert "remove HALTED and the request file that is left: STOP_REQUEST.taken, or STOP_REQUEST" in halted["do"]
     # A STOP_REQUEST.taken with no HALTED (a person removed HALTED alone, or the old order's crash): taken again.
     (home / "HALTED").unlink()
     os.replace(home / "STOP_REQUEST", home / "STOP_REQUEST.taken")
@@ -3163,6 +3177,7 @@ def test_a_halt_whose_stop_did_not_happen_is_stopped_at_the_next_start(tmp_path)
     assert "store: courier ended and token removed from the VM (before a halted session is stopped)" in log_of(work)
     halted = json.loads((work / "state" / "HALTED").read_text())
     assert halted["kind"] == "LEAD_STOP" and halted["stop_confirmed"] is True and halted["stop_finished_at_start"] == "ours"
+    assert not (work / "state" / "runner.pid").exists()                                 # the fourth launch review
     p3, calls3 = run_store(work, {}, extra=store_args(work, *GAP_ARGS), wrap=GAP_WRAP, hours="100", fresh=False,
                            more_env=gap_env(work))
     assert "HALTED marker present: nothing runs until a person has read it (the marker stays)" in p3.stderr
@@ -3185,33 +3200,51 @@ def test_the_listing_answers_only_on_positive_evidence(tmp_path):
             ((124, "TIMEOUT"), False, False, None),
             ((0, "[colab] No active sessions found on server.\n"), True, True, None),
             ((0, "[other] gpu-l4-x | Hardware: L4 | Variant: GPU\n"), True, True, None),
-            ((0, "[pk-inproc] gpu-l4-y | Hardware: L4 | Variant: GPU\n"), True, False, "gpu-l4-y")):
+            ((0, "[pk-inproc] gpu-l4-y | Hardware: L4 | Variant: GPU\n"), True, False, "gpu-l4-y"),
+            # The fourth launch review (GPT 2): an endpoint only from a listing that answered, in the CLI's form. A
+            # non-zero exit with a matching line, or a line for this name not in that form, gives none.
+            ((1, "[pk-inproc] gpu-l4-y | Hardware: L4 | Variant: GPU\n"), False, False, None),
+            ((0, "[pk-inproc] gpu-l4-y  L4  running\n"), False, False, None),
+            ((0, "[pk-inproc] gpu-l4-y\n"), False, False, None),
+            ((0, "[pk-inproc] gpu-l4-y  L4\n[other] gpu-l4-z | Hardware: L4 | Variant: GPU\n"), True, False, None)):
         rm.colab = lambda *a, timeout=240, rc_out=rc_out: rc_out
         assert T.listed() == listed and T.answered() is answered and T.absent() is absent, rc_out
         assert rm.store_listing_answers() is answered, rc_out
     assert rm.COLAB_EMPTY_LISTING == r"^\[colab\] No active sessions found on server\.$"
 
 
-def test_a_capped_arms_release_that_never_runs_halts_by_name(tmp_path):
-    """The third launch review (Explore 2): a release before the create that is held or fails every time left the
-    arm idle, a line a tick, for ever. After six tries it halts STORE_CAP_RELEASE_FAILED, with the by-hand release."""
+def test_a_capped_arms_release_that_never_runs_halts_by_name_and_a_held_one_waits(tmp_path):
+    """The third launch review (Explore 2): a release before the create that failed every time left the arm idle, a
+    line a tick, for ever: after six tries that ran and failed it halts STORE_CAP_RELEASE_FAILED, with the by-hand
+    release. The fourth (Explore N2): a try that is merely held (another arm's release holds the lock, after a long
+    outage all three force one at once) sends nothing and is not a failure: it waits, one line an hour, and uses
+    up none of the six."""
     rm = load_runner(tmp_path / "home")
-    rm.time = FakeTime()
+    clock = rm.time = FakeTime()
     rm.STORE = {"push_cap_bytes": 1000, "reclaim": True, "release_grace_s": 7200, "repo": "dir:x", "repo_type": "dataset",
                 "token_file": "/t", "mark_ns": "", "branch_suffix": ""}
+    outs = iter(["held"] * 30 + ["failed", "ledgers", "held", "failed", "refused", "failed", "failed"])
     tries = []
-    rm.store_release = lambda st, jobs, force=False, **k: tries.append(force) or "held"
+    rm.store_release = lambda st, jobs, force=False, **k: tries.append(force) or next(outs)
     st, jobs = St(), [{"name": "pt", "spec": {}}]
     st.d.update(store_pushed_bytes=1200, store_capped={"cap": 1000})
-    for n in range(5):
+    for _ in range(30):                                  # two and a half hours held under contention: no halt
+        clock.t += 5 * 60
         assert rm.store_cap_before_create(st, jobs) is False
-    assert st.d["store_cap_release_attempts"] == 5 and not (tmp_path / "home" / "HALTED").exists()
+    assert "store_cap_release_attempts" not in st.d and not (tmp_path / "home" / "HALTED").exists()
+    said = [ln for ln in (tmp_path / "home" / "runner.log").read_text().splitlines() if "release is held" in ln]
+    assert len(said) == 3                                # one line an hour held
+    for _ in range(5):                                   # tries that ran and did not succeed: counted (a held one between)
+        assert rm.store_cap_before_create(st, jobs) is False
+    assert st.d["store_cap_release_attempts"] == 4
+    assert rm.store_cap_before_create(st, jobs) is False and st.d["store_cap_release_attempts"] == 5
     with pytest.raises(SystemExit) as e:
         rm.store_cap_before_create(st, jobs)
     halted = json.loads((tmp_path / "home" / "HALTED").read_text())
-    assert e.value.code == 3 and tries == [True] * 6 and rm.STORE_CAP_RELEASE_TRIES == 6
-    assert halted["kind"] == "STORE_CAP_RELEASE_FAILED" and halted["attempts"] == 6 and halted["last"] == "held"
+    assert e.value.code == 3 and tries == [True] * 37 and rm.STORE_CAP_RELEASE_TRIES == 6
+    assert halted["kind"] == "STORE_CAP_RELEASE_FAILED" and halted["attempts"] == 6 and halted["last"] == "failed"
     assert "hf_store.py release --config" in halted["do"] and "store_release_by_hand.json" in halted["do"]
+    assert "a ledger that could not be read" in halted["do"] and "repair or remove that file first" in halted["do"]
     assert (tmp_path / "home" / "store_release_by_hand.json").exists()
     # A release that runs clears the count of tries and starts the clock again.
     (tmp_path / "home" / "HALTED").unlink()
@@ -3224,3 +3257,130 @@ def test_a_capped_arms_release_that_never_runs_halts_by_name(tmp_path):
     rm.store_release = done
     assert rm.store_cap_before_create(st, jobs) is True and "store_cap_release_attempts" not in st.d
     assert st.job("pt")["store_progress_at"] == rm.time.time()
+
+
+def test_launch_creates_nothing_while_the_sessions_state_is_unknown(tmp_path):
+    """The fourth launch review (Explore N3): with the store unread and the listing not answering, the no-progress
+    check in launch() does not halt (that is the exemption), and the create went ahead: a second session could be
+    made beside one that is up. launch() now creates nothing until Colab's listing answers."""
+    rm = load_runner(tmp_path / "home")
+    rm.time = FakeTime()
+    rm.STORE = {"stall_min": 120, "stall_halt": True, "no_progress_min": 210, "branch_suffix": "", "call_limit": 300,
+                "push_cap_bytes": 0, "reclaim": False}
+    created = []
+    answers = [False]
+    rm.T = type("T", (), {"deadline": None, "gpu": "L4", "create": lambda self, st: created.append(1) or (0, "created"),
+                          "answered": lambda self: answers[0]})()
+    rm.listed = lambda: None
+    rm.store_preflight = lambda st, jobs: True
+    rm.store_forget_token = lambda *a: None
+    rm.stop_session = lambda st, why: True
+    rm.prepare = lambda *a: True
+    st, jobs = St(), [{"name": "pt", "spec": {}}]
+    st.d["launches"] = 0
+    assert rm.launch(st, "c" * 40, "j.json", jobs, []) is False and created == []
+    assert "the session's state is not known; no session is created this tick" in (tmp_path / "home" / "runner.log").read_text()
+    answers[0] = True                                    # the listing answers (no session): the create goes ahead
+    assert rm.launch(st, "c" * 40, "j.json", jobs, []) is True and created == [1]
+
+
+def test_the_listing_check_script_against_the_fake(tmp_path):
+    """The fourth launch review (Explore B2): the session-line form is the CLI's as read from its source, and the
+    fake prints that form, so no test here can catch a live difference. base2_listing_check.py is the by-hand check
+    on the live CLI (the build's session up). Here it runs against the fake: with the session up it agrees; its
+    stop on a made-up name stops nothing; and a listing in another form does not agree."""
+    work = tmp_path
+    p, calls = run_store(work, {}, extra=store_args(work, *GAP_ARGS), wrap=GAP_WRAP, hours="100",
+                         more_env=gap_env(work, KILL_AT_TICK="3", FAKE_STEPS="5000"))
+    assert p.returncode == 9 and json.loads((work / "fake" / "fake.json").read_text())["alive"] is True
+    env = dict(os.environ, FAKE_ROOT=str(work / "fake"), FAKE_JOBS=str(work / "repo" / "tools" / "colab_chat" / "eqjobs.json"),
+               FAKE_STORE_TOOLS=str(work / "repo" / "tools" / "colab_chat"))
+    check = [sys.executable, str(CC / "base2_listing_check.py"), "pk-store", "--colab", str(work / "colab")]
+    r = subprocess.run(check, env=env, capture_output=True, text=True, timeout=120)
+    res = json.loads(r.stdout)
+    assert r.returncode == 0 and res["agree"] is True, (r.stdout, r.stderr[-1500:])
+    assert (res["sessions_rc"], res["own_line"], res["own_line_in_form"], res["answered"], res["listed"], res["absent"],
+            res["absent_made_up"], res["stop_made_up_rc"], res["stop_made_up_not_found"]) == (0, True, True, True, True, False, True, 0, True)
+    assert json.loads((work / "fake" / "fake.json").read_text())["alive"] is True            # the stop touched nothing
+    assert set(res) == {"sessions_rc", "own_line", "own_line_in_form", "other_lines_in_form", "empty_line", "answered",
+                        "listed", "absent", "absent_made_up", "stop_made_up_rc", "stop_made_up_not_found", "agree"}
+    assert all(isinstance(v, (bool, int)) for v in res.values())                             # numbers and booleans only
+    # A listing in another form (the CLI changed): it says so, and exits 1.
+    col = work / "colab"
+    real_col = col.read_text()
+    col.write_text("#!/bin/sh\nif [ \"$1\" = sessions ]; then echo '[pk-store]   fake-endpoint-1   L4   running'; exit 0; fi\n"
+                   + real_col.split("\n", 1)[1])
+    r = subprocess.run(check, env=env, capture_output=True, text=True, timeout=120)
+    res = json.loads(r.stdout)
+    assert r.returncode == 1 and res["agree"] is False and res["own_line"] is True and res["own_line_in_form"] is False
+    assert res["answered"] is False and res["listed"] is False
+    col.write_text(real_col)
+
+
+def downtime_env(work, **more):
+    return gap_env(work, TICK_MIN="60", FAKE_STEPS="5000", **more)
+
+
+def vm_steps(work, n, end_session=False):
+    """The VM goes on while the runner is down: n steps with the courier's pass each; then Colab may end it."""
+    layout = work / "repo" / "tools" / "colab_chat"
+    step = work / "vmstep.py"
+    step.write_text("# VMJSON: one step of the fake VM\nprint('{}')\n")
+    env = dict(os.environ, FAKE_ROOT=str(work / "fake"), FAKE_JOBS=str(layout / "eqjobs.json"), FAKE_STORE_TOOLS=str(layout),
+               CUDA_VISIBLE_DEVICES="", PK_STORE_TOKEN_DIR=str(work / "shm"), FAKE_STEPS="5000", FAKE_ON_VM="1",
+               FAKE_CLOCK_FILE=str(work / "clock_off"))
+    for _ in range(n):
+        subprocess.run([sys.executable, str(EQ / "fakecolab_store.py"), "exec", "-s", "pk-store", "-f", str(step)],
+                       env=env, capture_output=True, text=True, timeout=300)
+    if end_session:
+        fj = work / "fake" / "fake.json"
+        fj.write_text(json.dumps({**json.loads(fj.read_text()), "alive": False}))
+
+
+@pytest.mark.parametrize("first_read_fails", [False, True])
+def test_a_runner_that_was_down_through_an_outage_relaunches_without_a_halt(tmp_path, first_read_fails):
+    """The fourth launch review (both, B1): the runner itself was down for the outage (the laptop asleep, a reboot,
+    WSL down), so no tick saw the listing fail and no blind window was opened; when it came back the listing
+    already answered. The newest generation, pushed while it was down, was credited at its push time and the next
+    check halted STORE_NO_PROGRESS. The runner stamps its last tick: a gap of more than three ticks is blind time.
+    Here the runner is down 40 hours; the VM pushes on, then Colab ends the session; the runner comes back to a
+    listing that answers, relaunches, and does not halt. With first_read_fails, the return tick's first store read
+    fails (the network still settling): the hour after a blind window is inside the unread allowance."""
+    work = tmp_path
+    args = store_args(work, *GAP_ARGS)
+    p, calls = run_store(work, {}, extra=args, wrap=GAP_WRAP, hours="100", more_env=downtime_env(work, KILL_AT_TICK="5"))
+    assert p.returncode == 9, (p.returncode, p.stderr[-1500:], log_of(work)[-2000:])
+    seen = state_of(work)["jobs"]["pt"]["relayed_step"]
+    vm_steps(work, 8, end_session=True)                 # eight hours more of training, then Colab's limit
+    pushed = hf_store.open_store({"repo": f"dir:{work / 'store'}"}).head_step("ckpt-N")
+    assert pushed > seen
+    n_log = len(log_of(work))
+    more = {"FAIL_STORE_CALLS": "1"} if first_read_fails else {}
+    p2, calls2 = run_store(work, {}, extra=args, wrap=GAP_WRAP, hours="100", fresh=False,
+                           more_env=downtime_env(work, GAP_MIN="2400", KILL_AT_TICK="7", **more))
+    log2 = log_of(work)[n_log:]
+    assert p2.returncode == 9, (p2.returncode, p2.stderr[-1500:], log2[-3000:])
+    assert not (work / "state" / "HALTED").exists() and "store: STORE_NO_PROGRESS:" not in log2, log2[-3000:]
+    assert "the runner did not tick for" in log2 and "that time counts as time home could not see the session" in log2
+    assert "pushed while home could not see the session: the clock starts again now" in log2
+    if first_read_fails:
+        assert "home could not see the session until less than an hour ago: no halt in that hour" in log2
+    assert news(calls2) == 2 and state_of(work)["launches"] == 2                          # relaunched
+
+
+@pytest.mark.parametrize("every", [2, 3])
+def test_a_crash_loop_still_halts_while_the_listing_fails_now_and_then(tmp_path, every):
+    """The fourth launch review (GPT): a crash loop that pushes nothing must still halt when the listing fails
+    intermittently (every third tick) or flaps (every other tick): blind windows open and close, but with no new
+    generation nothing resets the clock."""
+    work = tmp_path
+    args = store_args(work, *GAP_ARGS)
+    p, calls = run_store(work, {"reclaim_at": [4, 6, 8, 10, 12]}, extra=args, wrap=GAP_WRAP, hours="100",
+                         more_env=gap_env(work, LISTING_DOWN_EVERY=str(every)))
+    log = log_of(work)
+    assert p.returncode == 3, (p.returncode, p.stderr[-1500:], log[-3000:])
+    halted = json.loads((work / "state" / "HALTED").read_text())
+    assert halted["kind"] == "STORE_NO_PROGRESS" and halted["step"] == 0
+    assert "the clock starts again" not in log and "pushed while home could not see" not in log
+    assert hf_store.open_store({"repo": f"dir:{work / 'store'}"}).steps("ckpt-N") == []      # nothing was ever stored
+

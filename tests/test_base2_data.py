@@ -537,6 +537,15 @@ def test_adopt_receipts_checks_the_load_probe_and_writes_the_shard_hashes_where_
     (state_dir / "HALTED").unlink()
     pubs[2]["published_N"]["files"]["N.tail.ids"]["sha256"] = sha(b"nt")
     receipt(2, ["stage1", "build-N"])
+    # The fourth launch review (GPT, Explore N6): DEADLINE, STOP_UNRESOLVED and OWNERSHIP_MISMATCH in the build's
+    # folder are refused as HALTED is: the build did not end well, or its session's end is not settled.
+    lp.write_text(json.dumps({"returncode": 0, "seconds_to_first_step": 41.5}))
+    for f in ("DEADLINE", "STOP_UNRESOLVED", "OWNERSHIP_MISMATCH"):
+        (state_dir / f).write_text("{}")
+        with pytest.raises(SystemExit) as e:
+            adopt()
+        assert f"the build's state folder holds {f}" in str(e.value) and pf.read_text() == before, f
+        (state_dir / f).unlink()
     for body in ("{}", "null", "[0]", '"done"', '{"returncode": "0", "seconds_to_first_step": 1}',
                  '{"returncode": true, "seconds_to_first_step": 1}', '{"returncode": 0, "seconds_to_first_step": "1"}',
                  '{"returncode": 0, "seconds_to_first_step": null}', '{"returncode": 0, "seconds_to_first_step": NaN}',

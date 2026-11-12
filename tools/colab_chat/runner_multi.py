@@ -144,9 +144,14 @@ class ColabTransport:
         return colab("new", "-s", NAME, "--gpu", self.gpu, timeout=600)
 
     def listed(self):
+        """This session's endpoint, only from a listing that answered (answered(): exit 0, the CLI's own forms)
+        and a line for NAME in the CLI's session form. Anything else is None: a non-zero exit, or a line for NAME
+        that is not in that form, says nothing (whether the listing answered is answered())."""
         rc, out = colab("sessions", timeout=120)
         self.last_listing = (rc, out)
-        m = re.search(r"^\[" + re.escape(NAME) + r"\]\s+(\S+)", out, re.M)
+        if not self.answered((rc, out)):
+            return None
+        m = re.search(r"^\[" + re.escape(NAME) + r"\] (\S+) \| Hardware: ", out, re.M)
         return m.group(1) if m else None
 
     def answered(self, rc_out=None):
@@ -189,7 +194,8 @@ class ColabTransport:
         session."""
         rc, out = colab("sessions", timeout=120)
         self.last_listing = (rc, out)
-        return self.answered((rc, out)) and not re.search(r"^\[" + re.escape(NAME) + r"\]\s+(\S+)", out, re.M)
+        # Any line for NAME, in the session form or not, means it is not known to be absent.
+        return self.answered((rc, out)) and not re.search(r"^\[" + re.escape(NAME) + r"\]", out, re.M)
 
     def release(self, st):
         pass  # nothing outlives a Colab session
@@ -306,6 +312,10 @@ def finish_halted_stop(st):
                             "still be up; it was not stopped")
     halt_record_update(stop_confirmed=bool(stopped), stop_finished_at_start=left, stop_finished_at=time.time())
     log(f"the halt's stop at this start: {left}; confirmed: {stopped}")
+    try:
+        os.remove(os.path.join(HOME, "runner.pid"))
+    except OSError:
+        pass
     sys.exit("HALTED marker present: nothing runs until a person has read it (the marker stays; its stop was finished "
              f"at this start: {left}, confirmed {stopped})")
 
@@ -936,6 +946,11 @@ def launch(st, commit, jobs_rel, jobs, uploads):
         log("deadline expired while stopping prior session; no replacement created")
         return False
     if STORE:
+        # No create while the session's state is not known: Colab's listing must answer (positive evidence), or a
+        # second session could be made beside one that is up, and the no-progress check below would not halt.
+        if not store_listing_answers():
+            log("Colab's listing does not answer: the session's state is not known; no session is created this tick")
+            return False
         # The cap first: a capped arm's release measures it down and starts the no-progress clock again (pushing
         # to the cap proves the arm trained), before that clock is checked.
         if not store_cap_before_create(st, jobs):
@@ -1245,6 +1260,10 @@ STORE_RELEASE_RETRY_S = 600
 STORE_NO_PROGRESS_UNREAD_S = 3600
 # Tries of the release a capped arm makes before a create (store_cap_before_create), then STORE_CAP_RELEASE_FAILED.
 STORE_CAP_RELEASE_TRIES = 6
+# A gap of more than this many ticks between two ticks of the runner is time it was down: blind (store_tick_stamp).
+# STORE_GAP_TICK_S: the tick that gap is measured by, when it is not TICK (a test's moved clock).
+STORE_DOWN_TICKS = 3
+STORE_GAP_TICK_S = None
 _STORE = {}
 
 
@@ -1755,14 +1774,21 @@ def store_no_progress(st, jobs, start=False):
             # listing answers (the session is listed, or known to be gone), home's network works: the store
             # unread is home's problem or the hub's, and the halt comes when the limit has been passed by
             # STORE_NO_PROGRESS_UNREAD_S more, whatever the VM answers.
+            # And for the hour after a blind window closed (the listing answers again, or the runner ticks again
+            # after it was down): the store's first reads after home's return can fail (the network still
+            # settling, a 5xx or a 429), and what the store took in the window is not known until one succeeds.
             known = store_listing_answers()
-            if not known or age <= lim * 60 + STORE_NO_PROGRESS_UNREAD_S:
-                key = f"{n}:{known}"
+            blind = st.d.get("store_blind_last")
+            after_blind = bool(blind) and now - blind[1] < STORE_NO_PROGRESS_UNREAD_S
+            if not known or after_blind or age <= lim * 60 + STORE_NO_PROGRESS_UNREAD_S:
+                key = f"{n}:{known}:{after_blind}"
                 if _STORE.get("no_progress_unread") != key:
                     log(f"{n}: the no-progress limit has passed and the store was not read; "
                         + ("Colab's listing does not answer either: no halt while the session's state is not known"
-                           if not known else f"the listing answers (the VM: {vm_job or 'no answer'}): no halt for "
-                                             f"{STORE_NO_PROGRESS_UNREAD_S / 60:.0f} min past the limit"))
+                           if not known else
+                           "home could not see the session until less than an hour ago: no halt in that hour"
+                           if after_blind else f"the listing answers (the VM: {vm_job or 'no answer'}): no halt for "
+                                               f"{STORE_NO_PROGRESS_UNREAD_S / 60:.0f} min past the limit"))
                 _STORE["no_progress_unread"] = key
                 continue
         if not unread and vm_job == "RUNNING":
@@ -1801,8 +1827,21 @@ def store_cap_before_create(st, jobs):
     log(f"store: the saved count ({count} bytes) is at the push cap ({cap}), or its courier capped: a release from "
         "home is made before the create, so the new VM's courier starts from what the store holds")
     out = store_release(st, jobs, force=True)
+    if out == "held":
+        # Held: nothing was sent (another arm's release holds the lock, or the budget has no room). That is not a
+        # try that failed: it waits, and is tried again at the next launch, with one line an hour while it is held.
+        now = time.time()
+        first = st.d.setdefault("store_cap_release_held_since", now)
+        if now - st.d.get("store_cap_release_held_said", 0) >= 3600:
+            st.d["store_cap_release_held_said"] = now
+            log(f"store: the capped arm's release is held (another release holds the lock, or no room in the budget) "
+                f"for {(now - first) / 60:.0f} min; no session is created until it runs")
+        st.save()
+        return False
+    st.d.pop("store_cap_release_held_since", None)
+    st.d.pop("store_cap_release_held_said", None)
     if out != "done":
-        # A release that never runs (held by a lock, failing, or meeting a ledger it cannot read) would leave the arm
+        # A release that ran and did not succeed (it failed, or met a ledger it could not read) would leave the arm
         # idle with a line a tick: after STORE_CAP_RELEASE_TRIES of them it halts by name, with the by-hand release.
         n = st.d["store_cap_release_attempts"] = st.d.get("store_cap_release_attempts", 0) + 1
         st.save()
@@ -1818,9 +1857,12 @@ def store_cap_before_create(st, jobs):
             store_halt("STORE_CAP_RELEASE_FAILED", attempts=n, last=out, bytes_since_release=count, cap_bytes=cap,
                        why="the saved count is at the push cap, and the release from home that measures it down did "
                            f"not run in {n} tries before a create",
-                       do=f"read the log for why; make the release by hand: {cmd} (it prints \"released\"; with "
-                          "\"released\": null the lock was held and nothing was released: run it again); then remove "
-                          "HALTED, and the next start releases and measures again")
+                       do=f"read the log for why. If it names a ledger that could not be read (\"ledgers\": a "
+                          "file under pruned/ that is not well formed), the by-hand release stops on it too: repair "
+                          "or remove that file first. Then make the release by hand: "
+                          f"{cmd} (it prints \"released\"; with \"released\": null the lock was held and nothing "
+                          "was released: run it again); then remove HALTED, and the next start releases and "
+                          "measures again")
             raise SystemExit(3)
         return False
     st.d.pop("store_cap_release_attempts", None)
@@ -1853,6 +1895,28 @@ def store_blind_track(st, seen):
         st.save()
         log(f"store: Colab's listing answers again after {(now - st.d['store_blind_last'][0]) / 60:.0f} min in which home "
             "could not see the session")
+
+
+def store_tick_s():
+    """The tick the down-time rule measures gaps by: STORE_GAP_TICK_S when set (a test whose ticks are its own),
+    else TICK, else the runner's 240 s."""
+    return STORE_GAP_TICK_S or TICK or 240
+
+
+def store_tick_stamp(st):
+    """Each tick, first: the runner's last tick is stamped in state.json ("store_last_tick"). A gap since the
+    previous stamp of more than STORE_DOWN_TICKS ticks (the runner was not running: the laptop asleep, a reboot, WSL
+    down, the runner killed and started again) is time in which home could not see the session, as if the listing
+    had failed throughout: it is a blind window, [the previous stamp, now] (store_blind_last; merged with one still
+    open). A generation pushed in it is progress from now (store_pushed_unseen)."""
+    now, last = time.time(), st.d.get("store_last_tick")
+    if isinstance(last, (int, float)) and now - last > STORE_DOWN_TICKS * store_tick_s():
+        since = st.d.pop("store_blind_since", None)   # a window the listing had opened before the runner went down
+        st.d["store_blind_last"] = [min(last, since) if since is not None else last, now]
+        log(f"store: the runner did not tick for {(now - last) / 60:.0f} min: that time counts as time home could not "
+            "see the session")
+    st.d["store_last_tick"] = now
+    st.save()
 
 
 def store_pushed_unseen(st, pushed):
@@ -1969,8 +2033,9 @@ def stop_request(st):
     log(f"STOP_REQUEST: the lead asks for a stop ({reason or 'no reason given'})"
         + ("" if src == p else " (STOP_REQUEST.taken with no HALTED: taken as active)") + "; halting through the confirmed stop")
     store_halt("LEAD_STOP", reason=reason, launches=st.d.get("launches"),
-               do="a stop the lead asked for: read the reason; to run again remove HALTED and STOP_REQUEST.taken "
-                  "(a STOP_REQUEST.taken left alone is taken as a request again)")
+               do="a stop the lead asked for: read the reason; to run again remove HALTED and the request file that "
+                  "is left: STOP_REQUEST.taken, or STOP_REQUEST if the runner stopped before it renamed it (either, "
+                  "left alone, is taken as a request again)")
     if src == p:
         os.replace(p, p + ".taken")
     raise SystemExit(3)
@@ -3421,15 +3486,16 @@ def main():
                 log(why)
                 break
             if STORE:
+                store_tick_stamp(st)  # first: a gap since the last tick (the runner was down) counts as blind
                 stop_request(st)  # the lead's stop, at every tick: halts, by name, through the confirmed stop
             # The session key is refreshed BEFORE the no-progress check: after a long outage that check may ask
-            # the VM, and an old key would make a VM that answers look silent.
+            # the VM, and an old key would make a VM that answers look silent. The listing is taken before it too,
+            # so the blind window it closes is known to that check.
             T.refresh(st)
-            if STORE:
-                store_no_progress(st, jobs)  # before anything that could create a session: halts, by name
             seen = listed()
             if STORE:
                 store_blind_track(st, seen)  # the stretches in which home could not see the session
+                store_no_progress(st, jobs)  # before anything that could create a session: halts, by name
             if STORE and seen is not None and seen != st.d.get("endpoint"):
                 # The endpoint is recorded at the launch from ONE listing, which can come back empty while the VM is
                 # fine. A session listed under this runner's own name while it holds the state folder's lock is its
