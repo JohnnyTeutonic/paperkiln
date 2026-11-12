@@ -16,8 +16,10 @@ and the commit is on the branch named (on that date it was the branch's head).
 | The programme registry: the model (section 2), measurement (3), every screen's verdict A6 to A29 (4), the judge run (4b), the capability frontier (7), the compute ledger (8), retractions (9), the next authorised step (10b) | [`experiments/tiny_chat_programme/TINY_CHAT_RESEARCH_PROGRAMME.md`](https://github.com/JohnnyTeutonic/paperkiln/blob/36523b27c93223a48cb10503adfc8bc6bf0a8c23/experiments/tiny_chat_programme/TINY_CHAT_RESEARCH_PROGRAMME.md) | `36523b27` (11 Nov 2026, A28's verdict) | `claude/chat-screens` |
 | Base 2's arm N: 18 × 512, 69,751,296 parameters, 250,000 steps of 16,384 positions | [`tools/colab_chat/base2_N.json`](https://github.com/JohnnyTeutonic/paperkiln/blob/428b60f0329de3dced1606e1f83fa73acc66be93/tools/colab_chat/base2_N.json) | `428b60f0` (12 Nov 2026) | `claude/base2-commit-budget` |
 
-A pinned commit stays reachable on GitHub while a branch or tag contains it. To check a pin
-again:
+A pinned commit stays reachable on GitHub while a branch or tag contains it. Each pin has a
+tag, so it outlives its branch: `research/base-a-recipe-20261109`,
+`research/programme-registry-20261111` and `research/base2-graph-20261113` (13 November 2026).
+To check a pin again:
 
 ```bash
 git fetch origin claude/chat-screens
