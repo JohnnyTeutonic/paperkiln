@@ -92,6 +92,9 @@ def test_n_and_s_differ_in_the_corpus_alone():
                .replace("base2_N", "base2_S").replace("ckpt-N", "ckpt-S").replace("arm-N", "arm-S")
                .replace("rung_N_", "rung_S_").replace("BASE2_N", "BASE2_S"))
     a, b = json.loads(swapped), json.loads(s)
+    # The registration sets the arms' release turns off from each other (N 0, the runner's default and not written;
+    # S 20): the one store switch in which they differ.
+    assert "store_release_offset_min" not in a and b.pop("store_release_offset_min") == 20
     for d in (a, b):
         d.pop("_comment")
         d["_base2"].pop("arm")
@@ -359,7 +362,7 @@ def test_rehearsal_loses_a_session_on_each_side_of_the_tail_switch(name, job, dr
     assert js["watch"]["outputs"] == ["watch_summary.json", "watch.jsonl"]     # home with the job's outputs
 
 
-def test_the_storage_guard_fits_the_rehearsal_and_is_off_for_the_arms():
+def test_the_storage_guard_fits_the_rehearsal_and_the_arms_registered_caps():
     """The courier stops pushing once the bytes counted for the campaign reach the cap. Counted are what the store
     held at the last release from home and what was pushed since. A release leaves what a ledger younger than its
     grace period names, so a removed generation stays stored, and counted, for up to the grace and one release
@@ -403,12 +406,15 @@ def test_the_storage_guard_fits_the_rehearsal_and_is_off_for_the_arms():
     assert M.push_cap_gb("D1", M.REH_EVERY, M.STEP_S, 1, M.REH_RELEASE_EVERY_MIN, M.REH_RELEASE_GRACE_S, missed_releases=0)["since"] == 7
     r = M.rates()
     assert r["generations_kept"] == {"rule": "three plus one for each session loss between two verified saves", "losses_taken": 2, "kept": 5}
-    assert r["settings"]["C"] == {"release_every_min": 120, "release_grace_s": 7200, "release_offset_min": 0} and r["missed_releases_taken"] == 2
+    # The registered settings (12 Nov 2026): a release every 60 minutes, the grace of 7,200 s, offsets 0, 20, 40.
+    assert r["settings"]["C"] == {"release_every_min": 60, "release_grace_s": 7200, "release_offset_min": 40} and r["missed_releases_taken"] == 2
     caps = r["push_cap_sum"]
     assert {a: (c["kept"], c["removed"], c["since"], c["marks"]) for a, c in caps.items()} == {
-        "N": (5, 14, 43, 5), "S": (5, 14, 43, 5), "C": (5, 19, 57, 6)}
-    assert {a: (c["gen_gb"], c["counted_gb"]) for a, c in caps.items()} == {"N": (0.837, 53.3), "S": (0.837, 53.3), "C": (0.873, 72.5)}
-    assert r["suggested_store_push_cap_gb"] == {"N": 67, "S": 67, "C": 91} and (r["counted_gb_three_arms"], r["caps_gb_three_arms"]) == (179.1, 225)
+        "N": (5, 14, 22, 5), "S": (5, 14, 22, 5), "C": (5, 19, 29, 6)}
+    assert {a: (c["gen_gb"], c["counted_gb"]) for a, c in caps.items()} == {"N": (0.837, 35.7), "S": (0.837, 35.7), "C": (0.873, 48.0)}
+    assert r["suggested_store_push_cap_gb"] == {"N": 45, "S": 45, "C": 60} and (r["counted_gb_three_arms"], r["caps_gb_three_arms"]) == (119.4, 150)
+    # The arms' files carry the registered caps, which are the sums' own suggestion at the registered settings.
+    assert {a: load(f"base2_{a}.json")["store_push_cap_gb"] for a in ARMS} == r["suggested_store_push_cap_gb"]
     for a, c in caps.items():
         assert abs(c["counted_gb"] - ((c["kept"] + c["removed"] + c["since"]) * c["gen_gb"] + c["marks"] * c["gen_gb"] / 3)) < 0.1
         assert c["counted_gb"] <= M.PUSH_CAP_HEADROOM * c["suggested_cap_gb"] < c["counted_gb"] + 1
@@ -432,14 +438,27 @@ def test_the_storage_guard_fits_the_rehearsal_and_is_off_for_the_arms():
 def test_the_registrations_store_switches_are_set_in_make_base2_and_the_files_do_not_move_until_one_does():
     """The second reviews of the arms' round: the arms' cap, release interval, grace and halts are the
     registration's to set, and a value edited into a jobs file by hand fails --check. They are parameters of
-    arm(): ARM_STORE for all arms, ARM_STORE_BY_ARM for one, as they stand (no cap, no halt, two hours, the
-    runner's default grace). A switch that is the runner's own default is not written, so the files on disk are
-    what they were; runner_multi.py reads each key when its flag is absent."""
+    arm(): ARM_STORE for all arms, ARM_STORE_BY_ARM for one. A switch that is the runner's own default is not
+    written; runner_multi.py reads each key when its flag is absent. The values are the lead's registration (12 Nov
+    2026): a release every 60 minutes with the default grace of 7,200 s; offsets 0, 20, 40; caps 45, 45, 60 GB; the
+    stall halt on at 120 minutes; the unverified halt at 90; the no-progress halt at 260."""
     import hf_store
-    assert M.ARM_STORE == {"store_push_cap_gb": 0, "store_release_every_min": 120, "store_release_grace_s": 7200,
-                           "store_stall_halt": False, "store_stall_min": 60, "store_unverified_halt_min": 0,
-                           "store_release_offset_min": 0, "store_no_progress_min": 0}
-    assert M.ARM_STORE_BY_ARM == {"N": {}, "S": {}, "C": {}}
+    assert M.ARM_STORE == {"store_push_cap_gb": 0, "store_release_every_min": 60, "store_release_grace_s": 7200,
+                           "store_stall_halt": True, "store_stall_min": 120, "store_unverified_halt_min": 90,
+                           "store_release_offset_min": 0, "store_no_progress_min": 260}
+    assert M.ARM_STORE_BY_ARM == {"N": {"store_push_cap_gb": 45, "store_release_offset_min": 0},
+                                  "S": {"store_push_cap_gb": 45, "store_release_offset_min": 20},
+                                  "C": {"store_push_cap_gb": 60, "store_release_offset_min": 40}}
+    # Each file carries them, the grace (the runner's own default) and N's offset of 0 left out.
+    for arm, cap, off in (("N", 45, None), ("S", 45, 20), ("C", 60, 40)):
+        f = load(f"base2_{arm}.json")
+        assert (f["store_push_cap_gb"], f["store_release_every_min"], f["store_stall_halt"], f["store_stall_min"],
+                f["store_unverified_halt_min"], f["store_no_progress_min"], f.get("store_release_offset_min")) == (
+                    cap, 60, True, 120, 90, 260, off)
+        assert "store_release_grace_s" not in f
+    # The registered no-progress limit against a held rung: a save, a hold lost at its end, the loss noticed, a boot
+    # at its limit, the hold again, a save: 9 + 65 + 21 + 75 + 65 + 9 = 244, under 260.
+    assert 9 + 65 + 21 + 75 + 65 + 9 == 244 < M.ARM_STORE["store_no_progress_min"]
     keys = ("store_release_grace_s", "store_stall_halt", "store_stall_min", "store_unverified_halt_min", "store_release_offset_min",
             "store_no_progress_min")
     # The no-progress halt (the fourth reviews): a switch like the others; 0 leaves the runner's own default, which
@@ -452,7 +471,8 @@ def test_the_registrations_store_switches_are_set_in_make_base2_and_the_files_do
     assert M.arm("S", store={"store_release_offset_min": 20})["store_release_offset_min"] == 20
     assert 'doc.get("store_release_offset_min")' in (CC / "runner_multi.py").read_text()
     for arm in ARMS:
-        assert M.arm(arm) == load(f"base2_{arm}.json") and not any(k in M.arm(arm) for k in keys)       # --check stays equal
+        assert M.arm(arm) == load(f"base2_{arm}.json")                                                  # --check stays equal
+        assert set(keys) - set(M.arm(arm)) == {"store_release_grace_s", *(["store_release_offset_min"] if arm == "N" else [])}
     assert M.main(["--check"]) == 0
     set_ = {"store_push_cap_gb": 45, "store_release_every_min": 60, "store_release_grace_s": 3600, "store_stall_halt": True,
             "store_stall_min": 120, "store_unverified_halt_min": 60}
@@ -461,12 +481,13 @@ def test_the_registrations_store_switches_are_set_in_make_base2_and_the_files_do
     assert list(doc).index("store_release_grace_s") == list(doc).index("store_release_every_min") + 1    # beside the others
     with pytest.raises(ValueError, match="unknown store switch"):
         M.arm("N", store={"store_push_cap": 45})
+    was = dict(M.ARM_STORE_BY_ARM["C"])
     try:                                                 # the per-arm table is what a cap is set in
-        M.ARM_STORE_BY_ARM["C"] = {"store_push_cap_gb": 60}
-        assert M.arm("C")["store_push_cap_gb"] == 60 and M.arm("N")["store_push_cap_gb"] == 0
-        assert M.rates()["settings"]["C"]["release_every_min"] == 120
+        M.ARM_STORE_BY_ARM["C"] = {**was, "store_push_cap_gb": 70}
+        assert M.arm("C")["store_push_cap_gb"] == 70 and M.arm("N")["store_push_cap_gb"] == 45
+        assert M.rates()["settings"]["C"]["release_every_min"] == 60
     finally:
-        M.ARM_STORE_BY_ARM["C"] = {}
+        M.ARM_STORE_BY_ARM["C"] = was
     # The runner reads every one of them from the jobs file when its flag is absent.
     runner = (CC / "runner_multi.py").read_text()
     for key in ("store_push_cap_gb", "store_release_every_min", "store_release_grace_s", "store_stall_halt", "store_stall_min",
@@ -476,9 +497,10 @@ def test_the_registrations_store_switches_are_set_in_make_base2_and_the_files_do
     import ckpt_courier
     for doc in (hf_store.__doc__, ckpt_courier.__doc__, hf_store.Store.push_generation.__doc__):
         assert "four" in doc.lower()                                     # the docstrings say four, not only three
-    # The arms carry the field, off: the lead sets it before they launch.
-    for arm in ARMS:
-        assert load(f"base2_{arm}.json")["store_push_cap_gb"] == 0
+    # The rehearsal's files are not the arms': they keep their own settings.
+    for name in ("base2_rehearsal.json", "base2_rehearsal_b.json"):
+        f = load(name)
+        assert (f["store_push_cap_gb"], f["store_release_every_min"]) == (28, 20) and not any(k in f for k in keys)
 
 
 def test_three_arms_on_one_repo_stay_far_under_the_hubs_commit_limit():
@@ -492,22 +514,22 @@ def test_three_arms_on_one_repo_stay_far_under_the_hubs_commit_limit():
     per = {}
     for arm in ARMS:
         f = load(f"base2_{arm}.json")
-        assert f["store_release_every_min"] == M.ARM_RELEASE_EVERY_MIN == 120
+        assert f["store_release_every_min"] == M.ARM_RELEASE_EVERY_MIN == 60      # registered 12 Nov 2026 (was 120)
         assert sum("spec" in j for j in f["jobs"]) == 1 and f["max_parallel"] == 1       # one training job a file
         t = train(arm)["spec"]["train"]
         per[arm] = M.commits_per_hour(f, step_s[arm], f["store_release_every_min"])
         save_min = t["checkpoint_every"] * step_s[arm] / 60
         assert abs(per[arm]["generations"] - 60 / save_min) < 1e-9
-        assert per[arm]["release"] == 1.0                              # a lock and its removal every two hours
+        assert per[arm]["release"] == 2.0                              # a lock and its removal every hour
         assert per[arm]["marks"] < 0.1                                 # five or six marks in about three days
     assert 8.7 < 500 * 1.053 / 60 < 8.8 and 6.5 < 500 * 0.783 / 60 < 6.6   # a save every 8.8 minutes, and every 6.5
     total = sum(p["total"] for p in per.values())
-    assert round(total, 1) == 26.1, total
+    assert round(total, 1) == 29.1, total
     assert total <= M.ARMS_COMMITS_PER_HOUR_MAX == 40 < M.HUB_COMMITS_PER_HOUR == 128
     # As first built: five commits a save and one a mark.
     old = sum(5 * p["generations"] + p["marks"] for p in per.values())
     assert 100 < old < 128 and old > 2.5 * M.ARMS_COMMITS_PER_HOUR_MAX
-    # The 26.1 is an average of the planned work, not a bound, and its docstring says what it leaves out. A bad
+    # The 29.1 is an average of the planned work, not a bound, and its docstring says what it leaves out. A bad
     # hour, everything at once for each of the three arms: every save and mark sent twice; the session lost once,
     # so that its new VM creates the branch again (tried twice); and home's worst hour, a timed release and the
     # release at the campaign's end, each a lock and an unlock sent four times (5 + 5).
@@ -555,7 +577,7 @@ def test_three_arms_on_one_repo_stay_far_under_the_hubs_commit_limit():
     # runner's home sends all its budget allows its timed releases and both of its end's rounds. Equal to the summed
     # ceilings (108); only the hub's 429 bounds the repository.
     assert M.rates()["commits_an_hour_three_arms"] == {
-        "steady_state_average": 26.1, "modelled_bad_hour_from_average_rates": 70.2,
+        "steady_state_average": 29.1, "modelled_bad_hour_from_average_rates": 70.2,
         "rolling_hour_whole_commits_everything_at_once": 108, "rolling_hour_without_the_offsets": 108,
         "rolling_hour_if_every_unlock_lands_at_once": 99, "timed_release_turns_in_one_hour": 3,
         "per_writer_ceilings_summed": 108, "hub_limit": 128}

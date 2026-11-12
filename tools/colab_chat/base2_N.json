@@ -25,8 +25,12 @@
   },
   "corpus": "N"
  },
- "store_push_cap_gb": 0,
- "store_release_every_min": 120,
+ "store_push_cap_gb": 45,
+ "store_release_every_min": 60,
+ "store_stall_halt": true,
+ "store_stall_min": 120,
+ "store_unverified_halt_min": 90,
+ "store_no_progress_min": 260,
  "store_inputs": [
   {
    "branch": "main",

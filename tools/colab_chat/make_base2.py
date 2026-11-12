@@ -222,7 +222,7 @@ TICK_S = 240                 # runner_multi.TICK
 # 12 Nov 2026: "128 per hour"), and what the three arms, which share one repo, may use of it in steady state.
 HUB_COMMITS_PER_HOUR = 128
 ARMS_COMMITS_PER_HOUR_MAX = 40
-ARM_RELEASE_EVERY_MIN = 120  # an arm's runner releases storage every two hours: two commits each time
+ARM_RELEASE_EVERY_MIN = 60   # an arm's runner releases storage every hour (registered 12 Nov 2026): two commits each time
 # A TEST THRESHOLD for commits_per_hour_bad_model (tests/test_base2_jobs.py), three quarters of the hub's limit. No
 # code enforces it, and it was 64 before that model counted home's retries and the end's release. What the code
 # does enforce is each writer's own ceiling, below: they sum to 108 for three arms, and an essential commit passes
@@ -254,14 +254,21 @@ ARM_MISSED_RELEASES = 2      # timed releases in a row that do not run, which th
 FINAL_LEDGER_ROUNDS = 2      # runner_multi.STORE_FINAL_LEDGER_ROUNDS: rounds of the end's release that meet an unread ledger
 # The store's switches the registration sets, and where: ARM_STORE for all three arms, ARM_STORE_BY_ARM for one
 # (a push cap differs by arm). arm() writes them into the jobs files, which runner_multi.py reads when the flag is
-# absent; `--check` then compares the files on disk with these values. As they stand: no cap, no halt, the
-# release every two hours with the runner's default grace. THE LEAD SETS THEM AT REGISTRATION.
+# absent; `--check` then compares the files on disk with these values. The values the lead registered (12 Nov
+# 2026): a release every 60 minutes with the runner's default grace of 7,200 s, the arms' turns set off by 0, 20
+# and 40 minutes; push caps of 45, 45 and 60 GB; the stall halt on at 120 minutes; the unverified halt at 90; the
+# no-progress halt at 260 (9 + 65 + 21 + 75 + 65 + 9 = 244: a save, a held rung lost at its end, the loss noticed,
+# a boot at its limit, the rung held again, a save; and 16 minutes over). The rehearsal's files set their own.
 RUNNER_STORE_DEFAULTS = {"store_release_grace_s": 7200, "store_stall_halt": False, "store_stall_min": 60,
                          "store_unverified_halt_min": 0,   # runner_multi.py's own, when neither flag nor key is given
                          "store_release_offset_min": 0,    # minutes an arm's release turns are set off on the UTC grid
                          "store_no_progress_min": 0}       # 0: the runner's own (stall minutes + boot limit + 15, with the stall halt)
-ARM_STORE = {"store_push_cap_gb": 0, "store_release_every_min": ARM_RELEASE_EVERY_MIN, **RUNNER_STORE_DEFAULTS}
-ARM_STORE_BY_ARM = {"N": {}, "S": {}, "C": {}}
+ARM_STORE = {**RUNNER_STORE_DEFAULTS, "store_push_cap_gb": 0, "store_release_every_min": ARM_RELEASE_EVERY_MIN,
+             "store_release_grace_s": ARM_RELEASE_GRACE_S, "store_stall_halt": True, "store_stall_min": 120,
+             "store_unverified_halt_min": 90, "store_no_progress_min": 260}
+ARM_STORE_BY_ARM = {"N": {"store_push_cap_gb": 45, "store_release_offset_min": 0},
+                    "S": {"store_push_cap_gb": 45, "store_release_offset_min": 20},
+                    "C": {"store_push_cap_gb": 60, "store_release_offset_min": 40}}
 
 
 def gens_kept_max(losses=ARM_SESSION_LOSSES):
@@ -298,8 +305,9 @@ def home_commits_rolling(release_every_min=None, unlock_tries=UNLOCK_TRIES):
 
 
 def timed_turns_in_an_hour(release_every_min, offsets_min):
-    """The most regular release turns of the arms that fall in one rolling hour: each arm's turns are
-    `release_every_min` apart (anchored: runner_multi.store_release) and set off from the start by its offset.
+    """The most regular release turns of the arms that fall in one rolling hour: each arm's turns are on the UTC
+    grid (runner_multi.store_release_turn), the multiples of `release_every_min` since the epoch plus the arm's
+    offset, whenever its runner was started.
     Three arms with no offset: three turns an hour at an interval of an hour or more. With 0, a third and two
     thirds of the interval: two at two hours, three at one hour (every arm still has a turn in every hour)."""
     turns = sorted((off % release_every_min) + k * release_every_min for off in offsets_min for k in range(-2, 4))

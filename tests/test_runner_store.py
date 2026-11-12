@@ -1722,7 +1722,14 @@ def test_a_state_folder_has_one_runner_one_name_one_set_of_jobs_and_acts_only_on
     assert q.returncode == 4 and new == [], (q.returncode, new, log[-1500:])
     assert "THE LISTING DID NOT ANSWER" in log and "its token was NOT removed and it was NOT stopped" in log
     assert "colab stop -s pk-store" in log and log.rstrip().endswith("SESSION STOP NOT CONFIRMED (STOP_UNRESOLVED); runner exiting")
+    # The fifth reviews: that last line named STOP_UNRESOLVED and no record was written. It is now; with the listing
+    # back and holding no session, the next start resolves it.
+    rec = json.loads((work / "state" / "STOP_UNRESOLVED").read_text())
+    assert rec["kind"] == "STOP_UNRESOLVED" and "the listing did not answer" in rec["why"] and rec["endpoint"] == "fake-endpoint-2"
     col.write_text(real_col)
+    q, new, log = again()
+    assert q.returncode == 0 and "(STOP_UNRESOLVED moved to STOP_RESOLVED)" in log and all(ln.startswith('["sessions"') for ln in new)
+    assert not (work / "state" / "STOP_UNRESOLVED").exists()
 
 
 class FakeTime:
@@ -2177,8 +2184,8 @@ def test_a_measurement_is_written_on_the_vm_only_on_its_boot_and_over_an_older_o
     (chat / "courier_status.json").write_text(json.dumps({"boot_id": "boot-b", "jobs": {}}))
     (chat / "boot_id").write_text("boot-c\n")            # the boot ran again: the file moved on, the courier did not
 
-    def on_vm(m):                                        # the code as the VM runs it, on this folder
-        code = rm.STORE_MEASURE_VM.format(m=m).replace("/content/", str(tmp_path / "vm") + "/")
+    def on_vm(m, lock_s=rm.STORE_MEASURE_LOCK_S):        # the code as the VM runs it, on this folder
+        code = rm.STORE_MEASURE_VM.format(m=m, lock_s=lock_s).replace("/content/", str(tmp_path / "vm") + "/")
         p = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
         assert p.returncode == 0, p.stderr
         return p.stdout.strip()
@@ -2204,7 +2211,7 @@ def test_a_measurement_is_written_on_the_vm_only_on_its_boot_and_over_an_older_o
     # writer comes meanwhile. Without one lock round the read, the comparison and the replacement the newer one
     # wrote 8, and the older one, resumed, put 7 over it. With the lock the newer one waits its turn: 8 stays.
     import time
-    paused = rm.STORE_MEASURE_VM.format(m={**m5, "seq": 7}).replace("/content/", str(tmp_path / "vm") + "/").replace(
+    paused = rm.STORE_MEASURE_VM.format(m={**m5, "seq": 7}, lock_s=30).replace("/content/", str(tmp_path / "vm") + "/").replace(
         "    if courier is None:\n", "    import time\n    time.sleep(1.5)\n    if courier is None:\n")
     assert "time.sleep(1.5)" in paused
     older = subprocess.Popen([sys.executable, "-c", paused], stdout=subprocess.PIPE, text=True)
@@ -2217,8 +2224,24 @@ def test_a_measurement_is_written_on_the_vm_only_on_its_boot_and_over_an_older_o
     (chat / "courier_status.json").write_text(json.dumps({"boot_id": "boot-b", "jobs": {}}))
     (chat / "store_measure.json").write_text(json.dumps({**m5, "seq": 99, "boot_id": "boot-a"}))  # the last boot's file
     assert on_vm({**m5, "seq": 1}) == "MEASURE_OK" and there() == 1                              # a new boot starts again
-    # The runner takes "older" and "another boot" for settled: nothing is sent again.
+    # The fifth reviews: the lock was waited for without a bound, so a writer stalled while it held it held every
+    # later one. It is tried without blocking for STORE_MEASURE_LOCK_S (30 s) at the most; then MEASURE_LOCK_BUSY,
+    # nothing written, and the runner keeps the measurement to send again. Here the lock is held by this process.
+    import fcntl
+    assert rm.STORE_MEASURE_LOCK_S == 30 and "LOCK_NB" in rm.STORE_MEASURE_VM
+    with open(chat / "store_measure.lock", "a") as held:
+        fcntl.flock(held, fcntl.LOCK_EX)
+        t0 = time.time()
+        assert on_vm({**m5, "seq": 2}, lock_s=1) == "MEASURE_LOCK_BUSY" and there() == 1
+        assert 1 <= time.time() - t0 < 10
+    assert on_vm({**m5, "seq": 2}, lock_s=1) == "MEASURE_OK" and there() == 2              # the lock is free again
     rm.STORE = {}
+    st = St()
+    st.d["store_measure_pending"] = dict(m4)
+    rm.exec_py = lambda code, timeout=200: (0, "MEASURE_LOCK_BUSY")
+    rm.store_measure_send(st)
+    assert st.d["store_measure_pending"] == m4                                             # kept, sent again next tick
+    # The runner takes "older" and "another boot" for settled: nothing is sent again.
     for answer, said in (("MEASURE_OLDER", "a newer one is there"), ("MEASURE_OTHER_BOOT", "the session is of another boot now")):
         st = St()
         st.d["store_measure_pending"] = dict(m4)
@@ -2354,6 +2377,7 @@ def test_the_no_progress_clock_is_not_reset_by_a_launch_and_a_healthy_arm_does_n
     head = [0]
     rm.store_open = lambda jobs: type("S", (), {"head_step": lambda self, branch: head[0] or None})()
     rm.store_call = lambda fn, limit=None: fn()
+    rm.vm_status = lambda jobs: None                     # a VM that does not answer
     st, jobs = St(), [{"name": "pt", "spec": {}}, {"name": "data", "cmd": ["x"]}]
     st.jobs["pt"] = st.d.setdefault("jobs", {}).setdefault("pt", {"home": False, "relayed_step": 0, "status": "RUNNING"})
     rm.store_no_progress(st, jobs)                       # before any launch: no clock, nothing
@@ -2390,6 +2414,7 @@ def test_the_no_progress_clock_is_not_reset_by_a_launch_and_a_healthy_arm_does_n
         rm.store_no_progress(st, jobs)                   # whether or not the job reads RUNNING
     halted = json.loads((tmp_path / "home" / "HALTED").read_text())
     assert e.value.code == 3 and halted["kind"] == "STORE_NO_PROGRESS" and halted["minutes"] == 400 and halted["step"] == 1000
+    assert halted["store_read"] == "the store's newest generation is at step 1000; the VM did not answer"
     doc = " ".join(rm.store_no_progress.__doc__.split())
     assert "65 + 21 + boot + 65 + 10" in doc and "boot takes under 49 minutes" in doc and "210 minutes at a stall of 120" in doc
     assert "WITHIN ONE SESSION" in " ".join(rm.store_progress.__doc__.split())
@@ -2401,8 +2426,8 @@ def test_the_ends_release_starts_no_call_it_cannot_finish_and_counts_no_round_th
     second; a call ended at such a limit was "failed", and counted as a round, though it had not reached the lock:
     two such starts used up the folder's allowance with no commit sent. No call is started now with less than 120 s
     of the wait left. Here the store's calls take ten seconds and another arm's lock holds through the whole wait:
-    the count stays 0. (2) A call that IS ended at its limit is held, not a round, when main shows no lock of this
-    runner (it never had the lock); it is counted when main shows one, or cannot be read."""
+    the count stays 0. (2) A call that IS ended at its limit is held, not a round, only when its child had not
+    reached the lock's send (no send mark); otherwise it is counted, whatever main shows now."""
     asked, limits = [], []
 
     class Store:
@@ -2440,25 +2465,30 @@ def test_the_ends_release_starts_no_call_it_cannot_finish_and_counts_no_round_th
     line = [ln for ln in (tmp_path / "home" / "runner.log").read_text().splitlines() if "THE RELEASE AT THE CAMPAIGN'S END" in ln]
     assert len(line) == 1 and "DID NOT RUN" in line[0] and "NOT RECORDED AS COMPLETED" not in line[0]   # no round was begun
     assert "holds the by-hand command too, for up to 30 minutes" in line[0]
-    # (2) A call that is ended at its limit.
-    def ended(fn, limit=None):
-        if not ended.reads:                              # the release's call: ended; then the read of main's lock
-            ended.reads.append(1)
-            raise hf_store.StoreError("store call over 900 s: ended")
-        return fn()
+    # (2) A call that is ended at its limit. The fifth reviews: it was given back when main showed no lock of this
+    # runner, which proves nothing (a round can lock, release, unlock and be ended before it returns). It is given
+    # back now only on the evidence that the lock's commit was never sent: the store's child writes a mark before
+    # that send (hf_store.Store.send_mark), and the mark is not there.
+    def ended(fn, limit=None):                           # ended before the child reached the lock's send
+        raise hf_store.StoreError("store call over 900 s: ended")
 
-    for owner, want_out, want_rounds in ((None, "held", 0), ("home:pk-other", "held", 0), ("home:pk-inproc", "failed", 1),
-                                         (ConnectionError("main unreachable"), "failed", 1)):
-        rm2 = load_runner(tmp_path / f"h{len(str(owner))}")
+    def ended_after_the_mark(fn, limit=None):            # ended after it: the lock may have gone out
+        with open(store.send_mark, "w") as f:
+            f.write("sent")
+        raise hf_store.StoreError("store call over 900 s: ended")
+
+    for call, want_out, want_rounds in ((ended, "held", 0), (ended_after_the_mark, "failed", 1)):
+        home2 = tmp_path / f"h{want_rounds}"
+        rm2 = load_runner(home2)
         rm2.time, rm2.STORE = FakeTime(), dict(rm.STORE)
-        store.owner = owner
+        store.owner = None                               # main shows no lock either way
         rm2.store_open = lambda jobs: store
-        ended.reads = []
-        rm2.store_call = ended
+        rm2.store_call = call
         st2 = Disk({"campaign_home": True})
-        assert rm2.store_release(st2, jobs, final=True) == want_out, owner
-        assert st2.disk.get("store_release_final_rounds", 0) == want_rounds, owner
-        assert ("before it had the lock" in st2.disk["store_release_final_owed"]) == (want_out == "held")
+        assert rm2.store_release(st2, jobs, final=True) == want_out, call
+        assert st2.disk.get("store_release_final_rounds", 0) == want_rounds, call
+        assert ("before it sent the lock's commit" in st2.disk["store_release_final_owed"]) == (want_out == "held")
+        assert store.send_mark is None and not (home2 / "store_release_lock_send.mark").exists()   # cleared after the call
     # A round that was begun and not recorded: the line says what is known.
     rm3 = load_runner(tmp_path / "begun")
     rm3.time, rm3.STORE = FakeTime(), dict(rm.STORE)
@@ -2468,3 +2498,180 @@ def test_the_ends_release_starts_no_call_it_cannot_finish_and_counts_no_round_th
     line = (tmp_path / "begun" / "runner.log").read_text()
     assert "THE RELEASE AT THE CAMPAIGN'S END IS NOT RECORDED AS COMPLETED (a round of it was begun: it may have run" in line
     assert "round 2 was begun at 2027-01-15 08:00:00 UTC" in line and "DID NOT RUN" not in line
+
+
+def test_a_final_round_that_sent_its_lock_and_was_ended_before_it_returned_is_counted(tmp_path):
+    """The fifth reviews of the arms' round (GPT, 2): a round of the end's release that takes its lock, releases,
+    unlocks, and is then ended at its limit before it returns leaves main with no lock; "no lock of ours now" gave
+    the round back, and repeated starts could pass the allowance of two. A real store and a real bounded call: the
+    unlock is followed by a wait longer than the call's limit. The round is counted, because the child wrote its
+    mark before the lock's send."""
+    import time
+    rm = load_runner(tmp_path / "home")
+    rm.STORE = {"reclaim": True, "release_every_min": 60, "release_grace_s": 7200, "call_limit": 300, "mark_ns": "",
+                "branch_suffix": "", "repo": f"dir:{tmp_path / 'store'}", "repo_type": "dataset", "token_file": None}
+    store = hf_store.open_store({"repo": f"dir:{tmp_path / 'store'}"}, delay=0)
+    real_unlock = store._unlock
+
+    def unlock_then_wait(*a, **k):
+        out = real_unlock(*a, **k)
+        time.sleep(30)                                   # unlocked; the call is ended before it returns
+        return out
+
+    store._unlock = unlock_then_wait
+    rm.store_open = lambda jobs: store
+    st = Disk({"campaign_home": True})
+    assert rm.store_release(st, [{"name": "pt", "spec": {}}], final=True, limit=5) == "failed"
+    sent = [json.loads(ln)["message"] for ln in (tmp_path / "store" / "commits.jsonl").read_text().splitlines()]
+    assert sent == ["lock: release by home:pk-inproc", "unlock: release"] and store.lock_owner() is None
+    assert st.disk["store_release_final_rounds"] == 1 and "store call over 5 s" in st.disk["store_release_final_owed"]
+    assert store.send_mark is None and not (tmp_path / "home" / "store_release_lock_send.mark").exists()
+
+
+GAP_WRAP = run_eq.WRAP.replace("rm.main()\n", """import atexit, os, time as real_time
+class Clock:                # the runner's clock: real, plus what the ticks have "slept", kept across runs
+    off = 0.0
+    def __getattr__(self, k):
+        return getattr(real_time, k)
+    def time(self):
+        return real_time.time() + self.off
+clock = Clock()
+path = os.environ["CLOCK_FILE"]
+clock.off = (float(open(path).read()) if os.path.exists(path) else 0.0) + float(os.environ.get("GAP_MIN", "0")) * 60
+def keep():
+    with open(path, "w") as f:
+        f.write(repr(clock.off))
+atexit.register(keep)
+rm.time = clock
+ticks = [0]
+def tick(deadline):         # a tick takes TICK_MIN minutes of the runner's time; KILL_AT_TICK: the runner dies there
+    clock.off += float(os.environ["TICK_MIN"]) * 60
+    ticks[0] += 1
+    if ticks[0] == int(os.environ.get("KILL_AT_TICK", "0")):
+        keep()
+        os._exit(9)
+rm.sleep_tick = tick
+rm.main()
+""")
+GAP_ARGS = ("--store-first-start", "--store-stall-halt", "--store-stall-min", "120")
+
+
+def gap_env(work, **more):
+    return {"TICK_MIN": "17", "CLOCK_FILE": str(work / "clock_off"), **more}
+
+
+def test_no_progress_does_not_count_four_hours_in_which_no_session_could_be_created(tmp_path):
+    """The fifth reviews of the arms' round (both): the no-progress clock ran on wall time, so a stretch with no L4
+    after a lost session halted a healthy arm with nothing billing. It counts only the time a session of this folder
+    may be billing: the session is lost before its first save, the next five creates fail (about four hours), the
+    sixth works, and the arm runs to its end at the default limit of 210 minutes."""
+    work = tmp_path
+    p, calls = run_store(work, {"reclaim_at": [4], "fail_new": [2, 3, 4, 5, 6]}, extra=store_args(work, *GAP_ARGS),
+                         wrap=GAP_WRAP, hours="100", more_env=gap_env(work))
+    log = log_of(work)
+    assert p.returncode == 0, (p.returncode, p.stderr[-1500:], log[-3000:])
+    assert not (work / "state" / "HALTED").exists() and state_of(work)["campaign_home"] is True
+    assert news(calls) == 7 and log.count("retry later") == 5
+    gap = [ln for ln in log.splitlines() if "min with no session of this folder are not counted on the no-progress clock" in ln]
+    assert len(gap) == 1 and int(gap[0].split("store: ")[1].split(" min")[0]) >= 240
+    assert state_of(work)["store_no_session_since"]      # the end's confirmed stop holds the clock again
+
+
+def test_no_progress_does_not_count_a_runner_that_was_down_after_a_confirmed_stop(tmp_path):
+    """The same clock across a restart: the runner ends (its deadline) with a confirmed stop and is started again
+    five hours later. The five hours are not counted: no halt, and the arm runs to its end."""
+    work = tmp_path
+    p, calls = run_store(work, {}, extra=store_args(work, *GAP_ARGS), wrap=GAP_WRAP, hours="0.6", more_env=gap_env(work))
+    log = log_of(work)
+    assert p.returncode == 0 and log.rstrip().endswith("session stopped; runner exiting"), (p.stderr[-1500:], log[-2000:])
+    state = state_of(work)
+    assert state["jobs"]["pt"].get("store_progress_at") and state["store_no_session_since"] and not state.get("campaign_home")
+    p2, calls2 = run_store(work, {}, extra=store_args(work, *GAP_ARGS), wrap=GAP_WRAP, hours="100", fresh=False,
+                           more_env=gap_env(work, GAP_MIN="300"))
+    log2 = log_of(work)[len(log):]
+    assert p2.returncode == 0, (p2.returncode, p2.stderr[-1500:], log2[-3000:])
+    assert not (work / "state" / "HALTED").exists() and state_of(work)["campaign_home"] is True and news(calls2) == 2
+    gap = [ln for ln in log2.splitlines() if "min with no session of this folder are not counted" in ln]
+    assert len(gap) == 1 and int(gap[0].split("store: ")[1].split(" min")[0]) >= 300
+
+
+def test_no_progress_reads_the_store_before_it_halts_an_arm_whose_home_was_down(tmp_path):
+    """Home is down for three and a half hours (killed: no stop) while the session goes on training and its courier
+    pushes. At the restart the clock's last entry is older than the limit; the store is read before any halt, its
+    newer generation is progress, and the session that was training is NOT stopped: the arm runs on to its end on
+    the same session."""
+    work = tmp_path
+    env = gap_env(work, FAKE_STEPS="800", KILL_AT_TICK="6")
+    p, calls = run_store(work, {}, extra=store_args(work, *GAP_ARGS), wrap=GAP_WRAP, hours="100", more_env=env)
+    assert p.returncode == 9, (p.returncode, p.stderr[-1500:], log_of(work)[-2000:])
+    state = state_of(work)
+    seen = state["jobs"]["pt"]["relayed_step"]
+    assert seen >= 100 and "store_no_session_since" not in state and json.loads((work / "fake" / "fake.json").read_text())["alive"]
+    # The VM trains on while home is down: two steps, each with the courier's pass (the fake's status exec).
+    layout = work / "repo" / "tools" / "colab_chat"
+    step = work / "vmstep.py"
+    step.write_text("# VMJSON: one step of the fake VM\nprint('{}')\n")
+    vm_env = dict(os.environ, FAKE_ROOT=str(work / "fake"), FAKE_JOBS=str(layout / "eqjobs.json"), FAKE_STORE_TOOLS=str(layout),
+                  CUDA_VISIBLE_DEVICES="", PK_STORE_TOKEN_DIR=str(work / "shm"), FAKE_STEPS="800")
+    for _ in range(2):
+        subprocess.run([sys.executable, str(EQ / "fakecolab_store.py"), "exec", "-s", "pk-store", "-f", str(step)],
+                       env=vm_env, capture_output=True, text=True, timeout=300)
+    pushed = hf_store.open_store({"repo": f"dir:{work / 'store'}"}).head_step("ckpt-N")
+    assert pushed > seen
+    before = len(calls.splitlines())
+    p2, calls2 = run_store(work, {}, extra=store_args(work, *GAP_ARGS), wrap=GAP_WRAP, hours="100", fresh=False,
+                           more_env=gap_env(work, GAP_MIN="210", FAKE_STEPS="800"))
+    log2 = log_of(work)
+    assert p2.returncode == 0, (p2.returncode, p2.stderr[-1500:], log2[-3000:])
+    assert f"pt: the store holds its generation at step {pushed} (read before the no-progress halt): progress" in log2
+    assert not (work / "state" / "HALTED").exists() and state_of(work)["campaign_home"] is True
+    later = calls2.splitlines()[before:]
+    assert news(calls2) == 1 and sum(1 for ln in later if ln.startswith('["stop"')) == 1   # the same session, stopped at the end only
+
+
+def test_an_expired_no_progress_clock_creates_no_session_and_the_gap_is_taken_out_at_a_create(tmp_path):
+    """launch() checks the clock just before the create, the first launch too: once its limit has passed no
+    session is created. And the bookkeeping: the time from a session's end (store_session_ended: the first moment
+    is kept) to the next create is taken out of the clock; a clock set inside the gap starts again at the create."""
+    rm = load_runner(tmp_path / "home")
+    clock = rm.time = FakeTime()
+    rm.STORE = {"stall_min": 120, "stall_halt": True, "no_progress_min": 210, "branch_suffix": "", "call_limit": 300}
+    rm.store_open = lambda jobs: type("S", (), {"head_step": lambda self, branch: 500})()
+    rm.store_call = lambda fn, limit=None: fn()
+    rm.vm_status = lambda jobs: (_ for _ in ()).throw(AssertionError("no VM is asked while no session is up"))
+    created = []
+    rm.T = type("T", (), {"deadline": None, "gpu": "L4", "create": lambda self, st: created.append(1) or (0, "created")})()
+    rm.listed = lambda: "ep-2"
+    rm.store_preflight = lambda st, jobs: True
+    rm.store_forget_token = lambda *a: None
+    rm.stop_session = lambda st, why: rm.store_session_ended(st) or True
+    rm.prepare = lambda *a: True
+    st, jobs = St(), [{"name": "pt", "spec": {}}]
+    st.d["launches"] = 1
+    st.jobs["pt"] = st.d.setdefault("jobs", {}).setdefault("pt", {"home": False, "relayed_step": 500, "status": "RUNNING",
+                                                                  "store_progress_at": clock.t})
+    clock.t += 100 * 60
+    rm.store_session_ended(st)                           # the session is gone after 100 billing minutes
+    clock.t += 60
+    rm.store_session_ended(st)                           # a later stop does not move the moment
+    assert st.d["store_no_session_since"] == clock.t - 60
+    clock.t += 300 * 60                                  # five hours with no session: not counted
+    rm.store_no_progress(st, jobs)
+    assert rm.launch(st, "c" * 40, "j.json", jobs, []) is True and created == [1]
+    assert st.job("pt")["store_progress_at"] == clock.t - 100 * 60 and "store_no_session_since" not in st.d
+    # 115 more billing minutes: 215 in all. The session is lost; the next launch is refused before its create.
+    clock.t += 115 * 60
+    rm.store_session_ended(st)
+    with pytest.raises(SystemExit) as e:
+        rm.launch(st, "c" * 40, "j.json", jobs, [])
+    halted = json.loads((tmp_path / "home" / "HALTED").read_text())
+    assert e.value.code == 3 and created == [1] and halted["kind"] == "STORE_NO_PROGRESS" and halted["minutes"] == 215
+    assert halted["store_read"] == "the store's newest generation is at step 500"           # read, and no VM asked
+    # A clock set inside a gap (a read of the store found a new generation) starts again at the create.
+    (tmp_path / "home" / "HALTED").unlink()
+    st.d["store_no_session_since"] = clock.t
+    clock.t += 30 * 60
+    st.job("pt")["store_progress_at"] = clock.t
+    clock.t += 30 * 60
+    rm.store_session_began(st, jobs)
+    assert st.job("pt")["store_progress_at"] == clock.t

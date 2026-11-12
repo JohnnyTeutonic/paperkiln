@@ -1005,6 +1005,10 @@ class Store:
         self._ledger_why = {}  # (branch, step): why a ledger did not read, for a release's report
         self._ledger_sha = {}  # (branch, step): the sha256 of the ledger file as it was fetched
         self.not_whole_why = None
+        # A path, or None. When set, _lock writes it, and has it on disk, BEFORE the lock's commit is sent: a
+        # caller whose call was ended (bounded) can tell "the lock's commit was never sent" (no file) from "it may
+        # have been" (the file). Only the first can give a reserved round back.
+        self.send_mark = None
 
     def _limited(self, e, what):
         """Raise RateLimited when `e` is the hub's 429 (its wait kept, and the budget closed for that long, between
@@ -1652,7 +1656,8 @@ class Store:
         a lock that was there before is seen. Two releasers can never both hold it. With a commit budget the lock
         is not essential, is taken only with room for itself and its removal, and both are counted here. An
         essential lock (the release at a campaign's end) may use the whole budget and is owed the budget's
-        essential wait. Why a lock was not taken is left in self._lock_why."""
+        essential wait. Why a lock was not taken is left in self._lock_why. With self.send_mark set, that file is
+        written before the lock's commit is sent, and not otherwise."""
         self._lock_why = "another releaser holds the lock"
         if self.budget:
             w = self.budget.wait_s(essential=essential, need=2)
@@ -1695,6 +1700,11 @@ class Store:
             p = os.path.join(tmp, "l")
             with open(p, "w") as f:
                 json.dump(mine, f)
+            if self.send_mark:  # on disk before the send; a mark that cannot be written stops the send (it raises)
+                with open(self.send_mark, "w") as f:
+                    f.write(f"the lock's commit by {owner} is sent after this was written\n")
+                    f.flush()
+                    os.fsync(f.fileno())
             try:
                 self.commit("main", {LOCK: p}, [], f"lock: release by {owner}", parent=head, essential=essential, need=2)
             except BudgetSpent as e:  # refused at the budget's own door: nothing was sent, so this is "held"
