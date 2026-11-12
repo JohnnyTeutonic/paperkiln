@@ -37,9 +37,9 @@
   "sft_human.jsonl": "4785e1494d34b81970d947e3488897afcdd36d19a8625b6670dfefcc69b42ecb"
  },
  "sources": {
-  "src/fineweb2345.txt": null,
-  "src/simplewiki.txt": null,
-  "src/human1.txt": null
+  "src/fineweb2345.txt": "c7dd0c13ba4664293e3a2573f986bf9c07fa7cdbb15548127ac32fe7c3b0bf03",
+  "src/simplewiki.txt": "8eb0b40434f3bf935264906927cc25872ccf8366a9110d4495105c01d225c77c",
+  "src/human1.txt": "a5f20ac55c28a465831b6f7ef9caa8eb61a06093085f0391f0794f76c6e086c5"
  },
  "engine": {
   "commit": "8dc9429c68f16bc84772e86c77b931e2d84a34cb",
@@ -53,17 +53,17 @@
   }
  },
  "N": {
-  "N.main.ids": null,
-  "N.tail.ids": null
+  "N.main.ids": "46ceb4369685ee2c4e4a29a42e1cbbd099610f3ec439e7cfe414648dcc24a47c",
+  "N.tail.ids": "f314d955741e73097ef40d094f03f68fd4a403df079bf508897538edebfc2142"
  },
  "S": {
-  "S.main.ids": null,
-  "S.tail.ids": null
+  "S.main.ids": "19528902188fb64ca8d50583f9daab79ac577b642049a2df5dd0d77b6c4af8da",
+  "S.tail.ids": "73ca41c93a42cf5269913737e7a736c6354778c891f2d13dc4731ef485e7b24b"
  },
  "panels": {
   "panel_fineweb.ids": "c1aa6d42aafe80d8607b2d1f19235eb1539ccd94997567c506ae68f330c06e6b",
   "panel_dialogue.ids": "7881aa1c196e30b692a18ba2704a49333a78d8ce059dedb98e794baa0838258a",
-  "panel_scenario.ids": null
+  "panel_scenario.ids": "2e043e63b810b54a84276be351ef70f0151f360489a1adef1645ed8aa8a737f8"
  },
  "vocab": {
   "vocab_llama3_bpe.gguf": "0b880aa073a7e27c0770d5ecc5215b55d6d415080d20bd3dc7b169ecabadf198"
