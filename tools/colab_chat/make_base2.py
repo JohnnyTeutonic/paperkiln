@@ -258,9 +258,10 @@ FINAL_LEDGER_ROUNDS = 2      # runner_multi.STORE_FINAL_LEDGER_ROUNDS: rounds of
 # 2026): a release every 60 minutes with the runner's default grace of 7,200 s, the arms' turns set off by 0, 20
 # and 40 minutes; push caps of 200, 200 and 250 GB; the stall halt on at 120 minutes; the unverified halt at 90; the
 # no-progress halt (runner_multi.store_no_progress, after the fifth launch review: two counters that count only
-# evidence of billing, both reset by any new generation in the store) at 260 minutes in which Colab lists the
-# session (a held rung's hour, a boot and a save are well under it) and at the 4th launch without progress. The
-# rehearsal's files set their own.
+# evidence of billing, both reset by any new generation in the store) at 300 minutes in which Colab lists the
+# session and at the 4th launch without progress. 300, not 260 (the sixth launch review): a slow restore (boot 9,
+# a held rung 65, a gap 8, a save interval 75, a second rung 65, boot 9) is 231 minutes, and the courier's own
+# documented waits (15 for its budget, 30 for a 429) can bring it to about 276. The rehearsal's files set their own.
 RUNNER_STORE_DEFAULTS = {"store_release_grace_s": 7200, "store_stall_halt": False, "store_stall_min": 60,
                          "store_unverified_halt_min": 0,   # runner_multi.py's own, when neither flag nor key is given
                          "store_release_offset_min": 0,    # minutes an arm's release turns are set off on the UTC grid
@@ -268,7 +269,7 @@ RUNNER_STORE_DEFAULTS = {"store_release_grace_s": 7200, "store_stall_halt": Fals
                          "store_no_progress_launches": 0}  # 0: the runner's own (4, with the stall halt)
 ARM_STORE = {**RUNNER_STORE_DEFAULTS, "store_push_cap_gb": 0, "store_release_every_min": ARM_RELEASE_EVERY_MIN,
              "store_release_grace_s": ARM_RELEASE_GRACE_S, "store_stall_halt": True, "store_stall_min": 120,
-             "store_unverified_halt_min": 90, "store_no_progress_min": 260, "store_no_progress_launches": 4}
+             "store_unverified_halt_min": 90, "store_no_progress_min": 300, "store_no_progress_launches": 4}
 # The caps (the lead's decision after the second launch review, 12 Nov 2026): 200, 200 and 250 GB, not the sums'
 # 45, 45 and 60. Only a release from home lowers a courier's count, so with home down every save adds to it: at the
 # sums' caps an outage of about 4 to 5 hours capped every arm. At these, about 31 hours for N and S and 27 for C

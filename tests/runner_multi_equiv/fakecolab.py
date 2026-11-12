@@ -248,6 +248,15 @@ def main():
     if cmd == "adopt":
         call_log(["ADOPT", *argv[1:]])
         if argv[1] == "--adopt":
+            # "stop_not_found" (the CLI's local store lost a live session): adopting the listed endpoint under the
+            # session's name puts it back, unless "adopt_fails". Otherwise adoption fails, as before.
+            ep, _, nm = argv[2].partition("=")
+            if (d.get("stop_not_found") and d["alive"] and not d.get("adopt_fails") and nm == d.get("name")
+                    and ep == f"fake-endpoint-{d['launches']}"):
+                d["stop_not_found"] = False
+                save(d)
+                print("adopted")
+                return 0
             print("not adopted")
             return 1
         print("refreshed")
@@ -298,6 +307,9 @@ def main():
         # "not found" and exits 0 without asking the service; the session stays up and listed.
         print(f"[colab] Session '{argv[argv.index('-s') + 1]}' not found.")
         return 0
+    if cmd in ("exec", "upload", "download") and d.get("stop_not_found"):
+        print(f"[colab] Session '{argv[argv.index('-s') + 1]}' not found.")   # the same local store: not reached
+        return 1
     if cmd == "stop" and "-s" in argv and d.get("name") and argv[argv.index("-s") + 1] != d["name"]:
         # As the CLI: a name it does not hold is looked up in its local store only (commands/session.py). (Before
         # any session the fake keeps its older behaviour, which the scenarios of stops that fail rely on.)

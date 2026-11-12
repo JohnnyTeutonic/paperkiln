@@ -229,7 +229,8 @@ def stop_session(st, why, lose=False):
     and holds no line for NAME), asked up to STOP_LISTING_TRIES times, STOP_LISTING_WAIT_S apart (a session just
     stopped can stay listed a little). The CLI's stop looks a name up in its own local store, which can lose a
     session the server still runs: it then prints "not found" and exits 0 without asking the service. Such a stop
-    is not a stop."""
+    is not a stop: the listed endpoint is adopted back into the CLI's local store under NAME, and the stop is
+    made again."""
     call = T.lose_pod if lose else T.stop
     if getattr(T, "backend", None) != "colab":
         call(st)
@@ -243,6 +244,14 @@ def stop_session(st, why, lose=False):
                 log(f"stop ({why}) exited 0" + (" saying the session was not found" if "not found" in (out or "") else "")
                     + f", and the listing still holds {NAME} (or does not answer): not a confirmed stop "
                     f"(try {i + 1} of {STOP_TRIES})")
+                if "not found" in (out or ""):
+                    # The CLI's local store has lost a session the server still lists: put the listed endpoint back
+                    # into it under NAME (colab_adopt.py), and the next stop reaches the service.
+                    ep = listed()
+                    if ep and T.adopt(ep):
+                        log(f"the listing holds {NAME} at {ep}: adopted into the CLI's local store; stopping again")
+                    else:
+                        log(f"the session could not be adopted (listed at {ep}); stopping again")
                 continue
             resolved = os.path.join(HOME, "STOP_UNRESOLVED")
             if os.path.exists(resolved):  # an earlier stop of this state folder was left open; this one closed it
@@ -255,8 +264,15 @@ def stop_session(st, why, lose=False):
         time.sleep(min(10, TICK / 24))
     stop_unresolved(st, why, return_code=rc, tries=STOP_TRIES)
     log(f"STOP_UNRESOLVED: the stop of session {NAME} ({why}) failed {STOP_TRIES} times (return code {rc}) and the session "
-        f"is not known to be gone. IT MAY STILL BE BILLING. Stop it by hand: colab stop -s {NAME}")
+        f"is not known to be gone. IT MAY STILL BE BILLING. Stop it by hand: {stop_by_hand()}")
     return False
+
+
+def stop_by_hand():
+    """The by-hand stop, with the adopt step for a session the CLI's local store has lost."""
+    return (f"colab stop -s {NAME}; if it says the session was not found while `colab sessions` still lists [{NAME}], "
+            f"adopt it first ({COLPY} {ADOPT} --adopt ENDPOINT={NAME}, with the endpoint that line shows) and stop it "
+            "again; then check the listing")
 
 
 STOP_LISTING_TRIES = 3
@@ -280,7 +296,7 @@ def stop_unresolved(st, why, **more):
     own and stops it (store_left_session); a stop that succeeds moves the record to STOP_RESOLVED."""
     rec = {"kind": "STOP_UNRESOLVED", "session": NAME, "endpoint": st.d.get("endpoint"), "launch": st.d.get("launches"),
            "why": why, **more, "at": time.time(),
-           "do": f"the session may still be running and billing: stop it by hand (colab stop -s {NAME}) and check the listing"}
+           "do": f"the session may still be running and billing: stop it by hand: {stop_by_hand()}"}
     with open(os.path.join(HOME, "STOP_UNRESOLVED"), "w") as handle:
         json.dump(rec, handle, indent=1)
         handle.flush()
@@ -979,18 +995,30 @@ def launch(st, commit, jobs_rel, jobs, uploads):
         # the cap proves the arm trained), before those counters are checked.
         if not store_cap_before_create(st, jobs):
             return False
+        # A status read on an earlier session (a stale FINISHED) exempts nothing on this one: the new VM's is read.
+        for n in store_branches(jobs):
+            if not st.job(n).get("home"):
+                st.job(n)["status"] = None
         if not store_no_progress(st, jobs, before_create=True):  # the 4th launch without progress halts, by name
             return False
+        # The launch is counted BEFORE the create, and saved: a runner killed between the create and the save
+        # below cannot leave a paid create uncounted. It is given back only when the create definitely failed.
+        store_noprog_launched(st, jobs)
     rc, out = T.create(st)
     if rc != 0:
         log(f"no {T.gpu} ({out.strip()[-120:]}); retry later")
+        if STORE:
+            if rc != 124 and hasattr(T, "absent") and stop_listing_agrees():
+                store_noprog_launched(st, jobs, -1)
+            else:
+                log("the create failed and the listing does not show the session absent (or it timed out): the launch "
+                    "stays counted")
         return False
     st.d["endpoint"] = listed()
     st.d["launches"] += 1
     st.d["booted"] = False
     if STORE:
         store_stall_reset(st, jobs)  # a new session: what the old one's loss and this one's boot take is no stall
-        store_noprog_launched(st, jobs)  # one more launch without progress, until the store shows an advance
     st.save()
     log(f"session up, endpoint {st.d['endpoint']} (launch {st.d['launches']})")
     return prepare(st, commit, jobs_rel, jobs, uploads)
@@ -1281,10 +1309,15 @@ STORE_RELEASE_RETRY_S = 600
 # a release held for longer than this many seconds in all, then STORE_CAP_RELEASE_HELD.
 STORE_CAP_RELEASE_TRIES = 6
 STORE_CAP_RELEASE_HELD_S = 6 * 3600
-# The no-progress counters (store_no_progress): the listed time a tick can add, in ticks; STORE_GAP_TICK_S: the tick,
-# when it is not TICK (a test's moved clock).
+# The no-progress counters (store_no_progress): the listed time a tick can add, in ticks (the stall clock's gaps are
+# capped the same way, store_progress); STORE_GAP_TICK_S: the tick, when it is not TICK (a test's moved clock).
 STORE_NOPROG_LISTED_CAP_TICKS = 2
 STORE_GAP_TICK_S = None
+# Past the listed-time limit, an unread store defers the halt for at most this many more listed minutes.
+STORE_NO_PROGRESS_UNREAD_MIN = 60
+# The store halts a person can clear and restart from: their HALTED record names both no-progress counter keys.
+STORE_RESTARTABLE_HALTS = ("STORE_STALLED", "STORE_UNVERIFIED", "STORE_NO_PROGRESS", "STORE_PUSH_CAP",
+                           "STORE_CAP_RELEASE_FAILED", "STORE_CAP_RELEASE_HELD")
 _STORE = {}
 
 
@@ -1452,6 +1485,7 @@ def store_stall_reset(st, jobs):
     a lost session took to be noticed, the new session's creation and its boot are never counted as a stall."""
     for n in store_branches(jobs):
         st.job(n).pop("store_seen_at", None)
+        st.job(n).pop("store_stall_tick_at", None)
 
 
 def store_left_session(st):
@@ -1508,6 +1542,22 @@ def store_owner(st, name, jobs):
         st.save()
 
 
+def store_counters_do(job=None):
+    """The restart step every restartable store halt names: delete both no-progress counters of each job not home,
+    by key, in state.json (the jobs read from it; else the halt's job)."""
+    path = os.path.join(HOME, "state.json")
+    try:
+        names = sorted(n for n, js in json.load(open(path)).get("jobs", {}).items()
+                       if isinstance(js, dict) and not js.get("home") and ("store_noprog_launches" in js
+                                                                            or "store_noprog_listed_s" in js))
+    except (OSError, ValueError, AttributeError):
+        names = []
+    names = names or [job or "<job>"]
+    keys = ", ".join(f"jobs.{n}.store_noprog_launches, jobs.{n}.store_noprog_listed_s" for n in names)
+    return (f"Before the restart, delete the no-progress counters in {path} ({keys}): the restarted arm otherwise "
+            "carries this run's counts")
+
+
 def store_call(fn, limit=None):
     """A store call from home, in a child that is ended at the limit: a hung transfer never holds the loop, the
     deadline check or the session's stop."""
@@ -1517,7 +1567,11 @@ def store_call(fn, limit=None):
 
 
 def store_halt(kind, **rec):
-    """The watchdog's stop file: nothing runs again until a person has read it. The caller raises SystemExit."""
+    """The watchdog's stop file: nothing runs again until a person has read it. The caller raises SystemExit. A halt
+    a person can clear and restart from (STORE_RESTARTABLE_HALTS) says in its "do" to delete both no-progress
+    counters of every job not home, so the restarted arm does not carry this run's counts."""
+    if kind in STORE_RESTARTABLE_HALTS:
+        rec["do"] = (rec.get("do") or "read the log first; then remove HALTED") + ". " + store_counters_do(rec.get("job"))
     marker = os.path.join(HOME, "HALTED")
     if not os.path.exists(marker):
         with open(marker, "x") as handle:
@@ -1659,9 +1713,17 @@ def store_progress(st, jobs, name):
     first save after the resume (one save interval) and a rung that holds training (jobs_vm.py's "exclusive": up
     to its timeout of an hour, and five minutes more): about 85 minutes, so 120 is the least a stall halt takes.
     So this halt covers pushes that do not arrive WITHIN ONE SESSION, while the job reads RUNNING. It does not see
-    an arm whose sessions are lost again and again before a save: that is store_no_progress()'s."""
+    an arm whose sessions are lost again and again before a save: that is store_no_progress()'s.
+
+    Gaps between the ticks that read the stall clock add 2 x TICK at most (STORE_NOPROG_LISTED_CAP_TICKS, as the
+    listed counter): the runner down for hours, or suspended, while a RUNNING session pushes, adds no stall, so a
+    store read that fails at its return does not halt a healthy arm. The clock's start moves on by the excess."""
     js, now = st.job(name), time.time()
     js.setdefault("store_seen_at", now)
+    prev, cap = js.get("store_stall_tick_at"), STORE_NOPROG_LISTED_CAP_TICKS * store_tick_s()
+    if isinstance(prev, (int, float)) and now - prev > cap:
+        js["store_seen_at"] += (now - prev) - cap
+    js["store_stall_tick_at"] = now
     try:
         store, branch = store_open(jobs), store_branches(jobs)[name]
         step = store_call(lambda: store.head_step(branch))
@@ -1705,12 +1767,13 @@ def store_noprog_reset_all(st, jobs, why):
     log(f"store: the no-progress counters start again ({why})")
 
 
-def store_noprog_launched(st, jobs):
-    """A create that succeeded: every store job not home has one more launch without progress."""
+def store_noprog_launched(st, jobs, by=1):
+    """A create about to be made (launch() counts it before the create): every store job not home has one more
+    launch without progress. by=-1: the create definitely failed (no session made): the count is given back."""
     for n in store_branches(jobs):
         js = st.job(n)
         if not js.get("home"):
-            js["store_noprog_launches"] = js.get("store_noprog_launches", 0) + 1
+            js["store_noprog_launches"] = max(0, js.get("store_noprog_launches", 0) + by)
     st.save()
 
 
@@ -1744,21 +1807,28 @@ def store_no_progress(st, jobs, before_create=False):
     confirmed stop. Two counters a store job, in state.json, which count only evidence of billing, and both start
     again at any observed advance of the store's newest generation for the job (store_progress, the read below, a
     push to the cap, a capped arm's measured release):
-    (a) launches without progress ("store_noprog_launches"): each create that succeeded adds one. Before a create
-        (before_create, from launch()), the create that would be the --store-no-progress-launches-th (4) without
+    (a) launches without progress ("store_noprog_launches"): each create adds one, counted and saved before it is
+        made (a runner killed between a create and its save leaves it counted), and given back only when the
+        create definitely failed (a non-zero exit other than a timeout, and the listing shows no session). Before a
+        create (before_create, from launch()), the create that would be the --store-no-progress-launches-th (4) without
         progress is not made: the arm halts instead. So at most three sessions are made with nothing pushed: a crash
         loop of sessions lost before a save, or in their boot, halts at its fourth launch.
     (b) listed time without progress ("store_noprog_listed_s"): only the ticks at which Colab's listing positively
         shows this folder's session count, each with the time since the previous such tick, capped at two ticks
         (store_noprog_listed). Time no listing shows (an outage, the runner down or suspended) adds two ticks at the
         most, whatever its length. When it passes --store-no-progress-min, ONE fresh read of the store decides: an
-        advance resets both counters; a read that fails defers to the next tick (the listed time still counts);
-        a read that shows no advance halts. A rung that holds training for its hour, a save and a boot are well
-        under 260 listed minutes; a session that is listed and pushes nothing for that long halts.
-    A job that is home, or FINISHED on the VM, is not counted. With the stall halt off both limits are 0 (off).
-    The HALTED record says how to clear it: removing HALTED alone halts again at the next start, since the
-    counters are in state.json ("jobs.<job>.store_noprog_launches", "jobs.<job>.store_noprog_listed_s"); delete
-    them with it. Returns False when a create must wait (the read failed); True otherwise."""
+        advance resets both counters; a read that shows no advance halts; a read that fails defers to the next tick
+        (the listed time still counts), for STORE_NO_PROGRESS_UNREAD_MIN (60) more listed minutes at most: then the
+        arm halts with the store unread (the listing shows the session, so its stop can be confirmed). Before a
+        create, a limit passed with the store unread makes no create. A rung that holds training for its hour, a
+        save, a boot and the courier's waits are under the arms' 300 listed minutes; a session that is listed and
+        pushes nothing for that long halts.
+    A job that is home, or FINISHED on the VM, is not counted (launch() clears a store job's status at every
+    create, so a FINISHED read on an earlier session exempts nothing on the next). With the stall halt off both
+    limits are 0 (off). The HALTED record says how to clear it: removing HALTED alone halts again at the next
+    start, since the counters are in state.json ("jobs.<job>.store_noprog_launches",
+    "jobs.<job>.store_noprog_listed_s"); delete them with it. The unread wait is logged at once and then once an
+    hour while it lasts. Returns False when a create must wait (the read failed); True otherwise."""
     lim_min, lim_n = STORE.get("no_progress_min") or 0, STORE.get("no_progress_launches") or 0
     for n in store_branches(jobs):
         js = st.job(n)
@@ -1772,25 +1842,33 @@ def store_no_progress(st, jobs, before_create=False):
         read, unread = store_no_progress_fresh(st, jobs, n)
         if read == "progress":
             continue
-        if unread:
-            if _STORE.get("no_progress_unread") != n:
+        # An unread store defers the halt; past the listed-time limit, for STORE_NO_PROGRESS_UNREAD_MIN more listed
+        # minutes at most (the listing shows the session, so its stop can be confirmed): then it halts unread.
+        unread_over = bool(unread and over_t and listed > (lim_min + STORE_NO_PROGRESS_UNREAD_MIN) * 60)
+        if unread and not unread_over:
+            said, now = _STORE.setdefault("no_progress_unread_said", {}), time.time()
+            if now - said.get(n, now - 3600) >= 3600:  # said at once, then once an hour while it lasts
+                said[n] = now
                 log(f"{n}: a no-progress limit is reached ({launches} launches, {listed / 60:.0f} listed min without "
                     "progress) and the store was not read: no halt this tick; read again at the next"
-                    + (", and no session is created until it is" if over_n else ""))
-            _STORE["no_progress_unread"] = n
-            if over_n:
+                    + (f" (past the listed-time limit, for {STORE_NO_PROGRESS_UNREAD_MIN} more listed min at most)"
+                       if over_t else "")
+                    + (", and no session is created until it is" if over_n or before_create else ""))
+            if over_n or before_create:
                 return False
             continue
+        _STORE.get("no_progress_unread_said", {}).pop(n, None)
         store_halt("STORE_NO_PROGRESS", job=n, step=js.get("relayed_step"), launches_without_progress=launches,
                    listed_min_without_progress=round(listed / 60), limit_min=lim_min, limit_launches=lim_n,
                    store_read=read, at_launch=over_n,
                    why=(f"the launch that would be the {lim_n}th without a new generation in the store" if over_n else
                         f"over {lim_min:.0f} minutes in which Colab listed this folder's session without a new "
-                        "generation in the store") + "; no further session is created",
-                   do=f"read the log first. Removing HALTED alone halts again at the next start: the counters are in "
-                      f"{os.path.join(HOME, 'state.json')} as \"jobs\" -> \"{n}\" -> \"store_noprog_launches\" and "
-                      f"\"store_noprog_listed_s\" (jobs.{n}.store_noprog_launches, jobs.{n}.store_noprog_listed_s). To "
-                      "give the arm new counters, delete those keys, then HALTED")
+                        "generation in the store" + (f", the store unread for {STORE_NO_PROGRESS_UNREAD_MIN} more "
+                                                     "listed minutes" if unread else ""))
+                       + "; no further session is created",
+                   do="read the log first. Removing HALTED alone halts again at the next start: the counters are kept "
+                      "in state.json, under \"jobs\" -> the job -> \"store_noprog_launches\" and "
+                      "\"store_noprog_listed_s\"; delete those keys, then HALTED")
         raise SystemExit(3)
     return True
 
@@ -3198,10 +3276,11 @@ def main():
                          "positively shows the session count, each with the time since the previous such tick, two "
                          "ticks at the most: a home outage, the runner down or suspended add two ticks at the most. "
                          "Any new generation the store shows resets it (and --store-no-progress-launches). At the "
-                         "limit the store is read once: a new generation resets; a read that fails defers to the "
-                         "next tick; a read with none halts. To clear the halt, delete jobs.<job>.store_noprog_launches "
-                         "and jobs.<job>.store_noprog_listed_s in state.json as well as HALTED. Default: the jobs "
-                         "file's \"store_no_progress_min\" (the arms: 260), else --store-stall-min + "
+                         "limit the store is read once: a new generation resets; a read with none halts; a read that "
+                         "fails defers to the next tick, for 60 more listed minutes at most, then it halts unread, "
+                         "and no session is created while it defers. To clear the halt, delete "
+                         "jobs.<job>.store_noprog_launches and jobs.<job>.store_noprog_listed_s in state.json as well "
+                         "as HALTED. Default: the jobs file's \"store_no_progress_min\" (the arms: 300), else --store-stall-min + "
                          "--store-boot-limit-min + 15 (210 at a stall of 120); 0 without the stall halt")
     ap.add_argument("--store-no-progress-launches", type=int, default=None,
                     help="with the stall halt on: the launch that would be the Nth create with no new generation of a "
@@ -3437,6 +3516,10 @@ def main():
             r = vm_status(jobs)
             if r is None:
                 log("vm status: no reply")
+                if STORE and seen is not None and T.adopt(seen):
+                    # Listed, and its VM does not answer: the CLI's local store may have lost the session (exec,
+                    # and a stop, then say "not found"). The listed endpoint is put back under NAME.
+                    log(f"the listing holds {NAME} at {seen} and its VM did not answer: adopted into the CLI's local store")
                 sleep_tick(deadline)
                 continue
             # boot_jobs.sh writes FINISHED when the manager exits. With jobs open that is a dead manager: nothing would ever end this pod.
