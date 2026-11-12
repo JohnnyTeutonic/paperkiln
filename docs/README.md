@@ -20,6 +20,9 @@ left to do — then come back for context.
 → [`TOUR.md`](TOUR.md) — the long form of the README: studio, spec
 format, feature matrix, mechanisms, Atlas, fetcher, export, LoRA/QLoRA,
 CUDA and the repository layout
+→ [`FEATURES.md`](FEATURES.md) — the README's detail: the full feature
+table, the engineering results and their receipts, and the longer quick
+starts
 
 **"What should I work on?"** and **"What is Jonathan blocking on?"**
 → [`../ROADMAP.md`](../ROADMAP.md)

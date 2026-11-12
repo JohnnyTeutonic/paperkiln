@@ -22,5 +22,5 @@ A run is one file; these are known-good starting points. Copy one, point
 Spec-builder note: `studio/index.html` writes these interactively — the
 form's output is exactly this format.
 
-Field reference: the annotated block in the
-[top-level README](../README.md#custom-configuration--the-spec-format).
+Field reference: the annotated block in
+[the tour](../docs/TOUR.md#custom-configuration--the-spec-format).
