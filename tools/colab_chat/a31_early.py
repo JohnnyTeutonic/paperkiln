@@ -74,11 +74,21 @@ def train_metrics(ev, step):
     return out
 
 
-def health(ev, ref_ev, step, self_ref):
-    """('stop' | 'unread' | 'ok', reason) by the registered rule."""
+def health(ev, ref_ev, step, self_ref, twin=False):
+    """('stop' | 'unread' | 'ok', reason) by the registered rule. Fail-closed (round-2 reviews, 13 Nov 2026): the log must hold
+    every step 1 .. step (a step a resumed run wrote twice counts once), each with an SFT loss and, for a twin run, a twin record;
+    anything less is unread."""
     tm = train_metrics(ev, step)
     if tm.get("nonfinite"):
         return "stop", "non-finite loss"
+    st = [e for e in ev if e.get("event") == "step"]
+    steps = {e.get("step") for e in st if finite(e.get("step")) and e["step"] <= step}
+    if steps != set(range(1, step + 1)):
+        return "unread", f"the log does not hold every step 1 to {step}"
+    if any("loss" not in e for e in st if e.get("step", 0) <= step):
+        return "unread", "a step without its SFT loss"
+    if twin and not all(isinstance(e.get("twin"), dict) and "loss" in e["twin"] for e in st if e.get("step", 0) <= step):
+        return "unread", "a twin run's step without its twin record"
     if step != HEALTH_STEP or self_ref:
         return "ok", ""
     v, r = val_at(ev, step), val_at(ref_ev, step)
@@ -134,23 +144,33 @@ def main():
     ap.add_argument("--bin", default="/content/pk/build_cuda/mtstudio")
     a = ap.parse_args()
     up = f"{a.chat}/upload"
-    sys.path.insert(0, up)
-    import a31_readout as R   # the lane's readout.py, uploaded and hash-pinned: the one measurement code
     self_ref = a.ref == a.job
     out = {"job": a.job, "step": a.step, "producer": "a31_early.py", "early": {}}
 
-    # 1. health first
-    t0 = time.time()
-    while True:
-        ev = events(f"{a.chat}/{a.job}/events.jsonl")
-        ref_ev = ev if self_ref else events(f"{a.chat}/{a.ref}/events.jsonl")
-        verdict, why = health(ev, ref_ev, a.step, self_ref)
-        if verdict != "unread" or time.time() - t0 > WAIT_S:
-            break
-        time.sleep(20)
-    out["train"] = train_metrics(ev, a.step)
-    out["val_loss"] = val_at(ev, a.step)
-    out["ref"] = {"job": a.ref, "val_loss": val_at(ref_ev, a.step)}
+    def write():
+        out["summary"] = summary_line(a.job, a.step, out)
+        tmp = f"{a.out}/early.json.tmp"
+        os.makedirs(a.out, exist_ok=True)
+        with open(tmp, "w") as f:
+            json.dump(out, f, indent=1)
+        os.replace(tmp, f"{a.out}/early.json")
+
+    # 1. health first, written before anything else can fail; any error reading it is an unread check, never a pass
+    try:
+        twin = "twin_loss" in json.load(open(f"{a.chat}/{a.job}_spec.json")).get("train", {})
+        t0 = time.time()
+        while True:
+            ev = events(f"{a.chat}/{a.job}/events.jsonl")
+            ref_ev = ev if self_ref else events(f"{a.chat}/{a.ref}/events.jsonl")
+            verdict, why = health(ev, ref_ev, a.step, self_ref, twin)
+            if verdict != "unread" or time.time() - t0 > WAIT_S:
+                break
+            time.sleep(20)
+        out["train"] = train_metrics(ev, a.step)
+        out["val_loss"] = val_at(ev, a.step)
+        out["ref"] = {"job": a.ref, "val_loss": val_at(ref_ev, a.step)}
+    except Exception as e:  # noqa: BLE001  (fail-closed: whatever went wrong is recorded as unread)
+        verdict, why = "unread", f"the health check failed: {type(e).__name__}: {e}"
     if verdict == "stop":
         out["health_stop"] = why
         pid = live_pid(a.chat, a.job)
@@ -159,8 +179,21 @@ def main():
             os.kill(pid, signal.SIGTERM)
     elif verdict == "unread":
         out["health_unread"] = why
+    write()
 
-    # 2. then the early readout, on the early requests only
+    # 2. then the early readout, on the early requests only; a failure here is recorded beside the health result
+    try:
+        early_readout(a, up, out)
+    except Exception as e:  # noqa: BLE001
+        out["readout_failed"] = f"{type(e).__name__}: {e}"
+    write()
+    print(out["summary"], flush=True)
+    return 0
+
+
+def early_readout(a, up, out):
+    sys.path.insert(0, up)
+    import a31_readout as R   # the lane's readout.py, uploaded and hash-pinned: the one measurement code
     m = f"{a.out}/m"
     os.makedirs(m, exist_ok=True)
     link = f"{m}/{a.job}.safetensors"
@@ -184,12 +217,6 @@ def main():
             out["early"] = {n: R.summarise(rows[n].values()) for n in man["sets"]}
         except ValueError as e:
             out["score_invalid"] = str(e)
-    out["summary"] = summary_line(a.job, a.step, out)
-    tmp = f"{a.out}/early.json.tmp"
-    json.dump(out, open(tmp, "w"), indent=1)
-    os.replace(tmp, f"{a.out}/early.json")
-    print(out["summary"], flush=True)
-    return 0
 
 
 if __name__ == "__main__":

@@ -11,7 +11,11 @@
     "--out",
     "{out}",
     "--spec",
-    "/content/chat/upload/a31_gate_spec.json"
+    "/content/chat/upload/a31_gate_spec.json",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--device-test",
+    "/content/pk/build_cuda/test_twin_device"
    ],
    "outputs": [
     "gate.json"
@@ -92,7 +96,11 @@
     "--ref",
     "D0",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -116,7 +124,11 @@
     "--ref",
     "D0",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -140,31 +152,14 @@
     "--ref",
     "D0",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
-    "scores.jsonl"
-   ]
-  },
-  {
-   "name": "score_D0",
-   "light": true,
-   "after": "D0",
-   "cmd": [
-    "timeout",
-    "900",
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/D0",
-    "--in",
-    "/content/chat/upload/a31_early_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
     "scores.jsonl"
    ]
   },
@@ -250,7 +245,11 @@
     "--ref",
     "D0",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -274,7 +273,11 @@
     "--ref",
     "D0",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -298,31 +301,14 @@
     "--ref",
     "D0",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
-    "scores.jsonl"
-   ]
-  },
-  {
-   "name": "score_Dm_0p1",
-   "light": true,
-   "after": "Dm_0p1",
-   "cmd": [
-    "timeout",
-    "900",
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/Dm_0p1",
-    "--in",
-    "/content/chat/upload/a31_early_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
     "scores.jsonl"
    ]
   },
@@ -408,7 +394,11 @@
     "--ref",
     "D0",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -432,7 +422,11 @@
     "--ref",
     "D0",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -456,31 +450,14 @@
     "--ref",
     "D0",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
-    "scores.jsonl"
-   ]
-  },
-  {
-   "name": "score_Dm_0p3",
-   "light": true,
-   "after": "Dm_0p3",
-   "cmd": [
-    "timeout",
-    "900",
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/Dm_0p3",
-    "--in",
-    "/content/chat/upload/a31_early_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
     "scores.jsonl"
    ]
   },
@@ -566,7 +543,11 @@
     "--ref",
     "D0",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -590,7 +571,11 @@
     "--ref",
     "D0",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -614,31 +599,14 @@
     "--ref",
     "D0",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
-    "scores.jsonl"
-   ]
-  },
-  {
-   "name": "score_Dm_1p0",
-   "light": true,
-   "after": "Dm_1p0",
-   "cmd": [
-    "timeout",
-    "900",
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/Dm_1p0",
-    "--in",
-    "/content/chat/upload/a31_early_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
     "scores.jsonl"
    ]
   },
@@ -724,7 +692,11 @@
     "--ref",
     "D0",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -748,7 +720,11 @@
     "--ref",
     "D0",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -772,31 +748,14 @@
     "--ref",
     "D0",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
-    "scores.jsonl"
-   ]
-  },
-  {
-   "name": "score_Dn_0p1",
-   "light": true,
-   "after": "Dn_0p1",
-   "cmd": [
-    "timeout",
-    "900",
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/Dn_0p1",
-    "--in",
-    "/content/chat/upload/a31_early_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
     "scores.jsonl"
    ]
   },
@@ -882,7 +841,11 @@
     "--ref",
     "D0",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -906,7 +869,11 @@
     "--ref",
     "D0",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -930,31 +897,14 @@
     "--ref",
     "D0",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
-    "scores.jsonl"
-   ]
-  },
-  {
-   "name": "score_Dn_0p3",
-   "light": true,
-   "after": "Dn_0p3",
-   "cmd": [
-    "timeout",
-    "900",
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/Dn_0p3",
-    "--in",
-    "/content/chat/upload/a31_early_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
     "scores.jsonl"
    ]
   },
@@ -1040,7 +990,11 @@
     "--ref",
     "D0",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -1064,7 +1018,11 @@
     "--ref",
     "D0",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -1088,96 +1046,14 @@
     "--ref",
     "D0",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
-    "scores.jsonl"
-   ]
-  },
-  {
-   "name": "score_Dn_1p0",
-   "light": true,
-   "after": "Dn_1p0",
-   "cmd": [
-    "timeout",
-    "900",
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/Dn_1p0",
-    "--in",
-    "/content/chat/upload/a31_early_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
-    "scores.jsonl"
-   ]
-  },
-  {
-   "name": "select",
-   "after_terminal": true,
-   "after": [
-    "D0",
-    "Dm_0p1",
-    "Dm_0p3",
-    "Dm_1p0",
-    "Dn_0p1",
-    "Dn_0p3",
-    "Dn_1p0",
-    "score_D0",
-    "score_Dm_0p1",
-    "score_Dm_0p3",
-    "score_Dm_1p0",
-    "score_Dn_0p1",
-    "score_Dn_0p3",
-    "score_Dn_1p0",
-    "early_D0_128",
-    "early_D0_256",
-    "early_D0_512",
-    "early_Dm_0p1_128",
-    "early_Dm_0p1_256",
-    "early_Dm_0p1_512",
-    "early_Dm_0p3_128",
-    "early_Dm_0p3_256",
-    "early_Dm_0p3_512",
-    "early_Dm_1p0_128",
-    "early_Dm_1p0_256",
-    "early_Dm_1p0_512",
-    "early_Dn_0p1_128",
-    "early_Dn_0p1_256",
-    "early_Dn_0p1_512",
-    "early_Dn_0p3_128",
-    "early_Dn_0p3_256",
-    "early_Dn_0p3_512",
-    "early_Dn_1p0_128",
-    "early_Dn_1p0_256",
-    "early_Dn_1p0_512"
-   ],
-   "cmd": [
-    "python3",
-    "tools/colab_chat/a31_select.py",
-    "--chat",
-    "/content/chat",
-    "--out",
-    "{out}"
-   ],
-   "outputs": [
-    "decisions.json"
-   ]
-  },
-  {
-   "name": "score_S71",
-   "light": true,
-   "after": "select",
-   "cmd": [
-    "bash",
-    "-c",
-    "mkdir -p {out}/m && ln -sf {upload}/s71.safetensors {out}/m/screen_S71.safetensors && cp {upload}/s71_spec.json {out}/m/spec.json && timeout 900 /content/pk/build_cuda/mtstudio score {out}/m --in /content/chat/upload/a31_readout_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192"
-   ],
-   "outputs": [
     "scores.jsonl"
    ]
   },
@@ -1257,7 +1133,11 @@
     "--ref",
     "P_1",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -1281,7 +1161,11 @@
     "--ref",
     "P_1",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -1305,34 +1189,14 @@
     "--ref",
     "P_1",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
-    "scores.jsonl"
-   ]
-  },
-  {
-   "name": "score_P_1",
-   "light": true,
-   "after": [
-    "P_1",
-    "select"
-   ],
-   "cmd": [
-    "timeout",
-    "900",
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/P_1",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
     "scores.jsonl"
    ]
   },
@@ -1412,7 +1276,11 @@
     "--ref",
     "P_50",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -1436,7 +1304,11 @@
     "--ref",
     "P_50",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -1460,34 +1332,14 @@
     "--ref",
     "P_50",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
-    "scores.jsonl"
-   ]
-  },
-  {
-   "name": "score_P_50",
-   "light": true,
-   "after": [
-    "P_50",
-    "select"
-   ],
-   "cmd": [
-    "timeout",
-    "900",
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/P_50",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
     "scores.jsonl"
    ]
   },
@@ -1584,7 +1436,11 @@
     "--ref",
     "P_1",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -1608,7 +1464,11 @@
     "--ref",
     "P_1",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -1632,31 +1492,14 @@
     "--ref",
     "P_1",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
-    "scores.jsonl"
-   ]
-  },
-  {
-   "name": "score_M_1_0p1",
-   "light": true,
-   "after": "M_1_0p1",
-   "cmd": [
-    "timeout",
-    "900",
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/M_1_0p1",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
     "scores.jsonl"
    ]
   },
@@ -1753,7 +1596,11 @@
     "--ref",
     "P_1",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -1777,7 +1624,11 @@
     "--ref",
     "P_1",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -1801,31 +1652,14 @@
     "--ref",
     "P_1",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
-    "scores.jsonl"
-   ]
-  },
-  {
-   "name": "score_N_1_0p1",
-   "light": true,
-   "after": "N_1_0p1",
-   "cmd": [
-    "timeout",
-    "900",
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/N_1_0p1",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
     "scores.jsonl"
    ]
   },
@@ -1922,7 +1756,11 @@
     "--ref",
     "P_1",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -1946,7 +1784,11 @@
     "--ref",
     "P_1",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -1970,31 +1812,14 @@
     "--ref",
     "P_1",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
-    "scores.jsonl"
-   ]
-  },
-  {
-   "name": "score_M_1_0p3",
-   "light": true,
-   "after": "M_1_0p3",
-   "cmd": [
-    "timeout",
-    "900",
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/M_1_0p3",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
     "scores.jsonl"
    ]
   },
@@ -2091,7 +1916,11 @@
     "--ref",
     "P_1",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -2115,7 +1944,11 @@
     "--ref",
     "P_1",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -2139,31 +1972,14 @@
     "--ref",
     "P_1",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
-    "scores.jsonl"
-   ]
-  },
-  {
-   "name": "score_N_1_0p3",
-   "light": true,
-   "after": "N_1_0p3",
-   "cmd": [
-    "timeout",
-    "900",
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/N_1_0p3",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
     "scores.jsonl"
    ]
   },
@@ -2260,7 +2076,11 @@
     "--ref",
     "P_1",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -2284,7 +2104,11 @@
     "--ref",
     "P_1",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -2308,31 +2132,14 @@
     "--ref",
     "P_1",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
-    "scores.jsonl"
-   ]
-  },
-  {
-   "name": "score_M_1_1p0",
-   "light": true,
-   "after": "M_1_1p0",
-   "cmd": [
-    "timeout",
-    "900",
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/M_1_1p0",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
     "scores.jsonl"
    ]
   },
@@ -2429,7 +2236,11 @@
     "--ref",
     "P_1",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -2453,7 +2264,11 @@
     "--ref",
     "P_1",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -2477,31 +2292,14 @@
     "--ref",
     "P_1",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
-    "scores.jsonl"
-   ]
-  },
-  {
-   "name": "score_N_1_1p0",
-   "light": true,
-   "after": "N_1_1p0",
-   "cmd": [
-    "timeout",
-    "900",
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/N_1_1p0",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
     "scores.jsonl"
    ]
   },
@@ -2598,7 +2396,11 @@
     "--ref",
     "P_50",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -2622,7 +2424,11 @@
     "--ref",
     "P_50",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -2646,31 +2452,14 @@
     "--ref",
     "P_50",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
-    "scores.jsonl"
-   ]
-  },
-  {
-   "name": "score_M_50_0p1",
-   "light": true,
-   "after": "M_50_0p1",
-   "cmd": [
-    "timeout",
-    "900",
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/M_50_0p1",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
     "scores.jsonl"
    ]
   },
@@ -2767,7 +2556,11 @@
     "--ref",
     "P_50",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -2791,7 +2584,11 @@
     "--ref",
     "P_50",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -2815,31 +2612,14 @@
     "--ref",
     "P_50",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
-    "scores.jsonl"
-   ]
-  },
-  {
-   "name": "score_N_50_0p1",
-   "light": true,
-   "after": "N_50_0p1",
-   "cmd": [
-    "timeout",
-    "900",
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/N_50_0p1",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
     "scores.jsonl"
    ]
   },
@@ -2936,7 +2716,11 @@
     "--ref",
     "P_50",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -2960,7 +2744,11 @@
     "--ref",
     "P_50",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -2984,31 +2772,14 @@
     "--ref",
     "P_50",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
-    "scores.jsonl"
-   ]
-  },
-  {
-   "name": "score_M_50_0p3",
-   "light": true,
-   "after": "M_50_0p3",
-   "cmd": [
-    "timeout",
-    "900",
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/M_50_0p3",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
     "scores.jsonl"
    ]
   },
@@ -3105,7 +2876,11 @@
     "--ref",
     "P_50",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -3129,7 +2904,11 @@
     "--ref",
     "P_50",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -3153,31 +2932,14 @@
     "--ref",
     "P_50",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
-    "scores.jsonl"
-   ]
-  },
-  {
-   "name": "score_N_50_0p3",
-   "light": true,
-   "after": "N_50_0p3",
-   "cmd": [
-    "timeout",
-    "900",
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/N_50_0p3",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
     "scores.jsonl"
    ]
   },
@@ -3274,7 +3036,11 @@
     "--ref",
     "P_50",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -3298,7 +3064,11 @@
     "--ref",
     "P_50",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -3322,31 +3092,14 @@
     "--ref",
     "P_50",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
-    "scores.jsonl"
-   ]
-  },
-  {
-   "name": "score_M_50_1p0",
-   "light": true,
-   "after": "M_50_1p0",
-   "cmd": [
-    "timeout",
-    "900",
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/M_50_1p0",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
     "scores.jsonl"
    ]
   },
@@ -3443,7 +3196,11 @@
     "--ref",
     "P_50",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -3467,7 +3224,11 @@
     "--ref",
     "P_50",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -3491,7 +3252,11 @@
     "--ref",
     "P_50",
     "--out",
-    "{out}"
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio"
    ],
    "outputs": [
     "early.json",
@@ -3499,24 +3264,373 @@
    ]
   },
   {
+   "name": "select",
+   "light": true,
+   "after_terminal": true,
+   "after": [
+    "D0",
+    "Dm_0p1",
+    "Dm_0p3",
+    "Dm_1p0",
+    "Dn_0p1",
+    "Dn_0p3",
+    "Dn_1p0",
+    "score_D0",
+    "score_Dm_0p1",
+    "score_Dm_0p3",
+    "score_Dm_1p0",
+    "score_Dn_0p1",
+    "score_Dn_0p3",
+    "score_Dn_1p0",
+    "early_D0_128",
+    "early_D0_256",
+    "early_D0_512",
+    "early_Dm_0p1_128",
+    "early_Dm_0p1_256",
+    "early_Dm_0p1_512",
+    "early_Dm_0p3_128",
+    "early_Dm_0p3_256",
+    "early_Dm_0p3_512",
+    "early_Dm_1p0_128",
+    "early_Dm_1p0_256",
+    "early_Dm_1p0_512",
+    "early_Dn_0p1_128",
+    "early_Dn_0p1_256",
+    "early_Dn_0p1_512",
+    "early_Dn_0p3_128",
+    "early_Dn_0p3_256",
+    "early_Dn_0p3_512",
+    "early_Dn_1p0_128",
+    "early_Dn_1p0_256",
+    "early_Dn_1p0_512"
+   ],
+   "cmd": [
+    "python3",
+    "tools/colab_chat/a31_select.py",
+    "--chat",
+    "/content/chat",
+    "--out",
+    "{out}"
+   ],
+   "outputs": [
+    "decisions.json"
+   ]
+  },
+  {
+   "name": "score_D0",
+   "light": true,
+   "after": "D0",
+   "cmd": [
+    "bash",
+    "-c",
+    "python3 tools/colab_chat/a31_bind.py --weights /content/chat/D0/D0.safetensors --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/D0/spec.json --out {out}/score.json && timeout 2400 /content/pk/build_cuda/mtstudio score /content/chat/D0 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_Dm_0p1",
+   "light": true,
+   "after": "Dm_0p1",
+   "cmd": [
+    "bash",
+    "-c",
+    "python3 tools/colab_chat/a31_bind.py --weights /content/chat/Dm_0p1/Dm_0p1.safetensors --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/Dm_0p1/spec.json --out {out}/score.json && timeout 2400 /content/pk/build_cuda/mtstudio score /content/chat/Dm_0p1 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_Dm_0p3",
+   "light": true,
+   "after": "Dm_0p3",
+   "cmd": [
+    "bash",
+    "-c",
+    "python3 tools/colab_chat/a31_bind.py --weights /content/chat/Dm_0p3/Dm_0p3.safetensors --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/Dm_0p3/spec.json --out {out}/score.json && timeout 2400 /content/pk/build_cuda/mtstudio score /content/chat/Dm_0p3 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_Dm_1p0",
+   "light": true,
+   "after": "Dm_1p0",
+   "cmd": [
+    "bash",
+    "-c",
+    "python3 tools/colab_chat/a31_bind.py --weights /content/chat/Dm_1p0/Dm_1p0.safetensors --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/Dm_1p0/spec.json --out {out}/score.json && timeout 2400 /content/pk/build_cuda/mtstudio score /content/chat/Dm_1p0 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_Dn_0p1",
+   "light": true,
+   "after": "Dn_0p1",
+   "cmd": [
+    "bash",
+    "-c",
+    "python3 tools/colab_chat/a31_bind.py --weights /content/chat/Dn_0p1/Dn_0p1.safetensors --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/Dn_0p1/spec.json --out {out}/score.json && timeout 2400 /content/pk/build_cuda/mtstudio score /content/chat/Dn_0p1 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_Dn_0p3",
+   "light": true,
+   "after": "Dn_0p3",
+   "cmd": [
+    "bash",
+    "-c",
+    "python3 tools/colab_chat/a31_bind.py --weights /content/chat/Dn_0p3/Dn_0p3.safetensors --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/Dn_0p3/spec.json --out {out}/score.json && timeout 2400 /content/pk/build_cuda/mtstudio score /content/chat/Dn_0p3 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_Dn_1p0",
+   "light": true,
+   "after": "Dn_1p0",
+   "cmd": [
+    "bash",
+    "-c",
+    "python3 tools/colab_chat/a31_bind.py --weights /content/chat/Dn_1p0/Dn_1p0.safetensors --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/Dn_1p0/spec.json --out {out}/score.json && timeout 2400 /content/pk/build_cuda/mtstudio score /content/chat/Dn_1p0 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_P_1",
+   "light": true,
+   "after": [
+    "P_1",
+    "select"
+   ],
+   "cmd": [
+    "bash",
+    "-c",
+    "python3 tools/colab_chat/a31_bind.py --weights /content/chat/P_1/P_1.safetensors --requests /content/chat/upload/a31_readout_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/P_1/spec.json --out {out}/score.json && timeout 2400 /content/pk/build_cuda/mtstudio score /content/chat/P_1 --in /content/chat/upload/a31_readout_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_P_50",
+   "light": true,
+   "after": [
+    "P_50",
+    "select"
+   ],
+   "cmd": [
+    "bash",
+    "-c",
+    "python3 tools/colab_chat/a31_bind.py --weights /content/chat/P_50/P_50.safetensors --requests /content/chat/upload/a31_readout_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/P_50/spec.json --out {out}/score.json && timeout 2400 /content/pk/build_cuda/mtstudio score /content/chat/P_50 --in /content/chat/upload/a31_readout_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_M_1_0p1",
+   "light": true,
+   "after": "M_1_0p1",
+   "cmd": [
+    "bash",
+    "-c",
+    "python3 tools/colab_chat/a31_bind.py --weights /content/chat/M_1_0p1/M_1_0p1.safetensors --requests /content/chat/upload/a31_readout_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/M_1_0p1/spec.json --out {out}/score.json && timeout 2400 /content/pk/build_cuda/mtstudio score /content/chat/M_1_0p1 --in /content/chat/upload/a31_readout_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_N_1_0p1",
+   "light": true,
+   "after": "N_1_0p1",
+   "cmd": [
+    "bash",
+    "-c",
+    "python3 tools/colab_chat/a31_bind.py --weights /content/chat/N_1_0p1/N_1_0p1.safetensors --requests /content/chat/upload/a31_readout_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/N_1_0p1/spec.json --out {out}/score.json && timeout 2400 /content/pk/build_cuda/mtstudio score /content/chat/N_1_0p1 --in /content/chat/upload/a31_readout_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_M_1_0p3",
+   "light": true,
+   "after": "M_1_0p3",
+   "cmd": [
+    "bash",
+    "-c",
+    "python3 tools/colab_chat/a31_bind.py --weights /content/chat/M_1_0p3/M_1_0p3.safetensors --requests /content/chat/upload/a31_readout_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/M_1_0p3/spec.json --out {out}/score.json && timeout 2400 /content/pk/build_cuda/mtstudio score /content/chat/M_1_0p3 --in /content/chat/upload/a31_readout_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_N_1_0p3",
+   "light": true,
+   "after": "N_1_0p3",
+   "cmd": [
+    "bash",
+    "-c",
+    "python3 tools/colab_chat/a31_bind.py --weights /content/chat/N_1_0p3/N_1_0p3.safetensors --requests /content/chat/upload/a31_readout_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/N_1_0p3/spec.json --out {out}/score.json && timeout 2400 /content/pk/build_cuda/mtstudio score /content/chat/N_1_0p3 --in /content/chat/upload/a31_readout_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_M_1_1p0",
+   "light": true,
+   "after": "M_1_1p0",
+   "cmd": [
+    "bash",
+    "-c",
+    "python3 tools/colab_chat/a31_bind.py --weights /content/chat/M_1_1p0/M_1_1p0.safetensors --requests /content/chat/upload/a31_readout_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/M_1_1p0/spec.json --out {out}/score.json && timeout 2400 /content/pk/build_cuda/mtstudio score /content/chat/M_1_1p0 --in /content/chat/upload/a31_readout_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_N_1_1p0",
+   "light": true,
+   "after": "N_1_1p0",
+   "cmd": [
+    "bash",
+    "-c",
+    "python3 tools/colab_chat/a31_bind.py --weights /content/chat/N_1_1p0/N_1_1p0.safetensors --requests /content/chat/upload/a31_readout_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/N_1_1p0/spec.json --out {out}/score.json && timeout 2400 /content/pk/build_cuda/mtstudio score /content/chat/N_1_1p0 --in /content/chat/upload/a31_readout_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_M_50_0p1",
+   "light": true,
+   "after": "M_50_0p1",
+   "cmd": [
+    "bash",
+    "-c",
+    "python3 tools/colab_chat/a31_bind.py --weights /content/chat/M_50_0p1/M_50_0p1.safetensors --requests /content/chat/upload/a31_readout_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/M_50_0p1/spec.json --out {out}/score.json && timeout 2400 /content/pk/build_cuda/mtstudio score /content/chat/M_50_0p1 --in /content/chat/upload/a31_readout_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_N_50_0p1",
+   "light": true,
+   "after": "N_50_0p1",
+   "cmd": [
+    "bash",
+    "-c",
+    "python3 tools/colab_chat/a31_bind.py --weights /content/chat/N_50_0p1/N_50_0p1.safetensors --requests /content/chat/upload/a31_readout_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/N_50_0p1/spec.json --out {out}/score.json && timeout 2400 /content/pk/build_cuda/mtstudio score /content/chat/N_50_0p1 --in /content/chat/upload/a31_readout_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_M_50_0p3",
+   "light": true,
+   "after": "M_50_0p3",
+   "cmd": [
+    "bash",
+    "-c",
+    "python3 tools/colab_chat/a31_bind.py --weights /content/chat/M_50_0p3/M_50_0p3.safetensors --requests /content/chat/upload/a31_readout_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/M_50_0p3/spec.json --out {out}/score.json && timeout 2400 /content/pk/build_cuda/mtstudio score /content/chat/M_50_0p3 --in /content/chat/upload/a31_readout_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_N_50_0p3",
+   "light": true,
+   "after": "N_50_0p3",
+   "cmd": [
+    "bash",
+    "-c",
+    "python3 tools/colab_chat/a31_bind.py --weights /content/chat/N_50_0p3/N_50_0p3.safetensors --requests /content/chat/upload/a31_readout_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/N_50_0p3/spec.json --out {out}/score.json && timeout 2400 /content/pk/build_cuda/mtstudio score /content/chat/N_50_0p3 --in /content/chat/upload/a31_readout_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_M_50_1p0",
+   "light": true,
+   "after": "M_50_1p0",
+   "cmd": [
+    "bash",
+    "-c",
+    "python3 tools/colab_chat/a31_bind.py --weights /content/chat/M_50_1p0/M_50_1p0.safetensors --requests /content/chat/upload/a31_readout_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/M_50_1p0/spec.json --out {out}/score.json && timeout 2400 /content/pk/build_cuda/mtstudio score /content/chat/M_50_1p0 --in /content/chat/upload/a31_readout_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
    "name": "score_N_50_1p0",
    "light": true,
    "after": "N_50_1p0",
    "cmd": [
-    "timeout",
-    "900",
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/N_50_1p0",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
+    "bash",
+    "-c",
+    "python3 tools/colab_chat/a31_bind.py --weights /content/chat/N_50_1p0/N_50_1p0.safetensors --requests /content/chat/upload/a31_readout_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/N_50_1p0/spec.json --out {out}/score.json && timeout 2400 /content/pk/build_cuda/mtstudio score /content/chat/N_50_1p0 --in /content/chat/upload/a31_readout_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192"
    ],
    "outputs": [
-    "scores.jsonl"
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_S71",
+   "light": true,
+   "after": [
+    "gate",
+    "select"
+   ],
+   "cmd": [
+    "bash",
+    "-c",
+    "mkdir -p {out}/m && ln -sf {upload}/s71.safetensors {out}/m/screen_S71.safetensors && cp {upload}/s71_spec.json {out}/m/spec.json && python3 tools/colab_chat/a31_bind.py --weights {upload}/s71.safetensors --requests /content/chat/upload/a31_readout_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec {out}/m/spec.json --out {out}/score.json && timeout 2400 /content/pk/build_cuda/mtstudio score {out}/m --in /content/chat/upload/a31_readout_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
    ]
   }
  ]

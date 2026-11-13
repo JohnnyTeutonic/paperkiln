@@ -29,6 +29,7 @@ OUT = os.path.join(HERE, "a31_cue.json")
 U = "/content/chat/upload"
 C = "/content/chat"
 BIN = "/content/pk/build_cuda/mtstudio"
+DEVICE_TEST = "/content/pk/build_cuda/test_twin_device"
 
 SEEDS = (1, 50)        # seed 50 shares no initialisation draw with seed 1 (adjacent seeds overlap); SFT order streams are distinct
 DEV_SEED = 99
@@ -67,7 +68,7 @@ def lname(lam):
 def early_jobs(name, ref):
     """The early readouts of one training job (a31_early.py), each a rung job on its snapshot."""
     return [{"name": f"early_{name}_{s}", "light": True, "rung_of": {"job": name, "step": s},
-             "cmd": ["python3", "tools/colab_chat/a31_early.py", "--job", name, "--step", str(s), "--ref", ref, "--out", "{out}"],
+             "cmd": ["python3", "tools/colab_chat/a31_early.py", "--job", name, "--step", str(s), "--ref", ref, "--out", "{out}", "--chat", C, "--bin", BIN],
              "outputs": ["early.json", "scores.jsonl"]} for s in EARLY]
 
 
@@ -79,48 +80,66 @@ def train_job(name, s, promoted=None):
     return j
 
 
+SCORE_TIMEOUT = "2400"
+
+
 def score_job(name, req, after):
+    """`mtstudio score` of a job's final weights; the weights' and the request file's sha256 and the binary's are written beside the
+    scores (score.json), so the scorer at home can bind each score file to its model, requests and executable."""
+    bind = (f"python3 tools/colab_chat/a31_bind.py --weights {C}/{name}/{name}.safetensors --requests {req} --bin {BIN} "
+            f"--spec {C}/{name}/spec.json --out {{out}}/score.json")
     return {"name": f"score_{name}", "light": True, "after": after,
-            "cmd": ["timeout", "900", BIN, "score", f"{C}/{name}", "--in", req, "--out", "{out}/scores.jsonl", "--batch-tokens", "8192"],
-            "outputs": ["scores.jsonl"]}
+            "cmd": ["bash", "-c", f"{bind} && timeout {SCORE_TIMEOUT} {BIN} score {C}/{name} --in {req} --out {{out}}/scores.jsonl "
+                    "--batch-tokens 8192"],
+            "outputs": ["scores.jsonl", "score.json"]}
 
 
 def render():
-    jobs = [{"name": "gate", "cmd": ["python3", "tools/colab_chat/a31_gate.py", "--out", "{out}", "--spec", f"{U}/a31_gate_spec.json"],
+    jobs = [{"name": "gate", "cmd": ["python3", "tools/colab_chat/a31_gate.py", "--out", "{out}", "--spec", f"{U}/a31_gate_spec.json", "--bin", BIN, "--device-test", DEVICE_TEST],
              "outputs": ["gate.json"]}]
     dev = [("D0", spec(DEV_SEED, dev=True))]
     dev += [(f"Dm_{lname(x)}", spec(DEV_SEED, x, 0.0, dev=True)) for x in GRID]
     dev += [(f"Dn_{lname(x)}", spec(DEV_SEED, x, x, dev=True)) for x in GRID]
-    for n, s in dev:   # early readouts are listed before the scoring, so they take the light slots first
-        jobs += [train_job(n, s)] + early_jobs(n, "D0") + [score_job(n, EARLY_REQ, n)]
-    jobs.append({"name": "select", "after_terminal": True,
-                 "after": [n for n, _ in dev] + [f"score_{n}" for n, _ in dev] + [f"early_{n}_{s}" for n, _ in dev for s in EARLY],
-                 "cmd": ["python3", "tools/colab_chat/a31_select.py", "--chat", C, "--out", "{out}"],
-                 "outputs": ["decisions.json"]})
-    # S71 itself on every final readout request: the reference level (reported, not judged), after the selection is sealed
-    jobs.append({"name": "score_S71", "light": True, "after": "select",
-                 "cmd": ["bash", "-c", "mkdir -p {out}/m && ln -sf {upload}/s71.safetensors {out}/m/screen_S71.safetensors && "
-                         "cp {upload}/s71_spec.json {out}/m/spec.json && timeout 900 " + BIN + " score {out}/m --in " + FINAL_REQ +
-                         " --out {out}/scores.jsonl --batch-tokens 8192"],
-                 "outputs": ["scores.jsonl"]})
+    # Light jobs start in list order, so every early readout is listed before any scoring job (round-2 reviews, 13 Nov 2026)
+    scores = []
+    for n, s in dev:
+        jobs += [train_job(n, s)] + early_jobs(n, "D0")
+        scores.append(score_job(n, EARLY_REQ, n))
+    sel = {"name": "select", "light": True, "after_terminal": True,
+           "after": [n for n, _ in dev] + [f"score_{n}" for n, _ in dev] + [f"early_{n}_{s}" for n, _ in dev for s in EARLY],
+           "cmd": ["python3", "tools/colab_chat/a31_select.py", "--chat", C, "--out", "{out}"],
+           "outputs": ["decisions.json"]}
     for sd in SEEDS:
         n = f"P_{sd}"
-        jobs += [train_job(n, spec(sd))] + early_jobs(n, n) + [score_job(n, FINAL_REQ, [n, "select"])]
+        jobs += [train_job(n, spec(sd))] + early_jobs(n, n)
+        scores.append(score_job(n, FINAL_REQ, [n, "select"]))
     for sd in SEEDS:
         for x in GRID:
             for arm, mu in (("M", 0.0), ("N", x)):
                 n = f"{arm}_{sd}_{lname(x)}"
-                jobs += [train_job(n, spec(sd, x, mu), f"{arm}_{lname(x)}")] + early_jobs(n, f"P_{sd}") + [score_job(n, FINAL_REQ, n)]
+                jobs += [train_job(n, spec(sd, x, mu), f"{arm}_{lname(x)}")] + early_jobs(n, f"P_{sd}")
+                scores.append(score_job(n, FINAL_REQ, n))
+    # S71 itself on every final readout request: the reference level (reported, not judged), after the selection is sealed
+    s71 = {"name": "score_S71", "light": True, "after": ["gate", "select"],
+           "cmd": ["bash", "-c", "mkdir -p {out}/m && ln -sf {upload}/s71.safetensors {out}/m/screen_S71.safetensors && "
+                   "cp {upload}/s71_spec.json {out}/m/spec.json && python3 tools/colab_chat/a31_bind.py --weights {upload}/s71.safetensors "
+                   f"--requests {FINAL_REQ} --bin {BIN} --spec {{out}}/m/spec.json --out {{out}}/score.json && timeout {SCORE_TIMEOUT} "
+                   f"{BIN} score {{out}}/m --in {FINAL_REQ} --out {{out}}/scores.jsonl --batch-tokens 8192"],
+           "outputs": ["scores.jsonl", "score.json"]}
+    jobs += [sel] + scores + [s71]
     return {"_comment": "A31 (lane PROTOCOL.md section 50), rendered by tools/colab_chat/a31_jobs.py; edit that file, not this one.",
             "max_parallel": 1, "max_parallel_light": 2, "jobs": jobs}
 
 
 def gate_spec():
-    """The gate's spec: S71's, at batch 2, two steps at the full learning rate from step 1, a twin loss on two groups at weight 1."""
+    """The gate's spec: S71's, at batch 1, two steps at the full learning rate from step 1, a twin loss on two groups at weight 1."""
     s = spec(1, 1.0, 1.0)
-    s["train"].update({"batch": 2, "steps": 2, "eval_every": 1000, "checkpoint_every": 1000, "eval_examples": 4})   # a short final eval
+    # batch 1, a one-example final eval and 16 short twins (a31_gate_twins.jsonl): its CPU runs fit their timeout
+    s["train"].update({"batch": 1, "steps": 2, "eval_every": 1000, "checkpoint_every": 1000, "eval_examples": 1})
+    s["data"]["twin_examples"] = f"{U}/a31_gate_twins.jsonl"
     s["train"]["lr_schedule"] = {"warmup_steps": 0, "decay": "none", "min_lr_frac": 0.1}
     s["train"]["twin_loss"]["groups"] = 2
+    s["name"] = "a31_gate"
     s["export"] = {"formats": ["safetensors"]}
     return s
 

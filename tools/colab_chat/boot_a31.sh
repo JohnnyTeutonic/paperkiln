@@ -17,13 +17,26 @@ nvidia-smi -L || true
 nproc; free -g | head -2
 CAP=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader | head -1 | tr -d ' .')
 echo "compute capability $CAP"
-if [ ! -x /content/pk/build_cuda/mtstudio ] || [ "$(git -C /content/pk rev-parse HEAD 2>/dev/null)" != "$COMMIT" ]; then
+if [ ! -x /content/pk/build_cuda/mtstudio ] || [ ! -x /content/pk/build_cuda/test_twin_device ] || [ "$(git -C /content/pk rev-parse HEAD 2>/dev/null)" != "$COMMIT" ]; then
   rm -rf /content/pk
   git clone -q https://github.com/JohnnyTeutonic/paperkiln.git /content/pk
   git -C /content/pk checkout -q "$COMMIT"
   mkdir -p /content/pk/build_cuda && cd /content/pk/build_cuda
   cmake .. -DCMAKE_BUILD_TYPE=Release -DMICROTORCH_CUDA=ON -DCUDA_ENABLED=ON -DCMAKE_CUDA_ARCHITECTURES="$CAP" > cmake.log 2>&1
-  timeout 3600 make -j"$(nproc)" mtstudio > make.log 2>&1 || { tail -30 make.log; echo BOOT_FAILED > /content/chat/STATUS; exit 1; }
+  timeout 3600 make -j"$(nproc)" mtstudio test_twin_device > make.log 2>&1 || { tail -30 make.log; echo BOOT_FAILED > /content/chat/STATUS; exit 1; }
+fi
+# A dead-man on the pod (A31 review, 13 Nov 2026): at the campaign's deadline plus 30 minutes the pod removes itself through
+# runpodctl when RunPod provides it and the pod's own credentials; otherwise this is logged, and the home runner, the watchdog's
+# sweep and the account's spend limit remain the bounds. The deadline arrives as an upload (a31_deadline.txt, epoch seconds).
+if [ -s /content/chat/upload/a31_deadline.txt ] && ! pgrep -f "[a]31_deadman" > /dev/null; then
+  DL=$(( $(cat /content/chat/upload/a31_deadline.txt) + 1800 ))
+  if command -v runpodctl > /dev/null && [ -n "${RUNPOD_POD_ID:-}" ]; then
+    nohup bash -c "exec -a a31_deadman bash -c 'while [ \$(date +%s) -lt $DL ]; do sleep 60; done; runpodctl remove pod $RUNPOD_POD_ID'" \
+      > /content/chat/deadman.log 2>&1 &
+    echo "dead-man set for $(date -u -d @$DL)"
+  else
+    echo "dead-man not available here (runpodctl or RUNPOD_POD_ID missing)"
+  fi
 fi
 cd /content/pk
 if [ "$(git rev-parse HEAD)" != "$COMMIT" ] || [ -n "$(git status --porcelain --untracked-files=no)" ]; then

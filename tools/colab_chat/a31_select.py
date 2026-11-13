@@ -46,7 +46,10 @@ def run_record(chat, run, R, man, trips):
         return rec
     for s in EARLY:
         p = os.path.join(chat, f"early_{run}_{s}", "early.json")
-        e = json.load(open(p)) if os.path.exists(p) else {}
+        if not os.path.exists(p):   # a health check that did not run is not a pass (round-2 reviews, 13 Nov 2026)
+            rec["why"] = f"no early readout at step {s}"
+            return rec
+        e = json.load(open(p))
         if e.get("health_stop") or e.get("health_unread"):
             rec["why"] = f"health at step {s}: {e.get('health_stop') or e.get('health_unread')}"
             return rec
@@ -68,6 +71,15 @@ def run_record(chat, run, R, man, trips):
     rec.update({"complete": True, "n": len(dev), "both_tok": sum(r["both_tok"] for r in dev) / len(dev),
                 "sel": sum(r["sel"] for r in dev) / len(dev)})
     return rec
+
+
+def safe_record(chat, run, R, man, trips):
+    """run_record, with any failure to read a run's files (missing or malformed logs, early readouts or scores) making that run
+    ineligible rather than ending the selection."""
+    try:
+        return run_record(chat, run, R, man, trips)
+    except Exception as e:  # noqa: BLE001
+        return {"complete": False, "why": f"unreadable: {type(e).__name__}: {e}"}
 
 
 def choose(table, key):
@@ -110,7 +122,7 @@ def main():
     man = json.load(open(os.path.join(up, "a31_early_req.manifest.json")))
     trips = {n: R.read_jsonl(os.path.join(up, f"a31_{n}_triplets.jsonl")) for n in man["sets"]}
     names = ["D0"] + [f"{p}_{lname(x)}" for p in ("Dm", "Dn") for x in GRID]
-    out = decide({r: run_record(a.chat, r, R, man, trips) for r in names})
+    out = decide({r: safe_record(a.chat, r, R, man, trips) for r in names})
     os.makedirs(a.out, exist_ok=True)
     tmp = os.path.join(a.out, "decisions.json.tmp")
     with open(tmp, "w") as f:

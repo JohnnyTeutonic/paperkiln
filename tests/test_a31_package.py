@@ -117,7 +117,8 @@ def test_every_training_job_has_its_early_readouts_first():
 
 def test_gate_spec_is_two_full_rate_steps():
     g = J.gate_spec()
-    assert g["train"]["steps"] == 2 and g["train"]["batch"] == 2 and g["train"]["twin_loss"]["groups"] == 2
+    assert g["train"]["steps"] == 2 and g["train"]["batch"] == 1 and g["train"]["twin_loss"]["groups"] == 2
+    assert g["data"]["twin_examples"].endswith("a31_gate_twins.jsonl") and g["train"]["eval_examples"] == 1
     assert g["train"]["lr_schedule"]["warmup_steps"] == 0 and g["train"]["twin_loss"]["mu"] > 0
 
 
@@ -240,9 +241,14 @@ def make_chat(tmp, R, runs_spec):
         if sp.get("short"):
             lines = lines[:-5]
         (tmp / f"score_{run}" / "scores.jsonl").write_text("\n".join(lines) + "\n")
-        if sp.get("health"):
-            (tmp / f"early_{run}_256").mkdir()
-            (tmp / f"early_{run}_256" / "early.json").write_text(json.dumps({"health_stop": "test"}))
+        for s in S.EARLY:
+            if sp.get("no_early") == s:
+                continue
+            (tmp / f"early_{run}_{s}").mkdir()
+            e = {"health_stop": "test"} if sp.get("health") and s == 256 else {}
+            (tmp / f"early_{run}_{s}" / "early.json").write_text(json.dumps(e))
+        if sp.get("bad_events"):
+            (tmp / run / "events.jsonl").write_text("{not json\n")
     return man
 
 
@@ -250,7 +256,7 @@ def records(tmp, R):
     man = json.load(open(tmp / "upload" / "a31_early_req.manifest.json"))
     trips = {n: R.read_jsonl(tmp / "upload" / f"a31_{n}_triplets.jsonl") for n in man["sets"]}
     names = ["D0"] + [f"{p}_{S.lname(x)}" for p in ("Dm", "Dn") for x in S.GRID]
-    return {r: S.run_record(str(tmp), r, R, man, trips) for r in names}
+    return {r: S.safe_record(str(tmp), r, R, man, trips) for r in names}
 
 
 def base_runs(**over):
@@ -280,6 +286,15 @@ def test_a_failed_or_stopped_sweep_run_is_ineligible_not_fatal(tmp_path, R):
     assert not recs["Dm_0p3"]["complete"] and "dev scores" in recs["Dm_0p3"]["why"]
     out = S.decide(recs)
     assert out["arms"]["M"]["chosen"] == 0.1 and out["arms"]["N"]["chosen"] == 0.3
+
+
+def test_a_missing_early_readout_or_unreadable_log_is_ineligible(tmp_path, R):
+    make_chat(tmp_path, R, base_runs(Dm_0p1={"no_early": 256}, Dn_0p1={"bad_events": True}))
+    recs = records(tmp_path, R)
+    assert not recs["Dm_0p1"]["complete"] and "no early readout at step 256" in recs["Dm_0p1"]["why"]
+    assert not recs["Dn_0p1"]["complete"] and "unreadable" in recs["Dn_0p1"]["why"]
+    out = S.decide(recs)                   # the selection still decides: the other candidates are read
+    assert out["arms"]["M"]["chosen"] == 0.3 and out["arms"]["N"]["chosen"] == 1.0
 
 
 def test_no_eligible_lambda_runs_no_arm(tmp_path, R):
@@ -351,3 +366,37 @@ def test_the_deadline_is_kept_across_restarts(tmp_path, monkeypatch):
     RM.main()
     assert json.load(open(state / "state.json"))["deadline_epoch"] == st["deadline_epoch"]
     assert created == [] and T.stopped == 2
+
+
+def test_health_is_unread_without_complete_evidence():
+    ref = [evl(256, 4.0)]
+    gap = [e for e in ev_steps(256) if e["step"] != 100] + [evl(256, 4.1)]
+    assert E.health(gap, ref, 256, False)[0] == "unread"                                  # a step missing
+    no_twin = ev_steps(256, twin=False) + [evl(256, 4.1)]
+    assert E.health(no_twin, ref, 256, False, twin=True)[0] == "unread"                   # a twin run without twin records
+    assert E.health(no_twin, ref, 256, False, twin=False)[0] == "ok"
+    twice = ev_steps(256) + ev_steps(200) + [evl(256, 4.1)]                              # a resumed run's repeated steps
+    assert E.health(twice, ref, 256, False, twin=True)[0] == "ok"
+
+
+def test_fetch_final_asks_for_a_gguf_only_when_the_spec_exports_one():
+    import runner_multi as RM
+    js = {j["name"]: j for j in J.render()["jobs"]}
+    assert not RM.wants_gguf(js["D0"]) and RM.wants_gguf(js["P_1"]) and RM.wants_gguf({"spec": {}})
+
+
+def test_a_final_exit_releases_the_storage(tmp_path, monkeypatch):
+    import importlib
+    import runner_multi as RM
+    importlib.reload(RM)
+    released = []
+    T = FakeT()
+    T.release = lambda st: released.append(1)
+    monkeypatch.setattr(RM, "make_transport", lambda a: T)
+    monkeypatch.setattr(RM, "launch", lambda *a, **k: True)
+    monkeypatch.setattr(RM, "listed", lambda: None)
+    monkeypatch.setattr(sys, "argv", ["runner_multi.py", "--commit", "x" * 40, "--jobs", "tools/colab_chat/a31_cue.json", "--name", "t",
+                                      "--art", str(tmp_path / "art"), "--state-dir", str(tmp_path / "s"), "--backend", "runpod",
+                                      "--deadline-utc", "2026-01-01T00:00:00Z"])
+    RM.main()
+    assert released == [1]      # past the deadline nothing can resume here, so the volume is not left billing

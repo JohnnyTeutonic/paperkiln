@@ -396,11 +396,18 @@ def relay(st, name, every=0):
     return True
 
 
-def fetch_final(st, name, model_name):
+def wants_gguf(job):
+    """Whether a training job exports a GGUF (A31, 13 Nov 2026: a safetensors-only export must still come home). A spec that
+    names no export formats keeps the old behaviour (the GGUF is fetched)."""
+    fm = ((job.get("spec") or {}).get("export") or {}).get("formats")
+    return fm is None or any(f == "gguf" for f in fm)
+
+
+def fetch_final(st, name, model_name, gguf=True):
     art = os.path.join(ART, name)
     os.makedirs(art, exist_ok=True)
     ok = True
-    for f in (f"{name}/{model_name}.safetensors", f"{name}/{model_name}.gguf", f"{name}/events.jsonl",
+    for f in (f"{name}/{model_name}.safetensors", *([f"{name}/{model_name}.gguf"] if gguf else []), f"{name}/events.jsonl",
               f"{name}/result.json", f"{name}_spec.json", f"{name}_train.log"):
         ok = ok and download_file(f"/content/chat/{f}", os.path.join(art, os.path.basename(f))) == 0
     # Optional extra exports (e.g. q8_0_all) are fetched best-effort.
@@ -1202,7 +1209,7 @@ def main():
                     if "cmd" in j:
                         fetch_outputs(st, n, j.get("outputs", []))
                     else:
-                        fetch_final(st, n, j.get("model_name", n))
+                        fetch_final(st, n, j.get("model_name", n), wants_gguf(j))
                 # FAILED counts only when seen on two ticks running: a status
                 # read mid-reset (a job being restarted by hand) is not final.
                 js["failed_seen"] = js.get("failed_seen", 0) + 1 if r[n] == "FAILED" else 0
@@ -1226,7 +1233,11 @@ def main():
             time.sleep(TICK)
     finally:
         T.stop(st)
-        if st.d.get("campaign_home"):
+        # A31: the campaign's storage is released when it is home, and also when it can never resume here: past its deadline,
+        # over budget, or after a failed boot or job manager (a restart would create nothing, so the volume would only bill)
+        final = time.time() >= deadline or bool(T.over_budget(st)) or st.d.get("manager_failed") or \
+            st.d.get("boot_failed_commit") == a.commit
+        if st.d.get("campaign_home") or (final and a.backend != "colab"):
             T.release(st)
         log("session stopped; runner exiting")
         os.remove(pid)
