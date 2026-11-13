@@ -29,7 +29,8 @@ CATALOG = "https://api.runpod.io/v2/catalog/datacenters"
 KEY_PATH = os.path.expanduser(os.environ.get("RUNPOD_KEY_PATH", "~/.runpod/api_key"))
 MAX_PODS = 10         # account-wide, every create: a runaway guard, not a budget (Jonathan sets no RunPod pod limit)
 MIN_BALANCE = 15.0    # dollars; no create below it
-GPU_IDS = {"L4": "NVIDIA L4", "T4": "Tesla T4", "A100": "NVIDIA A100 80GB PCIe", "4090": "NVIDIA GeForce RTX 4090"}
+GPU_IDS = {"L4": "NVIDIA L4", "T4": "Tesla T4", "A100": "NVIDIA A100 80GB PCIe", "4090": "NVIDIA GeForce RTX 4090",
+           "A40": "NVIDIA A40", "L40S": "NVIDIA L40S", "A5000": "NVIDIA RTX A5000"}  # the last three: A31 (13 Nov 2026)
 
 
 class RunPodError(RuntimeError):
