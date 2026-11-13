@@ -1,4 +1,4 @@
-"""mtstudio `train.twin_loss` (lane amendment A30, include/microtorch/posttrain/twin.hpp) end to end on CPU.
+"""mtstudio `train.twin_loss` (lane amendment A31, include/microtorch/posttrain/twin.hpp) end to end on CPU.
 Claude Opus 5.5, 13 Nov 2026. Wiring checks on a two-variable lookup, not a research claim:
 - the SFT batches are the plain spec's: step 1's SFT loss is bit-identical with and without the twin loss, and
   later steps differ (the twin gradient moved the weights);
@@ -93,6 +93,10 @@ def test_sft_batches_are_the_plain_specs(tmp):
     twin = steps(ev)
     assert plain[0]["loss"] == twin[0]["loss"]          # same weights, same SFT batch at step 1
     assert plain[1]["loss"] != twin[1]["loss"]          # the twin gradient moved the weights
+    # every step draws the same SFT rows with and without the twin term (A31 launch review, 13 Nov 2026)
+    assert len(plain) == len(twin) == 30
+    assert [e["sft_rows_hash"] for e in plain] == [e["sft_rows_hash"] for e in twin]
+    assert len({e["sft_rows_hash"] for e in plain}) > 1
     data = next(e for e in ev if e["event"] == "twin_data")
     assert data["groups"] == len(TRIPLETS) and data["rows_per_group"] == 5
     assert data["twin_loss"] == {"groups_per_step": 3, "margin": 1.0, "lambda": 0.5, "mu": pytest.approx(0.2)}
@@ -158,7 +162,7 @@ def test_resume_draws_the_same_groups(tmp):
 
 @needs_bin
 def test_state_tokens_rows_load(tmp):
-    # state ids are defined over the paperkiln/1 template, so a BPE vocabulary with its specials: A30's own
+    # state ids are defined over the paperkiln/1 template, so a BPE vocabulary with its specials: A31 vocabulary
     if not BPE_VOCAB.exists():
         pytest.skip(f"no BPE vocabulary at {BPE_VOCAB}")
     arch = {"state_tokens": {"k": 4, "mask": "causal"}}

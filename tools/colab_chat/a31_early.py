@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
-"""A31's early readouts and health stop (lane PROTOCOL.md section 50), a rung job on the pod. Claude Opus 5.5, 13 Nov 2026.
+"""A31's early readouts and health stop (lane PROTOCOL.md section 50), a rung job on the pod. Claude Opus 5.5, 13 Nov 2026; revised
+after the launch reviews of 13 Nov 2026 (health read first and fail-closed; NaN written as null counts as non-finite; timeouts).
 
-At each cut-off (steps 128, 256 and 512 of 1,024: 12.5%, 25% and 50%) jobs_vm.py snapshots a training job's weights; this job scores
-the snapshot on the early requests only (the dev twins and a held-out-family dev set kept apart from every final test set; the
-final test sets are read at the end only) and writes early.json: twin accuracy (both right, per token), the decisive, nuisance and
-selectivity shifts per token on each early set, the training-step metrics logged up to the cut-off (the last step's SFT loss, twin
-loss, d_a, d_b, d_n and active-hinge share), and the held-out SFT loss at the cut-off. Reported, not judged.
-
-The one action it may take, registered before launch (the health stop): at any cut-off, a non-finite SFT or twin loss in the job's log;
-at the 25% cut-off, a held-out SFT loss more than 10% above the reference run's at the same step (D0 for the dev sweep, P at the same
-seed for the arms). Then it ends the job's training process (SIGTERM) and records HEALTH_STOP in early.json; jobs_vm.py marks the job
-FAILED. Nothing else here changes an arm, a weight or a stop.
+At each cut-off (steps 128, 256 and 512 of 1,024: 12.5%, 25% and 50%) jobs_vm.py snapshots a training job's weights; this job
+  1. reads the health rule first (registered before launch): a non-finite SFT or twin loss in the job's log up to the cut-off
+     (nlohmann writes NaN and infinity as null, which counts as non-finite) stops the job; at the 25% cut-off, the job's held-out
+     SFT loss more than 10% above the reference run's at step 256 (D0 for the sweep, P at the same seed for M and N) stops it. A
+     reference is never compared with itself (D0 and P have only the non-finite leg). A held-out loss the rule needs that is not in
+     the logs within 10 minutes is recorded as `health_unread`, which the verdict treats as a failed run. A stop ends the job's
+     training process (SIGTERM) and is recorded as `health_stop`; the verdict treats it as a failed run whether or not the kill
+     landed (the job may have finished first).
+  2. then scores the snapshot on the early requests only (the dev twins and a held-out-family dev set kept apart from every final
+     test set), with a 15-minute timeout, and writes early.json: both right per token, the decisive, nuisance and selectivity shifts
+     per token on each early set (a31_readout.py's measures, validated), the training-step metrics up to the cut-off and the
+     held-out SFT loss at the cut-off. Reported, not judged.
 
     python3 tools/colab_chat/a31_early.py --job J --step S --ref REF --out DIR [--chat /content/chat] [--bin MTSTUDIO]
 """
@@ -21,9 +24,12 @@ import os
 import signal
 import subprocess
 import sys
+import time
 
 HEALTH_REL = 0.10
 HEALTH_STEP = 256
+WAIT_S = 600
+SCORE_TIMEOUT_S = 900
 
 
 def events(path):
@@ -38,57 +44,51 @@ def events(path):
     return out
 
 
+def finite(x):
+    return isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x)
+
+
 def val_at(ev, step):
+    """The held-out SFT loss at a step: a number, None if absent, or the string 'nonfinite'."""
     for e in ev:
         if e.get("event") == "eval" and e.get("step") == step:
-            return e["val_loss"]
+            return e["val_loss"] if finite(e.get("val_loss")) else "nonfinite"
     return None
 
 
 def train_metrics(ev, step):
-    st = [e for e in ev if e.get("event") == "step" and e.get("step", 0) <= step]
+    st = [e for e in ev if e.get("event") == "step" and finite(e.get("step")) and e["step"] <= step]
     if not st:
         return {}
-    last = st[-1]
-    window = st[-32:]
-    out = {"step": last["step"], "sft_loss": last["loss"], "sft_loss_mean32": sum(e["loss"] for e in window) / len(window)}
-    tw = [e["twin"] for e in window if "twin" in e]
-    if tw:
-        for k in ("loss", "d_a", "d_b", "d_n", "active"):
-            if k in tw[0]:
-                out[f"twin_{k}_mean32"] = sum(t[k] for t in tw) / len(tw)
-    out["nonfinite"] = any(not math.isfinite(e["loss"]) or ("twin" in e and not math.isfinite(e["twin"]["loss"])) for e in st)
+    nonfinite = any(not finite(e.get("loss")) or ("twin" in e and not finite((e.get("twin") or {}).get("loss"))) for e in st)
+    window = [e for e in st[-32:] if finite(e.get("loss"))]
+    out = {"step": st[-1]["step"], "nonfinite": nonfinite}
+    if window:
+        out["sft_loss"] = window[-1]["loss"]
+        out["sft_loss_mean32"] = sum(e["loss"] for e in window) / len(window)
+    tw = [e["twin"] for e in window if isinstance(e.get("twin"), dict)]
+    for k in ("loss", "d_a", "d_b", "d_n", "active"):
+        vals = [t[k] for t in tw if finite(t.get(k))]
+        if vals:
+            out[f"twin_{k}_mean32"] = sum(vals) / len(vals)
     return out
 
 
-def health(ev, ref_ev, step):
-    """(stop, reason) by the registered rule."""
+def health(ev, ref_ev, step, self_ref):
+    """('stop' | 'unread' | 'ok', reason) by the registered rule."""
     tm = train_metrics(ev, step)
     if tm.get("nonfinite"):
-        return True, "non-finite loss"
-    if step == HEALTH_STEP:
-        v, r = val_at(ev, step), val_at(ref_ev, step)
-        if v is not None and r is not None and v > (1 + HEALTH_REL) * r:
-            return True, f"held-out SFT loss {v:.4f} more than {HEALTH_REL:.0%} above the reference's {r:.4f} at step {step}"
-    return False, ""
-
-
-def measures(recs, n):
-    """Five score records per triplet (readout.py's order) -> means of the early measures."""
-    both = dec = nui = 0.0
-    k = 0
-    for i in range(n):
-        s = recs[5 * i:5 * i + 5]
-        if len(s) < 5 or any(r.get("over_ctx") for r in s):
-            continue
-        aa, ba, bb, ab, na = (r["sum"] for r in s)
-        a, b = len(s[0]["logprobs"]), len(s[2]["logprobs"])
-        both += float(aa / a > ab / b and bb / b > ba / a)
-        d = ((aa - ba) / a + (bb - ab) / b) / 2
-        dec += d
-        nui += abs(aa - na) / a
-        k += 1
-    return {"n": k, "both_tok": both / k, "dec": dec / k, "nui": nui / k, "sel": (dec - nui) / k} if k else {"n": 0}
+        return "stop", "non-finite loss"
+    if step != HEALTH_STEP or self_ref:
+        return "ok", ""
+    v, r = val_at(ev, step), val_at(ref_ev, step)
+    if v == "nonfinite":
+        return "stop", f"non-finite held-out SFT loss at step {step}"
+    if v is None or r is None or r == "nonfinite":
+        return "unread", f"held-out SFT loss at step {step}: job {v!r}, reference {r!r}"
+    if v > (1 + HEALTH_REL) * r:
+        return "stop", f"held-out SFT loss {v:.4f} more than {HEALTH_REL:.0%} above the reference's {r:.4f} at step {step}"
+    return "ok", ""
 
 
 def live_pid(chat, job):
@@ -109,16 +109,18 @@ def summary_line(job, step, out):
     parts = [f"{job} step {step}"]
     for name, m in out.get("early", {}).items():
         if m.get("n"):
-            parts.append(f"{name}: both/tok {m['both_tok']:.3f} dec {m['dec']:+.3f} nui {m['nui']:.3f}")
+            parts.append(f"{name}: both/tok {m['both_tok']:.3f} dec {m['dec']:+.3f} nui {m['nui']:.3f} sel {m['sel']:+.3f}")
     tm = out.get("train", {})
-    if tm:
-        parts.append(f"sft {tm.get('sft_loss_mean32', float('nan')):.3f}")
-        if "twin_d_a_mean32" in tm:
-            parts.append(f"dA {tm['twin_d_a_mean32']:+.3f} dB {tm['twin_d_b_mean32']:+.3f} active {tm['twin_active_mean32']:.2f}")
-    if out.get("val_loss") is not None:
+    if "sft_loss_mean32" in tm:
+        parts.append(f"sft {tm['sft_loss_mean32']:.3f}")
+    if "twin_d_a_mean32" in tm:
+        parts.append(f"dA {tm['twin_d_a_mean32']:+.3f} dB {tm['twin_d_b_mean32']:+.3f} active {tm['twin_active_mean32']:.2f}")
+    if finite(out.get("val_loss")):
         parts.append(f"val {out['val_loss']:.3f}")
     if out.get("health_stop"):
         parts.append("HEALTH STOP: " + out["health_stop"])
+    if out.get("health_unread"):
+        parts.append("HEALTH UNREAD: " + out["health_unread"])
     return "; ".join(parts)
 
 
@@ -132,42 +134,62 @@ def main():
     ap.add_argument("--bin", default="/content/pk/build_cuda/mtstudio")
     a = ap.parse_args()
     up = f"{a.chat}/upload"
-    man = json.load(open(f"{up}/a31_early_req.manifest.json"))
-    m = f"{a.out}/m"
-    os.makedirs(m, exist_ok=True)
-    snap = f"{a.chat}/{a.job}/rung_{a.step}/model.safetensors"
-    link = f"{m}/{a.job}.safetensors"
-    if os.path.lexists(link):
-        os.remove(link)
-    os.symlink(snap, link)
-    spec = json.load(open(f"{a.chat}/{a.job}_spec.json"))
-    spec["out_dir"] = m
-    json.dump(spec, open(f"{m}/spec.json", "w"), indent=1)
-    rc = subprocess.run([a.bin, "score", m, "--in", f"{up}/a31_early_req.jsonl", "--out", f"{a.out}/scores.jsonl", "--batch-tokens", "8192"]).returncode
-    out = {"job": a.job, "step": a.step, "producer": "a31_early.py", "score_rc": rc, "early": {}}
-    if rc == 0:
-        recs = [json.loads(x) for x in open(f"{a.out}/scores.jsonl") if x.strip()]
-        for name, info in man["sets"].items():
-            f = info["first_request"]
-            out["early"][name] = measures(recs[f:f + 5 * info["triplets"]], info["triplets"])
-    ev = events(f"{a.chat}/{a.job}/events.jsonl")
+    sys.path.insert(0, up)
+    import a31_readout as R   # the lane's readout.py, uploaded and hash-pinned: the one measurement code
+    self_ref = a.ref == a.job
+    out = {"job": a.job, "step": a.step, "producer": "a31_early.py", "early": {}}
+
+    # 1. health first
+    t0 = time.time()
+    while True:
+        ev = events(f"{a.chat}/{a.job}/events.jsonl")
+        ref_ev = ev if self_ref else events(f"{a.chat}/{a.ref}/events.jsonl")
+        verdict, why = health(ev, ref_ev, a.step, self_ref)
+        if verdict != "unread" or time.time() - t0 > WAIT_S:
+            break
+        time.sleep(20)
     out["train"] = train_metrics(ev, a.step)
     out["val_loss"] = val_at(ev, a.step)
-    ref_ev = ev if a.ref == a.job else events(f"{a.chat}/{a.ref}/events.jsonl")
     out["ref"] = {"job": a.ref, "val_loss": val_at(ref_ev, a.step)}
-    stop, why = health(ev, ref_ev, a.step)
-    if stop and (a.ref != a.job or why == "non-finite loss"):   # a reference is never compared with itself
+    if verdict == "stop":
         out["health_stop"] = why
         pid = live_pid(a.chat, a.job)
         out["stopped_pid"] = pid
         if pid:
             os.kill(pid, signal.SIGTERM)
+    elif verdict == "unread":
+        out["health_unread"] = why
+
+    # 2. then the early readout, on the early requests only
+    m = f"{a.out}/m"
+    os.makedirs(m, exist_ok=True)
+    link = f"{m}/{a.job}.safetensors"
+    if os.path.lexists(link):
+        os.remove(link)
+    os.symlink(f"{a.chat}/{a.job}/rung_{a.step}/model.safetensors", link)
+    spec = json.load(open(f"{a.chat}/{a.job}_spec.json"))
+    spec["out_dir"] = m
+    json.dump(spec, open(f"{m}/spec.json", "w"), indent=1)
+    try:
+        rc = subprocess.run([a.bin, "score", m, "--in", f"{up}/a31_early_req.jsonl", "--out", f"{a.out}/scores.jsonl",
+                             "--batch-tokens", "8192"], timeout=SCORE_TIMEOUT_S).returncode
+    except subprocess.TimeoutExpired:
+        rc = "timeout"
+    out["score_rc"] = rc
+    if rc == 0:
+        man = json.load(open(f"{up}/a31_early_req.manifest.json"))
+        trips = {n: R.read_jsonl(f"{up}/a31_{n}_triplets.jsonl") for n in man["sets"]}
+        try:
+            rows = R.validated_sets(man, trips, R.read_jsonl(f"{a.out}/scores.jsonl"))
+            out["early"] = {n: R.summarise(rows[n].values()) for n in man["sets"]}
+        except ValueError as e:
+            out["score_invalid"] = str(e)
     out["summary"] = summary_line(a.job, a.step, out)
     tmp = f"{a.out}/early.json.tmp"
     json.dump(out, open(tmp, "w"), indent=1)
     os.replace(tmp, f"{a.out}/early.json")
     print(out["summary"], flush=True)
-    return 0 if rc == 0 else 1
+    return 0
 
 
 if __name__ == "__main__":

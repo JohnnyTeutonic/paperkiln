@@ -198,7 +198,7 @@ add_test(NAME device_rope COMMAND test_device_rope)
 add_executable(test_posttrain_losses tests/test_posttrain_losses.cpp)
 target_link_libraries(test_posttrain_losses PRIVATE microtorch)
 add_test(NAME posttrain_losses COMMAND test_posttrain_losses)
-# The cue-selective twin loss (include/microtorch/posttrain/twin.hpp, lane amendment A30).
+# The cue-selective twin loss (include/microtorch/posttrain/twin.hpp, lane amendment A31).
 add_executable(test_twin_loss tests/test_twin_loss.cpp)
 target_link_libraries(test_twin_loss PRIVATE microtorch)
 add_test(NAME twin_loss COMMAND test_twin_loss)

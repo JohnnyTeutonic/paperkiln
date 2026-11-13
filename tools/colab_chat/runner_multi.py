@@ -68,6 +68,15 @@ CHUNK = 45 * 1024 * 1024
 TICK = 240
 NAME = ART = HOME = None
 BOOT_SCRIPT = "tools/colab_chat/boot_jobs.sh"  # --boot-script (A31: tools/colab_chat/boot_a31.sh)
+
+
+def parse_deadline_utc(s):
+    """--deadline-utc: YYYY-MM-DDTHH:MM:SSZ to an epoch."""
+    import calendar
+    try:
+        return float(calendar.timegm(time.strptime(s, "%Y-%m-%dT%H:%M:%SZ")))
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{s!r} is not YYYY-MM-DDTHH:MM:SSZ") from None
 T = None  # the Transport (ColabTransport unless --backend runpod)
 
 
@@ -1041,6 +1050,8 @@ def main():
     ap.add_argument("--jobs", required=True, help="jobs JSON, path relative to the paperkiln repo root")
     ap.add_argument("--max-hours", type=float, default=23.5)
     ap.add_argument("--boot-script", default=BOOT_SCRIPT, help="the VM boot script, a path in the repo at --commit")
+    ap.add_argument("--deadline-utc", type=parse_deadline_utc, default=None,
+                    help="absolute deadline, YYYY-MM-DDTHH:MM:SSZ; kept in the state at the first start (else now + --max-hours)")
     ap.add_argument("--name", required=True, help="Colab session name (this run's own)")
     ap.add_argument("--art", required=True, help="local artifact directory")
     ap.add_argument("--state-dir", required=True, help="runner state, pid file and log")
@@ -1098,12 +1109,29 @@ def main():
         st.save()
         T.attach(st)  # registers the runner for runpod_sweep.py; atexit and signal handlers end the pod
 
-    deadline = time.time() + a.max_hours * 3600
-    if listed() is None and not st.d.get("endpoint"):
-        if not launch(st, a.commit, a.jobs, jobs, uploads):
-            time.sleep(TICK)
+    # The deadline is absolute and kept in the state (A31, 13 Nov 2026): the first start fixes it (from --deadline-utc,
+    # else now + --max-hours), and a restart, by hand or by the watchdog, reads it back and never extends it. Past it,
+    # or over budget, a start creates nothing.
+    if "deadline_epoch" not in st.d:
+        st.d["deadline_epoch"] = a.deadline_utc if a.deadline_utc else time.time() + a.max_hours * 3600
+        st.save()
+    deadline = st.d["deadline_epoch"]
+    blocked = True
+    if time.time() >= deadline:
+        log(f"the campaign's deadline ({time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(deadline))} UTC) has passed: nothing is created")
+    elif T.over_budget(st):
+        log(f"over budget at start: nothing is created ({T.over_budget(st)})")
+    elif st.d.get("manager_failed") or st.d.get("boot_failed_commit") == a.commit:
+        log("the VM's boot or job manager failed at this commit: nothing is created until a person clears the state")
+    elif st.d.get("campaign_home"):
+        log("the campaign is home: nothing is created")
+    else:
+        blocked = False
+        if listed() is None and not st.d.get("endpoint"):
+            if not launch(st, a.commit, a.jobs, jobs, uploads):
+                time.sleep(TICK)
     try:
-        while time.time() < deadline:
+        while not blocked and time.time() < deadline:
             why = T.over_budget(st)
             if why:
                 log(why)
@@ -1150,6 +1178,13 @@ def main():
                 log("boot failed on the VM; downloading boot.log")
                 T.get("/content/chat/boot.log", os.path.join(ART, "boot.log"), 120)
                 st.d["boot_failed_commit"] = a.commit
+                st.save()
+                break
+            if r["vm"] == "FAILED":   # jobs_vm.py exited non-zero (boot_a31.sh): no job can advance, so the session ends
+                log("the VM's job manager failed; downloading jobs.log and boot.log")
+                T.get("/content/chat/jobs.log", os.path.join(ART, "jobs.log"), 120)
+                T.get("/content/chat/boot.log", os.path.join(ART, "boot.log"), 120)
+                st.d["manager_failed"] = True
                 st.save()
                 break
             done = True

@@ -23,10 +23,12 @@ if [ ! -x /content/pk/build_cuda/mtstudio ] || [ "$(git -C /content/pk rev-parse
   git -C /content/pk checkout -q "$COMMIT"
   mkdir -p /content/pk/build_cuda && cd /content/pk/build_cuda
   cmake .. -DCMAKE_BUILD_TYPE=Release -DMICROTORCH_CUDA=ON -DCUDA_ENABLED=ON -DCMAKE_CUDA_ARCHITECTURES="$CAP" > cmake.log 2>&1
-  make -j"$(nproc)" mtstudio > make.log 2>&1 || { tail -30 make.log; echo BOOT_FAILED > /content/chat/STATUS; exit 1; }
+  timeout 3600 make -j"$(nproc)" mtstudio > make.log 2>&1 || { tail -30 make.log; echo BOOT_FAILED > /content/chat/STATUS; exit 1; }
 fi
 cd /content/pk
-[ "$(git rev-parse HEAD)" = "$COMMIT" ] && [ -z "$(git status --porcelain --untracked-files=no)" ]
+if [ "$(git rev-parse HEAD)" != "$COMMIT" ] || [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+  echo "the checkout is not $COMMIT, clean"; echo BOOT_FAILED > /content/chat/STATUS; exit 1
+fi
 sha256sum build_cuda/mtstudio > /content/chat/mtstudio.sha256
 python3 tools/colab_chat/provenance.py /content/chat/provenance.json || true
 # every input as pinned: a31_inputs.json maps upload name -> sha256
@@ -47,6 +49,7 @@ print(f"inputs verified: {len(pins)}")
 PY
 if pgrep -f "[j]obs_vm.py" > /dev/null; then echo "jobs_vm already running"; exit 0; fi
 echo RUNNING > /content/chat/STATUS
-nohup bash -c "python3 -u tools/colab_chat/jobs_vm.py $JOBS > /content/chat/jobs.log 2>&1; echo FINISHED > /content/chat/STATUS" \
+# FINISHED only when jobs_vm.py exits 0; otherwise FAILED, which the runner treats as the session's end (A31 review, 13 Nov 2026)
+nohup bash -c "if python3 -u tools/colab_chat/jobs_vm.py $JOBS > /content/chat/jobs.log 2>&1; then echo FINISHED; else echo FAILED; fi > /content/chat/STATUS" \
   > /dev/null 2>&1 &
 echo "jobs launched $(date -u)"

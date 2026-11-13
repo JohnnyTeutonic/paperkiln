@@ -203,7 +203,7 @@ struct Spec {
     // RPO-style NLL on chosen completions (Pang et al. 2024), weighted by the
     // same pair weights: counters DPO's likelihood displacement. 0 = plain DPO.
     float po_nll = 0.0f;
-    // Cue-selective twin loss (lane amendment A30; include/microtorch/posttrain/twin.hpp): objective
+    // Cue-selective twin loss (lane amendment A31; include/microtorch/posttrain/twin.hpp): objective
     // "sft" with data.twin_examples, JSONL of {"A": [context, reply], "B": [context, reply],
     // "N": [context, reply]} (N keeps A's reply), and train.twin_loss {"groups", "margin", "lambda",
     // "mu"}. Each step adds the twin loss on `groups` groups drawn by a generator of its own (the seed
@@ -1551,7 +1551,7 @@ SftSet load_sft(const Spec& s, const std::map<std::string, int>& vocab) {
     return d;
 }
 
-// Twin groups for train.twin_loss (lane amendment A30). Each line {"A": [context, reply], "B":
+// Twin groups for train.twin_loss (lane amendment A31). Each line {"A": [context, reply], "B":
 // [context, reply], "N": [context, reply]} becomes the rows A + yA, B + yA, B + yB, A + yB and,
 // when mu > 0, N + yA (N must keep A's reply word for word), written as {prompt, completion} rows
 // to out_dir/twin_rows.jsonl and read back through load_sft itself: the same tokenisation, end of
@@ -2406,7 +2406,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     if (!s.anneal_corpus.empty() && s.objective != "lm")
         throw std::runtime_error("data.anneal is for objective lm only");
     SftSet sd;
-    TwinSet tw;  // train.twin_loss (A30); empty otherwise
+    TwinSet tw;  // train.twin_loss (A31); empty otherwise
     GrpoData gd;
     PrefData pd;
     std::vector<size_t> po_train;  // training pairs with weight > 0
@@ -2981,6 +2981,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         double mor_lb = 0, mor_z = 0;
         std::vector<double> mor_frac;  // schedule "mor": the step's depth fractions
         json gmet;
+        uint64_t sft_rows_hash = 1469598103934665603ULL;  // A31: the SFT rows this step drew, logged as sft_rows_hash
         if (grpo) {
             // Phase 4 step: P prompts x G pure-temperature samples from the
             // current policy, scored in process, group-relative advantages,
@@ -3140,6 +3141,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             for (int b = 0; b < s.batch; ++b) {
                 if (sft) {
                     const size_t e = rng() % sd.val_start;
+                    sft_rows_hash = (sft_rows_hash ^ static_cast<uint64_t>(e)) * 1099511628211ULL;  // FNV-1a over the rows drawn
                     x.insert(x.end(), sd.x[e].begin(), sd.x[e].end());
                     y.insert(y.end(), sd.y[e].begin(), sd.y[e].end());
                     mask.insert(mask.end(), sd.m[e].begin(), sd.m[e].end());
@@ -3203,7 +3205,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         }
         json twin_ev;
         if (s.twin_groups > 0) {
-            // A30: train.twin_loss on twin_groups groups drawn by a generator of the seed and the
+            // A31: train.twin_loss on twin_groups groups drawn by a generator of the seed and the
             // step alone (rng, which draws the SFT rows, is never touched, so the SFT batches are the
             // plain spec's, and a resumed run draws the same groups). One forward over the groups'
             // rows, each padded to the longest; the loss's gradient adds to the SFT step's.
@@ -3302,6 +3304,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             {"event", "step"}, {"step", step}, {"loss", task_mean}, {"grad_norm", total_norm}};
         if (scheduled) e["lr"] = s.lr * lr_f;
         if (!twin_ev.is_null()) e["twin"] = twin_ev;
+        if (sft) e["sft_rows_hash"] = sft_rows_hash;
         if (step_timing) {
             e["t_ms"] = t_ms;
             e["live_mb"] = live_mb;

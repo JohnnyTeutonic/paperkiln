@@ -1,6 +1,6 @@
 #pragma once
 // Cue-selective twin loss (the root workspace's AI_ML/chat_screens_claude/cue_selective/PLAN.md;
-// lane amendment A30). Claude Opus 5.5, 13 Nov 2026.
+// lane amendment A31). Claude Opus 5.5, 13 Nov 2026.
 //
 // A twin group holds one scenario told three ways: A and B differ in the one decisive detail and
 // have different rule-checked replies yA and yB; N (A') differs from A in one detail that does not
@@ -52,12 +52,21 @@ inline void check_twin_targets(const TwinTargets& t, size_t logit_rows) {
         throw std::runtime_error("twin loss: one row, target and twin row per reply target");
     if (t.n_a.size() != t.groups || t.n_b.size() != t.groups)
         throw std::runtime_error("twin loss: one reply length per group and reply");
+    for (size_t g = 0; g < t.groups; ++g)
+        if (!(std::isfinite(t.n_a[g]) && t.n_a[g] >= 1.0f && std::isfinite(t.n_b[g]) && t.n_b[g] >= 1.0f))
+            throw std::runtime_error("twin loss: reply lengths must be finite and at least 1");
+    // every twin row owns one block of L = logit_rows / rows consecutive logits rows, and its targets lie in it
+    if (logit_rows % t.rows != 0) throw std::runtime_error("twin loss: logits rows are not rows * L");
+    const size_t L = logit_rows / t.rows;
     std::vector<size_t> seen(t.rows, 0);
     for (size_t i = 0; i < t.pos.size(); ++i) {
         if (t.pos[i] < 0 || static_cast<size_t>(t.pos[i]) >= logit_rows)
             throw std::runtime_error("twin loss: target position out of range");
         if (t.pos_row[i] < 0 || static_cast<size_t>(t.pos_row[i]) >= t.rows)
             throw std::runtime_error("twin loss: twin row out of range");
+        if (static_cast<size_t>(t.pos[i]) / L != static_cast<size_t>(t.pos_row[i]))
+            throw std::runtime_error("twin loss: a target position outside its twin row's block");
+        if (t.tgt[i] < 0) throw std::runtime_error("twin loss: negative target id");
         ++seen[t.pos_row[i]];
     }
     for (size_t g = 0; g < t.groups; ++g) {
@@ -73,6 +82,8 @@ inline void check_twin_targets(const TwinTargets& t, size_t logit_rows) {
 // The reply log-probability of every twin row, [rows, 1], on the tape.
 inline Var twin_row_logp(const Var& logits, const TwinTargets& t) {
     check_twin_targets(t, logits->data.rows());
+    for (int id : t.tgt)
+        if (static_cast<size_t>(id) >= logits->data.cols()) throw std::runtime_error("twin loss: target id past the vocabulary");
     const size_t n = t.pos.size();
     const Var lg = ops::gather_rows(logits, t.pos);  // [n, C]
     const Var lse = ops::logsumexp_row(lg);          // [n, 1]
@@ -85,8 +96,9 @@ inline Var twin_row_logp(const Var& logits, const TwinTargets& t) {
 
 inline Var twin_loss(const Var& logits, const TwinTargets& t, float margin, float lambda, float mu,
                      TwinStats* st = nullptr) {
-    if (!(lambda >= 0.0f) || !(mu >= 0.0f) || !(lambda > 0.0f || mu > 0.0f))
-        throw std::runtime_error("twin loss: lambda and mu must be >= 0, not both 0");
+    if (!std::isfinite(lambda) || !std::isfinite(mu) || !std::isfinite(margin) || !(lambda >= 0.0f) || !(mu >= 0.0f) ||
+        !(lambda > 0.0f || mu > 0.0f))
+        throw std::runtime_error("twin loss: lambda, mu and the margin must be finite, lambda and mu >= 0, not both 0");
     if (mu > 0.0f && t.per_group != 5) throw std::runtime_error("twin loss: mu > 0 needs the nuisance row");
     const Var S = twin_row_logp(logits, t);
     const size_t G = t.groups, k = static_cast<size_t>(t.per_group);

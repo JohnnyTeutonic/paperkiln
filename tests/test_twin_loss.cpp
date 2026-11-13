@@ -1,9 +1,10 @@
-// The cue-selective twin loss (include/microtorch/posttrain/twin.hpp; lane amendment A30) against a
+// The cue-selective twin loss (include/microtorch/posttrain/twin.hpp; lane amendment A31) against a
 // direct computation in double and against finite differences. Claude Opus 5.5, 13 Nov 2026.
 #include <cmath>
 #include <cstdio>
 #include <algorithm>
 #include <functional>
+#include <limits>
 #include <random>
 #include <stdexcept>
 #include <vector>
@@ -209,7 +210,19 @@ void test_refusals() {
     bad = c5.t;
     bad.pos[0] = static_cast<int>(c5.t.rows * L);  // out of range
     CHECK(refuses([&] { pt::twin_loss(x, bad, 1.0f, 1.0f, 0.5f); }));
-    std::printf("  refusals: zero weights, mu without N, negative weight, unpaired targets, bad length, bad position\n");
+    bad = c5.t;
+    bad.pos[0] = static_cast<int>(L);  // row 0's target placed in row 1's block
+    CHECK(refuses([&] { pt::twin_loss(x, bad, 1.0f, 1.0f, 0.5f); }));
+    bad = c5.t;
+    bad.tgt[0] = static_cast<int>(C);  // past the vocabulary
+    CHECK(refuses([&] { pt::twin_loss(x, bad, 1.0f, 1.0f, 0.5f); }));
+    bad = c5.t;
+    bad.n_b[1] = std::numeric_limits<float>::infinity();
+    CHECK(refuses([&] { pt::twin_loss(x, bad, 1.0f, 1.0f, 0.5f); }));
+    CHECK(refuses([&] { pt::twin_loss(x, c5.t, std::numeric_limits<float>::quiet_NaN(), 1.0f, 0.5f); }));   // margin
+    CHECK(refuses([&] { pt::twin_loss(x, c5.t, 1.0f, std::numeric_limits<float>::infinity(), 0.5f); }));    // lambda
+    std::printf("  refusals: zero weights, mu without N, negative or non-finite weight or margin, unpaired targets, bad length,\n"
+                "    bad position, a target outside its row's block, a target id past the vocabulary\n");
 }
 
 }  // namespace

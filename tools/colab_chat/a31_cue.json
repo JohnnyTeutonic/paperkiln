@@ -1,7 +1,7 @@
 {
  "_comment": "A31 (lane PROTOCOL.md section 50), rendered by tools/colab_chat/a31_jobs.py; edit that file, not this one.",
  "max_parallel": 1,
- "max_parallel_light": 1,
+ "max_parallel_light": 2,
  "jobs": [
   {
    "name": "gate",
@@ -15,19 +15,6 @@
    ],
    "outputs": [
     "gate.json"
-   ]
-  },
-  {
-   "name": "score_S71",
-   "light": true,
-   "after": "gate",
-   "cmd": [
-    "bash",
-    "-c",
-    "mkdir -p {out}/m && ln -sf {upload}/s71.safetensors {out}/m/screen_S71.safetensors && cp {upload}/s71_spec.json {out}/m/spec.json && /content/pk/build_cuda/mtstudio score {out}/m --in {upload}/a31_readout_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192"
-   ],
-   "outputs": [
-    "scores.jsonl"
    ]
   },
   {
@@ -72,7 +59,7 @@
       "decay": "cosine",
       "min_lr_frac": 0.1
      },
-     "eval_examples": 64
+     "eval_examples": 256
     },
     "export": {
      "formats": [
@@ -86,25 +73,6 @@
     128,
     256,
     512
-   ]
-  },
-  {
-   "name": "score_D0",
-   "light": true,
-   "after": "D0",
-   "cmd": [
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/D0",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
-    "scores.jsonl"
    ]
   },
   {
@@ -180,6 +148,27 @@
    ]
   },
   {
+   "name": "score_D0",
+   "light": true,
+   "after": "D0",
+   "cmd": [
+    "timeout",
+    "900",
+    "/content/pk/build_cuda/mtstudio",
+    "score",
+    "/content/chat/D0",
+    "--in",
+    "/content/chat/upload/a31_early_req.jsonl",
+    "--out",
+    "{out}/scores.jsonl",
+    "--batch-tokens",
+    "8192"
+   ],
+   "outputs": [
+    "scores.jsonl"
+   ]
+  },
+  {
    "name": "Dm_0p1",
    "spec": {
     "arch": {
@@ -222,7 +211,7 @@
       "decay": "cosine",
       "min_lr_frac": 0.1
      },
-     "eval_examples": 64,
+     "eval_examples": 256,
      "twin_loss": {
       "groups": 4,
       "margin": 1.0,
@@ -242,25 +231,6 @@
     128,
     256,
     512
-   ]
-  },
-  {
-   "name": "score_Dm_0p1",
-   "light": true,
-   "after": "Dm_0p1",
-   "cmd": [
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/Dm_0p1",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
-    "scores.jsonl"
    ]
   },
   {
@@ -336,6 +306,27 @@
    ]
   },
   {
+   "name": "score_Dm_0p1",
+   "light": true,
+   "after": "Dm_0p1",
+   "cmd": [
+    "timeout",
+    "900",
+    "/content/pk/build_cuda/mtstudio",
+    "score",
+    "/content/chat/Dm_0p1",
+    "--in",
+    "/content/chat/upload/a31_early_req.jsonl",
+    "--out",
+    "{out}/scores.jsonl",
+    "--batch-tokens",
+    "8192"
+   ],
+   "outputs": [
+    "scores.jsonl"
+   ]
+  },
+  {
    "name": "Dm_0p3",
    "spec": {
     "arch": {
@@ -378,7 +369,7 @@
       "decay": "cosine",
       "min_lr_frac": 0.1
      },
-     "eval_examples": 64,
+     "eval_examples": 256,
      "twin_loss": {
       "groups": 4,
       "margin": 1.0,
@@ -398,25 +389,6 @@
     128,
     256,
     512
-   ]
-  },
-  {
-   "name": "score_Dm_0p3",
-   "light": true,
-   "after": "Dm_0p3",
-   "cmd": [
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/Dm_0p3",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
-    "scores.jsonl"
    ]
   },
   {
@@ -492,6 +464,27 @@
    ]
   },
   {
+   "name": "score_Dm_0p3",
+   "light": true,
+   "after": "Dm_0p3",
+   "cmd": [
+    "timeout",
+    "900",
+    "/content/pk/build_cuda/mtstudio",
+    "score",
+    "/content/chat/Dm_0p3",
+    "--in",
+    "/content/chat/upload/a31_early_req.jsonl",
+    "--out",
+    "{out}/scores.jsonl",
+    "--batch-tokens",
+    "8192"
+   ],
+   "outputs": [
+    "scores.jsonl"
+   ]
+  },
+  {
    "name": "Dm_1p0",
    "spec": {
     "arch": {
@@ -534,7 +527,7 @@
       "decay": "cosine",
       "min_lr_frac": 0.1
      },
-     "eval_examples": 64,
+     "eval_examples": 256,
      "twin_loss": {
       "groups": 4,
       "margin": 1.0,
@@ -554,25 +547,6 @@
     128,
     256,
     512
-   ]
-  },
-  {
-   "name": "score_Dm_1p0",
-   "light": true,
-   "after": "Dm_1p0",
-   "cmd": [
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/Dm_1p0",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
-    "scores.jsonl"
    ]
   },
   {
@@ -648,6 +622,27 @@
    ]
   },
   {
+   "name": "score_Dm_1p0",
+   "light": true,
+   "after": "Dm_1p0",
+   "cmd": [
+    "timeout",
+    "900",
+    "/content/pk/build_cuda/mtstudio",
+    "score",
+    "/content/chat/Dm_1p0",
+    "--in",
+    "/content/chat/upload/a31_early_req.jsonl",
+    "--out",
+    "{out}/scores.jsonl",
+    "--batch-tokens",
+    "8192"
+   ],
+   "outputs": [
+    "scores.jsonl"
+   ]
+  },
+  {
    "name": "Dn_0p1",
    "spec": {
     "arch": {
@@ -690,7 +685,7 @@
       "decay": "cosine",
       "min_lr_frac": 0.1
      },
-     "eval_examples": 64,
+     "eval_examples": 256,
      "twin_loss": {
       "groups": 4,
       "margin": 1.0,
@@ -710,25 +705,6 @@
     128,
     256,
     512
-   ]
-  },
-  {
-   "name": "score_Dn_0p1",
-   "light": true,
-   "after": "Dn_0p1",
-   "cmd": [
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/Dn_0p1",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
-    "scores.jsonl"
    ]
   },
   {
@@ -804,6 +780,27 @@
    ]
   },
   {
+   "name": "score_Dn_0p1",
+   "light": true,
+   "after": "Dn_0p1",
+   "cmd": [
+    "timeout",
+    "900",
+    "/content/pk/build_cuda/mtstudio",
+    "score",
+    "/content/chat/Dn_0p1",
+    "--in",
+    "/content/chat/upload/a31_early_req.jsonl",
+    "--out",
+    "{out}/scores.jsonl",
+    "--batch-tokens",
+    "8192"
+   ],
+   "outputs": [
+    "scores.jsonl"
+   ]
+  },
+  {
    "name": "Dn_0p3",
    "spec": {
     "arch": {
@@ -846,7 +843,7 @@
       "decay": "cosine",
       "min_lr_frac": 0.1
      },
-     "eval_examples": 64,
+     "eval_examples": 256,
      "twin_loss": {
       "groups": 4,
       "margin": 1.0,
@@ -866,25 +863,6 @@
     128,
     256,
     512
-   ]
-  },
-  {
-   "name": "score_Dn_0p3",
-   "light": true,
-   "after": "Dn_0p3",
-   "cmd": [
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/Dn_0p3",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
-    "scores.jsonl"
    ]
   },
   {
@@ -960,6 +938,27 @@
    ]
   },
   {
+   "name": "score_Dn_0p3",
+   "light": true,
+   "after": "Dn_0p3",
+   "cmd": [
+    "timeout",
+    "900",
+    "/content/pk/build_cuda/mtstudio",
+    "score",
+    "/content/chat/Dn_0p3",
+    "--in",
+    "/content/chat/upload/a31_early_req.jsonl",
+    "--out",
+    "{out}/scores.jsonl",
+    "--batch-tokens",
+    "8192"
+   ],
+   "outputs": [
+    "scores.jsonl"
+   ]
+  },
+  {
    "name": "Dn_1p0",
    "spec": {
     "arch": {
@@ -1002,7 +1001,7 @@
       "decay": "cosine",
       "min_lr_frac": 0.1
      },
-     "eval_examples": 64,
+     "eval_examples": 256,
      "twin_loss": {
       "groups": 4,
       "margin": 1.0,
@@ -1022,25 +1021,6 @@
     128,
     256,
     512
-   ]
-  },
-  {
-   "name": "score_Dn_1p0",
-   "light": true,
-   "after": "Dn_1p0",
-   "cmd": [
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/Dn_1p0",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
-    "scores.jsonl"
    ]
   },
   {
@@ -1116,8 +1096,37 @@
    ]
   },
   {
+   "name": "score_Dn_1p0",
+   "light": true,
+   "after": "Dn_1p0",
+   "cmd": [
+    "timeout",
+    "900",
+    "/content/pk/build_cuda/mtstudio",
+    "score",
+    "/content/chat/Dn_1p0",
+    "--in",
+    "/content/chat/upload/a31_early_req.jsonl",
+    "--out",
+    "{out}/scores.jsonl",
+    "--batch-tokens",
+    "8192"
+   ],
+   "outputs": [
+    "scores.jsonl"
+   ]
+  },
+  {
    "name": "select",
+   "after_terminal": true,
    "after": [
+    "D0",
+    "Dm_0p1",
+    "Dm_0p3",
+    "Dm_1p0",
+    "Dn_0p1",
+    "Dn_0p3",
+    "Dn_1p0",
     "score_D0",
     "score_Dm_0p1",
     "score_Dm_0p3",
@@ -1125,13 +1134,27 @@
     "score_Dn_0p1",
     "score_Dn_0p3",
     "score_Dn_1p0",
-    "D0",
-    "Dm_0p1",
-    "Dm_0p3",
-    "Dm_1p0",
-    "Dn_0p1",
-    "Dn_0p3",
-    "Dn_1p0"
+    "early_D0_128",
+    "early_D0_256",
+    "early_D0_512",
+    "early_Dm_0p1_128",
+    "early_Dm_0p1_256",
+    "early_Dm_0p1_512",
+    "early_Dm_0p3_128",
+    "early_Dm_0p3_256",
+    "early_Dm_0p3_512",
+    "early_Dm_1p0_128",
+    "early_Dm_1p0_256",
+    "early_Dm_1p0_512",
+    "early_Dn_0p1_128",
+    "early_Dn_0p1_256",
+    "early_Dn_0p1_512",
+    "early_Dn_0p3_128",
+    "early_Dn_0p3_256",
+    "early_Dn_0p3_512",
+    "early_Dn_1p0_128",
+    "early_Dn_1p0_256",
+    "early_Dn_1p0_512"
    ],
    "cmd": [
     "python3",
@@ -1139,12 +1162,23 @@
     "--chat",
     "/content/chat",
     "--out",
-    "{out}",
-    "--manifest",
-    "/content/chat/upload/a31_readout_req.manifest.json"
+    "{out}"
    ],
    "outputs": [
     "decisions.json"
+   ]
+  },
+  {
+   "name": "score_S71",
+   "light": true,
+   "after": "select",
+   "cmd": [
+    "bash",
+    "-c",
+    "mkdir -p {out}/m && ln -sf {upload}/s71.safetensors {out}/m/screen_S71.safetensors && cp {upload}/s71_spec.json {out}/m/spec.json && timeout 900 /content/pk/build_cuda/mtstudio score {out}/m --in /content/chat/upload/a31_readout_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192"
+   ],
+   "outputs": [
+    "scores.jsonl"
    ]
   },
   {
@@ -1189,7 +1223,7 @@
       "decay": "cosine",
       "min_lr_frac": 0.1
      },
-     "eval_examples": 64
+     "eval_examples": 256
     },
     "export": {
      "formats": [
@@ -1204,25 +1238,6 @@
     128,
     256,
     512
-   ]
-  },
-  {
-   "name": "score_P_1",
-   "light": true,
-   "after": "P_1",
-   "cmd": [
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/P_1",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
-    "scores.jsonl"
    ]
   },
   {
@@ -1298,6 +1313,30 @@
    ]
   },
   {
+   "name": "score_P_1",
+   "light": true,
+   "after": [
+    "P_1",
+    "select"
+   ],
+   "cmd": [
+    "timeout",
+    "900",
+    "/content/pk/build_cuda/mtstudio",
+    "score",
+    "/content/chat/P_1",
+    "--in",
+    "/content/chat/upload/a31_readout_req.jsonl",
+    "--out",
+    "{out}/scores.jsonl",
+    "--batch-tokens",
+    "8192"
+   ],
+   "outputs": [
+    "scores.jsonl"
+   ]
+  },
+  {
    "name": "P_50",
    "spec": {
     "arch": {
@@ -1339,7 +1378,7 @@
       "decay": "cosine",
       "min_lr_frac": 0.1
      },
-     "eval_examples": 64
+     "eval_examples": 256
     },
     "export": {
      "formats": [
@@ -1354,25 +1393,6 @@
     128,
     256,
     512
-   ]
-  },
-  {
-   "name": "score_P_50",
-   "light": true,
-   "after": "P_50",
-   "cmd": [
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/P_50",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
-    "scores.jsonl"
    ]
   },
   {
@@ -1448,6 +1468,30 @@
    ]
   },
   {
+   "name": "score_P_50",
+   "light": true,
+   "after": [
+    "P_50",
+    "select"
+   ],
+   "cmd": [
+    "timeout",
+    "900",
+    "/content/pk/build_cuda/mtstudio",
+    "score",
+    "/content/chat/P_50",
+    "--in",
+    "/content/chat/upload/a31_readout_req.jsonl",
+    "--out",
+    "{out}/scores.jsonl",
+    "--batch-tokens",
+    "8192"
+   ],
+   "outputs": [
+    "scores.jsonl"
+   ]
+  },
+  {
    "name": "M_1_0p1",
    "spec": {
     "arch": {
@@ -1490,7 +1534,7 @@
       "decay": "cosine",
       "min_lr_frac": 0.1
      },
-     "eval_examples": 64,
+     "eval_examples": 256,
      "twin_loss": {
       "groups": 4,
       "margin": 1.0,
@@ -1522,25 +1566,6 @@
     "round": "a31",
     "key": "M_0p1"
    }
-  },
-  {
-   "name": "score_M_1_0p1",
-   "light": true,
-   "after": "M_1_0p1",
-   "cmd": [
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/M_1_0p1",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
-    "scores.jsonl"
-   ]
   },
   {
    "name": "early_M_1_0p1_128",
@@ -1615,6 +1640,27 @@
    ]
   },
   {
+   "name": "score_M_1_0p1",
+   "light": true,
+   "after": "M_1_0p1",
+   "cmd": [
+    "timeout",
+    "900",
+    "/content/pk/build_cuda/mtstudio",
+    "score",
+    "/content/chat/M_1_0p1",
+    "--in",
+    "/content/chat/upload/a31_readout_req.jsonl",
+    "--out",
+    "{out}/scores.jsonl",
+    "--batch-tokens",
+    "8192"
+   ],
+   "outputs": [
+    "scores.jsonl"
+   ]
+  },
+  {
    "name": "N_1_0p1",
    "spec": {
     "arch": {
@@ -1657,7 +1703,7 @@
       "decay": "cosine",
       "min_lr_frac": 0.1
      },
-     "eval_examples": 64,
+     "eval_examples": 256,
      "twin_loss": {
       "groups": 4,
       "margin": 1.0,
@@ -1689,25 +1735,6 @@
     "round": "a31",
     "key": "N_0p1"
    }
-  },
-  {
-   "name": "score_N_1_0p1",
-   "light": true,
-   "after": "N_1_0p1",
-   "cmd": [
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/N_1_0p1",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
-    "scores.jsonl"
-   ]
   },
   {
    "name": "early_N_1_0p1_128",
@@ -1782,6 +1809,27 @@
    ]
   },
   {
+   "name": "score_N_1_0p1",
+   "light": true,
+   "after": "N_1_0p1",
+   "cmd": [
+    "timeout",
+    "900",
+    "/content/pk/build_cuda/mtstudio",
+    "score",
+    "/content/chat/N_1_0p1",
+    "--in",
+    "/content/chat/upload/a31_readout_req.jsonl",
+    "--out",
+    "{out}/scores.jsonl",
+    "--batch-tokens",
+    "8192"
+   ],
+   "outputs": [
+    "scores.jsonl"
+   ]
+  },
+  {
    "name": "M_1_0p3",
    "spec": {
     "arch": {
@@ -1824,7 +1872,7 @@
       "decay": "cosine",
       "min_lr_frac": 0.1
      },
-     "eval_examples": 64,
+     "eval_examples": 256,
      "twin_loss": {
       "groups": 4,
       "margin": 1.0,
@@ -1856,25 +1904,6 @@
     "round": "a31",
     "key": "M_0p3"
    }
-  },
-  {
-   "name": "score_M_1_0p3",
-   "light": true,
-   "after": "M_1_0p3",
-   "cmd": [
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/M_1_0p3",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
-    "scores.jsonl"
-   ]
   },
   {
    "name": "early_M_1_0p3_128",
@@ -1949,6 +1978,27 @@
    ]
   },
   {
+   "name": "score_M_1_0p3",
+   "light": true,
+   "after": "M_1_0p3",
+   "cmd": [
+    "timeout",
+    "900",
+    "/content/pk/build_cuda/mtstudio",
+    "score",
+    "/content/chat/M_1_0p3",
+    "--in",
+    "/content/chat/upload/a31_readout_req.jsonl",
+    "--out",
+    "{out}/scores.jsonl",
+    "--batch-tokens",
+    "8192"
+   ],
+   "outputs": [
+    "scores.jsonl"
+   ]
+  },
+  {
    "name": "N_1_0p3",
    "spec": {
     "arch": {
@@ -1991,7 +2041,7 @@
       "decay": "cosine",
       "min_lr_frac": 0.1
      },
-     "eval_examples": 64,
+     "eval_examples": 256,
      "twin_loss": {
       "groups": 4,
       "margin": 1.0,
@@ -2023,25 +2073,6 @@
     "round": "a31",
     "key": "N_0p3"
    }
-  },
-  {
-   "name": "score_N_1_0p3",
-   "light": true,
-   "after": "N_1_0p3",
-   "cmd": [
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/N_1_0p3",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
-    "scores.jsonl"
-   ]
   },
   {
    "name": "early_N_1_0p3_128",
@@ -2116,6 +2147,27 @@
    ]
   },
   {
+   "name": "score_N_1_0p3",
+   "light": true,
+   "after": "N_1_0p3",
+   "cmd": [
+    "timeout",
+    "900",
+    "/content/pk/build_cuda/mtstudio",
+    "score",
+    "/content/chat/N_1_0p3",
+    "--in",
+    "/content/chat/upload/a31_readout_req.jsonl",
+    "--out",
+    "{out}/scores.jsonl",
+    "--batch-tokens",
+    "8192"
+   ],
+   "outputs": [
+    "scores.jsonl"
+   ]
+  },
+  {
    "name": "M_1_1p0",
    "spec": {
     "arch": {
@@ -2158,7 +2210,7 @@
       "decay": "cosine",
       "min_lr_frac": 0.1
      },
-     "eval_examples": 64,
+     "eval_examples": 256,
      "twin_loss": {
       "groups": 4,
       "margin": 1.0,
@@ -2190,25 +2242,6 @@
     "round": "a31",
     "key": "M_1p0"
    }
-  },
-  {
-   "name": "score_M_1_1p0",
-   "light": true,
-   "after": "M_1_1p0",
-   "cmd": [
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/M_1_1p0",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
-    "scores.jsonl"
-   ]
   },
   {
    "name": "early_M_1_1p0_128",
@@ -2283,6 +2316,27 @@
    ]
   },
   {
+   "name": "score_M_1_1p0",
+   "light": true,
+   "after": "M_1_1p0",
+   "cmd": [
+    "timeout",
+    "900",
+    "/content/pk/build_cuda/mtstudio",
+    "score",
+    "/content/chat/M_1_1p0",
+    "--in",
+    "/content/chat/upload/a31_readout_req.jsonl",
+    "--out",
+    "{out}/scores.jsonl",
+    "--batch-tokens",
+    "8192"
+   ],
+   "outputs": [
+    "scores.jsonl"
+   ]
+  },
+  {
    "name": "N_1_1p0",
    "spec": {
     "arch": {
@@ -2325,7 +2379,7 @@
       "decay": "cosine",
       "min_lr_frac": 0.1
      },
-     "eval_examples": 64,
+     "eval_examples": 256,
      "twin_loss": {
       "groups": 4,
       "margin": 1.0,
@@ -2357,25 +2411,6 @@
     "round": "a31",
     "key": "N_1p0"
    }
-  },
-  {
-   "name": "score_N_1_1p0",
-   "light": true,
-   "after": "N_1_1p0",
-   "cmd": [
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/N_1_1p0",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
-    "scores.jsonl"
-   ]
   },
   {
    "name": "early_N_1_1p0_128",
@@ -2450,6 +2485,27 @@
    ]
   },
   {
+   "name": "score_N_1_1p0",
+   "light": true,
+   "after": "N_1_1p0",
+   "cmd": [
+    "timeout",
+    "900",
+    "/content/pk/build_cuda/mtstudio",
+    "score",
+    "/content/chat/N_1_1p0",
+    "--in",
+    "/content/chat/upload/a31_readout_req.jsonl",
+    "--out",
+    "{out}/scores.jsonl",
+    "--batch-tokens",
+    "8192"
+   ],
+   "outputs": [
+    "scores.jsonl"
+   ]
+  },
+  {
    "name": "M_50_0p1",
    "spec": {
     "arch": {
@@ -2492,7 +2548,7 @@
       "decay": "cosine",
       "min_lr_frac": 0.1
      },
-     "eval_examples": 64,
+     "eval_examples": 256,
      "twin_loss": {
       "groups": 4,
       "margin": 1.0,
@@ -2524,25 +2580,6 @@
     "round": "a31",
     "key": "M_0p1"
    }
-  },
-  {
-   "name": "score_M_50_0p1",
-   "light": true,
-   "after": "M_50_0p1",
-   "cmd": [
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/M_50_0p1",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
-    "scores.jsonl"
-   ]
   },
   {
    "name": "early_M_50_0p1_128",
@@ -2617,6 +2654,27 @@
    ]
   },
   {
+   "name": "score_M_50_0p1",
+   "light": true,
+   "after": "M_50_0p1",
+   "cmd": [
+    "timeout",
+    "900",
+    "/content/pk/build_cuda/mtstudio",
+    "score",
+    "/content/chat/M_50_0p1",
+    "--in",
+    "/content/chat/upload/a31_readout_req.jsonl",
+    "--out",
+    "{out}/scores.jsonl",
+    "--batch-tokens",
+    "8192"
+   ],
+   "outputs": [
+    "scores.jsonl"
+   ]
+  },
+  {
    "name": "N_50_0p1",
    "spec": {
     "arch": {
@@ -2659,7 +2717,7 @@
       "decay": "cosine",
       "min_lr_frac": 0.1
      },
-     "eval_examples": 64,
+     "eval_examples": 256,
      "twin_loss": {
       "groups": 4,
       "margin": 1.0,
@@ -2691,25 +2749,6 @@
     "round": "a31",
     "key": "N_0p1"
    }
-  },
-  {
-   "name": "score_N_50_0p1",
-   "light": true,
-   "after": "N_50_0p1",
-   "cmd": [
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/N_50_0p1",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
-    "scores.jsonl"
-   ]
   },
   {
    "name": "early_N_50_0p1_128",
@@ -2784,6 +2823,27 @@
    ]
   },
   {
+   "name": "score_N_50_0p1",
+   "light": true,
+   "after": "N_50_0p1",
+   "cmd": [
+    "timeout",
+    "900",
+    "/content/pk/build_cuda/mtstudio",
+    "score",
+    "/content/chat/N_50_0p1",
+    "--in",
+    "/content/chat/upload/a31_readout_req.jsonl",
+    "--out",
+    "{out}/scores.jsonl",
+    "--batch-tokens",
+    "8192"
+   ],
+   "outputs": [
+    "scores.jsonl"
+   ]
+  },
+  {
    "name": "M_50_0p3",
    "spec": {
     "arch": {
@@ -2826,7 +2886,7 @@
       "decay": "cosine",
       "min_lr_frac": 0.1
      },
-     "eval_examples": 64,
+     "eval_examples": 256,
      "twin_loss": {
       "groups": 4,
       "margin": 1.0,
@@ -2858,25 +2918,6 @@
     "round": "a31",
     "key": "M_0p3"
    }
-  },
-  {
-   "name": "score_M_50_0p3",
-   "light": true,
-   "after": "M_50_0p3",
-   "cmd": [
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/M_50_0p3",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
-    "scores.jsonl"
-   ]
   },
   {
    "name": "early_M_50_0p3_128",
@@ -2951,6 +2992,27 @@
    ]
   },
   {
+   "name": "score_M_50_0p3",
+   "light": true,
+   "after": "M_50_0p3",
+   "cmd": [
+    "timeout",
+    "900",
+    "/content/pk/build_cuda/mtstudio",
+    "score",
+    "/content/chat/M_50_0p3",
+    "--in",
+    "/content/chat/upload/a31_readout_req.jsonl",
+    "--out",
+    "{out}/scores.jsonl",
+    "--batch-tokens",
+    "8192"
+   ],
+   "outputs": [
+    "scores.jsonl"
+   ]
+  },
+  {
    "name": "N_50_0p3",
    "spec": {
     "arch": {
@@ -2993,7 +3055,7 @@
       "decay": "cosine",
       "min_lr_frac": 0.1
      },
-     "eval_examples": 64,
+     "eval_examples": 256,
      "twin_loss": {
       "groups": 4,
       "margin": 1.0,
@@ -3025,25 +3087,6 @@
     "round": "a31",
     "key": "N_0p3"
    }
-  },
-  {
-   "name": "score_N_50_0p3",
-   "light": true,
-   "after": "N_50_0p3",
-   "cmd": [
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/N_50_0p3",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
-    "scores.jsonl"
-   ]
   },
   {
    "name": "early_N_50_0p3_128",
@@ -3118,6 +3161,27 @@
    ]
   },
   {
+   "name": "score_N_50_0p3",
+   "light": true,
+   "after": "N_50_0p3",
+   "cmd": [
+    "timeout",
+    "900",
+    "/content/pk/build_cuda/mtstudio",
+    "score",
+    "/content/chat/N_50_0p3",
+    "--in",
+    "/content/chat/upload/a31_readout_req.jsonl",
+    "--out",
+    "{out}/scores.jsonl",
+    "--batch-tokens",
+    "8192"
+   ],
+   "outputs": [
+    "scores.jsonl"
+   ]
+  },
+  {
    "name": "M_50_1p0",
    "spec": {
     "arch": {
@@ -3160,7 +3224,7 @@
       "decay": "cosine",
       "min_lr_frac": 0.1
      },
-     "eval_examples": 64,
+     "eval_examples": 256,
      "twin_loss": {
       "groups": 4,
       "margin": 1.0,
@@ -3192,25 +3256,6 @@
     "round": "a31",
     "key": "M_1p0"
    }
-  },
-  {
-   "name": "score_M_50_1p0",
-   "light": true,
-   "after": "M_50_1p0",
-   "cmd": [
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/M_50_1p0",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
-    "scores.jsonl"
-   ]
   },
   {
    "name": "early_M_50_1p0_128",
@@ -3285,6 +3330,27 @@
    ]
   },
   {
+   "name": "score_M_50_1p0",
+   "light": true,
+   "after": "M_50_1p0",
+   "cmd": [
+    "timeout",
+    "900",
+    "/content/pk/build_cuda/mtstudio",
+    "score",
+    "/content/chat/M_50_1p0",
+    "--in",
+    "/content/chat/upload/a31_readout_req.jsonl",
+    "--out",
+    "{out}/scores.jsonl",
+    "--batch-tokens",
+    "8192"
+   ],
+   "outputs": [
+    "scores.jsonl"
+   ]
+  },
+  {
    "name": "N_50_1p0",
    "spec": {
     "arch": {
@@ -3327,7 +3393,7 @@
       "decay": "cosine",
       "min_lr_frac": 0.1
      },
-     "eval_examples": 64,
+     "eval_examples": 256,
      "twin_loss": {
       "groups": 4,
       "margin": 1.0,
@@ -3359,25 +3425,6 @@
     "round": "a31",
     "key": "N_1p0"
    }
-  },
-  {
-   "name": "score_N_50_1p0",
-   "light": true,
-   "after": "N_50_1p0",
-   "cmd": [
-    "/content/pk/build_cuda/mtstudio",
-    "score",
-    "/content/chat/N_50_1p0",
-    "--in",
-    "/content/chat/upload/a31_readout_req.jsonl",
-    "--out",
-    "{out}/scores.jsonl",
-    "--batch-tokens",
-    "8192"
-   ],
-   "outputs": [
-    "scores.jsonl"
-   ]
   },
   {
    "name": "early_N_50_1p0_128",
@@ -3448,6 +3495,27 @@
    ],
    "outputs": [
     "early.json",
+    "scores.jsonl"
+   ]
+  },
+  {
+   "name": "score_N_50_1p0",
+   "light": true,
+   "after": "N_50_1p0",
+   "cmd": [
+    "timeout",
+    "900",
+    "/content/pk/build_cuda/mtstudio",
+    "score",
+    "/content/chat/N_50_1p0",
+    "--in",
+    "/content/chat/upload/a31_readout_req.jsonl",
+    "--out",
+    "{out}/scores.jsonl",
+    "--batch-tokens",
+    "8192"
+   ],
+   "outputs": [
     "scores.jsonl"
    ]
   }
