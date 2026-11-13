@@ -118,7 +118,7 @@ def render():
 def gate_spec():
     """The gate's spec: S71's, at batch 2, two steps at the full learning rate from step 1, a twin loss on two groups at weight 1."""
     s = spec(1, 1.0, 1.0)
-    s["train"].update({"batch": 2, "steps": 2, "eval_every": 1000, "checkpoint_every": 1000})
+    s["train"].update({"batch": 2, "steps": 2, "eval_every": 1000, "checkpoint_every": 1000, "eval_examples": 4})   # a short final eval
     s["train"]["lr_schedule"] = {"warmup_steps": 0, "decay": "none", "min_lr_frac": 0.1}
     s["train"]["twin_loss"]["groups"] = 2
     s["export"] = {"formats": ["safetensors"]}
