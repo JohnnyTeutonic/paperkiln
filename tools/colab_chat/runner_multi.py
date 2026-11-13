@@ -67,6 +67,7 @@ ADOPT = os.path.join(os.path.dirname(HERE), "colab_adopt.py")
 CHUNK = 45 * 1024 * 1024
 TICK = 240
 NAME = ART = HOME = None
+BOOT_SCRIPT = "tools/colab_chat/boot_jobs.sh"  # --boot-script (A31: tools/colab_chat/boot_a31.sh)
 T = None  # the Transport (ColabTransport unless --backend runpod)
 
 
@@ -438,6 +439,11 @@ def fetch_outputs(st, name, outputs, best_effort=False):
             got.add(f)
             st.save()
             log(f"{name}: {f} downloaded")
+            if os.path.basename(f) == "early.json":   # A31's early readouts: one summary line each, as they arrive
+                try:
+                    log(f"EARLY {json.load(open(dst)).get('summary', '')}")
+                except (OSError, ValueError):
+                    pass
         if not best_effort and not T.whole_files:  # RunPod's rsync is fast: all of them now, no idle pod ticks
             break
     if best_effort or outputs_landed(js, name, outputs):
@@ -989,7 +995,7 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
         log(f"input reassembly failed: {out.strip()[-160:]}")
         return False
     log("inputs: " + " ".join(ln for ln in out.splitlines() if ln and not ln.startswith("[")))
-    url = f"https://raw.githubusercontent.com/JohnnyTeutonic/paperkiln/{commit}/tools/colab_chat/boot_jobs.sh"
+    url = f"https://raw.githubusercontent.com/JohnnyTeutonic/paperkiln/{commit}/{BOOT_SCRIPT}"
     rc, out = exec_py(
         "import subprocess, urllib.request\n"
         f"open('/content/boot_jobs.sh','wb').write(urllib.request.urlopen('{url}').read())\n"
@@ -1029,11 +1035,12 @@ def make_transport(a):
 
 
 def main():
-    global NAME, ART, HOME, T
+    global NAME, ART, HOME, T, BOOT_SCRIPT
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--commit", required=True)
     ap.add_argument("--jobs", required=True, help="jobs JSON, path relative to the paperkiln repo root")
     ap.add_argument("--max-hours", type=float, default=23.5)
+    ap.add_argument("--boot-script", default=BOOT_SCRIPT, help="the VM boot script, a path in the repo at --commit")
     ap.add_argument("--name", required=True, help="Colab session name (this run's own)")
     ap.add_argument("--art", required=True, help="local artifact directory")
     ap.add_argument("--state-dir", required=True, help="runner state, pid file and log")
@@ -1048,6 +1055,7 @@ def main():
                     help="RunPod: stop and create nothing once this runner's ledger passes this many dollars")
     a = ap.parse_args()
     NAME, ART, HOME = a.name, a.art, os.path.expanduser(a.state_dir)
+    BOOT_SCRIPT = a.boot_script
     os.makedirs(HOME, exist_ok=True)
     os.makedirs(ART, exist_ok=True)
     repo = os.path.dirname(os.path.dirname(HERE))
