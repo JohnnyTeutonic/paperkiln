@@ -69,7 +69,7 @@ def early_jobs(name, ref):
     """The early readouts of one training job (a31_early.py), each a rung job on its snapshot."""
     return [{"name": f"early_{name}_{s}", "light": True, "rung_of": {"job": name, "step": s},
              "cmd": ["python3", "tools/colab_chat/a31_early.py", "--job", name, "--step", str(s), "--ref", ref, "--out", "{out}", "--chat", C, "--bin", BIN],
-             "outputs": ["early.json", "scores.jsonl"]} for s in EARLY]
+             "outputs": ["early.json"]} for s in EARLY]   # early.json only: it always exists, so the job always comes home
 
 
 def train_job(name, s, promoted=None):
@@ -84,13 +84,14 @@ SCORE_TIMEOUT = "2400"
 
 
 def score_job(name, req, after):
-    """`mtstudio score` of a job's final weights; the weights' and the request file's sha256 and the binary's are written beside the
-    scores (score.json), so the scorer at home can bind each score file to its model, requests and executable."""
-    bind = (f"python3 tools/colab_chat/a31_bind.py --weights {C}/{name}/{name}.safetensors --requests {req} --bin {BIN} "
-            f"--spec {C}/{name}/spec.json --out {{out}}/score.json")
+    """`mtstudio score` of a job's final weights, then (only after it succeeds) score.json from a31_bind.py: the scores' own sha256,
+    the weights', the GGUF's when the job exported one, the request file's, the binary's and the spec's, so the scorer at home
+    binds each score file to its model, requests, executable and spec (launch reviews, 13 Nov 2026)."""
+    bind = (f"python3 tools/colab_chat/a31_bind.py --scores {{out}}/scores.jsonl --weights {C}/{name}/{name}.safetensors "
+            f"--gguf {C}/{name}/{name}.gguf --requests {req} --bin {BIN} --spec {C}/{name}/spec.json --out {{out}}/score.json")
     return {"name": f"score_{name}", "light": True, "after": after,
-            "cmd": ["bash", "-c", f"{bind} && timeout {SCORE_TIMEOUT} {BIN} score {C}/{name} --in {req} --out {{out}}/scores.jsonl "
-                    "--batch-tokens 8192"],
+            "cmd": ["bash", "-c", f"timeout {SCORE_TIMEOUT} {BIN} score {C}/{name} --in {req} --out {{out}}/scores.jsonl "
+                    f"--batch-tokens 8192 && {bind}"],
             "outputs": ["scores.jsonl", "score.json"]}
 
 
@@ -122,9 +123,9 @@ def render():
     # S71 itself on every final readout request: the reference level (reported, not judged), after the selection is sealed
     s71 = {"name": "score_S71", "light": True, "after": ["gate", "select"],
            "cmd": ["bash", "-c", "mkdir -p {out}/m && ln -sf {upload}/s71.safetensors {out}/m/screen_S71.safetensors && "
-                   "cp {upload}/s71_spec.json {out}/m/spec.json && python3 tools/colab_chat/a31_bind.py --weights {upload}/s71.safetensors "
-                   f"--requests {FINAL_REQ} --bin {BIN} --spec {{out}}/m/spec.json --out {{out}}/score.json && timeout {SCORE_TIMEOUT} "
-                   f"{BIN} score {{out}}/m --in {FINAL_REQ} --out {{out}}/scores.jsonl --batch-tokens 8192"],
+                   f"cp {{upload}}/s71_spec.json {{out}}/m/spec.json && timeout {SCORE_TIMEOUT} {BIN} score {{out}}/m --in {FINAL_REQ} "
+                   f"--out {{out}}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {{out}}/scores.jsonl "
+                   f"--weights {{upload}}/s71.safetensors --requests {FINAL_REQ} --bin {BIN} --spec {{out}}/m/spec.json --out {{out}}/score.json"],
            "outputs": ["scores.jsonl", "score.json"]}
     jobs += [sel] + scores + [s71]
     return {"_comment": "A31 (lane PROTOCOL.md section 50), rendered by tools/colab_chat/a31_jobs.py; edit that file, not this one.",

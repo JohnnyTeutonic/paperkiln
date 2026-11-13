@@ -24,6 +24,7 @@ def run(spec_path):
     lam = tl["lambda"] if tl else 0.0
     fail = name in os.environ.get("FAKE_FAIL", "").split(",")
     high = name in os.environ.get("FAKE_HIGH_VAL", "").split(",")
+    slow = name in os.environ.get("FAKE_SLOW", "").split(",")   # trains slowly past step 256, so a health stop finds it alive
     json.dump(s, open(os.path.join(out, "spec.json"), "w"))
     with open(os.path.join(out, "events.jsonl"), "a") as f:
         for step in range(1, steps + 1):
@@ -42,7 +43,11 @@ def run(spec_path):
                 open(os.path.join(out, "model.safetensors"), "w").write(f"weights {name} {step}")
                 open(os.path.join(out, "state.txt"), "w").write(f"{step}\n")
                 time.sleep(float(os.environ.get("FAKE_CKPT_PAUSE", "0.6")))
+            if slow and step > 256:
+                time.sleep(0.1)
     open(os.path.join(out, f"{name}.safetensors"), "w").write(f"weights {name} final")
+    if "gguf" in (s.get("export") or {}).get("formats", []):
+        open(os.path.join(out, f"{name}.gguf"), "w").write(f"gguf {name} final")
     json.dump({"final_step": steps, "steps_requested": steps, "name": name}, open(os.path.join(out, "result.json"), "w"))
     return 0
 

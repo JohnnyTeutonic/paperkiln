@@ -4,19 +4,19 @@ launch reviews of 13 Nov 2026 (the gradient, not only the forward; fail-closed o
 
 First (round-2 reviews, 13 Nov 2026), tests/test_twin_device.cpp under the pod's CUDA environment: the twin loss and its gradient
 with respect to the logits on the device against the host, element by element, which must pass and report the device op set ON.
-Then two steps of the gate spec (S71's spec at batch 2, a twin loss on two groups, the full learning rate from step 1) four times
+Then two steps of the gate spec (S71's spec at batch 1, a twin loss on two groups of 16 short twins, the full learning rate) four times
 from the same weights (the three below and cpu_plain):
   cuda_twin   the pod's CUDA environment (jobs_vm.py's ENV, which this job inherits)
   cpu_twin    MICROTORCH_DEVICE=cpu, every other MICROTORCH_ variable removed
   cuda_plain  the same spec without the twin loss, on CUDA
 Passes only when every compared value is present and finite (nlohmann writes NaN as null, which fails), and:
   - step 1's SFT loss of cuda_plain equals cuda_twin's bit for bit (the twin term leaves the SFT batch alone on the device);
-  - step 1, cuda_twin against cpu_twin: SFT loss, twin loss and grad_norm within 1% (relative, no absolute floor), d_a, d_b, d_n within 0.02 nats;
+  - step 1, cuda_twin against cpu_twin: SFT loss, twin loss and grad_norm within 1% (relative to the CPU value, its divisor floored at 1e-6), d_a, d_b, d_n within 0.02 nats;
   - the twin term's own gradient: grad_norm(twin) - grad_norm(plain) on CUDA within 5% (relative) of the same difference on the CPU
     (cpu_plain is run for it), and that difference is not 0;
   - step 2 (which reads the weights the first update wrote), cuda_twin against cpu_twin: SFT loss, twin loss, d_a, d_b, d_n as at
     step 1, and grad_norm within 1%.
-Each run has a 30-minute timeout.
+Each run has a 60-minute timeout.
 
     python3 tools/colab_chat/a31_gate.py --out DIR --spec GATE_SPEC.json [--bin MTSTUDIO] [--device-test TEST_TWIN_DEVICE]
 """

@@ -95,7 +95,8 @@ void leg(bool windowed) {
         device::materialize(x->grad);
         grad[dev] = x->grad;
     }
-    double scale = 0.0, worst = 0.0;
+    double scale = 0.0, worst = 0.0;   // worst: max abs(device - host) over the largest host entry (a global-scale error)
+    bool finite_all = true;
     size_t nonzero = 0;
     for (size_t i = 0; i < grad[0].rows(); ++i)
         for (size_t j = 0; j < grad[0].cols(); ++j) scale = std::max(scale, (double)std::abs(grad[0](i, j)));
@@ -103,6 +104,7 @@ void leg(bool windowed) {
         for (size_t j = 0; j < grad[0].cols(); ++j) {
             worst = std::max(worst, std::abs((double)grad[1](i, j) - grad[0](i, j)) / scale);
             nonzero += grad[0](i, j) != 0.0f;
+            finite_all = finite_all && std::isfinite(grad[0](i, j)) && std::isfinite(grad[1](i, j));
         }
     const double lrel = std::abs((double)loss[1] - loss[0]) / std::max(1e-12, std::abs((double)loss[0]));
     std::printf("  %s: loss host %.9g device %.9g (relative %.2e); logits gradient worst relative %.2e over %zu nonzero entries;"
@@ -111,6 +113,7 @@ void leg(bool windowed) {
                 st[0].d_n, st[1].d_n);
     CHECK(std::isfinite(loss[0]) && std::isfinite(loss[1]) && loss[0] > 0.0f);
     CHECK(nonzero > 0);
+    CHECK(finite_all && std::isfinite(scale) && scale > 0.0 && std::isfinite(worst));   // a NaN entry cannot hide behind max
     CHECK(lrel < 1e-5);
     CHECK(worst < 1e-5);
     CHECK(std::abs(st[0].d_a - st[1].d_a) < 1e-4 && std::abs(st[0].d_n - st[1].d_n) < 1e-4);

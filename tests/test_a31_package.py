@@ -237,7 +237,7 @@ def make_chat(tmp, R, runs_spec):
             own = k in (0, 2)
             # AA and BB gain `edge`; NA keeps AA's score less `nui` of the edge (nui 0: no nuisance shift)
             s = -2.0 + (edge if own else 0.0) + (edge * (1.0 - sp.get("nui", 0.0)) if k == 4 else 0.0)
-            lines.append(json.dumps({"i": i, "sum": s, "logprobs": [s / 2, s / 2]}))
+            lines.append(json.dumps({"i": i, "sum": s, "logprobs": [s / 2, s / 2], "over_ctx": False}))
         if sp.get("short"):
             lines = lines[:-5]
         (tmp / f"score_{run}" / "scores.jsonl").write_text("\n".join(lines) + "\n")

@@ -110,21 +110,29 @@ def live_pid(chat, job):
             cmd = open(f"/proc/{p}/cmdline", "rb").read().split(b"\0")
         except OSError:
             continue
-        if len(cmd) >= 3 and cmd[1] == b"run" and cmd[2].decode(errors="replace") == want:
+        # `run SPEC` anywhere on the command line: mtstudio itself, or a wrapper or interpreter in front of it
+        if any(cmd[i] == b"run" and cmd[i + 1].decode(errors="replace") == want for i in range(len(cmd) - 1)):
             return int(p)
     return None
 
 
+def num(x, fmt):
+    """A metric formatted, or '?' when it is absent or not a finite number: a summary never fails on partial metrics."""
+    return format(x, fmt) if finite(x) else "?"
+
+
 def summary_line(job, step, out):
     parts = [f"{job} step {step}"]
-    for name, m in out.get("early", {}).items():
-        if m.get("n"):
-            parts.append(f"{name}: both/tok {m['both_tok']:.3f} dec {m['dec']:+.3f} nui {m['nui']:.3f} sel {m['sel']:+.3f}")
-    tm = out.get("train", {})
+    for name, m in (out.get("early") or {}).items():
+        if isinstance(m, dict) and m.get("n"):
+            parts.append(f"{name}: both/tok {num(m.get('both_tok'), '.3f')} dec {num(m.get('dec'), '+.3f')} "
+                         f"nui {num(m.get('nui'), '.3f')} sel {num(m.get('sel'), '+.3f')}")
+    tm = out.get("train") or {}
     if "sft_loss_mean32" in tm:
-        parts.append(f"sft {tm['sft_loss_mean32']:.3f}")
-    if "twin_d_a_mean32" in tm:
-        parts.append(f"dA {tm['twin_d_a_mean32']:+.3f} dB {tm['twin_d_b_mean32']:+.3f} active {tm['twin_active_mean32']:.2f}")
+        parts.append(f"sft {num(tm.get('sft_loss_mean32'), '.3f')}")
+    if any(k.startswith("twin_") for k in tm):
+        parts.append(f"dA {num(tm.get('twin_d_a_mean32'), '+.3f')} dB {num(tm.get('twin_d_b_mean32'), '+.3f')} "
+                     f"active {num(tm.get('twin_active_mean32'), '.2f')}")
     if finite(out.get("val_loss")):
         parts.append(f"val {out['val_loss']:.3f}")
     if out.get("health_stop"):
@@ -148,7 +156,10 @@ def main():
     out = {"job": a.job, "step": a.step, "producer": "a31_early.py", "early": {}}
 
     def write():
-        out["summary"] = summary_line(a.job, a.step, out)
+        try:
+            out["summary"] = summary_line(a.job, a.step, out)
+        except Exception as e:  # noqa: BLE001  (the record is written whatever the summary does)
+            out["summary"] = f"{a.job} step {a.step}; summary failed: {type(e).__name__}"
         tmp = f"{a.out}/early.json.tmp"
         os.makedirs(a.out, exist_ok=True)
         with open(tmp, "w") as f:
@@ -173,13 +184,21 @@ def main():
         verdict, why = "unread", f"the health check failed: {type(e).__name__}: {e}"
     if verdict == "stop":
         out["health_stop"] = why
-        pid = live_pid(a.chat, a.job)
-        out["stopped_pid"] = pid
-        if pid:
-            os.kill(pid, signal.SIGTERM)
     elif verdict == "unread":
         out["health_unread"] = why
-    write()
+    write()   # the decision is on disk before any kill is attempted (launch reviews, 13 Nov 2026)
+    if verdict == "stop":
+        try:
+            pid = live_pid(a.chat, a.job)
+            out["stopped_pid"] = pid
+            if pid:
+                os.kill(pid, signal.SIGTERM)
+                out["kill"] = "SIGTERM sent"
+            else:
+                out["kill"] = "no live training process (it had ended)"
+        except (ProcessLookupError, PermissionError, OSError) as e:
+            out["kill"] = f"not sent: {type(e).__name__}: {e}"
+        write()
 
     # 2. then the early readout, on the early requests only; a failure here is recorded beside the health result
     try:
