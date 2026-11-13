@@ -83,13 +83,41 @@ PARAMS = {"D1": params(512, 18, 1536), "A": params(768, 8, 2240)}
 assert PARAMS == {"D1": 69751296, "A": 72761088}
 
 
+# The second seed (PROTOCOL.md section 48.3, 13 Nov 2026): N2 and S2 are N and S with the trainer's seed 50 and nothing
+# else changed but their names (and the seed recorded by their rungs). The seed sets the initial weights and the order in
+# which training windows are drawn. Not seed 2: nn::Llama seeds block i's matrices seed + 100 (i + 1) + k (k = 1 to 7,
+# src/llama.cpp), so at seed 2 six of each block's seven matrices would start from seed 1's draws in other roles (the
+# Explore launch review of 13 Nov 2026). At 50, (seed - 1) mod 100 = 49, so no stream of seed 1 is met.
+SEED2 = {"N2": "N", "S2": "S"}
+SECOND_SEED = 50
+
+
+def base_arm(arm):
+    """The arm whose recipe an arm runs: N2 runs N's, S2 runs S's; every other arm its own."""
+    return SEED2.get(arm, arm)
+
+
+def seed_of(arm):
+    return SECOND_SEED if arm in SEED2 else 1
+
+
+def block_streams(seed, layers=18, matrices=7):
+    """The generator seeds nn::Llama gives the blocks' matrices at a trainer seed (src/llama.cpp, LlamaBlock and Llama)."""
+    return {seed + 100 * (i + 1) + k for i in range(layers) for k in range(1, matrices + 1)}
+
+
+assert not block_streams(SECOND_SEED) & block_streams(1)
+
+
 def spec(arm):
-    """Section 3.1. N and S differ in the corpus alone; C is base A's shape on S's corpus at 16 x 1."""
-    corpus = "N" if arm == "N" else "S"
-    d1 = arm != "C"
-    train = {"steps": STEPS[arm], "lr": 0.0005 if d1 else 0.00025, "batch": 8 if d1 else 16, "accum": 2 if d1 else 1,
+    """Section 3.1. N and S differ in the corpus alone; C is base A's shape on S's corpus at 16 x 1. N2 and S2 (section
+    48.3) are N and S at seed 2."""
+    b = base_arm(arm)
+    corpus = "N" if b == "N" else "S"
+    d1 = b != "C"
+    train = {"steps": STEPS[b], "lr": 0.0005 if d1 else 0.00025, "batch": 8 if d1 else 16, "accum": 2 if d1 else 1,
              "clip": 1.0, "eval_every": 1000, "eval_windows": 32, "checkpoint_every": CHECKPOINT_EVERY, "gradmap_every": 0,
-             "seed": 1, "optimizer": "adamw", "precision": "bf16", "attention_kernel": "flash",
+             "seed": seed_of(arm), "optimizer": "adamw", "precision": "bf16", "attention_kernel": "flash",
              "lr_schedule": {"warmup_steps": 4000 if d1 else 2000, "decay": "cosine", "min_lr_frac": 0.1}}
     return {"name": f"base2_{arm}", "arch": arch_d1() if d1 else arch_a(),
             "data": {"corpus": f"{DATA}/{corpus}.main.ids", "vocab": V, "vocab_cap": 16384, "T": T, "max_tokens": 0,
@@ -118,7 +146,7 @@ def load_probe():
     return s
 
 
-def rung(job, step, tag, shape, panels, of=True, after=None, held=True):
+def rung(job, step, tag, shape, panels, of=True, after=None, held=True, seed=1):
     """The zero-rate panels and Carry-5 on the weights at a mark, with training held. of: the mark is a snapshot
     (rung_<step>/); otherwise the run's own last checkpoint, once it has ended. held False: beside training, not
     holding it. Every rung has a time limit: jobs_vm.py's own for a rung that holds training ("timeout_s"), and
@@ -130,7 +158,7 @@ def rung(job, step, tag, shape, panels, of=True, after=None, held=True):
          "env": {"MICROTORCH_POOL_MB": RUNG_POOL_MB},
          "cmd": [*limit, "python3", "tools/colab_chat/tiny_chat_run.py", "rung", "--out", "{out}", "--spec", shape, "--export-gguf",
                  "--weights", weights, "--pt-dir", f"/content/chat/{job}", "--step", str(step), "--job", job,
-                 "--cell", f"BASE2_{tag}", "--seed", "1", "--share", "28",
+                 "--cell", f"BASE2_{tag}", "--seed", str(seed), "--share", "28",
                  *[x for name, path in panels for x in ("--panel", f"{name}={path}")],
                  "--carry5-items", "corpus/eval/carry5_v1.jsonl",
                  "--score-batch-tokens", str(RUNG_SCORE_BATCH), "--score-chunk", str(RUNG_SCORE_CHUNK)],
@@ -156,24 +184,30 @@ def arm(a, store=None):
     if set(sw) != set(ARM_STORE):
         raise ValueError(f"unknown store switch: {sorted(set(sw) - set(ARM_STORE))}")
     job = f"pt_base2_{a}"
-    corpus = "N" if a == "N" else "S"
+    b, seed = base_arm(a), seed_of(a)
+    corpus = "N" if b == "N" else "S"
     s = spec(a)
-    marks = MARKS[a]
+    marks = MARKS[b]
     panels = [(p, f"{DATA}/panel_{p}.ids") for p in PANELS]
-    shape = SHAPE_A if a == "C" else SHAPE_D1
+    shape = SHAPE_A if b == "C" else SHAPE_D1
     train = {"name": job, "model_name": f"base2_{a}", "store_branch": f"ckpt-{a}", "after": ["pins"],
              "snapshot_steps": marks, "halt_on_failure": True, "env": TXN, "spec": s}
-    if a == "C":
+    if b == "C":
         train["init_file"] = A_WEIGHTS
-    jobs = [pins_job(f"arm-{a}"), train]
-    jobs += [rung(job, m, a, shape, panels) for m in marks[:-1]]
-    jobs += [rung(job, marks[-1], a, shape, panels, of=False, after=[job])]
+    jobs = [pins_job(f"arm-{b}"), train]
+    jobs += [rung(job, m, a, shape, panels, seed=seed) for m in marks[:-1]]
+    jobs += [rung(job, marks[-1], a, shape, panels, of=False, after=[job], seed=seed)]
     steps = s["train"]["steps"]
     what = {"N": "D1 (18 x 512) from scratch on the natural corpus",
             "S": "D1 (18 x 512) from scratch on the scenario corpus: N's recipe with 15% scenario tokens",
-            "C": "base A (8 x 768) continued from its final weights on the scenario corpus, for equal compute"}[a]
+            "C": "base A (8 x 768) continued from its final weights on the scenario corpus, for equal compute",
+            "N2": f"arm N at the second seed, {SECOND_SEED} (PROTOCOL.md section 48.3): D1 (18 x 512) from scratch on "
+                  "the natural corpus",
+            "S2": f"arm S at the second seed, {SECOND_SEED} (PROTOCOL.md section 48.3): D1 (18 x 512) from scratch on "
+                  "the scenario corpus"}[a]
     return {"_comment": f"Base 2, arm {a}: {what}. Not admitted: the launch gate is two reviews and Jonathan's dated line.",
-            "_base2": {"arm": a, "shape": "A" if a == "C" else "D1", "params": PARAMS["A" if a == "C" else "D1"],
+            "_base2": {"arm": a, **({"recipe_of": b, "seed": seed} if a in SEED2 else {}),
+                       "shape": "A" if b == "C" else "D1", "params": PARAMS["A" if b == "C" else "D1"],
                        "positions_per_step": ROWS * T, "steps": steps, "positions": steps * ROWS * T,
                        "last_main_step": int(TAIL_FROM * steps), "first_tail_step": int(TAIL_FROM * steps) + 1,
                        "marks": marks, "mark_positions": {str(m): m * ROWS * T for m in marks}, "corpus": corpus,
@@ -278,6 +312,9 @@ ACCOUNT_STORAGE_GB = 1000
 ARM_STORE_BY_ARM = {"N": {"store_push_cap_gb": 200, "store_release_offset_min": 0},
                     "S": {"store_push_cap_gb": 200, "store_release_offset_min": 20},
                     "C": {"store_push_cap_gb": 250, "store_release_offset_min": 40}}
+# N2 and S2 (section 48.3) run with N's and S's switches. They start only once N, S and C have ended, so they are again at
+# most three arms on the repository, and N2 and S2 take N's and S's turns on the release grid.
+ARM_STORE_BY_ARM.update({a: dict(ARM_STORE_BY_ARM[b]) for a, b in SEED2.items()})
 
 
 def gens_kept_max(losses=ARM_SESSION_LOSSES):
@@ -571,7 +608,8 @@ def rehearsal(which="a"):
 def files():
     return {"base2_data.json": data(), "base2_N.json": arm("N"), "base2_S.json": arm("S"), "base2_C.json": arm("C"),
             "base2_rehearsal.json": rehearsal("a"), "base2_rehearsal_b.json": rehearsal("b"),
-            "base2_rung_D1.json": rung_d1(), "base2_load_probe.json": load_probe()}
+            "base2_rung_D1.json": rung_d1(), "base2_load_probe.json": load_probe(),
+            "base2_N2.json": arm("N2"), "base2_S2.json": arm("S2")}
 
 
 def text(obj):

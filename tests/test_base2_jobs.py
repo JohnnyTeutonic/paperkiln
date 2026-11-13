@@ -50,7 +50,8 @@ def test_files_are_what_the_generator_writes_and_check_sees_a_change(tmp_path, m
         assert (CC / name).read_text() == M.text(obj), name
     assert M.main(["--check"]) == 0
     assert set(M.files()) == {"base2_data.json", "base2_N.json", "base2_S.json", "base2_C.json", "base2_rehearsal.json",
-                              "base2_rehearsal_b.json", "base2_rung_D1.json", "base2_load_probe.json"}
+                              "base2_rehearsal_b.json", "base2_rung_D1.json", "base2_load_probe.json",
+                              "base2_N2.json", "base2_S2.json"}   # the second seed, section 48.3
     monkeypatch.setattr(M, "HERE", str(tmp_path))
     assert M.main(["--check"]) == 1          # nothing written yet
     assert M.main([]) == 0 and M.main(["--check"]) == 0
@@ -457,9 +458,12 @@ def test_the_registrations_store_switches_are_set_in_make_base2_and_the_files_do
     assert M.ARM_STORE == {"store_push_cap_gb": 0, "store_release_every_min": 60, "store_release_grace_s": 7200,
                            "store_stall_halt": True, "store_stall_min": 120, "store_unverified_halt_min": 90,
                            "store_release_offset_min": 0, "store_no_progress_min": 300, "store_no_progress_launches": 4}
-    assert M.ARM_STORE_BY_ARM == {"N": {"store_push_cap_gb": 200, "store_release_offset_min": 0},
-                                  "S": {"store_push_cap_gb": 200, "store_release_offset_min": 20},
-                                  "C": {"store_push_cap_gb": 250, "store_release_offset_min": 40}}
+    assert {a: M.ARM_STORE_BY_ARM[a] for a in "NSC"} == {"N": {"store_push_cap_gb": 200, "store_release_offset_min": 0},
+                                                         "S": {"store_push_cap_gb": 200, "store_release_offset_min": 20},
+                                                         "C": {"store_push_cap_gb": 250, "store_release_offset_min": 40}}
+    # The second seed (section 48.3): N2 and S2 take N's and S's switches, and no other arm is added.
+    assert set(M.ARM_STORE_BY_ARM) == {"N", "S", "C", "N2", "S2"}
+    assert M.ARM_STORE_BY_ARM["N2"] == M.ARM_STORE_BY_ARM["N"] and M.ARM_STORE_BY_ARM["S2"] == M.ARM_STORE_BY_ARM["S"]
     # Each file carries them, the grace (the runner's own default) and N's offset of 0 left out.
     for arm, cap, off in (("N", 200, None), ("S", 200, 20), ("C", 250, 40)):
         f = load(f"base2_{arm}.json")
