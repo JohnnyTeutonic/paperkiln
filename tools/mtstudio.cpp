@@ -47,6 +47,7 @@
 #include "microtorch/llama_attnres.hpp"
 #include "microtorch/safetensors.hpp"
 #include "microtorch/posttrain/grpo.hpp"
+#include "microtorch/posttrain/twin.hpp"
 #include "microtorch/posttrain/verifier.hpp"
 #include "microtorch/bpe_tokenizer.hpp"
 #include "microtorch/llama3_tokenizer.hpp"
@@ -202,6 +203,14 @@ struct Spec {
     // RPO-style NLL on chosen completions (Pang et al. 2024), weighted by the
     // same pair weights: counters DPO's likelihood displacement. 0 = plain DPO.
     float po_nll = 0.0f;
+    // Cue-selective twin loss (lane amendment A30; include/microtorch/posttrain/twin.hpp): objective
+    // "sft" with data.twin_examples, JSONL of {"A": [context, reply], "B": [context, reply],
+    // "N": [context, reply]} (N keeps A's reply), and train.twin_loss {"groups", "margin", "lambda",
+    // "mu"}. Each step adds the twin loss on `groups` groups drawn by a generator of its own (the seed
+    // and the step), so the SFT batches are those of the same spec without it. Absent: unchanged.
+    std::string twin_examples;
+    int twin_groups = 0;
+    float twin_margin = 0.0f, twin_lambda = 0.0f, twin_mu = 0.0f;
     // train
     int steps = 500;
     float lr = 3e-3f, clip = 1.0f, lambda_gate = 0.05f;
@@ -648,6 +657,7 @@ Spec parse_spec(const std::string& path) {
     s.grpo_prompts = data.value("grpo_prompts", "");
     s.grpo_eval = data.value("grpo_eval", "");
     s.pref_pairs = data.value("pref_pairs", "");
+    s.twin_examples = data.value("twin_examples", "");
     if (data.contains("anneal")) {
         const json an = data["anneal"];
         s.anneal_corpus = an.value("corpus", "");
@@ -732,6 +742,27 @@ Spec parse_spec(const std::string& path) {
     }
     if ((s.objective == "sft" || s.objective == "rejection_sft") && s.sft_examples.empty())
         throw std::runtime_error("train.objective " + s.objective + " needs data.sft_examples");
+    if (tr.contains("twin_loss") != !s.twin_examples.empty())
+        throw std::runtime_error("train.twin_loss and data.twin_examples go together");
+    if (tr.contains("twin_loss")) {
+        const json& tl = tr["twin_loss"];
+        if (!tl.is_object()) throw std::runtime_error("train.twin_loss must be an object");
+        for (auto it = tl.begin(); it != tl.end(); ++it)
+            if (it.key() != "groups" && it.key() != "margin" && it.key() != "lambda" && it.key() != "mu" &&
+                it.key().rfind("_", 0) != 0)
+                throw std::runtime_error("train.twin_loss: unknown key " + it.key() + " (groups, margin, lambda, mu)");
+        for (const char* k : {"groups", "margin", "lambda", "mu"})
+            if (!tl.contains(k)) throw std::runtime_error(std::string("train.twin_loss needs ") + k);
+        s.twin_groups = tl["groups"].get<int>();
+        s.twin_margin = tl["margin"].get<float>();
+        s.twin_lambda = tl["lambda"].get<float>();
+        s.twin_mu = tl["mu"].get<float>();
+        if (s.objective != "sft") throw std::runtime_error("train.twin_loss rides the sft objective only");
+        if (s.twin_groups < 1) throw std::runtime_error("train.twin_loss.groups must be >= 1");
+        if (!std::isfinite(s.twin_margin)) throw std::runtime_error("train.twin_loss.margin must be finite");
+        if (!(s.twin_lambda >= 0.0f) || !(s.twin_mu >= 0.0f) || !(s.twin_lambda > 0.0f || s.twin_mu > 0.0f))
+            throw std::runtime_error("train.twin_loss: lambda and mu must be >= 0, not both 0");
+    }
     if (s.objective == "grpo") {
         const json g = tr.value("grpo", json::object());
         s.grpo_group = g.value("group_size", s.grpo_group);
@@ -816,6 +847,8 @@ Spec parse_spec(const std::string& path) {
         // activation checkpointing do not carry them yet (refuse, never drop).
         if (s.objective == "grpo" || s.objective == "provenance_po")
             throw std::runtime_error("arch.moe: objective " + s.objective + " is not wired for MoE yet (lm, sft, rejection_sft)");
+        if (s.twin_groups > 0)
+            throw std::runtime_error("arch.moe: train.twin_loss is not wired for MoE (its forward carries no auxiliary losses)");
         if (s.ckpt_act)
             throw std::runtime_error("arch.moe: train.checkpoint_activations is not supported with MoE yet");
         if (s.rec_block > 0) throw std::runtime_error("arch.moe with arch.custom.recursion is not wired yet");
@@ -1516,6 +1549,101 @@ SftSet load_sft(const Spec& s, const std::map<std::string, int>& vocab) {
         d.provenance["not_accepted_skipped"] = skipped;
     }
     return d;
+}
+
+// Twin groups for train.twin_loss (lane amendment A30). Each line {"A": [context, reply], "B":
+// [context, reply], "N": [context, reply]} becomes the rows A + yA, B + yA, B + yB, A + yB and,
+// when mu > 0, N + yA (N must keep A's reply word for word), written as {prompt, completion} rows
+// to out_dir/twin_rows.jsonl and read back through load_sft itself: the same tokenisation, end of
+// text and state ids as an SFT row, and a reply tokenised on its own, so it has the same targets in
+// every context. Every row must load (a row over data.T, or cut by state ids, is refused, never
+// dropped), and a reply's targets must agree across its contexts.
+struct TwinSet {
+    // row g * per_group + j: ids up to its last reply target, the reply targets' positions and ids
+    std::vector<std::vector<int>> x, pos, tgt;
+    size_t groups = 0;
+    int per_group = 4;
+    std::vector<float> n_a, n_b;
+    size_t max_len = 0, reply_targets = 0, state_blocks = 0;
+};
+
+TwinSet load_twins(const Spec& s, const std::map<std::string, int>& vocab) {
+    std::ifstream f(s.twin_examples);
+    if (!f) throw std::runtime_error("cannot open data.twin_examples " + s.twin_examples);
+    TwinSet t;
+    t.per_group = s.twin_mu > 0.0f ? 5 : 4;
+    std::filesystem::create_directories(s.out_dir);
+    const std::string rows_path = s.out_dir + "/twin_rows.jsonl";
+    {
+        std::ofstream o(rows_path, std::ios::trunc);
+        std::string line;
+        size_t n = 0;
+        while (std::getline(f, line)) {
+            ++n;
+            if (line.find_first_not_of(" \t\r") == std::string::npos) continue;
+            const json r = json::parse(line, nullptr, false);
+            const std::string at = s.twin_examples + ":" + std::to_string(n) + ": ";
+            auto side = [&](const char* k) {
+                if (r.is_discarded() || !r.is_object() || !r.contains(k) || !r[k].is_array() || r[k].size() != 2 ||
+                    !r[k][0].is_string() || !r[k][1].is_string() || r[k][0].get<std::string>().empty() ||
+                    r[k][1].get<std::string>().empty())
+                    throw std::runtime_error(at + k + " must be [context, reply], both non-empty strings");
+                return std::make_pair(r[k][0].get<std::string>(), r[k][1].get<std::string>());
+            };
+            const auto A = side("A"), B = side("B");
+            if (A.second == B.second) throw std::runtime_error(at + "A and B have the same reply");
+            std::vector<std::pair<std::string, std::string>> rows = {
+                {A.first, A.second}, {B.first, A.second}, {B.first, B.second}, {A.first, B.second}};
+            if (t.per_group == 5) {
+                const auto N = side("N");
+                if (N.second != A.second) throw std::runtime_error(at + "N must keep A's reply");
+                if (N.first == A.first) throw std::runtime_error(at + "N's context equals A's");
+                rows.push_back({N.first, A.second});
+            }
+            for (const auto& [p, c] : rows) o << json{{"prompt", p}, {"completion", c}}.dump() << "\n";
+            ++t.groups;
+        }
+        if (!o) throw std::runtime_error("cannot write " + rows_path);
+    }
+    if (t.groups == 0) throw std::runtime_error("data.twin_examples holds no twin group");
+    Spec rs = s;
+    rs.sft_examples = rows_path;
+    rs.objective = "sft";
+    rs.sft_turns_set = false;
+    SftSet d;
+    try {
+        d = load_sft(rs, vocab);
+    } catch (const std::runtime_error& e) {
+        throw std::runtime_error("data.twin_examples (as " + rows_path + "): " + e.what());
+    }
+    const size_t R = t.groups * static_cast<size_t>(t.per_group);
+    t.state_blocks = d.state_blocks;
+    if (d.x.size() != R)
+        throw std::runtime_error("data.twin_examples: " + std::to_string(R) + " twin rows written, " +
+                                 std::to_string(d.x.size()) + " usable (a row over data.T or cut by state ids)");
+    for (size_t r = 0; r < R; ++r) {
+        std::vector<int> p, y;
+        for (size_t i = 0; i < d.m[r].size(); ++i)
+            if (d.m[r][i]) {
+                p.push_back(static_cast<int>(i));
+                y.push_back(d.y[r][i]);
+            }
+        if (p.empty()) throw std::runtime_error("data.twin_examples: twin row " + std::to_string(r) + " has no reply target");
+        t.x.emplace_back(d.x[r].begin(), d.x[r].begin() + p.back() + 1);
+        t.max_len = std::max(t.max_len, t.x.back().size());
+        t.reply_targets += p.size();
+        t.pos.push_back(std::move(p));
+        t.tgt.push_back(std::move(y));
+    }
+    for (size_t g = 0; g < t.groups; ++g) {
+        const size_t k = g * t.per_group;
+        if (t.tgt[k] != t.tgt[k + 1] || t.tgt[k + 2] != t.tgt[k + 3] || (t.per_group == 5 && t.tgt[k] != t.tgt[k + 4]))
+            throw std::runtime_error("data.twin_examples: group " + std::to_string(g) +
+                                     ": a reply's targets differ between its contexts");
+        t.n_a.push_back(static_cast<float>(t.tgt[k].size()));
+        t.n_b.push_back(static_cast<float>(t.tgt[k + 2].size()));
+    }
+    return t;
 }
 
 // Row-wise log-softmax in double, returned as float (grpo's reference
@@ -2278,6 +2406,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     if (!s.anneal_corpus.empty() && s.objective != "lm")
         throw std::runtime_error("data.anneal is for objective lm only");
     SftSet sd;
+    TwinSet tw;  // train.twin_loss (A30); empty otherwise
     GrpoData gd;
     PrefData pd;
     std::vector<size_t> po_train;  // training pairs with weight > 0
@@ -2383,6 +2512,22 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                      {"sft_loss", {{"turns", s.sft_turns}}}, {"conversations", sd.conv_rows}, {"rows", sd.conv_out},
                      {"dropped_over_T", sd.conv_over_T}, {"exchanges_cut_over_T", sd.conv_exchanges_cut},
                      {"untrained", sd.conv_untrained}});
+        if (s.twin_groups > 0) {
+            if (s.moe_experts > 0 || routed(s))
+                throw std::runtime_error("train.twin_loss is not wired for MoE or routed recursion");
+            tw = load_twins(s, vocab);
+            ev.emit({{"event", "twin_data"},
+                     {"groups", tw.groups},
+                     {"rows_per_group", tw.per_group},
+                     {"reply_targets", tw.reply_targets},
+                     {"max_row_len", tw.max_len},
+                     {"state_blocks", tw.state_blocks},
+                     {"twin_loss",
+                      {{"groups_per_step", s.twin_groups},
+                       {"margin", s.twin_margin},
+                       {"lambda", s.twin_lambda},
+                       {"mu", s.twin_mu}}}});
+        }
     }
 
     // Model + optimizer (+ resume). Two families behind one seam: the
@@ -3056,6 +3201,53 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             task_mean += task->data(0, 0) / static_cast<float>(s.accum);
             if (is_srd) gate_mean += gpt->mean_gate()->data(0, 0) / static_cast<float>(s.accum);
         }
+        json twin_ev;
+        if (s.twin_groups > 0) {
+            // A30: train.twin_loss on twin_groups groups drawn by a generator of the seed and the
+            // step alone (rng, which draws the SFT rows, is never touched, so the SFT batches are the
+            // plain spec's, and a resumed run draws the same groups). One forward over the groups'
+            // rows, each padded to the longest; the loss's gradient adds to the SFT step's.
+            std::seed_seq ss{static_cast<unsigned>(s.seed), static_cast<unsigned>(step), 0x7717u};
+            std::mt19937 tg(ss);
+            std::vector<size_t> pick(static_cast<size_t>(s.twin_groups));
+            for (auto& p : pick) p = tg() % tw.groups;
+            const size_t k = static_cast<size_t>(tw.per_group);
+            size_t Lb = 0;
+            for (size_t g : pick)
+                for (size_t j = 0; j < k; ++j) Lb = std::max(Lb, tw.x[g * k + j].size());
+            posttrain::TwinTargets tt;
+            tt.groups = pick.size();
+            tt.per_group = tw.per_group;
+            tt.rows = tt.groups * k;
+            std::vector<int> xb;
+            xb.reserve(tt.rows * Lb);
+            const int pad = eos_tok >= 0 ? eos_tok : 0;
+            for (size_t gi = 0; gi < pick.size(); ++gi) {
+                const size_t g = pick[gi];
+                tt.n_a.push_back(tw.n_a[g]);
+                tt.n_b.push_back(tw.n_b[g]);
+                for (size_t j = 0; j < k; ++j) {
+                    const size_t src = g * k + j, r = gi * k + j;
+                    const auto& row = tw.x[src];
+                    xb.insert(xb.end(), row.begin(), row.end());
+                    xb.insert(xb.end(), Lb - row.size(), pad);
+                    for (size_t i = 0; i < tw.pos[src].size(); ++i) {
+                        tt.pos.push_back(static_cast<int>(r * Lb) + tw.pos[src][i]);
+                        tt.tgt.push_back(tw.tgt[src][i]);
+                        tt.pos_row.push_back(static_cast<int>(r));
+                    }
+                }
+            }
+            mark("twin_data");
+            Var tlog = fwd(xb, Lb);
+            mark("twin_forward");
+            posttrain::TwinStats st;
+            Var tloss = posttrain::twin_loss(tlog, tt, s.twin_margin, s.twin_lambda, s.twin_mu, &st);
+            backward(tloss);
+            mark("twin_backward");
+            twin_ev = {{"loss", st.loss}, {"d_a", st.d_a}, {"d_b", st.d_b}, {"active", st.active}, {"len", Lb}};
+            if (st.has_n) twin_ev["d_n"] = st.d_n;
+        }
         // Per-module grad norms BEFORE clipping: this is the true signal
         // the glow UI wants (clipping would mask explosions).
         const bool want_gm = s.gradmap_every > 0 && step % s.gradmap_every == 0;
@@ -3109,6 +3301,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         json e = {
             {"event", "step"}, {"step", step}, {"loss", task_mean}, {"grad_norm", total_norm}};
         if (scheduled) e["lr"] = s.lr * lr_f;
+        if (!twin_ev.is_null()) e["twin"] = twin_ev;
         if (step_timing) {
             e["t_ms"] = t_ms;
             e["live_mb"] = live_mb;
