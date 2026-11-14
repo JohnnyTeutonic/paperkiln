@@ -1,0 +1,47 @@
+{
+  "name": "screen_S40",
+  "arch": {
+    "preset": "llama-tiny",
+    "rope_heads": "all",
+    "custom": {
+      "d": 896,
+      "layers": 2,
+      "heads": 14,
+      "d_ff": 2528
+    }
+  },
+  "data": {
+    "vocab": "/content/run_a18-s2-20261107/upload/vocab.gguf",
+    "vocab_cap": 16384,
+    "T": 1024,
+    "sft_examples": "/content/run_a18-s2-20261107/upload/S40.jsonl"
+  },
+  "train": {
+    "objective": "sft",
+    "steps": 2048,
+    "lr": 0.0001,
+    "batch": 8,
+    "accum": 2,
+    "clip": 1.0,
+    "eval_every": 256,
+    "eval_batch": 8,
+    "checkpoint_every": 256,
+    "gradmap_every": 0,
+    "seed": 1,
+    "optimizer": "adamw",
+    "init_from": "/content/run_a18-s2-20261107/upload/tc_e1_L2_r2.safetensors",
+    "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+    },
+    "eval_examples": 680
+  },
+  "export": {
+    "formats": [
+      "safetensors",
+      "gguf"
+    ]
+  },
+  "out_dir": "/content/run_a18-s2-20261107/train_S40"
+}

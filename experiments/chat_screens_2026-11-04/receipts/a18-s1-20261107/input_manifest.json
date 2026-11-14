@@ -1,0 +1,76 @@
+{
+  "arm_a_spec_sha256": "66c718e0b501c751aae0a1cd22eddfdc666a7cfb46a4c074fa41b67aa220125e",
+  "bases": {
+    "tc_e1_L2_r1": {
+      "parts": [
+        {
+          "name": "tc_e1_L2_r1.part00",
+          "sha256": "c961295baf30de46c66bf34374e085fca0e52e7e02026f2a0036d60c67a8674c"
+        },
+        {
+          "name": "tc_e1_L2_r1.part01",
+          "sha256": "a3895d0e7a2c4a088a69f439333ed594fd7516b9938913c68e237e219f6a308f"
+        },
+        {
+          "name": "tc_e1_L2_r1.part02",
+          "sha256": "5380a97dfee0a29fb8bbfbf7e1ffe842a0d7a3cad6bf334c3cc9be78d2c56b97"
+        }
+      ],
+      "sha256": "763c4f38c2c1c890481f9895cb47d164b5d2f7e758563a34a9c072bd1fd70700"
+    },
+    "tc_e1_L32_r1": {
+      "parts": [
+        {
+          "name": "tc_e1_L32_r1.part00",
+          "sha256": "e610b30b5c7ef575407c6dd596fd3f7b407c6cc11cb8abf9d0fc0aefd96fd841"
+        },
+        {
+          "name": "tc_e1_L32_r1.part01",
+          "sha256": "cb6a56afeb9b871494cc11e6154307ac28ccd955a0aa750c3bb6e603a6667ec8"
+        }
+      ],
+      "sha256": "86fc7216c1da122ecfd66e8c43b2e8a0effaf0dfb30a91f61c3df4b8f95507ff"
+    },
+    "tc_e5_s35_r1": {
+      "parts": [
+        {
+          "name": "tc_e5_s35_r1.part00",
+          "sha256": "0abe7b1d84b025076fa921a8fa362fb890b8cae21f2f73668d738392d886dc76"
+        },
+        {
+          "name": "tc_e5_s35_r1.part01",
+          "sha256": "52616c7fda0a4aadc6707d76ac9c722141ddae2cc5365535f00758ab4c5e7448"
+        },
+        {
+          "name": "tc_e5_s35_r1.part02",
+          "sha256": "af7e09d7239ff7b7d78c4f4e94ee44727afebe05f4fd52be0ecedd537953cacc"
+        }
+      ],
+      "sha256": "0b6485e241224a0a07407caa55e7e03346b7e31264ba2daa122e531d4d6da956"
+    }
+  },
+  "files": {
+    "S35.jsonl": "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a",
+    "S36.jsonl": "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a",
+    "S37.jsonl": "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a",
+    "arm_a_lr3e5.json": "66c718e0b501c751aae0a1cd22eddfdc666a7cfb46a4c074fa41b67aa220125e",
+    "recipes.json": "b6c44a5eb96dd2726dc44ce51d8c6a1a469f43b7e482d36d0f8530afbd65d15b",
+    "tc_e1_L2_r1.safetensors": "763c4f38c2c1c890481f9895cb47d164b5d2f7e758563a34a9c072bd1fd70700",
+    "tc_e1_L32_r1.safetensors": "86fc7216c1da122ecfd66e8c43b2e8a0effaf0dfb30a91f61c3df4b8f95507ff",
+    "tc_e5_s35_r1.safetensors": "0b6485e241224a0a07407caa55e7e03346b7e31264ba2daa122e531d4d6da956",
+    "vocab.gguf": "0b880aa073a7e27c0770d5ecc5215b55d6d415080d20bd3dc7b169ecabadf198"
+  },
+  "run_id": "a18-s1-20261107",
+  "screen_bases": {
+    "S35": "tc_e5_s35_r1",
+    "S36": "tc_e1_L32_r1",
+    "S37": "tc_e1_L2_r1"
+  },
+  "screens": [
+    "S35",
+    "S36",
+    "S37"
+  ],
+  "seed": 1,
+  "source": "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1"
+}

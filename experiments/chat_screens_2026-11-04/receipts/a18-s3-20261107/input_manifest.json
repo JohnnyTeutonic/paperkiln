@@ -1,0 +1,55 @@
+{
+  "arm_a_spec_sha256": "66c718e0b501c751aae0a1cd22eddfdc666a7cfb46a4c074fa41b67aa220125e",
+  "bases": {
+    "tc_e1_L32_r2": {
+      "parts": [
+        {
+          "name": "tc_e1_L32_r2.part00",
+          "sha256": "1f2f2aae3ef81549f3dcd37e6d53217859bdccfdabf21646f9da1de775df11ab"
+        },
+        {
+          "name": "tc_e1_L32_r2.part01",
+          "sha256": "e761c4d2471f12d838e3f6c40cecf155b4afc29a04571b4aa6be03769644bd00"
+        }
+      ],
+      "sha256": "02b11e03185413131883bfd24249d6bb80a64d970ff9dc5ff8bf9758f274f34e"
+    },
+    "tc_e5_s35_r3": {
+      "parts": [
+        {
+          "name": "tc_e5_s35_r3.part00",
+          "sha256": "94efb2bea3334dcf21e9d9160d4cdbca7d563e2d8b483e2c69e10b0cf922adde"
+        },
+        {
+          "name": "tc_e5_s35_r3.part01",
+          "sha256": "f66f08302104e82a128706bf74144cd46b60b2855cd7ec149b3fd83aefd1e0e4"
+        },
+        {
+          "name": "tc_e5_s35_r3.part02",
+          "sha256": "21b98fabadb7ed89f3e353077c444acd5bed5c26d7f5d0e22aa9c14df9206269"
+        }
+      ],
+      "sha256": "b8d47042a0bcab9ae77089ef1671c4197f7fbd891efd230004dcd0c85df4e00b"
+    }
+  },
+  "files": {
+    "S41.jsonl": "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a",
+    "S42.jsonl": "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a",
+    "arm_a_lr3e5.json": "66c718e0b501c751aae0a1cd22eddfdc666a7cfb46a4c074fa41b67aa220125e",
+    "recipes.json": "d6ba0267c7a29b95ad10e1714b5c3274bfbca8ec403356401f5d397e044cfc0c",
+    "tc_e1_L32_r2.safetensors": "02b11e03185413131883bfd24249d6bb80a64d970ff9dc5ff8bf9758f274f34e",
+    "tc_e5_s35_r3.safetensors": "b8d47042a0bcab9ae77089ef1671c4197f7fbd891efd230004dcd0c85df4e00b",
+    "vocab.gguf": "0b880aa073a7e27c0770d5ecc5215b55d6d415080d20bd3dc7b169ecabadf198"
+  },
+  "run_id": "a18-s3-20261107",
+  "screen_bases": {
+    "S41": "tc_e5_s35_r3",
+    "S42": "tc_e1_L32_r2"
+  },
+  "screens": [
+    "S41",
+    "S42"
+  ],
+  "seed": 1,
+  "source": "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1"
+}

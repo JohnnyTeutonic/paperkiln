@@ -1,0 +1,21 @@
+{
+  "T": 1024,
+  "accum": 2,
+  "attention": "exact",
+  "batch": 8,
+  "best_val": 1.7520722150802612,
+  "checkpoint_activations": false,
+  "d": 768,
+  "early_stopped": false,
+  "family": "llama",
+  "final_step": 1024,
+  "heads": 12,
+  "layers": 12,
+  "lr": 9.999999747378752e-05,
+  "name": "screen_S55",
+  "params": 97536768,
+  "seed": 1,
+  "steps_requested": 1024,
+  "tokens_per_second": 8835.917855894184,
+  "wall_seconds": 1898.751920697
+}

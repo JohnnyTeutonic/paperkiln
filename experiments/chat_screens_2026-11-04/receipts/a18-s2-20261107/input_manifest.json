@@ -1,0 +1,80 @@
+{
+  "arm_a_spec_sha256": "66c718e0b501c751aae0a1cd22eddfdc666a7cfb46a4c074fa41b67aa220125e",
+  "bases": {
+    "tc_e1_L16_r1": {
+      "parts": [
+        {
+          "name": "tc_e1_L16_r1.part00",
+          "sha256": "4182871ece81e923f279884099e4fa6253bc3c82b1110aa2ea84a6b62200a4fd"
+        },
+        {
+          "name": "tc_e1_L16_r1.part01",
+          "sha256": "4b31181cd654d473ab5165671705252ca158e726b4ee836bf5efd7e588060355"
+        },
+        {
+          "name": "tc_e1_L16_r1.part02",
+          "sha256": "5b5471066378389f181277e836b3e1c08189e6018eabb81e94556f098e0ada89"
+        }
+      ],
+      "sha256": "b8d5e4099653aa52b1bc9b46f4793f4072e1f03e4d7dd973ed3f0c4217216559"
+    },
+    "tc_e1_L2_r2": {
+      "parts": [
+        {
+          "name": "tc_e1_L2_r2.part00",
+          "sha256": "d14a4128b2a676fefbafe8ab740d5dc976e4b570bf83bcf680fa71dbc567820c"
+        },
+        {
+          "name": "tc_e1_L2_r2.part01",
+          "sha256": "d1ef2b2d17e8b3750345a8f9ffb52f83c0c1c5cbb9e0d711a468c211bd818d09"
+        },
+        {
+          "name": "tc_e1_L2_r2.part02",
+          "sha256": "76faec02ea0ec9add09873a4e7efa078a2379d176f61712c8f4e188f27494931"
+        }
+      ],
+      "sha256": "6d56a0433ce378a3641d0904b516a96c18d755c3e9dfe41377815f27a1d19419"
+    },
+    "tc_e1_L4_r1": {
+      "parts": [
+        {
+          "name": "tc_e1_L4_r1.part00",
+          "sha256": "f4e0c0ff65217de7963f1357979c63b4d986bad8bfe717405e76da410a58097e"
+        },
+        {
+          "name": "tc_e1_L4_r1.part01",
+          "sha256": "bb0dd6fa085031a2b57840377a85e688983de69e8719b859e1890971d31aca46"
+        },
+        {
+          "name": "tc_e1_L4_r1.part02",
+          "sha256": "fc6517b8099b260e0d3020dc60ddbde530ff45108fbf70a80237265ef7c4c6df"
+        }
+      ],
+      "sha256": "f4f5fc323e8d5856ddcc90e21b95e70d9fb202861854faa080774a6319648c1a"
+    }
+  },
+  "files": {
+    "S38.jsonl": "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a",
+    "S39.jsonl": "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a",
+    "S40.jsonl": "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a",
+    "arm_a_lr3e5.json": "66c718e0b501c751aae0a1cd22eddfdc666a7cfb46a4c074fa41b67aa220125e",
+    "recipes.json": "d6ba0267c7a29b95ad10e1714b5c3274bfbca8ec403356401f5d397e044cfc0c",
+    "tc_e1_L16_r1.safetensors": "b8d5e4099653aa52b1bc9b46f4793f4072e1f03e4d7dd973ed3f0c4217216559",
+    "tc_e1_L2_r2.safetensors": "6d56a0433ce378a3641d0904b516a96c18d755c3e9dfe41377815f27a1d19419",
+    "tc_e1_L4_r1.safetensors": "f4f5fc323e8d5856ddcc90e21b95e70d9fb202861854faa080774a6319648c1a",
+    "vocab.gguf": "0b880aa073a7e27c0770d5ecc5215b55d6d415080d20bd3dc7b169ecabadf198"
+  },
+  "run_id": "a18-s2-20261107",
+  "screen_bases": {
+    "S38": "tc_e1_L16_r1",
+    "S39": "tc_e1_L4_r1",
+    "S40": "tc_e1_L2_r2"
+  },
+  "screens": [
+    "S38",
+    "S39",
+    "S40"
+  ],
+  "seed": 1,
+  "source": "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1"
+}
