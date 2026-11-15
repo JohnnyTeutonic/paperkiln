@@ -10,6 +10,7 @@ two-variable lookup, not a research claim:
 Needs MTSTUDIO_BIN (or ./build/mtstudio); skipped otherwise.
 """
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -106,3 +107,32 @@ def test_eval_at_changes_no_training_step(tmp):
     assert not [e for e in base if e["event"] == "eval" and e["step"] in (3, 5, 9)]
     r = run(spec(tmp, "ev_bad", {"steps": 2, "eval_at": [0]}), ok=False)
     assert r.returncode != 0 and "eval_at" in r.stderr
+
+
+@needs_bin
+@pytest.mark.skipif(os.environ.get("B2CUE_SLOW") != "1", reason="1,500 steps twice, about 50 minutes on 4 CPU threads: "
+                    "B2CUE_SLOW=1 runs it")
+def test_eval_at_on_the_sft1500_recipe_past_step_188(tmp):
+    """Section 8 (launch round 4): the SFT1500 recipe's training block as C0 launches it (b2cue_c0.json's sft_N250: all 1,500 steps,
+    lr, batch, accumulation, warm-up and cosine, clip, AdamW, seed, eval_every, eval_batch, checkpoint_every and eval_at [188, 375,
+    750]; RoPE on all heads), with the init_from left out, at the toy model, vocabulary and T of these tests, run on the CPU with and
+    without eval_at: every step's loss, gradient norm and SFT rows equal bit for bit, so the added evaluations consume no random state,
+    and the held-out evaluations fall at exactly 188, 375 and 750 beyond eval_every's. The state tokens are left out: they need the
+    chat template's specials, which the toy vocabulary lacks, and on single-turn SFT rows they insert no block (D1's vocabulary at
+    its cap ran at about 15 s a step here, too slow for a test)."""
+    jobs = json.loads((ROOT / "tools" / "colab_chat" / "b2cue_c0.json").read_text())
+    rec = next(j for j in jobs["jobs"] if j["name"] == "sft_N250")["spec"]
+    train = {k: v for k, v in rec["train"].items() if k != "init_from"}
+    assert train["steps"] == 1500 and train["eval_at"] == [188, 375, 750]
+    arch = {"rope_heads": rec["arch"]["rope_heads"]}
+    plain = {k: v for k, v in train.items() if k != "eval_at"}
+    a_ev = run(spec(tmp, "rec_plain", plain, arch=arch))
+    b_ev = run(spec(tmp, "rec_at", train, arch=arch))
+    a, b = steps(a_ev), steps(b_ev)
+    assert len(a) == len(b) == 1500
+    assert [e["loss"] for e in a] == [e["loss"] for e in b]
+    assert [e["grad_norm"] for e in a] == [e["grad_norm"] for e in b]
+    assert [e["sft_rows_hash"] for e in a] == [e["sft_rows_hash"] for e in b]
+    ev_a = {e["step"] for e in a_ev if e["event"] == "eval"}
+    ev_b = {e["step"] for e in b_ev if e["event"] == "eval"}
+    assert ev_b - ev_a == {188, 375, 750}

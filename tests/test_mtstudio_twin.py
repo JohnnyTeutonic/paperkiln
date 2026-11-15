@@ -11,6 +11,7 @@ Claude Opus 5.5, 13 Nov 2026. Wiring checks on a two-variable lookup, not a rese
 Needs MTSTUDIO_BIN (or ./build/mtstudio); skipped otherwise.
 """
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -25,6 +26,10 @@ from test_mtstudio_chat import BIN, write_vocab_gguf  # noqa: E402
 needs_bin = pytest.mark.skipif(BIN is None, reason="set MTSTUDIO_BIN to a built mtstudio")
 EOT = "<|endoftext|>"
 BPE_VOCAB = Path("/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf")  # A31's vocabulary
+# CPU only, with the budget wrapper's thread caps passed through (scripts/cpu_budget.py; A32 launch round 4: without them
+# OpenMP took every core)
+ENV = {"CUDA_VISIBLE_DEVICES": "", "PATH": "/usr/bin:/bin",
+       **{k: os.environ[k] for k in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS") if k in os.environ}}
 WORDS = ["x", "y", "is", "what", "?", "."] + [str(i) for i in range(10)]
 
 
@@ -61,7 +66,7 @@ def spec(tmp, name, train=None, data=None, arch=None, T=24):
 
 def run(p, ok=True):
     r = subprocess.run([BIN, "run", str(p)], capture_output=True, text=True, timeout=1800,
-                       env={"CUDA_VISIBLE_DEVICES": "", "PATH": "/usr/bin:/bin"})
+                       env=ENV)
     if not ok:
         return r
     assert r.returncode == 0, r.stderr
@@ -122,7 +127,7 @@ def decisive_shift(tmp, p):
     (tmp / "req.jsonl").write_text("".join(json.dumps(r) + "\n" for r in req), encoding="utf-8")
     out = tmp / f"{p.stem}.scores.jsonl"
     r = subprocess.run([BIN, "score", str(p), "--in", str(tmp / "req.jsonl"), "--out", str(out)], capture_output=True,
-                       text=True, timeout=600, env={"CUDA_VISIBLE_DEVICES": "", "PATH": "/usr/bin:/bin"})
+                       text=True, timeout=600, env=ENV)
     assert r.returncode == 0, r.stderr
     rec = [json.loads(x) for x in out.read_text().splitlines() if x.strip()]
     d = []

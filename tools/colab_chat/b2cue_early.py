@@ -186,7 +186,7 @@ def watch(a):
         out["health"] = "unread"
         out["health_unread"] = f"the watch failed: {type(e).__name__}: {e}"
         write_json(path, out)
-        return 0
+        return 1   # an unread watch is not a healthy run (launch round 4)
 
 
 def watch_loop(a, out, path):

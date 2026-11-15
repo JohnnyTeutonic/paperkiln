@@ -318,6 +318,16 @@ def test_watch_ok_needs_every_readout_and_a_finished_job(tmp_path):
     assert json.loads((tmp_path / "w2" / "watch.json").read_text())["health"] == "unread"
 
 
+def test_a_failed_watch_is_unread_and_exits_1(tmp_path):
+    """Launch round 4: a watch that cannot read its job's log publishes "unread" and exits 1, as a stop does."""
+    d = tmp_path / "sft_X"
+    d.mkdir()
+    (d / "events.jsonl").write_text('{"event": "step", "step": 1, "loss": 3.0}\n{broken\n{"event": "step", "step": 2, "loss": 3.0}\n')
+    (tmp_path / "STATUS_sft_X").write_text("FINISHED")
+    r = early_cli("--watch", "--job", "sft_X", "--out", str(tmp_path / "w"), "--chat", str(tmp_path), "--at", "1,2", "--steps", "2")
+    assert r.returncode == 1 and json.loads((tmp_path / "w" / "watch.json").read_text())["health"] == "unread"
+
+
 def test_rendered_specs_are_already_resolved(tmp_path, monkeypatch):
     """jobs_vm.spec_for changes nothing but name and out_dir in any training spec (launch round 2: the home replay and the scorer
     compare the resolved spec with the jobs file's plus those two fields)."""
