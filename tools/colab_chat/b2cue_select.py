@@ -5,7 +5,7 @@ replayed at home by the lane's score_b2cue.py from the same bound files. Claude 
 The sweep at seed 37 from N250's SFT1500: D0 (P's recipe) and Dn at lambda = mu in (0.1, 0.3, 1.0).
   complete     STATUS FINISHED; a finite held-out SFT loss at step 1,024; no early readout with a health stop or an unread check; the
                selection scores whole and valid (A31's readout.validated_sets). D0 must be complete.
-  ineligible   a documented failure by the run's own record: STATUS FAILED, a health stop or an unread health check, no finite held-out
+  ineligible   a documented failure by the run's own record: STATUS FAILED, a health stop (an unread check is void_selection, round 8), no finite held-out
                loss at 1,024
   void         evidence needed to settle a run's status that is missing or cannot be read (no STATUS, an absent early.json, a score file
                that cannot be read or validated): outcome `void_selection`, no margin arm runs
