@@ -943,7 +943,7 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
                 # data/panel_fineweb.ids on a replacement VM, after only its pretraining job), so every
                 # data job upstream of unfinished work runs again. Training jobs never rerun. A spared
                 # post job (below) never runs here, so nothing is needed for it.
-                if n not in stop:
+                if n not in stop and not (HOME_MARKERS and by[n].get("after_terminal")):   # A32 (launch round 7)
                     todo.extend(job_needs(by[n]))
         return needed
 
@@ -1200,11 +1200,20 @@ def main():
         if listed() is None and not st.d.get("endpoint"):
             if not launch(st, a.commit, a.jobs, jobs, uploads):
                 time.sleep(TICK)
+    reason = []   # A32 (launch round 7): why this runner ends, recorded before cleanup
+    if HOME_MARKERS:
+        import signal
+
+        def on_term(signum, frame):
+            reason.append("signal")
+            raise SystemExit(143)
+        signal.signal(signal.SIGTERM, on_term)
     try:
         while not blocked and time.time() < deadline:
             why = T.over_budget(st)
             if why:
                 log(why)
+                reason.append("cap")
                 break
             T.refresh(st)
             if listed() is None:
@@ -1249,6 +1258,7 @@ def main():
                 T.get("/content/chat/boot.log", os.path.join(ART, "boot.log"), 120)
                 st.d["boot_failed_commit"] = a.commit
                 st.save()
+                reason.append("boot")
                 break
             if r["vm"] == "FAILED":   # jobs_vm.py exited non-zero (boot_a31.sh): no job can advance, so the session ends
                 log("the VM's job manager failed; downloading jobs.log and boot.log")
@@ -1256,6 +1266,7 @@ def main():
                 T.get("/content/chat/boot.log", os.path.join(ART, "boot.log"), 120)
                 st.d["manager_failed"] = True
                 st.save()
+                reason.append("manager")
                 break
             done = True
             relayed = False
@@ -1297,9 +1308,17 @@ def main():
                 log("all jobs finished and home")
                 st.d["campaign_home"] = True
                 st.save()
+                reason.append("home")
                 break
             time.sleep(TICK)
     finally:
+        if HOME_MARKERS:
+            exc = sys.exc_info()[0]
+            why = reason[0] if reason else (f"exception: {exc.__name__}" if exc and not issubclass(exc, SystemExit) else
+                                            "deadline" if time.time() >= deadline else "stopped")
+            st.d.setdefault("terminals", []).append({"reason": why, "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())})
+            st.save()
+            log(f"runner ends: {why}")
         T.stop(st)
         # A31: the campaign's storage is released when it is home, and also when it can never resume here: past its deadline,
         # over budget, or after a failed boot or job manager (a restart would create nothing, so the volume would only bill)
