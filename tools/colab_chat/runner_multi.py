@@ -865,6 +865,40 @@ def spared_posts(st, jobs, by, needed, failed):
     return spare
 
 
+def home_inputs(st, jobs, by, failed):
+    """A32 (launch rounds 4 and 5): what unfinished jobs read from home runs, put back on a VM that lacks it, as (key, home file,
+    VM path) whole-file inputs. An early readout or watch (--job, --ref) reads its runs' events.jsonl and <run>_spec.json; C0's
+    select reads its home inputs' folders (scores, early records, logs, specs) and each training run's <run>_spec.json."""
+    out = {}
+
+    def put(n, src, dst):
+        if os.path.isfile(src) and os.path.getsize(src) <= 64 << 20:
+            out[dst] = ("home__" + dst[len("/content/chat/"):].replace("/", "__"), src)
+    for j in jobs:
+        if "cmd" not in j or st.job(j["name"])["home"]:
+            continue
+        cmd = j["cmd"]
+        runs = {cmd[i + 1] for i, a in enumerate(cmd[:-1]) if a in ("--job", "--ref")}
+        for n in sorted(runs):
+            if n in by and st.job(n)["home"] and n not in failed:
+                put(n, os.path.join(ART, n, "events.jsonl"), f"/content/chat/{n}/events.jsonl")
+                put(n, os.path.join(ART, n, f"{n}_spec.json"), f"/content/chat/{n}_spec.json")
+        if j.get("after_terminal") and any(str(a).endswith("b2cue_select.py") for a in cmd):
+            for n in job_needs(j):
+                d = os.path.join(ART, n)
+                if n not in by or not st.job(n)["home"] or not os.path.isdir(d):
+                    continue
+                for root, _, files in os.walk(d):
+                    for f in files:
+                        if f.endswith((".safetensors", ".gguf", ".bin", ".pt")):
+                            continue
+                        src = os.path.join(root, f)
+                        put(n, src, f"/content/chat/{n}/" + os.path.relpath(src, d).replace(os.sep, "/"))
+                if "cmd" not in by[n]:
+                    put(n, os.path.join(d, f"{n}_spec.json"), f"/content/chat/{n}_spec.json")
+    return [(k, src, dst) for dst, (k, src) in sorted(out.items())]
+
+
 def prepare(st, commit, jobs_rel, jobs, uploads):
     """Inputs, relayed checkpoints and the boot onto a session that is up but
     not yet booted. Retried every tick until it succeeds (st.d["booted"]), so
@@ -885,7 +919,10 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
     by = {j["name"]: j for j in jobs}
 
     def closure(stop=()):
-        needed, todo = set(), [n for j in jobs if not st.job(j["name"])["home"] for n in job_needs(j)]
+        # A32 (launch round 5): with home markers, a collector (after_terminal) waits for its jobs to end; it never needs them
+        # run again on a new VM (its inputs come back from home below)
+        needed, todo = set(), [n for j in jobs if not st.job(j["name"])["home"]
+                               and not (HOME_MARKERS and j.get("after_terminal")) for n in job_needs(j)]
         while todo:
             n = todo.pop()
             if n in by and n not in needed:
@@ -942,13 +979,8 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
             src = os.path.join(ART, n, model + ".safetensors")
             if os.path.exists(src):
                 finals.append((f"{n}__final.safetensors", src, f"/content/chat/{n}/{model}.safetensors"))
-    if HOME_MARKERS:   # A32 (launch round 4): an arm's health check reads its reference run's log (--ref): a fresh volume needs it
-        refs = {j["cmd"][i + 1] for j in jobs if "cmd" in j and not st.job(j["name"])["home"]
-                for i, a in enumerate(j["cmd"][:-1]) if a == "--ref"}
-        for n in sorted(refs):
-            ev = os.path.join(ART, n, "events.jsonl")
-            if n in by and st.job(n)["home"] and n not in failed and os.path.exists(ev):
-                finals.append((f"{n}__events.jsonl", ev, f"/content/chat/{n}/events.jsonl"))
+    if HOME_MARKERS:
+        finals += home_inputs(st, jobs, by, failed)
     # Resume checkpoints of unfinished jobs, smallest first (see below).
     pend = sorted((j["name"] for j in jobs if not st.job(j["name"])["home"]
                    and os.path.exists(os.path.join(ART, j["name"], "state.txt"))),

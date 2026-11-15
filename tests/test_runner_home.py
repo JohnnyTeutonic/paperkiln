@@ -157,7 +157,7 @@ def test_a_replacement_vm_gets_the_home_markers_and_the_reference_logs(tmp_path,
     assert rm.prepare(st, "c0ffee", "jobs.json", js, [])
     home_code = next(c for c in sent if "HOME_OK" in c)
     assert "/content/chat/HOME_" in home_code and "'gate'" in home_code and "'P_X_1'" in home_code
-    assert any(d == "/content/chat/upload/P_X_1__events.jsonl" for _, d in ups)
+    assert any(d == "/content/chat/upload/home__P_X_1__events.jsonl" for _, d in ups)
     moves = next(c for c in sent if "INPUTS_OK" in c)
     assert "/content/chat/P_X_1/events.jsonl" in moves
     monkeypatch.setattr(rm, "HOME_MARKERS", False)   # other campaigns: unchanged
@@ -166,3 +166,45 @@ def test_a_replacement_vm_gets_the_home_markers_and_the_reference_logs(tmp_path,
     st.d["booted"] = False
     assert rm.prepare(st, "c0ffee", "jobs.json", js, [])
     assert "/content/chat/HOME_" not in next(c for c in sent if "HOME_OK" in c) and not ups
+
+
+def test_a_replacement_vm_before_c0s_select_reruns_nothing_and_restores_its_inputs(tmp_path, monkeypatch):
+    """A32 launch round 5: with select (a collector: after_terminal) unfinished, a fresh VM runs no home data job again (its
+    STATUS is FINISHED) and gets back the home copies of select's inputs, every file but weights, and the run's spec at the root."""
+    art = setup(tmp_path, monkeypatch)
+    monkeypatch.setattr(rm, "HOME_MARKERS", True)
+    st = rm.State()
+    for n in ("D0", "score_D0", "early_D0_128", "gate"):
+        st.job(n).update(home=True, status="FINISHED")
+    (art / "D0").mkdir()
+    (art / "D0" / "events.jsonl").write_text("{}\n")
+    (art / "D0" / "D0_spec.json").write_text("{}")
+    (art / "D0" / "D0.safetensors").write_text("w")
+    (art / "score_D0").mkdir()
+    (art / "score_D0" / "score.json").write_text("{}")
+    (art / "score_D0" / "scores.jsonl").write_text("{}\n")
+    (art / "early_D0_128").mkdir()
+    (art / "early_D0_128" / "early.json").write_text("{}")
+    st.d["booted"] = False
+    st.save()
+    js = [{"name": "gate", "cmd": ["x"], "outputs": ["gate.json"]}, {"name": "D0", "spec": {}, "after": "gate"},
+          {"name": "score_D0", "light": True, "after": "D0", "cmd": ["s"], "outputs": ["scores.jsonl", "score.json"]},
+          {"name": "early_D0_128", "light": True, "cmd": ["e"], "outputs": ["early.json"]},
+          {"name": "select", "light": True, "after_terminal": True, "after": ["D0", "score_D0", "early_D0_128"],
+           "cmd": ["python3", "tools/colab_chat/b2cue_select.py", "--chat", "/content/chat"], "outputs": ["decisions.json"]}]
+    sent, ups = [], []
+
+    def fake_exec(code, timeout=200):
+        sent.append(code)
+        return 0, "DIRS_OK\nHOME_OK\nPENDING_OK\nINPUTS_OK\nBOOTED\n"
+    monkeypatch.setattr(rm, "exec_py", fake_exec)
+    monkeypatch.setattr(rm, "upload_file", lambda src, dst: ups.append(dst))
+    assert rm.prepare(st, "c0ffee", "jobs.json", js, [])
+    home_code = next(c for c in sent if "HOME_OK" in c)
+    finished = home_code.split("for n in ", 1)[1].split(":", 1)[0]
+    assert all(f"'{n}'" in finished for n in ("gate", "score_D0", "early_D0_128"))   # nothing run again
+    moves = next(c for c in sent if "INPUTS_OK" in c)
+    for dst in ("/content/chat/D0/events.jsonl", "/content/chat/D0_spec.json", "/content/chat/D0/D0_spec.json",
+                "/content/chat/score_D0/score.json", "/content/chat/score_D0/scores.jsonl", "/content/chat/early_D0_128/early.json"):
+        assert dst in moves, dst
+    assert "D0.safetensors" not in moves and not any("safetensors" in u for u in ups)
