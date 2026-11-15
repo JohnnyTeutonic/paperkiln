@@ -1208,6 +1208,9 @@ def main():
             reason.append("signal")
             raise SystemExit(143)
         signal.signal(signal.SIGTERM, on_term)
+    if HOME_MARKERS and not blocked:   # A32 (round 9): an active run, cleared when its end is recorded; left set if it dies unrecorded
+        st.d["active"] = {"started_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+        st.save()
     try:
         while not blocked and time.time() < deadline:
             why = T.over_budget(st)
@@ -1317,6 +1320,8 @@ def main():
             why = reason[0] if reason else (f"exception: {exc.__name__}" if exc and not issubclass(exc, SystemExit) else
                                             "blocked" if blocked else "deadline" if time.time() >= deadline else "stopped")
             st.d.setdefault("terminals", []).append({"reason": why, "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())})
+            if not blocked:
+                st.d.pop("active", None)
             st.save()
             log(f"runner ends: {why}")
         T.stop(st)
