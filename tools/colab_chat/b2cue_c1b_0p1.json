@@ -1,0 +1,3188 @@
+{
+ "_comment": "A32 (b2cue) campaign c1b, rendered by tools/colab_chat/b2cue_jobs.py; edit that file, not this one.",
+ "max_parallel": 1,
+ "max_parallel_light": 2,
+ "home_markers": true,
+ "jobs": [
+  {
+   "name": "gate",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_gate.py",
+    "--out",
+    "{out}",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--device-test",
+    "/content/pk/build_cuda/test_twin_device",
+    "--spec",
+    "/content/chat/upload/b2cue_gate_D1.json",
+    "--spec",
+    "/content/chat/upload/b2cue_gate_A.json"
+   ],
+   "outputs": [
+    "gate.json"
+   ]
+  },
+  {
+   "name": "score_start_Aref",
+   "light": true,
+   "after": "gate",
+   "cmd": [
+    "bash",
+    "-c",
+    "mkdir -p {out}/m && ln -sf /content/chat/upload/start_Aref.safetensors {out}/m/score_start_Aref.safetensors && cp /content/chat/upload/start_Aref_spec.json {out}/m/spec.json && timeout 6600 /content/pk/build_cuda/mtstudio score {out}/m --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/upload/start_Aref.safetensors --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec {out}/m/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "sft_N60",
+   "spec": {
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/sft_human.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1500,
+     "lr": 0.0003,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 500,
+     "eval_batch": 8,
+     "checkpoint_every": 25,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 100,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_at": [
+      188,
+      375,
+      750
+     ],
+     "init_from": "/content/chat/upload/base_N60.safetensors"
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    },
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    }
+   },
+   "after": "gate",
+   "relay_every_steps": 100000,
+   "env": {
+    "MICROTORCH_CHECKPOINT_TXN": "1"
+   }
+  },
+  {
+   "name": "watch_sft_N60",
+   "light": true,
+   "after": [
+    "gate"
+   ],
+   "after_terminal": true,
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--watch",
+    "--job",
+    "sft_N60",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--at",
+    "188,375,750",
+    "--steps",
+    "1500"
+   ],
+   "outputs": [
+    "watch.json"
+   ]
+  },
+  {
+   "name": "score_start_N60",
+   "light": true,
+   "after": "sft_N60",
+   "cmd": [
+    "bash",
+    "-c",
+    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/sft_N60 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/sft_N60/sft_N60.safetensors --gguf /content/chat/sft_N60/sft_N60.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/sft_N60/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "P_N60_1",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S74.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/sft_N60/sft_N60.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate",
+    "sft_N60"
+   ],
+   "relay_every_steps": 100000,
+   "snapshot_steps": [
+    128,
+    256,
+    512
+   ]
+  },
+  {
+   "name": "early_P_N60_1_128",
+   "light": true,
+   "rung_of": {
+    "job": "P_N60_1",
+    "step": 128
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "P_N60_1",
+    "--step",
+    "128",
+    "--ref",
+    "P_N60_1",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_P_N60_1_256",
+   "light": true,
+   "rung_of": {
+    "job": "P_N60_1",
+    "step": 256
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "P_N60_1",
+    "--step",
+    "256",
+    "--ref",
+    "P_N60_1",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_P_N60_1_512",
+   "light": true,
+   "rung_of": {
+    "job": "P_N60_1",
+    "step": 512
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "P_N60_1",
+    "--step",
+    "512",
+    "--ref",
+    "P_N60_1",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "P_N60_50",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S74.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 50,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/sft_N60/sft_N60.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate",
+    "sft_N60"
+   ],
+   "relay_every_steps": 100000,
+   "snapshot_steps": [
+    128,
+    256,
+    512
+   ]
+  },
+  {
+   "name": "early_P_N60_50_128",
+   "light": true,
+   "rung_of": {
+    "job": "P_N60_50",
+    "step": 128
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "P_N60_50",
+    "--step",
+    "128",
+    "--ref",
+    "P_N60_50",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_P_N60_50_256",
+   "light": true,
+   "rung_of": {
+    "job": "P_N60_50",
+    "step": 256
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "P_N60_50",
+    "--step",
+    "256",
+    "--ref",
+    "P_N60_50",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_P_N60_50_512",
+   "light": true,
+   "rung_of": {
+    "job": "P_N60_50",
+    "step": 512
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "P_N60_50",
+    "--step",
+    "512",
+    "--ref",
+    "P_N60_50",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "P_N60_125",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S74.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 125,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/sft_N60/sft_N60.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate",
+    "sft_N60"
+   ],
+   "relay_every_steps": 100000,
+   "snapshot_steps": [
+    128,
+    256,
+    512
+   ]
+  },
+  {
+   "name": "early_P_N60_125_128",
+   "light": true,
+   "rung_of": {
+    "job": "P_N60_125",
+    "step": 128
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "P_N60_125",
+    "--step",
+    "128",
+    "--ref",
+    "P_N60_125",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_P_N60_125_256",
+   "light": true,
+   "rung_of": {
+    "job": "P_N60_125",
+    "step": 256
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "P_N60_125",
+    "--step",
+    "256",
+    "--ref",
+    "P_N60_125",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_P_N60_125_512",
+   "light": true,
+   "rung_of": {
+    "job": "P_N60_125",
+    "step": 512
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "P_N60_125",
+    "--step",
+    "512",
+    "--ref",
+    "P_N60_125",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "N_N60_1",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S74.jsonl",
+     "twin_examples": "/content/chat/upload/train_twins.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/sft_N60/sft_N60.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256,
+     "twin_loss": {
+      "groups": 4,
+      "margin": 1.0,
+      "lambda": 0.1,
+      "mu": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate",
+    "sft_N60"
+   ],
+   "relay_every_steps": 100000,
+   "snapshot_steps": [
+    128,
+    256,
+    512
+   ]
+  },
+  {
+   "name": "early_N_N60_1_128",
+   "light": true,
+   "rung_of": {
+    "job": "N_N60_1",
+    "step": 128
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "N_N60_1",
+    "--step",
+    "128",
+    "--ref",
+    "P_N60_1",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_N_N60_1_256",
+   "light": true,
+   "rung_of": {
+    "job": "N_N60_1",
+    "step": 256
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "N_N60_1",
+    "--step",
+    "256",
+    "--ref",
+    "P_N60_1",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_N_N60_1_512",
+   "light": true,
+   "rung_of": {
+    "job": "N_N60_1",
+    "step": 512
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "N_N60_1",
+    "--step",
+    "512",
+    "--ref",
+    "P_N60_1",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "N_N60_50",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S74.jsonl",
+     "twin_examples": "/content/chat/upload/train_twins.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 50,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/sft_N60/sft_N60.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256,
+     "twin_loss": {
+      "groups": 4,
+      "margin": 1.0,
+      "lambda": 0.1,
+      "mu": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate",
+    "sft_N60"
+   ],
+   "relay_every_steps": 100000,
+   "snapshot_steps": [
+    128,
+    256,
+    512
+   ]
+  },
+  {
+   "name": "early_N_N60_50_128",
+   "light": true,
+   "rung_of": {
+    "job": "N_N60_50",
+    "step": 128
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "N_N60_50",
+    "--step",
+    "128",
+    "--ref",
+    "P_N60_50",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_N_N60_50_256",
+   "light": true,
+   "rung_of": {
+    "job": "N_N60_50",
+    "step": 256
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "N_N60_50",
+    "--step",
+    "256",
+    "--ref",
+    "P_N60_50",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_N_N60_50_512",
+   "light": true,
+   "rung_of": {
+    "job": "N_N60_50",
+    "step": 512
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "N_N60_50",
+    "--step",
+    "512",
+    "--ref",
+    "P_N60_50",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "N_N60_125",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S74.jsonl",
+     "twin_examples": "/content/chat/upload/train_twins.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 125,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/sft_N60/sft_N60.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256,
+     "twin_loss": {
+      "groups": 4,
+      "margin": 1.0,
+      "lambda": 0.1,
+      "mu": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate",
+    "sft_N60"
+   ],
+   "relay_every_steps": 100000,
+   "snapshot_steps": [
+    128,
+    256,
+    512
+   ]
+  },
+  {
+   "name": "early_N_N60_125_128",
+   "light": true,
+   "rung_of": {
+    "job": "N_N60_125",
+    "step": 128
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "N_N60_125",
+    "--step",
+    "128",
+    "--ref",
+    "P_N60_125",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_N_N60_125_256",
+   "light": true,
+   "rung_of": {
+    "job": "N_N60_125",
+    "step": 256
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "N_N60_125",
+    "--step",
+    "256",
+    "--ref",
+    "P_N60_125",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_N_N60_125_512",
+   "light": true,
+   "rung_of": {
+    "job": "N_N60_125",
+    "step": 512
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "N_N60_125",
+    "--step",
+    "512",
+    "--ref",
+    "P_N60_125",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "NA_N60_1",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S74.jsonl",
+     "twin_examples": "/content/chat/upload/train_twins.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/sft_N60/sft_N60.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256,
+     "twin_loss": {
+      "groups": 4,
+      "margin": 1.0,
+      "lambda": 0.1,
+      "mu": 0.1,
+      "answer_mask": true
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate",
+    "sft_N60"
+   ],
+   "relay_every_steps": 100000,
+   "snapshot_steps": [
+    128,
+    256,
+    512
+   ]
+  },
+  {
+   "name": "early_NA_N60_1_128",
+   "light": true,
+   "rung_of": {
+    "job": "NA_N60_1",
+    "step": 128
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "NA_N60_1",
+    "--step",
+    "128",
+    "--ref",
+    "P_N60_1",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_NA_N60_1_256",
+   "light": true,
+   "rung_of": {
+    "job": "NA_N60_1",
+    "step": 256
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "NA_N60_1",
+    "--step",
+    "256",
+    "--ref",
+    "P_N60_1",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_NA_N60_1_512",
+   "light": true,
+   "rung_of": {
+    "job": "NA_N60_1",
+    "step": 512
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "NA_N60_1",
+    "--step",
+    "512",
+    "--ref",
+    "P_N60_1",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "NA_N60_50",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S74.jsonl",
+     "twin_examples": "/content/chat/upload/train_twins.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 50,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/sft_N60/sft_N60.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256,
+     "twin_loss": {
+      "groups": 4,
+      "margin": 1.0,
+      "lambda": 0.1,
+      "mu": 0.1,
+      "answer_mask": true
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate",
+    "sft_N60"
+   ],
+   "relay_every_steps": 100000,
+   "snapshot_steps": [
+    128,
+    256,
+    512
+   ]
+  },
+  {
+   "name": "early_NA_N60_50_128",
+   "light": true,
+   "rung_of": {
+    "job": "NA_N60_50",
+    "step": 128
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "NA_N60_50",
+    "--step",
+    "128",
+    "--ref",
+    "P_N60_50",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_NA_N60_50_256",
+   "light": true,
+   "rung_of": {
+    "job": "NA_N60_50",
+    "step": 256
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "NA_N60_50",
+    "--step",
+    "256",
+    "--ref",
+    "P_N60_50",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_NA_N60_50_512",
+   "light": true,
+   "rung_of": {
+    "job": "NA_N60_50",
+    "step": 512
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "NA_N60_50",
+    "--step",
+    "512",
+    "--ref",
+    "P_N60_50",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "NA_N60_125",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S74.jsonl",
+     "twin_examples": "/content/chat/upload/train_twins.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 125,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/sft_N60/sft_N60.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256,
+     "twin_loss": {
+      "groups": 4,
+      "margin": 1.0,
+      "lambda": 0.1,
+      "mu": 0.1,
+      "answer_mask": true
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate",
+    "sft_N60"
+   ],
+   "relay_every_steps": 100000,
+   "snapshot_steps": [
+    128,
+    256,
+    512
+   ]
+  },
+  {
+   "name": "early_NA_N60_125_128",
+   "light": true,
+   "rung_of": {
+    "job": "NA_N60_125",
+    "step": 128
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "NA_N60_125",
+    "--step",
+    "128",
+    "--ref",
+    "P_N60_125",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_NA_N60_125_256",
+   "light": true,
+   "rung_of": {
+    "job": "NA_N60_125",
+    "step": 256
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "NA_N60_125",
+    "--step",
+    "256",
+    "--ref",
+    "P_N60_125",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_NA_N60_125_512",
+   "light": true,
+   "rung_of": {
+    "job": "NA_N60_125",
+    "step": 512
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "NA_N60_125",
+    "--step",
+    "512",
+    "--ref",
+    "P_N60_125",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "P_Aref_1",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 768,
+      "layers": 8,
+      "heads": 12,
+      "d_ff": 2240
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S74.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/start_Aref.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate"
+   ],
+   "relay_every_steps": 100000,
+   "snapshot_steps": [
+    128,
+    256,
+    512
+   ]
+  },
+  {
+   "name": "early_P_Aref_1_128",
+   "light": true,
+   "rung_of": {
+    "job": "P_Aref_1",
+    "step": 128
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "P_Aref_1",
+    "--step",
+    "128",
+    "--ref",
+    "P_Aref_1",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_P_Aref_1_256",
+   "light": true,
+   "rung_of": {
+    "job": "P_Aref_1",
+    "step": 256
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "P_Aref_1",
+    "--step",
+    "256",
+    "--ref",
+    "P_Aref_1",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_P_Aref_1_512",
+   "light": true,
+   "rung_of": {
+    "job": "P_Aref_1",
+    "step": 512
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "P_Aref_1",
+    "--step",
+    "512",
+    "--ref",
+    "P_Aref_1",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "P_Aref_50",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 768,
+      "layers": 8,
+      "heads": 12,
+      "d_ff": 2240
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S74.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 50,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/start_Aref.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate"
+   ],
+   "relay_every_steps": 100000,
+   "snapshot_steps": [
+    128,
+    256,
+    512
+   ]
+  },
+  {
+   "name": "early_P_Aref_50_128",
+   "light": true,
+   "rung_of": {
+    "job": "P_Aref_50",
+    "step": 128
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "P_Aref_50",
+    "--step",
+    "128",
+    "--ref",
+    "P_Aref_50",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_P_Aref_50_256",
+   "light": true,
+   "rung_of": {
+    "job": "P_Aref_50",
+    "step": 256
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "P_Aref_50",
+    "--step",
+    "256",
+    "--ref",
+    "P_Aref_50",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_P_Aref_50_512",
+   "light": true,
+   "rung_of": {
+    "job": "P_Aref_50",
+    "step": 512
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "P_Aref_50",
+    "--step",
+    "512",
+    "--ref",
+    "P_Aref_50",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "P_Aref_125",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 768,
+      "layers": 8,
+      "heads": 12,
+      "d_ff": 2240
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S74.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 125,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/start_Aref.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate"
+   ],
+   "relay_every_steps": 100000,
+   "snapshot_steps": [
+    128,
+    256,
+    512
+   ]
+  },
+  {
+   "name": "early_P_Aref_125_128",
+   "light": true,
+   "rung_of": {
+    "job": "P_Aref_125",
+    "step": 128
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "P_Aref_125",
+    "--step",
+    "128",
+    "--ref",
+    "P_Aref_125",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_P_Aref_125_256",
+   "light": true,
+   "rung_of": {
+    "job": "P_Aref_125",
+    "step": 256
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "P_Aref_125",
+    "--step",
+    "256",
+    "--ref",
+    "P_Aref_125",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_P_Aref_125_512",
+   "light": true,
+   "rung_of": {
+    "job": "P_Aref_125",
+    "step": 512
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "P_Aref_125",
+    "--step",
+    "512",
+    "--ref",
+    "P_Aref_125",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "N_Aref_1",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 768,
+      "layers": 8,
+      "heads": 12,
+      "d_ff": 2240
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S74.jsonl",
+     "twin_examples": "/content/chat/upload/train_twins.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/start_Aref.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256,
+     "twin_loss": {
+      "groups": 4,
+      "margin": 1.0,
+      "lambda": 0.1,
+      "mu": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate"
+   ],
+   "relay_every_steps": 100000,
+   "snapshot_steps": [
+    128,
+    256,
+    512
+   ]
+  },
+  {
+   "name": "early_N_Aref_1_128",
+   "light": true,
+   "rung_of": {
+    "job": "N_Aref_1",
+    "step": 128
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "N_Aref_1",
+    "--step",
+    "128",
+    "--ref",
+    "P_Aref_1",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_N_Aref_1_256",
+   "light": true,
+   "rung_of": {
+    "job": "N_Aref_1",
+    "step": 256
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "N_Aref_1",
+    "--step",
+    "256",
+    "--ref",
+    "P_Aref_1",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_N_Aref_1_512",
+   "light": true,
+   "rung_of": {
+    "job": "N_Aref_1",
+    "step": 512
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "N_Aref_1",
+    "--step",
+    "512",
+    "--ref",
+    "P_Aref_1",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "N_Aref_50",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 768,
+      "layers": 8,
+      "heads": 12,
+      "d_ff": 2240
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S74.jsonl",
+     "twin_examples": "/content/chat/upload/train_twins.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 50,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/start_Aref.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256,
+     "twin_loss": {
+      "groups": 4,
+      "margin": 1.0,
+      "lambda": 0.1,
+      "mu": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate"
+   ],
+   "relay_every_steps": 100000,
+   "snapshot_steps": [
+    128,
+    256,
+    512
+   ]
+  },
+  {
+   "name": "early_N_Aref_50_128",
+   "light": true,
+   "rung_of": {
+    "job": "N_Aref_50",
+    "step": 128
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "N_Aref_50",
+    "--step",
+    "128",
+    "--ref",
+    "P_Aref_50",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_N_Aref_50_256",
+   "light": true,
+   "rung_of": {
+    "job": "N_Aref_50",
+    "step": 256
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "N_Aref_50",
+    "--step",
+    "256",
+    "--ref",
+    "P_Aref_50",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_N_Aref_50_512",
+   "light": true,
+   "rung_of": {
+    "job": "N_Aref_50",
+    "step": 512
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "N_Aref_50",
+    "--step",
+    "512",
+    "--ref",
+    "P_Aref_50",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "N_Aref_125",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 768,
+      "layers": 8,
+      "heads": 12,
+      "d_ff": 2240
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S74.jsonl",
+     "twin_examples": "/content/chat/upload/train_twins.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 125,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/start_Aref.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256,
+     "twin_loss": {
+      "groups": 4,
+      "margin": 1.0,
+      "lambda": 0.1,
+      "mu": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate"
+   ],
+   "relay_every_steps": 100000,
+   "snapshot_steps": [
+    128,
+    256,
+    512
+   ]
+  },
+  {
+   "name": "early_N_Aref_125_128",
+   "light": true,
+   "rung_of": {
+    "job": "N_Aref_125",
+    "step": 128
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "N_Aref_125",
+    "--step",
+    "128",
+    "--ref",
+    "P_Aref_125",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_N_Aref_125_256",
+   "light": true,
+   "rung_of": {
+    "job": "N_Aref_125",
+    "step": 256
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "N_Aref_125",
+    "--step",
+    "256",
+    "--ref",
+    "P_Aref_125",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_N_Aref_125_512",
+   "light": true,
+   "rung_of": {
+    "job": "N_Aref_125",
+    "step": 512
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "N_Aref_125",
+    "--step",
+    "512",
+    "--ref",
+    "P_Aref_125",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "NA_Aref_1",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 768,
+      "layers": 8,
+      "heads": 12,
+      "d_ff": 2240
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S74.jsonl",
+     "twin_examples": "/content/chat/upload/train_twins.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/start_Aref.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256,
+     "twin_loss": {
+      "groups": 4,
+      "margin": 1.0,
+      "lambda": 0.1,
+      "mu": 0.1,
+      "answer_mask": true
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate"
+   ],
+   "relay_every_steps": 100000,
+   "snapshot_steps": [
+    128,
+    256,
+    512
+   ]
+  },
+  {
+   "name": "early_NA_Aref_1_128",
+   "light": true,
+   "rung_of": {
+    "job": "NA_Aref_1",
+    "step": 128
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "NA_Aref_1",
+    "--step",
+    "128",
+    "--ref",
+    "P_Aref_1",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_NA_Aref_1_256",
+   "light": true,
+   "rung_of": {
+    "job": "NA_Aref_1",
+    "step": 256
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "NA_Aref_1",
+    "--step",
+    "256",
+    "--ref",
+    "P_Aref_1",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_NA_Aref_1_512",
+   "light": true,
+   "rung_of": {
+    "job": "NA_Aref_1",
+    "step": 512
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "NA_Aref_1",
+    "--step",
+    "512",
+    "--ref",
+    "P_Aref_1",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "NA_Aref_50",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 768,
+      "layers": 8,
+      "heads": 12,
+      "d_ff": 2240
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S74.jsonl",
+     "twin_examples": "/content/chat/upload/train_twins.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 50,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/start_Aref.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256,
+     "twin_loss": {
+      "groups": 4,
+      "margin": 1.0,
+      "lambda": 0.1,
+      "mu": 0.1,
+      "answer_mask": true
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate"
+   ],
+   "relay_every_steps": 100000,
+   "snapshot_steps": [
+    128,
+    256,
+    512
+   ]
+  },
+  {
+   "name": "early_NA_Aref_50_128",
+   "light": true,
+   "rung_of": {
+    "job": "NA_Aref_50",
+    "step": 128
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "NA_Aref_50",
+    "--step",
+    "128",
+    "--ref",
+    "P_Aref_50",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_NA_Aref_50_256",
+   "light": true,
+   "rung_of": {
+    "job": "NA_Aref_50",
+    "step": 256
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "NA_Aref_50",
+    "--step",
+    "256",
+    "--ref",
+    "P_Aref_50",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_NA_Aref_50_512",
+   "light": true,
+   "rung_of": {
+    "job": "NA_Aref_50",
+    "step": 512
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "NA_Aref_50",
+    "--step",
+    "512",
+    "--ref",
+    "P_Aref_50",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "NA_Aref_125",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 768,
+      "layers": 8,
+      "heads": 12,
+      "d_ff": 2240
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S74.jsonl",
+     "twin_examples": "/content/chat/upload/train_twins.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 125,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/start_Aref.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256,
+     "twin_loss": {
+      "groups": 4,
+      "margin": 1.0,
+      "lambda": 0.1,
+      "mu": 0.1,
+      "answer_mask": true
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate"
+   ],
+   "relay_every_steps": 100000,
+   "snapshot_steps": [
+    128,
+    256,
+    512
+   ]
+  },
+  {
+   "name": "early_NA_Aref_125_128",
+   "light": true,
+   "rung_of": {
+    "job": "NA_Aref_125",
+    "step": 128
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "NA_Aref_125",
+    "--step",
+    "128",
+    "--ref",
+    "P_Aref_125",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_NA_Aref_125_256",
+   "light": true,
+   "rung_of": {
+    "job": "NA_Aref_125",
+    "step": 256
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "NA_Aref_125",
+    "--step",
+    "256",
+    "--ref",
+    "P_Aref_125",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_NA_Aref_125_512",
+   "light": true,
+   "rung_of": {
+    "job": "NA_Aref_125",
+    "step": 512
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "NA_Aref_125",
+    "--step",
+    "512",
+    "--ref",
+    "P_Aref_125",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "score_P_N60_1",
+   "light": true,
+   "after": "P_N60_1",
+   "cmd": [
+    "bash",
+    "-c",
+    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/P_N60_1 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/P_N60_1/P_N60_1.safetensors --gguf /content/chat/P_N60_1/P_N60_1.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/P_N60_1/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_P_N60_50",
+   "light": true,
+   "after": "P_N60_50",
+   "cmd": [
+    "bash",
+    "-c",
+    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/P_N60_50 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/P_N60_50/P_N60_50.safetensors --gguf /content/chat/P_N60_50/P_N60_50.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/P_N60_50/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_P_N60_125",
+   "light": true,
+   "after": "P_N60_125",
+   "cmd": [
+    "bash",
+    "-c",
+    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/P_N60_125 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/P_N60_125/P_N60_125.safetensors --gguf /content/chat/P_N60_125/P_N60_125.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/P_N60_125/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_N_N60_1",
+   "light": true,
+   "after": "N_N60_1",
+   "cmd": [
+    "bash",
+    "-c",
+    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/N_N60_1 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/N_N60_1/N_N60_1.safetensors --gguf /content/chat/N_N60_1/N_N60_1.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/N_N60_1/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_N_N60_50",
+   "light": true,
+   "after": "N_N60_50",
+   "cmd": [
+    "bash",
+    "-c",
+    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/N_N60_50 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/N_N60_50/N_N60_50.safetensors --gguf /content/chat/N_N60_50/N_N60_50.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/N_N60_50/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_N_N60_125",
+   "light": true,
+   "after": "N_N60_125",
+   "cmd": [
+    "bash",
+    "-c",
+    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/N_N60_125 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/N_N60_125/N_N60_125.safetensors --gguf /content/chat/N_N60_125/N_N60_125.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/N_N60_125/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_NA_N60_1",
+   "light": true,
+   "after": "NA_N60_1",
+   "cmd": [
+    "bash",
+    "-c",
+    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/NA_N60_1 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/NA_N60_1/NA_N60_1.safetensors --gguf /content/chat/NA_N60_1/NA_N60_1.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/NA_N60_1/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_NA_N60_50",
+   "light": true,
+   "after": "NA_N60_50",
+   "cmd": [
+    "bash",
+    "-c",
+    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/NA_N60_50 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/NA_N60_50/NA_N60_50.safetensors --gguf /content/chat/NA_N60_50/NA_N60_50.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/NA_N60_50/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_NA_N60_125",
+   "light": true,
+   "after": "NA_N60_125",
+   "cmd": [
+    "bash",
+    "-c",
+    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/NA_N60_125 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/NA_N60_125/NA_N60_125.safetensors --gguf /content/chat/NA_N60_125/NA_N60_125.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/NA_N60_125/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_P_Aref_1",
+   "light": true,
+   "after": "P_Aref_1",
+   "cmd": [
+    "bash",
+    "-c",
+    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/P_Aref_1 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/P_Aref_1/P_Aref_1.safetensors --gguf /content/chat/P_Aref_1/P_Aref_1.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/P_Aref_1/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_P_Aref_50",
+   "light": true,
+   "after": "P_Aref_50",
+   "cmd": [
+    "bash",
+    "-c",
+    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/P_Aref_50 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/P_Aref_50/P_Aref_50.safetensors --gguf /content/chat/P_Aref_50/P_Aref_50.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/P_Aref_50/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_P_Aref_125",
+   "light": true,
+   "after": "P_Aref_125",
+   "cmd": [
+    "bash",
+    "-c",
+    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/P_Aref_125 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/P_Aref_125/P_Aref_125.safetensors --gguf /content/chat/P_Aref_125/P_Aref_125.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/P_Aref_125/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_N_Aref_1",
+   "light": true,
+   "after": "N_Aref_1",
+   "cmd": [
+    "bash",
+    "-c",
+    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/N_Aref_1 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/N_Aref_1/N_Aref_1.safetensors --gguf /content/chat/N_Aref_1/N_Aref_1.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/N_Aref_1/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_N_Aref_50",
+   "light": true,
+   "after": "N_Aref_50",
+   "cmd": [
+    "bash",
+    "-c",
+    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/N_Aref_50 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/N_Aref_50/N_Aref_50.safetensors --gguf /content/chat/N_Aref_50/N_Aref_50.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/N_Aref_50/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_N_Aref_125",
+   "light": true,
+   "after": "N_Aref_125",
+   "cmd": [
+    "bash",
+    "-c",
+    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/N_Aref_125 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/N_Aref_125/N_Aref_125.safetensors --gguf /content/chat/N_Aref_125/N_Aref_125.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/N_Aref_125/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_NA_Aref_1",
+   "light": true,
+   "after": "NA_Aref_1",
+   "cmd": [
+    "bash",
+    "-c",
+    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/NA_Aref_1 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/NA_Aref_1/NA_Aref_1.safetensors --gguf /content/chat/NA_Aref_1/NA_Aref_1.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/NA_Aref_1/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_NA_Aref_50",
+   "light": true,
+   "after": "NA_Aref_50",
+   "cmd": [
+    "bash",
+    "-c",
+    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/NA_Aref_50 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/NA_Aref_50/NA_Aref_50.safetensors --gguf /content/chat/NA_Aref_50/NA_Aref_50.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/NA_Aref_50/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_NA_Aref_125",
+   "light": true,
+   "after": "NA_Aref_125",
+   "cmd": [
+    "bash",
+    "-c",
+    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/NA_Aref_125 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/NA_Aref_125/NA_Aref_125.safetensors --gguf /content/chat/NA_Aref_125/NA_Aref_125.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/NA_Aref_125/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_a31_P_1",
+   "light": true,
+   "after": "gate",
+   "cmd": [
+    "bash",
+    "-c",
+    "mkdir -p {out}/m && ln -sf /content/chat/upload/a31_P_1.safetensors {out}/m/score_a31_P_1.safetensors && cp /content/chat/upload/a31_spec_P_1.json {out}/m/spec.json && timeout 6600 /content/pk/build_cuda/mtstudio score {out}/m --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/upload/a31_P_1.safetensors --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec {out}/m/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_a31_P_50",
+   "light": true,
+   "after": "gate",
+   "cmd": [
+    "bash",
+    "-c",
+    "mkdir -p {out}/m && ln -sf /content/chat/upload/a31_P_50.safetensors {out}/m/score_a31_P_50.safetensors && cp /content/chat/upload/a31_spec_P_50.json {out}/m/spec.json && timeout 6600 /content/pk/build_cuda/mtstudio score {out}/m --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/upload/a31_P_50.safetensors --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec {out}/m/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_a31_M_1_0p3",
+   "light": true,
+   "after": "gate",
+   "cmd": [
+    "bash",
+    "-c",
+    "mkdir -p {out}/m && ln -sf /content/chat/upload/a31_M_1_0p3.safetensors {out}/m/score_a31_M_1_0p3.safetensors && cp /content/chat/upload/a31_spec_M_1_0p3.json {out}/m/spec.json && timeout 6600 /content/pk/build_cuda/mtstudio score {out}/m --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/upload/a31_M_1_0p3.safetensors --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec {out}/m/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_a31_M_50_0p3",
+   "light": true,
+   "after": "gate",
+   "cmd": [
+    "bash",
+    "-c",
+    "mkdir -p {out}/m && ln -sf /content/chat/upload/a31_M_50_0p3.safetensors {out}/m/score_a31_M_50_0p3.safetensors && cp /content/chat/upload/a31_spec_M_50_0p3.json {out}/m/spec.json && timeout 6600 /content/pk/build_cuda/mtstudio score {out}/m --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/upload/a31_M_50_0p3.safetensors --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec {out}/m/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_a31_N_1_0p3",
+   "light": true,
+   "after": "gate",
+   "cmd": [
+    "bash",
+    "-c",
+    "mkdir -p {out}/m && ln -sf /content/chat/upload/a31_N_1_0p3.safetensors {out}/m/score_a31_N_1_0p3.safetensors && cp /content/chat/upload/a31_spec_N_1_0p3.json {out}/m/spec.json && timeout 6600 /content/pk/build_cuda/mtstudio score {out}/m --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/upload/a31_N_1_0p3.safetensors --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec {out}/m/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  },
+  {
+   "name": "score_a31_N_50_0p3",
+   "light": true,
+   "after": "gate",
+   "cmd": [
+    "bash",
+    "-c",
+    "mkdir -p {out}/m && ln -sf /content/chat/upload/a31_N_50_0p3.safetensors {out}/m/score_a31_N_50_0p3.safetensors && cp /content/chat/upload/a31_spec_N_50_0p3.json {out}/m/spec.json && timeout 6600 /content/pk/build_cuda/mtstudio score {out}/m --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/upload/a31_N_50_0p3.safetensors --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec {out}/m/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json"
+   ]
+  }
+ ]
+}

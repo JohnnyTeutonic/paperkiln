@@ -78,6 +78,7 @@ def parse_deadline_utc(s):
     except ValueError:
         raise argparse.ArgumentTypeError(f"{s!r} is not YYYY-MM-DDTHH:MM:SSZ") from None
 T = None  # the Transport (ColabTransport unless --backend runpod)
+HOME_MARKERS = False  # A32: jobs file "home_markers": write /content/chat/HOME_<job> on the VM once a job's files are home
 
 
 def log(msg):
@@ -1077,7 +1078,10 @@ def main():
     os.makedirs(HOME, exist_ok=True)
     os.makedirs(ART, exist_ok=True)
     repo = os.path.dirname(os.path.dirname(HERE))
-    jobs = json.load(open(os.path.join(repo, a.jobs)))["jobs"]
+    jobs_cfg = json.load(open(os.path.join(repo, a.jobs)))
+    jobs = jobs_cfg["jobs"]
+    global HOME_MARKERS
+    HOME_MARKERS = bool(jobs_cfg.get("home_markers"))
     uploads = [tuple(u.split("=", 1)) for u in a.upload]
     for k, src in uploads:
         if not os.path.exists(src):
@@ -1219,6 +1223,11 @@ def main():
                     T.get(f"/content/chat/{n}_train.log", os.path.join(ART, n, f"{n}_train.log"), 300)
                     js["home"] = True
                     st.save()
+                if HOME_MARKERS and js["home"] and not js.get("home_marked"):
+                    rc, out = exec_py(f"open('/content/chat/HOME_{n}', 'w').write('1')\nprint('MARKED')", 60)
+                    if rc == 0 and "MARKED" in (out or ""):
+                        js["home_marked"] = True
+                        st.save()
                 done = done and js["home"]
             if has_rungs:
                 try:
