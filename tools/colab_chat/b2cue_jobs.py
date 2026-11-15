@@ -20,7 +20,7 @@ train.eval_at [188, 375, 750] added (the frozen design's early readout for these
     python3 tools/colab_chat/b2cue_jobs.py --campaign c0 [--check]
     python3 tools/colab_chat/b2cue_jobs.py --campaign c1a|c1b|c2 --lam L [--c2 both|n2] [--no-s] [--check]
     python3 tools/colab_chat/b2cue_jobs.py --campaign ... --no-arm      (no eligible lambda: P and P0 only)
-    python3 tools/colab_chat/b2cue_jobs.py --gate-specs DIR             (writes the gate's specs for every campaign)
+    python3 tools/colab_chat/b2cue_jobs.py --campaign C --stage-specs DIR   (the gate specs and uploaded models. scoring specs)
 """
 import argparse
 import json
@@ -293,11 +293,17 @@ def render(campaign, lam=None, c2="both", no_s=False, no_arm=False):
             "max_parallel": 1, "max_parallel_light": 2, "home_markers": True, "jobs": jobs}
 
 
-def gate_spec(shape):
+GATE_INIT = {"c0": "base_N250.safetensors", "c1a": "start_N250.safetensors", "c1b": "base_N60.safetensors", "c2": "base_N2.safetensors"}
+GATE_SHAPES = {"c0": ("D1",), "c1a": ("D1",), "c1b": ("D1", "A"), "c2": ("D1",)}
+A31_MODELS = ("P_1", "P_50", "M_1_0p3", "M_50_0p3", "N_1_0p3", "N_50_0p3")
+
+
+def gate_spec(shape, campaign="c0"):
     """The gate's spec at one shape: the arm spec at batch 1, two steps at the full learning rate, a twin loss on two groups of the 16
-    gate twins at weight 1 (mu = 1), from the campaign's first uploaded model of that shape (b2cue_gate.py swaps answer_mask in and
-    the twin term out for its legs, and runs one full-batch step on CUDA)."""
-    init = {"D1": f"{U}/b2cue_gate_init_D1.safetensors", "A": f"{U}/start_Aref.safetensors"}[shape]
+    gate twins at weight 1 (mu = 1), from the campaign's first uploaded model of that shape (GATE_INIT; A's shape: A-ref's start), so
+    no model is uploaded twice (b2cue_gate.py swaps answer_mask in and the twin term out for its legs, and runs one full-batch step on
+    CUDA)."""
+    init = f"{U}/{GATE_INIT[campaign]}" if shape == "D1" else f"{U}/start_Aref.safetensors"
     s = arm_spec(shape, init, 1, "N", 1.0)
     s["train"].update({"batch": 1, "steps": 2, "eval_every": 1000, "checkpoint_every": 1000, "eval_examples": 1})
     s["data"]["twin_examples"] = f"{U}/gate_twins.jsonl"
@@ -306,6 +312,26 @@ def gate_spec(shape):
     s["name"] = f"b2cue_gate_{shape}"
     s["export"] = {"formats": ["safetensors"]}
     return s
+
+
+def staged_specs(campaign):
+    """{upload name: spec} the campaign's launch stages beside its uploads: the gate's specs; the scoring specs of uploaded models
+    (score_job links the weights as <job name>.safetensors, so each spec's name is the scoring job's): N250's start (C0's SFT1500) in
+    C1a, A-ref's start (A's tc_sft_b1_r1) and A31's six deciding models (a31_jobs.spec, S71's recipe on S73) in C1b."""
+    out = {f"b2cue_gate_{sh}.json": gate_spec(sh, campaign) for sh in GATE_SHAPES[campaign]}
+    if campaign == "c1a":
+        out["start_N250_spec.json"] = dict(sft1500_spec("D1", "base_N250.safetensors"), name="score_start_N250")
+    if campaign == "c1b":
+        out["start_Aref_spec.json"] = dict(sft1500_spec("A", "unused.safetensors"), name="score_start_Aref")
+        sys.path.insert(0, HERE)
+        import a31_jobs
+        for j in A31_MODELS:
+            parts = j.split("_")
+            lam = float(parts[2].replace("p", ".")) if len(parts) > 2 else None
+            sp = a31_jobs.spec(int(parts[1]), lam, (lam if parts[0] == "N" else 0.0) if lam is not None else None)
+            sp["data"]["sft_examples"] = f"{U}/S74.jsonl"   # unused by score; a path that exists on the pod
+            out[f"a31_spec_{j}.json"] = dict(sp, name=f"score_a31_{j}")
+    return out
 
 
 def out_name(campaign, lam, c2, no_s, no_arm):
@@ -336,15 +362,16 @@ def main():
     ap.add_argument("--no-s", action="store_true")
     ap.add_argument("--no-arm", action="store_true")
     ap.add_argument("--check", action="store_true")
-    ap.add_argument("--gate-specs", help="write b2cue_gate_D1.json and b2cue_gate_A.json here")
+    ap.add_argument("--stage-specs", help="write the campaign's staged specs (staged_specs) into this folder")
     a = ap.parse_args()
-    if a.gate_specs:
-        for sh in ("D1", "A"):
-            with open(os.path.join(a.gate_specs, f"b2cue_gate_{sh}.json"), "w") as f:
-                f.write(json.dumps(gate_spec(sh), indent=1) + "\n")
-        print("gate specs written")
+    if a.stage_specs:
         if not a.campaign:
-            return
+            sys.exit("--stage-specs needs --campaign")
+        for name, spec in staged_specs(a.campaign).items():
+            with open(os.path.join(a.stage_specs, name), "w") as f:
+                f.write(json.dumps(spec, indent=1) + "\n")
+        print(f"staged specs written for {a.campaign}")
+        return
     if a.all:
         bad = []
         for v in variants():

@@ -165,6 +165,27 @@ def test_gate_spec():
         assert fb["train"]["batch"] == 16 and fb["train"]["twin_loss"]["groups"] == 4
 
 
+def test_staged_specs_match_what_the_jobs_read():
+    for c in ("c0", "c1a", "c1b", "c2"):
+        st = J.staged_specs(c)
+        js = jobs_of(f"b2cue_{c}.json" if c == "c0" else f"b2cue_{c}_0p3.json")
+        gate = next(j for j in js if j["name"] == "gate")["cmd"]
+        assert {f"b2cue_gate_{sh}.json" for sh in J.GATE_SHAPES[c]} == {os.path.basename(x) for x in gate if x.endswith(".json")}
+        g = st["b2cue_gate_D1.json"]
+        assert g["train"]["init_from"].endswith("/" + J.GATE_INIT[c])
+        # every model the jobs read from the uploads is one the campaign uploads: the gate's init is among them
+        reads = {x for j in js for x in json.dumps(j).replace('"', " ").split() if x.startswith(J.U + "/") and x.endswith(".safetensors")}
+        assert J.U + "/" + J.GATE_INIT[c] in reads, c
+        for name, spec in st.items():
+            if name.startswith(("start_", "a31_spec_")):
+                job = next(j for j in js if j["name"] == spec["name"])          # the scoring job that links <name>.safetensors
+                assert f"{J.U}/{name}" in job["cmd"][2]
+    a = J.staged_specs("c1b")["a31_spec_N_1_0p3.json"]["train"]["twin_loss"]
+    assert a["lambda"] == a["mu"] == 0.3
+    assert J.staged_specs("c1b")["a31_spec_M_50_0p3.json"]["train"]["twin_loss"]["mu"] == 0.0
+    assert "twin_loss" not in J.staged_specs("c1b")["a31_spec_P_1.json"]["train"]
+
+
 def rec(val, dec, nui):
     return {"complete": True, "val_loss": val, "dec_d": dec, "nui": nui}
 

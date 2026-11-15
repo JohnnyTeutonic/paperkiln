@@ -76,7 +76,6 @@ def setup(tmp, campaign, lam=None):
         (up / f).write_text("stand-in")
     for b in ("N250", "S", "N60", "N2", "S2"):
         (up / f"base_{b}.safetensors").write_text(f"base {b}")
-    (up / "b2cue_gate_init_D1.safetensors").write_text("gate init")
     write_req(up, "b2cue_selection_req", {"S_hf_train": trips("a", 9), "S_hf_held": trips("b", 6, "speaker", "qualifier") + trips("c", 3, "speaker", "carrier"),
                                           "S_hf_held_nq": trips("d", 3, "speaker", "carrier"), "S_in": trips("e", 3)})
     write_req(up, "b2cue_early_req", {"early_in": trips("f", 3), "early_hf": trips("g", 3)})
@@ -90,11 +89,9 @@ def setup(tmp, campaign, lam=None):
     sub = lambda text: text.replace(J.BIN, str(fake)).replace(J.DEVICE_TEST, str(dev_test)).replace("/content/chat", str(C))  # noqa: E731
     jobs = json.loads(sub(json.dumps(J.render(campaign, lam))))
     (tmp / "jobs.json").write_text(json.dumps(jobs))
-    for sh in ("D1", "A"):
-        (up / f"b2cue_gate_{sh}.json").write_text(sub(json.dumps(J.gate_spec(sh))))
-    for b in ("N250",):
-        (up / f"start_{b}.safetensors").write_text(f"start {b}")
-        (up / f"start_{b}_spec.json").write_text(sub(json.dumps(dict(J.arm_spec("D1", None, 1, "P"), name=f"start_{b}"))))
+    (up / "start_N250.safetensors").write_text("start N250")
+    for name, spec in J.staged_specs(campaign).items():   # the launch's staged specs: the gate's, the uploaded start's
+        (up / name).write_text(sub(json.dumps(spec)))
     return C, jobs, fake
 
 
