@@ -147,9 +147,10 @@ def score_job(name, req, after, weights=None, spec_path=None, gguf=True):
     bind = (f"python3 tools/colab_chat/a31_bind.py --scores {{out}}/scores.jsonl --weights {w}{g} --requests {req} --bin {BIN} "
             f"--spec {sp} --out {{out}}/score.json")
     return {"name": f"score_{name}" if weights is None else name, "light": True, "after": after,
-            "cmd": ["bash", "-c", f"{pre}timeout {SCORE_TIMEOUT} {BIN} score {model_dir} --in {req} --out {{out}}/scores.jsonl "
-                    f"--batch-tokens 8192 && {bind}"],
-            "outputs": ["scores.jsonl", "score.json"]}
+            # the registered two retries (section 6.1 row 4; launch round 3): three attempts, the count recorded beside the scores
+            "cmd": ["bash", "-c", f"{pre}ok=0; for i in 1 2 3; do echo $i > {{out}}/attempts.txt; timeout {SCORE_TIMEOUT} {BIN} score {model_dir} "
+                    f"--in {req} --out {{out}}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && {bind}"],
+            "outputs": ["scores.jsonl", "score.json", "attempts.txt"]}
 
 
 def start_score(base, after, req):

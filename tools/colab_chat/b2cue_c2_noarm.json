@@ -116,11 +116,12 @@
    "cmd": [
     "bash",
     "-c",
-    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/sft_N2 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/sft_N2/sft_N2.safetensors --gguf /content/chat/sft_N2/sft_N2.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/sft_N2/spec.json --out {out}/score.json"
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/sft_N2 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/sft_N2/sft_N2.safetensors --gguf /content/chat/sft_N2/sft_N2.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/sft_N2/spec.json --out {out}/score.json"
    ],
    "outputs": [
     "scores.jsonl",
-    "score.json"
+    "score.json",
+    "attempts.txt"
    ]
   },
   {
@@ -656,11 +657,12 @@
    "cmd": [
     "bash",
     "-c",
-    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/sft_S2 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/sft_S2/sft_S2.safetensors --gguf /content/chat/sft_S2/sft_S2.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/sft_S2/spec.json --out {out}/score.json"
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/sft_S2 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/sft_S2/sft_S2.safetensors --gguf /content/chat/sft_S2/sft_S2.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/sft_S2/spec.json --out {out}/score.json"
    ],
    "outputs": [
     "scores.jsonl",
-    "score.json"
+    "score.json",
+    "attempts.txt"
    ]
   },
   {
@@ -1108,11 +1110,12 @@
    "cmd": [
     "bash",
     "-c",
-    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/P_N2_1 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/P_N2_1/P_N2_1.safetensors --gguf /content/chat/P_N2_1/P_N2_1.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/P_N2_1/spec.json --out {out}/score.json"
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/P_N2_1 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/P_N2_1/P_N2_1.safetensors --gguf /content/chat/P_N2_1/P_N2_1.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/P_N2_1/spec.json --out {out}/score.json"
    ],
    "outputs": [
     "scores.jsonl",
-    "score.json"
+    "score.json",
+    "attempts.txt"
    ]
   },
   {
@@ -1122,11 +1125,12 @@
    "cmd": [
     "bash",
     "-c",
-    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/P_N2_50 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/P_N2_50/P_N2_50.safetensors --gguf /content/chat/P_N2_50/P_N2_50.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/P_N2_50/spec.json --out {out}/score.json"
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/P_N2_50 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/P_N2_50/P_N2_50.safetensors --gguf /content/chat/P_N2_50/P_N2_50.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/P_N2_50/spec.json --out {out}/score.json"
    ],
    "outputs": [
     "scores.jsonl",
-    "score.json"
+    "score.json",
+    "attempts.txt"
    ]
   },
   {
@@ -1136,11 +1140,12 @@
    "cmd": [
     "bash",
     "-c",
-    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/P_N2_125 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/P_N2_125/P_N2_125.safetensors --gguf /content/chat/P_N2_125/P_N2_125.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/P_N2_125/spec.json --out {out}/score.json"
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/P_N2_125 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/P_N2_125/P_N2_125.safetensors --gguf /content/chat/P_N2_125/P_N2_125.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/P_N2_125/spec.json --out {out}/score.json"
    ],
    "outputs": [
     "scores.jsonl",
-    "score.json"
+    "score.json",
+    "attempts.txt"
    ]
   },
   {
@@ -1150,11 +1155,12 @@
    "cmd": [
     "bash",
     "-c",
-    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/P_S2_1 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/P_S2_1/P_S2_1.safetensors --gguf /content/chat/P_S2_1/P_S2_1.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/P_S2_1/spec.json --out {out}/score.json"
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/P_S2_1 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/P_S2_1/P_S2_1.safetensors --gguf /content/chat/P_S2_1/P_S2_1.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/P_S2_1/spec.json --out {out}/score.json"
    ],
    "outputs": [
     "scores.jsonl",
-    "score.json"
+    "score.json",
+    "attempts.txt"
    ]
   },
   {
@@ -1164,11 +1170,12 @@
    "cmd": [
     "bash",
     "-c",
-    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/P_S2_50 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/P_S2_50/P_S2_50.safetensors --gguf /content/chat/P_S2_50/P_S2_50.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/P_S2_50/spec.json --out {out}/score.json"
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/P_S2_50 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/P_S2_50/P_S2_50.safetensors --gguf /content/chat/P_S2_50/P_S2_50.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/P_S2_50/spec.json --out {out}/score.json"
    ],
    "outputs": [
     "scores.jsonl",
-    "score.json"
+    "score.json",
+    "attempts.txt"
    ]
   },
   {
@@ -1178,11 +1185,12 @@
    "cmd": [
     "bash",
     "-c",
-    "timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/P_S2_125 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/P_S2_125/P_S2_125.safetensors --gguf /content/chat/P_S2_125/P_S2_125.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/P_S2_125/spec.json --out {out}/score.json"
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/P_S2_125 --in /content/chat/upload/b2cue_confirmation_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/P_S2_125/P_S2_125.safetensors --gguf /content/chat/P_S2_125/P_S2_125.gguf --requests /content/chat/upload/b2cue_confirmation_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/P_S2_125/spec.json --out {out}/score.json"
    ],
    "outputs": [
     "scores.jsonl",
-    "score.json"
+    "score.json",
+    "attempts.txt"
    ]
   }
  ]
