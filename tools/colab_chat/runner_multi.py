@@ -865,15 +865,26 @@ def spared_posts(st, jobs, by, needed, failed):
     return spare
 
 
-def home_inputs(st, jobs, by, failed):
+def home_inputs(st, jobs, by, failed, needed=()):
     """A32 (launch rounds 4 and 5): what unfinished jobs read from home runs, put back on a VM that lacks it, as (key, home file,
     VM path) whole-file inputs. An early readout or watch (--job, --ref) reads its runs' events.jsonl and <run>_spec.json; C0's
     select reads its home inputs' folders (scores, early records, logs, specs) and each training run's <run>_spec.json."""
     out = {}
 
-    def put(n, src, dst):
-        if os.path.isfile(src) and os.path.getsize(src) <= 64 << 20:
+    def put(n, src, dst, cap=64 << 20):
+        if os.path.isfile(src) and (cap is None or os.path.getsize(src) <= cap):
             out[dst] = ("home__" + dst[len("/content/chat/"):].replace("/", "__"), src)
+
+    def run_files(n, weights):   # a home training run as the VM had it (launch round 6)
+        model = by[n].get("model_name", n)
+        if weights:
+            put(n, os.path.join(ART, n, f"{model}.safetensors"), f"/content/chat/{n}/{model}.safetensors", None)
+        put(n, os.path.join(ART, n, f"{model}.gguf"), f"/content/chat/{n}/{model}.gguf", None)
+        put(n, os.path.join(ART, n, f"{n}_spec.json"), f"/content/chat/{n}/spec.json")
+        put(n, os.path.join(ART, n, f"{n}_spec.json"), f"/content/chat/{n}_spec.json")
+    for n in sorted(needed):   # prepare() restores their weights; their scorings also read the GGUF and the spec
+        if n in by and "cmd" not in by[n] and st.job(n)["home"] and n not in failed:
+            run_files(n, False)
     for j in jobs:
         if "cmd" not in j or st.job(j["name"])["home"]:
             continue
@@ -894,8 +905,8 @@ def home_inputs(st, jobs, by, failed):
                             continue
                         src = os.path.join(root, f)
                         put(n, src, f"/content/chat/{n}/" + os.path.relpath(src, d).replace(os.sep, "/"))
-                if "cmd" not in by[n]:
-                    put(n, os.path.join(d, f"{n}_spec.json"), f"/content/chat/{n}_spec.json")
+                if "cmd" not in by[n]:   # select's binding hashes the final weights (launch round 6)
+                    run_files(n, True)
     return [(k, src, dst) for dst, (k, src) in sorted(out.items())]
 
 
@@ -980,7 +991,8 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
             if os.path.exists(src):
                 finals.append((f"{n}__final.safetensors", src, f"/content/chat/{n}/{model}.safetensors"))
     if HOME_MARKERS:
-        finals += home_inputs(st, jobs, by, failed)
+        have = {f[2] for f in finals}
+        finals += [f for f in home_inputs(st, jobs, by, failed, needed) if f[2] not in have]
     # Resume checkpoints of unfinished jobs, smallest first (see below).
     pend = sorted((j["name"] for j in jobs if not st.job(j["name"])["home"]
                    and os.path.exists(os.path.join(ART, j["name"], "state.txt"))),

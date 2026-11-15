@@ -207,4 +207,34 @@ def test_a_replacement_vm_before_c0s_select_reruns_nothing_and_restores_its_inpu
     for dst in ("/content/chat/D0/events.jsonl", "/content/chat/D0_spec.json", "/content/chat/D0/D0_spec.json",
                 "/content/chat/score_D0/score.json", "/content/chat/score_D0/scores.jsonl", "/content/chat/early_D0_128/early.json"):
         assert dst in moves, dst
-    assert "D0.safetensors" not in moves and not any("safetensors" in u for u in ups)
+    assert "/content/chat/D0/D0.safetensors" in moves   # select's binding hashes the final weights (launch round 6)
+    assert "/content/chat/D0/spec.json" in moves
+
+
+def test_a_replacement_vm_before_a_scoring_restores_the_runs_gguf_and_spec(tmp_path, monkeypatch):
+    """A32 launch round 6: an unfinished scoring of a home training run gets back the run's weights, GGUF and spec (as spec.json in
+    its folder and <run>_spec.json at the root), which the scoring and binding commands read."""
+    art = setup(tmp_path, monkeypatch)
+    monkeypatch.setattr(rm, "HOME_MARKERS", True)
+    st = rm.State()
+    st.job("P_X_1").update(home=True, status="FINISHED")
+    (art / "P_X_1").mkdir()
+    for f in ("P_X_1.safetensors", "P_X_1.gguf", "P_X_1_spec.json", "events.jsonl"):
+        (art / "P_X_1" / f).write_text("x")
+    st.d["booted"] = False
+    st.save()
+    js = [{"name": "P_X_1", "spec": {}}, {"name": "score_P_X_1", "light": True, "after": "P_X_1", "cmd": ["bash", "-c", "score"],
+                                         "outputs": ["scores.jsonl", "score.json"]}]
+    sent = []
+
+    def fake_exec(code, timeout=200):
+        sent.append(code)
+        return 0, "DIRS_OK\nHOME_OK\nPENDING_OK\nINPUTS_OK\nBOOTED\n"
+    monkeypatch.setattr(rm, "exec_py", fake_exec)
+    monkeypatch.setattr(rm, "upload_file", lambda src, dst: None)
+    assert rm.prepare(st, "c0ffee", "jobs.json", js, [])
+    moves = next(c for c in sent if "INPUTS_OK" in c)
+    for dst in ("/content/chat/P_X_1/P_X_1.safetensors", "/content/chat/P_X_1/P_X_1.gguf", "/content/chat/P_X_1/spec.json",
+                "/content/chat/P_X_1_spec.json"):
+        assert dst in moves, dst
+    assert moves.count("/content/chat/P_X_1/P_X_1.safetensors") == 1   # once, from prepare()'s own restoration
