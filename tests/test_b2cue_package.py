@@ -297,7 +297,7 @@ def test_a_corrupt_log_line_is_unread_never_dropped(tmp_path):
     (tmp_path / "sft_X" / "events.jsonl").write_text(rows[0] + "\n{broken\n" + rows[1] + "\n" + rows[2] + "\n")
     (tmp_path / "STATUS_sft_X").write_text("FINISHED")
     r = early_cli("--watch", "--job", "sft_X", "--out", str(tmp_path / "w"), "--chat", str(tmp_path), "--at", "2", "--steps", "3")
-    assert r.returncode == 0
+    assert r.returncode == 1   # an unread watch exits 1 (launch round 4)
     w = json.loads((tmp_path / "w" / "watch.json").read_text())
     assert w["health"] == "unread" and "does not parse" in w["health_unread"]
     import b2cue_early as E

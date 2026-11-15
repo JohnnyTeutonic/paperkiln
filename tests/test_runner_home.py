@@ -127,3 +127,42 @@ def test_prepare_marks_the_adopted_job_finished_on_the_new_vm(tmp_path, monkeypa
     assert "'gate'" in finished
     assert "'bad'" not in finished and "'partial'" not in finished
     assert st.d["booted"]
+
+
+def test_a_replacement_vm_gets_the_home_markers_and_the_reference_logs(tmp_path, monkeypatch):
+    """A32 launch round 4: with home_markers on, prepare() on a replacement VM writes HOME_<job> for every home job (the barrier
+    reads them; the runner's main loop marks each job once only) and uploads, for an unfinished job's --ref run that is home, that
+    run's events.jsonl (the arms' health checks read it), moved into its out_dir."""
+    art = setup(tmp_path, monkeypatch)
+    monkeypatch.setattr(rm, "HOME_MARKERS", True)
+    st = rm.State()
+    landed(art, st, "gate", ["gate.json"])
+    st.job("gate").update(home=True, status="FINISHED", home_marked=True)   # marked on the VM that was lost
+    st.job("P_X_1").update(home=True, status="FINISHED", home_marked=True)
+    (art / "P_X_1").mkdir()
+    (art / "P_X_1" / "events.jsonl").write_text('{"event": "step", "step": 1, "loss": 3.0}\n')
+    st.d["booted"] = False
+    st.save()
+    js = [{"name": "gate", "cmd": ["x"], "outputs": ["gate.json"]}, {"name": "P_X_1", "spec": {}},
+          {"name": "N_X_1", "spec": {}, "after": "P_X_1"},
+          {"name": "early_N_X_1_256", "light": True, "cmd": ["python3", "b2cue_early.py", "--job", "N_X_1", "--ref", "P_X_1"],
+           "outputs": ["early.json"]}]
+    sent, ups = [], []
+
+    def fake_exec(code, timeout=200):
+        sent.append(code)
+        return 0, "DIRS_OK\nHOME_OK\nPENDING_OK\nINPUTS_OK\nBOOTED\n"
+    monkeypatch.setattr(rm, "exec_py", fake_exec)
+    monkeypatch.setattr(rm, "upload_file", lambda src, dst: ups.append((src, dst)))
+    assert rm.prepare(st, "c0ffee", "jobs.json", js, [])
+    home_code = next(c for c in sent if "HOME_OK" in c)
+    assert "/content/chat/HOME_" in home_code and "'gate'" in home_code and "'P_X_1'" in home_code
+    assert any(d == "/content/chat/upload/P_X_1__events.jsonl" for _, d in ups)
+    moves = next(c for c in sent if "INPUTS_OK" in c)
+    assert "/content/chat/P_X_1/events.jsonl" in moves
+    monkeypatch.setattr(rm, "HOME_MARKERS", False)   # other campaigns: unchanged
+    sent.clear()
+    ups.clear()
+    st.d["booted"] = False
+    assert rm.prepare(st, "c0ffee", "jobs.json", js, [])
+    assert "/content/chat/HOME_" not in next(c for c in sent if "HOME_OK" in c) and not ups

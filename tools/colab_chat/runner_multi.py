@@ -912,12 +912,20 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
     rerun = [j["name"] for j in jobs if st.job(j["name"])["home"] and "cmd" in j and j["name"] in needed
              and j["name"] not in failed and j["name"] not in spare]
     finished = [j["name"] for j in jobs if st.job(j["name"])["home"] and j["name"] not in failed + rerun]
+    # A32 (launch round 4): the HOME_ markers follow the runner's state on every VM, so a replacement VM on a fresh volume gets
+    # them back (the barrier reads them); every home job keeps its marker, a data job run again included (its outputs are home).
+    marked = finished + failed + rerun if HOME_MARKERS else []
     rc, out = exec_py(f"for n in {finished!r}: open('/content/chat/STATUS_' + n, 'w').write('FINISHED\\n')\n"
                       f"for n in {failed!r}: open('/content/chat/STATUS_' + n, 'w').write('FAILED\\n')\n"
-                      "print('HOME_OK')\n")
+                      + (f"for n in {marked!r}: open('/content/chat/HOME_' + n, 'w').write('1')\n" if marked else "")
+                      + "print('HOME_OK')\n")
     if "HOME_OK" not in out:
         log(f"prepare: home jobs not marked: {out.strip()[-120:]}")
         return False
+    for n in marked:
+        st.job(n)["home_marked"] = True
+    if marked:
+        st.save()
     if rerun:
         log(f"prepare: data jobs rerun on this VM for unfinished dependants: {rerun}")
     if spare:
@@ -934,6 +942,13 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
             src = os.path.join(ART, n, model + ".safetensors")
             if os.path.exists(src):
                 finals.append((f"{n}__final.safetensors", src, f"/content/chat/{n}/{model}.safetensors"))
+    if HOME_MARKERS:   # A32 (launch round 4): an arm's health check reads its reference run's log (--ref): a fresh volume needs it
+        refs = {j["cmd"][i + 1] for j in jobs if "cmd" in j and not st.job(j["name"])["home"]
+                for i, a in enumerate(j["cmd"][:-1]) if a == "--ref"}
+        for n in sorted(refs):
+            ev = os.path.join(ART, n, "events.jsonl")
+            if n in by and st.job(n)["home"] and n not in failed and os.path.exists(ev):
+                finals.append((f"{n}__events.jsonl", ev, f"/content/chat/{n}/events.jsonl"))
     # Resume checkpoints of unfinished jobs, smallest first (see below).
     pend = sorted((j["name"] for j in jobs if not st.job(j["name"])["home"]
                    and os.path.exists(os.path.join(ART, j["name"], "state.txt"))),
