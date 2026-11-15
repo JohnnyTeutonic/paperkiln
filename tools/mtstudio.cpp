@@ -3097,9 +3097,12 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                 const size_t gi = g - g0;
                 const double da = std::fabs(S->data(gi * k, 0) / tw.n_a[g] - fref.start_a[g]);
                 const double db = std::fabs(S->data(gi * k + 2, 0) / tw.n_b[g] - fref.start_b[g]);
-                tot += da + db;
-                if (!(std::max(da, db) <= mx)) {  // NaN-safe: a NaN difference becomes the worst
-                    mx = std::isfinite(std::max(da, db)) ? std::max(da, db) : std::numeric_limits<double>::infinity();
+                // either side not finite (the trainer's or the reference's) is a failure on its own: std::max would drop a NaN
+                const bool fin = std::isfinite(da) && std::isfinite(db);
+                const double d = fin ? std::max(da, db) : std::numeric_limits<double>::infinity();
+                tot += fin ? da + db : std::numeric_limits<double>::infinity();
+                if (d > mx) {
+                    mx = d;
                     worst = g;
                 }
             }

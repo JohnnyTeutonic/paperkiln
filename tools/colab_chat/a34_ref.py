@@ -143,7 +143,10 @@ def build(a):
     req = read_jsonl(req_p)
     os.makedirs(a.out, exist_ok=True)
     st = os.path.join(a.chat, "ref_start")
-    # knot 0 is ref_start's: its binding must be the current start weights, requests and binary, and its scores the bound ones
+    # knot 0 is ref_start's: its binding must be the current start weights, requests and binary, and its scores the bound ones.
+    # It was scored under the gate spec's architecture, vocabulary and context (the runs' own, A31's S71 spec); its spec hash is
+    # not compared with the run's, because the trainer's preflight compares knot 0's "start" values with its own forward under
+    # each run's spec, for every group, before step 1.
     sb = json.load(open(os.path.join(st, "scores_0.binding.json")))
     w0 = os.path.join(up, "tc_sft_b1_r1.safetensors")
     if (sb["weights_sha256"], sb["requests_sha256"], sb["binary_sha256"], sb["scores_sha256"]) != \

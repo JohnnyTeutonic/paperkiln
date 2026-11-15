@@ -233,13 +233,14 @@ def test_gate_floor_checks():
     log = "  write-through, floor: loss host 1\n    floor: loss host 0.39\n    floor: loss host 0.39\n"
     par = {"cuda_twin": {"groups": 16, "max_abs": 3e-7}, "cpu_twin": {"groups": 16, "max_abs": 1e-7}}
     assert GATE.floor_checks(ev(ok1, ok2), ev(ok1, ok2), log, par) == []
-    assert GATE.floor_checks(ev(ok1, ok2), ev(ok1, ok2), "  write-through, floor: x\n  deferred window, floor: y\n")   # headers only
+    assert GATE.floor_checks(ev(ok1, ok2), ev(ok1, ok2), "  write-through, floor: x\n  deferred window, floor: y\n", par)   # headers only
     assert GATE.floor_checks(ev(ok1, ok2), ev(ok1, ok2), log, dict(par, cpu_twin={"groups": 16, "max_abs": 0.01}))
     assert GATE.floor_checks(ev(ok1, ok2), ev(ok1, ok2), log, dict(par, cuda_twin={"groups": 4, "max_abs": 1e-7}))
     assert GATE.floor_checks(ev(ok1, ok2), ev(ok1, ok2), log, dict(par, cuda_twin=None))
-    assert GATE.floor_checks(ev(dict(ok1, gap_absmax=0.51), ok2), ev(ok1, ok2), log)       # parity off by 0.01
-    assert GATE.floor_checks(ev(dict(ok1, gap=-0.49), ok2), ev(ok1, ok2), log)             # the mean side off by 0.01
-    assert GATE.floor_checks(ev(ok1, dict(ok2, active=0.75)), ev(ok1, ok2), log)
-    assert GATE.floor_checks(ev(ok1, dict(ok2, loss=0.6)), ev(ok1, ok2), log)               # CUDA and CPU disagree
-    assert GATE.floor_checks(ev(ok1, {"loss": None}), ev(ok1, ok2), log)
-    assert GATE.floor_checks(None, ev(ok1, ok2), log)
+    assert GATE.floor_checks(ev(ok1, ok2), ev(ok1, ok2), log, {"cuda_twin": par["cuda_twin"]})   # a run's record not read
+    assert GATE.floor_checks(ev(dict(ok1, gap_absmax=0.51), ok2), ev(ok1, ok2), log, par)       # parity off by 0.01
+    assert GATE.floor_checks(ev(dict(ok1, gap=-0.49), ok2), ev(ok1, ok2), log, par)             # the mean side off by 0.01
+    assert GATE.floor_checks(ev(ok1, dict(ok2, active=0.75)), ev(ok1, ok2), log, par)
+    assert GATE.floor_checks(ev(ok1, dict(ok2, loss=0.6)), ev(ok1, ok2), log, par)               # CUDA and CPU disagree
+    assert GATE.floor_checks(ev(ok1, {"loss": None}), ev(ok1, ok2), log, par)
+    assert GATE.floor_checks(None, ev(ok1, ok2), log, par)

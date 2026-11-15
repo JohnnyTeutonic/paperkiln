@@ -34,10 +34,12 @@ def parity_event(events_path):
     return p[-1] if p else None
 
 
-def floor_checks(ct, cc, dev_log, parity=None):
+def floor_checks(ct, cc, dev_log, parity):
     fails = []
     if dev_log is None or dev_log.count("    floor: loss host") < 2:
         fails.append("the device test did not run its floor legs")
+    if set(parity or {}) != {"cuda_twin", "cpu_twin"}:
+        fails.append("the preflight record of a floor run is not read")
     for name, p in (parity or {}).items():
         if not p or not G.num(p.get("max_abs")) or p["max_abs"] > PARITY or p.get("groups") != 16:
             fails.append(f"{name}: the preflight over every gate twin is missing or over {PARITY}: {p}")
