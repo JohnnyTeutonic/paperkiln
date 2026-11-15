@@ -1315,7 +1315,7 @@ def main():
         if HOME_MARKERS:
             exc = sys.exc_info()[0]
             why = reason[0] if reason else (f"exception: {exc.__name__}" if exc and not issubclass(exc, SystemExit) else
-                                            "deadline" if time.time() >= deadline else "stopped")
+                                            "blocked" if blocked else "deadline" if time.time() >= deadline else "stopped")
             st.d.setdefault("terminals", []).append({"reason": why, "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())})
             st.save()
             log(f"runner ends: {why}")

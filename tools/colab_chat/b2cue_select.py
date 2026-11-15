@@ -113,8 +113,10 @@ def run_record(chat, run, M, man, trips, by_id, vocab, AT, R):
             ev = E.strict_events(os.path.join(chat, run, "events.jsonl"), True)
             if e.get("spec_sha256") != sha(spec_path(chat, run)) or e.get("events_digest") != E.events_digest(ev, s):
                 raise Void(f"{run}: the early readout at step {s} certifies other evidence than this run's")
-        if e["health"] != "ok":   # a recorded stop or unread check is a documented failure (section 4.2)
-            return {"complete": False, "why": f"health at step {s}: {e.get('health_stop') or e.get('health_unread') or e['health']}"}
+        if e["health"] == "unread":   # evidence that cannot be read is void_selection, never ineligible (section 4.2; round 8)
+            raise Void(f"{run}: the health check at step {s} is unread: {e.get('health_unread')}")
+        if e["health"] != "ok":   # a recorded health stop is a documented failure (section 4.2)
+            return {"complete": False, "why": f"health at step {s}: {e.get('health_stop') or e['health']}"}
     ev = [json.loads(x) for x in open(os.path.join(chat, run, "events.jsonl")) if x.strip()]
     vals = [e.get("val_loss") for e in ev if e.get("event") == "eval" and e.get("step") == FINAL_STEP]
     if not vals or not finite(vals[-1]):
