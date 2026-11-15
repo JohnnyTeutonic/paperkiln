@@ -225,6 +225,142 @@ void test_refusals() {
                 "    bad position, a target outside its row's block, a target id past the vocabulary\n");
 }
 
+// A32's answer-token margin: weights per target (rows 0, 1 carry yA's mask, rows 2, 3 yB's, row 4 none), |D| per group.
+void set_mask(pt::TwinTargets& t, const std::vector<std::vector<int>>& ma, const std::vector<std::vector<int>>& mb) {
+    t.w.clear();
+    t.d_a.clear();
+    t.d_b.clear();
+    const size_t k = t.per_group;
+    std::vector<size_t> seen(t.rows, 0);
+    for (size_t i = 0; i < t.pos.size(); ++i) {
+        const size_t r = t.pos_row[i], g = r / k, j = r % k, pos_in_reply = seen[r]++;
+        const auto& m = (j == 0 || j == 1) ? ma[g] : (j == 2 || j == 3) ? mb[g] : std::vector<int>();
+        t.w.push_back(j == 4 ? 0.0f : static_cast<float>(m[pos_in_reply]));
+    }
+    for (size_t g = 0; g < t.groups; ++g) {
+        float a = 0, b = 0;
+        for (int v : ma[g]) a += v;
+        for (int v : mb[g]) b += v;
+        t.d_a.push_back(a);
+        t.d_b.push_back(b);
+    }
+}
+
+double reference_masked(const Matrix& x, const Case& c, double m, double lam, double mu) {
+    std::vector<double> lp(c.t.rows, 0.0), lw(c.t.rows, 0.0);
+    for (size_t i = 0; i < c.t.pos.size(); ++i) {
+        const size_t r = c.t.pos[i];
+        double mx = -1e300, z = 0;
+        for (size_t j = 0; j < C; ++j) mx = std::max(mx, static_cast<double>(x(r, j)));
+        for (size_t j = 0; j < C; ++j) z += std::exp(x(r, j) - mx);
+        const double v = x(r, c.t.tgt[i]) - mx - std::log(z);
+        lp[c.t.pos_row[i]] += v;
+        lw[c.t.pos_row[i]] += c.t.w[i] * v;
+    }
+    const size_t G = c.t.groups, k = c.t.per_group;
+    double ha = 0, hb = 0, inv = 0;
+    for (size_t g = 0; g < G; ++g) {
+        const double dA = (lw[g * k] - lw[g * k + 1]) / c.t.n_a[g];
+        const double dB = (lw[g * k + 2] - lw[g * k + 3]) / c.t.n_b[g];
+        ha += std::max(0.0, m * c.t.d_a[g] / c.t.n_a[g] - dA);
+        hb += std::max(0.0, m * c.t.d_b[g] / c.t.n_b[g] - dB);
+        if (k == 5) inv += std::abs((lp[g * k] - lp[g * k + 4]) / c.t.n_a[g]);
+    }
+    return lam * (ha / G + hb / G) + mu * inv / G;
+}
+
+void test_answer_mask() {
+    // groups' reply lengths are {2,3,1} for yA and {1,2,3} for yB (make_case); masks with |D| >= 1 per reply
+    const std::vector<std::vector<int>> ma = {{0, 1}, {1, 0, 1}, {1}}, mb = {{1}, {0, 1}, {1, 1, 0}};
+    for (int per_group : {4, 5}) {
+        Case c = make_case(per_group);
+        const Matrix X = randn(c.t.rows * L, C, 21, 2.0f);
+        const float lam = 0.7f, mu = per_group == 5 ? 0.3f : 0.0f;
+        // 1. an all-ones mask is A31's loss exactly (the target m |D| / n = m), value and gradient
+        {
+            Case ones = c;
+            std::vector<std::vector<int>> oa, ob;
+            for (size_t g = 0; g < c.t.groups; ++g) {
+                oa.push_back(std::vector<int>(c.ya[g].size(), 1));
+                ob.push_back(std::vector<int>(c.yb[g].size(), 1));
+            }
+            set_mask(ones.t, oa, ob);
+            Var x1 = make_var(X, true), x2 = make_var(X, true);
+            Var l1 = pt::twin_loss(x1, c.t, 0.4f, lam, mu), l2 = pt::twin_loss(x2, ones.t, 0.4f, lam, mu);
+            CHECK(l1->data(0, 0) == l2->data(0, 0));
+            microtorch::backward(l1);
+            microtorch::backward(l2);
+            for (size_t i = 0; i < X.rows(); ++i)
+                for (size_t j = 0; j < C; ++j) CHECK(x1->grad(i, j) == x2->grad(i, j));
+        }
+        // 2. a partial mask against the direct computation, at a margin with active and met hinges, and its gradcheck
+        set_mask(c.t, ma, mb);
+        double m = 0.3;
+        Var x = make_var(X, true);
+        pt::TwinStats st;
+        Var loss = pt::twin_loss(x, c.t, static_cast<float>(m), lam, mu, &st);
+        const double want = reference_masked(X, c, m, lam, mu);
+        std::printf("  answer mask, per_group %d: loss %.6f, reference %.6f, active %.2f\n", per_group, loss->data(0, 0), want, st.active);
+        CHECK(std::abs(loss->data(0, 0) - want) < 1e-5 * (1 + std::abs(want)));
+        microtorch::backward(loss);
+        auto f = [&]() { return pt::twin_loss(x, c.t, static_cast<float>(m), lam, mu)->data(0, 0); };
+        const double worst = fd_worst(f, x, x->grad, 1e-3f);
+        std::printf("  FD gradcheck, answer-token margin (per_group %d): worst relative error %.3e\n", per_group, worst);
+        CHECK(worst < 5e-3);
+        // 3. masked-out targets of rows 0 to 3 get no gradient from the margin when mu = 0
+        if (per_group == 4) {
+            Var y = make_var(X, true);
+            Var l = pt::twin_loss(y, c.t, 5.0f, 1.0f, 0.0f);   // every hinge active
+            microtorch::backward(l);
+            for (size_t i = 0; i < c.t.pos.size(); ++i)
+                if (c.t.w[i] == 0.0f)
+                    for (size_t j = 0; j < C; ++j) CHECK(y->grad(c.t.pos[i], j) == 0.0f);
+            std::printf("  masked-out reply tokens get no margin gradient\n");
+        }
+    }
+    // 4. refusals: a mask that differs between a reply's two contexts, an empty D, a weight not 0 or 1, a weight on N, a bad count
+    Case c = make_case(5);
+    set_mask(c.t, ma, mb);
+    Var x = make_var(randn(c.t.rows * L, C, 22), true);
+    auto refuses = [](const std::function<void()>& f) {
+        try {
+            f();
+        } catch (const std::runtime_error&) {
+            return true;
+        }
+        return false;
+    };
+    CHECK(!refuses([&] { pt::twin_loss(x, c.t, 1.0f, 1.0f, 0.5f); }));
+    pt::TwinTargets bad = c.t;
+    for (size_t i = 0; i < bad.pos.size(); ++i)
+        if (bad.pos_row[i] == 1) {   // row 1 (B + yA): drop one answer token, so it no longer pairs with row 0
+            if (bad.w[i] == 1.0f) {
+                bad.w[i] = 0.0f;
+                break;
+            }
+        }
+    CHECK(refuses([&] { pt::twin_loss(x, bad, 1.0f, 1.0f, 0.5f); }));
+    bad = c.t;
+    for (size_t i = 0; i < bad.pos.size(); ++i)
+        if (bad.pos_row[i] == 10 || bad.pos_row[i] == 11) bad.w[i] = 0.0f;   // group 2's yA: D empty
+    bad.d_a[2] = 0.0f;
+    CHECK(refuses([&] { pt::twin_loss(x, bad, 1.0f, 1.0f, 0.5f); }));
+    bad = c.t;
+    bad.w[0] = 0.5f;
+    CHECK(refuses([&] { pt::twin_loss(x, bad, 1.0f, 1.0f, 0.5f); }));
+    bad = c.t;
+    for (size_t i = 0; i < bad.pos.size(); ++i)
+        if (bad.pos_row[i] == 4) bad.w[i] = 1.0f;
+    CHECK(refuses([&] { pt::twin_loss(x, bad, 1.0f, 1.0f, 0.5f); }));
+    bad = c.t;
+    bad.d_b[0] += 1.0f;
+    CHECK(refuses([&] { pt::twin_loss(x, bad, 1.0f, 1.0f, 0.5f); }));
+    bad = c.t;
+    bad.w.pop_back();
+    CHECK(refuses([&] { pt::twin_loss(x, bad, 1.0f, 1.0f, 0.5f); }));
+    std::printf("  answer-mask refusals: unpaired masks, an empty D, a weight not 0 or 1, a weight on N, a bad count, a short mask\n");
+}
+
 }  // namespace
 
 int main() {
@@ -233,6 +369,7 @@ int main() {
     test_met_margin_gives_no_gradient();
     test_per_token_scale();
     test_refusals();
+    test_answer_mask();
     std::printf("test_twin_loss: all checks passed\n");
     return 0;
 }

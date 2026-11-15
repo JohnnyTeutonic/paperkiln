@@ -27,6 +27,7 @@
 #include <map>
 #include <mutex>
 #include <random>
+#include <set>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -211,6 +212,11 @@ struct Spec {
     std::string twin_examples;
     int twin_groups = 0;
     float twin_margin = 0.0f, twin_lambda = 0.0f, twin_mu = 0.0f;
+    // A32 (arm NA): train.twin_loss.answer_mask true reads each twin line's "mask_A" and "mask_B" (0/1 per reply target, the
+    // close included) and puts the margin on the answer-deciding tokens only (include/microtorch/posttrain/twin.hpp).
+    bool twin_answer_mask = false;
+    // A32: train.eval_at, extra steps at which the SFT held-out evaluation also runs (beside eval_every). Evaluation only.
+    std::vector<int> eval_at;
     // train
     int steps = 500;
     float lr = 3e-3f, clip = 1.0f, lambda_gate = 0.05f;
@@ -671,6 +677,13 @@ Spec parse_spec(const std::string& path) {
     s.lr = tr.value("lr", s.lr);
     s.clip = tr.value("clip", s.clip);
     s.eval_every = tr.value("eval_every", s.eval_every);
+    if (tr.contains("eval_at")) {
+        if (!tr["eval_at"].is_array()) throw std::runtime_error("train.eval_at must be an array of steps");
+        for (const auto& v : tr["eval_at"]) {
+            if (!v.is_number_integer() || v.get<int>() < 1) throw std::runtime_error("train.eval_at: steps are integers >= 1");
+            s.eval_at.push_back(v.get<int>());
+        }
+    }
     s.eval_examples = tr.value("eval_examples", s.eval_examples);
     s.eval_batch = tr.value("eval_batch", s.eval_batch);
     if (s.eval_batch < 1) throw std::runtime_error("train.eval_batch must be >= 1");
@@ -749,14 +762,18 @@ Spec parse_spec(const std::string& path) {
         if (!tl.is_object()) throw std::runtime_error("train.twin_loss must be an object");
         for (auto it = tl.begin(); it != tl.end(); ++it)
             if (it.key() != "groups" && it.key() != "margin" && it.key() != "lambda" && it.key() != "mu" &&
-                it.key().rfind("_", 0) != 0)
-                throw std::runtime_error("train.twin_loss: unknown key " + it.key() + " (groups, margin, lambda, mu)");
+                it.key() != "answer_mask" && it.key().rfind("_", 0) != 0)
+                throw std::runtime_error("train.twin_loss: unknown key " + it.key() + " (groups, margin, lambda, mu, answer_mask)");
         for (const char* k : {"groups", "margin", "lambda", "mu"})
             if (!tl.contains(k)) throw std::runtime_error(std::string("train.twin_loss needs ") + k);
         s.twin_groups = tl["groups"].get<int>();
         s.twin_margin = tl["margin"].get<float>();
         s.twin_lambda = tl["lambda"].get<float>();
         s.twin_mu = tl["mu"].get<float>();
+        if (tl.contains("answer_mask")) {
+            if (!tl["answer_mask"].is_boolean()) throw std::runtime_error("train.twin_loss.answer_mask must be true or false");
+            s.twin_answer_mask = tl["answer_mask"].get<bool>();
+        }
         if (s.objective != "sft") throw std::runtime_error("train.twin_loss rides the sft objective only");
         if (s.twin_groups < 1) throw std::runtime_error("train.twin_loss.groups must be >= 1");
         if (!std::isfinite(s.twin_margin)) throw std::runtime_error("train.twin_loss.margin must be finite");
@@ -1565,6 +1582,9 @@ struct TwinSet {
     int per_group = 4;
     std::vector<float> n_a, n_b;
     size_t max_len = 0, reply_targets = 0, state_blocks = 0;
+    // A32's answer mask (empty unless train.twin_loss.answer_mask): per row, one weight per reply target; |D| per group
+    std::vector<std::vector<float>> w;
+    std::vector<float> d_a, d_b;
 };
 
 TwinSet load_twins(const Spec& s, const std::map<std::string, int>& vocab) {
@@ -1572,6 +1592,7 @@ TwinSet load_twins(const Spec& s, const std::map<std::string, int>& vocab) {
     if (!f) throw std::runtime_error("cannot open data.twin_examples " + s.twin_examples);
     TwinSet t;
     t.per_group = s.twin_mu > 0.0f ? 5 : 4;
+    std::vector<std::vector<int>> mask_a, mask_b;   // A32: per group, from the twin lines
     std::filesystem::create_directories(s.out_dir);
     const std::string rows_path = s.out_dir + "/twin_rows.jsonl";
     {
@@ -1599,6 +1620,21 @@ TwinSet load_twins(const Spec& s, const std::map<std::string, int>& vocab) {
                 if (N.second != A.second) throw std::runtime_error(at + "N must keep A's reply");
                 if (N.first == A.first) throw std::runtime_error(at + "N's context equals A's");
                 rows.push_back({N.first, A.second});
+            }
+            if (s.twin_answer_mask) {
+                auto mask = [&](const char* k) {
+                    if (!r.contains(k) || !r[k].is_array() || r[k].empty())
+                        throw std::runtime_error(at + k + " must be a non-empty array (train.twin_loss.answer_mask)");
+                    std::vector<int> m;
+                    for (const auto& v : r[k]) {
+                        if (!v.is_number_integer() || (v.get<int>() != 0 && v.get<int>() != 1))
+                            throw std::runtime_error(at + k + ": weights are 0 or 1");
+                        m.push_back(v.get<int>());
+                    }
+                    return m;
+                };
+                mask_a.push_back(mask("mask_A"));
+                mask_b.push_back(mask("mask_B"));
             }
             for (const auto& [p, c] : rows) o << json{{"prompt", p}, {"completion", c}}.dump() << "\n";
             ++t.groups;
@@ -1642,6 +1678,33 @@ TwinSet load_twins(const Spec& s, const std::map<std::string, int>& vocab) {
                                      ": a reply's targets differ between its contexts");
         t.n_a.push_back(static_cast<float>(t.tgt[k].size()));
         t.n_b.push_back(static_cast<float>(t.tgt[k + 2].size()));
+    }
+    if (s.twin_answer_mask) {
+        // each mask must cover its reply's targets exactly (the trainer's own tokenisation, the close included)
+        const std::string mpath = s.out_dir + "/twin_masks.jsonl";
+        std::ofstream mo(mpath, std::ios::trunc);
+        for (size_t g = 0; g < t.groups; ++g) {
+            const size_t k = g * t.per_group;
+            if (mask_a[g].size() != t.tgt[k].size() || mask_b[g].size() != t.tgt[k + 2].size())
+                throw std::runtime_error("data.twin_examples: group " + std::to_string(g) + ": mask_A has " +
+                                         std::to_string(mask_a[g].size()) + " weights for " + std::to_string(t.tgt[k].size()) +
+                                         " reply targets, mask_B " + std::to_string(mask_b[g].size()) + " for " +
+                                         std::to_string(t.tgt[k + 2].size()));
+            float da = 0, db = 0;
+            for (int v : mask_a[g]) da += v;
+            for (int v : mask_b[g]) db += v;
+            if (da < 1 || db < 1) throw std::runtime_error("data.twin_examples: group " + std::to_string(g) + ": an empty answer mask");
+            t.d_a.push_back(da);
+            t.d_b.push_back(db);
+            for (int j = 0; j < t.per_group; ++j) {
+                const auto& m = (j == 0 || j == 1) ? mask_a[g] : (j == 2 || j == 3) ? mask_b[g] : std::vector<int>(t.tgt[k].size(), 0);
+                t.w.emplace_back(m.begin(), m.end());
+            }
+            // the targets and masks the margin reads, for the builder's equality test
+            mo << json{{"group", g}, {"ids_A", t.tgt[k]}, {"ids_B", t.tgt[k + 2]}, {"mask_A", mask_a[g]}, {"mask_B", mask_b[g]}}.dump()
+               << "\n";
+        }
+        if (!mo) throw std::runtime_error("cannot write " + mpath);
     }
     return t;
 }
@@ -2407,6 +2470,9 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         throw std::runtime_error("data.anneal is for objective lm only");
     SftSet sd;
     TwinSet tw;  // train.twin_loss (A31); empty otherwise
+    // the held-out evaluation's steps: every eval_every, and A32's train.eval_at (evaluation only: it reads no generator)
+    const std::set<int> eval_at_set(s.eval_at.begin(), s.eval_at.end());
+    auto eval_now = [&](int step) { return step % s.eval_every == 0 || eval_at_set.count(step) > 0; };
     GrpoData gd;
     PrefData pd;
     std::vector<size_t> po_train;  // training pairs with weight > 0
@@ -3228,6 +3294,10 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                 const size_t g = pick[gi];
                 tt.n_a.push_back(tw.n_a[g]);
                 tt.n_b.push_back(tw.n_b[g]);
+                if (!tw.w.empty()) {
+                    tt.d_a.push_back(tw.d_a[g]);
+                    tt.d_b.push_back(tw.d_b[g]);
+                }
                 for (size_t j = 0; j < k; ++j) {
                     const size_t src = g * k + j, r = gi * k + j;
                     const auto& row = tw.x[src];
@@ -3237,6 +3307,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                         tt.pos.push_back(static_cast<int>(r * Lb) + tw.pos[src][i]);
                         tt.tgt.push_back(tw.tgt[src][i]);
                         tt.pos_row.push_back(static_cast<int>(r));
+                        if (!tw.w.empty()) tt.w.push_back(tw.w[src][i]);
                     }
                 }
             }
@@ -3248,6 +3319,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             backward(tloss);
             mark("twin_backward");
             twin_ev = {{"loss", st.loss}, {"d_a", st.d_a}, {"d_b", st.d_b}, {"active", st.active}, {"len", Lb}};
+            if (!tw.w.empty()) twin_ev["answer_mask"] = true;
             if (st.has_n) twin_ev["d_n"] = st.d_n;
         }
         // Per-module grad norms BEFORE clipping: this is the true signal
@@ -3289,7 +3361,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                 const char* v = std::getenv("MICROTORCH_KEEP_PARAMS");
                 return llama != nullptr && !(v && std::strcmp(v, "0") == 0);
             }();
-            const bool host_next = step % s.eval_every == 0 || step % s.ckpt_every == 0 || step == s.steps;
+            const bool host_next = eval_now(step) || step % s.ckpt_every == 0 || step == s.steps;
             if (keep_ok && !host_next) {
                 std::vector<const Matrix*> keep;
                 for (const auto& p : params) keep.push_back(&p->data);
@@ -3401,7 +3473,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             model_ref.train();
             ev.emit({{"event", "po_eval"}, {"step", step}, {"val_loss", loss / nv}, {"pref_acc", acc / nv},
                      {"pairs", nv}});
-        } else if (!grpo && !po && step % s.eval_every == 0) {
+        } else if (!grpo && !po && eval_now(step)) {
             NoGrad ng;
             model_ref.eval();
             double vl = 0;
