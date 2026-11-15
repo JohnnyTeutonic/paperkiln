@@ -1197,9 +1197,6 @@ def main():
         log("the campaign is home: nothing is created")
     else:
         blocked = False
-        if listed() is None and not st.d.get("endpoint"):
-            if not launch(st, a.commit, a.jobs, jobs, uploads):
-                time.sleep(TICK)
     reason = []   # A32 (launch round 7): why this runner ends, recorded before cleanup
     if HOME_MARKERS:
         import signal
@@ -1212,6 +1209,11 @@ def main():
         st.d["active"] = {"started_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
         st.save()
     try:
+        # A32 (launch round 10): the first launch (pod creation, uploads, prepare) runs inside the active mark and the finaliser,
+        # so an exception there is recorded and a death there leaves the mark set
+        if not blocked and listed() is None and not st.d.get("endpoint"):
+            if not launch(st, a.commit, a.jobs, jobs, uploads):
+                time.sleep(TICK)
         while not blocked and time.time() < deadline:
             why = T.over_budget(st)
             if why:
