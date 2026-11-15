@@ -77,9 +77,35 @@ Matrix randn(size_t r, size_t c, unsigned seed) {
     return m;
 }
 
-void leg(bool windowed) {
+// A32's answer-token margin: a mask per reply (about half its targets, at least one), the same in each context it is read in
+void add_mask(pt::TwinTargets& t, unsigned seed) {
+    std::mt19937 g(seed);
+    const size_t k = t.per_group;
+    std::vector<std::vector<float>> ma(t.groups), mb(t.groups);
+    for (size_t gi = 0; gi < t.groups; ++gi) {
+        ma[gi].assign(static_cast<size_t>(t.n_a[gi]), 0.0f);
+        mb[gi].assign(static_cast<size_t>(t.n_b[gi]), 0.0f);
+        for (auto& v : ma[gi]) v = static_cast<float>(g() % 2);
+        for (auto& v : mb[gi]) v = static_cast<float>(g() % 2);
+        ma[gi][0] = 1.0f;
+        mb[gi][0] = 1.0f;
+        float a = 0, b = 0;
+        for (float v : ma[gi]) a += v;
+        for (float v : mb[gi]) b += v;
+        t.d_a.push_back(a);
+        t.d_b.push_back(b);
+    }
+    std::vector<size_t> seen(t.rows, 0);
+    for (size_t i = 0; i < t.pos.size(); ++i) {
+        const size_t r = t.pos_row[i], gi = r / k, j = r % k, n = seen[r]++;
+        t.w.push_back(j == 4 ? 0.0f : (j <= 1 ? ma[gi][n] : mb[gi][n]));
+    }
+}
+
+void leg(bool windowed, bool masked = false) {
     const size_t G = 4, L = 96, C = 2048;
-    const pt::TwinTargets t = make_targets(G, L, C, 7);
+    pt::TwinTargets t = make_targets(G, L, C, 7);
+    if (masked) add_mask(t, 13);
     const Matrix X = randn(t.rows * L, C, 11);
     float loss[2];
     Matrix grad[2];
@@ -107,10 +133,10 @@ void leg(bool windowed) {
             finite_all = finite_all && std::isfinite(grad[0](i, j)) && std::isfinite(grad[1](i, j));
         }
     const double lrel = std::abs((double)loss[1] - loss[0]) / std::max(1e-12, std::abs((double)loss[0]));
-    std::printf("  %s: loss host %.9g device %.9g (relative %.2e); logits gradient worst relative %.2e over %zu nonzero entries;"
+    std::printf("  %s%s: loss host %.9g device %.9g (relative %.2e); logits gradient worst relative %.2e over %zu nonzero entries;"
                 " d_a %.6f/%.6f d_n %.6f/%.6f\n",
-                windowed ? "deferred window" : "write-through", loss[0], loss[1], lrel, worst, nonzero, st[0].d_a, st[1].d_a,
-                st[0].d_n, st[1].d_n);
+                windowed ? "deferred window" : "write-through", masked ? ", answer mask" : "", loss[0], loss[1], lrel, worst, nonzero,
+                st[0].d_a, st[1].d_a, st[0].d_n, st[1].d_n);
     CHECK(std::isfinite(loss[0]) && std::isfinite(loss[1]) && loss[0] > 0.0f);
     CHECK(nonzero > 0);
     CHECK(finite_all && std::isfinite(scale) && scale > 0.0 && std::isfinite(worst));   // a NaN entry cannot hide behind max
@@ -126,6 +152,8 @@ int main() {
     std::printf("twin loss: device vs host (%s)\n", on_device() ? "device op set ON" : "host vs host: CPU build or op set off");
     leg(false);
     leg(true);
+    leg(false, true);   // A32 (arm NA): the answer-token margin
+    leg(true, true);
     std::printf("test_twin_device: all checks passed\n");
     return 0;
 }
