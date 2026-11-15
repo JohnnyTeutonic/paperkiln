@@ -20,6 +20,7 @@ Writes decisions.json {"outcome", "chosen", "D0", "runs", ...}.
     python3 tools/colab_chat/b2cue_select.py --chat /content/chat --out DIR
 """
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -46,20 +47,58 @@ class Void(Exception):
     pass
 
 
+def sha(p):
+    h = hashlib.sha256()
+    with open(p, "rb") as f:
+        for b in iter(lambda: f.read(1 << 20), b""):
+            h.update(b)
+    return h.hexdigest()
+
+
+def run_spec(chat, run):
+    """The spec the run trained under: jobs_vm.py's <chat>/<run>_spec.json on the pod, <art>/<run>/<run>_spec.json at home."""
+    for p in (os.path.join(chat, f"{run}_spec.json"), os.path.join(chat, run, f"{run}_spec.json")):
+        if os.path.exists(p):
+            return json.load(open(p))
+    raise Void(f"{run}: its spec is not here")
+
+
+def binding(chat, run, req_path):
+    """The selection score file's identity (launch review round 1, finding 7): score.json (a31_bind.py) must bind these scores, this
+    run's final weights, the selection request file and the run's own spec. Returns the binary's sha256."""
+    b = os.path.join(chat, f"score_{run}", "score.json")
+    if not os.path.exists(b):
+        raise Void(f"{run}: no score.json binding its selection scores")
+    b = json.load(open(b))
+    w = os.path.join(chat, run, f"{run}.safetensors")
+    sp = os.path.join(chat, f"score_{run}", "scores.jsonl")
+    if not os.path.exists(w):
+        raise Void(f"{run}: its final weights are not here")
+    if b.get("scores_sha256") != sha(sp) or b.get("weights_sha256") != sha(w) or b.get("requests_sha256") != sha(req_path):
+        raise Void(f"{run}: score.json does not bind these scores, weights and the selection requests")
+    if b.get("spec") != run_spec(chat, run):
+        raise Void(f"{run}: its selection scores were made under another spec")
+    return b.get("binary_sha256")
+
+
 def run_record(chat, run, M, man, trips, by_id, vocab, AT, R):
     st = os.path.join(chat, f"STATUS_{run}")
     if not os.path.exists(st):
         raise Void(f"{run}: no STATUS")
     status = open(st).read().strip()
-    if status != "FINISHED":
+    if status == "FAILED":
         return {"complete": False, "why": f"status {status}"}
+    if status != "FINISHED":   # launch review round 1, finding 9: only FAILED is a documented failure
+        raise Void(f"{run}: status {status!r} is not terminal")
     for s in EARLY:
         p = os.path.join(chat, f"early_{run}_{s}", "early.json")
         if not os.path.exists(p):
             raise Void(f"{run}: no early readout at step {s}")
         e = json.load(open(p))
-        if e.get("health_stop") or e.get("health_unread"):
-            return {"complete": False, "why": f"health at step {s}: {e.get('health_stop') or e.get('health_unread')}"}
+        if e.get("job") != run or e.get("step") != s or e.get("health") not in ("ok", "stop", "unread"):
+            raise Void(f"{run}: the early readout at step {s} is not a health record of this run and step")
+        if e["health"] != "ok":   # a recorded stop or unread check is a documented failure (section 4.2)
+            return {"complete": False, "why": f"health at step {s}: {e.get('health_stop') or e.get('health_unread') or e['health']}"}
     ev = [json.loads(x) for x in open(os.path.join(chat, run, "events.jsonl")) if x.strip()]
     vals = [e.get("val_loss") for e in ev if e.get("event") == "eval" and e.get("step") == FINAL_STEP]
     if not vals or not finite(vals[-1]):
@@ -68,14 +107,21 @@ def run_record(chat, run, M, man, trips, by_id, vocab, AT, R):
     if not os.path.exists(p):
         raise Void(f"{run}: no selection scores")
     try:
+        binary = binding(chat, run, os.path.join(chat, "upload", "b2cue_selection_req.jsonl"))
         scores = R.read_jsonl(p)
-        R.validated_sets(man, trips, scores)
+        per = R.validated_sets(man, trips, scores)
+        for name in man["sets"]:   # launch review round 1, finding 8: the mask is empty by construction; any exclusion is void
+            if len(per[name]) != len(trips[name]):
+                raise Void(f"{run}: {len(trips[name]) - len(per[name])} triplets of {name} scored over the context")
         rows = {}
         for name, info in man["sets"].items():
             if name not in SETS:
                 continue
             a = info["first_request"]
-            rows.update(M.per_triplet(trips[name], scores[a:a + 5 * info["triplets"]], vocab, AT, R))
+            got = M.per_triplet(trips[name], scores[a:a + 5 * info["triplets"]], vocab, AT, R)
+            if len(got) != len(trips[name]):
+                raise Void(f"{run}: {name} lost triplets in dec^D")
+            rows.update(got)
     except (OSError, ValueError, KeyError) as e:
         raise Void(f"{run}: selection scores: {e}")
     dec = M.pooled(rows, by_id, M.in_selection_pool, "dec_d")
@@ -83,7 +129,7 @@ def run_record(chat, run, M, man, trips, by_id, vocab, AT, R):
     if dec is None or nui is None:
         raise Void(f"{run}: a held-out family is empty in the pool")
     n = sum(1 for i in rows if M.in_selection_pool(by_id[i]))
-    return {"complete": True, "val_loss": vals[-1], "dec_d": dec, "nui": nui, "n_pool": n}
+    return {"complete": True, "val_loss": vals[-1], "dec_d": dec, "nui": nui, "n_pool": n, "binary_sha256": binary}
 
 
 def decide(runs):
@@ -126,6 +172,9 @@ def select(chat, up):
     names = ["D0"] + [f"Dn_{lname(x)}" for x in GRID]
     try:
         runs = {r: run_record(chat, r, M, man, trips, by_id, vocab, AT, R) for r in names}
+        bins = {r["binary_sha256"] for r in runs.values() if r.get("complete")}
+        if len(bins) > 1:
+            raise Void(f"the sweep's selection scores were made by different binaries: {sorted(map(str, bins))}")
     except Void as e:
         return {"outcome": "void_selection", "chosen": None, "why": str(e)}
     return decide(runs)

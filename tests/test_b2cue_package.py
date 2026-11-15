@@ -45,7 +45,7 @@ def diff(a, b):
 def test_rendered_files_match_and_cover_every_variant():
     r = subprocess.run([sys.executable, str(ROOT / "tools" / "colab_chat" / "b2cue_jobs.py"), "--all", "--check"], capture_output=True, text=True)
     assert r.returncode == 0, r.stdout + r.stderr
-    assert len(FILES) == len(J.variants()) == 21
+    assert len(FILES) == len(J.variants()) == 45   # 21 before the drop variants (launch review round 1, finding 2)
     for p in FILES:
         assert json.loads(p.read_text())["home_markers"] is True
 
@@ -289,3 +289,30 @@ def test_watch_records_readouts_and_missing_steps(tmp_path):
     assert r.returncode == 0, r.stderr
     w = json.loads((tmp_path / "w" / "watch.json").read_text())
     assert w["at"] == {"2": {"sft_loss": 3.0 - 2 / 10, "val_loss": 3.5}} and w["readout_missing"] == ["3"] and w["complete"]
+
+
+def test_a_corrupt_log_line_is_unread_never_dropped(tmp_path):
+    (tmp_path / "sft_X").mkdir()
+    rows = [json.dumps({"event": "step", "step": s, "loss": 2.0}) for s in (1, 2, 3)]
+    (tmp_path / "sft_X" / "events.jsonl").write_text(rows[0] + "\n{broken\n" + rows[1] + "\n" + rows[2] + "\n")
+    (tmp_path / "STATUS_sft_X").write_text("FINISHED")
+    r = early_cli("--watch", "--job", "sft_X", "--out", str(tmp_path / "w"), "--chat", str(tmp_path), "--at", "2", "--steps", "3")
+    assert r.returncode == 0
+    w = json.loads((tmp_path / "w" / "watch.json").read_text())
+    assert w["health"] == "unread" and "does not parse" in w["health_unread"]
+    import b2cue_early as E
+    (tmp_path / "log").write_text(rows[0] + "\n" + rows[1][:10])          # a line still being written: tolerated while running
+    assert len(E.strict_events(str(tmp_path / "log"), ended=False)) == 1
+    with pytest.raises(ValueError):
+        E.strict_events(str(tmp_path / "log"), ended=True)
+
+
+def test_watch_ok_needs_every_readout_and_a_finished_job(tmp_path):
+    rows = [{"event": "step", "step": s, "loss": 3.0} for s in (1, 2, 3)] + [{"event": "eval", "step": s, "val_loss": 3.5} for s in (1, 2, 3)]
+    write_events(tmp_path / "sft_X", rows)
+    (tmp_path / "STATUS_sft_X").write_text("FINISHED")
+    early_cli("--watch", "--job", "sft_X", "--out", str(tmp_path / "w"), "--chat", str(tmp_path), "--at", "1,2,3", "--steps", "3")
+    assert json.loads((tmp_path / "w" / "watch.json").read_text())["health"] == "ok"
+    (tmp_path / "STATUS_sft_X").write_text("FAILED")
+    early_cli("--watch", "--job", "sft_X", "--out", str(tmp_path / "w2"), "--chat", str(tmp_path), "--at", "1,2,3", "--steps", "3")
+    assert json.loads((tmp_path / "w2" / "watch.json").read_text())["health"] == "unread"

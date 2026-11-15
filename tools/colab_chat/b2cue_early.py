@@ -35,6 +35,31 @@ WAIT_S = 600
 POLL_S = float(os.environ.get("B2CUE_POLL_S", "20"))   # tests poll faster
 
 
+def strict_events(path, ended):
+    """The job's events, failing closed (launch review round 1, finding 15): a line that does not parse is tolerated only as the last
+    line of a log still being written; any other unparseable line, or a read error, raises ValueError (the check is then unread)."""
+    if not os.path.exists(path):
+        return []
+    with open(path, encoding="utf-8") as f:
+        lines = f.read().split("\n")
+    out = []
+    for k, x in enumerate(lines):
+        if not x.strip():
+            continue
+        try:
+            out.append(json.loads(x))
+        except ValueError:
+            last = all(not y.strip() for y in lines[k + 1:])
+            if ended or not last:
+                raise ValueError(f"{path}: line {k + 1} does not parse")
+    return out
+
+
+def job_ended(chat, job):
+    p = f"{chat}/STATUS_{job}"
+    return os.path.exists(p) and open(p).read().strip() in ("FINISHED", "FAILED")
+
+
 def write_json(path, obj):
     tmp = path + ".tmp"
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -59,8 +84,8 @@ def early(a):
         twin = "twin_loss" in json.load(open(f"{a.chat}/{a.job}_spec.json")).get("train", {})
         t0 = time.time()
         while True:
-            ev = A.events(f"{a.chat}/{a.job}/events.jsonl")
-            ref_ev = ev if self_ref else A.events(f"{a.chat}/{a.ref}/events.jsonl")
+            ev = strict_events(f"{a.chat}/{a.job}/events.jsonl", job_ended(a.chat, a.job))
+            ref_ev = ev if self_ref else strict_events(f"{a.chat}/{a.ref}/events.jsonl", job_ended(a.chat, a.ref))
             verdict, why = A.health(ev, ref_ev, a.step, self_ref, twin)
             if verdict != "unread" or time.time() - t0 > WAIT_S:
                 break
@@ -70,10 +95,12 @@ def early(a):
         out["ref"] = {"job": a.ref, "val_loss": A.val_at(ref_ev, a.step)}
     except Exception as e:  # noqa: BLE001  (fail-closed)
         verdict, why = "unread", f"the health check failed: {type(e).__name__}: {e}"
+    # a positive record (launch review round 1, finding 14): consumers require health == "ok" for this job and step
+    out["health"] = verdict if verdict in ("ok", "stop") else "unread"
     if verdict == "stop":
         out["health_stop"] = why
-    elif verdict == "unread":
-        out["health_unread"] = why
+    elif verdict != "ok":
+        out["health_unread"] = why or "no verdict"
     write()
     if verdict == "stop":
         try:
@@ -126,13 +153,25 @@ def scored_readout(a, up, out):
 
 
 def watch(a):
-    """An SFT1500 job's watch: non-finite stop at once; relayed losses at the --at steps."""
-    at = [int(x) for x in a.at.split(",") if x]
-    out = {"job": a.job, "producer": "b2cue_early.py --watch", "at": {}, "steps": a.steps}
+    """An SFT1500 job's watch: non-finite stop at once; relayed losses at the --at steps. Fail-closed (launch review round 1): any
+    error reading the log is published as health "unread" before exiting; "ok" only when the job FINISHED with every step 1 .. steps
+    finite, every held-out evaluation finite and all three readouts present and finite."""
+    out = {"job": a.job, "producer": "b2cue_early.py --watch", "at": {}, "steps": a.steps, "health": "running"}
     path = f"{a.out}/watch.json"
+    try:
+        return watch_loop(a, out, path)
+    except Exception as e:  # noqa: BLE001
+        out["health"] = "unread"
+        out["health_unread"] = f"the watch failed: {type(e).__name__}: {e}"
+        write_json(path, out)
+        return 0
+
+
+def watch_loop(a, out, path):
+    at = [int(x) for x in a.at.split(",") if x]
     seen = 0
     while True:
-        ev = A.events(f"{a.chat}/{a.job}/events.jsonl")
+        ev = strict_events(f"{a.chat}/{a.job}/events.jsonl", job_ended(a.chat, a.job))
         st = [e for e in ev if e.get("event") == "step"]
         bad = [e.get("step") for e in st if not A.finite(e.get("loss"))]
         badv = [e.get("step") for e in ev if e.get("event") == "eval" and not A.finite(e.get("val_loss"))]
@@ -146,6 +185,7 @@ def watch(a):
                         print(f"WATCH {a.job} step {s}: sft {sl[-1]} val {v}", flush=True)
         if bad or badv:
             out["health_stop"] = f"non-finite SFT loss at steps {bad[:5]} or held-out loss at {badv[:5]}"
+            out["health"] = "stop"
             write_json(path, out)
             pid = A.live_pid(a.chat, a.job)
             out["stopped_pid"] = pid
@@ -165,6 +205,10 @@ def watch(a):
             missing = [str(s) for s in at if str(s) not in out["at"]]
             if missing:
                 out["readout_missing"] = missing
+            fin = all(A.finite(v) for r in out["at"].values() for v in r.values())
+            out["health"] = "ok" if (status == "FINISHED" and out["complete"] and not missing and fin) else "unread"
+            if out["health"] != "ok":
+                out["health_unread"] = f"status {status}, complete {out['complete']}, missing readouts {missing}, finite readouts {fin}"
             write_json(path, out)
             return 0
         if len(st) != seen:

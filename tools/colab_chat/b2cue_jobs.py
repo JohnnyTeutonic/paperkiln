@@ -223,7 +223,10 @@ def barrier_job(others):
             "outputs": ["barrier.json"]}
 
 
-def render(campaign, lam=None, c2="both", no_s=False, no_arm=False):
+def render(campaign, lam=None, c2="both", no_s=False, no_arm=False, drops=()):
+    """drops: section 7's drop order as applied by the cost rule after C0 ("extra": seeds 175 and 213; "M_N2": M on N2; "p0_speaker":
+    P0's speaker scoring); S and S2 leave through no_s and c2="n2" (a drop, or their not_run state)."""
+    drops = set(drops)
     CONF = f"{U}/b2cue_confirmation_req.jsonl"
     SEL = f"{U}/b2cue_selection_req.jsonl"
     jobs, scores = [], []
@@ -247,7 +250,7 @@ def render(campaign, lam=None, c2="both", no_s=False, no_arm=False):
         jobs += a
         scores += s
         for sd in (1, 50):   # the speaker cells: P and P0 on the selection file, after the selection has used it
-            for arm in ("P", "P0"):
+            for arm in ("P",) if "p0_speaker" in drops else ("P", "P0"):
                 n = f"{arm}_N250_{sd}"
                 j = score_job(n, SEL, n)
                 j["name"] = f"score_spk_{n}"
@@ -259,7 +262,7 @@ def render(campaign, lam=None, c2="both", no_s=False, no_arm=False):
             jobs += a
             scores += s
         jobs += scores
-        if not no_arm:
+        if not no_arm and "extra" not in drops:
             others = [j["name"] for j in jobs]
             jobs.append(barrier_job(others))
             a, s = extra_seed_jobs("N250", lam, CONF)
@@ -287,7 +290,7 @@ def render(campaign, lam=None, c2="both", no_s=False, no_arm=False):
         jobs.append(gate_job(["D1"]))
         jobs += sft_jobs("N2", "D1", "base_N2.safetensors")
         jobs.append(start_score("N2", "sft_N2", CONF))
-        a, s = arms("N2", lam, SEEDS, which, init_job="sft_N2", req=CONF)
+        a, s = arms("N2", lam, SEEDS, tuple(x for x in which if not (x == "M" and "M_N2" in drops)), init_job="sft_N2", req=CONF)
         jobs += a
         scores += s
         if c2 == "both":
@@ -297,7 +300,7 @@ def render(campaign, lam=None, c2="both", no_s=False, no_arm=False):
             jobs += a
             scores += s
         jobs += scores
-        if not no_arm:
+        if not no_arm and "extra" not in drops:
             others = [j["name"] for j in jobs]
             jobs.append(barrier_job(others))
             a, s = extra_seed_jobs("N2", lam, CONF, init_job="sft_N2")
@@ -349,8 +352,14 @@ def staged_specs(campaign):
     return out
 
 
-def out_name(campaign, lam, c2, no_s, no_arm):
+DROP_TAGS = (("extra", "_noextra"), ("M_N2", "_nom"), ("p0_speaker", "_nospk"))
+
+
+def out_name(campaign, lam, c2, no_s, no_arm, drops=()):
     tag = campaign if campaign == "c0" else f"{campaign}_{'noarm' if no_arm else lname(lam)}"
+    for d, t in DROP_TAGS:
+        if d in drops:
+            tag += t
     if campaign == "c2" and c2 == "n2":
         tag += "_n2only"
     if campaign == "c1a" and no_s:
@@ -358,13 +367,36 @@ def out_name(campaign, lam, c2, no_s, no_arm):
     return os.path.join(HERE, f"b2cue_{tag}.json")
 
 
+DROP_ORDER = ("extra", "S2", "S", "M_N2", "p0_speaker")   # section 7, applied in order after C0 by the cost rule
+
+
+def variant(campaign, lam, no_arm, dropped=(), not_run=()):
+    """(campaign, lam, c2, no_s, no_arm, drops) of the jobs file to launch, from the cost rule's dropped items (a prefix of
+    DROP_ORDER) and the bases recorded not_run (S, S2): launch review round 1, finding 2."""
+    dropped, not_run = set(dropped), set(not_run)
+    drops = tuple(d for d in ("extra", "M_N2", "p0_speaker") if d in dropped
+                  and ((d == "extra" and campaign in ("c1a", "c2")) or (d == "M_N2" and campaign == "c2") or (d == "p0_speaker" and campaign == "c1a")))
+    no_s = campaign == "c1a" and ("S" in dropped or "S" in not_run)
+    c2 = "n2" if campaign == "c2" and ("S2" in dropped or "S2" in not_run) else "both"
+    return (campaign, lam, c2, no_s, no_arm, drops)
+
+
 def variants():
-    """Every jobs file the registration can launch: C0; for each lambda in the grid and for no_arm, C1a (with and without S), C1b,
-    C2 (both bases, and N2 alone)."""
-    out = [("c0", None, "both", False, False)]
+    """Every jobs file the registration can launch: C0; for each lambda in the grid and for no_arm, C1b, and C1a and C2 at every
+    state the drop order (a prefix of DROP_ORDER) and the not_run states of S and S2 can leave them in."""
+    out = [("c0", None, "both", False, False, ())]
+    states = set()
+    for k in range(len(DROP_ORDER) + 1):
+        for nr in ((), ("S",), ("S2",), ("S", "S2")):
+            states.add((tuple(DROP_ORDER[:k]), nr))
     for lam, no_arm in [(x, False) for x in GRID] + [(None, True)]:
-        out += [("c1a", lam, "both", False, no_arm), ("c1a", lam, "both", True, no_arm), ("c1b", lam, "both", False, no_arm),
-                ("c2", lam, "both", False, no_arm), ("c2", lam, "n2", False, no_arm)]
+        seen = set()
+        for dropped, nr in sorted(states):
+            for c in ("c1a", "c1b", "c2"):
+                v = variant(c, lam, no_arm, dropped, nr)
+                if v not in seen:
+                    seen.add(v)
+                    out.append(v)
     return out
 
 
@@ -391,7 +423,7 @@ def main():
         bad = []
         for v in variants():
             text = json.dumps(render(*v), indent=1) + "\n"
-            p = out_name(v[0], v[1], v[2], v[3], v[4])
+            p = out_name(*v)
             if a.check:
                 if not os.path.exists(p) or open(p).read() != text:
                     bad.append(os.path.basename(p))
