@@ -225,6 +225,124 @@ void test_refusals() {
                 "    bad position, a target outside its row's block, a target id past the vocabulary\n");
 }
 
+// A34's own-context floor (Claude Opus 5.5, 15 Nov 2026): the per-token own-context terms lp(row 0)/n_A and
+// lp(row 2)/n_B of each group, in double.
+std::vector<double> own_terms(const Matrix& x, const Case& c) {
+    std::vector<double> lp(c.t.rows, 0.0);
+    for (size_t i = 0; i < c.t.pos.size(); ++i) {
+        const size_t r = c.t.pos[i];
+        double mx = -1e300, z = 0;
+        for (size_t j = 0; j < C; ++j) mx = std::max(mx, static_cast<double>(x(r, j)));
+        for (size_t j = 0; j < C; ++j) z += std::exp(x(r, j) - mx);
+        lp[c.t.pos_row[i]] += x(r, c.t.tgt[i]) - mx - std::log(z);
+    }
+    std::vector<double> o;
+    for (size_t g = 0; g < c.t.groups; ++g) {
+        o.push_back(lp[g * c.t.per_group] / c.t.n_a[g]);
+        o.push_back(lp[g * c.t.per_group + 2] / c.t.n_b[g]);
+    }
+    return o;
+}
+
+void test_floor_value_and_gradient() {
+    for (int per_group : {4, 5}) {
+        Case c = make_case(per_group);
+        const Matrix X = randn(c.t.rows * L, C, 21, 2.0f);
+        const std::vector<double> own = own_terms(X, c);
+        // references 0.4 above and 0.4 below the own terms by turns: both sides of the floor's hinge, each clear of its kink
+        for (size_t g = 0; g < c.t.groups; ++g) {
+            c.t.ref_a.push_back(static_cast<float>(own[2 * g] + ((g % 2) ? 0.4 : -0.4)));
+            c.t.ref_b.push_back(static_cast<float>(own[2 * g + 1] + ((g % 2) ? -0.4 : 0.4)));
+        }
+        const float lam = 0.7f, mu = per_group == 5 ? 0.3f : 0.0f, fl = 1.3f, m = -1000.0f;  // margin met: the floor alone moves
+        double fa = 0, fb = 0;
+        for (size_t g = 0; g < c.t.groups; ++g) {
+            fa += std::max(0.0, c.t.ref_a[g] - own[2 * g]);
+            fb += std::max(0.0, c.t.ref_b[g] - own[2 * g + 1]);
+        }
+        const double want = reference(X, c, m, lam, mu) + fl * (fa + fb) / c.t.groups;
+        Var x = make_var(X, true);
+        pt::TwinStats st;
+        Var loss = pt::twin_loss(x, c.t, m, lam, mu, &st, fl);
+        std::printf("  floor, per_group %d: loss %.6f, reference %.6f, floor active %.2f, gap %+.3f\n", per_group,
+                    loss->data(0, 0), want, st.floor_active, st.floor_gap);
+        CHECK(std::abs(loss->data(0, 0) - want) < 1e-5 * (1 + std::abs(want)));
+        CHECK(st.has_floor && std::abs(st.floor_loss - fl * (fa + fb) / c.t.groups) < 1e-5);
+        CHECK(st.floor_active == 0.5);
+        CHECK(std::abs(st.floor_gap) < 1e-5 && std::abs(st.floor_gap_absmax - 0.4) < 1e-5);
+        microtorch::backward(loss);
+        auto f = [&]() { return pt::twin_loss(x, c.t, m, lam, mu, nullptr, fl)->data(0, 0); };
+        const double worst = fd_worst(f, x, x->grad);
+        std::printf("  FD gradcheck, floor (per_group %d): worst relative error %.3e\n", per_group, worst);
+        CHECK(worst < 5e-3);
+        // only own-context rows (0 and 2) of groups below their reference carry gradient (rows 1, 3 and 4 none: margin met,
+        // mu's term aside); with mu = 0, rows 1, 3 get exactly zero
+        if (per_group == 4) {
+            for (size_t i = 0; i < c.t.pos.size(); ++i) {
+                const size_t r = c.t.pos_row[i], g = r / 4, j = r % 4;
+                const bool below = (j == 0 && c.t.ref_a[g] > own[2 * g]) || (j == 2 && c.t.ref_b[g] > own[2 * g + 1]);
+                double sum = 0;
+                for (size_t q = 0; q < C; ++q) sum += std::abs(x->grad(c.t.pos[i], q));
+                CHECK(below ? sum > 0 : sum == 0);
+            }
+        }
+    }
+}
+
+void test_floor_zero_is_a31() {
+    // floor 0, with references set or not, gives A31's loss and gradient bit for bit
+    for (int per_group : {4, 5}) {
+        Case c = make_case(per_group);
+        const Matrix X = randn(c.t.rows * L, C, 22, 2.0f);
+        const float lam = 0.3f, mu = per_group == 5 ? 0.3f : 0.0f, m = 1.0f;
+        Var x0 = make_var(X, true);
+        pt::TwinStats s0;
+        Var l0 = pt::twin_loss(x0, c.t, m, lam, mu, &s0);
+        microtorch::backward(l0);
+        for (size_t g = 0; g < c.t.groups; ++g) {
+            c.t.ref_a.push_back(5.0f);  // far above every own term: would bind if read
+            c.t.ref_b.push_back(5.0f);
+        }
+        Var x1 = make_var(X, true);
+        pt::TwinStats s1;
+        Var l1 = pt::twin_loss(x1, c.t, m, lam, mu, &s1, 0.0f);
+        microtorch::backward(l1);
+        CHECK(l0->data(0, 0) == l1->data(0, 0));
+        CHECK(!s1.has_floor && s0.d_a == s1.d_a && s0.d_b == s1.d_b && s0.active == s1.active);
+        for (size_t i = 0; i < X.rows(); ++i)
+            for (size_t j = 0; j < C; ++j) CHECK(x0->grad(i, j) == x1->grad(i, j));
+    }
+    std::printf("  floor 0: A31's loss and gradient bit for bit, references ignored\n");
+}
+
+void test_floor_refusals() {
+    Case c = make_case(4);
+    Var x = make_var(randn(c.t.rows * L, C, 23), true);
+    auto refuses = [](const std::function<void()>& f) {
+        try {
+            f();
+        } catch (const std::runtime_error&) {
+            return true;
+        }
+        return false;
+    };
+    CHECK(refuses([&] { pt::twin_loss(x, c.t, 1.0f, 1.0f, 0.0f, nullptr, 1.0f); }));  // no references
+    for (size_t g = 0; g < c.t.groups; ++g) {
+        c.t.ref_a.push_back(-1.0f);
+        c.t.ref_b.push_back(-1.0f);
+    }
+    CHECK(!refuses([&] { pt::twin_loss(x, c.t, 1.0f, 1.0f, 0.0f, nullptr, 1.0f); }));
+    CHECK(refuses([&] { pt::twin_loss(x, c.t, 1.0f, 1.0f, 0.0f, nullptr, -1.0f); }));  // negative floor
+    CHECK(refuses([&] { pt::twin_loss(x, c.t, 1.0f, 1.0f, 0.0f, nullptr, std::numeric_limits<float>::quiet_NaN()); }));
+    Case bad = c;
+    bad.t.ref_b.pop_back();  // one reference short
+    CHECK(refuses([&] { pt::twin_loss(x, bad.t, 1.0f, 1.0f, 0.0f, nullptr, 1.0f); }));
+    bad = c;
+    bad.t.ref_a[1] = std::numeric_limits<float>::infinity();
+    CHECK(refuses([&] { pt::twin_loss(x, bad.t, 1.0f, 1.0f, 0.0f, nullptr, 1.0f); }));
+    std::printf("  floor refusals: no or short references, a non-finite reference, a negative or NaN floor\n");
+}
+
 }  // namespace
 
 int main() {
@@ -233,6 +351,9 @@ int main() {
     test_met_margin_gives_no_gradient();
     test_per_token_scale();
     test_refusals();
+    test_floor_value_and_gradient();
+    test_floor_zero_is_a31();
+    test_floor_refusals();
     std::printf("test_twin_loss: all checks passed\n");
     return 0;
 }

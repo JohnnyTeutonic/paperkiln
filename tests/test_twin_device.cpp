@@ -4,7 +4,7 @@
 // reviews (the gate compared gradient norms, not the twin gradient itself). The twin term's own backward is this gradient: past
 // the logits it flows through the model's standard backward, which every SFT step on the device already runs. Run by the gate
 // (tools/colab_chat/a31_gate.py) on the pod, which requires "device op set ON" in its output; on a CPU build it compares the host
-// path with itself.
+// path with itself. A34 (15 Nov 2026) adds the own-context floor's legs.
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -77,17 +77,27 @@ Matrix randn(size_t r, size_t c, unsigned seed) {
     return m;
 }
 
-void leg(bool windowed) {
+void leg(bool windowed, float floor = 0.0f) {
     const size_t G = 4, L = 96, C = 2048;
-    const pt::TwinTargets t = make_targets(G, L, C, 7);
+    pt::TwinTargets t = make_targets(G, L, C, 7);
     const Matrix X = randn(t.rows * L, C, 11);
+    if (floor > 0.0f) {   // A34: references 0.3 above and below the host's own-context terms by turns, so the floor binds on half
+        device::set_device_ops(false);
+        Var S = pt::twin_row_logp(make_var(X), t);
+        device::materialize(S->data);
+        device::set_device_ops(true);
+        for (size_t g = 0; g < G; ++g) {
+            t.ref_a.push_back(S->data(g * 5, 0) / t.n_a[g] + ((g % 2) ? 0.3f : -0.3f));
+            t.ref_b.push_back(S->data(g * 5 + 2, 0) / t.n_b[g] + ((g % 2) ? -0.3f : 0.3f));
+        }
+    }
     float loss[2];
     Matrix grad[2];
     pt::TwinStats st[2];
     for (int dev = 0; dev < 2; ++dev) {
         Var x = make_var(X, true);
         with_ops(dev == 1, windowed, [&] {
-            Var l = pt::twin_loss(x, t, 1.0f, 0.7f, 0.4f, &st[dev]);
+            Var l = pt::twin_loss(x, t, 1.0f, 0.7f, 0.4f, &st[dev], floor);
             backward(l);
             device::materialize(l->data);
             loss[dev] = l->data(0, 0);
@@ -107,9 +117,9 @@ void leg(bool windowed) {
             finite_all = finite_all && std::isfinite(grad[0](i, j)) && std::isfinite(grad[1](i, j));
         }
     const double lrel = std::abs((double)loss[1] - loss[0]) / std::max(1e-12, std::abs((double)loss[0]));
-    std::printf("  %s: loss host %.9g device %.9g (relative %.2e); logits gradient worst relative %.2e over %zu nonzero entries;"
+    std::printf("  %s%s: loss host %.9g device %.9g (relative %.2e); logits gradient worst relative %.2e over %zu nonzero entries;"
                 " d_a %.6f/%.6f d_n %.6f/%.6f\n",
-                windowed ? "deferred window" : "write-through", loss[0], loss[1], lrel, worst, nonzero, st[0].d_a, st[1].d_a,
+                windowed ? "deferred window" : "write-through", floor > 0.0f ? ", floor" : "", loss[0], loss[1], lrel, worst, nonzero, st[0].d_a, st[1].d_a,
                 st[0].d_n, st[1].d_n);
     CHECK(std::isfinite(loss[0]) && std::isfinite(loss[1]) && loss[0] > 0.0f);
     CHECK(nonzero > 0);
@@ -117,6 +127,13 @@ void leg(bool windowed) {
     CHECK(lrel < 1e-5);
     CHECK(worst < 1e-5);
     CHECK(std::abs(st[0].d_a - st[1].d_a) < 1e-4 && std::abs(st[0].d_n - st[1].d_n) < 1e-4);
+    if (floor > 0.0f) {
+        std::printf("    floor: loss host %.9g device %.9g, active %.2f/%.2f, gap %+.6f/%+.6f\n", st[0].floor_loss, st[1].floor_loss,
+                    st[0].floor_active, st[1].floor_active, st[0].floor_gap, st[1].floor_gap);
+        CHECK(st[0].has_floor && st[1].has_floor && st[0].floor_active == 0.5 && st[1].floor_active == 0.5);
+        CHECK(std::abs(st[0].floor_loss - st[1].floor_loss) < 1e-5 * (1.0 + std::abs(st[0].floor_loss)) && st[0].floor_loss > 0.0);
+        CHECK(std::abs(st[0].floor_gap - st[1].floor_gap) < 1e-4);
+    }
 }
 
 }  // namespace
@@ -126,6 +143,8 @@ int main() {
     std::printf("twin loss: device vs host (%s)\n", on_device() ? "device op set ON" : "host vs host: CPU build or op set off");
     leg(false);
     leg(true);
+    leg(false, 1.3f);   // A34's floor
+    leg(true, 1.3f);
     std::printf("test_twin_device: all checks passed\n");
     return 0;
 }

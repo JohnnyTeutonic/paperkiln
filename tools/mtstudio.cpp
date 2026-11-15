@@ -211,6 +211,12 @@ struct Spec {
     std::string twin_examples;
     int twin_groups = 0;
     float twin_margin = 0.0f, twin_lambda = 0.0f, twin_mu = 0.0f;
+    // A34's own-context floor: train.twin_loss.floor (mu_f, default 0) with data.twin_floor_ref, JSONL with one line
+    // per twin group in data.twin_examples' order: {"g", "n_a", "n_b", "steps": [0, ...], "a": [...], "b": [...]},
+    // the per-token own-context references lp(yA|A)/n_A and lp(yB|B)/n_B at those steps (the weights after that
+    // many updates), interpolated linearly at the weights the step's forward reads (step - 1). Absent or 0: A31's.
+    float twin_floor = 0.0f;
+    std::string twin_floor_ref;
     // train
     int steps = 500;
     float lr = 3e-3f, clip = 1.0f, lambda_gate = 0.05f;
@@ -658,6 +664,7 @@ Spec parse_spec(const std::string& path) {
     s.grpo_eval = data.value("grpo_eval", "");
     s.pref_pairs = data.value("pref_pairs", "");
     s.twin_examples = data.value("twin_examples", "");
+    s.twin_floor_ref = data.value("twin_floor_ref", "");
     if (data.contains("anneal")) {
         const json an = data["anneal"];
         s.anneal_corpus = an.value("corpus", "");
@@ -749,8 +756,8 @@ Spec parse_spec(const std::string& path) {
         if (!tl.is_object()) throw std::runtime_error("train.twin_loss must be an object");
         for (auto it = tl.begin(); it != tl.end(); ++it)
             if (it.key() != "groups" && it.key() != "margin" && it.key() != "lambda" && it.key() != "mu" &&
-                it.key().rfind("_", 0) != 0)
-                throw std::runtime_error("train.twin_loss: unknown key " + it.key() + " (groups, margin, lambda, mu)");
+                it.key() != "floor" && it.key().rfind("_", 0) != 0)
+                throw std::runtime_error("train.twin_loss: unknown key " + it.key() + " (groups, margin, lambda, mu, floor)");
         for (const char* k : {"groups", "margin", "lambda", "mu"})
             if (!tl.contains(k)) throw std::runtime_error(std::string("train.twin_loss needs ") + k);
         s.twin_groups = tl["groups"].get<int>();
@@ -762,7 +769,15 @@ Spec parse_spec(const std::string& path) {
         if (!std::isfinite(s.twin_margin)) throw std::runtime_error("train.twin_loss.margin must be finite");
         if (!(s.twin_lambda >= 0.0f) || !(s.twin_mu >= 0.0f) || !(s.twin_lambda > 0.0f || s.twin_mu > 0.0f))
             throw std::runtime_error("train.twin_loss: lambda and mu must be >= 0, not both 0");
+        if (tl.contains("floor")) {  // A34
+            if (!tl["floor"].is_number()) throw std::runtime_error("train.twin_loss.floor must be a number");
+            s.twin_floor = tl["floor"].get<float>();
+            if (!std::isfinite(s.twin_floor) || !(s.twin_floor >= 0.0f))
+                throw std::runtime_error("train.twin_loss.floor must be finite and >= 0");
+        }
     }
+    if ((s.twin_floor > 0.0f) != !s.twin_floor_ref.empty())
+        throw std::runtime_error("train.twin_loss.floor > 0 and data.twin_floor_ref go together");
     if (s.objective == "grpo") {
         const json g = tr.value("grpo", json::object());
         s.grpo_group = g.value("group_size", s.grpo_group);
@@ -1646,6 +1661,77 @@ TwinSet load_twins(const Spec& s, const std::map<std::string, int>& vocab) {
     return t;
 }
 
+// A34's floor references (data.twin_floor_ref; see Spec): per group, the knots (steps) and the per-token
+// own-context references there. Every group must have a line, in order, whose reply lengths are the loader's (so a
+// reference file built for other twins, or in another order, is refused), whose steps start at 0, rise strictly
+// and reach the last weights a step reads (steps - 1), and whose values are finite.
+struct FloorRef {
+    std::vector<std::vector<int>> steps;
+    std::vector<std::vector<double>> a, b;
+    uint64_t fnv = 1469598103934665603ULL;  // FNV-1a over the file's bytes, logged
+};
+
+FloorRef load_floor_ref(const Spec& s, const TwinSet& tw) {
+    std::ifstream f(s.twin_floor_ref, std::ios::binary);
+    if (!f) throw std::runtime_error("cannot open data.twin_floor_ref " + s.twin_floor_ref);
+    const std::string all((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    FloorRef r;
+    for (unsigned char c : all) r.fnv = (r.fnv ^ c) * 1099511628211ULL;
+    std::istringstream in(all);
+    std::string line;
+    size_t n = 0;
+    while (std::getline(in, line)) {
+        if (line.find_first_not_of(" \t\r") == std::string::npos) continue;
+        const std::string at = s.twin_floor_ref + ": line " + std::to_string(n + 1) + ": ";
+        const json j = json::parse(line, nullptr, false);
+        if (j.is_discarded() || !j.is_object()) throw std::runtime_error(at + "not a JSON object");
+        for (const char* k : {"g", "n_a", "n_b", "steps", "a", "b"})
+            if (!j.contains(k)) throw std::runtime_error(at + "needs " + k);
+        if (n >= tw.groups) throw std::runtime_error(at + "more lines than twin groups");
+        if (!j["g"].is_number_integer() || j["g"].get<long long>() != static_cast<long long>(n))
+            throw std::runtime_error(at + "g must be the line's group index " + std::to_string(n));
+        if (!j["n_a"].is_number_integer() || !j["n_b"].is_number_integer() ||
+            j["n_a"].get<long long>() != static_cast<long long>(tw.n_a[n]) ||
+            j["n_b"].get<long long>() != static_cast<long long>(tw.n_b[n]))
+            throw std::runtime_error(at + "reply lengths differ from data.twin_examples' group " + std::to_string(n));
+        if (!j["steps"].is_array() || !j["a"].is_array() || !j["b"].is_array() || j["steps"].empty() ||
+            j["a"].size() != j["steps"].size() || j["b"].size() != j["steps"].size())
+            throw std::runtime_error(at + "steps, a and b must be arrays of one length");
+        std::vector<int> st;
+        std::vector<double> va, vb;
+        for (size_t i = 0; i < j["steps"].size(); ++i) {
+            const json &x = j["steps"][i], &ya = j["a"][i], &yb = j["b"][i];
+            if (!x.is_number_integer() || !ya.is_number() || !yb.is_number())
+                throw std::runtime_error(at + "a knot that is not numbers");
+            st.push_back(x.get<int>());
+            va.push_back(ya.get<double>());
+            vb.push_back(yb.get<double>());
+            if (!std::isfinite(va.back()) || !std::isfinite(vb.back())) throw std::runtime_error(at + "a reference that is not finite");
+            if (i > 0 && st[i] <= st[i - 1]) throw std::runtime_error(at + "steps must rise strictly");
+        }
+        if (st.front() != 0 || st.back() < s.steps - 1)
+            throw std::runtime_error(at + "steps must start at 0 and reach " + std::to_string(s.steps - 1));
+        r.steps.push_back(std::move(st));
+        r.a.push_back(std::move(va));
+        r.b.push_back(std::move(vb));
+        ++n;
+    }
+    if (n != tw.groups)
+        throw std::runtime_error("data.twin_floor_ref: " + std::to_string(n) + " lines for " + std::to_string(tw.groups) + " twin groups");
+    return r;
+}
+
+// The reference of group g at weights w (the step's forward reads the weights after w = step - 1 updates).
+inline std::pair<float, float> floor_ref_at(const FloorRef& r, size_t g, int w) {
+    const auto& st = r.steps[g];
+    size_t k = 0;
+    while (k + 1 < st.size() && st[k + 1] <= w) ++k;
+    if (k + 1 == st.size() || st[k] == w) return {static_cast<float>(r.a[g][k]), static_cast<float>(r.b[g][k])};
+    const double u = static_cast<double>(w - st[k]) / static_cast<double>(st[k + 1] - st[k]);
+    return {static_cast<float>(r.a[g][k] + u * (r.a[g][k + 1] - r.a[g][k])),
+            static_cast<float>(r.b[g][k] + u * (r.b[g][k + 1] - r.b[g][k]))};
+}
+
 // Row-wise log-softmax in double, returned as float (grpo's reference
 // log-probabilities and its KL/entropy monitors).
 Matrix log_softmax_rows(const Matrix& L) {
@@ -2407,6 +2493,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         throw std::runtime_error("data.anneal is for objective lm only");
     SftSet sd;
     TwinSet tw;  // train.twin_loss (A31); empty otherwise
+    FloorRef fref;  // A34's floor references; empty otherwise
     GrpoData gd;
     PrefData pd;
     std::vector<size_t> po_train;  // training pairs with weight > 0
@@ -2527,6 +2614,13 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                        {"margin", s.twin_margin},
                        {"lambda", s.twin_lambda},
                        {"mu", s.twin_mu}}}});
+            if (s.twin_floor > 0.0f) {  // A34: its own event, so a run without the floor logs exactly A31's events
+                fref = load_floor_ref(s, tw);
+                char hx[17];
+                std::snprintf(hx, sizeof hx, "%016llx", static_cast<unsigned long long>(fref.fnv));
+                ev.emit({{"event", "twin_floor"}, {"floor", s.twin_floor}, {"ref", s.twin_floor_ref}, {"ref_fnv1a", hx},
+                         {"groups", fref.steps.size()}, {"knots_group0", fref.steps[0]}});
+            }
         }
     }
 
@@ -3228,6 +3322,11 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                 const size_t g = pick[gi];
                 tt.n_a.push_back(tw.n_a[g]);
                 tt.n_b.push_back(tw.n_b[g]);
+                if (s.twin_floor > 0.0f) {  // A34: the references at the weights this forward reads
+                    const auto [ra, rb] = floor_ref_at(fref, g, step - 1);
+                    tt.ref_a.push_back(ra);
+                    tt.ref_b.push_back(rb);
+                }
                 for (size_t j = 0; j < k; ++j) {
                     const size_t src = g * k + j, r = gi * k + j;
                     const auto& row = tw.x[src];
@@ -3244,11 +3343,14 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             Var tlog = fwd(xb, Lb);
             mark("twin_forward");
             posttrain::TwinStats st;
-            Var tloss = posttrain::twin_loss(tlog, tt, s.twin_margin, s.twin_lambda, s.twin_mu, &st);
+            Var tloss = posttrain::twin_loss(tlog, tt, s.twin_margin, s.twin_lambda, s.twin_mu, &st, s.twin_floor);
             backward(tloss);
             mark("twin_backward");
             twin_ev = {{"loss", st.loss}, {"d_a", st.d_a}, {"d_b", st.d_b}, {"active", st.active}, {"len", Lb}};
             if (st.has_n) twin_ev["d_n"] = st.d_n;
+            if (st.has_floor)  // A34: "loss" above includes the floor's term; "floor" is that term alone
+                twin_ev["floor"] = {{"loss", st.floor_loss}, {"active", st.floor_active}, {"gap", st.floor_gap},
+                                    {"gap_absmax", st.floor_gap_absmax}};
         }
         // Per-module grad norms BEFORE clipping: this is the true signal
         // the glow UI wants (clipping would mask explosions).

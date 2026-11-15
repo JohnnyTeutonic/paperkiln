@@ -15,6 +15,13 @@
 // finite-difference checked (gather_rows, logsumexp_row, gather_elems, scatter_add_rows, sub, mul,
 // add_scalar, relu, abs, mean, scale), so it needs no new gradient code; tests/test_twin_loss.cpp
 // checks the composition against a direct computation and against finite differences.
+//
+// Own-context floor (lane amendment A34; Claude Opus 5.5, 15 Nov 2026). With floor mu_f > 0 and a
+// frozen per-token reference for each group's own-context terms (ref_a for lp(yA|A)/n_A, ref_b for
+// lp(yB|B)/n_B, set by the caller for the step), the loss adds
+//   mu_f * [mean_g relu(ref_a - lp(0)/n_A) + mean_g relu(ref_b - lp(2)/n_B)]
+// built from the same checked ops (sub, mul, relu, mean, scale, add). mu_f = 0 adds nothing to the tape,
+// so the loss and its gradient are A31's bit for bit.
 #include <cmath>
 #include <cstddef>
 #include <stdexcept>
@@ -36,12 +43,17 @@ struct TwinTargets {
     size_t groups = 0;
     int per_group = 4;         // 4 (no nuisance row) or 5
     std::vector<float> n_a, n_b;  // reply target counts of yA and yB, per group
+    std::vector<float> ref_a, ref_b;  // A34's floor: the per-token own-context references, per group (floor > 0 only)
 };
 
 struct TwinStats {
     double loss = 0.0, d_a = 0.0, d_b = 0.0, d_n = 0.0;  // means over groups, per token
     double active = 0.0;  // share of the 2 * groups hinges with m - d > 0
     bool has_n = false;
+    // A34's floor (has_floor only): its term's value, the share of the 2 * groups own-context sides below their
+    // reference, the mean signed gap ref - own over those sides, and the largest |ref - own|
+    bool has_floor = false;
+    double floor_loss = 0.0, floor_active = 0.0, floor_gap = 0.0, floor_gap_absmax = 0.0;
 };
 
 inline void check_twin_targets(const TwinTargets& t, size_t logit_rows) {
@@ -95,11 +107,19 @@ inline Var twin_row_logp(const Var& logits, const TwinTargets& t) {
 }
 
 inline Var twin_loss(const Var& logits, const TwinTargets& t, float margin, float lambda, float mu,
-                     TwinStats* st = nullptr) {
+                     TwinStats* st = nullptr, float floor = 0.0f) {
     if (!std::isfinite(lambda) || !std::isfinite(mu) || !std::isfinite(margin) || !(lambda >= 0.0f) || !(mu >= 0.0f) ||
         !(lambda > 0.0f || mu > 0.0f))
         throw std::runtime_error("twin loss: lambda, mu and the margin must be finite, lambda and mu >= 0, not both 0");
     if (mu > 0.0f && t.per_group != 5) throw std::runtime_error("twin loss: mu > 0 needs the nuisance row");
+    if (!std::isfinite(floor) || !(floor >= 0.0f)) throw std::runtime_error("twin loss: the floor weight must be finite and >= 0");
+    if (floor > 0.0f) {
+        if (t.ref_a.size() != t.groups || t.ref_b.size() != t.groups)
+            throw std::runtime_error("twin loss: the floor needs one reference per group and reply");
+        for (size_t g = 0; g < t.groups; ++g)
+            if (!std::isfinite(t.ref_a[g]) || !std::isfinite(t.ref_b[g]))
+                throw std::runtime_error("twin loss: floor references must be finite");
+    }
     const Var S = twin_row_logp(logits, t);
     const size_t G = t.groups, k = static_cast<size_t>(t.per_group);
     auto pick = [&](size_t j) {
@@ -128,6 +148,31 @@ inline Var twin_loss(const Var& logits, const TwinTargets& t, float margin, floa
         const Var inv = ops::scale(ops::mean(ops::abs(dN)), mu);
         loss = loss ? ops::add(loss, inv) : inv;
     }
+    Var ownA, ownB;  // A34's floor: per-token own-context terms; gaps ref - own
+    Matrix gapA(G, 1), gapB(G, 1);
+    if (floor > 0.0f) {
+        Matrix ra(G, 1), rb(G, 1);
+        for (size_t g = 0; g < G; ++g) {
+            ra(g, 0) = t.ref_a[g];
+            rb(g, 0) = t.ref_b[g];
+        }
+        ownA = ops::mul(s0, ia);
+        ownB = ops::mul(pick(2), ib);
+        const Var fA = ops::relu(ops::sub(make_var(ra), ownA));
+        const Var fB = ops::relu(ops::sub(make_var(rb), ownB));
+        const Var fl = ops::scale(ops::add(ops::mean(fA), ops::mean(fB)), floor);
+        loss = ops::add(loss, fl);  // loss exists: lambda > 0 or mu > 0
+        if (st) {
+            device::materialize(fl->data);
+            device::materialize(ownA->data);
+            device::materialize(ownB->data);
+            st->floor_loss = fl->data(0, 0);
+            for (size_t g = 0; g < G; ++g) {
+                gapA(g, 0) = ra(g, 0) - ownA->data(g, 0);
+                gapB(g, 0) = rb(g, 0) - ownB->data(g, 0);
+            }
+        }
+    }
     if (st) {
         // results may be device-resident inside a step window: read them on the host first
         device::materialize(loss->data);
@@ -147,6 +192,19 @@ inline Var twin_loss(const Var& logits, const TwinTargets& t, float margin, floa
         st->d_n = dN ? nn / G : 0.0;
         st->has_n = static_cast<bool>(dN);
         st->active = act / (2.0 * G);
+        st->has_floor = floor > 0.0f;
+        if (st->has_floor) {
+            double fa = 0, gs = 0, gm = 0;
+            for (size_t g = 0; g < G; ++g)
+                for (double x : {static_cast<double>(gapA(g, 0)), static_cast<double>(gapB(g, 0))}) {
+                    fa += x > 0.0;
+                    gs += x;
+                    gm = std::max(gm, std::fabs(x));
+                }
+            st->floor_active = fa / (2.0 * G);
+            st->floor_gap = gs / (2.0 * G);
+            st->floor_gap_absmax = gm;
+        }
     }
     return loss;
 }
