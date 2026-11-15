@@ -20,6 +20,7 @@ Claude Opus 5.5, 15 Nov 2026. Three modes, one file:
     python3 tools/colab_chat/b2cue_early.py --barrier --out DIR --jobs a,b,c [--chat C]
 """
 import argparse
+import hashlib
 import json
 import os
 import signal
@@ -53,6 +54,21 @@ def strict_events(path, ended):
             if ended or not last:
                 raise ValueError(f"{path}: line {k + 1} does not parse")
     return out
+
+
+def events_digest(ev, step):
+    """The identity of the evidence a health record certifies (launch round 2): sha256 of the step and eval records with step <= step,
+    a record written twice counting once (its last), in step order, as canonical JSON. score_b2cue.events_digest is the same."""
+    by = {}
+    for e in ev:
+        if e.get("event") in ("step", "eval") and isinstance(e.get("step"), int) and e["step"] <= step:
+            by[(e["step"], e["event"])] = e
+    text = json.dumps([by[k] for k in sorted(by)], sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(text.encode()).hexdigest()
+
+
+def file_sha(p):
+    return hashlib.sha256(open(p, "rb").read()).hexdigest()
 
 
 def job_ended(chat, job):
@@ -95,8 +111,14 @@ def early(a):
         out["ref"] = {"job": a.ref, "val_loss": A.val_at(ref_ev, a.step)}
     except Exception as e:  # noqa: BLE001  (fail-closed)
         verdict, why = "unread", f"the health check failed: {type(e).__name__}: {e}"
-    # a positive record (launch review round 1, finding 14): consumers require health == "ok" for this job and step
+    # a positive record (launch review round 1, finding 14): consumers require health == "ok" for this job and step, and the spec and
+    # event prefix it certifies (round 2)
     out["health"] = verdict if verdict in ("ok", "stop") else "unread"
+    try:
+        out["spec_sha256"] = file_sha(f"{a.chat}/{a.job}_spec.json")
+        out["events_digest"] = events_digest(ev, a.step)
+    except Exception as e:  # noqa: BLE001
+        out["health"], out["health_unread"] = "unread", f"the evidence identity cannot be read: {type(e).__name__}"
     if verdict == "stop":
         out["health_stop"] = why
     elif verdict != "ok":
@@ -196,7 +218,7 @@ def watch_loop(a, out, path):
                 except OSError as e:
                     out["kill"] = f"not sent: {e}"
             write_json(path, out)
-            return 0
+            return 1   # a stop is not a healthy run (launch round 2)
         status = open(f"{a.chat}/STATUS_{a.job}").read().strip() if os.path.exists(f"{a.chat}/STATUS_{a.job}") else "NONE"
         if status in ("FINISHED", "FAILED"):
             steps = {e.get("step") for e in st}
@@ -209,8 +231,10 @@ def watch_loop(a, out, path):
             out["health"] = "ok" if (status == "FINISHED" and out["complete"] and not missing and fin) else "unread"
             if out["health"] != "ok":
                 out["health_unread"] = f"status {status}, complete {out['complete']}, missing readouts {missing}, finite readouts {fin}"
+            out["spec_sha256"] = file_sha(f"{a.chat}/{a.job}_spec.json") if os.path.exists(f"{a.chat}/{a.job}_spec.json") else None
+            out["events_digest"] = events_digest(ev, a.steps)
             write_json(path, out)
-            return 0
+            return 0 if out["health"] == "ok" else 1
         if len(st) != seen:
             seen = len(st)
             write_json(path, out)
@@ -244,10 +268,17 @@ def repro(a):
 
 
 def barrier(a):
+    """Lifts when every listed job is marked home; after --timeout-h hours it records "barrier not lifting" and exits 1, so the extra
+    seeds never start (their jobs are skipped) and the lead closes the campaign with cause "barrier" (launch round 2)."""
     names = [n for n in a.jobs.split(",") if n]
     t0 = time.time()
     while True:
         missing = [n for n in names if not os.path.exists(f"{a.chat}/HOME_{n}")]
+        if missing and time.time() - t0 > a.timeout_h * 3600:
+            write_json(f"{a.out}/barrier.json", {"producer": "b2cue_early.py --barrier", "jobs": names, "lifted": False,
+                                                 "not_home": missing, "why": "barrier not lifting"})
+            print(f"BARRIER NOT LIFTING: {len(missing)} jobs not home", flush=True)
+            return 1
         if not missing:
             write_json(f"{a.out}/barrier.json", {"producer": "b2cue_early.py --barrier", "jobs": names, "lifted_after_s": round(time.time() - t0)})
             print(f"barrier lifted: {len(names)} jobs home", flush=True)
@@ -270,6 +301,7 @@ def main():
     ap.add_argument("--steps", type=int, default=1500)
     ap.add_argument("--barrier", action="store_true")
     ap.add_argument("--repro", action="store_true")
+    ap.add_argument("--timeout-h", type=float, default=3.0, help="barrier: hours before it records not lifting")
     ap.add_argument("--jobs", default="")
     a = ap.parse_args()
     if a.barrier:

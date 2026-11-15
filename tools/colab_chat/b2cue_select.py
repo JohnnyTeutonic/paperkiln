@@ -78,7 +78,17 @@ def binding(chat, run, req_path):
         raise Void(f"{run}: score.json does not bind these scores, weights and the selection requests")
     if b.get("spec") != run_spec(chat, run):
         raise Void(f"{run}: its selection scores were made under another spec")
-    return b.get("binary_sha256")
+    binary = b.get("binary_sha256")
+    if not (isinstance(binary, str) and len(binary) == 64 and all(c in "0123456789abcdef" for c in binary)):
+        raise Void(f"{run}: score.json names no scoring binary")
+    return binary
+
+
+def spec_path(chat, run):
+    for p in (os.path.join(chat, f"{run}_spec.json"), os.path.join(chat, run, f"{run}_spec.json")):
+        if os.path.exists(p):
+            return p
+    raise Void(f"{run}: its spec is not here")
 
 
 def run_record(chat, run, M, man, trips, by_id, vocab, AT, R):
@@ -97,6 +107,12 @@ def run_record(chat, run, M, man, trips, by_id, vocab, AT, R):
         e = json.load(open(p))
         if e.get("job") != run or e.get("step") != s or e.get("health") not in ("ok", "stop", "unread"):
             raise Void(f"{run}: the early readout at step {s} is not a health record of this run and step")
+        if e["health"] == "ok":   # the record must certify this run's spec and its log up to the cut-off (launch round 2)
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            import b2cue_early as E
+            ev = E.strict_events(os.path.join(chat, run, "events.jsonl"), True)
+            if e.get("spec_sha256") != sha(spec_path(chat, run)) or e.get("events_digest") != E.events_digest(ev, s):
+                raise Void(f"{run}: the early readout at step {s} certifies other evidence than this run's")
         if e["health"] != "ok":   # a recorded stop or unread check is a documented failure (section 4.2)
             return {"complete": False, "why": f"health at step {s}: {e.get('health_stop') or e.get('health_unread') or e['health']}"}
     ev = [json.loads(x) for x in open(os.path.join(chat, run, "events.jsonl")) if x.strip()]

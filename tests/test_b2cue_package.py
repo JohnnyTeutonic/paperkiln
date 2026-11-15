@@ -276,7 +276,7 @@ def test_reproduction_check(tmp_path):
 def test_watch_stops_on_a_non_finite_loss(tmp_path):
     write_events(tmp_path / "sft_X", [{"event": "step", "step": 1, "loss": 2.0}, {"event": "step", "step": 2, "loss": None}])
     r = early_cli("--watch", "--job", "sft_X", "--out", str(tmp_path / "w"), "--chat", str(tmp_path), "--at", "1", "--steps", "3")
-    assert r.returncode == 0, r.stderr
+    assert r.returncode == 1, r.stderr   # a stop exits 1
     w = json.loads((tmp_path / "w" / "watch.json").read_text())
     assert "non-finite" in w["health_stop"] and w["stopped_pid"] is None
 
@@ -286,7 +286,7 @@ def test_watch_records_readouts_and_missing_steps(tmp_path):
     write_events(tmp_path / "sft_X", rows)
     (tmp_path / "STATUS_sft_X").write_text("FINISHED\n")
     r = early_cli("--watch", "--job", "sft_X", "--out", str(tmp_path / "w"), "--chat", str(tmp_path), "--at", "2,3", "--steps", "3")
-    assert r.returncode == 0, r.stderr
+    assert r.returncode == 1, r.stderr   # a missing readout is unread: exit 1
     w = json.loads((tmp_path / "w" / "watch.json").read_text())
     assert w["at"] == {"2": {"sft_loss": 3.0 - 2 / 10, "val_loss": 3.5}} and w["readout_missing"] == ["3"] and w["complete"]
 
@@ -316,3 +316,28 @@ def test_watch_ok_needs_every_readout_and_a_finished_job(tmp_path):
     (tmp_path / "STATUS_sft_X").write_text("FAILED")
     early_cli("--watch", "--job", "sft_X", "--out", str(tmp_path / "w2"), "--chat", str(tmp_path), "--at", "1,2,3", "--steps", "3")
     assert json.loads((tmp_path / "w2" / "watch.json").read_text())["health"] == "unread"
+
+
+def test_rendered_specs_are_already_resolved(tmp_path, monkeypatch):
+    """jobs_vm.spec_for changes nothing but name and out_dir in any training spec (launch round 2: the home replay and the scorer
+    compare the resolved spec with the jobs file's plus those two fields)."""
+    import importlib
+    monkeypatch.setenv("JOBS_CHAT_DIR", str(tmp_path))
+    import jobs_vm
+    importlib.reload(jobs_vm)
+    for p in FILES:
+        jobs = {j["name"]: j for j in json.loads(p.read_text())["jobs"]}
+        for n, j in jobs.items():
+            if "spec" not in j:
+                continue
+            got = json.loads(Path(jobs_vm.spec_for(j, jobs)).read_text().replace(str(tmp_path), "/content/chat"))
+            want = dict(j["spec"], name=j.get("model_name", n), out_dir=f"/content/chat/{n}")
+            assert got == want, (p.name, n)
+
+
+def test_early_records_certify_their_evidence(tmp_path):
+    import b2cue_early as E
+    rows = [{"event": "step", "step": s, "loss": 3.0} for s in range(1, 6)]
+    d = E.events_digest(rows, 3)
+    assert d == E.events_digest(rows + [{"event": "step", "step": 9, "loss": 1.0}], 3)       # later lines do not change it
+    assert d != E.events_digest(rows[:2] + [{"event": "step", "step": 3, "loss": 2.0}], 3)   # a changed step does

@@ -145,7 +145,7 @@
      "gradmap_every": 0,
      "seed": 37,
      "optimizer": "adamw",
-     "init_from": null,
+     "init_from": "/content/chat/sft_N250/sft_N250.safetensors",
      "lr_schedule": {
       "warmup_steps": 64,
       "decay": "cosine",
@@ -295,7 +295,7 @@
      "gradmap_every": 0,
      "seed": 37,
      "optimizer": "adamw",
-     "init_from": null,
+     "init_from": "/content/chat/sft_N250/sft_N250.safetensors",
      "lr_schedule": {
       "warmup_steps": 64,
       "decay": "cosine",
@@ -451,7 +451,7 @@
      "gradmap_every": 0,
      "seed": 37,
      "optimizer": "adamw",
-     "init_from": null,
+     "init_from": "/content/chat/sft_N250/sft_N250.safetensors",
      "lr_schedule": {
       "warmup_steps": 64,
       "decay": "cosine",
@@ -607,7 +607,7 @@
      "gradmap_every": 0,
      "seed": 37,
      "optimizer": "adamw",
-     "init_from": null,
+     "init_from": "/content/chat/sft_N250/sft_N250.safetensors",
      "lr_schedule": {
       "warmup_steps": 64,
       "decay": "cosine",

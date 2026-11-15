@@ -236,7 +236,8 @@ def render(campaign, lam=None, c2="both", no_s=False, no_arm=False, drops=()):
         jobs += sft_jobs("N250", "D1", "base_N250.safetensors")
         sweep = [("D0", None)] + [(f"Dn_{lname(x)}", x) for x in GRID]
         for n, x in sweep:
-            spec = arm_spec("D1", None, SWEEP_SEED, "P" if x is None else "Dn", x, dev=True)
+            # init_from as jobs_vm.spec_for resolves init_job (launch round 2: the home replay compares the resolved spec)
+            spec = arm_spec("D1", f"{C}/sft_N250/sft_N250.safetensors", SWEEP_SEED, "P" if x is None else "Dn", x, dev=True)
             jobs += [train_job(n, spec, after=["gate", "sft_N250"], init_job="sft_N250")] + early_jobs(n, "D0", scored=True)
             scores.append(score_job(n, SEL, n, gguf=False))
         sel = {"name": "select", "light": True, "after_terminal": True,
