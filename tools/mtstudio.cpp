@@ -1665,9 +1665,14 @@ TwinSet load_twins(const Spec& s, const std::map<std::string, int>& vocab) {
 // own-context references there. Every group must have a line, in order, whose reply lengths are the loader's (so a
 // reference file built for other twins, or in another order, is refused), whose steps start at 0, rise strictly
 // and reach the last weights a step reads (steps - 1), and whose values are finite.
+// Each line also carries "seed" (the run's train.seed: a reference built from another seed's plain run is refused) and
+// "start": [a, b], the scorer's own-context terms under the start weights, which the preflight compares with the trainer's
+// for every group before step 1 (A34 launch review, 15 Nov 2026).
+constexpr double kFloorParity = 5e-3;  // nats a token: the trainer's start-weight own terms against the scorer's, every group
 struct FloorRef {
     std::vector<std::vector<int>> steps;
     std::vector<std::vector<double>> a, b;
+    std::vector<double> start_a, start_b;
     uint64_t fnv = 1469598103934665603ULL;  // FNV-1a over the file's bytes, logged
 };
 
@@ -1685,8 +1690,15 @@ FloorRef load_floor_ref(const Spec& s, const TwinSet& tw) {
         const std::string at = s.twin_floor_ref + ": line " + std::to_string(n + 1) + ": ";
         const json j = json::parse(line, nullptr, false);
         if (j.is_discarded() || !j.is_object()) throw std::runtime_error(at + "not a JSON object");
-        for (const char* k : {"g", "n_a", "n_b", "steps", "a", "b"})
+        for (const char* k : {"g", "n_a", "n_b", "steps", "a", "b", "seed", "start"})
             if (!j.contains(k)) throw std::runtime_error(at + "needs " + k);
+        if (!j["seed"].is_number_integer() || j["seed"].get<long long>() != static_cast<long long>(s.seed))
+            throw std::runtime_error(at + "built for seed " + j["seed"].dump() + ", not the run's " + std::to_string(s.seed));
+        if (!j["start"].is_array() || j["start"].size() != 2 || !j["start"][0].is_number() || !j["start"][1].is_number() ||
+            !std::isfinite(j["start"][0].get<double>()) || !std::isfinite(j["start"][1].get<double>()))
+            throw std::runtime_error(at + "start must be two finite numbers");
+        r.start_a.push_back(j["start"][0].get<double>());
+        r.start_b.push_back(j["start"][1].get<double>());
         if (n >= tw.groups) throw std::runtime_error(at + "more lines than twin groups");
         if (!j["g"].is_number_integer() || j["g"].get<long long>() != static_cast<long long>(n))
             throw std::runtime_error(at + "g must be the line's group index " + std::to_string(n));
@@ -3040,6 +3052,65 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         live_mb[phase] = mib(device::pool_live_bytes());
         t_last = now;
     };
+
+    // A34: the floor's parity preflight, on a fresh run only (the weights are the start's). Every group's own-context terms
+    // lp(yA|A)/n_A and lp(yB|B)/n_B under these weights, computed by the twin term's own forward, are compared with the
+    // reference file's "start" values (the scorer's on the same weights): the largest difference must be within
+    // kFloorParity, or the run stops before step 1. Logged as twin_floor_parity. A sampled step cannot show this for every
+    // group (A34 launch review, 15 Nov 2026). It reads no SFT row draw.
+    if (s.twin_floor > 0.0f && start_step == 0) {
+        NoGrad ng;
+        const size_t k = static_cast<size_t>(tw.per_group), chunk = 4;
+        const int pad = eos_tok >= 0 ? eos_tok : 0;
+        double mx = 0.0, tot = 0.0;
+        size_t worst = 0;
+        for (size_t g0 = 0; g0 < tw.groups; g0 += chunk) {
+            const size_t g1 = std::min(tw.groups, g0 + chunk);
+            size_t Lb = 0;
+            for (size_t g = g0; g < g1; ++g)
+                for (size_t j = 0; j < k; ++j) Lb = std::max(Lb, tw.x[g * k + j].size());
+            posttrain::TwinTargets tt;
+            tt.groups = g1 - g0;
+            tt.per_group = tw.per_group;
+            tt.rows = tt.groups * k;
+            std::vector<int> xb;
+            for (size_t g = g0; g < g1; ++g) {
+                tt.n_a.push_back(tw.n_a[g]);
+                tt.n_b.push_back(tw.n_b[g]);
+                for (size_t j = 0; j < k; ++j) {
+                    const size_t src = g * k + j, r = (g - g0) * k + j;
+                    xb.insert(xb.end(), tw.x[src].begin(), tw.x[src].end());
+                    xb.insert(xb.end(), Lb - tw.x[src].size(), pad);
+                    for (size_t i = 0; i < tw.pos[src].size(); ++i) {
+                        tt.pos.push_back(static_cast<int>(r * Lb) + tw.pos[src][i]);
+                        tt.tgt.push_back(tw.tgt[src][i]);
+                        tt.pos_row.push_back(static_cast<int>(r));
+                    }
+                }
+            }
+            const bool dw = sft_eval_on_device();  // in one device step window, as the held-out evaluation runs
+            if (dw) device::step_begin();
+            Var S = posttrain::twin_row_logp(fwd(xb, Lb), tt);
+            device::materialize(S->data);
+            if (dw) device::step_end();
+            for (size_t g = g0; g < g1; ++g) {
+                const size_t gi = g - g0;
+                const double da = std::fabs(S->data(gi * k, 0) / tw.n_a[g] - fref.start_a[g]);
+                const double db = std::fabs(S->data(gi * k + 2, 0) / tw.n_b[g] - fref.start_b[g]);
+                tot += da + db;
+                if (!(std::max(da, db) <= mx)) {  // NaN-safe: a NaN difference becomes the worst
+                    mx = std::isfinite(std::max(da, db)) ? std::max(da, db) : std::numeric_limits<double>::infinity();
+                    worst = g;
+                }
+            }
+        }
+        ev.emit({{"event", "twin_floor_parity"}, {"groups", tw.groups}, {"max_abs", mx}, {"mean_abs", tot / (2.0 * tw.groups)},
+                 {"worst_group", worst}, {"tolerance", kFloorParity}});
+        if (!(mx <= kFloorParity))
+            throw std::runtime_error("twin floor: the start weights' own-context terms differ from data.twin_floor_ref's start "
+                                     "values by up to " + std::to_string(mx) + " nats a token (group " + std::to_string(worst) +
+                                     "), over " + std::to_string(kFloorParity));
+    }
 
     // Train.
     bool stopped_early = false;

@@ -34,7 +34,9 @@
    ],
    "outputs": [
     "start_own.jsonl",
-    "receipt.json"
+    "receipt.json",
+    "scores_0.jsonl",
+    "scores_0.binding.json"
    ]
   },
   {
@@ -3010,7 +3012,23 @@
    ],
    "outputs": [
     "floor_ref.jsonl",
-    "receipt.json"
+    "receipt.json",
+    "scores_128.jsonl",
+    "scores_128.binding.json",
+    "scores_256.jsonl",
+    "scores_256.binding.json",
+    "scores_384.jsonl",
+    "scores_384.binding.json",
+    "scores_512.jsonl",
+    "scores_512.binding.json",
+    "scores_640.jsonl",
+    "scores_640.binding.json",
+    "scores_768.jsonl",
+    "scores_768.binding.json",
+    "scores_896.jsonl",
+    "scores_896.binding.json",
+    "scores_1024.jsonl",
+    "scores_1024.binding.json"
    ]
   },
   {
@@ -3027,7 +3045,23 @@
    ],
    "outputs": [
     "floor_ref.jsonl",
-    "receipt.json"
+    "receipt.json",
+    "scores_128.jsonl",
+    "scores_128.binding.json",
+    "scores_256.jsonl",
+    "scores_256.binding.json",
+    "scores_384.jsonl",
+    "scores_384.binding.json",
+    "scores_512.jsonl",
+    "scores_512.binding.json",
+    "scores_640.jsonl",
+    "scores_640.binding.json",
+    "scores_768.jsonl",
+    "scores_768.binding.json",
+    "scores_896.jsonl",
+    "scores_896.binding.json",
+    "scores_1024.jsonl",
+    "scores_1024.binding.json"
    ]
   },
   {
@@ -3044,7 +3078,23 @@
    ],
    "outputs": [
     "floor_ref.jsonl",
-    "receipt.json"
+    "receipt.json",
+    "scores_128.jsonl",
+    "scores_128.binding.json",
+    "scores_256.jsonl",
+    "scores_256.binding.json",
+    "scores_384.jsonl",
+    "scores_384.binding.json",
+    "scores_512.jsonl",
+    "scores_512.binding.json",
+    "scores_640.jsonl",
+    "scores_640.binding.json",
+    "scores_768.jsonl",
+    "scores_768.binding.json",
+    "scores_896.jsonl",
+    "scores_896.binding.json",
+    "scores_1024.jsonl",
+    "scores_1024.binding.json"
    ]
   },
   {

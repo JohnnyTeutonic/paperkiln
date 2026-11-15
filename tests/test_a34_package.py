@@ -141,10 +141,11 @@ def test_run_record_parity_and_health(tmp_path):
         (chat / f"early_Fd_1p0_{s}").mkdir()
         (chat / f"early_Fd_1p0_{s}" / "early.json").write_text(json.dumps({}))
     (chat / "Fd_1p0").mkdir()
-    ev = [{"event": "step", "step": 1, "twin": {"floor": {"gap_absmax": 0.02}}}, {"event": "eval", "step": 1024, "val_loss": 3.0}]
-    (chat / "Fd_1p0" / "events.jsonl").write_text("".join(json.dumps(e) + "\n" for e in ev))
-    r = SEL.safe_record(str(chat), "Fd_1p0", None, None, None, True)
-    assert not r["complete"] and "parity" in r["why"]
+    for p in ({"groups": 1500, "max_abs": 0.02}, {"groups": 1499, "max_abs": 1e-7}, None):
+        ev = ([{"event": "twin_floor_parity", **p}] if p else []) + [{"event": "eval", "step": 1024, "val_loss": 3.0}]
+        (chat / "Fd_1p0" / "events.jsonl").write_text("".join(json.dumps(e) + "\n" for e in ev))
+        r = SEL.safe_record(str(chat), "Fd_1p0", None, None, None, True)
+        assert not r["complete"] and "parity" in r["why"], p
     (chat / "early_Fd_1p0_256" / "early.json").write_text(json.dumps({"health_unread": "gap"}))
     assert "health" in SEL.safe_record(str(chat), "Fd_1p0", None, None, None, True)["why"]
 
@@ -169,15 +170,75 @@ def test_own_values_and_refusals():
         REF.own_values([{"id": "g0", "row": "BB"}, {"id": "g0", "row": "AA"}] + req[2:], recs)
 
 
+def ref_world(tmp_path, missing=None):
+    """A chat dir for a34_ref.py with the stand-in mtstudio (tests/fake_mtstudio_a34.py) as the binary."""
+    import argparse
+    import stat
+    chat = tmp_path / "chat"
+    up = chat / "upload"
+    up.mkdir(parents=True)
+    (up / "a34_own_req.jsonl").write_text("".join(json.dumps(r) + "\n" for r in own_req(2)))
+    (up / "tc_sft_b1_r1.safetensors").write_text("start")
+    (up / "a34_gate_spec.json").write_text(json.dumps({"data": {}, "train": {"seed": 1}}))
+    job = chat / "P_1r"
+    for k in REF.REF_STEPS:
+        if k == missing:
+            continue
+        (job / f"rung_{k}").mkdir(parents=True)
+        (job / f"rung_{k}" / "model.safetensors").write_text(f"w{k}")
+        (job / f"rung_{k}" / "state.txt").write_text(f"{k}\n")
+    (job / "P_1r.safetensors").write_text("final")
+    (chat / "P_1r_spec.json").write_text(json.dumps({"data": {}, "train": {"seed": 1}}))
+    fake = tmp_path / "mtstudio"
+    fake.write_text(f"#!/bin/sh\nexec {sys.executable} {ROOT / 'tests' / 'fake_mtstudio_a34.py'} \"$@\"\n")
+    fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
+    ns = argparse.Namespace(chat=str(chat), bin=str(fake), job="P_1r")
+    ns_start = argparse.Namespace(**{**vars(ns), "out": str(chat / "ref_start")})
+    ns_build = argparse.Namespace(**{**vars(ns), "out": str(chat / "ref_P_1r")})
+    return chat, ns_start, ns_build
+
+
+def test_reference_builder_binds_and_refuses(tmp_path):
+    chat, ns_start, ns_build = ref_world(tmp_path)
+    assert REF.start(ns_start) == 0 and REF.build(ns_build) == 0
+    lines = [json.loads(x) for x in (chat / "ref_P_1r" / "floor_ref.jsonl").read_text().splitlines()]
+    assert len(lines) == 2 and lines[0]["seed"] == 1 and lines[0]["steps"] == [0, *REF.REF_STEPS, 1024]
+    assert lines[0]["start"] == [lines[0]["a"][0], lines[0]["b"][0]]
+    # a cached knot made from other weights is scored again, never reused under the new weights' hash
+    sc = chat / "ref_P_1r" / "scores_128.jsonl"
+    sc.write_text(sc.read_text().replace("-1.0", "-9.0"))
+    (chat / "P_1r" / "rung_128" / "model.safetensors").write_text("changed")
+    assert REF.build(ns_build) == 0
+    b = json.loads((chat / "ref_P_1r" / "scores_128.binding.json").read_text())
+    assert b["weights_sha256"] == REF.sha(chat / "P_1r" / "rung_128" / "model.safetensors") and "-9.0" not in sc.read_text()
+    # ref_start's scores must be bound to the current start weights
+    (chat / "upload" / "tc_sft_b1_r1.safetensors").write_text("other start")
+    with pytest.raises(SystemExit):
+        REF.build(ns_build)
+
+
+def test_reference_builder_fails_on_a_missing_snapshot(tmp_path):
+    chat, ns_start, ns_build = ref_world(tmp_path, missing=640)
+    REF.start(ns_start)
+    with pytest.raises(OSError):
+        REF.build(ns_build)
+    assert not (chat / "ref_P_1r" / "floor_ref.jsonl").exists()
+
+
 def test_gate_floor_checks():
     def ev(s1, s2):
         return {1: {"twin": {"floor": s1}}, 2: {"twin": {"floor": s2}}}
     ok1 = {"loss": 0.0, "active": 0.0, "gap": -0.5, "gap_absmax": 0.5 + 1e-4}
     ok2 = {"loss": 0.5, "active": 1.0, "gap": 0.5, "gap_absmax": 0.51}
-    log = "floor: a\nfloor: b\n"
-    assert GATE.floor_checks(ev(ok1, ok2), ev(ok1, ok2), log) == []
-    assert GATE.floor_checks(ev(ok1, ok2), ev(ok1, ok2), "floor: a\n")
+    log = "  write-through, floor: loss host 1\n    floor: loss host 0.39\n    floor: loss host 0.39\n"
+    par = {"cuda_twin": {"groups": 16, "max_abs": 3e-7}, "cpu_twin": {"groups": 16, "max_abs": 1e-7}}
+    assert GATE.floor_checks(ev(ok1, ok2), ev(ok1, ok2), log, par) == []
+    assert GATE.floor_checks(ev(ok1, ok2), ev(ok1, ok2), "  write-through, floor: x\n  deferred window, floor: y\n")   # headers only
+    assert GATE.floor_checks(ev(ok1, ok2), ev(ok1, ok2), log, dict(par, cpu_twin={"groups": 16, "max_abs": 0.01}))
+    assert GATE.floor_checks(ev(ok1, ok2), ev(ok1, ok2), log, dict(par, cuda_twin={"groups": 4, "max_abs": 1e-7}))
+    assert GATE.floor_checks(ev(ok1, ok2), ev(ok1, ok2), log, dict(par, cuda_twin=None))
     assert GATE.floor_checks(ev(dict(ok1, gap_absmax=0.51), ok2), ev(ok1, ok2), log)       # parity off by 0.01
+    assert GATE.floor_checks(ev(dict(ok1, gap=-0.49), ok2), ev(ok1, ok2), log)             # the mean side off by 0.01
     assert GATE.floor_checks(ev(ok1, dict(ok2, active=0.75)), ev(ok1, ok2), log)
     assert GATE.floor_checks(ev(ok1, dict(ok2, loss=0.6)), ev(ok1, ok2), log)               # CUDA and CPU disagree
     assert GATE.floor_checks(ev(ok1, {"loss": None}), ev(ok1, ok2), log)

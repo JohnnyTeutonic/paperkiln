@@ -1,7 +1,8 @@
 """A34's whole jobs file run by the real jobs_vm.py on a stand-in trainer (tests/fake_mtstudio_a34.py), with the real gate, reference
 builds, early readouts, selection and score binding, then the real runner_multi.py over the finished pod directory. Claude Opus 5.5,
-15 Nov 2026 (A31's test_a31_schedule.py, adapted). CPU only, a few minutes. The stand-in makes Fd_0p3 fail the hold and Fd_1p0 and
-Fd_3p0 pass both conditions, so the rule must choose 1.0; P_50r fails at step 200, so its floor runs (F_50, NF_50) must never start
+15 Nov 2026 (A31's test_a31_schedule.py, adapted). CPU only, a few minutes. It tests orchestration, not numerics: the stand-in
+neither reads nor interpolates references (test_mtstudio_floor.py does that on the real trainer). The stand-in makes Fd_0p3 fail the
+hold, Fd_3p0's parity preflight read 0.02 (ineligible) and Fd_1p0 pass both conditions, so the rule must choose 1.0; P_50r fails at step 200, so its floor runs (F_50, NF_50) must never start
 and its reference must not be built. Checks: every job ends; the gate passes on the floor spec; each reference is built from its own
 run's snapshots and the start, with nine knots; the selection chooses the registered floor; exactly F_<s>_1p0 and NF_<s>_1p0 run,
 at the seed whose reference exists; each floor run read its own seed's reference; no sweep job reads the final requests; the final
@@ -52,7 +53,7 @@ def campaign(tmp_path_factory):
     fake = tmp / "mtstudio"
     fake.write_text(f"#!/bin/sh\nexec {sys.executable} {ROOT / 'tests' / 'fake_mtstudio_a34.py'} \"$@\"\n")
     dev_test = tmp / "test_twin_device"
-    dev_test.write_text("#!/bin/sh\necho 'twin loss: device vs host (device op set ON)'\necho '    floor: a'\necho '    floor: b'\n")
+    dev_test.write_text("#!/bin/sh\necho 'twin loss: device vs host (device op set ON)'\necho '    floor: loss host 1 device 1'\necho '    floor: loss host 1 device 1'\n")
     for p in (fake, dev_test):
         p.chmod(p.stat().st_mode | stat.S_IEXEC)
     text = json.dumps(J.render())
@@ -61,7 +62,7 @@ def campaign(tmp_path_factory):
     (tmp / "jobs.json").write_text(json.dumps(jobs))
     (up / "a34_gate_spec.json").write_text(json.dumps(json.loads(json.dumps(J.gate_spec()).replace("/content/chat", str(C)))))
     env = {**os.environ, "JOBS_CHAT_DIR": str(C), "JOBS_MTSTUDIO": str(fake), "JOBS_REPO": str(ROOT), "JOBS_TICK": "0.2",
-           "FAKE_FAIL": "P_50r", "FAKE_CKPT_PAUSE": "0.5", "CUDA_VISIBLE_DEVICES": ""}
+           "FAKE_FAIL": "P_50r", "FAKE_BAD_PARITY": "Fd_3p0", "FAKE_CKPT_PAUSE": "0.5", "CUDA_VISIBLE_DEVICES": ""}
     r = subprocess.run([sys.executable, str(ROOT / "tools" / "colab_chat" / "jobs_vm.py"), str(tmp / "jobs.json")], env=env,
                        capture_output=True, text=True, timeout=1500)
     assert r.returncode == 0, r.stdout[-3000:] + r.stderr[-3000:]
@@ -109,6 +110,10 @@ def test_references_are_built_from_their_own_runs(campaign):
         assert rec["weights_sha256"]["0"] == sha(C / "upload" / "tc_sft_b1_r1.safetensors")
         lines = [json.loads(x) for x in (C / f"ref_{run}" / "floor_ref.jsonl").read_text().splitlines()]
         assert [x["g"] for x in lines] == [0, 1, 2] and all(x["steps"] == rec["steps"] and x["n_a"] == 2 for x in lines)
+        assert all(x["seed"] == {"D0r": 99, "P_1r": 1}[run] and x["start"] == [x["a"][0], x["b"][0]] for x in lines)
+        for k in rec["steps"][1:]:   # every knot's scores carry their binding to the weights they were made from
+            b = json.loads((C / f"ref_{run}" / f"scores_{k}.binding.json").read_text())
+            assert b["weights_sha256"] == rec["weights_sha256"][str(k)]
 
 
 def test_the_rule_chooses_the_smallest_floor_that_holds_and_retains(campaign):
@@ -116,10 +121,11 @@ def test_the_rule_chooses_the_smallest_floor_that_holds_and_retains(campaign):
     dec = json.loads((C / "select" / "decisions.json").read_text())
     t = dec["table"]
     assert t["0.3"]["eligible"] and not t["0.3"]["hold"]
-    assert t["1.0"]["hold"] and t["1.0"]["retain"] and t["3.0"]["hold"] and t["3.0"]["retain"]
+    assert t["1.0"]["hold"] and t["1.0"]["retain"]
+    assert not t["3.0"]["eligible"] and "parity" in t["3.0"]["why"]      # its preflight read 0.02 > 5e-3
     assert dec["chosen"] == 1.0 and dec["flags"] == []
     assert dec["decisions"]["a34"] == {"F_0p3": False, "NF_0p3": False, "F_1p0": True, "NF_1p0": True, "F_3p0": False, "NF_3p0": False}
-    assert t["1.0"]["parity_step1"] == 1e-4
+    assert t["1.0"]["parity"] == 2e-7
 
 
 def test_exactly_the_chosen_floor_runs_where_its_reference_exists(campaign):

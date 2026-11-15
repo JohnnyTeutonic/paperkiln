@@ -5,8 +5,8 @@
 Reads the floor sweep at seed 99 against D0r (plain SFT at seed 99 on this build, the sweep's own reference run). A run is
 **complete** when its STATUS is FINISHED, no early readout of it records a health stop or an unread check (and all three exist),
 its events hold a finite held-out SFT loss at step 1,024, its dev scores are whole and valid (a31_readout.validated_sets on the
-early request file) and cover 99% of the dev triplets, and (for a floor run) its step-1 log records the floor with |ref - own| at
-most PARITY (the scorer's references and the trainer's own terms agree at the start weights). D0r must be complete.
+early request file) and cover 99% of the dev triplets, and (for a floor run) its twin_floor_parity event covers all 1,500 groups
+with the largest |trainer - scorer| own-context term at most PARITY at the start weights. D0r must be complete.
   eligible(f)   complete, held-out SFT loss at step 1,024 at most 1.02 times D0r's
   hold(f)       dev own-context change against D0r, mean over dev triplets of ((AA/n_A + BB/n_B)/2)_f - (same)_D0r, >= HOLD
   retain(f)     dev decisive-shift gain against D0r, mean dec_f - dec_D0r, >= RETAIN (half A31's Dm_0p3 - D0 dev gain, 1.024)
@@ -30,6 +30,7 @@ RETAIN = 0.512
 PARITY = 5e-3
 FINAL_STEP = 1024
 EARLY = (128, 256, 512)
+GROUPS = [1500]   # the training twins; main() counts them from a34_own_req.jsonl (two rows a group)
 
 
 def lname(x):
@@ -76,13 +77,13 @@ def run_record(chat, run, R, man, trips, floor):
         rec["why"] = f"no finite held-out SFT loss at step {FINAL_STEP}"
         return rec
     rec["val_loss"] = vals[-1]
-    if floor:
-        s1 = [e for e in ev if e.get("event") == "step" and e.get("step") == 1]
-        fl = ((s1[-1].get("twin") or {}).get("floor") or {}) if s1 else {}
-        if not finite(fl.get("gap_absmax")) or fl["gap_absmax"] > PARITY:
-            rec["why"] = f"step 1 floor parity {fl.get('gap_absmax')!r} not within {PARITY}"
+    if floor:   # the trainer's preflight over every training twin (it stops the run itself when over; required here too)
+        par = [e for e in ev if e.get("event") == "twin_floor_parity"]
+        p = par[0] if par else {}
+        if not finite(p.get("max_abs")) or p["max_abs"] > PARITY or p.get("groups") != GROUPS[0]:
+            rec["why"] = f"floor parity preflight {p or 'missing'} not within {PARITY} over {GROUPS[0]} groups"
             return rec
-        rec["parity_step1"] = fl["gap_absmax"]
+        rec["parity"] = p["max_abs"]
     terms = dev_terms(R, man, trips, R.read_jsonl(os.path.join(chat, f"score_{run}", "scores.jsonl")))
     if len(terms) < 0.99 * len(trips["dev"]):
         rec["why"] = f"dev scores cover {len(terms)} of {len(trips['dev'])} triplets"
@@ -142,6 +143,7 @@ def main():
     sys.path.insert(0, up)
     import a31_readout as R   # the lane's readout.py, uploaded and hash-pinned
     man = json.load(open(os.path.join(up, "a31_early_req.manifest.json")))
+    GROUPS[0] = sum(1 for x in open(os.path.join(up, "a34_own_req.jsonl")) if x.strip()) // 2
     trips = {n: R.read_jsonl(os.path.join(up, f"a31_{n}_triplets.jsonl")) for n in man["sets"]}
     runs = {"D0r": safe_record(a.chat, "D0r", R, man, trips, False)}
     for f in FLOOR_GRID:

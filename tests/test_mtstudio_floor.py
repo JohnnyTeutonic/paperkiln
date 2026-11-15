@@ -59,7 +59,8 @@ def write_ref(path, own, knots, offsets=None, groups=None, **override):
     offsets = offsets or [0.0] * len(knots)
     lines = []
     for g, (a, b, na, nb) in enumerate(own[:groups] if groups else own):
-        r = {"g": g, "n_a": na, "n_b": nb, "steps": list(knots), "a": [a + o for o in offsets], "b": [b + o for o in offsets]}
+        r = {"g": g, "seed": 3, "n_a": na, "n_b": nb, "start": [a, b], "steps": list(knots), "a": [a + o for o in offsets],
+             "b": [b + o for o in offsets]}
         r.update(override)
         lines.append(json.dumps(r))
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -121,6 +122,26 @@ def test_scorer_and_trainer_agree_at_step_1(tmp, start):
     assert fl["floor"] == 1.0 and fl["groups"] == len(TRIPLETS) and fl["knots_group0"] == [0, 29]
     s1 = steps(ev)[0]["twin"]["floor"]
     assert s1["gap_absmax"] < 1e-4, s1          # the start weights' own terms, scored and trained, agree
+    par = next(e for e in ev if e["event"] == "twin_floor_parity")   # and for every group, before step 1
+    assert par["groups"] == len(TRIPLETS) and par["max_abs"] < 1e-4 and par["tolerance"] == 5e-3
+    # the preflight reads no SFT row draw: the same rows as the plain run from the same start
+    plain = steps(run(from_start(tmp, "f_parity_plain", {"steps": 2}, None, w)))
+    assert [e["sft_rows_hash"] for e in plain] == [e["sft_rows_hash"] for e in steps(ev)]
+
+
+@needs_bin
+def test_preflight_stops_a_run_whose_references_do_not_fit(tmp, start):
+    w, own = start
+    tw = {"twin_examples": str(tmp / "twins.jsonl")}
+    shifted = [(a, b, na, nb) for a, b, na, nb in own]
+    ref = write_ref(tmp / "ref_badstart.jsonl", shifted, [0, 29])
+    lines = [json.loads(x) for x in ref.read_text().splitlines()]
+    lines[5]["start"][1] += 0.01                     # one group's B side off by 0.01 nats a token
+    ref.write_text("".join(json.dumps(x) + "\n" for x in lines))
+    r = run(from_start(tmp, "f_badstart", floor_train(1.0, steps=2), {**tw, "twin_floor_ref": str(ref)}, w), ok=False)
+    assert r.returncode != 0 and "differ from data.twin_floor_ref's start" in r.stderr and "group 5" in r.stderr, r.stderr
+    ev = [json.loads(x) for x in (tmp / "f_badstart" / "events.jsonl").read_text().splitlines() if x.strip()]
+    assert not steps(ev) and next(e for e in ev if e["event"] == "twin_floor_parity")["worst_group"] == 5
 
 
 @needs_bin
@@ -196,6 +217,8 @@ def test_floor_refusals(tmp, start):
         "order": (write_ref(tmp / "r5.jsonl", own, [0, 29, 29]), "rise strictly"),
         "g": (write_ref(tmp / "r6.jsonl", own, [0, 29], g=7), "group index"),
         "shape": (write_ref(tmp / "r7.jsonl", own, [0, 29], a=[0.0]), "one length"),
+        "seed": (write_ref(tmp / "r9.jsonl", own, [0, 29], seed=50), "built for seed 50"),
+        "nostart": (write_ref(tmp / "r10.jsonl", own, [0, 29], start=[0.0]), "start must be"),
     }
     for k, (path, needle) in cases.items():
         refused(f"fx_{k}", floor_train(1.0), {**tw, "twin_floor_ref": str(path)}, needle)

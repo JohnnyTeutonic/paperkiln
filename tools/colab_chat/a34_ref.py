@@ -69,18 +69,34 @@ def own_values(req, recs):
     return out
 
 
-def score(binary, weights, spec_src, name, req, out_scores, work):
-    """Score `weights` (a model with the spec at spec_src) on the own-row requests into out_scores (renamed into place)."""
-    if os.path.exists(out_scores):
-        return
-    m = os.path.join(work, f"m_{name}")
-    os.makedirs(m, exist_ok=True)
+def scoring_spec(spec_src, name, m):
     spec = json.load(open(spec_src))
     spec["name"] = name
     spec["out_dir"] = m
     for k in ("twin_examples", "twin_floor_ref"):
         spec.get("data", {}).pop(k, None)
     spec.get("train", {}).pop("twin_loss", None)
+    return spec
+
+
+def score(binary, weights, spec_src, name, req, out_scores, work):
+    """Score `weights` (a model with the spec at spec_src) on the own-row requests into out_scores (renamed into place). A scores
+    file is reused only when its binding (scores_<k>.binding.json: the sha256 of the weights, requests, binary and effective
+    scoring spec it was made from, and of itself) matches the current inputs; otherwise it is scored again (A34 launch review,
+    15 Nov 2026: a cached knot must never be bound to weights it was not made from)."""
+    m = os.path.join(work, f"m_{name}")
+    os.makedirs(m, exist_ok=True)
+    spec = scoring_spec(spec_src, name, m)
+    want = {"weights_sha256": sha(weights), "requests_sha256": sha(req), "binary_sha256": sha(binary),
+            "spec_sha256": hashlib.sha256(json.dumps(spec, sort_keys=True).encode()).hexdigest()}
+    bind = out_scores[:-len(".jsonl")] + ".binding.json"
+    if os.path.exists(out_scores) and os.path.exists(bind):
+        have = json.load(open(bind))
+        if have == {**want, "scores_sha256": sha(out_scores)}:
+            return want["weights_sha256"]
+    for p in (out_scores, bind):
+        if os.path.exists(p):
+            os.remove(p)
     json.dump(spec, open(os.path.join(m, "spec.json"), "w"), indent=1)
     link = os.path.join(m, f"{name}.safetensors")
     if os.path.lexists(link):
@@ -91,6 +107,8 @@ def score(binary, weights, spec_src, name, req, out_scores, work):
     if r.returncode != 0:
         raise RuntimeError(f"score of {name} exited {r.returncode}")
     os.replace(tmp, out_scores)
+    write_json(bind, {**want, "scores_sha256": sha(out_scores)})
+    return want["weights_sha256"]
 
 
 def write_json(p, obj):
@@ -113,8 +131,8 @@ def start(a):
             f.write(json.dumps({"g": g, "a": va, "b": vb, "n_a": na, "n_b": nb}) + "\n")
     os.replace(os.path.join(a.out, "start_own.jsonl.tmp"), os.path.join(a.out, "start_own.jsonl"))
     write_json(os.path.join(a.out, "receipt.json"),
-               {"producer": "a34_ref.py start", "weights_sha256": sha(w), "requests_sha256": sha(req_p), "binary_sha256": sha(a.bin),
-                "scores_sha256": sha(sc), "groups": len(vals), "start_own_sha256": sha(os.path.join(a.out, "start_own.jsonl"))})
+               {"producer": "a34_ref.py start", "binding": json.load(open(os.path.join(a.out, "scores_0.binding.json"))),
+                "groups": len(vals), "start_own_sha256": sha(os.path.join(a.out, "start_own.jsonl"))})
     print(f"start: {len(vals)} groups, mean own {sum(v[0] + v[1] for v in vals) / (2 * len(vals)):.4f}")
     return 0
 
@@ -125,10 +143,16 @@ def build(a):
     req = read_jsonl(req_p)
     os.makedirs(a.out, exist_ok=True)
     st = os.path.join(a.chat, "ref_start")
-    start_rec = json.load(open(os.path.join(st, "receipt.json")))
+    # knot 0 is ref_start's: its binding must be the current start weights, requests and binary, and its scores the bound ones
+    sb = json.load(open(os.path.join(st, "scores_0.binding.json")))
+    w0 = os.path.join(up, "tc_sft_b1_r1.safetensors")
+    if (sb["weights_sha256"], sb["requests_sha256"], sb["binary_sha256"], sb["scores_sha256"]) != \
+            (sha(w0), sha(req_p), sha(a.bin), sha(os.path.join(st, "scores_0.jsonl"))):
+        raise SystemExit("ref_start's scores are not bound to the current start weights, requests and binary")
     knots = {0: own_values(req, read_jsonl(os.path.join(st, "scores_0.jsonl")))}
-    weights = {0: start_rec["weights_sha256"]}
+    weights = {0: sb["weights_sha256"]}
     spec_src = os.path.join(a.chat, f"{a.job}_spec.json")
+    seed = json.load(open(spec_src))["train"]["seed"]
     for k in REF_STEPS + (FINAL,):
         w = (os.path.join(a.chat, a.job, f"rung_{k}", "model.safetensors") if k != FINAL
              else os.path.join(a.chat, a.job, f"{a.job}.safetensors"))
@@ -136,9 +160,8 @@ def build(a):
             if int(open(os.path.join(a.chat, a.job, f"rung_{k}", "state.txt")).readline().strip()) != k:
                 raise SystemExit(f"rung_{k} of {a.job} is not at step {k}")
         sc = os.path.join(a.out, f"scores_{k}.jsonl")
-        score(a.bin, w, spec_src, f"{a.job}_k{k}", req_p, sc, a.out)
+        weights[k] = score(a.bin, w, spec_src, f"{a.job}_k{k}", req_p, sc, a.out)
         knots[k] = own_values(req, read_jsonl(sc))
-        weights[k] = sha(w)
     steps = sorted(knots)
     G = len(req) // 2
     for k in steps:
@@ -148,12 +171,12 @@ def build(a):
     with open(ref + ".tmp", "w") as f:
         for g in range(G):
             na, nb = knots[0][g][2], knots[0][g][3]
-            f.write(json.dumps({"g": g, "n_a": na, "n_b": nb, "steps": steps, "a": [knots[k][g][0] for k in steps],
-                                "b": [knots[k][g][1] for k in steps]}) + "\n")
+            f.write(json.dumps({"g": g, "seed": seed, "n_a": na, "n_b": nb, "start": [knots[0][g][0], knots[0][g][1]], "steps": steps,
+                                "a": [knots[k][g][0] for k in steps], "b": [knots[k][g][1] for k in steps]}) + "\n")
     os.replace(ref + ".tmp", ref)
     means = {str(k): sum(v[0] + v[1] for v in knots[k]) / (2 * G) for k in steps}
     write_json(os.path.join(a.out, "receipt.json"),
-               {"producer": "a34_ref.py build", "job": a.job, "steps": steps, "weights_sha256": {str(k): weights[k] for k in steps},
+               {"producer": "a34_ref.py build", "job": a.job, "seed": seed, "steps": steps, "weights_sha256": {str(k): weights[k] for k in steps},
                 "requests_sha256": sha(req_p), "binary_sha256": sha(a.bin), "spec_sha256": sha(spec_src), "groups": G,
                 "scores_sha256": {str(k): sha(os.path.join(a.out if k else st, f"scores_{k}.jsonl")) for k in steps},
                 "floor_ref_sha256": sha(ref), "mean_own_per_token": means})

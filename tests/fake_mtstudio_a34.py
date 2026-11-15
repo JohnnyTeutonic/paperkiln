@@ -31,15 +31,24 @@ def run(spec_path):
     ev_p = os.path.join(out, "events.jsonl")
     ev = [json.loads(x) for x in open(ev_p) if x.strip()]
     gate = "gate_ref" in ref
+    if gate:
+        groups = 16
+    else:   # the training twins: the own-row request file in the chat dir's upload folder holds two rows a group
+        up = os.path.join(os.path.dirname(os.path.dirname(ref)), "upload", "a34_own_req.jsonl")
+        groups = sum(1 for x in open(up) if x.strip()) // 2
+    bad = s.get("name", "") in os.environ.get("FAKE_BAD_PARITY", "").split(",")   # a sweep run whose preflight read badly
     with open(ev_p + ".tmp", "w") as f:
         f.write(json.dumps({"event": "twin_floor", "floor": s["train"]["twin_loss"]["floor"], "ref": ref}) + "\n")
+        f.write(json.dumps({"event": "twin_floor_parity", "groups": groups, "max_abs": 0.02 if bad else 2e-7,
+                            "mean_abs": 1e-7, "worst_group": 0, "tolerance": 5e-3}) + "\n")
         for e in ev:
             if e.get("event") == "step" and "twin" in e:
                 if gate:
                     e["twin"]["floor"] = ({"loss": 0.0, "active": 0.0, "gap": -0.5, "gap_absmax": 0.5} if e["step"] == 1
                                           else {"loss": 0.5, "active": 1.0, "gap": 0.5, "gap_absmax": 0.5})
                 else:
-                    e["twin"]["floor"] = {"loss": 0.01, "active": 0.2, "gap": -0.01, "gap_absmax": 1e-4 if e["step"] == 1 else 0.1}
+                    e["twin"]["floor"] = ({"loss": 0.0, "active": 0.0, "gap": 0.0, "gap_absmax": 1e-7} if e["step"] == 1 else
+                                          {"loss": 0.01, "active": 0.2, "gap": -0.01, "gap_absmax": 0.1})
             f.write(json.dumps(e) + "\n")
     os.replace(ev_p + ".tmp", ev_p)
     return 0

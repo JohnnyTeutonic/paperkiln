@@ -77,7 +77,8 @@ def ref_job(run):
     return {"name": f"ref_{run}", "light": True, "after": [run, "ref_start"],
             "cmd": ["bash", "-c", f"timeout {REF_TIMEOUT} python3 tools/colab_chat/a34_ref.py build --job {run} --chat {C} "
                     f"--bin {BIN} --out {{out}}"],
-            "outputs": ["floor_ref.jsonl", "receipt.json"]}
+            "outputs": ["floor_ref.jsonl", "receipt.json"] + [f"scores_{k}{x}" for k in REF_STEPS + (1024,)
+                                                                for x in (".jsonl", ".binding.json")]}
 
 
 def render():
@@ -85,7 +86,7 @@ def render():
                                      "--bin", BIN, "--device-test", DEVICE_TEST], "outputs": ["gate.json"]},
             {"name": "ref_start", "light": True, "after": ["gate"],
              "cmd": ["bash", "-c", f"timeout 1800 python3 tools/colab_chat/a34_ref.py start --chat {C} --bin {BIN} --out {{out}}"],
-             "outputs": ["start_own.jsonl", "receipt.json"]}]
+             "outputs": ["start_own.jsonl", "receipt.json", "scores_0.jsonl", "scores_0.binding.json"]}]
     scores, refs = [], []
     # training jobs in the order the single training slot should take them when several are ready
     D0r = ("D0r", spec(DEV_SEED, dev=True))
@@ -123,7 +124,7 @@ def render():
 
 def gate_spec():
     """A31's gate spec with the floor: two groups a step of the 16 gate twins, lambda = mu = 1, floor 1, references from
-    a34_gate_ref.jsonl (the start weights' own terms less 0.5 at knot 0, plus 0.5 at knots 1 and 2)."""
+    a34_gate_ref.jsonl (start: the start weights' own terms; knots: those less 0.5 at 0 and plus 0.5 at 1)."""
     s = A31.gate_spec()
     s["train"]["twin_loss"]["floor"] = 1.0
     s["data"]["twin_floor_ref"] = f"{U}/a34_gate_ref.jsonl"
