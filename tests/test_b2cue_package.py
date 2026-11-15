@@ -59,7 +59,7 @@ def test_arm_specs_depart_from_s71_only_where_registered():
     for p in FILES:
         for j in heavy(p):
             n, s = j["name"], j["spec"]
-            if n.startswith("sft_"):
+            if n.startswith(("sft_", "repro_")):
                 continue
             arm, seed = n.split("_")[0], int(n.split("_")[-1]) if n[0] != "D" else J.SWEEP_SEED
             tl = s["train"].get("twin_loss")
@@ -151,7 +151,7 @@ def test_heavy_order_puts_p_first_and_s_after_n250():
 def test_no_arm_files_train_only_p_and_p0():
     for p in FILES:
         if "noarm" in p.name:
-            assert all(j["name"].split("_")[0] in ("P", "P0", "sft") for j in heavy(p)), p.name
+            assert all(j["name"].split("_")[0] in ("P", "P0", "sft", "repro") for j in heavy(p)), p.name
             assert "barrier" not in [j["name"] for j in json.loads(p.read_text())["jobs"]]
 
 
@@ -254,6 +254,23 @@ def test_barrier_lifts_only_when_every_job_is_home(tmp_path):
 def write_events(d, rows):
     d.mkdir(parents=True, exist_ok=True)
     (d / "events.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+
+
+def test_reproduction_check(tmp_path):
+    ref = [{"event": "step", "step": s, "loss": 3.0 - s / 100} for s in range(1, 51)]
+    write_events(tmp_path / "repro_A", [dict(e, loss=e["loss"] * 1.005) for e in ref])
+    (tmp_path / "ref.jsonl").write_text("".join(json.dumps(r) + "\n" for r in ref))
+    r = early_cli("--repro", "--job", "repro_A", "--ref", str(tmp_path / "ref.jsonl"), "--steps", "50", "--out", str(tmp_path / "o"), "--chat", str(tmp_path))
+    assert r.returncode == 0 and json.loads((tmp_path / "o" / "repro.json").read_text())["pass"]
+    write_events(tmp_path / "repro_A", [dict(e, loss=e["loss"] * 1.02) for e in ref[:49]])
+    early_cli("--repro", "--job", "repro_A", "--ref", str(tmp_path / "ref.jsonl"), "--steps", "50", "--out", str(tmp_path / "o"), "--chat", str(tmp_path))
+    o = json.loads((tmp_path / "o" / "repro.json").read_text())
+    assert not o["pass"] and 50 in o["failed_steps"] and 1 in o["failed_steps"]
+    js = jobs_of("b2cue_c1b_0p3.json")
+    hv = [j["name"] for j in js if "spec" in j]
+    assert hv[-1] == "repro_A"
+    s = next(j for j in js if j["name"] == "repro_A")["spec"]
+    assert s["train"]["steps"] == 50 and s["arch"] == J.A_ARCH and s["train"]["init_from"].endswith("/base_A.safetensors")
 
 
 def test_watch_stops_on_a_non_finite_loss(tmp_path):

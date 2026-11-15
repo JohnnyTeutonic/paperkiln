@@ -173,6 +173,32 @@ def watch(a):
         time.sleep(POLL_S)
 
 
+def repro(a):
+    """Section 2's reproduction check (reported): the job's step losses at steps 1 .. --steps against the reference events' (the
+    last record of a step counts), each within 1% relative; a missing or non-finite step is recorded, never a pass."""
+    def losses(path):
+        by = {}
+        for e in A.events(path):
+            if e.get("event") == "step" and isinstance(e.get("step"), int):
+                by[e["step"]] = e.get("loss")
+        return by
+    mine, ref = losses(f"{a.chat}/{a.job}/events.jsonl"), losses(a.ref)
+    rows, bad = {}, []
+    for s in range(1, a.steps + 1):
+        x, y = mine.get(s), ref.get(s)
+        if not (A.finite(x) and A.finite(y)):
+            bad.append(s)
+            continue
+        rows[str(s)] = abs(x - y) / max(abs(y), 1e-12)
+        if rows[str(s)] > 0.01:
+            bad.append(s)
+    out = {"producer": "b2cue_early.py --repro", "job": a.job, "steps": a.steps, "tolerance": 0.01, "max_rel": max(rows.values(), default=None),
+           "failed_steps": bad, "pass": not bad, "reported_only": True}
+    write_json(f"{a.out}/repro.json", out)
+    print(f"REPRO {a.job}: {'pass' if not bad else 'FAIL'} (max relative {out['max_rel']})", flush=True)
+    return 0
+
+
 def barrier(a):
     names = [n for n in a.jobs.split(",") if n]
     t0 = time.time()
@@ -199,10 +225,13 @@ def main():
     ap.add_argument("--at", default="188,375,750")
     ap.add_argument("--steps", type=int, default=1500)
     ap.add_argument("--barrier", action="store_true")
+    ap.add_argument("--repro", action="store_true")
     ap.add_argument("--jobs", default="")
     a = ap.parse_args()
     if a.barrier:
         return barrier(a)
+    if a.repro:
+        return repro(a)
     if a.watch:
         return watch(a)
     if not (a.job and a.step and a.ref):

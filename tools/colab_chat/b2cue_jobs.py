@@ -203,6 +203,20 @@ def extra_seed_jobs(base, lam, req, init_job=None):
     return jobs, scores
 
 
+def repro_jobs():
+    """Section 2's reproduction check (reported, never deciding), in C1b, last of its training jobs: 50 steps of A's sft_b1_r1 recipe
+    from A's final base (tc_b1_r1, uploaded as base_A.safetensors) on the pod, its step losses compared with sft_b1_r1's own
+    events.jsonl (uploaded as sft_b1_r1_events.jsonl) within 1% (b2cue_early.py --repro)."""
+    s = sft1500_spec("A", "base_A.safetensors")
+    s["train"]["steps"] = 50
+    s["train"].pop("eval_at")
+    s["export"] = {"formats": ["safetensors"]}
+    return [{"name": "repro_A", "spec": s, "after": "gate", "relay_every_steps": 100000},
+            {"name": "repro_check", "light": True, "after": ["repro_A"], "after_terminal": True,
+             "cmd": ["python3", "tools/colab_chat/b2cue_early.py", "--repro", "--job", "repro_A", "--ref", f"{U}/sft_b1_r1_events.jsonl",
+                     "--steps", "50", "--out", "{out}", "--chat", C], "outputs": ["repro.json"]}]
+
+
 def barrier_job(others):
     return {"name": "barrier", "light": True, "after_terminal": True, "after": others,
             "cmd": ["python3", "tools/colab_chat/b2cue_early.py", "--barrier", "--out", "{out}", "--chat", C, "--jobs", ",".join(others)],
@@ -267,6 +281,7 @@ def render(campaign, lam=None, c2="both", no_s=False, no_arm=False):
         scores += s
         for j in ("P_1", "P_50", "M_1_0p3", "M_50_0p3", "N_1_0p3", "N_50_0p3"):   # A31's deciding models, trained on 2.1 data
             scores.append(score_job(f"score_a31_{j}", CONF, "gate", weights=f"{U}/a31_{j}.safetensors", spec_path=f"{U}/a31_spec_{j}.json"))
+        jobs += repro_jobs()
         jobs += scores
     elif campaign == "c2":
         jobs.append(gate_job(["D1"]))
