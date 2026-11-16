@@ -1004,8 +1004,12 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
         spare = {}
     if spare:
         needed = closure(spare)
+    # A32 (N2, before C1): a base's arms now wait on its SFT1500's watch. A home watch is never run again: its dependants need
+    # only its outcome (FINISHED or FAILED, as home records it), and on a fresh volume a rerun would find no log of the SFT1500,
+    # end unread and fail every arm of a healthy start
+    watches = {j["name"] for j in jobs if HOME_MARKERS and "watch.json" in j.get("outputs", [])}
     rerun = [j["name"] for j in jobs if st.job(j["name"])["home"] and "cmd" in j and j["name"] in needed
-             and j["name"] not in failed and j["name"] not in spare]
+             and j["name"] not in failed and j["name"] not in spare and j["name"] not in watches]
     finished = [j["name"] for j in jobs if st.job(j["name"])["home"] and j["name"] not in failed + rerun]
     # A32 (launch round 4): the HOME_ markers follow the runner's state on every VM, so a replacement VM on a fresh volume gets
     # them back (the barrier reads them); every home job keeps its marker, a data job run again included (its outputs are home).

@@ -198,3 +198,60 @@ def test_a_failure_saving_the_active_mark_meets_the_finaliser(tmp_path, monkeypa
     d = json.loads((state / "state.json").read_text())
     assert hit and not launched
     assert d["terminals"][-1]["reason"] == "exception: OSError" and "active" not in d   # recorded and cleared, never left dangling
+
+
+# ---------------------------------------------------------------- a replacement pod never reruns a home watch
+
+class Fresh:
+    whole_files = False
+    persistent = False   # a fresh volume: nothing of the lost pod is on it
+
+
+def replacement(tmp_path, monkeypatch, watch_status):
+    art = tmp_path / "art"
+    art.mkdir()
+    monkeypatch.setattr(rm, "ART", str(art))
+    monkeypatch.setattr(rm, "HOME", str(tmp_path))
+    monkeypatch.setattr(rm, "T", Fresh())
+    monkeypatch.setattr(rm, "HOME_MARKERS", True)
+    arm = next(j for j in J.render("c1a", 0.3)["jobs"] if j["name"] == "P_S_1")
+    js = [{"name": "gate", "cmd": ["x"], "outputs": ["gate.json"]}, {"name": "sft_S", "spec": {}, "after": "gate"},
+          {"name": "watch_sft_S", "light": True, "after": ["gate"], "after_terminal": True,
+           "cmd": ["python3", "tools/colab_chat/b2cue_early.py", "--watch", "--job", "sft_S"], "outputs": ["watch.json"]},
+          {"name": "P_S_1", "spec": {}, "after": arm["after"]}]
+    st = rm.State()
+    for n, status in (("gate", "FINISHED"), ("sft_S", "FINISHED"), ("watch_sft_S", watch_status)):
+        st.job(n).update(home=True, status=status, home_marked=True)
+        (art / n).mkdir()
+    (art / "sft_S" / "sft_S.safetensors").write_text("w")
+    st.d["booted"] = False
+    st.save()
+    sent = []
+
+    def fake_exec(code, timeout=200):
+        sent.append(code)
+        return 0, "DIRS_OK HOME_OK PENDING_OK INPUTS_OK BOOTED"
+    logged = []
+    monkeypatch.setattr(rm, "exec_py", fake_exec)
+    monkeypatch.setattr(rm, "upload_file", lambda src, dst: None)
+    monkeypatch.setattr(rm, "log", logged.append)
+    assert rm.prepare(st, "c0ffee", "jobs.json", js, [])
+    return next(c for c in sent if "HOME_OK" in c), logged
+
+
+def marked(code, status):
+    """The job names prepare() writes STATUS_<job> = status for (its two loops are `for n in [...]: ... write('STATUS\\n')`)."""
+    line = next(x for x in code.split("\n") if f"write('{status}" in x)
+    return set(eval(line[line.index("["):line.index("]") + 1]))
+
+
+def test_a_healthy_home_watch_is_marked_finished_on_a_replacement_pod_not_run_again(tmp_path, monkeypatch):
+    code, logged = replacement(tmp_path, monkeypatch, "FINISHED")
+    assert "watch_sft_S" in marked(code, "FINISHED") and "sft_S" in marked(code, "FINISHED")
+    assert "gate" not in marked(code, "FINISHED")   # the gate, a data job the arm needs, still runs again, as before
+    assert not any("rerun" in x and "watch_sft_S" in x for x in logged)
+
+
+def test_an_unhealthy_home_watch_stays_failed_so_no_arm_trains(tmp_path, monkeypatch):
+    code, _ = replacement(tmp_path, monkeypatch, "FAILED")
+    assert "watch_sft_S" in marked(code, "FAILED") and "watch_sft_S" not in marked(code, "FINISHED")
