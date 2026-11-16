@@ -93,16 +93,14 @@ def sha(p):
     return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 
 
-@pytest.fixture(scope="module")
-def ran(tmp_path_factory):
-    tmp = tmp_path_factory.mktemp("a35")
+def run_schedule(tmp, ref_scale=1.0):
     C = tmp / "chat"
     up = C / "upload"
     up.mkdir(parents=True)
     for f in ("vocab.gguf", "S71.jsonl", "sft_human.jsonl", "base_C.safetensors", "base_A.safetensors"):
         (up / f).write_text(f"stand-in {f}")
     # the stand-in trainer's step loss is 3.0 - 0.5 * step / steps: the reference events of the 50-step reproduction match it
-    (up / "sft_b1_r1_events.jsonl").write_text("".join(json.dumps({"event": "step", "step": s, "loss": 3.0 - 0.5 * s / 50}) + "\n" for s in range(1, 51)))
+    (up / "sft_b1_r1_events.jsonl").write_text("".join(json.dumps({"event": "step", "step": s, "loss": ref_scale * (3.0 - 0.5 * s / 50)}) + "\n" for s in range(1, 51)))
     (up / "a31_early_req.jsonl").write_text("".join(json.dumps({"r": i}) + "\n" for i in range(20)))
     fake = tmp / "mtstudio"
     fake.write_text(f"#!/bin/sh\nexec {sys.executable} {ROOT / 'tests' / 'fake_mtstudio_b2cue.py'} \"$@\"\n")
@@ -115,6 +113,22 @@ def ran(tmp_path_factory):
                        capture_output=True, text=True, timeout=1500)
     assert r.returncode == 0, r.stdout[-3000:] + r.stderr[-3000:]
     return {"C": C, "status": {j["name"]: (C / f"STATUS_{j['name']}").read_text().strip() for j in jobs["jobs"]}}
+
+
+@pytest.fixture(scope="module")
+def ran(tmp_path_factory):
+    return run_schedule(tmp_path_factory.mktemp("a35"))
+
+
+@pytest.fixture(scope="module")
+def ran_off(tmp_path_factory):
+    return run_schedule(tmp_path_factory.mktemp("a35_off"), ref_scale=1.05)   # the reference 5% away: the reproduction fails
+
+
+def test_schedule_failed_reproduction_is_recorded_and_the_campaign_goes_on(ran_off):
+    g = json.loads((ran_off["C"] / "gate" / "repro.json").read_text())
+    assert g["pass"] is False and len(g["failed_steps"]) == 50 and g["reported_only"] is True
+    assert set(ran_off["status"].values()) == {"FINISHED"}, ran_off["status"]     # the scorer at home reads row 3; nothing is stopped
 
 
 def test_schedule_every_job_finishes(ran):
