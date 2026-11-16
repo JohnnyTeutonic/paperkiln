@@ -54,8 +54,9 @@ runs its runner at once with the recorded deadline: that resumes or adopts the s
 slot, and a pending STOP_REQUEST is taken by that runner, whose confirmed stop is the only thing that ends a live session.
 
 Every decision of an arm that has not launched is made under one lock (LAUNCH_DIR/gate.lock), so two gates never admit or
-take a slot on the same reading. An arm about to start writes START_PENDING in its folder; for PENDING_S seconds the other
-gates count it as an L4 already taken. Each gate holds its arm's own lock (state folder, gate.lock) for its whole life and
+take a slot on the same reading. An arm about to start writes START_PENDING in its folder; the other gates count it as an L4
+already taken until its session is in Colab's listing or the arm has ended (home, or HALTED). It never lapses by age: a start
+that hangs is restarted by the watchdog and still owns its slot, and one that is truly stuck is a person's to reconcile. Each gate holds its arm's own lock (state folder, gate.lock) for its whole life and
 passes it to the runner, so an arm never has two gates or two runners.
 
 The cap also holds with the guard blind. Slot 1 can run at most WEEK_HOURS (the deadline), and N2B and S2B at most their
@@ -96,7 +97,6 @@ SEED2_PURCHASED = 500.0          # units bought while seed 2 ran (PROTOCOL 48.3,
 OVERLAP_MARGIN = 100.0
 MIN_FREE_GB = 8                  # an arm brings about 2 GB home
 POLL_S = 300
-PENDING_S = 1800                 # how long a start that is not yet listed counts as a taken L4
 OWN_COPY = "ladder_launch.json"
 GO_LINE = ("Jonathan, direct chat, 17 Nov 2026: \"If you think it's worth it, you make all the decisions. I am happy perhaps "
            "to wait a week maximum if you really want. just make your own decisions.\"")
@@ -209,15 +209,19 @@ def scan(proc="/proc"):
 
 
 def pending_others(name, arms, now, rows):
-    """How many other arms hold a fresh START_PENDING and are not yet in the listing: L4s already being taken."""
+    """How many other arms hold START_PENDING, are not in the listing and have not ended: L4s being taken. A reservation is
+    kept until the session is seen or the arm has ended (home or HALTED); neither its age nor a recorded launch frees it."""
     listed = {n for n, _ in (rows or [])}
     n = 0
     for other, x in arms.items():
-        if other == name or other in listed or S2.launched(x["state_dir"]):
-            continue      # a launched arm's session is in the listing, or has ended
-        rec = read_json(os.path.join(x["state_dir"], "START_PENDING"))
-        if rec and finite(rec.get("at")) and 0 <= now - rec["at"] < PENDING_S:
-            n += 1
+        if other == name or other in listed:
+            continue
+        d = x["state_dir"]
+        if not os.path.lexists(os.path.join(d, "START_PENDING")):
+            continue
+        if ended_home(d) or os.path.exists(os.path.join(d, "HALTED")):
+            continue
+        n += 1
     return n
 
 
@@ -430,7 +434,7 @@ def decide_guard(now, commit, bal_fn, launch_dir=None, seed2=None, rows_fn=None,
                                   "hours_since_admission": round(hours, 3),
                                   "overlap_units_counted": round(L4_UNITS_PER_HOUR * hours, 2),
                                   "stop_at": round(GUARD_STOP_AT - L4_UNITS_PER_HOUR * hours, 2)})
-    why = guard_start_problem(gs, rec, commit)
+    why = guard_start_problem(gs, rec, commit, now)
     if why:
         return "refuse", f"guard_start.json is not this admission's record ({why}): a person reads it"
     if gs["stop_at"] <= 0:
@@ -438,13 +442,15 @@ def decide_guard(now, commit, bal_fn, launch_dir=None, seed2=None, rows_fn=None,
     return "exec", guard_argv(gs["start_balance"], gs["stop_at"])
 
 
-def guard_start_problem(gs, rec, commit):
+def guard_start_problem(gs, rec, commit, now=None):
     """None when gs is the guard record of this admission with the registered bound, recomputed; else why."""
     if not isinstance(gs, dict) or not finite(gs.get("start_balance")) or not finite(gs.get("stop_at")):
         return "no start balance or bound"
     at, adm = parse_iso(gs.get("at_utc")), parse_iso(rec["at_utc"])
     if at is None or gs.get("admitted_utc") != rec["at_utc"] or gs.get("commit") != commit:
         return "not written for this admission and commit"
+    if at > (time.time() if now is None else now) + 60:
+        return "written in the future"
     if not (adm <= at <= parse_iso(rec["deadline_utc"])):
         return "written outside the ladder's week"
     if abs(gs["stop_at"] - round(GUARD_STOP_AT - L4_UNITS_PER_HOUR * (at - adm) / 3600.0, 2)) > 0.011:

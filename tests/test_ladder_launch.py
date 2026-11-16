@@ -275,8 +275,18 @@ def test_a_start_reserves_its_l4_and_the_loser_of_an_admission_race_starts_as_an
     assert decide(world, "pk-tl-N2B", free_l4=1)[0] == "wait"
     assert decide(world, "pk-tl-N2B", free_l4=2)[0] == "exec"
     assert decide(world, "pk-tl-S2B", free_l4=2)[0] == "wait"          # two pending now
-    assert decide(world, "pk-tl-S2B", free_l4=2, now=NOW + G.PENDING_S + 1)[0] == "exec"     # a reservation lapses
-    assert G.pending_others("pk-tl-S2B", world["arms"], NOW, [("pk-tl-N1B", "L4")]) == 1  # a listed session is counted by the listing
+    assert decide(world, "pk-tl-S2B", free_l4=2, now=NOW + 40 * 3600)[0] == "wait"     # a reservation never lapses by age
+    arms = world["arms"]
+    assert G.pending_others("pk-tl-S2B", arms, NOW, []) == 2
+    assert G.pending_others("pk-tl-S2B", arms, NOW, [("pk-tl-N1B", "L4")]) == 1  # a listed session is counted by the listing
+    json.dump({"launches": 1}, open(os.path.join(arms["pk-tl-N2B"]["state_dir"], "state.json"), "w"))
+    assert G.pending_others("pk-tl-S2B", arms, NOW, [("pk-tl-N1B", "L4")]) == 1  # launched and not yet listed: still held
+    home(world, "pk-tl-N2B")
+    assert G.pending_others("pk-tl-S2B", arms, NOW, [("pk-tl-N1B", "L4")]) == 0  # ended: freed
+    open(os.path.join(arms["pk-tl-N1B"]["state_dir"], "HALTED"), "w").write("{}")
+    assert G.pending_others("pk-tl-S2B", arms, NOW, []) == 0
+    os.remove(os.path.join(arms["pk-tl-N1B"]["state_dir"], "HALTED"))
+    os.remove(os.path.join(arms["pk-tl-N2B"]["state_dir"], "state.json"))
     # an arm whose admission was written by another arm does not start on that pass
     rec = json.load(open(os.path.join(world["ld"], "launch.json")))
     assert rec["first"] == "pk-tl-N1B"
@@ -324,21 +334,23 @@ def test_the_guard_starts_after_seed2_with_the_overlap_counted_against_its_bound
     assert [argv[i + 1] for i, x in enumerate(argv) if x == "--state-dir"] == [a["state_dir"] for a in G.ARMS.values()]
     # a restart reuses the record: the same start and bound, whatever the balance and the hour then
     assert guard(world, bal=100.0, now=NOW + 99 * 3600)[1] == argv
+    assert guard(world, now=NOW + 3600)[0] == "refuse"          # the record is from the future of that clock
     # seed 2 is asked before every start of the guard, a restart too
     assert guard(world, seed2=LIVE, bal=None, now=NOW + 99 * 3600)[0] == "wait"
     # the record is held to this admission and to the registered bound
     gp = os.path.join(world["gd"], "guard_start.json")
     good = json.load(open(gp))
     for bad in (dict(good, stop_at=5000.0), dict(good, commit="b" * 40), dict(good, admitted_utc=S2.iso(NOW + 1)),
-                dict(good, at_utc=S2.iso(NOW - 3600)), dict(good, start_balance=None)):
+                dict(good, at_utc=S2.iso(NOW - 3600)), dict(good, start_balance=None),
+                dict(good, at_utc=S2.iso(NOW + 100 * 3600), stop_at=round(520 - 1.94 * 100, 2))):      # the last: written in the future
         json.dump(bad, open(gp, "w"))
-        assert guard(world)[0] == "refuse", bad
+        assert guard(world, now=NOW + 99 * 3600)[0] == "refuse", bad
     json.dump(good, open(gp, "w"))
-    assert guard(world)[1] == argv
+    assert guard(world, now=NOW + 99 * 3600)[1] == argv
     assert G.guard_running(lambda: [argv]) and not G.guard_running(lambda: [S2.guard_argv(1.0)])
     late = dict(good, at_utc=S2.iso(NOW + 167 * 3600), stop_at=round(520 - 1.94 * 167, 2))
     json.dump(dict(late, at_utc=S2.iso(NOW + 168 * 3600), stop_at=round(520 - 1.94 * 168, 2)), open(gp, "w"))
-    assert guard(world)[0] == "exec"          # 194 units still to go at the deadline: a bound above zero is run
+    assert guard(world, now=NOW + 168 * 3600)[0] == "exec"          # 194 units still to go at the deadline: a bound above zero is run
     assert G.guard_start_problem({"start_balance": 5.0, "stop_at": -1.0}, json.load(open(os.path.join(world["ld"], "launch.json"))), COMMIT)
     open(gp, "w").write("{not json")
     assert guard(world)[0] == "refuse"
