@@ -6,7 +6,7 @@
   "recipe_of": "N",
   "rung": "2B",
   "seed": 50,
-  "slot": 1,
+  "slot": null,
   "shape": "D1",
   "params": 69751296,
   "positions_per_step": 16384,

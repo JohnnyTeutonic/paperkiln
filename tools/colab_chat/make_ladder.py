@@ -26,8 +26,10 @@ schedule that ends there. Each rung's late mark is the last multiple of the save
 start, as <arm>s50, so that adding it later changes nothing; no second-seed arm is launched by this registration.
 
 "slot" is the Colab L4 an arm takes in the registered order (three at once at the most): an arm starts when the arm before
-it in its slot has ended. An arm's turn on the store's release grid is its slot's (0, 20 or 40 minutes), so the arms that
-are live together never share a turn, as base 2's three arms did not.
+it in its slot has ended. Slot 1 (N1B, S1B, NT) may run beside seed 2's two arms; slots 2 and 3 (N2B, S2B) start after
+seed 2 has ended. An arm's turn on the store's release grid is its slot's, so the arms that are live together never share
+a turn, as base 2's three arms did not. This registration launches five arms: ST and every second-seed arm are defined and
+not launched.
 """
 import copy
 import json
@@ -42,24 +44,31 @@ LATE_FRACTION = 0.976
 FIRST_MARK = 10000
 STEPS = {"1B": 60000, "2B": 122000, "T": 375000}
 # The registered order: slot -> the arms that take it, one after another.
-SLOTS = {1: ["N1B", "N2B", "S2B"], 2: ["S1B", "ST"], 3: ["NT"]}
-SLOT_OFFSET_MIN = {1: 0, 2: 20, 3: 40}
+SLOTS = {1: ["N1B", "S1B", "NT"], 2: ["N2B"], 3: ["S2B"]}
+# Slot 1 may run beside seed 2's two arms, which hold the release turns 0 and 20 (N2, S2): it takes 40. Slots 2 and 3
+# start only after seed 2 has ended and take the turns it leaves.
+SLOT_OFFSET_MIN = {1: 40, 2: 0, 3: 20}
+RECIPE_OFFSET_MIN = {"N": 0, "S": 20}     # an arm this registration does not launch keeps its recipe's own turn
 SECOND = "s50"
+ALL_ARMS = ("N1B", "S1B", "N2B", "S2B", "NT", "ST")
 
 
 def _rungs():
+    slot_of = {n: s for s, names in SLOTS.items() for n in names}
     r = {}
-    for slot, names in SLOTS.items():
-        for n in names:
-            recipe, rung = n[0], n[1:]
-            for seed, suffix in ((1, ""), (M.SECOND_SEED, SECOND)):
-                r[n + suffix] = {"recipe": recipe, "rung": rung, "steps": STEPS[rung], "seed": seed, "slot": slot,
-                                 "launched_by_this_registration": seed == 1}
+    for n in ALL_ARMS:
+        recipe, rung = n[0], n[1:]
+        for seed, suffix in ((1, ""), (M.SECOND_SEED, SECOND)):
+            slot = slot_of.get(n) if seed == 1 else None
+            r[n + suffix] = {"recipe": recipe, "rung": rung, "steps": STEPS[rung], "seed": seed, "slot": slot,
+                             "offset_min": SLOT_OFFSET_MIN[slot] if slot else RECIPE_OFFSET_MIN[recipe],
+                             "launched_by_this_registration": slot is not None}
     return r
 
 
 RUNGS = _rungs()
 FIRST_SEED_ARMS = [n for n, r in RUNGS.items() if r["seed"] == 1]
+LAUNCHED_ARMS = [n for names in SLOTS.values() for n in names]
 
 
 def marks(steps):
@@ -105,7 +114,7 @@ def arm(name):
                      "tokens_per_parameter": round(steps * M.ROWS * M.T / M.PARAMS["D1"], 2),
                      "last_main_step": int(M.TAIL_FROM * steps), "first_tail_step": int(M.TAIL_FROM * steps) + 1,
                      "marks": mk, "mark_positions": {str(m): m * M.ROWS * M.T for m in mk}, "corpus": recipe}
-    out = _with_offset(out, SLOT_OFFSET_MIN[r["slot"]])
+    out = _with_offset(out, r["offset_min"])
     out["jobs"] = jobs
     return out
 

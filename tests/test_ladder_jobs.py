@@ -46,13 +46,13 @@ def _renamed(obj, name, recipe):
 def test_an_arm_differs_from_its_recipe_in_steps_marks_seed_names_and_turn_only(name):
     r = L.RUNGS[name]
     got, ref = L.arm(name), M.arm(r["recipe"])
-    assert list(got) == [k for k in list(ref) if k != "store_release_offset_min" or True] or set(got) - set(ref) <= {"store_release_offset_min"}
+    assert set(got) - set(ref) <= {"store_release_offset_min"}
     # top-level keys other than the comment, the record, the turn and the jobs are the recipe arm's
     for k in set(ref) | set(got):
         if k in ("_comment", "_base2", "jobs", "store_release_offset_min"):
             continue
         assert got[k] == ref[k], k
-    assert got.get("store_release_offset_min", 0) == L.SLOT_OFFSET_MIN[r["slot"]]
+    assert got.get("store_release_offset_min", 0) == r["offset_min"]
     g = _renamed(got, name, r["recipe"])
     gj = {j["name"]: j for j in g["jobs"]}
     rj = {j["name"]: j for j in ref["jobs"]}
@@ -86,8 +86,8 @@ def test_every_mark_has_its_rung_and_the_rung_is_base2s_at_that_step(name):
 
 def test_a_rung_at_base2s_own_steps_is_base2s_arm(monkeypatch):
     """The construction's own check: at 250,000 steps, seed 1 and slot 1, the ladder's arm is make_base2's arm N."""
-    monkeypatch.setitem(L.RUNGS, "NX", {"recipe": "N", "rung": "X", "steps": 250000, "seed": 1, "slot": 1,
-                                        "launched_by_this_registration": False})
+    monkeypatch.setitem(L.RUNGS, "NX", {"recipe": "N", "rung": "X", "steps": 250000, "seed": 1, "slot": None,
+                                        "offset_min": 0, "launched_by_this_registration": False})
     monkeypatch.setattr(L, "marks", lambda steps: list(M.MARKS["N"]))
     got = _renamed(L.arm("NX"), "NX", "N")
     ref = M.arm("N")
@@ -97,14 +97,20 @@ def test_a_rung_at_base2s_own_steps_is_base2s_arm(monkeypatch):
     assert list(got) == list(ref)
 
 
-def test_slots_keep_three_live_arms_on_different_release_turns_and_seeds_do_not_share_draws():
-    assert sorted(a for s in L.SLOTS.values() for a in s) == sorted(L.FIRST_SEED_ARMS)
-    assert sorted(L.SLOT_OFFSET_MIN.values()) == [0, 20, 40] and len(L.SLOTS) == 3
+def test_slots_release_turns_and_what_is_launched():
+    assert L.SLOTS == {1: ["N1B", "S1B", "NT"], 2: ["N2B"], 3: ["S2B"]}
+    assert L.LAUNCHED_ARMS == ["N1B", "S1B", "NT", "N2B", "S2B"]
+    # slot 1 may run beside seed 2's arms, which hold the turns 0 and 20
+    seed2 = {M.arm(a).get("store_release_offset_min", 0) for a in ("N2", "S2")}
+    assert seed2 == {0, 20} and L.SLOT_OFFSET_MIN[1] == 40 and sorted(L.SLOT_OFFSET_MIN.values()) == [0, 20, 40]
     for name, r in L.RUNGS.items():
-        assert L.arm(name).get("store_release_offset_min", 0) == L.SLOT_OFFSET_MIN[r["slot"]]
+        assert L.arm(name).get("store_release_offset_min", 0) == r["offset_min"]
+        assert r["launched_by_this_registration"] == (name in L.LAUNCHED_ARMS)
+    assert [L.RUNGS[a]["offset_min"] for a in L.LAUNCHED_ARMS] == [40, 40, 40, 0, 20]
     assert not M.block_streams(M.SECOND_SEED) & M.block_streams(1)
     assert all(L.RUNGS[a + "s50"]["seed"] == M.SECOND_SEED for a in L.FIRST_SEED_ARMS)
-    assert all(not L.RUNGS[a + "s50"]["launched_by_this_registration"] for a in L.FIRST_SEED_ARMS)
+    # three writers on the repository at the most, as base 2 budgeted: 3 x 24 + 3 x 12 commits an hour under the hub's 128
+    assert 3 * (M.COURIER_COMMIT_BUDGET + M.HOME_COMMIT_BUDGET) <= M.HUB_COMMITS_PER_HOUR
 
 
 def test_store_branches_and_jobs_are_named_for_the_arm_alone():

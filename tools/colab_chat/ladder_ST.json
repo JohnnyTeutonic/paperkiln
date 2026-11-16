@@ -6,7 +6,7 @@
   "recipe_of": "S",
   "rung": "T",
   "seed": 1,
-  "slot": 2,
+  "slot": null,
   "shape": "D1",
   "params": 69751296,
   "positions_per_step": 16384,

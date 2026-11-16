@@ -6,7 +6,7 @@
   "recipe_of": "N",
   "rung": "T",
   "seed": 50,
-  "slot": 3,
+  "slot": null,
   "shape": "D1",
   "params": 69751296,
   "positions_per_step": 16384,
@@ -32,7 +32,6 @@
  "store_stall_halt": true,
  "store_stall_min": 120,
  "store_unverified_halt_min": 90,
- "store_release_offset_min": 40,
  "store_no_progress_min": 300,
  "store_no_progress_launches": 4,
  "store_inputs": [

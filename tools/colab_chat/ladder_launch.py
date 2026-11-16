@@ -12,32 +12,49 @@ It is base 2's second-seed gate (base2_seed2_launch.py, imported for its helpers
 conditions. A gate checks every POLL_S seconds and replaces itself (exec) with the registered command when every condition
 holds; anything it cannot read counts as not holding, so an unreadable listing, balance or file makes it wait.
 
-Seed 2 comes first (PROTOCOL 48.3). Its units guard counts every unit spent on the account, so a ladder session opened while
-seed 2 runs would be charged to seed 2's cap and could stop it. No arm and no guard of the ladder starts until ALL hold:
+SEED 2 (PROTOCOL 48.3) IS NEVER TOUCHED. Its folders, watchdog entries, processes and launch record are read only.
+"Seed 2 is off" means ALL of:
   S1. each seed-2 arm's entry in scripts/colab_driver.json (found once by its state folder) reads "enabled": false;
   S2. no process carries a seed-2 arm's --name or --state-dir;
   S3. seed 2's units-guard entry (found once by its state folder) reads "enabled": false, and no process carries
       --campaign base2-seed2 (the waiting gate and the guard itself both do);
   S4. Colab's listing answers and lists no seed-2 session.
-The ladder never writes to seed 2's folders, entries or processes: these are read only. Closing seed 2 is its lead's step.
+Anything else is "seed 2 is live". Closing seed 2 and its guard is its lead's step, never the ladder's.
 
-Admission, once, by the first arm whose gate finds all of these (it writes LAUNCH_DIR/launch.json through a hard link):
+WHILE SEED 2 IS LIVE the two campaigns draw on one unit balance, and seed 2's guard counts every unit the account spends.
+Its stop comes when the balance falls to its starting balance less its bound (both read from seed 2's launch record:
+463.19 - 420 = 43.19 units). The ladder then runs under these limits:
+  O1. slot 1 only (make_ladder.SLOTS: N1B, then S1B, then NT): one L4 at a time, beside seed 2's two, so the account's
+      three-L4 limit holds; the listing must show room for one;
+  O2. at each start, the balance less seed 2's stop balance must cover both campaigns to seed 2's own deadline with
+      OVERLAP_MARGIN to spare: seed 2's two sessions and the ladder's one, at L4_UNITS_PER_HOUR each, for every hour
+      left to that deadline. Seed 2 cannot spend past its deadline, so this bounds what the pair can take while it lives;
+  O3. the ladder's units guard does NOT run (it would count seed 2's spend as the ladder's and stop the ladder on it).
+      Until seed 2 is off the ladder's units are bounded by wall time: one session, each runner's --max-hours and the
+      ladder's deadline.
+Slots 2 and 3 (N2B, S2B) and the guard start only once seed 2 is off.
+
+Admission, once, by a slot's first arm (it writes LAUNCH_DIR/launch.json through a hard link):
   A1. LAUNCH_DIR/GO.json exists and validates (the lane's launch step writes it after its own refusals: Jonathan's quoted
       line, the reviews file and its ruling, this commit);
-  A2. S1 to S4;
-  A3. no folder of the ladder has launched;
-  A4. the listing has room for three L4 sessions;
-  A5. the unit balance is at least MIN_BALANCE. Every unit is bought before admission: the guard reads the cap as the fall of
-      the balance since admission, so a purchase during the ladder would hide spending from it.
+  A2. no folder of the ladder has launched;
+  A3. the arm's own start conditions below;
+  A4. the unit balance covers the ladder's expected units (EXPECT_TOTAL) and 30, on top of SEED2_REMAINING_MAX while
+      seed 2 is live.
 The record holds the admission time, the ladder's one deadline (admission plus WEEK_HOURS), the balance, the commit and the
 bounds. Every arm's state folder is created then, so the guard's stop reaches arms that have not started.
 
-An arm that has not launched then starts when: S1 to S4; the guard is running (not asked of the admitting arm, which starts
-at admission; the guard starts within one poll of it); the arm before it in its slot (make_ladder.SLOTS) is home with its
-last release made; the listing has room for one L4; C: has at least MIN_FREE_GB free. It halts instead (HALTED, no
-session made) when: the guard has asked for a stop; the arm before it holds HALTED; or the arm's expected hours no longer
-fit before the deadline (LADDER_NO_TIME). A launched arm (state.json "launches" at least 1) runs its runner at once on every
-start with the recorded deadline; the runner's own restart rules apply.
+An arm that has not launched starts when: the arm before it in its slot is home with its last release made; the listing has
+room for one L4; C: has at least MIN_FREE_GB free; its expected hours fit before the deadline; and, for slot 1 while seed 2
+is live, O2; otherwise (seed 2 off) the ladder's guard is running. It halts instead (HALTED, no session made) when a stop
+has been asked of the ladder, the arm before it holds HALTED, or its hours no longer fit (LADDER_NO_TIME). A launched arm
+(state.json "launches" at least 1) runs its runner at once on every start with the recorded deadline.
+
+The guard is base2_units_guard.py, unchanged, as its own instance: campaign "token-ladder", its own folder and log, the
+ladder's five state folders. It starts once seed 2 is off, with the balance read at that moment as its start, and a bound
+of GUARD_STOP_AT less what one L4 can have spent since admission (L4_UNITS_PER_HOUR an hour: the ladder's overlap spend,
+counted high). Both are written once to GUARD/guard_start.json and reused on every restart. Units bought while it runs
+would hide spending from it (its "spent" is the fall of the balance): none are bought during the ladder.
 """
 from __future__ import annotations
 
@@ -55,15 +72,19 @@ import make_ladder as L  # noqa: E402
 
 LAUNCH_DIR = "/home/jonat/token_ladder_launch"
 GUARD = {"campaign": "token-ladder", "dir": "/home/jonat/token_ladder_units_guard"}
+SEED2_LAUNCH = os.path.join(S2.LAUNCH_DIR, "launch.json")
 WEEK_HOURS = 168                 # the whole ladder ends within seven days of admission
-CAP_UNITS = 760.0                # the pretraining campaign's cap, in Colab units (about USD 76)
-MIN_BALANCE = CAP_UNITS          # the balance admission needs
-GUARD_STOP_AT = 740.0            # the cap less 20 for stopping the sessions
+L4_UNITS_PER_HOUR = 1.94         # one L4 session (base 2's measured rate; seed 2's guard logs 3.88 for two)
+EXPECT_HOURS = {"1B": 18.5, "2B": 38.0, "T": 114.0}     # at about 3,300 steps an hour on an L4 (base 2's measured rate)
+EXPECT_UNITS = {"1B": 36, "2B": 74, "T": 221}
+MAX_HOURS = {"1B": 26, "2B": 50, "T": 140}              # each runner's own limit: the expectation and a fifth, rounded up
+EXPECT_TOTAL = sum(EXPECT_UNITS[L.RUNGS[a]["rung"]] for a in L.LAUNCHED_ARMS)     # 441
+CAP_UNITS = 510.0                # the pretraining campaign's cap, in Colab units (about USD 51)
+GUARD_STOP_AT = 490.0            # the cap less 20 for stopping the sessions
+SEED2_REMAINING_MAX = 400.0      # seed 2's cap of 440 less the 40 its guard had logged before the purchase of 17 Nov 2026
+OVERLAP_MARGIN = 100.0
 MIN_FREE_GB = 8                  # an arm brings about 2 GB home
 POLL_S = 300
-EXPECT_HOURS = {"1B": 18.5, "2B": 38.0, "T": 114.0}     # at about 3,300 steps an hour on an L4 (base 2's measured rate)
-EXPECT_UNITS = {"1B": 36, "2B": 74, "T": 221}           # at 1.94 units an hour
-MAX_HOURS = {"1B": 26, "2B": 50, "T": 140}              # each runner's own limit: the expectation and a fifth, rounded up
 OWN_COPY = "ladder_launch.json"
 GO_LINE = ("Jonathan, direct chat, 17 Nov 2026: \"If you think it's worth it, you make all the decisions. I am happy perhaps "
            "to wait a week maximum if you really want. just make your own decisions.\"")
@@ -71,11 +92,11 @@ GO_LINE = ("Jonathan, direct chat, 17 Nov 2026: \"If you think it's worth it, yo
 
 def _arms():
     out = {}
-    for arm in L.FIRST_SEED_ARMS:
+    for arm in L.LAUNCHED_ARMS:
         r = L.RUNGS[arm]
         slot = L.SLOTS[r["slot"]]
         i = slot.index(arm)
-        out[f"pk-tl-{arm}"] = {"arm": arm, "rung": r["rung"], "state_dir": f"/home/jonat/ladder_{arm}_runner",
+        out[f"pk-tl-{arm}"] = {"arm": arm, "rung": r["rung"], "slot": r["slot"], "state_dir": f"/home/jonat/ladder_{arm}_runner",
                                "art": f"/mnt/c/ml_artifacts/base2/arm_{arm}", "campaign": f"ladder-{arm}",
                                "before": f"pk-tl-{slot[i - 1]}" if i else None}
     return out
@@ -96,9 +117,9 @@ def runner_argv(name, commit, deadline_utc):
             "--store-first-start", "--store-release-storage"]
 
 
-def guard_argv(start_balance):
+def guard_argv(start_balance, stop_at):
     return [sys.executable, "-u", "tools/colab_chat/base2_units_guard.py", "--campaign", GUARD["campaign"],
-            "--stop-at", f"{GUARD_STOP_AT:g}", "--start-balance", repr(float(start_balance)), "--every-min", "30",
+            "--stop-at", f"{stop_at:g}", "--start-balance", repr(float(start_balance)), "--every-min", "30",
             "--log", os.path.join(GUARD["dir"], "guard.jsonl"),
             *[x for a in ARMS.values() for x in ("--state-dir", a["state_dir"])]]
 
@@ -125,10 +146,9 @@ def record_problem(rec, commit=None):
         return "admission time or deadline missing or not in the form YYYY-MM-DDTHH:MM:SSZ"
     if dl != at + WEEK_HOURS * 3600:
         return "the deadline is not the admission time plus WEEK_HOURS"
-    b = rec.get("start_balance")
-    if not finite(b) or b < MIN_BALANCE:
-        return "no finite start balance at least MIN_BALANCE"
-    if rec.get("min_balance") != MIN_BALANCE or rec.get("guard_stop_at") != GUARD_STOP_AT or rec.get("week_hours") != WEEK_HOURS:
+    if not finite(rec.get("start_balance")):
+        return "no finite start balance"
+    if rec.get("cap_units") != CAP_UNITS or rec.get("guard_stop_at") != GUARD_STOP_AT or rec.get("week_hours") != WEEK_HOURS:
         return "the bounds recorded are not the registered ones"
     c = rec.get("commit")
     if not (isinstance(c, str) and len(c) == 40):
@@ -146,11 +166,11 @@ def load_record(path, commit=None):
     return ("invalid", why) if why else ("valid", rec)
 
 
-def write_launch(rec, launch_dir):
-    """launch.json, once: a hard link of a finished temporary file, so a second writer meets the first's file."""
-    os.makedirs(launch_dir, exist_ok=True)
-    path = os.path.join(launch_dir, "launch.json")
-    tmp = os.path.join(launch_dir, f".launch.{os.getpid()}.{time.monotonic_ns()}.tmp")
+def write_once(path, rec):
+    """`rec` at `path` unless a file is already there: a hard link of a finished temporary file, so a second writer meets
+    the first's file. Returns what is then in place (parsed, or None)."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = f"{path}.{os.getpid()}.{time.monotonic_ns()}.tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(rec, f, indent=1)
         f.flush()
@@ -161,7 +181,7 @@ def write_launch(rec, launch_dir):
         pass
     finally:
         os.remove(tmp)
-    return load_record(path, rec.get("commit"))
+    return read_json(path)
 
 
 # ---------------------------------------------------------------- the checks (each: None when it holds, else why)
@@ -171,7 +191,7 @@ def _has_pair(argv, flag, value):
 
 
 def seed2_off(path=None, cmdlines=None, rows=None, seed2_arms=None, seed2_guard=None):
-    """S1 to S4. `rows` is one answered Colab listing ([(name, hardware)]) or None."""
+    """S1 to S4: None when seed 2 is off, else why it counts as live. `rows` is one answered Colab listing or None."""
     path = S2.DRIVER_JSON if path is None else path
     arms = S2.ARMS if seed2_arms is None else seed2_arms
     guard = S2.GUARD if seed2_guard is None else seed2_guard
@@ -197,6 +217,24 @@ def seed2_off(path=None, cmdlines=None, rows=None, seed2_arms=None, seed2_guard=
     held = sorted(n for n, _ in rows if n in arms)
     if held:
         return f"Colab lists seed 2's sessions {held}"
+    return None
+
+
+def overlap_problem(balance, now, seed2_launch=None):
+    """O2, asked while seed 2 is live: None when the balance, less the balance at which seed 2's guard stops seed 2, covers
+    seed 2's two sessions and the ladder's one for every hour left to seed 2's deadline, with OVERLAP_MARGIN to spare."""
+    rec = read_json(SEED2_LAUNCH if seed2_launch is None else seed2_launch)
+    start, stop_at, dl = (rec or {}).get("start_balance"), (rec or {}).get("guard_stop_at"), parse_iso((rec or {}).get("deadline_utc"))
+    if not finite(start) or not finite(stop_at) or dl is None:
+        return "seed 2's launch record could not be read: its guard's stop balance is unknown"
+    if not finite(balance):
+        return "the unit balance could not be read"
+    hours = max(0.0, (dl - now) / 3600.0)
+    room = balance - (start - stop_at)
+    need = 3 * L4_UNITS_PER_HOUR * hours + OVERLAP_MARGIN
+    if room < need:
+        return (f"the balance {balance:.1f} is {room:.1f} above seed 2's stop balance {start - stop_at:.1f}; both campaigns to "
+                f"seed 2's deadline ({hours:.1f} h, three L4s) and the margin need {need:.1f}")
     return None
 
 
@@ -236,7 +274,7 @@ def stop_marked(state_dir):
 # ---------------------------------------------------------------- the decisions
 
 def decide_arm(name, commit, now, slots, rows_fn, bal_fn, launch_dir=None, seed2=None, guard_up=None, stop_asked=None,
-               free=None, arms=None, clock=time.time):
+               free=None, arms=None, overlap=None, clock=time.time):
     """(kind, what): ("exec", argv) | ("wait", why) | ("halt", (kind, why)) | ("refuse", why)."""
     launch_dir = LAUNCH_DIR if launch_dir is None else launch_dir
     arms = ARMS if arms is None else arms
@@ -258,59 +296,60 @@ def decide_arm(name, commit, now, slots, rows_fn, bal_fn, launch_dir=None, seed2
     state, rec = load_record(path, commit)
     if state == "invalid":
         return "refuse", f"launch.json does not validate ({rec}); it is never replaced: a person reads it"
-    rows = rows_fn()
-    why = (seed2 or seed2_off)(rows=rows)
-    if why:
-        return "wait", why
-    f = (free or free_gb)()
-    if f is None or f < MIN_FREE_GB:
-        return "wait", f"C: has {f if f is None else round(f, 1)} GB free, under {MIN_FREE_GB}"
     before = a["before"]
     if before is not None:
         if os.path.exists(os.path.join(arms[before]["state_dir"], "HALTED")):
             return "halt", ("LADDER_BEFORE_HALTED", f"{before}, the arm before this one in its slot, holds HALTED: a person reads it")
         if not ended_home(arms[before]["state_dir"]):
             return "wait", f"{before}, the arm before this one in its slot, is not home with its last release made"
-    if state == "absent":
-        if before is not None:
-            return "wait", "the ladder has not been admitted (a slot's first arm admits it)"
-        if any(S2.launched(x["state_dir"]) for x in arms.values()):
-            return "refuse", "a folder of the ladder has launched with no launch.json: a person reads it"
-        why = S2.room(slots, rows, len(L.SLOTS))
+    if state == "absent" and before is not None:
+        return "wait", "the ladder has not been admitted (a slot's first arm admits it)"
+    if state == "valid" and now + EXPECT_HOURS[a["rung"]] * 3600 > parse_iso(rec["deadline_utc"]):
+        return "halt", ("LADDER_NO_TIME", f"{EXPECT_HOURS[a['rung']]} expected hours no longer fit before {rec['deadline_utc']}")
+    f = (free or free_gb)()
+    if f is None or f < MIN_FREE_GB:
+        return "wait", f"C: has {f if f is None else round(f, 1)} GB free, under {MIN_FREE_GB}"
+    rows = rows_fn()
+    live = (seed2 or seed2_off)(rows=rows)
+    b = None
+    if live:
+        if a["slot"] != 1:
+            return "wait", f"seed 2 is live ({live}): only slot 1 runs beside it"
+        b = bal_fn()
+        why = (overlap or overlap_problem)(b, now)
         if why:
             return "wait", why
-        b = bal_fn()
-        if b is None:
-            return "wait", "the unit balance could not be read"
-        if b < MIN_BALANCE:
-            return "wait", f"the unit balance {b:.2f} is under {MIN_BALANCE:g}: every unit is bought before admission"
-        at = int(clock())
-        state, rec = write_launch({"at_utc": iso(at), "deadline_utc": iso(at + WEEK_HOURS * 3600), "start_balance": b,
-                                   "first": name, "commit": commit, "min_balance": MIN_BALANCE,
-                                   "guard_stop_at": GUARD_STOP_AT, "week_hours": WEEK_HOURS,
-                                   "checks": "GO.json; seed 2's entries disabled, its processes gone, no seed-2 session "
-                                             "listed; L4 room for three; balance at least the cap"}, launch_dir)
-        if state != "valid":
-            return "refuse", f"launch.json does not validate after the admission ({rec})"
-        for x in arms.values():
-            os.makedirs(x["state_dir"], exist_ok=True)
-        S2.write_file(own, rec)
-        return "exec", runner_argv(name, commit, rec["deadline_utc"])
-    deadline = parse_iso(rec["deadline_utc"])
-    if now + EXPECT_HOURS[a["rung"]] * 3600 > deadline:
-        return "halt", ("LADDER_NO_TIME", f"{EXPECT_HOURS[a['rung']]} expected hours no longer fit before {rec['deadline_utc']}")
-    if not (guard_up or guard_running)():
-        return "wait", "the ladder's units guard is not running"
+    elif state == "valid" and not (guard_up or guard_running)():
+        return "wait", "seed 2 is off and the ladder's units guard is not running yet"
     why = S2.room(slots, rows, 1)
     if why:
         return "wait", why
+    if state == "absent":
+        if any(S2.launched(x["state_dir"]) for x in arms.values()):
+            return "refuse", "a folder of the ladder has launched with no launch.json: a person reads it"
+        b = bal_fn() if b is None else b
+        if not finite(b):
+            return "wait", "the unit balance could not be read"
+        need = EXPECT_TOTAL + 30 + (SEED2_REMAINING_MAX if live else 0)
+        if b < need:
+            return "wait", f"the unit balance {b:.2f} is under {need:g} (the ladder's expected units and 30" + (", and seed 2's remaining cap)" if live else ")")
+        at = int(clock())
+        got = write_once(path, {"at_utc": iso(at), "deadline_utc": iso(at + WEEK_HOURS * 3600), "start_balance": b,
+                                "first": name, "commit": commit, "cap_units": CAP_UNITS, "guard_stop_at": GUARD_STOP_AT,
+                                "week_hours": WEEK_HOURS, "seed2_live_at_admission": bool(live)})
+        state, rec = load_record(path, commit)
+        if state != "valid" or got is None:
+            return "refuse", f"launch.json does not validate after the admission ({rec})"
+        for x in arms.values():
+            os.makedirs(x["state_dir"], exist_ok=True)
     os.makedirs(a["state_dir"], exist_ok=True)
     S2.write_file(own, rec)
     return "exec", runner_argv(name, commit, rec["deadline_utc"])
 
 
-def decide_guard(now, commit, launch_dir=None, seed2=None, rows_fn=None):
+def decide_guard(now, commit, bal_fn, launch_dir=None, seed2=None, rows_fn=None, guard_dir=None, clock=time.time):
     launch_dir = LAUNCH_DIR if launch_dir is None else launch_dir
+    guard_dir = GUARD["dir"] if guard_dir is None else guard_dir
     why = go_problem(read_json(os.path.join(launch_dir, "GO.json")), commit)
     if why:
         return "refuse", why
@@ -319,10 +358,27 @@ def decide_guard(now, commit, launch_dir=None, seed2=None, rows_fn=None):
         return "refuse", f"launch.json does not validate ({rec}); it is never replaced: a person reads it"
     if state == "absent":
         return "wait", "the ladder has not been admitted"
-    why = (seed2 or seed2_off)(rows=rows_fn() if rows_fn else None)
-    if why:
-        return "wait", why
-    return "exec", guard_argv(rec["start_balance"])
+    gs_path = os.path.join(guard_dir, "guard_start.json")
+    gs = read_json(gs_path)
+    if gs is None and os.path.lexists(gs_path):
+        return "refuse", "guard_start.json is unreadable; it is never replaced: a person reads it"
+    if gs is None:
+        why = (seed2 or seed2_off)(rows=rows_fn() if rows_fn else None)
+        if why:
+            return "wait", f"seed 2 is live ({why}): the ladder's guard would count its units"
+        b = bal_fn()
+        if not finite(b):
+            return "wait", "the unit balance could not be read"
+        at = int(clock())
+        hours = max(0.0, (at - parse_iso(rec["at_utc"])) / 3600.0)
+        gs = write_once(gs_path, {"at_utc": iso(at), "start_balance": b, "hours_since_admission": round(hours, 3),
+                                  "overlap_units_counted": round(L4_UNITS_PER_HOUR * hours, 2),
+                                  "stop_at": round(GUARD_STOP_AT - L4_UNITS_PER_HOUR * hours, 2)})
+    if not isinstance(gs, dict) or not finite(gs.get("start_balance")) or not finite(gs.get("stop_at")):
+        return "refuse", "guard_start.json does not hold a start balance and a bound: a person reads it"
+    if gs["stop_at"] <= 0:
+        return "halt", ("LADDER_UNITS_STOP", "the ladder's cap was already counted as spent when its guard could start")
+    return "exec", guard_argv(gs["start_balance"], gs["stop_at"])
 
 
 def main(argv=None):
@@ -353,16 +409,19 @@ def main(argv=None):
         now = time.time()
         if a.status:
             rows = rows_fn()
-            print(json.dumps({"now_utc": iso(now), "seed2": seed2_off(rows=rows) or "off: entries disabled, no process, no session",
-                              "room_for_three": S2.room(slots, rows, 3) or "yes", "balance": S2.balance(),
-                              "min_balance": MIN_BALANCE, "free_gb": free_gb(), "guard_running": guard_running(),
-                              "guard_stop_asked": guard_stop_asked(),
+            b = S2.balance()
+            live = seed2_off(rows=rows)
+            print(json.dumps({"now_utc": iso(now), "seed2": live or "off: entries disabled, no process, no session",
+                              "overlap_rule": (overlap_problem(b, now) or "holds") if live else "not asked: seed 2 is off",
+                              "room_for_one_l4": S2.room(slots, rows, 1) or "yes", "balance": b,
+                              "admission_needs": EXPECT_TOTAL + 30 + (SEED2_REMAINING_MAX if live else 0),
+                              "free_gb": free_gb(), "guard_running": guard_running(), "guard_stop_asked": guard_stop_asked(),
                               "launch": load_record(os.path.join(LAUNCH_DIR, "launch.json")),
                               "launched": sorted(n for n, x in ARMS.items() if S2.launched(x["state_dir"])),
                               "home": sorted(n for n, x in ARMS.items() if ended_home(x["state_dir"]))}, indent=1))
             return 0
         if a.guard:
-            kind, what = decide_guard(now, a.commit, rows_fn=rows_fn)
+            kind, what = decide_guard(now, a.commit, S2.balance, rows_fn=rows_fn)
             folder = GUARD["dir"]
         else:
             kind, what = decide_arm(a.name, a.commit, now, slots, rows_fn, S2.balance)

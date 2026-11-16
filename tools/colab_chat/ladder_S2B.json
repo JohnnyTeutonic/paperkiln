@@ -6,7 +6,7 @@
   "recipe_of": "S",
   "rung": "2B",
   "seed": 1,
-  "slot": 1,
+  "slot": 3,
   "shape": "D1",
   "params": 69751296,
   "positions_per_step": 16384,
@@ -32,6 +32,7 @@
  "store_stall_halt": true,
  "store_stall_min": 120,
  "store_unverified_halt_min": 90,
+ "store_release_offset_min": 20,
  "store_no_progress_min": 300,
  "store_no_progress_launches": 4,
  "store_inputs": [
