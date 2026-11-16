@@ -1,0 +1,496 @@
+{
+ "_comment": "Token ladder, chat campaign on base N250 (lane base2/token_ladder/REGISTRATION.md), rendered by tools/colab_chat/ladder_chat_jobs.py; edit that file, not this one.",
+ "max_parallel": 1,
+ "max_parallel_light": 2,
+ "home_markers": true,
+ "jobs": [
+  {
+   "name": "repro_A",
+   "spec": {
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/sft_human.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 50,
+     "lr": 0.0003,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 500,
+     "eval_batch": 8,
+     "checkpoint_every": 25,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 100,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "init_from": "/content/chat/upload/base_A.safetensors"
+    },
+    "export": {
+     "formats": [
+      "safetensors"
+     ]
+    },
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 768,
+      "layers": 8,
+      "heads": 12,
+      "d_ff": 2240
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    }
+   },
+   "relay_every_steps": 100000
+  },
+  {
+   "name": "gate",
+   "light": true,
+   "after": [
+    "repro_A"
+   ],
+   "after_terminal": true,
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--repro",
+    "--job",
+    "repro_A",
+    "--ref",
+    "/content/chat/upload/sft_b1_r1_events.jsonl",
+    "--steps",
+    "50",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat"
+   ],
+   "outputs": [
+    "repro.json"
+   ]
+  },
+  {
+   "name": "sft_tlN250",
+   "spec": {
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/sft_human.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1500,
+     "lr": 0.0003,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 500,
+     "eval_batch": 8,
+     "checkpoint_every": 25,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 100,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_at": [
+      188,
+      375,
+      750
+     ],
+     "init_from": "/content/chat/upload/base_tlN250.safetensors"
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    },
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    }
+   },
+   "after": "gate",
+   "relay_every_steps": 100000,
+   "env": {
+    "MICROTORCH_CHECKPOINT_TXN": "1"
+   }
+  },
+  {
+   "name": "watch_sft_tlN250",
+   "light": true,
+   "after": [
+    "gate"
+   ],
+   "after_terminal": true,
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--watch",
+    "--job",
+    "sft_tlN250",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--at",
+    "188,375,750",
+    "--steps",
+    "1500"
+   ],
+   "outputs": [
+    "watch.json"
+   ]
+  },
+  {
+   "name": "TL_N250_1",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S71.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/sft_tlN250/sft_tlN250.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate",
+    "sft_tlN250"
+   ],
+   "relay_every_steps": 100000,
+   "snapshot_steps": [
+    128,
+    256,
+    512
+   ],
+   "init_job": "sft_tlN250"
+  },
+  {
+   "name": "early_TL_N250_1_128",
+   "light": true,
+   "rung_of": {
+    "job": "TL_N250_1",
+    "step": 128
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "TL_N250_1",
+    "--step",
+    "128",
+    "--ref",
+    "TL_N250_1",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_TL_N250_1_256",
+   "light": true,
+   "rung_of": {
+    "job": "TL_N250_1",
+    "step": 256
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "TL_N250_1",
+    "--step",
+    "256",
+    "--ref",
+    "TL_N250_1",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_TL_N250_1_512",
+   "light": true,
+   "rung_of": {
+    "job": "TL_N250_1",
+    "step": 512
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "TL_N250_1",
+    "--step",
+    "512",
+    "--ref",
+    "TL_N250_1",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "TL_N250_2",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S71.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 2,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/sft_tlN250/sft_tlN250.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate",
+    "sft_tlN250"
+   ],
+   "relay_every_steps": 100000,
+   "snapshot_steps": [
+    128,
+    256,
+    512
+   ],
+   "init_job": "sft_tlN250"
+  },
+  {
+   "name": "early_TL_N250_2_128",
+   "light": true,
+   "rung_of": {
+    "job": "TL_N250_2",
+    "step": 128
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "TL_N250_2",
+    "--step",
+    "128",
+    "--ref",
+    "TL_N250_2",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_TL_N250_2_256",
+   "light": true,
+   "rung_of": {
+    "job": "TL_N250_2",
+    "step": 256
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "TL_N250_2",
+    "--step",
+    "256",
+    "--ref",
+    "TL_N250_2",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "early_TL_N250_2_512",
+   "light": true,
+   "rung_of": {
+    "job": "TL_N250_2",
+    "step": 512
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_early.py",
+    "--job",
+    "TL_N250_2",
+    "--step",
+    "512",
+    "--ref",
+    "TL_N250_2",
+    "--out",
+    "{out}",
+    "--chat",
+    "/content/chat",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--no-score"
+   ],
+   "outputs": [
+    "early.json"
+   ]
+  },
+  {
+   "name": "score_TL_N250_1",
+   "light": true,
+   "after": "TL_N250_1",
+   "cmd": [
+    "bash",
+    "-c",
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/TL_N250_1 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/TL_N250_1/TL_N250_1.safetensors --gguf /content/chat/TL_N250_1/TL_N250_1.gguf --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/TL_N250_1/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json",
+    "attempts.txt"
+   ]
+  },
+  {
+   "name": "score_TL_N250_2",
+   "light": true,
+   "after": "TL_N250_2",
+   "cmd": [
+    "bash",
+    "-c",
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/TL_N250_2 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/TL_N250_2/TL_N250_2.safetensors --gguf /content/chat/TL_N250_2/TL_N250_2.gguf --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/TL_N250_2/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json",
+    "attempts.txt"
+   ]
+  }
+ ]
+}
