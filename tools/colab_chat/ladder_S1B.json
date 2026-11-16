@@ -1,0 +1,320 @@
+{
+ "_comment": "Token ladder, arm S1B: base 2's arm S at 60,000 steps and seed 1; nothing else is changed. Not admitted: the launch gate is two reviews and Jonathan's dated line.",
+ "_base2": {
+  "arm": "S1B",
+  "ladder": true,
+  "recipe_of": "S",
+  "rung": "1B",
+  "seed": 1,
+  "slot": 2,
+  "shape": "D1",
+  "params": 69751296,
+  "positions_per_step": 16384,
+  "steps": 60000,
+  "positions": 983040000,
+  "tokens_per_parameter": 14.09,
+  "last_main_step": 51000,
+  "first_tail_step": 51001,
+  "marks": [
+   10000,
+   58500,
+   60000
+  ],
+  "mark_positions": {
+   "10000": 163840000,
+   "58500": 958464000,
+   "60000": 983040000
+  },
+  "corpus": "S"
+ },
+ "store_push_cap_gb": 200,
+ "store_release_every_min": 60,
+ "store_stall_halt": true,
+ "store_stall_min": 120,
+ "store_unverified_halt_min": 90,
+ "store_release_offset_min": 20,
+ "store_no_progress_min": 300,
+ "store_no_progress_launches": 4,
+ "store_inputs": [
+  {
+   "branch": "main",
+   "prefix": "seed/vocab",
+   "to": "chat/upload"
+  },
+  {
+   "branch": "main",
+   "prefix": "corpus/S",
+   "to": "chat/data",
+   "files": [
+    "S.main.ids",
+    "S.tail.ids"
+   ]
+  },
+  {
+   "branch": "main",
+   "prefix": "corpus/panels",
+   "to": "chat/data"
+  },
+  {
+   "branch": "main",
+   "prefix": "corpus/panel_scenario",
+   "to": "chat/data",
+   "files": [
+    "panel_scenario.ids"
+   ]
+  }
+ ],
+ "max_parallel": 1,
+ "max_parallel_light": 1,
+ "jobs": [
+  {
+   "name": "pins",
+   "light": true,
+   "halt_on_failure": true,
+   "cmd": [
+    "python3",
+    "tools/colab_chat/base2_pins.py",
+    "/content/chat/data",
+    "arm-S",
+    "--upload",
+    "/content/chat/upload",
+    "--out",
+    "{out}/pins.json"
+   ],
+   "outputs": [
+    "pins.json"
+   ]
+  },
+  {
+   "name": "pt_base2_S1B",
+   "model_name": "base2_S1B",
+   "store_branch": "ckpt-S1B",
+   "after": [
+    "pins"
+   ],
+   "snapshot_steps": [
+    10000,
+    58500,
+    60000
+   ],
+   "halt_on_failure": true,
+   "env": {
+    "MICROTORCH_CHECKPOINT_TXN": "1"
+   },
+   "spec": {
+    "name": "base2_S1B",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/S.main.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "max_tokens": 0,
+     "anneal": {
+      "corpus": "/content/chat/data/S.tail.ids",
+      "from_fraction": 0.85
+     }
+    },
+    "train": {
+     "steps": 60000,
+     "lr": 0.0005,
+     "batch": 8,
+     "accum": 2,
+     "clip": 1.0,
+     "eval_every": 1000,
+     "eval_windows": 32,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "precision": "bf16",
+     "attention_kernel": "flash",
+     "lr_schedule": {
+      "warmup_steps": 4000,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    },
+    "out_dir": "/content/chat/pt_base2_S1B"
+   }
+  },
+  {
+   "name": "rung_S1B_s10000",
+   "after": "pins",
+   "light": true,
+   "env": {
+    "MICROTORCH_POOL_MB": 1024
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "tools/colab_chat/base2_rung_D1.json",
+    "--export-gguf",
+    "--weights",
+    "/content/chat/pt_base2_S1B/rung_10000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_base2_S1B",
+    "--step",
+    "10000",
+    "--job",
+    "pt_base2_S1B",
+    "--cell",
+    "BASE2_S1B",
+    "--seed",
+    "1",
+    "--share",
+    "28",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--panel",
+    "scenario=/content/chat/data/panel_scenario.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl",
+    "--score-batch-tokens",
+    "4096",
+    "--score-chunk",
+    "4096"
+   ],
+   "outputs": [
+    "rung.json"
+   ],
+   "rung_of": {
+    "job": "pt_base2_S1B",
+    "step": 10000
+   },
+   "exclusive": true,
+   "timeout_s": 3600
+  },
+  {
+   "name": "rung_S1B_s58500",
+   "after": "pins",
+   "light": true,
+   "env": {
+    "MICROTORCH_POOL_MB": 1024
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "tools/colab_chat/base2_rung_D1.json",
+    "--export-gguf",
+    "--weights",
+    "/content/chat/pt_base2_S1B/rung_58500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_base2_S1B",
+    "--step",
+    "58500",
+    "--job",
+    "pt_base2_S1B",
+    "--cell",
+    "BASE2_S1B",
+    "--seed",
+    "1",
+    "--share",
+    "28",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--panel",
+    "scenario=/content/chat/data/panel_scenario.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl",
+    "--score-batch-tokens",
+    "4096",
+    "--score-chunk",
+    "4096"
+   ],
+   "outputs": [
+    "rung.json"
+   ],
+   "rung_of": {
+    "job": "pt_base2_S1B",
+    "step": 58500
+   },
+   "exclusive": true,
+   "timeout_s": 3600
+  },
+  {
+   "name": "rung_S1B_s60000",
+   "after": [
+    "pt_base2_S1B"
+   ],
+   "light": true,
+   "env": {
+    "MICROTORCH_POOL_MB": 1024
+   },
+   "cmd": [
+    "timeout",
+    "-k",
+    "60",
+    "3600",
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "tools/colab_chat/base2_rung_D1.json",
+    "--export-gguf",
+    "--weights",
+    "/content/chat/pt_base2_S1B/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_base2_S1B",
+    "--step",
+    "60000",
+    "--job",
+    "pt_base2_S1B",
+    "--cell",
+    "BASE2_S1B",
+    "--seed",
+    "1",
+    "--share",
+    "28",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--panel",
+    "scenario=/content/chat/data/panel_scenario.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl",
+    "--score-batch-tokens",
+    "4096",
+    "--score-chunk",
+    "4096"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  }
+ ]
+}
