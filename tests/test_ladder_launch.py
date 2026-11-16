@@ -40,10 +40,10 @@ def world(tmp_path):
     return {"arms": arms, "ld": str(ld), "tmp": tmp_path, "gd": str(tmp_path / "guard")}
 
 
-def decide(world, name, seed2=None, free_l4=1, bal=900.0, guard_up=True, stop=False, free=20.0, now=NOW, overlap=None):
+def decide(world, name, seed2=None, free_l4=3, bal=900.0, guard_up=True, stop=False, free=20.0, now=NOW, overlap=None, left=380.0):
     return G.decide_arm(name, COMMIT, now, Slots(free_l4), lambda: [], lambda: bal, launch_dir=world["ld"],
                         seed2=lambda rows=None: seed2, guard_up=lambda: guard_up, stop_asked=lambda: stop,
-                        free=lambda: free, arms=world["arms"], overlap=lambda b, t: overlap, clock=lambda: now)
+                        free=lambda: free, arms=world["arms"], overlap=lambda b, t: overlap, cap_left=lambda b: left, clock=lambda: now)
 
 
 def guard(world, seed2=None, bal=500.0, now=NOW):
@@ -121,8 +121,15 @@ def test_the_overlap_rule_covers_both_campaigns_to_seed2s_deadline_with_the_marg
     assert "unknown" in G.overlap_problem(921.16, NOW, str(tmp_path / "none.json"))
     (tmp_path / "bad.json").write_text(json.dumps({"start_balance": 463.19}))
     assert "unknown" in G.overlap_problem(921.16, NOW, str(tmp_path / "bad.json"))
-    # what the pair can take while seed 2 lives leaves the margin above seed 2's stop
-    assert 921.16 - 43.19 - (G.SEED2_REMAINING_MAX + 1.94 * 109) > G.OVERLAP_MARGIN
+    # what the pair can take while seed 2 lives (seed 2's two L4s and the ladder's one, to its deadline) leaves the margin
+    assert 921.16 - 43.19 - 3 * 1.94 * 109 > G.OVERLAP_MARGIN
+    # what is left of seed 2's cap: 440 less what the account spent since its admission, the purchase counted
+    p2 = tmp_path / "s2.json"
+    p2.write_text(json.dumps({"start_balance": 463.19, "min_balance": 440.0}))
+    assert abs(G.seed2_cap_left(921.16, str(p2)) - (440 - 42.03)) < 1e-6
+    assert G.seed2_cap_left(400.0, str(p2)) == 0.0 and G.seed2_cap_left(None, str(p2)) is None
+    assert G.seed2_cap_left(921.16, str(tmp_path / "none.json")) is None
+    assert 921.16 - G.seed2_cap_left(921.16, str(p2)) >= G.EXPECT_TOTAL + 30          # the day's balance admits the ladder
 
 
 def test_while_seed2_is_live_only_slot_1_runs_and_only_under_the_overlap_rule(world):
@@ -131,7 +138,8 @@ def test_while_seed2_is_live_only_slot_1_runs_and_only_under_the_overlap_rule(wo
         assert kind == "wait" and "only slot 1" in why
     assert decide(world, "pk-tl-N1B", seed2=LIVE, overlap="the balance is short")[0] == "wait"
     assert decide(world, "pk-tl-N1B", seed2=LIVE, free_l4=0)[0] == "wait"          # seed 2 holds two of the three L4s
-    assert decide(world, "pk-tl-N1B", seed2=LIVE, bal=G.EXPECT_TOTAL + 30 + G.SEED2_REMAINING_MAX - 1)[0] == "wait"
+    assert decide(world, "pk-tl-N1B", seed2=LIVE, bal=G.EXPECT_TOTAL + 30 + 380.0 - 1)[0] == "wait"
+    assert decide(world, "pk-tl-N1B", seed2=LIVE, left=None)[0] == "wait"
     assert not os.path.exists(os.path.join(world["ld"], "launch.json"))
     kind, argv = decide(world, "pk-tl-N1B", seed2=LIVE, guard_up=False)            # no ladder guard while seed 2 is live
     assert kind == "exec"
@@ -178,7 +186,7 @@ def test_admission_with_seed2_off(world):
     kind, argv = decide(world, "pk-tl-N1B", bal=G.EXPECT_TOTAL + 30, guard_up=False)   # the admitting arm cannot wait for a guard
     assert kind == "exec"
     rec = json.load(open(os.path.join(world["ld"], "launch.json")))
-    assert rec["deadline_utc"] == S2.iso(NOW + 168 * 3600) and rec["commit"] == COMMIT and rec["cap_units"] == 510.0
+    assert rec["deadline_utc"] == S2.iso(NOW + 168 * 3600) and rec["commit"] == COMMIT and rec["cap_units"] == 540.0
     assert all(os.path.isdir(a["state_dir"]) for a in world["arms"].values())     # the guard's stop can reach every arm
     assert argv[argv.index("--deadline-utc") + 1] == rec["deadline_utc"]
     assert argv[argv.index("--max-hours") + 1] == "26" and argv[argv.index("--gpu") + 1] == "L4"
@@ -228,7 +236,7 @@ def test_an_arm_that_no_longer_fits_before_the_deadline_halts(world):
     assert (k, kind) == ("halt", "LADDER_NO_TIME")
     # the registered order fits the week at the expected rates: slot 1 ends at 151 hours
     assert sum(G.EXPECT_HOURS[L.RUNGS[a]["rung"]] for a in L.SLOTS[1]) == 151.0
-    assert G.EXPECT_TOTAL == 441 < G.GUARD_STOP_AT < G.CAP_UNITS
+    assert G.EXPECT_TOTAL == 466 < G.GUARD_STOP_AT < G.CAP_UNITS
 
 
 def test_a_stop_reaches_arms_that_have_not_started(world, tmp_path):
@@ -247,12 +255,59 @@ def test_a_stop_reaches_arms_that_have_not_started(world, tmp_path):
     assert G.guard_stop_asked(str(log)) is True
 
 
-def test_a_launched_arm_runs_again_on_its_own_record(world):
+def test_a_launched_arm_runs_again_on_its_own_record_unless_it_is_halted(world):
     assert decide(world, "pk-tl-N1B")[0] == "exec"
     d = world["arms"]["pk-tl-N1B"]["state_dir"]
     json.dump({"launches": 2}, open(os.path.join(d, "state.json"), "w"))
     kind, argv = decide(world, "pk-tl-N1B", seed2=LIVE, bal=None, guard_up=False, free_l4=0, stop=True, overlap="short")
     assert kind == "exec" and argv[argv.index("--name") + 1] == "pk-tl-N1B"
+    # a pending stop is the runner's to take (its confirmed stop ends the session); HALTED is final for the gate
+    open(os.path.join(d, "STOP_REQUEST"), "w").write("units")
+    assert decide(world, "pk-tl-N1B")[0] == "exec"
+    open(os.path.join(d, "HALTED"), "w").write("{}")
+    assert decide(world, "pk-tl-N1B") == ("halt", ("LADDER_HALTED", "this arm holds HALTED: the gate runs nothing; a person reads it"))
+
+
+def test_a_start_reserves_its_l4_and_the_loser_of_an_admission_race_starts_as_an_admitted_arm(world, tmp_path):
+    # seed 2 off, one L4 visibly free: the first start takes it; the next gate counts the pending start and waits
+    assert decide(world, "pk-tl-N1B", free_l4=1)[0] == "exec"
+    assert os.path.exists(os.path.join(world["arms"]["pk-tl-N1B"]["state_dir"], "START_PENDING"))
+    assert decide(world, "pk-tl-N2B", free_l4=1)[0] == "wait"
+    assert decide(world, "pk-tl-N2B", free_l4=2)[0] == "exec"
+    assert decide(world, "pk-tl-S2B", free_l4=2)[0] == "wait"          # two pending now
+    assert decide(world, "pk-tl-S2B", free_l4=2, now=NOW + G.PENDING_S + 1)[0] == "exec"     # a reservation lapses
+    assert G.pending_others("pk-tl-S2B", world["arms"], NOW, [("pk-tl-N1B", "L4")]) == 1  # a listed session is counted by the listing
+    # an arm whose admission was written by another arm does not start on that pass
+    rec = json.load(open(os.path.join(world["ld"], "launch.json")))
+    assert rec["first"] == "pk-tl-N1B"
+    real = G.load_record
+    calls = {"n": 0}
+    def racing(path, commit=None):          # the record appears between this gate's first look and its write
+        calls["n"] += 1
+        return ("absent", None) if calls["n"] == 1 else real(path, commit)
+    G.load_record = racing
+    try:
+        for n in ("pk-tl-N2B", "pk-tl-S2B"):
+            pth = os.path.join(world["arms"][n]["state_dir"], "START_PENDING")
+            if os.path.exists(pth):
+                os.remove(pth)
+        os.remove(os.path.join(world["arms"]["pk-tl-N1B"]["state_dir"], "START_PENDING"))
+        kind, why = decide(world, "pk-tl-N2B", free_l4=3, guard_up=False)
+    finally:
+        G.load_record = real
+    assert kind == "wait" and "admitted the ladder first" in why
+    assert decide(world, "pk-tl-N2B", free_l4=3, guard_up=False)[0] == "wait"     # as an admitted arm it needs the guard
+
+
+def test_the_cap_holds_by_wall_time_with_the_guard_blind_and_locks_exclude(tmp_path):
+    worst = (G.WEEK_HOURS + G.MAX_HOURS["2B"] * 2) * G.L4_UNITS_PER_HOUR
+    assert round(worst, 2) == 519.92 and worst < G.CAP_UNITS
+    a = G.take_lock(str(tmp_path / "x" / "gate.lock"), wait=False)
+    assert a is not None and G.take_lock(str(tmp_path / "x" / "gate.lock"), wait=False) is None
+    a.close()
+    assert G.take_lock(str(tmp_path / "x" / "gate.lock"), wait=False) is not None
+    assert G.scan(str(tmp_path / "no_proc")) is None and G.scan(str(tmp_path)) is None
+    assert "process table" in G.seed2_off(path=drivers(tmp_path), cmdlines=lambda: None, rows=[])
 
 
 def test_the_guard_starts_after_seed2_with_the_overlap_counted_against_its_bound(world):
@@ -263,15 +318,27 @@ def test_the_guard_starts_after_seed2_with_the_overlap_counted_against_its_bound
     kind, argv = guard(world, bal=512.5, now=NOW + 75 * 3600)           # seed 2 ends about 75 hours in
     assert kind == "exec" and argv[2] == "tools/colab_chat/base2_units_guard.py"
     assert argv[argv.index("--campaign") + 1] == "token-ladder"
-    assert argv[argv.index("--stop-at") + 1] == "344.5"                # 490 less 75 hours of one L4 (145.5)
+    assert argv[argv.index("--stop-at") + 1] == "374.5"                # 520 less 75 hours of one L4 (145.5)
     assert argv[argv.index("--start-balance") + 1] == "512.5"
     assert argv[argv.index("--log") + 1] == os.path.join(G.GUARD["dir"], "guard.jsonl")
     assert [argv[i + 1] for i, x in enumerate(argv) if x == "--state-dir"] == [a["state_dir"] for a in G.ARMS.values()]
     # a restart reuses the record: the same start and bound, whatever the balance and the hour then
     assert guard(world, bal=100.0, now=NOW + 99 * 3600)[1] == argv
-    assert guard(world, seed2=LIVE, bal=None, now=NOW + 99 * 3600)[1] == argv
+    # seed 2 is asked before every start of the guard, a restart too
+    assert guard(world, seed2=LIVE, bal=None, now=NOW + 99 * 3600)[0] == "wait"
+    # the record is held to this admission and to the registered bound
+    gp = os.path.join(world["gd"], "guard_start.json")
+    good = json.load(open(gp))
+    for bad in (dict(good, stop_at=5000.0), dict(good, commit="b" * 40), dict(good, admitted_utc=S2.iso(NOW + 1)),
+                dict(good, at_utc=S2.iso(NOW - 3600)), dict(good, start_balance=None)):
+        json.dump(bad, open(gp, "w"))
+        assert guard(world)[0] == "refuse", bad
+    json.dump(good, open(gp, "w"))
+    assert guard(world)[1] == argv
     assert G.guard_running(lambda: [argv]) and not G.guard_running(lambda: [S2.guard_argv(1.0)])
-    json.dump({"start_balance": 5.0, "stop_at": -1.0}, open(os.path.join(world["gd"], "guard_start.json"), "w"))
-    assert guard(world)[0] == "halt"
-    open(os.path.join(world["gd"], "guard_start.json"), "w").write("{not json")
+    late = dict(good, at_utc=S2.iso(NOW + 167 * 3600), stop_at=round(520 - 1.94 * 167, 2))
+    json.dump(dict(late, at_utc=S2.iso(NOW + 168 * 3600), stop_at=round(520 - 1.94 * 168, 2)), open(gp, "w"))
+    assert guard(world)[0] == "exec"          # 194 units still to go at the deadline: a bound above zero is run
+    assert G.guard_start_problem({"start_balance": 5.0, "stop_at": -1.0}, json.load(open(os.path.join(world["ld"], "launch.json"))), COMMIT)
+    open(gp, "w").write("{not json")
     assert guard(world)[0] == "refuse"

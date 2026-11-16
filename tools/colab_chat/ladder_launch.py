@@ -39,8 +39,9 @@ Admission, once, by a slot's first arm (it writes LAUNCH_DIR/launch.json through
       line, the reviews file and its ruling, this commit);
   A2. no folder of the ladder has launched;
   A3. the arm's own start conditions below;
-  A4. the unit balance covers the ladder's expected units (EXPECT_TOTAL) and 30, on top of SEED2_REMAINING_MAX while
-      seed 2 is live.
+  A4. the unit balance covers the ladder's expected units (EXPECT_TOTAL) and 30, on top of what is left of seed 2's own
+      cap while seed 2 is live (seed2_cap_left: its registered cap less what the account has spent since its admission,
+      the purchase of 17 Nov 2026 counted; the ladder has spent nothing at admission, so that spend is seed 2's).
 The record holds the admission time, the ladder's one deadline (admission plus WEEK_HOURS), the balance, the commit and the
 bounds. Every arm's state folder is created then, so the guard's stop reaches arms that have not started.
 
@@ -48,7 +49,17 @@ An arm that has not launched starts when: the arm before it in its slot is home 
 room for one L4; C: has at least MIN_FREE_GB free; its expected hours fit before the deadline; and, for slot 1 while seed 2
 is live, O2; otherwise (seed 2 off) the ladder's guard is running. It halts instead (HALTED, no session made) when a stop
 has been asked of the ladder, the arm before it holds HALTED, or its hours no longer fit (LADDER_NO_TIME). A launched arm
-(state.json "launches" at least 1) runs its runner at once on every start with the recorded deadline.
+(state.json "launches" at least 1) that holds HALTED is never run by the gate (a person reads it). Otherwise a launched arm
+runs its runner at once with the recorded deadline: that resumes or adopts the session it already has and asks for no new
+slot, and a pending STOP_REQUEST is taken by that runner, whose confirmed stop is the only thing that ends a live session.
+
+Every decision of an arm that has not launched is made under one lock (LAUNCH_DIR/gate.lock), so two gates never admit or
+take a slot on the same reading. An arm about to start writes START_PENDING in its folder; for PENDING_S seconds the other
+gates count it as an L4 already taken. Each gate holds its arm's own lock (state folder, gate.lock) for its whole life and
+passes it to the runner, so an arm never has two gates or two runners.
+
+The cap also holds with the guard blind. Slot 1 can run at most WEEK_HOURS (the deadline), and N2B and S2B at most their
+runners' 50 hours each: 268 L4-hours, 520 units, under CAP_UNITS. The guard is the earlier stop, not the only one.
 
 The guard is base2_units_guard.py, unchanged, as its own instance: campaign "token-ladder", its own folder and log, the
 ladder's five state folders. It starts once seed 2 is off, with the balance read at that moment as its start, and a bound
@@ -76,15 +87,16 @@ SEED2_LAUNCH = os.path.join(S2.LAUNCH_DIR, "launch.json")
 WEEK_HOURS = 168                 # the whole ladder ends within seven days of admission
 L4_UNITS_PER_HOUR = 1.94         # one L4 session (base 2's measured rate; seed 2's guard logs 3.88 for two)
 EXPECT_HOURS = {"1B": 18.5, "2B": 38.0, "T": 114.0}     # at about 3,300 steps an hour on an L4 (base 2's measured rate)
-EXPECT_UNITS = {"1B": 36, "2B": 74, "T": 221}
+EXPECT_UNITS = {"1B": 41, "2B": 79, "T": 226}           # training at 1.94 units an hour, and about 5 for the three rung jobs
 MAX_HOURS = {"1B": 26, "2B": 50, "T": 140}              # each runner's own limit: the expectation and a fifth, rounded up
-EXPECT_TOTAL = sum(EXPECT_UNITS[L.RUNGS[a]["rung"]] for a in L.LAUNCHED_ARMS)     # 441
-CAP_UNITS = 510.0                # the pretraining campaign's cap, in Colab units (about USD 51)
-GUARD_STOP_AT = 490.0            # the cap less 20 for stopping the sessions
-SEED2_REMAINING_MAX = 400.0      # seed 2's cap of 440 less the 40 its guard had logged before the purchase of 17 Nov 2026
+EXPECT_TOTAL = sum(EXPECT_UNITS[L.RUNGS[a]["rung"]] for a in L.LAUNCHED_ARMS)     # 466
+CAP_UNITS = 540.0                # the pretraining campaign's cap, in Colab units (about USD 54)
+GUARD_STOP_AT = 520.0            # the cap less 20 for stopping the sessions
+SEED2_PURCHASED = 500.0          # units bought while seed 2 ran (PROTOCOL 48.3, 17 Nov 2026): its guard does not see them
 OVERLAP_MARGIN = 100.0
 MIN_FREE_GB = 8                  # an arm brings about 2 GB home
 POLL_S = 300
+PENDING_S = 1800                 # how long a start that is not yet listed counts as a taken L4
 OWN_COPY = "ladder_launch.json"
 GO_LINE = ("Jonathan, direct chat, 17 Nov 2026: \"If you think it's worth it, you make all the decisions. I am happy perhaps "
            "to wait a week maximum if you really want. just make your own decisions.\"")
@@ -186,6 +198,29 @@ def write_once(path, rec):
 
 # ---------------------------------------------------------------- the checks (each: None when it holds, else why)
 
+def scan(proc="/proc"):
+    """[argv] of every process, or None when the process table cannot be listed (an unknown is never an empty table)."""
+    try:
+        if not any(p.isdigit() for p in os.listdir(proc)):
+            return None
+    except OSError:
+        return None
+    return S2.process_cmdlines(proc)
+
+
+def pending_others(name, arms, now, rows):
+    """How many other arms hold a fresh START_PENDING and are not yet in the listing: L4s already being taken."""
+    listed = {n for n, _ in (rows or [])}
+    n = 0
+    for other, x in arms.items():
+        if other == name or other in listed or S2.launched(x["state_dir"]):
+            continue      # a launched arm's session is in the listing, or has ended
+        rec = read_json(os.path.join(x["state_dir"], "START_PENDING"))
+        if rec and finite(rec.get("at")) and 0 <= now - rec["at"] < PENDING_S:
+            n += 1
+    return n
+
+
 def _has_pair(argv, flag, value):
     return any(x == flag and argv[i + 1] == value for i, x in enumerate(argv[:-1])) or f"{flag}={value}" in argv
 
@@ -205,7 +240,9 @@ def seed2_off(path=None, cmdlines=None, rows=None, seed2_arms=None, seed2_guard=
             return f"{what}: its entry was not found once by its state folder in scripts/colab_driver.json"
         if es[0].get("enabled") is not False:
             return f"{what}: its watchdog entry is still enabled (seed 2 has not ended, or its guard is not closed)"
-    argvs = (cmdlines or S2.process_cmdlines)()
+    argvs = (cmdlines or scan)()
+    if argvs is None:
+        return "the process table could not be read"
     for argv in argvs:
         for n, a in arms.items():
             if _has_pair(argv, "--name", n) or _has_pair(argv, "--state-dir", a["state_dir"]):
@@ -236,6 +273,16 @@ def overlap_problem(balance, now, seed2_launch=None):
         return (f"the balance {balance:.1f} is {room:.1f} above seed 2's stop balance {start - stop_at:.1f}; both campaigns to "
                 f"seed 2's deadline ({hours:.1f} h, three L4s) and the margin need {need:.1f}")
     return None
+
+
+def seed2_cap_left(balance, seed2_launch=None):
+    """What is left of seed 2's registered cap, in units, or None when it cannot be read. Read before the ladder has spent
+    anything, so the account's spend since seed 2's admission is seed 2's own."""
+    rec = read_json(SEED2_LAUNCH if seed2_launch is None else seed2_launch)
+    start, cap = (rec or {}).get("start_balance"), (rec or {}).get("min_balance")
+    if not finite(start) or not finite(cap) or not finite(balance):
+        return None
+    return max(0.0, cap - (start + SEED2_PURCHASED - balance))
 
 
 def guard_running(cmdlines=None):
@@ -274,7 +321,7 @@ def stop_marked(state_dir):
 # ---------------------------------------------------------------- the decisions
 
 def decide_arm(name, commit, now, slots, rows_fn, bal_fn, launch_dir=None, seed2=None, guard_up=None, stop_asked=None,
-               free=None, arms=None, overlap=None, clock=time.time):
+               free=None, arms=None, overlap=None, cap_left=None, clock=time.time):
     """(kind, what): ("exec", argv) | ("wait", why) | ("halt", (kind, why)) | ("refuse", why)."""
     launch_dir = LAUNCH_DIR if launch_dir is None else launch_dir
     arms = ARMS if arms is None else arms
@@ -282,6 +329,8 @@ def decide_arm(name, commit, now, slots, rows_fn, bal_fn, launch_dir=None, seed2
     own = os.path.join(a["state_dir"], OWN_COPY)
     path = os.path.join(launch_dir, "launch.json")
     if S2.launched(a["state_dir"]):
+        if os.path.exists(os.path.join(a["state_dir"], "HALTED")):
+            return "halt", ("LADDER_HALTED", "this arm holds HALTED: the gate runs nothing; a person reads it")
         state, rec = load_record(own, commit)
         if state != "valid":
             state, rec = load_record(path, commit)
@@ -321,7 +370,7 @@ def decide_arm(name, commit, now, slots, rows_fn, bal_fn, launch_dir=None, seed2
             return "wait", why
     elif state == "valid" and not (guard_up or guard_running)():
         return "wait", "seed 2 is off and the ladder's units guard is not running yet"
-    why = S2.room(slots, rows, 1)
+    why = S2.room(slots, rows, 1 + pending_others(name, arms, now, rows))
     if why:
         return "wait", why
     if state == "absent":
@@ -330,9 +379,12 @@ def decide_arm(name, commit, now, slots, rows_fn, bal_fn, launch_dir=None, seed2
         b = bal_fn() if b is None else b
         if not finite(b):
             return "wait", "the unit balance could not be read"
-        need = EXPECT_TOTAL + 30 + (SEED2_REMAINING_MAX if live else 0)
+        left = (cap_left or seed2_cap_left)(b) if live else 0.0
+        if left is None:
+            return "wait", "what is left of seed 2's cap could not be read"
+        need = EXPECT_TOTAL + 30 + left
         if b < need:
-            return "wait", f"the unit balance {b:.2f} is under {need:g} (the ladder's expected units and 30" + (", and seed 2's remaining cap)" if live else ")")
+            return "wait", f"the unit balance {b:.2f} is under {need:.1f} (the ladder's expected units and 30" + (f", and {left:.1f} left of seed 2's cap)" if live else ")")
         at = int(clock())
         got = write_once(path, {"at_utc": iso(at), "deadline_utc": iso(at + WEEK_HOURS * 3600), "start_balance": b,
                                 "first": name, "commit": commit, "cap_units": CAP_UNITS, "guard_stop_at": GUARD_STOP_AT,
@@ -340,10 +392,13 @@ def decide_arm(name, commit, now, slots, rows_fn, bal_fn, launch_dir=None, seed2
         state, rec = load_record(path, commit)
         if state != "valid" or got is None:
             return "refuse", f"launch.json does not validate after the admission ({rec})"
+        if rec.get("first") != name or rec.get("at_utc") != iso(at):
+            return "wait", "another arm admitted the ladder first: this arm starts as an admitted arm at its next check"
         for x in arms.values():
             os.makedirs(x["state_dir"], exist_ok=True)
     os.makedirs(a["state_dir"], exist_ok=True)
     S2.write_file(own, rec)
+    S2.write_file(os.path.join(a["state_dir"], "START_PENDING"), {"at": now, "at_utc": iso(now), "name": name})
     return "exec", runner_argv(name, commit, rec["deadline_utc"])
 
 
@@ -362,23 +417,52 @@ def decide_guard(now, commit, bal_fn, launch_dir=None, seed2=None, rows_fn=None,
     gs = read_json(gs_path)
     if gs is None and os.path.lexists(gs_path):
         return "refuse", "guard_start.json is unreadable; it is never replaced: a person reads it"
+    why = (seed2 or seed2_off)(rows=rows_fn() if rows_fn else None)      # before EVERY start of the guard, a restart too
+    if why:
+        return "wait", f"seed 2 is live ({why}): the ladder's guard would count its units"
     if gs is None:
-        why = (seed2 or seed2_off)(rows=rows_fn() if rows_fn else None)
-        if why:
-            return "wait", f"seed 2 is live ({why}): the ladder's guard would count its units"
         b = bal_fn()
         if not finite(b):
             return "wait", "the unit balance could not be read"
         at = int(clock())
         hours = max(0.0, (at - parse_iso(rec["at_utc"])) / 3600.0)
-        gs = write_once(gs_path, {"at_utc": iso(at), "start_balance": b, "hours_since_admission": round(hours, 3),
+        gs = write_once(gs_path, {"at_utc": iso(at), "admitted_utc": rec["at_utc"], "commit": commit, "start_balance": b,
+                                  "hours_since_admission": round(hours, 3),
                                   "overlap_units_counted": round(L4_UNITS_PER_HOUR * hours, 2),
                                   "stop_at": round(GUARD_STOP_AT - L4_UNITS_PER_HOUR * hours, 2)})
-    if not isinstance(gs, dict) or not finite(gs.get("start_balance")) or not finite(gs.get("stop_at")):
-        return "refuse", "guard_start.json does not hold a start balance and a bound: a person reads it"
+    why = guard_start_problem(gs, rec, commit)
+    if why:
+        return "refuse", f"guard_start.json is not this admission's record ({why}): a person reads it"
     if gs["stop_at"] <= 0:
         return "halt", ("LADDER_UNITS_STOP", "the ladder's cap was already counted as spent when its guard could start")
     return "exec", guard_argv(gs["start_balance"], gs["stop_at"])
+
+
+def guard_start_problem(gs, rec, commit):
+    """None when gs is the guard record of this admission with the registered bound, recomputed; else why."""
+    if not isinstance(gs, dict) or not finite(gs.get("start_balance")) or not finite(gs.get("stop_at")):
+        return "no start balance or bound"
+    at, adm = parse_iso(gs.get("at_utc")), parse_iso(rec["at_utc"])
+    if at is None or gs.get("admitted_utc") != rec["at_utc"] or gs.get("commit") != commit:
+        return "not written for this admission and commit"
+    if not (adm <= at <= parse_iso(rec["deadline_utc"])):
+        return "written outside the ladder's week"
+    if abs(gs["stop_at"] - round(GUARD_STOP_AT - L4_UNITS_PER_HOUR * (at - adm) / 3600.0, 2)) > 0.011:
+        return "the bound is not the registered one less the overlap"
+    return None
+
+
+def take_lock(path, wait):
+    """An exclusive lock on `path`, kept by the returned file object; None if it is held and `wait` is false."""
+    import fcntl
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    f = open(path, "a")
+    try:
+        fcntl.flock(f, fcntl.LOCK_EX | (0 if wait else fcntl.LOCK_NB))
+    except OSError:
+        f.close()
+        return None
+    return f
 
 
 def main(argv=None):
@@ -405,6 +489,12 @@ def main(argv=None):
         slots = None
     rows_fn = lambda: S2.listing_rows(slots)  # noqa: E731
     said = None
+    if a.name or a.guard:
+        mine = take_lock(os.path.join(ARMS[a.name]["state_dir"] if a.name else GUARD["dir"], "gate.lock"), wait=False)
+        if mine is None:
+            print(f"{iso(time.time())} ladder_launch: another gate or runner holds this folder's lock: exiting", flush=True)
+            return 0
+        os.set_inheritable(mine.fileno(), True)      # the runner (exec) keeps it: one gate or runner a folder
     while True:
         now = time.time()
         if a.status:
@@ -414,7 +504,7 @@ def main(argv=None):
             print(json.dumps({"now_utc": iso(now), "seed2": live or "off: entries disabled, no process, no session",
                               "overlap_rule": (overlap_problem(b, now) or "holds") if live else "not asked: seed 2 is off",
                               "room_for_one_l4": S2.room(slots, rows, 1) or "yes", "balance": b,
-                              "admission_needs": EXPECT_TOTAL + 30 + (SEED2_REMAINING_MAX if live else 0),
+                              "admission_needs": (None if seed2_cap_left(b) is None else EXPECT_TOTAL + 30 + seed2_cap_left(b)) if live else EXPECT_TOTAL + 30,
                               "free_gb": free_gb(), "guard_running": guard_running(), "guard_stop_asked": guard_stop_asked(),
                               "launch": load_record(os.path.join(LAUNCH_DIR, "launch.json")),
                               "launched": sorted(n for n, x in ARMS.items() if S2.launched(x["state_dir"])),
@@ -424,7 +514,11 @@ def main(argv=None):
             kind, what = decide_guard(now, a.commit, S2.balance, rows_fn=rows_fn)
             folder = GUARD["dir"]
         else:
-            kind, what = decide_arm(a.name, a.commit, now, slots, rows_fn, S2.balance)
+            shared = take_lock(os.path.join(LAUNCH_DIR, "gate.lock"), wait=True)     # one decision at a time, all arms
+            try:
+                kind, what = decide_arm(a.name, a.commit, time.time(), slots, rows_fn, S2.balance)
+            finally:
+                shared.close()      # START_PENDING, written under the lock, holds the slot from here
             folder = ARMS[a.name]["state_dir"]
         if kind == "exec":
             print(f"{iso(now)} ladder_launch: starting {' '.join(what[1:])}", flush=True)
