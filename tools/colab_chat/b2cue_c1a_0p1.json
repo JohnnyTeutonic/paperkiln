@@ -2289,7 +2289,8 @@
    },
    "after": [
     "gate",
-    "sft_S"
+    "sft_S",
+    "watch_sft_S"
    ],
    "relay_every_steps": 100000,
    "snapshot_steps": [
@@ -2435,7 +2436,8 @@
    },
    "after": [
     "gate",
-    "sft_S"
+    "sft_S",
+    "watch_sft_S"
    ],
    "relay_every_steps": 100000,
    "snapshot_steps": [
@@ -2581,7 +2583,8 @@
    },
    "after": [
     "gate",
-    "sft_S"
+    "sft_S",
+    "watch_sft_S"
    ],
    "relay_every_steps": 100000,
    "snapshot_steps": [
@@ -2734,7 +2737,8 @@
    },
    "after": [
     "gate",
-    "sft_S"
+    "sft_S",
+    "watch_sft_S"
    ],
    "relay_every_steps": 100000,
    "snapshot_steps": [
@@ -2887,7 +2891,8 @@
    },
    "after": [
     "gate",
-    "sft_S"
+    "sft_S",
+    "watch_sft_S"
    ],
    "relay_every_steps": 100000,
    "snapshot_steps": [
@@ -3040,7 +3045,8 @@
    },
    "after": [
     "gate",
-    "sft_S"
+    "sft_S",
+    "watch_sft_S"
    ],
    "relay_every_steps": 100000,
    "snapshot_steps": [

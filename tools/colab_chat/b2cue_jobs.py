@@ -107,6 +107,12 @@ def early_jobs(name, ref, scored):
              "outputs": ["early.json"]} for s in EARLY]
 
 
+def after_start(init_job, *more):
+    """What an arm trained from a start made in this campaign waits on: the gate, the SFT1500 and its watch ended healthy (N2,
+    before C1: jobs_vm skips a job whose prerequisite failed, so an unhealthy start trains no arm)."""
+    return ["gate", *more] + ([init_job, f"watch_{init_job}"] if init_job else [])
+
+
 def train_job(name, spec, after="gate", init_job=None):
     j = {"name": name, "spec": spec, "after": after, "relay_every_steps": 100000, "snapshot_steps": list(EARLY)}
     if init_job:
@@ -178,14 +184,14 @@ def arms(base, lam, seeds, which, init_job=None, init_from=None, req=None, packe
         for sd in seeds:
             name = f"{arm}_{base}_{sd}"
             spec = arm_spec(shape, init, sd, arm, None if arm == "P" else lam)
-            j = train_job(name, spec, after=["gate"] + ([init_job] if init_job else []))
+            j = train_job(name, spec, after=after_start(init_job))
             jobs += [j] + early_jobs(name, name if arm == "P" else f"P_{base}_{sd}", scored=False)
             scores.append(score_job(name, req, name))
     if packet_p0:
         for sd in (1, 50):
             name = f"P0_{base}_{sd}"
             spec = arm_spec(shape, init, sd, "P", packet="P0.jsonl")
-            jobs += [train_job(name, spec, after=["gate"] + ([init_job] if init_job else []))] + early_jobs(name, name, scored=False)
+            jobs += [train_job(name, spec, after=after_start(init_job))] + early_jobs(name, name, scored=False)
             scores.append(score_job(name, req, name))
     return jobs, scores
 
@@ -198,7 +204,7 @@ def extra_seed_jobs(base, lam, req, init_job=None):
         for sd in EXTRA_SEEDS:
             name = f"{arm}_{base}_{sd}"
             spec = arm_spec(SHAPE[base], f"{C}/sft_{base}/sft_{base}.safetensors", sd, arm, None if arm == "P" else lam)
-            jobs += [train_job(name, spec, after=["gate", "barrier"] + ([init_job] if init_job else []))] + \
+            jobs += [train_job(name, spec, after=after_start(init_job, "barrier"))] + \
                 early_jobs(name, name if arm == "P" else f"P_{base}_{sd}", scored=False)
             scores.append(score_job(name, req, name))
     return jobs, scores

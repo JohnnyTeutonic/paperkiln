@@ -194,7 +194,8 @@
    },
    "after": [
     "gate",
-    "sft_N60"
+    "sft_N60",
+    "watch_sft_N60"
    ],
    "relay_every_steps": 100000,
    "snapshot_steps": [
@@ -340,7 +341,8 @@
    },
    "after": [
     "gate",
-    "sft_N60"
+    "sft_N60",
+    "watch_sft_N60"
    ],
    "relay_every_steps": 100000,
    "snapshot_steps": [
@@ -486,7 +488,8 @@
    },
    "after": [
     "gate",
-    "sft_N60"
+    "sft_N60",
+    "watch_sft_N60"
    ],
    "relay_every_steps": 100000,
    "snapshot_steps": [
@@ -639,7 +642,8 @@
    },
    "after": [
     "gate",
-    "sft_N60"
+    "sft_N60",
+    "watch_sft_N60"
    ],
    "relay_every_steps": 100000,
    "snapshot_steps": [
@@ -792,7 +796,8 @@
    },
    "after": [
     "gate",
-    "sft_N60"
+    "sft_N60",
+    "watch_sft_N60"
    ],
    "relay_every_steps": 100000,
    "snapshot_steps": [
@@ -945,7 +950,8 @@
    },
    "after": [
     "gate",
-    "sft_N60"
+    "sft_N60",
+    "watch_sft_N60"
    ],
    "relay_every_steps": 100000,
    "snapshot_steps": [
@@ -1099,7 +1105,8 @@
    },
    "after": [
     "gate",
-    "sft_N60"
+    "sft_N60",
+    "watch_sft_N60"
    ],
    "relay_every_steps": 100000,
    "snapshot_steps": [
@@ -1253,7 +1260,8 @@
    },
    "after": [
     "gate",
-    "sft_N60"
+    "sft_N60",
+    "watch_sft_N60"
    ],
    "relay_every_steps": 100000,
    "snapshot_steps": [
@@ -1407,7 +1415,8 @@
    },
    "after": [
     "gate",
-    "sft_N60"
+    "sft_N60",
+    "watch_sft_N60"
    ],
    "relay_every_steps": 100000,
    "snapshot_steps": [

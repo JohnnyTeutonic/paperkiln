@@ -456,6 +456,13 @@ def fetch_outputs(st, name, outputs, best_effort=False):
             got.add(f)
             st.save()
             log(f"{name}: {f} downloaded")
+            if os.path.basename(f) == "watch.json":   # A32 (N2): whatever the live relay has not yet shown
+                try:
+                    for line in watch_lines(js, json.load(open(dst))):
+                        log(line)
+                    st.save()
+                except (OSError, ValueError):
+                    pass
             if os.path.basename(f) == "early.json":   # A31's early readouts: one summary line each, as they arrive
                 try:
                     log(f"EARLY {json.load(open(dst)).get('summary', '')}")
@@ -469,6 +476,46 @@ def fetch_outputs(st, name, outputs, best_effort=False):
             js["status"] = "FINISHED"
         st.save()
         log(f"{name}: outputs downloaded")
+
+
+def watch_lines(js, w):
+    """The WATCH lines of a watch.json not yet relayed, recorded in the job's state as relayed (A32, N2: a live relay of the
+    SFT1500 watch's readouts, one line each, and its health once it is no longer running)."""
+    out = []
+    if not isinstance(w, dict):
+        return out
+    done = js.setdefault("watch_relayed", [])
+    at = w.get("at") if isinstance(w.get("at"), dict) else {}
+    for s in sorted(at, key=lambda x: (len(x), x)):
+        r = at[s] if isinstance(at[s], dict) else {}
+        if s not in done:
+            done.append(s)
+            out.append(f"WATCH {w.get('job')} step {s}: sft {r.get('sft_loss')} val {r.get('val_loss')}")
+    h = w.get("health")
+    if h not in (None, "running") and "health" not in done:
+        done.append("health")
+        out.append(f"WATCH {w.get('job')} health {h}" + (f": {w.get('health_stop') or w.get('health_unread')}" if h != "ok" else ""))
+    return out
+
+
+def relay_watch(st, name):
+    """A running watch's watch.json, read each tick into a side file (never the home copy, which fetch_outputs lands once the
+    watch has ended) and its new lines logged. A miss is silent: the next tick reads again."""
+    art = os.path.join(ART, name)
+    os.makedirs(art, exist_ok=True)
+    dst = os.path.join(art, "watch.live.json")
+    if download_file(f"/content/chat/{name}/watch.json", dst, 60) != 0:
+        return
+    try:
+        w = json.load(open(dst))
+    except (OSError, ValueError):
+        return
+    js = st.job(name)
+    lines = watch_lines(js, w)
+    for line in lines:
+        log(line)
+    if lines:
+        st.save()
 
 
 def adopt_home(st, jobs):
@@ -1205,10 +1252,12 @@ def main():
             reason.append("signal")
             raise SystemExit(143)
         signal.signal(signal.SIGTERM, on_term)
-    if HOME_MARKERS and not blocked:   # A32 (round 9): an active run, cleared when its end is recorded; left set if it dies unrecorded
-        st.d["active"] = {"started_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
-        st.save()
     try:
+        # A32 (round 9): an active run, cleared when its end is recorded; left set if it dies unrecorded. Saved inside the try
+        # (P7(i), before C1), so nothing runs between the mark and the finaliser's cover
+        if HOME_MARKERS and not blocked:
+            st.d["active"] = {"started_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+            st.save()
         # A32 (launch round 10): the first launch (pod creation, uploads, prepare) runs inside the active mark and the finaliser,
         # so an exception there is recorded and a death there leaves the mark set
         if not blocked and listed() is None and not st.d.get("endpoint"):
@@ -1284,6 +1333,8 @@ def main():
                     st.save()
                 if r[n] == "RUNNING" and not js["home"] and "cmd" not in j:
                     relayed = relay(st, n, j.get("relay_every_steps", 0)) or relayed
+                if r[n] == "RUNNING" and not js["home"] and "watch.json" in j.get("outputs", []):
+                    relay_watch(st, n)
                 if r[n] == "FINISHED" and not js["home"]:
                     if "cmd" in j:
                         fetch_outputs(st, n, j.get("outputs", []))
