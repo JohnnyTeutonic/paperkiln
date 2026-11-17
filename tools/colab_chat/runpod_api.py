@@ -29,7 +29,7 @@ per-host stock and price queries (gpuTypes), checked live on 17 Nov 2026.
 
 Callers written against v1 keep working: every pod and volume this module returns also carries the v1
 field names they read (desiredStatus, costPerHr, publicIp, portMappings, machine, memoryInGb, vcpuCount,
-lastStartedAt; a volume's dataCenterId), filled from the v2 fields, and create_pod() accepts the flat v1
+lastStartedAt, networkVolumeId, networkVolume; a volume's dataCenterId), filled from the v2 fields, and create_pod() accepts the flat v1
 body and sends its v2 form. A v1 field with no v2 form that would change what is rented (a spot pod,
 several GPU types, an unknown field) is refused, never dropped silently.
 
@@ -209,6 +209,11 @@ def compat_pod(p):
                              "secureCloud": (p.get("cloud") == "SECURE") if p.get("cloud") else None})
     p.setdefault("memoryInGb", gpu.get("memory"))
     p.setdefault("vcpuCount", gpu.get("vcpuCount"))
+    # the network volume a pod mounts (v2: mounts.network[].volumeId): a sweep must see it before it deletes a volume
+    net = (p.get("mounts") or {}).get("network") if isinstance(p.get("mounts"), dict) else None
+    vid = next((m.get("volumeId") for m in net or [] if isinstance(m, dict) and m.get("volumeId")), None)
+    p.setdefault("networkVolumeId", vid)
+    p.setdefault("networkVolume", {"id": vid} if vid else None)
     return p
 
 
