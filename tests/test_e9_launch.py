@@ -158,9 +158,13 @@ def test_a_build_waits_writes_its_deadline_once_and_is_halted_past_it(tmp_path, 
     ended = {"why": "not yet"}
     monkeypatch.setattr(EL, "ladder_ended", lambda cmdlines=None, arms=None, launch_dir=None, now=None: ended["why"])
     off = {"why": "seed 2 live"}
-    kb = lambda n, now: EL.decide_build(n, "a" * 40, now, arms=arms, builds=builds, cmdlines=[],  # noqa
-                                         seed2=lambda now=None: off["why"], launch_dir=str(tmp_path))
+    go = {"why": "no GO record"}
+    kb = lambda n, now, rows=(): EL.decide_build(n, "a" * 40, now, arms=arms, builds=builds, cmdlines=[],  # noqa
+                                                  seed2=lambda now=None, rows=None: off["why"], launch_dir=str(tmp_path),
+                                                  rows=list(rows), balance=lambda: 1000.0, go=lambda c: go["why"])
     t0 = 1_800_000_000.0
+    assert kb("pk-e9-data-D2", t0)[0] == "refuse"                       # E9's GO record first
+    go["why"] = None
     assert kb("pk-e9-data-D2", t0)[0] == "wait"                         # the ladder has not ended
     ended["why"] = None
     assert kb("pk-e9-data-D2", t0)[0] == "wait"                         # seed 2 is not off
@@ -172,15 +176,50 @@ def test_a_build_waits_writes_its_deadline_once_and_is_halted_past_it(tmp_path, 
     assert "tools/colab_chat/e9_data_D2.json" in argv and builds["pk-e9-data-D2"]["state_dir"] in argv
     kind, argv2 = kb("pk-e9-data-D2", t0 + 3 * 3600)                    # a restart keeps the first deadline
     assert argv2[argv2.index("--deadline-utc") + 1] == dl
-    assert kb("pk-e9-data-D2", t0 + 6 * 3600 + 1)[0] == "halt"         # past it: halted for a person
+    ended["why"] = "a ladder arm restarted"                              # every start asks again
+    assert kb("pk-e9-data-D2", t0 + 3 * 3600)[0] == "wait"
+    ended["why"] = None
+    # past the deadline: a session still listed gets the runner once more (it stops it); else halted
+    kind, argv3 = kb("pk-e9-data-D2", t0 + 6 * 3600 + 1, rows=[("pk-e9-data-D2", {})])
+    assert kind == "exec" and argv3[argv3.index("--deadline-utc") + 1] == dl
+    assert kb("pk-e9-data-D2", t0 + 6 * 3600 + 1)[0] == "halt"
     assert abs(EL.committed_units(arms, builds) - 3 * EL.BUILD_UNITS) < 1e-6   # started D2 is one of the reserved three
+
+
+def test_a_build_record_that_is_not_its_first_start_plus_six_hours_is_halted(tmp_path, monkeypatch):
+    arms, builds = _arms_in(tmp_path), _builds_in(tmp_path)
+    monkeypatch.setattr(EL, "ladder_ended", lambda cmdlines=None, arms=None, launch_dir=None, now=None: None)
+    t0 = 1_800_000_000.0
+    (Path(builds["pk-e9-data-D3"]["state_dir"]) / EL.BUILD_COPY).write_text(json.dumps(
+        {"first_start_utc": EL.LL.iso(t0), "deadline_utc": EL.LL.iso(t0 + 20 * 3600), "max_hours": 6, "commit": "a" * 40}))
+    kind, what = EL.decide_build("pk-e9-data-D3", "a" * 40, t0 + 60, arms=arms, builds=builds, cmdlines=[],
+                                 seed2=lambda now=None, rows=None: None, rows=[], balance=lambda: 1000.0,
+                                 go=lambda c: None)
+    assert kind == "halt" and what[0] == "E9_BUILD_RECORD"
+
+
+def test_the_real_seed2_predicate_waits_on_an_unanswered_listing(tmp_path, monkeypatch):
+    arms, builds = _arms_in(tmp_path), _builds_in(tmp_path)
+    monkeypatch.setattr(EL, "ladder_ended", lambda cmdlines=None, arms=None, launch_dir=None, now=None: None)
+    kind, what = EL.decide_build("pk-e9-data-D2", "a" * 40, time.time(), arms=arms, builds=builds, cmdlines=[],
+                                 rows=None, balance=lambda: 1000.0, go=lambda c: None)
+    assert kind == "wait" and "seed 2" in what
+
+
+def test_the_guard_watches_the_build_folders_too():
+    EL.install()
+    argv = EL.LL.guard_argv(400.0)
+    for b in EL.BUILDS.values():
+        assert b["state_dir"] in argv
+    assert argv[argv.index("--stop-at") + 1] == "283.4"
 
 
 def test_d4ops_build_waits_until_a_planned_arm_is_known_not_to_start(tmp_path, monkeypatch):
     arms, builds = _arms_in(tmp_path), _builds_in(tmp_path)
     monkeypatch.setattr(EL, "ladder_ended", lambda cmdlines=None, arms=None, launch_dir=None, now=None: None)
     kb = lambda: EL.decide_build("pk-e9-data-D4ops", "a" * 40, 1_800_000_000.0, arms=arms, builds=builds,  # noqa
-                                 cmdlines=[], seed2=lambda now=None: None, launch_dir=str(tmp_path))
+                                 cmdlines=[], seed2=lambda now=None, rows=None: None, launch_dir=str(tmp_path),
+                                 rows=[], balance=lambda: 1000.0, go=lambda c: None)
     assert kb()[0] == "wait"
     (Path(arms["pk-e9-S1Bs50"]["state_dir"]) / "HALTED").write_text("{}")      # a planned arm that will not start
     assert kb()[0] == "exec"

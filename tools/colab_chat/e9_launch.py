@@ -111,8 +111,8 @@ def build_argv(name, commit, deadline_utc, builds=None):
 
 
 # ---------------------------------------------------------------- the ladder's end, and seed 2 read from the ladder's folder
-def seed2_section_ended(now, launch_dir=None, **kw):
-    return _ORIG_SEED2_ENDED(now, launch_dir=LADDER_LAUNCH_DIR if launch_dir is None else launch_dir, **kw)
+def seed2_section_ended(now, launch_dir=None, *args, **kw):
+    return _ORIG_SEED2_ENDED(now, LADDER_LAUNCH_DIR if launch_dir is None else launch_dir, *args, **kw)
 
 
 def seed2_off(now=None, cmdlines=None, rows=None, seed2_arms=None, launch_dir=None, seed2_launch=None):
@@ -232,8 +232,25 @@ def decide_arm(name, commit, now, slots, rows_fn, bal_fn, launch_dir=None, arms=
 
 
 # ---------------------------------------------------------------- a corpus build (A6)
-def decide_build(name, commit, now, arms=None, builds=None, cmdlines=None, seed2=None, launch_dir=None):
-    """(kind, what) as decide_arm: ("exec", argv) | ("wait", why) | ("halt", (kind, why))."""
+def build_record_problem(rec, commit):
+    """Why a build's own deadline record is not valid for this commit (None when it is)."""
+    first, dl = LL.parse_iso((rec or {}).get("first_start_utc")), LL.parse_iso((rec or {}).get("deadline_utc"))
+    if first is None or dl is None:
+        return "the build's own record has no readable first start or deadline"
+    if abs(dl - first - BUILD_HOURS * 3600) > 1 or rec.get("max_hours") != BUILD_HOURS:
+        return "the build's deadline is not its first start plus 6 hours"
+    if rec.get("commit") != commit:
+        return "the build's record was written for another commit"
+    return None
+
+
+def decide_build(name, commit, now, arms=None, builds=None, cmdlines=None, seed2=None, launch_dir=None,
+                 rows=None, balance=None, go=None):
+    """(kind, what) as decide_arm: ("exec", argv) | ("wait", why) | ("halt", (kind, why)) | ("refuse", why).
+    Every start, the first and each restart, asks again: E9's GO record, the ladder's end, seed 2 off (from the Colab
+    listing `rows`; an unanswered listing is not off) and the balance; the deadline recorded at the first start is kept.
+    Past it, a session still listed (or a listing that does not answer) gets the runner once more with the same expired
+    deadline, so runner_multi.py stops it and creates nothing; otherwise the build is halted for a person."""
     arms = ARMS if arms is None else arms
     builds = BUILDS if builds is None else builds
     launch_dir = E9_LAUNCH_DIR if launch_dir is None else launch_dir
@@ -242,13 +259,25 @@ def decide_build(name, commit, now, arms=None, builds=None, cmdlines=None, seed2
     if os.path.lexists(os.path.join(b["state_dir"], "HALTED")):
         return "halt", ("E9_BUILD_HALTED", "this build holds HALTED: the gate runs nothing; a person reads it")
     rec = LL.read_json(own)
-    if rec is None:
-        why = ladder_ended(cmdlines)
+    listed = rows is None or any(n == name for n, _ in rows)
+    if rec is not None:
+        why = build_record_problem(rec, commit)
         if why:
-            return "wait", f"the token ladder has not ended ({why}): no E9 build starts before it"
-        off = (seed2 or seed2_off)(now=now)
-        if off:
-            return "wait", f"seed 2 is not off ({off})"
+            return "halt", ("E9_BUILD_RECORD", why)
+        if now >= LL.parse_iso(rec["deadline_utc"]):
+            if listed:
+                return "exec", build_argv(name, commit, rec["deadline_utc"], builds)     # the runner stops it
+            return "halt", ("E9_BUILD_DEADLINE", f"past the build's deadline {rec['deadline_utc']}")
+    why = (go or (lambda c: LL.go_problem(LL.read_json(os.path.join(launch_dir, "GO.json")), c)))(commit)
+    if why:
+        return "refuse", f"E9's GO record: {why}"
+    why = ladder_ended(cmdlines)
+    if why:
+        return "wait", f"the token ladder has not ended ({why}): no E9 build starts before it"
+    off = (seed2 or seed2_off)(now=now, rows=rows)
+    if off:
+        return "wait", f"seed 2 is not off ({off})"
+    if rec is None:
         if b["corpus"] == "D4ops":
             plan = plan_arms(arms, launch_dir)
             dropped = [n for n, x in plan.items() if not _started(x) and os.path.lexists(os.path.join(x["state_dir"], "HALTED"))]
@@ -257,16 +286,29 @@ def decide_build(name, commit, now, arms=None, builds=None, cmdlines=None, seed2
         extra = 0.0 if b["corpus"] in REQUIRED_BUILDS else BUILD_UNITS
         if committed_units(arms, builds) + extra > CAP_UNITS + 1e-9:
             return "halt", ("E9_CAP", "this build would pass the cap")
+    bal = (balance or S2.balance)()
+    if not LL.finite(bal) or bal < BUILD_UNITS + LL.UNITS_MARGIN:
+        return "wait", f"the balance ({bal}) does not cover a build's worst case and the margin"
+    if rec is None:
         os.makedirs(b["state_dir"], exist_ok=True)
         LL.write_once(own, {"first_start_utc": LL.iso(now), "deadline_utc": LL.iso(now + BUILD_HOURS * 3600),
                             "max_hours": BUILD_HOURS, "commit": commit})
         rec = LL.read_json(own)
-    dl = LL.parse_iso((rec or {}).get("deadline_utc"))
-    if dl is None:
-        return "halt", ("E9_BUILD_RECORD", "the build's own deadline record cannot be read")
-    if now >= dl:
-        return "halt", ("E9_BUILD_DEADLINE", f"past the build's deadline {rec['deadline_utc']}")
+        why = build_record_problem(rec, commit)
+        if why:
+            return "halt", ("E9_BUILD_RECORD", why)
     return "exec", build_argv(name, commit, rec["deadline_utc"], builds)
+
+
+_ORIG_GUARD_ARGV = LL.guard_argv
+
+
+def guard_argv(start_balance):
+    """The ladder's guard command over E9's arms, with the build folders added, so a build's session is stopped too."""
+    argv = _ORIG_GUARD_ARGV(start_balance)
+    for b in BUILDS.values():
+        argv += ["--state-dir", b["state_dir"]]
+    return argv
 
 
 def install():
@@ -284,6 +326,7 @@ def install():
     LL.units_needed = units_needed
     LL.seed2_section_ended = seed2_section_ended
     LL.seed2_off = seed2_off
+    LL.guard_argv = guard_argv
 
 
 def main(argv=None):
@@ -298,14 +341,27 @@ def main(argv=None):
         if S2.head_commit() != commit:
             raise SystemExit(f"this worktree is not at {commit}; the gate runs only from the launch commit")
         os.chdir(S2.REPO)
+        try:
+            slots = S2.load_slots()
+        except Exception:  # noqa: BLE001  a gate that cannot count slots waits
+            slots = None
+        os.makedirs(BUILDS[name]["state_dir"], exist_ok=True)
+        mine = LL.take_lock(os.path.join(BUILDS[name]["state_dir"], "gate.lock"), wait=False)
+        if mine is None:
+            print(f"{LL.iso(time.time())} e9_launch: another gate or runner holds this build's lock: exiting", flush=True)
+            return 0
+        os.set_inheritable(mine.fileno(), True)      # the runner (exec) keeps it: one gate or runner a build folder
         said = None
         while True:
             now = time.time()
             shared = LL.take_lock(os.path.join(E9_LAUNCH_DIR, "gate.lock"), wait=True)
             try:
-                kind, what = decide_build(name, commit, now)
+                kind, what = decide_build(name, commit, now, rows=S2.listing_rows(slots))
             finally:
                 shared.close()
+            if kind == "refuse":
+                print(f"{LL.iso(now)} e9_launch: refused: {what}", flush=True)
+                return 2
             if kind == "exec":
                 print(f"{LL.iso(now)} e9_launch: starting {' '.join(what[1:])}", flush=True)
                 os.execv(what[0], what)
