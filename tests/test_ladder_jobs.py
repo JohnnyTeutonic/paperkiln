@@ -23,12 +23,12 @@ def test_files_are_what_the_generator_writes_and_base2s_are_untouched():
 def test_the_arms_and_their_rungs():
     assert set(L.FIRST_SEED_ARMS) == {"N1B", "S1B", "N2B", "S2B", "NT", "ST"}
     assert set(L.RUNGS) == set(L.FIRST_SEED_ARMS) | {a + "s50" for a in L.FIRST_SEED_ARMS}
-    assert L.STEPS == {"1B": 60000, "2B": 122000, "T": 375000}
+    assert L.STEPS == {"1B": 60000, "2B": 122000, "T": 325000}
     # the low rungs end at base 2's own marks, so they have read what N and S had read there
     assert {60000, 122000} <= set(M.MARKS["N"])
     assert L.marks(60000) == [10000, 58500, 60000]
     assert L.marks(122000) == [10000, 119000, 122000]
-    assert L.marks(375000) == [10000, 366000, 375000]
+    assert L.marks(325000) == [10000, 317000, 325000]
     assert L.marks(250000)[1:] == M.MARKS["N"][-2:]   # the late-mark rule gives base 2's own 244,000
 
 
@@ -98,15 +98,15 @@ def test_a_rung_at_base2s_own_steps_is_base2s_arm(monkeypatch):
 
 
 def test_slots_release_turns_and_what_is_launched():
-    assert L.SLOTS == {1: ["N1B", "S1B", "NT"], 2: ["N2B"], 3: ["S2B"]}
-    assert L.LAUNCHED_ARMS == ["N1B", "S1B", "NT", "N2B", "S2B"]
-    # slot 1 may run beside seed 2's arms, which hold the turns 0 and 20
+    assert L.SLOTS == {1: ["N1B", "N2B"], 2: ["S1B", "S2B"], 3: ["NT"]}
+    assert L.LAUNCHED_ARMS == ["N1B", "N2B", "S1B", "S2B", "NT"]
+    # seed 2's arms held the turns 0 and 20
     seed2 = {M.arm(a).get("store_release_offset_min", 0) for a in ("N2", "S2")}
-    assert seed2 == {0, 20} and L.SLOT_OFFSET_MIN[1] == 40 and sorted(L.SLOT_OFFSET_MIN.values()) == [0, 20, 40]
+    assert seed2 == {0, 20} and sorted(L.SLOT_OFFSET_MIN.values()) == [0, 20, 40]      # seed 2 has ended before any ladder arm
     for name, r in L.RUNGS.items():
         assert L.arm(name).get("store_release_offset_min", 0) == r["offset_min"]
         assert r["launched_by_this_registration"] == (name in L.LAUNCHED_ARMS)
-    assert [L.RUNGS[a]["offset_min"] for a in L.LAUNCHED_ARMS] == [40, 40, 40, 0, 20]
+    assert [L.RUNGS[a]["offset_min"] for a in L.LAUNCHED_ARMS] == [0, 0, 20, 20, 40]
     assert not M.block_streams(M.SECOND_SEED) & M.block_streams(1)
     assert all(L.RUNGS[a + "s50"]["seed"] == M.SECOND_SEED for a in L.FIRST_SEED_ARMS)
     # three writers on the repository at the most, as base 2 budgeted: 3 x 24 + 3 x 12 commits an hour under the hub's 128

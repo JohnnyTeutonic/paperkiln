@@ -17,8 +17,8 @@ warm-up is base 2's 4,000 steps at every rung (a choice, stated in the registrat
     S1B    S        60,000   0.98 B      14                   the same
     N2B    N       122,000   2.00 B      29                   10,000  119,000  122,000
     S2B    S       122,000   2.00 B      29                   the same
-    NT     N       375,000   6.14 B      88                   10,000  366,000  375,000
-    ST     S       375,000   6.14 B      88                   the same
+    NT     N       325,000   5.32 B      76                   10,000  317,000  325,000
+    ST     S       325,000   5.32 B      76                   the same
 
 60,000 and 122,000 are base 2's own marks, so each low rung has read exactly what N or S had read at that mark, with a
 schedule that ends there. Each rung's late mark is the last multiple of the save interval at or under 97.6% of its steps
@@ -26,8 +26,8 @@ schedule that ends there. Each rung's late mark is the last multiple of the save
 start, as <arm>s50, so that adding it later changes nothing; no second-seed arm is launched by this registration.
 
 "slot" is the Colab L4 an arm takes in the registered order (three at once at the most): an arm starts when the arm before
-it in its slot has ended. Slot 1 (N1B, S1B, NT) may run beside seed 2's two arms; slots 2 and 3 (N2B, S2B) start after
-seed 2 has ended. An arm's turn on the store's release grid is its slot's, so the arms that are live together never share
+it in its slot has ended. Nothing starts until seed 2 has ended. Slot 1 is N1B then N2B, slot 2 S1B then S2B, slot 3 NT.
+An arm's turn on the store's release grid is its slot's, so the arms that are live together never share
 a turn, as base 2's three arms did not. This registration launches five arms: ST and every second-seed arm are defined and
 not launched.
 """
@@ -42,12 +42,11 @@ import make_base2 as M  # noqa: E402  (base 2's builder, unchanged)
 
 LATE_FRACTION = 0.976
 FIRST_MARK = 10000
-STEPS = {"1B": 60000, "2B": 122000, "T": 375000}
+STEPS = {"1B": 60000, "2B": 122000, "T": 325000}
 # The registered order: slot -> the arms that take it, one after another.
-SLOTS = {1: ["N1B", "S1B", "NT"], 2: ["N2B"], 3: ["S2B"]}
-# Slot 1 may run beside seed 2's two arms, which hold the release turns 0 and 20 (N2, S2): it takes 40. Slots 2 and 3
-# start only after seed 2 has ended and take the turns it leaves.
-SLOT_OFFSET_MIN = {1: 40, 2: 0, 3: 20}
+SLOTS = {1: ["N1B", "N2B"], 2: ["S1B", "S2B"], 3: ["NT"]}
+# The ladder starts only once seed 2 has ended (PROTOCOL 48.3), so its three slots take the three release turns.
+SLOT_OFFSET_MIN = {1: 0, 2: 20, 3: 40}
 RECIPE_OFFSET_MIN = {"N": 0, "S": 20}     # an arm this registration does not launch keeps its recipe's own turn
 SECOND = "s50"
 ALL_ARMS = ("N1B", "S1B", "N2B", "S2B", "NT", "ST")
