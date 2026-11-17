@@ -11,7 +11,9 @@ and the binding score job. A ladder campaign is that file with three things chan
   the shape    D1 (18 layers, width 512), b2cue_jobs' own D1 architecture, where C had A's;
   the names    sft_tl<BASE> and TL_<BASE>_<seed>, so that no job, folder or model shares a name with A32's or A35's.
 The bases: base 2's finished arms N and S at 250,000 steps (N250, S250: the ladder's 4.1 B rung, which exists), and the six
-ladder arms when each is home (N1B, S1B, N2B, S2B, NT, ST).
+ladder arms when each is home (N1B, S1B, N2B, S2B, NT, ST); and, outside the ladder, base 2's second pretraining seed at
+250,000 steps (N250s2, S250s2: arms N2 and S2, section 48.3; the lane's base2/token_ladder/REGISTRATION_N2S2.md,
+Claude Opus 5.5, 18 Nov 2026), the same campaign on those bases.
 """
 import argparse
 import json
@@ -23,7 +25,7 @@ sys.path.insert(0, HERE)
 import a35_jobs as A35  # noqa: E402  (A35's renderer, unchanged)
 import b2cue_jobs as B  # noqa: E402  (A32's renderer, unchanged)
 
-BASES = ("N1B", "S1B", "N2B", "S2B", "N250", "S250", "NT", "ST")
+BASES = ("N1B", "S1B", "N2B", "S2B", "N250", "S250", "NT", "ST", "N250s2", "S250s2")
 SHAPE = "D1"
 SEEDS = A35.SEEDS
 

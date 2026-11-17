@@ -17,7 +17,7 @@ def test_files_on_disk_are_the_renderings_and_a35s_is_untouched():
     for b in J.BASES:
         assert open(J.out_path(b)).read() == J.text(b)
     assert open(A35.OUT).read() == json.dumps(A35.render(), indent=1) + "\n"
-    assert J.BASES == ("N1B", "S1B", "N2B", "S2B", "N250", "S250", "NT", "ST") and J.SEEDS == (1, 2)
+    assert J.BASES == ("N1B", "S1B", "N2B", "S2B", "N250", "S250", "NT", "ST", "N250s2", "S250s2") and J.SEEDS == (1, 2)
 
 
 def back_to_a35(obj, base):
@@ -61,7 +61,7 @@ def test_no_campaign_names_a_twin_file_a_sealed_request_file_or_another_campaign
     for base in J.BASES:
         t = J.text(base)
         for word in ("train_twins", "twin_loss", "answer_mask", "confirmation", "selection_req", "S74", "S73", "readout_req",
-                     "sft_N250/", "sft_S/", "sft_C", "S75_", "base_N250.safetensors", "base_S.safetensors", "base_C.safetensors"):
+                     "sft_N250/", "sft_S/", "sft_N2", "sft_S2", "base_N2", "base_S2", "sft_C", "S75_", "base_N250.safetensors", "base_S.safetensors", "base_C.safetensors"):
             assert word not in t, (base, word)
     names = [j["name"] for b in J.BASES for j in J.render(b)["jobs"] if j["name"] not in ("repro_A", "gate")]
     assert len(names) == len(set(names))
