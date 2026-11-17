@@ -16,8 +16,10 @@ SEED 2 FIRST, AND NO OVERLAP (PROTOCOL 48.3: no other Colab use of the lane duri
 starts, and the ladder is not admitted, until seed 2 is off. Seed 2's folders, entries, processes and records are read only.
 "Seed 2 is off" is a positive reading, ALL of:
   S1. its section has ended, by one of: both arms' state.json read campaign_home and store_release_final_done; or the time
-      is an hour past the deadline in seed 2's own launch record (nothing of it can run after that); or the lead has written
-      LAUNCH_DIR/SEED2_ENDED.json (who, when, why) to say the section is closed. A HALTED arm is not an end: it may be resumed;
+      is an hour past seed 2's deadline, PROVEN: its launch record validates by seed 2's own rule (S2.record_problem) and
+      every seed-2 arm that has launched holds a valid own copy with that same deadline (the copy its runner is given), so no
+      runner of it can hold a later one; or the lead has written LAUNCH_DIR/SEED2_ENDED.json (who, when not in the future, why)
+      to say the section is closed. A HALTED arm is not an end: it may be resumed;
   S2. the process table can be read and no process carries a seed-2 arm's --name or --state-dir;
   S3. Colab's listing answers and lists no seed-2 session.
 It does not depend on seed 2's watchdog entries, which may be enabled, disabled or removed.
@@ -40,10 +42,16 @@ runner takes the earlier of it and now plus --max-hours, so a restart can never 
 never run again (HALTED, LADDER_ARM_DEADLINE). The cap therefore holds by wall time alone, whether or not the guard can read
 the balance: the arms' hour limits sum to WORST_HOURS L4-hours, WORST_UNITS units.
 
-A launched arm (state.json "launches" at least 1, or a session of its own name in the listing) that holds HALTED is not run
-by the gate; its watchdog entry names HALTED as its stop file, so the watchdog disables it for a person to read. Otherwise a
-launched arm inside its deadline runs its runner at once: that resumes or adopts the session it has and asks for no new slot,
-and a pending STOP_REQUEST is taken by that runner, whose confirmed stop ends the session.
+An arm that has started before (state.json "launches" at least 1, or a session of its own name in the listing) and holds
+HALTED is not run by the gate; its watchdog entry names HALTED as its stop file, so the watchdog disables it for a person to
+read. Otherwise, inside its recorded deadline, what the gate does depends on the listing, which must answer:
+  its session IS listed   the runner is run at once. It asks for no new slot; it resumes the session, or tries to adopt it
+                          (the runner owns a session by its recorded endpoint, so a session made just before a crash may
+                          still need a person); a pending STOP_REQUEST is taken by that runner, whose confirmed stop ends it;
+  its session is NOT listed   running the runner would make a replacement session, which is a new allocation: every start
+                          condition is asked again (seed 2 off, the guard running, room, disk, the balance covering the worst
+                          case to the arms' recorded deadlines), and a stop asked of the ladder halts it. The deadline is the
+                          one recorded at the first start.
 
 Every decision is made under one lock (LAUNCH_DIR/gate.lock). An arm about to start writes START_PENDING; other gates count
 it as an L4 taken until its session is listed or the arm has ended. Each gate holds its folder's own lock for its life and
@@ -222,17 +230,35 @@ def ended_home(state_dir):
     return bool(st) and st.get("campaign_home") is True and st.get("store_release_final_done") is True
 
 
+def seed2_proven_deadline(arms, seed2_launch=None):
+    """Seed 2's deadline (epoch seconds) when it is proven to be the one every seed-2 runner is given, else None: the
+    launch record validates by seed 2's own rule, and each arm that has launched holds a valid own copy with the same
+    deadline (seed 2's gate resumes a launched arm on that copy)."""
+    rec = read_json(SEED2_LAUNCH if seed2_launch is None else seed2_launch)
+    if rec is None or S2.record_problem(rec):
+        return None
+    for a in arms.values():
+        if not S2.launched(a["state_dir"]):
+            continue
+        own = read_json(os.path.join(a["state_dir"], S2.OWN_COPY))
+        if own is None or S2.record_problem(own) or own.get("deadline_utc") != rec["deadline_utc"]:
+            return None
+    return parse_iso(rec["deadline_utc"])
+
+
 def seed2_section_ended(now, launch_dir=None, seed2_arms=None, seed2_launch=None):
     """S1: how seed 2's section is known to have ended ("home" | "deadline" | "lead"), or None."""
     arms = S2.ARMS if seed2_arms is None else seed2_arms
     if all(ended_home(a["state_dir"]) for a in arms.values()):
         return "home"
-    dl = parse_iso((read_json(SEED2_LAUNCH if seed2_launch is None else seed2_launch) or {}).get("deadline_utc"))
+    dl = seed2_proven_deadline(arms, seed2_launch)
     if dl is not None and now >= dl + SEED2_GRACE_S:
         return "deadline"
     lead = read_json(os.path.join(LAUNCH_DIR if launch_dir is None else launch_dir, "SEED2_ENDED.json"))
-    if lead and all(isinstance(lead.get(k), str) and lead[k] for k in ("by", "why")) and parse_iso(lead.get("at_utc")) is not None:
-        return "lead"
+    if lead and all(isinstance(lead.get(k), str) and lead[k] for k in ("by", "why")):
+        at = parse_iso(lead.get("at_utc"))
+        if at is not None and at <= now + 60:
+            return "lead"
     return None
 
 
@@ -285,7 +311,7 @@ def units_needed(name, arms, now, rec):
         if ended_home(d) or os.path.exists(os.path.join(d, "HALTED")):
             continue
         own = read_json(os.path.join(d, OWN_COPY))
-        arm_dl = parse_iso((own or {}).get("arm_deadline_utc")) if other != name else None
+        arm_dl = parse_iso((own or {}).get("arm_deadline_utc"))      # an arm that has started: to its recorded deadline
         if arm_dl is None and x["rung"] == "T" and name not in (other, None):
             continue
         if arm_dl is not None:
@@ -357,6 +383,31 @@ def decide_arm(name, commit, now, slots, rows_fn, bal_fn, launch_dir=None, seed2
         if now >= parse_iso(own["arm_deadline_utc"]):
             return "halt", ("LADDER_ARM_DEADLINE", f"this arm's deadline {own['arm_deadline_utc']} has passed: it is not run again"
                             + ("; A SESSION OF ITS NAME IS STILL LISTED: a person stops it" if listed else ""))
+        if rows is None:
+            return "wait", "Colab's listing did not answer: whether this arm's session is up is unknown"
+        if listed:      # its session is up: no new slot is asked; the runner resumes it, or takes a pending stop
+            return "exec", runner_argv(name, commit, own["arm_deadline_utc"])
+        # its session is gone: the runner would make a replacement, which is a new allocation, under every start condition
+        if go_problem(read_json(os.path.join(launch_dir, "GO.json")), commit):
+            return "refuse", "GO.json does not validate: no replacement session"
+        if stop_marked(a["state_dir"]) or (stop_asked or guard_stop_asked)():
+            return "halt", ("LADDER_UNITS_STOP", "a stop was asked of the ladder and this arm has no session: none is made")
+        why = (seed2 or seed2_off)(now=now, rows=rows)
+        if why:
+            return "wait", f"seed 2 is live ({why}): no replacement session beside it"
+        f = (free or free_gb)()
+        if f is None or f < MIN_FREE_GB:
+            return "wait", f"C: has {f if f is None else round(f, 1)} GB free, under {MIN_FREE_GB}"
+        if not (guard_up or guard_running)():
+            return "wait", "the ladder's units guard is not running"
+        why = S2.room(slots, rows, 1 + pending_others(name, arms, rows))
+        if why:
+            return "wait", why
+        b = bal_fn()
+        need = units_needed(name, arms, now, rec)
+        if not finite(b) or b < need:
+            return "wait", f"the unit balance {b if not finite(b) else round(b, 1)} does not cover {need:.1f}: no replacement session"
+        S2.write_file(os.path.join(a["state_dir"], "START_PENDING"), {"at": now, "at_utc": iso(now), "name": name})
         return "exec", runner_argv(name, commit, own["arm_deadline_utc"])
     why = go_problem(read_json(os.path.join(launch_dir, "GO.json")), commit)
     if why:

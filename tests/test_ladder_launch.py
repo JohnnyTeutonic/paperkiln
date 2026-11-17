@@ -69,49 +69,86 @@ def own(world, name):
 
 # ---------------------------------------------------------------- seed 2: a positive reading, and no overlap
 
-def seed2_world(tmp, home_n2=False, home_s2=False, deadline=NOW + 100 * H):
+S2_AT = S2.WINDOW_END - 5 * 24 * H            # a seed-2 admission inside its window
+S2_DL = S2_AT + S2.MAX_HOURS * H
+
+
+def seed2_record(deadline=None, **kw):
+    rec = {"at_utc": S2.iso(S2_AT), "deadline_utc": S2.iso(S2_DL if deadline is None else deadline), "start_balance": 463.19,
+           "first": "pk-b2s2-S2", "commit": "c" * 40, "min_balance": S2.MIN_BALANCE, "guard_stop_at": S2.GUARD_STOP_AT,
+           "max_hours": S2.MAX_HOURS}
+    rec.update(kw)
+    return rec
+
+
+def seed2_world(tmp, home_n2=False, home_s2=False, record=None, own=None):
+    record = seed2_record() if record is None else record
     arms = {n: {"state_dir": str(tmp / f"s2_{i}")} for i, n in enumerate(S2.ARMS)}
     for (n, a), is_home in zip(arms.items(), (home_n2, home_s2)):
         os.makedirs(a["state_dir"], exist_ok=True)
         st = {"launches": 1, "campaign_home": True, "store_release_final_done": True} if is_home else {"launches": 1}
         json.dump(st, open(os.path.join(a["state_dir"], "state.json"), "w"))
+        json.dump(record if own is None else own, open(os.path.join(a["state_dir"], S2.OWN_COPY), "w"))
     rec = tmp / "s2_launch.json"
-    rec.write_text(json.dumps({"deadline_utc": S2.iso(deadline)}))
+    rec.write_text(json.dumps(record))
     ld = tmp / "tl_launch"
     ld.mkdir(exist_ok=True)
+    for f in ld.glob("SEED2_ENDED.json"):
+        f.unlink()
     return dict(seed2_arms=arms, seed2_launch=str(rec), launch_dir=str(ld))
 
 
 def test_seed2_is_off_only_on_a_positive_end_with_no_process_and_no_session(tmp_path):
     quiet = dict(cmdlines=lambda: [["python3", "x.py"]], rows=[("pk-tl-N1B", "L4")])
+    t = S2_AT + 10 * H
+    assert S2.record_problem(seed2_record()) is None
     w = seed2_world(tmp_path)
-    assert "has not ended" in G.seed2_off(now=NOW, **quiet, **w)
-    assert "has not ended" in G.seed2_off(now=NOW, **quiet, **seed2_world(tmp_path, home_n2=True))      # one arm home is not an end
+    assert "has not ended" in G.seed2_off(now=t, **quiet, **w)
+    assert "has not ended" in G.seed2_off(now=t, **quiet, **seed2_world(tmp_path, home_n2=True))      # one arm home is not an end
     # a HALTED seed-2 arm is not an end: it may be resumed
-    open(os.path.join(w["seed2_arms"]["pk-b2s2-N2"]["state_dir"], "HALTED"), "w").write("{}")
-    assert "has not ended" in G.seed2_off(now=NOW, **quiet, **w)
-    # the three ends
-    both = seed2_world(tmp_path, home_n2=True, home_s2=True)
-    assert G.seed2_section_ended(NOW, both["launch_dir"], both["seed2_arms"], both["seed2_launch"]) == "home"
-    assert G.seed2_off(now=NOW, **quiet, **both) is None
     w = seed2_world(tmp_path)
-    assert "has not ended" in G.seed2_off(now=NOW + 100 * H + 3599, **quiet, **w)
-    assert G.seed2_off(now=NOW + 101 * H, **quiet, **w) is None                  # an hour past its own deadline
-    assert G.seed2_section_ended(NOW + 101 * H, w["launch_dir"], w["seed2_arms"], w["seed2_launch"]) == "deadline"
+    open(os.path.join(w["seed2_arms"]["pk-b2s2-N2"]["state_dir"], "HALTED"), "w").write("{}")
+    assert "has not ended" in G.seed2_off(now=t, **quiet, **w)
+    os.remove(os.path.join(w["seed2_arms"]["pk-b2s2-N2"]["state_dir"], "HALTED"))
+    # end 1: both arms home with the last release made
+    both = seed2_world(tmp_path, home_n2=True, home_s2=True)
+    assert G.seed2_section_ended(t, both["launch_dir"], both["seed2_arms"], both["seed2_launch"]) == "home"
+    assert G.seed2_off(now=t, **quiet, **both) is None
+    # end 2: an hour past seed 2's deadline, proven by a valid record and the arms' own copies of it
+    w = seed2_world(tmp_path)
+    assert "has not ended" in G.seed2_off(now=S2_DL + 3599, **quiet, **w)
+    assert G.seed2_off(now=S2_DL + H, **quiet, **w) is None
+    assert G.seed2_section_ended(S2_DL + H, w["launch_dir"], w["seed2_arms"], w["seed2_launch"]) == "deadline"
+    late = S2_DL + 10 * H
+    for bad in ({"deadline_utc": S2.iso(S2_AT)},                               # a bare deadline proves nothing
+                seed2_record(deadline=S2_AT + 3 * H),                          # a deadline that is not the admission plus its hours
+                seed2_record(min_balance=1.0)):
+        assert G.seed2_proven_deadline(*[seed2_world(tmp_path, record=bad)[k] for k in ("seed2_arms", "seed2_launch")]) is None
+        assert "has not ended" in G.seed2_off(now=late, **quiet, **seed2_world(tmp_path, record=bad))
+    # a launched arm whose own copy holds another deadline, or none, could be resumed under it: no proof
+    other = seed2_record(at_utc=S2.iso(S2_AT + 24 * H), deadline=S2_AT + 24 * H + S2.MAX_HOURS * H)
+    assert S2.record_problem(other) is None
+    assert "has not ended" in G.seed2_off(now=late, **quiet, **seed2_world(tmp_path, own=other))
+    assert "has not ended" in G.seed2_off(now=late, **quiet, **seed2_world(tmp_path, own={"x": 1}))
+    # end 3: the lead's note, complete and not from the future
+    w = seed2_world(tmp_path)
     lead = os.path.join(w["launch_dir"], "SEED2_ENDED.json")
     json.dump({"by": "the lead"}, open(lead, "w"))
-    assert "has not ended" in G.seed2_off(now=NOW, **quiet, **w)                   # an incomplete note says nothing
-    json.dump({"by": "the lead", "why": "48.3 closed", "at_utc": S2.iso(NOW)}, open(lead, "w"))
-    assert G.seed2_off(now=NOW, **quiet, **w) is None
-    assert G.seed2_section_ended(NOW, w["launch_dir"], w["seed2_arms"], w["seed2_launch"]) == "lead"
+    assert "has not ended" in G.seed2_off(now=t, **quiet, **w)
+    json.dump({"by": "the lead", "why": "48.3 closed", "at_utc": S2.iso(t + 2 * H)}, open(lead, "w"))
+    assert "has not ended" in G.seed2_off(now=t, **quiet, **w)
+    json.dump({"by": "the lead", "why": "48.3 closed", "at_utc": S2.iso(t)}, open(lead, "w"))
+    assert G.seed2_off(now=t, **quiet, **w) is None
+    assert G.seed2_section_ended(t, w["launch_dir"], w["seed2_arms"], w["seed2_launch"]) == "lead"
     # and still live with a seed-2 process, a seed-2 session, or anything unreadable
+    both = seed2_world(tmp_path, home_n2=True, home_s2=True)
     live = [["python3", "-u", "runner_multi.py", "--name", "pk-b2s2-S2"]]
-    assert "pk-b2s2-S2" in G.seed2_off(now=NOW, cmdlines=lambda: live, rows=[], **both)
+    assert "pk-b2s2-S2" in G.seed2_off(now=t, cmdlines=lambda: live, rows=[], **both)
     sd = both["seed2_arms"]["pk-b2s2-N2"]["state_dir"]
-    assert "pk-b2s2-N2" in G.seed2_off(now=NOW, cmdlines=lambda: [["python3", "r.py", "--state-dir", sd]], rows=[], **both)
-    assert "process table" in G.seed2_off(now=NOW, cmdlines=lambda: None, rows=[], **both)
-    assert "did not answer" in G.seed2_off(now=NOW, cmdlines=lambda: [], rows=None, **both)
-    assert "pk-b2s2-N2" in G.seed2_off(now=NOW, cmdlines=lambda: [], rows=[("pk-b2s2-N2", "L4")], **both)
+    assert "pk-b2s2-N2" in G.seed2_off(now=t, cmdlines=lambda: [["python3", "r.py", "--state-dir", sd]], rows=[], **both)
+    assert "process table" in G.seed2_off(now=t, cmdlines=lambda: None, rows=[], **both)
+    assert "did not answer" in G.seed2_off(now=t, cmdlines=lambda: [], rows=None, **both)
+    assert "pk-b2s2-N2" in G.seed2_off(now=t, cmdlines=lambda: [], rows=[("pk-b2s2-N2", "L4")], **both)
     assert G.scan(str(tmp_path / "no_proc")) is None and G.scan(str(tmp_path / "tl_launch")) is None
 
 
@@ -206,13 +243,19 @@ def test_a_restart_passes_the_first_starts_deadline_and_can_never_extend_the_arm
     assert decide(world, NT, now=NOW + 60)[0] == "exec"
     first = own(world, NT)
     launched(world, NT)
-    # restarts at 10, 100 and 137.9 hours: the same deadline every time, whatever else is true then
+    # restarts at 10, 100 and 137.9 hours with its session up: the same deadline every time, whatever else is true then
     for h in (10, 100, 137.9):
-        kind, argv = decide(world, NT, now=NOW + int(h * H), seed2=LIVE, bal=None, guard_up=False, free_l4=0, stop=True)
+        kind, argv = decide(world, NT, now=NOW + int(h * H), seed2=LIVE, bal=None, guard_up=False, free_l4=0, stop=True,
+                            rows=[(NT, "L4")])
         assert kind == "exec"
         assert argv[argv.index("--deadline-utc") + 1] == first["arm_deadline_utc"] == S2.iso(NOW + 60 + 138 * H)
         assert argv[argv.index("--max-hours") + 1] == "138"
         assert own(world, NT) == first                                    # written once, never rewritten
+    # the same restarts with its session gone (a replacement would be made): the same deadline again
+    for h in (10, 100, 137.9):
+        kind, argv = decide(world, NT, now=NOW + int(h * H))
+        assert kind == "exec" and argv[argv.index("--deadline-utc") + 1] == first["arm_deadline_utc"]
+        assert own(world, NT) == first
     # the runner takes the earlier of the passed deadline and now + --max-hours: a restart cannot outlive the first start + limit
     import runner_multi as R
     dl = S2.parse_iso(first["arm_deadline_utc"])
@@ -325,18 +368,42 @@ def test_a_stop_reaches_arms_that_have_not_started_and_a_torn_log_line_is_not_a_
     assert G.guard_stop_asked(str(log)) is True
 
 
-def test_a_launched_or_listed_arm_runs_again_unless_it_is_halted(world):
+def test_a_listed_session_is_resumed_and_a_lost_one_is_replaced_only_under_every_start_condition(world):
     assert decide(world, N1B)[0] == "exec"
     d = world["arms"][N1B]["state_dir"]
+    up = [(N1B, "L4")]
     # a session of its name is listed though no launch was counted (a crash between the create and the save): it is this
-    # arm's, so the runner is run to adopt it; no second slot is asked
-    kind, argv = decide(world, N1B, now=NOW + H, free_l4=0, bal=None, rows=[(N1B, "L4")])
+    # arm's, so the runner is run for it; no second slot is asked
+    kind, argv = decide(world, N1B, now=NOW + H, free_l4=0, bal=None, rows=up)
     assert kind == "exec" and argv[argv.index("--name") + 1] == N1B
     launched(world, N1B, 2)
-    open(os.path.join(d, "STOP_REQUEST"), "w").write("units")            # a pending stop is the runner's to take
-    assert decide(world, N1B, now=NOW + H)[0] == "exec"
+    # launched before, and its session is gone: a replacement is a new allocation, asked like any start
+    t = NOW + 2 * H
+    assert decide(world, N1B, now=t)[0] == "exec"
+    os.remove(os.path.join(d, "START_PENDING"))
+    assert "no replacement session beside it" in decide(world, N1B, now=t, seed2=LIVE)[1]
+    assert decide(world, N1B, now=t, free_l4=0)[0] == "wait"
+    assert decide(world, N1B, now=t, guard_up=False)[0] == "wait"
+    assert decide(world, N1B, now=t, free=1.0)[0] == "wait"
+    assert decide(world, N1B, now=t, bal=None)[0] == "wait"
+    need = G.units_needed(N1B, world["arms"], t, json.load(open(os.path.join(world["ld"], "launch.json"))))
+    assert abs(need - ((24 + 54 + 26 + 54) * 1.94 + 20)) < 0.01           # its own 24 hours left, and the three unstarted low arms
+    assert decide(world, N1B, now=t, bal=need - 1)[0] == "wait" and decide(world, N1B, now=t, bal=need + 1)[0] == "exec"
+    assert decide(world, N1B, now=t, rows=None)[0] == "wait"              # the listing did not answer: unknown, so nothing
+    assert decide(world, N1B, now=t, stop=True)[0] == "halt"              # a stop asked, and no session to stop: none is made
+    os.remove(os.path.join(d, "HALTED")) if os.path.exists(os.path.join(d, "HALTED")) else None
+    # a pending stop with its session up is the runner's to take; with no session the gate halts
+    open(os.path.join(d, "STOP_REQUEST"), "w").write("units")
+    assert decide(world, N1B, now=t, rows=up)[0] == "exec"
+    assert decide(world, N1B, now=t)[0] == "halt"
+    os.remove(os.path.join(d, "STOP_REQUEST"))
+    go = os.path.join(world["ld"], "GO.json")
+    saved = open(go).read()
+    os.remove(go)
+    assert decide(world, N1B, now=t)[0] == "refuse" and decide(world, N1B, now=t, rows=up)[0] == "exec"
+    open(go, "w").write(saved)
     open(os.path.join(d, "HALTED"), "w").write("{}")
-    assert decide(world, N1B, now=NOW + H) == ("halt", ("LADDER_HALTED", "this arm holds HALTED: the gate runs nothing; a person reads it"))
+    assert decide(world, N1B, now=t, rows=up) == ("halt", ("LADDER_HALTED", "this arm holds HALTED: the gate runs nothing; a person reads it"))
 
 
 def test_a_start_reserves_its_l4_until_its_session_is_listed_or_it_has_ended(world):
