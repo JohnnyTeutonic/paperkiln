@@ -1,0 +1,7 @@
+{
+ "_comment": "E9's pins (e9_pins.py): each D arm's two id files, null until its corpus is built and adopted from its stage ledger (e9_pins.py adopt-ledger). A null pin refuses, so no D arm can train before its corpus is pinned. Base 2's pins (base2_pins.json) are read for the panels and the vocabulary and never written.",
+ "D2": {"D2.main.ids": null, "D2.tail.ids": null},
+ "D3": {"D3.main.ids": null, "D3.tail.ids": null},
+ "D4": {"D4.main.ids": null, "D4.tail.ids": null},
+ "D4ops": {"D4ops.main.ids": null, "D4ops.tail.ids": null}
+}

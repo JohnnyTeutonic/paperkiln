@@ -64,13 +64,13 @@ def rehearsal(tmp_path_factory):
         shutil.copyfile(E9_SRC / "results" / f"stream_receipt_{lv}.json", e9 / "results" / f"stream_receipt_{lv}.json")
     m.e9 = e9
 
-    def run(out, arm, level, expect=0):
+    def run(out, arm, level, expect=0, **extra):
         env = {**os.environ, "CUDA_VISIBLE_DEVICES": "", "BASE2_STORE_CONFIG": str(m.vm_config(out)),
                "BASE2_PINS": str(m.pins), "BASE2_ENGINE_DIR": str(m.engine), "BASE2_FIXTURE": str(m.fx),
                "BASE2_THREADS": "2", "BASE2_JOBS": "2", "BASE2_SCN_SHARD_DOCS": "400", "BASE2_SCN_HELDOUT_DOCS": "200",
                "BASE2_MIN_FREE_GB": "0", "BASE2_TIMING_BYTES": "150000", "BASE2_KEEP_MIX_TEXT": "1",
                "BASE2_STORE_RETRY_S": "0", "BASE2_SCN_VALIDATE": "0", "PYTHONDONTWRITEBYTECODE": "1",
-               "E9_ARM": arm, "E9_LEVEL": level, "E9_DIR": str(e9)}
+               "E9_ARM": arm, "E9_LEVEL": level, "E9_DIR": str(e9), "E9_REHEARSAL": "1", **extra}
         r = subprocess.run(["bash", "tools/colab_chat/e9_data.sh", str(out), str(m.vocab), "stage3"], cwd=ROOT,
                            env=env, capture_output=True, text=True)
         assert r.returncode == expect, (r.stdout[-3000:], r.stderr[-3000:])
@@ -106,6 +106,10 @@ def test_rehearsal_dose_manifest_is_in_band_and_the_streams_differ(rehearsal):
     assert man["D2"]["stream_sha256"] != man["D4"]["stream_sha256"]
     led = json.load(open(m.d2 / "e9_D2_stage3.json"))
     assert led["built"]["manifest"]["arm"] == "D2"
+    # B6: the manifest says at what seed and size it was built, and that it was a rehearsal
+    assert man["D2"]["seed"] == 20261111 and man["D2"]["shard_docs"] == 400 and man["D2"]["rehearsal"] is True
+    for name in ("scenario_D2.ledger.json", "token_counts_D2.json", "scenario_sample_D2.json"):
+        assert (m.d2 / name).exists(), name                     # arm-specific names
 
 
 def test_shard0_is_held_to_the_receipt_at_the_receipts_size(rehearsal):
@@ -131,6 +135,39 @@ def test_shard0_is_held_to_the_receipt_at_the_receipts_size(rehearsal):
         assert "shard 0 is not the bytes of the level's stream receipt" in out
     finally:
         p.write_bytes(keep)
+
+
+def test_pins_adopt_from_a_real_stage_receipt(rehearsal, tmp_path):
+    """B4: e9_pins.py takes the arm's id hashes from the stage receipt's published-set manifest."""
+    import e9_pins as EP
+    m = rehearsal
+    ep = tmp_path / "e9_pins.json"
+    ep.write_text((CC / "e9_pins.json").read_text())
+    assert EP.main(["adopt-ledger", str(m.d2 / "e9_D2_stage3.json"), "--e9-pins", str(ep)]) == 0
+    got = json.load(open(ep))["D2"]
+    for part in ("main", "tail"):
+        assert got[f"D2.{part}.ids"] == EP.P.sha256(str(m.d2 / f"D2.{part}.ids"))
+
+
+def test_another_size_without_e9_rehearsal_is_refused(rehearsal):
+    """B6: a VM left at a rehearsal's size (or a stray seed) builds nothing unless E9_REHEARSAL=1 says it is one."""
+    out = rehearsal.e9run(rehearsal.tmp / "vm_d2_norehearsal", "D2n", "L2", expect=1, E9_REHEARSAL="0")
+    assert "E9_REHEARSAL is not 1" in out and "shard 0 is not the bytes" in out
+
+
+def test_the_level_validator_runs_through_the_build_scripts_command_line(rehearsal):
+    """validate_level.py, as e9_data.sh calls it. At 400 documents the engine's rates (cue and genre shares, endings)
+    cannot be met, so the build must stop on the validator, and its report must be the level validator's."""
+    m = rehearsal
+    # the held-out panel is validated first, by the engine's own validator; at its campaign size (20,000) it passes
+    out = m.e9run(m.tmp / "vm_d2_validate", "D2v", "L2", expect=1, BASE2_SCN_VALIDATE="1",
+                  BASE2_SCN_HELDOUT_DOCS="20000")
+    assert "scenario shard 0 fails the engine's validator" in out, out[-2000:]
+    scn = m.tmp / "vm_d2_validate" / "scn_D2v"
+    log = (scn / "validate_0.log").read_text() if (scn / "validate_0.log").exists() else "(no log)"
+    assert (scn / "validate_0.json").exists(), log[-3000:]
+    rep = json.load(open(scn / "validate_0.json"))
+    assert rep["level"] == "L2" and rep["verdict"] == "FAIL" and "new_layout_docs" in rep
 
 
 def test_a_changed_generator_is_refused(rehearsal):

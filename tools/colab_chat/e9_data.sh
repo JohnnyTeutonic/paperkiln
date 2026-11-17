@@ -436,18 +436,18 @@ build3() {
   fi
   # Shard 0 is the sample: its bytes a token under the real tokeniser set the scenario ratio (the plan's risk 8).
   scn_shard 0
-  if ! cached "$OUT/scenario_sample.json" --input "$d/shard_0.ledger.json" --input "$V"; then
-    python3 tools/corpus_ids.py "$d/shard_0.txt" "$V" "$WORK/scn0.ids" --threads "$THREADS" > "$OUT/scenario_sample.json.tmp"
+  if ! cached "$OUT/scenario_sample_$ARM.json" --input "$d/shard_0.ledger.json" --input "$V"; then
+    python3 tools/corpus_ids.py "$d/shard_0.txt" "$V" "$WORK/scn0.ids" --threads "$THREADS" > "$OUT/scenario_sample_$ARM.json.tmp"
     rm -f "$WORK/scn0.ids"
-    mv "$OUT/scenario_sample.json.tmp" "$OUT/scenario_sample.json"
-    stamp "$OUT/scenario_sample.json" --input "$d/shard_0.ledger.json" --input "$V"
+    mv "$OUT/scenario_sample_$ARM.json.tmp" "$OUT/scenario_sample_$ARM.json"
+    stamp "$OUT/scenario_sample_$ARM.json" --input "$d/shard_0.ledger.json" --input "$V"
   fi
-  bind="--input $OUT/recipe_N.json --input $OUT/N.ledger.json --input $OUT/ids_N.json --input $OUT/scenario_sample.json \
+  bind="--input $OUT/recipe_N.json --input $OUT/N.ledger.json --input $OUT/ids_N.json --input $OUT/scenario_sample_$ARM.json \
     --input $d/shard_0.ledger.json --key shard_docs=$SHARD_DOCS --key max_drop=$MAX_DROP"
   # shellcheck disable=SC2086
   if ! cached "$OUT/recipe_$ARM.json" $bind; then
     B2 recipe-s --recipe-n "$OUT/recipe_N.json" --n-ledger "$OUT/N.ledger.json" \
-      --n-ids "$OUT/ids_N.json" --scn-bytes "$(stat -c %s "$d/shard_0.txt")" --scn-tokens "$(B2 get "$OUT/scenario_sample.json" tokens)" \
+      --n-ids "$OUT/ids_N.json" --scn-bytes "$(stat -c %s "$d/shard_0.txt")" --scn-tokens "$(B2 get "$OUT/scenario_sample_$ARM.json" tokens)" \
       --scn-docs "$(B2 get "$d/shard_0.ledger.json" documents_kept)" --shard-docs "$SHARD_DOCS" --max-drop "$MAX_DROP" \
       --out "$OUT/recipe_$ARM.json"
     # shellcheck disable=SC2086
@@ -469,21 +469,21 @@ build3() {
   fi
   # shellcheck disable=SC2046
   B2 scn-ledger --dir "$d" --shards "$shards" --text "$WORK/scenario.txt" --recipe "$OUT/recipe_$ARM.json" \
-    --seed "$SEED" --max-drop "$MAX_DROP" $([ "$VALIDATE" = 1 ] && echo --validated) --out "$OUT/scenario.ledger.json"
+    --seed "$SEED" --max-drop "$MAX_DROP" $([ "$VALIDATE" = 1 ] && echo --validated) --out "$OUT/scenario_$ARM.ledger.json"
   dialogue_copies
-  MIX_DEPS="--input $OUT/scenario.ledger.json"
+  MIX_DEPS="--input $OUT/scenario_$ARM.ledger.json"
   mix_and_ids "$ARM" "$OUT/recipe_$ARM.json" --source "scenario=$WORK/scenario.txt"
   MIX_DEPS=""
   # S's natural documents are among N's: by the mixer's ledgers, and document by document against N's digests.
   B2 subset "$OUT/N.ledger.json" "$OUT/$ARM.ledger.json" > "$OUT/subset_${ARM}_in_N.json"
-  if ! cached "$OUT/subset_docs_${ARM}_in_N.json" --input "$OUT/$ARM.ledger.json" --input "$OUT/N.keys" --input "$OUT/scenario.ledger.json"; then
+  if ! cached "$OUT/subset_docs_${ARM}_in_N.json" --input "$OUT/$ARM.ledger.json" --input "$OUT/N.keys" --input "$OUT/scenario_$ARM.ledger.json"; then
     B2 subset-docs --n-keys "$OUT/N.keys" --scenario "$WORK/scenario.txt" --out "$OUT/subset_docs_${ARM}_in_N.json" \
       "$OUT/$ARM.main.txt" "$OUT/$ARM.tail.txt" > /dev/null
-    stamp "$OUT/subset_docs_${ARM}_in_N.json" --input "$OUT/$ARM.ledger.json" --input "$OUT/N.keys" --input "$OUT/scenario.ledger.json"
+    stamp "$OUT/subset_docs_${ARM}_in_N.json" --input "$OUT/$ARM.ledger.json" --input "$OUT/N.keys" --input "$OUT/scenario_$ARM.ledger.json"
   fi
   # The registered share, measured on the mixed text by the real tokeniser: outside 14% to 16% the stage fails.
   for part in main tail; do
-    bind="--input $OUT/$ARM.ledger.json --input $OUT/ids_$ARM.json --input $OUT/scenario.ledger.json --input $V"
+    bind="--input $OUT/$ARM.ledger.json --input $OUT/ids_$ARM.json --input $OUT/scenario_$ARM.ledger.json --input $V"
     # shellcheck disable=SC2086
     if ! cached "$OUT/share_$ARM.$part.json" $bind; then
       B2 share --mix "$OUT/$ARM.$part.txt" --scenario "$WORK/scenario.txt" --vocab "$V" \
@@ -495,29 +495,30 @@ build3() {
     [ "$(B2 get "$OUT/share_$ARM.$part.json" ok)" = True ] || { echo "base2_data: scenario share out of bounds in the $part part"; exit 1; }
   done
   # N's and S's actual token counts, part by part; S further than BASE2_TOKEN_REL_MAX from N's fails the stage.
-  B2 token-report --n-ids "$OUT/ids_N.json" --s-ids "$OUT/ids_$ARM.json" --max-rel "$TOKEN_REL_MAX" --out "$OUT/token_counts.json" > /dev/null \
+  B2 token-report --n-ids "$OUT/ids_N.json" --s-ids "$OUT/ids_$ARM.json" --max-rel "$TOKEN_REL_MAX" --out "$OUT/token_counts_$ARM.json" > /dev/null \
     || { echo "base2_data: S's token count is not N's (token_counts.json)"; exit 1; }
   # base 2 recorded S's pins here; a D arm is pinned (arm-$ARM) from this stage ledger's file hashes
   python3 "$E9_DIR/e9_build.py" manifest --arm "$ARM" --level "$E9_LEVEL" --main "$OUT/share_$ARM.main.json" \
-    --tail "$OUT/share_$ARM.tail.json" --scenario "$OUT/scenario.ledger.json" --out "$OUT/e9_manifest_$ARM.json" \
+    --tail "$OUT/share_$ARM.tail.json" --scenario "$OUT/scenario_$ARM.ledger.json" --out "$OUT/e9_manifest_$ARM.json" \
+    --seed "$SEED" --shard-docs "$SHARD_DOCS" \
     > /dev/null || { echo "e9_data: the arm's dose is outside its band (e9_manifest_$ARM.json)"; exit 1; }
   B2 stage-ledger --out "$OUT/e9_${ARM}_stage3.built.json" --kv stage=3 --kv "scenario_seed=$SEED" \
     --file "$ARM.main.ids=$OUT/$ARM.main.ids" --file "$ARM.tail.ids=$OUT/$ARM.tail.ids" --file "panel_scenario.ids=$OUT/panel_scenario.ids" \
     --json "recipe=$OUT/recipe_$ARM.json" --json "mix=$OUT/$ARM.ledger.json" --jsonl "ids=$OUT/ids_$ARM.json" \
-    --json "scenario=$OUT/scenario.ledger.json" --json "scenario_sample=$OUT/scenario_sample.json" \
+    --json "scenario=$OUT/scenario_$ARM.ledger.json" --json "scenario_sample=$OUT/scenario_sample_$ARM.json" \
     --json "panel_scenario=$OUT/panel_scenario.json" --json "share_main=$OUT/share_$ARM.main.json" \
-    --json "share_tail=$OUT/share_$ARM.tail.json" --json "token_counts=$OUT/token_counts.json" \
+    --json "share_tail=$OUT/share_$ARM.tail.json" --json "token_counts=$OUT/token_counts_$ARM.json" \
     --json "subset=$OUT/subset_${ARM}_in_N.json" --json "subset_documents=$OUT/subset_docs_${ARM}_in_N.json" \
     --json "engine_pins=$OUT/engine_pins_observed.json" --json "pins=$OUT/base2_pins_observed.json" --json "manifest=$OUT/e9_manifest_$ARM.json"
   say "stage 3 built"
 }
 publish3() {
   push_set main "corpus/$ARM" "$OUT/$ARM.main.ids" "$OUT/$ARM.tail.ids" "$OUT/$ARM.ledger.json" "$OUT/ids_$ARM.json" "$OUT/recipe_$ARM.json" \
-    "$OUT/scenario.ledger.json" "$OUT/share_$ARM.main.json" "$OUT/share_$ARM.tail.json" "$OUT/token_counts.json" "$OUT/e9_manifest_$ARM.json"
+    "$OUT/scenario_$ARM.ledger.json" "$OUT/share_$ARM.main.json" "$OUT/share_$ARM.tail.json" "$OUT/token_counts_$ARM.json" "$OUT/e9_manifest_$ARM.json"
   B2 stage-ledger --out "$OUT/e9_${ARM}_stage3.json" --kv stage=3 --json "built=$OUT/e9_${ARM}_stage3.built.json" \
     --json "published_$ARM=$OUT/published_corpus_$ARM.json"
   push_set "$EB" "build/$ARM/stage3" "$OUT/e9_${ARM}_stage3.json" "$OUT/$ARM.ledger.json" "$OUT/ids_$ARM.json" "$OUT/recipe_$ARM.json" \
-    "$OUT/scenario.ledger.json"
+    "$OUT/scenario_$ARM.ledger.json"
   drop_mix_text "$ARM"   # only now: the receipt is in the store
   rm -rf "$OUT/scn_$ARM" "$WORK"
   say "stage 3 done"

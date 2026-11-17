@@ -75,7 +75,7 @@
    "halt_on_failure": true,
    "cmd": [
     "python3",
-    "tools/colab_chat/base2_pins.py",
+    "tools/colab_chat/e9_pins.py",
     "/content/chat/data",
     "arm-D4",
     "--upload",

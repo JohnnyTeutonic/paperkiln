@@ -28,6 +28,7 @@ def allowed():
     t = [(("store_inputs", 1, "prefix"), "corpus/S", "corpus/{c}"),
          (("store_inputs", 1, "files", 0), "S.main.ids", "{c}.main.ids"),
          (("store_inputs", 1, "files", 1), "S.tail.ids", "{c}.tail.ids"),
+         (("jobs", 0, "cmd", 1), "tools/colab_chat/base2_pins.py", "tools/colab_chat/e9_pins.py"),
          (("jobs", 0, "cmd", 3), "arm-S", "arm-{c}"),
          (("jobs", 1, "name"), "pt_base2_{r}", "pt_base2_{n}"),
          (("jobs", 1, "model_name"), "base2_{r}", "base2_{n}"),
@@ -74,6 +75,7 @@ def leaves(x, path=()):
 
 def test_the_arm_set_is_the_registered_one():
     assert set(E9.ARMS) == set(OFFSETS)
+    assert set(E9.files()) == {f"e9_{n}.json" for n in OFFSETS} | {f"e9_data_{b}.json" for b in LEVELS}
     for n, a in E9.ARMS.items():
         assert a["ref"] == REFS[n]
 

@@ -82,6 +82,9 @@ def arm(name):
     src.pop("_comment")
     out = substitute(src, ref, name, base)
     out = L._with_offset(out, a["offset_min"])
+    pins = out["jobs"][0]["cmd"]                 # E9's own pins tool (A4, B4): base2_pins.py is never edited
+    assert pins[1] == "tools/colab_chat/base2_pins.py", pins
+    pins[1] = "tools/colab_chat/e9_pins.py"
     meta = dict(meta, arm=name, corpus=base, slot=None, e9_level=LEVEL[base], e9_ref_arm=ref)
     head = {"_comment": (f"E9 scenario diversity, arm {name}: the token ladder's arm {ref} with the scenario stream of "
                          f"level {LEVEL[base]} (corpus {base}) in place of S's; nothing else is changed. Not admitted: "
@@ -91,8 +94,30 @@ def arm(name):
     return head
 
 
+DATA_HOURS = 6        # a corpus build's hour limit on one L4 (base 2's took about 3.5 hours for a larger tokenisation)
+
+
+def data_jobs(base):
+    """The corpus build of corpus `base` (D2, D3, D4, D4ops): base 2's data jobs file with E9's stage 3 alone and the
+    E9 seed sets pulled beside the engine."""
+    src = json.load(open(os.path.join(HERE, "base2_data.json"), encoding="utf-8"))
+    vocab = "/content/chat/upload/vocab_llama3_bpe.gguf"
+    return {"_comment": (f"E9 corpus build of {base} (level {LEVEL[base]}): base 2's stage 3 with the level's stream "
+                         f"(e9_data.sh), on one L4 session, at most {DATA_HOURS} hours. Not admitted: E9's launch gate."),
+            "store_inputs": src["store_inputs"] + [
+                {"branch": "main", "prefix": "seed/e9", "to": "chat/upload/e9/diversity"},
+                {"branch": "main", "prefix": "seed/e9_receipts", "to": "chat/upload/e9/diversity/results"}],
+            "max_parallel": 1, "max_parallel_light": 1,
+            "jobs": [{"name": "data", "light": True, "halt_on_failure": True,
+                      "cmd": ["env", f"E9_ARM={base}", f"E9_LEVEL={LEVEL[base]}", "bash", "tools/colab_chat/e9_data.sh",
+                              "{out}", vocab, "stage3"],
+                      "outputs": [f"e9_{base}_stage3.json", f"e9_manifest_{base}.json"]}]}
+
+
 def files():
-    return {f"e9_{n}.json": arm(n) for n in ARMS}
+    out = {f"e9_{n}.json": arm(n) for n in ARMS}
+    out.update({f"e9_data_{b}.json": data_jobs(b) for b in LEVEL})
+    return out
 
 
 def main(argv=None):

@@ -1,0 +1,48 @@
+{
+ "_comment": "E9 corpus build of D2 (level L2): base 2's stage 3 with the level's stream (e9_data.sh), on one L4 session, at most 6 hours. Not admitted: E9's launch gate.",
+ "store_inputs": [
+  {
+   "branch": "main",
+   "prefix": "seed/vocab",
+   "to": "chat/upload"
+  },
+  {
+   "branch": "main",
+   "prefix": "seed/scenario_engine",
+   "to": "chat/upload/scenario_engine"
+  },
+  {
+   "branch": "main",
+   "prefix": "seed/e9",
+   "to": "chat/upload/e9/diversity"
+  },
+  {
+   "branch": "main",
+   "prefix": "seed/e9_receipts",
+   "to": "chat/upload/e9/diversity/results"
+  }
+ ],
+ "max_parallel": 1,
+ "max_parallel_light": 1,
+ "jobs": [
+  {
+   "name": "data",
+   "light": true,
+   "halt_on_failure": true,
+   "cmd": [
+    "env",
+    "E9_ARM=D2",
+    "E9_LEVEL=L2",
+    "bash",
+    "tools/colab_chat/e9_data.sh",
+    "{out}",
+    "/content/chat/upload/vocab_llama3_bpe.gguf",
+    "stage3"
+   ],
+   "outputs": [
+    "e9_D2_stage3.json",
+    "e9_manifest_D2.json"
+   ]
+  }
+ ]
+}

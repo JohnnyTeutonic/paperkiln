@@ -86,6 +86,7 @@ STAGE3 = [
      '  # base 2 recorded S\'s pins here; a D arm is pinned (arm-$ARM) from this stage ledger\'s file hashes\n'
      '  python3 "$E9_DIR/e9_build.py" manifest --arm "$ARM" --level "$E9_LEVEL" --main "$OUT/share_$ARM.main.json" \\\n'
      '    --tail "$OUT/share_$ARM.tail.json" --scenario "$OUT/scenario.ledger.json" --out "$OUT/e9_manifest_$ARM.json" \\\n'
+     '    --seed "$SEED" --shard-docs "$SHARD_DOCS" \\\n'
      '    > /dev/null || { echo "e9_data: the arm\'s dose is outside its band (e9_manifest_$ARM.json)"; exit 1; }\n', 1),
     ('base2_stage3', 'e9_${ARM}_stage3', None),
     ('--json "pins=$OUT/base2_pins_observed.json"',
@@ -98,6 +99,10 @@ STAGE3 = [
      '--json "published_$ARM=$OUT/published_corpus_$ARM.json"', 1),
     ('push_set "$BB" build/stage3 ', 'push_set "$EB" "build/$ARM/stage3" ', 1),
     ('  rm -rf "$OUT/scn" "$WORK"', '  rm -rf "$OUT/scn_$ARM" "$WORK"', 1),
+    # arm-specific names for the files two arms built in one OUT would share (Explore review, non-blocking)
+    ('$OUT/scenario.ledger.json', '$OUT/scenario_$ARM.ledger.json', None),
+    ('$OUT/token_counts.json', '$OUT/token_counts_$ARM.json', None),
+    ('$OUT/scenario_sample.json', '$OUT/scenario_sample_$ARM.json', None),
 ]
 
 
