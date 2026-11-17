@@ -545,6 +545,9 @@ class RunPodTransport:
             if p is None:
                 self.log(f"pod {pod_id} vanished while starting")
                 return None
+            if isinstance(p, dict) and p.get("desiredStatus") == "ERROR":   # REST v2's actual state: it will not come up
+                self.log(f"pod {pod_id} is in ERROR while starting")
+                return None
             if isinstance(p, dict) and p.get("desiredStatus") == "RUNNING" and api.ssh_endpoint(p):
                 rc, out = self.exec("print('SSH_OK')\n", timeout=60)
                 if "SSH_OK" in out:

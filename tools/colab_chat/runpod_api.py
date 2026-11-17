@@ -20,7 +20,8 @@ catalog, cursor pagination) were checked against the live API that day. What cha
                  mounts {network: [{volumeId, path}]}; unknown fields are rejected with 422; no default ports
                  and no default volume; spot pods, country and bandwidth placement no longer exist
   terminate      DELETE /v2/pods/{id} -> 204
-  volumes        /v2/network-volumes; create takes `dataCenter` (was dataCenterId); delete -> 204
+  volumes        /v2/network-volumes; create takes `dataCenter` (was dataCenterId) and a `type`, always STANDARD here; delete -> 204
+  not used       queued creates (`queue`) are refused: nothing here would own or cancel one
   errors         {"title", "status", "detail"[, "errors"]}
 GraphQL (https://api.runpod.io/graphql) is kept for what v2 does not offer: the account balance
 (myself { clientBalance currentSpendPerHr }), which RunPod's migration page says to keep there, and the
@@ -107,13 +108,14 @@ def graphql(query, variables=None):
     return d["data"]
 
 
-def _list(path, key, what):
+def _list(path, key, what, query=""):
     """Every item of a v2 list: {key: [...], "pagination": {"nextCursor", "hasNextPage"}}, followed to its last page. Anything
     else (a failed page, a body without the list, a cursor that does not advance) raises: a short list would hide a pod from the
     pod cap and from the sweep."""
     out, cursor, seen = [], None, set()
     for _ in range(MAX_PAGES):
-        st, d = rest("GET", path + (("?cursor=" + urllib.parse.quote(cursor, safe="")) if cursor else ""))
+        q = "&".join(x for x in (query, ("cursor=" + urllib.parse.quote(cursor, safe="")) if cursor else "") if x)
+        st, d = rest("GET", path + ("?" + q if q else ""))
         if st != 200 or not isinstance(d, dict) or not isinstance(d.get(key), list):
             raise RunPodError(f"list {what}: HTTP {st}: {json.dumps(d)[:300]}")
         out += d[key]
@@ -211,7 +213,19 @@ def compat_pod(p):
 
 
 def list_pods():
-    return [compat_pod(p) for p in _list("/pods", "pods", "pods")]
+    """Every pod on the account, cluster member pods included: v2 leaves those out of GET /v2/pods unless asked, and the pod cap
+    and the sweep count from this list (a cluster's pods bill like any other; they are ended through their cluster, so a
+    terminate of one fails with an error and is logged)."""
+    return [compat_pod(p) for p in _list("/pods", "pods", "pods", "includeClusterPods=true")]
+
+
+def ssh_keys_registered():
+    """How many SSH public keys the account has registered (GET /v2/account/ssh-keys -> {"keys": [...]}). v2's startSsh needs at
+    least one: "with none registered the flag does nothing and the pod has no SSH access"."""
+    st, d = rest("GET", "/account/ssh-keys")
+    if st != 200 or not isinstance(d, dict) or not isinstance(d.get("keys"), list):
+        raise RunPodError(f"ssh keys: HTTP {st}: {json.dumps(d)[:200]}")
+    return len(d["keys"])
 
 
 def get_pod(pod_id):
@@ -247,6 +261,8 @@ def v2_create_body(body):
       interruptible false and supportPublicIp are dropped: v2 has no spot pods and no public-IP placement field.
     startSsh is set when the body carries PUBLIC_KEY and publishes 22/tcp: v2 says a pod created without it has no SSH access,
     and that the request's own PUBLIC_KEY is kept."""
+    if "queue" in body:   # a queued create outlives this call (it deploys when capacity comes) and nothing here owns or cancels it
+        raise RunPodError("create pod: queued creates are not used by this client")
     if "image" in body or "gpu" in body:
         return body
     unknown = sorted(set(body) - V1_CREATE)
@@ -293,8 +309,11 @@ def v2_create_body(body):
 
 def create_pod(body):
     """POST /v2/pods behind the guardrails: refuses (Refused) when MAX_PODS pods exist account-wide or the
-    balance is below MIN_BALANCE. Takes the flat v1 body or a v2 body (v2_create_body). Returns the pod object."""
+    balance is below MIN_BALANCE, or when the pod is to be reached over SSH and the account has no registered key. Takes the
+    flat v1 body or a v2 body (v2_create_body); never a queued create. Returns the pod object."""
     send = v2_create_body(body)
+    if send.get("startSsh") and ssh_keys_registered() < 1:
+        raise Refused("the RunPod account has no registered SSH key: a pod created now could not be reached (v2's startSsh)")
     n = len(list_pods())
     if n >= MAX_PODS:
         raise Refused(f"{n} RunPod pods exist (cap {MAX_PODS}); refusing to create another")
@@ -308,12 +327,14 @@ def create_pod(body):
 
 
 def terminate_pod(pod_id):
-    """DELETE /v2/pods/{id}; True when it is gone (deleted now, 204, or already: 404 and a GET that confirms it)."""
+    """DELETE /v2/pods/{id}; True when it is gone (deleted now, 204, or already: 404 and a GET that confirms it, by a 404 of
+    its own or the status TERMINATED)."""
     st, d = rest("DELETE", f"/pods/{pod_id}")
-    if st in (200, 204):
+    if st == 204:
         return True
-    if st == 404:
-        return get_pod(pod_id) is None
+    if st in (200, 404):   # 204 is the documented answer; anything else short of an error is confirmed by a read
+        p = get_pod(pod_id)
+        return p is None or p.get("status") == "TERMINATED"
     raise RunPodError(f"terminate pod {pod_id}: HTTP {st}: {json.dumps(d)[:300]}")
 
 
@@ -332,8 +353,13 @@ def list_volumes():
     return [compat_volume(v) for v in _list("/network-volumes", "networkVolumes", "volumes")]
 
 
+VOLUME_TYPE = "STANDARD"   # the tier ledger_usd prices (VOLUME_USD_PER_GB_MONTH); v2 would otherwise take the data centre's default
+
+
 def create_volume(name, gb, dc):
-    st, d = rest("POST", "/network-volumes", {"name": name, "size": int(gb), "dataCenter": dc})
+    """A STANDARD network volume. The tier is asked for by name, so a data centre whose default is the high-performance tier
+    cannot hand over a dearer volume than the ledger prices; one that has no standard tier answers with an error."""
+    st, d = rest("POST", "/network-volumes", {"name": name, "size": int(gb), "dataCenter": dc, "type": VOLUME_TYPE})
     if st not in (200, 201) or not isinstance(d, dict) or not d.get("id"):
         raise RunPodError(f"create volume: HTTP {st}: {json.dumps(d)[:400]}")
     return compat_volume(d)
@@ -341,9 +367,9 @@ def create_volume(name, gb, dc):
 
 def delete_volume(vol_id):
     st, d = rest("DELETE", f"/network-volumes/{vol_id}")
-    if st in (200, 204):
+    if st == 204:
         return True
-    if st == 404:
+    if st in (200, 404):
         return not any(v.get("id") == vol_id for v in list_volumes())
     raise RunPodError(f"delete volume {vol_id}: HTTP {st}: {json.dumps(d)[:300]}")
 
