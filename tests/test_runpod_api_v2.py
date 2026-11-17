@@ -334,11 +334,15 @@ def test_a_request_runpod_rejects_is_a_fault_with_its_whole_text_never_a_shortag
     msg = str(e.value)
     assert "create volume in CA-MTL-1: HTTP 400" in msg and "Standard storage is not available" in msg and msg.endswith("US-TX-3.")
     assert isinstance(e.value, api.RunPodError) and not isinstance(e.value, api.Refused)
-    for code in (400, 422):
-        account(monkeypatch, create=lambda q, b, code=code: (code, {"error": json.dumps({"title": "Unprocessable Entity", "status": code, "detail": "bad body",
-                                                                                         "errors": ["$: additional properties 'bogus' not allowed"]})}))
-        with pytest.raises(api.Rejected, match="additional properties 'bogus' not allowed"):
-            api.create_pod(v1_body())
+    account(monkeypatch, create=lambda q, b: (422, {"error": json.dumps({"title": "Unprocessable Entity", "status": 422, "detail": "bad body",
+                                                                         "errors": ["$: additional properties 'bogus' not allowed"]})}))
+    with pytest.raises(api.Rejected, match="additional properties 'bogus' not allowed"):
+        api.create_pod(v1_body())
+    # a pod create's 400 keeps RunPod's text but is an ordinary failure: the schema does not say it is never capacity
+    account(monkeypatch, create=lambda q, b: (400, {"error": json.dumps({"title": "Bad Request", "status": 400, "detail": "no instances available"})}))
+    with pytest.raises(api.RunPodError, match="Bad Request: no instances available") as e:
+        api.create_pod(v1_body())
+    assert not isinstance(e.value, api.Rejected)
     for code in (409, 429, 500, 503):                                               # anything else is a failure to retry, not a rejection
         account(monkeypatch, create=lambda q, b, code=code: (code, {"error": "x"}))
         with pytest.raises(api.RunPodError) as e:
@@ -374,7 +378,8 @@ def test_the_transport_and_the_runner_report_a_rejected_create_as_a_fault(monkey
     monkeypatch.setattr(rm, "T", type("X", (), {"backend": "runpod", "gpu": "A40", "stop": lambda self, st: None, "create": lambda self, st: (2, out)})())
     monkeypatch.setattr(rm, "log", lines.append)
     assert rm.launch(St(), "c", "j", [], []) is False
-    assert lines[0].startswith("create FAILED, request rejected") and "Standard storage is not available" in lines[0] and "no A40" not in lines[0]
+    assert lines[0].startswith("create FAILED, request rejected by RunPod") and "Standard storage is not available" in lines[0] and "no A40" not in lines[0]
+    assert "dc_fails" not in St.d["runpod"]                                          # a rejection says nothing about a data centre's stock
     monkeypatch.setattr(rm, "T", type("X", (), {"backend": "runpod", "gpu": "A40", "stop": lambda self, st: None,
                                                 "create": lambda self, st: (1, "RunPodError: no A40 in stock in any data centre")})())
     lines.clear()
@@ -433,3 +438,54 @@ def test_the_transport_gives_up_at_once_on_a_pod_in_error(monkeypatch):
     monkeypatch.setattr(rt.time, "sleep", lambda s: pytest.fail("the wait went on"))
     t = T()
     assert rt.RunPodTransport._wait_up(t, "p") is None and "ERROR" in t.logged[0]
+
+
+
+def test_a_data_centre_given_by_hand_is_checked_for_the_volume_tier_before_anything_is_retired_or_created(monkeypatch):
+    import runpod_transport as rt
+    f = Fake(monkeypatch, {("GET", "/v2/catalog/datacenters"): lambda q, b: (200, TIERS),
+                           ("POST", "/v2/network-volumes"): lambda q, b: pytest.fail("a volume was asked for")})
+    R = {"pod": None, "volume": {"id": "vol0000001", "dc": "EU-SE-1", "gb": 80}, "retired_volumes": [], "ledger": {"pods": [], "volumes": []}}
+
+    class T:
+        gpu, cloud, volume_gb, name, persistent, dc = "A40", "SECURE", 80, "pk-b2cue-ns", True, "CA-MTL-1"
+
+        def R(self, st=None):
+            return R
+
+        def _retire(self, st, vol):
+            pytest.fail("the existing volume was retired")
+    with pytest.raises(api.RunPodError, match="--datacenter CA-MTL-1 offers no STANDARD network volume") as e:
+        rt.RunPodTransport._volume_for_create(T(), None)
+    assert not isinstance(e.value, api.Rejected) and R["volume"]["dc"] == "EU-SE-1"
+    assert [c[:2] for c in f.calls] == [("GET", "/v2/catalog/datacenters")]
+    T.dc = "EU-SE-1"                                                                # a data centre with the tier: the volume there is reused
+    assert rt.RunPodTransport._volume_for_create(T(), None) == ("EU-SE-1", R["volume"])
+
+
+def test_a_rejected_pod_create_does_not_count_toward_moving_the_campaign(monkeypatch, tmp_path):
+    import runpod_transport as rt
+    (tmp_path / "k.pub").write_text("ssh-ed25519 AAAA runner")
+    monkeypatch.setattr(rt, "KEY", str(tmp_path / "k"))
+    monkeypatch.setattr(rt, "image_digest", lambda image: "sha256:x")
+    R = {"pod": None, "volume": {"id": "vol0000001", "dc": "EU-SE-1", "gb": 80}, "retired_volumes": [], "ledger": {"pods": [], "volumes": []}}
+
+    class St:
+        d = {"runpod": R, "endpoint": None}
+
+        def save(self):
+            pass
+    t = rt.RunPodTransport.__new__(rt.RunPodTransport)
+    t.gpu, t.cloud, t.volume_gb, t.dc, t.image, t.name, t.persistent = "A40", "SECURE", 80, None, "img", "pk-b2cue-ns", True
+    t.st, t.log = St(), lambda m: None
+    monkeypatch.setattr(rt.RunPodTransport, "R", lambda self, st=None: R)
+    monkeypatch.setattr(rt.RunPodTransport, "over_budget", lambda self, st: None)
+    monkeypatch.setattr(api, "stocked_dcs", lambda *a, **k: ["EU-SE-1"])
+    answer = {}
+    account(monkeypatch, create=lambda q, b: answer["a"])
+    answer["a"] = (422, {"error": json.dumps({"title": "Unprocessable Entity", "status": 422, "detail": "bad", "errors": ["$.gpu: x"]})})
+    assert t.create(St())[0] == 2 and "dc_fails" not in R and R["create_rejected"]["n"] == 1 and R["creating"] is None
+    answer["a"] = (400, {"error": json.dumps({"title": "Bad Request", "status": 400, "detail": "no instances available"})})
+    rc, out = t.create(St())
+    assert rc == 1 and "no instances available" in out and R["dc_fails"] == 1      # an ordinary failed create still counts
+

@@ -701,9 +701,9 @@ def launch(st, commit, jobs_rel, jobs, uploads):
         log("deadline expired while stopping prior session; no replacement created")
         return False
     rc, out = T.create(st)
-    if rc == 2 and getattr(T, "backend", "") == "runpod":   # RunPod rejected the create request (400 or 422): not a shortage
-        log(f"create FAILED, request rejected (a fault in the request or its placement, not a stock shortage): "
-            f"{out.strip()[:900]}; it is tried again next tick, and this line repeats until the cause is removed")
+    if rc == 2 and getattr(T, "backend", "") == "runpod":   # RunPod refused the create request itself (runpod_api.Rejected)
+        log(f"create FAILED, request rejected by RunPod: {out.strip()[:900]}; the same request is sent again next tick, "
+            "and this line repeats until its cause is removed")
         return False
     if rc != 0:
         log(f"no pod ({out.strip()[:400]}); retry later")

@@ -67,14 +67,17 @@ class Refused(RunPodError):
 
 
 class Rejected(RunPodError):
-    """RunPod answered a create with 400 or 422: the request, or where it asks to be placed, is at fault. Not a stock shortage and
-    not a transient failure: retrying the same request gives the same answer (17 Nov 2026: a STANDARD volume asked for in a data
-    centre that has only high-performance storage was retried every four minutes and logged as "no A40")."""
+    """RunPod refused the request itself: a pod create that failed validation (422), or a volume create it would not process
+    (400 or 422). A retry sends the same request (17 Nov 2026: a STANDARD volume asked for in a data centre that has only
+    high-performance storage was retried every four minutes and logged as "no A40"). A pod create's 400 is not raised as this:
+    the schema calls it "malformed or conflicts with request rules" and does not say what a GPU without capacity returns, so it
+    stays an ordinary failure, with RunPod's text."""
 
 
 def problem_text(d, limit=1500):
-    """The whole of a v2 error ({"title", "status", "detail"[, "errors"]}, which _request hands over as {"error": raw text}), so a
-    log line holds what RunPod said and not its last 120 characters."""
+    """A v2 error's title, detail and validation errors ({"title", "status", "detail"[, "errors"]}, which _request hands over as
+    {"error": the first 2,000 bytes}), up to `limit` characters from its start, so a log line holds what RunPod said and not its
+    last 120 characters."""
     raw = d.get("error") if isinstance(d, dict) and isinstance(d.get("error"), str) else json.dumps(d)
     try:
         p = json.loads(raw)
@@ -368,10 +371,10 @@ def create_pod(body):
     if bal < MIN_BALANCE:
         raise Refused(f"RunPod balance ${bal:.2f} is below ${MIN_BALANCE:.0f}; refusing to create a pod")
     st, d = rest("POST", "/pods", send, timeout=120)
-    if st in (400, 422):
+    if st == 422:
         raise Rejected(f"create pod: HTTP {st}: {problem_text(d)}")
     if st not in (200, 201) or not isinstance(d, dict) or not d.get("id"):
-        raise RunPodError(f"create pod: HTTP {st}: {problem_text(d, 600)}")
+        raise RunPodError(f"create pod: HTTP {st}: {problem_text(d)}")
     return compat_pod(d)
 
 
