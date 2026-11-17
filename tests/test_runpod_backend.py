@@ -56,17 +56,19 @@ class FakeAPI:
 
 
 def test_create_pod_guardrails(monkeypatch):
-    f = FakeAPI(pods=[{"id": i} for i in "abcd"])
+    body = {"name": "x", "imageName": "img", "gpuTypeIds": ["NVIDIA A40"], "gpuCount": 1}   # the flat v1 form; sent as v2 (17 Nov 2026)
+    f = FakeAPI(pods=[{"id": str(i)} for i in range(api.MAX_PODS)])
     f.install(monkeypatch)
-    with pytest.raises(api.Refused, match="cap 4"):
-        api.create_pod({"name": "x"})
+    with pytest.raises(api.Refused, match=f"cap {api.MAX_PODS}"):
+        api.create_pod(body)
     f.pods = [{"id": "a"}]
     f.bal = 14.99
     with pytest.raises(api.Refused, match="below"):
-        api.create_pod({"name": "x"})
+        api.create_pod(body)
     assert not f.created
     f.bal = 15.0
-    assert api.create_pod({"name": "x"})["id"] == "pod0"
+    assert api.create_pod(body)["id"] == "pod0"
+    assert f.created == [{"name": "x", "image": "img", "cloud": "SECURE", "gpu": {"id": "NVIDIA A40", "count": 1}}]
 
 
 def test_ledger_usd():
