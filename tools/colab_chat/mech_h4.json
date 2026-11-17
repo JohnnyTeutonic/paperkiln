@@ -1,5 +1,5 @@
 {
- "_comment": "Mechanism programme E4, the H4 subset of the lane's analysis/token_ladder/neurons_REGISTRATION.md (steps 1, 3, 4, 5, 5b): one data job per lineage model on the PyTorch twin, on the pod's GPU. Claude Opus 5.5, 18 Nov 2026.",
+ "_comment": "Mechanism programme E4, the H4 subset of the lane's analysis/token_ladder/neurons_REGISTRATION.md (steps 1, 3, 4, 5 and 5b) on the PyTorch twin, on the pod's GPU: a smoke job, then full validation, then one data job per lineage model (after validation, whatever its verdict). Claude Opus 5.5, 18 Nov 2026.",
  "max_parallel": 2,
  "max_parallel_light": 1,
  "home_markers": true,
@@ -36,8 +36,9 @@
   {
    "name": "lin_Araw",
    "after": [
-    "smoke"
+    "val"
    ],
+   "after_terminal": true,
    "cmd": [
     "bash",
     "{upload}/run_h4.sh",
@@ -53,8 +54,9 @@
   {
    "name": "lin_Asft",
    "after": [
-    "smoke"
+    "val"
    ],
+   "after_terminal": true,
    "cmd": [
     "bash",
     "{upload}/run_h4.sh",
@@ -70,8 +72,9 @@
   {
    "name": "lin_S71",
    "after": [
-    "smoke"
+    "val"
    ],
+   "after_terminal": true,
    "cmd": [
     "bash",
     "{upload}/run_h4.sh",
@@ -87,8 +90,9 @@
   {
    "name": "lin_S71s2",
    "after": [
-    "smoke"
+    "val"
    ],
+   "after_terminal": true,
    "cmd": [
     "bash",
     "{upload}/run_h4.sh",
@@ -104,8 +108,9 @@
   {
    "name": "lin_Nraw",
    "after": [
-    "smoke"
+    "val"
    ],
+   "after_terminal": true,
    "cmd": [
     "bash",
     "{upload}/run_h4.sh",
@@ -121,8 +126,9 @@
   {
    "name": "lin_Nsft",
    "after": [
-    "smoke"
+    "val"
    ],
+   "after_terminal": true,
    "cmd": [
     "bash",
     "{upload}/run_h4.sh",
@@ -138,8 +144,9 @@
   {
    "name": "lin_TLN2501",
    "after": [
-    "smoke"
+    "val"
    ],
+   "after_terminal": true,
    "cmd": [
     "bash",
     "{upload}/run_h4.sh",
@@ -155,8 +162,9 @@
   {
    "name": "lin_TLN2502",
    "after": [
-    "smoke"
+    "val"
    ],
+   "after_terminal": true,
    "cmd": [
     "bash",
     "{upload}/run_h4.sh",
@@ -172,8 +180,9 @@
   {
    "name": "lin_Sraw",
    "after": [
-    "smoke"
+    "val"
    ],
+   "after_terminal": true,
    "cmd": [
     "bash",
     "{upload}/run_h4.sh",
@@ -189,8 +198,9 @@
   {
    "name": "lin_Ssft",
    "after": [
-    "smoke"
+    "val"
    ],
+   "after_terminal": true,
    "cmd": [
     "bash",
     "{upload}/run_h4.sh",
@@ -206,8 +216,9 @@
   {
    "name": "lin_TLS2501",
    "after": [
-    "smoke"
+    "val"
    ],
+   "after_terminal": true,
    "cmd": [
     "bash",
     "{upload}/run_h4.sh",
@@ -223,8 +234,9 @@
   {
    "name": "lin_TLS2502",
    "after": [
-    "smoke"
+    "val"
    ],
+   "after_terminal": true,
    "cmd": [
     "bash",
     "{upload}/run_h4.sh",
