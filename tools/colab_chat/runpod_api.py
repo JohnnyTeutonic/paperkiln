@@ -362,8 +362,22 @@ def v2_create_body(body):
 
 # RunPod answers a pod create with HTTP 400 both for a malformed request and for missing capacity. Only these texts, seen
 # from RunPod, are capacity (retried, counted against the data centre); every other 400 is a rejection, a fault.
-CAPACITY_400 = re.compile(r"does not have the resources|no instances available|not enough (?:free )?(?:gpus|capacity)|"
-                          r"no (?:longer )?(?:available|stock)|try a different machine", re.I)
+CAPACITY_400 = re.compile(r"^(?:This machine does not have the resources to deploy your pod\.?(?: Please try a different machine\.?)?"
+                          r"|(?:There are )?no (?:longer any )?instances available(?: with [^.]{0,80})?\.?)$", re.I)
+
+
+def capacity_400(d):
+    """True only when a 400's own detail is one of RunPod's whole capacity sentences and it carries no validation errors:
+    a validation error never counts as capacity, and a quoted value inside one cannot match (GPT, 18 Nov 2026)."""
+    raw = d.get("error") if isinstance(d, dict) and isinstance(d.get("error"), str) else None
+    try:
+        p = json.loads(raw) if raw else d
+    except (TypeError, ValueError):
+        return False
+    if not isinstance(p, dict) or p.get("errors"):
+        return False
+    detail = p.get("detail")
+    return isinstance(detail, str) and bool(CAPACITY_400.match(detail.strip()))
 
 
 def create_pod(body):
@@ -380,7 +394,7 @@ def create_pod(body):
     if bal < MIN_BALANCE:
         raise Refused(f"RunPod balance ${bal:.2f} is below ${MIN_BALANCE:.0f}; refusing to create a pod")
     st, d = rest("POST", "/pods", send, timeout=120)
-    if st == 422 or (st == 400 and not CAPACITY_400.search(problem_text(d))):
+    if st == 422 or (st == 400 and not capacity_400(d)):
         raise Rejected(f"create pod: HTTP {st}: {problem_text(d)}")
     if st not in (200, 201) or not isinstance(d, dict) or not d.get("id"):
         raise RunPodError(f"create pod: HTTP {st}: {problem_text(d)}")

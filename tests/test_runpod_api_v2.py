@@ -543,3 +543,20 @@ def test_every_mounted_volume_is_kept_for_the_sweep():
     p["mounts"] = {"network": [{"volumeId": "volA", "path": "/a"}, {"volumeId": "volB", "path": "/b"}]}
     c = api.compat_pod(p)
     assert c["networkVolumeIds"] == ["volA", "volB"] and c["networkVolumeId"] == "volA"
+
+
+@pytest.mark.parametrize("detail, errors, capacity", [
+    ("This machine does not have the resources to deploy your pod. Please try a different machine", None, True),   # RECORDED 17 Nov
+    ("no instances available", None, True),
+    ("There are no longer any instances available with the requested specifications.", None, True),
+    ("no available mount path", None, False),
+    ("gpuTypeIds: 'no instances available' is not a GPU type", None, False),
+    ("no instances available", ["$.gpuTypeIds: bad"], False),
+    ("Please try a different machine", None, False),
+    ("not enough capacity in your plan's quota", None, False),
+])
+def test_only_runpods_whole_capacity_sentences_count_as_capacity(detail, errors, capacity):
+    body = {"title": "Bad Request", "status": 400, "detail": detail}
+    if errors:
+        body["errors"] = errors
+    assert api.capacity_400({"error": json.dumps(body)}) is capacity
