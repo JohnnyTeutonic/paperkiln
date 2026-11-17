@@ -398,7 +398,9 @@ class RunPodTransport:
         return False
 
     def _stocked(self):
-        return api.stocked_dcs(self.gpu, MIN_RAM, MIN_VCPU, secure=self.cloud == "SECURE")
+        # a campaign with a network volume runs only where that volume's tier exists (17 Nov 2026)
+        return api.stocked_dcs(self.gpu, MIN_RAM, MIN_VCPU, secure=self.cloud == "SECURE",
+                               volume_type=api.VOLUME_TYPE if self.persistent else None)
 
     def _volume_used(self, st, vol):
         """A pod reference means potentially irreplaceable progress, including failed boots.
@@ -430,6 +432,14 @@ class RunPodTransport:
                 raise api.RunPodError(f"no {self.gpu} in stock in any data centre")
             return stocked[0], None
         if self.dc:
+            # a used volume never switches data centre: refused first, before any provider call or state change
+            if vol and vol["dc"] != self.dc and self._volume_used(st, vol):
+                raise api.Refused("used volume cannot switch data centre without operator-verified migration; "
+                                  "preserve its checkpoints and resume in " + vol["dc"])
+            # a data centre given by hand is checked before a volume is retired or asked for there (GPT, 17 Nov 2026)
+            if self.dc not in api.volume_dcs(api.VOLUME_TYPE):
+                raise api.RunPodError(f"--datacenter {self.dc} offers no {api.VOLUME_TYPE} network volume; "
+                                      "choose one that does (runpod_api.volume_dcs) or leave the choice to the stock")
             if vol and vol["dc"] != self.dc:
                 if self._volume_used(st, vol):
                     raise api.Refused("used volume cannot switch data centre without operator-verified migration; "
@@ -495,7 +505,7 @@ class RunPodTransport:
             st.save()
             try:
                 pod = api.create_pod(body)
-            except api.Refused:
+            except (api.Refused, api.Rejected):   # neither says anything about this data centre's stock
                 raise
             except api.RunPodError:
                 if vol:
@@ -509,6 +519,7 @@ class RunPodTransport:
                                         "dc": dc, "volume": vol["id"] if vol else None, "start": time.time(),
                                         "stop": None, "image": self.image, "image_digest": digest})
             R["dc_fails"] = 0
+            R.pop("create_rejected", None)
             st.d["endpoint"] = pod["id"]
             st.save()
             self.log(f"pod {pod['id']} created in {dc} ({self.gpu}, ${float(rate):.3f}/h, {self.cloud}); "
@@ -531,6 +542,12 @@ class RunPodTransport:
         except api.Refused as e:
             st.save()
             return 1, f"refused: {e}"
+        except api.Rejected as e:   # RunPod refused the request itself: a fault to be read, not logged as a shortage
+            n = (R.get("create_rejected") or {}).get("n", 0) + 1
+            R["create_rejected"] = {"n": n, "last": str(e), "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+            st.save()
+            self.log(f"CREATE REJECTED by RunPod ({n} in a row): {e}")
+            return 2, f"rejected: {e}"
         except (api.RunPodError, OSError) as e:
             st.save()
             return 1, f"{type(e).__name__}: {e}"
@@ -544,6 +561,9 @@ class RunPodTransport:
             p = self._fetch()
             if p is None:
                 self.log(f"pod {pod_id} vanished while starting")
+                return None
+            if isinstance(p, dict) and p.get("desiredStatus") == "ERROR":   # REST v2's actual state: it will not come up
+                self.log(f"pod {pod_id} is in ERROR while starting")
                 return None
             if isinstance(p, dict) and p.get("desiredStatus") == "RUNNING" and api.ssh_endpoint(p):
                 rc, out = self.exec("print('SSH_OK')\n", timeout=60)

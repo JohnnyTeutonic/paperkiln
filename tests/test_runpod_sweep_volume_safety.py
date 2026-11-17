@@ -101,3 +101,15 @@ def test_provider_still_mounting_volume_blocks_cleanup(campaign, monkeypatch):
     monkeypatch.setattr(sweep.api, "list_pods", lambda: [{"id": "manual", "name": "manual", "networkVolumeId": "checkpoint-volume"}])
     monkeypatch.setattr(sweep.api, "terminate_pod", lambda pid: False)
     assert sweep.main([]) == 0 and deleted == []
+
+
+def test_a_second_mounted_volume_also_blocks_cleanup(campaign, monkeypatch):
+    """v2 pods carry a list of mounts; a volume mounted second is protected as well (GPT, 18 Nov 2026)."""
+    state, path, deleted = campaign
+    state["campaign_home"] = True
+    state["jobs"]["scoring"]["home"] = True
+    path.write_text(json.dumps(state))
+    monkeypatch.setattr(sweep.api, "list_pods", lambda: [{"id": "manual", "name": "manual", "networkVolumeId": "other-volume",
+                                                         "networkVolumeIds": ["other-volume", "checkpoint-volume"]}])
+    monkeypatch.setattr(sweep.api, "terminate_pod", lambda pid: False)
+    assert sweep.main([]) == 0 and deleted == []
