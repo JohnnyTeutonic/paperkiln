@@ -432,6 +432,10 @@ class RunPodTransport:
                 raise api.RunPodError(f"no {self.gpu} in stock in any data centre")
             return stocked[0], None
         if self.dc:
+            # a used volume never switches data centre: refused first, before any provider call or state change
+            if vol and vol["dc"] != self.dc and self._volume_used(st, vol):
+                raise api.Refused("used volume cannot switch data centre without operator-verified migration; "
+                                  "preserve its checkpoints and resume in " + vol["dc"])
             # a data centre given by hand is checked before a volume is retired or asked for there (GPT, 17 Nov 2026)
             if self.dc not in api.volume_dcs(api.VOLUME_TYPE):
                 raise api.RunPodError(f"--datacenter {self.dc} offers no {api.VOLUME_TYPE} network volume; "

@@ -365,6 +365,7 @@ def test_the_transport_and_the_runner_report_a_rejected_create_as_a_fault(monkey
     t = rt.RunPodTransport.__new__(rt.RunPodTransport)
     t.gpu, t.cloud, t.volume_gb, t.dc, t.image, t.name, t.persistent = "A40", "SECURE", 80, None, "img", "pk-b2cue-ns", True
     t.st, t.log = St(), logged.append
+    t.deadline = None  # master's transport checks a runner deadline inside operations
     monkeypatch.setattr(rt.RunPodTransport, "R", lambda self, st=None: St.d["runpod"])
     monkeypatch.setattr(rt.RunPodTransport, "over_budget", lambda self, st: None)
     monkeypatch.setattr(api, "stocked_dcs", lambda *a, **k: ["CA-MTL-1"])
@@ -435,6 +436,9 @@ def test_the_transport_gives_up_at_once_on_a_pod_in_error(monkeypatch):
 
         def exec(self, *a, **k):
             pytest.fail("ssh was tried on a pod in ERROR")
+
+        def _operation_limit(self):
+            return None
     monkeypatch.setattr(rt.time, "sleep", lambda s: pytest.fail("the wait went on"))
     t = T()
     assert rt.RunPodTransport._wait_up(t, "p") is None and "ERROR" in t.logged[0]
@@ -455,6 +459,9 @@ def test_a_data_centre_given_by_hand_is_checked_for_the_volume_tier_before_anyth
 
         def _retire(self, st, vol):
             pytest.fail("the existing volume was retired")
+
+        def _volume_used(self, st, vol):
+            return False                                                            # the ledger holds no pod: the volume is unused
     with pytest.raises(api.RunPodError, match="--datacenter CA-MTL-1 offers no STANDARD network volume") as e:
         rt.RunPodTransport._volume_for_create(T(), None)
     assert not isinstance(e.value, api.Rejected) and R["volume"]["dc"] == "EU-SE-1"
@@ -478,6 +485,7 @@ def test_a_rejected_pod_create_does_not_count_toward_moving_the_campaign(monkeyp
     t = rt.RunPodTransport.__new__(rt.RunPodTransport)
     t.gpu, t.cloud, t.volume_gb, t.dc, t.image, t.name, t.persistent = "A40", "SECURE", 80, None, "img", "pk-b2cue-ns", True
     t.st, t.log = St(), lambda m: None
+    t.deadline = None  # master's transport checks a runner deadline inside operations
     monkeypatch.setattr(rt.RunPodTransport, "R", lambda self, st=None: R)
     monkeypatch.setattr(rt.RunPodTransport, "over_budget", lambda self, st: None)
     monkeypatch.setattr(api, "stocked_dcs", lambda *a, **k: ["EU-SE-1"])
