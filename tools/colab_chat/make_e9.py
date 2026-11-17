@@ -1,0 +1,122 @@
+#!/usr/bin/env python3
+"""E9 (scenario diversity): the D arms' pretraining jobs files.
+
+    python tools/colab_chat/make_e9.py            write e9_<arm>.json beside this file
+    python tools/colab_chat/make_e9.py --check    exit 1 unless every file equals what this builder writes
+
+Each D arm is the token ladder's arm S1B (make_ladder.arm, unchanged) with only the scenario stream swapped: its
+corpus files are the level's (`D2.main.ids`, `D2.tail.ids`, store prefix `corpus/D2`, pins entry `arm-D2`) in place
+of S's, and its names (job, model, store branch, rung cells) carry the arm's name in place of S1B's. Steps, marks,
+schedule, seed, shape, batch, panels, instruments and every other key are S1B's. A second-seed arm (<arm>s50) is
+S1Bs50 with the same swap. tests/test_e9_jobs.py holds every leaf of every file equal to S1B's or S1Bs50's but for
+these substitutions.
+
+    arm     level    stream                                             corpus   release turn
+    D2      L2       surface: ten renderings, more frames               D2       0 (slot 1)
+    D3      L3       content: L2 plus four entity domains               D3       20 (slot 2)
+    D4      L4       operations: L3 plus six operation families         D4       40 (slot 3)
+    D4ops   L4-ops   L4's operations on L1's surface and content        D4ops    0 (after the first wave)
+    Dks50   seed 50 of D2, D3 or D4 (the onset level, or D4)            as Dk    40 (beside the ladder's
+                                                                                 N1Bs50 at 0 and S1Bs50 at 20)
+
+The level streams come from E9's generator (research repo, cue_selective/diversity/generate_level.py) at the
+scenario seed and shard size base 2 used for S; the corpus build for a D arm is S's stage 3 with that generator
+and E9's validator. Until a D corpus is built and pinned (base2_pins.json gains `arm-Dk`), the arm's pins job
+fails and nothing trains. Nothing here is admitted: E9's launch gate is its frozen registration, two reviews
+and Jonathan's dated line.
+
+Claude Opus 5.5 (a fork of the coordinating session), 18 Nov 2026.
+"""
+import copy
+import json
+import os
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import make_base2 as M   # noqa: E402  (base 2's builder, unchanged)
+import make_ladder as L  # noqa: E402  (the token ladder's builder, unchanged)
+
+LEVEL = {"D2": "L2", "D3": "L3", "D4": "L4", "D4ops": "L4-ops"}
+OFFSET_MIN = {"D2": 0, "D3": 20, "D4": 40, "D4ops": 0}
+SECOND_OFFSET_MIN = 40
+REF = "S1B"
+
+
+def arms():
+    out = {}
+    for base in LEVEL:
+        out[base] = {"base": base, "seed": 1, "ref": REF, "offset_min": OFFSET_MIN[base]}
+        if base != "D4ops":
+            out[base + L.SECOND] = {"base": base, "seed": M.SECOND_SEED, "ref": REF + L.SECOND,
+                                    "offset_min": SECOND_OFFSET_MIN}
+    return out
+
+
+ARMS = arms()
+
+
+def corpus_subs(c):
+    """Exact string values naming S's corpus, and what they become for corpus c."""
+    return {f"{M.DATA}/S.main.ids": f"{M.DATA}/{c}.main.ids", f"{M.DATA}/S.tail.ids": f"{M.DATA}/{c}.tail.ids",
+            "S.main.ids": f"{c}.main.ids", "S.tail.ids": f"{c}.tail.ids", "corpus/S": f"corpus/{c}", "arm-S": f"arm-{c}"}
+
+
+def substitute(x, ref, name, c):
+    """x with every string leaf's `ref` replaced by `name`, and S's corpus values by corpus c's."""
+    subs = corpus_subs(c)
+    if isinstance(x, dict):
+        return {k: substitute(v, ref, name, c) for k, v in x.items()}
+    if isinstance(x, list):
+        return [substitute(v, ref, name, c) for v in x]
+    if isinstance(x, str):
+        return subs.get(x, x.replace(ref, name))
+    return x
+
+
+def arm(name):
+    a = ARMS[name]
+    base, ref = a["base"], a["ref"]
+    src = L.arm(ref)
+    meta = src.pop("_base2")
+    src.pop("_comment")
+    out = substitute(src, ref, name, base)
+    out = L._with_offset(out, a["offset_min"])
+    meta = dict(meta, arm=name, corpus=base, slot=None, e9_level=LEVEL[base], e9_ref_arm=ref)
+    head = {"_comment": (f"E9 scenario diversity, arm {name}: the token ladder's arm {ref} with the scenario stream of "
+                         f"level {LEVEL[base]} (corpus {base}) in place of S's; nothing else is changed. Not admitted: "
+                         "E9's launch gate is its frozen registration, two reviews and Jonathan's dated line."),
+            "_base2": meta}
+    head.update(out)
+    return head
+
+
+def files():
+    return {f"e9_{n}.json": arm(n) for n in ARMS}
+
+
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    check = "--check" in argv
+    bad = []
+    for name, obj in files().items():
+        path = os.path.join(HERE, name)
+        if check:
+            try:
+                same = open(path, encoding="utf-8").read() == M.text(obj)
+            except OSError:
+                same = False
+            if not same:
+                bad.append(name)
+        else:
+            with open(path, "w", encoding="utf-8", newline="\n") as f:
+                f.write(M.text(obj))
+    if check:
+        print(json.dumps({"check": "equal" if not bad else "different", "files": sorted(files()), "different": bad}))
+        return 1 if bad else 0
+    print(json.dumps({"written": sorted(files())}))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
