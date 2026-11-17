@@ -40,6 +40,11 @@ GLOBAL = [
      'E9_DIR=${E9_DIR:-/content/chat/upload/e9/diversity}\n'
      'EB=e9-build', 1),
     ('WORK="$OUT/work"', 'WORK="$OUT/work_$ARM"', 1),
+    ('VALIDATE=${BASE2_SCN_VALIDATE:-1}',
+     'VALIDATE=${BASE2_SCN_VALIDATE:-1}\n'
+     'if [ "$VALIDATE" != 1 ] && [ "${E9_REHEARSAL:-0}" != 1 ]; then\n'
+     '  echo "e9_data: the level validator must run on every shard (BASE2_SCN_VALIDATE=1) unless E9_REHEARSAL=1"; exit 1\n'
+     'fi', 1),
     ('python3 "$ENGINE/generate.py" --seed "$SEED" --docs "$SHARD_DOCS"',
      'python3 "$E9_DIR/generate_level.py" --level "$E9_LEVEL" --seed "$SEED" --docs "$SHARD_DOCS"', 1),
     ('--out "$d/raw_$k.txt" --meta "$d/raw_$k.meta.jsonl" > /dev/null',

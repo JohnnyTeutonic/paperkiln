@@ -21,7 +21,7 @@ these substitutions.
 
 The level streams come from E9's generator (research repo, cue_selective/diversity/generate_level.py) at the
 scenario seed and shard size base 2 used for S; the corpus build for a D arm is S's stage 3 with that generator
-and E9's validator. Until a D corpus is built and pinned (base2_pins.json gains `arm-Dk`), the arm's pins job
+and E9's validator. Until a D corpus is built and pinned (e9_pins.json holds its two id hashes, adopted from its stage receipt; base2_pins.json is never edited), the arm's pins job
 fails and nothing trains. Nothing here is admitted: E9's launch gate is its frozen registration, two reviews
 and Jonathan's dated line.
 

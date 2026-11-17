@@ -151,8 +151,16 @@ def test_pins_adopt_from_a_real_stage_receipt(rehearsal, tmp_path):
 
 def test_another_size_without_e9_rehearsal_is_refused(rehearsal):
     """B6: a VM left at a rehearsal's size (or a stray seed) builds nothing unless E9_REHEARSAL=1 says it is one."""
-    out = rehearsal.e9run(rehearsal.tmp / "vm_d2_norehearsal", "D2n", "L2", expect=1, E9_REHEARSAL="0")
-    assert "E9_REHEARSAL is not 1" in out and "shard 0 is not the bytes" in out
+    out = rehearsal.e9run(rehearsal.tmp / "vm_d2_norehearsal", "D2n", "L2", expect=1, E9_REHEARSAL="0",
+                          BASE2_SCN_VALIDATE="1", BASE2_SCN_HELDOUT_DOCS="20000")
+    assert "E9_REHEARSAL is not 1" in out and "shard 0 is not the bytes" in out, out[-2000:]
+
+
+def test_the_validator_cannot_be_switched_off_outside_a_rehearsal(rehearsal):
+    """N2: BASE2_SCN_VALIDATE=0 is refused unless E9_REHEARSAL=1."""
+    out = rehearsal.e9run(rehearsal.tmp / "vm_d2_noval", "D2w", "L2", expect=1, E9_REHEARSAL="0",
+                          BASE2_SCN_VALIDATE="0")
+    assert "the level validator must run on every shard" in out
 
 
 def test_the_level_validator_runs_through_the_build_scripts_command_line(rehearsal):
