@@ -100,9 +100,44 @@ def committed_units(arms=None):
                if S2.launched(x["state_dir"]) or os.path.lexists(os.path.join(x["state_dir"], OWN_COPY)))
 
 
-def replicate_choice(launch_dir=None):
+def _started(x):
+    return S2.launched(x["state_dir"]) or os.path.lexists(os.path.join(x["state_dir"], OWN_COPY))
+
+
+def replicate_choice(launch_dir=None, arms=None):
+    """The seed-2 D arm: frozen once one has started (a later REPLICATE.json cannot admit a second); else the lead's file."""
+    arms = ARMS if arms is None else arms
+    begun = [x["arm"] for x in arms.values() if x["arm"] in REPLICATES and _started(x)]
+    if begun:
+        return begun[0]
     rec = LL.read_json(os.path.join(launch_dir or E9_LAUNCH_DIR, "REPLICATE.json"))
     return (rec or {}).get("arm") if (rec or {}).get("arm") in REPLICATES and (rec or {}).get("who") else None
+
+
+PLAN = ("D2", "D3", "D4", "N1Bs50", "S1Bs50")          # the required arms besides the replicate (D4ops is optional)
+
+
+def plan_arms(arms, launch_dir=None):
+    rep = replicate_choice(launch_dir, arms) or "D4s50"   # until it is named, one seed-2 D arm is planned for
+    return {n: x for n, x in arms.items() if x["arm"] in PLAN or x["arm"] == rep}
+
+
+def baselines_ok(launch_dir=None):
+    """Section 2's fallback (E9's own N1B or S1B if the ladder's is invalid) is not automated: the lead records that the
+    ladder's N1B and S1B are valid and reused (BASELINES.json) before any E9 arm starts; else nothing of E9 starts."""
+    rec = LL.read_json(os.path.join(launch_dir or E9_LAUNCH_DIR, "BASELINES.json")) or {}
+    return rec.get("N1B") == "valid" and rec.get("S1B") == "valid" and bool(rec.get("who")) and bool(rec.get("when"))
+
+
+_ORIG_UNITS = LL.units_needed
+
+
+def units_needed(name, arms, now, rec):
+    """The ladder's worst case of what is left, over the registered plan only (and `name`, if D4ops), not every entry."""
+    keep = plan_arms(arms)
+    if name in arms and name not in keep:
+        keep = dict(keep, **{name: arms[name]})
+    return _ORIG_UNITS(name, keep, now, rec)
 
 
 def decide_arm(name, commit, now, slots, rows_fn, bal_fn, launch_dir=None, arms=None, cmdlines=None, **kw):
@@ -114,17 +149,20 @@ def decide_arm(name, commit, now, slots, rows_fn, bal_fn, launch_dir=None, arms=
         why = ladder_ended(cmdlines)
         if why:
             return "wait", f"the token ladder has not ended ({why}): E9 starts after it"
+        if not baselines_ok(launch_dir):
+            return "wait", "BASELINES.json does not record the ladder's N1B and S1B as valid and reused"
         if a["arm"] in REPLICATES:
-            choice = replicate_choice(launch_dir)
+            choice = replicate_choice(launch_dir, arms)
             if choice is None:
                 return "wait", "the seed-2 D arm waits for REPLICATE.json (seed 1's reading names it)"
             if choice != a["arm"]:
                 return "halt", ("E9_NOT_REPLICATE", f"REPLICATE.json names {choice}, not {a['arm']}")
         if a["arm"] == "D4ops":
-            choice = replicate_choice(launch_dir)
-            rep = arms.get(f"pk-e9-{choice}") if choice else None
-            if rep is None or not LL.seed2_arm_stopped(rep["state_dir"]):
-                return "wait", "D4ops runs last: after the seed-2 D arm is home or stopped"
+            if replicate_choice(launch_dir, arms) is None:
+                return "wait", "D4ops runs last: the seed-2 D arm is not yet named"
+            waiting = [n for n, x in plan_arms(arms, launch_dir).items() if not LL.seed2_arm_stopped(x["state_dir"])]
+            if waiting:
+                return "wait", f"D4ops runs last: after every planned arm is home or stopped ({', '.join(sorted(waiting))})"
         if committed_units(arms) + ARM_WORST_UNITS > CAP_UNITS + 1e-9:
             return "halt", ("E9_CAP", f"{committed_units(arms):.1f} units committed; this arm's worst case "
                             f"{ARM_WORST_UNITS:.1f} would pass the cap of {CAP_UNITS:g}")
@@ -143,6 +181,7 @@ def install():
     LL.WORST_UNITS = round(LL.WORST_HOURS * LL.L4_UNITS_PER_HOUR, 1)
     LL.runner_argv = runner_argv
     LL.decide_arm = decide_arm
+    LL.units_needed = units_needed
 
 
 def main(argv=None):

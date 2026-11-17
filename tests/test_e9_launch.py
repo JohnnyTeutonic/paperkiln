@@ -18,6 +18,7 @@ import e9_pins as EP     # noqa: E402
 import make_e9 as E9     # noqa: E402
 
 LADDER_COMMIT = "672501bb"
+BASELINES = {"N1B": "valid", "S1B": "valid", "who": "lead", "when": "2026-12-01"}
 
 
 def git_show(rel):
@@ -62,6 +63,7 @@ def test_the_ledger_fits_six_arms_and_refuses_a_seventh(tmp_path, monkeypatch):
     monkeypatch.setattr(EL, "_ORIG_DECIDE", lambda *a, **k: ("wait", "delegated"))
     order = ["pk-e9-D2", "pk-e9-D3", "pk-e9-D4", "pk-e9-N1Bs50", "pk-e9-S1Bs50", "pk-e9-D3s50"]
     (tmp_path / "launch").mkdir()
+    (tmp_path / "launch" / "BASELINES.json").write_text(json.dumps(BASELINES))
     (tmp_path / "launch" / "REPLICATE.json").write_text(json.dumps({"arm": "D3s50", "who": "lead"}))
     for n in order:
         assert EL.decide_arm(n, "a" * 40, 0, None, None, None, launch_dir=str(tmp_path / "launch"), arms=arms,
@@ -69,8 +71,13 @@ def test_the_ledger_fits_six_arms_and_refuses_a_seventh(tmp_path, monkeypatch):
         (Path(arms[n]["state_dir"]) / EL.OWN_COPY).write_text("{}")          # it started
     assert abs(EL.committed_units(arms) - (EL.BUILD_RESERVE_UNITS + 6 * EL.ARM_WORST_UNITS)) < 1e-6
     assert EL.committed_units(arms) <= EL.CAP_UNITS
-    rep = Path(arms["pk-e9-D3s50"]["state_dir"])
-    (rep / "state.json").write_text(json.dumps({"campaign_home": True, "store_release_final_done": True}))
+    home = json.dumps({"campaign_home": True, "store_release_final_done": True})
+    for n in order[:3] + ["pk-e9-D3s50"]:                 # N1Bs50 and S1Bs50 still out: D4ops waits, across slots
+        (Path(arms[n]["state_dir"]) / "state.json").write_text(home)
+    assert EL.decide_arm("pk-e9-D4ops", "a" * 40, 0, None, None, None, launch_dir=str(tmp_path / "launch"),
+                         arms=arms, cmdlines=[])[0] == "wait"
+    for n in ("pk-e9-N1Bs50", "pk-e9-S1Bs50"):
+        (Path(arms[n]["state_dir"]) / "state.json").write_text(home)
     kind, what = EL.decide_arm("pk-e9-D4ops", "a" * 40, 0, None, None, None, launch_dir=str(tmp_path / "launch"),
                                arms=arms, cmdlines=[])
     assert kind == "halt" and what[0] == "E9_CAP"
@@ -82,11 +89,30 @@ def test_the_replicate_and_d4ops_wait_for_the_leads_choice(tmp_path, monkeypatch
     monkeypatch.setattr(EL, "_ORIG_DECIDE", lambda *a, **k: ("wait", "delegated"))
     ld = tmp_path / "launch"
     ld.mkdir()
+    assert EL.decide_arm("pk-e9-D2", "a" * 40, 0, None, None, None, launch_dir=str(ld), arms=arms,
+                         cmdlines=[])[0] == "wait"          # no BASELINES.json: nothing of E9 starts
+    (ld / "BASELINES.json").write_text(json.dumps(BASELINES))
     k = lambda n: EL.decide_arm(n, "a" * 40, 0, None, None, None, launch_dir=str(ld), arms=arms, cmdlines=[])  # noqa
     assert k("pk-e9-D3s50")[0] == "wait" and k("pk-e9-D4ops")[0] == "wait"
     (ld / "REPLICATE.json").write_text(json.dumps({"arm": "D3s50", "who": "lead"}))
     assert k("pk-e9-D2s50")[0] == "halt" and k("pk-e9-D3s50") == ("wait", "delegated")
     assert k("pk-e9-D4ops")[0] == "wait"                     # the replicate is not home yet
+
+
+def test_the_replicate_choice_freezes_once_one_has_started(tmp_path):
+    arms = _arms_in(tmp_path)
+    ld = tmp_path / "launch"
+    ld.mkdir()
+    (Path(arms["pk-e9-D2s50"]["state_dir"]) / EL.OWN_COPY).write_text("{}")
+    (ld / "REPLICATE.json").write_text(json.dumps({"arm": "D3s50", "who": "lead"}))
+    assert EL.replicate_choice(str(ld), arms) == "D2s50"
+
+
+def test_the_balance_check_counts_the_plan_not_every_entry(tmp_path):
+    arms = _arms_in(tmp_path)
+    need = EL.units_needed(None, arms, 0.0, None)
+    assert abs(need - (6 * 26 * 1.94 + EL.LL.UNITS_MARGIN)) < 1e-6, need     # six planned arms, nothing started: 322.6
+    assert need <= EL.CAP_UNITS
 
 
 def test_nothing_starts_before_the_ladder_has_ended(tmp_path):
