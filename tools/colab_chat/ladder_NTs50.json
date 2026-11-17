@@ -1,5 +1,5 @@
 {
- "_comment": "Token ladder, arm NTs50: base 2's arm N at 325,000 steps and seed 50; nothing else is changed. Not admitted: the launch gate is two reviews and Jonathan's dated line.",
+ "_comment": "Token ladder, arm NTs50: base 2's arm N at 310,000 steps and seed 50; nothing else is changed. Not admitted: the launch gate is two reviews and Jonathan's dated line.",
  "_base2": {
   "arm": "NTs50",
   "ladder": true,
@@ -10,20 +10,20 @@
   "shape": "D1",
   "params": 69751296,
   "positions_per_step": 16384,
-  "steps": 325000,
-  "positions": 5324800000,
-  "tokens_per_parameter": 76.34,
-  "last_main_step": 276250,
-  "first_tail_step": 276251,
+  "steps": 310000,
+  "positions": 5079040000,
+  "tokens_per_parameter": 72.82,
+  "last_main_step": 263500,
+  "first_tail_step": 263501,
   "marks": [
    10000,
-   317000,
-   325000
+   302500,
+   310000
   ],
   "mark_positions": {
    "10000": 163840000,
-   "317000": 5193728000,
-   "325000": 5324800000
+   "302500": 4956160000,
+   "310000": 5079040000
   },
   "corpus": "N"
  },
@@ -93,8 +93,8 @@
    ],
    "snapshot_steps": [
     10000,
-    317000,
-    325000
+    302500,
+    310000
    ],
    "halt_on_failure": true,
    "env": {
@@ -128,7 +128,7 @@
      }
     },
     "train": {
-     "steps": 325000,
+     "steps": 310000,
      "lr": 0.0005,
      "batch": 8,
      "accum": 2,
@@ -210,7 +210,7 @@
    "timeout_s": 3600
   },
   {
-   "name": "rung_NTs50_s317000",
+   "name": "rung_NTs50_s302500",
    "after": "pins",
    "light": true,
    "env": {
@@ -226,11 +226,11 @@
     "tools/colab_chat/base2_rung_D1.json",
     "--export-gguf",
     "--weights",
-    "/content/chat/pt_base2_NTs50/rung_317000/model.safetensors",
+    "/content/chat/pt_base2_NTs50/rung_302500/model.safetensors",
     "--pt-dir",
     "/content/chat/pt_base2_NTs50",
     "--step",
-    "317000",
+    "302500",
     "--job",
     "pt_base2_NTs50",
     "--cell",
@@ -257,13 +257,13 @@
    ],
    "rung_of": {
     "job": "pt_base2_NTs50",
-    "step": 317000
+    "step": 302500
    },
    "exclusive": true,
    "timeout_s": 3600
   },
   {
-   "name": "rung_NTs50_s325000",
+   "name": "rung_NTs50_s310000",
    "after": [
     "pt_base2_NTs50"
    ],
@@ -289,7 +289,7 @@
     "--pt-dir",
     "/content/chat/pt_base2_NTs50",
     "--step",
-    "325000",
+    "310000",
     "--job",
     "pt_base2_NTs50",
     "--cell",

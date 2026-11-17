@@ -45,11 +45,13 @@ def world(tmp_path):
 def decide(world, name, seed2=None, free_l4=3, bal=900.0, guard_up=True, stop=False, free=20.0, now=NOW, rows=()):
     return G.decide_arm(name, COMMIT, now, Slots(free_l4), lambda: list(rows) if rows is not None else None, lambda: bal,
                         launch_dir=world["ld"], seed2=lambda now=None, rows=None: seed2, guard_up=lambda: guard_up,
-                        stop_asked=lambda: stop, free=lambda: free, arms=world["arms"], clock=lambda: now)
+                        stop_asked=lambda: stop, free=lambda: free, arms=world["arms"], clock=lambda: now,
+                        ended=lambda now: None if seed2 else "home")
 
 
 def guard(world, seed2=None, now=NOW):
-    return G.decide_guard(now, COMMIT, launch_dir=world["ld"], seed2=lambda now=None, rows=None: seed2)
+    return G.decide_guard(now, COMMIT, launch_dir=world["ld"], seed2=lambda now=None, rows=None: seed2,
+                          ended=lambda now: None if seed2 else "home")
 
 
 def home(world, name, launches=1):
@@ -138,6 +140,14 @@ def test_seed2_is_off_only_on_a_positive_end_with_no_process_and_no_session(tmp_
     json.dump({"by": "the lead", "why": "48.3 closed", "at_utc": S2.iso(t + 2 * H)}, open(lead, "w"))
     assert "has not ended" in G.seed2_off(now=t, **quiet, **w)
     json.dump({"by": "the lead", "why": "48.3 closed", "at_utc": S2.iso(t)}, open(lead, "w"))
+    # the note alone is not enough: each seed-2 arm's own folder must show it stopped
+    assert "has not ended" in G.seed2_off(now=t, **quiet, **w)
+    n2, s2 = (a["state_dir"] for a in w["seed2_arms"].values())
+    json.dump({"kind": "LEAD_STOP", "stop_confirmed": False}, open(os.path.join(n2, "HALTED"), "w"))
+    json.dump({"kind": "DEADLINE", "stopped": True}, open(os.path.join(s2, "DEADLINE"), "w"))
+    assert "has not ended" in G.seed2_off(now=t, **quiet, **w)                 # one arm's stop is not confirmed
+    json.dump({"kind": "LEAD_STOP", "stop_confirmed": True}, open(os.path.join(n2, "HALTED"), "w"))
+    assert G.seed2_arm_stopped(n2) and G.seed2_arm_stopped(s2)
     assert G.seed2_off(now=t, **quiet, **w) is None
     assert G.seed2_section_ended(t, w["launch_dir"], w["seed2_arms"], w["seed2_launch"]) == "lead"
     # and still live with a seed-2 process, a seed-2 session, or anything unreadable
@@ -204,7 +214,7 @@ def test_admission_and_the_first_start_record(world):
     assert kind == "exec"
     rec = json.load(open(os.path.join(world["ld"], "launch.json")))
     assert rec["deadline_utc"] == S2.iso(NOW + 168 * H) and rec["commit"] == COMMIT
-    assert (rec["cap_units"], rec["guard_stop_at"], rec["worst_hours"], rec["worst_units"]) == (580.0, 560.0, 298, 578.1)
+    assert (rec["cap_units"], rec["guard_stop_at"], rec["worst_hours"], rec["worst_units"]) == (580.0, 560.0, 292, 566.5)
     assert all(os.path.isdir(a["state_dir"]) for a in world["arms"].values())     # the guard's stop can reach every arm
     o = own(world, N1B)
     assert o["first_start_utc"] == S2.iso(NOW) and o["arm_deadline_utc"] == S2.iso(NOW + 26 * H) and o["max_hours"] == 26
@@ -219,7 +229,7 @@ def test_admission_and_the_first_start_record(world):
     # the other slots' first arms start on the same admission, once the guard runs
     assert decide(world, S1B, guard_up=False) == ("wait", "the ladder's units guard is not running yet")
     assert decide(world, S1B, now=NOW + 600)[0] == "exec" and decide(world, NT, now=NOW + 900)[0] == "exec"
-    assert own(world, NT)["arm_deadline_utc"] == S2.iso(NOW + 900 + 138 * H)
+    assert own(world, NT)["arm_deadline_utc"] == S2.iso(NOW + 900 + 132 * H)
 
 
 def test_only_a_slots_first_arm_admits_and_a_launched_ladder_without_a_record_refuses(world):
@@ -243,30 +253,35 @@ def test_a_restart_passes_the_first_starts_deadline_and_can_never_extend_the_arm
     assert decide(world, NT, now=NOW + 60)[0] == "exec"
     first = own(world, NT)
     launched(world, NT)
-    # restarts at 10, 100 and 137.9 hours with its session up: the same deadline every time, whatever else is true then
-    for h in (10, 100, 137.9):
+    # restarts at 10, 100 and 131.9 hours with its session up: the same deadline every time, whatever else is true then
+    for h in (10, 100, 131.9):
         kind, argv = decide(world, NT, now=NOW + int(h * H), seed2=LIVE, bal=None, guard_up=False, free_l4=0, stop=True,
                             rows=[(NT, "L4")])
         assert kind == "exec"
-        assert argv[argv.index("--deadline-utc") + 1] == first["arm_deadline_utc"] == S2.iso(NOW + 60 + 138 * H)
-        assert argv[argv.index("--max-hours") + 1] == "138"
+        assert argv[argv.index("--deadline-utc") + 1] == first["arm_deadline_utc"] == S2.iso(NOW + 60 + 132 * H)
+        assert argv[argv.index("--max-hours") + 1] == "132"
         assert own(world, NT) == first                                    # written once, never rewritten
     # the same restarts with its session gone (a replacement would be made): the same deadline again
-    for h in (10, 100, 137.9):
+    for h in (10, 100, 131.9):
         kind, argv = decide(world, NT, now=NOW + int(h * H))
         assert kind == "exec" and argv[argv.index("--deadline-utc") + 1] == first["arm_deadline_utc"]
         assert own(world, NT) == first
     # the runner takes the earlier of the passed deadline and now + --max-hours: a restart cannot outlive the first start + limit
     import runner_multi as R
     dl = S2.parse_iso(first["arm_deadline_utc"])
-    assert R.resolve_deadline(138, dl, NOW + 100 * H) == dl
+    assert R.resolve_deadline(132, dl, NOW + 100 * H) == dl
     with pytest.raises(ValueError):
-        R.resolve_deadline(138, dl, dl + 1)                               # past it, the runner itself creates no session
-    # past the arm's deadline the gate runs nothing, and says so if a session is still listed
-    kind, (hk, why) = decide(world, NT, now=NOW + 60 + 138 * H)
-    assert (kind, hk) == ("halt", "LADDER_ARM_DEADLINE") and "STILL LISTED" not in why
-    kind, (hk, why) = decide(world, NT, now=NOW + 150 * H, rows=[(NT, "L4")])
-    assert (kind, hk) == ("halt", "LADDER_ARM_DEADLINE") and "STILL LISTED" in why
+        R.resolve_deadline(132, dl, dl + 1)                               # past it, no session may be created
+    # past the arm's deadline no session is made. With no session of its name listed, the gate halts the arm
+    past = NOW + 60 + 132 * H
+    kind, (hk, why) = decide(world, NT, now=past)
+    assert (kind, hk) == ("halt", "LADDER_ARM_DEADLINE") and "no session of its name is listed" in why
+    # with its session still listed, or the listing not answering, the runner is run to stop it: started after its deadline
+    # it creates nothing, stops the session the folder recorded and writes DEADLINE (runner_multi.py's own expired start)
+    for rows in ([(NT, "L4")], None):
+        kind, argv = decide(world, NT, now=past + 6 * H, rows=rows, seed2=LIVE, bal=None, guard_up=False, free_l4=0)
+        assert kind == "exec" and argv[argv.index("--deadline-utc") + 1] == first["arm_deadline_utc"]
+        assert S2.parse_iso(argv[argv.index("--deadline-utc") + 1]) < past + 6 * H      # the expired deadline: nothing is created
     # a low arm likewise: N1B's 26 hours from its first start
     launched(world, N1B, 3)
     assert decide(world, N1B, now=NOW + 25 * H)[1][decide(world, N1B, now=NOW + 25 * H)[1].index("--deadline-utc") + 1] == S2.iso(NOW + 26 * H)
@@ -294,21 +309,23 @@ def test_a_tampered_or_missing_first_start_record_refuses(world):
 
 def test_the_cap_holds_by_wall_time_alone(world):
     # every arm's hour limit, summed: no restart can add to it (the test above), so this is the most the ladder can bill
-    assert G.MAX_HOURS == {"1B": 26, "2B": 54, "T": 138} and G.WORST_HOURS == 26 * 2 + 54 * 2 + 138 == 298
-    assert G.WORST_UNITS == 578.1 <= G.CAP_UNITS == 580.0 and G.GUARD_STOP_AT == 560.0
+    assert G.MAX_HOURS == {"1B": 26, "2B": 54, "T": 132} and G.WORST_HOURS == 26 * 2 + 54 * 2 + 132 == 292
+    assert G.WORST_UNITS == 566.5 and G.CAP_UNITS - G.WORST_HOURS * G.L4_UNITS_PER_HOUR >= 10      # at least 10 units under the cap
+    assert G.CAP_UNITS == 580.0 and G.GUARD_STOP_AT == 560.0
+    assert G.EXPECT_HOURS["T"] == 94.0 and abs(L.STEPS["T"] / 3300 - 94.0) < 0.1                 # 310,000 steps at base 2's rate
     for rung, h in G.EXPECT_HOURS.items():
         assert G.MAX_HOURS[rung] >= 1.4 * h - 0.01                         # 40% over the expectation
     # each slot's limits fit the week, with the chat campaign after the last arm
     for slot in L.SLOTS.values():
         assert sum(G.MAX_HOURS[L.RUNGS[a]["rung"]] for a in slot) + G.CHAT_HOURS <= G.WEEK_HOURS
-    assert sum(G.EXPECT_HOURS[L.RUNGS[a]["rung"]] for a in L.LAUNCHED_ARMS) == 211.5
+    assert sum(G.EXPECT_HOURS[L.RUNGS[a]["rung"]] for a in L.LAUNCHED_ARMS) == 207.0
 
 
 # ---------------------------------------------------------------- units: the balance must carry the worst case
 
 def test_a_start_needs_the_worst_case_of_what_is_left_and_the_top_rung_never_holds_the_low_arms_back(world):
     low = (26 * 2 + 54 * 2) * 1.94 + 20          # 330.4: the four low arms and the margin
-    full = 298 * 1.94 + 20                       # 598.12: everything and the margin
+    full = 292 * 1.94 + 20                       # 586.48: everything and the margin
     assert abs(G.units_needed(N1B, world["arms"], NOW, None) - low) < 1e-6
     assert abs(G.units_needed(NT, world["arms"], NOW, None) - full) < 1e-6
     assert abs(G.units_needed(None, world["arms"], NOW, None) - full) < 1e-6
@@ -320,7 +337,7 @@ def test_a_start_needs_the_worst_case_of_what_is_left_and_the_top_rung_never_hol
     # once arms have started they count to their own deadlines, and finished arms drop out
     t = NOW + 20 * H
     home(world, N1B)
-    left = (6 + 54 + 54 + 118) * 1.94 + 20       # S1B's last 6 h, N2B and S2B whole, NT's last 118 h
+    left = (6 + 54 + 54 + 112) * 1.94 + 20       # S1B's last 6 h, N2B and S2B whole, NT's last 112 h
     assert abs(G.units_needed(N2B, world["arms"], t, json.load(open(os.path.join(world["ld"], "launch.json")))) - left) < 0.01
     assert decide(world, N2B, now=t, bal=left - 1)[0] == "wait" and decide(world, N2B, now=t, bal=left + 1)[0] == "exec"
 
@@ -349,9 +366,11 @@ def test_an_arm_whose_limit_and_chat_campaign_no_longer_fit_halts(world):
     assert (k, kind) == ("halt", "LADDER_NO_TIME")
 
 
-def test_the_top_rung_must_start_within_eighteen_hours_of_admission(world):
+def test_the_top_rung_must_start_within_twenty_four_hours_of_admission(world):
     assert decide(world, N1B)[0] == "exec"
-    assert decide(world, NT, now=NOW + 18 * H + 1)[0] == "halt"          # 138 + 12 hours no longer fit
+    assert decide(world, NT, now=NOW + 24 * H + 1)[0] == "halt"          # 132 + 12 hours no longer fit
+    os.remove(os.path.join(world["arms"][NT]["state_dir"], "HALTED")) if os.path.exists(os.path.join(world["arms"][NT]["state_dir"], "HALTED")) else None
+    assert decide(world, NT, now=NOW + 24 * H)[0] == "exec"            # exactly 24 hours in, it still fits
 
 
 def test_a_stop_reaches_arms_that_have_not_started_and_a_torn_log_line_is_not_a_stop(world, tmp_path):
@@ -402,8 +421,15 @@ def test_a_listed_session_is_resumed_and_a_lost_one_is_replaced_only_under_every
     os.remove(go)
     assert decide(world, N1B, now=t)[0] == "refuse" and decide(world, N1B, now=t, rows=up)[0] == "exec"
     open(go, "w").write(saved)
-    open(os.path.join(d, "HALTED"), "w").write("{}")
-    assert decide(world, N1B, now=t, rows=up) == ("halt", ("LADDER_HALTED", "this arm holds HALTED: the gate runs nothing; a person reads it"))
+    # HALTED with its stop confirmed is final for the gate, session listed or not
+    json.dump({"kind": "LEAD_STOP", "stop_confirmed": True}, open(os.path.join(d, "HALTED"), "w"))
+    for rows in (up, (), None):
+        assert decide(world, N1B, now=t, rows=rows) == ("halt", ("LADDER_HALTED", "this arm holds HALTED: the gate runs nothing; a person reads it"))
+    # HALTED with its stop NOT confirmed: with the session listed, or the listing silent, the runner is run to finish the stop
+    json.dump({"kind": "STORE_STALL", "stop_confirmed": False}, open(os.path.join(d, "HALTED"), "w"))
+    assert decide(world, N1B, now=t, rows=up, seed2=LIVE, bal=None, free_l4=0)[0] == "exec"
+    assert decide(world, N1B, now=t, rows=None)[0] == "exec"
+    assert decide(world, N1B, now=t, rows=())[0] == "halt"                # the listing answers without it: nothing to stop
 
 
 def test_a_start_reserves_its_l4_until_its_session_is_listed_or_it_has_ended(world):
@@ -458,3 +484,45 @@ def test_the_guard_is_base2s_guard_on_the_ladders_folders_with_the_admissions_ba
     assert a is not None and G.take_lock(str(tmp_path / "x" / "gate.lock"), wait=False) is None
     a.close()
     assert G.take_lock(str(tmp_path / "x" / "gate.lock"), wait=False) is not None
+
+
+def test_an_arm_that_recorded_its_deadline_and_never_counted_a_launch_halts_when_it_passes(world):
+    # Colab had no L4 for the arm's whole limit: its first-start record exists, state.json counts no launch
+    assert decide(world, N1B)[0] == "exec"
+    assert decide(world, S1B)[0] == "exec"
+    d = world["arms"][S1B]["state_dir"]
+    pending = os.path.join(d, "START_PENDING")
+    before = open(pending).read()
+    assert decide(world, S1B, now=NOW + 25 * H)[0] == "exec"                 # inside its deadline it is still tried, on that deadline
+    assert own(world, S1B)["arm_deadline_utc"] == S2.iso(NOW + 26 * H)
+    open(pending, "w").write(before)
+    kind, (hk, why) = decide(world, S1B, now=NOW + 26 * H)
+    assert (kind, hk) == ("halt", "LADDER_ARM_DEADLINE") and "before it counted a launch" in why
+    assert open(pending).read() == before                                    # no fresh reservation is written past the deadline
+    # once it holds HALTED (the gate's main loop writes it), its reservation is freed and the arm after it halts
+    open(os.path.join(d, "HALTED"), "w").write("{}")
+    assert G.pending_others(NT, world["arms"], [(N1B, "L4")]) == 0
+    assert decide(world, S2B, now=NOW + 27 * H)[0] == "halt"
+
+
+def test_an_arm_that_has_never_started_asks_colab_for_nothing_while_seed2s_section_runs(world):
+    calls = {"n": 0}
+
+    def rows_fn():
+        calls["n"] += 1
+        return []
+    def run(name, ended, **kw):
+        return G.decide_arm(name, COMMIT, NOW, Slots(3), rows_fn, lambda: 900.0, launch_dir=world["ld"],
+                            seed2=lambda now=None, rows=None: None, guard_up=lambda: True, stop_asked=lambda: False,
+                            free=lambda: 20.0, arms=world["arms"], clock=lambda: NOW, ended=lambda now: ended, **kw)
+    for name in G.ARMS:
+        assert run(name, None) == ("wait", "seed 2's section has not ended: nothing of the ladder starts beside it")
+    assert calls["n"] == 0
+    assert G.decide_guard(NOW, COMMIT, launch_dir=world["ld"], rows_fn=rows_fn, ended=lambda now: None)[0] in ("wait", "refuse")
+    assert calls["n"] == 0
+    os.rename(os.path.join(world["ld"], "GO.json"), os.path.join(world["ld"], "GO.off"))
+    assert run(N1B, None)[0] == "refuse" and calls["n"] == 0                 # no GO: refused, still with no call
+    os.rename(os.path.join(world["ld"], "GO.off"), os.path.join(world["ld"], "GO.json"))
+    assert run(N1B, "home")[0] == "exec" and calls["n"] == 1
+    # an arm that has started is another matter: its session must be looked for, whatever seed 2 is doing
+    assert run(N1B, None)[0] == "exec" and calls["n"] == 2

@@ -17,8 +17,8 @@ warm-up is base 2's 4,000 steps at every rung (a choice, stated in the registrat
     S1B    S        60,000   0.98 B      14                   the same
     N2B    N       122,000   2.00 B      29                   10,000  119,000  122,000
     S2B    S       122,000   2.00 B      29                   the same
-    NT     N       325,000   5.32 B      76                   10,000  317,000  325,000
-    ST     S       325,000   5.32 B      76                   the same
+    NT     N       310,000   5.08 B      73                   10,000  302,500  310,000
+    ST     S       310,000   5.08 B      73                   the same
 
 60,000 and 122,000 are base 2's own marks, so each low rung has read exactly what N or S had read at that mark, with a
 schedule that ends there. Each rung's late mark is the last multiple of the save interval at or under 97.6% of its steps
@@ -42,7 +42,7 @@ import make_base2 as M  # noqa: E402  (base 2's builder, unchanged)
 
 LATE_FRACTION = 0.976
 FIRST_MARK = 10000
-STEPS = {"1B": 60000, "2B": 122000, "T": 325000}
+STEPS = {"1B": 60000, "2B": 122000, "T": 310000}
 # The registered order: slot -> the arms that take it, one after another.
 SLOTS = {1: ["N1B", "N2B"], 2: ["S1B", "S2B"], 3: ["NT"]}
 # The ladder starts only once seed 2 has ended (PROTOCOL 48.3), so its three slots take the three release turns.

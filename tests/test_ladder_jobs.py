@@ -23,12 +23,12 @@ def test_files_are_what_the_generator_writes_and_base2s_are_untouched():
 def test_the_arms_and_their_rungs():
     assert set(L.FIRST_SEED_ARMS) == {"N1B", "S1B", "N2B", "S2B", "NT", "ST"}
     assert set(L.RUNGS) == set(L.FIRST_SEED_ARMS) | {a + "s50" for a in L.FIRST_SEED_ARMS}
-    assert L.STEPS == {"1B": 60000, "2B": 122000, "T": 325000}
+    assert L.STEPS == {"1B": 60000, "2B": 122000, "T": 310000}
     # the low rungs end at base 2's own marks, so they have read what N and S had read there
     assert {60000, 122000} <= set(M.MARKS["N"])
     assert L.marks(60000) == [10000, 58500, 60000]
     assert L.marks(122000) == [10000, 119000, 122000]
-    assert L.marks(325000) == [10000, 317000, 325000]
+    assert L.marks(310000) == [10000, 302500, 310000]
     assert L.marks(250000)[1:] == M.MARKS["N"][-2:]   # the late-mark rule gives base 2's own 244,000
 
 

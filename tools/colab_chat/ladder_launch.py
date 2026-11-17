@@ -19,7 +19,9 @@ starts, and the ladder is not admitted, until seed 2 is off. Seed 2's folders, e
       is an hour past seed 2's deadline, PROVEN: its launch record validates by seed 2's own rule (S2.record_problem) and
       every seed-2 arm that has launched holds a valid own copy with that same deadline (the copy its runner is given), so no
       runner of it can hold a later one; or the lead has written LAUNCH_DIR/SEED2_ENDED.json (who, when not in the future, why)
-      to say the section is closed. A HALTED arm is not an end: it may be resumed;
+      to say the section is closed AND each seed-2 arm's own folder shows it stopped: home, or a HALTED record with its stop
+      confirmed, or a DEADLINE record with its stop confirmed. A HALTED arm with no such note is not an end: it may be resumed;
+  (S1 is read first, from files alone: while it does not hold, an arm that has never started asks Colab for nothing.)
   S2. the process table can be read and no process carries a seed-2 arm's --name or --state-dir;
   S3. Colab's listing answers and lists no seed-2 session.
 It does not depend on seed 2's watchdog entries, which may be enabled, disabled or removed.
@@ -38,13 +40,17 @@ the ladder); and, for every arm but the admitting one, the ladder's guard is run
 in its own folder, arm_deadline_utc = the earlier of the ladder's deadline and that moment plus its hour limit.
 
 EVERY start of an arm's runner, the first and each restart, passes that same recorded arm deadline as --deadline-utc. The
-runner takes the earlier of it and now plus --max-hours, so a restart can never extend an arm. After its arm deadline an arm is
-never run again (HALTED, LADDER_ARM_DEADLINE). The cap therefore holds by wall time alone, whether or not the guard can read
+runner takes the earlier of it and now plus --max-hours, so a restart can never extend an arm. After its arm deadline no
+session is ever made for an arm. If its session is then still listed, or the listing does not answer, the runner is run once
+more with the same expired deadline: started so, runner_multi.py creates nothing, stops the session this folder recorded and
+writes DEADLINE. Once the listing answers without the session the gate halts the arm (HALTED, LADDER_ARM_DEADLINE). The same
+holds for an arm that recorded its deadline and never counted a launch. The cap therefore holds by wall time alone, whether or not the guard can read
 the balance: the arms' hour limits sum to WORST_HOURS L4-hours, WORST_UNITS units.
 
 An arm that has started before (state.json "launches" at least 1, or a session of its own name in the listing) and holds
-HALTED is not run by the gate; its watchdog entry names HALTED as its stop file, so the watchdog disables it for a person to
-read. Otherwise, inside its recorded deadline, what the gate does depends on the listing, which must answer:
+HALTED with its stop confirmed is not run by the gate; its watchdog entry names HALTED as its stop file, so the watchdog
+disables it for a person to read. With HALTED and the stop NOT confirmed, and its session listed or the listing not
+answering, the runner is run so that it finishes that stop (it creates nothing under HALTED). Otherwise, inside its recorded deadline, what the gate does depends on the listing, which must answer:
   its session IS listed   the runner is run at once. It asks for no new slot; it resumes the session, or tries to adopt it
                           (the runner owns a session by its recorded endpoint, so a session made just before a crash may
                           still need a person); a pending STOP_REQUEST is taken by that runner, whose confirmed stop ends it;
@@ -82,14 +88,14 @@ SEED2_LAUNCH = os.path.join(S2.LAUNCH_DIR, "launch.json")
 SEED2_GRACE_S = 3600             # seed 2's section counts as ended an hour past its own deadline
 WEEK_HOURS = 168                 # the whole ladder ends within seven days of its own first start
 L4_UNITS_PER_HOUR = 1.94         # one L4 session (base 2's measured rate)
-EXPECT_HOURS = {"1B": 18.5, "2B": 38.0, "T": 98.5}      # at about 3,300 steps an hour on an L4 (base 2's measured rate)
+EXPECT_HOURS = {"1B": 18.5, "2B": 38.0, "T": 94.0}      # at about 3,300 steps an hour on an L4 (base 2's measured rate)
 # Each arm's hour limit: its expectation and 40% (base 2 saw 15 to 40% over), rounded up. An arm never runs longer.
-MAX_HOURS = {"1B": 26, "2B": 54, "T": 138}
+MAX_HOURS = {"1B": 26, "2B": 54, "T": 132}
 CHAT_HOURS = 12                  # what an arm's chat campaign needs after it, inside the week
-WORST_HOURS = sum(MAX_HOURS[L.RUNGS[a]["rung"]] for a in L.LAUNCHED_ARMS)             # 298
-WORST_UNITS = round(WORST_HOURS * L4_UNITS_PER_HOUR, 1)                                 # 578.1
-CAP_UNITS = 580.0                # the pretraining campaign's cap: the wall-time worst case, rounded up (about USD 58)
-GUARD_STOP_AT = 560.0            # the guard's earlier stop: the cap less 20 for stopping the sessions
+WORST_HOURS = sum(MAX_HOURS[L.RUNGS[a]["rung"]] for a in L.LAUNCHED_ARMS)             # 292
+WORST_UNITS = round(WORST_HOURS * L4_UNITS_PER_HOUR, 1)                                 # 566.5
+CAP_UNITS = 580.0                # the pretraining campaign's cap (about USD 58): the wall-time worst case clears it by 13.5 units
+GUARD_STOP_AT = 560.0            # the guard's stop: the cap less 20 for stopping the sessions
 UNITS_MARGIN = 20.0
 MIN_FREE_GB = 8                  # an arm brings about 2 GB home
 POLL_S = 300
@@ -246,6 +252,16 @@ def seed2_proven_deadline(arms, seed2_launch=None):
     return parse_iso(rec["deadline_utc"])
 
 
+def seed2_arm_stopped(state_dir):
+    """A seed-2 arm's own folder shows it stopped: home with its last release made, or a HALTED record with its stop
+    confirmed, or a DEADLINE record with its stop confirmed."""
+    if ended_home(state_dir):
+        return True
+    if (read_json(os.path.join(state_dir, "HALTED")) or {}).get("stop_confirmed") is True:
+        return True
+    return (read_json(os.path.join(state_dir, "DEADLINE")) or {}).get("stopped") is True
+
+
 def seed2_section_ended(now, launch_dir=None, seed2_arms=None, seed2_launch=None):
     """S1: how seed 2's section is known to have ended ("home" | "deadline" | "lead"), or None."""
     arms = S2.ARMS if seed2_arms is None else seed2_arms
@@ -257,7 +273,7 @@ def seed2_section_ended(now, launch_dir=None, seed2_arms=None, seed2_launch=None
     lead = read_json(os.path.join(LAUNCH_DIR if launch_dir is None else launch_dir, "SEED2_ENDED.json"))
     if lead and all(isinstance(lead.get(k), str) and lead[k] for k in ("by", "why")):
         at = parse_iso(lead.get("at_utc"))
-        if at is not None and at <= now + 60:
+        if at is not None and at <= now + 60 and all(seed2_arm_stopped(a["state_dir"]) for a in arms.values()):
             return "lead"
     return None
 
@@ -362,27 +378,37 @@ def stop_marked(state_dir):
 # ---------------------------------------------------------------- the decisions
 
 def decide_arm(name, commit, now, slots, rows_fn, bal_fn, launch_dir=None, seed2=None, guard_up=None, stop_asked=None,
-               free=None, arms=None, clock=time.time):
+               free=None, arms=None, clock=time.time, ended=None):
     """(kind, what): ("exec", argv) | ("wait", why) | ("halt", (kind, why)) | ("refuse", why)."""
     launch_dir = LAUNCH_DIR if launch_dir is None else launch_dir
     arms = ARMS if arms is None else arms
     a = arms[name]
     own_path = os.path.join(a["state_dir"], OWN_COPY)
     path = os.path.join(launch_dir, "launch.json")
+    started = S2.launched(a["state_dir"]) or os.path.lexists(own_path)
+    if not started and (ended or seed2_section_ended)(now) is None:
+        # seed 2's section has not ended (files only): an arm that has never started asks Colab for nothing
+        why = go_problem(read_json(os.path.join(launch_dir, "GO.json")), commit)
+        return ("refuse", why) if why else ("wait", "seed 2's section has not ended: nothing of the ladder starts beside it")
     rows = rows_fn()
     listed = rows is not None and any(n == name for n, _ in rows)
     if S2.launched(a["state_dir"]) or listed:
-        # a session of this arm exists or has existed: no new slot is asked; the recorded arm deadline is passed again
-        if os.path.exists(os.path.join(a["state_dir"], "HALTED")):
+        # a session of this arm exists or has existed: the recorded arm deadline is passed again
+        maybe_up = listed or rows is None
+        halted = read_json(os.path.join(a["state_dir"], "HALTED")) if os.path.lexists(os.path.join(a["state_dir"], "HALTED")) else None
+        if os.path.lexists(os.path.join(a["state_dir"], "HALTED")) and not ((halted or {}).get("stop_confirmed") is not True and maybe_up):
             return "halt", ("LADDER_HALTED", "this arm holds HALTED: the gate runs nothing; a person reads it")
         state, rec = load_record(path, commit)
         own = read_json(own_path)
         why = rec if state != "valid" else own_problem(own, rec, name)
         if state != "valid" or why:
             return "refuse", f"this arm has a session or has launched, and has no valid admission and first-start record ({why or 'absent'}): a person reads it"
-        if now >= parse_iso(own["arm_deadline_utc"]):
-            return "halt", ("LADDER_ARM_DEADLINE", f"this arm's deadline {own['arm_deadline_utc']} has passed: it is not run again"
-                            + ("; A SESSION OF ITS NAME IS STILL LISTED: a person stops it" if listed else ""))
+        if os.path.lexists(os.path.join(a["state_dir"], "HALTED")) or now >= parse_iso(own["arm_deadline_utc"]):
+            if maybe_up:
+                # a session may still bill: the runner is run to stop it. Under HALTED it only finishes the stop; started
+                # after its deadline it creates nothing, stops the session this folder recorded and writes DEADLINE.
+                return "exec", runner_argv(name, commit, own["arm_deadline_utc"])
+            return "halt", ("LADDER_ARM_DEADLINE", f"this arm's deadline {own['arm_deadline_utc']} has passed and no session of its name is listed: it is not run again")
         if rows is None:
             return "wait", "Colab's listing did not answer: whether this arm's session is up is unknown"
         if listed:      # its session is up: no new slot is asked; the runner resumes it, or takes a pending stop
@@ -426,7 +452,15 @@ def decide_arm(name, commit, now, slots, rows_fn, bal_fn, launch_dir=None, seed2
     if state == "absent" and before is not None:
         return "wait", "the ladder has not been admitted (a slot's first arm admits it)"
     limit = MAX_HOURS[a["rung"]]
-    if state == "valid" and now + (limit + CHAT_HOURS) * 3600 > parse_iso(rec["deadline_utc"]):
+    prior = read_json(own_path) if os.path.lexists(own_path) else None
+    if os.path.lexists(own_path):
+        # it recorded a first start and never counted a launch: the deadline it recorded then still binds
+        why = "no admission" if state != "valid" else own_problem(prior, rec, name)
+        if why:
+            return "refuse", f"{OWN_COPY} in this arm's folder does not validate ({why}); it is never replaced: a person reads it"
+        if now >= parse_iso(prior["arm_deadline_utc"]):
+            return "halt", ("LADDER_ARM_DEADLINE", f"this arm's deadline {prior['arm_deadline_utc']} passed before it counted a launch: it is not run")
+    elif state == "valid" and now + (limit + CHAT_HOURS) * 3600 > parse_iso(rec["deadline_utc"]):
         return "halt", ("LADDER_NO_TIME", f"this arm's {limit} hours and {CHAT_HOURS} for its chat campaign no longer fit before {rec['deadline_utc']}")
     why = (seed2 or seed2_off)(now=now, rows=rows)
     if why:
@@ -471,7 +505,7 @@ def decide_arm(name, commit, now, slots, rows_fn, bal_fn, launch_dir=None, seed2
     return "exec", runner_argv(name, commit, own["arm_deadline_utc"])
 
 
-def decide_guard(now, commit, launch_dir=None, seed2=None, rows_fn=None):
+def decide_guard(now, commit, launch_dir=None, seed2=None, rows_fn=None, ended=None):
     launch_dir = LAUNCH_DIR if launch_dir is None else launch_dir
     why = go_problem(read_json(os.path.join(launch_dir, "GO.json")), commit)
     if why:
@@ -481,6 +515,8 @@ def decide_guard(now, commit, launch_dir=None, seed2=None, rows_fn=None):
         return "refuse", f"launch.json does not validate ({rec}); it is never replaced: a person reads it"
     if state == "absent":
         return "wait", "the ladder has not been admitted"
+    if (ended or seed2_section_ended)(now) is None:      # files only, before any listing call
+        return "wait", "seed 2's section has not ended: the ladder's guard would count its units"
     why = (seed2 or seed2_off)(now=now, rows=rows_fn() if rows_fn else None)      # before EVERY start of the guard
     if why:
         return "wait", f"seed 2 is live ({why}): the ladder's guard would count its units"
