@@ -207,7 +207,7 @@ class Fresh:
     persistent = False   # a fresh volume: nothing of the lost pod is on it
 
 
-def replacement(tmp_path, monkeypatch, watch_status):
+def replacement(tmp_path, monkeypatch, watch_status, sft_home=True):
     art = tmp_path / "art"
     art.mkdir()
     monkeypatch.setattr(rm, "ART", str(art))
@@ -221,7 +221,7 @@ def replacement(tmp_path, monkeypatch, watch_status):
           {"name": "P_S_1", "spec": {}, "after": arm["after"]}]
     st = rm.State()
     for n, status in (("gate", "FINISHED"), ("sft_S", "FINISHED"), ("watch_sft_S", watch_status)):
-        st.job(n).update(home=True, status=status, home_marked=True)
+        st.job(n).update(home=(n != "sft_S" or sft_home), status=status if (n != "sft_S" or sft_home) else "RUNNING", home_marked=True)
         (art / n).mkdir()
     (art / "sft_S" / "sft_S.safetensors").write_text("w")
     st.d["booted"] = False
@@ -255,3 +255,28 @@ def test_a_healthy_home_watch_is_marked_finished_on_a_replacement_pod_not_run_ag
 def test_an_unhealthy_home_watch_stays_failed_so_no_arm_trains(tmp_path, monkeypatch):
     code, _ = replacement(tmp_path, monkeypatch, "FAILED")
     assert "watch_sft_S" in marked(code, "FAILED") and "watch_sft_S" not in marked(code, "FINISHED")
+
+
+def test_a_home_watch_whose_sft1500_is_not_home_runs_again_with_it(tmp_path, monkeypatch):
+    """Explore review of 17 Nov 2026, point 4: the SFT1500's final download failed, its watch landed, the pod and volume were lost.
+    The SFT1500 trains again; its watch must run again too, or the arms would start from a start nobody watched."""
+    code, logged = replacement(tmp_path, monkeypatch, "FINISHED", sft_home=False)
+    assert "watch_sft_S" not in marked(code, "FINISHED") and "sft_S" not in marked(code, "FINISHED")
+    assert "watch_sft_S" not in code[code.index("HOME_"):] if "HOME_" in code else True   # no home marker: the barrier waits for it
+    js = rm.State().job("watch_sft_S")
+    assert js["home"] is False and js["fetched"] == [] and js["status"] is None   # its new watch.json will be fetched
+    assert any("the watch runs again" in x for x in logged)
+
+
+def test_watched_home_reads_the_watchs_own_job():
+    class S:
+        def __init__(self, home):
+            self.h = home
+
+        def job(self, n):
+            return {"home": self.h.get(n, False)}
+    by = {"sft_S": {}, "watch_sft_S": {}}
+    w = {"cmd": ["python3", "b2cue_early.py", "--watch", "--job", "sft_S", "--out", "{out}"]}
+    assert rm.watched_home(S({"sft_S": True}), w, by) is True and rm.watched_home(S({}), w, by) is False
+    assert rm.watched_home(S({"sft_X": True}), {"cmd": ["x", "--job", "sft_X"]}, by) is False     # not a job of this campaign
+    assert rm.watched_home(S({"sft_S": True}), {"cmd": ["x"]}, by) is False                       # names no job: run it again

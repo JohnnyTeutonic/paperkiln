@@ -498,6 +498,13 @@ def watch_lines(js, w):
     return out
 
 
+def watched_home(st, j, by):
+    """True when the job a watch names with --job is a job of this campaign and is home."""
+    cmd = j.get("cmd") or []
+    names = [cmd[i + 1] for i, a in enumerate(cmd[:-1]) if a == "--job"]
+    return len(names) == 1 and names[0] in by and bool(st.job(names[0])["home"])
+
+
 def relay_watch(st, name):
     """A running watch's watch.json, read each tick into a side file (never the home copy, which fetch_outputs lands once the
     watch has ended) and its new lines logged. A miss is silent: the next tick reads again."""
@@ -975,6 +982,15 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
     # them, and a replacement VM has none (an unfinished pretraining job would find no corpus).
     # (On a persistent volume the data job's STATUS and files are still there, so it is not rerun.)
     by = {j["name"]: j for j in jobs}
+    # A32 (Explore review of 17 Nov 2026, point 4): a home watch whose SFT1500 is not home (its final download failed before the
+    # pod was lost) recorded a run that will now train again. Its record no longer stands: it is an unfinished job again, runs
+    # with the retrained SFT1500, and its new watch.json replaces the home copy, so the arms never wait on a stale watch
+    for j in jobs:
+        js = st.job(j["name"])
+        if HOME_MARKERS and "watch.json" in j.get("outputs", []) and js["home"] and not watched_home(st, j, by):
+            js.update(home=False, status=None, fetched=[], home_marked=False, watch_relayed=[], failed_seen=0)
+            st.save()
+            log(f"{j['name']}: its watched job is not home; the watch runs again with it")
 
     def closure(stop=()):
         # A32 (launch round 5): with home markers, a collector (after_terminal) waits for its jobs to end; it never needs them
@@ -1006,8 +1022,10 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
         needed = closure(spare)
     # A32 (N2, before C1): a base's arms now wait on its SFT1500's watch. A home watch is never run again: its dependants need
     # only its outcome (FINISHED or FAILED, as home records it), and on a fresh volume a rerun would find no log of the SFT1500,
-    # end unread and fail every arm of a healthy start
-    watches = {j["name"] for j in jobs if HOME_MARKERS and "watch.json" in j.get("outputs", [])}
+    # end unread and fail every arm of a healthy start. That holds only while the job it watched is home as well: if the SFT1500
+    # is not (its final download failed before the pod was lost), it trains again here and its watch runs again with it, so no
+    # arm starts from a start that was never watched (Explore review of 17 Nov 2026, point 4)
+    watches = {j["name"] for j in jobs if HOME_MARKERS and "watch.json" in j.get("outputs", []) and watched_home(st, j, by)}
     rerun = [j["name"] for j in jobs if st.job(j["name"])["home"] and "cmd" in j and j["name"] in needed
              and j["name"] not in failed and j["name"] not in spare and j["name"] not in watches]
     finished = [j["name"] for j in jobs if st.job(j["name"])["home"] and j["name"] not in failed + rerun]
