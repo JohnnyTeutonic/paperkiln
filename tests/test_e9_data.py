@@ -86,7 +86,7 @@ def rehearsal(tmp_path_factory):
 
 def test_rehearsal_builds_publishes_and_finds_the_stage_finished(rehearsal):
     m = rehearsal
-    assert "stage 3 done" in m.out_d2 and "sources equal the receipt's" in m.out_d2 or "stage 3 done" in m.out_d2
+    assert "stage 3 done" in m.out_d2
     assert "stage 3: finished already" in m.out_d2_again
     for arm in ("D2", "D4"):
         corpus = m.store / "main" / "corpus" / arm
@@ -106,6 +106,31 @@ def test_rehearsal_dose_manifest_is_in_band_and_the_streams_differ(rehearsal):
     assert man["D2"]["stream_sha256"] != man["D4"]["stream_sha256"]
     led = json.load(open(m.d2 / "e9_D2_stage3.json"))
     assert led["built"]["manifest"]["arm"] == "D2"
+
+
+def test_shard0_is_held_to_the_receipt_at_the_receipts_size(rehearsal):
+    """With the receipt at the rehearsal's size (seed 20261111, 400 documents), shard 0 must be its bytes: the right
+    hash builds, a wrong one stops the build before any other shard. (The engine's validator cannot pass at this
+    size, so the rehearsal runs with it off; at the campaign's size it runs on every shard.)"""
+    m = rehearsal
+    p = m.e9 / "results" / "stream_receipt_L2.json"
+    keep = p.read_bytes()
+    ref = m.tmp / "ref_shard0.txt"
+    subprocess.run([sys.executable, str(m.e9 / "generate_level.py"), "--level", "L2", "--seed", "20261111", "--docs",
+                    "400", "--start", "0", "--out", str(ref), "--quiet"], check=True, capture_output=True)
+    good = __import__("hashlib").sha256(ref.read_bytes()).hexdigest()
+    try:
+        r = json.loads(keep)
+        r.update(docs=400, seed=20261111, text_sha256=good)
+        p.write_text(json.dumps(r))
+        out = m.e9run(m.tmp / "vm_d2_right", "D2r", "L2")       # a fresh arm: D2 is finished in the store
+        assert "stage 3 done" in out
+        r["text_sha256"] = "0" * 64
+        p.write_text(json.dumps(r))
+        out = m.e9run(m.tmp / "vm_d2_wrong", "D2x", "L2", expect=1)
+        assert "shard 0 is not the bytes of the level's stream receipt" in out
+    finally:
+        p.write_bytes(keep)
 
 
 def test_a_changed_generator_is_refused(rehearsal):

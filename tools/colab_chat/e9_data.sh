@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # E9 (scenario diversity): a D arm's corpus, base 2's stage 3 with a level's stream. GENERATED from base2_data.sh by
 # make_e9_data.py; do not edit. Claude Opus 5.5 (a fork of the coordinating session), 18 Nov 2026.
-#   E9_ARM=D2 E9_LEVEL=L2 [E9_DIR=...] [E9_SHARD0_SHA256=...] bash tools/colab_chat/e9_data.sh OUT VOCAB_GGUF stage3
+#   E9_ARM=D2 E9_LEVEL=L2 [E9_DIR=...] bash tools/colab_chat/e9_data.sh OUT VOCAB_GGUF stage3
 # The rest of this header is base 2's, for the stages this script inherits.
 # Base 2's corpus build (BASE2_PLAN.md sections 2.3 and 2.4, in the author's research tree). Claude Fable 5.2, 11 Nov 2026.
 #   bash tools/colab_chat/base2_data.sh OUT VOCAB_GGUF stage1|stage2|stage3|all|rehearsal
@@ -385,8 +385,9 @@ scn_shard() {  # K: shard K of the training stream: generated, put through the e
   if cached "$led" $bind && [ -e "$d/shard_$k.txt" ]; then return 0; fi
   python3 "$E9_DIR/generate_level.py" --level "$E9_LEVEL" --seed "$SEED" --docs "$SHARD_DOCS" --start $((k * SHARD_DOCS / 2)) \
     --out "$d/raw_$k.txt" --meta "$d/raw_$k.meta.jsonl" > /dev/null
-  if [ "$k" = 0 ] && [ -n "${E9_SHARD0_SHA256:-}" ]; then
-    [ "$(sha256sum "$d/raw_0.txt" | cut -d " " -f 1)" = "$E9_SHARD0_SHA256" ] \
+  if [ "$k" = 0 ]; then
+    python3 "$E9_DIR/e9_build.py" shard0 --receipt "$E9_DIR/results/stream_receipt_$E9_LEVEL.json" \
+      --file "$d/raw_0.txt" --seed "$SEED" --docs "$SHARD_DOCS" \
       || { echo "e9_data: shard 0 is not the bytes of the level's stream receipt"; exit 1; }
   fi
   rm -f "$d/validate_$k.json"

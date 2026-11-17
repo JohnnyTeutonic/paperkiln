@@ -8,8 +8,8 @@ e9_data.sh is base2_data.sh's stage 3 for one D arm: the same held-out panel, do
 sizes, shards, mix, ids, share checks (14% to 16% a part) and token report against N, with:
   * the level's generator and validator (E9's generate_level.py and validate_level.py, uploaded at E9_DIR, which must
     sit two folders below the upload folder that holds scenario_engine/) in place of the engine's;
-  * a check that those modules and the engine's are the bytes the level's stream receipt was made with, and, with
-    E9_SHARD0_SHA256 set (the receipt's text_sha256), that shard 0 is the receipt's bytes before any other shard;
+  * a check that those modules and the engine's are the bytes the level's stream receipt was made with, and, run
+    at the receipt's seed and size (the campaign's), that shard 0 is the receipt's bytes before any other shard;
   * the arm's names (E9_ARM) in place of S's: corpus/<ARM>, recipe_<ARM>, <ARM>.{main,tail}.ids, ...;
   * its own receipt branch (e9-build:build/<ARM>/stage3), and the per-arm dose manifest (e9_build.py manifest), which
     fails the stage outside [14.5%, 15.5%];
@@ -28,7 +28,7 @@ OUT = os.path.join(HERE, "e9_data.sh")
 
 HEAD = """# E9 (scenario diversity): a D arm's corpus, base 2's stage 3 with a level's stream. GENERATED from base2_data.sh by
 # make_e9_data.py; do not edit. Claude Opus 5.5 (a fork of the coordinating session), 18 Nov 2026.
-#   E9_ARM=D2 E9_LEVEL=L2 [E9_DIR=...] [E9_SHARD0_SHA256=...] bash tools/colab_chat/e9_data.sh OUT VOCAB_GGUF stage3
+#   E9_ARM=D2 E9_LEVEL=L2 [E9_DIR=...] bash tools/colab_chat/e9_data.sh OUT VOCAB_GGUF stage3
 # The rest of this header is base 2's, for the stages this script inherits.
 """
 
@@ -44,8 +44,9 @@ GLOBAL = [
      'python3 "$E9_DIR/generate_level.py" --level "$E9_LEVEL" --seed "$SEED" --docs "$SHARD_DOCS"', 1),
     ('--out "$d/raw_$k.txt" --meta "$d/raw_$k.meta.jsonl" > /dev/null',
      '--out "$d/raw_$k.txt" --meta "$d/raw_$k.meta.jsonl" > /dev/null\n'
-     '  if [ "$k" = 0 ] && [ -n "${E9_SHARD0_SHA256:-}" ]; then\n'
-     '    [ "$(sha256sum "$d/raw_0.txt" | cut -d " " -f 1)" = "$E9_SHARD0_SHA256" ] \\\n'
+     '  if [ "$k" = 0 ]; then\n'
+     '    python3 "$E9_DIR/e9_build.py" shard0 --receipt "$E9_DIR/results/stream_receipt_$E9_LEVEL.json" \\\n'
+     '      --file "$d/raw_0.txt" --seed "$SEED" --docs "$SHARD_DOCS" \\\n'
      '      || { echo "e9_data: shard 0 is not the bytes of the level\'s stream receipt"; exit 1; }\n'
      '  fi', 1),
     ('python3 "$ENGINE/validate.py" "$d/raw_$k.txt"',

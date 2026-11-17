@@ -96,7 +96,8 @@ def test_only_the_allowed_paths_change_and_exactly_as_allowed():
 def test_release_turns_and_metadata_per_arm():
     for name in E9.ARMS:
         got, ref = E9.arm(name), L.arm(REFS[name])
-        assert got.get("store_release_offset_min", 0) == OFFSETS[name], name
+        off = got.get("store_release_offset_min", 0)
+        assert type(off) is int and off == OFFSETS[name], name
         mg, mr = got["_base2"], ref["_base2"]
         c = name[:-len(L.SECOND)] if name.endswith(L.SECOND) else name
         assert set(mg) == set(mr) | {"e9_level", "e9_ref_arm"}
@@ -110,7 +111,7 @@ def test_files_are_current_and_the_ladders_are_the_pinned_commits():
     assert E9.main(["--check"]) == 0
     assert L.main(["--check"]) == 0
     root = os.path.normpath(os.path.join(HERE, ".."))
-    for ref in set(REFS.values()):
+    for ref in sorted(set(REFS.values()) | {"N1B", "N1Bs50"}):   # the controls the D arms are read against too
         rel = "tools/colab_chat/ladder_%s.json" % ref
         pinned = subprocess.run(["git", "show", "%s:%s" % (LADDER_COMMIT, rel)], cwd=root, check=True,
                                 capture_output=True).stdout.decode("utf-8")
