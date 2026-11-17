@@ -361,6 +361,10 @@ class RunPodTransport:
                 raise api.RunPodError(f"no {self.gpu} in stock in any data centre")
             return stocked[0], None
         if self.dc:
+            # a data centre given by hand is checked before a volume is retired or asked for there (GPT, 17 Nov 2026)
+            if self.dc not in api.volume_dcs(api.VOLUME_TYPE):
+                raise api.RunPodError(f"--datacenter {self.dc} offers no {api.VOLUME_TYPE} network volume; "
+                                      "choose one that does (runpod_api.volume_dcs) or leave the choice to the stock")
             if vol and vol["dc"] != self.dc:
                 self._retire(st, vol)
                 vol = R["volume"] = None
@@ -416,7 +420,7 @@ class RunPodTransport:
             st.save()
             try:
                 pod = api.create_pod(body)
-            except api.Refused:
+            except (api.Refused, api.Rejected):   # neither says anything about this data centre's stock
                 raise
             except api.RunPodError:
                 if vol:
@@ -452,7 +456,7 @@ class RunPodTransport:
         except api.Refused as e:
             st.save()
             return 1, f"refused: {e}"
-        except api.Rejected as e:   # RunPod rejected the request itself: a fault to be read, never a stock shortage
+        except api.Rejected as e:   # RunPod refused the request itself: a fault to be read, not logged as a shortage
             n = (R.get("create_rejected") or {}).get("n", 0) + 1
             R["create_rejected"] = {"n": n, "last": str(e), "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
             st.save()
