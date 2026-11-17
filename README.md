@@ -43,7 +43,8 @@ formerly `microtorch`.
 - **Base 2, under way.** A deeper base, 18 × 512 (69.8M parameters), in three registered arms
   ([arm N's graph](https://github.com/JohnnyTeutonic/paperkiln/blob/428b60f0329de3dced1606e1f83fa73acc66be93/tools/colab_chat/base2_N.json)),
   running on Colab with checkpoints pushed to a private Hugging Face store, so a lost session does
-  not lose the run. No results are claimed.
+  not lose the run. Its first chat readings, arms N and S at one pretraining seed, are under
+  [Results and limits](#results-and-limits); the second seed is still training.
 - **Earlier models.** pk_base_v1 (12 × 768) and its chat model pk_sft_v1 were trained here and
   published on the Hugging Face Hub in October 2026 ([CHANGELOG](CHANGELOG.md),
   [results](experiments/chat_general/RESULTS.md)); pk_sft_v1 runs
@@ -169,6 +170,28 @@ Each result holds under its own protocol and scale; none is a state-of-the-art c
   base 2 exists.
   Adding a thread pool to S71's data lowered relevance at one seed and told recall at both (A27,
   `relevance_cost`). Registry section 4 holds these and every other screen's verdict.
+- **A deeper base trained on more tokens closes about half of that gap.** Base 2's arm N (18 × 512,
+  69.8M parameters, 4.10B pretraining positions on paperkiln) went through S71's recipe (base A's
+  SFT1500, then S71's packet) at two seeds and was read on the same wide J1: 532 scripted turns in
+  eight families, an LLM judge's 0 to 4 mean scaled to 52 points. S71's own levels reproduced
+  between the two reads.
+
+  | After S71's recipe | Parameters | Pretraining tokens | Wide J1, seed 1 | Seed 2 |
+  |---|---:|---:|---:|---:|
+  | S71, base A | 72.8M | 0.98B | 31.7 | 29.7 |
+  | Base 2, arm N | 69.8M | 4.10B | 34.3 | 33.4 |
+  | Base 2, arm S (15% scenario text) | 69.8M | 4.10B | 31.8 | 32.3 |
+  | SmolLM2-135M-Instruct (A29) | 134.5M | 2T (its model card) | 37.0 | 36.4 |
+
+  N reads about 92% of the open model's score with about half its parameters and about 1/500 of
+  its pretraining tokens. It is above S71's second seed at both of its seeds and split against
+  S71's first; it does not reach the open model, and at this size that gap is real. Arm S, the
+  same shape with 15% synthetic scenario text in pretraining, reads below N (by 1.8 points, two
+  seeds pooled). The instrument
+  and judge are our own and the suites are scripted; base 2 has one pretraining seed; SmolLM2 is
+  its authors' instruction-tuned release, with a different tokeniser and vocabulary (its replies
+  fit more text into the same token cap); the recipe was tuned on base A; and N differs from A in
+  shape as well as tokens, which a registered fixed-shape token ladder is meant to separate.
 - **Strict answer-and-format checks lag the judged results.** On tinychat-eval's release suite
   (dev split, the model's own generated history, one harness for every row), S71 passes 1 of 11
   cases at both repeats, against 4 for S70 and 0 for S-full's 3 November baseline. No model on
