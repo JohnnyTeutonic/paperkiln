@@ -1,0 +1,241 @@
+{
+ "_comment": "Mechanism programme E4, the H4 subset of the lane's analysis/token_ladder/neurons_REGISTRATION.md (steps 1, 3, 4, 5, 5b): one data job per lineage model on the PyTorch twin, on the pod's GPU. Claude Opus 5.5, 18 Nov 2026.",
+ "max_parallel": 2,
+ "max_parallel_light": 1,
+ "home_markers": true,
+ "jobs": [
+  {
+   "name": "smoke",
+   "cmd": [
+    "bash",
+    "{upload}/run_h4.sh",
+    "{out}",
+    "{upload}",
+    "smoke"
+   ],
+   "outputs": [
+    "result.tgz"
+   ]
+  },
+  {
+   "name": "val",
+   "after": [
+    "smoke"
+   ],
+   "cmd": [
+    "bash",
+    "{upload}/run_h4.sh",
+    "{out}",
+    "{upload}",
+    "validate"
+   ],
+   "outputs": [
+    "result.tgz"
+   ]
+  },
+  {
+   "name": "lin_Araw",
+   "after": [
+    "smoke"
+   ],
+   "cmd": [
+    "bash",
+    "{upload}/run_h4.sh",
+    "{out}",
+    "{upload}",
+    "lineage",
+    "A_raw"
+   ],
+   "outputs": [
+    "result.tgz"
+   ]
+  },
+  {
+   "name": "lin_Asft",
+   "after": [
+    "smoke"
+   ],
+   "cmd": [
+    "bash",
+    "{upload}/run_h4.sh",
+    "{out}",
+    "{upload}",
+    "lineage",
+    "A_sft"
+   ],
+   "outputs": [
+    "result.tgz"
+   ]
+  },
+  {
+   "name": "lin_S71",
+   "after": [
+    "smoke"
+   ],
+   "cmd": [
+    "bash",
+    "{upload}/run_h4.sh",
+    "{out}",
+    "{upload}",
+    "lineage",
+    "S71"
+   ],
+   "outputs": [
+    "result.tgz"
+   ]
+  },
+  {
+   "name": "lin_S71s2",
+   "after": [
+    "smoke"
+   ],
+   "cmd": [
+    "bash",
+    "{upload}/run_h4.sh",
+    "{out}",
+    "{upload}",
+    "lineage",
+    "S71s2"
+   ],
+   "outputs": [
+    "result.tgz"
+   ]
+  },
+  {
+   "name": "lin_Nraw",
+   "after": [
+    "smoke"
+   ],
+   "cmd": [
+    "bash",
+    "{upload}/run_h4.sh",
+    "{out}",
+    "{upload}",
+    "lineage",
+    "N_raw"
+   ],
+   "outputs": [
+    "result.tgz"
+   ]
+  },
+  {
+   "name": "lin_Nsft",
+   "after": [
+    "smoke"
+   ],
+   "cmd": [
+    "bash",
+    "{upload}/run_h4.sh",
+    "{out}",
+    "{upload}",
+    "lineage",
+    "N_sft"
+   ],
+   "outputs": [
+    "result.tgz"
+   ]
+  },
+  {
+   "name": "lin_TLN2501",
+   "after": [
+    "smoke"
+   ],
+   "cmd": [
+    "bash",
+    "{upload}/run_h4.sh",
+    "{out}",
+    "{upload}",
+    "lineage",
+    "TL_N250_1"
+   ],
+   "outputs": [
+    "result.tgz"
+   ]
+  },
+  {
+   "name": "lin_TLN2502",
+   "after": [
+    "smoke"
+   ],
+   "cmd": [
+    "bash",
+    "{upload}/run_h4.sh",
+    "{out}",
+    "{upload}",
+    "lineage",
+    "TL_N250_2"
+   ],
+   "outputs": [
+    "result.tgz"
+   ]
+  },
+  {
+   "name": "lin_Sraw",
+   "after": [
+    "smoke"
+   ],
+   "cmd": [
+    "bash",
+    "{upload}/run_h4.sh",
+    "{out}",
+    "{upload}",
+    "lineage",
+    "S_raw"
+   ],
+   "outputs": [
+    "result.tgz"
+   ]
+  },
+  {
+   "name": "lin_Ssft",
+   "after": [
+    "smoke"
+   ],
+   "cmd": [
+    "bash",
+    "{upload}/run_h4.sh",
+    "{out}",
+    "{upload}",
+    "lineage",
+    "S_sft"
+   ],
+   "outputs": [
+    "result.tgz"
+   ]
+  },
+  {
+   "name": "lin_TLS2501",
+   "after": [
+    "smoke"
+   ],
+   "cmd": [
+    "bash",
+    "{upload}/run_h4.sh",
+    "{out}",
+    "{upload}",
+    "lineage",
+    "TL_S250_1"
+   ],
+   "outputs": [
+    "result.tgz"
+   ]
+  },
+  {
+   "name": "lin_TLS2502",
+   "after": [
+    "smoke"
+   ],
+   "cmd": [
+    "bash",
+    "{upload}/run_h4.sh",
+    "{out}",
+    "{upload}",
+    "lineage",
+    "TL_S250_2"
+   ],
+   "outputs": [
+    "result.tgz"
+   ]
+  }
+ ]
+}
