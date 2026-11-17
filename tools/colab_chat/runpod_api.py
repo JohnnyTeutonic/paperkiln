@@ -66,6 +66,25 @@ class Refused(RunPodError):
     """A guardrail refused the action (pod cap, low balance): never retried blindly."""
 
 
+class Rejected(RunPodError):
+    """RunPod answered a create with 400 or 422: the request, or where it asks to be placed, is at fault. Not a stock shortage and
+    not a transient failure: retrying the same request gives the same answer (17 Nov 2026: a STANDARD volume asked for in a data
+    centre that has only high-performance storage was retried every four minutes and logged as "no A40")."""
+
+
+def problem_text(d, limit=1500):
+    """The whole of a v2 error ({"title", "status", "detail"[, "errors"]}, which _request hands over as {"error": raw text}), so a
+    log line holds what RunPod said and not its last 120 characters."""
+    raw = d.get("error") if isinstance(d, dict) and isinstance(d.get("error"), str) else json.dumps(d)
+    try:
+        p = json.loads(raw)
+        if isinstance(p, dict) and (p.get("detail") or p.get("title")):
+            raw = f"{p.get('title')}: {p.get('detail')}" + (f" {p['errors']}" if p.get("errors") else "")
+    except (TypeError, ValueError):
+        pass
+    return str(raw)[:limit]
+
+
 def gpu_id(name):
     return GPU_IDS.get(name, name)
 
@@ -132,10 +151,17 @@ def _list(path, key, what, query=""):
 
 
 # ---------------------------------------------------------------- account
+def _number(x):
+    return isinstance(x, (int, float)) and not isinstance(x, bool) and x == x and abs(x) != float("inf")
+
+
 def balance():
-    """(clientBalance, currentSpendPerHr) in dollars."""
-    m = graphql("query { myself { clientBalance currentSpendPerHr } }")["myself"]
-    return float(m["clientBalance"]), float(m.get("currentSpendPerHr") or 0.0)
+    """(clientBalance, currentSpendPerHr) in dollars. Both must be numbers in the answer: a spend rate that is missing or null is
+    an answer that cannot be read, never zero (a launch's balance floor is built on it)."""
+    m = (graphql("query { myself { clientBalance currentSpendPerHr } }") or {}).get("myself")
+    if not isinstance(m, dict) or not _number(m.get("clientBalance")) or not _number(m.get("currentSpendPerHr")):
+        raise RunPodError(f"balance: the account's balance or spend rate is not a number in the answer: {json.dumps(m)[:200]}")
+    return float(m["clientBalance"]), float(m["currentSpendPerHr"])
 
 
 def gpu_price(gpu, cloud="SECURE"):
@@ -147,17 +173,27 @@ def gpu_price(gpu, cloud="SECURE"):
     return d[0].get("securePrice" if cloud == "SECURE" else "communityPrice")
 
 
-def stock(gpu):
-    """{data centre id: availability} for the GPU type, from the catalog (NONE/LOW/MEDIUM/HIGH)."""
+def catalog():
+    """The catalog's data centres with their GPU availability: [{"id", "networkVolumeTypes": [...], "gpuAvailability": [...]}]."""
     st, d = _request("GET", CATALOG + "?include=GPU_AVAILABILITY")
-    if st != 200 or not d:
+    if st != 200 or not isinstance(d, dict) or not isinstance(d.get("dataCenters"), list):
         raise RunPodError(f"catalog: HTTP {st}: {json.dumps(d)[:300]}")
+    return d["dataCenters"]
+
+
+def stock(gpu, cat=None):
+    """{data centre id: availability} for the GPU type, from the catalog (NONE/LOW/MEDIUM/HIGH)."""
     want, out = gpu_id(gpu), {}
-    for dc in d.get("dataCenters", []):
+    for dc in catalog() if cat is None else cat:
         for g in dc.get("gpuAvailability") or []:
             if g.get("id") == want:
                 out[dc["id"]] = g.get("availability", "NONE")
     return out
+
+
+def volume_dcs(volume_type, cat=None):
+    """The data centres that offer network volumes of this tier (the catalog's networkVolumeTypes)."""
+    return {dc["id"] for dc in (catalog() if cat is None else cat) if volume_type in (dc.get("networkVolumeTypes") or [])}
 
 
 RANK = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
@@ -178,11 +214,17 @@ def host_stock(gpu, dc, min_ram=None, min_vcpu=None, secure=True):
     return ((d or [{}])[0].get("lowestPrice") or {}).get("stockStatus")
 
 
-def stocked_dcs(gpu, min_ram=None, min_vcpu=None, secure=True):
+def stocked_dcs(gpu, min_ram=None, min_vcpu=None, secure=True, volume_type=None):
     """Data centres with the GPU in stock (on hosts of at least min_ram GB / min_vcpu vCPUs per GPU when
-    given), best availability first."""
-    s = stock(gpu)
+    given), best availability first. With volume_type, only those that also offer network volumes of that tier: a campaign's
+    volume is created where its pod will run, and RunPod rejects a tier a data centre does not have (17 Nov 2026: CA-MTL-1, the
+    best-stocked A40 data centre, has only high-performance storage)."""
+    cat = catalog()
+    s = stock(gpu, cat)
     dcs = [dc for dc, a in s.items() if RANK.get(a, 0) > 0]
+    if volume_type:
+        ok = volume_dcs(volume_type, cat)
+        dcs = [dc for dc in dcs if dc in ok]
     if min_ram or min_vcpu:
         dcs = [dc for dc in dcs if host_stock(gpu, dc, min_ram, min_vcpu, secure)]
     return sorted(dcs, key=lambda dc: (-RANK[s[dc]], dc))
@@ -326,8 +368,10 @@ def create_pod(body):
     if bal < MIN_BALANCE:
         raise Refused(f"RunPod balance ${bal:.2f} is below ${MIN_BALANCE:.0f}; refusing to create a pod")
     st, d = rest("POST", "/pods", send, timeout=120)
+    if st in (400, 422):
+        raise Rejected(f"create pod: HTTP {st}: {problem_text(d)}")
     if st not in (200, 201) or not isinstance(d, dict) or not d.get("id"):
-        raise RunPodError(f"create pod: HTTP {st}: {json.dumps(d)[:400]}")
+        raise RunPodError(f"create pod: HTTP {st}: {problem_text(d, 600)}")
     return compat_pod(d)
 
 
@@ -365,8 +409,10 @@ def create_volume(name, gb, dc):
     """A STANDARD network volume. The tier is asked for by name, so a data centre whose default is the high-performance tier
     cannot hand over a dearer volume than the ledger prices; one that has no standard tier answers with an error."""
     st, d = rest("POST", "/network-volumes", {"name": name, "size": int(gb), "dataCenter": dc, "type": VOLUME_TYPE})
+    if st in (400, 422):
+        raise Rejected(f"create volume in {dc}: HTTP {st}: {problem_text(d)}")
     if st not in (200, 201) or not isinstance(d, dict) or not d.get("id"):
-        raise RunPodError(f"create volume: HTTP {st}: {json.dumps(d)[:400]}")
+        raise RunPodError(f"create volume: HTTP {st}: {problem_text(d, 600)}")
     return compat_volume(d)
 
 

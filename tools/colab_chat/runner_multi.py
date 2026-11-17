@@ -716,8 +716,12 @@ def apply_rung_resets(st, jobs):
 def launch(st, commit, jobs_rel, jobs, uploads):
     T.stop(st)
     rc, out = T.create(st)
+    if rc == 2 and getattr(T, "backend", "") == "runpod":   # RunPod rejected the create request (400 or 422): not a shortage
+        log(f"create FAILED, request rejected (a fault in the request or its placement, not a stock shortage): "
+            f"{out.strip()[:900]}; it is tried again next tick, and this line repeats until the cause is removed")
+        return False
     if rc != 0:
-        log(f"no {T.gpu} ({out.strip()[-120:]}); retry later")
+        log(f"no pod ({out.strip()[:400]}); retry later")
         return False
     st.d["endpoint"] = listed()
     st.d["launches"] += 1
