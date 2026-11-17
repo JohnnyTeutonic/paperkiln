@@ -132,8 +132,9 @@ def _names_in(line, names):
     return any(n in line for n in names)
 
 
-def ladder_ended(cmdlines=None, arms=None, launch_dir=None, now=None):
-    """None when the ladder has ended (as the docstring says), else why not."""
+def ladder_ended(cmdlines=None, arms=None, launch_dir=None, now=None, rows=None):
+    """None when the ladder has ended (as the docstring says), else why not. `rows` is the Colab listing ((name, row)
+    pairs, as S2.listing_rows gives it); None means it did not answer, which is not an end."""
     arms = LADDER_ARMS if arms is None else arms
     rec = LL.read_json(os.path.join(LADDER_LAUNCH_DIR if launch_dir is None else launch_dir, "launch.json"))
     if not rec:
@@ -155,6 +156,10 @@ def ladder_ended(cmdlines=None, arms=None, launch_dir=None, now=None):
     for line in lines:
         if _names_in(line, tuple(arms)):
             return "a process of the ladder is running"
+    if rows is None:
+        return "the Colab listing did not answer: no ladder session can be ruled out"
+    if any(n in arms for n, _ in rows):
+        return "a session of the ladder is listed"
     return None
 
 
@@ -208,7 +213,7 @@ def decide_arm(name, commit, now, slots, rows_fn, bal_fn, launch_dir=None, arms=
     launch_dir = E9_LAUNCH_DIR if launch_dir is None else launch_dir
     a = arms[name]
     if not _started(a):
-        why = ladder_ended(cmdlines)
+        why = ladder_ended(cmdlines, rows=rows_fn() if rows_fn else None)
         if why:
             return "wait", f"the token ladder has not ended ({why}): E9 starts after it"
         if not baselines_ok(launch_dir):
@@ -271,7 +276,7 @@ def decide_build(name, commit, now, arms=None, builds=None, cmdlines=None, seed2
     why = (go or (lambda c: LL.go_problem(LL.read_json(os.path.join(launch_dir, "GO.json")), c)))(commit)
     if why:
         return "refuse", f"E9's GO record: {why}"
-    why = ladder_ended(cmdlines)
+    why = ladder_ended(cmdlines, rows=rows)
     if why:
         return "wait", f"the token ladder has not ended ({why}): no E9 build starts before it"
     off = (seed2 or seed2_off)(now=now, rows=rows)

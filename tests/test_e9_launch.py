@@ -71,7 +71,7 @@ def _builds_in(tmp):
 
 def test_the_ledger_fits_six_arms_and_refuses_a_seventh(tmp_path, monkeypatch):
     arms, builds = _arms_in(tmp_path), _builds_in(tmp_path)
-    monkeypatch.setattr(EL, "ladder_ended", lambda cmdlines=None, arms=None, launch_dir=None, now=None: None)
+    monkeypatch.setattr(EL, "ladder_ended", lambda cmdlines=None, arms=None, launch_dir=None, now=None, rows=None: None)
     monkeypatch.setattr(EL, "_ORIG_DECIDE", lambda *a, **k: ("wait", "delegated"))
     ld = tmp_path / "launch"
     ld.mkdir()
@@ -97,7 +97,7 @@ def test_the_ledger_fits_six_arms_and_refuses_a_seventh(tmp_path, monkeypatch):
 
 def test_the_replicate_and_d4ops_wait_for_the_leads_choice(tmp_path, monkeypatch):
     arms, builds = _arms_in(tmp_path), _builds_in(tmp_path)
-    monkeypatch.setattr(EL, "ladder_ended", lambda cmdlines=None, arms=None, launch_dir=None, now=None: None)
+    monkeypatch.setattr(EL, "ladder_ended", lambda cmdlines=None, arms=None, launch_dir=None, now=None, rows=None: None)
     monkeypatch.setattr(EL, "_ORIG_DECIDE", lambda *a, **k: ("wait", "delegated"))
     ld = tmp_path / "launch"
     ld.mkdir()
@@ -136,27 +136,37 @@ def _ladder(tmp, deadline_in_s=3600):
 
 def test_the_ladder_has_ended_only_when_admitted_stopped_and_not_running(tmp_path):
     ladder, ld = _ladder(tmp_path)
-    assert EL.ladder_ended(cmdlines=[], arms=ladder, launch_dir=str(tmp_path / "nowhere")) is not None   # never admitted
+    assert EL.ladder_ended(rows=[], cmdlines=[], arms=ladder, launch_dir=str(tmp_path / "nowhere")) is not None   # never admitted
     (Path(ladder["pk-tl-N1B"]["state_dir"]) / "state.json").write_text(HOME)
     # S1B never launched, holds no HALTED, and the ladder's week is not over: it could still start
-    assert "could still start" in EL.ladder_ended(cmdlines=[], arms=ladder, launch_dir=ld)
+    assert "could still start" in EL.ladder_ended(rows=[], cmdlines=[], arms=ladder, launch_dir=ld)
     (Path(ladder["pk-tl-S1B"]["state_dir"]) / "HALTED").write_text("{}")
-    assert EL.ladder_ended(cmdlines=[], arms=ladder, launch_dir=ld) is None
+    assert EL.ladder_ended(rows=[], cmdlines=[], arms=ladder, launch_dir=ld) is None
     for line in (["python3", "runner_multi.py", "--name", "pk-tl-S1B"], ["python3", "x.py", "--name=pk-tl-S1B"],
                  "python3 runner_multi.py --name pk-tl-S1B"):
-        assert EL.ladder_ended(cmdlines=[line], arms=ladder, launch_dir=ld) is not None, line
+        assert EL.ladder_ended(rows=[], cmdlines=[line], arms=ladder, launch_dir=ld) is not None, line
+
+
+def test_the_ladder_has_not_ended_while_its_session_is_listed_or_the_listing_is_silent(tmp_path):
+    ladder, ld = _ladder(tmp_path)
+    for x in ladder.values():
+        (Path(x["state_dir"]) / "state.json").write_text(HOME)
+    assert EL.ladder_ended(rows=[], cmdlines=[], arms=ladder, launch_dir=ld) is None
+    assert "listing did not answer" in EL.ladder_ended(rows=None, cmdlines=[], arms=ladder, launch_dir=ld)
+    assert "is listed" in EL.ladder_ended(rows=[("pk-tl-S1B", {})], cmdlines=[], arms=ladder, launch_dir=ld)
+    assert EL.ladder_ended(rows=[("pk-e9-D2", {})], cmdlines=[], arms=ladder, launch_dir=ld) is None
 
 
 def test_a_never_launched_ladder_arm_counts_as_ended_once_the_week_is_over(tmp_path):
     ladder, ld = _ladder(tmp_path, deadline_in_s=-60)
     (Path(ladder["pk-tl-N1B"]["state_dir"]) / "state.json").write_text(HOME)
-    assert EL.ladder_ended(cmdlines=[], arms=ladder, launch_dir=ld) is None
+    assert EL.ladder_ended(rows=[], cmdlines=[], arms=ladder, launch_dir=ld) is None
 
 
 def test_a_build_waits_writes_its_deadline_once_and_is_halted_past_it(tmp_path, monkeypatch):
     arms, builds = _arms_in(tmp_path), _builds_in(tmp_path)
     ended = {"why": "not yet"}
-    monkeypatch.setattr(EL, "ladder_ended", lambda cmdlines=None, arms=None, launch_dir=None, now=None: ended["why"])
+    monkeypatch.setattr(EL, "ladder_ended", lambda cmdlines=None, arms=None, launch_dir=None, now=None, rows=None: ended["why"])
     off = {"why": "seed 2 live"}
     go = {"why": "no GO record"}
     kb = lambda n, now, rows=(): EL.decide_build(n, "a" * 40, now, arms=arms, builds=builds, cmdlines=[],  # noqa
@@ -188,7 +198,7 @@ def test_a_build_waits_writes_its_deadline_once_and_is_halted_past_it(tmp_path, 
 
 def test_a_build_record_that_is_not_its_first_start_plus_six_hours_is_halted(tmp_path, monkeypatch):
     arms, builds = _arms_in(tmp_path), _builds_in(tmp_path)
-    monkeypatch.setattr(EL, "ladder_ended", lambda cmdlines=None, arms=None, launch_dir=None, now=None: None)
+    monkeypatch.setattr(EL, "ladder_ended", lambda cmdlines=None, arms=None, launch_dir=None, now=None, rows=None: None)
     t0 = 1_800_000_000.0
     (Path(builds["pk-e9-data-D3"]["state_dir"]) / EL.BUILD_COPY).write_text(json.dumps(
         {"first_start_utc": EL.LL.iso(t0), "deadline_utc": EL.LL.iso(t0 + 20 * 3600), "max_hours": 6, "commit": "a" * 40}))
@@ -200,7 +210,7 @@ def test_a_build_record_that_is_not_its_first_start_plus_six_hours_is_halted(tmp
 
 def test_the_real_seed2_predicate_waits_on_an_unanswered_listing(tmp_path, monkeypatch):
     arms, builds = _arms_in(tmp_path), _builds_in(tmp_path)
-    monkeypatch.setattr(EL, "ladder_ended", lambda cmdlines=None, arms=None, launch_dir=None, now=None: None)
+    monkeypatch.setattr(EL, "ladder_ended", lambda cmdlines=None, arms=None, launch_dir=None, now=None, rows=None: None)
     kind, what = EL.decide_build("pk-e9-data-D2", "a" * 40, time.time(), arms=arms, builds=builds, cmdlines=[],
                                  rows=None, balance=lambda: 1000.0, go=lambda c: None)
     assert kind == "wait" and "seed 2" in what
@@ -216,7 +226,7 @@ def test_the_guard_watches_the_build_folders_too():
 
 def test_d4ops_build_waits_until_a_planned_arm_is_known_not_to_start(tmp_path, monkeypatch):
     arms, builds = _arms_in(tmp_path), _builds_in(tmp_path)
-    monkeypatch.setattr(EL, "ladder_ended", lambda cmdlines=None, arms=None, launch_dir=None, now=None: None)
+    monkeypatch.setattr(EL, "ladder_ended", lambda cmdlines=None, arms=None, launch_dir=None, now=None, rows=None: None)
     kb = lambda: EL.decide_build("pk-e9-data-D4ops", "a" * 40, 1_800_000_000.0, arms=arms, builds=builds,  # noqa
                                  cmdlines=[], seed2=lambda now=None, rows=None: None, launch_dir=str(tmp_path),
                                  rows=[], balance=lambda: 1000.0, go=lambda c: None)
