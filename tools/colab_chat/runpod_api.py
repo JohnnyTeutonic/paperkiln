@@ -40,6 +40,7 @@ no create while clientBalance is below MIN_BALANCE dollars.
 from __future__ import annotations
 
 import json
+import re
 import os
 import sys
 import time
@@ -256,7 +257,9 @@ def compat_pod(p):
     p.setdefault("vcpuCount", gpu.get("vcpuCount"))
     # the network volume a pod mounts (v2: mounts.network[].volumeId): a sweep must see it before it deletes a volume
     net = (p.get("mounts") or {}).get("network") if isinstance(p.get("mounts"), dict) else None
-    vid = next((m.get("volumeId") for m in net or [] if isinstance(m, dict) and m.get("volumeId")), None)
+    vids = [m.get("volumeId") for m in net or [] if isinstance(m, dict) and m.get("volumeId")]
+    vid = vids[0] if vids else None
+    p.setdefault("networkVolumeIds", vids)   # every mounted volume: a sweep protects all of them (GPT, 18 Nov 2026)
     p.setdefault("networkVolumeId", vid)
     p.setdefault("networkVolume", {"id": vid} if vid else None)
     return p
@@ -357,6 +360,12 @@ def v2_create_body(body):
     return out
 
 
+# RunPod answers a pod create with HTTP 400 both for a malformed request and for missing capacity. Only these texts, seen
+# from RunPod, are capacity (retried, counted against the data centre); every other 400 is a rejection, a fault.
+CAPACITY_400 = re.compile(r"does not have the resources|no instances available|not enough (?:free )?(?:gpus|capacity)|"
+                          r"no (?:longer )?(?:available|stock)|try a different machine", re.I)
+
+
 def create_pod(body):
     """POST /v2/pods behind the guardrails: refuses (Refused) when MAX_PODS pods exist account-wide or the
     balance is below MIN_BALANCE, or when the pod is to be reached over SSH and the account has no registered key. Takes the
@@ -371,7 +380,7 @@ def create_pod(body):
     if bal < MIN_BALANCE:
         raise Refused(f"RunPod balance ${bal:.2f} is below ${MIN_BALANCE:.0f}; refusing to create a pod")
     st, d = rest("POST", "/pods", send, timeout=120)
-    if st == 422:
+    if st == 422 or (st == 400 and not CAPACITY_400.search(problem_text(d))):
         raise Rejected(f"create pod: HTTP {st}: {problem_text(d)}")
     if st not in (200, 201) or not isinstance(d, dict) or not d.get("id"):
         raise RunPodError(f"create pod: HTTP {st}: {problem_text(d)}")

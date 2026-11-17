@@ -497,3 +497,49 @@ def test_a_rejected_pod_create_does_not_count_toward_moving_the_campaign(monkeyp
     rc, out = t.create(St())
     assert rc == 1 and "no instances available" in out and R["dc_fails"] == 1      # an ordinary failed create still counts
 
+
+def test_a_pod_create_400_is_a_rejection_unless_runpod_says_capacity_is_missing(monkeypatch):
+    """GPT's review of the port to master (18 Nov 2026): only a capacity text is retried; any other 400 is a fault."""
+    malformed = {"title": "Bad Request", "status": 400, "detail": "gpuTypeIds: unknown value"}
+    account(monkeypatch, create=lambda q, b: (400, {"error": json.dumps(malformed)}))
+    with pytest.raises(api.Rejected, match="gpuTypeIds: unknown value"):
+        api.create_pod(v1_body())
+    seen = {"title": "Bad Request", "status": 400,          # RECORDED: RunPod's answer to C1a's first create, 17 Nov 2026
+            "detail": "This machine does not have the resources to deploy your pod. Please try a different machine"}
+    account(monkeypatch, create=lambda q, b: (400, {"error": json.dumps(seen)}))
+    with pytest.raises(api.RunPodError) as e:
+        api.create_pod(v1_body())
+    assert not isinstance(e.value, api.Rejected)
+
+
+def test_a_rejected_create_never_counts_against_the_data_centre(monkeypatch, tmp_path):
+    import runpod_transport as rt
+    (tmp_path / "k.pub").write_text("ssh-ed25519 AAAA runner")
+    monkeypatch.setattr(rt, "KEY", str(tmp_path / "k"))
+    monkeypatch.setattr(rt, "image_digest", lambda image: "sha256:x")
+    R = {"pod": None, "volume": {"id": "vol0000001", "dc": "EU-SE-1", "gb": 80}, "retired_volumes": [], "ledger": {"pods": [], "volumes": []}}
+
+    class St:
+        d = {"runpod": R, "endpoint": None}
+
+        def save(self):
+            pass
+    t = rt.RunPodTransport.__new__(rt.RunPodTransport)
+    t.gpu, t.cloud, t.volume_gb, t.dc, t.image, t.name, t.persistent = "A40", "SECURE", 80, None, "img", "pk-b2cue-ns", True
+    t.st, t.log = St(), lambda m: None
+    t.deadline = None
+    monkeypatch.setattr(rt.RunPodTransport, "R", lambda self, st=None: R)
+    monkeypatch.setattr(rt.RunPodTransport, "over_budget", lambda self, st: None)
+    monkeypatch.setattr(api, "stocked_dcs", lambda *a, **k: ["EU-SE-1"])
+    bad = {"title": "Bad Request", "status": 400, "detail": "gpuTypeIds: unknown value"}
+    account(monkeypatch, create=lambda q, b: (400, {"error": json.dumps(bad)}))
+    for _ in range(3):
+        assert t.create(St())[0] == 2
+    assert "dc_fails" not in R
+
+
+def test_every_mounted_volume_is_kept_for_the_sweep():
+    p = pod()
+    p["mounts"] = {"network": [{"volumeId": "volA", "path": "/a"}, {"volumeId": "volB", "path": "/b"}]}
+    c = api.compat_pod(p)
+    assert c["networkVolumeIds"] == ["volA", "volB"] and c["networkVolumeId"] == "volA"

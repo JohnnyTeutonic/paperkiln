@@ -366,7 +366,7 @@ def main(argv=None):
         if any(runner_alive(r["dir"]) or not campaign_home(
                 r["dir"], jload(os.path.join(r["dir"], "state.json"), {}) or {}) for r in owners):
             continue
-        if any(p.get("networkVolumeId") == vid or
+        if any(p.get("networkVolumeId") == vid or vid in (p.get("networkVolumeIds") or []) or
                (p.get("networkVolume") or {}).get("id") == vid for p in pods):
             continue
         log(f"volume {vid} ({v.get('name')}): campaign {owner['dir']} is verified home; "
