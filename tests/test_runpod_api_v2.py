@@ -107,6 +107,9 @@ def test_a_pod_carries_the_fields_v1_callers_read(monkeypatch):
     assert p["desiredStatus"] == "RUNNING" == p["status"] and p["costPerHr"] == 0.59 == p["cost"]
     assert api.ssh_endpoint(p) == ("203.0.113.7", 40122)
     assert p["machine"]["dataCenterId"] == "EU-SE-1" and p["memoryInGb"] == 50.0 and p["vcpuCount"] == 9.0
+    assert p["networkVolumeId"] == "vol0000001" == p["networkVolume"]["id"]        # a sweep sees the mounted volume before deleting it
+    bare = api.compat_pod(dict(pod(), mounts={}))
+    assert bare["networkVolumeId"] is None and bare["networkVolume"] is None
 
 
 def test_a_stopped_pod_that_still_shows_its_ssh_mapping_is_not_running(monkeypatch):
