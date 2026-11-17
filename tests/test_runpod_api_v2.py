@@ -80,6 +80,7 @@ def test_every_page_of_a_list_is_followed(monkeypatch):
     f = Fake(monkeypatch, {("GET", "/v2/pods"): lambda q, b: (200, pages[q.get("cursor")])})
     assert [p["id"] for p in api.list_pods()] == ["a", "b", "c"]
     assert [c[2].get("cursor") for c in f.calls] == [None, "c1==", "c2"]          # the cursor goes back as sent, URL-quoted on the wire
+    assert all(c[2].get("includeClusterPods") == "true" for c in f.calls)         # every page counts cluster member pods too
 
 
 @pytest.mark.parametrize("answer, why", [
@@ -106,6 +107,16 @@ def test_a_pod_carries_the_fields_v1_callers_read(monkeypatch):
     assert p["desiredStatus"] == "RUNNING" == p["status"] and p["costPerHr"] == 0.59 == p["cost"]
     assert api.ssh_endpoint(p) == ("203.0.113.7", 40122)
     assert p["machine"]["dataCenterId"] == "EU-SE-1" and p["memoryInGb"] == 50.0 and p["vcpuCount"] == 9.0
+
+
+def test_a_stopped_pod_that_still_shows_its_ssh_mapping_is_not_running(monkeypatch):
+    """SCHEMA (PodSsh.direct): "It can still appear on a stopped pod, so check that `status` is `RUNNING` before connecting"."""
+    Fake(monkeypatch, {("GET", "/v2/pods/p"): lambda q, b: (200, pod("p", status="EXITED", direct=True))})
+    p = api.get_pod("p")
+    assert api.ssh_endpoint(p) == ("203.0.113.7", 40122) and p["desiredStatus"] == "EXITED"   # the transport asks for RUNNING as well
+    import runpod_transport as rt
+    src = Path(rt.__file__).read_text()
+    assert src.count('p.get("desiredStatus") == "RUNNING" and api.ssh_endpoint(p)') == 2       # listed() and _wait_up()
 
 
 @pytest.mark.parametrize("status", ["PROVISIONING", "STARTING", "ERROR", "EXITED"])
@@ -176,8 +187,9 @@ def test_what_cannot_be_carried_to_v2_exactly_is_refused_never_dropped(change, w
         api.v2_create_body(dict(v1_body(), **change))
 
 
-def account(mp, pods=(), bal=165.47, create=None, calls=None):
+def account(mp, pods=(), bal=165.47, create=None, calls=None, keys=1):
     routes = {("GET", "/v2/pods"): lambda q, b: (200, {"pods": list(pods), "pagination": {"hasNextPage": False, "nextCursor": None}}),
+              ("GET", "/v2/account/ssh-keys"): lambda q, b: (200, {"keys": [{"name": "runner"}] * keys}),   # RECORDED: {"keys": [...]}
               ("POST", "/graphql"): lambda q, b: (200, {"data": {"myself": {"clientBalance": bal, "currentSpendPerHr": 0.048}}})}
     if create:
         routes[("POST", "/v2/pods")] = create
@@ -203,10 +215,27 @@ def test_the_guardrails_refuse_before_anything_is_sent(monkeypatch):
     with pytest.raises(api.RunPodError, match="spot"):                              # an untranslatable body: nothing is asked or sent
         api.create_pod(dict(v1_body(), interruptible=True))
     assert f.calls == []
+    f = account(monkeypatch, keys=0, create=lambda q, b: pytest.fail("a create was sent"))
+    with pytest.raises(api.Refused, match="no registered SSH key"):                 # v2: startSsh does nothing without one
+        api.create_pod(v1_body())
+    for bad in ((500, {"error": "x"}), (200, {"nokeys": []}), (200, [])):           # a key count that cannot be read stops it too
+        f = account(monkeypatch, create=lambda q, b: pytest.fail("a create was sent"))
+        f.routes[("GET", "/v2/account/ssh-keys")] = lambda q, b, bad=bad: bad
+        with pytest.raises(api.RunPodError, match="ssh keys"):
+            api.create_pod(v1_body())
+
+
+def test_a_queued_create_is_refused_in_either_form(monkeypatch):
+    f = account(monkeypatch, create=lambda q, b: pytest.fail("a create was sent"))
+    for body in ({"name": "n", "image": "i", "gpu": {"id": "NVIDIA A40"}, "queue": {}}, dict(v1_body(), queue={"expiresAt": "2026-12-01T00:00:00Z"})):
+        with pytest.raises(api.RunPodError, match="queued creates"):
+            api.create_pod(body)
+    assert f.calls == []
 
 
 def test_a_pod_count_that_cannot_be_read_stops_the_create(monkeypatch):
-    Fake(monkeypatch, {("GET", "/v2/pods"): lambda q, b: (503, {"error": "x"}), ("POST", "/v2/pods"): lambda q, b: pytest.fail("a create was sent")})
+    Fake(monkeypatch, {("GET", "/v2/pods"): lambda q, b: (503, {"error": "x"}), ("POST", "/v2/pods"): lambda q, b: pytest.fail("a create was sent"),
+                       ("GET", "/v2/account/ssh-keys"): lambda q, b: (200, {"keys": [{}]})})
     with pytest.raises(api.RunPodError, match="list pods"):
         api.create_pod(v1_body())
 
@@ -228,6 +257,10 @@ def test_terminate_is_true_only_when_the_pod_is_gone(monkeypatch):
     assert api.terminate_pod("p2") is True                                          # already gone, confirmed by a GET
     Fake(monkeypatch, {("DELETE", "/v2/pods/p3"): lambda q, b: (404, {"error": "x"}), ("GET", "/v2/pods/p3"): lambda q, b: (200, pod("p3"))})
     assert api.terminate_pod("p3") is False                                         # a 404 on delete while the pod still answers
+    Fake(monkeypatch, {("DELETE", "/v2/pods/p5"): lambda q, b: (200, None), ("GET", "/v2/pods/p5"): lambda q, b: (200, pod("p5"))})
+    assert api.terminate_pod("p5") is False                                         # an undocumented 200 is not taken on trust
+    Fake(monkeypatch, {("DELETE", "/v2/pods/p6"): lambda q, b: (200, None), ("GET", "/v2/pods/p6"): lambda q, b: (200, pod("p6", status="TERMINATED", direct=False))})
+    assert api.terminate_pod("p6") is True
     for code in (409, 401, 403, 429, 500):
         Fake(monkeypatch, {("DELETE", "/v2/pods/p4"): lambda q, b, code=code: (code, {"error": "x"})})
         with pytest.raises(api.RunPodError, match="terminate pod"):
@@ -237,7 +270,8 @@ def test_terminate_is_true_only_when_the_pod_is_gone(monkeypatch):
 def test_volumes_create_with_v2s_field_and_delete_only_when_gone(monkeypatch):
     f = Fake(monkeypatch, {("POST", "/v2/network-volumes"): lambda q, b: (201, dict(VOLUME, name=b["name"], size=b["size"], dataCenter=b["dataCenter"]))})
     v = api.create_volume("pk-b2cue-ns-vol", 80, "EU-SE-1")
-    assert f.calls[0][3] == {"name": "pk-b2cue-ns-vol", "size": 80, "dataCenter": "EU-SE-1"}          # dataCenter, not v1's dataCenterId
+    assert f.calls[0][3] == {"name": "pk-b2cue-ns-vol", "size": 80, "dataCenter": "EU-SE-1", "type": "STANDARD"}   # dataCenter, not v1's
+    assert api.VOLUME_TYPE == "STANDARD"                                            # the tier the ledger's rate is for, asked by name
     assert v["id"] == "vol0000001" and v["dataCenterId"] == "EU-SE-1"
     Fake(monkeypatch, {("DELETE", "/v2/network-volumes/v1"): lambda q, b: (204, None)})
     assert api.delete_volume("v1") is True
@@ -246,7 +280,9 @@ def test_volumes_create_with_v2s_field_and_delete_only_when_gone(monkeypatch):
     assert api.delete_volume("gone") is True
     Fake(monkeypatch, {("DELETE", "/v2/network-volumes/vol0000001"): lambda q, b: (404, {"error": "x"}), ("GET", "/v2/network-volumes"): listing})
     assert api.delete_volume("vol0000001") is False                                 # still listed
-    Fake(monkeypatch, {("DELETE", "/v2/network-volumes/busy"): lambda q, b: (409, {"error": "attached"})})
+    Fake(monkeypatch, {("DELETE", "/v2/network-volumes/v2"): lambda q, b: (200, None), ("GET", "/v2/network-volumes"): listing})
+    assert api.delete_volume("v2") is True and api.delete_volume.__name__                              # 200: confirmed by the list
+    Fake(monkeypatch, {("DELETE", "/v2/network-volumes/busy"): lambda q, b: (409, {"error": "conflict"})})   # SCHEMA: 409 is documented
     with pytest.raises(api.RunPodError, match="delete volume"):
         api.delete_volume("busy")
 
@@ -275,3 +311,23 @@ def test_a_two_hundred_that_is_not_json_is_an_error(monkeypatch):
     monkeypatch.setattr(urllib.request, "urlopen", lambda req, timeout=60: R(b"<html>gateway</html>"))
     with pytest.raises(api.RunPodError, match="unreadable response"):
         api.list_pods()
+
+
+def test_the_transport_gives_up_at_once_on_a_pod_in_error(monkeypatch):
+    """The migration page: status is now the actual state, "Handle ERROR in polling loops"."""
+    import runpod_transport as rt
+
+    class T:
+        logged = []
+
+        def _fetch(self):
+            return api.compat_pod(pod("p", status="ERROR", direct=False))
+
+        def log(self, m):
+            self.logged.append(m)
+
+        def exec(self, *a, **k):
+            pytest.fail("ssh was tried on a pod in ERROR")
+    monkeypatch.setattr(rt.time, "sleep", lambda s: pytest.fail("the wait went on"))
+    t = T()
+    assert rt.RunPodTransport._wait_up(t, "p") is None and "ERROR" in t.logged[0]
