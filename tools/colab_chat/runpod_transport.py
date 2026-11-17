@@ -398,7 +398,9 @@ class RunPodTransport:
         return False
 
     def _stocked(self):
-        return api.stocked_dcs(self.gpu, MIN_RAM, MIN_VCPU, secure=self.cloud == "SECURE")
+        # a campaign with a network volume runs only where that volume's tier exists (17 Nov 2026)
+        return api.stocked_dcs(self.gpu, MIN_RAM, MIN_VCPU, secure=self.cloud == "SECURE",
+                               volume_type=api.VOLUME_TYPE if self.persistent else None)
 
     def _volume_used(self, st, vol):
         """A pod reference means potentially irreplaceable progress, including failed boots.
@@ -509,6 +511,7 @@ class RunPodTransport:
                                         "dc": dc, "volume": vol["id"] if vol else None, "start": time.time(),
                                         "stop": None, "image": self.image, "image_digest": digest})
             R["dc_fails"] = 0
+            R.pop("create_rejected", None)
             st.d["endpoint"] = pod["id"]
             st.save()
             self.log(f"pod {pod['id']} created in {dc} ({self.gpu}, ${float(rate):.3f}/h, {self.cloud}); "
@@ -531,6 +534,12 @@ class RunPodTransport:
         except api.Refused as e:
             st.save()
             return 1, f"refused: {e}"
+        except api.Rejected as e:   # RunPod rejected the request itself: a fault to be read, never a stock shortage
+            n = (R.get("create_rejected") or {}).get("n", 0) + 1
+            R["create_rejected"] = {"n": n, "last": str(e), "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+            st.save()
+            self.log(f"CREATE REJECTED by RunPod ({n} in a row): {e}")
+            return 2, f"rejected: {e}"
         except (api.RunPodError, OSError) as e:
             st.save()
             return 1, f"{type(e).__name__}: {e}"
