@@ -298,6 +298,105 @@ def test_stock_reads_the_v2_catalog_and_the_balance_stays_on_graphql(monkeypatch
     assert api.balance() == (165.4733051656, 0.048)
 
 
+# RECORDED, 17 Nov 2026: the catalog's volume tiers for the two data centres with A40, and RunPod's answer to C1a's first attempt
+TIERS = {"dataCenters": [dict(d, networkVolumeTypes={"EU-SE-1": ["STANDARD"], "CA-MTL-1": ["HIGH_PERFORMANCE"], "EU-RO-1": ["STANDARD"]}[d["id"]])
+                         for d in CATALOG["dataCenters"]]}
+VOLUME_400 = ('{"detail":"Standard storage is not available in data center \\"CA-MTL-1\\". Data centers with standard storage: AP-JP-1, CA-MTL-3, '
+              'CA-MTL-4, EU-CZ-1, EU-NL-1, EU-RO-1, EU-SE-1, EUR-IS-1, EUR-IS-2, EUR-IS-3, EUR-IS-4, EUR-NO-1, US-CO-1, US-GA-2, US-MO-2, US-NC-1, '
+              'US-NE-1, US-TX-3.","status":400,"title":"Bad Request"}')
+
+
+def test_a_campaign_with_a_volume_is_placed_only_where_its_storage_tier_exists(monkeypatch):
+    """C1a's first attempt: CA-MTL-1 was the best-stocked A40 data centre and has no standard storage."""
+    Fake(monkeypatch, {("GET", "/v2/catalog/datacenters"): lambda q, b: (200, TIERS)})
+    assert api.stocked_dcs("A40") == ["CA-MTL-1", "EU-SE-1"]                        # stock alone, as before
+    assert api.stocked_dcs("A40", volume_type="STANDARD") == ["EU-SE-1"]
+    assert api.stocked_dcs("A40", volume_type="HIGH_PERFORMANCE") == ["CA-MTL-1"]
+    assert api.volume_dcs("STANDARD", TIERS["dataCenters"]) == {"EU-SE-1", "EU-RO-1"}
+    import runpod_transport as rt
+    seen = {}
+    monkeypatch.setattr(api, "stocked_dcs", lambda gpu, ram, vcpu, secure=True, volume_type=None: seen.update(vt=volume_type) or [])
+
+    class T:
+        gpu, cloud = "A40", "SECURE"
+    T.persistent = True
+    rt.RunPodTransport._stocked(T)
+    assert seen["vt"] == "STANDARD" == api.VOLUME_TYPE                              # the transport asks for its own volume's tier
+    T.persistent = False
+    rt.RunPodTransport._stocked(T)
+    assert seen["vt"] is None                                                       # a pod without a network volume goes anywhere
+
+
+def test_a_request_runpod_rejects_is_a_fault_with_its_whole_text_never_a_shortage(monkeypatch):
+    Fake(monkeypatch, {("POST", "/v2/network-volumes"): lambda q, b: (400, {"error": VOLUME_400})})
+    with pytest.raises(api.Rejected) as e:
+        api.create_volume("pk-b2cue-ns-vol", 80, "CA-MTL-1")
+    msg = str(e.value)
+    assert "create volume in CA-MTL-1: HTTP 400" in msg and "Standard storage is not available" in msg and msg.endswith("US-TX-3.")
+    assert isinstance(e.value, api.RunPodError) and not isinstance(e.value, api.Refused)
+    for code in (400, 422):
+        account(monkeypatch, create=lambda q, b, code=code: (code, {"error": json.dumps({"title": "Unprocessable Entity", "status": code, "detail": "bad body",
+                                                                                         "errors": ["$: additional properties 'bogus' not allowed"]})}))
+        with pytest.raises(api.Rejected, match="additional properties 'bogus' not allowed"):
+            api.create_pod(v1_body())
+    for code in (409, 429, 500, 503):                                               # anything else is a failure to retry, not a rejection
+        account(monkeypatch, create=lambda q, b, code=code: (code, {"error": "x"}))
+        with pytest.raises(api.RunPodError) as e:
+            api.create_pod(v1_body())
+        assert not isinstance(e.value, api.Rejected)
+
+
+def test_the_transport_and_the_runner_report_a_rejected_create_as_a_fault(monkeypatch, tmp_path):
+    import runner_multi as rm
+    import runpod_transport as rt
+
+    class St:
+        d = {"runpod": {"pod": None, "volume": None, "retired_volumes": [], "ledger": {"pods": [], "volumes": []}}, "endpoint": None, "launches": 0}
+
+        def save(self):
+            pass
+    logged = []
+    (tmp_path / "k.pub").write_text("ssh-ed25519 AAAA runner")
+    monkeypatch.setattr(rt, "KEY", str(tmp_path / "k"))
+    t = rt.RunPodTransport.__new__(rt.RunPodTransport)
+    t.gpu, t.cloud, t.volume_gb, t.dc, t.image, t.name, t.persistent = "A40", "SECURE", 80, None, "img", "pk-b2cue-ns", True
+    t.st, t.log = St(), logged.append
+    monkeypatch.setattr(rt.RunPodTransport, "R", lambda self, st=None: St.d["runpod"])
+    monkeypatch.setattr(rt.RunPodTransport, "over_budget", lambda self, st: None)
+    monkeypatch.setattr(api, "stocked_dcs", lambda *a, **k: ["CA-MTL-1"])
+    Fake(monkeypatch, {("POST", "/v2/network-volumes"): lambda q, b: (400, {"error": VOLUME_400})})
+    for n in (1, 2):
+        rc, out = t.create(St())
+        assert rc == 2 and out.startswith("rejected: create volume in CA-MTL-1: HTTP 400") and "Standard storage is not available" in out
+        assert St.d["runpod"]["create_rejected"]["n"] == n and "CREATE REJECTED by RunPod" in logged[-1]
+    # the runner's line: a fault, with the reason from its start, and no "no A40"
+    lines = []
+    monkeypatch.setattr(rm, "T", type("X", (), {"backend": "runpod", "gpu": "A40", "stop": lambda self, st: None, "create": lambda self, st: (2, out)})())
+    monkeypatch.setattr(rm, "log", lines.append)
+    assert rm.launch(St(), "c", "j", [], []) is False
+    assert lines[0].startswith("create FAILED, request rejected") and "Standard storage is not available" in lines[0] and "no A40" not in lines[0]
+    monkeypatch.setattr(rm, "T", type("X", (), {"backend": "runpod", "gpu": "A40", "stop": lambda self, st: None,
+                                                "create": lambda self, st: (1, "RunPodError: no A40 in stock in any data centre")})())
+    lines.clear()
+    assert rm.launch(St(), "c", "j", [], []) is False and lines[0].startswith("no pod (RunPodError: no A40 in stock")
+    monkeypatch.setattr(rm, "T", type("X", (), {"backend": "colab", "gpu": "L4", "stop": lambda self, st: None, "create": lambda self, st: (2, "usage")})())
+    lines.clear()
+    assert rm.launch(St(), "c", "j", [], []) is False and lines[0].startswith("no pod (usage")       # Colab's exit code 2 is its own
+
+
+@pytest.mark.parametrize("myself", [{"clientBalance": 165.47}, {"clientBalance": 165.47, "currentSpendPerHr": None}, {"currentSpendPerHr": 0.048},
+                                    {"clientBalance": "165", "currentSpendPerHr": 0.048}, None])
+def test_a_balance_answer_without_both_numbers_is_an_error_never_a_zero_rate(monkeypatch, myself):
+    Fake(monkeypatch, {("POST", "/graphql"): lambda q, b: (200, {"data": {"myself": myself}})})
+    with pytest.raises(api.RunPodError, match="balance"):
+        api.balance()
+
+
+def test_a_zero_spend_rate_that_the_api_states_is_zero(monkeypatch):
+    Fake(monkeypatch, {("POST", "/graphql"): lambda q, b: (200, {"data": {"myself": {"clientBalance": 20.0, "currentSpendPerHr": 0}}})})
+    assert api.balance() == (20.0, 0.0)
+
+
 def test_a_two_hundred_that_is_not_json_is_an_error(monkeypatch):
     import io
     import urllib.request
