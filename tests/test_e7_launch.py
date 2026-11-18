@@ -119,6 +119,80 @@ def test_e9_live_reads_admission_arms_and_builds(tmp_path):
     assert "admitted" in EL.e9_live(str(e9), arms, builds)
 
 
+def test_no_replacement_session_while_e9_is_live(tmp_path, monkeypatch):
+    monkeypatch.setattr(EL, "_ORIG_DECIDE", lambda *a, **k: ("exec", ["runner"]))
+    arms = _arms_in(tmp_path)
+    (Path(arms["pk-e7-E7A"]["state_dir"]) / EL.OWN_COPY).write_text("{}")
+    ld = tmp_path / "launch"
+    ld.mkdir()
+    k = lambda rows: EL.decide_arm("pk-e7-E7A", "a" * 40, 0, None, lambda: rows, None, launch_dir=str(ld), arms=arms,  # noqa
+                                   cmdlines=[], ladder_ended=lambda *a, **kw: None, e9=lambda: "E9 has been admitted")
+    kind, what = k([])                                         # its session is gone: a replacement would be a new allocation
+    assert kind == "halt" and what[0] == "E7_AFTER_E9"
+    assert k([("pk-e7-E7A", {})]) == ("exec", ["runner"])      # its session is up: the runner resumes it or finishes a stop
+    assert k(None) == ("exec", ["runner"])                     # the listing did not answer: the runner is asked to stop it
+
+
+def test_a_home_arm_runs_nothing_again(tmp_path, monkeypatch):
+    monkeypatch.setattr(EL, "_ORIG_DECIDE", lambda *a, **k: ("exec", ["runner"]))
+    arms = _arms_in(tmp_path)
+    (Path(arms["pk-e7-E7A"]["state_dir"]) / "state.json").write_text(
+        json.dumps({"campaign_home": True, "store_release_final_done": True}))
+    kind, what = _k(arms, tmp_path)
+    assert kind == "halt" and what[0] == "E7_HOME"
+
+
+def _research(tmp, ruling=True, used_gb=500.0, age_s=3600, now=1_800_000_000):
+    r = tmp / "research"
+    (r / "reviews").mkdir(parents=True)
+    (r / "checks").mkdir()
+    (r / "reviews" / "reviews_answered.md").write_text("x\nLAUNCH RULING: go (lead, 2026-11-25)\n" if ruling else "x\n")
+    (r / "checks" / "hf_storage.json").write_text(json.dumps({"used_gb": used_gb, "who": "lead",
+                                                              "at_utc": EL.LL.iso(now - age_s)}))
+    lad = tmp / "ladder"
+    lad.mkdir()
+    (lad / "launch.json").write_text(json.dumps({"commit": "b" * 40}))
+    return r, lad, now
+
+
+def _git_ok(commit, parity=0):
+    def g(*args):
+        if args[0] == "rev-parse":
+            return 0, commit
+        if args[0] == "branch":
+            return 0, "  origin/claude/e7-shape"
+        if args[0] == "diff":
+            return parity, ""
+        return 1, ""
+    return g
+
+
+LINE = 'Jonathan, direct chat, 18 Nov 2026: "1. yes. 2. yes" (E7)'
+
+
+def test_preflight_passes_and_go_is_written_once(tmp_path):
+    r, lad, now = _research(tmp_path)
+    kw = dict(research=str(r), now=now, git=_git_ok("a" * 40), ladder_launch_dir=str(lad))
+    assert EL.preflight("a" * 40, LINE, **kw) is None
+    go = tmp_path / "go"
+    assert EL.write_go("a" * 40, LINE, launch_dir=str(go), **kw) is None
+    rec = json.loads((go / "GO.json").read_text())
+    assert EL.LL.go_problem(rec, "a" * 40) is None
+    assert EL.write_go("a" * 40, LINE, launch_dir=str(go), **kw) == ["GO.json already exists: it is never replaced"]
+
+
+def test_preflight_refusals(tmp_path):
+    r, lad, now = _research(tmp_path, ruling=False, used_gb=900.0)
+    bad = EL.preflight("a" * 40, "yes", research=str(r), now=now, git=_git_ok("c" * 40, parity=1),
+                       ladder_launch_dir=str(lad))
+    text = " | ".join(bad)
+    for frag in ("dated line", "not at", "LAUNCH RULING", "200 GB free", "differs from the ladder"):
+        assert frag in text, (frag, text)
+    r2, lad2, now2 = _research(tmp_path / "old", age_s=4 * 86400)
+    bad2 = EL.preflight("a" * 40, LINE, research=str(r2), now=now2, git=_git_ok("a" * 40), ladder_launch_dir=str(lad2))
+    assert any("within three days" in x for x in bad2)
+
+
 def test_units_needed_counts_the_one_arm(tmp_path):
     need = EL.units_needed(None, _arms_in(tmp_path), 0.0, None)
     assert abs(need - (26 * 1.94 + EL.LL.UNITS_MARGIN)) < 1e-6, need

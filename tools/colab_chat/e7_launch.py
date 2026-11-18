@@ -85,6 +85,17 @@ def decide_arm(name, commit, now, slots, rows_fn, bal_fn, launch_dir=None, arms=
     arms = ARMS if arms is None else arms
     launch_dir = E7_LAUNCH_DIR if launch_dir is None else launch_dir
     a = arms[name]
+    if LL.ended_home(a["state_dir"]):
+        return "halt", ("E7_HOME", "the arm is home with its last release made: nothing runs again")
+    if _started(a):
+        # A1 (GPT review, point 1): E9 live is re-read at every start. A session of the arm that may be up is handed to the
+        # runner (it resumes it, or finishes a stop); a REPLACEMENT session, a new allocation, is never made while E9 is live.
+        why = (e9 or e9_live)()
+        if why:
+            rows = rows_fn() if rows_fn else None
+            listed = rows is None or any(n == name for n, _ in rows)
+            if not listed:
+                return "halt", ("E7_AFTER_E9", f"{why}: no replacement session for E7 while E9 is live; the lead reads it")
     if not _started(a):
         why = (ladder_ended or E9.ladder_ended)(cmdlines, rows=rows_fn() if rows_fn else None)
         if why:
@@ -119,8 +130,85 @@ def install():
     LL.seed2_off = E9.seed2_off
 
 
+# ---------------------------------------------------------------- A1: the enforced preflight and the GO record (GPT, point 2)
+RESEARCH = "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/AI_ML/chat_screens_claude/base2/e7_shape"
+REVIEWS = "base2/e7_shape/reviews/reviews_answered.md"
+HF_ACCOUNT_GB, PUSH_CAP_GB, HF_MAX_AGE_S = 1000.0, 200.0, 3 * 86400
+# The trainer, runner, boot and every file the arm runs that is not E7's own: identical to the ladder's launch commit
+PARITY_EXCLUDE = (":(exclude)tools/colab_chat", ":(exclude)tests")
+PARITY_FILES = ("tools/colab_chat/runner_multi.py", "tools/colab_chat/boot_base2.sh", "tools/colab_chat/tiny_chat_run.py",
+                "tools/colab_chat/base2_pins.py", "tools/colab_chat/base2_pins.json", "tools/colab_chat/base2_units_guard.py",
+                "tools/colab_chat/base2_rung_D1.json", "tools/colab_chat/ladder_launch.py", "tools/colab_chat/make_ladder.py",
+                "tools/colab_chat/make_base2.py", "tools/colab_chat/ladder_N1B.json", "tools/colab_chat/base2_seed2_launch.py")
+
+
+def _git(*args):
+    import subprocess
+    p = subprocess.run(["git", *args], cwd=S2.REPO, capture_output=True, text=True)
+    return p.returncode, p.stdout.strip()
+
+
+def preflight(commit, line, research=RESEARCH, now=None, git=None, ladder_launch_dir=None):
+    """None when every registered launch precondition that is not the gate's own holds, else the list of failures."""
+    import time as _t
+    git = git or _git
+    now = _t.time() if now is None else now
+    bad = []
+    if not (isinstance(line, str) and line.startswith("Jonathan, ") and len(line) >= 30):
+        bad.append("the GO line is not Jonathan's dated line ('Jonathan, ...', at least 30 characters)")
+    rc, head = git("rev-parse", "HEAD")
+    if rc or head != commit:
+        bad.append(f"the worktree is not at {commit}")
+    rc, remote = git("branch", "-r", "--contains", commit)
+    if rc or "origin/claude/e7-shape" not in remote:
+        bad.append("the launch commit is not on origin/claude/e7-shape (the VM fetches it)")
+    try:
+        text = open(os.path.join(research, "reviews", "reviews_answered.md"), encoding="utf-8").read()
+    except OSError:
+        text = ""
+    if not any(x.startswith("LAUNCH RULING: go (") for x in text.splitlines()):
+        bad.append("reviews/reviews_answered.md holds no line beginning 'LAUNCH RULING: go ('")
+    hf = LL.read_json(os.path.join(research, "checks", "hf_storage.json")) or {}
+    at = LL.parse_iso(hf.get("at_utc"))
+    if not (LL.finite(hf.get("used_gb")) and at is not None and hf.get("who") and now - at <= HF_MAX_AGE_S):
+        bad.append("checks/hf_storage.json does not record the account's used storage within three days")
+    elif HF_ACCOUNT_GB - float(hf["used_gb"]) < PUSH_CAP_GB:
+        bad.append(f"the HF account has under {PUSH_CAP_GB:g} GB free for the arm's push cap")
+    rec = LL.read_json(os.path.join(ladder_launch_dir or E9.LADDER_LAUNCH_DIR, "launch.json")) or {}
+    lc = rec.get("commit")
+    if not (isinstance(lc, str) and len(lc) == 40):
+        bad.append("the ladder's launch.json names no launch commit to hold the trainer to")
+    else:
+        rc, _ = git("diff", "--quiet", lc, commit, "--", ".", *PARITY_EXCLUDE)
+        rc2, _ = git("diff", "--quiet", lc, commit, "--", *PARITY_FILES)
+        if rc or rc2:
+            bad.append(f"the trainer, runner or a reused file differs from the ladder's launch commit {lc[:8]}")
+    return bad or None
+
+
+def write_go(commit, line, research=RESEARCH, launch_dir=None, **kw):
+    bad = preflight(commit, line, research, **kw)
+    if bad:
+        return bad
+    d = E7_LAUNCH_DIR if launch_dir is None else launch_dir
+    p = os.path.join(d, "GO.json")
+    if os.path.lexists(p):
+        return ["GO.json already exists: it is never replaced"]
+    import time as _t
+    rec = {"line": line, "commit": commit, "reviews": REVIEWS, "at_utc": LL.iso(int(_t.time())), "preflight": "passed"}
+    got = LL.write_once(p, rec)
+    return None if got == rec else ["GO.json was written by another process first: a person reads it"]
+
+
 def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
     install()
+    if "--preflight" in argv or "--go" in argv:
+        commit = argv[argv.index("--commit") + 1] if "--commit" in argv else ""
+        line = argv[argv.index("--go") + 1] if "--go" in argv else "Jonathan, (preflight only, no line given here)"
+        bad = write_go(commit, line) if "--go" in argv else preflight(commit, line)
+        print("PREFLIGHT_OK" if not bad else "REFUSED:\n- " + "\n- ".join(bad), flush=True)
+        return 0 if not bad else 2
     return LL.main(argv)
 
 
