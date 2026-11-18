@@ -52,6 +52,7 @@ ARM_WORST_UNITS = ARM_HOURS * LL.L4_UNITS_PER_HOUR             # 50.44
 BUILD_HOURS = 6
 BUILD_UNITS = BUILD_HOURS * LL.L4_UNITS_PER_HOUR               # 11.64
 REQUIRED_BUILDS = ("D2", "D3", "D4")
+ADMISSION_UNITS = 6 * ARM_HOURS * LL.L4_UNITS_PER_HOUR + LL.UNITS_MARGIN   # 322.6: A6's funding rule
 # The guard counts from admission. All four builds may come before or after it; it stops early enough that the builds,
 # the guard's own stop and the 20 units the ladder keeps for stopping sessions stay under the cap: 350 - 4 x 11.64 - 20.
 GUARD_STOP_AT = round(CAP_UNITS - 4 * BUILD_UNITS - LL.UNITS_MARGIN, 1)    # 283.4
@@ -287,10 +288,15 @@ def decide_build(name, commit, now, arms=None, builds=None, cmdlines=None, seed2
     own = os.path.join(b["state_dir"], BUILD_COPY)
     rec = LL.read_json(own)
     listed = rows is None or any(n == name for n, _ in rows)
-    if os.path.lexists(own) and not isinstance(rec, dict):
-        return "halt", ("E9_BUILD_RECORD", "the build's own record exists and cannot be read as a JSON object")
-    if rec is not None and build_record_problem(rec, commit):
-        return "halt", ("E9_BUILD_RECORD", build_record_problem(rec, commit))
+    bad = ("the build's own record exists and cannot be read as a JSON object"
+           if os.path.lexists(own) and not isinstance(rec, dict) else (build_record_problem(rec, commit) if rec else None))
+    if bad:
+        # a record from another start (another commit) or a broken one: this folder is never reused (a rerun takes a
+        # new state folder). A session that may be live is first handed to the runner with an expired deadline, so it
+        # stops it and creates nothing; only then is the build halted.
+        if listed and not os.path.lexists(os.path.join(b["state_dir"], "HALTED")):
+            return "exec", build_argv(name, commit, LL.iso(now - 60), builds)
+        return "halt", ("E9_BUILD_RECORD", bad + "; a rerun needs a new state folder")
     halted_p = os.path.join(b["state_dir"], "HALTED")
     if os.path.lexists(halted_p):
         halted = LL.read_json(halted_p) or {}
@@ -323,7 +329,11 @@ def decide_build(name, commit, now, arms=None, builds=None, cmdlines=None, seed2
     if rec is None:
         if b["corpus"] == "D4ops":
             plan = plan_arms(arms, launch_dir)
-            dropped = [n for n, x in plan.items() if not _started(x) and os.path.lexists(os.path.join(x["state_dir"], "HALTED"))]
+            # a planned arm that will not start: HALTED without having launched, for a reason other than no time left
+            # (an arm halted for LADDER_NO_TIME means D4ops would have no time either)
+            dropped = [n for n, x in plan.items() if not _started(x)
+                       and os.path.lexists(os.path.join(x["state_dir"], "HALTED"))
+                       and (LL.read_json(os.path.join(x["state_dir"], "HALTED")) or {}).get("kind") != "LADDER_NO_TIME"]
             if not dropped:
                 return "wait", "D4ops's build waits until a planned arm is known not to start"
         extra = 0.0 if b["corpus"] in REQUIRED_BUILDS else BUILD_UNITS
@@ -332,6 +342,15 @@ def decide_build(name, commit, now, arms=None, builds=None, cmdlines=None, seed2
     bal = (balance or S2.balance)()
     if not LL.finite(bal) or bal < BUILD_UNITS + LL.UNITS_MARGIN:
         return "wait", f"the balance ({bal}) does not cover a build's worst case and the margin"
+    if rec is None and not any(_started(x) for x in arms.values()):     # before admission only
+        # A6's funding rule: after the builds still to come before admission (this one included, at their worst), the
+        # balance must still reach ADMISSION_UNITS (six arms' worst case and the ladder's margin) at admission
+        to_come = [x for x in builds.values() if not _started(x, BUILD_COPY)
+                   and (x["corpus"] in REQUIRED_BUILDS or x is b)]
+        need = ADMISSION_UNITS + BUILD_UNITS * len(to_come)
+        if bal < need - 1e-9:
+            return "refuse", (f"the balance {bal:.1f} would not reach {ADMISSION_UNITS:.1f} units at admission after the "
+                              f"{len(to_come)} build(s) still to come: short by {need - bal:.1f} units")
     if rec is None:
         os.makedirs(b["state_dir"], exist_ok=True)
         LL.write_once(own, {"first_start_utc": LL.iso(now), "deadline_utc": LL.iso(now + BUILD_HOURS * 3600),
