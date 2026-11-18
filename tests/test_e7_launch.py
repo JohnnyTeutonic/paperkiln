@@ -133,13 +133,32 @@ def test_no_replacement_session_while_e9_is_live(tmp_path, monkeypatch):
     assert k(None) == ("exec", ["runner"])                     # the listing did not answer: the runner is asked to stop it
 
 
-def test_a_home_arm_runs_nothing_again(tmp_path, monkeypatch):
+def test_a_home_arm_halts_only_when_no_session_is_listed(tmp_path, monkeypatch):
     monkeypatch.setattr(EL, "_ORIG_DECIDE", lambda *a, **k: ("exec", ["runner"]))
     arms = _arms_in(tmp_path)
     (Path(arms["pk-e7-E7A"]["state_dir"]) / "state.json").write_text(
         json.dumps({"campaign_home": True, "store_release_final_done": True}))
-    kind, what = _k(arms, tmp_path)
+    ld = tmp_path / "launch"
+    ld.mkdir()
+    k = lambda rows: EL.decide_arm("pk-e7-E7A", "a" * 40, 0, None, lambda: rows, None, launch_dir=str(ld), arms=arms,  # noqa
+                                   cmdlines=[], ladder_ended=lambda *a, **kw: None, e9=lambda: None)
+    kind, what = k([])                                    # the listing answers without it: nothing runs again
     assert kind == "halt" and what[0] == "E7_HOME"
+    assert k([("pk-e7-E7A", {})]) == ("exec", ["runner"])  # a session may still bill: the runner stops it
+    assert k(None) == ("exec", ["runner"])                 # the listing did not answer: the ladder's gate decides
+
+
+def test_first_start_waits_while_the_ladders_guard_runs(tmp_path, monkeypatch):
+    monkeypatch.setattr(EL, "_ORIG_DECIDE", lambda *a, **k: ("wait", "delegated"))
+    arms = _arms_in(tmp_path)
+    ld = tmp_path / "launch"
+    ld.mkdir()
+    guard = ["python3", "-u", "tools/colab_chat/base2_units_guard.py", "--campaign", "token-ladder", "--stop-at", "560"]
+    kind, why = EL.decide_arm("pk-e7-E7A", "a" * 40, 0, None, None, None, launch_dir=str(ld), arms=arms,
+                              cmdlines=[guard], ladder_ended=lambda *a, **kw: None, e9=lambda: None)
+    assert kind == "wait" and "units guard" in why
+    assert EL.ladder_guard_running([guard]) and not EL.ladder_guard_running([["python3", "x.py"]])
+    assert EL.ladder_guard_running(None) in (True, False)    # reads the live table; never raises
 
 
 def _research(tmp, ruling=True, used_gb=500.0, age_s=3600, now=1_800_000_000):
@@ -162,7 +181,8 @@ def _git_ok(commit, parity=0):
         if args[0] == "branch":
             return 0, "  origin/claude/e7-shape"
         if args[0] == "diff":
-            return parity, ""
+            return 0, "A\ttools/colab_chat/e7_launch.py\nA\ttests/test_e7_jobs.py" + ("\nM\ttools/colab_chat/runner_multi.py"
+                                                                                  if parity else "")
         return 1, ""
     return g
 
@@ -186,7 +206,7 @@ def test_preflight_refusals(tmp_path):
     bad = EL.preflight("a" * 40, "yes", research=str(r), now=now, git=_git_ok("c" * 40, parity=1),
                        ladder_launch_dir=str(lad))
     text = " | ".join(bad)
-    for frag in ("dated line", "not at", "LAUNCH RULING", "200 GB free", "differs from the ladder"):
+    for frag in ("dated line", "not at", "LAUNCH RULING", "200 GB free", "only added files are allowed"):
         assert frag in text, (frag, text)
     r2, lad2, now2 = _research(tmp_path / "old", age_s=4 * 86400)
     bad2 = EL.preflight("a" * 40, LINE, research=str(r2), now=now2, git=_git_ok("a" * 40), ladder_launch_dir=str(lad2))

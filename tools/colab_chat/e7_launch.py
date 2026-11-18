@@ -35,6 +35,7 @@ S2 = LL.S2
 E7_LAUNCH_DIR = "/home/jonat/e7_launch"
 E7_GUARD = {"campaign": "e7-shape", "dir": "/home/jonat/e7_units_guard"}
 E9_LAUNCH_DIR = E9.E9_LAUNCH_DIR
+LADDER_GUARD = dict(LL.GUARD)        # the ladder's own guard (campaign token-ladder), captured before install()
 ARM_HOURS = LL.MAX_HOURS["1B"]                                   # 26
 ARM_WORST_UNITS = ARM_HOURS * LL.L4_UNITS_PER_HOUR               # 50.44
 CAP_UNITS = 72.0
@@ -66,6 +67,15 @@ def committed_units(arms=None):
     return sum(ARM_WORST_UNITS for x in arms.values() if _started(x))
 
 
+def ladder_guard_running(cmdlines=None):
+    """Explore N3: True while a process of the ladder's units guard runs; an unreadable process table counts as running."""
+    argvs = LL.scan() if cmdlines is None else cmdlines
+    if argvs is None:
+        return True
+    return any(isinstance(argv, (list, tuple)) and any(str(x).endswith("base2_units_guard.py") for x in argv)
+               and LL._has_pair(argv, "--campaign", LADDER_GUARD["campaign"]) for argv in argvs)
+
+
 def e9_live(e9_launch_dir=None, e9_arms=None, e9_builds=None):
     """None when E9 is not live (never admitted, nothing of it started), else why it is."""
     d = E9_LAUNCH_DIR if e9_launch_dir is None else e9_launch_dir
@@ -86,10 +96,17 @@ def decide_arm(name, commit, now, slots, rows_fn, bal_fn, launch_dir=None, arms=
     launch_dir = E7_LAUNCH_DIR if launch_dir is None else launch_dir
     a = arms[name]
     if LL.ended_home(a["state_dir"]):
-        return "halt", ("E7_HOME", "the arm is home with its last release made: nothing runs again")
+        # Explore B2: the runner marks home before its finally stops the session, so a home folder can still have a live
+        # session. Halt only when the listing answers without this arm; otherwise the ladder's gate hands it to the runner,
+        # which stops a session it finds for a home folder.
+        rows = rows_fn() if rows_fn else None
+        if rows is not None and not any(n == name for n, _ in rows):
+            return "halt", ("E7_HOME", "the arm is home with its last release made and no session of it is listed")
+        return _ORIG_DECIDE(name, commit, now, slots, rows_fn, bal_fn, launch_dir=launch_dir, arms=arms, **kw)
     if _started(a):
-        # A1 (GPT review, point 1): E9 live is re-read at every start. A session of the arm that may be up is handed to the
-        # runner (it resumes it, or finishes a stop); a REPLACEMENT session, a new allocation, is never made while E9 is live.
+        # A1.1: E9 live is re-read at every start of the GATE. A session of the arm that may be up is handed to the runner
+        # (it resumes it, or finishes a stop); no replacement session is made from here while E9 is live. The runner's own
+        # relaunches inside one run do not re-read E9: the lead's rule in STATUS.md is the control for that.
         why = (e9 or e9_live)()
         if why:
             rows = rows_fn() if rows_fn else None
@@ -100,6 +117,8 @@ def decide_arm(name, commit, now, slots, rows_fn, bal_fn, launch_dir=None, arms=
         why = (ladder_ended or E9.ladder_ended)(cmdlines, rows=rows_fn() if rows_fn else None)
         if why:
             return "wait", f"the token ladder has not ended ({why}): E7 starts after it"
+        if ladder_guard_running(cmdlines):
+            return "wait", "the ladder's units guard is still running (it would count E7's spend): its lead ends it first"
         why = (e9 or e9_live)()
         if why:
             return "halt", ("E7_AFTER_E9", f"{why}: E7 runs before E9 or not at all on this route; the lead reads it")
@@ -134,12 +153,6 @@ def install():
 RESEARCH = "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/AI_ML/chat_screens_claude/base2/e7_shape"
 REVIEWS = "base2/e7_shape/reviews/reviews_answered.md"
 HF_ACCOUNT_GB, PUSH_CAP_GB, HF_MAX_AGE_S = 1000.0, 200.0, 3 * 86400
-# The trainer, runner, boot and every file the arm runs that is not E7's own: identical to the ladder's launch commit
-PARITY_EXCLUDE = (":(exclude)tools/colab_chat", ":(exclude)tests")
-PARITY_FILES = ("tools/colab_chat/runner_multi.py", "tools/colab_chat/boot_base2.sh", "tools/colab_chat/tiny_chat_run.py",
-                "tools/colab_chat/base2_pins.py", "tools/colab_chat/base2_pins.json", "tools/colab_chat/base2_units_guard.py",
-                "tools/colab_chat/base2_rung_D1.json", "tools/colab_chat/ladder_launch.py", "tools/colab_chat/make_ladder.py",
-                "tools/colab_chat/make_base2.py", "tools/colab_chat/ladder_N1B.json", "tools/colab_chat/base2_seed2_launch.py")
 
 
 def _git(*args):
@@ -179,10 +192,12 @@ def preflight(commit, line, research=RESEARCH, now=None, git=None, ladder_launch
     if not (isinstance(lc, str) and len(lc) == 40):
         bad.append("the ladder's launch.json names no launch commit to hold the trainer to")
     else:
-        rc, _ = git("diff", "--quiet", lc, commit, "--", ".", *PARITY_EXCLUDE)
-        rc2, _ = git("diff", "--quiet", lc, commit, "--", *PARITY_FILES)
-        if rc or rc2:
-            bad.append(f"the trainer, runner or a reused file differs from the ladder's launch commit {lc[:8]}")
+        # Explore N2: every path the launch commit changes against the ladder's launch commit must be an ADDED file, so the
+        # trainer, runner, boot and every file the ladder ran are byte-identical
+        rc, out = git("diff", "--name-status", "--no-renames", lc, commit)
+        changed = [x for x in out.splitlines() if x.strip()]
+        if rc or any(not x.startswith("A\t") for x in changed):
+            bad.append(f"the launch commit changes a file of the ladder's launch commit {lc[:8]} (only added files are allowed)")
     return bad or None
 
 
@@ -209,6 +224,18 @@ def main(argv=None):
         bad = write_go(commit, line) if "--go" in argv else preflight(commit, line)
         print("PREFLIGHT_OK" if not bad else "REFUSED:\n- " + "\n- ".join(bad), flush=True)
         return 0 if not bad else 2
+    if "--status" in argv:      # Explore N5: E7's own first-start conditions, then the ladder gate's status
+        import json
+        rows = None
+        try:
+            rows = S2.listing_rows(S2.load_slots())
+        except Exception:  # noqa: BLE001  an unanswered listing is shown as such
+            pass
+        print(json.dumps({"e7": {"ladder_ended": E9.ladder_ended(None, rows=rows) or "yes",
+                                 "ladder_guard_running": ladder_guard_running(),
+                                 "e9_live": e9_live() or "no", "committed_units": committed_units(),
+                                 "arm_worst_units": ARM_WORST_UNITS, "cap_units": CAP_UNITS,
+                                 "guard_stop_at": GUARD_STOP_AT}}, indent=1), flush=True)
     return LL.main(argv)
 
 
