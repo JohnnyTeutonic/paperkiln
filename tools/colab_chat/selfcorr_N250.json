@@ -106,7 +106,7 @@
     },
     "train": {
      "objective": "sft",
-     "steps": 1301,
+     "steps": 1289,
      "lr": 0.0001,
      "batch": 16,
      "accum": 1,
@@ -251,7 +251,7 @@
     },
     "train": {
      "objective": "sft",
-     "steps": 1301,
+     "steps": 1289,
      "lr": 0.0001,
      "batch": 16,
      "accum": 1,

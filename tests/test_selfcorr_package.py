@@ -28,7 +28,7 @@ def test_only_start_packet_and_steps_differ():
         assert sa["train"]["init_from"] == "/content/chat/sft_tlN250/sft_tlN250.safetensors"
         assert sb["train"]["init_from"] == "/content/chat/upload/sft_tlN250.safetensors"
         assert sa["data"]["sft_examples"].endswith("/S71.jsonl") and sb["data"]["sft_examples"].endswith("/S71SC.jsonl")
-        assert sa["train"]["steps"] == 1024 and sb["train"]["steps"] == E.STEPS == 1301
+        assert sa["train"]["steps"] == 1024 and sb["train"]["steps"] == E.STEPS == 1289
         for s in (sa, sb):
             s["train"].pop("init_from")
             s["data"].pop("sft_examples")
