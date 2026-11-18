@@ -1,4 +1,4 @@
-"""E12's jobs file against the token ladder's N250 chat campaign: only the start and the packet differ."""
+"""E12's jobs file against the token ladder's N250 chat campaign: only the start, the packet and the step count differ."""
 import json
 import os
 import sys
@@ -18,7 +18,7 @@ def test_file_matches_rendering():
     assert open(E.OUT).read() == E.text()
 
 
-def test_only_start_and_packet_differ():
+def test_only_start_packet_and_steps_differ():
     lad = by_name(L.render("N250")["jobs"])
     e12 = by_name(E.render()["jobs"])
     assert "sft_tlN250" in lad and "sft_tlN250" not in e12 and "watch_sft_tlN250" not in e12
@@ -28,9 +28,11 @@ def test_only_start_and_packet_differ():
         assert sa["train"]["init_from"] == "/content/chat/sft_tlN250/sft_tlN250.safetensors"
         assert sb["train"]["init_from"] == "/content/chat/upload/sft_tlN250.safetensors"
         assert sa["data"]["sft_examples"].endswith("/S71.jsonl") and sb["data"]["sft_examples"].endswith("/S71SC.jsonl")
+        assert sa["train"]["steps"] == 1024 and sb["train"]["steps"] == E.STEPS == 1301
         for s in (sa, sb):
             s["train"].pop("init_from")
             s["data"].pop("sft_examples")
+            s["train"].pop("steps")
         assert sa == sb
         assert a.get("init_job") == "sft_tlN250" and "init_job" not in b
         assert b["after"] == ["gate"]

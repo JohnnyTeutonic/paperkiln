@@ -8,7 +8,10 @@ The token ladder's N250 chat campaign (ladder_chat_jobs.py, imported and not edi
   the start    the campaign's own stage 1 is not rerun: TL_N250_1's and TL_N250_2's stage-1 weights (sft_tlN250, A's SFT1500 from
                N250, home since 17 Nov 2026) are uploaded as sft_tlN250.safetensors and bound by hash at launch, so both arms start
                from the very weights the controls started from;
-  the packet   S71SC.jsonl, S71's packet with the self-correction family added (selfcorr_build.py; S71's rows and tail unchanged).
+  the packet   S71SC.jsonl, S71's packet with the self-correction family added (selfcorr_build.py; S71's rows and tail unchanged);
+  the steps    1,301 in place of 1,024: S71's steps scaled by the trained rows (27,380 against 21,551), so S71's rows are drawn as
+               often as in the controls in expectation (selfcorr_build.steps_for; the packet's receipt records it). The schedule
+               (warm-up 64, cosine to 0.1) runs over the 1,301 steps.
 Kept: the reproduction check and its gate (repro_A, gate), S71's spec at D1 at seeds 1 and 2, the early health readouts and the
 binding score jobs, under the names E12_N250_<seed>, which no other job, folder or model uses.
 """
@@ -25,6 +28,7 @@ import b2cue_jobs as B  # noqa: E402  (A32's renderer, unchanged)
 BASE, SHAPE, SEEDS = "N250", "D1", A35.SEEDS
 START = "sft_tlN250.safetensors"
 PACKET = "S71SC.jsonl"
+STEPS = 1301              # S71SC_receipt.json "steps"
 OUT = os.path.join(HERE, "selfcorr_N250.json")
 
 
@@ -41,6 +45,7 @@ def render():
     for sd in SEEDS:
         n = arm_name(sd)
         spec = B.arm_spec(SHAPE, f"{B.U}/{START}", sd, "P", packet=PACKET)
+        spec["train"]["steps"] = STEPS
         jobs += [B.train_job(n, spec, after=["gate"])] + B.early_jobs(n, n, scored=False)
         scores.append(B.score_job(n, A35.EARLY_REQ, n))
     jobs += scores
