@@ -181,16 +181,21 @@ Each result holds under its own protocol and scale; none is a state-of-the-art c
   | S71, base A | 72.8M | 0.98B | 31.7 | 29.7 |
   | Base 2, arm N | 69.8M | 4.10B | 34.3 | 33.4 |
   | Base 2, arm S (15% scenario text) | 69.8M | 4.10B | 31.8 | 32.3 |
-  | SmolLM2-135M-Instruct (A29) | 134.5M | 2T (its model card) | 37.0 | 36.4 |
+  | SmolLM2-135M-Instruct, then S71's recipe (A29) | 134.5M | 2T (its model card) | 37.0 | 36.4 |
+  | SmolLM2-135M-Instruct as released (A29, reported) | 134.5M | 2T (its model card) | 24.5 | — |
 
-  N reads about 92% of the open model's score with about half its parameters and about 1/500 of
-  its pretraining tokens. It is above S71's second seed at both of its seeds and split against
-  S71's first; it does not reach the open model, and at this size that gap is real. Arm S, the
+  N reads about 92% of the score the same recipe reaches on the open model, with about half its
+  parameters and about 1/500 of its pretraining tokens. It is above S71's second seed at both of
+  its seeds and split against S71's first; it does not reach the open model with our recipe, and
+  at this size that gap is real. The open model as released, with its own template and system
+  prompt, reads 24.5; most of its replies reach the reply cap and it answers identity as its
+  authors' model, so that read is reported, not judged against ours. Arm S, the
   same shape with 15% synthetic scenario text in pretraining, reads below N (by 1.8 points, two
   seeds pooled). The instrument
-  and judge are our own and the suites are scripted; base 2 has one pretraining seed; SmolLM2 is
-  its authors' instruction-tuned release, with a different tokeniser and vocabulary (its replies
-  fit more text into the same token cap); the recipe was tuned on base A; and N differs from A in
+  and judge are our own and the suites are scripted; base 2 has one pretraining seed; SmolLM2's
+  37.0 and 36.4 are its authors' instruction-tuned release fine-tuned with S71's packet and
+  recipe, with a different tokeniser and vocabulary (its replies fit more text into the same
+  token cap); the recipe was tuned on base A; and N differs from A in
   shape as well as tokens, which a registered fixed-shape token ladder is meant to separate.
 - **Strict answer-and-format checks lag the judged results.** On tinychat-eval's release suite
   (dev split, the model's own generated history, one harness for every row), S71 passes 1 of 11
