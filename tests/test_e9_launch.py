@@ -206,13 +206,50 @@ def test_final_recheck_points_on_builds(tmp_path, monkeypatch):
     assert k == "exec" and EL.LL.parse_iso(argv[argv.index("--deadline-utc") + 1]) < t0 + 60
     k, w = EL.decide_build("pk-e9-data-D2", "a" * 40, t0 + 60, rows=[], balance=lambda: 1000.0, **common)
     assert k == "halt" and "new state folder" in w[1]
-    # funding: before admission the balance must reach 322.6 after the builds still to come (D3 and D4: 345.9 needed)
+    # funding: D2 (unfinished), D3 and D4 still to come: 357.56 needed before admission
     k, w = EL.decide_build("pk-e9-data-D3", "a" * 40, t0, rows=[], balance=lambda: 340.0, **common)
     assert k == "refuse" and "short by" in w, w
-    assert EL.decide_build("pk-e9-data-D3", "a" * 40, t0, rows=[], balance=lambda: 350.0, **common)[0] == "exec"
+    assert EL.decide_build("pk-e9-data-D3", "a" * 40, t0, rows=[], balance=lambda: 357.56, **common)[0] == "exec"
     # a planned arm halted for LADDER_NO_TIME does not unlock D4ops's build
     (Path(arms["pk-e9-S1Bs50"]["state_dir"]) / "HALTED").write_text(json.dumps({"kind": "LADDER_NO_TIME"}))
     assert EL.decide_build("pk-e9-data-D4ops", "a" * 40, t0, rows=[], balance=lambda: 1000.0, **common)[0] == "wait"
+
+
+def test_funding_at_the_exact_boundary_in_fresh_state(tmp_path, monkeypatch):
+    arms, builds = _arms_in(tmp_path), _builds_in(tmp_path)
+    monkeypatch.setattr(EL, "ladder_ended", lambda cmdlines=None, arms=None, launch_dir=None, now=None, rows=None: None)
+    common = dict(arms=arms, builds=builds, cmdlines=[], seed2=lambda now=None, rows=None: None, go=lambda c: None,
+                  stop_asked=lambda: False, rows=[])
+    need = EL.ADMISSION_UNITS + 3 * EL.BUILD_UNITS                     # 357.56: three required builds to come
+    assert abs(need - 357.56) < 1e-9
+    k, w = EL.decide_build("pk-e9-data-D2", "a" * 40, 1.8e9, balance=lambda: need - 0.01, **common)
+    assert k == "refuse" and "short by 0.01" in w, w
+    k, w = EL.decide_build("pk-e9-data-D2", "a" * 40, 1.8e9, balance=lambda: 10.0, **common)
+    assert k == "refuse" and "short by" in w                         # a tiny balance is refused, not left waiting
+    assert EL.decide_build("pk-e9-data-D2", "a" * 40, 1.8e9, balance=lambda: need, **common)[0] == "exec"
+
+
+def test_an_empty_record_and_a_bad_record_beside_an_unconfirmed_halt(tmp_path, monkeypatch):
+    arms, builds = _arms_in(tmp_path), _builds_in(tmp_path)
+    monkeypatch.setattr(EL, "ladder_ended", lambda cmdlines=None, arms=None, launch_dir=None, now=None, rows=None: None)
+    common = dict(arms=arms, builds=builds, cmdlines=[], seed2=lambda now=None, rows=None: None, go=lambda c: None,
+                  stop_asked=lambda: False, balance=lambda: 1000.0)
+    d3 = Path(builds["pk-e9-data-D3"]["state_dir"])
+    (d3 / EL.BUILD_COPY).write_text("{}")
+    assert EL.decide_build("pk-e9-data-D3", "a" * 40, 1.8e9, rows=[], **common)[0] == "halt"
+    (d3 / "HALTED").write_text(json.dumps({"stop_confirmed": None}))
+    k, argv = EL.decide_build("pk-e9-data-D3", "a" * 40, 1.8e9, rows=[("pk-e9-data-D3", {})], **common)
+    assert k == "exec" and EL.LL.parse_iso(argv[argv.index("--deadline-utc") + 1]) < 1.8e9
+
+
+def test_a_derived_ladder_halt_does_not_unlock_d4ops_build(tmp_path, monkeypatch):
+    arms, builds = _arms_in(tmp_path), _builds_in(tmp_path)
+    monkeypatch.setattr(EL, "ladder_ended", lambda cmdlines=None, arms=None, launch_dir=None, now=None, rows=None: None)
+    (Path(arms["pk-e9-S1Bs50"]["state_dir"]) / "HALTED").write_text(json.dumps({"kind": "LADDER_BEFORE_HALTED"}))
+    k = EL.decide_build("pk-e9-data-D4ops", "a" * 40, 1.8e9, arms=arms, builds=builds, cmdlines=[], rows=[],
+                        seed2=lambda now=None, rows=None: None, go=lambda c: None, stop_asked=lambda: False,
+                        balance=lambda: 1000.0)[0]
+    assert k == "wait"
 
 
 def test_no_room_means_the_build_waits(tmp_path, monkeypatch):
