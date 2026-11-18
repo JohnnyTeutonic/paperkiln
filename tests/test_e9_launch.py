@@ -126,7 +126,10 @@ def test_the_balance_check_counts_the_plan_not_every_entry(tmp_path):
 def _ladder(tmp, deadline_in_s=3600):
     ladder, ld = {}, tmp / "ladder_launch"
     ld.mkdir()
-    (ld / "launch.json").write_text(json.dumps({"deadline_utc": EL.LL.iso(time.time() + deadline_in_s)}))
+    dl = int(time.time() + deadline_in_s)
+    (ld / "launch.json").write_text(json.dumps(dict(
+        EL.LADDER_BOUNDS, at_utc=EL.LL.iso(dl - EL.LADDER_BOUNDS["week_hours"] * 3600), deadline_utc=EL.LL.iso(dl),
+        start_balance=600.0, commit="b" * 40)))
     for n in ("pk-tl-N1B", "pk-tl-S1B"):
         d = tmp / n
         d.mkdir()
@@ -157,6 +160,47 @@ def test_the_ladder_has_not_ended_while_its_session_is_listed_or_the_listing_is_
     assert EL.ladder_ended(rows=[("pk-e9-D2", {})], cmdlines=[], arms=ladder, launch_dir=ld) is None
 
 
+def test_a_malformed_ladder_admission_record_is_not_an_end(tmp_path):
+    ladder, ld = _ladder(tmp_path, deadline_in_s=-60)
+    for x in ladder.values():
+        (Path(x["state_dir"]) / "state.json").write_text(HOME)
+    (Path(ld) / "launch.json").write_text(json.dumps({"deadline_utc": EL.LL.iso(time.time() - 60)}))
+    assert "not a valid admission record" in EL.ladder_ended(rows=[], cmdlines=[], arms=ladder, launch_dir=ld)
+
+
+def test_build_stop_recovery_guard_stop_and_a_corrupt_record(tmp_path, monkeypatch):
+    arms, builds = _arms_in(tmp_path), _builds_in(tmp_path)
+    monkeypatch.setattr(EL, "ladder_ended", lambda cmdlines=None, arms=None, launch_dir=None, now=None, rows=None: None)
+    t0 = 1_800_000_000.0
+    common = dict(arms=arms, builds=builds, cmdlines=[], seed2=lambda now=None, rows=None: None, balance=lambda: 1000.0,
+                  go=lambda c: None)
+    d2 = Path(builds["pk-e9-data-D2"]["state_dir"])
+    # a guard stop: no new build session
+    k, w = EL.decide_build("pk-e9-data-D2", "a" * 40, t0, rows=[], stop_asked=lambda: True, **common)
+    assert k == "halt" and w[0] == "E9_GUARD_STOP"
+    # a started build halted with its stop unconfirmed and its session listed: the runner finishes the stop
+    (d2 / EL.BUILD_COPY).write_text(json.dumps({"first_start_utc": EL.LL.iso(t0), "deadline_utc": EL.LL.iso(t0 + 6 * 3600),
+                                                 "max_hours": 6, "commit": "a" * 40}))
+    (d2 / "HALTED").write_text(json.dumps({"stop_confirmed": None}))
+    k, argv = EL.decide_build("pk-e9-data-D2", "a" * 40, t0 + 60, rows=[("pk-e9-data-D2", {})], stop_asked=lambda: False, **common)
+    assert k == "exec"
+    assert EL.decide_build("pk-e9-data-D2", "a" * 40, t0 + 60, rows=[], stop_asked=lambda: False, **common)[0] == "halt"
+    # a record that exists and is not a JSON object: halted, never taken for a first start
+    d3 = Path(builds["pk-e9-data-D3"]["state_dir"])
+    (d3 / EL.BUILD_COPY).write_text("[1, 2")
+    k, w = EL.decide_build("pk-e9-data-D3", "a" * 40, t0, rows=[], stop_asked=lambda: False, **common)
+    assert k == "halt" and w[0] == "E9_BUILD_RECORD"
+
+
+def test_no_room_means_the_build_waits(tmp_path, monkeypatch):
+    arms, builds = _arms_in(tmp_path), _builds_in(tmp_path)
+    monkeypatch.setattr(EL, "ladder_ended", lambda cmdlines=None, arms=None, launch_dir=None, now=None, rows=None: None)
+    k, w = EL.decide_build("pk-e9-data-D2", "a" * 40, 1_800_000_000.0, arms=arms, builds=builds, cmdlines=[],
+                           seed2=lambda now=None, rows=None: None, balance=lambda: 1000.0, go=lambda c: None, rows=[],
+                           stop_asked=lambda: False, room=lambda: "three L4 sessions already listed")
+    assert k == "wait" and "room" in w
+
+
 def test_a_never_launched_ladder_arm_counts_as_ended_once_the_week_is_over(tmp_path):
     ladder, ld = _ladder(tmp_path, deadline_in_s=-60)
     (Path(ladder["pk-tl-N1B"]["state_dir"]) / "state.json").write_text(HOME)
@@ -171,7 +215,8 @@ def test_a_build_waits_writes_its_deadline_once_and_is_halted_past_it(tmp_path, 
     go = {"why": "no GO record"}
     kb = lambda n, now, rows=(): EL.decide_build(n, "a" * 40, now, arms=arms, builds=builds, cmdlines=[],  # noqa
                                                   seed2=lambda now=None, rows=None: off["why"], launch_dir=str(tmp_path),
-                                                  rows=list(rows), balance=lambda: 1000.0, go=lambda c: go["why"])
+                                                  rows=list(rows), balance=lambda: 1000.0, go=lambda c: go["why"],
+                                                  stop_asked=lambda: False)
     t0 = 1_800_000_000.0
     assert kb("pk-e9-data-D2", t0)[0] == "refuse"                       # E9's GO record first
     go["why"] = None
@@ -203,7 +248,7 @@ def test_a_build_record_that_is_not_its_first_start_plus_six_hours_is_halted(tmp
     (Path(builds["pk-e9-data-D3"]["state_dir"]) / EL.BUILD_COPY).write_text(json.dumps(
         {"first_start_utc": EL.LL.iso(t0), "deadline_utc": EL.LL.iso(t0 + 20 * 3600), "max_hours": 6, "commit": "a" * 40}))
     kind, what = EL.decide_build("pk-e9-data-D3", "a" * 40, t0 + 60, arms=arms, builds=builds, cmdlines=[],
-                                 seed2=lambda now=None, rows=None: None, rows=[], balance=lambda: 1000.0,
+                                 seed2=lambda now=None, rows=None: None, rows=[], balance=lambda: 1000.0, stop_asked=lambda: False,
                                  go=lambda c: None)
     assert kind == "halt" and what[0] == "E9_BUILD_RECORD"
 
@@ -212,7 +257,7 @@ def test_the_real_seed2_predicate_waits_on_an_unanswered_listing(tmp_path, monke
     arms, builds = _arms_in(tmp_path), _builds_in(tmp_path)
     monkeypatch.setattr(EL, "ladder_ended", lambda cmdlines=None, arms=None, launch_dir=None, now=None, rows=None: None)
     kind, what = EL.decide_build("pk-e9-data-D2", "a" * 40, time.time(), arms=arms, builds=builds, cmdlines=[],
-                                 rows=None, balance=lambda: 1000.0, go=lambda c: None)
+                                 rows=None, balance=lambda: 1000.0, go=lambda c: None, stop_asked=lambda: False)
     assert kind == "wait" and "seed 2" in what
 
 
@@ -229,7 +274,7 @@ def test_d4ops_build_waits_until_a_planned_arm_is_known_not_to_start(tmp_path, m
     monkeypatch.setattr(EL, "ladder_ended", lambda cmdlines=None, arms=None, launch_dir=None, now=None, rows=None: None)
     kb = lambda: EL.decide_build("pk-e9-data-D4ops", "a" * 40, 1_800_000_000.0, arms=arms, builds=builds,  # noqa
                                  cmdlines=[], seed2=lambda now=None, rows=None: None, launch_dir=str(tmp_path),
-                                 rows=[], balance=lambda: 1000.0, go=lambda c: None)
+                                 rows=[], balance=lambda: 1000.0, go=lambda c: None, stop_asked=lambda: False)
     assert kb()[0] == "wait"
     (Path(arms["pk-e9-S1Bs50"]["state_dir"]) / "HALTED").write_text("{}")      # a planned arm that will not start
     assert kb()[0] == "exec"

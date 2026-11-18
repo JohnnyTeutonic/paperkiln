@@ -43,6 +43,7 @@ S2 = LL.S2
 LADDER_ARMS = dict(LL.ARMS)          # the ladder's own arms, captured before E9's are swapped in
 LADDER_OWN = LL.OWN_COPY              # the ladder arms' own deadline copy
 LADDER_LAUNCH_DIR = LL.LAUNCH_DIR     # the ladder's launch folder (its launch.json, its SEED2_ENDED.json)
+LADDER_BOUNDS = {"cap_units": LL.CAP_UNITS, "guard_stop_at": LL.GUARD_STOP_AT, "week_hours": LL.WEEK_HOURS}  # before install()
 E9_LAUNCH_DIR = "/home/jonat/e9_launch"
 E9_GUARD = {"campaign": "e9-diversity", "dir": "/home/jonat/e9_units_guard"}
 CAP_UNITS = 350.0
@@ -132,6 +133,26 @@ def _names_in(line, names):
     return any(n in line for n in names)
 
 
+def ladder_record_problem(rec):
+    """The ladder's own record rule (ladder_launch.record_problem) with the LADDER's bounds, captured before install()
+    swaps E9's in: an object, admission time and deadline, the deadline the admission plus the week, a finite start
+    balance, the registered bounds, a full commit."""
+    if not isinstance(rec, dict):
+        return "not a JSON object"
+    at, dl = LL.parse_iso(rec.get("at_utc")), LL.parse_iso(rec.get("deadline_utc"))
+    if at is None or dl is None:
+        return "admission time or deadline missing"
+    if dl != at + LADDER_BOUNDS["week_hours"] * 3600:
+        return "the deadline is not the admission time plus the ladder's week"
+    if not LL.finite(rec.get("start_balance")):
+        return "no finite start balance"
+    if any(rec.get(k) != v for k, v in LADDER_BOUNDS.items()):
+        return "the bounds recorded are not the ladder's"
+    if not (isinstance(rec.get("commit"), str) and len(rec["commit"]) == 40):
+        return "no full commit"
+    return None
+
+
 def ladder_ended(cmdlines=None, arms=None, launch_dir=None, now=None, rows=None):
     """None when the ladder has ended (as the docstring says), else why not. `rows` is the Colab listing ((name, row)
     pairs, as S2.listing_rows gives it); None means it did not answer, which is not an end."""
@@ -139,6 +160,9 @@ def ladder_ended(cmdlines=None, arms=None, launch_dir=None, now=None, rows=None)
     rec = LL.read_json(os.path.join(LADDER_LAUNCH_DIR if launch_dir is None else launch_dir, "launch.json"))
     if not rec:
         return "the ladder has no launch.json: it was never admitted, so it has not ended"
+    why = ladder_record_problem(rec)
+    if why:
+        return f"the ladder's launch.json is not a valid admission record ({why})"
     week = LL.parse_iso(rec.get("deadline_utc"))
     now = time.time() if now is None else now
     for n, x in arms.items():
@@ -250,7 +274,7 @@ def build_record_problem(rec, commit):
 
 
 def decide_build(name, commit, now, arms=None, builds=None, cmdlines=None, seed2=None, launch_dir=None,
-                 rows=None, balance=None, go=None):
+                 rows=None, balance=None, go=None, stop_asked=None, room=None):
     """(kind, what) as decide_arm: ("exec", argv) | ("wait", why) | ("halt", (kind, why)) | ("refuse", why).
     Every start, the first and each restart, asks again: E9's GO record, the ladder's end, seed 2 off (from the Colab
     listing `rows`; an unanswered listing is not off) and the balance; the deadline recorded at the first start is kept.
@@ -261,18 +285,32 @@ def decide_build(name, commit, now, arms=None, builds=None, cmdlines=None, seed2
     launch_dir = E9_LAUNCH_DIR if launch_dir is None else launch_dir
     b = builds[name]
     own = os.path.join(b["state_dir"], BUILD_COPY)
-    if os.path.lexists(os.path.join(b["state_dir"], "HALTED")):
-        return "halt", ("E9_BUILD_HALTED", "this build holds HALTED: the gate runs nothing; a person reads it")
     rec = LL.read_json(own)
     listed = rows is None or any(n == name for n, _ in rows)
-    if rec is not None:
-        why = build_record_problem(rec, commit)
+    if os.path.lexists(own) and not isinstance(rec, dict):
+        return "halt", ("E9_BUILD_RECORD", "the build's own record exists and cannot be read as a JSON object")
+    if rec is not None and build_record_problem(rec, commit):
+        return "halt", ("E9_BUILD_RECORD", build_record_problem(rec, commit))
+    halted_p = os.path.join(b["state_dir"], "HALTED")
+    if os.path.lexists(halted_p):
+        halted = LL.read_json(halted_p) or {}
+        if halted.get("stop_confirmed") is not True and listed and rec is not None:
+            # a stop not yet confirmed with a session that may live: the runner finishes the stop (it creates nothing
+            # under HALTED), as the ladder's gate does for its arms
+            return "exec", build_argv(name, commit, rec["deadline_utc"], builds)
+        return "halt", ("E9_BUILD_HALTED", "this build holds HALTED: the gate runs nothing; a person reads it")
+    if rec is not None and now >= LL.parse_iso(rec["deadline_utc"]):
+        if listed:
+            return "exec", build_argv(name, commit, rec["deadline_utc"], builds)     # the runner stops it
+        return "halt", ("E9_BUILD_DEADLINE", f"past the build's deadline {rec['deadline_utc']}")
+    if rec is not None and listed and rows is not None:
+        return "exec", build_argv(name, commit, rec["deadline_utc"], builds)         # resume its own listed session
+    if (stop_asked or LL.guard_stop_asked)():
+        return "halt", ("E9_GUARD_STOP", "E9's guard has asked for a stop: no new build session is made")
+    if room is not None:
+        why = room()
         if why:
-            return "halt", ("E9_BUILD_RECORD", why)
-        if now >= LL.parse_iso(rec["deadline_utc"]):
-            if listed:
-                return "exec", build_argv(name, commit, rec["deadline_utc"], builds)     # the runner stops it
-            return "halt", ("E9_BUILD_DEADLINE", f"past the build's deadline {rec['deadline_utc']}")
+            return "wait", f"no room for a build session ({why})"
     why = (go or (lambda c: LL.go_problem(LL.read_json(os.path.join(launch_dir, "GO.json")), c)))(commit)
     if why:
         return "refuse", f"E9's GO record: {why}"
@@ -361,7 +399,8 @@ def main(argv=None):
             now = time.time()
             shared = LL.take_lock(os.path.join(E9_LAUNCH_DIR, "gate.lock"), wait=True)
             try:
-                kind, what = decide_build(name, commit, now, rows=S2.listing_rows(slots))
+                rows = S2.listing_rows(slots)
+                kind, what = decide_build(name, commit, now, rows=rows, room=lambda: S2.room(slots, rows, 1))
             finally:
                 shared.close()
             if kind == "refuse":
