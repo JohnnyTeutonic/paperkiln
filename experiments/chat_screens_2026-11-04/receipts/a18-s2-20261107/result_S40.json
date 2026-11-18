@@ -1,0 +1,21 @@
+{
+  "T": 1024,
+  "accum": 2,
+  "attention": "exact",
+  "batch": 8,
+  "best_val": 0.4379367530345917,
+  "checkpoint_activations": false,
+  "d": 896,
+  "early_stopped": false,
+  "family": "llama",
+  "final_step": 2048,
+  "heads": 14,
+  "layers": 2,
+  "lr": 9.999999747378752e-05,
+  "name": "screen_S40",
+  "params": 34697600,
+  "seed": 1,
+  "steps_requested": 2048,
+  "tokens_per_second": 29466.876952010163,
+  "wall_seconds": 1138.716941556
+}

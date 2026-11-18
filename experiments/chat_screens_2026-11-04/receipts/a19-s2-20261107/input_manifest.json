@@ -1,0 +1,57 @@
+{
+  "arm_a_spec_sha256": "66c718e0b501c751aae0a1cd22eddfdc666a7cfb46a4c074fa41b67aa220125e",
+  "bases": {
+    "s34_a16": {
+      "parts": [
+        {
+          "name": "s34_a16.part00",
+          "sha256": "8f6d755cb86d8364199e8bf427f4ed33a0a7b61dd4f514530d1f0a1035020990"
+        },
+        {
+          "name": "s34_a16.part01",
+          "sha256": "9e6e80717ca582f35588fe234335371f8757e6a07ead8df477d8c623c2386b89"
+        },
+        {
+          "name": "s34_a16.part02",
+          "sha256": "69e738664e1eccc59a777cb8c0e604aa8946d56ee756599c98068643823692aa"
+        },
+        {
+          "name": "s34_a16.part03",
+          "sha256": "f644120ce73f173d24a1833b51d3fbd6725fa401c1b557b973351d0f4bfd3741"
+        },
+        {
+          "name": "s34_a16.part04",
+          "sha256": "c1e449ff60da141937f70251ce3d8a167e1de2d6d6e1edc0c6e1a79b88690e04"
+        },
+        {
+          "name": "s34_a16.part05",
+          "sha256": "eb47a7b1dd03286bcf7b39bbfd7a6d33c8038d078fca93fcbb3feef0c44c3097"
+        },
+        {
+          "name": "s34_a16.part06",
+          "sha256": "f1006839d3d3262fe5e3d5e772952e0fbfd0fb66390fda06fc409b8d0a8c2828"
+        }
+      ],
+      "sha256": "7a0562f01da0f517314934646c5814c3d67aac2864664b84e1f89c6e248ba457"
+    }
+  },
+  "files": {
+    "S51.jsonl": "5d7a022081363972766dc5bfc13754b7f6a32e2c21208eae88c03fa822dfe9e1",
+    "S52.jsonl": "ab0ba685f64f84b1446eb4198bcfdc07c69de0d3a8a6da35057df396ac20024a",
+    "arm_a_lr3e5.json": "66c718e0b501c751aae0a1cd22eddfdc666a7cfb46a4c074fa41b67aa220125e",
+    "recipes.json": "7500c0c03d72f83538e9243055b42e3d62d54a7b59ec812f29fbe4848d52f817",
+    "s34_a16.safetensors": "7a0562f01da0f517314934646c5814c3d67aac2864664b84e1f89c6e248ba457",
+    "vocab.gguf": "0b880aa073a7e27c0770d5ecc5215b55d6d415080d20bd3dc7b169ecabadf198"
+  },
+  "run_id": "a19-s2-20261107",
+  "screen_bases": {
+    "S51": "s34_a16",
+    "S52": "s34_a16"
+  },
+  "screens": [
+    "S51",
+    "S52"
+  ],
+  "seed": 2,
+  "source": "1ccb693f55d7328d4a8b0b7238fe8a2cafb6edf1"
+}
