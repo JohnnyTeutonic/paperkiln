@@ -31,15 +31,26 @@ def test_only_start_and_packet_differ_from_the_ladder_and_r2():
             a, b, r = lad[f"TL_N250_{sd}"], cov[f"{arm}_N250_{sd}"], r2[f"R2_N250_{sd}"]
             sa, sb, sr = (json.loads(json.dumps(x["spec"])) for x in (a, b, r))
             assert sb["train"]["init_from"] == "/content/chat/upload/sft_tlN250.safetensors" == sr["train"]["init_from"]
-            assert sb["data"]["sft_examples"].endswith("/" + packet)
+            assert sb["data"]["sft_examples"] == PACKET_PATHS[arm] == sr["data"]["sft_examples"].replace("S71BD.jsonl", f"S71{arm}.jsonl")
             for x in (sa, sb, sr):
                 x["train"].pop("init_from")
                 x["data"].pop("sft_examples")
             assert sa == sb == sr                                   # everything else is S71's spec, as R2's
             assert "init_job" not in b and b["after"] == ["gate"]
-            assert {k: v for k, v in b.items() if k not in ("name", "spec")} == {k: v for k, v in r.items() if k not in ("name", "spec")}
+            # the job beside its spec is R2's but for the rung snapshots, which it does not ask for
+            assert r["snapshot_steps"] == [128, 256, 512] and "snapshot_steps" not in b
+            assert {k: v for k, v in b.items() if k not in ("name", "spec")} == \
+                {k: v for k, v in r.items() if k not in ("name", "spec", "snapshot_steps")}
+            # its score job is R2's with the names changed
+            sc, sr2 = cov[f"score_{arm}_N250_{sd}"], r2[f"score_R2_N250_{sd}"]
+            assert json.dumps(sc, sort_keys=True) == json.dumps(sr2, sort_keys=True).replace(f"R2_N250_{sd}", f"{arm}_N250_{sd}")
     for k in ("repro_A", "gate"):
         assert cov[k] == r2[k] == lad[k]
+
+
+# the registered packets, written out here rather than taken from the renderer
+PACKET_PATHS = {"COV": "/content/chat/upload/S71COV.jsonl", "PERS": "/content/chat/upload/S71PERS.jsonl",
+                "STATE": "/content/chat/upload/S71STATE.jsonl"}
 
 
 def test_the_registered_order_and_nothing_brought_home_early():
@@ -49,7 +60,9 @@ def test_the_registered_order_and_nothing_brought_home_early():
     assert train == ["COV_N250_1", "PERS_N250_1", "STATE_N250_1", "COV_N250_2", "PERS_N250_2", "STATE_N250_2"]
     assert names[:2] == ["repro_A", "gate"] and names[2:8] == train
     assert names[8:] == [f"score_{n}" for n in train]
-    assert not any(n.startswith("early_") for n in names)       # no rung snapshots or early readouts (the lead's ruling, 21 Nov 2026)
+    assert not any(n.startswith("early_") for n in names)       # no early readouts (the lead's ruling, 21 Nov 2026)
+    assert not any("snapshot_steps" in j or "rung_of" in j for j in jobs)     # and no rung snapshots asked for or scored
+    assert "snapshot_steps" not in C.text() and "rung_" not in C.text()
     assert C.render()["max_parallel"] == 1                       # one pod, one training job at a time, in that order
 
 

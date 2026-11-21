@@ -9,8 +9,9 @@ R2's screen (relevance_chat_jobs.py, its rule unchanged) with three arms in plac
                sft_tlN250.safetensors and bound by hash at launch, as R2's;
   the arms     S71's packet with one family added: COV (S71COV.jsonl), PERS (S71PERS.jsonl) and STATE (S71STATE.jsonl), each at
                chat seeds 1 and 2, trained in the order COV_1, PERS_1, STATE_1, COV_2, PERS_2, STATE_2 on one pod;
-  no early     no early health readouts and no rung snapshots brought home (the lead's ruling of 21 Nov 2026: the family loss is
-               read at steps 0 and 1,024 only, at home).
+  no early     no early health readouts, and the training jobs ask for no rung snapshots (R2's ask for steps 128, 256 and 512),
+               so no extra checkpoint is made or brought home (the lead's ruling of 21 Nov 2026: the family loss is read at steps 0
+               and 1,024 only, at home).
 Kept from R2: the reproduction check and its gate (repro_A, gate), S71's spec at D1 with only the start and the packet changed, and
 the binding score job of each arm, under the names <ARM>_N250_<seed>, which no other job, folder or model uses.
 """
@@ -47,7 +48,9 @@ def render():
     for arm, sd in ORDER:
         n = arm_name(arm, sd)
         spec = B.arm_spec(SHAPE, f"{B.U}/{START}", sd, "P", packet=ARMS[arm])
-        jobs.append(B.train_job(n, spec, after=["gate"]))
+        job = B.train_job(n, spec, after=["gate"])
+        job.pop("snapshot_steps")       # no rung snapshots on the VM or at home (the early readouts are not run; GPT review, 22 Nov 2026)
+        jobs.append(job)
         scores.append(B.score_job(n, A35.EARLY_REQ, n))
     jobs += scores
     return {"_comment": "Coverage-SFT campaign A (lane cue_selective/coverage_sft/REGISTRATION.md), rendered by "

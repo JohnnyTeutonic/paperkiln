@@ -135,12 +135,7 @@
    "after": [
     "gate"
    ],
-   "relay_every_steps": 100000,
-   "snapshot_steps": [
-    128,
-    256,
-    512
-   ]
+   "relay_every_steps": 100000
   },
   {
    "name": "PERS_N250_1",
@@ -196,12 +191,7 @@
    "after": [
     "gate"
    ],
-   "relay_every_steps": 100000,
-   "snapshot_steps": [
-    128,
-    256,
-    512
-   ]
+   "relay_every_steps": 100000
   },
   {
    "name": "STATE_N250_1",
@@ -257,12 +247,7 @@
    "after": [
     "gate"
    ],
-   "relay_every_steps": 100000,
-   "snapshot_steps": [
-    128,
-    256,
-    512
-   ]
+   "relay_every_steps": 100000
   },
   {
    "name": "COV_N250_2",
@@ -318,12 +303,7 @@
    "after": [
     "gate"
    ],
-   "relay_every_steps": 100000,
-   "snapshot_steps": [
-    128,
-    256,
-    512
-   ]
+   "relay_every_steps": 100000
   },
   {
    "name": "PERS_N250_2",
@@ -379,12 +359,7 @@
    "after": [
     "gate"
    ],
-   "relay_every_steps": 100000,
-   "snapshot_steps": [
-    128,
-    256,
-    512
-   ]
+   "relay_every_steps": 100000
   },
   {
    "name": "STATE_N250_2",
@@ -440,12 +415,7 @@
    "after": [
     "gate"
    ],
-   "relay_every_steps": 100000,
-   "snapshot_steps": [
-    128,
-    256,
-    512
-   ]
+   "relay_every_steps": 100000
   },
   {
    "name": "score_COV_N250_1",
