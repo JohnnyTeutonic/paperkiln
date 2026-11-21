@@ -784,12 +784,18 @@ def test_a_volume_whose_answer_names_no_tier_is_saved_first_then_checked_against
     for lst, want_type, rate in cases:
         f = Fake(monkeypatch, {("GET", "/v2/catalog/datacenters"): lambda q, b: (200, {"dataCenters": now}), ("POST", "/graphql"): floor_ok,
                                ("POST", "/v2/network-volumes"): made, ("GET", "/v2/network-volumes"): lst})
+        saved = []
+
+        def listing(q, b, lst=lst):   # when the list is read, the new volume is already saved
+            assert saved and saved[-1]["volume"]["id"] == "volnew" and saved[-1]["ledger"]["volumes"][-1]["id"] == "volnew"
+            return lst(q, b)
+        f.routes[("GET", "/v2/network-volumes")] = listing
         R = fresh_state()
         t, st = transport(monkeypatch, tmp_path, R)
-        saved = []
         st.save = lambda: saved.append(json.loads(json.dumps(R)))
         dc, vol = t._volume_for_create(st)
         assert saved[0]["volume"]["id"] == "volnew" and saved[0]["ledger"]["volumes"][0]["type"] is None   # saved before the list
+        assert saved[-1]["ledger"]["volumes"][0]["type"] == want_type                               # a confirmed tier is saved
         assert len([c for c in f.calls if c[:2] == ("GET", "/v2/network-volumes")]) == 1               # asked once
         e = R["ledger"]["volumes"][0]
         assert (vol["type"], e["type"], e["type_asked"]) == (want_type, want_type, "STANDARD") and api.volume_entry_rate(e) == rate
@@ -960,3 +966,28 @@ def test_create_volume_defaults_to_the_first_accepted_tier(monkeypatch):
     assert api.create_volume("pk-x-vol", 80, "EU-SE-1")["type_asked"] == "STANDARD" == f.calls[0][3]["type"]
     monkeypatch.setattr(api, "VOLUME_TYPES", ("HIGH_PERFORMANCE", "STANDARD"))                    # the default follows the list
     assert api.create_volume("pk-x-vol", 80, "EU-SE-1")["type_asked"] == "HIGH_PERFORMANCE" == f.calls[1][3]["type"]
+
+
+@pytest.mark.parametrize("failure", ["503", "oserror"])
+def test_any_failed_move_from_a_stocked_data_centre_resets_its_count_and_create_saves_it(monkeypatch, tmp_path, failure):
+    """GPT and Explore reviews, 21 Nov 2026: an ordinary failure or an OSError (the API key unreadable) during the move's volume
+    create resets the count, and create() saves it with the failure."""
+    import runpod_transport as rt
+    now = dcs(("EU-SE-1", ["STANDARD"], "LOW"), ("CA-MTL-1", ["HIGH_PERFORMANCE"], "HIGH"))
+    (tmp_path / "k.pub").write_text("ssh-ed25519 AAAA runner")
+    monkeypatch.setattr(rt, "KEY", str(tmp_path / "k"))
+    monkeypatch.setattr(rt.RunPodTransport, "over_budget", lambda self, st: None)
+
+    def post(q, b):
+        if failure == "oserror":
+            raise OSError("api key unreadable")
+        return 503, {"error": "x"}
+    Fake(monkeypatch, {("GET", "/v2/catalog/datacenters"): lambda q, b: (200, {"dataCenters": now}), ("POST", "/graphql"): floor_ok,
+                       ("POST", "/v2/network-volumes"): post})
+    R = with_old_volume(fails=2)
+    t, st = transport(monkeypatch, tmp_path, R)
+    saved = []
+    st.save = lambda: saved.append(json.loads(json.dumps(R)))
+    rc, out = t.create(st)
+    assert rc == 1 and saved[-1]["dc_fails"] == 0 and saved[-1]["volume"]["id"] == "volold" and "create_rejected" not in saved[-1]
+    assert "the campaign stays on its volume in EU-SE-1" in " ".join(t.logged)
