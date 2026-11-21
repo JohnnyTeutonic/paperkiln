@@ -196,7 +196,9 @@ def stock(gpu, cat=None):
 
 
 def _tiers(volume_type):
-    """A tier or an ordered sequence of tiers, as a tuple."""
+    """A tier or an ordered sequence of tiers, as a tuple (None: no tier)."""
+    if volume_type is None:
+        return ()
     return (volume_type,) if isinstance(volume_type, str) else tuple(volume_type)
 
 
@@ -241,14 +243,15 @@ def host_stock(gpu, dc, min_ram=None, min_vcpu=None, secure=True):
     return ((d or [{}])[0].get("lowestPrice") or {}).get("stockStatus")
 
 
-def stocked_dcs(gpu, min_ram=None, min_vcpu=None, secure=True, volume_type=None):
+def stocked_dcs(gpu, min_ram=None, min_vcpu=None, secure=True, volume_type=None, cat=None):
     """Data centres with the GPU in stock (on hosts of at least min_ram GB / min_vcpu vCPUs per GPU when
     given), best availability first. With volume_type (a tier, or an ordered sequence of tiers such as VOLUME_TYPES), only those
     that also offer network volumes of one of those tiers: a campaign's volume is created where its pod will run, and RunPod
     rejects a tier a data centre does not have (17 Nov 2026: CA-MTL-1, the best-stocked A40 data centre, has only
     high-performance storage). Under a sequence, data centres whose best tier comes earlier in it come first (STANDARD before
-    HIGH_PERFORMANCE), then by availability."""
-    cat = catalog()
+    HIGH_PERFORMANCE), then by availability. `cat` is a catalog already read (the transport reads one for the filter and the
+    tier, so the two agree)."""
+    cat = catalog() if cat is None else cat
     s = stock(gpu, cat)
     dcs = [dc for dc, a in s.items() if RANK.get(a, 0) > 0]
     tier = {}
@@ -439,13 +442,15 @@ def list_volumes():
 VOLUME_TYPES = ("STANDARD", "HIGH_PERFORMANCE")
 
 
-def create_volume(name, gb, dc, volume_type="STANDARD"):
+def create_volume(name, gb, dc, volume_type=None):
     """A network volume of the tier given, asked for by name, so a data centre whose default is another tier cannot hand over a
     dearer volume than the ledger prices; one that does not have the tier answers with an error. Only a tier the ledger prices is
     asked for (Refused otherwise, before anything is sent). The volume returned carries `type`, the tier RunPod's answer names
     (None when it names none, which the v2 schema does not allow), and `type_asked`; the ledger prices a volume at the dearer of
-    the two, and at the dearest rate when the answer names no tier (volume_entry_rate)."""
-    if volume_type not in VOLUME_USD_PER_GB_MONTH:
+    the two, and at the dearest rate when the answer names no tier (volume_entry_rate). No tier given: VOLUME_TYPES[0]."""
+    if volume_type is None:
+        volume_type = VOLUME_TYPES[0]
+    if not priced(volume_type):
         raise Refused(f"create volume: tier {volume_type!r} has no rate in VOLUME_USD_PER_GB_MONTH")
     st, d = rest("POST", "/network-volumes", {"name": name, "size": int(gb), "dataCenter": dc, "type": volume_type})
     if st in (400, 422):
@@ -478,13 +483,18 @@ def delete_volume(vol_id):
 VOLUME_USD_PER_GB_MONTH = {"STANDARD": 0.07, "HIGH_PERFORMANCE": 0.21}
 
 
+def priced(volume_type):
+    """Whether this is a tier the ledger has a rate for (anything that is not such a name, of whatever type, is not)."""
+    return isinstance(volume_type, str) and volume_type in VOLUME_USD_PER_GB_MONTH
+
+
 def volume_usd_per_gb_month(volume_type):
     """A tier's rate. None is a ledger entry written before the tier choice, priced as STANDARD, the only tier asked for by name
-    since 17 Nov 2026 (on 21 Nov 2026 every volume on the account was STANDARD). A tier with no rate here is priced at the dearest
-    rate here, never at none."""
+    since 17 Nov 2026 (on 21 Nov 2026 every volume on the account was STANDARD). Anything else without a rate here is priced at
+    the dearest rate here, never at none."""
     if volume_type is None:
         volume_type = "STANDARD"
-    return VOLUME_USD_PER_GB_MONTH.get(volume_type, max(VOLUME_USD_PER_GB_MONTH.values()))
+    return VOLUME_USD_PER_GB_MONTH[volume_type] if priced(volume_type) else max(VOLUME_USD_PER_GB_MONTH.values())
 
 
 def volume_entry_rate(v):
