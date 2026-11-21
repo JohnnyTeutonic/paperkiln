@@ -338,9 +338,10 @@ class RunPodTransport:
         return False
 
     def _stocked(self):
-        # a campaign with a network volume runs only where that volume's tier exists (17 Nov 2026)
+        # a campaign with a network volume runs only where one of its accepted tiers exists (17 Nov 2026), STANDARD data
+        # centres first (21 Nov 2026)
         return api.stocked_dcs(self.gpu, MIN_RAM, MIN_VCPU, secure=self.cloud == "SECURE",
-                               volume_type=api.VOLUME_TYPE if self.persistent else None)
+                               volume_type=api.VOLUME_TYPES if self.persistent else None)
 
     def _retire(self, st, vol):
         """The campaign leaves this volume: deleted now when no pod ever ran on it (nothing to lose), else
@@ -362,8 +363,8 @@ class RunPodTransport:
             return stocked[0], None
         if self.dc:
             # a data centre given by hand is checked before a volume is retired or asked for there (GPT, 17 Nov 2026)
-            if self.dc not in api.volume_dcs(api.VOLUME_TYPE):
-                raise api.RunPodError(f"--datacenter {self.dc} offers no {api.VOLUME_TYPE} network volume; "
+            if api.volume_tier(self.dc) is None:
+                raise api.RunPodError(f"--datacenter {self.dc} offers no network volume of the tiers {list(api.VOLUME_TYPES)}; "
                                       "choose one that does (runpod_api.volume_dcs) or leave the choice to the stock")
             if vol and vol["dc"] != self.dc:
                 self._retire(st, vol)
@@ -387,13 +388,18 @@ class RunPodTransport:
             dc = stocked[0]
         if vol:
             return dc, vol
-        v = api.create_volume(f"{self.name}-vol", self.volume_gb, dc)
-        vol = {"id": v["id"], "dc": dc, "gb": self.volume_gb, "created": time.time()}
+        # the tier is the first accepted one the data centre offers now (STANDARD, then HIGH_PERFORMANCE), recorded in the state
+        # and the ledger, which prices it (21 Nov 2026)
+        tier = api.volume_tier(dc)
+        if tier is None:
+            raise api.RunPodError(f"{dc} no longer offers a network volume of the tiers {list(api.VOLUME_TYPES)}")
+        v = api.create_volume(f"{self.name}-vol", self.volume_gb, dc, tier)
+        vol = {"id": v["id"], "dc": dc, "gb": self.volume_gb, "type": v.get("type") or tier, "created": time.time()}
         R["volume"] = vol
         R["dc_fails"] = 0
         R["ledger"]["volumes"].append(dict(vol, name=v.get("name")))
         st.save()
-        self.log(f"volume {vol['id']} created in {dc} ({self.volume_gb} GB)")
+        self.log(f"volume {vol['id']} created in {dc} ({self.volume_gb} GB, {vol['type']})")
         return dc, vol
 
     def create(self, st):
