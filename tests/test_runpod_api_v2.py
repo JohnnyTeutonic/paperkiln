@@ -767,22 +767,30 @@ def test_a_high_performance_volume_runpod_rejects_is_a_fault_not_a_shortage(monk
     assert R["create_rejected"]["n"] == 1 and "dc_fails" not in R and R["volume"] is None and R["ledger"]["volumes"] == []
 
 
-def test_a_volume_whose_answer_names_no_tier_is_priced_at_the_dearest_rate(monkeypatch, tmp_path):
-    """The v2 schema requires `type` on a volume; an answer without it leaves the tier unconfirmed (GPT review, 21 Nov 2026)."""
+def test_a_volume_whose_answer_names_no_tier_is_saved_first_then_checked_against_the_volume_list(monkeypatch, tmp_path):
+    """The v2 schema requires `type` on a volume; an answer without it leaves the tier unconfirmed (GPT review, 21 Nov 2026). The
+    volume is saved, priced at the dearest rate, before the list is read; the list can confirm a tier; nothing blocks the pod."""
     def made(q, b):
         v = dict(VOLUME, id="volnew", dataCenter=b["dataCenter"])
         v.pop("type")
         return 201, v
     now = dcs(("EU-SE-1", ["STANDARD"], "MEDIUM"))
-    for listed, want_type, rate in ((None, None, 0.21), ("STANDARD", "STANDARD", 0.07), ("FAIL", None, 0.21)):
-        lst = ((lambda q, b: (503, {"error": "x"})) if listed == "FAIL" else
-               (lambda q, b, listed=listed: (200, {"networkVolumes": [dict(VOLUME, id="volnew", type=listed)],
-                                                   "pagination": {"hasNextPage": False, "nextCursor": None}})))
+    page = {"pagination": {"hasNextPage": False, "nextCursor": None}}
+    cases = ((lambda q, b: (200, dict(page, networkVolumes=[dict(VOLUME, id="volnew", type=None)])), None, 0.21),
+             (lambda q, b: (200, dict(page, networkVolumes=[dict(VOLUME, id="volnew", type="STANDARD")])), "STANDARD", 0.07),
+             (lambda q, b: (200, dict(page, networkVolumes=[dict(VOLUME, id="volnew", type="SOMETHING_NEW")])), None, 0.21),
+             (lambda q, b: (503, {"error": "x"}), None, 0.21),
+             (lambda q, b: (200, dict(page, networkVolumes=[None, dict(VOLUME, id="volnew", type="STANDARD")])), "STANDARD", 0.07))
+    for lst, want_type, rate in cases:
         f = Fake(monkeypatch, {("GET", "/v2/catalog/datacenters"): lambda q, b: (200, {"dataCenters": now}), ("POST", "/graphql"): floor_ok,
                                ("POST", "/v2/network-volumes"): made, ("GET", "/v2/network-volumes"): lst})
         R = fresh_state()
         t, st = transport(monkeypatch, tmp_path, R)
-        dc, vol = t._volume_for_create(st)                     # the volume list is asked once; nothing blocks the pod (GPT, 21 Nov 2026)
+        saved = []
+        st.save = lambda: saved.append(json.loads(json.dumps(R)))
+        dc, vol = t._volume_for_create(st)
+        assert saved[0]["volume"]["id"] == "volnew" and saved[0]["ledger"]["volumes"][0]["type"] is None   # saved before the list
+        assert len([c for c in f.calls if c[:2] == ("GET", "/v2/network-volumes")]) == 1               # asked once
         e = R["ledger"]["volumes"][0]
         assert (vol["type"], e["type"], e["type_asked"]) == (want_type, want_type, "STANDARD") and api.volume_entry_rate(e) == rate
         assert ("tier unconfirmed" in t.logged[-1]) == (want_type is None)
@@ -880,7 +888,7 @@ def test_a_rejected_volume_moves_on_to_the_next_stocked_data_centre(monkeypatch,
     with pytest.raises(api.RunPodError) as e:
         t2._volume_for_create(st2)
     assert not isinstance(e.value, api.Rejected) and len([c for c in f.calls if c[:2] == ("POST", "/v2/network-volumes")]) == 1
-    assert R2["volume"]["id"] == "volold" and R2["dc_fails"] == 2
+    assert R2["volume"]["id"] == "volold" and R2["dc_fails"] == 0         # its own data centre is used again before another move
 
 
 def test_a_hand_given_data_centre_now_listing_only_high_performance_reuses_the_campaigns_volume_there(monkeypatch, tmp_path):
