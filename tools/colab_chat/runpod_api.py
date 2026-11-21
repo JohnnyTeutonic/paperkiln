@@ -212,13 +212,14 @@ def volume_dcs(volume_type, cat=None):
     return {dc["id"] for dc in (catalog() if cat is None else cat) if _tier_rank(dc, want) is not None}
 
 
-def volume_tier(dc_id, cat=None):
-    """The tier a campaign's volume takes in this data centre: the first of VOLUME_TYPES the catalog lists for it, or None when it
-    lists none of them (or the data centre is not in the catalog)."""
+def volume_tier(dc_id, cat=None, want=None):
+    """The tier a campaign's volume takes in this data centre: the first of `want` (default VOLUME_TYPES) the catalog lists for
+    it, or None when it lists none of them (or the data centre is not in the catalog)."""
+    want = VOLUME_TYPES if want is None else _tiers(want)
     for dc in catalog() if cat is None else cat:
         if dc.get("id") == dc_id:
-            r = _tier_rank(dc, VOLUME_TYPES)
-            return None if r is None else VOLUME_TYPES[r]
+            r = _tier_rank(dc, want)
+            return None if r is None else want[r]
     return None
 
 
@@ -441,9 +442,10 @@ VOLUME_TYPES = ("STANDARD", "HIGH_PERFORMANCE")
 def create_volume(name, gb, dc, volume_type="STANDARD"):
     """A network volume of the tier given, asked for by name, so a data centre whose default is another tier cannot hand over a
     dearer volume than the ledger prices; one that does not have the tier answers with an error. Only a tier the ledger prices is
-    asked for. The volume returned carries `type`: RunPod's answer, or the tier asked for when the answer leaves it out."""
+    asked for (Refused otherwise, before anything is sent). The volume returned carries `type`, RunPod's answer or the tier asked
+    for when the answer leaves it out, and `type_asked`; the ledger prices a volume at the dearer of the two."""
     if volume_type not in VOLUME_USD_PER_GB_MONTH:
-        raise RunPodError(f"create volume: tier {volume_type!r} has no rate in VOLUME_USD_PER_GB_MONTH")
+        raise Refused(f"create volume: tier {volume_type!r} has no rate in VOLUME_USD_PER_GB_MONTH")
     st, d = rest("POST", "/network-volumes", {"name": name, "size": int(gb), "dataCenter": dc, "type": volume_type})
     if st in (400, 422):
         raise Rejected(f"create volume in {dc}: HTTP {st}: {problem_text(d)}")
@@ -451,6 +453,7 @@ def create_volume(name, gb, dc, volume_type="STANDARD"):
         raise RunPodError(f"create volume: HTTP {st}: {problem_text(d, 600)}")
     v = compat_volume(d)
     v["type"] = v.get("type") or volume_type
+    v["type_asked"] = volume_type
     return v
 
 
@@ -468,16 +471,26 @@ def delete_volume(vol_id):
 #   HIGH_PERFORMANCE  0.21: https://www.runpod.io/pricing lists $0.14/GB/mo, but https://docs.runpod.io/storage/high-performance-storage
 #                     says "Exact pricing varies by data center", and neither the v2 API (https://api.runpod.io/v2/openapi.json: no
 #                     price on a volume or a data centre) nor the docs give the rate per data centre. Priced at three times
-#                     STANDARD, above the listed rate, so that a cap computed from this ledger holds.
+#                     STANDARD, 1.5 times the listed rate: a margin for a dearer data centre, not a bound the sources give (at
+#                     80 GB the margin is about USD 0.19 a day, against about USD 10 a day for an A40 pod).
 VOLUME_USD_PER_GB_MONTH = {"STANDARD": 0.07, "HIGH_PERFORMANCE": 0.21}
 
 
 def volume_usd_per_gb_month(volume_type):
-    """A ledger volume's rate. An entry without a tier was created before the tier choice, when STANDARD was the only tier asked
-    for; a tier with no rate here is priced at the dearest rate here, never at none."""
+    """A tier's rate. None is a ledger entry written before the tier choice, priced as STANDARD, the only tier asked for by name
+    since 17 Nov 2026 (on 21 Nov 2026 every volume on the account was STANDARD). A tier with no rate here is priced at the dearest
+    rate here, never at none."""
     if volume_type is None:
         volume_type = "STANDARD"
     return VOLUME_USD_PER_GB_MONTH.get(volume_type, max(VOLUME_USD_PER_GB_MONTH.values()))
+
+
+def volume_entry_rate(v):
+    """A ledger volume's rate: its tier's, or, when RunPod answered a tier other than the one asked for, the dearer of the two."""
+    rate = volume_usd_per_gb_month(v.get("type"))
+    if v.get("type_asked"):
+        rate = max(rate, volume_usd_per_gb_month(v["type_asked"]))
+    return rate
 
 
 def ledger_usd(led, now=None):
@@ -485,7 +498,7 @@ def ledger_usd(led, now=None):
     volumes at their tier's VOLUME_USD_PER_GB_MONTH from creation to deletion (or now)."""
     now = now or time.time()
     pods = sum(p["usd_per_hr"] * max(0.0, (p.get("stop") or now) - p["start"]) / 3600 for p in led.get("pods", []))
-    vols = sum(v["gb"] * volume_usd_per_gb_month(v.get("type")) * max(0.0, (v.get("deleted") or now) - v["created"]) / (30 * 86400)
+    vols = sum(v["gb"] * volume_entry_rate(v) * max(0.0, (v.get("deleted") or now) - v["created"]) / (30 * 86400)
                for v in led.get("volumes", []))
     return pods + vols
 
