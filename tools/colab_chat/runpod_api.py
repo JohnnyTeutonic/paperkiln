@@ -442,8 +442,9 @@ VOLUME_TYPES = ("STANDARD", "HIGH_PERFORMANCE")
 def create_volume(name, gb, dc, volume_type="STANDARD"):
     """A network volume of the tier given, asked for by name, so a data centre whose default is another tier cannot hand over a
     dearer volume than the ledger prices; one that does not have the tier answers with an error. Only a tier the ledger prices is
-    asked for (Refused otherwise, before anything is sent). The volume returned carries `type`, RunPod's answer or the tier asked
-    for when the answer leaves it out, and `type_asked`; the ledger prices a volume at the dearer of the two."""
+    asked for (Refused otherwise, before anything is sent). The volume returned carries `type`, the tier RunPod's answer names
+    (None when it names none, which the v2 schema does not allow), and `type_asked`; the ledger prices a volume at the dearer of
+    the two, and at the dearest rate when the answer names no tier (volume_entry_rate)."""
     if volume_type not in VOLUME_USD_PER_GB_MONTH:
         raise Refused(f"create volume: tier {volume_type!r} has no rate in VOLUME_USD_PER_GB_MONTH")
     st, d = rest("POST", "/network-volumes", {"name": name, "size": int(gb), "dataCenter": dc, "type": volume_type})
@@ -452,7 +453,7 @@ def create_volume(name, gb, dc, volume_type="STANDARD"):
     if st not in (200, 201) or not isinstance(d, dict) or not d.get("id"):
         raise RunPodError(f"create volume: HTTP {st}: {problem_text(d, 600)}")
     v = compat_volume(d)
-    v["type"] = v.get("type") or volume_type
+    v["type"] = v.get("type") or None
     v["type_asked"] = volume_type
     return v
 
@@ -472,7 +473,8 @@ def delete_volume(vol_id):
 #                     says "Exact pricing varies by data center", and neither the v2 API (https://api.runpod.io/v2/openapi.json: no
 #                     price on a volume or a data centre) nor the docs give the rate per data centre. Priced at three times
 #                     STANDARD, 1.5 times the listed rate: a margin for a dearer data centre, not a bound the sources give (at
-#                     80 GB the margin is about USD 0.19 a day, against about USD 10 a day for an A40 pod).
+#                     80 GB the margin is about USD 0.19 a day, against about USD 10 a day for an A40 pod; were the real rate
+#                     r, the ledger would be low by 80 * (r - 0.21) / 720 dollars an hour, USD 0.09 an hour at r = 1.00).
 VOLUME_USD_PER_GB_MONTH = {"STANDARD": 0.07, "HIGH_PERFORMANCE": 0.21}
 
 
@@ -486,7 +488,11 @@ def volume_usd_per_gb_month(volume_type):
 
 
 def volume_entry_rate(v):
-    """A ledger volume's rate: its tier's, or, when RunPod answered a tier other than the one asked for, the dearer of the two."""
+    """A ledger volume's rate: its tier's, or, when RunPod answered a tier other than the one asked for, the dearer of the two. An
+    entry written since the tier choice (it carries `type_asked`) whose answer named no tier is priced at the dearest rate: its
+    tier is unconfirmed. An entry without `type_asked` predates the choice (volume_usd_per_gb_month)."""
+    if "type_asked" in v and not v.get("type"):
+        return max(VOLUME_USD_PER_GB_MONTH.values())
     rate = volume_usd_per_gb_month(v.get("type"))
     if v.get("type_asked"):
         rate = max(rate, volume_usd_per_gb_month(v["type_asked"]))
