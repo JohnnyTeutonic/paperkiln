@@ -784,18 +784,20 @@ def test_a_volume_whose_answer_names_no_tier_is_saved_first_then_checked_against
     for lst, want_type, rate in cases:
         f = Fake(monkeypatch, {("GET", "/v2/catalog/datacenters"): lambda q, b: (200, {"dataCenters": now}), ("POST", "/graphql"): floor_ok,
                                ("POST", "/v2/network-volumes"): made, ("GET", "/v2/network-volumes"): lst})
-        saved = []
+        saved, at_list = [], []
 
-        def listing(q, b, lst=lst):   # when the list is read, the new volume is already saved
-            assert saved and saved[-1]["volume"]["id"] == "volnew" and saved[-1]["ledger"]["volumes"][-1]["id"] == "volnew"
+        def listing(q, b, lst=lst):   # what had been saved when the list was read (checked outside: _listed_tier swallows errors)
+            at_list.append(json.loads(json.dumps(saved)))
             return lst(q, b)
         f.routes[("GET", "/v2/network-volumes")] = listing
         R = fresh_state()
         t, st = transport(monkeypatch, tmp_path, R)
         st.save = lambda: saved.append(json.loads(json.dumps(R)))
         dc, vol = t._volume_for_create(st)
-        assert saved[0]["volume"]["id"] == "volnew" and saved[0]["ledger"]["volumes"][0]["type"] is None   # saved before the list
-        assert saved[-1]["ledger"]["volumes"][0]["type"] == want_type                               # a confirmed tier is saved
+        assert len(at_list) == 1 and at_list[0] and at_list[0][-1]["volume"]["id"] == "volnew"         # saved before the list
+        assert at_list[0][-1]["ledger"]["volumes"][-1]["id"] == "volnew"
+        assert saved[0]["volume"]["id"] == "volnew" and saved[0]["ledger"]["volumes"][0]["type"] is None
+        assert len(saved) == (2 if want_type else 1) and saved[-1]["ledger"]["volumes"][0]["type"] == want_type   # a confirmed tier is saved
         assert len([c for c in f.calls if c[:2] == ("GET", "/v2/network-volumes")]) == 1               # asked once
         e = R["ledger"]["volumes"][0]
         assert (vol["type"], e["type"], e["type_asked"]) == (want_type, want_type, "STANDARD") and api.volume_entry_rate(e) == rate
