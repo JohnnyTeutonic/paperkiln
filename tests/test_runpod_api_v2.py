@@ -560,7 +560,7 @@ def test_a_volume_is_created_in_the_tier_asked_for_and_carries_it(monkeypatch, a
     f = Fake(monkeypatch, {("POST", "/v2/network-volumes"): made})
     v = api.create_volume("pk-rel-r2-vol", 80, "CA-MTL-1", "HIGH_PERFORMANCE")
     assert f.calls[0][3] == {"name": "pk-rel-r2-vol", "size": 80, "dataCenter": "CA-MTL-1", "type": "HIGH_PERFORMANCE"}
-    assert v["type"] == "HIGH_PERFORMANCE" == v["type_asked"]
+    assert v["type"] == answer_type and v["type_asked"] == "HIGH_PERFORMANCE"            # an answer naming no tier is not filled in
 
 
 def test_a_volume_answered_in_another_tier_keeps_both_and_is_priced_at_the_dearer(monkeypatch):
@@ -763,3 +763,51 @@ def test_a_high_performance_volume_runpod_rejects_is_a_fault_not_a_shortage(monk
     rc, out = t.create(st)
     assert rc == 2 and out.startswith("rejected: create volume in CA-MTL-1: HTTP 400") and "High-performance storage" in out
     assert R["create_rejected"]["n"] == 1 and "dc_fails" not in R and R["volume"] is None and R["ledger"]["volumes"] == []
+
+
+def test_a_volume_whose_answer_names_no_tier_is_priced_at_the_dearest_rate(monkeypatch, tmp_path):
+    """The v2 schema requires `type` on a volume; an answer without it leaves the tier unconfirmed (GPT review, 21 Nov 2026)."""
+    def made(q, b):
+        v = dict(VOLUME, id="volnew", dataCenter=b["dataCenter"])
+        v.pop("type")
+        return 201, v
+    now = dcs(("EU-SE-1", ["STANDARD"], "MEDIUM"))
+    Fake(monkeypatch, {("GET", "/v2/catalog/datacenters"): lambda q, b: (200, {"dataCenters": now}), ("POST", "/graphql"): floor_ok,
+                       ("POST", "/v2/network-volumes"): made})
+    R = fresh_state()
+    t, st = transport(monkeypatch, tmp_path, R)
+    dc, vol = t._volume_for_create(st)
+    e = R["ledger"]["volumes"][0]
+    assert (vol["type"], e["type"], e["type_asked"]) == (None, None, "STANDARD")
+    assert api.volume_entry_rate(e) == 0.21 and "tier not named in the answer" in t.logged[-1]
+    assert api.volume_entry_rate({"gb": 80, "created": 1.0}) == 0.07                              # an entry from before the choice
+
+
+@pytest.mark.parametrize("ran", [True, False])
+@pytest.mark.parametrize("by_hand", [False, True])
+def test_a_move_whose_new_volume_runpod_rejects_keeps_the_old_volume_as_the_campaigns(monkeypatch, tmp_path, ran, by_hand):
+    """GPT review, 21 Nov 2026: both catalogue reads succeed, then RunPod refuses the new volume. Nothing is retired or deleted."""
+    import runpod_transport as rt
+    hps_400 = json.dumps({"detail": "High-performance storage is not available in data center \"CA-MTL-1\".", "status": 400,
+                          "title": "Bad Request"})
+    now = dcs(("EU-SE-1", ["STANDARD"], "NONE"), ("CA-MTL-1", ["HIGH_PERFORMANCE"], "MEDIUM"))
+    (tmp_path / "k.pub").write_text("ssh-ed25519 AAAA runner")
+    monkeypatch.setattr(rt, "KEY", str(tmp_path / "k"))
+    monkeypatch.setattr(rt.RunPodTransport, "over_budget", lambda self, st: None)
+    monkeypatch.setattr(api, "delete_volume", lambda i: pytest.fail("a volume was deleted"))
+    f = Fake(monkeypatch, {("GET", "/v2/catalog/datacenters"): lambda q, b: (200, {"dataCenters": now}), ("POST", "/graphql"): floor_ok,
+                           ("POST", "/v2/network-volumes"): lambda q, b: (400, {"error": hps_400})})
+    R = with_old_volume(ran=ran)
+    before = json.dumps(R["ledger"], sort_keys=True)
+    t, st = transport(monkeypatch, tmp_path, R, dc="CA-MTL-1" if by_hand else None)
+    rc, out = t.create(st)
+    assert rc == 2 and out.startswith("rejected: create volume in CA-MTL-1: HTTP 400")
+    assert R["volume"]["id"] == "volold" and R["retired_volumes"] == [] and json.dumps(R["ledger"], sort_keys=True) == before
+    assert [c[3]["type"] for c in f.calls if c[:2] == ("POST", "/v2/network-volumes")] == ["HIGH_PERFORMANCE"]
+    # and when RunPod creates it, the old volume is retired after the new one is recorded: kept when a pod ran on it, else deleted
+    deleted = []
+    monkeypatch.setattr(api, "delete_volume", lambda i: deleted.append(i) or True)
+    f.routes[("POST", "/v2/network-volumes")] = volume_made
+    dc, vol = t._volume_for_create(st)
+    assert (dc, vol["id"], R["volume"]["id"]) == ("CA-MTL-1", "volnew", "volnew")
+    assert ([v["id"] for v in R["retired_volumes"]], deleted) == ((["volold"], []) if ran else ([], ["volold"]))
