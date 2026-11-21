@@ -315,7 +315,7 @@ def test_a_campaign_with_a_volume_is_placed_only_where_its_storage_tier_exists(m
     assert api.volume_dcs("STANDARD", TIERS["dataCenters"]) == {"EU-SE-1", "EU-RO-1"}
     import runpod_transport as rt
     seen = {}
-    monkeypatch.setattr(api, "stocked_dcs", lambda gpu, ram, vcpu, secure=True, volume_type=None: seen.update(vt=volume_type) or [])
+    monkeypatch.setattr(api, "stocked_dcs", lambda gpu, ram, vcpu, secure=True, volume_type=None, cat=None: seen.update(vt=volume_type) or [])
 
     class T:
         gpu, cloud = "A40", "SECURE"
@@ -369,10 +369,11 @@ def test_the_transport_and_the_runner_report_a_rejected_create_as_a_fault(monkey
     monkeypatch.setattr(rt.RunPodTransport, "over_budget", lambda self, st: None)
     monkeypatch.setattr(api, "stocked_dcs", lambda *a, **k: ["CA-MTL-1"])
     # a catalog that lists STANDARD for CA-MTL-1 (CATALOG), so the runner asks for that tier and RunPod refuses it
-    Fake(monkeypatch, {("POST", "/v2/network-volumes"): lambda q, b: (400, {"error": VOLUME_400}),
-                       ("GET", "/v2/catalog/datacenters"): lambda q, b: (200, CATALOG)})
+    fk = Fake(monkeypatch, {("POST", "/v2/network-volumes"): lambda q, b: (400, {"error": VOLUME_400}),
+                            ("GET", "/v2/catalog/datacenters"): lambda q, b: (200, CATALOG)})
     for n in (1, 2):
         rc, out = t.create(St())
+        assert [c[3]["type"] for c in fk.calls if c[:2] == ("POST", "/v2/network-volumes")] == ["STANDARD"] * n
         assert rc == 2 and out.startswith("rejected: create volume in CA-MTL-1: HTTP 400") and "Standard storage is not available" in out
         assert St.d["runpod"]["create_rejected"]["n"] == n and "CREATE REJECTED by RunPod" in logged[-1]
     # the runner's line: a fault, with the reason from its start, and no "no A40"
@@ -460,11 +461,11 @@ def test_a_data_centre_given_by_hand_is_checked_for_the_volume_tier_before_anyth
         def _retire(self, st, vol):
             pytest.fail("the existing volume was retired")
     with pytest.raises(api.RunPodError, match=r"--datacenter CA-MTL-1 offers no network volume of the tiers \['STANDARD', 'HIGH_PERFORMANCE'\]") as e:
-        rt.RunPodTransport._volume_for_create(T(), None)
+        rt.RunPodTransport._place_volume(T(), None)
     assert not isinstance(e.value, api.Rejected) and R["volume"]["dc"] == "EU-SE-1"
     assert [c[:2] for c in f.calls] == [("GET", "/v2/catalog/datacenters")]
     T.dc = "EU-SE-1"                                                                # a data centre with the tier: the volume there is reused
-    assert rt.RunPodTransport._volume_for_create(T(), None) == ("EU-SE-1", R["volume"])
+    assert rt.RunPodTransport._place_volume(T(), None) == ("EU-SE-1", R["volume"])
 
 
 def test_a_rejected_pod_create_does_not_count_toward_moving_the_campaign(monkeypatch, tmp_path):
@@ -486,7 +487,8 @@ def test_a_rejected_pod_create_does_not_count_toward_moving_the_campaign(monkeyp
     monkeypatch.setattr(rt.RunPodTransport, "over_budget", lambda self, st: None)
     monkeypatch.setattr(api, "stocked_dcs", lambda *a, **k: ["EU-SE-1"])
     answer = {}
-    account(monkeypatch, create=lambda q, b: answer["a"])
+    acct = account(monkeypatch, create=lambda q, b: answer["a"])
+    acct.routes[("GET", "/v2/catalog/datacenters")] = lambda q, b: (200, CATALOG)   # the transport reads one catalogue per placement
     answer["a"] = (422, {"error": json.dumps({"title": "Unprocessable Entity", "status": 422, "detail": "bad", "errors": ["$.gpu: x"]})})
     assert t.create(St())[0] == 2 and "dc_fails" not in R and R["create_rejected"]["n"] == 1 and R["creating"] is None
     answer["a"] = (400, {"error": json.dumps({"title": "Bad Request", "status": 400, "detail": "no instances available"})})
@@ -675,10 +677,10 @@ def test_a_data_centre_that_loses_its_tier_before_the_volume_is_asked_for_is_an_
     gone = dcs(("CA-MTL-1", [], "HIGH"))
     Fake(monkeypatch, {("GET", "/v2/catalog/datacenters"): lambda q, b: (200, {"dataCenters": gone}),
                        ("POST", "/v2/network-volumes"): lambda q, b: pytest.fail("a volume was asked for")})
-    monkeypatch.setattr(rt.RunPodTransport, "_stocked", lambda self: ["CA-MTL-1"])              # the stock was read a moment earlier
+    monkeypatch.setattr(rt.RunPodTransport, "_stocked", lambda self, cat=None: ["CA-MTL-1"])    # a stock list the catalogue does not back
     R = fresh_state()
     t, st = transport(monkeypatch, tmp_path, R)
-    with pytest.raises(api.RunPodError, match="no longer offers a network volume") as e:
+    with pytest.raises(api.RunPodError, match="CA-MTL-1 offers no network volume of the tiers") as e:
         t._volume_for_create(st)
     assert not isinstance(e.value, api.Rejected) and R["volume"] is None and R["ledger"]["volumes"] == []
 
@@ -714,12 +716,12 @@ def test_a_move_whose_new_data_centre_loses_its_tier_retires_nothing(monkeypatch
     import runpod_transport as rt
     Fake(monkeypatch, {("GET", "/v2/catalog/datacenters"): lambda q, b: (200, {"dataCenters": dcs(("CA-MTL-1", [], "HIGH"))}),
                        ("POST", "/v2/network-volumes"): lambda q, b: pytest.fail("a volume was asked for")})
-    monkeypatch.setattr(rt.RunPodTransport, "_stocked", lambda self: ["CA-MTL-1"])              # the stock was read a moment earlier
+    monkeypatch.setattr(rt.RunPodTransport, "_stocked", lambda self, cat=None: ["CA-MTL-1"])    # a stock list the catalogue does not back
     monkeypatch.setattr(api, "delete_volume", lambda i: pytest.fail("a volume was deleted"))
     for ran in (True, False):                                                                   # kept or deleted on a retire
         R = with_old_volume(fails=2, ran=ran)
         t, st = transport(monkeypatch, tmp_path, R)
-        with pytest.raises(api.RunPodError, match="no longer offers a network volume"):
+        with pytest.raises(api.RunPodError, match="CA-MTL-1 offers no network volume of the tiers"):
             t._volume_for_create(st)
         assert R["volume"]["id"] == "volold" and R["retired_volumes"] == [] and len(R["ledger"]["volumes"]) == 1
 
@@ -755,7 +757,7 @@ def test_a_high_performance_volume_runpod_rejects_is_a_fault_not_a_shortage(monk
     import runpod_transport as rt
     monkeypatch.setattr(rt, "KEY", str(tmp_path / "k"))
     monkeypatch.setattr(rt.RunPodTransport, "over_budget", lambda self, st: None)
-    monkeypatch.setattr(rt.RunPodTransport, "_stocked", lambda self: ["CA-MTL-1"])
+    monkeypatch.setattr(rt.RunPodTransport, "_stocked", lambda self, cat=None: ["CA-MTL-1"])
     Fake(monkeypatch, {("GET", "/v2/catalog/datacenters"): lambda q, b: (200, TIERS),
                        ("POST", "/v2/network-volumes"): lambda q, b: (400, {"error": hps_400})})
     R = fresh_state()
@@ -774,13 +776,28 @@ def test_a_volume_whose_answer_names_no_tier_is_priced_at_the_dearest_rate(monke
     now = dcs(("EU-SE-1", ["STANDARD"], "MEDIUM"))
     Fake(monkeypatch, {("GET", "/v2/catalog/datacenters"): lambda q, b: (200, {"dataCenters": now}), ("POST", "/graphql"): floor_ok,
                        ("POST", "/v2/network-volumes"): made})
+    listed = {"type": None}
+    f = Fake(monkeypatch, {("GET", "/v2/catalog/datacenters"): lambda q, b: (200, {"dataCenters": now}), ("POST", "/graphql"): floor_ok,
+                           ("POST", "/v2/network-volumes"): made,
+                           ("GET", "/v2/network-volumes"): lambda q, b: (200, {"networkVolumes": [dict(VOLUME, id="volnew", type=listed["type"])],
+                                                                               "pagination": {"hasNextPage": False, "nextCursor": None}})})
     R = fresh_state()
     t, st = transport(monkeypatch, tmp_path, R)
-    dc, vol = t._volume_for_create(st)
-    e = R["ledger"]["volumes"][0]
+    # the volume list does not name the tier either: the volume is recorded, priced at the dearest rate, and no pod is started on it
+    with pytest.raises(api.RunPodError, match="volume volnew .*no pod is started on it"):
+        t._volume_for_create(st)
+    vol, e = R["volume"], R["ledger"]["volumes"][0]
     assert (vol["type"], e["type"], e["type_asked"]) == (None, None, "STANDARD")
     assert api.volume_entry_rate(e) == 0.21 and "tier not named in the answer" in t.logged[-1]
     assert api.volume_entry_rate({"gb": 80, "created": 1.0}) == 0.07                              # an entry from before the choice
+    # the next attempt reuses the volume and asks again; once the list names a priced tier, it is recorded and the pod can start
+    listed["type"] = "STANDARD"
+    assert t._volume_for_create(st) == ("EU-SE-1", vol)
+    assert vol["type"] == e["type"] == "STANDARD" and api.volume_entry_rate(e) == 0.07
+    assert len([c for c in f.calls if c[:2] == ("POST", "/v2/network-volumes")]) == 1
+    n = len(f.calls)
+    t._volume_for_create(st)                                                                      # confirmed: not asked again
+    assert not [c for c in f.calls[n:] if c[:2] == ("GET", "/v2/network-volumes")]
 
 
 @pytest.mark.parametrize("ran", [True, False])
@@ -806,8 +823,78 @@ def test_a_move_whose_new_volume_runpod_rejects_keeps_the_old_volume_as_the_camp
     assert [c[3]["type"] for c in f.calls if c[:2] == ("POST", "/v2/network-volumes")] == ["HIGH_PERFORMANCE"]
     # and when RunPod creates it, the old volume is retired after the new one is recorded: kept when a pod ran on it, else deleted
     deleted = []
-    monkeypatch.setattr(api, "delete_volume", lambda i: deleted.append(i) or True)
+
+    def delete(i):   # at the moment of deletion the replacement is already the campaign's volume, and the old one is listed as retired
+        assert R["volume"]["id"] == "volnew" and [v["id"] for v in R["retired_volumes"]] == ["volold"]
+        deleted.append(i)
+        return True
+    monkeypatch.setattr(api, "delete_volume", delete)
     f.routes[("POST", "/v2/network-volumes")] = volume_made
     dc, vol = t._volume_for_create(st)
     assert (dc, vol["id"], R["volume"]["id"]) == ("CA-MTL-1", "volnew", "volnew")
     assert ([v["id"] for v in R["retired_volumes"]], deleted) == ((["volold"], []) if ran else ([], ["volold"]))
+    old_entry = R["ledger"]["volumes"][0]
+    assert old_entry["id"] == "volold" and (old_entry.get("deleted") is None) == ran
+
+
+def test_a_failed_move_away_from_a_stocked_data_centre_lets_the_campaign_use_its_own_volume_again(monkeypatch, tmp_path):
+    """Explore review, 21 Nov 2026: after two failed pod creates in EU-SE-1 the campaign tries to move to CA-MTL-1; RunPod refuses
+    the volume there. The failed-create count starts again, so the next attempt uses the campaign's own volume in EU-SE-1."""
+    import runpod_transport as rt
+    hps_400 = json.dumps({"detail": "no", "status": 400, "title": "Bad Request"})
+    now = dcs(("EU-SE-1", ["STANDARD"], "LOW"), ("CA-MTL-1", ["HIGH_PERFORMANCE"], "HIGH"))
+    (tmp_path / "k.pub").write_text("ssh-ed25519 AAAA runner")
+    monkeypatch.setattr(rt, "KEY", str(tmp_path / "k"))
+    monkeypatch.setattr(rt.RunPodTransport, "over_budget", lambda self, st: None)
+    f = Fake(monkeypatch, {("GET", "/v2/catalog/datacenters"): lambda q, b: (200, {"dataCenters": now}), ("POST", "/graphql"): floor_ok,
+                           ("POST", "/v2/network-volumes"): lambda q, b: (400, {"error": hps_400})})
+    R = with_old_volume(fails=2)
+    t, st = transport(monkeypatch, tmp_path, R)
+    rc, out = t.create(st)
+    assert rc == 2 and "create volume in CA-MTL-1" in out and R["dc_fails"] == 0 and R["volume"]["id"] == "volold"
+    assert "2 failed creates there" in " ".join(t.logged)
+    n = len(f.calls)
+    assert t._volume_for_create(st) == ("EU-SE-1", R["volume"])
+    assert not [c for c in f.calls[n:] if c[:2] == ("POST", "/v2/network-volumes")]
+
+
+def test_a_hand_given_data_centre_now_listing_only_high_performance_reuses_the_campaigns_volume_there(monkeypatch, tmp_path):
+    Fake(monkeypatch, {("GET", "/v2/catalog/datacenters"): lambda q, b: (200, {"dataCenters": dcs(("EU-SE-1", ["HIGH_PERFORMANCE"], "LOW"))}),
+                       ("POST", "/v2/network-volumes"): lambda q, b: pytest.fail("a volume was asked for")})
+    R = with_old_volume()
+    t, st = transport(monkeypatch, tmp_path, R, dc="EU-SE-1")
+    assert t._volume_for_create(st) == ("EU-SE-1", R["volume"]) and "type" not in R["volume"]
+
+
+def test_the_new_volume_and_the_old_ones_retirement_are_saved_together(monkeypatch, tmp_path):
+    """GPT review, 21 Nov 2026: a restart after the save that makes the new volume the campaign's still finds the old one."""
+    now = dcs(("EU-SE-1", ["STANDARD"], "NONE"), ("CA-MTL-1", ["HIGH_PERFORMANCE"], "MEDIUM"))
+    f = Fake(monkeypatch, {("GET", "/v2/catalog/datacenters"): lambda q, b: (200, {"dataCenters": now}), ("POST", "/graphql"): floor_ok,
+                           ("POST", "/v2/network-volumes"): volume_made})
+    for ran in (True, False):
+        R = with_old_volume(ran=ran)
+        t, st = transport(monkeypatch, tmp_path, R)
+        saved = []
+        st.save = lambda: saved.append(json.loads(json.dumps(R)))
+        monkeypatch.setattr(api, "delete_volume", lambda i: True)
+        f.calls.clear()
+        t._volume_for_create(st)
+        first = next(s for s in saved if (s["volume"] or {}).get("id") == "volnew")
+        assert [v["id"] for v in first["retired_volumes"]] == ["volold"]                         # in the same save
+        assert [e["id"] for e in first["ledger"]["volumes"]] == ["volold", "volnew"]
+        assert [v["id"] for v in saved[-1]["retired_volumes"]] == (["volold"] if ran else [])       # an unused one: deleted after
+        assert ran or saved[-1]["ledger"]["volumes"][0]["deleted"]
+        assert len([c for c in f.calls if c[:2] == ("GET", "/v2/catalog/datacenters")]) == 1       # one catalogue read
+
+
+def test_the_small_api_edges():
+    assert api.volume_dcs(None, MIXED) == set()                                                  # as before: no tier, no data centre
+    assert api.volume_usd_per_gb_month(["HIGH_PERFORMANCE"]) == 0.21 and api.volume_usd_per_gb_month(7) == 0.21   # never a TypeError
+    assert not api.priced(None) and not api.priced({"t": 1}) and api.priced("STANDARD")
+    assert api.volume_entry_rate({"gb": 1, "type": ["x"], "type_asked": "STANDARD"}) == 0.21
+
+
+def test_create_volume_defaults_to_the_first_accepted_tier(monkeypatch):
+    f = Fake(monkeypatch, {("POST", "/v2/network-volumes"): lambda q, b: (201, dict(VOLUME, type=b["type"]))})
+    assert api.create_volume("pk-x-vol", 80, "EU-SE-1")["type_asked"] == api.VOLUME_TYPES[0]
+    assert f.calls[0][3]["type"] == api.VOLUME_TYPES[0]

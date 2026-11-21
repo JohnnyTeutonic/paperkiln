@@ -337,23 +337,43 @@ class RunPodTransport:
             self.log(f"delete volume {v['id']}: {e}")
         return False
 
-    def _stocked(self):
+    def _stocked(self, cat=None):
         # a campaign with a network volume runs only where one of its accepted tiers exists (17 Nov 2026), STANDARD data
         # centres first (21 Nov 2026)
         return api.stocked_dcs(self.gpu, MIN_RAM, MIN_VCPU, secure=self.cloud == "SECURE",
-                               volume_type=api.VOLUME_TYPES if self.persistent else None)
+                               volume_type=api.VOLUME_TYPES if self.persistent else None, cat=cat)
 
     def _retire(self, st, vol):
-        """The campaign leaves this volume: deleted now when no pod ever ran on it (nothing to lose), else
-        kept until the next pod is up (create) or the campaign is home (release)."""
+        """The campaign has left this volume, which is already in retired_volumes, saved there together with its replacement so
+        that a restart between the two still finds it (GPT, 21 Nov 2026): deleted now when no pod ever ran on it (nothing to
+        lose), else kept until the next pod is up (create) or the campaign is home (release)."""
         R = self.R(st)
         if not any(p.get("volume") == vol["id"] for p in R["ledger"]["pods"]) and self._delete_volume(st, vol):
-            return
-        R["retired_volumes"].append(vol)
-        st.save()
+            R["retired_volumes"] = [v for v in R["retired_volumes"] if v.get("id") != vol["id"]]
+            st.save()
 
     def _volume_for_create(self, st):
-        """(data centre, volume or None) for the next pod; creates the volume when needed."""
+        """(data centre, volume or None) for the next pod; creates the volume when needed. A volume created since the tier choice
+        whose tier the ledger cannot price (RunPod's answer named none, or one with no rate) is confirmed from RunPod's volume list
+        before a pod is started on it, and no pod is started while it stays unconfirmed (GPT, 21 Nov 2026)."""
+        dc, vol = self._place_volume(st)
+        if vol and "type_asked" in vol and not api.priced(vol.get("type")):
+            self._confirm_tier(st, vol)
+        return dc, vol
+
+    def _confirm_tier(self, st, vol):
+        t = next((v.get("type") for v in api.list_volumes() if v.get("id") == vol["id"]), None)
+        if not api.priced(t):
+            raise api.RunPodError(f"volume {vol['id']} ({vol['dc']}): RunPod's volume list gives its tier as {t!r}, which the ledger "
+                                  "cannot price (priced meanwhile at the dearest rate); no pod is started on it")
+        vol["type"] = t
+        for e in self.R(st)["ledger"]["volumes"]:
+            if e["id"] == vol["id"]:
+                e["type"] = t
+        st.save()
+        self.log(f"volume {vol['id']}: tier {t}, from RunPod's volume list")
+
+    def _place_volume(self, st):
         R = self.R(st)
         vol = R.get("volume")
         if not self.persistent:
@@ -361,19 +381,21 @@ class RunPodTransport:
             if not stocked:
                 raise api.RunPodError(f"no {self.gpu} in stock in any data centre")
             return stocked[0], None
-        def tier_now(dc):
-            # the tier a new volume takes there: the first accepted one the data centre offers now (STANDARD, then
+        cat = api.catalog()   # one read for the stock filter and the tier, so that the two agree (21 Nov 2026)
+
+        def tier_of(dc):
+            # the tier a new volume takes there: the first accepted one the data centre offers (STANDARD, then
             # HIGH_PERFORMANCE), recorded in the state and the ledger, which prices it (21 Nov 2026)
-            t = api.volume_tier(dc)
+            t = api.volume_tier(dc, cat)
             if t is None:
-                raise api.RunPodError(f"{dc} no longer offers a network volume of the tiers {list(api.VOLUME_TYPES)}")
+                raise api.RunPodError(f"{dc} offers no network volume of the tiers {list(api.VOLUME_TYPES)}")
             return t
         # A campaign that moves keeps its old volume as its volume until the new one is created and recorded: a create that
         # fails (a tier withdrawn, a rejection) retires and deletes nothing (Explore and GPT reviews, 21 Nov 2026).
-        old = None
+        old, stays = None, False
         if self.dc:
             # a data centre given by hand is checked before a volume is retired or asked for there (GPT, 17 Nov 2026)
-            tier = api.volume_tier(self.dc)
+            tier = api.volume_tier(self.dc, cat)
             if tier is None:
                 raise api.RunPodError(f"--datacenter {self.dc} offers no network volume of the tiers {list(api.VOLUME_TYPES)}; "
                                       "choose one that does (runpod_api.volume_dcs) or leave the choice to the stock")
@@ -382,7 +404,7 @@ class RunPodTransport:
             dc = self.dc
         else:
             tier = None
-            stocked = self._stocked()
+            stocked = self._stocked(cat)
             if vol and vol["dc"] in stocked and R.get("dc_fails", 0) < DC_FAILS_MOVE:
                 return vol["dc"], vol
             if not stocked:
@@ -392,17 +414,26 @@ class RunPodTransport:
                 others = [d for d in stocked if d != vol["dc"]]
                 if not others and vol["dc"] in stocked:
                     return vol["dc"], vol
-                tier = tier_now(others[0])
-                why = (f"{R.get('dc_fails', 0)} failed creates" if vol["dc"] in stocked else f"no {self.gpu}") + f" (stock {stocked})"
-                self.log(f"{vol['dc']}: {why}; moving the campaign to a new volume (full prepare)")
+                stays = vol["dc"] in stocked
+                why = (f"{R.get('dc_fails', 0)} failed creates there" if stays else
+                       f"not among the data centres with {self.gpu} in stock and an accepted volume tier")
+                self.log(f"{vol['dc']}: {why} (stock {stocked}); moving the campaign to a new volume (full prepare)")
                 old, vol = vol, None
                 stocked = others
             dc = stocked[0]
         if vol:
             return dc, vol
-        if tier is None:
-            tier = tier_now(dc)
-        v = api.create_volume(f"{self.name}-vol", self.volume_gb, dc, tier)
+        try:
+            if tier is None:
+                tier = tier_of(dc)
+            v = api.create_volume(f"{self.name}-vol", self.volume_gb, dc, tier)
+        except api.RunPodError:
+            if stays:
+                # a move away from a data centre that still has stock failed: its failed-create count starts again, so the next
+                # attempts use the campaign's own volume there before the same move is tried again (Explore, 21 Nov 2026)
+                R["dc_fails"] = 0
+                st.save()
+            raise
         size = v.get("size")
         gb = max(self.volume_gb, size) if isinstance(size, int) and not isinstance(size, bool) else self.volume_gb
         # the size and tier RunPod answered, with the tier asked for: the ledger prices the dearer of the two, and the dearest
@@ -411,6 +442,8 @@ class RunPodTransport:
         R["volume"] = vol
         R["dc_fails"] = 0
         R["ledger"]["volumes"].append(dict(vol, name=v.get("name")))
+        if old:
+            R["retired_volumes"].append(old)   # in the same save as its replacement (GPT, 21 Nov 2026)
         st.save()
         self.log(f"volume {vol['id']} created in {dc} ({gb} GB, {vol['type'] or 'tier not named in the answer'}"
                  + (f", asked for {tier}" if vol["type"] != tier else "") + ")")
