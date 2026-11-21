@@ -355,13 +355,17 @@ class RunPodTransport:
             st.save()
 
     def _listed_tier(self, vol_id):
-        """The volume's tier from RunPod's volume list when it is one the ledger prices, else None (a failed list is logged)."""
+        """The volume's tier from RunPod's volume list when it is one the ledger prices, else None. Best effort: any failure to
+        read the list is logged and gives None (the volume is already saved, priced at the dearest rate)."""
         try:
-            t = next((v.get("type") for v in api.list_volumes() if v.get("id") == vol_id), None)
-        except api.RunPodError as e:
-            self.log(f"volume {vol_id}: the volume list could not be read for its tier: {e}")
+            t = next((v.get("type") for v in api.list_volumes() if isinstance(v, dict) and v.get("id") == vol_id), None)
+        except Exception as e:  # noqa: BLE001
+            self.log(f"volume {vol_id}: the volume list could not be read for its tier: {type(e).__name__}: {e}")
             return None
-        return t if api.priced(t) else None
+        if not api.priced(t):
+            self.log(f"volume {vol_id}: the volume list gives its tier as {t!r}")
+            return None
+        return t
 
     def _volume_for_create(self, st):
         """(data centre, volume or None) for the next pod; creates the volume when needed."""
@@ -418,35 +422,47 @@ class RunPodTransport:
         # centre that refuses does not hold the campaign back from the next one (GPT, 21 Nov 2026). Any other failure stops here:
         # RunPod may have created a volume this process did not hear about.
         rejected = None
-        for d in [dc] if self.dc else stocked:
-            t = tier if self.dc else tier_of(d)
-            try:
-                v = api.create_volume(f"{self.name}-vol", self.volume_gb, d, t)
-                dc, tier = d, t
-                break
-            except api.Rejected as e:
-                rejected = e
-                self.log(f"volume in {d} ({t}) rejected by RunPod: {e}")
-        else:
+        try:
+            for d in [dc] if self.dc else stocked:
+                t = tier if self.dc else tier_of(d)
+                try:
+                    v = api.create_volume(f"{self.name}-vol", self.volume_gb, d, t)
+                    dc, tier = d, t
+                    break
+                except api.Rejected as e:
+                    rejected = e
+                    self.log(f"volume in {d} ({t}) rejected by RunPod: {e}")
+            else:
+                raise rejected
+        except api.RunPodError:
             if stays:
-                # every move away from a data centre that still has stock was refused: its failed-create count starts again, so
-                # the next attempts use the campaign's own volume there before a move is tried again (Explore, 21 Nov 2026);
-                # create() saves it with the rejection
+                # a move away from a data centre that still has stock failed: its failed-create count starts again, so the next
+                # attempts use the campaign's own volume there before a move is tried again (Explore, 21 Nov 2026); create()
+                # saves it with the failure
                 R["dc_fails"] = 0
-            raise rejected
+            raise
         size = v.get("size")
         gb = max(self.volume_gb, size) if isinstance(size, int) and not isinstance(size, bool) else self.volume_gb
-        # The size and tier RunPod answered, with the tier asked for: the ledger prices the dearer of the two. An answer that
-        # names no tier the ledger prices (the v2 schema requires one) is checked once against the volume list; if that does not
-        # name one either, the volume is priced at the dearest rate (runpod_api.volume_entry_rate).
-        typ = v.get("type") if api.priced(v.get("type")) else (self._listed_tier(v["id"]) or v.get("type"))
-        vol = {"id": v["id"], "dc": dc, "gb": gb, "type": typ, "type_asked": tier, "created": time.time()}
+        # The size and tier RunPod answered, with the tier asked for, saved at once: the ledger prices the dearer of the two.
+        vol = {"id": v["id"], "dc": dc, "gb": gb, "type": v.get("type"), "type_asked": tier, "created": time.time()}
         R["volume"] = vol
         R["dc_fails"] = 0
         R["ledger"]["volumes"].append(dict(vol, name=v.get("name")))
         if old:
             R["retired_volumes"].append(old)   # in the same save as its replacement (GPT, 21 Nov 2026)
         st.save()
+        if not api.priced(vol["type"]):
+            # An answer that names no tier the ledger prices (the v2 schema requires one) is checked once against the volume
+            # list, after the volume is saved; if that names none either, it stays priced at the dearest rate
+            # (runpod_api.volume_entry_rate), and the pod is not held back.
+            t = self._listed_tier(vol["id"])
+            if t:
+                vol["type"] = t
+                for e in R["ledger"]["volumes"]:
+                    if e["id"] == vol["id"]:
+                        e["type"] = t
+                st.save()
+        typ = vol["type"]
         shown = typ if api.priced(typ) else f"tier unconfirmed ({typ!r}), priced at the dearest rate"
         self.log(f"volume {vol['id']} created in {dc} ({gb} GB, {shown}" + (f", asked for {tier}" if typ != tier else "") + ")")
         if old:
