@@ -26,6 +26,14 @@ def test_rendering_leaves_e12_unchanged():
     assert E12.text() == before and E12.PACKET == "S71SC.jsonl" and E12.arm_name(1) == "E12_N250_1"
 
 
+def test_top_level_settings_are_e12bs():
+    rb, rc = B.render(), C.render()
+    assert set(rb) == set(rc) and {k: v for k, v in rb.items() if k not in ("_comment", "jobs")} == \
+        {k: v for k, v in rc.items() if k not in ("_comment", "jobs")}
+    # and E12's own, written out, so a change shared by both renderers is caught too (GPT review of B, 22 Nov 2026)
+    assert (rc["max_parallel"], rc["max_parallel_light"], rc["home_markers"]) == (1, 2, True)
+
+
 def test_only_packet_and_names_differ_from_e12b():
     b = B.render()["jobs"]
     c = C.render()["jobs"]
