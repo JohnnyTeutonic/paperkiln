@@ -434,12 +434,13 @@ class RunPodTransport:
                     self.log(f"volume in {d} ({t}) rejected by RunPod: {e}")
             else:
                 raise rejected
-        except api.RunPodError:
+        except (api.RunPodError, OSError):
             if stays:
                 # a move away from a data centre that still has stock failed: its failed-create count starts again, so the next
                 # attempts use the campaign's own volume there before a move is tried again (Explore, 21 Nov 2026); create()
                 # saves it with the failure
                 R["dc_fails"] = 0
+                self.log(f"the move failed; the campaign stays on its volume in {old['dc']} for now")
             raise
         size = v.get("size")
         gb = max(self.volume_gb, size) if isinstance(size, int) and not isinstance(size, bool) else self.volume_gb
