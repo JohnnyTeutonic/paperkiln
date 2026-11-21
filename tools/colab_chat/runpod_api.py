@@ -20,7 +20,8 @@ catalog, cursor pagination) were checked against the live API that day. What cha
                  mounts {network: [{volumeId, path}]}; unknown fields are rejected with 422; no default ports
                  and no default volume; spot pods, country and bandwidth placement no longer exist
   terminate      DELETE /v2/pods/{id} -> 204
-  volumes        /v2/network-volumes; create takes `dataCenter` (was dataCenterId) and a `type`, always STANDARD here; delete -> 204
+  volumes        /v2/network-volumes; create takes `dataCenter` (was dataCenterId) and a `type`, always given here: the first
+                 of VOLUME_TYPES (STANDARD, then HIGH_PERFORMANCE) the data centre offers (21 Nov 2026); delete -> 204
   not used       queued creates (`queue`) are refused: nothing here would own or cancel one
   errors         {"title", "status", "detail"[, "errors"]}
 GraphQL (https://api.runpod.io/graphql) is kept for what v2 does not offer: the account balance
@@ -194,9 +195,31 @@ def stock(gpu, cat=None):
     return out
 
 
+def _tiers(volume_type):
+    """A tier or an ordered sequence of tiers, as a tuple."""
+    return (volume_type,) if isinstance(volume_type, str) else tuple(volume_type)
+
+
+def _tier_rank(dc, want):
+    """The index in `want` of the first tier this catalog data centre offers, or None when it offers none of them."""
+    offered = dc.get("networkVolumeTypes") or []
+    return next((i for i, t in enumerate(want) if t in offered), None)
+
+
 def volume_dcs(volume_type, cat=None):
-    """The data centres that offer network volumes of this tier (the catalog's networkVolumeTypes)."""
-    return {dc["id"] for dc in (catalog() if cat is None else cat) if volume_type in (dc.get("networkVolumeTypes") or [])}
+    """The data centres that offer network volumes of this tier, or of any tier of a sequence (the catalog's networkVolumeTypes)."""
+    want = _tiers(volume_type)
+    return {dc["id"] for dc in (catalog() if cat is None else cat) if _tier_rank(dc, want) is not None}
+
+
+def volume_tier(dc_id, cat=None):
+    """The tier a campaign's volume takes in this data centre: the first of VOLUME_TYPES the catalog lists for it, or None when it
+    lists none of them (or the data centre is not in the catalog)."""
+    for dc in catalog() if cat is None else cat:
+        if dc.get("id") == dc_id:
+            r = _tier_rank(dc, VOLUME_TYPES)
+            return None if r is None else VOLUME_TYPES[r]
+    return None
 
 
 RANK = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
@@ -219,18 +242,22 @@ def host_stock(gpu, dc, min_ram=None, min_vcpu=None, secure=True):
 
 def stocked_dcs(gpu, min_ram=None, min_vcpu=None, secure=True, volume_type=None):
     """Data centres with the GPU in stock (on hosts of at least min_ram GB / min_vcpu vCPUs per GPU when
-    given), best availability first. With volume_type, only those that also offer network volumes of that tier: a campaign's
-    volume is created where its pod will run, and RunPod rejects a tier a data centre does not have (17 Nov 2026: CA-MTL-1, the
-    best-stocked A40 data centre, has only high-performance storage)."""
+    given), best availability first. With volume_type (a tier, or an ordered sequence of tiers such as VOLUME_TYPES), only those
+    that also offer network volumes of one of those tiers: a campaign's volume is created where its pod will run, and RunPod
+    rejects a tier a data centre does not have (17 Nov 2026: CA-MTL-1, the best-stocked A40 data centre, has only
+    high-performance storage). Under a sequence, data centres whose best tier comes earlier in it come first (STANDARD before
+    HIGH_PERFORMANCE), then by availability."""
     cat = catalog()
     s = stock(gpu, cat)
     dcs = [dc for dc, a in s.items() if RANK.get(a, 0) > 0]
+    tier = {}
     if volume_type:
-        ok = volume_dcs(volume_type, cat)
-        dcs = [dc for dc in dcs if dc in ok]
+        want = _tiers(volume_type)
+        tier = {d["id"]: r for d in cat if (r := _tier_rank(d, want)) is not None}
+        dcs = [dc for dc in dcs if dc in tier]
     if min_ram or min_vcpu:
         dcs = [dc for dc in dcs if host_stock(gpu, dc, min_ram, min_vcpu, secure)]
-    return sorted(dcs, key=lambda dc: (-RANK[s[dc]], dc))
+    return sorted(dcs, key=lambda dc: (tier.get(dc, 0), -RANK[s[dc]], dc))
 
 
 # ---------------------------------------------------------------- pods
@@ -405,18 +432,26 @@ def list_volumes():
     return [compat_volume(v) for v in _list("/network-volumes", "networkVolumes", "volumes")]
 
 
-VOLUME_TYPE = "STANDARD"   # the tier ledger_usd prices (VOLUME_USD_PER_GB_MONTH); v2 would otherwise take the data centre's default
+# The network volume tiers a campaign accepts, in order of preference: the first one a data centre offers is used there (21 Nov
+# 2026: for a day no data centre had an A40 in stock with STANDARD storage, while CA-MTL-1 had A40s and only HIGH_PERFORMANCE
+# storage). Every tier here has a rate in VOLUME_USD_PER_GB_MONTH.
+VOLUME_TYPES = ("STANDARD", "HIGH_PERFORMANCE")
 
 
-def create_volume(name, gb, dc):
-    """A STANDARD network volume. The tier is asked for by name, so a data centre whose default is the high-performance tier
-    cannot hand over a dearer volume than the ledger prices; one that has no standard tier answers with an error."""
-    st, d = rest("POST", "/network-volumes", {"name": name, "size": int(gb), "dataCenter": dc, "type": VOLUME_TYPE})
+def create_volume(name, gb, dc, volume_type="STANDARD"):
+    """A network volume of the tier given, asked for by name, so a data centre whose default is another tier cannot hand over a
+    dearer volume than the ledger prices; one that does not have the tier answers with an error. Only a tier the ledger prices is
+    asked for. The volume returned carries `type`: RunPod's answer, or the tier asked for when the answer leaves it out."""
+    if volume_type not in VOLUME_USD_PER_GB_MONTH:
+        raise RunPodError(f"create volume: tier {volume_type!r} has no rate in VOLUME_USD_PER_GB_MONTH")
+    st, d = rest("POST", "/network-volumes", {"name": name, "size": int(gb), "dataCenter": dc, "type": volume_type})
     if st in (400, 422):
         raise Rejected(f"create volume in {dc}: HTTP {st}: {problem_text(d)}")
     if st not in (200, 201) or not isinstance(d, dict) or not d.get("id"):
         raise RunPodError(f"create volume: HTTP {st}: {problem_text(d, 600)}")
-    return compat_volume(d)
+    v = compat_volume(d)
+    v["type"] = v.get("type") or volume_type
+    return v
 
 
 def delete_volume(vol_id):
@@ -428,15 +463,29 @@ def delete_volume(vol_id):
     raise RunPodError(f"delete volume {vol_id}: HTTP {st}: {json.dumps(d)[:300]}")
 
 
-VOLUME_USD_PER_GB_MONTH = 0.07  # RunPod's network volume rate (under 1 TB), for the ledger's estimate
+# Dollars per GB-month by network volume tier, for the ledger's estimate (read 21 Nov 2026).
+#   STANDARD          0.07: the rate under 1 TB on https://docs.runpod.io/storage/network-volumes and https://www.runpod.io/pricing.
+#   HIGH_PERFORMANCE  0.21: https://www.runpod.io/pricing lists $0.14/GB/mo, but https://docs.runpod.io/storage/high-performance-storage
+#                     says "Exact pricing varies by data center", and neither the v2 API (https://api.runpod.io/v2/openapi.json: no
+#                     price on a volume or a data centre) nor the docs give the rate per data centre. Priced at three times
+#                     STANDARD, above the listed rate, so that a cap computed from this ledger holds.
+VOLUME_USD_PER_GB_MONTH = {"STANDARD": 0.07, "HIGH_PERFORMANCE": 0.21}
+
+
+def volume_usd_per_gb_month(volume_type):
+    """A ledger volume's rate. An entry without a tier was created before the tier choice, when STANDARD was the only tier asked
+    for; a tier with no rate here is priced at the dearest rate here, never at none."""
+    if volume_type is None:
+        volume_type = "STANDARD"
+    return VOLUME_USD_PER_GB_MONTH.get(volume_type, max(VOLUME_USD_PER_GB_MONTH.values()))
 
 
 def ledger_usd(led, now=None):
     """Estimated dollars of a runner's ledger: pods at their recorded $/h from start to stop (or now),
-    volumes at VOLUME_USD_PER_GB_MONTH from creation to deletion (or now)."""
+    volumes at their tier's VOLUME_USD_PER_GB_MONTH from creation to deletion (or now)."""
     now = now or time.time()
     pods = sum(p["usd_per_hr"] * max(0.0, (p.get("stop") or now) - p["start"]) / 3600 for p in led.get("pods", []))
-    vols = sum(v["gb"] * VOLUME_USD_PER_GB_MONTH * max(0.0, (v.get("deleted") or now) - v["created"]) / (30 * 86400)
+    vols = sum(v["gb"] * volume_usd_per_gb_month(v.get("type")) * max(0.0, (v.get("deleted") or now) - v["created"]) / (30 * 86400)
                for v in led.get("volumes", []))
     return pods + vols
 
