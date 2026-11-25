@@ -83,7 +83,7 @@ def test_whole_file_against_N_by_path_in_order():
     assert all(j["halt_on_failure"] and j["light"] and W.GUARD_SCRIPT in j["cmd"] for j in extra)
     assert extra[1]["after"] == ["rung_W169_s10000".replace("W169", "N")]   # renamed back above
     got["jobs"] = got["jobs"][:-2]
-    assert got.pop("max_parallel_light") == 3 and ref.pop("max_parallel_light") == 1
+    assert got.pop("max_parallel_light") == 2 and ref.pop("max_parallel_light") == 1
     allowed = {("_comment",), ("_base2",), ("store_stall_min",), ("store_no_progress_min",),
                ("jobs", "pt_base2_N", "spec", "arch", "custom"), ("jobs", "pt_base2_N", "spec", "train", "lr")}
     for name in names:
@@ -130,6 +130,23 @@ def test_guard_loss_and_diverge(tmp_path):
     (chat / "STATUS_job").write_text("RUNNING")
     assert g.main(["loss", "--chat", str(chat), "--job", "job", "--out", str(tmp_path / "o2"), "--interval", "0"]) == 1
     assert json.load(open(tmp_path / "o2" / "guard.json"))["first"]["step"] == 2
+    # a resume rewrites the stream shorter (truncate_events_after); a null loss written after that must still halt
+    import threading
+    import time as _t
+    long = "".join(f'{{"event": "step", "step": {s}, "loss": 5.0}}\n' for s in range(1, 201))
+    ev.write_text(long)
+    (chat / "STATUS_job").write_text("RUNNING")
+    rc = {}
+    th = threading.Thread(target=lambda: rc.setdefault("rc", g.main(["loss", "--chat", str(chat), "--job", "job", "--out",
+                                                                  str(tmp_path / "o4"), "--interval", "0.05"])))
+    th.start()
+    _t.sleep(0.5)
+    ev.write_text('{"event": "step", "step": 1, "loss": 5.0}\n')
+    _t.sleep(0.5)
+    with open(ev, "a") as f:
+        f.write('{"event": "step", "step": 2, "loss": null}\n')
+    th.join(10)
+    assert rc.get("rc") == 1 and json.load(open(tmp_path / "o4" / "guard.json"))["first"]["step"] == 2
     # a partial last line is not read until it is complete
     ev.write_text('{"event": "step", "step": 1, "loss": 9.1}\n{"event": "step", "step": 2, "lo')
     assert g.scan(str(ev), 0)[0] == []

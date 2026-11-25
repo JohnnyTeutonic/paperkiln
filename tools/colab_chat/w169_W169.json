@@ -65,7 +65,7 @@
   }
  ],
  "max_parallel": 1,
- "max_parallel_light": 3,
+ "max_parallel_light": 2,
  "jobs": [
   {
    "name": "pins",

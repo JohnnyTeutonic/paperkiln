@@ -105,7 +105,7 @@ def arm():
     jobs += [_rung(job, marks[-1], of=False, after=[job])]
     jobs += [loss_guard(job), diverge_check()]
     out = copy.deepcopy(ref)
-    out["max_parallel_light"] = 3   # the loss guard runs throughout; a rung and the divergence check beside it
+    out["max_parallel_light"] = 2   # the loss guard runs throughout; one rung beside it, then the divergence check in its slot
     steps = train["spec"]["train"]["steps"]
     out["_comment"] = (f"Base 2, arm {NAME}: arm N's recipe at the 12 x 1024 shape ({PARAMS:,} parameters), peak rate {LR}. "
                        "Not admitted: the launch gate is two reviews and Jonathan's dated line.")

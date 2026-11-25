@@ -64,16 +64,24 @@ def loss(a):
     events = os.path.join(a.chat, a.job, "events.jsonl")
     pos, last, t0 = 0, None, time.time()
     while True:
+        # The status is read before the scan, so the scan that follows a terminal status reads every line written before it.
+        try:
+            status = open(os.path.join(a.chat, f"STATUS_{a.job}")).read().strip()
+        except OSError:
+            status = "NONE"
+        # On a resume the trainer rewrites the stream in place without the lines past its checkpoint
+        # (tools/mtstudio.cpp truncate_events_after): a file shorter than what was read is read again from the start.
+        try:
+            if os.path.getsize(events) < pos:
+                pos = 0
+        except OSError:
+            pos = 0
         bad, step, pos = scan(events, pos)
         last = step if step is not None else last
         if bad:
             write(a.out, {"halt": "NONFINITE_LOSS", "first": bad[0], "count": len(bad), "at": time.time()})
             print(f"NONFINITE_LOSS at step {bad[0]['step']}: halting", flush=True)
             return 1
-        try:
-            status = open(os.path.join(a.chat, f"STATUS_{a.job}")).read().strip()
-        except OSError:
-            status = "NONE"
         if status in ("FINISHED", "FAILED"):
             write(a.out, {"halt": None, "status": status, "last_step": last, "seconds": time.time() - t0})
             return 0
