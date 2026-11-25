@@ -158,6 +158,13 @@ struct Spec {
     // mixed in. Validation stays on data.corpus's held-out 5%.
     std::string anneal_corpus;
     double anneal_from = 0.0;
+    // data.warmup {"corpus", "steps"}: training windows of steps 1 to warmup_steps come
+    // from this corpus (read whole) instead of data.corpus. Every row still takes one
+    // draw of the window generator, so from step warmup_steps + 1 every window is the one
+    // the same spec without data.warmup draws: the warm-up replaces that run's windows of
+    // its first steps and nothing else. Validation stays on data.corpus's held-out 5%.
+    std::string warmup_corpus;
+    int warmup_steps = 0;
     // post-training (docs/decisions/0001-posttrain-charter.md, Phase 3):
     // objective "lm" streams data.corpus; "sft" trains on data.sft_examples
     // ({prompt, completion} JSONL) with the prompt masked out of the loss,
@@ -655,6 +662,13 @@ Spec parse_spec(const std::string& path) {
         s.anneal_from = an.value("from_fraction", 0.0);
         if (s.anneal_corpus.empty() || !(s.anneal_from > 0.0 && s.anneal_from < 1.0))
             throw std::runtime_error("data.anneal needs a corpus and from_fraction in (0, 1)");
+    }
+    if (data.contains("warmup")) {
+        const json wu = data["warmup"];
+        s.warmup_corpus = wu.value("corpus", "");
+        s.warmup_steps = wu.value("steps", 0);
+        if (s.warmup_corpus.empty() || s.warmup_steps <= 0)
+            throw std::runtime_error("data.warmup needs a corpus and steps > 0");
     }
 
     const json tr = j.value("train", json::object());
@@ -2294,10 +2308,16 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     const bool sft = s.objective == "sft" || s.objective == "rejection_sft";
     const bool grpo = s.objective == "grpo";
     const bool po = s.objective == "provenance_po";
-    std::vector<int> ids, anneal_ids;
+    std::vector<int> ids, anneal_ids, warmup_ids;
     size_t val_start = 0;
     if (!s.anneal_corpus.empty() && s.objective != "lm")
         throw std::runtime_error("data.anneal is for objective lm only");
+    if (!s.warmup_corpus.empty() && s.objective != "lm")
+        throw std::runtime_error("data.warmup is for objective lm only");
+    if (!s.warmup_corpus.empty() &&
+        (s.warmup_steps >= s.steps ||
+         (!s.anneal_corpus.empty() && s.warmup_steps >= static_cast<int>(s.anneal_from * s.steps))))
+        throw std::runtime_error("data.warmup must end before data.anneal begins and before train.steps");
     SftSet sd;
     GrpoData gd;
     PrefData pd;
@@ -2384,6 +2404,22 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             ev.emit({{"event", "anneal_data"},
                      {"tokens", anneal_ids.size()},
                      {"from_step", static_cast<int>(s.anneal_from * s.steps)}});
+        }
+        if (!s.warmup_corpus.empty()) {
+            warmup_ids = read_corpus(s.warmup_corpus, vocab, tokens.size(), 0);
+            if (s.state_k > 0) {
+                const size_t before = warmup_ids.size();
+                nn::StateInsertCount c;
+                warmup_ids = nn::insert_state_ids(warmup_ids, state_template(s, vocab), &c);
+                ev.emit({{"event", "state_tokens"}, {"k", s.state_k}, {"mask", s.state_mask},
+                         {"corpus", "data.warmup"}, {"tokens_before", before}, {"tokens_after", warmup_ids.size()},
+                         {"blocks", c.blocks}, {"closed_early", c.closed}});
+            }
+            if (warmup_ids.size() < static_cast<size_t>(s.T) + 2)
+                throw std::runtime_error("data.warmup corpus is shorter than one training window");
+            ev.emit({{"event", "warmup_data"},
+                     {"tokens", warmup_ids.size()},
+                     {"through_step", s.warmup_steps}});
         }
     } else {
         sd = load_sft(s, vocab);
@@ -2838,6 +2874,14 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         t_last = now;
     };
 
+    // MICROTORCH_LOG_WINDOWS=1: a "windows" event for each micro-step of an lm run, with each row's raw draw of
+    // the window generator, the offset taken from it and the corpus it was taken from (tests/test_symw_warmup.py).
+    // A test switch: off for every real run.
+    const bool log_windows = [] {
+        const char* v = std::getenv("MICROTORCH_LOG_WINDOWS");
+        return v && std::strcmp(v, "1") == 0;
+    }();
+
     // Train.
     bool stopped_early = false;
     const bool is_srd = attn_kind(s.attention) == parity::AttnKind::SRD;
@@ -2847,10 +2891,14 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         t_ms = json::object();
         live_mb = json::object();
         if (step_timing) device::pool_reset_peak();
-        // The anneal corpus has no held-out part: all of it is training text.
-        const bool annealing = !anneal_ids.empty() && step > static_cast<int>(s.anneal_from * s.steps);
-        const std::vector<int>& src = annealing ? anneal_ids : ids;
-        const size_t lim = (sft || grpo || po) ? 0 : annealing ? anneal_ids.size() - s.T - 1 : val_start - s.T - 1;
+        // The anneal and warm-up corpora have no held-out part: all of each is training text.
+        const bool warming = !warmup_ids.empty() && step <= s.warmup_steps;
+        const bool annealing = !warming && !anneal_ids.empty() && step > static_cast<int>(s.anneal_from * s.steps);
+        const std::vector<int>& src = warming ? warmup_ids : annealing ? anneal_ids : ids;
+        const size_t lim = (sft || grpo || po) ? 0
+                           : warming       ? warmup_ids.size() - s.T - 1
+                           : annealing     ? anneal_ids.size() - s.T - 1
+                                           : val_start - s.T - 1;
         // Mini-batching + accumulation: each of s.accum micro-steps stacks
         // s.batch sequences into ONE forward ([batch*T, d] rows; positions
         // and the attention mask restart per sequence — receipts in
@@ -3028,6 +3076,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             std::vector<uint8_t> mask;
             x.reserve(s.batch * s.T);
             y.reserve(s.batch * s.T);
+            json win_raw = json::array(), win_at = json::array();
             for (int b = 0; b < s.batch; ++b) {
                 if (sft) {
                     const size_t e = rng() % sd.val_start;
@@ -3036,10 +3085,18 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                     mask.insert(mask.end(), sd.m[e].begin(), sd.m[e].end());
                     continue;
                 }
-                const size_t at = rng() % lim;
+                const auto draw = rng();
+                const size_t at = draw % lim;
+                if (log_windows) {
+                    win_raw.push_back(static_cast<uint64_t>(draw));
+                    win_at.push_back(at);
+                }
                 x.insert(x.end(), src.begin() + at, src.begin() + at + s.T);
                 y.insert(y.end(), src.begin() + at + 1, src.begin() + at + s.T + 1);
             }
+            if (log_windows && !sft)
+                ev.emit({{"event", "windows"}, {"step", step}, {"micro", k}, {"raw", win_raw}, {"at", win_at},
+                         {"lim", lim}, {"src", warming ? "warmup" : annealing ? "anneal" : "main"}});
             mark("data");
             nn::MoEAux maux;
             // Declared in the order the unfused step always declared them, so
