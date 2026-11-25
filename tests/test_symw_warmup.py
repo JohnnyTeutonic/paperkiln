@@ -114,3 +114,86 @@ def test_warmup_up_to_the_last_main_step(tmp_path):
     assert r.returncode == 0, r.stderr[-800:]
     srcs = {e["step"]: e["src"] for e in evs(out, "windows")}
     assert [srcs[s] for s in (9, 10, 11)] == ["warmup", "main", "anneal"]
+
+
+@needs_bin
+@pytest.mark.parametrize("crash_at", [4, 8])
+def test_resume_inside_and_after_the_warmup(tmp_path, crash_at):
+    """Explore review point 8: a run ended at a published checkpoint inside the warm-up (step 4 of 6) or after it (step 8),
+    then restarted, reads from the resumed step on exactly the windows, corpora and draws of the uninterrupted run, through
+    the warm-up's end and the tail switch."""
+    setup(tmp_path, True)
+    warm = {"corpus": str(tmp_path / "warm.txt"), "steps": W}
+
+    def sp(out):
+        p = spec(tmp_path, out, warm, True)
+        s = json.loads(p.read_text())
+        s["train"]["checkpoint_every"] = 4
+        p.write_text(json.dumps(s))
+        return p
+
+    full, cut = tmp_path / "full", tmp_path / "cut"
+    e = {"MICROTORCH_CHECKPOINT_TXN": "1"}
+    r = subprocess.run([BIN, "run", str(sp(full))], env={**os.environ, "OMP_NUM_THREADS": "1", "MICROTORCH_LOG_WINDOWS": "1",
+                                                        "CUDA_VISIBLE_DEVICES": "", **e}, capture_output=True, text=True, timeout=300)
+    assert r.returncode == 0, r.stderr[-800:]
+    p = sp(cut)
+    env = {**os.environ, "OMP_NUM_THREADS": "1", "MICROTORCH_LOG_WINDOWS": "1", "CUDA_VISIBLE_DEVICES": "", **e}
+    r1 = subprocess.run([BIN, "run", str(p)], env={**env, "MICROTORCH_CKPT_CRASH": f"prune:{crash_at}"},
+                        capture_output=True, text=True, timeout=300)
+    assert r1.returncode != 0
+    r2 = subprocess.run([BIN, "run", str(p)], env=env, capture_output=True, text=True, timeout=300)
+    assert r2.returncode == 0, r2.stderr[-800:]
+    a = {(x["step"], x["micro"]): x for x in evs(full, "windows")}
+    b = {}
+    for x in evs(cut, "windows"):          # the restarted run's rows come last and win
+        b[(x["step"], x["micro"])] = x
+    resumed = sorted(k for k in b if k[0] > crash_at)
+    assert resumed and resumed[0][0] == crash_at + 1 and resumed[-1][0] == STEPS
+    for k in resumed:
+        assert (b[k]["raw"], b[k]["at"], b[k]["src"]) == (a[k]["raw"], a[k]["at"], a[k]["src"]), k
+
+
+def write_ids(path, n, seed, nv, lo):
+    import random
+    import struct
+    r = random.Random(seed)
+    with open(path, "wb") as f:
+        f.write(b"PKIDS001" + struct.pack("<IIQ", 2, nv, n))
+        f.write(struct.pack(f"<{n}H", *[r.randrange(lo, nv) for _ in range(n)]))
+
+
+@needs_bin
+def test_packed_ids_as_the_real_run_reads_them(tmp_path):
+    """GPT review blocking point 1: the real run reads packed .ids files (N.main.ids, N.tail.ids, symw.ids), not text. The
+    same claim on .ids inputs of three different lengths: identical draws, warm-up offsets from the warm-up's own limit,
+    and the run without the warm-up's windows from step W + 1 on, through the tail switch."""
+    setup(tmp_path, False)
+    vocab = ["<unk>"] + WORDS
+    for name, n, seed in (("main", 30000, 1), ("tail", 9000, 2), ("warm", 5000, 3)):
+        write_ids(tmp_path / f"{name}.ids", n, seed, len(vocab), 1)
+
+    def sp(out, warm):
+        p = spec(tmp_path, out, warm)
+        s = json.loads(p.read_text())
+        s["data"]["corpus"] = str(tmp_path / "main.ids")
+        s["data"]["anneal"]["corpus"] = str(tmp_path / "tail.ids")
+        p.write_text(json.dumps(s))
+        return p
+
+    a, b = tmp_path / "with", tmp_path / "without"
+    ra = run(sp(a, {"corpus": str(tmp_path / "warm.ids"), "steps": W}))
+    rb = run(sp(b, None))
+    assert ra.returncode == 0, ra.stderr[-800:]
+    assert rb.returncode == 0, rb.stderr[-800:]
+    wd = evs(a, "warmup_data")
+    assert len(wd) == 1 and wd[0]["tokens"] == 5000
+    warm_lim = 5000 - 32 - 1
+    for x, y in zip(evs(a, "windows"), evs(b, "windows")):
+        assert x["raw"] == y["raw"]
+        if x["step"] <= W:
+            assert x["src"] == "warmup" and x["at"] == [r % warm_lim for r in x["raw"]]
+        else:
+            assert (x["src"], x["at"], x["lim"]) == (y["src"], y["at"], y["lim"])
+    va, vb = evs(a, "eval"), evs(b, "eval")
+    assert [e.get("step") for e in va] == [e.get("step") for e in vb]
