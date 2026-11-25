@@ -46,7 +46,7 @@ def test_arm_differs_from_N_where_registered_only():
     got, ref = W.arm(), M.arm("N")
     assert set(got) == set(ref)
     for k in set(ref) | set(got):
-        if k in ("_comment", "_base2", "jobs", "store_stall_min", "store_no_progress_min"):
+        if k in ("_comment", "_base2", "jobs", "store_stall_min", "store_no_progress_min", "max_parallel_light"):
             continue
         assert got[k] == ref[k], k
     assert got["store_stall_min"] == 240 and got["store_no_progress_min"] == 420
@@ -54,7 +54,8 @@ def test_arm_differs_from_N_where_registered_only():
     g = _renamed(got)
     gj = {j["name"]: j for j in g["jobs"]}
     rj = {j["name"]: j for j in ref["jobs"]}
-    assert set(gj) == set(rj)
+    assert set(gj) == set(rj) | {"loss_guard", "diverge_10k"}
+    gj.pop("loss_guard"), gj.pop("diverge_10k")
     assert gj["pins"] == rj["pins"]
     gt, rt = gj["pt_base2_N"], rj["pt_base2_N"]
     gs, rs = gt.pop("spec"), rt.pop("spec")
@@ -77,7 +78,12 @@ def test_whole_file_against_N_by_path_in_order():
     got = _renamed(json.load(open(os.path.join(ROOT, "tools", "colab_chat", "w169_W169.json"))))
     ref = json.load(open(os.path.join(ROOT, "tools", "colab_chat", "base2_N.json")))
     names = [j["name"] for j in got["jobs"]]
-    assert names == [j["name"] for j in ref["jobs"]] and len(set(names)) == len(names)
+    assert names == [j["name"] for j in ref["jobs"]] + ["loss_guard", "diverge_10k"] and len(set(names)) == len(names)
+    extra = got["jobs"][-2:]
+    assert all(j["halt_on_failure"] and j["light"] and W.GUARD_SCRIPT in j["cmd"] for j in extra)
+    assert extra[1]["after"] == ["rung_W169_s10000".replace("W169", "N")]   # renamed back above
+    got["jobs"] = got["jobs"][:-2]
+    assert got.pop("max_parallel_light") == 3 and ref.pop("max_parallel_light") == 1
     allowed = {("_comment",), ("_base2",), ("store_stall_min",), ("store_no_progress_min",),
                ("jobs", "pt_base2_N", "spec", "arch", "custom"), ("jobs", "pt_base2_N", "spec", "train", "lr")}
     for name in names:
@@ -97,6 +103,41 @@ def test_whole_file_against_N_by_path_in_order():
             diffs.append(path)
     walk(got, ref, ())
     assert diffs and all(any(d[:len(p)] == p for p in allowed) for d in diffs), [d for d in diffs if not any(d[:len(p)] == p for p in allowed)]
+
+
+def test_embedded_spec_and_record():
+    a, n = W.arm(), M.arm("N")
+    t = next(j for j in a["jobs"] if j["name"] == "pt_base2_W169")
+    assert t["spec"] == W.spec()
+    rb, nb = a["_base2"], n["_base2"]
+    changed = {k for k in set(rb) | set(nb) if rb.get(k) != nb.get(k)}
+    assert changed == {"arm", "recipe_of", "seed", "shape", "params", "tokens_per_parameter"}, changed
+    assert rb["recipe_of"] == "N" and rb["seed"] == 1 and rb["shape"] == "W169" and rb["params"] == W.PARAMS
+
+
+def test_guard_loss_and_diverge(tmp_path):
+    import importlib.util
+    spec_ = importlib.util.spec_from_file_location("g", os.path.join(ROOT, "tools", "colab_chat", "w169_guard_vm.py"))
+    g = importlib.util.module_from_spec(spec_)
+    spec_.loader.exec_module(g)
+    chat = tmp_path / "chat"
+    (chat / "job").mkdir(parents=True)
+    ev = chat / "job" / "events.jsonl"
+    ev.write_text('{"event": "step", "step": 1, "loss": 9.1}\n{"event": "step", "step": 2, "loss": 8.7}\n')
+    (chat / "STATUS_job").write_text("FINISHED")
+    assert g.main(["loss", "--chat", str(chat), "--job", "job", "--out", str(tmp_path / "o1"), "--interval", "0"]) == 0
+    ev.write_text('{"event": "step", "step": 1, "loss": 9.1}\n{"event": "step", "step": 2, "loss": null}\n')
+    (chat / "STATUS_job").write_text("RUNNING")
+    assert g.main(["loss", "--chat", str(chat), "--job", "job", "--out", str(tmp_path / "o2"), "--interval", "0"]) == 1
+    assert json.load(open(tmp_path / "o2" / "guard.json"))["first"]["step"] == 2
+    # a partial last line is not read until it is complete
+    ev.write_text('{"event": "step", "step": 1, "loss": 9.1}\n{"event": "step", "step": 2, "lo')
+    assert g.scan(str(ev), 0)[0] == []
+    rung = tmp_path / "rung.json"
+    for fw, rc in ((3.70, 0), (g.N_FINEWEB_10K + g.MARGIN - 1e-9, 0), (g.N_FINEWEB_10K + g.MARGIN + 1e-6, 1), (None, 1)):
+        rung.write_text(json.dumps({"panels": {"fineweb": fw}}))
+        assert g.main(["diverge", "--rung", str(rung), "--out", str(tmp_path / "o3")]) == rc, fw
+    assert g.N_FINEWEB_10K == 3.750180445611477
 
 
 def test_rehearsal_runs_W169s_spec_on_Ns_inputs():

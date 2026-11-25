@@ -65,7 +65,7 @@
   }
  ],
  "max_parallel": 1,
- "max_parallel_light": 1,
+ "max_parallel_light": 3,
  "jobs": [
   {
    "name": "pins",
@@ -422,6 +422,48 @@
    ],
    "outputs": [
     "rung.json"
+   ]
+  },
+  {
+   "name": "loss_guard",
+   "light": true,
+   "after": "pins",
+   "halt_on_failure": true,
+   "cmd": [
+    "python3",
+    "tools/colab_chat/w169_guard_vm.py",
+    "loss",
+    "--chat",
+    "/content/chat",
+    "--job",
+    "pt_base2_W169",
+    "--out",
+    "{out}",
+    "--interval",
+    "30"
+   ],
+   "outputs": [
+    "guard.json"
+   ]
+  },
+  {
+   "name": "diverge_10k",
+   "light": true,
+   "after": [
+    "rung_W169_s10000"
+   ],
+   "halt_on_failure": true,
+   "cmd": [
+    "python3",
+    "tools/colab_chat/w169_guard_vm.py",
+    "diverge",
+    "--rung",
+    "/content/chat/rung_W169_s10000/rung.json",
+    "--out",
+    "{out}"
+   ],
+   "outputs": [
+    "guard.json"
    ]
   }
  ]

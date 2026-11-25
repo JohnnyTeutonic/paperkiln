@@ -73,6 +73,27 @@ def _rung(job, step, of=True, after=None):
     return j
 
 
+GUARD_SCRIPT = "tools/colab_chat/w169_guard_vm.py"
+DIVERGE_MARK = 10000
+
+
+def loss_guard(job):
+    """A light job beside training (registration section 4a): exit 1, and so a halt, at the first non-finite step loss."""
+    return {"name": "loss_guard", "light": True, "after": "pins", "halt_on_failure": True,
+            "cmd": ["python3", GUARD_SCRIPT, "loss", "--chat", "/content/chat", "--job", job, "--out", "{out}",
+                    "--interval", "30"],
+            "outputs": ["guard.json"]}
+
+
+def diverge_check():
+    """A light job after the step-10,000 rung (section 4a): exit 1, and so a halt, if its FineWeb panel is above N's own
+    step-10,000 panel by more than the margin."""
+    rung = f"rung_{NAME}_s{DIVERGE_MARK}"
+    return {"name": "diverge_10k", "light": True, "after": [rung], "halt_on_failure": True,
+            "cmd": ["python3", GUARD_SCRIPT, "diverge", "--rung", f"/content/chat/{rung}/rung.json", "--out", "{out}"],
+            "outputs": ["guard.json"]}
+
+
 def arm():
     ref = M.arm(RECIPE, store=STORE)
     job = f"pt_base2_{NAME}"
@@ -82,7 +103,9 @@ def arm():
     jobs = [M.pins_job(f"arm-{RECIPE}"), train]
     jobs += [_rung(job, m) for m in marks[:-1]]
     jobs += [_rung(job, marks[-1], of=False, after=[job])]
+    jobs += [loss_guard(job), diverge_check()]
     out = copy.deepcopy(ref)
+    out["max_parallel_light"] = 3   # the loss guard runs throughout; a rung and the divergence check beside it
     steps = train["spec"]["train"]["steps"]
     out["_comment"] = (f"Base 2, arm {NAME}: arm N's recipe at the 12 x 1024 shape ({PARAMS:,} parameters), peak rate {LR}. "
                        "Not admitted: the launch gate is two reviews and Jonathan's dated line.")
