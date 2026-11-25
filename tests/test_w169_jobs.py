@@ -72,6 +72,50 @@ def test_arm_differs_from_N_where_registered_only():
             assert a == b, name
 
 
+def test_whole_file_against_N_by_path_in_order():
+    """The generated file against N's file on disk, path by path, jobs in order: only the allowlisted paths differ."""
+    got = _renamed(json.load(open(os.path.join(ROOT, "tools", "colab_chat", "w169_W169.json"))))
+    ref = json.load(open(os.path.join(ROOT, "tools", "colab_chat", "base2_N.json")))
+    names = [j["name"] for j in got["jobs"]]
+    assert names == [j["name"] for j in ref["jobs"]] and len(set(names)) == len(names)
+    allowed = {("_comment",), ("_base2",), ("store_stall_min",), ("store_no_progress_min",),
+               ("jobs", "pt_base2_N", "spec", "arch", "custom"), ("jobs", "pt_base2_N", "spec", "train", "lr")}
+    for name in names:
+        if name.startswith("rung_"):
+            allowed |= {("jobs", name, "timeout_s"), ("jobs", name, "cmd", 3)}
+    diffs = []
+
+    def walk(a, b, path):
+        if isinstance(a, dict) and isinstance(b, dict):
+            for k in set(a) | set(b):
+                walk(a.get(k), b.get(k), path + (k,))
+        elif isinstance(a, list) and isinstance(b, list) and len(a) == len(b):
+            for i, (x, y) in enumerate(zip(a, b)):
+                key = x["name"] if isinstance(x, dict) and "name" in x and path == ("jobs",) else i
+                walk(x, y, path + (key,))
+        elif a != b:
+            diffs.append(path)
+    walk(got, ref, ())
+    assert diffs and all(any(d[:len(p)] == p for p in allowed) for d in diffs), [d for d in diffs if not any(d[:len(p)] == p for p in allowed)]
+
+
+def test_rehearsal_runs_W169s_spec_on_Ns_inputs():
+    r, a = W.rehearsal(), W.arm()
+    t = next(j for j in r["jobs"] if j["name"] == W.REH_JOB)
+    s, w = t["spec"], W.spec()
+    assert s["arch"] == w["arch"] and s["data"] == w["data"] and s["train"]["lr"] == w["train"]["lr"]
+    assert s["train"]["steps"] == 1000 and s["train"]["checkpoint_every"] == 250
+    assert t["pod_loss_drill_step"] == 250 and t["snapshot_steps"] == [750] and t["store_branch"] == "ckpt-W169reh"
+    assert r["store_inputs"] == a["store_inputs"]
+    assert r["store_release_grace_s"] == 600 and r["store_push_cap_gb"] == 40
+    rungs = [j for j in r["jobs"] if j["name"].startswith("rung_")]
+    assert [j["name"] for j in rungs] == ["rung_W169reh_s750", "rung_W169reh_s1000"]
+    assert rungs[0]["timeout_s"] == W.RUNG_TIMEOUT_S and rungs[0].get("exclusive")
+    assert rungs[1]["cmd"][:4] == ["timeout", "-k", "60", str(W.RUNG_TIMEOUT_S)] and "--export-gguf" in rungs[1]["cmd"]
+    assert all(W.SHAPE_FILE in j["cmd"] for j in rungs)
+    assert os.path.exists(os.path.join(ROOT, "tools", "colab_chat", "w169_watch.py"))
+
+
 def test_marks_positions_and_record():
     a = W.arm()
     r = a["_base2"]

@@ -95,8 +95,63 @@ def arm():
     return out
 
 
+# The rehearsal (registration section 7): W169's own spec, N's real corpus and panels, on one L4, before the launch. It
+# exercises what W169's shape has not run: 2.0 GB generations pushed, a forced session loss and a restore of one, the
+# tail switch, a rung that holds the resident trainer, and the end rung with its GGUF export. A watcher records the
+# trainer against the courier and the machine's RAM, GPU memory and disk every 30 s.
+REH_STEPS = 1000
+REH_EVERY = 250            # a save every 250 steps: about 6.5 minutes at 1.55 s a step
+REH_DRILL = 250            # the forced stop once the store holds the generation of step 250
+REH_MARK = 750             # a rung that holds training, as the arm's rungs do
+REH_WARMUP = 100
+REH_PUSH_CAP_GB = 40       # four 2.0 GB generations, the mark, and what is pushed between two releases, with room
+REH_RELEASE_EVERY_MIN = 20
+REH_RELEASE_GRACE_S = 600
+REH_JOB = "pt_w169_reh"
+REH_BRANCH = "ckpt-W169reh"
+REH_WATCH_LIMIT_S = 4 * 3600
+
+
+def rehearsal():
+    s = spec()
+    s["name"] = "base2_W169_rehearsal"
+    s["out_dir"] = f"/content/chat/{REH_JOB}"
+    s["train"].update(steps=REH_STEPS, checkpoint_every=REH_EVERY, eval_every=REH_EVERY)
+    s["train"]["lr_schedule"]["warmup_steps"] = REH_WARMUP
+    panels = [(p, f"{M.DATA}/panel_{p}.ids") for p in M.PANELS]
+    mark = M.rung(REH_JOB, REH_MARK, "W169reh", SHAPE_FILE, panels, seed=1)
+    mark["timeout_s"] = RUNG_TIMEOUT_S
+    end = M.rung(REH_JOB, REH_STEPS, "W169reh", SHAPE_FILE, panels, of=False, after=[REH_JOB], seed=1)
+    end["cmd"][3] = str(RUNG_TIMEOUT_S)
+    ref = M.arm(RECIPE)
+    return {"_comment": "W169's rehearsal (base2/w169/REGISTRATION.md section 7): its spec for 1,000 steps on N's corpus, "
+                        "a forced stop after the save of step 250, a held rung at 750, the end rung with its export.",
+            "_base2": {"rehearsal": "W169", "steps": REH_STEPS, "checkpoint_every": REH_EVERY,
+                       "pod_loss_drill_step": REH_DRILL, "mark": REH_MARK, "rung_holds_training": True,
+                       "last_main_step": int(M.TAIL_FROM * REH_STEPS), "first_tail_step": int(M.TAIL_FROM * REH_STEPS) + 1,
+                       "params": PARAMS, "store_release_grace_s": REH_RELEASE_GRACE_S},
+            "store_push_cap_gb": REH_PUSH_CAP_GB,
+            "store_release_every_min": REH_RELEASE_EVERY_MIN,
+            "store_release_grace_s": REH_RELEASE_GRACE_S,
+            **{k: ref[k] for k in ("store_stall_halt", "store_unverified_halt_min", "store_no_progress_launches") if k in ref},
+            **STORE,
+            "store_inputs": ref["store_inputs"],
+            "max_parallel": 1, "max_parallel_light": 2,
+            "jobs": [
+                M.pins_job(f"arm-{RECIPE}"),
+                {"name": "watch", "light": True, "after": "pins",
+                 "cmd": ["timeout", "-k", "30", str(REH_WATCH_LIMIT_S + 300), "python3", "tools/colab_chat/w169_watch.py",
+                         "--chat", "/content/chat", "--job", REH_JOB, "--out", "{out}", "--interval", "30",
+                         "--limit-s", str(REH_WATCH_LIMIT_S)],
+                 "outputs": ["watch_summary.json", "watch.jsonl"]},
+                {"name": REH_JOB, "model_name": s["name"], "store_branch": REH_BRANCH, "after": ["pins"],
+                 "snapshot_steps": [REH_MARK], "pod_loss_drill_step": REH_DRILL, "halt_on_failure": True, "env": M.TXN,
+                 "spec": s},
+                mark, end]}
+
+
 def files():
-    return {f"w169_{NAME}.json": arm(), "base2_rung_W169.json": rung_shape()}
+    return {f"w169_{NAME}.json": arm(), "base2_rung_W169.json": rung_shape(), "w169_rehearsal.json": rehearsal()}
 
 
 def main(argv=None):
