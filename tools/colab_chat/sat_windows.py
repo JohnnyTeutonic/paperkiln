@@ -27,6 +27,7 @@ import sys
 import numpy as np
 
 NONE, USER, REPLY = 0, 1, 2
+CHUNK = 1 << 26
 
 
 def mt19937_raw(seed, n):
@@ -40,9 +41,15 @@ def insertion_runs(raw, k, eot, user, assistant):
     """(at, cum): the raw positions before which ids are inserted, sorted, and the ids inserted up to and including
     each, as nn::insert_state_ids inserts them (k state ids after an <|endoftext|> that closes a reply; an
     <|endoftext|> and k state ids before a <|user|> that arrives while a reply is open)."""
-    raw = np.asarray(raw)
-    idx = np.flatnonzero((raw == eot) | (raw == user) | (raw == assistant))
-    toks = raw[idx]
+    raw = raw if isinstance(raw, np.ndarray) else np.asarray(raw)
+    idx_parts, tok_parts = [], []
+    for c0 in range(0, len(raw), CHUNK):           # in chunks, so a memory-mapped corpus of billions of ids fits
+        c = np.asarray(raw[c0:c0 + CHUNK])
+        i = np.flatnonzero((c == eot) | (c == user) | (c == assistant))
+        idx_parts.append(i + c0)
+        tok_parts.append(c[i])
+    idx = np.concatenate(idx_parts) if idx_parts else np.zeros(0, np.int64)
+    toks = np.concatenate(tok_parts) if tok_parts else np.zeros(0, np.int64)
     phase = NONE
     runs = {}
     for i, t in zip(idx.tolist(), toks.tolist()):
@@ -117,15 +124,15 @@ def replay(n_raw, imap, T, seed, batch, accum, cut_step, twin_every=0):
 
 
 def read_ids(path):
-    """A PKIDS001 file's ids (as the trainer's read_corpus reads .ids)."""
+    """A PKIDS001 file's ids (as the trainer's read_corpus reads .ids), memory-mapped read-only."""
     with open(path, "rb") as f:
         head = f.read(24)
-        if head[:8] != b"PKIDS001":
-            raise ValueError(f"{path}: not a PKIDS001 id file")
-        width = int.from_bytes(head[8:12], "little")
-        count = int.from_bytes(head[16:24], "little")
-        dt = {2: "<u2", 4: "<u4"}[width]
-        return np.fromfile(f, dtype=dt, count=count)
+    if head[:8] != b"PKIDS001":
+        raise ValueError(f"{path}: not a PKIDS001 id file")
+    width = int.from_bytes(head[8:12], "little")
+    count = int.from_bytes(head[16:24], "little")
+    dt = {2: "<u2", 4: "<u4"}[width]
+    return np.memmap(path, dtype=dt, mode="r", offset=24, shape=(count,))
 
 
 def main(argv=None):

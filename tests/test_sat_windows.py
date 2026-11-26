@@ -24,9 +24,12 @@ def test_numpy_mt19937_is_std_mt19937():
     assert W.mt19937_raw(123 + 1000003 * 1, 3).dtype == np.uint64
 
 
-@pytest.mark.parametrize("seed", [0, 1, 2])
-def test_insertion_runs_match_state_tokens(seed):
+@pytest.mark.parametrize("seed,chunk", [(0, 1 << 26), (1, 37), (2, 1)])
+def test_insertion_runs_match_state_tokens(seed, chunk, monkeypatch, tmp_path):
+    monkeypatch.setattr(W, "CHUNK", chunk)                  # the chunked scan, at chunk edges too
     raw = S.main_raw(400, seed)
+    S.write_ids(tmp_path / "r.ids", raw)
+    assert W.read_ids(tmp_path / "r.ids").tolist() == raw
     post, pos = S.post_positions(raw)
     m = W.insert_map(np.array(raw), S.K, S.EOT, S.USER, S.ASST)
     assert m.n_post == len(post)
