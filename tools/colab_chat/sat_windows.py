@@ -162,15 +162,52 @@ def window_targets(index, imap, at, T):
     return role, ptr, dropped
 
 
-def expected_counts(index, imap, windows, T):
+def window_nearest(index, imap, at, T):
+    """(nearest-right, nearest-wrong) among the window's kept pointer targets (SATW): a target is nearest-right when
+    the nearest earlier mention-bit position in the window (the recency rule, row-local as the trainer and the label
+    build's receipt compute it) is its gold. Mentions of every span overlapping the window count."""
+    lo, end = imap.raw_from(at), imap.raw_from(at + T)
+    if lo >= end:
+        return 0, 0
+    spans = list(index.overlapping(lo, end))
+    men = []
+    for s in spans:
+        off, codes = s["raw_offset"], np.frombuffer(bytes(s["codes"]), np.uint8)
+        a, b = max(lo, off) - off, min(end, off + len(codes)) - off
+        men.append(off + a + np.flatnonzero(codes[a:b] & 16))
+    men = np.concatenate(men) if men else np.zeros(0, np.int64)
+    right = wrong = 0
+    for s in spans:
+        off = s["raw_offset"]
+        for pos, back in s["pointers"]:
+            rt, rg = off + pos, off + pos - back
+            if not (lo <= rt < end) or rg < lo:
+                continue                                   # outside the window, or dropped
+            i = int(np.searchsorted(men, rt)) - 1          # the nearest mention before the target
+            if i >= 0 and int(men[i]) == rg:
+                right += 1
+            else:
+                wrong += 1
+    return right, wrong
+
+
+def expected_counts(index, imap, windows, T, nearest=False):
     """The replay's windows' target counts summed: the expectation for the trainer's natural_role_targets,
-    natural_pointer_targets and natural_pointers_dropped over steps 1 .. cut_step - 1 (REGISTRATION section 10, V8)."""
+    natural_pointer_targets and natural_pointers_dropped over steps 1 .. cut_step - 1 (REGISTRATION section 10, V8);
+    with nearest, also natural_pointer_nearest_right and natural_pointer_nearest_wrong (SATW)."""
     tot = [0, 0, 0]
+    nr = [0, 0]
     for w in windows:
         for i, v in enumerate(window_targets(index, imap, w["at"], T)):
             tot[i] += v
-    return {"natural_role_targets": tot[0], "natural_pointer_targets": tot[1], "natural_pointers_dropped": tot[2],
-            "natural_rows": len(windows)}
+        if nearest:
+            for i, v in enumerate(window_nearest(index, imap, w["at"], T)):
+                nr[i] += v
+    out = {"natural_role_targets": tot[0], "natural_pointer_targets": tot[1], "natural_pointers_dropped": tot[2],
+           "natural_rows": len(windows)}
+    if nearest:
+        out.update(natural_pointer_nearest_right=nr[0], natural_pointer_nearest_wrong=nr[1])
+    return out
 
 
 def read_ids(path):

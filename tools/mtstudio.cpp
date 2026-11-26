@@ -257,6 +257,12 @@ struct Spec {
         int role_classes = 8, pointer_dim = 64;
         std::string twin_corpus, twin_labels;
         int twin_every = 0;  // 0: no twins
+        // SATW (train.symbol_targets.recency_weight.nearest_right, 26 Nov 2026): the weight of a natural pointer target
+        // whose nearest earlier mention-bit candidate in its row (the recency rule, as the eval computes it) is its
+        // gold; every other pointer target, twin ones included, weighs 1. The pointer CE is the weighted mean over the
+        // micro-batch's pointer targets (natural and twin pooled, as SAT pools them). 1.0 is SAT exactly (the
+        // unweighted op runs).
+        double nearest_right_weight = 1.0;
     } sat;
     int gradmap_every = 5;   // per-layer grad-norm event cadence
     size_t es_patience = 0;  // early stopping (0 = off)
@@ -892,8 +898,9 @@ Spec parse_spec(const std::string& path) {
     if (tr.contains("symbol_targets")) {
         const json st = tr["symbol_targets"];
         if (!st.is_object()) throw std::runtime_error("train.symbol_targets must be an object");
-        static const std::set<std::string> known = {"labels",       "eval_labels", "w0",    "half_life",
-                                                    "cut_step",     "role_classes", "pointer_dim", "twins"};
+        static const std::set<std::string> known = {"labels",   "eval_labels",  "w0",          "half_life",
+                                                    "cut_step", "role_classes", "pointer_dim", "twins",
+                                                    "recency_weight"};
         for (auto it = st.begin(); it != st.end(); ++it)
             if (!known.count(it.key())) throw std::runtime_error("train.symbol_targets: unknown key " + it.key());
         auto& t = s.sat;
@@ -905,6 +912,15 @@ Spec parse_spec(const std::string& path) {
         t.cut_step = st.value("cut_step", 0);
         t.role_classes = st.value("role_classes", t.role_classes);
         t.pointer_dim = st.value("pointer_dim", t.pointer_dim);
+        if (st.contains("recency_weight")) {
+            // SATW: natural pointer targets whose nearest earlier mention is the gold weighted W (0 < W <= 1).
+            const json rw = st["recency_weight"];
+            if (!rw.is_object() || rw.size() != 1 || !rw.contains("nearest_right") || !rw["nearest_right"].is_number())
+                throw std::runtime_error("train.symbol_targets.recency_weight must be {\"nearest_right\": W}");
+            t.nearest_right_weight = rw["nearest_right"].get<double>();
+            if (!(t.nearest_right_weight > 0.0 && t.nearest_right_weight <= 1.0))
+                throw std::runtime_error("train.symbol_targets.recency_weight.nearest_right must be in (0, 1]");
+        }
         if (s.objective != "lm") throw std::runtime_error("train.symbol_targets is for objective lm only");
         if (s.family != "llama") throw std::runtime_error("train.symbol_targets is wired for the llama family only");
         if (s.fused_head)
@@ -1215,6 +1231,7 @@ InsertMap insert_map(const std::vector<int>& raw, const std::vector<int>& out) {
 // A micro-batch's targets, by row-major index b * T + i into its rows (input position i of row b).
 struct SatPtr {
     int q, gold;
+    int twin = 0;  // 1 when the row was read from the twin corpus
 };
 struct SatBatch {
     std::vector<int> role;         // the role where role_m is 1, else 0
@@ -1304,7 +1321,7 @@ void sat_scramble(SatBatch& sb, int T) {
         const int row0 = p.q / T * T;
         for (int j = p.q - 1; j >= row0; --j)
             if (sb.mention[static_cast<size_t>(j)] && j != p.gold) {
-                moved.push_back({p.q, j});
+                moved.push_back({p.q, j, p.twin});
                 break;
             }
     }
@@ -1337,13 +1354,34 @@ SatHeads sat_heads_init(size_t d, int classes, int pdim, unsigned seed) {
 struct SatAux {
     Var role, ptr;
     size_t n_role = 0, n_ptr = 0;
+    // SATW: pointer targets by source and by the recency rule ([0] natural, [1] twin), and the weights they carried.
+    size_t nearest_right[2] = {0, 0}, nearest_wrong[2] = {0, 0};
+    double weight_sum = 0.0, natural_weight_sum = 0.0;
 };
+
+// The recency rule on a target (the trainer's eval and the label build's receipt alike): the nearest earlier
+// mention-bit candidate in the target's row is its gold.
+bool sat_nearest_right(const SatBatch& sb, const SatPtr& p, int T) {
+    for (int j = p.q - 1; j >= p.q / T * T; --j)
+        if (sb.mention[static_cast<size_t>(j)]) return j == p.gold;
+    return false;
+}
 
 // The auxiliary terms on the final hidden states hid [rows, d]: the role CE, the mean over the micro-batch's
 // labelled positions; the pointer CE, scores q_i . k_j / sqrt(pointer_dim) over the same row's earlier mentions
 // (everything else at -1e9), the mean over its pointer targets. A term with no targets is absent (0).
-SatAux sat_aux(const SatHeads& h, const Var& hid, const SatBatch& sb, int T, int pdim) {
+// SATW: with nearest_right_weight W != 1, the pointer CE is the weighted mean sum(w_i CE_i) / sum(w_i) over the same
+// targets, natural and twin pooled as above, w_i = W for a natural target the recency rule gets right and 1 for every
+// other; W == 1 runs SAT's unweighted op unchanged.
+SatAux sat_aux(const SatHeads& h, const Var& hid, const SatBatch& sb, int T, int pdim, double nearest_right_weight = 1.0) {
     SatAux a;
+    for (const auto& p : sb.ptr) {
+        const bool right = sat_nearest_right(sb, p, T);
+        const double w = (right && !p.twin) ? nearest_right_weight : 1.0;
+        (right ? a.nearest_right : a.nearest_wrong)[p.twin ? 1 : 0] += 1;
+        a.weight_sum += w;
+        if (!p.twin) a.natural_weight_sum += w;
+    }
     for (uint8_t m : sb.role_m) a.n_role += m;
     if (a.n_role) a.role = ops::cross_entropy_masked(ops::matmul(hid, h.role), sb.role, sb.role_m);
     a.n_ptr = sb.ptr.size();
@@ -1361,7 +1399,22 @@ SatAux sat_aux(const SatHeads& h, const Var& hid, const SatBatch& sb, int T, int
         const Var q = ops::matmul(ops::gather_rows(hid, qi), h.wq);
         const Var k = ops::matmul(hid, h.wk);
         const Var sc = ops::scale(ops::matmul(q, ops::transpose(k)), 1.0f / std::sqrt(static_cast<float>(pdim)));
-        a.ptr = ops::cross_entropy(ops::add(sc, make_var(std::move(mask))), gold);
+        const Var scores = ops::add(sc, make_var(std::move(mask)));
+        if (nearest_right_weight == 1.0) {
+            a.ptr = ops::cross_entropy(scores, gold);
+        } else {
+            // CE_i = logsumexp_i - score_i(gold_i); then sum_i (w_i / sum w) CE_i as one [1, P] x [P, 1] product.
+            std::vector<int> rows(a.n_ptr);
+            for (size_t t = 0; t < a.n_ptr; ++t) rows[t] = static_cast<int>(t);
+            const Var ce = ops::sub(ops::logsumexp_row(scores), ops::gather_elems(scores, rows, gold, 1));
+            Matrix wn(a.n_ptr, 1);
+            for (size_t t = 0; t < a.n_ptr; ++t) {
+                const auto& p = sb.ptr[t];
+                const double w = (!p.twin && sat_nearest_right(sb, p, T)) ? nearest_right_weight : 1.0;
+                wn(t, 0) = static_cast<float>(w / a.weight_sum);
+            }
+            a.ptr = ops::matmul(ops::transpose(ce), make_var(std::move(wn)));
+        }
     }
     return a;
 }
@@ -1371,6 +1424,9 @@ SatAux sat_aux(const SatHeads& h, const Var& hid, const SatBatch& sb, int T, int
 // recency rule (the nearest earlier candidate) on the same targets.
 struct SatEval {
     size_t n_role = 0, role_right = 0, role_o = 0, n_ptr = 0, ptr_right = 0, recency_right = 0, dropped = 0;
+    // SATW: the pointer targets split by the recency rule, [0] nearest-wrong and [1] nearest-right: how many, the
+    // pointer head's right answers and the recency rule's on each.
+    size_t split_n[2] = {0, 0}, split_ptr_right[2] = {0, 0}, split_recency_right[2] = {0, 0};
 };
 
 void sat_eval_window(const SatHeads& h, const Var& hid, const SatBatch& sb, SatEval& e) {
@@ -1407,6 +1463,10 @@ void sat_eval_window(const SatHeads& h, const Var& hid, const SatBatch& sb, SatE
         ++e.n_ptr;
         e.ptr_right += best == sb.ptr[t].gold;
         e.recency_right += recent == sb.ptr[t].gold;
+        const int nr = recent == sb.ptr[t].gold ? 1 : 0;  // the window is one row: the recency rule is row-local
+        ++e.split_n[nr];
+        e.split_ptr_right[nr] += best == sb.ptr[t].gold;
+        e.split_recency_right[nr] += recent == sb.ptr[t].gold;
     }
 }
 
@@ -2898,6 +2958,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                       {"cut_step", s.sat.cut_step},
                       {"role_classes", s.sat.role_classes},
                       {"pointer_dim", s.sat.pointer_dim},
+                      {"nearest_right_weight", s.sat.nearest_right_weight},
                       {"labels", stats(sat_main)}};
             if (!s.sat.eval_labels.empty()) e["eval_labels"] = stats(sat_eval);
             if (s.sat.twin_every) {
@@ -3459,6 +3520,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             for (size_t i = base; i < base + s.T; ++i) nr += sb->role_m[i];
             sb->role_by[twin] += nr;
             sb->ptr_by[twin] += sb->ptr.size() - p0;
+            for (size_t i = p0; i < sb->ptr.size(); ++i) sb->ptr[i].twin = twin ? 1 : 0;
             sb->dropped_by[twin] += sb->dropped - d0;
         }
         if (wl) {
@@ -3562,7 +3624,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                     if (variant == "A") ce["targets_by_source"] = by_source;
                     if (variant == "B") ce["moved_by_source"] = by_source;
                     if (variant != "plain") {
-                        const SatAux aux = sat_aux(sat_h, hid, sb, static_cast<int>(s.T), s.sat.pointer_dim);
+                        const SatAux aux = sat_aux(sat_h, hid, sb, static_cast<int>(s.T), s.sat.pointer_dim, s.sat.nearest_right_weight);
                         ce["role_n"] = aux.n_role;
                         ce["ptr_n"] = aux.n_ptr;
                         const int vi = variant == "A" ? 0 : variant == "B" ? 1 : -1;
@@ -3667,6 +3729,8 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         double sat_role_sum = 0.0, sat_ptr_sum = 0.0;
         size_t sat_role_n = 0, sat_ptr_n = 0, sat_dropped = 0, twin_rows = 0;
         size_t st_role[2] = {0, 0}, st_ptr[2] = {0, 0}, st_drop[2] = {0, 0};  // this step's, [natural, twin]
+        size_t st_nr[2] = {0, 0}, st_nw[2] = {0, 0};  // SATW: pointer targets the recency rule gets right / wrong
+        double st_wsum = 0.0, st_nat_wsum = 0.0;      // SATW: the pointer weights summed (all; natural)
         if (sat_step) sat_opt->zero_grad();
         // The anneal corpus has no held-out part: all of it is training text.
         const bool annealing = !anneal_ids.empty() && step > static_cast<int>(s.anneal_from * s.steps);
@@ -3937,7 +4001,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             }
             if (sat_step) {
                 // total = task + w(step) * (role + pointer); a term with no targets in the micro-batch is 0.
-                const SatAux aux = sat_aux(sat_h, sat_hid, sb, static_cast<int>(s.T), s.sat.pointer_dim);
+                const SatAux aux = sat_aux(sat_h, sat_hid, sb, static_cast<int>(s.T), s.sat.pointer_dim, s.sat.nearest_right_weight);
                 Var a;
                 if (aux.n_role) a = aux.role;
                 if (aux.n_ptr) a = a ? ops::add(a, aux.ptr) : aux.ptr;
@@ -3951,7 +4015,11 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                     st_role[i] += sb.role_by[i];
                     st_ptr[i] += sb.ptr_by[i];
                     st_drop[i] += sb.dropped_by[i];
+                    st_nr[i] += aux.nearest_right[i];
+                    st_nw[i] += aux.nearest_wrong[i];
                 }
+                st_wsum += aux.weight_sum;
+                st_nat_wsum += aux.natural_weight_sum;
             }
             mark("loss");
             backward(ops::scale(loss, 1.0f / static_cast<float>(s.accum)));
@@ -4047,6 +4115,14 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                        {"natural_positions_total", sat_cnt.rows[0] * s.T},
                        {"twin_positions_total", sat_cnt.rows[1] * s.T},
                        {"twin_rows_total", sat_cnt.rows[1]}};
+            // SATW: the recency rule's split of the pointer targets, and the weights the pointer loss summed (with
+            // W = 1 every weight is 1, so the sums are the target counts).
+            st["natural_pointer_nearest_right"] = st_nr[0];
+            st["natural_pointer_nearest_wrong"] = st_nw[0];
+            st["twin_pointer_nearest_right"] = st_nr[1];
+            st["twin_pointer_nearest_wrong"] = st_nw[1];
+            st["pointer_weight_sum"] = st_wsum;
+            st["natural_pointer_weight_sum"] = st_nat_wsum;
             if (sat_step) st["heads_grad_norm"] = sat_norm;
             if (sat_role_n) st["role_loss"] = sat_role_sum / static_cast<double>(sat_role_n);
             if (sat_ptr_n) st["pointer_loss"] = sat_ptr_sum / static_cast<double>(sat_ptr_n);
@@ -4262,7 +4338,13 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                          {"windows", sat_eval.off.size()}, {"role_targets", se.n_role},
                          {"role_acc", frac(se.role_right, se.n_role)}, {"majority_acc", frac(se.role_o, se.n_role)},
                          {"pointer_targets", se.n_ptr}, {"pointer_acc", frac(se.ptr_right, se.n_ptr)},
-                         {"recency_acc", frac(se.recency_right, se.n_ptr)}, {"pointer_targets_dropped", se.dropped}});
+                         {"recency_acc", frac(se.recency_right, se.n_ptr)}, {"pointer_targets_dropped", se.dropped},
+                         // SATW: the same accuracies on the targets the recency rule gets right and gets wrong.
+                         {"nearest_right_targets", se.split_n[1]}, {"nearest_wrong_targets", se.split_n[0]},
+                         {"pointer_acc_nearest_right", frac(se.split_ptr_right[1], se.split_n[1])},
+                         {"pointer_acc_nearest_wrong", frac(se.split_ptr_right[0], se.split_n[0])},
+                         {"recency_acc_nearest_right", frac(se.split_recency_right[1], se.split_n[1])},
+                         {"recency_acc_nearest_wrong", frac(se.split_recency_right[0], se.split_n[0])}});
             }
             if (s.es_patience > 0) {
                 if (vl < best_val - s.es_min_delta) {
