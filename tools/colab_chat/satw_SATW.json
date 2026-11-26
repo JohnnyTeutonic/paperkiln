@@ -1,5 +1,5 @@
 {
- "_comment": "SATW: SAT with train.symbol_targets.recency_weight (natural pointer targets the recency rule gets right weigh 0.307 in the pointer loss); nothing else is changed. Not admitted: the launch gate is two reviews and the lead's ruling.",
+ "_comment": "SATW: SAT with train.symbol_targets.recency_weight (natural pointer targets the recency rule gets right weigh 0.3077 in the pointer loss); nothing else is changed. Not admitted: the launch gate is two reviews and the lead's ruling.",
  "_base2": {
   "arm": "SATW",
   "ladder": true,
@@ -48,7 +48,7 @@
    "hashes_are_placeholders": false,
    "check_windows": 8,
    "recency_weight": {
-    "nearest_right": 0.307
+    "nearest_right": 0.3077
    }
   }
  },
@@ -164,7 +164,7 @@
     "--windows",
     "8",
     "--spec-json",
-    "{\"arch\": {\"custom\": {\"d\": 512, \"d_ff\": 1536, \"heads\": 8, \"layers\": 18}, \"preset\": \"llama-tiny\", \"rope_heads\": \"all\", \"state_tokens\": {\"k\": 4, \"mask\": \"causal\"}}, \"data\": {\"T\": 1024, \"anneal\": {\"corpus\": \"/content/chat/data/N.tail.ids\", \"from_fraction\": 0.85}, \"corpus\": \"/content/chat/data/N.main.ids\", \"max_tokens\": 0, \"vocab\": \"/content/chat/upload/vocab_llama3_bpe.gguf\", \"vocab_cap\": 16384}, \"export\": {\"formats\": [\"safetensors\", \"gguf\"]}, \"name\": \"base2_SATW_check\", \"out_dir\": \"/content/chat/pt_base2_SATW\", \"train\": {\"accum\": 2, \"attention_kernel\": \"flash\", \"batch\": 8, \"checkpoint_every\": 500, \"clip\": 1.0, \"eval_every\": 1000, \"eval_windows\": 32, \"gradmap_every\": 0, \"lr\": 0.0005, \"lr_schedule\": {\"decay\": \"cosine\", \"min_lr_frac\": 0.1, \"warmup_steps\": 4000}, \"optimizer\": \"adamw\", \"precision\": \"bf16\", \"seed\": 1, \"steps\": 60000, \"symbol_targets\": {\"cut_step\": 13288, \"eval_labels\": \"/content/chat/data/sat_eval.labels\", \"half_life\": 2000, \"labels\": \"/content/chat/data/sat.labels\", \"pointer_dim\": 64, \"recency_weight\": {\"nearest_right\": 0.307}, \"role_classes\": 8, \"twins\": {\"corpus\": \"/content/chat/data/sat_twins.ids\", \"every\": 10, \"labels\": \"/content/chat/data/sat_twins.labels\"}, \"w0\": 1.0}}}"
+    "{\"arch\": {\"custom\": {\"d\": 512, \"d_ff\": 1536, \"heads\": 8, \"layers\": 18}, \"preset\": \"llama-tiny\", \"rope_heads\": \"all\", \"state_tokens\": {\"k\": 4, \"mask\": \"causal\"}}, \"data\": {\"T\": 1024, \"anneal\": {\"corpus\": \"/content/chat/data/N.tail.ids\", \"from_fraction\": 0.85}, \"corpus\": \"/content/chat/data/N.main.ids\", \"max_tokens\": 0, \"vocab\": \"/content/chat/upload/vocab_llama3_bpe.gguf\", \"vocab_cap\": 16384}, \"export\": {\"formats\": [\"safetensors\", \"gguf\"]}, \"name\": \"base2_SATW_check\", \"out_dir\": \"/content/chat/pt_base2_SATW\", \"train\": {\"accum\": 2, \"attention_kernel\": \"flash\", \"batch\": 8, \"checkpoint_every\": 500, \"clip\": 1.0, \"eval_every\": 1000, \"eval_windows\": 32, \"gradmap_every\": 0, \"lr\": 0.0005, \"lr_schedule\": {\"decay\": \"cosine\", \"min_lr_frac\": 0.1, \"warmup_steps\": 4000}, \"optimizer\": \"adamw\", \"precision\": \"bf16\", \"seed\": 1, \"steps\": 60000, \"symbol_targets\": {\"cut_step\": 13288, \"eval_labels\": \"/content/chat/data/sat_eval.labels\", \"half_life\": 2000, \"labels\": \"/content/chat/data/sat.labels\", \"pointer_dim\": 64, \"recency_weight\": {\"nearest_right\": 0.3077}, \"role_classes\": 8, \"twins\": {\"corpus\": \"/content/chat/data/sat_twins.ids\", \"every\": 10, \"labels\": \"/content/chat/data/sat_twins.labels\"}, \"w0\": 1.0}}}"
    ],
    "outputs": [
     "sat_check.json"
@@ -248,7 +248,7 @@
        "every": 10
       },
       "recency_weight": {
-       "nearest_right": 0.307
+       "nearest_right": 0.3077
       }
      }
     },

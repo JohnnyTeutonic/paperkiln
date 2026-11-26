@@ -27,7 +27,7 @@ import test_sat_targets as S  # noqa: E402
 
 needs_bin = S.needs_bin
 SAT_BIN = os.environ.get("MTSTUDIO_SAT_BIN")
-WEIGHT = 0.307
+WEIGHT = 0.3077  # the registered W (make_satw.RECENCY_WEIGHT)
 NEW_STEP_FIELDS = ("natural_pointer_nearest_right", "natural_pointer_nearest_wrong", "twin_pointer_nearest_right",
                    "twin_pointer_nearest_wrong", "pointer_weight_sum", "natural_pointer_weight_sum")
 NEW_EVAL_FIELDS = ("nearest_right_targets", "nearest_wrong_targets", "pointer_acc_nearest_right",

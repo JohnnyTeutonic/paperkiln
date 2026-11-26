@@ -14,9 +14,9 @@ windows, marks, panels and the store's switches. The names are SATW's (pt_base2_
 The release turn is 40 minutes (the ladder's slot 3): on the store's 60-minute grid SAT releases at 20 (as SYMW) and
 W169 at 0, so SATW shares a turn with neither.
 
-RECENCY_WEIGHT is a placeholder until the registration fixes W: 0.307 is about the equal-mass weight, the share of
-natural pointer targets the recency rule gets wrong over the share it gets right (the label build's receipt,
-met_by_windows: 2,982,760 / 9,692,780 = 0.3077 over the replayed windows).
+RECENCY_WEIGHT is the registration's W, 0.3077: the equal-mass weight, the natural pointer targets the recency rule
+gets wrong over those it gets right in the replayed windows (the label build's receipt, met_by_windows:
+2,982,760 / 9,692,780 = 0.30773), so nearest-right and nearest-wrong targets carry about equal total weight.
 """
 import copy
 import json
@@ -33,8 +33,8 @@ import make_sat as S  # noqa: E402  (SAT's builder, unchanged)
 NAME = "SATW"
 OFFSET_MIN = 40
 OUT_FILE = "satw_SATW.json"
-# ---- the weight of a natural nearest-right pointer target: to be fixed by the registration. ----
-RECENCY_WEIGHT = 0.307
+# ---- the weight of a natural nearest-right pointer target, as the registration fixes it. ----
+RECENCY_WEIGHT = 0.3077
 # --------------------------------------------------------------------------------------------------
 
 
