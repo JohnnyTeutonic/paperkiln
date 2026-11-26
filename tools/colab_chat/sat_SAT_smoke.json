@@ -1,5 +1,5 @@
 {
- "_comment": "SAT's CUDA smoke: SAT's spec and inputs, 300 steps, cut at 200, eval and checkpoint every 50, a forced session loss once the store holds step 100, the implementation check first, then the reference, comparator and identity runs on the same VM (sat_smoke_vm.py).",
+ "_comment": "The CUDA smoke of SAT and SATW on their shared trainer: SAT's inputs, 300 steps, cut at 200, eval and checkpoint every 50; sat_check on both specs; SATW's spec (weight on) trained with a forced session loss once the store holds step 100; SAT's spec (weight off), the references, the comparator and the identity runs of both specs after the cut on the same VM (sat_smoke_vm.py).",
  "_base2": {
   "arm": "SAT",
   "ladder": true,
@@ -49,7 +49,8 @@
    "cut_step": 200,
    "eval_every": 50,
    "checkpoint_every": 50,
-   "drill_step": 100
+   "drill_step": 100,
+   "recency_weight": 0.3077
   }
  },
  "store_push_cap_gb": 20,
@@ -171,10 +172,34 @@
    ]
   },
   {
+   "name": "sat_check_w",
+   "light": true,
+   "halt_on_failure": true,
+   "after": [
+    "pins",
+    "sat_pin",
+    "sat_check"
+   ],
+   "cmd": [
+    "python3",
+    "tools/colab_chat/sat_check_vm.py",
+    "--out",
+    "{out}",
+    "--windows",
+    "8",
+    "--spec-json",
+    "{\"arch\": {\"custom\": {\"d\": 512, \"d_ff\": 1536, \"heads\": 8, \"layers\": 18}, \"preset\": \"llama-tiny\", \"rope_heads\": \"all\", \"state_tokens\": {\"k\": 4, \"mask\": \"causal\"}}, \"data\": {\"T\": 1024, \"anneal\": {\"corpus\": \"/content/chat/data/N.tail.ids\", \"from_fraction\": 0.85}, \"corpus\": \"/content/chat/data/N.main.ids\", \"max_tokens\": 0, \"vocab\": \"/content/chat/upload/vocab_llama3_bpe.gguf\", \"vocab_cap\": 16384}, \"export\": {\"formats\": [\"safetensors\", \"gguf\"]}, \"name\": \"base2_SAT_check\", \"out_dir\": \"/content/chat/pt_base2_SATWsmoke\", \"train\": {\"accum\": 2, \"attention_kernel\": \"flash\", \"batch\": 8, \"checkpoint_every\": 50, \"clip\": 1.0, \"eval_every\": 50, \"eval_windows\": 32, \"gradmap_every\": 0, \"lr\": 0.0005, \"lr_schedule\": {\"decay\": \"cosine\", \"min_lr_frac\": 0.1, \"warmup_steps\": 4000}, \"optimizer\": \"adamw\", \"precision\": \"bf16\", \"seed\": 1, \"steps\": 300, \"symbol_targets\": {\"cut_step\": 200, \"eval_labels\": \"/content/chat/data/sat_eval.labels\", \"half_life\": 2000, \"labels\": \"/content/chat/data/sat.labels\", \"pointer_dim\": 64, \"recency_weight\": {\"nearest_right\": 0.3077}, \"role_classes\": 8, \"twins\": {\"corpus\": \"/content/chat/data/sat_twins.ids\", \"every\": 10, \"labels\": \"/content/chat/data/sat_twins.labels\"}, \"w0\": 1.0}}}"
+   ],
+   "outputs": [
+    "sat_check.json"
+   ]
+  },
+  {
    "name": "smoke_watch",
    "light": true,
    "after": [
-    "sat_check"
+    "sat_check",
+    "sat_check_w"
    ],
    "cmd": [
     "timeout",
@@ -185,9 +210,9 @@
     "tools/colab_chat/sat_smoke_vm.py",
     "watch",
     "--job-dir",
-    "/content/chat/pt_base2_SATsmoke",
+    "/content/chat/pt_base2_SATWsmoke",
     "--status",
-    "/content/chat/STATUS_pt_base2_SATsmoke",
+    "/content/chat/STATUS_pt_base2_SATWsmoke",
     "--out",
     "{out}",
     "--interval",
@@ -200,13 +225,14 @@
    ]
   },
   {
-   "name": "pt_base2_SATsmoke",
-   "model_name": "base2_SATsmoke",
-   "store_branch": "ckpt-SATsmoke",
+   "name": "pt_base2_SATWsmoke",
+   "model_name": "base2_SATWsmoke",
+   "store_branch": "ckpt-SATWsmoke",
    "after": [
     "pins",
     "sat_pin",
-    "sat_check"
+    "sat_check",
+    "sat_check_w"
    ],
    "snapshot_steps": [],
    "halt_on_failure": true,
@@ -215,7 +241,7 @@
     "MICROTORCH_STEP_TIMING": "1"
    },
    "spec": {
-    "name": "base2_SATsmoke",
+    "name": "base2_SATWsmoke",
     "arch": {
      "preset": "llama-tiny",
      "rope_heads": "all",
@@ -272,6 +298,9 @@
        "corpus": "/content/chat/data/sat_twins.ids",
        "labels": "/content/chat/data/sat_twins.labels",
        "every": 10
+      },
+      "recency_weight": {
+       "nearest_right": 0.3077
       }
      }
     },
@@ -281,7 +310,7 @@
       "gguf"
      ]
     },
-    "out_dir": "/content/chat/pt_base2_SATsmoke"
+    "out_dir": "/content/chat/pt_base2_SATWsmoke"
    },
    "pod_loss_drill_step": 100
   },
@@ -289,7 +318,7 @@
    "name": "smoke_checks",
    "light": true,
    "after": [
-    "pt_base2_SATsmoke",
+    "pt_base2_SATWsmoke",
     "smoke_watch"
    ],
    "env": {
@@ -304,8 +333,10 @@
     "tools/colab_chat/sat_smoke_vm.py",
     "checks",
     "--main-dir",
-    "/content/chat/pt_base2_SATsmoke",
+    "/content/chat/pt_base2_SATWsmoke",
     "--spec-json",
+    "{\"arch\": {\"custom\": {\"d\": 512, \"d_ff\": 1536, \"heads\": 8, \"layers\": 18}, \"preset\": \"llama-tiny\", \"rope_heads\": \"all\", \"state_tokens\": {\"k\": 4, \"mask\": \"causal\"}}, \"data\": {\"T\": 1024, \"anneal\": {\"corpus\": \"/content/chat/data/N.tail.ids\", \"from_fraction\": 0.85}, \"corpus\": \"/content/chat/data/N.main.ids\", \"max_tokens\": 0, \"vocab\": \"/content/chat/upload/vocab_llama3_bpe.gguf\", \"vocab_cap\": 16384}, \"export\": {\"formats\": [\"safetensors\", \"gguf\"]}, \"name\": \"base2_SATWsmoke\", \"out_dir\": \"/content/chat/pt_base2_SATWsmoke\", \"train\": {\"accum\": 2, \"attention_kernel\": \"flash\", \"batch\": 8, \"checkpoint_every\": 50, \"clip\": 1.0, \"eval_every\": 50, \"eval_windows\": 32, \"gradmap_every\": 0, \"lr\": 0.0005, \"lr_schedule\": {\"decay\": \"cosine\", \"min_lr_frac\": 0.1, \"warmup_steps\": 4000}, \"optimizer\": \"adamw\", \"precision\": \"bf16\", \"seed\": 1, \"steps\": 300, \"symbol_targets\": {\"cut_step\": 200, \"eval_labels\": \"/content/chat/data/sat_eval.labels\", \"half_life\": 2000, \"labels\": \"/content/chat/data/sat.labels\", \"pointer_dim\": 64, \"recency_weight\": {\"nearest_right\": 0.3077}, \"role_classes\": 8, \"twins\": {\"corpus\": \"/content/chat/data/sat_twins.ids\", \"every\": 10, \"labels\": \"/content/chat/data/sat_twins.labels\"}, \"w0\": 1.0}}}",
+    "--weight-off-spec-json",
     "{\"arch\": {\"custom\": {\"d\": 512, \"d_ff\": 1536, \"heads\": 8, \"layers\": 18}, \"preset\": \"llama-tiny\", \"rope_heads\": \"all\", \"state_tokens\": {\"k\": 4, \"mask\": \"causal\"}}, \"data\": {\"T\": 1024, \"anneal\": {\"corpus\": \"/content/chat/data/N.tail.ids\", \"from_fraction\": 0.85}, \"corpus\": \"/content/chat/data/N.main.ids\", \"max_tokens\": 0, \"vocab\": \"/content/chat/upload/vocab_llama3_bpe.gguf\", \"vocab_cap\": 16384}, \"export\": {\"formats\": [\"safetensors\", \"gguf\"]}, \"name\": \"base2_SATsmoke\", \"out_dir\": \"/content/chat/pt_base2_SATsmoke\", \"train\": {\"accum\": 2, \"attention_kernel\": \"flash\", \"batch\": 8, \"checkpoint_every\": 50, \"clip\": 1.0, \"eval_every\": 50, \"eval_windows\": 32, \"gradmap_every\": 0, \"lr\": 0.0005, \"lr_schedule\": {\"decay\": \"cosine\", \"min_lr_frac\": 0.1, \"warmup_steps\": 4000}, \"optimizer\": \"adamw\", \"precision\": \"bf16\", \"seed\": 1, \"steps\": 300, \"symbol_targets\": {\"cut_step\": 200, \"eval_labels\": \"/content/chat/data/sat_eval.labels\", \"half_life\": 2000, \"labels\": \"/content/chat/data/sat.labels\", \"pointer_dim\": 64, \"role_classes\": 8, \"twins\": {\"corpus\": \"/content/chat/data/sat_twins.ids\", \"every\": 10, \"labels\": \"/content/chat/data/sat_twins.labels\"}, \"w0\": 1.0}}}",
     "--out",
     "{out}",
@@ -315,11 +346,15 @@
    "outputs": [
     "smoke_vm.json",
     "events_ref.jsonl",
+    "events_ref_off.jsonl",
     "events_A.jsonl",
+    "events_A_off.jsonl",
     "events_B.jsonl",
     "base_build.log",
     "ref.log",
+    "ref_off.log",
     "A.log",
+    "A_off.log",
     "B.log"
    ]
   }

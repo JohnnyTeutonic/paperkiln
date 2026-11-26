@@ -116,6 +116,7 @@ def arm():
 # ---- The CUDA smoke (the author's research tree, symbols_as_targets/SMOKE.md): SAT's real spec and inputs, short. ----
 SMOKE_FILE = "sat_SAT_smoke.json"
 SMOKE_NAME = "SATsmoke"
+SMOKE_NAME_W = "SATWsmoke"     # the weight-on path's names
 SMOKE = {"steps": 300, "cut_step": 200, "eval_every": 50, "checkpoint_every": 50, "drill_step": 100}
 
 
@@ -133,43 +134,54 @@ def smoke_spec(spec):
 
 
 def smoke():
-    """The smoke's jobs file: pins, sat_pin and sat_check (on the smoke's spec) first; a watcher of the training job's
-    generations; the training job (SAT's spec, 300 steps, cut at 200, the runner's forced session loss once the store
-    holds step 100); then sat_smoke_vm.py checks on the same VM (the uninterrupted reference, the comparator build at
-    the ladder's launch commit and the identity runs after the cut). No rung jobs."""
+    """The smoke's jobs file, on the trainer SAT and SATW share (REGISTRATION.md section 17): both paths on one VM.
+    pins and sat_pin; sat_check on SAT's smoke spec (weight off) and on SATW's (weight on, make_satw.RECENCY_WEIGHT); a
+    watcher of the training job's generations; the training job on SATW's smoke spec (300 steps, cut at 200, the
+    runner's forced session loss once the store holds step 100); then sat_smoke_vm.py checks on the same VM: the
+    uninterrupted weight-on reference, SAT's spec uninterrupted (weight off), the comparator build at the ladder's
+    launch commit and the identity runs after the cut for both specs. No rung jobs."""
+    import make_satw as SW   # here, not at the top: make_satw imports this module
     full = arm()
     train = next(j for j in full["jobs"] if j["name"] == f"pt_base2_{NAME}")
-    spec = smoke_spec(train["spec"])
-    job = f"pt_base2_{SMOKE_NAME}"
+    off = smoke_spec(train["spec"])
+    on = copy.deepcopy(off)
+    on["name"], on["out_dir"] = f"base2_{SMOKE_NAME_W}", f"/content/chat/pt_base2_{SMOKE_NAME_W}"
+    on["train"]["symbol_targets"]["recency_weight"] = {"nearest_right": SW.RECENCY_WEIGHT}
+    job = f"pt_base2_{SMOKE_NAME_W}"
     jobs = [j for j in full["jobs"] if j["name"] in ("pins", "sat_pin")]
-    jobs.append(check_job(spec))
-    watch = {"name": "smoke_watch", "light": True, "after": ["sat_check"],
+    jobs.append(check_job(off))
+    chk_w = check_job(on)
+    chk_w["name"] = "sat_check_w"
+    chk_w["after"] = ["pins", "sat_pin", "sat_check"]
+    jobs.append(chk_w)
+    watch = {"name": "smoke_watch", "light": True, "after": ["sat_check", "sat_check_w"],
              "cmd": ["timeout", "-k", "30", "7000", "python3", "tools/colab_chat/sat_smoke_vm.py", "watch",
-                     "--job-dir", spec["out_dir"], "--status", f"/content/chat/STATUS_{job}", "--out", "{out}",
+                     "--job-dir", on["out_dir"], "--status", f"/content/chat/STATUS_{job}", "--out", "{out}",
                      "--interval", "5", "--limit-s", "6900"],
              "outputs": ["gens.jsonl"]}
     tj = copy.deepcopy(train)
-    tj.update(name=job, model_name=spec["name"], store_branch=f"ckpt-{SMOKE_NAME}", spec=spec, snapshot_steps=[],
-              pod_loss_drill_step=SMOKE["drill_step"])
+    tj.update(name=job, model_name=on["name"], store_branch=f"ckpt-{SMOKE_NAME_W}", spec=on, snapshot_steps=[],
+              pod_loss_drill_step=SMOKE["drill_step"], after=["pins", "sat_pin", "sat_check", "sat_check_w"])
     tj["env"] = {**tj.get("env", {}), "MICROTORCH_STEP_TIMING": "1"}
     checks = {"name": "smoke_checks", "light": True, "after": [job, "smoke_watch"],
               "env": {"MICROTORCH_CHECKPOINT_TXN": "1"},
               "cmd": ["timeout", "-k", "60", "3600", "python3", "tools/colab_chat/sat_smoke_vm.py", "checks",
-                      "--main-dir", spec["out_dir"], "--spec-json", json.dumps(spec, sort_keys=True), "--out", "{out}",
+                      "--main-dir", on["out_dir"], "--spec-json", json.dumps(on, sort_keys=True),
+                      "--weight-off-spec-json", json.dumps(off, sort_keys=True), "--out", "{out}",
                       "--watch", "/content/chat/smoke_watch/gens.jsonl"],
-             "outputs": ["smoke_vm.json", "events_ref.jsonl", "events_A.jsonl", "events_B.jsonl", "base_build.log",
-                         "ref.log", "A.log", "B.log"]}
+              "outputs": ["smoke_vm.json", "events_ref.jsonl", "events_ref_off.jsonl", "events_A.jsonl", "events_A_off.jsonl",
+                          "events_B.jsonl", "base_build.log", "ref.log", "ref_off.log", "A.log", "A_off.log", "B.log"]}
     jobs += [watch, tj, checks]
     out = {k: v for k, v in full.items() if k != "jobs"}
     out["jobs"] = jobs
     out["store_push_cap_gb"] = 20
     out["max_parallel_light"] = 2
-    out["_base2"] = {**full["_base2"], "smoke": dict(SMOKE), "marks": []}
-    out["_comment"] = ("SAT's CUDA smoke: SAT's spec and inputs, 300 steps, cut at 200, eval and checkpoint every 50, a "
-                       "forced session loss once the store holds step 100, the implementation check first, then the "
-                       "reference, comparator and identity runs on the same VM (sat_smoke_vm.py).")
+    out["_base2"] = {**full["_base2"], "smoke": {**SMOKE, "recency_weight": SW.RECENCY_WEIGHT}, "marks": []}
+    out["_comment"] = ("The CUDA smoke of SAT and SATW on their shared trainer: SAT's inputs, 300 steps, cut at 200, eval and "
+                       "checkpoint every 50; sat_check on both specs; SATW's spec (weight on) trained with a forced "
+                       "session loss once the store holds step 100; SAT's spec (weight off), the references, the "
+                       "comparator and the identity runs of both specs after the cut on the same VM (sat_smoke_vm.py).")
     return out
-
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv

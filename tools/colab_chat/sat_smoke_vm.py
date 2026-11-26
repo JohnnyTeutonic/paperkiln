@@ -316,6 +316,47 @@ def scaffold_report(steps_ev, spec):
             "ok": not bad and not after}
 
 
+def weight_report(steps_ev, spec):
+    """The shared trainer's pointer weights at every scaffold step. Weight on (recency_weight.nearest_right = W < 1): the
+    step logs the natural nearest-right and nearest-wrong counts and the natural targets' summed weight, which must be
+    W x nearest-right + nearest-wrong. Weight off (the key absent, SAT's spec): nothing of SATW's on that path
+    (claude/satw-pt 5d6b2460): none of those fields may appear."""
+    st = spec["train"]["symbol_targets"]
+    w = (st.get("recency_weight") or {}).get("nearest_right")
+    keys = ("natural_pointer_nearest_right", "natural_pointer_nearest_wrong", "natural_pointer_weight_sum")
+    bad, n, missing, present = [], 0, 0, 0
+    for e in steps_ev:
+        x = e.get("symbol_targets") or {}
+        if e["step"] >= st["cut_step"] or not x:
+            continue
+        n += 1
+        has = [k for k in keys if k in x]
+        if w is None:
+            present += bool(has)
+            continue
+        if len(has) != len(keys):
+            missing += 1
+            continue
+        want = w * x["natural_pointer_nearest_right"] + x["natural_pointer_nearest_wrong"]
+        if abs(x["natural_pointer_weight_sum"] - want) > 1e-6 * max(1.0, want):
+            bad.append({"step": e["step"], "logged": x["natural_pointer_weight_sum"], "want": want})
+    if w is None:
+        return {"W": None, "path": "weight off", "scaffold_steps_checked": n, "steps_with_satw_fields": present,
+                "ok": n > 0 and present == 0}
+    return {"W": w, "path": "weight on", "scaffold_steps_checked": n, "steps_without_the_fields": missing,
+            "problems": bad[:20], "n_problems": len(bad), "ok": n > 0 and not bad and not missing}
+
+
+def cut_transition(steps_ev, end_ev, cut):
+    """At the cut: symbol_targets_end at the cut step, every step before it carrying the auxiliary record, none from it on."""
+    d = by_step(steps_ev)
+    before = [s for s in range(1, cut) if s in d and d[s].get("symbol_targets")]
+    after = [s for s in d if s >= cut and d[s].get("symbol_targets")]
+    end = by_step(end_ev).get(cut)
+    return {"end_event_at_cut": end is not None, "end_event": end, "scaffold_steps_with_record": len(before),
+            "steps_from_cut_with_record": sorted(after)[:20], "ok": end is not None and len(before) == cut - 1 and not after}
+
+
 def windows_report(win_ev, spec, steps):
     """The logged windows of the given steps against the trainer's draw rule: row g's draw is the g-th output of
     std::mt19937(123 + 1000003 * seed), its offset the draw modulo the main limit, or the twin limit for a twin row
@@ -452,6 +493,8 @@ def cmd_checks(a):
                 "symbol_targets_end_ref": by_step(events(ref_ev, "symbol_targets_end")).get(cut)}}
     # items b, d, f on the main run (the run under the runner, with its session loss)
     rec["b_scaffold"] = scaffold_report(main_steps, spec)
+    rec["b_weights"] = weight_report(main_steps, spec)
+    rec["cut_transition"] = cut_transition(main_steps, events(main_ev, "symbol_targets_end"), cut)
     rec["b_scaffold"]["windows_reference"] = windows_report(events(ref_ev, "windows"), spec, list(range(1, last + 1)))
     rec["d_scaffold_evals"] = [e for e in events(main_ev, "symbol_targets_eval")]
     # Left out of the step times: a session's first steps, eval and checkpoint steps and the step after each.
@@ -460,6 +503,21 @@ def cmd_checks(a):
     skip = {s + k for s in starts for k in range(0, 3)} | marks | {s + 1 for s in marks}
     rec["f_timing_main"] = timing(main_steps, cut, skip)
     rec["f_timing_reference"] = timing(ref_steps, cut, skip)
+    # 2b. the weight-off path (SAT's spec) on the same executable, uninterrupted
+    off_spec = json.loads(a.weight_off_spec_json) if a.weight_off_spec_json else None
+    if off_spec is not None:
+        ref_off = os.path.join(a.out, "ref_off")
+        shutil.rmtree(ref_off, ignore_errors=True)
+        run_off = run_trainer(a.bin, write_spec(off_spec, ref_off, os.path.join(a.out, "ref_off.spec.json")),
+                              os.path.join(a.out, "ref_off.log"), env)
+        off_ev = os.path.join(ref_off, "events.jsonl")
+        off_steps = events(off_ev, "step")
+        rec["weight_off"] = {"run": run_off, "scaffold": scaffold_report(off_steps, off_spec),
+                             "weights": weight_report(off_steps, off_spec),
+                             "cut_transition": cut_transition(off_steps, events(off_ev, "symbol_targets_end"), cut),
+                             "scaffold_evals": events(off_ev, "symbol_targets_eval"),
+                             "evals": [{k: e.get(k) for k in ("step", "val_loss")} for e in events(off_ev, "eval")],
+                             "timing": timing(off_steps, cut, skip)}
     # 3. the identity runs from the cut generation
     if bt is not None:
         bt.join()
@@ -471,11 +529,14 @@ def cmd_checks(a):
         g = os.path.join(gen_cut, os.listdir(gen_cut)[0])
         g_step = int(open(os.path.join(g, "state.txt")).readline())
         runs = {}
-        for name, binary, sat in (("A", a.bin, True), ("B", base["exe"], False)):
+        legs = [("A", a.bin, spec, True), ("B", base["exe"], spec, False)]
+        if off_spec is not None:
+            legs.insert(1, ("A_off", a.bin, off_spec, True))   # SAT's spec on the shared executable, from the same generation
+        for name, binary, sp, sat in legs:
             d = os.path.join(a.out, name)
             shutil.rmtree(d, ignore_errors=True)
             copy_generation(g, d, ref_ev)
-            runs[name] = run_trainer(binary, write_spec(spec, d, os.path.join(a.out, f"{name}.spec.json"), sat=sat),
+            runs[name] = run_trainer(binary, write_spec(sp, d, os.path.join(a.out, f"{name}.spec.json"), sat=sat),
                                      os.path.join(a.out, f"{name}.log"), env)
         ev = {n: os.path.join(a.out, n, "events.jsonl") for n in ("A", "B")}
         after = list(range(g_step + 1, last + 1))
@@ -500,12 +561,19 @@ def cmd_checks(a):
             "B_windows_logged_after_start": len([w for w in events(ev["B"], "windows") if w["step"] > g_step]),
             "B_note": "the comparator trainer (672501bb) has no MICROTORCH_LOG_WINDOWS: its windows show only through its "
                       "losses and weights"}
+        if off_spec is not None:
+            ev["A_off"] = os.path.join(a.out, "A_off", "events.jsonl")
+            rec["e_identity"]["A_off_vs_B_steps"] = compare_steps(events(ev["A_off"], "step"), events(ev["B"], "step"), after)
+            rec["e_identity"]["A_vs_A_off_steps"] = compare_steps(events(ev["A"], "step"), events(ev["A_off"], "step"), after)
+            p_off = os.path.join(a.out, "A_off", spec["name"] + ".safetensors")
+            p_off = p_off if os.path.exists(p_off) else os.path.join(a.out, "A_off", off_spec["name"] + ".safetensors")
+            rec["e_identity"]["export_sha256"]["A_off"] = sha(p_off) if os.path.exists(p_off) else None
         ex = rec["e_identity"]["export_sha256"]
         rec["e_identity"]["exports_A_B_equal"] = ex["A"] is not None and ex["A"] == ex["B"]
     with open(os.path.join(a.out, "smoke_vm.json"), "w") as f:
         json.dump(rec, f, indent=1, default=str)
     # compact copies of the three runs' events beside it, without the windows' label lists
-    for n in ("ref", "A", "B"):
+    for n in ("ref", "ref_off", "A", "A_off", "B"):
         p = os.path.join(a.out, n, "events.jsonl")
         if os.path.exists(p):
             with open(p) as fi, open(os.path.join(a.out, f"events_{n}.jsonl"), "w") as fo:
@@ -536,6 +604,7 @@ def main(argv=None):
     c = sub.add_parser("checks")
     c.add_argument("--main-dir", required=True)
     c.add_argument("--spec-json", required=True)
+    c.add_argument("--weight-off-spec-json", default=None, help="SAT's spec (weight off) on the same executable")
     c.add_argument("--out", required=True)
     c.add_argument("--watch", default=None)
     c.add_argument("--base-commit", default=BASE_COMMIT)
