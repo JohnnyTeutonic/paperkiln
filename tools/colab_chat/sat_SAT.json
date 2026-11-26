@@ -40,12 +40,12 @@
     "every": 10
    },
    "sha256": {
-    "sat.labels": "0000000000000000000000000000000000000000000000000000000000000000",
-    "sat_eval.labels": "0000000000000000000000000000000000000000000000000000000000000000",
-    "sat_twins.ids": "0000000000000000000000000000000000000000000000000000000000000000",
-    "sat_twins.labels": "0000000000000000000000000000000000000000000000000000000000000000"
+    "sat.labels": "d1585800702b26f8b7fb8f8f62c0f12a905673d8074708e14033e4010f002e72",
+    "sat_eval.labels": "9717d3783c9ec3826b2063586f2cd085526447f9f50e2502904348e11cbb55eb",
+    "sat_twins.ids": "f22362c80153ccfc9f041d9cc1128759fef20b13d43464590a5a605d70e2f561",
+    "sat_twins.labels": "672adba0cbf87d1cbbec2270b5eece86cbd8d3634ab85f504ad573b20a385b4b"
    },
-   "hashes_are_placeholders": true,
+   "hashes_are_placeholders": false,
    "check_windows": 8
   }
  },
@@ -139,7 +139,7 @@
    "cmd": [
     "sh",
     "-c",
-    "sha256sum /content/chat/data/sat.labels /content/chat/data/sat_eval.labels /content/chat/data/sat_twins.ids /content/chat/data/sat_twins.labels | tee {out}/sat_pin.txt && grep -q '^0000000000000000000000000000000000000000000000000000000000000000  /content/chat/data/sat.labels$' {out}/sat_pin.txt && grep -q '^0000000000000000000000000000000000000000000000000000000000000000  /content/chat/data/sat_eval.labels$' {out}/sat_pin.txt && grep -q '^0000000000000000000000000000000000000000000000000000000000000000  /content/chat/data/sat_twins.ids$' {out}/sat_pin.txt && grep -q '^0000000000000000000000000000000000000000000000000000000000000000  /content/chat/data/sat_twins.labels$' {out}/sat_pin.txt"
+    "sha256sum /content/chat/data/sat.labels /content/chat/data/sat_eval.labels /content/chat/data/sat_twins.ids /content/chat/data/sat_twins.labels | tee {out}/sat_pin.txt && grep -q '^d1585800702b26f8b7fb8f8f62c0f12a905673d8074708e14033e4010f002e72  /content/chat/data/sat.labels$' {out}/sat_pin.txt && grep -q '^9717d3783c9ec3826b2063586f2cd085526447f9f50e2502904348e11cbb55eb  /content/chat/data/sat_eval.labels$' {out}/sat_pin.txt && grep -q '^f22362c80153ccfc9f041d9cc1128759fef20b13d43464590a5a605d70e2f561  /content/chat/data/sat_twins.ids$' {out}/sat_pin.txt && grep -q '^672adba0cbf87d1cbbec2270b5eece86cbd8d3634ab85f504ad573b20a385b4b  /content/chat/data/sat_twins.labels$' {out}/sat_pin.txt"
    ],
    "outputs": [
     "sat_pin.txt"

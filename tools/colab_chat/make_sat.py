@@ -15,8 +15,9 @@ build before training (sat_check: the forward on 8 fixed windows with labels A, 
 logits, MICROTORCH_SAT_CHECK=8), both halting the session on failure and both awaited by training; and the names.
 The release turn is 20 minutes, SYMW's choice (the ladder's slot 2), so SAT never shares a turn with an arm on turn 0.
 
-The four files are not built yet: SAT_SHA256 holds placeholders (all zeros, which no file hashes to, so sat_pin fails
-closed until the real hashes from sat_build.sh's receipt replace them; tests/test_sat_jobs.py reports the state).
+SAT_SHA256 holds the four files' sha256, built at home on 26 Nov 2026 in /mnt/c/ml_artifacts/sat/corpus: sat.labels
+and sat_eval.labels from sat_build.sh (its receipt.json), sat_twins.ids and sat_twins.labels from build_twins.sh
+(twins_build.json gives the ids' hash; the labels' was taken from the file). sat_pin fails closed on any other bytes.
 """
 import copy
 import json
@@ -37,9 +38,12 @@ CHECK_WINDOWS = 8
 LABELS, EVAL_LABELS, TWIN_IDS, TWIN_LABELS = "sat.labels", "sat_eval.labels", "sat_twins.ids", "sat_twins.labels"
 FILES = (LABELS, EVAL_LABELS, TWIN_IDS, TWIN_LABELS)
 
-# ---- PLACEHOLDERS: replace with the receipts' sha256 once the files are built (sat_build.sh, sat_twins.py). ----
+# ---- the built files' sha256 (sat_build.sh's receipt.json; build_twins.sh's files). ----
 PLACEHOLDER = "0" * 64
-SAT_SHA256 = {LABELS: PLACEHOLDER, EVAL_LABELS: PLACEHOLDER, TWIN_IDS: PLACEHOLDER, TWIN_LABELS: PLACEHOLDER}
+SAT_SHA256 = {LABELS: "d1585800702b26f8b7fb8f8f62c0f12a905673d8074708e14033e4010f002e72",
+              EVAL_LABELS: "9717d3783c9ec3826b2063586f2cd085526447f9f50e2502904348e11cbb55eb",
+              TWIN_IDS: "f22362c80153ccfc9f041d9cc1128759fef20b13d43464590a5a605d70e2f561",
+              TWIN_LABELS: "672adba0cbf87d1cbbec2270b5eece86cbd8d3634ab85f504ad573b20a385b4b"}
 # ------------------------------------------------------------------------------------------------------------------
 
 SAT_SETS = [
