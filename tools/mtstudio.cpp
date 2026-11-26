@@ -27,6 +27,7 @@
 #include <map>
 #include <mutex>
 #include <random>
+#include <set>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -238,6 +239,25 @@ struct Spec {
     // llama family's lm and sft objectives; evaluation keeps the unfused head.
     bool fused_head = false;
     size_t fused_head_chunk = 0;
+    // train.symbol_targets (SAT, "symbols as targets", 26 Nov 2026; the registration is
+    // AI_ML/chat_screens_claude/base2/token_ladder/symbols_as_targets/REGISTRATION.md in the
+    // author's research tree): two auxiliary heads on the final hidden state (a role head
+    // [d -> 8] and a binding-pointer head, q = W_q h_i, k = W_k h_j, [d -> pointer_dim] each),
+    // trained on silver labels (an SATL file keyed by raw corpus offsets) with weight
+    // w(step) = w0 * 2^(-step / half_life) for step < cut_step and exactly 0 from cut_step on.
+    // From cut_step the auxiliary branch is not computed and the step is the plain one. The
+    // heads are not model parameters (own AdamW, own clip, never exported). Optional twins:
+    // before cut_step, global row g = (step - 1) * batch * accum + micro * batch + b with
+    // g % every == 0 reads its window from the twin corpus at draw % (|twin| - T - 1) instead.
+    struct SymbolTargets {
+        bool on = false;
+        std::string labels, eval_labels;
+        double w0 = 1.0, half_life = 2000.0;
+        int cut_step = 0;
+        int role_classes = 8, pointer_dim = 64;
+        std::string twin_corpus, twin_labels;
+        int twin_every = 0;  // 0: no twins
+    } sat;
     int gradmap_every = 5;   // per-layer grad-norm event cadence
     size_t es_patience = 0;  // early stopping (0 = off)
     float es_min_delta = 0.0f;
@@ -869,6 +889,62 @@ Spec parse_spec(const std::string& path) {
             throw std::runtime_error("export.draft_table needs the chat text the model was trained on: "
                                      "data.sft_examples, or export.draft_table.sources");
     }
+    if (tr.contains("symbol_targets")) {
+        const json st = tr["symbol_targets"];
+        if (!st.is_object()) throw std::runtime_error("train.symbol_targets must be an object");
+        static const std::set<std::string> known = {"labels",       "eval_labels", "w0",    "half_life",
+                                                    "cut_step",     "role_classes", "pointer_dim", "twins"};
+        for (auto it = st.begin(); it != st.end(); ++it)
+            if (!known.count(it.key())) throw std::runtime_error("train.symbol_targets: unknown key " + it.key());
+        auto& t = s.sat;
+        t.on = true;
+        t.labels = st.value("labels", "");
+        t.eval_labels = st.value("eval_labels", "");
+        t.w0 = st.value("w0", t.w0);
+        t.half_life = st.value("half_life", t.half_life);
+        t.cut_step = st.value("cut_step", 0);
+        t.role_classes = st.value("role_classes", t.role_classes);
+        t.pointer_dim = st.value("pointer_dim", t.pointer_dim);
+        if (s.objective != "lm") throw std::runtime_error("train.symbol_targets is for objective lm only");
+        if (s.family != "llama") throw std::runtime_error("train.symbol_targets is wired for the llama family only");
+        if (s.fused_head)
+            throw std::runtime_error("train.symbol_targets needs train.fused_head off (the heads read the unfused "
+                                     "step's hidden states)");
+        if (s.moe_experts > 0 || (s.rec_block > 0 && s.rec_schedule == "mor") || s.attn_res)
+            throw std::runtime_error("train.symbol_targets is wired for a dense llama without MoE, routed recursion or "
+                                     "attention residuals");
+        if (!(t.half_life > 0.0)) throw std::runtime_error("train.symbol_targets needs half_life > 0");
+        if (!(t.w0 >= 0.0)) throw std::runtime_error("train.symbol_targets needs w0 >= 0");
+        if (t.cut_step < 1 || t.cut_step > s.steps)
+            throw std::runtime_error("train.symbol_targets needs 1 <= cut_step <= train.steps");
+        if (!s.anneal_corpus.empty() && t.cut_step > static_cast<int>(s.anneal_from * s.steps))
+            throw std::runtime_error("train.symbol_targets: cut_step must come before data.anneal begins (step " +
+                                     std::to_string(static_cast<int>(s.anneal_from * s.steps) + 1) + ")");
+        if (t.role_classes != 8)
+            throw std::runtime_error("train.symbol_targets: role_classes must be 8 (the SATL v1 roles)");
+        if (t.pointer_dim < 1) throw std::runtime_error("train.symbol_targets needs pointer_dim >= 1");
+        if (st.contains("twins")) {
+            const json tw = st["twins"];
+            if (!tw.is_object()) throw std::runtime_error("train.symbol_targets.twins must be an object");
+            t.twin_corpus = tw.value("corpus", "");
+            t.twin_labels = tw.value("labels", "");
+            t.twin_every = tw.value("every", 0);
+            if (t.twin_corpus.empty() || t.twin_labels.empty())
+                throw std::runtime_error("train.symbol_targets.twins needs a corpus and labels");
+            if (t.twin_every < 2) throw std::runtime_error("train.symbol_targets.twins needs every >= 2");
+        }
+        auto readable = [](const std::string& what, const std::string& p) {
+            if (p.empty()) throw std::runtime_error("train.symbol_targets needs " + what);
+            std::ifstream f(p, std::ios::binary);
+            if (!f.good()) throw std::runtime_error("train.symbol_targets: cannot read " + what + " " + p);
+        };
+        readable("labels", t.labels);
+        if (!t.eval_labels.empty()) readable("eval_labels", t.eval_labels);
+        if (t.twin_every) {
+            readable("twins.corpus", t.twin_corpus);
+            readable("twins.labels", t.twin_labels);
+        }
+    }
     return s;
 }
 
@@ -962,6 +1038,348 @@ void state_loss_mask(const std::vector<int>& x, std::vector<int>& y, std::vector
 
 // schedule "mor": per-token depth (nn::LlamaConfig::MoR).
 bool routed(const Spec& s) { return s.rec_block > 0 && s.rec_schedule == "mor"; }
+
+// ---- SAT: train.symbol_targets ----
+// The SATL v1 label file (tools/colab_chat/sat_labels.py writes and reads the same bytes): the 8-byte magic
+// "SATL\x01\0\0\0"; a u32 header length; a UTF-8 JSON header {"corpus_sha256", "corpus_tokens", "roles", "spans",
+// "pointer_targets"}; then the spans, sorted by raw offset and non-overlapping, each: u64 raw_offset, u32 length,
+// 32 bytes (the sha256 of the span's raw ids as little-endian u32), `length` code bytes, u32 n_ptr, and n_ptr pairs
+// (u32 pos_in_span, u32 back), the gold entity's raw position being raw_offset + pos_in_span - back with
+// 1 <= back <= pos_in_span. A code byte: bits 0-2 the role, bit 3 labelled (the role loss applies there), bit 4 a
+// mention (a pointer candidate), bits 5-7 zero. Raw positions index the corpus as read_corpus returns it, before
+// nn::insert_state_ids; every integer is little-endian.
+const std::vector<std::string> kSatRoles = {"O", "SUBJ", "VERB", "OBJ", "IOBJ", "OBL", "VALUE", "OWNER"};
+constexpr uint8_t kSatLabelled = 8, kSatMention = 16;
+
+struct SatLabels {
+    std::string path;
+    json header;
+    std::vector<uint64_t> off;
+    std::vector<uint32_t> len;
+    std::vector<uint64_t> code0;  // the span's first code in codes
+    std::vector<uint8_t> codes;
+    std::vector<uint64_t> ptr0;   // the span's first pair in ptrs
+    std::vector<uint32_t> nptr;
+    std::vector<std::array<uint32_t, 2>> ptrs;
+    std::vector<std::array<uint8_t, 32>> sha;
+    size_t labelled = 0, mentions = 0, hash_checks = 0;
+};
+
+SatLabels read_sat_labels(const std::string& path) {
+    std::ifstream f(path, std::ios::binary);
+    if (!f) throw std::runtime_error("symbol_targets: cannot open " + path);
+    auto fail = [&](const std::string& why) { return std::runtime_error("symbol_targets: " + path + ": " + why); };
+    auto rd = [&](void* p, size_t n) {
+        f.read(static_cast<char*>(p), static_cast<std::streamsize>(n));
+        if (!f) throw fail("truncated");
+    };
+    char magic[8];
+    rd(magic, 8);
+    if (std::memcmp(magic, "SATL\x01\x00\x00\x00", 8) != 0) throw fail("not an SATL v1 file");
+    uint32_t hl = 0;
+    rd(&hl, 4);
+    std::string ht(hl, '\0');
+    rd(ht.data(), hl);
+    SatLabels L;
+    L.path = path;
+    L.header = json::parse(ht, nullptr, false);
+    if (L.header.is_discarded() || !L.header.is_object()) throw fail("the header is not a JSON object");
+    for (const char* k : {"corpus_sha256", "corpus_tokens", "roles", "spans", "pointer_targets"})
+        if (!L.header.contains(k)) throw fail(std::string("the header has no ") + k);
+    if (L.header["roles"] != json(kSatRoles)) throw fail("the header's roles are not SATL v1's");
+    const uint64_t ns = L.header["spans"].get<uint64_t>();
+    for (uint64_t s = 0; s < ns; ++s) {
+        uint64_t o = 0;
+        uint32_t n = 0;
+        std::array<uint8_t, 32> h{};
+        rd(&o, 8);
+        rd(&n, 4);
+        rd(h.data(), 32);
+        if (n == 0) throw fail("an empty span at raw offset " + std::to_string(o));
+        if (!L.off.empty() && o < L.off.back() + L.len.back())
+            throw fail("spans unsorted or overlapping at raw offset " + std::to_string(o));
+        L.off.push_back(o);
+        L.len.push_back(n);
+        L.sha.push_back(h);
+        const size_t c0 = L.codes.size();
+        L.code0.push_back(c0);
+        L.codes.resize(c0 + n);
+        rd(L.codes.data() + c0, n);
+        for (uint32_t k = 0; k < n; ++k) {
+            const uint8_t c = L.codes[c0 + k];
+            if (c & 0xE0) throw fail("a code byte with bits 5-7 set at raw offset " + std::to_string(o + k));
+            L.labelled += (c & kSatLabelled) != 0;
+            L.mentions += (c & kSatMention) != 0;
+        }
+        uint32_t np = 0;
+        rd(&np, 4);
+        L.ptr0.push_back(L.ptrs.size());
+        L.nptr.push_back(np);
+        for (uint32_t q = 0; q < np; ++q) {
+            std::array<uint32_t, 2> pr{};
+            rd(pr.data(), 8);
+            if (pr[0] >= n || pr[1] < 1 || pr[1] > pr[0])
+                throw fail("a pointer outside its span at raw offset " + std::to_string(o + pr[0]));
+            if (!(L.codes[c0 + pr[0] - pr[1]] & kSatMention))
+                throw fail("a pointer whose gold is not a mention at raw offset " + std::to_string(o + pr[0]));
+            L.ptrs.push_back(pr);
+        }
+    }
+    if (f.peek() != std::char_traits<char>::eof()) throw fail("trailing bytes after the last span");
+    if (L.header["pointer_targets"].get<uint64_t>() != L.ptrs.size())
+        throw fail("the header's pointer_targets differs from the spans'");
+    return L;
+}
+
+std::string hex32(const std::array<uint8_t, 32>& h) {
+    static const char* d = "0123456789abcdef";
+    std::string s;
+    for (uint8_t b : h) {
+        s += d[b >> 4];
+        s += d[b & 15];
+    }
+    return s;
+}
+
+// Every span's sha256 against the raw ids at its offset: the run is refused on the first difference (fail closed),
+// so a misplaced replay can never put a label on other text.
+void verify_sat_labels(SatLabels& L, const std::vector<int>& raw) {
+    if (L.header["corpus_tokens"].get<uint64_t>() != raw.size())
+        throw std::runtime_error("symbol_targets: " + L.path + " is for a corpus of " +
+                                 L.header["corpus_tokens"].dump() + " tokens; this one has " +
+                                 std::to_string(raw.size()) + "; refusing the run");
+    std::vector<uint8_t> buf;
+    for (size_t s = 0; s < L.off.size(); ++s) {
+        if (L.off[s] + L.len[s] > raw.size())
+            throw std::runtime_error("symbol_targets: " + L.path + ": a span past the corpus's end at raw offset " +
+                                     std::to_string(L.off[s]) + "; refusing the run");
+        buf.resize(static_cast<size_t>(L.len[s]) * 4);
+        for (uint32_t k = 0; k < L.len[s]; ++k) {
+            const uint32_t v = static_cast<uint32_t>(raw[L.off[s] + k]);
+            for (int b = 0; b < 4; ++b) buf[4 * k + b] = static_cast<uint8_t>(v >> (8 * b));
+        }
+        ckpt_txn::Sha256 h;
+        h.update(buf.data(), buf.size());
+        if (h.hex() != hex32(L.sha[s]))
+            throw std::runtime_error("symbol_targets: " + L.path + ": the span at raw offset " +
+                                     std::to_string(L.off[s]) + " differs from the corpus (sha256); refusing the run");
+        ++L.hash_checks;
+    }
+}
+
+// Raw positions to post-insertion ones: one entry per run of inserted ids (the raw position it precedes and the
+// inserted ids up to and including it), found by the greedy match insert_state_flagged uses.
+struct InsertMap {
+    std::vector<uint64_t> at, cum;
+    uint64_t n_raw = 0;
+    uint64_t post(uint64_t r) const {
+        const auto it = std::upper_bound(at.begin(), at.end(), r);
+        return it == at.begin() ? r : r + cum[static_cast<size_t>(it - at.begin()) - 1];
+    }
+    // The first raw position whose post-insertion position is >= p (n_raw when none is).
+    uint64_t raw_from(uint64_t p) const {
+        uint64_t lo = 0, hi = n_raw;
+        while (lo < hi) {
+            const uint64_t mid = lo + (hi - lo) / 2;
+            if (post(mid) >= p)
+                hi = mid;
+            else
+                lo = mid + 1;
+        }
+        return lo;
+    }
+};
+
+InsertMap insert_map(const std::vector<int>& raw, const std::vector<int>& out) {
+    InsertMap m;
+    m.n_raw = raw.size();
+    size_t j = 0;
+    uint64_t shift = 0;
+    for (size_t i = 0; i < out.size(); ++i) {
+        if (j < raw.size() && out[i] == raw[j]) {
+            ++j;
+            continue;
+        }
+        ++shift;
+        if (!m.at.empty() && m.at.back() == j)
+            m.cum.back() = shift;
+        else {
+            m.at.push_back(j);
+            m.cum.push_back(shift);
+        }
+    }
+    if (j != raw.size()) throw std::runtime_error("symbol_targets: ids lost in the state-token insertion");
+    return m;
+}
+
+// A micro-batch's targets, by row-major index b * T + i into its rows (input position i of row b).
+struct SatPtr {
+    int q, gold;
+};
+struct SatBatch {
+    std::vector<int> role;         // the role where role_m is 1, else 0
+    std::vector<uint8_t> role_m;   // 1 where the role loss applies
+    std::vector<uint8_t> mention;  // 1 at pointer candidates
+    std::vector<SatPtr> ptr;
+    size_t dropped = 0;  // pointer targets in the window whose gold lies before it
+    void reset(size_t rows) {
+        role.assign(rows, 0);
+        role_m.assign(rows, 0);
+        mention.assign(rows, 0);
+        ptr.clear();
+        dropped = 0;
+    }
+};
+
+// The labels of the window whose inputs are post-insertion positions at .. at + T - 1, as row b. Inserted state
+// ids carry no label; a position inside a span that straddles an insertion lands where the insertion moved it.
+void sat_window(const SatLabels& L, const InsertMap& M, uint64_t at, int T, int b, SatBatch& out) {
+    if (L.off.empty()) return;
+    const uint64_t r_lo = M.raw_from(at), r_end = M.raw_from(at + static_cast<uint64_t>(T));
+    if (r_lo >= r_end) return;
+    size_t s = static_cast<size_t>(std::upper_bound(L.off.begin(), L.off.end(), r_lo) - L.off.begin());
+    if (s > 0 && L.off[s - 1] + L.len[s - 1] > r_lo) --s;
+    const size_t base = static_cast<size_t>(b) * static_cast<size_t>(T);
+    for (; s < L.off.size() && L.off[s] < r_end; ++s) {
+        for (uint32_t k = 0; k < L.len[s]; ++k) {
+            const uint64_t r = L.off[s] + k;
+            if (r < r_lo || r >= r_end) continue;
+            const size_t i = base + static_cast<size_t>(M.post(r) - at);
+            const uint8_t c = L.codes[L.code0[s] + k];
+            if (c & kSatLabelled) {
+                out.role[i] = c & 7;
+                out.role_m[i] = 1;
+            }
+            if (c & kSatMention) out.mention[i] = 1;
+        }
+        for (uint32_t q = 0; q < L.nptr[s]; ++q) {
+            const auto& pr = L.ptrs[L.ptr0[s] + q];
+            const uint64_t rt = L.off[s] + pr[0], rg = rt - pr[1];
+            if (rt < r_lo || rt >= r_end) continue;
+            if (rg < r_lo) {
+                ++out.dropped;
+                continue;
+            }
+            out.ptr.push_back({static_cast<int>(base + (M.post(rt) - at)), static_cast<int>(base + (M.post(rg) - at))});
+        }
+    }
+}
+
+// The implementation check's labels B: every labelled role moved to the next role, every pointer moved to the
+// nearest other earlier candidate in its row (dropped when there is none).
+void sat_scramble(SatBatch& sb, int T) {
+    for (size_t i = 0; i < sb.role.size(); ++i)
+        if (sb.role_m[i]) sb.role[i] = (sb.role[i] + 1) % 8;
+    std::vector<SatPtr> moved;
+    for (const auto& p : sb.ptr) {
+        const int row0 = p.q / T * T;
+        for (int j = p.q - 1; j >= row0; --j)
+            if (sb.mention[static_cast<size_t>(j)] && j != p.gold) {
+                moved.push_back({p.q, j});
+                break;
+            }
+    }
+    sb.ptr = moved;
+}
+
+// The two heads (not model parameters): role [d, 8], W_q and W_k [d, pointer_dim]. Initialised N(0, 0.02) from
+// their own generator, so the model's initialisation and the window draws are untouched.
+struct SatHeads {
+    Var role, wq, wk;
+    std::vector<Var> params() const { return {role, wq, wk}; }
+};
+
+SatHeads sat_heads_init(size_t d, int classes, int pdim, unsigned seed) {
+    std::mt19937 g(seed);
+    std::normal_distribution<float> nd(0.0f, 0.02f);
+    auto mk = [&](size_t r, size_t c) {
+        Matrix m(r, c);
+        for (size_t i = 0; i < r; ++i)
+            for (size_t j = 0; j < c; ++j) m(i, j) = nd(g);
+        return make_var(std::move(m), true);
+    };
+    SatHeads h;
+    h.role = mk(d, static_cast<size_t>(classes));
+    h.wq = mk(d, static_cast<size_t>(pdim));
+    h.wk = mk(d, static_cast<size_t>(pdim));
+    return h;
+}
+
+struct SatAux {
+    Var role, ptr;
+    size_t n_role = 0, n_ptr = 0;
+};
+
+// The auxiliary terms on the final hidden states hid [rows, d]: the role CE, the mean over the micro-batch's
+// labelled positions; the pointer CE, scores q_i . k_j / sqrt(pointer_dim) over the same row's earlier mentions
+// (everything else at -1e9), the mean over its pointer targets. A term with no targets is absent (0).
+SatAux sat_aux(const SatHeads& h, const Var& hid, const SatBatch& sb, int T, int pdim) {
+    SatAux a;
+    for (uint8_t m : sb.role_m) a.n_role += m;
+    if (a.n_role) a.role = ops::cross_entropy_masked(ops::matmul(hid, h.role), sb.role, sb.role_m);
+    a.n_ptr = sb.ptr.size();
+    if (a.n_ptr) {
+        const size_t R = hid->data.rows();
+        std::vector<int> qi, gold;
+        Matrix mask(a.n_ptr, R, -1e9f);
+        for (size_t t = 0; t < a.n_ptr; ++t) {
+            const auto& p = sb.ptr[t];
+            qi.push_back(p.q);
+            gold.push_back(p.gold);
+            for (int j = p.q / T * T; j < p.q; ++j)
+                if (sb.mention[static_cast<size_t>(j)]) mask(t, static_cast<size_t>(j)) = 0.0f;
+        }
+        const Var q = ops::matmul(ops::gather_rows(hid, qi), h.wq);
+        const Var k = ops::matmul(hid, h.wk);
+        const Var sc = ops::scale(ops::matmul(q, ops::transpose(k)), 1.0f / std::sqrt(static_cast<float>(pdim)));
+        a.ptr = ops::cross_entropy(ops::add(sc, make_var(std::move(mask))), gold);
+    }
+    return a;
+}
+
+// Held-out accuracy on one window's targets (NoGrad): the role head's argmax against the labels, the majority
+// class (O) on the same positions, the pointer head's argmax over the candidates against the gold, and the
+// recency rule (the nearest earlier candidate) on the same targets.
+struct SatEval {
+    size_t n_role = 0, role_right = 0, role_o = 0, n_ptr = 0, ptr_right = 0, recency_right = 0, dropped = 0;
+};
+
+void sat_eval_window(const SatHeads& h, const Var& hid, const SatBatch& sb, SatEval& e) {
+    const Matrix lr = ops::matmul(hid, h.role)->data;
+    for (size_t i = 0; i < sb.role_m.size(); ++i) {
+        if (!sb.role_m[i]) continue;
+        size_t best = 0;
+        for (size_t c = 1; c < lr.cols(); ++c)
+            if (lr(i, c) > lr(i, best)) best = c;
+        ++e.n_role;
+        e.role_right += static_cast<int>(best) == sb.role[i];
+        e.role_o += sb.role[i] == 0;
+    }
+    e.dropped += sb.dropped;
+    if (sb.ptr.empty()) return;
+    const Matrix K = ops::matmul(hid, h.wk)->data;
+    std::vector<int> qi;
+    for (const auto& p : sb.ptr) qi.push_back(p.q);
+    const Matrix Q = ops::matmul(ops::gather_rows(hid, qi), h.wq)->data;
+    for (size_t t = 0; t < sb.ptr.size(); ++t) {
+        const int q = sb.ptr[t].q;
+        int best = -1, recent = -1;
+        double best_s = 0.0;
+        for (int j = 0; j < q; ++j) {
+            if (!sb.mention[static_cast<size_t>(j)]) continue;
+            double sc = 0.0;
+            for (size_t c = 0; c < K.cols(); ++c) sc += static_cast<double>(Q(t, c)) * K(static_cast<size_t>(j), c);
+            if (best < 0 || sc > best_s) {
+                best = j;
+                best_s = sc;
+            }
+            recent = j;
+        }
+        ++e.n_ptr;
+        e.ptr_right += best == sb.ptr[t].gold;
+        e.recency_right += recent == sb.ptr[t].gold;
+    }
+}
 
 // SFT evaluation inside a step window: exactly when the training steps defer
 // (so the forward is one this run already runs under deferral), unless
@@ -2296,6 +2714,11 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     const bool po = s.objective == "provenance_po";
     std::vector<int> ids, anneal_ids;
     size_t val_start = 0;
+    // train.symbol_targets: the label sets, the raw-to-post maps and the twin corpus (post-insertion ids).
+    SatLabels sat_main, sat_eval, sat_twin;
+    InsertMap sat_map, twin_map;
+    std::vector<int> twin_ids;
+    size_t twin_lim = 0;
     if (!s.anneal_corpus.empty() && s.objective != "lm")
         throw std::runtime_error("data.anneal is for objective lm only");
     SftSet sd;
@@ -2347,13 +2770,30 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                  {"reward_shift", s.grpo_reward_shift}});
     } else if (!sft) {
         ids = read_corpus(s.corpus, vocab, tokens.size(), s.max_tokens);
+        if (s.sat.on) {
+            // symbol_targets: the labels are keyed by raw offsets; every span's hash is checked against the
+            // raw ids here, before the state-token insertion, and any difference refuses the run.
+            sat_main = read_sat_labels(s.sat.labels);
+            verify_sat_labels(sat_main, ids);
+            if (!s.sat.eval_labels.empty()) {
+                sat_eval = read_sat_labels(s.sat.eval_labels);
+                verify_sat_labels(sat_eval, ids);
+            }
+            sat_map.n_raw = ids.size();
+        }
         if (s.state_k > 0) {
             // State tokens (IR_SPEC_DRAFT 1.5): inserted into the stream before
             // windowing; the held-out tail is cut from the stream with them.
             const nn::StateTemplate stt = state_template(s, vocab);
             const size_t before = ids.size();
             nn::StateInsertCount c;
-            ids = nn::insert_state_ids(ids, stt, &c);
+            if (s.sat.on) {
+                std::vector<int> post = nn::insert_state_ids(ids, stt, &c);
+                sat_map = insert_map(ids, post);
+                ids = std::move(post);
+            } else {
+                ids = nn::insert_state_ids(ids, stt, &c);
+            }
             ev.emit({{"event", "state_tokens"}, {"k", s.state_k}, {"mask", s.state_mask}, {"corpus", "data.corpus"},
                      {"tokens_before", before}, {"tokens_after", ids.size()}, {"blocks", c.blocks},
                      {"closed_early", c.closed}});
@@ -2384,6 +2824,58 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             ev.emit({{"event", "anneal_data"},
                      {"tokens", anneal_ids.size()},
                      {"from_step", static_cast<int>(s.anneal_from * s.steps)}});
+        }
+        if (s.sat.on) {
+            if (s.sat.twin_every) {
+                // The twin corpus, read whole and passed through the state-token insertion as every LM corpus is.
+                std::vector<int> raw = read_corpus(s.sat.twin_corpus, vocab, tokens.size(), 0);
+                sat_twin = read_sat_labels(s.sat.twin_labels);
+                verify_sat_labels(sat_twin, raw);
+                twin_map.n_raw = raw.size();
+                if (s.state_k > 0) {
+                    const size_t before = raw.size();
+                    nn::StateInsertCount c;
+                    twin_ids = nn::insert_state_ids(raw, state_template(s, vocab), &c);
+                    twin_map = insert_map(raw, twin_ids);
+                    ev.emit({{"event", "state_tokens"}, {"k", s.state_k}, {"mask", s.state_mask},
+                             {"corpus", "symbol_targets.twins"}, {"tokens_before", before},
+                             {"tokens_after", twin_ids.size()}, {"blocks", c.blocks}, {"closed_early", c.closed}});
+                } else {
+                    twin_ids = std::move(raw);
+                }
+                if (twin_ids.size() < static_cast<size_t>(s.T) + 2)
+                    throw std::runtime_error("symbol_targets.twins corpus is shorter than one training window");
+                twin_lim = twin_ids.size() - s.T - 1;
+            }
+            // Each eval span is one held-out window of T + 1 tokens from its own post-insertion start.
+            for (size_t k = 0; k < sat_eval.off.size(); ++k) {
+                const uint64_t p0 = sat_map.post(sat_eval.off[k]);
+                if (p0 < val_start || p0 + s.T + 1 > ids.size())
+                    throw std::runtime_error("symbol_targets: eval span at raw offset " + std::to_string(sat_eval.off[k]) +
+                                             " is not a window of the held-out 5%; refusing the run");
+            }
+            auto stats = [](const SatLabels& L) {
+                return json{{"path", L.path},
+                            {"corpus_sha256", L.header["corpus_sha256"]},
+                            {"spans", L.off.size()},
+                            {"labelled_positions", L.labelled},
+                            {"mentions", L.mentions},
+                            {"pointer_targets", L.ptrs.size()},
+                            {"hash_checks_passed", L.hash_checks}};
+            };
+            json e = {{"event", "symbol_targets"},
+                      {"w0", s.sat.w0},
+                      {"half_life", s.sat.half_life},
+                      {"cut_step", s.sat.cut_step},
+                      {"role_classes", s.sat.role_classes},
+                      {"pointer_dim", s.sat.pointer_dim},
+                      {"labels", stats(sat_main)}};
+            if (!s.sat.eval_labels.empty()) e["eval_labels"] = stats(sat_eval);
+            if (s.sat.twin_every) {
+                e["twin_labels"] = stats(sat_twin);
+                e["twins"] = {{"every", s.sat.twin_every}, {"tokens", twin_ids.size()}, {"limit", twin_lim}};
+            }
+            ev.emit(e);
         }
     } else {
         sd = load_sft(s, vocab);
@@ -2688,6 +3180,21 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     } else {
         opt.adamw.emplace_back(model_ref.parameters(), s.lr);
     }
+    // symbol_targets: the heads and their own AdamW (the trunk's rate schedule, betas and weight decay), used while
+    // w(step) > 0, i.e. step < cut_step with w0 > 0. w is a pure function of the step.
+    const bool sat_heads_on = s.sat.on && s.sat.w0 > 0.0 && s.sat.cut_step > 1;
+    auto sat_w = [&s](int step) -> double {
+        if (!s.sat.on || step >= s.sat.cut_step) return 0.0;
+        return s.sat.w0 * std::exp2(-static_cast<double>(step) / s.sat.half_life);
+    };
+    SatHeads sat_h;
+    std::unique_ptr<nn::AdamW> sat_opt;
+    if (sat_heads_on) {
+        if (s.optimizer != "adamw")
+            throw std::runtime_error("train.symbol_targets is wired with optimizer adamw (the heads take the trunk's)");
+        sat_h = sat_heads_init(s.d, s.sat.role_classes, s.sat.pointer_dim, 0x5A75u + 1000003u * s.seed);
+        sat_opt = std::make_unique<nn::AdamW>(sat_h.params(), s.lr);
+    }
     // Checkpoint = three files. model.safetensors (weights),
     // optim.safetensors (AdamW m/v and Muon momentum, every optimizer
     // instance), and state.txt: line 1 the step (the pre-existing
@@ -2754,6 +3261,35 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                  {"experts", s.moe_experts},
                  {"routers_fresh", routers.size()}});
     }
+    // symbol_targets: a resume that still has steps with w > 0 restores the heads and their AdamW from the
+    // checkpoint's optim.safetensors ("sat_heads.*", "sat_heads_optim.*") and its state record ("sat_heads_t");
+    // it refuses to continue without them (fresh heads would silently change the scaffold).
+    if (sat_heads_on && start_step > 0 && start_step + 1 < s.sat.cut_step) {
+        std::map<std::string, Matrix> osd;
+        if (std::ifstream(optim_path).good()) osd = load_safetensors(optim_path);
+        const std::vector<std::string> names = {"sat_heads.role", "sat_heads.wq", "sat_heads.wk"};
+        const auto ps = sat_h.params();
+        for (size_t i = 0; i < names.size(); ++i) {
+            const auto it = osd.find(names[i]);
+            if (it == osd.end())
+                throw std::runtime_error("symbol_targets: the checkpoint at step " + std::to_string(start_step) +
+                                         " has no " + names[i] + "; refusing to resume inside the scaffold");
+            if (it->second.rows() != ps[i]->data.rows() || it->second.cols() != ps[i]->data.cols())
+                throw std::runtime_error("symbol_targets: " + names[i] + " has another shape in the checkpoint");
+            ps[i]->data = it->second;
+        }
+        sat_opt->load_state_dict(osd, "sat_heads_optim");
+        std::ifstream st(state_path);
+        std::string l1, l2;
+        std::getline(st, l1);
+        std::getline(st, l2);
+        const json rec = json::parse(l2, nullptr, false);
+        if (rec.is_discarded() || !rec.contains("sat_heads_t"))
+            throw std::runtime_error("symbol_targets: the checkpoint's state record has no sat_heads_t");
+        sat_opt->set_t(rec["sat_heads_t"].get<long>());
+        ev.emit({{"event", "symbol_targets_resume"}, {"step", start_step}, {"heads", "restored"},
+                 {"adamw_t", sat_opt->t()}});
+    }
 
     // Data order follows the spec seed so multi-seed sweeps vary both init
     // and batch composition (offset keeps seed=7 runs distinct from the
@@ -2781,9 +3317,18 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             auto part = opt.muon[i].state_dict("muon." + std::to_string(i));
             osd.insert(part.begin(), part.end());
         }
-        const std::string state_text =
-            std::to_string(step) + "\n" +
-            json({{"best_val", best_val}, {"evals_flat", evals_flat}, {"adamw_t", ts}}).dump() + "\n";
+        json state_rec = {{"best_val", best_val}, {"evals_flat", evals_flat}, {"adamw_t", ts}};
+        if (sat_heads_on && step < s.sat.cut_step) {
+            // symbol_targets: the heads and their AdamW travel with the optimiser's state, in the same generation,
+            // so the store relays them and a resume finds them; never in state_dict(), the GGUF or the export.
+            const auto ps = sat_h.params();
+            const char* names[3] = {"sat_heads.role", "sat_heads.wq", "sat_heads.wk"};
+            for (size_t i = 0; i < 3; ++i) osd[names[i]] = ps[i]->data;
+            auto part = sat_opt->state_dict("sat_heads_optim");
+            osd.insert(part.begin(), part.end());
+            state_rec["sat_heads_t"] = sat_opt->t();
+        }
+        const std::string state_text = std::to_string(step) + "\n" + state_rec.dump() + "\n";
         if (ckpt_store) {  // one step's three files publish as one unit
             const auto c = ckpt_store->commit(step, msd, osd, state_text);
             ev.emit({{"event", "checkpoint"},
@@ -2838,15 +3383,131 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         t_last = now;
     };
 
+    // MICROTORCH_LOG_WINDOWS=1: a "windows" event for each micro-step of an lm run, with each row's raw draw of
+    // the window generator, the offset taken from it, whether the row is a symbol_targets twin row (its offset then
+    // indexes the twin corpus) and the corpus of the other rows (tests/test_sat_targets.py, tests/test_sat_windows.py;
+    // ported from SYMW's switch). A test switch: off for every real run.
+    const bool log_windows = [] {
+        const char* v = std::getenv("MICROTORCH_LOG_WINDOWS");
+        return v && std::strcmp(v, "1") == 0;
+    }();
+    struct WinLog {
+        json raw = json::array(), at = json::array(), twin = json::array();
+    };
+    // One lm training row from one draw of the window generator: offset = draw % lim in src, or, for a twin row
+    // (step < cut_step and global row g % every == 0), draw % twin_lim in the twin corpus. sb (when given) gets
+    // the row's labels; wl (when given) the draw.
+    auto take_window = [&](int step, int k, int b, uint64_t draw, const std::vector<int>& src, size_t lim,
+                           std::vector<int>& x, std::vector<int>& y, SatBatch* sb, WinLog* wl) {
+        const uint64_t g = static_cast<uint64_t>(step - 1) * static_cast<uint64_t>(s.batch * s.accum) +
+                           static_cast<uint64_t>(k) * static_cast<uint64_t>(s.batch) + static_cast<uint64_t>(b);
+        const bool twin = s.sat.twin_every > 0 && step < s.sat.cut_step && g % static_cast<uint64_t>(s.sat.twin_every) == 0;
+        const std::vector<int>& from = twin ? twin_ids : src;
+        const size_t at = twin ? draw % twin_lim : draw % lim;
+        x.insert(x.end(), from.begin() + at, from.begin() + at + s.T);
+        y.insert(y.end(), from.begin() + at + 1, from.begin() + at + s.T + 1);
+        if (sb) sat_window(twin ? sat_twin : sat_main, twin ? twin_map : sat_map, at, static_cast<int>(s.T), b, *sb);
+        if (wl) {
+            wl->raw.push_back(draw);
+            wl->at.push_back(at);
+            wl->twin.push_back(twin ? 1 : 0);
+        }
+        return twin;
+    };
+    auto matrix_sha = [](const Matrix& m) {
+        ckpt_txn::Sha256 h;
+        std::vector<float> row(m.cols());
+        for (size_t i = 0; i < m.rows(); ++i) {
+            for (size_t j = 0; j < m.cols(); ++j) row[j] = m(i, j);
+            h.update(row.data(), row.size() * sizeof(float));
+        }
+        return h.hex();
+    };
+
+    // MICROTORCH_SAT_CHECK=n (REGISTRATION section 7, the sat_check job): at the run's current weights (fresh, or
+    // the checkpoint resumed), the next steps' first n training windows run the scaffold step's forward with the
+    // spec's labels (A), with every role moved and every pointer moved to another candidate (B) and with none, and
+    // the plain step's forward on the same rows; every LM logit must agree bit for bit. Emits "sat_check" events
+    // and "sat_check_result", trains nothing, and exits non-zero on any difference.
+    const int sat_check_n = [] {
+        const char* v = std::getenv("MICROTORCH_SAT_CHECK");
+        return v ? std::atoi(v) : 0;
+    }();
+    if (sat_check_n > 0) {
+        if (!sat_heads_on || start_step + 1 >= s.sat.cut_step)
+            throw std::runtime_error("MICROTORCH_SAT_CHECK needs train.symbol_targets with w0 > 0 inside the scaffold");
+        std::map<std::string, std::vector<std::string>> hashes;
+        for (const std::string variant : {"A", "B", "none", "plain"}) {
+            std::mt19937 g = rng;  // a copy: the run's own generator is not consumed
+            int taken = 0;
+            for (int step = start_step + 1; taken < sat_check_n; ++step)
+                for (int k = 0; k < s.accum && taken < sat_check_n; ++k, taken += s.batch) {
+                    std::vector<int> x, y;
+                    std::vector<uint8_t> mask;
+                    SatBatch sb;
+                    sb.reset(static_cast<size_t>(s.batch) * s.T);
+                    for (int b = 0; b < s.batch; ++b) take_window(step, k, b, g(), ids, val_start - s.T - 1, x, y, &sb, nullptr);
+                    if (variant == "B") sat_scramble(sb, static_cast<int>(s.T));
+                    if (variant == "none") sb.reset(static_cast<size_t>(s.batch) * s.T);
+                    Var hid, logits;
+                    if (variant == "plain") {
+                        logits = fwd(x, s.batch > 1 ? s.T : 0);
+                    } else {
+                        hid = llama->forward_hidden(x, s.batch > 1 ? s.T : 0);
+                        logits = llama->head(hid);
+                    }
+                    if (s.state_k > 0) state_loss_mask(x, y, mask, tokens.size());
+                    const Var task = s.state_k > 0 ? ops::cross_entropy_masked(logits, y, mask) : ops::cross_entropy(logits, y);
+                    json ce = {{"event", "sat_check"}, {"variant", variant}, {"step", step}, {"micro", k},
+                               {"logits_sha256", matrix_sha(logits->data)}, {"loss", task->data(0, 0)}};
+                    if (variant != "plain") {
+                        const SatAux aux = sat_aux(sat_h, hid, sb, static_cast<int>(s.T), s.sat.pointer_dim);
+                        ce["role_n"] = aux.n_role;
+                        ce["ptr_n"] = aux.n_ptr;
+                        if (aux.n_role) ce["role_loss"] = aux.role->data(0, 0);
+                        if (aux.n_ptr) ce["ptr_loss"] = aux.ptr->data(0, 0);
+                    }
+                    hashes[variant].push_back(ce["logits_sha256"].get<std::string>());
+                    ev.emit(ce);
+                }
+        }
+        const bool equal = hashes["A"] == hashes["B"] && hashes["A"] == hashes["none"] && hashes["A"] == hashes["plain"];
+        ev.emit({{"event", "sat_check_result"}, {"equal", equal}, {"windows", sat_check_n}, {"from_step", start_step + 1}});
+        if (!equal) throw std::runtime_error("symbol_targets: the implementation check failed: the logits depend on the labels");
+        return 0;
+    }
+
     // Train.
     bool stopped_early = false;
     const bool is_srd = attn_kind(s.attention) == parity::AttnKind::SRD;
+    // symbol_targets: the step's auxiliary statistics, and the run's counts since this process started.
+    size_t sat_role_seen = 0, sat_ptr_seen = 0, sat_dropped_seen = 0;
+    const size_t rows_per_step = static_cast<size_t>(s.batch) * static_cast<size_t>(s.accum);
+    // Twin rows in steps 1 .. t: ceil(min(t, cut_step - 1) * rows / every) (rows 0, every, 2 every, ...).
+    auto twin_rows_through = [&](int t) -> uint64_t {
+        if (!s.sat.twin_every) return 0;
+        const uint64_t n = static_cast<uint64_t>(std::min(t, s.sat.cut_step - 1)) * rows_per_step;
+        return (n + static_cast<uint64_t>(s.sat.twin_every) - 1) / static_cast<uint64_t>(s.sat.twin_every);
+    };
     for (int step = start_step + 1; step <= s.steps; ++step) {
         last_step = step;
         mark("other");  // eval, checkpoint and logging since the last step
         t_ms = json::object();
         live_mb = json::object();
         if (step_timing) device::pool_reset_peak();
+        if (s.sat.on && step == s.sat.cut_step) {
+            const uint64_t tw = twin_rows_through(step - 1);
+            ev.emit({{"event", "symbol_targets_end"}, {"step", step}, {"w", sat_w(step)},
+                     {"twin_rows", tw}, {"twin_positions", tw * s.T},
+                     {"natural_positions", (static_cast<uint64_t>(step - 1) * rows_per_step - tw) * s.T},
+                     {"since_step", start_step + 1}, {"role_targets", sat_role_seen}, {"pointer_targets", sat_ptr_seen},
+                     {"pointer_targets_dropped", sat_dropped_seen}});
+        }
+        const double w_step = sat_w(step);
+        const bool sat_step = sat_heads_on && w_step > 0.0;
+        double sat_role_sum = 0.0, sat_ptr_sum = 0.0;
+        size_t sat_role_n = 0, sat_ptr_n = 0, sat_dropped = 0, twin_rows = 0;
+        if (sat_step) sat_opt->zero_grad();
         // The anneal corpus has no held-out part: all of it is training text.
         const bool annealing = !anneal_ids.empty() && step > static_cast<int>(s.anneal_from * s.steps);
         const std::vector<int>& src = annealing ? anneal_ids : ids;
@@ -3028,6 +3689,9 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             std::vector<uint8_t> mask;
             x.reserve(s.batch * s.T);
             y.reserve(s.batch * s.T);
+            SatBatch sb;
+            if (sat_step) sb.reset(static_cast<size_t>(s.batch) * s.T);
+            WinLog wl;
             for (int b = 0; b < s.batch; ++b) {
                 if (sft) {
                     const size_t e = rng() % sd.val_start;
@@ -3036,18 +3700,43 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                     mask.insert(mask.end(), sd.m[e].begin(), sd.m[e].end());
                     continue;
                 }
-                const size_t at = rng() % lim;
-                x.insert(x.end(), src.begin() + at, src.begin() + at + s.T);
-                y.insert(y.end(), src.begin() + at + 1, src.begin() + at + s.T + 1);
+                const auto draw = rng();
+                twin_rows += take_window(step, k, b, draw, src, lim, x, y, sat_step ? &sb : nullptr,
+                                         log_windows ? &wl : nullptr);
+            }
+            if (log_windows && !sft) {
+                json we = {{"event", "windows"}, {"step", step},       {"micro", k},       {"raw", wl.raw},
+                           {"at", wl.at},        {"twin", wl.twin},    {"lim", lim},       {"twin_lim", twin_lim},
+                           {"src", annealing ? "anneal" : "main"}};
+                if (sat_step) {
+                    // The micro-batch's targets as the loss reads them: [index, role, labelled, mention] at every
+                    // position with a label or a mention, and [query, gold] per pointer (indices b * T + i).
+                    json lab = json::array(), ptr = json::array();
+                    for (size_t i = 0; i < sb.role.size(); ++i)
+                        if (sb.role_m[i] || sb.mention[i]) lab.push_back({i, sb.role[i], sb.role_m[i], sb.mention[i]});
+                    for (const auto& p : sb.ptr) ptr.push_back({p.q, p.gold});
+                    we["labels"] = lab;
+                    we["pointers"] = ptr;
+                    we["dropped"] = sb.dropped;
+                }
+                ev.emit(we);
             }
             mark("data");
             nn::MoEAux maux;
             // Declared in the order the unfused step always declared them, so
             // they also die in that order.
+            Var sat_hid;
             Var logits, task;
             if (!s.fused_head) {
-                logits = s.moe_experts > 0 || routed(s) ? llama->forward(x, s.batch > 1 ? s.T : 0, &maux)
-                                                        : fwd(x, s.batch > 1 ? s.T : 0);
+                if (sat_step) {
+                    // symbol_targets, w > 0: the hidden states, then the model's own head on them (forward() is
+                    // exactly this), so the auxiliary heads read the vector the LM head reads.
+                    sat_hid = llama->forward_hidden(x, s.batch > 1 ? s.T : 0);
+                    logits = llama->head(sat_hid);
+                } else {
+                    logits = s.moe_experts > 0 || routed(s) ? llama->forward(x, s.batch > 1 ? s.T : 0, &maux)
+                                                            : fwd(x, s.batch > 1 ? s.T : 0);
+                }
                 mark("forward");
                 // State tokens: no loss at state targets or state positions.
                 if (!sft && s.state_k > 0) state_loss_mask(x, y, mask, tokens.size());
@@ -3086,6 +3775,19 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                 if (mor_frac.empty()) mor_frac.assign(s.rec_repeats, 0.0);
                 for (size_t i = 0; i < s.rec_repeats; ++i) mor_frac[i] += maux.frac.at(0)[i] / s.accum;
             }
+            if (sat_step) {
+                // total = task + w(step) * (role + pointer); a term with no targets in the micro-batch is 0.
+                const SatAux aux = sat_aux(sat_h, sat_hid, sb, static_cast<int>(s.T), s.sat.pointer_dim);
+                Var a;
+                if (aux.n_role) a = aux.role;
+                if (aux.n_ptr) a = a ? ops::add(a, aux.ptr) : aux.ptr;
+                if (a) loss = ops::add(loss, ops::scale(a, static_cast<float>(w_step)));
+                if (aux.n_role) sat_role_sum += aux.role->data(0, 0) * static_cast<double>(aux.n_role);
+                if (aux.n_ptr) sat_ptr_sum += aux.ptr->data(0, 0) * static_cast<double>(aux.n_ptr);
+                sat_role_n += aux.n_role;
+                sat_ptr_n += aux.n_ptr;
+                sat_dropped += sb.dropped;
+            }
             mark("loss");
             backward(ops::scale(loss, 1.0f / static_cast<float>(s.accum)));
             mark("backward");
@@ -3106,17 +3808,25 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         json gm;
         if (want_gm) gm = grad_map(model_ref);
         const float total_norm = ops::clip_grad_norm(model_ref.parameters(), s.clip);
+        // symbol_targets: the heads are clipped apart at the same threshold, so they never change the trunk's scale.
+        const float sat_norm = sat_step ? ops::clip_grad_norm(sat_h.params(), s.clip) : 0.0f;
         mark("clip");
         const float lr_f = scheduled ? lr_scale(step) : 1.0f;
         if (scheduled) opt.set_lr_scale(lr_f, s.lr, s.muon_lr);
         opt.step();
+        if (sat_step) {
+            sat_opt->lr = s.lr * lr_f;
+            sat_opt->step();
+        }
         mark("optimizer");
         if (opt_in_window) {
             // The grads are spent (the next zero_grad rewrites them): drop
             // their device copies instead of downloading them, so host grad
             // storage is NOT current after an in-window step. Nothing reads
             // it between steps on this path (grad_map closes the window first).
-            const auto params = model_ref.parameters();
+            auto params = model_ref.parameters();
+            if (sat_step)
+                for (const auto& p : sat_h.params()) params.push_back(p);  // the heads go the trunk's way
             for (const auto& p : params) device::discard(p->grad);
             // Between two plain training steps nothing reads the parameters
             // on the host, so the updated values stay on the device and the
@@ -3145,6 +3855,25 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         json e = {
             {"event", "step"}, {"step", step}, {"loss", task_mean}, {"grad_norm", total_norm}};
         if (scheduled) e["lr"] = s.lr * lr_f;
+        if (s.sat.on && step < s.sat.cut_step) {
+            // symbol_targets, inside the scaffold: w, the auxiliary losses (means over the step's targets), their
+            // counts, the heads' pre-clip norm, and the rows and positions read from each corpus.
+            sat_role_seen += sat_role_n;
+            sat_ptr_seen += sat_ptr_n;
+            sat_dropped_seen += sat_dropped;
+            const uint64_t tw = twin_rows_through(step);
+            json st = {{"w", w_step},
+                       {"role_targets", sat_role_n},
+                       {"pointer_targets", sat_ptr_n},
+                       {"pointer_targets_dropped", sat_dropped},
+                       {"twin_rows", twin_rows},
+                       {"twin_positions_total", tw * s.T},
+                       {"natural_positions_total", (static_cast<uint64_t>(step) * rows_per_step - tw) * s.T}};
+            if (sat_step) st["heads_grad_norm"] = sat_norm;
+            if (sat_role_n) st["role_loss"] = sat_role_sum / static_cast<double>(sat_role_n);
+            if (sat_ptr_n) st["pointer_loss"] = sat_ptr_sum / static_cast<double>(sat_ptr_n);
+            e["symbol_targets"] = st;
+        }
         if (step_timing) {
             e["t_ms"] = t_ms;
             e["live_mb"] = live_mb;
@@ -3334,6 +4063,29 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                 eve["mor_entropy"] = nn::routing_entropy(f);
             }
             ev.emit(eve);
+            if (sat_heads_on && step < s.sat.cut_step && !sat_eval.off.empty()) {
+                // symbol_targets, at eval time inside the scaffold: the held-out tagged windows (one a span, T + 1
+                // tokens from its post-insertion start), the heads' accuracy, the majority class's and the recency
+                // rule's on the same targets.
+                NoGrad ng2;
+                model_ref.eval();
+                SatEval se;
+                for (size_t k = 0; k < sat_eval.off.size(); ++k) {
+                    const uint64_t p0 = sat_map.post(sat_eval.off[k]);
+                    const std::vector<int> vx(ids.begin() + p0, ids.begin() + p0 + s.T);
+                    SatBatch sb;
+                    sb.reset(s.T);
+                    sat_window(sat_eval, sat_map, p0, static_cast<int>(s.T), 0, sb);
+                    sat_eval_window(sat_h, llama->forward_hidden(vx), sb, se);
+                }
+                model_ref.train();
+                auto frac = [](size_t a, size_t n) { return n ? static_cast<double>(a) / static_cast<double>(n) : 0.0; };
+                ev.emit({{"event", "symbol_targets_eval"}, {"step", step}, {"w", sat_w(step)},
+                         {"windows", sat_eval.off.size()}, {"role_targets", se.n_role},
+                         {"role_acc", frac(se.role_right, se.n_role)}, {"majority_acc", frac(se.role_o, se.n_role)},
+                         {"pointer_targets", se.n_ptr}, {"pointer_acc", frac(se.ptr_right, se.n_ptr)},
+                         {"recency_acc", frac(se.recency_right, se.n_ptr)}, {"pointer_targets_dropped", se.dropped}});
+            }
             if (s.es_patience > 0) {
                 if (vl < best_val - s.es_min_delta) {
                     best_val = static_cast<float>(vl);
