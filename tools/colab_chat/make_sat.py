@@ -4,6 +4,7 @@ AI_ML/chat_screens_claude/base2/token_ladder/symbols_as_targets/REGISTRATION.md)
 
     python3 tools/colab_chat/make_sat.py            # writes sat_SAT.json
     python3 tools/colab_chat/make_sat.py --check    # compares it with what is on disk; non-zero on any difference
+    python3 tools/colab_chat/make_sat.py --smoke [--check]   # the CUDA smoke's jobs file, sat_SAT_smoke.json
 
 SAT is the token ladder's rung N1B (make_ladder.py, imported and not edited) with one added training key,
 train.symbol_targets (tools/mtstudio.cpp): a role head and a binding-pointer head on the final hidden state, trained on
@@ -112,20 +113,79 @@ def arm():
     return L._with_offset(out, OFFSET_MIN)
 
 
+# ---- The CUDA smoke (the author's research tree, symbols_as_targets/SMOKE.md): SAT's real spec and inputs, short. ----
+SMOKE_FILE = "sat_SAT_smoke.json"
+SMOKE_NAME = "SATsmoke"
+SMOKE = {"steps": 300, "cut_step": 200, "eval_every": 50, "checkpoint_every": 50, "drill_step": 100}
+
+
+def smoke_spec(spec):
+    """SAT's training spec with the smoke's length, cut, eval and checkpoint cadence, and its own names. A checkpoint
+    every 50 (not 100) so that the heads, which travel with checkpoints before the cut only, are saved at 150, after
+    the forced session loss at 100 and before the cut at 200."""
+    s = copy.deepcopy(spec)
+    s["name"] = f"base2_{SMOKE_NAME}"
+    s["out_dir"] = f"/content/chat/pt_base2_{SMOKE_NAME}"
+    t = s["train"]
+    t.update(steps=SMOKE["steps"], eval_every=SMOKE["eval_every"], checkpoint_every=SMOKE["checkpoint_every"])
+    t["symbol_targets"]["cut_step"] = SMOKE["cut_step"]
+    return s
+
+
+def smoke():
+    """The smoke's jobs file: pins, sat_pin and sat_check (on the smoke's spec) first; a watcher of the training job's
+    generations; the training job (SAT's spec, 300 steps, cut at 200, the runner's forced session loss once the store
+    holds step 100); then sat_smoke_vm.py checks on the same VM (the uninterrupted reference, the comparator build at
+    the ladder's launch commit and the identity runs after the cut). No rung jobs."""
+    full = arm()
+    train = next(j for j in full["jobs"] if j["name"] == f"pt_base2_{NAME}")
+    spec = smoke_spec(train["spec"])
+    job = f"pt_base2_{SMOKE_NAME}"
+    jobs = [j for j in full["jobs"] if j["name"] in ("pins", "sat_pin")]
+    jobs.append(check_job(spec))
+    watch = {"name": "smoke_watch", "light": True, "after": ["sat_check"],
+             "cmd": ["timeout", "-k", "30", "7000", "python3", "tools/colab_chat/sat_smoke_vm.py", "watch",
+                     "--job-dir", spec["out_dir"], "--status", f"/content/chat/STATUS_{job}", "--out", "{out}",
+                     "--interval", "5", "--limit-s", "6900"],
+             "outputs": ["gens.jsonl"]}
+    tj = copy.deepcopy(train)
+    tj.update(name=job, model_name=spec["name"], store_branch=f"ckpt-{SMOKE_NAME}", spec=spec, snapshot_steps=[],
+              pod_loss_drill_step=SMOKE["drill_step"])
+    tj["env"] = {**tj.get("env", {}), "MICROTORCH_STEP_TIMING": "1"}
+    checks = {"name": "smoke_checks", "light": True, "after": [job, "smoke_watch"],
+              "env": {"MICROTORCH_CHECKPOINT_TXN": "1"},
+              "cmd": ["timeout", "-k", "60", "3600", "python3", "tools/colab_chat/sat_smoke_vm.py", "checks",
+                      "--main-dir", spec["out_dir"], "--spec-json", json.dumps(spec, sort_keys=True), "--out", "{out}",
+                      "--watch", "/content/chat/smoke_watch/gens.jsonl"],
+             "outputs": ["smoke_vm.json", "events_ref.jsonl", "events_A.jsonl", "events_B.jsonl", "base_build.log",
+                         "ref.log", "A.log", "B.log"]}
+    jobs += [watch, tj, checks]
+    out = {k: v for k, v in full.items() if k != "jobs"}
+    out["jobs"] = jobs
+    out["store_push_cap_gb"] = 20
+    out["max_parallel_light"] = 2
+    out["_base2"] = {**full["_base2"], "smoke": dict(SMOKE), "marks": []}
+    out["_comment"] = ("SAT's CUDA smoke: SAT's spec and inputs, 300 steps, cut at 200, eval and checkpoint every 50, a "
+                       "forced session loss once the store holds step 100, the implementation check first, then the "
+                       "reference, comparator and identity runs on the same VM (sat_smoke_vm.py).")
+    return out
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    path = os.path.join(HERE, OUT_FILE)
-    text = M.text(arm())
+    name = SMOKE_FILE if "--smoke" in argv else OUT_FILE
+    path = os.path.join(HERE, name)
+    text = M.text(smoke() if "--smoke" in argv else arm())
     if "--check" in argv:
         try:
             same = open(path, encoding="utf-8").read() == text
         except OSError:
             same = False
-        print(json.dumps({"check": "equal" if same else "different", "file": OUT_FILE}))
+        print(json.dumps({"check": "equal" if same else "different", "file": name}))
         return 0 if same else 1
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         f.write(text)
-    print(json.dumps({"written": OUT_FILE}))
+    print(json.dumps({"written": name}))
     return 0
 
 
