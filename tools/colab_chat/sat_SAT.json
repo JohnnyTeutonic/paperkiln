@@ -1,0 +1,418 @@
+{
+ "_comment": "SAT: the token ladder's N1B with train.symbol_targets (role and binding-pointer heads, w0 1, half-life 2,000, cut at 13,288; twin rows one in ten before the cut); nothing else is changed. Not admitted: the launch gate is two reviews and the lead's ruling.",
+ "_base2": {
+  "arm": "SAT",
+  "ladder": true,
+  "recipe_of": "N",
+  "rung": "1B",
+  "seed": 1,
+  "slot": null,
+  "shape": "D1",
+  "params": 69751296,
+  "positions_per_step": 16384,
+  "steps": 60000,
+  "positions": 983040000,
+  "tokens_per_parameter": 14.09,
+  "last_main_step": 51000,
+  "first_tail_step": 51001,
+  "marks": [
+   10000,
+   58500,
+   60000
+  ],
+  "mark_positions": {
+   "10000": 163840000,
+   "58500": 958464000,
+   "60000": 983040000
+  },
+  "corpus": "N, with SAT's twin rows before the cut",
+  "symbol_targets": {
+   "labels": "/content/chat/data/sat.labels",
+   "eval_labels": "/content/chat/data/sat_eval.labels",
+   "w0": 1.0,
+   "half_life": 2000,
+   "cut_step": 13288,
+   "role_classes": 8,
+   "pointer_dim": 64,
+   "twins": {
+    "corpus": "/content/chat/data/sat_twins.ids",
+    "labels": "/content/chat/data/sat_twins.labels",
+    "every": 10
+   },
+   "sha256": {
+    "sat.labels": "0000000000000000000000000000000000000000000000000000000000000000",
+    "sat_eval.labels": "0000000000000000000000000000000000000000000000000000000000000000",
+    "sat_twins.ids": "0000000000000000000000000000000000000000000000000000000000000000",
+    "sat_twins.labels": "0000000000000000000000000000000000000000000000000000000000000000"
+   },
+   "hashes_are_placeholders": true,
+   "check_windows": 8
+  }
+ },
+ "store_push_cap_gb": 200,
+ "store_release_every_min": 60,
+ "store_stall_halt": true,
+ "store_stall_min": 120,
+ "store_unverified_halt_min": 90,
+ "store_release_offset_min": 20,
+ "store_no_progress_min": 300,
+ "store_no_progress_launches": 4,
+ "store_inputs": [
+  {
+   "branch": "main",
+   "prefix": "seed/vocab",
+   "to": "chat/upload"
+  },
+  {
+   "branch": "main",
+   "prefix": "corpus/N",
+   "to": "chat/data",
+   "files": [
+    "N.main.ids",
+    "N.tail.ids"
+   ]
+  },
+  {
+   "branch": "main",
+   "prefix": "corpus/panels",
+   "to": "chat/data"
+  },
+  {
+   "branch": "main",
+   "prefix": "corpus/panel_scenario",
+   "to": "chat/data",
+   "files": [
+    "panel_scenario.ids"
+   ]
+  },
+  {
+   "branch": "main",
+   "prefix": "corpus/sat_labels",
+   "to": "chat/data",
+   "files": [
+    "sat.labels"
+   ]
+  },
+  {
+   "branch": "main",
+   "prefix": "corpus/sat_eval",
+   "to": "chat/data",
+   "files": [
+    "sat_eval.labels"
+   ]
+  },
+  {
+   "branch": "main",
+   "prefix": "corpus/sat_twins",
+   "to": "chat/data",
+   "files": [
+    "sat_twins.ids",
+    "sat_twins.labels"
+   ]
+  }
+ ],
+ "max_parallel": 1,
+ "max_parallel_light": 1,
+ "jobs": [
+  {
+   "name": "pins",
+   "light": true,
+   "halt_on_failure": true,
+   "cmd": [
+    "python3",
+    "tools/colab_chat/base2_pins.py",
+    "/content/chat/data",
+    "arm-N",
+    "--upload",
+    "/content/chat/upload",
+    "--out",
+    "{out}/pins.json"
+   ],
+   "outputs": [
+    "pins.json"
+   ]
+  },
+  {
+   "name": "sat_pin",
+   "light": true,
+   "halt_on_failure": true,
+   "cmd": [
+    "sh",
+    "-c",
+    "sha256sum /content/chat/data/sat.labels /content/chat/data/sat_eval.labels /content/chat/data/sat_twins.ids /content/chat/data/sat_twins.labels | tee {out}/sat_pin.txt && grep -q '^0000000000000000000000000000000000000000000000000000000000000000  /content/chat/data/sat.labels$' {out}/sat_pin.txt && grep -q '^0000000000000000000000000000000000000000000000000000000000000000  /content/chat/data/sat_eval.labels$' {out}/sat_pin.txt && grep -q '^0000000000000000000000000000000000000000000000000000000000000000  /content/chat/data/sat_twins.ids$' {out}/sat_pin.txt && grep -q '^0000000000000000000000000000000000000000000000000000000000000000  /content/chat/data/sat_twins.labels$' {out}/sat_pin.txt"
+   ],
+   "outputs": [
+    "sat_pin.txt"
+   ]
+  },
+  {
+   "name": "sat_check",
+   "light": true,
+   "halt_on_failure": true,
+   "after": [
+    "pins",
+    "sat_pin"
+   ],
+   "cmd": [
+    "python3",
+    "tools/colab_chat/sat_check_vm.py",
+    "--out",
+    "{out}",
+    "--windows",
+    "8",
+    "--spec-json",
+    "{\"arch\": {\"custom\": {\"d\": 512, \"d_ff\": 1536, \"heads\": 8, \"layers\": 18}, \"preset\": \"llama-tiny\", \"rope_heads\": \"all\", \"state_tokens\": {\"k\": 4, \"mask\": \"causal\"}}, \"data\": {\"T\": 1024, \"anneal\": {\"corpus\": \"/content/chat/data/N.tail.ids\", \"from_fraction\": 0.85}, \"corpus\": \"/content/chat/data/N.main.ids\", \"max_tokens\": 0, \"vocab\": \"/content/chat/upload/vocab_llama3_bpe.gguf\", \"vocab_cap\": 16384}, \"export\": {\"formats\": [\"safetensors\", \"gguf\"]}, \"name\": \"base2_SAT_check\", \"out_dir\": \"/content/chat/pt_base2_SAT\", \"train\": {\"accum\": 2, \"attention_kernel\": \"flash\", \"batch\": 8, \"checkpoint_every\": 500, \"clip\": 1.0, \"eval_every\": 1000, \"eval_windows\": 32, \"gradmap_every\": 0, \"lr\": 0.0005, \"lr_schedule\": {\"decay\": \"cosine\", \"min_lr_frac\": 0.1, \"warmup_steps\": 4000}, \"optimizer\": \"adamw\", \"precision\": \"bf16\", \"seed\": 1, \"steps\": 60000, \"symbol_targets\": {\"cut_step\": 13288, \"eval_labels\": \"/content/chat/data/sat_eval.labels\", \"half_life\": 2000, \"labels\": \"/content/chat/data/sat.labels\", \"pointer_dim\": 64, \"role_classes\": 8, \"twins\": {\"corpus\": \"/content/chat/data/sat_twins.ids\", \"every\": 10, \"labels\": \"/content/chat/data/sat_twins.labels\"}, \"w0\": 1.0}}}"
+   ],
+   "outputs": [
+    "sat_check.json"
+   ]
+  },
+  {
+   "name": "pt_base2_SAT",
+   "model_name": "base2_SAT",
+   "store_branch": "ckpt-SAT",
+   "after": [
+    "pins",
+    "sat_pin",
+    "sat_check"
+   ],
+   "snapshot_steps": [
+    10000,
+    58500,
+    60000
+   ],
+   "halt_on_failure": true,
+   "env": {
+    "MICROTORCH_CHECKPOINT_TXN": "1"
+   },
+   "spec": {
+    "name": "base2_SAT",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/N.main.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "max_tokens": 0,
+     "anneal": {
+      "corpus": "/content/chat/data/N.tail.ids",
+      "from_fraction": 0.85
+     }
+    },
+    "train": {
+     "steps": 60000,
+     "lr": 0.0005,
+     "batch": 8,
+     "accum": 2,
+     "clip": 1.0,
+     "eval_every": 1000,
+     "eval_windows": 32,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "precision": "bf16",
+     "attention_kernel": "flash",
+     "lr_schedule": {
+      "warmup_steps": 4000,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "symbol_targets": {
+      "labels": "/content/chat/data/sat.labels",
+      "eval_labels": "/content/chat/data/sat_eval.labels",
+      "w0": 1.0,
+      "half_life": 2000,
+      "cut_step": 13288,
+      "role_classes": 8,
+      "pointer_dim": 64,
+      "twins": {
+       "corpus": "/content/chat/data/sat_twins.ids",
+       "labels": "/content/chat/data/sat_twins.labels",
+       "every": 10
+      }
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    },
+    "out_dir": "/content/chat/pt_base2_SAT"
+   }
+  },
+  {
+   "name": "rung_SAT_s10000",
+   "after": "pins",
+   "light": true,
+   "env": {
+    "MICROTORCH_POOL_MB": 1024
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "tools/colab_chat/base2_rung_D1.json",
+    "--export-gguf",
+    "--weights",
+    "/content/chat/pt_base2_SAT/rung_10000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_base2_SAT",
+    "--step",
+    "10000",
+    "--job",
+    "pt_base2_SAT",
+    "--cell",
+    "BASE2_SAT",
+    "--seed",
+    "1",
+    "--share",
+    "28",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--panel",
+    "scenario=/content/chat/data/panel_scenario.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl",
+    "--score-batch-tokens",
+    "4096",
+    "--score-chunk",
+    "4096"
+   ],
+   "outputs": [
+    "rung.json"
+   ],
+   "rung_of": {
+    "job": "pt_base2_SAT",
+    "step": 10000
+   },
+   "exclusive": true,
+   "timeout_s": 3600
+  },
+  {
+   "name": "rung_SAT_s58500",
+   "after": "pins",
+   "light": true,
+   "env": {
+    "MICROTORCH_POOL_MB": 1024
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "tools/colab_chat/base2_rung_D1.json",
+    "--export-gguf",
+    "--weights",
+    "/content/chat/pt_base2_SAT/rung_58500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_base2_SAT",
+    "--step",
+    "58500",
+    "--job",
+    "pt_base2_SAT",
+    "--cell",
+    "BASE2_SAT",
+    "--seed",
+    "1",
+    "--share",
+    "28",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--panel",
+    "scenario=/content/chat/data/panel_scenario.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl",
+    "--score-batch-tokens",
+    "4096",
+    "--score-chunk",
+    "4096"
+   ],
+   "outputs": [
+    "rung.json"
+   ],
+   "rung_of": {
+    "job": "pt_base2_SAT",
+    "step": 58500
+   },
+   "exclusive": true,
+   "timeout_s": 3600
+  },
+  {
+   "name": "rung_SAT_s60000",
+   "after": [
+    "pt_base2_SAT"
+   ],
+   "light": true,
+   "env": {
+    "MICROTORCH_POOL_MB": 1024
+   },
+   "cmd": [
+    "timeout",
+    "-k",
+    "60",
+    "3600",
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "tools/colab_chat/base2_rung_D1.json",
+    "--export-gguf",
+    "--weights",
+    "/content/chat/pt_base2_SAT/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_base2_SAT",
+    "--step",
+    "60000",
+    "--job",
+    "pt_base2_SAT",
+    "--cell",
+    "BASE2_SAT",
+    "--seed",
+    "1",
+    "--share",
+    "28",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--panel",
+    "scenario=/content/chat/data/panel_scenario.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl",
+    "--score-batch-tokens",
+    "4096",
+    "--score-chunk",
+    "4096"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  }
+ ]
+}
