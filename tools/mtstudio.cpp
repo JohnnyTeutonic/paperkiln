@@ -259,9 +259,9 @@ struct Spec {
         int twin_every = 0;  // 0: no twins
         // SATW (train.symbol_targets.recency_weight.nearest_right, 26 Nov 2026): the weight of a natural pointer target
         // whose nearest earlier mention-bit candidate in its row (the recency rule, as the eval computes it) is its
-        // gold; every other pointer target, twin ones included, weighs 1. The pointer CE is the weighted mean over the
-        // micro-batch's pointer targets (natural and twin pooled, as SAT pools them). 1.0 is SAT exactly (the
-        // unweighted op runs).
+        // gold; every other pointer target, twin ones included, weighs 1. The pointer CE is sum(w_i CE_i) / N over the
+        // micro-batch's N pointer targets (natural and twin pooled, as SAT pools them), so only nearest-right natural
+        // targets differ from SAT's 1 / N (the lead's ruling, 26 Nov 2026). 1.0 is SAT exactly (the unweighted op runs).
         double nearest_right_weight = 1.0;
     } sat;
     int gradmap_every = 5;   // per-layer grad-norm event cadence
@@ -1357,6 +1357,10 @@ struct SatAux {
     // SATW: pointer targets by source and by the recency rule ([0] natural, [1] twin), and the weights they carried.
     size_t nearest_right[2] = {0, 0}, nearest_wrong[2] = {0, 0};
     double weight_sum = 0.0, natural_weight_sum = 0.0;
+    // With want_terms (the implementation check only): each pointer target's coefficient in the pointer loss and its
+    // CE, recomputed on the same scores; class 0 natural nearest-right, 1 natural nearest-wrong, 2 twin.
+    std::vector<int> term_class;
+    std::vector<double> term_coef, term_ce;
 };
 
 // The recency rule on a target (the trainer's eval and the label build's receipt alike): the nearest earlier
@@ -1370,10 +1374,12 @@ bool sat_nearest_right(const SatBatch& sb, const SatPtr& p, int T) {
 // The auxiliary terms on the final hidden states hid [rows, d]: the role CE, the mean over the micro-batch's
 // labelled positions; the pointer CE, scores q_i . k_j / sqrt(pointer_dim) over the same row's earlier mentions
 // (everything else at -1e9), the mean over its pointer targets. A term with no targets is absent (0).
-// SATW: with nearest_right_weight W != 1, the pointer CE is the weighted mean sum(w_i CE_i) / sum(w_i) over the same
-// targets, natural and twin pooled as above, w_i = W for a natural target the recency rule gets right and 1 for every
-// other; W == 1 runs SAT's unweighted op unchanged.
-SatAux sat_aux(const SatHeads& h, const Var& hid, const SatBatch& sb, int T, int pdim, double nearest_right_weight = 1.0) {
+// SATW (the lead's ruling, 26 Nov 2026): with nearest_right_weight W != 1, the pointer CE is sum(w_i CE_i) / N over
+// the micro-batch's N pointer targets, natural and twin pooled as above, w_i = W for a natural target the recency
+// rule gets right and 1 for every other. So every weight-1 target (twin, natural nearest-wrong) keeps SAT's
+// coefficient 1 / N and only nearest-right natural targets change, to W / N. W == 1 runs SAT's unweighted op unchanged.
+SatAux sat_aux(const SatHeads& h, const Var& hid, const SatBatch& sb, int T, int pdim, double nearest_right_weight = 1.0,
+               bool want_terms = false) {
     SatAux a;
     for (const auto& p : sb.ptr) {
         const bool right = sat_nearest_right(sb, p, T);
@@ -1400,20 +1406,32 @@ SatAux sat_aux(const SatHeads& h, const Var& hid, const SatBatch& sb, int T, int
         const Var k = ops::matmul(hid, h.wk);
         const Var sc = ops::scale(ops::matmul(q, ops::transpose(k)), 1.0f / std::sqrt(static_cast<float>(pdim)));
         const Var scores = ops::add(sc, make_var(std::move(mask)));
+        std::vector<int> rows(a.n_ptr);
+        for (size_t t = 0; t < a.n_ptr; ++t) rows[t] = static_cast<int>(t);
+        // Each target's class and coefficient: 1 / N in SAT's op (cross_entropy's mean), w_i / N in SATW's.
+        std::vector<int> cls(a.n_ptr);
+        std::vector<double> coef(a.n_ptr);
+        for (size_t t = 0; t < a.n_ptr; ++t) {
+            const auto& p = sb.ptr[t];
+            cls[t] = p.twin ? 2 : sat_nearest_right(sb, p, T) ? 0 : 1;
+            const double w = (nearest_right_weight != 1.0 && cls[t] == 0) ? nearest_right_weight : 1.0;
+            coef[t] = w / static_cast<double>(a.n_ptr);
+        }
+        Var ce;  // CE_i = logsumexp_i - score_i(gold_i)
+        if (nearest_right_weight != 1.0 || want_terms)
+            ce = ops::sub(ops::logsumexp_row(scores), ops::gather_elems(scores, rows, gold, 1));
         if (nearest_right_weight == 1.0) {
             a.ptr = ops::cross_entropy(scores, gold);
         } else {
-            // CE_i = logsumexp_i - score_i(gold_i); then sum_i (w_i / sum w) CE_i as one [1, P] x [P, 1] product.
-            std::vector<int> rows(a.n_ptr);
-            for (size_t t = 0; t < a.n_ptr; ++t) rows[t] = static_cast<int>(t);
-            const Var ce = ops::sub(ops::logsumexp_row(scores), ops::gather_elems(scores, rows, gold, 1));
+            // sum_i (w_i / N) CE_i as one [1, N] x [N, 1] product.
             Matrix wn(a.n_ptr, 1);
-            for (size_t t = 0; t < a.n_ptr; ++t) {
-                const auto& p = sb.ptr[t];
-                const double w = (!p.twin && sat_nearest_right(sb, p, T)) ? nearest_right_weight : 1.0;
-                wn(t, 0) = static_cast<float>(w / a.weight_sum);
-            }
+            for (size_t t = 0; t < a.n_ptr; ++t) wn(t, 0) = static_cast<float>(coef[t]);
             a.ptr = ops::matmul(ops::transpose(ce), make_var(std::move(wn)));
+        }
+        if (want_terms) {
+            a.term_class = cls;
+            a.term_coef = coef;
+            for (size_t t = 0; t < a.n_ptr; ++t) a.term_ce.push_back(ce->data(t, 0));
         }
     }
     return a;
@@ -3624,9 +3642,34 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                     if (variant == "A") ce["targets_by_source"] = by_source;
                     if (variant == "B") ce["moved_by_source"] = by_source;
                     if (variant != "plain") {
-                        const SatAux aux = sat_aux(sat_h, hid, sb, static_cast<int>(s.T), s.sat.pointer_dim, s.sat.nearest_right_weight);
+                        const SatAux aux = sat_aux(sat_h, hid, sb, static_cast<int>(s.T), s.sat.pointer_dim,
+                                                   s.sat.nearest_right_weight, /*want_terms=*/true);
                         ce["role_n"] = aux.n_role;
                         ce["ptr_n"] = aux.n_ptr;
+                        if (aux.n_ptr) {
+                            // The pointer loss's terms on these exact batches: per class (natural nearest-right,
+                            // natural nearest-wrong, twin) the targets, their summed coefficient and the distinct
+                            // coefficients, and the loss recomposed as sum_i coef_i CE_i (SATW's test of the ruling).
+                            const char* names[3] = {"natural_nearest_right", "natural_nearest_wrong", "twin"};
+                            json terms = json::object();
+                            double recomposed = 0.0;
+                            for (int c = 0; c < 3; ++c) {
+                                size_t n = 0;
+                                double sum = 0.0;
+                                std::set<double> vals;
+                                for (size_t t = 0; t < aux.n_ptr; ++t)
+                                    if (aux.term_class[t] == c) {
+                                        ++n;
+                                        sum += aux.term_coef[t];
+                                        vals.insert(aux.term_coef[t]);
+                                    }
+                                terms[names[c]] = {{"targets", n}, {"coefficient_sum", sum},
+                                                   {"coefficients", std::vector<double>(vals.begin(), vals.end())}};
+                            }
+                            for (size_t t = 0; t < aux.n_ptr; ++t) recomposed += aux.term_coef[t] * aux.term_ce[t];
+                            terms["recomposed_loss"] = recomposed;
+                            ce["pointer_terms"] = terms;
+                        }
                         const int vi = variant == "A" ? 0 : variant == "B" ? 1 : -1;
                         if (aux.n_role) {
                             const float v = aux.role->data(0, 0);

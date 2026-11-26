@@ -26,7 +26,8 @@ import sat_windows as W  # noqa: E402
 import test_sat_targets as S  # noqa: E402
 
 needs_bin = S.needs_bin
-SAT_BIN = os.environ.get("MTSTUDIO_SAT_BIN")
+SAT_BIN = os.environ.get("MTSTUDIO_SAT_BIN")      # SAT's reviewed trainer build, and the commit it must be of
+SAT_COMMIT = os.environ.get("MTSTUDIO_SAT_COMMIT")
 WEIGHT = 0.3077  # the registered W (make_satw.RECENCY_WEIGHT)
 NEW_STEP_FIELDS = ("natural_pointer_nearest_right", "natural_pointer_nearest_wrong", "twin_pointer_nearest_right",
                    "twin_pointer_nearest_wrong", "pointer_weight_sum", "natural_pointer_weight_sum")
@@ -82,16 +83,61 @@ def test_weight_one_is_sat(data):
         if st and "pointer_weight_sum" in st:
             assert st["pointer_weight_sum"] == st["pointer_targets"]
             assert st["natural_pointer_weight_sum"] == st["natural_pointer_targets"]
+    # On the shared trainer, SAT's own spec also logs the eval split (an addition only).
+    assert all("nearest_right_targets" in e for e in S.evs(sat, "symbol_targets_eval"))
     if SAT_BIN:
         # SAT's reviewed trainer on SAT's spec: the same run, field for field (it logs none of SATW's fields).
         import sat_build_provenance as P
-        assert P.check(SAT_BIN, str(ROOT), "fbbcdb75") == []
+        assert SAT_COMMIT, "set MTSTUDIO_SAT_COMMIT to the commit SAT's reviewed build was made from"
+        assert P.check(SAT_BIN, str(ROOT), SAT_COMMIT) == []
         ref = tmp / "sat_reviewed"
         if not (ref / "result.json").exists():
             r = S.run(S.spec(tmp, ref, cfg(tmp)), binary=SAT_BIN)
             assert r.returncode == 0, r.stderr[-1500:]
         assert comparable(ref) == comparable(sat)
-        assert (ref / "model.safetensors").read_bytes() == (sat / "model.safetensors").read_bytes()
+        for f in ("model.safetensors", "m.safetensors", "optim.safetensors"):
+            assert (ref / f).read_bytes() == (sat / f).read_bytes(), f
+        assert not any("nearest_right_targets" in e for e in S.evs(ref, "symbol_targets_eval"))
+
+
+@needs_bin
+def test_pointer_coefficients_follow_the_ruling(data):
+    """The lead's ruling: the pointer loss is sum(w_i CE_i) / N. On the same batches at the same weights (the
+    implementation check's, under SAT's spec and SATW's), every weight-1 target (twin, natural nearest-wrong) has SAT's
+    coefficient 1 / N, the twins' summed coefficient is SAT's, only natural nearest-right targets change, to W / N, and
+    each arm's pointer loss is its coefficients times the per-target CEs."""
+    tmp, _ = data
+    got = {}
+    for name, c in (("sat", cfg(tmp)), ("satw", cfg(tmp, WEIGHT))):
+        out = tmp / f"coef_{name}"
+        shutil.rmtree(out, ignore_errors=True)
+        r = S.run(S.spec(tmp, out, c), MICROTORCH_SAT_CHECK="8")
+        assert r.returncode == 0, r.stderr[-800:]
+        got[name] = {(e["step"], e["micro"]): e for e in S.evs(out, "sat_check") if e["variant"] == "A"}
+    assert sorted(got["sat"]) == sorted(got["satw"]) and got["sat"]
+    seen = {"natural_nearest_right": 0, "natural_nearest_wrong": 0, "twin": 0}
+    for key in got["sat"]:
+        a, b = got["sat"][key], got["satw"][key]
+        assert a["logits_sha256"] == b["logits_sha256"] and a["ptr_n"] == b["ptr_n"]
+        if not a["ptr_n"]:
+            continue
+        n = a["ptr_n"]
+        ta, tb = a["pointer_terms"], b["pointer_terms"]
+        for c in seen:
+            assert ta[c]["targets"] == tb[c]["targets"], (key, c)
+            seen[c] += ta[c]["targets"]
+            if ta[c]["targets"]:
+                assert ta[c]["coefficients"] == [1.0 / n], (key, c)            # SAT: the mean
+        for c in ("natural_nearest_wrong", "twin"):
+            assert tb[c]["coefficient_sum"] == ta[c]["coefficient_sum"], (key, c)
+            if tb[c]["targets"]:
+                assert tb[c]["coefficients"] == [1.0 / n], (key, c)
+        if tb["natural_nearest_right"]["targets"]:
+            assert tb["natural_nearest_right"]["coefficients"] == [WEIGHT / n]
+        # Each arm's loss is its coefficients times the CEs on the same scores (the heads are equal at the start).
+        assert ta["recomposed_loss"] == pytest.approx(a["ptr_loss"], rel=1e-5)
+        assert tb["recomposed_loss"] == pytest.approx(b["ptr_loss"], rel=1e-5)
+    assert all(v > 0 for v in seen.values()), seen
 
 
 def nearest_from_logged(w):
