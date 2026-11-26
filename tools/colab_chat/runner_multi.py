@@ -99,6 +99,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ADOPT = os.path.join(os.path.dirname(HERE), "colab_adopt.py")
 CHUNK = 45 * 1024 * 1024
 TICK = 240
+DEADLINE_FETCH_S = 300  # at the deadline: the longest the session is kept to bring finished data jobs' outputs home
 NAME = ART = HOME = None
 BOOT_SCRIPT = "tools/colab_chat/boot_jobs.sh"
 T = None  # the Transport (ColabTransport unless --backend runpod)
@@ -672,6 +673,46 @@ def output_files(name, outputs):
 def outputs_landed(js, name, outputs):
     """True when every file of output_files() is recorded as downloaded in the job's state."""
     return set(output_files(name, outputs)) <= set(js.get("fetched") or [])
+
+
+def deadline_fetch(st, jobs, status=None, limit_s=None, clock=time.time):
+    """At the deadline, before the session is stopped: every data job that has FINISHED on the VM and is not home has
+    its outputs brought home now, all of them, within limit_s (DEADLINE_FETCH_S) in all. Returns the jobs made home.
+
+    Why (26 Nov 2026, the SAT and SATW CUDA smoke): the loop reads the VM every TICK (240 s) and, on Colab, fetches one
+    output file a tick. The smoke's checks job exited 0 on the VM 25 s before the deadline; the loop had last read it
+    as RUNNING, the deadline ended the loop, the session was stopped, and the job's result file was lost with the VM.
+    A job that finished before the deadline is now read once more and fetched before the stop. Training jobs are not
+    touched: their generations and marks are in the store. Nothing is started, and a job still RUNNING is left."""
+    limit_s = DEADLINE_FETCH_S if limit_s is None else limit_s
+    t_end = clock() + limit_s
+    if getattr(T, "deadline", None) is not None:
+        T.deadline = max(T.deadline, t_end)  # a transport that refuses transfers past the deadline: this long, no longer
+    r = vm_status(jobs) if status is None else status
+    if r is None:
+        log("deadline: the VM did not answer the last status read; nothing more is fetched")
+        return []
+    got = []
+    for j in jobs:
+        n = j["name"]
+        js = st.job(n)
+        if "cmd" not in j or js["home"] or r.get(n) != "FINISHED":
+            continue
+        if js["status"] != "FINISHED":
+            log(f"{n}: FINISHED  (read at the deadline) {r.get(n + '_tail', '')[-120:]}")
+            js["status"] = "FINISHED"
+            st.save()
+        while not js["home"] and clock() < t_end:
+            before = len(js.get("fetched") or [])
+            fetch_outputs(st, n, j.get("outputs", []))
+            if not js["home"] and len(js.get("fetched") or []) == before:
+                break  # a download failed: it is not tried again here
+        if js["home"]:
+            got.append(n)
+            log(f"{n}: outputs downloaded (at the deadline, before the session stops)")
+        else:
+            log(f"{n}: finished on the VM; its outputs are not all home within {limit_s} s of the deadline")
+    return got
 
 
 def fetch_outputs(st, name, outputs, best_effort=False):
@@ -3657,6 +3698,10 @@ def main():
                 st.save()
                 break
             sleep_tick(deadline)
+        if (not home_already and not expired and not st.d.get("campaign_home") and time.time() >= deadline
+                and st.d.get("endpoint") and st.d.get("booted", True)):
+            # The loop ended at the deadline with a session up: finished data jobs are fetched before the stop below.
+            deadline_fetch(st, jobs)
     finally:
         if STORE:
             if vm_cleanup:  # not for a start on a state folder that is home and has no session: there is no VM to ask
