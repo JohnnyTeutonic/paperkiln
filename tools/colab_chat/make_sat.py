@@ -17,7 +17,7 @@ The release turn is 20 minutes, SYMW's choice (the ladder's slot 2), so SAT neve
 
 SAT_SHA256 holds the four files' sha256, built at home on 26 Nov 2026 in /mnt/c/ml_artifacts/sat/corpus: sat.labels
 and sat_eval.labels from sat_build.sh (its receipt.json), sat_twins.ids and sat_twins.labels from build_twins.sh's
-version 2 twins (twins_build.json frames_version 2, its ids_sha256 and labels_sha256). sat_pin fails closed on any
+version 3 twins (twins_build.json frames_version 3, audit_passed, its ids_sha256 and labels_sha256). sat_pin fails closed on any
 other bytes.
 """
 import copy
@@ -39,12 +39,12 @@ CHECK_WINDOWS = 8
 LABELS, EVAL_LABELS, TWIN_IDS, TWIN_LABELS = "sat.labels", "sat_eval.labels", "sat_twins.ids", "sat_twins.labels"
 FILES = (LABELS, EVAL_LABELS, TWIN_IDS, TWIN_LABELS)
 
-# ---- the built files' sha256 (sat_build.sh's receipt.json; build_twins.sh's twins_build.json, frames_version 2). ----
+# ---- the built files' sha256 (sat_build.sh's receipt.json; build_twins.sh's twins_build.json, frames_version 3). ----
 PLACEHOLDER = "0" * 64
 SAT_SHA256 = {LABELS: "d1585800702b26f8b7fb8f8f62c0f12a905673d8074708e14033e4010f002e72",
               EVAL_LABELS: "9717d3783c9ec3826b2063586f2cd085526447f9f50e2502904348e11cbb55eb",
-              TWIN_IDS: "a32d09e72dff05c77a18c6a313c5c49d0e17204a028878b576e5000b911e3bb9",
-              TWIN_LABELS: "70067a7056beb616cb16e1b966bcab41a11195ec2e7930a471f5a84bfad9e3c9"}
+              TWIN_IDS: "a132ab0323c22bbc97c65f12e1c3dac335c6965bd50acce05b25244ade33ecdc",
+              TWIN_LABELS: "e5c3c8f9da051b231eb7ff9d21c1df9d51458fd7eb30007b61d18888580d85ee"}
 # ------------------------------------------------------------------------------------------------------------------
 
 SAT_SETS = [
