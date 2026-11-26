@@ -137,6 +137,7 @@ def setup(tmp):
     SL.write(tmp / "A.satl", spans_a, raw, "synthetic-main")
     SL.write(tmp / "B.satl", scramble(spans_a), raw, "synthetic-main")
     SL.write(tmp / "none.satl", [], raw, "synthetic-main")
+    SL.write(tmp / "nopointers.satl", [{**s, "pointers": []} for s in spans_a], raw, "synthetic-main")
     ev_spans = []
     for o in (first_val_raw + 2, first_val_raw + 40, first_val_raw + 80):
         if pos[o] + T + 1 <= n and o + T + 1 <= len(raw):
@@ -198,6 +199,16 @@ def last_by_step(out, kind):
     return d
 
 
+def stitched_events(before_text, after_text):
+    """The event stream a reader collects across a restart: everything the ended run logged, then what the restarted
+    run logged past the lines it kept (the trainer drops lines past the checkpoint on resume, truncate_events_after)."""
+    a, b = before_text.splitlines(), after_text.splitlines()
+    n = 0
+    while n < min(len(a), len(b)) and a[n] == b[n]:
+        n += 1
+    return [json.loads(x) for x in a + b[n:]]
+
+
 def st_keys(path):
     b = Path(path).read_bytes()
     (n,) = struct.unpack("<Q", b[:8])
@@ -257,6 +268,30 @@ def test_satl_writer_refuses(tmp_path, bad, why):
 
 # ---------------------------------------------------------------- the trainer
 
+def check_result_can_fail(res):
+    """The conditions that make the implementation check one that could fail (Explore 10, GPT 4)."""
+    assert res["a_role_targets"] > 0 and res["a_pointer_targets"] > 0
+    assert sum(res["b_roles_moved"].values()) > 0 and sum(res["b_pointers_moved"].values()) > 0
+    assert res["aux_finite"] is True and res["aux_differ"] == {"role": True, "pointer": True}
+    assert res["after_aux_identical"] is True
+    sums = res["aux_loss_sums"]
+    assert sums["A"]["role"] != sums["B"]["role"] and sums["A"]["pointer"] != sums["B"]["pointer"]
+
+
+@needs_bin
+@pytest.mark.parametrize("labels,why", [("nopointers", "a_pointer_targets"), ("none", "a_role_targets")])
+def test_implementation_check_refuses_when_it_cannot_fail(data, labels, why):
+    """Labels without pointers, or none at all (twins off): the logits agree, but the check could not have failed on
+    the pointer (or any) term, so it does not pass and the trainer exits non-zero."""
+    tmp, _ = data
+    out = tmp / f"check_cannot_{labels}"
+    shutil.rmtree(out, ignore_errors=True)
+    r = run(spec(tmp, out, sat_cfg(tmp, labels, twins=False)), MICROTORCH_SAT_CHECK="8")
+    assert r.returncode != 0 and "could not fail" in r.stderr, r.stderr[-800:]
+    res = evs(out, "sat_check_result")[-1]
+    assert res["equal"] is True and res["pass"] is False and res[why] == 0
+
+
 @needs_bin
 def test_implementation_check_at_init_and_after_five_steps(data):
     """REGISTRATION section 7. Fixed weights, labels A, B (roles moved, pointers moved) and none: every LM logit of
@@ -270,8 +305,10 @@ def test_implementation_check_at_init_and_after_five_steps(data):
         r = run(spec(tmp, out, sat_cfg(tmp, lab)), MICROTORCH_SAT_CHECK="8")
         assert r.returncode == 0, r.stderr[-1500:]
         res = evs(out, "sat_check_result")
-        assert len(res) == 1 and res[0]["equal"] is True and res[0]["from_step"] == 1
+        assert len(res) == 1 and res[0]["equal"] is True and res[0]["pass"] is True and res[0]["from_step"] == 1
+        check_result_can_fail(res[0])
         ch = evs(out, "sat_check")
+        assert all(c["after_aux_identical"] is True for c in ch)
         assert {c["variant"] for c in ch} == {"A", "B", "none", "plain"} and len(ch) == 4 * 4
         hashes[lab] = [(c["variant"], c["step"], c["micro"], c["logits_sha256"]) for c in ch]
         if lab == "A":
@@ -294,8 +331,9 @@ def test_implementation_check_at_init_and_after_five_steps(data):
         shutil.copytree(base, out, symlinks=True)
         r = run(spec(tmp, out, sat_cfg(tmp, lab), ckpt_every=5), MICROTORCH_SAT_CHECK="8")
         assert r.returncode == 0, r.stderr[-1500:]
-        assert evs(out, "sat_check_result")[-1] == {"event": "sat_check_result", "equal": True, "windows": 8,
-                                                    "from_step": 6}
+        res = evs(out, "sat_check_result")[-1]
+        assert (res["pass"], res["equal"], res["windows"], res["from_step"]) == (True, True, 8, 6)
+        check_result_can_fail(res)
         after[lab] = [(c["variant"], c["step"], c["logits_sha256"]) for c in evs(out, "sat_check") if c["step"] >= 6]
     assert after["A"] == after["B"] == after["none"] and after["A"]
     assert {h[2] for h in after["A"]}.isdisjoint({h[3] for h in hashes["A"]})   # other weights: other logits
@@ -378,19 +416,28 @@ def test_from_the_cut_sat_and_plain_continue_identically(data):
 
 
 @needs_bin
-@pytest.mark.parametrize("crash_at", [4, 8])
-def test_resume_inside_the_scaffold(data, crash_at):
-    """A run ended at a published checkpoint inside the scaffold and restarted equals the uninterrupted run: steps
-    (w, auxiliary losses and counts included), held-out accuracies, windows and the final weights."""
+@pytest.mark.parametrize("stage,at,crash_at", [("prune", 4, 4), ("prune", 8, 8), ("mkdir", 8, 4)])
+def test_resume_inside_the_scaffold(data, stage, at, crash_at):
+    """A run ended inside the scaffold and restarted equals the uninterrupted run: steps (w, auxiliary losses and
+    counts included), held-out accuracies, windows and the final weights. Ended after the checkpoint at 4 or 8 was
+    published, or while the one at 8 was being written (so it resumes from 4 and steps 5 to 8 are logged twice)."""
     tmp, _ = data
     whole = full(tmp, "sat_full", sat_cfg(tmp))
-    cut = tmp / f"sat_resume_{crash_at}"
+    cut = tmp / f"sat_resume_{stage}_{at}"
     shutil.rmtree(cut, ignore_errors=True)
     p = spec(tmp, cut, sat_cfg(tmp))
-    r1 = run(p, MICROTORCH_CKPT_CRASH=f"prune:{crash_at}")
+    r1 = run(p, MICROTORCH_CKPT_CRASH=f"{stage}:{at}")
     assert r1.returncode != 0
+    before = (cut / "events.jsonl").read_text()
     r2 = run(p)
     assert r2.returncode == 0, r2.stderr[-1500:]
+    stitched = [e for e in stitched_events(before, (cut / "events.jsonl").read_text()) if e.get("event") == "step"]
+    logged = [e["step"] for e in stitched]
+    assert (len(logged) > len(set(logged))) == (at != crash_at)       # steps logged twice when the checkpoint was lost
+    dedup = {e["step"]: e for e in stitched}
+    for k in ("natural_role_targets", "natural_pointer_targets", "twin_role_targets", "twin_pointer_targets", "twin_rows"):
+        assert sum(v["symbol_targets"][k] for s_, v in dedup.items() if s_ < CUT) == \
+               sum(e["symbol_targets"][k] for e in evs(whole, "step") if e["step"] < CUT), k
     res = evs(cut, "symbol_targets_resume")
     assert len(res) == 1 and res[0]["step"] == crash_at and res[0]["adamw_t"] == crash_at
     for kind in ("step", "eval", "windows"):
@@ -401,10 +448,17 @@ def test_resume_inside_the_scaffold(data, crash_at):
     assert last_by_step(whole, "symbol_targets_eval") == last_by_step(cut, "symbol_targets_eval")
     assert len(last_by_step(cut, "symbol_targets_eval")) == 2
     assert (whole / "model.safetensors").read_bytes() == (cut / "model.safetensors").read_bytes()
+    # The observed counts were carried through the checkpoint: the end event is the uninterrupted run's, field for field,
+    # and the per-step counts de-duplicated by step sum to the same totals.
     end_a, end_b = evs(whole, "symbol_targets_end"), evs(cut, "symbol_targets_end")
-    assert len(end_a) == len(end_b) == 1
-    for k in ("step", "w", "twin_rows", "twin_positions", "natural_positions"):
-        assert end_a[0][k] == end_b[0][k]
+    assert len(end_a) == len(end_b) == 1 and end_a[0] == end_b[0]
+    cnt = evs(cut, "symbol_targets_counts")
+    assert len(cnt) == 1 and cnt[0]["step"] == crash_at
+    by_a, by_b = last_by_step(whole, "step"), last_by_step(cut, "step")
+    for k in ("natural_role_targets", "natural_pointer_targets", "twin_role_targets", "twin_pointer_targets", "twin_rows"):
+        sa = sum(v["symbol_targets"][k] for (s_, _), v in by_a.items() if s_ < CUT)
+        sb = sum(v["symbol_targets"][k] for (s_, _), v in by_b.items() if s_ < CUT)
+        assert sa == sb == end_a[0][k], k
 
 
 @needs_bin
@@ -460,11 +514,23 @@ def test_logged_w_is_the_schedule(data):
         else:
             assert "symbol_targets" not in e
     end = evs(out, "symbol_targets_end")
-    assert len(end) == 1 and end[0]["step"] == CUT and end[0]["w"] == 0.0
+    assert len(end) == 1 and end[0]["step"] == CUT and end[0]["w"] == 0.0 and end[0]["through_step"] == CUT - 1
     tw = sum(e["symbol_targets"]["twin_rows"] for e in steps if e["step"] < CUT)
-    assert end[0]["twin_rows"] == tw == -(-(CUT - 1) * BATCH * ACCUM // EVERY)
+    assert end[0]["twin_rows"] == tw == end[0]["twin_rows_scheduled"] == -(-(CUT - 1) * BATCH * ACCUM // EVERY)
     assert end[0]["twin_positions"] == tw * T
+    assert end[0]["natural_rows"] == (CUT - 1) * BATCH * ACCUM - tw
     assert end[0]["natural_positions"] == ((CUT - 1) * BATCH * ACCUM - tw) * T
+    # The end's observed totals are the per-step counts summed, by source.
+    for k in ("natural_role_targets", "natural_pointer_targets", "natural_pointers_dropped", "twin_role_targets",
+              "twin_pointer_targets", "twin_pointers_dropped"):
+        assert end[0][k] == sum(e["symbol_targets"][k] for e in steps if e["step"] < CUT), k
+    for e in steps:
+        if e["step"] < CUT:
+            st = e["symbol_targets"]
+            assert st["role_targets"] == st["natural_role_targets"] + st["twin_role_targets"]
+            assert st["pointer_targets"] == st["natural_pointer_targets"] + st["twin_pointer_targets"]
+            assert st["natural_rows"] + st["twin_rows"] == BATCH * ACCUM
+    assert end[0]["twin_pointer_targets"] > 0 and end[0]["natural_pointer_targets"] > 0
     assert sum(e["symbol_targets"]["pointer_targets"] for e in steps if e["step"] < CUT) > 0
     assert sum(e["symbol_targets"]["pointer_targets_dropped"] for e in steps if e["step"] < CUT) > 0
     ev = evs(out, "symbol_targets_eval")

@@ -123,6 +123,56 @@ def replay(n_raw, imap, T, seed, batch, accum, cut_step, twin_every=0):
     return out, {"tokens_after": n, "val_start": val_start, "limit": limit}
 
 
+class SpanIndex:
+    """An SATL file's spans (sat_labels.read's), sorted by raw offset, for window lookups."""
+
+    def __init__(self, spans):
+        self.spans = sorted(spans, key=lambda s: s["raw_offset"])
+        self.offs = np.array([s["raw_offset"] for s in self.spans], dtype=np.int64)
+
+    def overlapping(self, lo, end):
+        """The spans that overlap raw positions [lo, end)."""
+        i = int(np.searchsorted(self.offs, lo, side="right"))
+        if i > 0 and self.offs[i - 1] + len(self.spans[i - 1]["codes"]) > lo:
+            i -= 1
+        while i < len(self.spans) and self.offs[i] < end:
+            yield self.spans[i]
+            i += 1
+
+
+def window_targets(index, imap, at, T):
+    """(role targets, pointer targets, pointers dropped) of the window whose inputs are post-insertion positions
+    at .. at + T - 1, by the trainer's rule (sat_window): labelled codes on raw positions inside the window; a pointer
+    counts when its position is inside and its gold is too, and is dropped when its gold lies before the window."""
+    lo, end = imap.raw_from(at), imap.raw_from(at + T)
+    role = ptr = dropped = 0
+    if lo >= end:
+        return 0, 0, 0
+    for s in index.overlapping(lo, end):
+        off, codes = s["raw_offset"], s["codes"]
+        a, b = max(lo, off) - off, min(end, off + len(codes)) - off
+        role += sum(1 for c in codes[a:b] if c & 8)
+        for pos, back in s["pointers"]:
+            rt = off + pos
+            if lo <= rt < end:
+                if rt - back < lo:
+                    dropped += 1
+                else:
+                    ptr += 1
+    return role, ptr, dropped
+
+
+def expected_counts(index, imap, windows, T):
+    """The replay's windows' target counts summed: the expectation for the trainer's natural_role_targets,
+    natural_pointer_targets and natural_pointers_dropped over steps 1 .. cut_step - 1 (REGISTRATION section 10, V8)."""
+    tot = [0, 0, 0]
+    for w in windows:
+        for i, v in enumerate(window_targets(index, imap, w["at"], T)):
+            tot[i] += v
+    return {"natural_role_targets": tot[0], "natural_pointer_targets": tot[1], "natural_pointers_dropped": tot[2],
+            "natural_rows": len(windows)}
+
+
 def read_ids(path):
     """A PKIDS001 file's ids (as the trainer's read_corpus reads .ids), memory-mapped read-only."""
     with open(path, "rb") as f:

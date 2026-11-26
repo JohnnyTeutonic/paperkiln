@@ -1222,12 +1222,41 @@ struct SatBatch {
     std::vector<uint8_t> mention;  // 1 at pointer candidates
     std::vector<SatPtr> ptr;
     size_t dropped = 0;  // pointer targets in the window whose gold lies before it
+    // By the source of the rows they were read from, [0] natural and [1] twin, counted as each row is built.
+    size_t role_by[2] = {0, 0}, ptr_by[2] = {0, 0}, dropped_by[2] = {0, 0};
     void reset(size_t rows) {
         role.assign(rows, 0);
         role_m.assign(rows, 0);
         mention.assign(rows, 0);
         ptr.clear();
         dropped = 0;
+        for (int i = 0; i < 2; ++i) role_by[i] = ptr_by[i] = dropped_by[i] = 0;
+    }
+};
+
+// symbol_targets' observed counts, cumulative from step 1 and carried through checkpoints (state.txt "sat_counts"):
+// rows read from each corpus, and the role and pointer targets (and the pointers dropped) built from each.
+struct SatCounts {
+    uint64_t rows[2] = {0, 0}, role[2] = {0, 0}, ptr[2] = {0, 0}, dropped[2] = {0, 0};
+    json to_json() const {
+        return {{"natural_rows", rows[0]},     {"twin_rows", rows[1]},
+                {"natural_role_targets", role[0]}, {"twin_role_targets", role[1]},
+                {"natural_pointer_targets", ptr[0]}, {"twin_pointer_targets", ptr[1]},
+                {"natural_pointers_dropped", dropped[0]}, {"twin_pointers_dropped", dropped[1]}};
+    }
+    static SatCounts from_json(const json& j) {
+        SatCounts c;
+        const char* names[4][2] = {{"natural_rows", "twin_rows"},
+                                   {"natural_role_targets", "twin_role_targets"},
+                                   {"natural_pointer_targets", "twin_pointer_targets"},
+                                   {"natural_pointers_dropped", "twin_pointers_dropped"}};
+        uint64_t* to[4] = {c.rows, c.role, c.ptr, c.dropped};
+        for (int f = 0; f < 4; ++f)
+            for (int i = 0; i < 2; ++i) {
+                if (!j.contains(names[f][i])) throw std::runtime_error(std::string("sat_counts lacks ") + names[f][i]);
+                to[f][i] = j[names[f][i]].get<uint64_t>();
+            }
+        return c;
     }
 };
 
@@ -3189,6 +3218,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     };
     SatHeads sat_h;
     std::unique_ptr<nn::AdamW> sat_opt;
+    SatCounts sat_cnt;  // observed from step 1, carried through checkpoints before the cut
     if (sat_heads_on) {
         if (s.optimizer != "adamw")
             throw std::runtime_error("train.symbol_targets is wired with optimizer adamw (the heads take the trunk's)");
@@ -3290,6 +3320,19 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         ev.emit({{"event", "symbol_targets_resume"}, {"step", start_step}, {"heads", "restored"},
                  {"adamw_t", sat_opt->t()}});
     }
+    // symbol_targets: a resume before cut_step continues the observed counts from the checkpoint's state record.
+    if (s.sat.on && start_step > 0 && start_step < s.sat.cut_step) {
+        std::ifstream st(state_path);
+        std::string l1, l2;
+        std::getline(st, l1);
+        std::getline(st, l2);
+        const json rec = json::parse(l2, nullptr, false);
+        if (rec.is_discarded() || !rec.contains("sat_counts"))
+            throw std::runtime_error("symbol_targets: the checkpoint at step " + std::to_string(start_step) +
+                                     " has no sat_counts in its state record; refusing to resume before the cut");
+        sat_cnt = SatCounts::from_json(rec["sat_counts"]);
+        ev.emit({{"event", "symbol_targets_counts"}, {"step", start_step}, {"counts", sat_cnt.to_json()}});
+    }
 
     // Data order follows the spec seed so multi-seed sweeps vary both init
     // and batch composition (offset keeps seed=7 runs distinct from the
@@ -3328,6 +3371,8 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             osd.insert(part.begin(), part.end());
             state_rec["sat_heads_t"] = sat_opt->t();
         }
+        // symbol_targets: the observed rows and targets through this step, so a resume continues the sums.
+        if (s.sat.on && step < s.sat.cut_step) state_rec["sat_counts"] = sat_cnt.to_json();
         const std::string state_text = std::to_string(step) + "\n" + state_rec.dump() + "\n";
         if (ckpt_store) {  // one step's three files publish as one unit
             const auto c = ckpt_store->commit(step, msd, osd, state_text);
@@ -3406,7 +3451,16 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         const size_t at = twin ? draw % twin_lim : draw % lim;
         x.insert(x.end(), from.begin() + at, from.begin() + at + s.T);
         y.insert(y.end(), from.begin() + at + 1, from.begin() + at + s.T + 1);
-        if (sb) sat_window(twin ? sat_twin : sat_main, twin ? twin_map : sat_map, at, static_cast<int>(s.T), b, *sb);
+        if (sb) {
+            const size_t p0 = sb->ptr.size(), d0 = sb->dropped;
+            sat_window(twin ? sat_twin : sat_main, twin ? twin_map : sat_map, at, static_cast<int>(s.T), b, *sb);
+            const size_t base = static_cast<size_t>(b) * s.T;
+            size_t nr = 0;
+            for (size_t i = base; i < base + s.T; ++i) nr += sb->role_m[i];
+            sb->role_by[twin] += nr;
+            sb->ptr_by[twin] += sb->ptr.size() - p0;
+            sb->dropped_by[twin] += sb->dropped - d0;
+        }
         if (wl) {
             wl->raw.push_back(draw);
             wl->at.push_back(at);
@@ -3427,8 +3481,12 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     // MICROTORCH_SAT_CHECK=n (REGISTRATION section 7, the sat_check job): at the run's current weights (fresh, or
     // the checkpoint resumed), the next steps' first n training windows run the scaffold step's forward with the
     // spec's labels (A), with every role moved and every pointer moved to another candidate (B) and with none, and
-    // the plain step's forward on the same rows; every LM logit must agree bit for bit. Emits "sat_check" events
-    // and "sat_check_result", trains nothing, and exits non-zero on any difference.
+    // the plain step's forward on the same rows; every LM logit must agree bit for bit. It also requires that the
+    // check can fail: labels A give role and pointer targets, B moved at least one role and one pointer's gold, the
+    // auxiliary losses are finite and differ between A and B; and that the auxiliary terms leave the LM untouched: after
+    // sat_aux, the logits buffer, the head recomputed from the same hidden states and the LM-only loss recomputed on it
+    // are bit for bit those before. Emits "sat_check" events and "sat_check_result" (with "pass"), trains nothing, and
+    // exits non-zero unless every condition holds.
     const int sat_check_n = [] {
         const char* v = std::getenv("MICROTORCH_SAT_CHECK");
         return v ? std::atoi(v) : 0;
@@ -3437,6 +3495,11 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         if (!sat_heads_on || start_step + 1 >= s.sat.cut_step)
             throw std::runtime_error("MICROTORCH_SAT_CHECK needs train.symbol_targets with w0 > 0 inside the scaffold");
         std::map<std::string, std::vector<std::string>> hashes;
+        double aux_sum[2][2] = {{0, 0}, {0, 0}};  // [A, B][role, pointer]: sums of the micro-batches' losses
+        size_t a_role = 0, a_ptr = 0;
+        size_t moved_roles[2] = {0, 0}, moved_ptrs[2] = {0, 0};  // B against A, [natural, twin]
+        bool aux_finite = true, after_aux_same = true;
+        auto bits_equal = [](float a, float b) { return std::memcmp(&a, &b, sizeof(float)) == 0; };
         for (const std::string variant : {"A", "B", "none", "plain"}) {
             std::mt19937 g = rng;  // a copy: the run's own generator is not consumed
             int taken = 0;
@@ -3446,8 +3509,21 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                     std::vector<uint8_t> mask;
                     SatBatch sb;
                     sb.reset(static_cast<size_t>(s.batch) * s.T);
-                    for (int b = 0; b < s.batch; ++b) take_window(step, k, b, g(), ids, val_start - s.T - 1, x, y, &sb, nullptr);
-                    if (variant == "B") sat_scramble(sb, static_cast<int>(s.T));
+                    std::vector<int> row_twin;
+                    for (int b = 0; b < s.batch; ++b)
+                        row_twin.push_back(take_window(step, k, b, g(), ids, val_start - s.T - 1, x, y, &sb, nullptr));
+                    if (variant == "B") {
+                        const SatBatch a = sb;
+                        sat_scramble(sb, static_cast<int>(s.T));
+                        for (size_t i = 0; i < a.role.size(); ++i)
+                            if (a.role_m[i] && a.role[i] != sb.role[i]) ++moved_roles[row_twin[i / s.T]];
+                        std::map<int, int> gold_b;
+                        for (const auto& p : sb.ptr) gold_b[p.q] = p.gold;
+                        for (const auto& p : a.ptr) {
+                            const auto it = gold_b.find(p.q);
+                            if (it != gold_b.end() && it->second != p.gold) ++moved_ptrs[row_twin[static_cast<size_t>(p.q) / s.T]];
+                        }
+                    }
                     if (variant == "none") sb.reset(static_cast<size_t>(s.batch) * s.T);
                     Var hid, logits;
                     if (variant == "plain") {
@@ -3457,33 +3533,79 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                         logits = llama->head(hid);
                     }
                     if (s.state_k > 0) state_loss_mask(x, y, mask, tokens.size());
-                    const Var task = s.state_k > 0 ? ops::cross_entropy_masked(logits, y, mask) : ops::cross_entropy(logits, y);
+                    auto lm_loss = [&](const Var& lg) {
+                        return s.state_k > 0 ? ops::cross_entropy_masked(lg, y, mask) : ops::cross_entropy(lg, y);
+                    };
+                    const Var task = lm_loss(logits);
+                    const std::string h_before = matrix_sha(logits->data);
+                    const float l_before = task->data(0, 0);
                     json ce = {{"event", "sat_check"}, {"variant", variant}, {"step", step}, {"micro", k},
-                               {"logits_sha256", matrix_sha(logits->data)}, {"loss", task->data(0, 0)}};
+                               {"logits_sha256", h_before}, {"loss", l_before}};
                     if (variant != "plain") {
                         const SatAux aux = sat_aux(sat_h, hid, sb, static_cast<int>(s.T), s.sat.pointer_dim);
                         ce["role_n"] = aux.n_role;
                         ce["ptr_n"] = aux.n_ptr;
-                        if (aux.n_role) ce["role_loss"] = aux.role->data(0, 0);
-                        if (aux.n_ptr) ce["ptr_loss"] = aux.ptr->data(0, 0);
+                        const int vi = variant == "A" ? 0 : variant == "B" ? 1 : -1;
+                        if (aux.n_role) {
+                            const float v = aux.role->data(0, 0);
+                            ce["role_loss"] = v;
+                            aux_finite = aux_finite && std::isfinite(v);
+                            if (vi >= 0) aux_sum[vi][0] += v;
+                        }
+                        if (aux.n_ptr) {
+                            const float v = aux.ptr->data(0, 0);
+                            ce["ptr_loss"] = v;
+                            aux_finite = aux_finite && std::isfinite(v);
+                            if (vi >= 0) aux_sum[vi][1] += v;
+                        }
+                        if (vi == 0) {
+                            a_role += aux.n_role;
+                            a_ptr += aux.n_ptr;
+                        }
                     }
-                    hashes[variant].push_back(ce["logits_sha256"].get<std::string>());
+                    // After the auxiliary terms, on the same buffers: the logits unchanged, the LM recomputed equal.
+                    const Var logits2 = variant == "plain" ? fwd(x, s.batch > 1 ? s.T : 0) : llama->head(hid);
+                    const Var task2 = lm_loss(logits2);
+                    const bool same = matrix_sha(logits->data) == h_before && matrix_sha(logits2->data) == h_before &&
+                                      bits_equal(task2->data(0, 0), l_before);
+                    ce["after_aux_identical"] = same;
+                    after_aux_same = after_aux_same && same;
+                    hashes[variant].push_back(h_before);
                     ev.emit(ce);
                 }
         }
         const bool equal = hashes["A"] == hashes["B"] && hashes["A"] == hashes["none"] && hashes["A"] == hashes["plain"];
-        ev.emit({{"event", "sat_check_result"}, {"equal", equal}, {"windows", sat_check_n}, {"from_step", start_step + 1}});
+        const bool role_differ = aux_sum[0][0] != aux_sum[1][0], ptr_differ = aux_sum[0][1] != aux_sum[1][1];
+        const bool pass = equal && after_aux_same && a_role > 0 && a_ptr > 0 && moved_roles[0] + moved_roles[1] > 0 &&
+                          moved_ptrs[0] + moved_ptrs[1] > 0 && aux_finite && role_differ && ptr_differ;
+        ev.emit({{"event", "sat_check_result"},
+                 {"pass", pass},
+                 {"equal", equal},
+                 {"after_aux_identical", after_aux_same},
+                 {"a_role_targets", a_role},
+                 {"a_pointer_targets", a_ptr},
+                 {"b_roles_moved", {{"natural", moved_roles[0]}, {"twin", moved_roles[1]}}},
+                 {"b_pointers_moved", {{"natural", moved_ptrs[0]}, {"twin", moved_ptrs[1]}}},
+                 {"aux_finite", aux_finite},
+                 {"aux_loss_sums", {{"A", {{"role", aux_sum[0][0]}, {"pointer", aux_sum[0][1]}}},
+                                    {"B", {{"role", aux_sum[1][0]}, {"pointer", aux_sum[1][1]}}}}},
+                 {"aux_differ", {{"role", role_differ}, {"pointer", ptr_differ}}},
+                 {"windows", sat_check_n},
+                 {"from_step", start_step + 1}});
         if (!equal) throw std::runtime_error("symbol_targets: the implementation check failed: the logits depend on the labels");
+        if (!pass)
+            throw std::runtime_error("symbol_targets: the implementation check could not fail as run (no targets, nothing "
+                                     "moved, non-finite or equal auxiliary losses) or the LM changed after the auxiliary terms");
         return 0;
     }
 
     // Train.
     bool stopped_early = false;
     const bool is_srd = attn_kind(s.attention) == parity::AttnKind::SRD;
-    // symbol_targets: the step's auxiliary statistics, and the run's counts since this process started.
-    size_t sat_role_seen = 0, sat_ptr_seen = 0, sat_dropped_seen = 0;
+    // symbol_targets: the step's auxiliary statistics; sat_cnt holds the observed counts from step 1.
     const size_t rows_per_step = static_cast<size_t>(s.batch) * static_cast<size_t>(s.accum);
-    // Twin rows in steps 1 .. t: ceil(min(t, cut_step - 1) * rows / every) (rows 0, every, 2 every, ...).
+    // The schedule's twin rows in steps 1 .. t, ceil(min(t, cut_step - 1) * rows / every), logged beside the observed
+    // count for comparison only.
     auto twin_rows_through = [&](int t) -> uint64_t {
         if (!s.sat.twin_every) return 0;
         const uint64_t n = static_cast<uint64_t>(std::min(t, s.sat.cut_step - 1)) * rows_per_step;
@@ -3496,17 +3618,21 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         live_mb = json::object();
         if (step_timing) device::pool_reset_peak();
         if (s.sat.on && step == s.sat.cut_step) {
-            const uint64_t tw = twin_rows_through(step - 1);
-            ev.emit({{"event", "symbol_targets_end"}, {"step", step}, {"w", sat_w(step)},
-                     {"twin_rows", tw}, {"twin_positions", tw * s.T},
-                     {"natural_positions", (static_cast<uint64_t>(step - 1) * rows_per_step - tw) * s.T},
-                     {"since_step", start_step + 1}, {"role_targets", sat_role_seen}, {"pointer_targets", sat_ptr_seen},
-                     {"pointer_targets_dropped", sat_dropped_seen}});
+            json e = {{"event", "symbol_targets_end"},
+                      {"step", step},
+                      {"w", sat_w(step)},
+                      {"through_step", step - 1},
+                      {"natural_positions", sat_cnt.rows[0] * s.T},
+                      {"twin_positions", sat_cnt.rows[1] * s.T},
+                      {"twin_rows_scheduled", twin_rows_through(step - 1)}};
+            e.update(sat_cnt.to_json());
+            ev.emit(e);
         }
         const double w_step = sat_w(step);
         const bool sat_step = sat_heads_on && w_step > 0.0;
         double sat_role_sum = 0.0, sat_ptr_sum = 0.0;
         size_t sat_role_n = 0, sat_ptr_n = 0, sat_dropped = 0, twin_rows = 0;
+        size_t st_role[2] = {0, 0}, st_ptr[2] = {0, 0}, st_drop[2] = {0, 0};  // this step's, [natural, twin]
         if (sat_step) sat_opt->zero_grad();
         // The anneal corpus has no held-out part: all of it is training text.
         const bool annealing = !anneal_ids.empty() && step > static_cast<int>(s.anneal_from * s.steps);
@@ -3787,6 +3913,11 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                 sat_role_n += aux.n_role;
                 sat_ptr_n += aux.n_ptr;
                 sat_dropped += sb.dropped;
+                for (int i = 0; i < 2; ++i) {
+                    st_role[i] += sb.role_by[i];
+                    st_ptr[i] += sb.ptr_by[i];
+                    st_drop[i] += sb.dropped_by[i];
+                }
             }
             mark("loss");
             backward(ops::scale(loss, 1.0f / static_cast<float>(s.accum)));
@@ -3856,19 +3987,32 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             {"event", "step"}, {"step", step}, {"loss", task_mean}, {"grad_norm", total_norm}};
         if (scheduled) e["lr"] = s.lr * lr_f;
         if (s.sat.on && step < s.sat.cut_step) {
-            // symbol_targets, inside the scaffold: w, the auxiliary losses (means over the step's targets), their
-            // counts, the heads' pre-clip norm, and the rows and positions read from each corpus.
-            sat_role_seen += sat_role_n;
-            sat_ptr_seen += sat_ptr_n;
-            sat_dropped_seen += sat_dropped;
-            const uint64_t tw = twin_rows_through(step);
+            // symbol_targets, inside the scaffold: w, the auxiliary losses (means over the step's targets), the rows
+            // read from each corpus and the targets built from each (counted from the rows as built), the heads'
+            // pre-clip norm, and the observed cumulative counts (carried through checkpoints).
+            const size_t nat_rows = rows_per_step - twin_rows;
+            sat_cnt.rows[0] += nat_rows;
+            sat_cnt.rows[1] += twin_rows;
+            for (int i = 0; i < 2; ++i) {
+                sat_cnt.role[i] += st_role[i];
+                sat_cnt.ptr[i] += st_ptr[i];
+                sat_cnt.dropped[i] += st_drop[i];
+            }
             json st = {{"w", w_step},
                        {"role_targets", sat_role_n},
                        {"pointer_targets", sat_ptr_n},
                        {"pointer_targets_dropped", sat_dropped},
+                       {"natural_rows", nat_rows},
                        {"twin_rows", twin_rows},
-                       {"twin_positions_total", tw * s.T},
-                       {"natural_positions_total", (static_cast<uint64_t>(step) * rows_per_step - tw) * s.T}};
+                       {"natural_role_targets", st_role[0]},
+                       {"natural_pointer_targets", st_ptr[0]},
+                       {"natural_pointers_dropped", st_drop[0]},
+                       {"twin_role_targets", st_role[1]},
+                       {"twin_pointer_targets", st_ptr[1]},
+                       {"twin_pointers_dropped", st_drop[1]},
+                       {"natural_positions_total", sat_cnt.rows[0] * s.T},
+                       {"twin_positions_total", sat_cnt.rows[1] * s.T},
+                       {"twin_rows_total", sat_cnt.rows[1]}};
             if (sat_step) st["heads_grad_norm"] = sat_norm;
             if (sat_role_n) st["role_loss"] = sat_role_sum / static_cast<double>(sat_role_n);
             if (sat_ptr_n) st["pointer_loss"] = sat_ptr_sum / static_cast<double>(sat_ptr_n);

@@ -164,9 +164,15 @@ def test_sat_check_vm_on_the_cpu_trainer(tmp_path):
     out = tmp_path / "chk"
     assert V.main(["--out", str(out), "--windows", "8", "--spec-json", json.dumps(spec), "--bin", BIN]) == 0
     rec = json.loads((out / "sat_check.json").read_text())
-    assert rec["ok"] and rec["result"][0]["equal"] and len(rec["checks"]) == 16
-    spec["train"]["symbol_targets"]["labels"] = str(tmp_path / "none.satl")
-    spec["train"]["symbol_targets"].pop("twins")          # no targets anywhere: a check that cannot fail is refused
-    assert V.main(["--out", str(tmp_path / "chk2"), "--windows", "8", "--spec-json", json.dumps(spec), "--bin", BIN]) == 1
+    assert rec["ok"] and rec["result"][0]["equal"] and rec["result"][0]["pass"] and len(rec["checks"]) == 16
+    assert all(rec["conditions"].values()) and len(rec["conditions"]) == 12
+    # Checks that cannot fail are refused: no pointers anywhere (twins off), or no targets at all.
+    spec["train"]["symbol_targets"].pop("twins")
+    for labels, failed in (("nopointers", "a_pointer_targets"), ("none", "a_role_targets")):
+        spec["train"]["symbol_targets"]["labels"] = str(tmp_path / f"{labels}.satl")
+        o = tmp_path / f"chk_{labels}"
+        assert V.main(["--out", str(o), "--windows", "8", "--spec-json", json.dumps(spec), "--bin", BIN]) == 1
+        c = json.loads((o / "sat_check.json").read_text())["conditions"]
+        assert c["logits_equal"] and not c[failed] and not c["trainer_pass"]
     spec["train"]["symbol_targets"]["labels"] = str(tmp_path / "bad.satl")
     assert V.main(["--out", str(tmp_path / "chk3"), "--windows", "8", "--spec-json", json.dumps(spec), "--bin", BIN]) == 1

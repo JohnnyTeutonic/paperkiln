@@ -6,9 +6,11 @@
 Writes the training spec with out_dir DIR/run (a fresh directory: the check runs at the initial weights), runs the
 VM's trainer (JOBS_MTSTUDIO, as jobs_vm.py) with MICROTORCH_SAT_CHECK=<windows>: the scaffold step's forward on the
 first <windows> training windows with labels A (the spec's), B (every role moved, every pointer moved to another
-candidate) and none, and the plain step's forward, every logit compared bit for bit by its sha256. Writes
-DIR/sat_check.json and exits 0 only when the trainer reported equal logits; anything else (a difference, a refusal, a
-missing result) exits non-zero, and the job's halt_on_failure stops the session before training.
+candidate) and none, and the plain step's forward, every logit compared bit for bit by its sha256. It also requires
+that the check could have failed (targets of both kinds under A, roles and pointer golds moved under B, finite
+auxiliary losses that differ) and that the LM's logits and loss are unchanged after the auxiliary terms. Writes
+DIR/sat_check.json (each condition named) and exits 0 only when every condition holds; anything else (a difference,
+a refusal, a missing result) exits non-zero, and the job's halt_on_failure stops the session before training.
 """
 import argparse
 import json
@@ -48,9 +50,28 @@ def main(argv=None):
     checks = [e for e in events if e.get("event") == "sat_check"]
     result = [e for e in events if e.get("event") == "sat_check_result"]
     variants = sorted({e["variant"] for e in checks})
-    ok = (p.returncode == 0 and len(result) == 1 and result[0].get("equal") is True
-          and variants == ["A", "B", "none", "plain"] and sum(e.get("role_n", 0) for e in checks if e["variant"] == "A") > 0)
-    rec = {"ok": ok, "returncode": p.returncode, "result": result, "checks": checks,
+    under_a = [e for e in checks if e["variant"] == "A"]
+    r = result[0] if len(result) == 1 else {}
+    # The check must be one that could fail (Explore 10, GPT 4): role and pointer targets under A, at least one role and
+    # one pointer gold moved under B, finite auxiliary losses that differ between A and B, and the LM's logits and loss
+    # recomputed after the auxiliary terms bit for bit those before. The trainer requires the same ("pass"); this
+    # wrapper checks each condition again from the events.
+    conditions = {
+        "trainer_exit_0": p.returncode == 0,
+        "one_result": len(result) == 1,
+        "logits_equal": r.get("equal") is True,
+        "trainer_pass": r.get("pass") is True,
+        "four_variants": variants == ["A", "B", "none", "plain"],
+        "a_role_targets": sum(e.get("role_n", 0) for e in under_a) > 0 and r.get("a_role_targets", 0) > 0,
+        "a_pointer_targets": sum(e.get("ptr_n", 0) for e in under_a) > 0 and r.get("a_pointer_targets", 0) > 0,
+        "b_moved_roles": sum(r.get("b_roles_moved", {}).values()) > 0,
+        "b_moved_pointers": sum(r.get("b_pointers_moved", {}).values()) > 0,
+        "aux_finite": r.get("aux_finite") is True,
+        "aux_differ": r.get("aux_differ") == {"role": True, "pointer": True},
+        "after_aux_identical": r.get("after_aux_identical") is True and all(e.get("after_aux_identical") is True for e in checks),
+    }
+    ok = all(conditions.values())
+    rec = {"ok": ok, "conditions": conditions, "returncode": p.returncode, "result": result, "checks": checks,
            "symbol_targets": [e for e in events if e.get("event") == "symbol_targets"],
            "stderr_tail": p.stderr[-2000:]}
     with open(os.path.join(a.out, "sat_check.json"), "w", encoding="utf-8") as f:

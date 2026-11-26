@@ -71,6 +71,53 @@ def test_replay_equals_the_trainers_windows(data, twins):
         assert all(post[p] >= S.NV or post[p] == S.EOT for p in range(at, at + S.T + 1) if p not in posset)
 
 
+def step_sums(events, keys):
+    """Per-step symbol_targets counts over steps 1 .. cut_step - 1, de-duplicated by step (a restarted run's come last)."""
+    by = {}
+    for e in events:
+        if e.get("event") == "step" and e["step"] < S.CUT:
+            by[e["step"]] = e["symbol_targets"]
+    assert sorted(by) == list(range(1, S.CUT))
+    return {k: sum(v[k] for v in by.values()) for k in keys}
+
+
+@needs_bin
+def test_natural_counts_equal_the_replays_expectation(data):
+    """Explore 6, GPT 5 and 9: the trainer's natural targets, counted from the rows it built, summed over steps
+    1 .. cut_step - 1, equal exactly what sat_windows.py's replay and the label file predict; twin rows sum to the
+    schedule; and a run ended while a checkpoint was being written (so steps are logged twice) gives the same sums."""
+    tmp, _ = data
+    out = S.full(tmp, "sat_full", S.sat_cfg(tmp))
+    raw = np.array(S.SL_read_ids(tmp / "main.ids"))
+    imap = W.insert_map(raw, S.K, S.EOT, S.USER, S.ASST)
+    wins, _ = W.replay(len(raw), imap, S.T, 3, S.BATCH, S.ACCUM, S.CUT, S.EVERY)
+    _, spans = S.SL.read(tmp / "A.satl")
+    index = W.SpanIndex(spans)
+    want = W.expected_counts(index, imap, wins, S.T)
+    assert want["natural_pointer_targets"] > 0 and want["natural_pointers_dropped"] > 0
+    got = step_sums(S.evs(out, "step"), list(want))
+    assert got == want
+    tw = step_sums(S.evs(out, "step"), ["twin_rows"])["twin_rows"]
+    assert tw == -(-(S.CUT - 1) * S.BATCH * S.ACCUM // S.EVERY) == len(range(0, (S.CUT - 1) * S.BATCH * S.ACCUM, S.EVERY))
+    # window_targets against the independent label mapping of test_sat_targets (tools/state_tokens.py's insertion).
+    _, pos = S.post_positions(raw.tolist())
+    for w in wins[:20]:
+        lab, ptr, dropped = S.expected_window_labels(spans, pos, w["at"], 0)
+        assert W.window_targets(index, imap, w["at"], S.T) == (sum(v[2] for v in lab.values()), len(ptr), dropped)
+    # Ended while the checkpoint at step 8 was being written: it resumes from 4 and logs 5 to 8 again. The stream a
+    # reader stitches across the restart holds those steps twice; de-duplicated by step, the sums are unchanged.
+    cut = tmp / "counts_resume"
+    p = S.spec(tmp, cut, S.sat_cfg(tmp))
+    assert S.run(p, MICROTORCH_CKPT_CRASH="mkdir:8").returncode != 0
+    before = (cut / "events.jsonl").read_text()
+    assert S.run(p).returncode == 0
+    stitched = S.stitched_events(before, (cut / "events.jsonl").read_text())
+    logged = [e["step"] for e in stitched if e.get("event") == "step"]
+    assert len(logged) > len(set(logged))
+    assert step_sums(stitched, list(want) + ["twin_rows"]) == {**want, "twin_rows": tw}
+    assert step_sums(S.evs(cut, "step"), list(want) + ["twin_rows"]) == {**want, "twin_rows": tw}
+
+
 @pytest.fixture(scope="module")
 def data(tmp_path_factory):
     tmp = tmp_path_factory.mktemp("satw")
