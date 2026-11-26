@@ -165,14 +165,60 @@ def test_sat_check_vm_on_the_cpu_trainer(tmp_path):
     assert V.main(["--out", str(out), "--windows", "8", "--spec-json", json.dumps(spec), "--bin", BIN]) == 0
     rec = json.loads((out / "sat_check.json").read_text())
     assert rec["ok"] and rec["result"][0]["equal"] and rec["result"][0]["pass"] and len(rec["checks"]) == 16
-    assert all(rec["conditions"].values()) and len(rec["conditions"]) == 12
+    assert all(rec["conditions"].values()) and len(rec["conditions"]) == 15
+    assert V.expected_keys(8, 2, 2) == [(1, 0), (1, 1), (2, 0), (2, 1)]
+    # Each condition fails on its own when the logged evidence is altered (GPT delta review 2, point 11).
+    r0, ch0 = rec["result"][0], rec["checks"]
+
+    def failed(edit):
+        ch, r = copy.deepcopy(ch0), copy.deepcopy(r0)
+        edit(ch, r)
+        return sorted(k for k, v in V.evaluate(spec, 8, ch, r, 0, 1).items() if not v)
+
+    assert failed(lambda ch, r: None) == []
+    assert "batch_keys_as_expected" in failed(lambda ch, r: ch.remove(next(e for e in ch if e["variant"] == "B")))
+    assert "batch_keys_as_expected" in failed(lambda ch, r: next(e for e in ch if e["variant"] == "none").update(micro=7))
+    assert "hashes_equal_at_each_batch" in failed(
+        lambda ch, r: [e for e in ch if e["variant"] == "plain"][-1].update(logits_sha256="0" * 64))
+    assert "lm_losses_equal_at_each_batch" in failed(
+        lambda ch, r: [e for e in ch if e["variant"] == "A"][1].update(loss=1.5))
+    def no_twin_targets(ch, r):
+        for e in ch:
+            if e["variant"] == "A":
+                e["targets_by_source"]["twin"] = {"role": 0, "pointer": 0}
+    assert "targets_exercised_per_source" in failed(no_twin_targets)
+
+    def no_twin_moves(ch, r):
+        for e in ch:
+            if e["variant"] == "B":
+                e["moved_by_source"]["twin"]["pointer"] = 0
+    assert failed(no_twin_moves) == ["targets_perturbed_per_source"]
+    assert "aux_losses_logged_finite" in failed(
+        lambda ch, r: next(e for e in ch if e["variant"] == "A" and e.get("ptr_n")).pop("ptr_loss"))
+    assert "aux_sums_agree" in failed(lambda ch, r: r["aux_loss_sums"]["B"].update(role=0.0))
+    assert "twins_as_configured" in failed(lambda ch, r: r.update(twins_configured=False))
+    # The deliberate no-twin expectation: with twins off, natural rows alone suffice and a twin target is refused.
+    spec_nt = copy.deepcopy(spec)
+    spec_nt["train"]["symbol_targets"].pop("twins")
+    r_nt = {**copy.deepcopy(r0), "twins_configured": False}
+    got = V.evaluate(spec_nt, 8, copy.deepcopy(ch0), r_nt, 0, 1)
+    assert got["targets_exercised_per_source"] is False          # these events do carry twin targets
+    stripped = copy.deepcopy(ch0)
+    for e in stripped:
+        for f in ("targets_by_source", "moved_by_source"):
+            if f in e:
+                e[f]["twin"] = {"role": 0, "pointer": 0}
+    r_nt["a_targets_by_source"] = {**r_nt["a_targets_by_source"], "twin": {"role": 0, "pointer": 0}}
+    got = V.evaluate(spec_nt, 8, stripped, r_nt, 0, 1)
+    assert got["targets_exercised_per_source"] and got["targets_perturbed_per_source"] and got["target_counts_agree"]
     # Checks that cannot fail are refused: no pointers anywhere (twins off), or no targets at all.
     spec["train"]["symbol_targets"].pop("twins")
-    for labels, failed in (("nopointers", "a_pointer_targets"), ("none", "a_role_targets")):
+    for labels in ("nopointers", "none"):
         spec["train"]["symbol_targets"]["labels"] = str(tmp_path / f"{labels}.satl")
         o = tmp_path / f"chk_{labels}"
         assert V.main(["--out", str(o), "--windows", "8", "--spec-json", json.dumps(spec), "--bin", BIN]) == 1
         c = json.loads((o / "sat_check.json").read_text())["conditions"]
-        assert c["logits_equal"] and not c[failed] and not c["trainer_pass"]
+        assert c["logits_equal"] and c["hashes_equal_at_each_batch"] and c["batch_keys_as_expected"]
+        assert not c["targets_exercised_per_source"] and not c["trainer_pass"]
     spec["train"]["symbol_targets"]["labels"] = str(tmp_path / "bad.satl")
     assert V.main(["--out", str(tmp_path / "chk3"), "--windows", "8", "--spec-json", json.dumps(spec), "--bin", BIN]) == 1

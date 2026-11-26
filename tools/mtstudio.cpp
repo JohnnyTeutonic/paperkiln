@@ -3497,7 +3497,9 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         std::map<std::string, std::vector<std::string>> hashes;
         double aux_sum[2][2] = {{0, 0}, {0, 0}};  // [A, B][role, pointer]: sums of the micro-batches' losses
         size_t a_role = 0, a_ptr = 0;
+        size_t a_role_by[2] = {0, 0}, a_ptr_by[2] = {0, 0};      // under A, [natural, twin]
         size_t moved_roles[2] = {0, 0}, moved_ptrs[2] = {0, 0};  // B against A, [natural, twin]
+        const bool twins_on = s.sat.twin_every > 0;
         bool aux_finite = true, after_aux_same = true;
         auto bits_equal = [](float a, float b) { return std::memcmp(&a, &b, sizeof(float)) == 0; };
         for (const std::string variant : {"A", "B", "none", "plain"}) {
@@ -3512,17 +3514,33 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                     std::vector<int> row_twin;
                     for (int b = 0; b < s.batch; ++b)
                         row_twin.push_back(take_window(step, k, b, g(), ids, val_start - s.T - 1, x, y, &sb, nullptr));
+                    json by_source;  // this micro-batch's targets (A) or moves (B), by source
+                    if (variant == "A") {
+                        for (int i = 0; i < 2; ++i) {
+                            a_role_by[i] += sb.role_by[i];
+                            a_ptr_by[i] += sb.ptr_by[i];
+                        }
+                        by_source = {{"natural", {{"role", sb.role_by[0]}, {"pointer", sb.ptr_by[0]}}},
+                                     {"twin", {{"role", sb.role_by[1]}, {"pointer", sb.ptr_by[1]}}}};
+                    }
                     if (variant == "B") {
                         const SatBatch a = sb;
                         sat_scramble(sb, static_cast<int>(s.T));
+                        size_t mr[2] = {0, 0}, mp[2] = {0, 0};
                         for (size_t i = 0; i < a.role.size(); ++i)
-                            if (a.role_m[i] && a.role[i] != sb.role[i]) ++moved_roles[row_twin[i / s.T]];
+                            if (a.role_m[i] && a.role[i] != sb.role[i]) ++mr[row_twin[i / s.T]];
                         std::map<int, int> gold_b;
                         for (const auto& p : sb.ptr) gold_b[p.q] = p.gold;
                         for (const auto& p : a.ptr) {
                             const auto it = gold_b.find(p.q);
-                            if (it != gold_b.end() && it->second != p.gold) ++moved_ptrs[row_twin[static_cast<size_t>(p.q) / s.T]];
+                            if (it != gold_b.end() && it->second != p.gold) ++mp[row_twin[static_cast<size_t>(p.q) / s.T]];
                         }
+                        for (int i = 0; i < 2; ++i) {
+                            moved_roles[i] += mr[i];
+                            moved_ptrs[i] += mp[i];
+                        }
+                        by_source = {{"natural", {{"role", mr[0]}, {"pointer", mp[0]}}},
+                                     {"twin", {{"role", mr[1]}, {"pointer", mp[1]}}}};
                     }
                     if (variant == "none") sb.reset(static_cast<size_t>(s.batch) * s.T);
                     Var hid, logits;
@@ -3541,6 +3559,8 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                     const float l_before = task->data(0, 0);
                     json ce = {{"event", "sat_check"}, {"variant", variant}, {"step", step}, {"micro", k},
                                {"logits_sha256", h_before}, {"loss", l_before}};
+                    if (variant == "A") ce["targets_by_source"] = by_source;
+                    if (variant == "B") ce["moved_by_source"] = by_source;
                     if (variant != "plain") {
                         const SatAux aux = sat_aux(sat_h, hid, sb, static_cast<int>(s.T), s.sat.pointer_dim);
                         ce["role_n"] = aux.n_role;
@@ -3576,14 +3596,28 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         }
         const bool equal = hashes["A"] == hashes["B"] && hashes["A"] == hashes["none"] && hashes["A"] == hashes["plain"];
         const bool role_differ = aux_sum[0][0] != aux_sum[1][0], ptr_differ = aux_sum[0][1] != aux_sum[1][1];
-        const bool pass = equal && after_aux_same && a_role > 0 && a_ptr > 0 && moved_roles[0] + moved_roles[1] > 0 &&
-                          moved_ptrs[0] + moved_ptrs[1] > 0 && aux_finite && role_differ && ptr_differ;
+        // Each configured source (natural rows always; twin rows when twins are on) must have role and pointer targets
+        // under A and moved roles and pointer golds under B, so a broken label path on either source cannot pass.
+        // Without twins, no twin row may appear.
+        bool sources_ok = a_role_by[0] > 0 && a_ptr_by[0] > 0 && moved_roles[0] > 0 && moved_ptrs[0] > 0;
+        if (twins_on)
+            sources_ok = sources_ok && a_role_by[1] > 0 && a_ptr_by[1] > 0 && moved_roles[1] > 0 && moved_ptrs[1] > 0;
+        else
+            sources_ok = sources_ok && a_role_by[1] == 0 && a_ptr_by[1] == 0;
+        const bool pass = equal && after_aux_same && a_role > 0 && a_ptr > 0 && sources_ok && aux_finite && role_differ &&
+                          ptr_differ && a_role == a_role_by[0] + a_role_by[1] && a_ptr == a_ptr_by[0] + a_ptr_by[1];
         ev.emit({{"event", "sat_check_result"},
                  {"pass", pass},
                  {"equal", equal},
                  {"after_aux_identical", after_aux_same},
+                 {"twins_configured", twins_on},
+                 {"sources_ok", sources_ok},
                  {"a_role_targets", a_role},
                  {"a_pointer_targets", a_ptr},
+                 {"a_targets_by_source", {{"natural", {{"role", a_role_by[0]}, {"pointer", a_ptr_by[0]}}},
+                                          {"twin", {{"role", a_role_by[1]}, {"pointer", a_ptr_by[1]}}}}},
+                 {"batch", s.batch},
+                 {"accum", s.accum},
                  {"b_roles_moved", {{"natural", moved_roles[0]}, {"twin", moved_roles[1]}}},
                  {"b_pointers_moved", {{"natural", moved_ptrs[0]}, {"twin", moved_ptrs[1]}}},
                  {"aux_finite", aux_finite},

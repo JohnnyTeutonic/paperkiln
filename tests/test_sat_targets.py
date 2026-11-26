@@ -144,7 +144,9 @@ def setup(tmp):
             ev_spans += make_spans(raw, 20 + o, length=T + 1, stride=10 ** 9, start=o, end=o + T + 1)
     assert len(ev_spans) >= 2
     SL.write(tmp / "eval.satl", ev_spans, raw, "synthetic-main")
-    SL.write(tmp / "twin.satl", make_spans(tw, 30, length=16, stride=23), tw, "synthetic-twin")
+    twin_spans = make_spans(tw, 30, length=16, stride=23)
+    SL.write(tmp / "twin.satl", twin_spans, tw, "synthetic-twin")
+    SL.write(tmp / "twin_nopointers.satl", [{**s, "pointers": []} for s in twin_spans], tw, "synthetic-twin")
     bad = [dict(s) for s in spans_a]
     bad[5] = {**bad[5], "sha256": b"\0" * 32, "force_sha256": True}
     SL.write(tmp / "bad.satl", bad, raw, "synthetic-main")
@@ -268,10 +270,52 @@ def test_satl_writer_refuses(tmp_path, bad, why):
 
 # ---------------------------------------------------------------- the trainer
 
-def check_result_can_fail(res):
-    """The conditions that make the implementation check one that could fail (Explore 10, GPT 4)."""
+BASE_COMMIT = "672501bb1d09f707fdd20a5c7280120940734327"
+
+
+@needs_bin
+def test_the_executables_carry_their_provenance():
+    """GPT delta review 2, point 13: the trainer under test is a recorded CPU Release build (sat_build_provenance.py)
+    whose sha256 is the executable's own and whose trainer sources are this checkout's committed ones, with no
+    uncommitted change; the comparator, when given, is a recorded build of the ladder's launch commit."""
+    import sat_build_provenance as P
+    assert P.check(BIN, str(ROOT), "HEAD", clean=True) == []
+    if BASE_BIN:
+        assert P.check(BASE_BIN, str(ROOT), BASE_COMMIT) == []
+        # The comparator is not this branch's trainer, nor the reverse.
+        assert P.check(BASE_BIN, str(ROOT), "HEAD") != [] and P.check(BIN, str(ROOT), BASE_COMMIT) != []
+
+
+@needs_bin
+def test_provenance_catches_another_executable(tmp_path):
+    """A copy of the trainer with its provenance verifies; one byte changed in the executable, or a provenance moved
+    beside another executable, does not."""
+    import sat_build_provenance as P
+    d = tmp_path / "b"
+    d.mkdir()
+    shutil.copy2(BIN, d / "mtstudio")
+    shutil.copy2(Path(BIN).parent / "mtstudio.provenance.json", d / "mtstudio.provenance.json")
+    assert P.check(str(d / "mtstudio"), str(ROOT), "HEAD") == []
+    b = bytearray((d / "mtstudio").read_bytes())
+    b[len(b) // 2] ^= 1
+    (d / "mtstudio").write_bytes(bytes(b))
+    assert any("sha256 differs" in x for x in P.check(str(d / "mtstudio"), str(ROOT), "HEAD"))
+    (d / "mtstudio.provenance.json").unlink()
+    assert any("no provenance" in x for x in P.check(str(d / "mtstudio"), str(ROOT), "HEAD"))
+
+
+def check_result_can_fail(res, twins=True):
+    """The conditions that make the implementation check one that could fail (Explore 10, GPT 4), on each configured
+    source apart (GPT delta review 2, point 11): natural rows always, twin rows when twins are configured."""
     assert res["a_role_targets"] > 0 and res["a_pointer_targets"] > 0
     assert sum(res["b_roles_moved"].values()) > 0 and sum(res["b_pointers_moved"].values()) > 0
+    assert res["twins_configured"] is twins and res["sources_ok"] is True
+    for src in ("natural", "twin") if twins else ("natural",):
+        assert res["a_targets_by_source"][src]["role"] > 0 and res["a_targets_by_source"][src]["pointer"] > 0, src
+        assert res["b_roles_moved"][src] > 0 and res["b_pointers_moved"][src] > 0, src
+    if not twins:
+        assert res["a_targets_by_source"]["twin"] == {"role": 0, "pointer": 0}
+        assert res["b_roles_moved"]["twin"] == res["b_pointers_moved"]["twin"] == 0
     assert res["aux_finite"] is True and res["aux_differ"] == {"role": True, "pointer": True}
     assert res["after_aux_identical"] is True
     sums = res["aux_loss_sums"]
@@ -293,6 +337,35 @@ def test_implementation_check_refuses_when_it_cannot_fail(data, labels, why):
 
 
 @needs_bin
+def test_implementation_check_without_twins(data):
+    """The deliberate no-twin case has its own expectation: natural rows exercised and perturbed, no twin row at all."""
+    tmp, _ = data
+    out = tmp / "check_notwins"
+    shutil.rmtree(out, ignore_errors=True)
+    r = run(spec(tmp, out, sat_cfg(tmp, "A", twins=False)), MICROTORCH_SAT_CHECK="8")
+    assert r.returncode == 0, r.stderr[-800:]
+    res = evs(out, "sat_check_result")[-1]
+    assert res["pass"] is True
+    check_result_can_fail(res, twins=False)
+
+
+@needs_bin
+def test_implementation_check_refuses_an_unexercised_twin_source(data):
+    """Twins configured, but the twin labels carry no pointers: natural rows alone would satisfy the pooled counts, so
+    the check must refuse (GPT delta review 2, point 11)."""
+    tmp, _ = data
+    out = tmp / "check_twin_nopointers"
+    shutil.rmtree(out, ignore_errors=True)
+    cfg = sat_cfg(tmp, "A")
+    cfg["twins"]["labels"] = str(tmp / "twin_nopointers.satl")
+    r = run(spec(tmp, out, cfg), MICROTORCH_SAT_CHECK="8")
+    assert r.returncode != 0 and "could not fail" in r.stderr, r.stderr[-800:]
+    res = evs(out, "sat_check_result")[-1]
+    assert res["equal"] is True and res["pass"] is False and res["sources_ok"] is False
+    assert res["a_pointer_targets"] > 0 and res["a_targets_by_source"]["twin"]["pointer"] == 0
+
+
+@needs_bin
 def test_implementation_check_at_init_and_after_five_steps(data):
     """REGISTRATION section 7. Fixed weights, labels A, B (roles moved, pointers moved) and none: every LM logit of
     the scaffold step's forward agrees bit for bit, with each other and with the plain step's forward (forward(x) ==
@@ -303,10 +376,15 @@ def test_implementation_check_at_init_and_after_five_steps(data):
         out = tmp / f"check0_{lab}"
         shutil.rmtree(out, ignore_errors=True)
         r = run(spec(tmp, out, sat_cfg(tmp, lab)), MICROTORCH_SAT_CHECK="8")
-        assert r.returncode == 0, r.stderr[-1500:]
         res = evs(out, "sat_check_result")
-        assert len(res) == 1 and res[0]["equal"] is True and res[0]["pass"] is True and res[0]["from_step"] == 1
-        check_result_can_fail(res[0])
+        assert len(res) == 1 and res[0]["equal"] is True and res[0]["from_step"] == 1
+        if lab == "none":
+            # No natural labels: the logits still agree, but natural rows are unexercised, so the check refuses.
+            assert r.returncode != 0 and res[0]["pass"] is False and res[0]["sources_ok"] is False
+            assert res[0]["a_targets_by_source"]["natural"] == {"role": 0, "pointer": 0}
+        else:
+            assert r.returncode == 0 and res[0]["pass"] is True, r.stderr[-1500:]
+            check_result_can_fail(res[0])
         ch = evs(out, "sat_check")
         assert all(c["after_aux_identical"] is True for c in ch)
         assert {c["variant"] for c in ch} == {"A", "B", "none", "plain"} and len(ch) == 4 * 4
@@ -330,10 +408,13 @@ def test_implementation_check_at_init_and_after_five_steps(data):
         shutil.rmtree(out, ignore_errors=True)
         shutil.copytree(base, out, symlinks=True)
         r = run(spec(tmp, out, sat_cfg(tmp, lab), ckpt_every=5), MICROTORCH_SAT_CHECK="8")
-        assert r.returncode == 0, r.stderr[-1500:]
         res = evs(out, "sat_check_result")[-1]
-        assert (res["pass"], res["equal"], res["windows"], res["from_step"]) == (True, True, 8, 6)
-        check_result_can_fail(res)
+        assert (res["equal"], res["windows"], res["from_step"]) == (True, 8, 6)
+        if lab == "none":
+            assert r.returncode != 0 and res["pass"] is False
+        else:
+            assert r.returncode == 0 and res["pass"] is True, r.stderr[-1500:]
+            check_result_can_fail(res)
         after[lab] = [(c["variant"], c["step"], c["logits_sha256"]) for c in evs(out, "sat_check") if c["step"] >= 6]
     assert after["A"] == after["B"] == after["none"] and after["A"]
     assert {h[2] for h in after["A"]}.isdisjoint({h[3] for h in hashes["A"]})   # other weights: other logits
