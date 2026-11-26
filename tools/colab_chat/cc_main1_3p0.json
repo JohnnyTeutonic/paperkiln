@@ -1,0 +1,968 @@
+{
+ "_comment": "The crossed curriculum, campaign main1, rendered by tools/colab_chat/cc_jobs.py; edit that file, not this one.",
+ "max_parallel": 1,
+ "max_parallel_light": 2,
+ "home_markers": true,
+ "jobs": [
+  {
+   "name": "gate",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_gate.py",
+    "--out",
+    "{out}",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--device-test",
+    "/content/pk/build_cuda/test_twin_device",
+    "--spec",
+    "/content/chat/upload/cc_gate_D1.json"
+   ],
+   "outputs": [
+    "gate.json"
+   ]
+  },
+  {
+   "name": "L_N250_1",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S71L.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/sft_tlN250.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": "gate",
+   "relay_every_steps": 100000
+  },
+  {
+   "name": "W_N250_1",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S71W.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/sft_tlN250.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": "gate",
+   "relay_every_steps": 100000
+  },
+  {
+   "name": "S_N250_1",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S71S.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/sft_tlN250.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": "gate",
+   "relay_every_steps": 100000
+  },
+  {
+   "name": "SYM1_N250_1",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S71SYM1.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/sft_tlN250.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": "gate",
+   "relay_every_steps": 100000
+  },
+  {
+   "name": "FIL1_N250_1",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S71FIL1.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/sft_tlN250.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": "gate",
+   "relay_every_steps": 100000
+  },
+  {
+   "name": "SB_N250_1",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S71BR.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/SYM1_N250_1/SYM1_N250_1.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate",
+    "SYM1_N250_1"
+   ],
+   "relay_every_steps": 100000,
+   "init_job": "SYM1_N250_1"
+  },
+  {
+   "name": "SBC_N250_1",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S71BR.jsonl",
+     "twin_examples": "/content/chat/upload/train_twins_s1.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/SYM1_N250_1/SYM1_N250_1.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256,
+     "twin_loss": {
+      "groups": 4,
+      "margin": 1.0,
+      "lambda": 3.0,
+      "mu": 3.0
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate",
+    "SYM1_N250_1"
+   ],
+   "relay_every_steps": 100000,
+   "init_job": "SYM1_N250_1"
+  },
+  {
+   "name": "NB_N250_1",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S71BR.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/S_N250_1/S_N250_1.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate",
+    "S_N250_1"
+   ],
+   "relay_every_steps": 100000,
+   "init_job": "S_N250_1"
+  },
+  {
+   "name": "NBC_N250_1",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S71BR.jsonl",
+     "twin_examples": "/content/chat/upload/train_twins_s1.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/S_N250_1/S_N250_1.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256,
+     "twin_loss": {
+      "groups": 4,
+      "margin": 1.0,
+      "lambda": 3.0,
+      "mu": 3.0
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate",
+    "S_N250_1"
+   ],
+   "relay_every_steps": 100000,
+   "init_job": "S_N250_1"
+  },
+  {
+   "name": "FB_N250_1",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S71BR.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/FIL1_N250_1/FIL1_N250_1.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate",
+    "FIL1_N250_1"
+   ],
+   "relay_every_steps": 100000,
+   "init_job": "FIL1_N250_1"
+  },
+  {
+   "name": "FBC_N250_1",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S71BR.jsonl",
+     "twin_examples": "/content/chat/upload/train_twins_s1.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/FIL1_N250_1/FIL1_N250_1.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256,
+     "twin_loss": {
+      "groups": 4,
+      "margin": 1.0,
+      "lambda": 3.0,
+      "mu": 3.0
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate",
+    "FIL1_N250_1"
+   ],
+   "relay_every_steps": 100000,
+   "init_job": "FIL1_N250_1"
+  },
+  {
+   "name": "WS_N250_1",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S71WS.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/sft_tlN250.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": "gate",
+   "relay_every_steps": 100000
+  },
+  {
+   "name": "SCR_N250_1",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S71SCR.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/sft_tlN250.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": "gate",
+   "relay_every_steps": 100000
+  },
+  {
+   "name": "score_L_N250_1",
+   "light": true,
+   "after": "L_N250_1",
+   "cmd": [
+    "bash",
+    "-c",
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/L_N250_1 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/L_N250_1/L_N250_1.safetensors --gguf /content/chat/L_N250_1/L_N250_1.gguf --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/L_N250_1/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json",
+    "attempts.txt"
+   ]
+  },
+  {
+   "name": "score_W_N250_1",
+   "light": true,
+   "after": "W_N250_1",
+   "cmd": [
+    "bash",
+    "-c",
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/W_N250_1 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/W_N250_1/W_N250_1.safetensors --gguf /content/chat/W_N250_1/W_N250_1.gguf --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/W_N250_1/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json",
+    "attempts.txt"
+   ]
+  },
+  {
+   "name": "score_S_N250_1",
+   "light": true,
+   "after": "S_N250_1",
+   "cmd": [
+    "bash",
+    "-c",
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/S_N250_1 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/S_N250_1/S_N250_1.safetensors --gguf /content/chat/S_N250_1/S_N250_1.gguf --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/S_N250_1/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json",
+    "attempts.txt"
+   ]
+  },
+  {
+   "name": "score_SYM1_N250_1",
+   "light": true,
+   "after": "SYM1_N250_1",
+   "cmd": [
+    "bash",
+    "-c",
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/SYM1_N250_1 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/SYM1_N250_1/SYM1_N250_1.safetensors --gguf /content/chat/SYM1_N250_1/SYM1_N250_1.gguf --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/SYM1_N250_1/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json",
+    "attempts.txt"
+   ]
+  },
+  {
+   "name": "score_FIL1_N250_1",
+   "light": true,
+   "after": "FIL1_N250_1",
+   "cmd": [
+    "bash",
+    "-c",
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/FIL1_N250_1 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/FIL1_N250_1/FIL1_N250_1.safetensors --gguf /content/chat/FIL1_N250_1/FIL1_N250_1.gguf --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/FIL1_N250_1/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json",
+    "attempts.txt"
+   ]
+  },
+  {
+   "name": "score_SB_N250_1",
+   "light": true,
+   "after": "SB_N250_1",
+   "cmd": [
+    "bash",
+    "-c",
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/SB_N250_1 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/SB_N250_1/SB_N250_1.safetensors --gguf /content/chat/SB_N250_1/SB_N250_1.gguf --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/SB_N250_1/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json",
+    "attempts.txt"
+   ]
+  },
+  {
+   "name": "score_SBC_N250_1",
+   "light": true,
+   "after": "SBC_N250_1",
+   "cmd": [
+    "bash",
+    "-c",
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/SBC_N250_1 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/SBC_N250_1/SBC_N250_1.safetensors --gguf /content/chat/SBC_N250_1/SBC_N250_1.gguf --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/SBC_N250_1/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json",
+    "attempts.txt"
+   ]
+  },
+  {
+   "name": "score_NB_N250_1",
+   "light": true,
+   "after": "NB_N250_1",
+   "cmd": [
+    "bash",
+    "-c",
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/NB_N250_1 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/NB_N250_1/NB_N250_1.safetensors --gguf /content/chat/NB_N250_1/NB_N250_1.gguf --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/NB_N250_1/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json",
+    "attempts.txt"
+   ]
+  },
+  {
+   "name": "score_NBC_N250_1",
+   "light": true,
+   "after": "NBC_N250_1",
+   "cmd": [
+    "bash",
+    "-c",
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/NBC_N250_1 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/NBC_N250_1/NBC_N250_1.safetensors --gguf /content/chat/NBC_N250_1/NBC_N250_1.gguf --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/NBC_N250_1/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json",
+    "attempts.txt"
+   ]
+  },
+  {
+   "name": "score_FB_N250_1",
+   "light": true,
+   "after": "FB_N250_1",
+   "cmd": [
+    "bash",
+    "-c",
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/FB_N250_1 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/FB_N250_1/FB_N250_1.safetensors --gguf /content/chat/FB_N250_1/FB_N250_1.gguf --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/FB_N250_1/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json",
+    "attempts.txt"
+   ]
+  },
+  {
+   "name": "score_FBC_N250_1",
+   "light": true,
+   "after": "FBC_N250_1",
+   "cmd": [
+    "bash",
+    "-c",
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/FBC_N250_1 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/FBC_N250_1/FBC_N250_1.safetensors --gguf /content/chat/FBC_N250_1/FBC_N250_1.gguf --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/FBC_N250_1/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json",
+    "attempts.txt"
+   ]
+  },
+  {
+   "name": "score_WS_N250_1",
+   "light": true,
+   "after": "WS_N250_1",
+   "cmd": [
+    "bash",
+    "-c",
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/WS_N250_1 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/WS_N250_1/WS_N250_1.safetensors --gguf /content/chat/WS_N250_1/WS_N250_1.gguf --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/WS_N250_1/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json",
+    "attempts.txt"
+   ]
+  },
+  {
+   "name": "score_SCR_N250_1",
+   "light": true,
+   "after": "SCR_N250_1",
+   "cmd": [
+    "bash",
+    "-c",
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/SCR_N250_1 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/SCR_N250_1/SCR_N250_1.safetensors --gguf /content/chat/SCR_N250_1/SCR_N250_1.gguf --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/SCR_N250_1/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json",
+    "attempts.txt"
+   ]
+  }
+ ]
+}

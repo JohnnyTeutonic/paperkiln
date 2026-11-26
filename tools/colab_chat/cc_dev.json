@@ -1,0 +1,468 @@
+{
+ "_comment": "The crossed curriculum, campaign dev, rendered by tools/colab_chat/cc_jobs.py; edit that file, not this one.",
+ "max_parallel": 1,
+ "max_parallel_light": 2,
+ "home_markers": true,
+ "jobs": [
+  {
+   "name": "gate",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/b2cue_gate.py",
+    "--out",
+    "{out}",
+    "--bin",
+    "/content/pk/build_cuda/mtstudio",
+    "--device-test",
+    "/content/pk/build_cuda/test_twin_device",
+    "--spec",
+    "/content/chat/upload/cc_gate_D1.json"
+   ],
+   "outputs": [
+    "gate.json"
+   ]
+  },
+  {
+   "name": "SYM1_N250_99",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S71SYM1.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 99,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/sft_tlN250.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": "gate",
+   "relay_every_steps": 100000
+  },
+  {
+   "name": "D0_N250_99",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S71BR.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 99,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/SYM1_N250_99/SYM1_N250_99.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate",
+    "SYM1_N250_99"
+   ],
+   "relay_every_steps": 100000,
+   "init_job": "SYM1_N250_99"
+  },
+  {
+   "name": "Dn_0p3_N250_99",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S71BR.jsonl",
+     "twin_examples": "/content/chat/upload/train_twins_s99.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 99,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/SYM1_N250_99/SYM1_N250_99.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256,
+     "twin_loss": {
+      "groups": 4,
+      "margin": 1.0,
+      "lambda": 0.3,
+      "mu": 0.3
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate",
+    "SYM1_N250_99"
+   ],
+   "relay_every_steps": 100000,
+   "init_job": "SYM1_N250_99"
+  },
+  {
+   "name": "Dn_1p0_N250_99",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S71BR.jsonl",
+     "twin_examples": "/content/chat/upload/train_twins_s99.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 99,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/SYM1_N250_99/SYM1_N250_99.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256,
+     "twin_loss": {
+      "groups": 4,
+      "margin": 1.0,
+      "lambda": 1.0,
+      "mu": 1.0
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate",
+    "SYM1_N250_99"
+   ],
+   "relay_every_steps": 100000,
+   "init_job": "SYM1_N250_99"
+  },
+  {
+   "name": "Dn_3p0_N250_99",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S71BR.jsonl",
+     "twin_examples": "/content/chat/upload/train_twins_s99.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 99,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/SYM1_N250_99/SYM1_N250_99.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256,
+     "twin_loss": {
+      "groups": 4,
+      "margin": 1.0,
+      "lambda": 3.0,
+      "mu": 3.0
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   },
+   "after": [
+    "gate",
+    "SYM1_N250_99"
+   ],
+   "relay_every_steps": 100000,
+   "init_job": "SYM1_N250_99"
+  },
+  {
+   "name": "score_SYM1_N250_99",
+   "light": true,
+   "after": "SYM1_N250_99",
+   "cmd": [
+    "bash",
+    "-c",
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/SYM1_N250_99 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/SYM1_N250_99/SYM1_N250_99.safetensors --gguf /content/chat/SYM1_N250_99/SYM1_N250_99.gguf --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/SYM1_N250_99/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json",
+    "attempts.txt"
+   ]
+  },
+  {
+   "name": "score_D0_N250_99",
+   "light": true,
+   "after": "D0_N250_99",
+   "cmd": [
+    "bash",
+    "-c",
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/D0_N250_99 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/D0_N250_99/D0_N250_99.safetensors --gguf /content/chat/D0_N250_99/D0_N250_99.gguf --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/D0_N250_99/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json",
+    "attempts.txt"
+   ]
+  },
+  {
+   "name": "devmargin_D0_N250_99",
+   "light": true,
+   "after": "D0_N250_99",
+   "cmd": [
+    "bash",
+    "-c",
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/D0_N250_99 --in /content/chat/upload/cc_dev_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/D0_N250_99/D0_N250_99.safetensors --gguf /content/chat/D0_N250_99/D0_N250_99.gguf --requests /content/chat/upload/cc_dev_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/D0_N250_99/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json",
+    "attempts.txt"
+   ]
+  },
+  {
+   "name": "score_Dn_0p3_N250_99",
+   "light": true,
+   "after": "Dn_0p3_N250_99",
+   "cmd": [
+    "bash",
+    "-c",
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/Dn_0p3_N250_99 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/Dn_0p3_N250_99/Dn_0p3_N250_99.safetensors --gguf /content/chat/Dn_0p3_N250_99/Dn_0p3_N250_99.gguf --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/Dn_0p3_N250_99/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json",
+    "attempts.txt"
+   ]
+  },
+  {
+   "name": "devmargin_Dn_0p3_N250_99",
+   "light": true,
+   "after": "Dn_0p3_N250_99",
+   "cmd": [
+    "bash",
+    "-c",
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/Dn_0p3_N250_99 --in /content/chat/upload/cc_dev_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/Dn_0p3_N250_99/Dn_0p3_N250_99.safetensors --gguf /content/chat/Dn_0p3_N250_99/Dn_0p3_N250_99.gguf --requests /content/chat/upload/cc_dev_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/Dn_0p3_N250_99/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json",
+    "attempts.txt"
+   ]
+  },
+  {
+   "name": "score_Dn_1p0_N250_99",
+   "light": true,
+   "after": "Dn_1p0_N250_99",
+   "cmd": [
+    "bash",
+    "-c",
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/Dn_1p0_N250_99 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/Dn_1p0_N250_99/Dn_1p0_N250_99.safetensors --gguf /content/chat/Dn_1p0_N250_99/Dn_1p0_N250_99.gguf --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/Dn_1p0_N250_99/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json",
+    "attempts.txt"
+   ]
+  },
+  {
+   "name": "devmargin_Dn_1p0_N250_99",
+   "light": true,
+   "after": "Dn_1p0_N250_99",
+   "cmd": [
+    "bash",
+    "-c",
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/Dn_1p0_N250_99 --in /content/chat/upload/cc_dev_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/Dn_1p0_N250_99/Dn_1p0_N250_99.safetensors --gguf /content/chat/Dn_1p0_N250_99/Dn_1p0_N250_99.gguf --requests /content/chat/upload/cc_dev_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/Dn_1p0_N250_99/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json",
+    "attempts.txt"
+   ]
+  },
+  {
+   "name": "score_Dn_3p0_N250_99",
+   "light": true,
+   "after": "Dn_3p0_N250_99",
+   "cmd": [
+    "bash",
+    "-c",
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/Dn_3p0_N250_99 --in /content/chat/upload/a31_early_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/Dn_3p0_N250_99/Dn_3p0_N250_99.safetensors --gguf /content/chat/Dn_3p0_N250_99/Dn_3p0_N250_99.gguf --requests /content/chat/upload/a31_early_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/Dn_3p0_N250_99/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json",
+    "attempts.txt"
+   ]
+  },
+  {
+   "name": "devmargin_Dn_3p0_N250_99",
+   "light": true,
+   "after": "Dn_3p0_N250_99",
+   "cmd": [
+    "bash",
+    "-c",
+    "ok=0; for i in 1 2 3; do echo $i > {out}/attempts.txt; timeout 6600 /content/pk/build_cuda/mtstudio score /content/chat/Dn_3p0_N250_99 --in /content/chat/upload/cc_dev_req.jsonl --out {out}/scores.jsonl --batch-tokens 8192 && ok=1 && break; done; [ $ok = 1 ] && python3 tools/colab_chat/a31_bind.py --scores {out}/scores.jsonl --weights /content/chat/Dn_3p0_N250_99/Dn_3p0_N250_99.safetensors --gguf /content/chat/Dn_3p0_N250_99/Dn_3p0_N250_99.gguf --requests /content/chat/upload/cc_dev_req.jsonl --bin /content/pk/build_cuda/mtstudio --spec /content/chat/Dn_3p0_N250_99/spec.json --out {out}/score.json"
+   ],
+   "outputs": [
+    "scores.jsonl",
+    "score.json",
+    "attempts.txt"
+   ]
+  }
+ ]
+}
