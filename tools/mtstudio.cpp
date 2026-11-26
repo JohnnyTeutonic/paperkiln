@@ -1371,23 +1371,91 @@ bool sat_nearest_right(const SatBatch& sb, const SatPtr& p, int T) {
     return false;
 }
 
+// SATW's pointer loss on the pointer scores [N, rows] (the lead's ruling, 26 Nov 2026): sum_i (w_i / N) CE_i with
+// w_i = W for class 0 (natural nearest-right) and 1 for classes 1 (natural nearest-wrong) and 2 (twin). Built from the
+// stable CE kernel SAT's pointer loss uses (softmax then NLL, shift-invariant), as two masked means:
+//   (n_1 / N) * mean_{weight 1} CE  +  (W n_0 / N) * mean_{nearest-right} CE,
+// so a weight-1 target's coefficient is 1 / N and a nearest-right one's W / N (coef, when given, gets them). W == 1 is
+// SAT's op, ops::cross_entropy, unchanged.
+Var sat_pointer_loss(const Var& scores, const std::vector<int>& gold, const std::vector<int>& cls, double weight,
+                     std::vector<double>* coef = nullptr) {
+    const size_t n = gold.size();
+    if (coef) {
+        coef->assign(n, 0.0);
+        for (size_t t = 0; t < n; ++t) (*coef)[t] = (weight != 1.0 && cls[t] == 0 ? weight : 1.0) / static_cast<double>(n);
+    }
+    if (weight == 1.0) return ops::cross_entropy(scores, gold);
+    std::vector<uint8_t> m_right(n, 0), m_one(n, 0);
+    size_t n_right = 0;
+    for (size_t t = 0; t < n; ++t) {
+        if (cls[t] == 0) {
+            m_right[t] = 1;
+            ++n_right;
+        } else {
+            m_one[t] = 1;
+        }
+    }
+    const size_t n_one = n - n_right;
+    Var loss;
+    if (n_one)
+        loss = ops::scale(ops::cross_entropy_masked(scores, gold, m_one),
+                          static_cast<float>(static_cast<double>(n_one) / static_cast<double>(n)));
+    if (n_right) {
+        const Var r = ops::scale(ops::cross_entropy_masked(scores, gold, m_right),
+                                 static_cast<float>(weight * static_cast<double>(n_right) / static_cast<double>(n)));
+        loss = loss ? ops::add(loss, r) : r;
+    }
+    return loss;
+}
+
+// `mtstudio sat-pointer-check IN.json OUT.json` (tests/test_satw_targets.py): sat_pointer_loss on given scores
+// {"scores": [[...]], "gold": [...], "class": [...], "weight": W}; writes {"loss", "coefficients", "grad"} (the
+// gradient of the loss with respect to the scores), so the weighted loss is checked against a float64 reference.
+int sat_pointer_check(const std::string& in_path, const std::string& out_path) {
+    std::ifstream f(in_path);
+    if (!f) throw std::runtime_error("sat-pointer-check: cannot read " + in_path);
+    const json j = json::parse(f);
+    const auto S = j.at("scores").get<std::vector<std::vector<double>>>();
+    const auto gold = j.at("gold").get<std::vector<int>>();
+    const auto cls = j.at("class").get<std::vector<int>>();
+    if (S.empty() || S.size() != gold.size() || cls.size() != gold.size())
+        throw std::runtime_error("sat-pointer-check: one row of scores, one gold and one class per target");
+    Matrix m(S.size(), S[0].size());
+    for (size_t i = 0; i < S.size(); ++i)
+        for (size_t c = 0; c < S[i].size(); ++c) m(i, c) = static_cast<float>(S[i][c]);
+    const Var scores = make_var(std::move(m), true);
+    std::vector<double> coef;
+    const Var loss = sat_pointer_loss(scores, gold, cls, j.at("weight").get<double>(), &coef);
+    backward(loss);
+    json grad = json::array();
+    for (size_t i = 0; i < scores->grad.rows(); ++i) {
+        json row = json::array();
+        for (size_t c = 0; c < scores->grad.cols(); ++c) row.push_back(scores->grad(i, c));
+        grad.push_back(row);
+    }
+    std::ofstream o(out_path);
+    o << json({{"loss", loss->data(0, 0)}, {"coefficients", coef}, {"grad", grad}}).dump() << "\n";
+    return o ? 0 : 1;
+}
+
 // The auxiliary terms on the final hidden states hid [rows, d]: the role CE, the mean over the micro-batch's
 // labelled positions; the pointer CE, scores q_i . k_j / sqrt(pointer_dim) over the same row's earlier mentions
 // (everything else at -1e9), the mean over its pointer targets. A term with no targets is absent (0).
-// SATW (the lead's ruling, 26 Nov 2026): with nearest_right_weight W != 1, the pointer CE is sum(w_i CE_i) / N over
-// the micro-batch's N pointer targets, natural and twin pooled as above, w_i = W for a natural target the recency
-// rule gets right and 1 for every other. So every weight-1 target (twin, natural nearest-wrong) keeps SAT's
-// coefficient 1 / N and only nearest-right natural targets change, to W / N. W == 1 runs SAT's unweighted op unchanged.
+// SATW: with nearest_right_weight W != 1, the pointer CE is sat_pointer_loss over the micro-batch's N pointer
+// targets, natural and twin pooled as above. With W == 1 (the key absent or 1) nothing of SATW's runs: no candidate
+// scans, no coefficient buffers, SAT's op on SAT's scores, unless want_terms (the implementation check's diagnostics).
 SatAux sat_aux(const SatHeads& h, const Var& hid, const SatBatch& sb, int T, int pdim, double nearest_right_weight = 1.0,
                bool want_terms = false) {
     SatAux a;
-    for (const auto& p : sb.ptr) {
-        const bool right = sat_nearest_right(sb, p, T);
-        const double w = (right && !p.twin) ? nearest_right_weight : 1.0;
-        (right ? a.nearest_right : a.nearest_wrong)[p.twin ? 1 : 0] += 1;
-        a.weight_sum += w;
-        if (!p.twin) a.natural_weight_sum += w;
-    }
+    const bool weighted = nearest_right_weight != 1.0;
+    if (weighted || want_terms)
+        for (const auto& p : sb.ptr) {
+            const bool right = sat_nearest_right(sb, p, T);
+            const double w = (right && !p.twin) ? nearest_right_weight : 1.0;
+            (right ? a.nearest_right : a.nearest_wrong)[p.twin ? 1 : 0] += 1;
+            a.weight_sum += w;
+            if (!p.twin) a.natural_weight_sum += w;
+        }
     for (uint8_t m : sb.role_m) a.n_role += m;
     if (a.n_role) a.role = ops::cross_entropy_masked(ops::matmul(hid, h.role), sb.role, sb.role_m);
     a.n_ptr = sb.ptr.size();
@@ -1406,32 +1474,30 @@ SatAux sat_aux(const SatHeads& h, const Var& hid, const SatBatch& sb, int T, int
         const Var k = ops::matmul(hid, h.wk);
         const Var sc = ops::scale(ops::matmul(q, ops::transpose(k)), 1.0f / std::sqrt(static_cast<float>(pdim)));
         const Var scores = ops::add(sc, make_var(std::move(mask)));
-        std::vector<int> rows(a.n_ptr);
-        for (size_t t = 0; t < a.n_ptr; ++t) rows[t] = static_cast<int>(t);
-        // Each target's class and coefficient: 1 / N in SAT's op (cross_entropy's mean), w_i / N in SATW's.
+        if (!weighted && !want_terms) {
+            a.ptr = ops::cross_entropy(scores, gold);  // SAT's op, nothing else
+            return a;
+        }
         std::vector<int> cls(a.n_ptr);
-        std::vector<double> coef(a.n_ptr);
         for (size_t t = 0; t < a.n_ptr; ++t) {
             const auto& p = sb.ptr[t];
             cls[t] = p.twin ? 2 : sat_nearest_right(sb, p, T) ? 0 : 1;
-            const double w = (nearest_right_weight != 1.0 && cls[t] == 0) ? nearest_right_weight : 1.0;
-            coef[t] = w / static_cast<double>(a.n_ptr);
         }
-        Var ce;  // CE_i = logsumexp_i - score_i(gold_i)
-        if (nearest_right_weight != 1.0 || want_terms)
-            ce = ops::sub(ops::logsumexp_row(scores), ops::gather_elems(scores, rows, gold, 1));
-        if (nearest_right_weight == 1.0) {
-            a.ptr = ops::cross_entropy(scores, gold);
-        } else {
-            // sum_i (w_i / N) CE_i as one [1, N] x [N, 1] product.
-            Matrix wn(a.n_ptr, 1);
-            for (size_t t = 0; t < a.n_ptr; ++t) wn(t, 0) = static_cast<float>(coef[t]);
-            a.ptr = ops::matmul(ops::transpose(ce), make_var(std::move(wn)));
-        }
+        std::vector<double> coef;
+        a.ptr = sat_pointer_loss(scores, gold, cls, nearest_right_weight, &coef);
         if (want_terms) {
+            // Each target's CE in double on the host from max-shifted scores (diagnostics only, never on the tape).
+            device::materialize(scores->data);
+            const Matrix& S = scores->data;
             a.term_class = cls;
             a.term_coef = coef;
-            for (size_t t = 0; t < a.n_ptr; ++t) a.term_ce.push_back(ce->data(t, 0));
+            for (size_t t = 0; t < a.n_ptr; ++t) {
+                double mx = S(t, 0);
+                for (size_t j = 1; j < S.cols(); ++j) mx = std::max(mx, static_cast<double>(S(t, j)));
+                double z = 0.0;
+                for (size_t j = 0; j < S.cols(); ++j) z += std::exp(static_cast<double>(S(t, j)) - mx);
+                a.term_ce.push_back(mx + std::log(z) - static_cast<double>(S(t, static_cast<size_t>(gold[t]))));
+            }
         }
     }
     return a;
@@ -2976,9 +3042,9 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                       {"cut_step", s.sat.cut_step},
                       {"role_classes", s.sat.role_classes},
                       {"pointer_dim", s.sat.pointer_dim},
-                      {"nearest_right_weight", s.sat.nearest_right_weight},
                       {"labels", stats(sat_main)}};
             if (!s.sat.eval_labels.empty()) e["eval_labels"] = stats(sat_eval);
+            if (s.sat.nearest_right_weight != 1.0) e["nearest_right_weight"] = s.sat.nearest_right_weight;  // SATW only
             if (s.sat.twin_every) {
                 e["twin_labels"] = stats(sat_twin);
                 e["twins"] = {{"every", s.sat.twin_every}, {"tokens", twin_ids.size()}, {"limit", twin_lim}};
@@ -4158,14 +4224,16 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                        {"natural_positions_total", sat_cnt.rows[0] * s.T},
                        {"twin_positions_total", sat_cnt.rows[1] * s.T},
                        {"twin_rows_total", sat_cnt.rows[1]}};
-            // SATW: the recency rule's split of the pointer targets, and the weights the pointer loss summed (with
-            // W = 1 every weight is 1, so the sums are the target counts).
-            st["natural_pointer_nearest_right"] = st_nr[0];
-            st["natural_pointer_nearest_wrong"] = st_nw[0];
-            st["twin_pointer_nearest_right"] = st_nr[1];
-            st["twin_pointer_nearest_wrong"] = st_nw[1];
-            st["pointer_weight_sum"] = st_wsum;
-            st["natural_pointer_weight_sum"] = st_nat_wsum;
+            // SATW, with the weight on only (absent or 1: SAT's step event, unchanged): the recency rule's split of
+            // the pointer targets, and the weights the pointer loss's coefficients carry (coefficient = weight / N).
+            if (s.sat.nearest_right_weight != 1.0) {
+                st["natural_pointer_nearest_right"] = st_nr[0];
+                st["natural_pointer_nearest_wrong"] = st_nw[0];
+                st["twin_pointer_nearest_right"] = st_nr[1];
+                st["twin_pointer_nearest_wrong"] = st_nw[1];
+                st["pointer_weight_sum"] = st_wsum;
+                st["natural_pointer_weight_sum"] = st_nat_wsum;
+            }
             if (sat_step) st["heads_grad_norm"] = sat_norm;
             if (sat_role_n) st["role_loss"] = sat_role_sum / static_cast<double>(sat_role_n);
             if (sat_ptr_n) st["pointer_loss"] = sat_ptr_sum / static_cast<double>(sat_ptr_n);
@@ -6234,6 +6302,7 @@ int main(int argc, char** argv) {
         device::set_from_env();
         if ((cmd == "run" || cmd == "plan") && argc >= 3)
             return run(parse_spec(argv[2]), cmd == "plan", argv[2]);
+        if (cmd == "sat-pointer-check" && argc >= 4) return sat_pointer_check(argv[2], argv[3]);
         if (cmd == "sample" && argc >= 3) {
             std::string prompt = "once upon a time", out_file;
             int n_new = 40, topk = 40;

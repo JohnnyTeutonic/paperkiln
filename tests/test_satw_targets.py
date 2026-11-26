@@ -61,43 +61,97 @@ def stripped(events, fields):
     return out
 
 
-def comparable(out):
-    """Every event that a run with W = 1 must share with SAT's: steps, evals, windows, the held-out accuracies, the
-    load and end events, without SATW's added fields."""
-    kinds = ("step", "eval", "windows", "symbol_targets_eval", "symbol_targets_end", "symbol_targets")
-    return {k: stripped(S.evs(out, k), NEW_STEP_FIELDS + NEW_EVAL_FIELDS + ("nearest_right_weight",)) for k in kinds}
+KINDS = ("step", "eval", "windows", "symbol_targets_eval", "symbol_targets_end", "symbol_targets", "data",
+         "state_tokens", "anneal_data")
+FILES = ("model.safetensors", "m.safetensors", "optim.safetensors", "state.txt")
+
+
+def comparable(out, strip_eval_split=False):
+    """Every deterministic event of a run, kind by kind, as logged (only the held-out eval split's fields removed when
+    asked: SAT's reviewed build predates them)."""
+    return {k: stripped(S.evs(out, k), NEW_EVAL_FIELDS) if strip_eval_split else S.evs(out, k) for k in KINDS}
 
 
 @needs_bin
-def test_weight_one_is_sat(data):
+def test_weight_off_is_sat_bit_for_bit(data):
+    """GPT's delta review of the shared trainer, points 2 and 3: the key omitted and W = 1 are bit-identical to each
+    other on the shared trainer, every event as logged (per-step events included: no SATW field appears), and both are
+    bit-identical to SAT's reviewed trainer (MTSTUDIO_SAT_BIN, of MTSTUDIO_SAT_COMMIT) on SAT's spec, the eval split's
+    fields apart, with the same model, export, optimiser and state files."""
     tmp, _ = data
     sat = S.full(tmp, "sat_plain_key", cfg(tmp))
     one = S.full(tmp, "satw_w1", cfg(tmp, 1.0))
     assert comparable(one) == comparable(sat)
-    for f in ("model.safetensors", "m.safetensors"):
-        assert (one / f).read_bytes() == (sat / f).read_bytes()
-    assert S.evs(one, "symbol_targets")[0]["nearest_right_weight"] == 1.0
-    # With W = 1 every weight is 1: the sums are the target counts.
-    for e in S.evs(one, "step"):
-        st = e.get("symbol_targets")
-        if st and "pointer_weight_sum" in st:
-            assert st["pointer_weight_sum"] == st["pointer_targets"]
-            assert st["natural_pointer_weight_sum"] == st["natural_pointer_targets"]
+    for f in FILES:
+        assert (one / f).read_bytes() == (sat / f).read_bytes(), f
+    for e in S.evs(one, "step") + S.evs(sat, "step"):
+        assert not set(NEW_STEP_FIELDS) & set(e.get("symbol_targets", {})), e["step"]
+    assert "nearest_right_weight" not in S.evs(one, "symbol_targets")[0]
     # On the shared trainer, SAT's own spec also logs the eval split (an addition only).
     assert all("nearest_right_targets" in e for e in S.evs(sat, "symbol_targets_eval"))
-    if SAT_BIN:
-        # SAT's reviewed trainer on SAT's spec: the same run, field for field (it logs none of SATW's fields).
-        import sat_build_provenance as P
-        assert SAT_COMMIT, "set MTSTUDIO_SAT_COMMIT to the commit SAT's reviewed build was made from"
-        assert P.check(SAT_BIN, str(ROOT), SAT_COMMIT) == []
-        ref = tmp / "sat_reviewed"
-        if not (ref / "result.json").exists():
-            r = S.run(S.spec(tmp, ref, cfg(tmp)), binary=SAT_BIN)
-            assert r.returncode == 0, r.stderr[-1500:]
-        assert comparable(ref) == comparable(sat)
-        for f in ("model.safetensors", "m.safetensors", "optim.safetensors"):
-            assert (ref / f).read_bytes() == (sat / f).read_bytes(), f
-        assert not any("nearest_right_targets" in e for e in S.evs(ref, "symbol_targets_eval"))
+    assert SAT_BIN, "set MTSTUDIO_SAT_BIN to SAT's reviewed trainer build"
+    import sat_build_provenance as P
+    assert SAT_COMMIT, "set MTSTUDIO_SAT_COMMIT to the commit SAT's reviewed build was made from"
+    assert P.check(SAT_BIN, str(ROOT), SAT_COMMIT) == []
+    ref = tmp / "sat_reviewed"
+    if not (ref / "result.json").exists():
+        r = S.run(S.spec(tmp, ref, cfg(tmp)), binary=SAT_BIN)
+        assert r.returncode == 0, r.stderr[-1500:]
+    assert not any("nearest_right_targets" in e for e in S.evs(ref, "symbol_targets_eval"))
+    for run_dir in (sat, one):
+        assert comparable(ref) == comparable(run_dir, strip_eval_split=True)
+        for f in FILES:
+            assert (ref / f).read_bytes() == (run_dir / f).read_bytes(), f
+
+
+def float64_reference(scores, gold, cls, weight):
+    """sum_i (w_i / N) CE_i in float64, w_i = weight for class 0 and 1 otherwise, and its gradient by the scores."""
+    s = np.asarray(scores, dtype=np.float64)
+    n = len(gold)
+    w = np.array([weight if c == 0 else 1.0 for c in cls]) / n
+    z = s - s.max(axis=1, keepdims=True)
+    p = np.exp(z) / np.exp(z).sum(axis=1, keepdims=True)
+    ce = np.log(np.exp(z).sum(axis=1)) - z[np.arange(n), gold]
+    g = p.copy()
+    g[np.arange(n), gold] -= 1.0
+    return float((w * ce).sum()), g * w[:, None], w
+
+
+@needs_bin
+@pytest.mark.parametrize("offset", [0.0, 1e4])
+@pytest.mark.parametrize("weight", [WEIGHT, 1.0])
+def test_pointer_loss_against_float64(tmp_path, offset, weight):
+    """GPT's delta review of the shared trainer, points 1 and 3: the trainer's sat_pointer_loss (mtstudio
+    sat-pointer-check) on a mixed batch of all three classes, with masked candidates at -1e9 as in training and a
+    large common offset: the loss and its gradient by the scores equal an independent float64 reference, and the
+    coefficients are 1 / N (twin, natural nearest-wrong) and W / N (natural nearest-right)."""
+    import subprocess
+    r = np.random.default_rng(7)
+    n, c = 9, 24
+    scores = r.normal(0.0, 3.0, size=(n, c))
+    gold = [int(x) for x in r.integers(0, c - 4, size=n)]
+    for i in range(n):  # candidates: a few columns open, the rest masked as the trainer masks them
+        open_ = set(r.choice(c, size=6, replace=False).tolist()) | {gold[i]}
+        for j in range(c):
+            if j not in open_:
+                scores[i, j] += -1e9
+    scores = scores + offset
+    cls = [0, 1, 2, 0, 0, 1, 2, 0, 1]
+    (tmp_path / "in.json").write_text(json.dumps({"scores": scores.tolist(), "gold": gold, "class": cls,
+                                                  "weight": weight}))
+    p = subprocess.run([S.BIN, "sat-pointer-check", str(tmp_path / "in.json"), str(tmp_path / "out.json")],
+                       capture_output=True, text=True, env={**os.environ, "CUDA_VISIBLE_DEVICES": ""})
+    assert p.returncode == 0, p.stderr[-800:]
+    out = json.loads((tmp_path / "out.json").read_text())
+    # The reference on the scores as the trainer holds them (float32).
+    loss, grad, coef = float64_reference(np.float32(scores).astype(np.float64), gold, cls, weight)
+    assert out["coefficients"] == pytest.approx(coef.tolist(), rel=0, abs=0)
+    for i, k in enumerate(cls):
+        want = (weight if k == 0 else 1.0) / n
+        assert out["coefficients"][i] == want
+    assert out["loss"] == pytest.approx(loss, rel=1e-5)
+    assert np.allclose(np.array(out["grad"]), grad, rtol=0, atol=1e-6)
+    assert abs(np.array(out["grad"]).sum(axis=1)).max() < 1e-6        # each row's gradient sums to zero
 
 
 @needs_bin
@@ -212,6 +266,34 @@ def test_eval_split_by_the_recency_rule(data):
 
 
 @needs_bin
+def test_fixed_weight_logits_ignore_labels_and_weight(data):
+    """GPT's delta review of the shared trainer, point 3: at fixed weights, every next-word logit is the same whatever
+    the labels (A, B) and whatever the weight (absent, 1, W): at initialisation, and at the weights of a checkpoint
+    after five steps trained under W (the implementation check's hashes, compared across runs)."""
+    tmp, _ = data
+
+    def check(name, c, base=None):
+        out = tmp / f"logits_{name}"
+        shutil.rmtree(out, ignore_errors=True)
+        if base is not None:
+            shutil.copytree(base, out, symlinks=True)
+        r = S.run(S.spec(tmp, out, c, ckpt_every=5), MICROTORCH_SAT_CHECK="8")
+        assert r.returncode == 0, r.stderr[-800:]
+        return [(e["variant"], e["step"], e["micro"], e["logits_sha256"]) for e in S.evs(out, "sat_check")]
+
+    variants = {"absent": cfg(tmp), "one": cfg(tmp, 1.0), "w": cfg(tmp, WEIGHT), "w_B": cfg(tmp, WEIGHT, labels="B"),
+                "absent_B": cfg(tmp, labels="B")}
+    init = {k: check(f"init_{k}", c) for k, c in variants.items()}
+    assert len({json.dumps(v) for v in init.values()}) == 1 and init["w"]
+    base = tmp / "logits_base_five_steps"
+    shutil.rmtree(base, ignore_errors=True)
+    assert S.run(S.spec(tmp, base, cfg(tmp, WEIGHT), ckpt_every=5), MICROTORCH_CKPT_CRASH="prune:5").returncode != 0
+    five = {k: check(f"five_{k}", c, base) for k, c in variants.items()}
+    assert len({json.dumps(v) for v in five.values()}) == 1 and five["w"]
+    assert {h[3] for h in five["w"]}.isdisjoint({h[3] for h in init["w"]})
+
+
+@needs_bin
 def test_implementation_check_with_weight(data):
     tmp, _ = data
     out = tmp / "satw_check"
@@ -224,7 +306,7 @@ def test_implementation_check_with_weight(data):
 
 
 @needs_bin
-@pytest.mark.parametrize("stage,at,crash_at", [("prune", 4, 4), ("mkdir", 8, 4)])
+@pytest.mark.parametrize("stage,at,crash_at", [("prune", 4, 4), ("prune", 8, 8), ("mkdir", 8, 4)])
 def test_resume_inside_the_scaffold_with_weight(data, stage, at, crash_at):
     tmp, _ = data
     whole = S.full(tmp, "satw_w", cfg(tmp, WEIGHT))
@@ -235,10 +317,13 @@ def test_resume_inside_the_scaffold_with_weight(data, stage, at, crash_at):
     r = S.run(p)
     assert r.returncode == 0, r.stderr[-1500:]
     assert S.evs(cut, "symbol_targets_resume")[0]["step"] == crash_at
-    for kind in ("step", "eval", "windows", "symbol_targets_eval"):
+    for kind in ("step", "eval", "windows"):
         a = {k: v for k, v in S.last_by_step(whole, kind).items() if k[0] > crash_at}
         b = {k: v for k, v in S.last_by_step(cut, kind).items() if k[0] > crash_at}
         assert a == b and a, kind
+    # The held-out accuracies (steps 4 and 8, the scaffold's), before and after the restart; the run crosses the cut.
+    assert S.last_by_step(whole, "symbol_targets_eval") == S.last_by_step(cut, "symbol_targets_eval")
+    assert max(k[0] for k in S.last_by_step(cut, "step")) == S.STEPS > S.CUT > crash_at
     assert S.evs(whole, "symbol_targets_end") == S.evs(cut, "symbol_targets_end")
     assert (whole / "model.safetensors").read_bytes() == (cut / "model.safetensors").read_bytes()
 
