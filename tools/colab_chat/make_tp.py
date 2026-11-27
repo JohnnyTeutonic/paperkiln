@@ -7,12 +7,13 @@ AI_ML/transfer_programme/stage3a/REGISTRATION.md). Claude Opus 5.5, 28 Nov 2026.
     python3 tools/colab_chat/make_tp.py --check    # compares them with what is on disk; non-zero on any difference
 
 What changes against the reference rung (make_ladder.py and make_base2.py, imported and not edited):
-- a data job, tp_data, after the pins job: it checks the uploaded bundle (tp_bundle.tar.gz) against BUNDLE_SHA256, then runs
-  the bundle's tp_data_vm.sh, which generates the run's packet on the VM with the programme's instruments, tokenises it with
-  tools/corpus_ids.py and mixes it into N.main.ids and N.tail.ids (both from the store, checked by the pins job) as
+- a data job, tp_data, after the pins job: it checks the uploaded bundle (tp_bundle_<sha256[:12]>.tar.gz) against the
+  run's pin in BUNDLES, then runs the bundle's tp_data_vm.sh, which generates the run's packet on the VM with the
+  programme's instruments, refuses it unless it equals the packet built at home (the bundle's pins/<run>.json), tokenises it
+  with tools/corpus_ids.py and mixes it into N.main.ids and N.tail.ids (both from the store, checked by the pins job) as
   /content/chat/data/TP.main.ids and TP.tail.ids. The runner reruns it on any replacement VM.
-- the training job reads TP.main.ids and TP.tail.ids, waits for tp_data, and keeps 14 marks (12 log-spaced from step 1,000
-  plus 10,000 and 58,500, the ladder's own marks); its names are the run's.
+- the training job reads TP.main.ids and TP.tail.ids, waits for tp_data, and keeps 15 marks (12 log-spaced from step 1,000,
+  the ladder's 10,000 and 58,500, and 51,000 where the tail begins); its names are the run's.
 - one rung job, at the end (panels and Carry-5, as the ladder's end rung); the ladder's two mid-run rungs are not run.
 - the store's release turn is 40 minutes (W169 holds turn 0 and SYMW's and SAT's runs turn 20).
 Shape, seed, steps (60,000), schedule (4,000 warm-up steps, cosine to a tenth of 5e-4, the tail from step 51,001), batch,
@@ -28,22 +29,28 @@ sys.path.insert(0, HERE)
 import make_base2 as M  # noqa: E402  (base 2's builder, unchanged)
 import make_ladder as L  # noqa: E402  (the token ladder's builder, unchanged)
 
-# sha256 of tp_bundle.tar.gz (the research tree's AI_ML/transfer_programme/stage3a/bundle.json); tp_data refuses any other.
-BUNDLE_SHA256 = "cc74fe86d1fab54dbb134d1197f2d4a5e78248b10224bbb9e8e40669d07c6fb2"
-BUNDLE = "tp_bundle.tar.gz"
-# run -> (reference rung, its trainer seed); the rectangles and packets are in the bundle's design.json and specs/
+# run -> sha256 of the bundle it runs from (the research tree's AI_ML/transfer_programme/stage3a/bundle.json, which also
+# holds the run's home-built packet pins); tp_data refuses any other bytes. A run is rendered only once its bundle exists.
+BUNDLES = {"R1A": "96604bfb25755acc1025f01523948bb7a9688d4b880d37bb09bd848ff0a4614a"}
+# run -> the reference rung (its trainer seed); the rectangles and packets are in the bundle's design.json and specs/
 RUNS = {"R1A": "N1B", "R1B": "N1B", "R1C": "N1B", "R2A": "N1Bs50", "R2B": "N1Bs50", "R2C": "N1Bs50"}
-MARKS = [1000, 1500, 2500, 4000, 6000, 9000, 10000, 13500, 20000, 27500, 37500, 49000, 58500, 60000]
+# 12 log-spaced (the simulation's) plus the ladder's 10,000 and 58,500 and the tail's start, 51,000
+MARKS = [1000, 1500, 2500, 4000, 6000, 9000, 10000, 13500, 20000, 27500, 37500, 49000, 51000, 58500, 60000]
 OFFSET_MIN = 40
 DATA_TIMEOUT_S = 5400
 
 
+def bundle_name(run):
+    return f"tp_bundle_{BUNDLES[run][:12]}.tar.gz"
+
+
 def data_job(run):
     up = "/content/chat/upload"
-    script = (f"sha256sum {up}/{BUNDLE} | tee {{out}}/tp_bundle_pin.txt | grep -q '^{BUNDLE_SHA256} ' && "
+    b, sha = bundle_name(run), BUNDLES[run]
+    script = (f"sha256sum {up}/{b} | tee {{out}}/tp_bundle_pin.txt | grep -q '^{sha} ' && "
               f"rm -rf /content/chat/tp_unpack && mkdir -p /content/chat/tp_unpack && "
-              f"tar -xzf {up}/{BUNDLE} -C /content/chat/tp_unpack stage3a/tp_data_vm.sh && "
-              f"timeout -k 60 {DATA_TIMEOUT_S} bash /content/chat/tp_unpack/stage3a/tp_data_vm.sh {run} {{out}}")
+              f"tar -xzf {up}/{b} -C /content/chat/tp_unpack stage3a/tp_data_vm.sh && "
+              f"timeout -k 60 {DATA_TIMEOUT_S} bash /content/chat/tp_unpack/stage3a/tp_data_vm.sh {run} {{out}} {b}")
     return {"name": "tp_data", "after": ["pins"], "halt_on_failure": True, "cmd": ["sh", "-c", script],
             "outputs": ["tp_bundle_pin.txt", "tp_data.json", "tp_mix.json", "tp_packet.json", "tp_data.log"]}
 
@@ -70,22 +77,23 @@ def arm(run):
     b.update(arm=f"TP_{run}", ladder=False, recipe_of=ref_name, rung="1B", slot=None, marks=list(MARKS),
              mark_positions={str(m): m * M.ROWS * M.T for m in MARKS},
              corpus="TP: base 2's N with the run's five-task packet at 15% of each part's training tokens (tp_data)",
-             transfer_programme={"stage": "3(a)", "run": run, "bundle": BUNDLE, "bundle_sha256": BUNDLE_SHA256})
+             transfer_programme={"stage": "3(a)", "run": run, "bundle": bundle_name(run), "bundle_sha256": BUNDLES[run]})
     out["_comment"] = (f"Transfer programme Stage 3(a), run {run}: the token ladder's {ref_name} with its corpus replaced by "
-                       "N mixed with the run's five-task packet (tp_data), 14 marks and one end rung. Not admitted: the "
-                       "launch gate is two reviews and the coordinator's ruling.")
+                       f"N mixed with the run's five-task packet (tp_data), {len(MARKS)} marks and one end rung. Not "
+                       "admitted: the launch gate is two reviews and the coordinator's ruling.")
     return L._with_offset(out, OFFSET_MIN)
 
 
 def files():
-    return {f"tp_{r}.json": arm(r) for r in RUNS}
+    return {f"tp_{r}.json": arm(r) for r in RUNS if r in BUNDLES}
 
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     check = "--check" in argv
-    if not BUNDLE_SHA256 or len(BUNDLE_SHA256) != 64:
-        raise SystemExit("BUNDLE_SHA256 is not a sha256")
+    for r, h in BUNDLES.items():
+        if r not in RUNS or len(h) != 64 or any(c not in "0123456789abcdef" for c in h):
+            raise SystemExit(f"{r}: the bundle pin is not a sha256")
     bad = []
     for name, obj in files().items():
         path = os.path.join(HERE, name)

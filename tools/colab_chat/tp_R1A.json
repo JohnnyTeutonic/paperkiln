@@ -1,5 +1,5 @@
 {
- "_comment": "Transfer programme Stage 3(a), run R1A: the token ladder's N1B with its corpus replaced by N mixed with the run's five-task packet (tp_data), 14 marks and one end rung. Not admitted: the launch gate is two reviews and the coordinator's ruling.",
+ "_comment": "Transfer programme Stage 3(a), run R1A: the token ladder's N1B with its corpus replaced by N mixed with the run's five-task packet (tp_data), 15 marks and one end rung. Not admitted: the launch gate is two reviews and the coordinator's ruling.",
  "_base2": {
   "arm": "TP_R1A",
   "ladder": false,
@@ -28,6 +28,7 @@
    27500,
    37500,
    49000,
+   51000,
    58500,
    60000
   ],
@@ -44,6 +45,7 @@
    "27500": 450560000,
    "37500": 614400000,
    "49000": 802816000,
+   "51000": 835584000,
    "58500": 958464000,
    "60000": 983040000
   },
@@ -51,8 +53,8 @@
   "transfer_programme": {
    "stage": "3(a)",
    "run": "R1A",
-   "bundle": "tp_bundle.tar.gz",
-   "bundle_sha256": "cc74fe86d1fab54dbb134d1197f2d4a5e78248b10224bbb9e8e40669d07c6fb2"
+   "bundle": "tp_bundle_96604bfb2575.tar.gz",
+   "bundle_sha256": "96604bfb25755acc1025f01523948bb7a9688d4b880d37bb09bd848ff0a4614a"
   }
  },
  "store_push_cap_gb": 200,
@@ -122,7 +124,7 @@
    "cmd": [
     "sh",
     "-c",
-    "sha256sum /content/chat/upload/tp_bundle.tar.gz | tee {out}/tp_bundle_pin.txt | grep -q '^cc74fe86d1fab54dbb134d1197f2d4a5e78248b10224bbb9e8e40669d07c6fb2 ' && rm -rf /content/chat/tp_unpack && mkdir -p /content/chat/tp_unpack && tar -xzf /content/chat/upload/tp_bundle.tar.gz -C /content/chat/tp_unpack stage3a/tp_data_vm.sh && timeout -k 60 5400 bash /content/chat/tp_unpack/stage3a/tp_data_vm.sh R1A {out}"
+    "sha256sum /content/chat/upload/tp_bundle_96604bfb2575.tar.gz | tee {out}/tp_bundle_pin.txt | grep -q '^96604bfb25755acc1025f01523948bb7a9688d4b880d37bb09bd848ff0a4614a ' && rm -rf /content/chat/tp_unpack && mkdir -p /content/chat/tp_unpack && tar -xzf /content/chat/upload/tp_bundle_96604bfb2575.tar.gz -C /content/chat/tp_unpack stage3a/tp_data_vm.sh && timeout -k 60 5400 bash /content/chat/tp_unpack/stage3a/tp_data_vm.sh R1A {out} tp_bundle_96604bfb2575.tar.gz"
    ],
    "outputs": [
     "tp_bundle_pin.txt",
@@ -153,6 +155,7 @@
     27500,
     37500,
     49000,
+    51000,
     58500,
     60000
    ],

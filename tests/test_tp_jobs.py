@@ -19,8 +19,14 @@ def test_files_on_disk_are_current():
     assert L.main(["--check"]) == 0
 
 
+def test_only_rendered_runs_have_files():
+    have = sorted(f for f in os.listdir(TOOLS) if f.startswith("tp_R") and f.endswith(".json"))
+    assert have == sorted(f"tp_{r}.json" for r in P.BUNDLES)
+
+
 def test_only_the_registered_differences():
-    for run, ref_name in P.RUNS.items():
+    for run in P.BUNDLES:
+        ref_name = P.RUNS[run]
         got = json.load(open(os.path.join(TOOLS, f"tp_{run}.json")))
         ref = json.load(open(os.path.join(TOOLS, f"ladder_{ref_name}.json")))
         names = [j["name"] for j in got["jobs"]]
@@ -51,7 +57,9 @@ def test_only_the_registered_differences():
         # the data job: pinned bundle, the run's name, after pins, fails the campaign on failure
         d = g["tp_data"]
         assert d["after"] == ["pins"] and d["halt_on_failure"] is True
-        assert f"grep -q '^{P.BUNDLE_SHA256} '" in d["cmd"][2] and d["cmd"][2].endswith(f"tp_data_vm.sh {run} {{out}}")
+        b = f"tp_bundle_{P.BUNDLES[run][:12]}.tar.gz"
+        assert f"sha256sum /content/chat/upload/{b} " in d["cmd"][2] and f"grep -q '^{P.BUNDLES[run]} '" in d["cmd"][2]
+        assert d["cmd"][2].endswith(f"tp_data_vm.sh {run} {{out}} {b}")
         # the switches and inputs: the reference's but for the release turn
         for k in ("store_inputs", "max_parallel", "max_parallel_light", "store_push_cap_gb", "store_release_every_min",
                   "store_stall_halt", "store_stall_min", "store_unverified_halt_min", "store_no_progress_min",
@@ -71,5 +79,5 @@ def test_trainer_is_the_ladders():
     out = subprocess.run(["git", "-C", HERE, "diff", "--name-status", "672501bb1d09f707fdd20a5c7280120940734327", "HEAD"],
                          capture_output=True, text=True, check=True).stdout.split("\n")
     rows = [r.split("\t") for r in out if r.strip()]
-    own = {"tools/colab_chat/make_tp.py", "tests/test_tp_jobs.py"} | {f"tools/colab_chat/tp_{r}.json" for r in P.RUNS}
+    own = {"tools/colab_chat/make_tp.py", "tests/test_tp_jobs.py"} | {f"tools/colab_chat/tp_{r}.json" for r in P.BUNDLES}
     assert all(s == "A" and p in own for s, p in rows), rows
