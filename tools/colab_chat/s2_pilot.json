@@ -1,0 +1,476 @@
+{
+ "_comment": "Transfer programme Stage 2 variance pilot, rendered by tools/colab_chat/s2_jobs.py; edit that file.",
+ "max_parallel": 1,
+ "max_parallel_light": 1,
+ "home_markers": true,
+ "jobs": [
+  {
+   "name": "S2P_F1_N250_1",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S2F1.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/sft_tlN250.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors"
+     ]
+    }
+   },
+   "relay_every_steps": 100000
+  },
+  {
+   "name": "S2P_F10_N250_1",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S2F10.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/sft_tlN250.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors"
+     ]
+    }
+   },
+   "relay_every_steps": 100000
+  },
+  {
+   "name": "S2P_F100_N250_1",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S2F100.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/sft_tlN250.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors"
+     ]
+    }
+   },
+   "relay_every_steps": 100000
+  },
+  {
+   "name": "S2P_F1_N250_2",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S2F1.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 2,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/sft_tlN250.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors"
+     ]
+    }
+   },
+   "relay_every_steps": 100000
+  },
+  {
+   "name": "S2P_F10_N250_2",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S2F10.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 2,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/sft_tlN250.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors"
+     ]
+    }
+   },
+   "relay_every_steps": 100000
+  },
+  {
+   "name": "S2P_F100_N250_2",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S2F100.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 2,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/sft_tlN250.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors"
+     ]
+    }
+   },
+   "relay_every_steps": 100000
+  },
+  {
+   "name": "S2P_F1_N250_3",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S2F1.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 3,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/sft_tlN250.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors"
+     ]
+    }
+   },
+   "relay_every_steps": 100000
+  },
+  {
+   "name": "S2P_F10_N250_3",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S2F10.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 3,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/sft_tlN250.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors"
+     ]
+    }
+   },
+   "relay_every_steps": 100000
+  },
+  {
+   "name": "S2P_F100_N250_3",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 512,
+      "layers": 18,
+      "heads": 8,
+      "d_ff": 1536
+     },
+     "state_tokens": {
+      "k": 4,
+      "mask": "causal"
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab.gguf",
+     "vocab_cap": 16384,
+     "T": 1024,
+     "sft_examples": "/content/chat/upload/S2F100.jsonl"
+    },
+    "train": {
+     "objective": "sft",
+     "steps": 1024,
+     "lr": 0.0001,
+     "batch": 16,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 32,
+     "eval_batch": 8,
+     "checkpoint_every": 128,
+     "gradmap_every": 0,
+     "seed": 3,
+     "optimizer": "adamw",
+     "init_from": "/content/chat/upload/sft_tlN250.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 64,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "eval_examples": 256
+    },
+    "export": {
+     "formats": [
+      "safetensors"
+     ]
+    }
+   },
+   "relay_every_steps": 100000
+  }
+ ]
+}
