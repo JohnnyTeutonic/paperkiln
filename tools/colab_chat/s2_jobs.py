@@ -6,11 +6,11 @@ nine post-training runs on N250's stage-1 SFT model, three arms of format divers
     python3 tools/colab_chat/s2_jobs.py            # writes s2_pilot.json
     python3 tools/colab_chat/s2_jobs.py --check    # compares it with the file on disk; non-zero on any difference
 
-Every run is S71's spec at D1 (1,024 steps, batch 16, lr 1e-4, warm-up 64, cosine to a tenth, T 1,024) from sft_tlN250
-(uploaded and bound by hash at launch), on its arm's packet (S2F1, S2F10 or S2F100: the five tasks' answer-only rows, the
-same instances in every arm, built and audited by stage2/s2_build.py) at its chat seed; only the packet, the seed and the
-export (safetensors only: the models are read at home with harness.py, which reads safetensors) differ from b2cue's plain
-arm. No gate job (the plain SFT path of this trainer, c5295cd1, is the token ladder's and the crossed curriculum's), no
+Every run is S71's spec at D1 (batch 16, lr 1e-4, warm-up 64, cosine to a tenth, T 1,024) from sft_tlN250 (uploaded and
+bound by hash at launch), on its arm's packet (S2F1, S2F10 or S2F100: the five tasks' answer-only rows from one instance
+pool, built and audited by stage2/s2_build.py) at its chat seed; only the packet, the seed, the arm's step count (equal
+sampled supervised tokens a task across arms) and the export (safetensors only: the models are read at home with
+harness.py) differ from b2cue's plain arm. No gate job (the plain SFT path of this trainer, c5295cd1, is the token ladder's and the crossed curriculum's), no
 score jobs, no rung snapshots. Jobs run seed by seed, the three arms within a seed, so a cut leaves whole seeds.
 """
 import json
@@ -25,6 +25,9 @@ U = B.U
 START = f"{U}/sft_tlN250.safetensors"
 ARMS = (1, 10, 100)
 SEEDS = (1, 2, 3)
+# Each arm's step count, so that every arm draws the same sampled supervised tokens a task (stage2/s2_packets.json "steps",
+# s2_build.py's rule: round(target x sum over tasks of 1 / mean supervised tokens a row / 16)); the launcher checks equality.
+STEPS = {1: 1244, 10: 1011, 100: 988}
 OUT = os.path.join(HERE, "s2_pilot.json")
 
 
@@ -34,6 +37,7 @@ def name(f, seed):
 
 def spec(f, seed):
     s = B.arm_spec("D1", START, seed, "P", packet=f"S2F{f}.jsonl")
+    s["train"]["steps"] = STEPS[f]      # warm-up 64 and the cosine to a tenth follow the arm's own length
     s["export"] = {"formats": ["safetensors"]}
     return s
 

@@ -29,7 +29,7 @@
     },
     "train": {
      "objective": "sft",
-     "steps": 1024,
+     "steps": 1244,
      "lr": 0.0001,
      "batch": 16,
      "accum": 1,
@@ -81,7 +81,7 @@
     },
     "train": {
      "objective": "sft",
-     "steps": 1024,
+     "steps": 1011,
      "lr": 0.0001,
      "batch": 16,
      "accum": 1,
@@ -133,7 +133,7 @@
     },
     "train": {
      "objective": "sft",
-     "steps": 1024,
+     "steps": 988,
      "lr": 0.0001,
      "batch": 16,
      "accum": 1,
@@ -185,7 +185,7 @@
     },
     "train": {
      "objective": "sft",
-     "steps": 1024,
+     "steps": 1244,
      "lr": 0.0001,
      "batch": 16,
      "accum": 1,
@@ -237,7 +237,7 @@
     },
     "train": {
      "objective": "sft",
-     "steps": 1024,
+     "steps": 1011,
      "lr": 0.0001,
      "batch": 16,
      "accum": 1,
@@ -289,7 +289,7 @@
     },
     "train": {
      "objective": "sft",
-     "steps": 1024,
+     "steps": 988,
      "lr": 0.0001,
      "batch": 16,
      "accum": 1,
@@ -341,7 +341,7 @@
     },
     "train": {
      "objective": "sft",
-     "steps": 1024,
+     "steps": 1244,
      "lr": 0.0001,
      "batch": 16,
      "accum": 1,
@@ -393,7 +393,7 @@
     },
     "train": {
      "objective": "sft",
-     "steps": 1024,
+     "steps": 1011,
      "lr": 0.0001,
      "batch": 16,
      "accum": 1,
@@ -445,7 +445,7 @@
     },
     "train": {
      "objective": "sft",
-     "steps": 1024,
+     "steps": 988,
      "lr": 0.0001,
      "batch": 16,
      "accum": 1,

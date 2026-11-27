@@ -30,14 +30,17 @@ def test_only_packet_seed_and_export_differ():
     for j in d["jobs"]:
         f, seed = int(j["name"].split("_")[1][1:]), int(j["name"].split("_")[-1])
         ref = B.arm_spec("D1", P.START, seed, "P", packet=f"S2F{f}.jsonl")
-        got = dict(j["spec"])
+        got = json.loads(json.dumps(j["spec"]))
         assert got.pop("export") == {"formats": ["safetensors"]}
+        assert got["train"].pop("steps") == P.STEPS[f]
         ref.pop("export", None)
+        ref["train"].pop("steps")
         assert got == ref
         s = j["spec"]
         assert s["data"]["sft_examples"] == f"/content/chat/upload/S2F{f}.jsonl"
         assert s["train"]["init_from"] == "/content/chat/upload/sft_tlN250.safetensors"
-        assert (s["train"]["steps"], s["train"]["batch"], s["train"]["lr"], s["train"]["seed"]) == (1024, 16, 0.0001, seed)
+        assert (s["train"]["batch"], s["train"]["lr"], s["train"]["seed"]) == (16, 0.0001, seed)
+        assert 500 <= s["train"]["steps"] <= 2000
         assert "twin_loss" not in s["train"] and "twin_examples" not in s["data"]
         assert "after" not in j and "snapshot_steps" not in j
 
