@@ -47,7 +47,7 @@ def test_only_the_registered_differences():
         # the end rung: the reference end rung with the run's names
         e = json.dumps(g[f"rung_TP_{run}_s60000"])
         assert e == json.dumps(r[f"rung_{ref_name}_s60000"]).replace(f"pt_base2_{ref_name}", f"pt_tp_{run}") \
-            .replace(f"BASE2_{ref_name}", f"BASE2_TP_{run}")
+            .replace(f"BASE2_{ref_name}", f"BASE2_TP_{run}").replace(f"rung_{ref_name}_", f"rung_TP_{run}_")
         # the data job: pinned bundle, the run's name, after pins, fails the campaign on failure
         d = g["tp_data"]
         assert d["after"] == ["pins"] and d["halt_on_failure"] is True
