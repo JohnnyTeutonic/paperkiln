@@ -1,0 +1,107 @@
+{
+ "_comment": "Transfer programme Stage 3(a), run R1A, first build: the pins job and the data job (build mode) only; no training. Not admitted: the launch gate is two reviews and the coordinator's ruling.",
+ "_base2": {
+  "arm": "TP_R1A",
+  "ladder": false,
+  "recipe_of": "N1B",
+  "rung": "1B",
+  "seed": 1,
+  "slot": null,
+  "shape": "D1",
+  "params": 69751296,
+  "positions_per_step": 16384,
+  "steps": 60000,
+  "positions": 983040000,
+  "tokens_per_parameter": 14.09,
+  "last_main_step": 51000,
+  "first_tail_step": 51001,
+  "marks": [],
+  "mark_positions": {},
+  "corpus": "TP: base 2's N with the run's five-task packet at 15% of each part's training tokens (tp_data)",
+  "transfer_programme": {
+   "stage": "3(a)",
+   "run": "R1A",
+   "campaign": "first build, data only",
+   "bundle": "tp_bundle_078517374176.tar.gz",
+   "bundle_sha256": "07851737417669cbd2a3b94604c8b608dff911c73897d35f58610fd0a4e2ff1b"
+  }
+ },
+ "store_push_cap_gb": 200,
+ "store_release_every_min": 60,
+ "store_stall_halt": true,
+ "store_stall_min": 120,
+ "store_unverified_halt_min": 90,
+ "store_release_offset_min": 40,
+ "store_no_progress_min": 300,
+ "store_no_progress_launches": 4,
+ "store_inputs": [
+  {
+   "branch": "main",
+   "prefix": "seed/vocab",
+   "to": "chat/upload"
+  },
+  {
+   "branch": "main",
+   "prefix": "corpus/N",
+   "to": "chat/data",
+   "files": [
+    "N.main.ids",
+    "N.tail.ids"
+   ]
+  },
+  {
+   "branch": "main",
+   "prefix": "corpus/panels",
+   "to": "chat/data"
+  },
+  {
+   "branch": "main",
+   "prefix": "corpus/panel_scenario",
+   "to": "chat/data",
+   "files": [
+    "panel_scenario.ids"
+   ]
+  }
+ ],
+ "max_parallel": 1,
+ "max_parallel_light": 1,
+ "jobs": [
+  {
+   "name": "pins",
+   "light": true,
+   "halt_on_failure": true,
+   "cmd": [
+    "python3",
+    "tools/colab_chat/base2_pins.py",
+    "/content/chat/data",
+    "arm-N",
+    "--upload",
+    "/content/chat/upload",
+    "--out",
+    "{out}/pins.json"
+   ],
+   "outputs": [
+    "pins.json"
+   ]
+  },
+  {
+   "name": "tp_data",
+   "after": [
+    "pins"
+   ],
+   "halt_on_failure": true,
+   "cmd": [
+    "sh",
+    "-c",
+    "sha256sum /content/chat/upload/tp_bundle_078517374176.tar.gz | tee {out}/tp_bundle_pin.txt | grep -q '^07851737417669cbd2a3b94604c8b608dff911c73897d35f58610fd0a4e2ff1b ' && rm -rf /content/chat/tp_unpack && mkdir -p /content/chat/tp_unpack && tar -xzf /content/chat/upload/tp_bundle_078517374176.tar.gz -C /content/chat/tp_unpack stage3a/tp_data_vm.sh && timeout -k 60 5400 bash /content/chat/tp_unpack/stage3a/tp_data_vm.sh R1A {out} tp_bundle_078517374176.tar.gz build"
+   ],
+   "outputs": [
+    "tp_bundle_pin.txt",
+    "tp_data.json",
+    "tp_mix.json",
+    "tp_packet.json",
+    "tp_data.log"
+   ]
+  }
+ ]
+}
