@@ -34,7 +34,7 @@ import make_ladder as L  # noqa: E402  (the token ladder's builder, unchanged)
 # run -> sha256 of the bundle each campaign runs from (the research tree's AI_ML/transfer_programme/stage3a/bundles/);
 # tp_data refuses any other bytes. A campaign is rendered only once its bundle exists.
 DATA_BUNDLES = {"R1A": "07851737417669cbd2a3b94604c8b608dff911c73897d35f58610fd0a4e2ff1b"}
-TRAIN_BUNDLES = {}
+TRAIN_BUNDLES = {"R1A": "3f627aac8d3d4b11e7c735b8b46152c39ffd17d7274a1f382ccb1b0ad85c2ae0"}
 # run -> the reference rung (its trainer seed); the rectangles and packets are in the bundle's design.json and specs/
 RUNS = {"R1A": "N1B", "R1B": "N1B", "R1C": "N1B", "R2A": "N1Bs50", "R2B": "N1Bs50", "R2C": "N1Bs50"}
 # 12 log-spaced (the simulation's) plus the ladder's 10,000 and 58,500 and the tail's start, 51,000
